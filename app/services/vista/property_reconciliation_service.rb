@@ -76,11 +76,11 @@ module Vista
       keyword_init: true
     )
 
-    def initialize(codigos:, dry_run: true, report_path: nil, host: nil, key: nil, replace_photos: false, replace_documents: true, download_files: true, workers: 1, progress_callback: nil)
+    def initialize(codigos:, dry_run: true, report_path: nil, host: nil, key: nil, replace_photos: false, replace_documents: true, download_files: true, workers: 1, progress_callback: nil, sync_documents: true, sync_prontuarios: true)
       @codigos = Array(codigos).map(&:to_s).map(&:strip).reject(&:blank?).uniq
       @dry_run = ActiveModel::Type::Boolean.new.cast(dry_run)
-      @host = host.presence || ENV.fetch("VISTA_HOST")
-      @key = key.presence || ENV.fetch("VISTA_KEY")
+      @host = host.presence || Setting.tenant_get("loft_host", tenant: Current.tenant).to_s.presence
+      @key = key.presence || Setting.tenant_get("loft_token", tenant: Current.tenant).to_s.presence
       @host_header = ENV["VISTA_HOST_HEADER"].presence
       @report_path = report_path.presence || default_report_path
       @replace_photos = ActiveModel::Type::Boolean.new.cast(replace_photos)
@@ -88,12 +88,17 @@ module Vista
       @download_files = ActiveModel::Type::Boolean.new.cast(download_files)
       @workers = normalize_workers(workers)
       @progress_callback = progress_callback
+      @sync_documents = ActiveModel::Type::Boolean.new.cast(sync_documents)
+      @sync_prontuarios = ActiveModel::Type::Boolean.new.cast(sync_prontuarios)
       @api_file_asset_batch_mutex = Mutex.new
       @api_open_timeout = positive_integer(ENV["VISTA_API_OPEN_TIMEOUT"], DEFAULT_API_OPEN_TIMEOUT)
       @api_timeout = positive_integer(ENV["VISTA_API_TIMEOUT"], DEFAULT_API_TIMEOUT)
     end
 
     def call
+      raise "Host Vista não configurado para este tenant." if @host.blank?
+      raise "Token Vista não configurado para este tenant." if @key.blank?
+
       result = Result.new(
         dry_run: @dry_run,
         scanned: 0,
@@ -263,7 +268,7 @@ module Vista
       api = fetch_api(codigo)
       photos = photo_rows(api["Foto"])
       development_photos = photo_rows(api["FotoEmpreendimento"])
-      documents = document_rows(api["Anexo"])
+      documents = @sync_documents ? document_rows(api["Anexo"]) : []
       media_codes = media_codes_for(api, photos)
       return base_row(codigo).merge(status: "skipped", reason: "api_empty") unless api_has_property_data?(api, photos)
 
@@ -282,8 +287,8 @@ module Vista
           update_address!(habitation, api)
           sync_broker_assignment!(habitation, api, broker)
           sync_photos!(habitation, photos, counters, failed_photos)
-          sync_documents!(habitation, codigo, media_codes, documents, counters, failed_documents)
-          sync_prontuarios!(habitation, api, owner, broker)
+          sync_documents!(habitation, codigo, media_codes, documents, counters, failed_documents) if @sync_documents
+          sync_prontuarios!(habitation, api, owner, broker) if @sync_prontuarios
         end
       end
 
@@ -346,11 +351,18 @@ module Vista
       merge_api!(api, fetch_detail(codigo, [{ "Foto" => ASSOCIATION_FIELDS.fetch("Foto") }]))
       return api unless api_has_property_data?(api, photo_rows(api["Foto"]))
 
-      ASSOCIATION_FIELDS.except("Foto").each do |association, fields|
+      association_fields_for_sync.each do |association, fields|
         merge_api!(api, fetch_detail(codigo, [{ association => fields }]))
       end
 
       api
+    end
+
+    def association_fields_for_sync
+      ASSOCIATION_FIELDS.except("Foto").reject do |association, _fields|
+        (association == "Anexo" && !@sync_documents) ||
+          (association == "prontuarios" && !@sync_prontuarios)
+      end
     end
 
     def fetch_detail(codigo, fields)
@@ -433,10 +445,11 @@ module Vista
       development_pictures = preserve_picture_order(habitation.fotos_empreendimento, pictures_payload(development_photos))
       development_code = codigo_empreendimento_from_api(api, habitation)
 
+      normalized_status = Habitation.normalize_status(value(api["Status"]))
       attrs = compact_attrs(
         categoria: value(api["Categoria"]),
         tipo: habitation_type(api),
-        status: Habitation.normalize_status(value(api["Status"])),
+        status: normalized_status,
         situacao: value(api["Situacao"]),
         ocupacao_status: value(api["Ocupacao"]),
         tipo_endereco: value(api["TipoEndereco"]),
@@ -600,10 +613,26 @@ module Vista
         vista_payload: api
       )
 
-      attrs = compact_attrs(attrs).merge(clearable_property_attrs(api))
+      attrs = compact_attrs(attrs)
+        .merge(inactive_commercial_value_attrs(normalized_status, api))
+        .merge(clearable_property_attrs(api))
       habitation.assign_attributes(attrs)
       habitation.save!
       ensure_attribute_options!(features.keys, infrastructure)
+    end
+
+    def inactive_commercial_value_attrs(status, api)
+      status_key = Habitation.normalize_status(status).to_s.parameterize
+
+      if status_key.start_with?("vendido")
+        { valor_vendido_terceiros_cents: money_cents(api["ValorVenda"]) }
+      elsif status_key.start_with?("alugado")
+        { valor_alugado_terceiros_cents: total_rent_cents(api) }
+      elsif status_key.start_with?("suspenso")
+        { motivo_suspensao: value(api["Situacao"]) || value(api["Status"]) || "Suspenso no Vista" }
+      else
+        {}
+      end
     end
 
     def local_publication_flag_for(habitation, api)
@@ -699,7 +728,7 @@ module Vista
           next
         else
           begin
-            blob = create_blob_from_url(url, asset.filename, nil, service_name: StorageIntegrationSetting.current.photo_service_name)
+            blob = create_blob_from_url(url, asset.filename, nil, service_name: StorageIntegrationSetting.current(tenant: tenant).photo_service_name)
             counters[:photos_downloaded] += 1
           rescue StandardError => e
             failures << { source: url, error: e.message }
@@ -917,14 +946,14 @@ module Vista
       status = :reused
 
       unless blob
-        blob = create_blob_from_url(asset.source_url, asset.filename, asset.storage_content_type, service_name: StorageIntegrationSetting.current.document_service_name)
+        blob = create_blob_from_url(asset.source_url, asset.filename, asset.storage_content_type, service_name: StorageIntegrationSetting.current(tenant: tenant).document_service_name)
         status = :downloaded
       end
     rescue StandardError
       fallback_url = backup_url_for(asset)
       raise if fallback_url.blank?
 
-      blob = create_blob_from_url(fallback_url, asset.filename, asset.storage_content_type, service_name: StorageIntegrationSetting.current.document_service_name)
+      blob = create_blob_from_url(fallback_url, asset.filename, asset.storage_content_type, service_name: StorageIntegrationSetting.current(tenant: tenant).document_service_name)
       status = :downloaded
     ensure
       if blob
@@ -1257,14 +1286,17 @@ module Vista
         Array(values).each do |name|
           next if name.blank?
 
+          normalized_name = AttributeOptions::HabitationFeatureNormalizer.label(name, category: category)
+          normalized_key = AttributeOption.normalized_name_key(normalized_name)
           option = AttributeOption
                    .where(tenant: tenant)
                    .where(context: "habitation", category: category)
-                   .where("lower(name) = ?", name.to_s.downcase)
-                   .first
-          option ? option.update!(name: name) : tenant.attribute_options.create!(context: "habitation", category: category, name: name)
+                   .find { |attribute_option| AttributeOption.normalized_name_key(attribute_option.name) == normalized_key }
+          option ? option.update!(name: normalized_name) : tenant.attribute_options.create!(context: "habitation", category: category, name: normalized_name)
         rescue ActiveRecord::RecordNotUnique
           retry
+        rescue ActiveRecord::RecordInvalid => e
+          raise unless e.record.errors[:name].include?("já existe nesta categoria")
         end
       end
       Rails.cache.delete("admin/habitations/form_options/v1")

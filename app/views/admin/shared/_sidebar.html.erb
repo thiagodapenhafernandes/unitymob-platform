@@ -48,6 +48,11 @@
       <% end %>
     </li>
     <li class="ax-nav__item">
+      <%= link_to admin_system_tenants_path, class: "ax-nav__link #{'active' if controller_path == 'admin/system/tenants'}" do %>
+        <i class="bi bi-building"></i><span>Contas</span>
+      <% end %>
+    </li>
+    <li class="ax-nav__item">
       <%= link_to admin_system_users_path, class: "ax-nav__link #{'active' if controller_name == 'system' && action_name == 'users'}" do %>
         <i class="bi bi-people"></i><span>Usuários</span>
       <% end %>
@@ -62,7 +67,7 @@
         <i class="bi bi-broadcast-pin"></i><span>Notificações Globais</span>
       <% end %>
     </li>
-    <li class="ax-nav__caption">Contas</li>
+    <li class="ax-nav__caption">Operação</li>
     <li class="ax-nav__hint">Acesse áreas operacionais apenas por impersonação.</li>
   <% else %>
     <%
@@ -462,13 +467,18 @@
     <% if current_admin_user&.system_admin? %>
       <li class="ax-nav__section">Sistema</li>
       <li class="ax-nav__item">
-        <%= link_to admin_system_path, class: "ax-nav__link #{'active' if controller_name == 'system'}" do %>
+        <%= link_to admin_system_path, class: "ax-nav__link #{'active' if controller_name == 'system' && action_name == 'index'}" do %>
           <i class="bi bi-hdd-stack"></i><span>Painel do Sistema</span>
         <% end %>
       </li>
       <li class="ax-nav__item">
         <%= link_to admin_system_health_path, class: "ax-nav__link #{'active' if controller_name == 'health'}" do %>
           <i class="bi bi-activity"></i><span>Saúde do Sistema</span>
+        <% end %>
+      </li>
+      <li class="ax-nav__item">
+        <%= link_to admin_system_tenants_path, class: "ax-nav__link #{'active' if controller_path == 'admin/system/tenants'}" do %>
+          <i class="bi bi-building"></i><span>Contas</span>
         <% end %>
       </li>
       <li class="ax-nav__item">

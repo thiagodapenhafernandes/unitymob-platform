@@ -38,6 +38,29 @@ class Admin::StorageIntegrationsController < Admin::BaseController
     end
   end
 
+  def provision_digital_ocean
+    assign_storage_attributes
+    apply_digital_ocean_provision_defaults
+
+    unless @storage_setting.valid?
+      prepare_show_state
+      render :show, status: :unprocessable_entity
+      return
+    end
+
+    @storage_setting.save!
+
+    result = Storage::DigitalOceanSpacesProvisioner.new(setting: @storage_setting).call
+    @storage_setting.mark_test!(status: result.ok? ? "success" : "failed", message: result.message)
+
+    if result.ok?
+      Storage::ActiveStorageRegistry.register!(@storage_setting)
+      redirect_to admin_storage_integration_path, notice: result.message
+    else
+      redirect_to admin_storage_integration_path, alert: result.message
+    end
+  end
+
   def publish_public_photos
     publish_needed_public_photos
   end
@@ -142,16 +165,42 @@ class Admin::StorageIntegrationsController < Admin::BaseController
   def normalize_digital_ocean_defaults(attributes)
     return unless [attributes[:photo_provider], attributes[:document_provider]].include?("digital_ocean")
 
-    attributes[:do_spaces_bucket] = attributes[:do_spaces_bucket].presence || @storage_setting.do_spaces_bucket.presence || ENV["DO_SPACES_BUCKET"].presence
-    attributes[:do_spaces_region] = attributes[:do_spaces_region].presence || @storage_setting.do_spaces_region.presence || ENV.fetch("DO_SPACES_REGION", "sfo3")
-    attributes[:do_spaces_endpoint] = attributes[:do_spaces_endpoint].presence || @storage_setting.do_spaces_endpoint.presence || ENV.fetch("DO_SPACES_ENDPOINT", "https://sfo3.digitaloceanspaces.com")
+    attributes[:do_spaces_bucket] = attributes[:do_spaces_bucket].presence || @storage_setting.do_spaces_bucket.presence || storage_env_value("DO_SPACES_BUCKET")
+    attributes[:do_spaces_region] = attributes[:do_spaces_region].presence || @storage_setting.do_spaces_region.presence || storage_env_value("DO_SPACES_REGION", "sfo3")
+    attributes[:do_spaces_endpoint] = attributes[:do_spaces_endpoint].presence || @storage_setting.do_spaces_endpoint.presence || storage_env_value("DO_SPACES_ENDPOINT", "https://sfo3.digitaloceanspaces.com")
+  end
+
+  def apply_digital_ocean_provision_defaults
+    @storage_setting.photo_provider = "digital_ocean" if @storage_setting.photo_provider.blank?
+    @storage_setting.document_provider = "digital_ocean" if @storage_setting.document_provider.blank?
+    @storage_setting.do_spaces_region = @storage_setting.do_spaces_region.presence || "sfo3"
+    @storage_setting.do_spaces_endpoint = @storage_setting.do_spaces_endpoint.presence || "https://#{@storage_setting.do_spaces_region}.digitaloceanspaces.com"
+
+    if should_use_tenant_bucket_name?
+      @storage_setting.do_spaces_bucket = @storage_setting.default_digital_ocean_bucket_name
+    end
+
+    @storage_setting.do_spaces_public_base_url = @storage_setting.digital_ocean_origin_base_url if @storage_setting.do_spaces_public_base_url.blank?
+  end
+
+  def should_use_tenant_bucket_name?
+    return false if StorageIntegrationSetting.environment_defaults_allowed?(current_tenant)
+
+    bucket = @storage_setting.do_spaces_bucket.to_s.strip
+    bucket.blank? || bucket == ENV["DO_SPACES_BUCKET"].to_s.strip || bucket == "imob"
   end
 
   def normalize_amazon_defaults(attributes)
     return unless [attributes[:photo_provider], attributes[:document_provider]].include?("amazon_s3")
 
-    attributes[:s3_bucket] = attributes[:s3_bucket].presence || @storage_setting.s3_bucket.presence || ENV["AWS_S3_BUCKET"].presence || ENV["S3_BUCKET"].presence
-    attributes[:s3_region] = attributes[:s3_region].presence || @storage_setting.s3_region.presence || ENV.fetch("AWS_REGION", ENV.fetch("S3_REGION", "us-east-1"))
+    attributes[:s3_bucket] = attributes[:s3_bucket].presence || @storage_setting.s3_bucket.presence || storage_env_value("AWS_S3_BUCKET") || storage_env_value("S3_BUCKET")
+    attributes[:s3_region] = attributes[:s3_region].presence || @storage_setting.s3_region.presence || storage_env_value("AWS_REGION", storage_env_value("S3_REGION", "us-east-1"))
+  end
+
+  def storage_env_value(key, default = nil)
+    return default unless StorageIntegrationSetting.environment_defaults_allowed?(current_tenant)
+
+    ENV[key].presence || default
   end
 
   def permitted_storage_params

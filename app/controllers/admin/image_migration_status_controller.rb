@@ -30,7 +30,7 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
     config = normalized_configuration(configuration_params)
 
     config.each do |key, value|
-      Setting.set("#{CONFIG_PREFIX}#{key}", value, image_migration_setting_description(key))
+      tenant_setting_set("#{CONFIG_PREFIX}#{key}", value, image_migration_setting_description(key))
     end
 
     redirect_to admin_image_migration_status_path, notice: "Configurações da migração de imagens salvas."
@@ -198,6 +198,7 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
 
     env = {
       "RAILS_ENV" => Rails.env,
+      "TENANT_ID" => current_tenant.id.to_s,
       "BATCH_SIZE" => configuration.fetch("batch_size"),
       "WORKERS" => configuration.fetch("workers"),
       "ONLY_WITHOUT_ATTACHED" => only_without_attachments_for(configuration.fetch("mode")),
@@ -216,6 +217,7 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
     record_run_start!(configuration.merge("mode" => "retry_failed"))
     env = {
       "RAILS_ENV" => Rails.env,
+      "TENANT_ID" => current_tenant.id.to_s,
       "BATCH_SIZE" => configuration.fetch("batch_size"),
       "WORKERS" => configuration.fetch("workers"),
       "ONLY_WITHOUT_ATTACHED" => "false",
@@ -249,7 +251,7 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
     }
 
     values.each do |key, value|
-      Setting.set("#{CONFIG_PREFIX}run.#{key}", value, "Estado da execução atual da migração de imagens")
+      tenant_setting_set("#{CONFIG_PREFIX}run.#{key}", value, "Estado da execução atual da migração de imagens")
     end
   end
 
@@ -265,11 +267,11 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
   end
 
   def execution_status(worker:, pending_properties:, properties_with_photos:, migrated_images:)
-    mode = Setting.get("#{CONFIG_PREFIX}run.mode", image_migration_configuration.fetch("mode"))
-    started_at = Setting.get("#{CONFIG_PREFIX}run.started_at")
-    initial_pending = Setting.get("#{CONFIG_PREFIX}run.initial_pending_properties", pending_properties.to_s).to_i
-    initial_properties_with_photos = Setting.get("#{CONFIG_PREFIX}run.initial_properties_with_photos", properties_with_photos.to_s).to_i
-    initial_migrated_images = Setting.get("#{CONFIG_PREFIX}run.initial_migrated_images", migrated_images.to_s).to_i
+    mode = tenant_setting_get("#{CONFIG_PREFIX}run.mode", image_migration_configuration.fetch("mode"))
+    started_at = tenant_setting_get("#{CONFIG_PREFIX}run.started_at")
+    initial_pending = tenant_setting_get("#{CONFIG_PREFIX}run.initial_pending_properties", pending_properties.to_s).to_i
+    initial_properties_with_photos = tenant_setting_get("#{CONFIG_PREFIX}run.initial_properties_with_photos", properties_with_photos.to_s).to_i
+    initial_migrated_images = tenant_setting_get("#{CONFIG_PREFIX}run.initial_migrated_images", migrated_images.to_s).to_i
 
     progress_payload = if mode == "missing_properties" && initial_pending.positive?
       current = (initial_pending - pending_properties).clamp(0, initial_pending)
@@ -310,8 +312,16 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
 
   def image_migration_configuration
     DEFAULT_CONFIGURATION.each_with_object({}) do |(key, default_value), configuration|
-      configuration[key] = Setting.get("#{CONFIG_PREFIX}#{key}", default_value).to_s
+      configuration[key] = tenant_setting_get("#{CONFIG_PREFIX}#{key}", default_value).to_s
     end
+  end
+
+  def tenant_setting_get(key, default = nil)
+    Setting.tenant_get(key, default, tenant: current_tenant)
+  end
+
+  def tenant_setting_set(key, value, description)
+    Setting.set(key, value, description, tenant: current_tenant)
   end
 
   def normalized_configuration(raw_params)

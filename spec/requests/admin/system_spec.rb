@@ -3,7 +3,14 @@ require "rails_helper"
 RSpec.describe "Admin::System", type: :request do
   include Devise::Test::IntegrationHelpers
 
-  before { host! "localhost" }
+  before do
+    host! "localhost"
+    Tenants::LocalPublicHostOverride.clear!
+  end
+
+  after do
+    Tenants::LocalPublicHostOverride.clear!
+  end
 
   let(:profile_admin) { Tenant.default.profiles.find_by!(key: "tenant_owner") }
 
@@ -31,10 +38,274 @@ RSpec.describe "Admin::System", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("ax-system-login-release-field", "ax-table__col--w-120")
-    expect(response.body).to include("Contas ativas disponíveis para impersonação", "Operadores globais com acesso")
+    expect(response.body).to include("Gestão de contas", "Abrir contas", "Operadores globais com acesso")
     system_workspace = Nokogiri::HTML(response.body).at_css(".ax-system").to_html
     expect(system_workspace).not_to match(/\bstyle\s*=/i)
     expect(AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: sys).last.tenant_id).to be_nil
+  end
+
+  it "lista contas em menu dedicado com filtros e ações" do
+    sys = create(:admin_user, super_admin: true)
+    tenant = Tenant.create!(name: "Conta Menu #{SecureRandom.hex(3)}", slug: "conta-menu-#{SecureRandom.hex(3)}")
+    inactive = Tenant.create!(name: "Conta Arquivada #{SecureRandom.hex(3)}", slug: "conta-arquivada-#{SecureRandom.hex(3)}", active: false)
+    owner = create(:admin_user, :admin, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"), name: "Dono Menu")
+    sign_in sys, scope: :admin_user
+
+    get admin_system_tenants_path, params: { q: "Conta Menu", status: "active" }
+
+    table_text = Nokogiri::HTML(response.body).css("table.ax-table tbody").text
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Contas cadastradas na plataforma", "Nova conta")
+    expect(response.body).to include(admin_system_tenant_path(tenant), edit_admin_system_tenant_path(tenant))
+    expect(table_text).to include(tenant.name, owner.name)
+    expect(table_text).not_to include(inactive.name)
+  end
+
+  it "ativa uma conta para o host local de desenvolvimento" do
+    sys = create(:admin_user, super_admin: true)
+    tenant = Tenant.create!(name: "Conexão Imobiliária", slug: "conexao-imobiliaria-#{SecureRandom.hex(3)}")
+    sign_in sys, scope: :admin_user
+
+    get admin_system_tenants_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Usar no dev")
+
+    patch activate_dev_host_admin_system_tenant_path(tenant), params: csrf_params_from_response
+
+    expect(response).to redirect_to(admin_system_tenants_path)
+    expect(Tenants::LocalPublicHostOverride.tenant).to eq(tenant)
+    expect(flash[:notice]).to include("https://dev.unitymob.com.br/")
+    expect(AccessAuditLog.where(event_type: "tenant_dev_host_activated", admin_user: sys)).to exist
+
+    follow_redirect!
+    expect(response.body).to include("dev: #{tenant.name}", "em uso no dev")
+  end
+
+  it "renderiza formulário de nova conta para admin do sistema" do
+    sys = create(:admin_user, super_admin: true)
+    sign_in sys, scope: :admin_user
+
+    get new_admin_system_tenant_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Nova conta", "Dono da conta", "tenant_provisioning_form_owner_email")
+    expect(response.body).not_to match(/\bstyle\s*=/i)
+  end
+
+  it "cria tenant ativo com perfis e dono da conta pela interface do sistema" do
+    sys = create(:admin_user, super_admin: true)
+    tenant_slug = "conexao-imobiliaria-#{SecureRandom.hex(3)}"
+    sign_in sys, scope: :admin_user
+
+    get new_admin_system_tenant_path
+
+    expect {
+      post admin_system_tenants_path,
+           params: csrf_params_from_response.merge(
+             tenant_provisioning_form: {
+               tenant_name: "Conexão Imobiliária",
+               tenant_slug: tenant_slug,
+               primary_domain_hostname: "https://www.conexao.test:443/",
+               primary_domain_ssl_mode: "shared_wildcard",
+               primary_domain_notes: "Wildcard configurado fora do Rails",
+               owner_name: "Dona Conexão",
+               owner_email: "dona@conexao.test",
+               owner_phone: "(47) 99999-0000",
+               owner_password: "password123",
+               owner_password_confirmation: "password123"
+             }
+           )
+    }.to change(Tenant, :count).by(1)
+      .and change(AdminUser.account_members, :count).by(1)
+
+    tenant = Tenant.find_by!(slug: tenant_slug)
+
+    expect(response).to redirect_to(admin_system_tenant_path(tenant))
+    expect(flash[:notice]).to include("Conexão Imobiliária", "Dona Conexão")
+
+    owner = tenant.admin_users.find_by!(email: "dona@conexao.test")
+    domain = tenant.tenant_domains.find_by!(hostname: "www.conexao.test")
+
+    expect(tenant).to be_active
+    expect(domain).to be_primary_domain
+    expect(domain).to be_active
+    expect(domain.ssl_mode).to eq("shared_wildcard")
+    expect(tenant.profiles.find_by!(key: "tenant_owner")).to be_present
+    expect(tenant.profiles.find_by!(key: "agent")).to be_present
+    expect(owner).to be_active
+    expect(owner).to be_tenant_owner
+    expect(owner).not_to be_system_admin
+    expect(AccessAuditLog.where(event_type: "tenant_provisioned", admin_user: sys)).to exist
+  end
+
+  it "não cria tenant quando os dados do dono da conta são inválidos" do
+    sys = create(:admin_user, super_admin: true)
+    existing_user = create(:admin_user, email: "existente@empresa.test")
+    sign_in sys, scope: :admin_user
+
+    get new_admin_system_tenant_path
+
+    expect {
+      post admin_system_tenants_path,
+           params: csrf_params_from_response.merge(
+             tenant_provisioning_form: {
+               tenant_name: "Conta Inválida",
+               tenant_slug: "conta-invalida",
+               owner_name: "Dono Inválido",
+               owner_email: existing_user.email,
+               owner_password: "password123",
+               owner_password_confirmation: "password123"
+             }
+           )
+    }.not_to change(Tenant, :count)
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("E-mail de acesso já está em uso")
+    expect(Tenant.find_by(slug: "conta-invalida")).to be_nil
+  end
+
+  it "permite visualizar, editar, inativar e reativar uma conta" do
+    sys = create(:admin_user, super_admin: true)
+    tenant = Tenant.create!(name: "Conta CRUD #{SecureRandom.hex(3)}", slug: "conta-crud-#{SecureRandom.hex(3)}")
+    owner = create(:admin_user, :admin, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"), name: "Dono CRUD")
+    sign_in sys, scope: :admin_user
+
+    get admin_system_tenant_path(tenant)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(tenant.name, owner.name, "Editar conta")
+    expect(response.body).not_to include("Inativar conta", "tenant_public_site_theme", "Adicionar domínio")
+
+    get edit_admin_system_tenant_path(tenant)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Editar conta", "tenant_name", "Identidade visual resolvida", "Salvar alterações")
+    expect(response.body).not_to include("tenant_public_site_theme", "Salvar tema", "Salvar conta")
+
+    patch admin_system_tenant_path(tenant),
+          params: csrf_params_from_response.merge(tenant: { name: "Conta CRUD Editada", slug: "conta-crud-editada", active: "1" })
+
+    expect(response).to redirect_to(admin_system_tenant_path(tenant))
+    expect(tenant.reload.name).to eq("Conta CRUD Editada")
+    expect(tenant.slug).to eq("conta-crud-editada")
+    expect(AccessAuditLog.where(event_type: "tenant_updated", admin_user: sys)).to exist
+
+    get edit_admin_system_tenant_path(tenant)
+    patch inactivate_admin_system_tenant_path(tenant), params: csrf_params_from_response
+
+    expect(response).to redirect_to(admin_system_tenant_path(tenant))
+    expect(tenant.reload).not_to be_active
+    expect(AccessAuditLog.where(event_type: "tenant_inactivated", admin_user: sys)).to exist
+
+    get edit_admin_system_tenant_path(tenant)
+    patch reactivate_admin_system_tenant_path(tenant), params: csrf_params_from_response
+
+    expect(response).to redirect_to(admin_system_tenant_path(tenant))
+    expect(tenant.reload).to be_active
+    expect(AccessAuditLog.where(event_type: "tenant_reactivated", admin_user: sys)).to exist
+  end
+
+  it "permite gerenciar domínios da conta no admin do sistema" do
+    sys = create(:admin_user, super_admin: true)
+    tenant = Tenant.create!(name: "Conta Domínios #{SecureRandom.hex(3)}", slug: "conta-dominios-#{SecureRandom.hex(3)}")
+    sign_in sys, scope: :admin_user
+
+    get edit_admin_system_tenant_path(tenant)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Domínios da conta", "sem emissão automática de SSL", "Adicionar domínio")
+
+    expect {
+      post admin_system_tenant_domains_path(tenant),
+           params: csrf_params_from_response.merge(
+             tenant_domain: {
+               hostname: "https://www.tenant.test/site",
+               ssl_mode: "external_certificate",
+               notes: "Certificado externo"
+             }
+           )
+    }.to change { tenant.tenant_domains.count }.by(1)
+
+    domain = tenant.tenant_domains.find_by!(hostname: "www.tenant.test")
+    expect(response).to redirect_to(edit_admin_system_tenant_path(tenant))
+    expect(domain.ssl_mode).to eq("external_certificate")
+    expect(AccessAuditLog.where(event_type: "tenant_domain_created", admin_user: sys)).to exist
+
+    get edit_admin_system_tenant_path(tenant)
+    patch admin_system_tenant_domain_path(tenant, domain),
+          params: csrf_params_from_response.merge(
+            tenant_domain: {
+              hostname: "site.tenant.test",
+              ssl_mode: "shared_wildcard",
+              notes: "Wildcard no proxy",
+              active: "0",
+              primary_domain: "1"
+            }
+          )
+
+    expect(response).to redirect_to(edit_admin_system_tenant_path(tenant))
+    expect(domain.reload).to have_attributes(hostname: "site.tenant.test", ssl_mode: "shared_wildcard", active: true, primary_domain: true)
+    expect(AccessAuditLog.where(event_type: "tenant_domain_updated", admin_user: sys)).to exist
+
+    get edit_admin_system_tenant_path(tenant)
+    delete admin_system_tenant_domain_path(tenant, domain), params: csrf_params_from_response
+
+    expect(response).to redirect_to(edit_admin_system_tenant_path(tenant))
+    expect(tenant.tenant_domains.where(id: domain.id)).not_to exist
+    expect(AccessAuditLog.where(event_type: "tenant_domain_destroyed", admin_user: sys)).to exist
+  end
+
+  it "resolve o css do site implicitamente ao editar a identidade da conta" do
+    sys = create(:admin_user, super_admin: true)
+    tenant = Tenant.create!(name: "Conta Tema #{SecureRandom.hex(3)}", slug: "conta-tema-#{SecureRandom.hex(3)}")
+    sign_in sys, scope: :admin_user
+
+    get admin_system_tenant_path(tenant)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Identidade visual resolvida", "Alterar no editor", "Salute Imóveis")
+    expect(response.body).not_to include("tenant_public_site_theme", "Salvar tema", "Salvar conta")
+
+    get edit_admin_system_tenant_path(tenant)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Identidade visual resolvida", "Salvar alterações", "public_site_themes/saluteimoveis.css")
+    expect(response.body).not_to include("tenant_public_site_theme", "Salvar tema", "Salvar conta")
+
+    patch admin_system_tenant_path(tenant),
+          params: csrf_params_from_response.merge(tenant: {
+            name: "Conexão Imobiliária",
+            slug: "conta-tema-editada-#{SecureRandom.hex(3)}",
+            active: "1",
+            public_site_theme: "saluteimoveis"
+          })
+
+    expect(response).to redirect_to(admin_system_tenant_path(tenant))
+    expect(tenant.reload.public_site_theme_key).to eq("conexaoimobiliaria")
+    expect(tenant.public_site_theme).to eq("saluteimoveis")
+    expect(tenant.public_site_stylesheet).to eq("public_site_themes/conexaoimobiliaria")
+    expect(AccessAuditLog.where(event_type: "tenant_updated", admin_user: sys)).to exist
+  end
+
+  it "bloqueia admin da conta no formulário de nova conta" do
+    account_admin = create(:admin_user, profile: profile_admin, super_admin: false)
+    sign_in account_admin, scope: :admin_user
+
+    get new_admin_system_tenant_path
+    expect(response).to redirect_to(admin_root_path)
+
+    get admin_root_path
+    post admin_system_tenants_path,
+         params: csrf_params_from_response.merge(
+           tenant_provisioning_form: {
+             tenant_name: "Conta Bloqueada",
+             owner_name: "Dono",
+             owner_email: "dono@bloqueada.test",
+             owner_password: "password123",
+             owner_password_confirmation: "password123"
+           }
+         )
+    expect(response).to redirect_to(admin_root_path)
+    expect(Tenant.find_by(slug: "conta-bloqueada")).to be_nil
   end
 
   it "permite ao admin do sistema liberar o rate limit de login com auditoria" do
@@ -174,7 +445,7 @@ RSpec.describe "Admin::System", type: :request do
     expect(response).to redirect_to(admin_system_path)
   end
 
-  it "permite admin do sistema impersonar o dono da conta pelo painel do sistema" do
+  it "permite admin do sistema impersonar o dono da conta pelo menu de contas" do
     sys = create(:admin_user, super_admin: true)
     tenant = Tenant.create!(name: "Tenant sistema #{SecureRandom.hex(3)}", slug: "tenant-sistema-#{SecureRandom.hex(3)}")
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
@@ -182,7 +453,7 @@ RSpec.describe "Admin::System", type: :request do
     sign_in sys, scope: :admin_user
 
     path = admin_system_tenant_owner_impersonation_path(tenant)
-    get admin_system_path
+    get admin_system_tenants_path
     form = form_for_action(path)
 
     expect(form["data-turbo"]).to eq("false")

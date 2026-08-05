@@ -31,6 +31,7 @@ class Admin::ContactSettingsController < Admin::BaseController
       :facebook_url,
       :instagram_url,
       :youtube_url,
+      :blog_url,
       :linkedin_url
     )
   end

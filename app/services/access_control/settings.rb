@@ -5,14 +5,13 @@ module AccessControl
 
     module_function
 
-    # Toggles por CONTA (colunas do tenant). Sem tenant no contexto ou
-    # pré-migration, cai no Setting global antigo (comportamento preservado).
+    # Toggles por CONTA. Sem tenant no contexto, não herda configuração global.
     def broker_ip_allowlist_enabled?(tenant: Current.tenant)
       if tenant && Tenant.column_names.include?("enforce_broker_ip_allowlist")
         return tenant.enforce_broker_ip_allowlist?
       end
 
-      Setting.get(ENFORCE_BROKER_IP_KEY, "false").to_s == "true"
+      Setting.tenant_get(ENFORCE_BROKER_IP_KEY, "false", tenant: tenant).to_s == "true"
     end
 
     def broker_trusted_devices_enabled?(tenant: Current.tenant)
@@ -20,7 +19,7 @@ module AccessControl
         return tenant.enforce_broker_trusted_devices?
       end
 
-      Setting.get(ENFORCE_BROKER_DEVICE_KEY, "false").to_s == "true"
+      Setting.tenant_get(ENFORCE_BROKER_DEVICE_KEY, "false", tenant: tenant).to_s == "true"
     end
   end
 end

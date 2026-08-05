@@ -28,7 +28,7 @@ class Admin::FieldSettingsController < Admin::BaseController
   private
 
   def load_field_settings
-    @enabled = Setting.get(FieldFeatureGate::SETTING_KEY, "false", tenant: current_tenant).to_s == "true"
+    @enabled = FieldFeatureGate.field_checkin_enabled?(tenant: current_tenant)
     @field_users = current_tenant.admin_users.active.order(:name)
     @stores = current_tenant.stores.active.order(:name)
     @blocked_agent_ids = FieldFeatureGate.disabled_agent_ids(tenant: current_tenant)

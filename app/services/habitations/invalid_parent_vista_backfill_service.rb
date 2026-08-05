@@ -6,8 +6,6 @@ require "uri"
 
 module Habitations
   class InvalidParentVistaBackfillService
-    VISTA_KEY = ENV.fetch("VISTA_KEY") { "ea83a702a7669520304be011258289fd" }
-    VISTA_HOST = ENV.fetch("VISTA_HOST") { "http://saluteim20174-rest.vistahost.com.br" }
     DETALHES_PATH = "/imoveis/detalhes"
 
     Result = Struct.new(
@@ -118,9 +116,9 @@ module Habitations
       }
 
       response = RestClient.get(
-        "#{VISTA_HOST}#{DETALHES_PATH}",
+        "#{vista_host}#{DETALHES_PATH}",
         params: {
-          key: VISTA_KEY,
+          key: vista_key,
           imovel: code,
           showSuspended: 1,
           pesquisa: payload.to_json
@@ -134,6 +132,16 @@ module Habitations
       data
     rescue RestClient::ExceptionWithResponse
       nil
+    end
+
+    def vista_host
+      Setting.tenant_get("loft_host", tenant: tenant).to_s.presence ||
+        raise("Host Vista não configurado para este tenant.")
+    end
+
+    def vista_key
+      Setting.tenant_get("loft_token", tenant: tenant).to_s.presence ||
+        raise("Token Vista não configurado para este tenant.")
     end
 
     def upsert_development_from_vista!(hb)

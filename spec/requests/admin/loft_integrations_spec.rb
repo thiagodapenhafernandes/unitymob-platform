@@ -35,4 +35,25 @@ RSpec.describe "Admin::LoftIntegrations", type: :request do
     expect(response).to redirect_to(admin_loft_integrations_path)
     expect(Setting.get("loft_preserve_manual_fields", tenant: Tenant.default)).to eq("true")
   end
+
+  it "não herda host, token nem status globais em outro tenant" do
+    other_tenant = Tenant.create!(
+      name: "Conexão Teste #{SecureRandom.hex(3)}",
+      slug: "conexao-teste-#{SecureRandom.hex(3)}"
+    )
+    other_admin = create(:admin_user, :admin, tenant: other_tenant, profile: other_tenant.profiles.find_by!(key: "tenant_owner"))
+
+    Setting.set("loft_enabled", "true", "global antigo", tenant: nil)
+    Setting.set("loft_host", "http://salute-global.example.test", "global antigo", tenant: nil)
+    Setting.set("loft_token", "token-global", "global antigo", tenant: nil)
+    Setting.set("loft_sync_status", "completed", "global antigo", tenant: nil)
+
+    sign_in other_admin
+    get admin_loft_integrations_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Configuração incompleta")
+    expect(response.body).not_to include("http://salute-global.example.test")
+    expect(response.body).not_to include("Token configurado")
+  end
 end

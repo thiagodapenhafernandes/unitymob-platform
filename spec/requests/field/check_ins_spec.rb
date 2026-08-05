@@ -2,10 +2,10 @@ require 'rails_helper'
 
 RSpec.describe "Field::CheckIns", type: :request do
   let(:agent) { create(:admin_user, :field_agent) }
-  let(:store) { create(:store) }
+  let(:store) { create(:store, tenant: agent.tenant) }
 
   before do
-    Setting.set("field_checkin_enabled", "true")
+    Setting.set("field_checkin_enabled", "true", tenant: agent.tenant)
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     host! "localhost"
     sign_in agent
@@ -25,14 +25,9 @@ RSpec.describe "Field::CheckIns", type: :request do
     end
 
     context "com turno ativo e GPS dentro do raio" do
-      let(:today_wday) { Time.current.in_time_zone("America/Sao_Paulo").wday }
-
       before do
-        create(:store_shift,
-               admin_user: agent, store: store,
-               day_of_week: today_wday,
-               start_time: 1.hour.ago.strftime("%H:%M"),
-               end_time: 2.hours.from_now.strftime("%H:%M"))
+        now = Time.current.in_time_zone(store.timezone_obj)
+        store.update!(turnos_config: operational_shift_config_for(now))
       end
 
       it "cria check-in ativo" do
@@ -55,7 +50,7 @@ RSpec.describe "Field::CheckIns", type: :request do
     end
 
     context "feature flag desligada" do
-      before { Setting.set("field_checkin_enabled", "false") }
+      before { Setting.set("field_checkin_enabled", "false", tenant: agent.tenant) }
 
       it "retorna 404" do
         post "/field/check_ins", params: { lat: 1, lng: 1 }, as: :json
@@ -83,5 +78,23 @@ RSpec.describe "Field::CheckIns", type: :request do
 
   def sign_in(admin_user)
     post "/admin/sign_in", params: { admin_user: { email: admin_user.email, password: "password123" } }
+  end
+
+  def operational_shift_config_for(time, active: true)
+    entry_start = (time - 30.minutes).strftime("%H:%M")
+    entry_end = (time + 30.minutes).strftime("%H:%M")
+    pos_end = (time + 60.minutes).strftime("%H:%M")
+    out_end = (time + 90.minutes).strftime("%H:%M")
+
+    Store.default_turnos_config.deep_merge(
+      "manha" => {
+        "ativo" => active,
+        "entrada" => { "inicio" => entry_start, "fim" => entry_end },
+        "pos_risca" => { "inicio" => entry_end, "fim" => pos_end },
+        "fora_roleta" => { "inicio" => pos_end, "fim" => out_end }
+      },
+      "tarde" => { "ativo" => false },
+      "unico" => { "ativo" => false }
+    )
   end
 end

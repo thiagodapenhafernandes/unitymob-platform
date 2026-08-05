@@ -54,6 +54,8 @@ export default class extends Controller {
     if (!selected) return
 
     this.logoTarget.classList.remove(
+      "watermark-position-top_left",
+      "watermark-position-top_right",
       "watermark-position-bottom_left",
       "watermark-position-bottom_right",
       "watermark-position-center"

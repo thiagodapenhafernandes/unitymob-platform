@@ -6,6 +6,7 @@ class AiPropertyBatchSuggestionJob < ApplicationJob
       AdminUser.find_by(id: triggered_by_id)&.tenant ||
       Current.tenant
     raise ArgumentError, "Tenant obrigatório para enriquecimento em lote com IA" if tenant.blank?
+    @tenant = tenant
     admin_user = triggered_by_id.present? ? tenant.admin_users.find_by(id: triggered_by_id) : nil
 
     Current.set(tenant: tenant) do
@@ -30,16 +31,16 @@ class AiPropertyBatchSuggestionJob < ApplicationJob
       set_status!("completed", 100, "Lote concluído. Processados #{processed}/#{total}. Falhas: #{failed}.")
     end
   rescue => e
-    set_status!("failed", Setting.get("openai_batch_progress", "0").to_i, "Falha no lote: #{e.message}")
+    set_status!("failed", Setting.tenant_get("openai_batch_progress", "0", tenant: @tenant || Current.tenant).to_i, "Falha no lote: #{e.message}")
     raise
   end
 
   private
 
   def set_status!(status, progress, message)
-    Setting.set("openai_batch_status", status, "Status do enriquecimento em lote com IA")
-    Setting.set("openai_batch_progress", progress.to_i.clamp(0, 100).to_s, "Progresso do enriquecimento em lote com IA")
-    Setting.set("openai_batch_message", message.to_s, "Mensagem do enriquecimento em lote com IA")
-    Setting.set("openai_batch_last_at", Time.current.iso8601, "Última atualização do enriquecimento em lote com IA")
+    Setting.set("openai_batch_status", status, "Status do enriquecimento em lote com IA", tenant: @tenant || Current.tenant)
+    Setting.set("openai_batch_progress", progress.to_i.clamp(0, 100).to_s, "Progresso do enriquecimento em lote com IA", tenant: @tenant || Current.tenant)
+    Setting.set("openai_batch_message", message.to_s, "Mensagem do enriquecimento em lote com IA", tenant: @tenant || Current.tenant)
+    Setting.set("openai_batch_last_at", Time.current.iso8601, "Última atualização do enriquecimento em lote com IA", tenant: @tenant || Current.tenant)
   end
 end

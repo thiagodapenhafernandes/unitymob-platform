@@ -15,7 +15,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div data-aos="fade-right">
         <% if @layout_setting&.logo&.attached? %>
-          <%= image_tag public_image_url({ attachment: @layout_setting.logo }), class: "w-full max-w-md mx-auto", alt: @public_identity.name %>
+          <% logo_url = public_image_url({ attachment: @layout_setting.logo }) %>
+          <%= image_tag logo_url, class: "w-full max-w-md mx-auto", alt: @public_identity.name if logo_url.present? %>
         <% end %>
       </div>
       <div data-aos="fade-left">

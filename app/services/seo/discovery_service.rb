@@ -6,29 +6,29 @@ module Seo
 
     Result = Struct.new(:evaluated, :created, :updated, :indexable, :noindex, :ai_enqueued, :skipped, :errors, keyword_init: true)
 
-    def self.status
+    def self.status(tenant: Current.tenant || Tenant.public_for)
       {
-        status: Setting.get("#{STATUS_PREFIX}_status", "idle"),
-        message: Setting.get("#{STATUS_PREFIX}_message", "Descoberta SEO ainda não executada."),
-        evaluated: Setting.get("#{STATUS_PREFIX}_evaluated", "0").to_i,
-        created: Setting.get("#{STATUS_PREFIX}_created", "0").to_i,
-        updated: Setting.get("#{STATUS_PREFIX}_updated", "0").to_i,
-        indexable: Setting.get("#{STATUS_PREFIX}_indexable", "0").to_i,
-        noindex: Setting.get("#{STATUS_PREFIX}_noindex", "0").to_i,
-        ai_enqueued: Setting.get("#{STATUS_PREFIX}_ai_enqueued", "0").to_i,
-        skipped: Setting.get("#{STATUS_PREFIX}_skipped", "0").to_i,
-        errors: Setting.get("#{STATUS_PREFIX}_errors", "0").to_i,
-        last_run_at: parse_time(Setting.get("#{STATUS_PREFIX}_last_run_at")),
-        last_error: Setting.get("#{STATUS_PREFIX}_last_error", "")
+        status: Setting.tenant_get("#{STATUS_PREFIX}_status", "idle", tenant: tenant),
+        message: Setting.tenant_get("#{STATUS_PREFIX}_message", "Descoberta SEO ainda não executada.", tenant: tenant),
+        evaluated: Setting.tenant_get("#{STATUS_PREFIX}_evaluated", "0", tenant: tenant).to_i,
+        created: Setting.tenant_get("#{STATUS_PREFIX}_created", "0", tenant: tenant).to_i,
+        updated: Setting.tenant_get("#{STATUS_PREFIX}_updated", "0", tenant: tenant).to_i,
+        indexable: Setting.tenant_get("#{STATUS_PREFIX}_indexable", "0", tenant: tenant).to_i,
+        noindex: Setting.tenant_get("#{STATUS_PREFIX}_noindex", "0", tenant: tenant).to_i,
+        ai_enqueued: Setting.tenant_get("#{STATUS_PREFIX}_ai_enqueued", "0", tenant: tenant).to_i,
+        skipped: Setting.tenant_get("#{STATUS_PREFIX}_skipped", "0", tenant: tenant).to_i,
+        errors: Setting.tenant_get("#{STATUS_PREFIX}_errors", "0", tenant: tenant).to_i,
+        last_run_at: parse_time(Setting.tenant_get("#{STATUS_PREFIX}_last_run_at", nil, tenant: tenant)),
+        last_error: Setting.tenant_get("#{STATUS_PREFIX}_last_error", "", tenant: tenant)
       }
     end
 
-    def self.enabled?
-      Setting.get("#{STATUS_PREFIX}_enabled", "1") == "1"
+    def self.enabled?(tenant: Current.tenant || Tenant.public_for)
+      Setting.tenant_get("#{STATUS_PREFIX}_enabled", "1", tenant: tenant) == "1"
     end
 
-    def self.save_enabled!(value)
-      Setting.set("#{STATUS_PREFIX}_enabled", value ? "1" : "0", "Ativa descoberta SEO automática")
+    def self.save_enabled!(value, tenant: Current.tenant || Tenant.public_for)
+      Setting.set("#{STATUS_PREFIX}_enabled", value ? "1" : "0", "Ativa descoberta SEO automática", tenant: tenant)
     end
 
     def self.parse_time(value)
@@ -38,7 +38,7 @@ module Seo
     end
 
     def initialize(generate_ai: true)
-      @generate_ai = generate_ai && Ai::SeoContentService.connected? && Seo::PageTracker.auto_ai?
+      @generate_ai = generate_ai && Ai::SeoContentService.connected?(tenant: seo_tenant) && Seo::PageTracker.auto_ai?(tenant: seo_tenant)
       @result = Result.new(evaluated: 0, created: 0, updated: 0, indexable: 0, noindex: 0, ai_enqueued: 0, skipped: 0, errors: 0)
     end
 
@@ -280,9 +280,9 @@ module Seo
     end
 
     def mark_status!(status, message, last_error: nil)
-      Setting.set("#{STATUS_PREFIX}_status", status, "Status da descoberta SEO")
-      Setting.set("#{STATUS_PREFIX}_message", message, "Mensagem da descoberta SEO")
-      Setting.set("#{STATUS_PREFIX}_last_error", last_error.to_s, "Último erro da descoberta SEO") if last_error
+      Setting.set("#{STATUS_PREFIX}_status", status, "Status da descoberta SEO", tenant: seo_tenant)
+      Setting.set("#{STATUS_PREFIX}_message", message, "Mensagem da descoberta SEO", tenant: seo_tenant)
+      Setting.set("#{STATUS_PREFIX}_last_error", last_error.to_s, "Último erro da descoberta SEO", tenant: seo_tenant) if last_error
     end
 
     def persist_result!(status, message)
@@ -297,9 +297,9 @@ module Seo
         skipped: @result.skipped,
         errors: @result.errors
       }.each do |key, value|
-        Setting.set("#{STATUS_PREFIX}_#{key}", value.to_s, "Métrica da descoberta SEO")
+        Setting.set("#{STATUS_PREFIX}_#{key}", value.to_s, "Métrica da descoberta SEO", tenant: seo_tenant)
       end
-      Setting.set("#{STATUS_PREFIX}_last_run_at", Time.current.iso8601, "Última execução da descoberta SEO")
+      Setting.set("#{STATUS_PREFIX}_last_run_at", Time.current.iso8601, "Última execução da descoberta SEO", tenant: seo_tenant)
     end
   end
 end

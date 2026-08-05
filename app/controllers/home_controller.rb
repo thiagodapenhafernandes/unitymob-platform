@@ -1,5 +1,7 @@
 class HomeController < ApplicationController
   def index
+    @public_identity = public_identity
+
     # Load active home sections
     @home_sections = Rails.cache.fetch("home_sections_active_v3:tenant:#{public_tenant.id}", expires_in: 1.hour) do
       public_tenant.home_sections.active.to_a
@@ -9,25 +11,24 @@ class HomeController < ApplicationController
     # Carrossel de Destaques - 12 imóveis (only if section is active)
     if (section = @sections_map["featured_properties"])&.active?
       @featured_properties = cached_home_properties(section, "featured_properties") do
-        section
-          .apply_property_filters(public_habitations.active.featured)
-          .newest_first
-          .limit(12)
-          .pluck(:id)
+        prioritized_home_property_ids(
+          section,
+          public_habitations.active.featured,
+          limit: 12
+        )
       end
     end
     
     # Carrossel de Oportunidades - 12 imóveis com desconto (only if section is active)
     if (section = @sections_map["opportunities"])&.active?
       @opportunity_properties = cached_home_properties(section, "opportunities") do
-        section
-          .apply_property_filters(
-            public_habitations.active
-              .where("valor_venda_anterior_cents > valor_venda_cents AND valor_venda_cents > 0")
-          )
-          .newest_first
-          .limit(12)
-          .pluck(:id)
+        prioritized_home_property_ids(
+          section,
+          public_habitations
+            .active
+            .where("valor_venda_anterior_cents > valor_venda_cents AND valor_venda_cents > 0"),
+          limit: 12
+        )
       end
     end
     
@@ -42,11 +43,12 @@ class HomeController < ApplicationController
     # Imóveis para Locação (only if section is active)
     if (section = @sections_map["rentals"])&.active?
       @rental_properties = cached_home_properties(section, "rentals") do
-        section
-          .apply_property_filters(public_habitations.active.for_rent)
-          .newest_first
-          .limit(6)
-          .pluck(:id)
+        prioritized_home_property_ids(
+          section,
+          public_habitations.active.for_rent,
+          limit: 6,
+          manual_scope: public_habitations.active.for_rent
+        )
       end
       @corporate_properties = cached_home_properties(section, "corporate_properties") do
         public_habitations
@@ -68,7 +70,7 @@ class HomeController < ApplicationController
     end
     
     # Home settings
-    @home_setting ||= HomeSetting.instance
+    @home_setting ||= HomeSetting.instance(tenant: public_tenant)
     @hero_images = build_hero_images(@home_setting)
     @hero_preload_source = @hero_images.first&.fetch(:source, nil)
     @hero_preload_mobile_source = @hero_images.first&.fetch(:mobile_source, nil)
@@ -121,15 +123,24 @@ class HomeController < ApplicationController
 
   def cached_home_development_payload(section)
     Rails.cache.fetch(home_section_cache_key(section, "developments"), expires_in: 15.minutes) do
-      rows = section
-        .apply_property_filters(
-          public_habitations
-            .empreendimentos_publicos
-            .where.not(codigo: nil)
-        )
+      development_scope = public_habitations
+        .empreendimentos_publicos
+        .where.not(codigo: nil)
+
+      manual_ids = ordered_section_property_ids(section, development_scope, limit: 12)
+      manual_rows = development_scope.where(id: manual_ids).pluck(:id, :codigo)
+      manual_rows = manual_ids.filter_map do |manual_id|
+        manual_rows.detect { |id, _codigo| id == manual_id }
+      end
+
+      automatic_rows = section
+        .apply_property_filters(development_scope)
+        .where.not(id: manual_ids)
         .newest_first
         .limit(20)
         .pluck(:id, :codigo)
+
+      rows = manual_rows + automatic_rows
 
       seen_codes = Set.new
       selected_rows = rows.filter_map do |id, codigo|
@@ -177,6 +188,25 @@ class HomeController < ApplicationController
         { constructor: { logo_attachment: :blob } },
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
+  end
+
+  def prioritized_home_property_ids(section, fallback_scope, limit:, manual_scope: public_habitations.active)
+    manual_ids = ordered_section_property_ids(section, manual_scope, limit:)
+    remaining = limit - manual_ids.size
+    return manual_ids if remaining <= 0
+
+    automatic_scope = section.apply_property_filters(fallback_scope)
+    automatic_scope = automatic_scope.newest_first if automatic_scope.respond_to?(:newest_first)
+
+    manual_ids + automatic_scope.where.not(id: manual_ids).limit(remaining).pluck(:id)
+  end
+
+  def ordered_section_property_ids(section, scope, limit:)
+    requested_ids = section.selected_property_ids
+    return [] if requested_ids.empty?
+
+    available_ids = scope.where(id: requested_ids).reorder(nil).pluck(:id).map(&:to_i)
+    (requested_ids & available_ids).first(limit)
   end
 
   def development_unit_counts_for(development_codes)
@@ -251,7 +281,21 @@ class HomeController < ApplicationController
       }
     end
 
-    fallback = helpers.asset_path("hero_05.jpeg")
-    images.presence || [{ source: fallback, mobile_source: fallback, alt: "#{public_identity.name} - imóveis em destaque" }]
+    if images.empty?
+      fallback_source = public_habitation_hero_source
+      images << { source: fallback_source, mobile_source: fallback_source, alt: "#{public_identity.name} - imóvel em destaque" } if fallback_source.present?
+    end
+
+    images
+  end
+
+  def public_habitation_hero_source
+    public_property_card_scope(
+      public_habitations
+        .active
+        .with_public_listing_price
+        .newest_first
+        .limit(20)
+    ).detect(&:has_public_images?)&.public_image_sources&.first
   end
 end

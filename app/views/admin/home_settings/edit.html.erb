@@ -126,124 +126,133 @@
             <% end %>
           </div>
 
-          <div class="ax-span-12">
-            <%= ax_operational_panel(eyebrow: "Aparência", title: "Personalização visual") do %>
-                <div class="tw-flex tw-flex-col tw-gap-4">
-                  <%= ax_field_group(title: "Sobreposição do Hero", token: "Overlay") do %>
-                    <%= ax_field_grid do %>
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_number_field(form: f, method: :overlay_opacity, label: "Opacidade", hint: "Use um valor entre 0,0 e 1,0.", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: { home_settings_preview_target: "overlayOpacity", action: "input->home-settings-preview#updateOverlay" }) %>
-                      </div>
-
-                      <div class="ax-span-5 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f,
-                              method: :overlay_color,
-                              label: "Cor da Sobreposição",
-                              value: @home_setting.overlay_color || "#000000",
-                              color_options: { id: "input-overlay-color-picker", data: { home_settings_preview_target: "overlayColorPicker", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "picker" } },
-                              text_options: { id: "input-overlay-color-text", data: { home_settings_preview_target: "overlayColorText", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-                    <% end %>
-                  <% end %>
-
-                  <%= ax_field_group(title: "Botão de busca") do %>
-                    <%= ax_field_grid do %>
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis") %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f, method: :hero_button_color, label: "Cor do Botão de Busca",
-                              value: @home_setting.hero_button_color || "#BFAB25",
-                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "picker" } },
-                              text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f, method: :hero_button_text_color, label: "Cor do Texto do Botão",
-                              value: @home_setting.hero_button_text_color || "#FFFFFF",
-                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "picker" } },
-                              text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-
-                      <% if false %>
-                        <div class="ax-span-12">
-                          <%= ax_text_field(form: f, method: :hero_cta_link, label: "Link do botão (opcional)", placeholder: "/imoveis") %>
-                        </div>
-                      <% end %>
-                    <% end %>
-                  <% end %>
-
-                  <%= ax_field_group(title: "Filtro de busca") do %>
-                    <%= ax_field_grid do %>
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f, method: :search_filter_background_color, label: "Cor do Fundo do Filtro",
-                              value: @home_setting.search_filter_background_color || "#FFFFFF",
-                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "picker" } },
-                              text_options: { id: "search-filter-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_number_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, placeholder: "0.9") %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Translucidez / desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16") %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio do filtro", unit: "px", value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, placeholder: "22") %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f, method: :search_filter_field_background_color, label: "Cor dos Campos",
-                              value: @home_setting.search_filter_field_background_color || "#FFFFFF",
-                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "picker" } },
-                              text_options: { id: "search-filter-field-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_number_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, placeholder: "0.85") %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f, method: :search_filter_text_color, label: "Cor dos Textos/Links",
-                              value: @home_setting.search_filter_text_color || "#022B3A",
-                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "picker" } },
-                              text_options: { id: "search-filter-text-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro") %>
-                      </div>
-
-                      <div class="ax-span-4 tw-mb-3">
-                        <%= ax_color_field(
-                              form: f, method: :search_filter_border_color, label: "Cor da Borda",
-                              value: @home_setting.search_filter_border_color || "#FFFFFF",
-                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "picker" } },
-                              text_options: { id: "search-filter-border-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "text" } }
-                            ) %>
-                      </div>
-
-                      <div class="ax-span-4">
-                        <%= ax_number_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45") %>
-                      </div>
-                    <% end %>
-                  <% end %>
+          <div class="ax-span-6">
+            <%= ax_operational_panel(eyebrow: "Aparência", title: "Sobreposição do Hero", class_name: "home-settings-card--fill") do %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-5 tw-mb-3">
+                  <%= ax_number_field(form: f, method: :overlay_opacity, label: "Opacidade", hint: "Use um valor entre 0,0 e 1,0.", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: { home_settings_preview_target: "overlayOpacity", action: "input->home-settings-preview#updateOverlay" }) %>
                 </div>
+
+                <div class="ax-span-7 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f,
+                        method: :overlay_color,
+                        label: "Cor da sobreposição",
+                        value: @home_setting.overlay_color || "#000000",
+                        color_options: { id: "input-overlay-color-picker", data: { home_settings_preview_target: "overlayColorPicker", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "picker" } },
+                        text_options: { id: "input-overlay-color-text", data: { home_settings_preview_target: "overlayColorText", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <div class="ax-span-6">
+            <%= ax_operational_panel(eyebrow: "Conversão", title: "Botão de busca", class_name: "home-settings-card--fill") do %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-12 tw-mb-3">
+                  <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis") %>
+                </div>
+
+                <div class="ax-span-6 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f, method: :hero_button_color, label: "Cor do botão",
+                        value: @home_setting.hero_button_color || "#BFAB25",
+                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "picker" } },
+                        text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+
+                <div class="ax-span-6 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f, method: :hero_button_text_color, label: "Cor do texto",
+                        value: @home_setting.hero_button_text_color || "#FFFFFF",
+                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "picker" } },
+                        text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <div class="ax-span-12">
+            <%= ax_operational_panel(eyebrow: "Busca", title: "Filtro de busca") do %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f, method: :search_filter_background_color, label: "Cor do fundo do filtro",
+                        value: @home_setting.search_filter_background_color || "#FFFFFF",
+                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "picker" } },
+                        text_options: { id: "search-filter-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_number_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, placeholder: "0.9") %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Translucidez / desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16") %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio do filtro", unit: "px", value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, placeholder: "22") %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f, method: :search_filter_field_background_color, label: "Cor dos campos",
+                        value: @home_setting.search_filter_field_background_color || "#FFFFFF",
+                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "picker" } },
+                        text_options: { id: "search-filter-field-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_number_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, placeholder: "0.85") %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f, method: :search_filter_text_color, label: "Cor dos textos/links",
+                        value: @home_setting.search_filter_text_color || "#022B3A",
+                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "picker" } },
+                        text_options: { id: "search-filter-text-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro") %>
+                </div>
+
+                <div class="ax-span-4 tw-mb-3">
+                  <%= ax_color_field(
+                        form: f, method: :search_filter_border_color, label: "Cor da borda",
+                        value: @home_setting.search_filter_border_color || "#FFFFFF",
+                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "picker" } },
+                        text_options: { id: "search-filter-border-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "text" } }
+                      ) %>
+                </div>
+
+                <div class="ax-span-4">
+                  <%= ax_number_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45") %>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <div class="ax-span-12">
+            <%= ax_operational_panel(eyebrow: "Header público", title: "Fundo do header") do %>
+              <%= ax_text_field(
+                    form: f,
+                    method: :public_header_css,
+                    type: :textarea,
+                    label: "CSS aplicado no header",
+                    hint: "Informe apenas declarações CSS. O conteúdo será aplicado ao elemento header do site público deste tenant.",
+                    rows: 9,
+                    class: "ax-control--code",
+                    placeholder: "color: var(--default-color);\nbackground-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);\n-webkit-backdrop-filter: blur(15px);\npadding: 15px 0;\ntransition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);\nz-index: 997;\nborder-bottom: 1px solid rgba(255,255,255,0.05);"
+                  ) %>
             <% end %>
           </div>
         <% end %>

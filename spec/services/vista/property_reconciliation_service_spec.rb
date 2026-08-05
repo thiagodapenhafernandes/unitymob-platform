@@ -72,6 +72,71 @@ RSpec.describe Vista::PropertyReconciliationService do
     end
   end
 
+  describe "inactive commercial status mapping" do
+    let(:service) { described_class.new(codigos: ["1013"], dry_run: true) }
+
+    it "maps Vista sale value as the required sold value" do
+      attrs = service.send(
+        :inactive_commercial_value_attrs,
+        "Vendido terceiros",
+        { "ValorVenda" => "980000" }
+      )
+
+      expect(attrs).to eq(valor_vendido_terceiros_cents: 98_000_000)
+    end
+
+    it "maps Vista rental value as the required rented value" do
+      attrs = service.send(
+        :inactive_commercial_value_attrs,
+        "Alugado terceiros",
+        { "ValorLocacao" => "4500", "ValorCondominio" => "800" }
+      )
+
+      expect(attrs).to eq(valor_alugado_terceiros_cents: 450_000)
+    end
+
+    it "maps Vista status as the required suspension reason" do
+      attrs = service.send(
+        :inactive_commercial_value_attrs,
+        "Suspenso",
+        { "Status" => "Suspenso", "Situacao" => "" }
+      )
+
+      expect(attrs).to eq(motivo_suspensao: "Suspenso")
+    end
+  end
+
+  describe "association sync flags" do
+    it "can skip documents and prontuarios for faster property/photo migrations" do
+      service = described_class.new(
+        codigos: ["1013"],
+        dry_run: true,
+        sync_documents: false,
+        sync_prontuarios: false
+      )
+
+      associations = service.send(:association_fields_for_sync).keys
+
+      expect(associations).to include("proprietarios", "FotoEmpreendimento", "Video")
+      expect(associations).not_to include("Anexo", "prontuarios")
+    end
+  end
+
+  describe "attribute option upsert" do
+    it "treats duplicate option validation as idempotent" do
+      tenant = Tenant.create!(name: "Tenant options #{SecureRandom.hex(3)}", slug: "tenant-options-#{SecureRandom.hex(3)}")
+      Current.tenant = tenant
+      service = described_class.new(codigos: ["1862"], dry_run: true)
+      duplicate = AttributeOption.new(tenant: tenant, context: "habitation", category: "feature", name: "Portaria24 Hrs")
+      duplicate.errors.add(:name, "já existe nesta categoria")
+      allow(tenant.attribute_options).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(duplicate))
+
+      expect {
+        service.send(:ensure_attribute_options!, ["Portaria24 Hrs"], [])
+      }.not_to raise_error
+    end
+  end
+
   describe "development link mapping" do
     let(:service) { described_class.new(codigos: ["6173"], dry_run: true) }
 

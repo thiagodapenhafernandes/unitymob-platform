@@ -2,7 +2,7 @@ class HomeSection < ApplicationRecord
   include TenantScoped
   SECTION_TYPE_LABELS = {
     "services" => "Serviços",
-    "why_choose_us" => "Por que escolher a Salute",
+    "why_choose_us" => "Por que escolher a imobiliária",
     "cta_contact" => "Chamada para contato",
     "featured_properties" => "Imóveis em Destaque",
     "opportunities" => "Oportunidades",
@@ -14,6 +14,29 @@ class HomeSection < ApplicationRecord
     "destaque_web" => { label: "Destaque Web", column: :destaque_web_flag },
     "super_destaque" => { label: "Super Destaque", column: :festival_salute_flag },
     "lancamento" => { label: "Lançamento", column: :lancamento_flag },
+    "frente_mar" => { label: "Frente mar", scope: :frente_mar },
+    "quadra_mar" => { label: "Quadra mar", scope: :quadra_mar },
+    "vista_mar" => { label: "Vista mar", scope: :vista_mar },
+    "preco_reduzido" => { label: "Preço reduzido", scope: :opportunity },
+    "garden" => { label: "Garden", scope: :garden },
+    "pronto" => { label: "Pronto para morar", scope: :pronto },
+    "na_planta" => { label: "Na planta", scope: :na_planta },
+    "em_construcao" => { label: "Em construção", scope: :em_construcao },
+    "sol_manha" => { label: "Sol da manhã", scope: :sol_manha },
+    "sol_tarde" => { label: "Sol da tarde", scope: :sol_tarde },
+    "mobiliado" => { label: "Mobiliado", scope: :mobiliado },
+    "decorado" => { label: "Decorado", scope: :decorado },
+    "aceita_permuta" => { label: "Aceita permuta", scope: :aceita_permuta },
+    "aceita_financiamento" => { label: "Aceita financiamento", scope: :aceita_financiamento },
+    "com_tour_virtual" => {
+      label: "Com tour virtual",
+      where: ["NULLIF(BTRIM(COALESCE(habitations.tour_virtual, '')), '') IS NOT NULL"]
+    },
+    "com_video" => {
+      label: "Com vídeo",
+      where: ["jsonb_typeof(habitations.videos) = 'array' AND jsonb_array_length(habitations.videos) > 0"]
+    },
+    "com_fotos" => { label: "Com fotos", scope: :with_photos },
     "tem_placa" => { label: "Tem Placa", column: :tem_placa_flag },
     "exclusivo" => { label: "Exclusivo", column: :exclusivo_flag },
     "imovel_dwv" => {
@@ -21,12 +44,14 @@ class HomeSection < ApplicationRecord
       where: ["LOWER(TRIM(COALESCE(habitations.imovel_dwv, ''))) = ?", "sim"]
     },
     "exibir_no_site" => { label: "Exibir no site", column: :exibir_no_site_flag },
-    "administracao_locacao_salute" => { label: "Administração de locação feita pela Salute", column: :salute_rental_management_flag },
+    "administracao_locacao_salute" => { label: "Administração de locação", column: :salute_rental_management_flag },
     "vitrine_corporate" => { label: "Vitrine Corporate da Página Inicial", column: :home_corporate_flag }
   }.freeze
   LEGACY_PROPERTY_FILTER_KEYS = {
     "exibir_site_salute" => "exibir_no_site"
   }.freeze
+  PROPERTY_FILTER_ARRAY_KEYS = %w[selected_property_ids].freeze
+  PROPERTY_FILTER_PARAM_KEYS = (PROPERTY_FILTER_OPTIONS.keys + PROPERTY_FILTER_ARRAY_KEYS).freeze
 
   # Associations
   has_many :home_section_items, dependent: :destroy
@@ -73,7 +98,16 @@ class HomeSection < ApplicationRecord
   end
 
   def property_filter_labels
-    enabled_property_filters.map { |key| PROPERTY_FILTER_OPTIONS.dig(key, :label) }
+    labels = enabled_property_filters.map { |key| PROPERTY_FILTER_OPTIONS.dig(key, :label) }
+    labels << "#{selected_property_ids.size} imóveis selecionados" if selected_property_ids.any?
+    labels
+  end
+
+  def selected_property_ids
+    raw_filters = property_filters || {}
+    values = raw_filters["selected_property_ids"] || raw_filters[:selected_property_ids]
+
+    normalize_selected_property_ids(values)
   end
 
   def apply_property_filters(scope)
@@ -81,6 +115,8 @@ class HomeSection < ApplicationRecord
       option = PROPERTY_FILTER_OPTIONS[key]
       if option[:column]
         filtered_scope.where(option[:column] => true)
+      elsif option[:scope] && filtered_scope.respond_to?(option[:scope])
+        filtered_scope.public_send(option[:scope])
       elsif option[:where]
         filtered_scope.where(*option[:where])
       else
@@ -93,12 +129,25 @@ class HomeSection < ApplicationRecord
 
   def normalize_property_filters
     raw_filters = property_filters || {}
-    self.property_filters = PROPERTY_FILTER_OPTIONS.keys.each_with_object({}) do |key, filters|
+    normalized_filters = PROPERTY_FILTER_OPTIONS.keys.each_with_object({}) do |key, filters|
       legacy_keys = LEGACY_PROPERTY_FILTER_KEYS.select { |_legacy_key, canonical_key| canonical_key == key }.keys
       raw_value = raw_filters[key] || raw_filters[key.to_sym] || legacy_keys.lazy.map { |legacy_key| raw_filters[legacy_key] || raw_filters[legacy_key.to_sym] }.find(&:present?)
       enabled = ActiveModel::Type::Boolean.new.cast(raw_value)
       filters[key] = "1" if enabled
     end
+
+    selected_ids = normalize_selected_property_ids(raw_filters["selected_property_ids"] || raw_filters[:selected_property_ids])
+    normalized_filters["selected_property_ids"] = selected_ids if selected_ids.any?
+
+    self.property_filters = normalized_filters
+  end
+
+  def normalize_selected_property_ids(values)
+    Array(values)
+      .flat_map { |value| value.to_s.split(/[,\s]+/) }
+      .filter_map { |value| Integer(value, exception: false) }
+      .select(&:positive?)
+      .uniq
   end
 
   def clear_home_cache

@@ -28,7 +28,7 @@ class PublicSiteProfile
   validate :validate_useful_links
 
   def self.current(tenant: Current.tenant || Tenant.public_for)
-    values = FIELDS.to_h { |field| [field, Setting.get("#{PREFIX}.#{field}", nil, tenant: tenant)] }
+    values = FIELDS.to_h { |field| [field, Setting.tenant_get("#{PREFIX}.#{field}", nil, tenant: tenant)] }
 
     new(values, tenant: tenant)
   end

@@ -7,7 +7,7 @@ module Storage
     def public_attachment?(attachment)
       return false unless defined?(ActiveStorage::Attachment)
       return false unless attachment.is_a?(ActiveStorage::Attachment)
-      return false unless public_photos_enabled?
+      return false unless public_photos_enabled?(tenant: attachment_tenant(attachment))
 
       property_photo_attachment?(attachment)
     end
@@ -15,11 +15,11 @@ module Storage
     def public_url_for_attachment(attachment)
       return unless public_attachment?(attachment)
 
-      public_url_for_blob(attachment.blob)
+      public_url_for_blob(attachment.blob, tenant: attachment_tenant(attachment))
     end
 
-    def public_url_for_blob(blob)
-      base_url = public_base_url(blob)
+    def public_url_for_blob(blob, tenant: Current.tenant)
+      base_url = public_base_url(blob, tenant: tenant)
       return if base_url.blank? || blob.blank? || blob.key.blank?
       return unless s3_blob?(blob)
 
@@ -45,32 +45,42 @@ module Storage
       false
     end
 
-    def public_base_url(blob = nil)
-      configured = configured_public_base_url(blob)
+    def public_base_url(blob = nil, tenant: Current.tenant)
+      configured = configured_public_base_url(blob, tenant: tenant)
       return configured if configured.present?
 
-      raw = ENV["DO_SPACES_PUBLIC_BASE_URL"].presence ||
-            normalized_cdn_env_url ||
-            default_cdn_base_url
+      raw = env_public_base_url(tenant)
 
       raw.to_s.sub(%r{/\z}, "").presence
     end
 
-    def configured_public_base_url(blob)
+    def configured_public_base_url(blob, tenant: Current.tenant)
       return unless defined?(StorageIntegrationSetting)
       return if blob.blank?
 
-      StorageIntegrationSetting.current.public_base_url_for_service_name(blob.service_name)
-    rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ActiveRecord::PendingMigrationError
+      StorageIntegrationSetting.current(tenant: tenant).public_base_url_for_service_name(blob.service_name)
+    rescue ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ActiveRecord::PendingMigrationError
       nil
     end
 
-    def public_photos_enabled?
+    def public_photos_enabled?(tenant: Current.tenant)
       return true unless defined?(StorageIntegrationSetting)
 
-      StorageIntegrationSetting.current.public_photos_enabled?
-    rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ActiveRecord::PendingMigrationError
-      true
+      StorageIntegrationSetting.current(tenant: tenant).public_photos_enabled?
+    rescue ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ActiveRecord::PendingMigrationError
+      false
+    end
+
+    def attachment_tenant(attachment)
+      attachment.record.respond_to?(:tenant) ? attachment.record.tenant : Current.tenant
+    end
+
+    def env_public_base_url(tenant)
+      return unless StorageIntegrationSetting.environment_defaults_allowed?(tenant)
+
+      ENV["DO_SPACES_PUBLIC_BASE_URL"].presence ||
+        normalized_cdn_env_url ||
+        default_cdn_base_url
     end
 
     def normalized_cdn_env_url

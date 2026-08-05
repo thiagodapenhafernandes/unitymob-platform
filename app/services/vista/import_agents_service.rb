@@ -2,8 +2,6 @@ module Vista
   class ImportAgentsService
     require 'open-uri'
 
-    VISTA_KEY  = ENV.fetch('VISTA_KEY')  { 'ea83a702a7669520304be011258289fd' }
-    VISTA_HOST = ENV.fetch('VISTA_HOST') { 'http://saluteim20174-rest.vistahost.com.br' }
     LIST_PATH  = '/usuarios/listar'
     PAGE_SIZE  = 50
 
@@ -12,7 +10,7 @@ module Vista
     end
 
     def call
-      status = SyncStatusService.new
+      status = SyncStatusService.new(tenant: tenant)
       status.mark_processing!(message: "Iniciando importação de corretores...", stats: empty_stats)
 
       page = 1
@@ -66,7 +64,7 @@ module Vista
         stats: build_stats(processed: total_processed, created: total_created, updated: total_updated, errors: total_errors, page: page, total_pages: total_pages)
       )
     rescue => e
-      SyncStatusService.new.mark_failed!(message: "Exceção: #{e.message}", stats: {})
+      SyncStatusService.new(tenant: Current.tenant).mark_failed!(message: "Exceção: #{e.message}", stats: {})
       raise
     end
 
@@ -89,6 +87,16 @@ module Vista
 
     def tenant
       Current.tenant || raise(ArgumentError, "Tenant obrigatório para importar corretores Vista")
+    end
+
+    def vista_host
+      Setting.tenant_get("loft_host", tenant: tenant).to_s.presence ||
+        raise("Host Vista não configurado para este tenant.")
+    end
+
+    def vista_key
+      Setting.tenant_get("loft_token", tenant: tenant).to_s.presence ||
+        raise("Token Vista não configurado para este tenant.")
     end
 
     def configured_vertical_profile(name:, key:)
@@ -157,9 +165,9 @@ module Vista
         }
       }
 
-      url = URI.join(VISTA_HOST, LIST_PATH).to_s
+      url = URI.join(vista_host, LIST_PATH).to_s
       params = {
-        key: VISTA_KEY,
+        key: vista_key,
         pesquisa: query.to_json,
         showtotal: 1
       }

@@ -21,6 +21,7 @@ RSpec.describe Images::WatermarkProcessor do
 
   it "keeps the original upload when there is no watermark image" do
     setting = PropertySetting.instance
+    setting.watermark_image.purge
     upload = png_upload("property.png", "320x220", "#d9e4ec", "#1f2937")
 
     result = described_class.call(upload, setting: setting)
@@ -37,6 +38,22 @@ RSpec.describe Images::WatermarkProcessor do
     processor = described_class.new(png_upload("property.png", "1000x600", "#d9e4ec", "#1f2937"), setting: setting)
 
     expect(processor.send(:watermark_width_for, image)).to eq(1200)
+  end
+
+  it "mapeia as cinco posições para gravities do ImageMagick" do
+    setting = PropertySetting.instance
+    processor = described_class.new(png_upload("property.png", "320x220", "#d9e4ec", "#1f2937"), setting: setting)
+
+    expect(PropertySetting::WATERMARK_POSITIONS.keys.index_with do |position|
+      setting.watermark_position = position
+      processor.send(:gravity)
+    end).to eq(
+      "top_left" => "NorthWest",
+      "top_right" => "NorthEast",
+      "bottom_left" => "SouthWest",
+      "bottom_right" => "SouthEast",
+      "center" => "Center"
+    )
   end
 
   def png_upload(filename, size, background, fill)

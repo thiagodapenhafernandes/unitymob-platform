@@ -15,6 +15,23 @@ RSpec.describe LeadMailer, type: :mailer do
       expect(body).to include("https://wa.me/5547999729441")
       expect(body).not_to include("https://wa.me/555547999729441")
     end
+
+    it "não usa imóvel nem branding de outro tenant" do
+      tenant = Tenant.create!(name: "Conexão Mailer", slug: "conexao-mailer-#{SecureRandom.hex(3)}", active: true)
+      other_tenant = Tenant.create!(name: "Salute Mailer", slug: "salute-mailer-#{SecureRandom.hex(3)}", active: true)
+      LayoutSetting.instance(tenant: tenant).update!(site_name: "Conexão Imobiliária")
+      ContactSetting.instance(tenant: tenant).update!(email_primary: "contato@conexao.test")
+      foreign_property = create(:habitation, tenant: other_tenant, titulo_anuncio: "Imóvel Salute")
+      lead = create(:lead, tenant: tenant, name: "Lead Conexão", phone: "47 99999-1111")
+      lead.update_column(:property_id, foreign_property.id)
+
+      mail = described_class.with(lead: lead).new_lead_notification
+      body = mail.html_part.body.decoded
+
+      expect(mail.subject).to include("Conexão Imobiliária")
+      expect(mail.to).to eq(["contato@conexao.test"])
+      expect(body).not_to include("Imóvel Salute")
+    end
   end
 
   describe "#welcome_lead" do

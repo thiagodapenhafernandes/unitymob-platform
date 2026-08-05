@@ -15,7 +15,8 @@ module Admin
       Setting.set(
         "photography_schedule_url",
         scheduling_params[:photography_schedule_url].to_s.strip,
-        "URL externa para agendamento de fotos na captação"
+        "URL externa para agendamento de fotos na captação",
+        tenant: current_tenant
       )
 
       redirect_to admin_scheduling_integration_path, notice: "Configuração de agendamento salva com sucesso."
@@ -54,7 +55,7 @@ module Admin
     end
 
     def load_settings
-      @photography_schedule_url = Setting.get("photography_schedule_url", "")
+      @photography_schedule_url = Setting.tenant_get("photography_schedule_url", "", tenant: current_tenant)
       @blocked_days = current_tenant.photography_schedule_blocks.order(date: :asc)
       @pending_photo_habitations = pending_photo_habitations
     end

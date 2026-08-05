@@ -12,7 +12,7 @@ class LoftImagesSyncJob < ApplicationJob
       lease_seconds: ENV.fetch("LOFT_IMAGES_SYNC_LOCK_LEASE_SECONDS", "3600")
     )
     lock_owner = lock_service.acquire
-    status_service = Loft::SyncStatusService.new
+    status_service = Loft::SyncStatusService.new(tenant: tenant)
 
     unless lock_owner.present?
       status_service.mark_skipped!(mode: "images", message: "Sync de imagens Loft ignorado: já existe sincronização de imagens em andamento.")
@@ -21,7 +21,7 @@ class LoftImagesSyncJob < ApplicationJob
 
     status_service.mark_processing!(mode: "images", message: "Sincronização de imagens Loft iniciada.", progress: 5)
 
-    batch_limit = limit.to_i.positive? ? limit.to_i : Setting.get("loft_images_sync_limit", "100").to_i
+    batch_limit = limit.to_i.positive? ? limit.to_i : Setting.tenant_get("loft_images_sync_limit", "100", tenant: tenant).to_i
     batch_limit = batch_limit.clamp(1, 500)
 
     result = Loft::ImagesSyncService.new(tenant: tenant).call(limit: batch_limit)

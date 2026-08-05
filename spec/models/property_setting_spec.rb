@@ -13,8 +13,17 @@ RSpec.describe PropertySetting, type: :model do
   end
   end
 
-  it "validates predefined watermark positions" do
+  it "aceita as cinco posições predefinidas da marca d'água" do
+    PropertySetting::WATERMARK_POSITIONS.keys.each do |position|
+      setting = described_class.new(watermark_position: position)
+
+      expect(setting).to be_valid
+    end
+  end
+
+  it "rejeita posições de marca d'água fora dos presets" do
     setting = described_class.new(watermark_position: "top_left")
+    setting.watermark_position = "free_drag"
 
     expect(setting).not_to be_valid
     expect(setting.errors[:watermark_position]).to be_present

@@ -164,10 +164,16 @@ RSpec.describe "Admin public site workspace", type: :request do
     ])
     expect(html.at_css("#cta[hidden][aria-labelledby='cta-tab']")).to be_present
     expect(html.at_css("#sections[hidden][aria-labelledby='sections-tab']")).to be_present
-    expect(html.css(".ax-operational-panel").size).to eq(6)
-    expect(html.css(".ax-field-group").size).to eq(6)
+    expect(html.css(".ax-operational-panel").size).to eq(9)
+    expect(html.css(".ax-field-group").size).to eq(3)
+    expect(html.css(".ax-operational-panel").map(&:text).map(&:squish)).to include(
+      a_string_including("Sobreposição do Hero"),
+      a_string_including("Filtro de busca"),
+      a_string_including("Fundo do header")
+    )
     expect(html.at_css('input[type="file"][name="home_setting[hero_slide_images][]"][multiple]')).to be_present
     expect(html.at_css('#input-overlay-opacity[type="number"]')).to be_present
+    expect(html.at_css('textarea[name="home_setting[public_header_css]"].ax-control--code')).to be_present
     expect(html.css(".ax-number-field .ax-field__hint").map(&:text)).to include("Use um valor entre 0,0 e 1,0.")
     expect(html.css(".tab-content, .tab-pane, .card, .form-control, .alert-link")).to be_empty
     expect(response.body).to include("Nenhuma imagem desktop carregada", "Nenhuma imagem mobile carregada", "ax-sticky-action-footer")
@@ -180,12 +186,19 @@ RSpec.describe "Admin public site workspace", type: :request do
     other_setting.update!(hero_title: "Hero de outra conta")
 
     patch admin_home_setting_path, params: {
-      home_setting: { hero_title: "Hero exclusivo da conta atual" }
+      home_setting: {
+        hero_title: "Hero exclusivo da conta atual",
+        public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
+      }
     }
 
     expect(response).to redirect_to(edit_admin_home_setting_path)
-    expect(HomeSetting.instance(tenant: admin.tenant).reload.hero_title).to eq("Hero exclusivo da conta atual")
+    expect(HomeSetting.instance(tenant: admin.tenant).reload).to have_attributes(
+      hero_title: "Hero exclusivo da conta atual",
+      public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
+    )
     expect(other_setting.reload.hero_title).to eq("Hero de outra conta")
+    expect(other_setting.public_header_css).to be_blank
   end
 
   it "bloqueia acesso direto de usuario sem permissao de marketing" do
@@ -288,6 +301,9 @@ RSpec.describe "Admin public site workspace", type: :request do
     section = admin.tenant.home_sections.create!(section_type: :services, title: "Serviços especiais", active: true)
     section.home_section_items.create!(title: "Avaliação", description: "Avaliação especializada", active: true)
     filter_section = admin.tenant.home_sections.create!(section_type: :featured_properties, title: "Imóveis em destaque", active: true)
+    current_property = create(:habitation, tenant: admin.tenant, codigo: "HOME-1", titulo_anuncio: "Imóvel do tenant atual")
+    other_tenant = Tenant.create!(name: "Outro tenant home #{SecureRandom.hex(3)}", slug: "outro-home-#{SecureRandom.hex(4)}")
+    foreign_property = create(:habitation, tenant: other_tenant, codigo: "HOME-2", titulo_anuncio: "Imóvel de outro tenant")
 
     get admin_home_section_path(section)
     expect(response).to have_http_status(:ok)
@@ -296,8 +312,16 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     get edit_admin_home_section_path(filter_section)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("ax-chip-grid", "ax-toggle-chip")
-    expect(response.body.scan('name="home_section[property_filters]').size).to eq(HomeSection::PROPERTY_FILTER_OPTIONS.size)
+    expect(response.body).to include("ax-chip-grid", "ax-toggle-chip", "Curadoria de imóveis")
+    expect(response.body).to include("Imóvel do tenant atual")
+    expect(response.body).not_to include("Imóvel de outro tenant")
+    html = Nokogiri::HTML(response.body)
+    expect(html.css('input[type="checkbox"][name^="home_section[property_filters]"]').size).to eq(HomeSection::PROPERTY_FILTER_OPTIONS.size)
+    property_select = html.at_css('select[name="home_section[property_filters][selected_property_ids][]"][multiple]')
+    expect(property_select).to be_present
+    expect(property_select["data-controller"]).to include("tom-select")
+    expect(property_select.css("option").map { |option| option["value"] }).to include(current_property.id.to_s)
+    expect(property_select.css("option").map { |option| option["value"] }).not_to include(foreign_property.id.to_s)
     expect(Nokogiri::HTML(response.body).css(".ax-chip-grid [style]")).to be_empty
 
     get new_admin_home_section_home_section_item_path(section)

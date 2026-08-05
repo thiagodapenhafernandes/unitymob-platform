@@ -1,0 +1,212 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Contas", admin_system_tenants_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to @tenant.name, admin_system_tenant_path(@tenant) %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Editar</strong>
+<% end %>
+
+<div class="ax-system">
+  <%= ax_workspace_heading(
+        eyebrow: "Conta",
+        icon: "building-gear",
+        title: "Editar conta",
+        subtitle: @tenant.name,
+        actions: ax_button("Voltar", admin_system_tenant_path(@tenant), variant: :ghost, size: :sm, icon: "arrow-left")
+      ) %>
+
+  <%= form_with(model: @tenant, url: admin_system_tenant_path(@tenant), method: :patch, local: true, class: "ax-system-tenant-edit-form") do |form| %>
+    <%= ax_error_summary(@tenant) %>
+
+    <div class="ax-system-tenant-layout ax-system-tenant-layout--edit">
+      <aside class="ax-system-tenant-aside">
+        <%= ax_operational_panel(eyebrow: "Conta", title: "Identidade e status") do %>
+          <%= ax_field_grid do %>
+            <%= ax_text_field(
+                  form: form,
+                  method: :name,
+                  label: "Nome da conta",
+                  class_name: "ax-span-12",
+                  placeholder: "Ex.: Nome da empresa"
+                ) %>
+            <%= ax_text_field(
+                  form: form,
+                  method: :slug,
+                  label: "Slug",
+                  hint: "Chave técnica da conta. Use nomes estáveis, sem acentos.",
+                  class_name: "ax-span-12",
+                  placeholder: "nome-da-empresa"
+                ) %>
+          <% end %>
+
+          <div class="tw-mt-4">
+            <%= ax_chip_grid do %>
+              <%= ax_toggle_chip(form, :active, label: "Conta ativa", id: "tenant_active") %>
+            <% end %>
+          </div>
+        <% end %>
+      </aside>
+
+      <div class="ax-system-tenant-main">
+        <%= ax_operational_panel(
+              eyebrow: "Site público",
+              title: "Identidade visual resolvida",
+              actions: ax_badge(@tenant.public_site_theme_label, tone: :blue)
+            ) do %>
+          <% current_theme_config = Tenant::PUBLIC_SITE_THEMES.fetch(@tenant.public_site_theme_key) %>
+          <div class="ax-system-theme-readonly">
+            <div class="ax-system-theme-current">
+              <span class="ax-system-theme-current__icon"><%= ax_icon("palette") %></span>
+              <div>
+                <strong><%= current_theme_config[:label] %></strong>
+                <span>Resolvido automaticamente pelo slug/nome da conta. Ao salvar a conta, o site passa a carregar a skin correspondente quando existir.</span>
+                <code><%= current_theme_config[:stylesheet] %>.css</code>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%= ax_sticky_action_footer do %>
+      <%= link_to "Cancelar", admin_system_tenant_path(@tenant), class: "ax-btn" %>
+      <%= form.submit "Salvar alterações", class: "ax-btn ax-btn--primary" %>
+    <% end %>
+  <% end %>
+
+  <div class="ax-system-tenant-main">
+    <%= ax_operational_panel(
+          eyebrow: "Site público",
+          title: "Domínios da conta",
+          actions: ax_badge("sem emissão automática de SSL", tone: :gray)
+        ) do %>
+        <div class="ax-system-domain-composer">
+          <%= form_with(model: @tenant_domain, url: admin_system_tenant_domains_path(@tenant), method: :post, local: true, class: "ax-field-grid ax-field-grid--12") do |form| %>
+            <%= ax_text_field(
+                  form: form,
+                  method: :hostname,
+                  label: "Novo domínio",
+                  hint: "Use hostname puro. Para apex e www, cadastre ambos.",
+                  class_name: "ax-span-5",
+                  placeholder: "www.empresa.com.br"
+                ) %>
+            <%= ax_select_field(
+                  form: form,
+                  method: :ssl_mode,
+                  label: "Status de SSL",
+                  choices: TenantDomain.ssl_mode_options,
+                  select_options: {},
+                  html_options: { class: "ax-input" },
+                  class_name: "ax-span-3"
+                ) %>
+            <div class="ax-field ax-span-2">
+              <%= form.label :notes, "Observações", class: "ax-field__label" %>
+              <%= form.text_field :notes, class: "ax-input", placeholder: "DNS, proxy ou certificado" %>
+            </div>
+            <div class="ax-field ax-span-2 ax-system-domain-composer__actions">
+              <%= form.submit "Adicionar domínio", class: "ax-btn ax-btn--primary" %>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @tenant_domains.any? %>
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <caption class="tw-sr-only">Domínios vinculados à conta</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Domínio</th>
+                  <th scope="col">SSL</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Observações</th>
+                  <th scope="col" class="ax-num ax-table__col--w-130">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @tenant_domains.each do |domain| %>
+                  <tr>
+                    <td class="ax-strong">
+                      <%= domain.hostname %>
+                      <% if domain.primary_domain? %>
+                        <span class="ax-system-admin-role">principal</span>
+                      <% end %>
+                    </td>
+                    <td><%= domain.ssl_mode_label %></td>
+                    <td><%= ax_badge(domain.active? ? "Ativo" : "Inativo", tone: domain.active? ? :green : :gray, dot: true) %></td>
+                    <td><%= domain.notes.presence || "Sem observações" %></td>
+                    <td class="ax-num">
+                      <div class="ax-system-admin-flags">
+                        <% unless domain.primary_domain? %>
+                          <%= button_to "Principal",
+                                set_primary_admin_system_tenant_domain_path(@tenant, domain),
+                                method: :patch,
+                                class: "ax-dashboard-panel__link",
+                                form: { data: { turbo_confirm: "Definir #{domain.hostname} como domínio principal?" } } %>
+                        <% end %>
+                        <%= button_to(domain.active? ? "Inativar" : "Ativar",
+                              admin_system_tenant_domain_path(@tenant, domain),
+                              method: :patch,
+                              params: { tenant_domain: { active: domain.active? ? "0" : "1" } },
+                              class: "ax-dashboard-panel__link") %>
+                        <%= button_to "Remover",
+                              admin_system_tenant_domain_path(@tenant, domain),
+                              method: :delete,
+                              class: "ax-dashboard-panel__link",
+                              form: { data: { turbo_confirm: "Remover o domínio #{domain.hostname}?" } } %>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="5">
+                      <details class="ax-system-domain-edit">
+                        <summary class="ax-dashboard-panel__link">Editar domínio</summary>
+                        <%= form_with(model: domain, url: admin_system_tenant_domain_path(@tenant, domain), method: :patch, local: true, class: "ax-field-grid ax-field-grid--12 tw-mt-3") do |form| %>
+                          <%= ax_text_field(
+                                form: form,
+                                method: :hostname,
+                                label: "Domínio",
+                                class_name: "ax-span-4",
+                                placeholder: "www.empresa.com.br"
+                              ) %>
+                          <%= ax_select_field(
+                                form: form,
+                                method: :ssl_mode,
+                                label: "Status de SSL",
+                                choices: TenantDomain.ssl_mode_options,
+                                select_options: {},
+                                html_options: { class: "ax-input" },
+                                class_name: "ax-span-3"
+                              ) %>
+                          <div class="ax-field ax-span-3">
+                            <%= form.label :notes, "Observações", class: "ax-field__label" %>
+                            <%= form.text_field :notes, class: "ax-input", placeholder: "DNS, proxy ou certificado" %>
+                          </div>
+                          <div class="ax-field ax-span-2">
+                            <%= ax_chip_grid do %>
+                              <%= ax_toggle_chip(form, :active, label: "Ativo", id: "tenant_domain_#{domain.id}_active") %>
+                              <%= ax_toggle_chip(form, :primary_domain, label: "Principal", id: "tenant_domain_#{domain.id}_primary_domain") %>
+                            <% end %>
+                          </div>
+                          <div class="ax-field ax-span-12 ax-system-domain-composer__actions">
+                            <%= form.submit "Salvar domínio", class: "ax-btn ax-btn--primary" %>
+                          </div>
+                        <% end %>
+                      </details>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <%= ax_empty_state(title: "Nenhum domínio cadastrado", description: "Cadastre o domínio que deve resolver o site público desta conta.", icon: "globe", compact: true) %>
+        <% end %>
+
+        <%= ax_inline_notice(tone: :info, icon: "globe", compact: true) do %>
+          O Rails usa esses domínios para escolher o tenant público. DNS, Nginx, certificados e liberação em ADDITIONAL_ALLOWED_HOSTS continuam na infraestrutura.
+        <% end %>
+    <% end %>
+  </div>
+</div>

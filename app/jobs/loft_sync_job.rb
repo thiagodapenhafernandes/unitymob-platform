@@ -15,7 +15,7 @@ class LoftSyncJob < ApplicationJob
       lease_seconds: ENV.fetch("LOFT_SYNC_LOCK_LEASE_SECONDS", "5400")
     )
     lock_owner = lock_service.acquire
-    status_service = Loft::SyncStatusService.new
+    status_service = Loft::SyncStatusService.new(tenant: tenant)
 
     unless lock_owner.present?
       status_service.mark_skipped!(mode: mode, message: "Loft sync ignorado: já existe uma sincronização em andamento.")
@@ -24,13 +24,13 @@ class LoftSyncJob < ApplicationJob
 
     status_service.mark_processing!(mode: mode, message: "Sincronização Loft iniciada.", progress: 5)
 
-    host = Setting.get("loft_host").to_s.presence || ENV.fetch("VISTA_HOST", "")
-    token = Setting.get("loft_token").to_s.presence || ENV.fetch("VISTA_KEY", "")
+    host = Setting.tenant_get("loft_host", tenant: tenant).to_s
+    token = Setting.tenant_get("loft_token", tenant: tenant).to_s
     raise "Host Loft não configurado." if host.blank?
     raise "Token Loft não configurado." if token.blank?
 
     normalized_mode = mode.to_s == "batch" ? "batch" : "full"
-    size = batch_size.to_i.positive? ? batch_size.to_i : Setting.get("loft_sync_batch_size", "100").to_i
+    size = batch_size.to_i.positive? ? batch_size.to_i : Setting.tenant_get("loft_sync_batch_size", "100", tenant: tenant).to_i
     listing = Loft::PropertyCodesService.new(host: host, token: token).call(mode: normalized_mode, batch_size: size)
     codes = listing[:codes]
     categorias = listing[:categorias] || {}
@@ -151,4 +151,5 @@ class LoftSyncJob < ApplicationJob
 
     tenant.admin_users.find_by(id: triggered_by_id)
   end
+
 end

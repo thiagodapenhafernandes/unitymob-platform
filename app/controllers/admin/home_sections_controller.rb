@@ -1,6 +1,7 @@
 class Admin::HomeSectionsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :marketing) }
   before_action :set_home_section, only: [:show, :edit, :update, :destroy]
+  before_action :set_property_options, only: [:new, :edit, :create, :update]
   
   def index
     @home_sections = current_tenant.home_sections.ordered.includes(:home_section_items)
@@ -66,7 +67,10 @@ class Admin::HomeSectionsController < Admin::BaseController
       :active,
       :display_order,
       :order_position,
-      property_filters: HomeSection::PROPERTY_FILTER_OPTIONS.keys
+      property_filters: [
+        *HomeSection::PROPERTY_FILTER_OPTIONS.keys,
+        { selected_property_ids: [] }
+      ]
     )
     filters = permitted.delete(:property_filters)
     filters = if filters.respond_to?(:to_unsafe_h)
@@ -76,6 +80,46 @@ class Admin::HomeSectionsController < Admin::BaseController
               else
                 {}
               end
+    filters["selected_property_ids"] = permitted_property_ids(filters["selected_property_ids"])
     permitted.to_h.merge(property_filters: filters)
+  end
+
+  def permitted_property_ids(values)
+    requested_ids = Array(values)
+      .flat_map { |value| value.to_s.split(/[,\s]+/) }
+      .filter_map { |value| Integer(value, exception: false) }
+      .select(&:positive?)
+      .uniq
+    return [] if requested_ids.empty?
+
+    available_ids = current_tenant.habitations.where(id: requested_ids).reorder(nil).pluck(:id).map(&:to_i)
+    requested_ids & available_ids
+  end
+
+  def set_property_options
+    selected_ids = params.dig(:home_section, :property_filters, :selected_property_ids).presence || @home_section&.selected_property_ids
+    selected_ids = Array(selected_ids).map(&:to_i).select(&:positive?)
+
+    scope = current_tenant.habitations.includes(:address)
+
+    selected_records = selected_ids.any? ? scope.where(id: selected_ids) : Habitation.none
+    recent_records = current_tenant
+      .habitations
+      .active
+      .includes(:address)
+      .where.not(id: selected_ids)
+      .newest_first
+      .limit(1_500)
+
+    records = (selected_records.to_a + recent_records.to_a).uniq(&:id)
+    @property_options = records.map { |habitation| [property_option_label(habitation), habitation.id] }
+  end
+
+  def property_option_label(habitation)
+    location = [habitation.address&.bairro, habitation.address&.cidade].compact_blank.join(" - ")
+    title = habitation.titulo_anuncio.presence || habitation.nome_empreendimento.presence || habitation.categoria.presence || "Imóvel"
+    code = habitation.codigo.presence || habitation.id
+
+    ["##{code}", title, location.presence].compact_blank.join(" · ")
   end
 end

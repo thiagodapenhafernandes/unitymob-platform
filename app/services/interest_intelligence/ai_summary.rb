@@ -14,7 +14,7 @@ module InterestIntelligence
     end
 
     def call
-      return fallback_summary.merge("source" => "deterministic") unless Ai::PropertyContentService.connected?
+      return fallback_summary.merge("source" => "deterministic") unless Ai::PropertyContentService.connected?(tenant: tenant)
 
       parsed = request_summary
       fallback_summary.merge(parsed).merge("source" => "openai")
@@ -26,13 +26,13 @@ module InterestIntelligence
     private
 
     def request_summary
-      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key).create_response(openai_payload)
+      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(openai_payload)
       JSON.parse(extract_text(response))
     end
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.model,
+        model: Ai::PropertyContentService.model(tenant: tenant),
         instructions: system_instructions,
         input: user_payload,
         text: {
@@ -133,6 +133,10 @@ module InterestIntelligence
       return response["output_text"] if response["output_text"].present?
 
       Array(response["output"]).flat_map { |item| Array(item["content"]) }.map { |content| content["text"] }.compact.join("\n")
+    end
+
+    def tenant
+      @lead.tenant || Current.tenant
     end
   end
 end

@@ -152,7 +152,7 @@
           <% end %>
 
           <%# Resultado persistente do último teste — o toast some em segundos %>
-          <% last_test = (JSON.parse(Setting.get("email_smtp_last_test").to_s) rescue nil) %>
+          <% last_test = (JSON.parse(Setting.tenant_get("email_smtp_last_test", nil, tenant: current_tenant).to_s) rescue nil) %>
           <% if last_test %>
             <div class="tw-mt-3 tw-flex tw-items-center tw-gap-2 tw-flex-wrap">
               <% if last_test["ok"] %>

@@ -10,6 +10,7 @@
   public_photo_lookup = @public_photo_lookup
   public_photo_pending_summary = @public_photo_pending_summary
   public_photo_publish_running = %w[queued running].include?(public_photo_publish_progress[:status].to_s)
+  suggested_do_spaces_bucket = @storage_setting.default_digital_ocean_bucket_name
 %>
 
 <%= ax_workspace_heading(eyebrow: "Integrações · Infraestrutura", icon: "cloud-arrow-up", title: "Armazenamento", pills: [@storage_setting.photo_provider.to_s.humanize], subtitle: "Gerencie provedores, publicação de fotos e armazenamento privado de documentos.", metrics: [{ value: number_with_delimiter(public_photo_stats.total_attachments), label: "anexos" }, { value: number_with_delimiter(public_photo_stats.total_blobs), label: "blobs" }]) %>
@@ -72,7 +73,7 @@
         <div class="ax-card__body">
           <%= ax_field_grid(columns: 12, gap: :compact) do %>
             <div class="ax-span-6">
-              <%= ax_text_field(form: f, method: :do_spaces_bucket, label: "Bucket", placeholder: "imob") %>
+              <%= ax_text_field(form: f, method: :do_spaces_bucket, label: "Bucket", placeholder: suggested_do_spaces_bucket) %>
             </div>
             <div class="ax-span-6">
               <%= ax_text_field(form: f, method: :do_spaces_region, label: "Região", placeholder: "sfo3") %>
@@ -81,7 +82,7 @@
               <%= ax_text_field(form: f, method: :do_spaces_endpoint, label: "Endpoint", placeholder: "https://sfo3.digitaloceanspaces.com") %>
             </div>
             <div class="ax-span-12">
-              <%= ax_text_field(form: f, method: :do_spaces_public_base_url, label: "Base pública/CDN", placeholder: "https://imob.sfo3.cdn.digitaloceanspaces.com") %>
+              <%= ax_text_field(form: f, method: :do_spaces_public_base_url, label: "Base pública", placeholder: "https://#{suggested_do_spaces_bucket}.sfo3.digitaloceanspaces.com") %>
             </div>
             <div class="ax-span-6">
               <label class="ax-label">Access Key</label>
@@ -102,6 +103,12 @@
           <% end %>
 
           <div class="tw-flex tw-gap-2 tw-mt-3">
+            <%= button_tag "Provisionar bucket", type: "submit", class: "ax-btn ax-btn--primary",
+                  formaction: provision_digital_ocean_admin_storage_integration_path,
+                  formmethod: "post",
+                  data: {
+                    turbo_confirm: "Criar ou validar o bucket DigitalOcean desta conta usando o nome do tenant quando necessário? Esta ação não cria CDN."
+                  } %>
             <%= button_tag "Testar DigitalOcean", type: "submit", class: "ax-btn ax-btn--ghost",
                   formaction: test_connection_admin_storage_integration_path(provider: "digital_ocean"),
                   formmethod: "post" %>

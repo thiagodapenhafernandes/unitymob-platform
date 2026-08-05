@@ -1,0 +1,143 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Sistema", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Nova conta</strong>
+<% end %>
+
+<%= ax_workspace_heading(
+      eyebrow: "Admin do Sistema",
+      icon: "building-add",
+      title: "Nova conta",
+      subtitle: "Provisione a conta operacional junto com o Dono da conta.",
+      actions: ax_button("Voltar", admin_system_path, variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<%= form_with(model: @tenant_form, url: admin_system_tenants_path, method: :post, local: true, class: "ax-field-grid") do |form| %>
+  <%= ax_error_summary(@tenant_form) %>
+
+  <div class="ax-span-7">
+    <%= ax_operational_panel(eyebrow: "Conta", title: "Identidade da conta") do %>
+      <%= ax_field_grid do %>
+        <%= ax_text_field(
+              form: form,
+              method: :tenant_name,
+              label: "Nome da conta",
+              class_name: "ax-span-6",
+              placeholder: "Ex.: Nome da empresa"
+            ) %>
+        <%= ax_text_field(
+              form: form,
+              method: :tenant_slug,
+              label: "Slug",
+              hint: "Se ficar em branco, será gerado a partir do nome.",
+              class_name: "ax-span-6",
+              placeholder: "nome-da-empresa"
+            ) %>
+      <% end %>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Dono", title: "Dono da conta", class_name: "tw-mt-4") do %>
+      <%= ax_field_grid do %>
+        <%= ax_text_field(
+              form: form,
+              method: :owner_name,
+              label: "Nome completo",
+              class_name: "ax-span-6",
+              placeholder: "Ex.: Nome do responsável"
+            ) %>
+        <%= ax_text_field(
+              form: form,
+              method: :owner_email,
+              type: :email,
+              label: "E-mail de acesso",
+              class_name: "ax-span-6",
+              placeholder: "responsavel@empresa.com.br",
+              autocomplete: "email"
+            ) %>
+        <%= ax_text_field(
+              form: form,
+              method: :owner_phone,
+              type: :tel,
+              label: "Celular / WhatsApp",
+              class_name: "ax-span-6",
+              placeholder: "(47) 99999-9999",
+              autocomplete: "tel",
+              data: { controller: "phone-input" }
+            ) %>
+        <%= ax_text_field(
+              form: form,
+              method: :owner_password,
+              type: :password,
+              label: "Senha inicial",
+              class_name: "ax-span-6",
+              autocomplete: "new-password",
+              placeholder: "Mínimo 8 caracteres"
+            ) %>
+        <%= ax_text_field(
+              form: form,
+              method: :owner_password_confirmation,
+              type: :password,
+              label: "Confirmar senha inicial",
+              class_name: "ax-span-6",
+              autocomplete: "new-password",
+              placeholder: "Repita a senha inicial"
+            ) %>
+      <% end %>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Site", title: "Domínio inicial", class_name: "tw-mt-4") do %>
+      <%= ax_field_grid do %>
+        <%= ax_text_field(
+              form: form,
+              method: :primary_domain_hostname,
+              label: "Domínio principal",
+              hint: "Opcional. Cadastre apenas o hostname; SSL e DNS continuam fora deste fluxo.",
+              class_name: "ax-span-6",
+              placeholder: "www.empresa.com.br"
+            ) %>
+        <%= ax_select_field(
+              form: form,
+              method: :primary_domain_ssl_mode,
+              label: "Status de SSL",
+              choices: TenantDomain.ssl_mode_options,
+              select_options: {},
+              html_options: { class: "ax-input" },
+              class_name: "ax-span-6"
+            ) %>
+        <div class="ax-field ax-span-12">
+          <%= form.label :primary_domain_notes, "Observações", class: "ax-field__label" %>
+          <%= form.text_area :primary_domain_notes, rows: 3, class: "ax-input", placeholder: "Ex.: DNS aponta para o balanceador compartilhado" %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="ax-span-5">
+    <%= ax_operational_panel(eyebrow: "Provisionamento", title: "O que será criado") do %>
+      <%= ax_status_list(
+            rows: [
+              { label: "Conta", value: "Tenant ativo" },
+              { label: "Perfis", value: "Dono, corretor, gerente e administrativo" },
+              { label: "Acesso inicial", value: "Usuário ativo como Dono da conta" },
+              { label: "Domínio", value: "Opcional, sem emissão automática de SSL" },
+              { label: "Auditoria", value: "Registro do Admin do Sistema" }
+            ]
+          ) %>
+
+      <div class="tw-mt-4">
+        <%= ax_inline_notice(tone: :warning, icon: "shield-check", compact: true) do %>
+          A conta só será salva se o Dono da conta também for criado. Isso evita tenants sem botão de impersonação.
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="ax-span-12">
+    <%= ax_sticky_action_footer do %>
+      <%= link_to "Cancelar", admin_system_path, class: "ax-btn" %>
+      <%= form.submit "Criar conta", class: "ax-btn ax-btn--primary" %>
+    <% end %>
+  </div>
+<% end %>

@@ -38,7 +38,7 @@ class Admin::DashboardController < Admin::BaseController
     @habitation_scope = scoped_dashboard_habitations
     @lead_scope = scoped_dashboard_leads
     @captacao_scope = scoped_dashboard_captacoes
-    @field_feature_enabled = Setting.get("field_checkin_enabled", "false").to_s == "true"
+    @field_feature_enabled = FieldFeatureGate.field_checkin_enabled?(tenant: current_tenant)
     requested_tab = params[:tab].to_s.presence_in(DASHBOARD_TABS) || "overview"
     @dashboard_tab = requested_tab == "field" && !@field_feature_enabled ? "overview" : requested_tab
     @dashboard_updated_at = Time.current

@@ -11,7 +11,7 @@ module Field
       end
 
       @admin_user       = current_admin_user
-      @field_enabled    = FieldFeatureGate.field_checkin_enabled?
+      @field_enabled    = FieldFeatureGate.field_checkin_enabled?(tenant: current_tenant)
       @field_agent_allowed = FieldFeatureGate.field_agent_allowed?(@admin_user, tenant: current_tenant)
       @active_check_in  = @field_enabled ? @admin_user.active_check_in : nil
       @ai_property_search_setting = PropertySetting.instance(tenant: current_tenant)

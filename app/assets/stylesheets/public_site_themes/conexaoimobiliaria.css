@@ -1,0 +1,110 @@
+/* Site skin Conexão Imobiliária.
+   Reusa as views/componentes públicos e aplica somente a camada de identidade visual. */
+[data-public-site-theme="conexaoimobiliaria"] {
+  --blue-three: var(--color-primary, #123f4f);
+  --blue-one: var(--color-secondary, #0f5b6b);
+  --golden-one: var(--color-accent, #c7922b);
+  --golden-two: color-mix(in srgb, var(--color-accent, #c7922b) 82%, #fff);
+  --public-theme-surface: #ffffff;
+  --public-theme-subtle: #f4f7f7;
+  --public-theme-border: color-mix(in srgb, var(--color-primary, #123f4f) 14%, #d7dee2);
+  --public-theme-shadow: 0 10px 26px rgba(15, 23, 42, .08);
+  --public-theme-radius: 10px;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.bg-blue-three) {
+  background-color: var(--color-primary, #123f4f) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.hover\:bg-blue-one:hover) {
+  background-color: var(--color-secondary, #0f5b6b) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.text-blue-three) {
+  color: var(--color-primary, #123f4f) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.border-blue-three) {
+  border-color: var(--color-primary, #123f4f) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.bg-golden-one) {
+  background-color: var(--color-accent, #c7922b) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.text-golden-one) {
+  color: var(--color-accent, #c7922b) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed {
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(0, 9, 16, .42) !important;
+  box-shadow: 0 12px 30px rgba(0, 9, 16, .14) !important;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed :where(
+  a.text-gray-700,
+  a.hover\:text-blue-three,
+  button.text-gray-500,
+  button.text-blue-three
+) {
+  color: rgba(255, 255, 255, .84) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed :where(
+  a.text-gray-700:hover,
+  a.hover\:text-blue-three:hover,
+  button.text-gray-500:hover,
+  button.text-blue-three:hover
+) {
+  color: #ffffff !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed :where(
+  a.text-blue-three,
+  .text-blue-three
+) {
+  color: #ffffff !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed a.bg-blue-three {
+  background: rgba(255, 255, 255, .14) !important;
+  border-color: rgba(255, 255, 255, .16) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(0, 9, 16, .14) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed a.bg-blue-three:hover {
+  background: rgba(255, 255, 255, .24) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] header.fixed nav {
+  border-color: rgba(255, 255, 255, .14) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(.container-custom) {
+  max-width: 1220px;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(
+  .public-property-card,
+  .public-habitations-index__seo-intro,
+  .public-habitations-index__strategic-links,
+  .public-habitations-show__price-card,
+  .public-development-show__section,
+  .shared-property-card
+) {
+  border-color: var(--public-theme-border) !important;
+  border-radius: var(--public-theme-radius) !important;
+  box-shadow: var(--public-theme-shadow) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] :where(
+  .public-habitations-index__content,
+  .public-favorites,
+  .public-development-show
+) {
+  background: var(--public-theme-subtle) !important;
+}

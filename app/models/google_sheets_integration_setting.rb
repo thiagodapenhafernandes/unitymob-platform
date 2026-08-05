@@ -40,17 +40,17 @@ class GoogleSheetsIntegrationSetting
 
     new(
       tenant: tenant,
-      enabled: Setting.get(ENABLED_KEY, "false", tenant: tenant) == "true",
-      web_app_url: Setting.get(WEB_APP_URL_KEY, "", tenant: tenant),
-      worksheet_name: Setting.get(WORKSHEET_NAME_KEY, DEFAULT_WORKSHEET_NAME, tenant: tenant),
-      key_column: Setting.get(KEY_COLUMN_KEY, DEFAULT_KEY_COLUMN, tenant: tenant)
+      enabled: Setting.tenant_get(ENABLED_KEY, "false", tenant: tenant) == "true",
+      web_app_url: Setting.tenant_get(WEB_APP_URL_KEY, "", tenant: tenant),
+      worksheet_name: Setting.tenant_get(WORKSHEET_NAME_KEY, DEFAULT_WORKSHEET_NAME, tenant: tenant),
+      key_column: Setting.tenant_get(KEY_COLUMN_KEY, DEFAULT_KEY_COLUMN, tenant: tenant)
     )
   end
 
   def self.connected?(tenant: Current.tenant)
     raise ArgumentError, "Tenant obrigatório para consultar Google Sheets" if tenant.blank?
 
-    Setting.get(WEB_APP_URL_KEY, tenant: tenant).present? && Setting.get(TOKEN_KEY, tenant: tenant).present?
+    Setting.tenant_get(WEB_APP_URL_KEY, tenant: tenant).present? && Setting.tenant_get(TOKEN_KEY, tenant: tenant).present?
   end
 
   def self.human_attribute_name(attribute, options = {})
@@ -78,7 +78,7 @@ class GoogleSheetsIntegrationSetting
   end
 
   def token_configured?
-    Setting.get(TOKEN_KEY, tenant: tenant).present?
+    Setting.tenant_get(TOKEN_KEY, tenant: tenant).present?
   end
 
   private

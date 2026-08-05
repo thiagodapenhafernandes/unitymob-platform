@@ -1,4 +1,4 @@
-\restrict bzU0kwOwjfdUWbXUghpj72SGtBbIjoPgn0JB0063k0hnhTcW76yt30W8HfX0fgE
+\restrict DiFgr06u35D64XL9S92ex6pVcJ4WgaCgcHYN53wEzg0oQSWi93247yaabo16h6L
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1781,7 +1781,8 @@ CREATE TABLE public.contact_settings (
     linkedin_url character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    blog_url character varying
 );
 
 
@@ -3145,7 +3146,8 @@ CREATE TABLE public.home_settings (
     search_filter_border_radius integer,
     hero_title_font_size integer,
     hero_subtitle_font_size integer,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    public_header_css text
 );
 
 
@@ -5744,6 +5746,43 @@ ALTER SEQUENCE public.tasks_id_seq OWNED BY public.tasks.id;
 
 
 --
+-- Name: tenant_domains; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant_domains (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    hostname character varying NOT NULL,
+    primary_domain boolean DEFAULT false NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    ssl_mode character varying DEFAULT 'not_configured'::character varying NOT NULL,
+    verified_at timestamp(6) without time zone,
+    notes text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: tenant_domains_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tenant_domains_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tenant_domains_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tenant_domains_id_seq OWNED BY public.tenant_domains.id;
+
+
+--
 -- Name: tenants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5762,7 +5801,8 @@ CREATE TABLE public.tenants (
     session_remember_days integer,
     session_epoch_at timestamp(6) without time zone,
     use_global_whatsapp_fallback boolean DEFAULT false NOT NULL,
-    use_global_email_fallback boolean DEFAULT false NOT NULL
+    use_global_email_fallback boolean DEFAULT false NOT NULL,
+    public_site_theme character varying DEFAULT 'saluteimoveis'::character varying NOT NULL
 );
 
 
@@ -7346,6 +7386,13 @@ ALTER TABLE ONLY public.tasks ALTER COLUMN id SET DEFAULT nextval('public.tasks_
 
 
 --
+-- Name: tenant_domains id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_domains ALTER COLUMN id SET DEFAULT nextval('public.tenant_domains_id_seq'::regclass);
+
+
+--
 -- Name: tenants id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8495,6 +8542,14 @@ ALTER TABLE ONLY public.system_notification_settings
 
 ALTER TABLE ONLY public.tasks
     ADD CONSTRAINT tasks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_domains tenant_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_domains
+    ADD CONSTRAINT tenant_domains_pkey PRIMARY KEY (id);
 
 
 --
@@ -13113,6 +13168,34 @@ CREATE INDEX index_tasks_on_tenant_id_and_admin_user_id ON public.tasks USING bt
 
 
 --
+-- Name: index_tenant_domains_on_lower_hostname; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tenant_domains_on_lower_hostname ON public.tenant_domains USING btree (lower((hostname)::text));
+
+
+--
+-- Name: index_tenant_domains_on_primary_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tenant_domains_on_primary_per_tenant ON public.tenant_domains USING btree (tenant_id) WHERE (primary_domain = true);
+
+
+--
+-- Name: index_tenant_domains_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tenant_domains_on_tenant_id ON public.tenant_domains USING btree (tenant_id);
+
+
+--
+-- Name: index_tenant_domains_on_tenant_id_and_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tenant_domains_on_tenant_id_and_active ON public.tenant_domains USING btree (tenant_id, active);
+
+
+--
 -- Name: index_tenants_on_slug; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13984,6 +14067,14 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 ALTER TABLE ONLY public.admin_users
     ADD CONSTRAINT fk_rails_18edaf9350 FOREIGN KEY (rentals_manager_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: tenant_domains fk_rails_1987f42a92; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_domains
+    ADD CONSTRAINT fk_rails_1987f42a92 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -16030,11 +16121,19 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict bzU0kwOwjfdUWbXUghpj72SGtBbIjoPgn0JB0063k0hnhTcW76yt30W8HfX0fgE
+\unrestrict DiFgr06u35D64XL9S92ex6pVcJ4WgaCgcHYN53wEzg0oQSWi93247yaabo16h6L
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260804140500'),
+('20260804140000'),
+('20260804135000'),
+('20260804133500'),
+('20260804133000'),
+('20260804131500'),
+('20260804124500'),
+('20260804123000'),
 ('20260804122000'),
 ('20260804121000'),
 ('20260804120000'),

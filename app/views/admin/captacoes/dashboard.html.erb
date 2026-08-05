@@ -54,7 +54,7 @@
       metrics: [
         { value: @total_venda, label: "venda" },
         { value: @total_locacao, label: "locação" },
-        { value: @pre_cadastro_total, label: "pré-cadastros" }
+        { value: @pre_cadastro_total, label: "efetivas" }
       ],
       actions: dashboard_actions,
       class_name: "capt-dashboard-heading"
@@ -129,11 +129,11 @@
   <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm capt-dashboard-filters__submit" %>
 <% end %>
 
-<section class="ax-metric-grid capt-dashboard-kpis" aria-label="Resumo dos pré-cadastros">
+<section class="ax-metric-grid capt-dashboard-kpis" aria-label="Resumo das captações efetivas">
   <% [
-       ["Pré-cadastros", @pre_cadastro_total, "blue"],
-       ["Rascunho/devolvido", @pre_cadastro_draft, "amber"],
-       ["Em aprovação", @pre_cadastro_review, "cyan"],
+       ["Captações efetivas", @pre_cadastro_total, "blue"],
+       ["Corretor publicar", @pre_cadastro_admin_approved, "cyan"],
+       ["Disponíveis internas", @pre_cadastro_internal, "amber"],
        ["Liberados site", @pre_cadastro_published, "green"]
      ].each do |label, value, tone| %>
     <%= ax_metric_card(label:, value:, class_name: "capt-dashboard-kpi capt-dashboard-kpi--#{tone}") %>

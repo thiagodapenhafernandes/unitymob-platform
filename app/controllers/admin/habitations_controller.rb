@@ -2,10 +2,10 @@ class Admin::HabitationsController < Admin::BaseController
   include RentalGuaranteeParamNormalizer
 
   before_action -> { check_permission!(:view, :imoveis) }
-  before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create]
+  before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create, :duplicate]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility, :share_selection]
-  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :confirm_owner_contact, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :duplicate, :operational_hub, :gallery, :confirm_owner_contact, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
 
@@ -69,7 +69,7 @@ class Admin::HabitationsController < Admin::BaseController
     "valor_total_aluguel_cents" => { label: "Valor total aluguel", column: "valor_total_aluguel_cents", default_direction: "desc" }
   }.freeze
 
-  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :confirm_owner_contact, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :duplicate, :operational_hub, :gallery, :confirm_owner_contact, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   before_action :prepare_habitation_address, only: [:show, :edit, :operational_hub]
   before_action :prepare_legacy_habitation_address, only: [:update]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
@@ -85,6 +85,7 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_view_habitation_owner_contact_data?
   helper_method :can_create_internal_intake?
   helper_method :can_destroy_habitation?
+  helper_method :can_duplicate_habitation?
   helper_method :can_bulk_publish_habitations?
   helper_method :can_edit_protected_habitation_fields?
   helper_method :can_manage_habitation_responsibles?
@@ -609,6 +610,28 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
+  def duplicate
+    unless can_duplicate_habitation?(@habitation)
+      redirect_to admin_habitations_path, alert: "Você não tem permissão para duplicar este imóvel."
+      return
+    end
+
+    result = Habitations::Duplicator.new(
+      @habitation,
+      actor: current_admin_user,
+      tenant: current_tenant,
+      request: request,
+      copy_sensitive_data: can_view_proprietor_data?(@habitation),
+      copy_internal_documents: can_manage_internal_documents?
+    ).call!
+
+    redirect_to edit_admin_habitation_path(result.habitation),
+                notice: "Imóvel duplicado com o novo código #{result.habitation.codigo}. Revise antes de publicar no site ou portais."
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to edit_admin_habitation_path(@habitation),
+                alert: "Não foi possível duplicar o imóvel: #{e.record.errors.full_messages.to_sentence.presence || e.message}."
+  end
+
 
   def edit
     @page_title = "Editar Imóvel: #{@habitation.codigo}"
@@ -744,7 +767,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def generate_ai_preview
-    unless Ai::PropertyContentService.connected?
+    unless Ai::PropertyContentService.connected?(tenant: @habitation.tenant)
       if turbo_frame_request?
         return render_ai_content_preview(message: "Configure o token da OpenAI em Integrações > IA antes de gerar a sugestão.", message_type: "warning")
       end
@@ -2815,6 +2838,14 @@ class Admin::HabitationsController < Admin::BaseController
   # removem imóveis pela tela operacional.
   def can_destroy_habitation?(_habitation = @habitation)
     current_admin_user&.system_admin?
+  end
+
+  def can_duplicate_habitation?(habitation = @habitation)
+    return false unless habitation
+    return false unless can?(:create, :imoveis)
+    return false unless can_edit_habitation?(habitation)
+
+    property_accessible?(habitation)
   end
 
   def can_bulk_publish_habitations?

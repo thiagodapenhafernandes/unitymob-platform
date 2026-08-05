@@ -42,6 +42,11 @@
     &.active img {
       animation: kenburns 60s linear infinite;
     }
+
+    &.public-site-hero-fallback {
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #022B3A) 86%, #000) 0%, color-mix(in srgb, var(--color-secondary, #053C5E) 76%, #fff) 100%);
+    }
   }
 }
 

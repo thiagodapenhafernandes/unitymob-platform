@@ -3,7 +3,10 @@ class AccessAuditLog < ApplicationRecord
 
   EVENT_TYPES = %w[login logout admin_access sensitive_access access_denied impersonation_start impersonation_stop
                    two_factor_challenge two_factor_success two_factor_failed two_factor_enabled two_factor_disabled
-                   account_switch membership_invited membership_accepted membership_revoked rate_limit_reset].freeze
+                   account_switch membership_invited membership_accepted membership_revoked rate_limit_reset
+                   tenant_provisioned tenant_updated tenant_inactivated tenant_reactivated
+                   tenant_domain_created tenant_domain_updated tenant_domain_destroyed tenant_domain_primary_set
+                   tenant_dev_host_activated].freeze
   RESULTS = %w[allowed denied].freeze
 
   EVENT_LABELS = {
@@ -23,7 +26,16 @@ class AccessAuditLog < ApplicationRecord
     "membership_invited" => "Convite externo enviado",
     "membership_accepted" => "Convite externo aceito",
     "membership_revoked" => "Acesso externo revogado",
-    "rate_limit_reset" => "Bloqueio de login liberado"
+    "rate_limit_reset" => "Bloqueio de login liberado",
+    "tenant_provisioned" => "Conta provisionada",
+    "tenant_updated" => "Conta atualizada",
+    "tenant_inactivated" => "Conta inativada",
+    "tenant_reactivated" => "Conta reativada",
+    "tenant_domain_created" => "Domínio da conta criado",
+    "tenant_domain_updated" => "Domínio da conta atualizado",
+    "tenant_domain_destroyed" => "Domínio da conta removido",
+    "tenant_domain_primary_set" => "Domínio principal definido",
+    "tenant_dev_host_activated" => "Tenant ativado no host local"
   }.freeze
 
   RESULT_LABELS = {

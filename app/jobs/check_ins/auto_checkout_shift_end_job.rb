@@ -15,7 +15,7 @@ module CheckIns
         Current.set(tenant: tenant) do
           # A flag é POR-TENANT: precisa ser avaliada COM o tenant no contexto,
           # senão Current.tenant=nil lê a global inexistente e aborta tudo.
-          next unless FieldFeatureGate.field_checkin_enabled?
+          next unless FieldFeatureGate.field_checkin_enabled?(tenant: tenant)
 
           tenant.check_ins.where(status: :active)
                 .includes(:store, :store_shift)

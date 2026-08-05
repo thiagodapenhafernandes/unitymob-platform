@@ -80,6 +80,14 @@
             </div>
 
             <div class="ax-field">
+              <%= ax_field_label(f, :blog_url, text: "Blog") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-journal-text tw-text-primary", aria: { hidden: true })) do %>
+                <%= f.url_field :blog_url, class: "ax-control", placeholder: "https://blog.empresa.com.br" %>
+              <% end %>
+              <p class="ax-field__hint">URL completa do blog exibido no menu público.</p>
+            </div>
+
+            <div class="ax-field">
               <%= ax_field_label(f, :linkedin_url, text: "LinkedIn") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-linkedin tw-text-primary", aria: { hidden: true })) do %>
                 <%= f.url_field :linkedin_url, class: "ax-control", placeholder: "https://linkedin.com/company/saluteimoveis" %>

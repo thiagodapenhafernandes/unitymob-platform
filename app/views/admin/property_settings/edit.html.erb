@@ -79,14 +79,27 @@
               </div>
             <% end %>
 
-            <%= ax_radio_group(
-                  form: f,
-                  method: :watermark_position,
-                  label: "Posição padrão",
-                  choices: PropertySetting::WATERMARK_POSITIONS.map { |value, label| [label, value] },
-                  class_name: "property-settings-position-grid",
-                  input_data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" }
-                ) %>
+            <fieldset class="property-settings-watermark-map">
+              <legend class="property-settings-watermark-map__label">Posição padrão</legend>
+              <div class="property-settings-watermark-map__frame" aria-label="Selecione uma das 5 posições da marca d'água">
+                <div class="property-settings-watermark-map__photo" aria-hidden="true"></div>
+                <div class="property-settings-watermark-map__guide property-settings-watermark-map__guide--vertical" aria-hidden="true"></div>
+                <div class="property-settings-watermark-map__guide property-settings-watermark-map__guide--horizontal" aria-hidden="true"></div>
+                <% PropertySetting::WATERMARK_POSITIONS.each do |value, label| %>
+                  <label class="property-settings-watermark-map__option property-settings-watermark-map__option--<%= value %>">
+                    <%= f.radio_button :watermark_position,
+                          value,
+                          class: "property-settings-watermark-map__input",
+                          data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" } %>
+                    <span class="property-settings-watermark-map__choice">
+                      <span class="property-settings-watermark-map__dot" aria-hidden="true"></span>
+                      <span><%= label %></span>
+                    </span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="property-settings-watermark-map__hint">Clique na área desejada para mover a prévia e salvar a posição usada nas próximas fotos com marca d'água.</p>
+            </fieldset>
 
             <div class="property-settings-range-grid">
               <%= ax_range_field(

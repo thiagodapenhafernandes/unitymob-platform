@@ -38,7 +38,7 @@ module Whatsapp
         }
       end
 
-      Setting.set(SETTING_KEY, payload.to_json, "Configuração dos botões de WhatsApp do site por tipo de negociação")
+      Setting.set(SETTING_KEY, payload.to_json, "Configuração dos botões de WhatsApp do site por tipo de negociação", tenant: Current.tenant)
     end
 
     def for_habitation(habitation, message: nil)
@@ -59,7 +59,7 @@ module Whatsapp
     private
 
     def persisted_config
-      raw = Setting.get(SETTING_KEY, "{}").to_s
+      raw = Setting.tenant_get(SETTING_KEY, "{}", tenant: Current.tenant).to_s
       JSON.parse(raw)
     rescue JSON::ParserError
       {}

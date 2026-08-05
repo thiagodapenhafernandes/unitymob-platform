@@ -117,6 +117,38 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("Box garagem")
   end
 
+  it "permite duplicar um imóvel criando novo código e mantendo a cópia fora de publicação" do
+    habitation = create(
+      :habitation,
+      codigo: "REQ-DUP-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento para duplicar",
+      exibir_no_site_flag: true,
+      publicar_chaves_na_mao: true,
+      codigo_dwv: "DWV-REQ",
+      imovel_dwv: "Sim"
+    )
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Duplicar")
+    expect(response.body).to include(duplicate_admin_habitation_path(habitation.id))
+
+    expect do
+      post duplicate_admin_habitation_path(habitation)
+    end.to change(Habitation, :count).by(1)
+
+    duplicate = Habitation.order(:created_at).last
+    expect(response).to redirect_to(edit_admin_habitation_path(duplicate))
+    expect(duplicate.codigo).to be_present
+    expect(duplicate.codigo).not_to eq(habitation.codigo)
+    expect(duplicate.titulo_anuncio).to eq("Apartamento para duplicar")
+    expect(duplicate.exibir_no_site_flag).to be(false)
+    expect(duplicate.publicar_chaves_na_mao).to be(false)
+    expect(duplicate.codigo_dwv).to be_nil
+    expect(duplicate.imovel_dwv).to be_nil
+  end
+
   it "usa empreendimento e unidade no subtítulo do topo do detalhe" do
     habitation = create(
       :habitation,

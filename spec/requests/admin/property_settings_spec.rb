@@ -41,7 +41,10 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Aprendizado supervisionado", "Termos candidatos", "Buscas recentes")
     html = Nokogiri::HTML(response.body)
     expect(html.css(".ax-range-field").size).to eq(2)
-    expect(html.css('.ax-radio-group input[data-watermark-preview-target="positionInput"]').size).to eq(PropertySetting::WATERMARK_POSITIONS.size)
+    expect(html.css('.property-settings-watermark-map input[data-watermark-preview-target="positionInput"]').size).to eq(5)
+    expect(html.css(".property-settings-watermark-map__option--top_left")).to be_present
+    expect(html.css(".property-settings-watermark-map__option--top_right")).to be_present
+    expect(response.body).to include("Clique na área desejada")
     expect(html.at_css('.ax-file-field input[data-watermark-preview-target="fileInput"]')).to be_present
     expect(html.css(".tab-content, .tab-pane, .property-settings-tabs-card, .property-settings-range, .property-settings-position-option")).to be_empty
     expect(html.css("#property-settings-ai-search .ax-field > label.ax-field-label").size).to be >= 35
@@ -53,13 +56,13 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
     setting = PropertySetting.instance
     setting.update!(
-      watermark_position: "bottom_right",
+      watermark_position: "top_right",
       watermark_size_percentage: 44,
       watermark_opacity_percentage: 65,
       watermark_image: png_upload("watermark.png", "120x60", "none", "white")
     )
 
-    expect(setting.watermark_position).to eq("bottom_right")
+    expect(setting.watermark_position).to eq("top_right")
     expect(setting.watermark_size_percentage).to eq(44)
     expect(setting.watermark_opacity_percentage).to eq(65)
     expect(setting.watermark_image).to be_attached

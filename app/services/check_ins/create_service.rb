@@ -48,7 +48,7 @@ module CheckIns
     end
 
     def call
-      return fail_with(:feature_disabled) unless FieldFeatureGate.field_checkin_enabled?
+      return fail_with(:feature_disabled) unless FieldFeatureGate.field_checkin_enabled?(tenant: @admin_user&.tenant)
       return fail_with(:not_field_agent)  unless FieldFeatureGate.field_agent_allowed?(@admin_user, tenant: @admin_user&.tenant)
       return fail_with(:missing_coordinates) if @lat.blank? || @lng.blank?
       # Rejeita coordenadas fora de faixa / lat-lng trocados ANTES de tocar o

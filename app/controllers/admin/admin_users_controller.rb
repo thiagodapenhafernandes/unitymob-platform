@@ -12,7 +12,7 @@ module Admin
         return
       end
 
-      status = Vista::SyncStatusService.new.snapshot
+      status = Vista::SyncStatusService.new(tenant: current_tenant).snapshot
       if status[:status] == "processing"
         redirect_to admin_admin_users_path, alert: "Uma sincronização já está em andamento."
         return
@@ -24,7 +24,7 @@ module Admin
     end
 
     def vista_sync_status
-      @status = Vista::SyncStatusService.new.snapshot
+      @status = Vista::SyncStatusService.new(tenant: current_tenant).snapshot
       render partial: "admin/admin_users/vista_sync_panel", locals: { status: @status }
     end
 
@@ -34,7 +34,7 @@ module Admin
         return
       end
 
-      status = Vista::SyncStatusService.new(namespace: "brokers_backfill").snapshot
+      status = Vista::SyncStatusService.new(namespace: "brokers_backfill", tenant: current_tenant).snapshot
       if status[:status] == "processing"
         redirect_to admin_admin_users_path, alert: "Backfill já está em andamento."
         return
@@ -46,7 +46,7 @@ module Admin
     end
 
     def backfill_brokers_status
-      @status = Vista::SyncStatusService.new(namespace: "brokers_backfill").snapshot
+      @status = Vista::SyncStatusService.new(namespace: "brokers_backfill", tenant: current_tenant).snapshot
       render partial: "admin/admin_users/backfill_brokers_panel", locals: { status: @status }
     end
 
@@ -91,8 +91,8 @@ module Admin
       end
       @manager_options = current_tenant.admin_users.account_members.where(id: manager_ids.compact.uniq).order(:name)
       @manager_options = @manager_options.where(id: visible_admin_user_ids) unless visible_admin_user_ids.nil?
-      @vista_sync_status = Vista::SyncStatusService.new.snapshot
-      @brokers_backfill_status = Vista::SyncStatusService.new(namespace: "brokers_backfill").snapshot
+      @vista_sync_status = Vista::SyncStatusService.new(tenant: current_tenant).snapshot
+      @brokers_backfill_status = Vista::SyncStatusService.new(namespace: "brokers_backfill", tenant: current_tenant).snapshot
 
       @admin_users = @admin_users.order(name: :asc).paginate(page: params[:page], per_page: 20)
       @selected_admin_user = @admin_users.first

@@ -11,6 +11,11 @@ RSpec.describe "Habitation details", type: :request do
     "#{Storage::PublicPropertyPhoto.public_base_url}/spec/#{filename}"
   end
 
+  def csrf_token_from(path)
+    get path
+    Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
+  end
+
   describe "GET /imoveis/:id" do
     it "renders a public habitation by slug" do
       habitation = create(:habitation, codigo: "8397", slug: "casa-em-condominio-8397")
@@ -183,12 +188,36 @@ RSpec.describe "Habitation details", type: :request do
       admin = create(:admin_user)
       habitation = create(:habitation, tenant: admin.tenant, codigo: "SHARE-OK", slug: "share-ok")
       sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
 
-      post share_link_habitation_path(habitation), as: :json
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.fetch("url")).to include("share_token=")
       expect(response.parsed_body.fetch("url")).to include("preview=")
+    end
+
+    it "does not create a tracked share link while the local property photo is not public yet" do
+      admin = create(:admin_user)
+      habitation = create(:habitation, tenant: admin.tenant, codigo: "SHARE-PENDING", slug: "share-pending")
+      habitation.update_column(:pictures, [])
+      habitation.photos.attach(
+        io: StringIO.new(Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")),
+        filename: "foto-pendente.png",
+        content_type: "image/png"
+      )
+      sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
+
+      allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_return(true)
+      allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.saluteimoveis.com.br/foto-pendente.png")
+      allow_any_instance_of(HabitationsController).to receive(:social_image_url_accessible?).and_return(false)
+
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body.fetch("error")).to include("foto do imóvel ainda está sendo preparada")
+      expect(HabitationShareLink.where(habitation: habitation)).not_to exist
     end
 
     it "creates a private tracked link for an unavailable property without making its plain URL public" do

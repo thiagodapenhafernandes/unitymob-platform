@@ -17,13 +17,13 @@ module Ai
 
     PROMPT_SETTING = "seo_ai_strategy_prompt".freeze
 
-    def self.connected?
-      Ai::PropertyContentService.connected?
+    def self.connected?(tenant: Current.tenant)
+      Ai::PropertyContentService.connected?(tenant: tenant)
     end
 
     def self.instructions(tenant: Current.tenant)
       fallback = default_prompt(tenant)
-      Setting.get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
+      Setting.tenant_get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
     end
 
     def self.default_prompt(tenant)
@@ -34,8 +34,8 @@ module Ai
       DEFAULT_PROMPT.gsub("Balneário Camboriú, Praia Brava e região", city)
     end
 
-    def self.save_instructions!(value)
-      Setting.set(PROMPT_SETTING, value.to_s, "Instruções estratégicas da IA para SEO")
+    def self.save_instructions!(value, tenant: Current.tenant)
+      Setting.set(PROMPT_SETTING, value.to_s, "Instruções estratégicas da IA para SEO", tenant: tenant)
     end
 
     def initialize(seo_setting)
@@ -70,7 +70,7 @@ module Ai
     private
 
     def request_generation
-      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key).create_response(openai_payload)
+      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(openai_payload)
       parsed = JSON.parse(extract_text(response))
       validate!(parsed)
       parsed
@@ -78,7 +78,7 @@ module Ai
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.model,
+        model: Ai::PropertyContentService.model(tenant: tenant),
         instructions: system_instructions,
         input: page_payload.to_json,
         text: {
@@ -117,7 +117,7 @@ module Ai
         Retorne apenas JSON no schema solicitado.
 
         INSTRUÇÕES ESTRATÉGICAS:
-        #{self.class.instructions(tenant: @seo_setting.tenant)}
+        #{self.class.instructions(tenant: tenant)}
       TEXT
     end
 
@@ -152,6 +152,10 @@ module Ai
       raise "Resposta da IA sem keywords." unless parsed["keywords"].is_a?(Array)
       raise "Resposta da IA sem texto introdutório." unless parsed.key?("intro_text")
       raise "Resposta da IA sem insights." unless parsed["insights"].is_a?(Array)
+    end
+
+    def tenant
+      @seo_setting.tenant || Current.tenant
     end
   end
 end

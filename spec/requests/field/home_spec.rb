@@ -8,8 +8,8 @@ RSpec.describe "Field::Home", type: :request do
   before { host! "localhost" }
 
   it "mostra o botão de check-in para usuário ativo quando a feature está ligada" do
-    Setting.set("field_checkin_enabled", "true")
     broker = create(:admin_user, name: "Thiago Dev")
+    Setting.set("field_checkin_enabled", "true", tenant: broker.tenant)
     sign_in broker
 
     get field_root_path, headers: mobile_headers
@@ -30,8 +30,8 @@ RSpec.describe "Field::Home", type: :request do
   end
 
   it "oculta o botão de check-in para usuário bloqueado pontualmente" do
-    Setting.set("field_checkin_enabled", "true")
     broker = create(:admin_user, name: "Thiago Dev")
+    Setting.set("field_checkin_enabled", "true", tenant: broker.tenant)
     FieldFeatureGate.disable_agent!(broker, tenant: broker.tenant)
     sign_in broker
 
@@ -43,8 +43,8 @@ RSpec.describe "Field::Home", type: :request do
   end
 
   it "oculta qualquer estado de check-in quando o módulo está pausado" do
-    Setting.set("field_checkin_enabled", "false")
     broker = create(:admin_user, :field_agent, name: "Thiago Dev")
+    Setting.set("field_checkin_enabled", "false", tenant: broker.tenant)
     sign_in broker
 
     get field_root_path, headers: mobile_headers

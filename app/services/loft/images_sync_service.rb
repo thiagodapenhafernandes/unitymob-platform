@@ -9,7 +9,7 @@ module Loft
     end
 
     def call(limit: 100)
-      scope = tenant.habitations.where.not(codigo: [nil, ""]).where.not(imovel_dwv: "Sim").order(updated_at: :desc).limit(limit.to_i.clamp(1, 500))
+      scope = syncable_habitations_scope.order(updated_at: :desc).limit(limit.to_i.clamp(1, 500))
 
       synced = 0
       skipped = 0
@@ -28,6 +28,12 @@ module Loft
     private
 
     attr_reader :tenant
+
+    def syncable_habitations_scope
+      tenant.habitations
+        .where.not(codigo: [nil, ""])
+        .where("imovel_dwv IS NULL OR imovel_dwv <> ?", "Sim")
+    end
 
     def sync_habitation_images(habitation)
       pictures = habitation.pictures.is_a?(Array) ? habitation.pictures : []
@@ -49,8 +55,12 @@ module Loft
         end
 
         begin
-          io = URI.open(url, read_timeout: 20, open_timeout: 10)
-          service_name = StorageIntegrationSetting.current.photo_service_name
+          io = URI.open(
+            url,
+            read_timeout: ENV.fetch("VISTA_PHOTO_READ_TIMEOUT", "20").to_i,
+            open_timeout: ENV.fetch("VISTA_PHOTO_OPEN_TIMEOUT", "10").to_i
+          )
+          service_name = StorageIntegrationSetting.current(tenant: tenant).photo_service_name
           Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name == :local
           content_type = io.respond_to?(:content_type) ? io.content_type : Marcel::MimeType.for(io, name: filename)
           io.rewind if io.respond_to?(:rewind)

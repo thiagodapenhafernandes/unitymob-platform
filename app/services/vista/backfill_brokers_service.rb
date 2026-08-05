@@ -6,8 +6,6 @@ module Vista
   # Uso: Vista::BackfillBrokersService.call
   # Status publicado em SyncStatusService(namespace: "brokers_backfill").
   class BackfillBrokersService
-    VISTA_KEY  = ENV.fetch('VISTA_KEY')  { 'ea83a702a7669520304be011258289fd' }
-    VISTA_HOST = ENV.fetch('VISTA_HOST') { 'http://saluteim20174-rest.vistahost.com.br' }
     PAGE_SIZE  = 50   # Vista API retorna 400 pra quantidades maiores
 
     def self.call
@@ -15,7 +13,7 @@ module Vista
     end
 
     def initialize
-      @status = SyncStatusService.new(namespace: "brokers_backfill")
+      @status = SyncStatusService.new(namespace: "brokers_backfill", tenant: tenant)
       @broker_cache = tenant.admin_users.where.not(vista_id: nil).pluck(:vista_id, :id).to_h
     end
 
@@ -109,6 +107,16 @@ module Vista
       Current.tenant || raise(ArgumentError, "Tenant obrigatório para backfill de corretores Vista")
     end
 
+    def vista_host
+      Setting.tenant_get("loft_host", tenant: tenant).to_s.presence ||
+        raise("Host Vista não configurado para este tenant.")
+    end
+
+    def vista_key
+      Setting.tenant_get("loft_token", tenant: tenant).to_s.presence ||
+        raise("Token Vista não configurado para este tenant.")
+    end
+
     def empty_stats
       { processed: 0, linked: 0, unchanged: 0, missing_broker: 0, not_found_codigo: 0, page: 0, total_pages: 0 }
     end
@@ -122,8 +130,8 @@ module Vista
         fields:     ['Codigo', 'CodigoCorretor'],
         paginacao:  { pagina: page, quantidade: PAGE_SIZE }
       }
-      url = "#{VISTA_HOST}/imoveis/listar"
-      resp = RestClient.get(url, { params: { key: VISTA_KEY, pesquisa: query.to_json, showtotal: 1 }, accept: :json })
+      url = "#{vista_host}/imoveis/listar"
+      resp = RestClient.get(url, { params: { key: vista_key, pesquisa: query.to_json, showtotal: 1 }, accept: :json })
       JSON.parse(resp.body)
     rescue => e
       Rails.logger.warn("[Vista Backfill] Falha na página #{page}: #{e.message}")

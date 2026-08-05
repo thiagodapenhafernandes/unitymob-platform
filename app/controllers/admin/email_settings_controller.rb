@@ -47,7 +47,8 @@ module Admin
       Setting.set(
         "email_smtp_last_test",
         { ok: ok, to: to, error: error.to_s.first(200).presence, at: Time.current.iso8601 }.to_json,
-        "Resultado do último teste de SMTP"
+        "Resultado do último teste de SMTP",
+        tenant: current_tenant
       )
     rescue => e
       Rails.logger.warn "[EmailSettings] não registrou resultado do teste: #{e.message}"
