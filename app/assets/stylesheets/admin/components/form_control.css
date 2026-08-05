@@ -44,6 +44,14 @@ textarea.ax-control,
   resize: vertical;
 }
 
+textarea.ax-control--code,
+.ax-field textarea.ax-control--code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
 :where(
   .ax-control:disabled,
   .ax-control[readonly],

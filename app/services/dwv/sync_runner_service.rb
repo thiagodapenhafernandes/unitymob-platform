@@ -18,8 +18,8 @@ module Dwv
       ensure_enabled_and_token!
       @status_service = status_service
 
-      normalized_limit = normalize_limit(limit || Setting.get("dwv_sync_limit", DEFAULT_LIMIT))
-      normalized_max_pages = normalize_max_pages(max_pages || Setting.get("dwv_sync_max_pages", DEFAULT_MAX_PAGES))
+      normalized_limit = normalize_limit(limit || setting_get("dwv_sync_limit", DEFAULT_LIMIT))
+      normalized_max_pages = normalize_max_pages(max_pages || setting_get("dwv_sync_max_pages", DEFAULT_MAX_PAGES))
       normalized_last_updates = normalize_last_updates(last_updates)
       @status_service&.mark_processing!(
         mode: mode,
@@ -282,14 +282,14 @@ module Dwv
 
     def build_client
       Dwv::Client.new(
-        token: Setting.get("dwv_api_token"),
-        base_url: Setting.get("dwv_base_url", DEFAULT_BASE_URL)
+        token: setting_get("dwv_api_token"),
+        base_url: setting_get("dwv_base_url", DEFAULT_BASE_URL)
       )
     end
 
     def ensure_enabled_and_token!
-      enabled = Setting.get("dwv_enabled", "false") == "true"
-      token = Setting.get("dwv_api_token").to_s
+      enabled = setting_get("dwv_enabled", "false") == "true"
+      token = setting_get("dwv_api_token").to_s
 
       raise "Integração DWV desativada." unless enabled
       raise "Token DWV não configurado." if token.blank?
@@ -304,7 +304,7 @@ module Dwv
     end
 
     def request_pause_seconds
-      from_setting = Setting.get("dwv_request_pause_seconds").to_s
+      from_setting = setting_get("dwv_request_pause_seconds").to_s
       value = if from_setting.present?
         from_setting.to_f
       else
@@ -319,6 +319,10 @@ module Dwv
       return "Erro desconhecido" if normalized.blank?
 
       normalized
+    end
+
+    def setting_get(key, default = nil)
+      Setting.tenant_get(key, default, tenant: tenant)
     end
   end
 end

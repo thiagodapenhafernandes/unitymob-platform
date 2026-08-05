@@ -1,0 +1,175 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Contas", admin_system_tenants_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong><%= @tenant.name %></strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_system_tenants_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-building"></i><span>Contas</span>
+  <% end %>
+<% end %>
+
+<div class="ax-system">
+  <%= ax_workspace_heading(
+        eyebrow: "Conta",
+        icon: "building",
+        title: @tenant.name,
+        subtitle: @tenant.slug,
+        pills: [ax_badge(@tenant.active? ? "Ativa" : "Inativa", tone: @tenant.active? ? :green : :gray, dot: true)],
+        metrics: [
+          { value: number_with_delimiter(@profile_count), label: "perfis" },
+          { value: number_with_delimiter(@account_users_count), label: "usuários" }
+        ],
+        actions: safe_join([
+          ax_button("Editar", edit_admin_system_tenant_path(@tenant), variant: :primary, size: :sm, icon: "pencil-square"),
+          ax_button("Voltar", admin_system_tenants_path, variant: :ghost, size: :sm, icon: "arrow-left")
+        ], " ")
+      ) %>
+
+  <div class="ax-system-tenant-layout">
+    <aside class="ax-system-tenant-aside">
+      <%= ax_operational_panel(
+            eyebrow: "Resumo",
+            title: "Dados da conta",
+            actions: @tenant.active? ? ax_badge("ativa", tone: :green, dot: true) : ax_badge("inativa", tone: :gray, dot: true)
+          ) do %>
+        <div class="ax-system-tenant-owner">
+          <%= ax_avatar(name: @owner&.name || @tenant.name, size: :lg) %>
+          <div>
+            <strong><%= @owner&.name || "Sem dono ativo" %></strong>
+            <span><%= @owner&.email || "Cadastre ou vincule o Dono da conta" %></span>
+          </div>
+        </div>
+
+        <%= ax_status_list(
+              rows: [
+                { label: "Slug", value: @tenant.slug },
+                { label: "Site", value: @tenant.public_site_theme_label },
+                { label: "Domínios", value: number_with_delimiter(@tenant_domains.count) },
+                { label: "Criada em", value: l(@tenant.created_at, format: :short) },
+                { label: "Atualizada em", value: l(@tenant.updated_at, format: :short) }
+              ]
+            ) %>
+
+        <div class="ax-system-tenant-actions">
+          <% if @tenant.active? && @owner %>
+            <%= button_to "Impersonar dono",
+                  admin_system_tenant_owner_impersonation_path(@tenant),
+                  method: :post,
+                  class: "ax-btn ax-btn--primary",
+                  form: { data: { turbo: false, turbo_confirm: "Entrar em #{@tenant.name} como #{@owner.name}?" } } %>
+          <% end %>
+
+          <%= ax_button("Editar conta", edit_admin_system_tenant_path(@tenant), variant: :secondary, icon: "pencil-square", class_name: "ax-btn--block") %>
+        </div>
+      <% end %>
+    </aside>
+
+    <div class="ax-system-tenant-main">
+      <%= ax_operational_panel(
+            eyebrow: "Site público",
+            title: "Identidade visual resolvida",
+            actions: ax_badge(@tenant.public_site_theme_label, tone: :blue)
+          ) do %>
+        <% current_theme_config = Tenant::PUBLIC_SITE_THEMES.fetch(@tenant.public_site_theme_key) %>
+        <div class="ax-system-theme-readonly">
+          <div class="ax-system-theme-current">
+            <span class="ax-system-theme-current__icon"><%= ax_icon("palette") %></span>
+            <div>
+              <strong><%= current_theme_config[:label] %></strong>
+              <span><%= current_theme_config[:description] %></span>
+              <code><%= current_theme_config[:stylesheet] %>.css</code>
+            </div>
+          </div>
+          <%= ax_button("Alterar no editor", edit_admin_system_tenant_path(@tenant), variant: :primary, size: :sm, icon: "pencil-square") %>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(
+            eyebrow: "Site público",
+            title: "Domínios da conta",
+            actions: safe_join([
+              ax_badge("sem emissão automática de SSL", tone: :gray),
+              ax_button("Gerenciar", edit_admin_system_tenant_path(@tenant), variant: :ghost, size: :sm, icon: "pencil-square")
+            ], " ")
+          ) do %>
+        <% if @tenant_domains.any? %>
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <caption class="tw-sr-only">Domínios vinculados à conta</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Domínio</th>
+                  <th scope="col">SSL</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @tenant_domains.each do |domain| %>
+                  <tr>
+                    <td class="ax-strong">
+                      <%= domain.hostname %>
+                      <% if domain.primary_domain? %>
+                        <span class="ax-system-admin-role">principal</span>
+                      <% end %>
+                    </td>
+                    <td><%= domain.ssl_mode_label %></td>
+                    <td><%= ax_badge(domain.active? ? "Ativo" : "Inativo", tone: domain.active? ? :green : :gray, dot: true) %></td>
+                    <td><%= domain.notes.presence || "Sem observações" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <%= ax_empty_state(title: "Nenhum domínio cadastrado", description: "Cadastre o domínio que deve resolver o site público desta conta.", icon: "globe", compact: true) %>
+        <% end %>
+
+        <%= ax_inline_notice(tone: :info, icon: "globe", compact: true) do %>
+          O Rails usa esses domínios para escolher o tenant público. DNS, Nginx, certificados e liberação em ADDITIONAL_ALLOWED_HOSTS continuam na infraestrutura.
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%= ax_operational_panel(
+        eyebrow: "Usuários",
+        title: "Usuários da conta",
+        actions: link_to("Ver usuários globais", admin_system_users_path(tenant_id: @tenant.id, user_kind: "account"), class: "ax-dashboard-panel__link")
+      ) do %>
+    <% if @account_users.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <caption class="tw-sr-only">Usuários vinculados à conta</caption>
+          <thead>
+            <tr>
+              <th scope="col">Usuário</th>
+              <th scope="col">Perfil</th>
+              <th scope="col">Função</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @account_users.each do |user| %>
+              <tr>
+                <td class="ax-strong">
+                  <%= user.name %>
+                  <span class="ax-system-admin-role"><%= user.email %></span>
+                </td>
+                <td><%= user.profile&.name || "Sem perfil" %></td>
+                <td><%= user.horizontal_profile&.name || "Sem função" %></td>
+                <td><%= ax_badge(user.active? ? "Ativo" : "Inativo", tone: user.active? ? :green : :gray, dot: true) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(title: "Nenhum usuário da conta", description: "Crie ou vincule o Dono da conta antes de usar a operação.", icon: "people") %>
+    <% end %>
+  <% end %>
+</div>

@@ -48,6 +48,32 @@ RSpec.describe "Tenant isolation for public content" do
     expect(LeadSetting.instance(tenant: tenant_b).stickiness_enabled?).to be(false)
   end
 
+  it "does not inherit global key-value settings for tenant public operations" do
+    Setting.set("#{PublicSiteProfile::PREFIX}.legal_name", "Salute Global", tenant: nil)
+    Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, "0", tenant: nil)
+    Setting.set(HabitationShareLink::EXPIRATION_SETTING_KEY, "7", tenant: nil)
+
+    expect(PublicSiteProfile.current(tenant: tenant_a).legal_name).to be_nil
+    expect(Seo::PageTracker.enabled?(tenant: tenant_a)).to be(true)
+    expect(HabitationShareLink.expiration_days(tenant: tenant_a)).to eq(30)
+  end
+
+  it "does not seed non-default tenant storage from server env credentials" do
+    with_env(
+      "DO_SPACES_BUCKET" => "salute-bucket",
+      "DO_SPACES_ACCESS_KEY_ID" => "salute-access",
+      "DO_SPACES_SECRET_ACCESS_KEY" => "salute-secret",
+      "DO_SPACES_PUBLIC_BASE_URL" => "https://salute-bucket.sfo3.cdn.digitaloceanspaces.com"
+    ) do
+      setting = StorageIntegrationSetting.current(tenant: tenant_b)
+
+      expect(setting.photo_provider).to eq("local")
+      expect(setting.document_provider).to eq("local")
+      expect(setting.do_spaces_bucket).to be_nil
+      expect(Storage::PublicPropertyPhoto.public_base_url(nil, tenant: tenant_b)).to be_nil
+    end
+  end
+
   it "does not expose another tenant's content through sitemap services" do
     tenant_a.landing_pages.create!(title: "Página A", slug: "pagina-a", active: true)
     tenant_b.landing_pages.create!(title: "Página B", slug: "pagina-b", active: true)
@@ -60,5 +86,15 @@ RSpec.describe "Tenant isolation for public content" do
 
     expect(xml).to include("pagina-a")
     expect(xml).not_to include("pagina-b")
+  end
+
+  def with_env(values)
+    previous = values.keys.to_h { |key| [key, ENV[key]] }
+    values.each { |key, value| ENV[key] = value }
+    yield
+  ensure
+    previous.each do |key, value|
+      value.nil? ? ENV.delete(key) : ENV[key] = value
+    end
   end
 end

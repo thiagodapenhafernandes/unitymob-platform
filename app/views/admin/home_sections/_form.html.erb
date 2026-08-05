@@ -13,7 +13,7 @@
 
         <div class="ax-span-6 tw-mb-3">
           <%= f.label :order_position, "Ordem de Exibição", class: "ax-label" %>
-          <%= f.number_field :order_position, class: "ax-control", value: @home_section.order_position || (@home_section.persisted? ? @home_section.order_position : HomeSection.maximum(:order_position).to_i + 1) %>
+          <%= f.number_field :order_position, class: "ax-control", value: @home_section.order_position || (@home_section.persisted? ? @home_section.order_position : current_tenant.home_sections.maximum(:order_position).to_i + 1) %>
           <small class="tw-text-ink-muted">A ordem define a posição da seção na página inicial</small>
         </div>
       <% end %>
@@ -35,11 +35,36 @@
 
       <% if @home_section.section_type.in?(%w[featured_properties opportunities developments rentals]) || !@home_section.persisted? %>
         <div class="border tw-rounded-lg tw-p-2 tw-mb-3">
-          <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Filtros dos imóveis</h6>
+          <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Curadoria de imóveis</h6>
           <p class="ax-page-subtitle tw-mb-3">
-            Estes filtros refinam a lista padrão deste tipo de seção. Deixe todos desmarcados para preservar o comportamento atual.
+            Imóveis selecionados manualmente aparecem primeiro. Os filtros completam a seção com imóveis públicos deste tenant.
           </p>
 
+          <%= f.fields_for :property_filters do |filters_form| %>
+            <div class="tw-mb-4">
+              <%= ax_autocomplete_select_field(
+                    form: filters_form,
+                    method: :selected_property_ids,
+                    label: "Imóveis específicos",
+                    choices: @property_options || [],
+                    select_options: { selected: @home_section.selected_property_ids },
+                    multiple: true,
+                    placeholder: "Buscar por código, título ou localização",
+                    html_options: {
+                      name: "home_section[property_filters][selected_property_ids][]"
+                    },
+                    tom_select_options: {
+                      plugins: ["remove_button"],
+                      maxOptions: 500
+                    }
+                  ) %>
+              <small class="tw-text-ink-muted">
+                A lista mostra imóveis publicáveis da conta atual. Deixe vazio para usar apenas a regra automática da seção.
+              </small>
+            </div>
+          <% end %>
+
+          <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Filtros automáticos</h6>
           <%= ax_chip_grid do %>
             <% HomeSection::PROPERTY_FILTER_OPTIONS.each do |key, option| %>
               <%= ax_toggle_chip(

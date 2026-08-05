@@ -24,4 +24,19 @@ RSpec.describe Tenant, type: :model do
     expect(described_class.public_for(slug: tenant.slug)).to eq(tenant)
     expect(described_class.public_for(slug: "inexistente")).to eq(described_class.default)
   end
+
+  it "resolve o tema publico implicitamente pela identidade da conta" do
+    tenant = described_class.create!(name: "Conexão Imobiliária", slug: "conta-conexao-#{SecureRandom.hex(3)}")
+
+    expect(tenant.public_site_theme_key).to eq("conexaoimobiliaria")
+    expect(tenant.public_site_theme_label).to eq("Conexão Imobiliária")
+    expect(tenant.public_site_stylesheet).to eq("public_site_themes/conexaoimobiliaria")
+  end
+
+  it "usa Salute como fallback quando a conta nao possui skin propria" do
+    tenant = described_class.create!(name: "Conta Tema #{SecureRandom.hex(3)}")
+
+    expect(tenant.public_site_theme_key).to eq("saluteimoveis")
+    expect(tenant.public_site_stylesheet).to eq("public_site_themes/saluteimoveis")
+  end
 end

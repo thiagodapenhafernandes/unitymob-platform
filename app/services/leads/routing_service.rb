@@ -35,25 +35,29 @@ module Leads
     private
 
     def email_enabled?
-      Setting.get("lead_routing_email_enabled") == "true" &&
-      Setting.get("lead_routing_emails_list").present?
+      Setting.tenant_get("lead_routing_email_enabled", tenant: tenant) == "true" &&
+      Setting.tenant_get("lead_routing_emails_list", tenant: tenant).present?
     end
 
     def webhook_enabled?
-      Setting.get("lead_routing_webhook_enabled") == "true" &&
-      Setting.get("lead_routing_webhook_url").present?
+      Setting.tenant_get("lead_routing_webhook_enabled", tenant: tenant) == "true" &&
+      Setting.tenant_get("lead_routing_webhook_url", tenant: tenant).present?
     end
 
     def dispatch_to_email
-      emails = Setting.get("lead_routing_emails_list").to_s.split(",").map(&:strip).reject(&:blank?)
+      emails = Setting.tenant_get("lead_routing_emails_list", tenant: tenant).to_s.split(",").map(&:strip).reject(&:blank?)
       # Notificações via Email seriam feitas aqui via Mailer
       Rails.logger.info "Enviando lead #{@lead.id} para e-mails: #{emails.join(', ')}"
     end
 
     def dispatch_to_webhook
-      url = Setting.get("lead_routing_webhook_url")
+      url = Setting.tenant_get("lead_routing_webhook_url", tenant: tenant)
       # Leads::WebhookJob seria chamado aqui
       Rails.logger.info "Enviando lead #{@lead.id} para webhook: #{url}"
+    end
+
+    def tenant
+      @lead.tenant || Current.tenant || raise(ArgumentError, "Tenant obrigatório para roteamento de leads")
     end
   end
 end

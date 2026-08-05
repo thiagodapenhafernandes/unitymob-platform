@@ -5,7 +5,7 @@ RSpec.describe CheckIns::CreateService do
   let!(:store) { create(:store, latitude: -26.9906, longitude: -48.6348, geofence_radius_meters: 150) }
 
   before do
-    Setting.set("field_checkin_enabled", "true")
+    Setting.set("field_checkin_enabled", "true", tenant: user.tenant)
     now = Time.current.in_time_zone(store.timezone_obj)
     store.update!(turnos_config: operational_shift_config_for(now))
   end
@@ -32,7 +32,7 @@ RSpec.describe CheckIns::CreateService do
     end
 
     context "feature flag desligada" do
-      before { Setting.set("field_checkin_enabled", "false") }
+      before { Setting.set("field_checkin_enabled", "false", tenant: user.tenant) }
 
       it "falha com :feature_disabled" do
         result = described_class.new(admin_user: user, lat: -26.99, lng: -48.63).call

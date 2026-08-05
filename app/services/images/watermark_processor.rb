@@ -5,6 +5,8 @@ module Images
     Result = Struct.new(:attachable, :tempfile, keyword_init: true)
 
     GRAVITIES = {
+      "top_left" => "NorthWest",
+      "top_right" => "NorthEast",
       "bottom_left" => "SouthWest",
       "bottom_right" => "SouthEast",
       "center" => "Center"

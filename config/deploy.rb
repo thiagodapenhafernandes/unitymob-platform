@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-set :stages, %w[saluteimoveis]
+set :stages, %w[saluteimoveis conexaoimobiliaria]
 set :stages_dir, "config/deploy"
 
 require "mina/multistage"

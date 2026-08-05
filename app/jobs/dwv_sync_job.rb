@@ -8,7 +8,7 @@ class DwvSyncJob < ApplicationJob
 
     triggered_by = resolve_triggered_by(tenant: tenant, triggered_by_id: triggered_by_id)
     Current.tenant = tenant
-    status_service = Dwv::SyncStatusService.new
+    status_service = Dwv::SyncStatusService.new(tenant: tenant)
     lock_service = Dwv::SyncLockService.new(lease_seconds: ENV.fetch("DWV_SYNC_LOCK_LEASE_SECONDS", "5400"))
     lock_owner = lock_service.acquire
 
@@ -40,10 +40,10 @@ class DwvSyncJob < ApplicationJob
       ("triggered_by=#{triggered_by.id}" if triggered_by.present?)
     ].compact.join(" | ")
 
-    Setting.set("dwv_last_error_summary", errors_by_reason.to_json, "Resumo dos erros por tipo da última sincronização DWV")
+    Setting.set("dwv_last_error_summary", errors_by_reason.to_json, "Resumo dos erros por tipo da última sincronização DWV", tenant: tenant)
     status_service.mark_completed!(mode: mode, message: message)
   rescue => e
-    Setting.set("dwv_last_error_summary", {}.to_json, "Resumo dos erros por tipo da última sincronização DWV")
+    Setting.set("dwv_last_error_summary", {}.to_json, "Resumo dos erros por tipo da última sincronização DWV", tenant: tenant)
     status_service&.mark_failed!(mode: mode, message: "DWV sync (#{mode}) falhou: #{e.message}")
     raise e
   ensure

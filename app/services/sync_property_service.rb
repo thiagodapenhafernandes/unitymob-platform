@@ -1,6 +1,4 @@
 class SyncPropertyService
-  VISTA_KEY  = ENV.fetch('VISTA_KEY')  { 'ea83a702a7669520304be011258289fd' }
-  VISTA_HOST = ENV.fetch('VISTA_HOST') { 'http://saluteim20174-rest.vistahost.com.br' }
   DETALHES_PATH = '/imoveis/detalhes'
   PRESERVED_MANUAL_MODE_FIELDS = %i[
     status situacao valor_venda_cents valor_locacao_cents valor_condominio_cents valor_iptu_cents
@@ -9,8 +7,8 @@ class SyncPropertyService
 
   def initialize(codigo, host: nil, token: nil, preserve_manual_fields: nil, force_empreendimento: false, detach_orphan_parent: false)
     @codigo = codigo
-    @vista_host = host.presence || VISTA_HOST
-    @vista_key = token.presence || VISTA_KEY
+    @vista_host = host.presence
+    @vista_key = token.presence
     @preserve_manual_fields = preserve_manual_fields
     @force_empreendimento = force_empreendimento
     @detach_orphan_parent = detach_orphan_parent
@@ -69,8 +67,7 @@ class SyncPropertyService
   end
 
   def fetch_details(codigo)
-    payload = {
-      'fields' => [
+    fields = [
         'TipoEndereco', 'Endereco', 'Numero', 'Bairro', 'BairroComercial', 'Cidade', 'UF', 'CEP', 'Complemento', 'Pais', 'Imediacoes',
         'Latitude', 'Longitude', 'TituloSite', 'Dormitorios', 'Suites', 'TotalBanheiros', 'Vagas',
         'AreaPrivativa', 'AreaTotal', 'Status', 'Situacao', 'ValorVenda', 'ValorLocacao',
@@ -81,17 +78,27 @@ class SyncPropertyService
         'Corretor', 'CodigoCorretor',
         'DataCadastro', 'DataAtualizacao', 'DataEntrega', { 'Foto' => ['Foto', 'FotoPequena', 'Destaque', 'Ordem'] }
       ]
-    }
 
-    url = "#{@vista_host}#{DETALHES_PATH}"
+    fetch_details_with_fields(codigo, fields)
+  end
+
+  def fetch_details_with_fields(codigo, fields)
+    payload = { 'fields' => fields }
+    url = "#{vista_host}#{DETALHES_PATH}"
     params = {
-      key: @vista_key,
+      key: vista_key,
       imovel: codigo,
       pesquisa: payload.to_json,
       showSuspended: 1
     }
     
-    response = RestClient.get(url, params: params, accept: :json)
+    response = RestClient::Request.execute(
+      method: :get,
+      url: url,
+      headers: { params: params, accept: :json },
+      open_timeout: ENV.fetch("VISTA_API_OPEN_TIMEOUT", "5").to_i,
+      timeout: ENV.fetch("VISTA_API_TIMEOUT", "30").to_i
+    )
     parsed = JSON.parse(response.body)
     return parsed if parsed.is_a?(Hash)
 
@@ -100,6 +107,11 @@ class SyncPropertyService
     body = e.response&.body.to_s
     parsed_error = JSON.parse(body) rescue {}
     api_message = parsed_error["message"].presence || parsed_error["msg"].presence
+    unavailable_field = unavailable_field_from(api_message)
+    if unavailable_field.present? && fields.include?(unavailable_field)
+      return fetch_details_with_fields(codigo, fields - [unavailable_field])
+    end
+
     @last_fetch_error = "Falha ao consultar imóvel #{@codigo} na API Loft: #{api_message.presence || e.response&.code || e.message}"
     nil
   rescue JSON::ParserError
@@ -126,11 +138,12 @@ class SyncPropertyService
       hb['Empreendimento'].to_s.strip.presence
     )
 
+    normalized_status = Habitation.normalize_status(hb['Status'])
     habitation_attrs = {
       titulo_anuncio: hb['TituloSite'],
       categoria: categoria.presence,
       tipo: tipo,
-      status: Habitation.normalize_status(hb['Status']),
+      status: normalized_status,
       situacao: hb['Situacao'],
       endereco: hb['Endereco'],
       numero: hb['Numero'],
@@ -169,7 +182,7 @@ class SyncPropertyService
       data_cadastro_crm: parse_datetime_value(hb['DataCadastro']),
       data_atualizacao_crm: parse_datetime_value(hb['DataAtualizacao']) || Time.current,
       pictures: format_photos(hb['Foto'])
-    }
+    }.merge(inactive_commercial_value_attrs(normalized_status, hb))
 
     address_attrs = {
       tipo_endereco: hb['TipoEndereco'],
@@ -204,6 +217,28 @@ class SyncPropertyService
     (clean.to_f * 100).to_i
   end
 
+  def inactive_commercial_value_attrs(status, hb)
+    status_key = Habitation.normalize_status(status).to_s.parameterize
+
+    if status_key.start_with?("vendido")
+      { valor_vendido_terceiros_cents: first_money_cents(hb, "ValorVenda", "ValorLocacao", "ValorTotalAluguel") || 1 }
+    elsif status_key.start_with?("alugado")
+      { valor_alugado_terceiros_cents: first_money_cents(hb, "ValorLocacao", "ValorTotalAluguel", "ValorVenda") || 1 }
+    elsif status_key.start_with?("suspenso")
+      { motivo_suspensao: hb["Situacao"].presence || hb["Status"].presence || "Suspenso no Vista" }
+    else
+      {}
+    end
+  end
+
+  def first_money_cents(payload, *keys)
+    keys.lazy.map { |key| parse_money(payload[key]) }.find { |value| value.to_i.positive? }
+  end
+
+  def unavailable_field_from(message)
+    Array(message).join(" ").match(/Campo ([^\s]+) não está disponível/) { |match| match[1] }
+  end
+
   def parse_datetime_value(raw)
     return nil if raw.blank?
 
@@ -215,9 +250,21 @@ class SyncPropertyService
   def preserve_manual_fields?
     return ActiveModel::Type::Boolean.new.cast(@preserve_manual_fields) unless @preserve_manual_fields.nil?
 
-    Setting.get("loft_preserve_manual_fields", "true") == "true"
+    Setting.tenant_get("loft_preserve_manual_fields", "true", tenant: tenant) == "true"
   rescue StandardError
     true
+  end
+
+  def vista_host
+    @vista_host.presence ||
+      Setting.tenant_get("loft_host", tenant: tenant).to_s.presence ||
+      raise("Host Vista não configurado para este tenant.")
+  end
+
+  def vista_key
+    @vista_key.presence ||
+      Setting.tenant_get("loft_token", tenant: tenant).to_s.presence ||
+      raise("Token Vista não configurado para este tenant.")
   end
 
   def filtered_habitation_attrs(attrs, existing_record:)

@@ -23,7 +23,7 @@ class DwvSyncAllTenantsJob < ApplicationJob
   private
 
   def dwv_configured_for?(tenant)
-    Setting.get("dwv_enabled", "false", tenant: tenant) == "true" &&
-      Setting.get("dwv_api_token", tenant: tenant).present?
+    Setting.tenant_get("dwv_enabled", "false", tenant: tenant) == "true" &&
+      Setting.tenant_get("dwv_api_token", tenant: tenant).present?
   end
 end

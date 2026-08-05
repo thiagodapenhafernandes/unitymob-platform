@@ -56,15 +56,9 @@ module Portal
 
     private
 
-    # Base de imóveis SEMPRE escopada ao tenant da integração — impede que o
-    # feed de um portal sirva habitations de outros tenants.
-    # - Pré-migration (sem coluna tenant_id): Habitation global, preservando o
-    #   comportamento antigo até a migration rodar.
-    # - Pós-migration com tenant presente: tenant.habitations (isolamento).
-    # - Pós-migration com tenant ausente (registro órfão): nil -> resultado vazio.
+    # Base de imóveis sempre escopada ao tenant da integração.
+    # Registro órfão ou sem tenant não publica nada.
     def tenant_habitations
-      return Habitation.all unless @integration.has_attribute?(:tenant_id)
-
       tenant = @integration.tenant
       return nil if tenant.nil?
 

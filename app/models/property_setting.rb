@@ -80,6 +80,8 @@ class PropertySetting < ApplicationRecord
   WATERMARK_OPACITY_RANGE = 5..100
 
   WATERMARK_POSITIONS = {
+    "top_left" => "Superior esquerdo",
+    "top_right" => "Superior direito",
     "bottom_left" => "Inferior esquerdo",
     "bottom_right" => "Inferior direito",
     "center" => "Centro"

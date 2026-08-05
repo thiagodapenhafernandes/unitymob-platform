@@ -22,13 +22,13 @@ class HabitationShareLink < ApplicationRecord
           .first || create!(habitation: habitation, admin_user: admin_user)
   end
 
-  def self.expiration_days
-    raw_value = Setting.get(EXPIRATION_SETTING_KEY, DEFAULT_EXPIRATION_DAYS.to_s).presence || DEFAULT_EXPIRATION_DAYS.to_s
+  def self.expiration_days(tenant: Current.tenant)
+    raw_value = Setting.tenant_get(EXPIRATION_SETTING_KEY, DEFAULT_EXPIRATION_DAYS.to_s, tenant: tenant).presence || DEFAULT_EXPIRATION_DAYS.to_s
     raw_value.to_i.clamp(MIN_EXPIRATION_DAYS, MAX_EXPIRATION_DAYS)
   end
 
-  def self.expiration_period
-    expiration_days.days
+  def self.expiration_period(tenant: Current.tenant)
+    expiration_days(tenant: tenant).days
   end
 
   def expired?
@@ -51,6 +51,6 @@ class HabitationShareLink < ApplicationRecord
   end
 
   def ensure_expires_at
-    self.expires_at ||= self.class.expiration_period.from_now
+    self.expires_at ||= self.class.expiration_period(tenant: habitation&.tenant || admin_user&.tenant || Current.tenant).from_now
   end
 end

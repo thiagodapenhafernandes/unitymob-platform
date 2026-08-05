@@ -21,17 +21,17 @@ class Admin::DwvIntegrationsController < Admin::BaseController
     enabled = ActiveModel::Type::Boolean.new.cast(dwv_params[:enabled])
     new_token = dwv_params[:api_token].to_s.strip
 
-    Setting.set("dwv_enabled", enabled.to_s, "Habilita integração com DWV")
+    tenant_setting_set("dwv_enabled", enabled.to_s, "Habilita integração com DWV")
     if new_token.present?
-      Setting.set("dwv_api_token", new_token, "Token da API DWV")
+      tenant_setting_set("dwv_api_token", new_token, "Token da API DWV")
     end
-    Setting.set("dwv_base_url", normalized_base_url(dwv_params[:base_url]), "URL base da API DWV")
-    Setting.set("dwv_sync_limit", dwv_params[:sync_limit].to_i.clamp(1, 50).to_s, "Limite por página da sincronização DWV")
-    Setting.set("dwv_sync_max_pages", dwv_params[:sync_max_pages].to_i.clamp(1, 100).to_s, "Máximo de páginas da sincronização DWV")
-    Setting.set("dwv_request_pause_seconds", dwv_params[:request_pause_seconds].to_f.clamp(0.2, 2.0).round(2).to_s, "Pausa entre requisições DWV em segundos")
-    Setting.set("dwv_poll_processing_interval_ms", dwv_params[:poll_processing_interval_ms].to_i.clamp(1000, 30000).to_s, "Polling DWV (processing) em ms")
-    Setting.set("dwv_poll_idle_interval_ms", dwv_params[:poll_idle_interval_ms].to_i.clamp(2000, 60000).to_s, "Polling DWV (idle/skipped) em ms")
-    Setting.set("dwv_poll_slow_interval_ms", dwv_params[:poll_slow_interval_ms].to_i.clamp(5000, 120000).to_s, "Polling DWV (completed/failed) em ms")
+    tenant_setting_set("dwv_base_url", normalized_base_url(dwv_params[:base_url]), "URL base da API DWV")
+    tenant_setting_set("dwv_sync_limit", dwv_params[:sync_limit].to_i.clamp(1, 50).to_s, "Limite por página da sincronização DWV")
+    tenant_setting_set("dwv_sync_max_pages", dwv_params[:sync_max_pages].to_i.clamp(1, 100).to_s, "Máximo de páginas da sincronização DWV")
+    tenant_setting_set("dwv_request_pause_seconds", dwv_params[:request_pause_seconds].to_f.clamp(0.2, 2.0).round(2).to_s, "Pausa entre requisições DWV em segundos")
+    tenant_setting_set("dwv_poll_processing_interval_ms", dwv_params[:poll_processing_interval_ms].to_i.clamp(1000, 30000).to_s, "Polling DWV (processing) em ms")
+    tenant_setting_set("dwv_poll_idle_interval_ms", dwv_params[:poll_idle_interval_ms].to_i.clamp(2000, 60000).to_s, "Polling DWV (idle/skipped) em ms")
+    tenant_setting_set("dwv_poll_slow_interval_ms", dwv_params[:poll_slow_interval_ms].to_i.clamp(5000, 120000).to_s, "Polling DWV (completed/failed) em ms")
 
     redirect_to admin_dwv_integrations_path, notice: "Configuração DWV salva com sucesso."
   rescue => e
@@ -86,7 +86,7 @@ class Admin::DwvIntegrationsController < Admin::BaseController
     ensure_enabled_and_token!
 
     limit = params[:limit].to_i
-    limit = Setting.get("dwv_sync_limit", DEFAULT_SYNC_LIMIT.to_s).to_i if limit <= 0
+    limit = tenant_setting_get("dwv_sync_limit", DEFAULT_SYNC_LIMIT.to_s).to_i if limit <= 0
     limit = [limit, 50].min
     mark_processing!("Sincronização de lote DWV (1 página) iniciada em background.")
 
@@ -123,24 +123,24 @@ class Admin::DwvIntegrationsController < Admin::BaseController
   private
 
   def load_dwv_state
-    status_service = Dwv::SyncStatusService.new
+    status_service = Dwv::SyncStatusService.new(tenant: current_tenant)
 
-    @dwv_enabled = Setting.get("dwv_enabled", "false") == "true"
-    @dwv_api_token = Setting.get("dwv_api_token", "")
+    @dwv_enabled = tenant_setting_get("dwv_enabled", "false") == "true"
+    @dwv_api_token = tenant_setting_get("dwv_api_token", "")
     @dwv_connected = @dwv_enabled && @dwv_api_token.present?
-    @dwv_base_url = Setting.get("dwv_base_url", DEFAULT_BASE_URL)
-    @dwv_sync_limit = Setting.get("dwv_sync_limit", DEFAULT_SYNC_LIMIT.to_s).to_i.clamp(1, 50)
-    @dwv_sync_max_pages = Setting.get("dwv_sync_max_pages", DEFAULT_SYNC_MAX_PAGES.to_s).to_i.clamp(1, 100)
-    @dwv_sync_status = Setting.get("dwv_sync_status")
-    @dwv_sync_progress = Setting.get("dwv_sync_progress", "0").to_i.clamp(0, 100)
+    @dwv_base_url = tenant_setting_get("dwv_base_url", DEFAULT_BASE_URL)
+    @dwv_sync_limit = tenant_setting_get("dwv_sync_limit", DEFAULT_SYNC_LIMIT.to_s).to_i.clamp(1, 50)
+    @dwv_sync_max_pages = tenant_setting_get("dwv_sync_max_pages", DEFAULT_SYNC_MAX_PAGES.to_s).to_i.clamp(1, 100)
+    @dwv_sync_status = tenant_setting_get("dwv_sync_status")
+    @dwv_sync_progress = tenant_setting_get("dwv_sync_progress", "0").to_i.clamp(0, 100)
     @dwv_sync_history = status_service.history(limit: 5)
-    @dwv_request_pause_seconds = Setting.get("dwv_request_pause_seconds", DEFAULT_REQUEST_PAUSE_SECONDS.to_s).to_f.clamp(0.2, 2.0)
-    @dwv_poll_processing_interval_ms = Setting.get("dwv_poll_processing_interval_ms", DEFAULT_POLL_PROCESSING_MS.to_s).to_i.clamp(1000, 30000)
-    @dwv_poll_idle_interval_ms = Setting.get("dwv_poll_idle_interval_ms", DEFAULT_POLL_IDLE_MS.to_s).to_i.clamp(2000, 60000)
-    @dwv_poll_slow_interval_ms = Setting.get("dwv_poll_slow_interval_ms", DEFAULT_POLL_SLOW_MS.to_s).to_i.clamp(5000, 120000)
-    @dwv_last_sync_at = Setting.get("dwv_last_sync_at")
-    @dwv_last_sync_message = Setting.get("dwv_last_sync_message")
-    @dwv_last_error_summary = parse_error_summary(Setting.get("dwv_last_error_summary", "{}"))
+    @dwv_request_pause_seconds = tenant_setting_get("dwv_request_pause_seconds", DEFAULT_REQUEST_PAUSE_SECONDS.to_s).to_f.clamp(0.2, 2.0)
+    @dwv_poll_processing_interval_ms = tenant_setting_get("dwv_poll_processing_interval_ms", DEFAULT_POLL_PROCESSING_MS.to_s).to_i.clamp(1000, 30000)
+    @dwv_poll_idle_interval_ms = tenant_setting_get("dwv_poll_idle_interval_ms", DEFAULT_POLL_IDLE_MS.to_s).to_i.clamp(2000, 60000)
+    @dwv_poll_slow_interval_ms = tenant_setting_get("dwv_poll_slow_interval_ms", DEFAULT_POLL_SLOW_MS.to_s).to_i.clamp(5000, 120000)
+    @dwv_last_sync_at = tenant_setting_get("dwv_last_sync_at")
+    @dwv_last_sync_message = tenant_setting_get("dwv_last_sync_message")
+    @dwv_last_error_summary = parse_error_summary(tenant_setting_get("dwv_last_error_summary", "{}"))
     @dwv_last_sync_time = Time.zone.parse(@dwv_last_sync_at.to_s)
     @dwv_worker_health = fetch_worker_health
   rescue ArgumentError, TypeError
@@ -172,28 +172,36 @@ class Admin::DwvIntegrationsController < Admin::BaseController
 
   def dwv_client
     Dwv::Client.new(
-      token: Setting.get("dwv_api_token"),
-      base_url: Setting.get("dwv_base_url", DEFAULT_BASE_URL)
+      token: tenant_setting_get("dwv_api_token"),
+      base_url: tenant_setting_get("dwv_base_url", DEFAULT_BASE_URL)
     )
   end
 
   def ensure_enabled_and_token!
-    enabled = Setting.get("dwv_enabled", "false") == "true"
-    token = Setting.get("dwv_api_token").to_s
+    enabled = tenant_setting_get("dwv_enabled", "false") == "true"
+    token = tenant_setting_get("dwv_api_token").to_s
 
     raise "Ative a integração DWV antes de sincronizar." unless enabled
     raise "Token DWV não configurado." if token.blank?
   end
 
   def stamp_sync!(message)
-    Setting.set("dwv_last_sync_at", Time.current.iso8601, "Última execução DWV")
-    Dwv::SyncStatusService.new.update_progress!(progress: Setting.get("dwv_sync_progress", "0").to_i, message: message.to_s)
+    tenant_setting_set("dwv_last_sync_at", Time.current.iso8601, "Última execução DWV")
+    Dwv::SyncStatusService.new(tenant: current_tenant).update_progress!(progress: tenant_setting_get("dwv_sync_progress", "0").to_i, message: message.to_s)
   end
 
   def mark_processing!(message)
-    Setting.set("dwv_sync_status", "processing", "Status da sincronização DWV")
-    Setting.set("dwv_sync_progress", "5", "Progresso percentual da sincronização DWV")
-    Setting.set("dwv_last_sync_message", message.to_s, "Resumo da última execução DWV")
+    tenant_setting_set("dwv_sync_status", "processing", "Status da sincronização DWV")
+    tenant_setting_set("dwv_sync_progress", "5", "Progresso percentual da sincronização DWV")
+    tenant_setting_set("dwv_last_sync_message", message.to_s, "Resumo da última execução DWV")
+  end
+
+  def tenant_setting_get(key, default = nil)
+    Setting.tenant_get(key, default, tenant: current_tenant)
+  end
+
+  def tenant_setting_set(key, value, description)
+    Setting.set(key, value, description, tenant: current_tenant)
   end
 
   def parse_error_summary(raw)

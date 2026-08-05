@@ -8,16 +8,16 @@ module Seo
       new(controller).track!
     end
 
-    def self.enabled?
-      Setting.get(AUTO_INVENTORY_SETTING, "1") == "1"
+    def self.enabled?(tenant: Current.tenant)
+      Setting.tenant_get(AUTO_INVENTORY_SETTING, "1", tenant: tenant) == "1"
     end
 
-    def self.auto_apply?
-      Setting.get(AUTO_APPLY_SETTING, "1") == "1"
+    def self.auto_apply?(tenant: Current.tenant)
+      Setting.tenant_get(AUTO_APPLY_SETTING, "1", tenant: tenant) == "1"
     end
 
-    def self.auto_ai?
-      Setting.get(AUTO_AI_SETTING, "1") == "1"
+    def self.auto_ai?(tenant: Current.tenant)
+      Setting.tenant_get(AUTO_AI_SETTING, "1", tenant: tenant) == "1"
     end
 
     def initialize(controller)
@@ -28,7 +28,7 @@ module Seo
       return unless trackable?
 
       identity = PageIdentity.new(@controller).to_h
-      tenant = Current.tenant || @controller.public_tenant
+      tenant = page_tenant
       seo = tenant.seo_settings.find_or_initialize_by(canonical_key: identity[:canonical_key])
       created = seo.new_record?
 
@@ -43,7 +43,7 @@ module Seo
       seo.save! if created || seo.changed?
       record_page_visit(seo)
 
-      enqueue_ai_generation(seo) if created && self.class.auto_ai? && Ai::SeoContentService.connected?
+      enqueue_ai_generation(seo) if created && self.class.auto_ai?(tenant: tenant) && Ai::SeoContentService.connected?(tenant: tenant)
       seo
     rescue => e
       Rails.logger.warn("[Seo::PageTracker] #{e.class}: #{e.message}")
@@ -53,7 +53,7 @@ module Seo
     private
 
     def trackable?
-      self.class.enabled? &&
+      self.class.enabled?(tenant: page_tenant) &&
         @controller.request.get? &&
         @controller.request.format.html? &&
         !admin_request? &&
@@ -82,7 +82,7 @@ module Seo
         robots_index: identity[:robots_index],
         robots_follow: identity[:robots_follow],
         active: true,
-        apply_to_public: created ? self.class.auto_apply? : nil,
+        apply_to_public: created ? self.class.auto_apply?(tenant: page_tenant) : nil,
         auto_discovered: true,
         last_generated_from_path: @controller.request.fullpath,
         meta_title: existing_or_fallback(identity, :title_fallback, created),
@@ -102,6 +102,10 @@ module Seo
 
     def enqueue_ai_generation(seo)
       SeoAiGenerationJob.perform_later(seo.id, tenant_id: seo.tenant_id)
+    end
+
+    def page_tenant
+      @page_tenant ||= Current.tenant || @controller.public_tenant
     end
 
     def record_campaign_visit(seo)

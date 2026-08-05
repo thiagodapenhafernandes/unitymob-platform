@@ -40,7 +40,7 @@ class ApplicationController < ActionController::Base
   end
 
   def public_tenant
-    @public_tenant ||= Tenant.public_for(slug: public_tenant_slug)
+    @public_tenant ||= public_tenant_resolver.tenant
   end
 
   def public_habitations
@@ -59,6 +59,10 @@ class ApplicationController < ActionController::Base
 
   def public_tenant_slug
     params[:tenant_slug].presence || params[:tenant].presence
+  end
+
+  def public_tenant_resolver
+    @public_tenant_resolver ||= Tenants::DomainResolver.new(host: request.host, slug: public_tenant_slug)
   end
 
   def set_current_request_context

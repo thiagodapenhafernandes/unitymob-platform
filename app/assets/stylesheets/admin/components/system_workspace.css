@@ -128,7 +128,449 @@
 .ax-system-admin-role { display: block; margin-top: 2px; font-size: 11px; font-weight: 650; }
 .ax-system-muted { color: var(--ab-muted); font-size: 12px; font-weight: 650; }
 
+.ax-system-tenant-table {
+  min-width: 980px;
+  table-layout: fixed;
+}
+
+.ax-system-tenant-table th:first-child,
+.ax-system-tenant-table td:first-child { width: 24%; }
+
+.ax-system-tenant-table th:nth-child(2),
+.ax-system-tenant-table td:nth-child(2) { width: 22%; }
+
+.ax-system-tenant-table th:nth-child(3),
+.ax-system-tenant-table td:nth-child(3) { width: 25%; }
+
+.ax-system-tenant-table th:nth-child(4),
+.ax-system-tenant-table td:nth-child(4) { width: 10%; }
+
+.ax-system-tenant-table__actions-heading,
+.ax-system-tenant-table__actions {
+  width: 280px;
+  text-align: right;
+}
+
+.ax-system-tenant-account,
+.ax-system-tenant-owner-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ax-system-tenant-account__name,
+.ax-system-tenant-account span,
+.ax-system-tenant-owner-cell span,
+.ax-system-tenant-slug {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-system-tenant-table .ax-system-tenant-account__name {
+  display: block;
+  color: var(--admin-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ax-system-tenant-account span {
+  color: var(--ab-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.ax-system-tenant-slug {
+  display: block;
+  color: #475467;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.ax-system-tenant-actions-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ax-system-tenant-actions-cell__secondary,
+.ax-system-tenant-actions-cell__runtime {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ax-system-tenant-action-form {
+  display: inline-flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.ax-system-tenant-action-form--primary {
+  width: 100%;
+}
+
+.ax-system-tenant-action {
+  gap: 6px;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.ax-system-tenant-action .bi,
+.ax-system-tenant-dev-badge .bi {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.ax-system-tenant-action--primary {
+  justify-content: center;
+  min-width: 128px;
+}
+
+.ax-system-tenant-dev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ax-system-tenant-action-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ax-btn-h-sm);
+  color: var(--ab-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.ax-system-tenant-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.ax-system-tenant-layout--edit {
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+}
+
+.ax-system-tenant-aside,
+.ax-system-tenant-main,
+.ax-system-tenant-edit-form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ax-system-tenant-owner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: var(--ax-control-hover);
+}
+
+.ax-system-tenant-owner > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ax-system-tenant-owner strong,
+.ax-system-tenant-owner span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-system-tenant-owner strong {
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ax-system-tenant-owner span {
+  color: var(--ab-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ax-system-tenant-actions,
+.ax-system-tenant-edit-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ax-system-tenant-actions form,
+.ax-system-tenant-actions .button_to,
+.ax-system-tenant-actions .ax-btn,
+.ax-system-tenant-edit-actions .ax-btn {
+  width: 100%;
+}
+
+.ax-system-theme-form,
+.ax-system-theme-picker {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ax-system-theme-picker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ax-system-theme-picker legend {
+  margin: 0;
+  color: var(--ab-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ax-system-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.ax-system-theme-option {
+  min-width: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.ax-system-theme-option__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ax-system-theme-option__body,
+.ax-system-theme-current {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ax-system-theme-option__body {
+  min-height: 118px;
+  transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
+}
+
+.ax-system-theme-option:hover .ax-system-theme-option__body {
+  border-color: var(--ax-field-hover);
+  background: var(--ax-control-hover);
+}
+
+.ax-system-theme-option:has(.ax-system-theme-option__input:checked) .ax-system-theme-option__body {
+  border-color: color-mix(in srgb, var(--admin-primary) 46%, var(--ax-border-soft));
+  background: color-mix(in srgb, var(--admin-primary) 7%, #fff);
+  box-shadow: inset 3px 0 0 var(--admin-primary);
+}
+
+.ax-system-theme-option:has(.ax-system-theme-option__input:focus-visible) .ax-system-theme-option__body {
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+.ax-system-theme-option__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ax-system-theme-option__mark {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 2px solid #9aa8ba;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.ax-system-theme-option:has(.ax-system-theme-option__input:checked) .ax-system-theme-option__mark {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary);
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
+.ax-system-theme-option__head strong,
+.ax-system-theme-current strong {
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.ax-system-theme-option__description,
+.ax-system-theme-current span {
+  color: var(--ab-muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.ax-system-theme-option__file,
+.ax-system-theme-current code {
+  overflow: hidden;
+  color: var(--admin-primary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-system-theme-footer,
+.ax-system-theme-readonly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ax-system-theme-footer p {
+  margin: 0;
+  color: var(--ab-muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.ax-system-theme-readonly {
+  align-items: stretch;
+}
+
+.ax-system-theme-current {
+  flex: 1 1 auto;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.ax-system-theme-current__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
+.ax-system-theme-current > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ax-system-domain-composer {
+  padding: 12px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: var(--ax-control-hover);
+}
+
+.ax-system-domain-composer__actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+}
+
+.ax-system-domain-composer__actions .ax-btn {
+  min-width: max-content;
+}
+
+.ax-system-domain-edit {
+  min-width: 0;
+}
+
+.ax-system-domain-edit[open] {
+  padding: 10px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: var(--ax-control-hover);
+}
+
+[data-admin-theme="dark"] .ax-system-tenant-owner,
+[data-admin-theme="dark"] .ax-system-domain-composer,
+[data-admin-theme="dark"] .ax-system-domain-edit[open] {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .ax-system-tenant-owner strong,
+[data-admin-theme="dark"] .ax-system-theme-option__head strong,
+[data-admin-theme="dark"] .ax-system-theme-current strong {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-system-tenant-owner span,
+[data-admin-theme="dark"] .ax-system-tenant-account span,
+[data-admin-theme="dark"] .ax-system-tenant-slug,
+[data-admin-theme="dark"] .ax-system-tenant-action-note,
+[data-admin-theme="dark"] .ax-system-theme-option__description,
+[data-admin-theme="dark"] .ax-system-theme-current span,
+[data-admin-theme="dark"] .ax-system-theme-footer p {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-system-theme-option__body,
+[data-admin-theme="dark"] .ax-system-theme-current {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .ax-system-theme-option:hover .ax-system-theme-option__body,
+[data-admin-theme="dark"] .ax-system-theme-option:has(.ax-system-theme-option__input:checked) .ax-system-theme-option__body {
+  border-color: #6294cc;
+  background: #203a5c;
+}
+
+[data-admin-theme="dark"] .ax-system-theme-option__mark {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .ax-system-theme-option__file,
+[data-admin-theme="dark"] .ax-system-theme-current code,
+[data-admin-theme="dark"] .ax-system-theme-current__icon {
+  color: var(--ax-dark-info-text);
+}
+
+[data-admin-theme="dark"] .ax-system-theme-current__icon {
+  background: var(--ax-dark-info-surface);
+}
+
 @media (max-width: 900px) {
+  .ax-system-tenant-layout,
+  .ax-system-tenant-layout--edit { grid-template-columns: 1fr; }
+  .ax-system-tenant-table { min-width: 880px; }
+  .ax-system-tenant-table__actions-heading,
+  .ax-system-tenant-table__actions { width: 240px; }
   .ax-system-job-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ax-system-admin-summary { flex-direction: column; }
   .ax-system-admin-summary__badges { justify-content: flex-start; }
@@ -141,4 +583,14 @@
   .ax-system-job-strip { grid-template-columns: 1fr; }
   .ax-system-filter-actions { align-items: stretch; flex-direction: column; }
   .ax-system-filter-actions .ax-btn { width: 100%; }
+  .ax-system-tenant-actions,
+  .ax-system-tenant-edit-actions,
+  .ax-system-theme-footer,
+  .ax-system-theme-readonly {
+    align-items: stretch;
+    flex-direction: column;
+    grid-template-columns: 1fr;
+  }
+  .ax-system-domain-composer__actions { justify-content: stretch; }
+  .ax-system-domain-composer__actions .ax-btn { width: 100%; }
 }

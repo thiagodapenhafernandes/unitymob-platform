@@ -68,52 +68,19 @@
 
   <%= ax_operational_panel(
         eyebrow: "Contas",
-        title: "Acesso por impersonação",
-        actions: ax_badge("sem acesso operacional direto", tone: :gray)
+        title: "Gestão de contas",
+        actions: safe_join([
+          ax_button("Abrir contas", admin_system_tenants_path, variant: :primary, size: :sm, icon: "building"),
+          ax_badge("sem acesso operacional direto", tone: :gray)
+        ], " ")
       ) do %>
-    <p class="ax-page-subtitle">
-      Admins do Sistema administram a plataforma inteira. Para abrir áreas operacionais
-      de uma conta, entre como o Dono da conta via impersonação.
-    </p>
-
-    <% if @tenants.any? %>
-      <div class="ax-table-wrap">
-        <table class="ax-table">
-          <caption class="tw-sr-only">Contas ativas disponíveis para impersonação pelo Dono da conta</caption>
-          <thead>
-            <tr>
-              <th scope="col">Conta</th>
-              <th scope="col">Slug</th>
-              <th scope="col">Dono da conta</th>
-              <th scope="col" class="ax-num ax-table__col--w-120">Ação</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @tenants.each do |tenant| %>
-              <% owner = @tenant_owners_by_tenant_id[tenant.id] %>
-              <tr>
-                <td class="ax-strong"><%= tenant.name %></td>
-                <td><%= tenant.slug %></td>
-                <td><%= owner&.name || "Sem dono ativo" %></td>
-                <td class="ax-num">
-                  <% if owner %>
-                    <%= button_to "Impersonar",
-                          admin_system_tenant_owner_impersonation_path(tenant),
-                          method: :post,
-                          class: "ax-dashboard-panel__link",
-                          form: { data: { turbo: false } } %>
-                  <% else %>
-                    <span class="ax-system-muted">Indisponível</span>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <%= ax_empty_state(title: "Nenhum Tenant ativo", description: "Crie ou reative uma conta para acessar áreas operacionais.", icon: "building") %>
-    <% end %>
+    <%= ax_status_list(
+          rows: [
+            { label: "Contas cadastradas", value: number_with_delimiter(@tenants_count.to_i) },
+            { label: "Contas ativas", value: number_with_delimiter(@active_tenants_count.to_i) },
+            { label: "Acesso operacional", value: "Somente por impersonação do Dono da conta" }
+          ]
+        ) %>
   <% end %>
 
   <%= ax_operational_panel(

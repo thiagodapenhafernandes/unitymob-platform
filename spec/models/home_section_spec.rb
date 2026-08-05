@@ -28,5 +28,35 @@ RSpec.describe HomeSection, type: :model do
       expect(section.apply_property_filters(Habitation.all)).to include(published)
       expect(section.apply_property_filters(Habitation.all)).not_to include(hidden)
     end
+
+    it "preserva IDs selecionados manualmente de forma normalizada" do
+      section = described_class.new(
+        section_type: "featured_properties",
+        title: "Destaques",
+        property_filters: { "selected_property_ids" => ["", "12", "12", "abc", "34"] }
+      )
+
+      section.valid?
+
+      expect(section.selected_property_ids).to eq([12, 34])
+      expect(section.property_filters).to eq("selected_property_ids" => [12, 34])
+      expect(section.property_filter_labels).to include("2 imóveis selecionados")
+    end
+
+    it "aplica filtros comerciais adicionais sem mudar o escopo recebido" do
+      section = described_class.new(
+        section_type: "opportunities",
+        title: "Oportunidades",
+        property_filters: { "frente_mar" => "1", "preco_reduzido" => "1" }
+      )
+      matching = create(:habitation, frente_mar_avenida_atlantica_flag: true, valor_venda_cents: 900_000_00, valor_venda_anterior_cents: 1_000_000_00)
+      without_discount = create(:habitation, frente_mar_avenida_atlantica_flag: true, valor_venda_cents: 900_000_00, valor_venda_anterior_cents: 900_000_00)
+      without_location = create(:habitation, frente_mar_avenida_atlantica_flag: false, valor_venda_cents: 900_000_00, valor_venda_anterior_cents: 1_000_000_00)
+
+      filtered = section.apply_property_filters(Habitation.all)
+
+      expect(filtered).to include(matching)
+      expect(filtered).not_to include(without_discount, without_location)
+    end
   end
 end

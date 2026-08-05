@@ -217,7 +217,7 @@ class Habitation < ApplicationRecord
   end
 
   def self.photography_schedule_url
-    Setting.get("photography_schedule_url", "").to_s.strip
+    Setting.tenant_get("photography_schedule_url", "").to_s.strip
   end
 
   def self.normalized_public_listing_count_filters(filters)

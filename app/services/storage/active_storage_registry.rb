@@ -2,7 +2,7 @@ module Storage
   module ActiveStorageRegistry
     module_function
 
-    def register!(setting = StorageIntegrationSetting.current)
+    def register!(setting = StorageIntegrationSetting.current(tenant: Current.tenant))
       registry = ActiveStorage::Blob.services
       configurations = registry.instance_variable_get(:@configurations)
       services = registry.instance_variable_get(:@services)

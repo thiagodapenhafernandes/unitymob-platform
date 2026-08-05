@@ -36,10 +36,12 @@ class StorageIntegrationSetting < ApplicationRecord
   end
 
   def self.create_from_environment!(tenant:)
-    create!(defaults_from_environment.merge(tenant: tenant))
+    create!(defaults_from_environment(tenant: tenant).merge(tenant: tenant))
   end
 
-  def self.defaults_from_environment
+  def self.defaults_from_environment(tenant: nil)
+    return local_defaults unless environment_defaults_allowed?(tenant)
+
     active_service = Rails.configuration.active_storage.service.to_s
     do_provider = "digital_ocean" if active_service == "do_spaces" && digital_ocean_environment_ready?
     s3_provider = "amazon_s3" if %w[amazon amazon_s3].include?(active_service) && amazon_environment_ready?
@@ -62,6 +64,24 @@ class StorageIntegrationSetting < ApplicationRecord
       s3_access_key_id: ENV["AWS_ACCESS_KEY_ID"].presence || ENV["S3_ACCESS_KEY_ID"].presence,
       s3_secret_access_key: ENV["AWS_SECRET_ACCESS_KEY"].presence || ENV["S3_SECRET_ACCESS_KEY"].presence
     }.compact
+  end
+
+  def self.local_defaults
+    {
+      photo_provider: "local",
+      document_provider: "local",
+      public_photos_enabled: true,
+      do_spaces_region: ENV.fetch("DO_SPACES_REGION", "sfo3"),
+      do_spaces_endpoint: ENV.fetch("DO_SPACES_ENDPOINT", "https://sfo3.digitaloceanspaces.com"),
+      s3_region: ENV.fetch("AWS_REGION", ENV.fetch("S3_REGION", "us-east-1"))
+    }
+  end
+
+  def self.environment_defaults_allowed?(tenant)
+    return false if tenant.blank?
+
+    default_slug = ENV.fetch("DEFAULT_TENANT_SLUG", Tenant::DEFAULT_SLUG)
+    tenant.slug == default_slug
   end
 
   def self.digital_ocean_environment_ready?
@@ -197,6 +217,34 @@ class StorageIntegrationSetting < ApplicationRecord
     self.class.clear_current_cache
   end
 
+  def digital_ocean_public_base_url
+    raw = do_spaces_public_base_url.presence ||
+      "https://#{do_spaces_bucket}.#{do_spaces_region}.cdn.digitaloceanspaces.com"
+
+    normalize_public_url(raw)
+  end
+
+  def digital_ocean_origin_base_url
+    return if do_spaces_bucket.blank? || do_spaces_region.blank?
+
+    normalize_public_url("https://#{do_spaces_bucket}.#{do_spaces_region}.digitaloceanspaces.com")
+  end
+
+  def default_digital_ocean_bucket_name
+    candidates = [tenant&.name, tenant&.slug, "tenant-#{tenant_id}"]
+    candidates.each do |candidate|
+      normalized = normalize_bucket_name(candidate)
+      return normalized if normalized.present?
+    end
+  end
+
+  def amazon_public_base_url
+    raw = s3_public_base_url.presence ||
+      "https://#{s3_bucket}.s3.#{s3_region}.amazonaws.com"
+
+    normalize_public_url(raw)
+  end
+
   private
 
   def tenant_service_name(base_name)
@@ -244,22 +292,15 @@ class StorageIntegrationSetting < ApplicationRecord
     }.compact
   end
 
-  def digital_ocean_public_base_url
-    raw = do_spaces_public_base_url.presence ||
-      "https://#{do_spaces_bucket}.#{do_spaces_region}.cdn.digitaloceanspaces.com"
-
-    normalize_public_url(raw)
-  end
-
-  def amazon_public_base_url
-    raw = s3_public_base_url.presence ||
-      "https://#{s3_bucket}.s3.#{s3_region}.amazonaws.com"
-
-    normalize_public_url(raw)
-  end
-
   def normalize_public_url(value)
     value.to_s.sub(%r{/\z}, "").presence
+  end
+
+  def normalize_bucket_name(value)
+    name = value.to_s.parameterize
+    name = "tenant-#{tenant_id}" if name.blank? || name.length < 3
+    name = name.first(63).sub(/-+\z/, "")
+    name.length >= 3 ? name : nil
   end
 
   def assign_encrypted_secret(attribute, value)

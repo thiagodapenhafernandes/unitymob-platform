@@ -15,6 +15,16 @@
   <button type="button" class="ax-contextbar__button" data-ax-modal-open="#habitationHistoryModal">
     <i class="bi bi-layout-text-window-reverse"></i><span>Central do imóvel</span>
   </button>
+  <% if can_duplicate_habitation?(@habitation) && @habitation.persisted? %>
+    <%= button_to duplicate_admin_habitation_path(@habitation.id),
+        method: :post,
+        class: "ax-contextbar__button",
+        form: { class: "tw-m-0" },
+        data: { turbo_confirm: "Criar uma cópia deste imóvel com um novo código? A cópia ficará fora do site e dos portais até revisão." },
+        title: "Duplicar imóvel" do %>
+      <i class="bi bi-copy"></i><span>Duplicar</span>
+    <% end %>
+  <% end %>
   <% if can_destroy_habitation? && @habitation.persisted? %>
     <%= button_to admin_habitation_path(@habitation.id),
         method: :delete,

@@ -15,10 +15,10 @@ class Admin::WebhookSettingsController < Admin::BaseController
 
     if @can_manage_outbound_webhooks
       @webhook_settings = current_tenant.webhook_settings.order(created_at: :desc)
-      @lead_share_tracking_days = HabitationShareLink.expiration_days
+      @lead_share_tracking_days = HabitationShareLink.expiration_days(tenant: current_tenant)
     else
       @webhook_settings = WebhookSetting.none
-      @lead_share_tracking_days = HabitationShareLink.expiration_days
+      @lead_share_tracking_days = HabitationShareLink.expiration_days(tenant: current_tenant)
     end
   end
 
@@ -70,7 +70,8 @@ class Admin::WebhookSettingsController < Admin::BaseController
     Setting.set(
       HabitationShareLink::EXPIRATION_SETTING_KEY,
       days.to_s,
-      "Dias de validade do cookie/link de compartilhamento de corretor"
+      "Dias de validade do cookie/link de compartilhamento de corretor",
+      tenant: current_tenant
     )
 
     redirect_to admin_webhook_settings_path, notice: "Validade do compartilhamento atualizada para #{days} dias."

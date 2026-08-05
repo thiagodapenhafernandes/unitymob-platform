@@ -380,7 +380,7 @@ module Vista
       io = download(url)
       body = io.string
       io.rewind
-      service_name = StorageIntegrationSetting.current.photo_service_name
+      service_name = StorageIntegrationSetting.current(tenant: tenant).photo_service_name
       Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name == :local
 
       ActiveStorage::Blob.create_and_upload!(

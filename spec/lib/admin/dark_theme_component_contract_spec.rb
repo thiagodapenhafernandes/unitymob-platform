@@ -611,6 +611,17 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     File.read(File.expand_path("../../../app/views/admin/system/users.html.erb", __dir__))
   end
 
+  let(:system_tenant_views) do
+    %w[
+      system/tenants/index.html.erb
+      system/tenants/show.html.erb
+      system/tenants/new.html.erb
+      system/tenants/edit.html.erb
+    ].map do |path|
+      File.read(File.expand_path("../../../app/views/admin/#{path}", __dir__))
+    end.join
+  end
+
   let(:whatsapp_integration_controller) do
     File.read(File.expand_path("../../../app/javascript/controllers/whatsapp_integration_controller.js", __dir__))
   end
@@ -2013,7 +2024,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "inicializa a previa de marca dagua pelo controller sem estilo inline" do
     expect(property_settings_edit_view).not_to match(/\bstyle\s*=/i)
-    expect(property_settings_edit_view).to include("ax_file_field(", "ax_radio_group(", "ax_range_field(")
+    expect(property_settings_edit_view).to include("ax_file_field(", "property-settings-watermark-map", "ax_range_field(")
     expect(property_settings_edit_view).not_to include(
       'class="tab-content"',
       'class="tab-pane',
@@ -2024,8 +2035,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(property_settings_edit_view).to include('data-watermark-preview-target="frame"')
     expect(property_settings_edit_view).to include('watermark_preview_target: "sizeInput"', 'watermark_preview_target: "opacityInput"')
     expect(watermark_preview_controller).to match(/connect\(\)\s*\{\s*this\.update\(\)/m)
+    expect(watermark_preview_controller).to include("watermark-position-top_left", "watermark-position-top_right")
     expect(watermark_preview_controller).to include('style.setProperty("--watermark-size"', 'style.setProperty("--watermark-opacity"')
-    expect(stylesheet).to include("width: var(--watermark-size, 28%)", "opacity: var(--watermark-opacity, 1)")
+    expect(stylesheet).to include("width: var(--watermark-size, 28%)", "opacity: var(--watermark-opacity, 1)", ".property-settings-watermark-map__frame")
     expect(form_control_stylesheet).to include(
       ".ax-range-field",
       ".ax-range-field__input:focus-visible",
@@ -3855,9 +3867,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(system_index_view).not_to match(/\bstyle\s*=/i)
     expect(system_index_view).to include("ax_metric_card(", "ax_operational_panel(", "ax_empty_state(")
     expect(system_index_view).to include("ax-system-login-release-field", "ax-table__col--w-120")
-    expect(system_index_view).to include("admin_system_login_rate_limit_reset_path", "admin_system_tenant_owner_impersonation_path(tenant)", 'link_to("Abrir Mission Control", "/jobs"')
+    expect(system_index_view).to include("admin_system_login_rate_limit_reset_path", "admin_system_tenants_path", 'link_to("Abrir Mission Control", "/jobs"')
     expect(system_index_view).to include('form.email_field :email', "@failed_job_groups", "@system_admins")
-    expect(system_index_view).to include("@tenant_owners_by_tenant_id[tenant.id]", '<caption class="tw-sr-only">', 'scope="col"')
+    expect(system_tenant_views).to include("@tenant_owners_by_tenant_id[tenant.id]", "admin_system_tenant_owner_impersonation_path(@tenant)", "edit_admin_system_tenant_path(@tenant)")
+    expect(system_tenant_views).to include("Identidade visual resolvida", "admin_system_tenant_domains_path(@tenant)", "tenant_active")
+    expect(system_tenant_views).to include('<caption class="tw-sr-only">', 'scope="col"', "ax_pagination @tenants")
     expect(system_users_view).to include('<caption class="tw-sr-only">', 'scope="col"')
     system_stylesheet = File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/system_workspace.css", __dir__))
     expect(system_stylesheet).to include('[data-admin-theme="dark"] .ax-system', "var(--ax-dark-danger-surface)", "@media (max-width: 560px)")

@@ -1,4 +1,5 @@
 <footer class="bg-gradient-to-br from-blue-three to-blue-one text-white">
+  <% public_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant) %>
   <div class="container-custom py-12 lg:py-16">
     
     <!-- Main Footer Content -->
@@ -13,7 +14,10 @@
             <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
           <% end %>
         <% else %>
-          <%= image_tag 'salute-imoveis.svg', alt: 'Salute Imóveis', class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
+          <div class="mb-4 leading-tight text-white">
+            <span class="block text-xl font-extrabold tracking-wide uppercase"><%= public_identity.name %></span>
+            <span class="block text-[10px] font-bold uppercase tracking-[0.26em] text-golden-one">Imóveis</span>
+          </div>
         <% end %>
         <p class="text-white/80 mb-4">
           <%= @footer_setting.about_text %>
@@ -115,7 +119,7 @@
           <h4 class="font-bold text-white mb-3"><%= @footer_setting.social_title %></h4>
           <div class="flex flex-wrap gap-2">
             <% @footer_social_links.each do |social| %>
-              <a href="<%= social.url %>" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-white/10 hover:bg-golden-one hover:text-blue-three flex items-center justify-center transition-all" title="<%= social.platform %>" aria-label="Acessar <%= social.platform %> da Salute Imóveis">
+              <a href="<%= social.url %>" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-white/10 hover:bg-golden-one hover:text-blue-three flex items-center justify-center transition-all" title="<%= social.platform %>" aria-label="Acessar <%= social.platform %> da #{public_identity.name}">
                 <i class="bi <%= social.icon_class %>" aria-hidden="true"></i>
               </a>
             <% end %>
@@ -129,7 +133,7 @@
     <div class="border-t border-white/20 pt-6 mt-8">
       <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <p class="text-white/70 text-sm">
-          <%= @footer_setting.copyright_text.presence || "© #{Date.current.year} Salute Imóveis. Todos os direitos reservados. CRECI 6834" %>
+          <%= @footer_setting.copyright_text.presence || "© #{Date.current.year} #{public_identity.name}. Todos os direitos reservados." %>
         </p>
         <div class="flex gap-4 text-sm font-medium">
           <%= link_to "Política de Privacidade", privacy_policy_path, class: "text-white/70 hover:text-white transition-colors" %>

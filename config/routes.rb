@@ -34,6 +34,7 @@ Rails.application.routes.draw do
         get :operational_hub
         get :gallery
         post :confirm_owner_contact
+        post :duplicate
       end
       collection do
         get :print
@@ -87,6 +88,17 @@ Rails.application.routes.draw do
          as: :system_tenant_owner_impersonation
     # Erros da aplicação (rastreador interno) — visão do Admin do Sistema.
     namespace :system do
+      resources :tenants, only: [:index, :show, :new, :create, :edit, :update] do
+        member do
+          patch :inactivate
+          patch :reactivate
+          patch :activate_dev_host
+        end
+
+        resources :domains, controller: "tenant_domains", only: [:create, :update, :destroy] do
+          patch :set_primary, on: :member
+        end
+      end
       resource :health, only: [:show, :update], controller: "health"
       resources :error_events, only: [:index, :show] do
         member do
@@ -144,6 +156,7 @@ Rails.application.routes.draw do
     resource :tracking_integration, only: [:show, :update]
     resource :storage_integration, only: [:show, :update] do
       post :test_connection
+      post :provision_digital_ocean
       post :publish_public_photos
       post :publish_needed_public_photos
       get :public_photo_publish_status

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Liga/desliga toda a feature de check-in geolocalizado via Setting key-value.
+# Liga/desliga toda a feature de check-in geolocalizado via Setting key-value por tenant.
 # Default: desligado. Enquanto estiver off, todas as rotas /field, /api/v1/field
 # e integrações com DistributorService respondem como se a feature não existisse.
 #
@@ -17,8 +17,8 @@ module FieldFeatureGate
 
   # Disponível tanto como módulo (FieldFeatureGate.field_checkin_enabled?) quanto
   # como class method no controller que includa (ex: Field::BaseController.field_checkin_enabled?).
-  def self.field_checkin_enabled?
-    Setting.get(SETTING_KEY, "false").to_s == "true"
+  def self.field_checkin_enabled?(tenant: Current.tenant)
+    Setting.tenant_get(SETTING_KEY, "false", tenant: tenant).to_s == "true"
   end
 
   def self.field_agent_allowed?(admin_user, tenant: Current.tenant)
@@ -28,7 +28,7 @@ module FieldFeatureGate
   end
 
   def self.disabled_agent_ids(tenant: Current.tenant)
-    Setting.get(DISABLED_AGENT_IDS_KEY, "", tenant: tenant).to_s
+    Setting.tenant_get(DISABLED_AGENT_IDS_KEY, "", tenant: tenant).to_s
            .split(/[,\s]+/)
            .filter_map { |value| Integer(value, exception: false) }
            .uniq
@@ -46,20 +46,24 @@ module FieldFeatureGate
   end
 
   class_methods do
-    def field_checkin_enabled?
-      FieldFeatureGate.field_checkin_enabled?
+    def field_checkin_enabled?(tenant: Current.tenant)
+      FieldFeatureGate.field_checkin_enabled?(tenant: tenant)
     end
   end
 
   private
 
   def ensure_field_enabled!
-    return if FieldFeatureGate.field_checkin_enabled?
+    return if FieldFeatureGate.field_checkin_enabled?(tenant: field_feature_tenant)
 
     if request.format.json?
       render json: { error: "feature_disabled" }, status: :not_found
     else
       render plain: "Not Found", status: :not_found
     end
+  end
+
+  def field_feature_tenant
+    respond_to?(:current_tenant, true) ? current_tenant : Current.tenant
   end
 end

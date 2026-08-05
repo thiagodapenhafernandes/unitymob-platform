@@ -14,15 +14,15 @@ class Admin::LoftIntegrationsController < Admin::BaseController
 
     preserve_manual_fields = ActiveModel::Type::Boolean.new.cast(loft_params[:preserve_manual_fields])
 
-    Setting.set("loft_enabled", enabled.to_s, "Habilita integração Loft Soft")
-    Setting.set("loft_host", normalize_host(host), "Host da API Loft Soft") if host.present?
-    Setting.set("loft_token", token, "Token da API Loft Soft") if token.present?
-    Setting.set("loft_preserve_manual_fields", preserve_manual_fields.to_s, "Preserva campos manuais para imóveis já sincronizados do Loft")
-    Setting.set("loft_sync_batch_size", loft_params[:sync_batch_size].to_i.clamp(1, 1000).to_s, "Batch size da sync Loft")
-    Setting.set("loft_images_sync_limit", loft_params[:images_sync_limit].to_i.clamp(1, 500).to_s, "Limite por sync de imagens Loft")
-    Setting.set("loft_poll_processing_interval_ms", loft_params[:poll_processing_interval_ms].to_i.clamp(1000, 30000).to_s, "Polling processing Loft")
-    Setting.set("loft_poll_idle_interval_ms", loft_params[:poll_idle_interval_ms].to_i.clamp(2000, 60000).to_s, "Polling idle Loft")
-    Setting.set("loft_poll_slow_interval_ms", loft_params[:poll_slow_interval_ms].to_i.clamp(5000, 120000).to_s, "Polling slow Loft")
+    tenant_setting_set("loft_enabled", enabled.to_s, "Habilita integração Loft Soft")
+    tenant_setting_set("loft_host", normalize_host(host), "Host da API Loft Soft") if host.present?
+    tenant_setting_set("loft_token", token, "Token da API Loft Soft") if token.present?
+    tenant_setting_set("loft_preserve_manual_fields", preserve_manual_fields.to_s, "Preserva campos manuais para imóveis já sincronizados do Loft")
+    tenant_setting_set("loft_sync_batch_size", loft_params[:sync_batch_size].to_i.clamp(1, 1000).to_s, "Batch size da sync Loft")
+    tenant_setting_set("loft_images_sync_limit", loft_params[:images_sync_limit].to_i.clamp(1, 500).to_s, "Limite por sync de imagens Loft")
+    tenant_setting_set("loft_poll_processing_interval_ms", loft_params[:poll_processing_interval_ms].to_i.clamp(1000, 30000).to_s, "Polling processing Loft")
+    tenant_setting_set("loft_poll_idle_interval_ms", loft_params[:poll_idle_interval_ms].to_i.clamp(2000, 60000).to_s, "Polling idle Loft")
+    tenant_setting_set("loft_poll_slow_interval_ms", loft_params[:poll_slow_interval_ms].to_i.clamp(5000, 120000).to_s, "Polling slow Loft")
 
     redirect_to admin_loft_integrations_path, notice: "Configuração Loft Soft salva com sucesso."
   rescue => e
@@ -90,7 +90,7 @@ class Admin::LoftIntegrationsController < Admin::BaseController
     row = result.rows.first || {}
 
     if row[:status] == "updated"
-      Loft::SyncStatusService.new.mark_completed!(
+      Loft::SyncStatusService.new(tenant: current_tenant).mark_completed!(
         mode: "property",
         message: "Imóvel #{code} reconciliado pela API Vista.",
         stats: {
@@ -107,17 +107,17 @@ class Admin::LoftIntegrationsController < Admin::BaseController
       redirect_to admin_loft_integrations_path, notice: "Imóvel #{code} reconciliado com sucesso pela API Vista."
     else
       reason = row[:reason].presence || row[:errors].presence || "sem retorno válido da API"
-      Loft::SyncStatusService.new.mark_failed!(mode: "property", message: "Falha no imóvel #{code}: #{reason}")
+      Loft::SyncStatusService.new(tenant: current_tenant).mark_failed!(mode: "property", message: "Falha no imóvel #{code}: #{reason}")
       redirect_to admin_loft_integrations_path, alert: "Falha ao reconciliar imóvel #{code}: #{reason}"
     end
   rescue => e
-    Loft::SyncStatusService.new.mark_failed!(mode: "property", message: "Falha no imóvel #{code}: #{e.message}")
+    Loft::SyncStatusService.new(tenant: current_tenant).mark_failed!(mode: "property", message: "Falha no imóvel #{code}: #{e.message}")
     redirect_to admin_loft_integrations_path, alert: "Erro ao sincronizar imóvel: #{e.message}"
   end
 
   def sync_now
     ensure_enabled_and_credentials!
-    LoftSyncJob.perform_later(mode: "full", batch_size: Setting.get("loft_sync_batch_size", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
+    LoftSyncJob.perform_later(mode: "full", batch_size: tenant_setting_get("loft_sync_batch_size", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
     redirect_to admin_loft_integrations_path, notice: "Reconciliação completa pela API Vista iniciada em segundo plano."
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao iniciar reconciliação Vista: #{e.message}"
@@ -125,7 +125,7 @@ class Admin::LoftIntegrationsController < Admin::BaseController
 
   def sync_batch
     ensure_enabled_and_credentials!
-    LoftSyncJob.perform_later(mode: "batch", batch_size: Setting.get("loft_sync_batch_size", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
+    LoftSyncJob.perform_later(mode: "batch", batch_size: tenant_setting_get("loft_sync_batch_size", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
     redirect_to admin_loft_integrations_path, notice: "Reconciliação em lote pela API Vista iniciada."
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao iniciar lote Vista: #{e.message}"
@@ -133,7 +133,7 @@ class Admin::LoftIntegrationsController < Admin::BaseController
 
   def sync_images_now
     ensure_enabled_and_credentials!
-    LoftImagesSyncJob.perform_later(limit: Setting.get("loft_images_sync_limit", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
+    LoftImagesSyncJob.perform_later(limit: tenant_setting_get("loft_images_sync_limit", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
     redirect_to admin_loft_integrations_path, notice: "Sincronização de imagens para Spaces iniciada."
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao iniciar sync de imagens: #{e.message}"
@@ -147,29 +147,29 @@ class Admin::LoftIntegrationsController < Admin::BaseController
   private
 
   def load_state
-    @loft_enabled = Setting.get("loft_enabled", "false") == "true"
+    @loft_enabled = tenant_setting_get("loft_enabled", "false") == "true"
     @loft_host = current_host
     @loft_token = current_token
-    @loft_sync_status = Setting.get("loft_sync_status", "idle")
-    @loft_sync_progress = Setting.get("loft_sync_progress", "0").to_i.clamp(0, 100)
-    @loft_last_sync_message = Setting.get("loft_last_sync_message")
-    @loft_last_sync_at = Setting.get("loft_last_sync_at")
+    @loft_sync_status = tenant_setting_get("loft_sync_status", "idle")
+    @loft_sync_progress = tenant_setting_get("loft_sync_progress", "0").to_i.clamp(0, 100)
+    @loft_last_sync_message = tenant_setting_get("loft_last_sync_message")
+    @loft_last_sync_at = tenant_setting_get("loft_last_sync_at")
     @loft_last_sync_time = Time.zone.parse(@loft_last_sync_at.to_s) rescue nil
-    @loft_sync_history = Loft::SyncStatusService.new.history(limit: 5)
-    @loft_preserve_manual_fields = Setting.get("loft_preserve_manual_fields", "true") == "true"
-    @loft_sync_batch_size = Setting.get("loft_sync_batch_size", "100").to_i.clamp(1, 1000)
-    @loft_images_sync_limit = Setting.get("loft_images_sync_limit", "100").to_i.clamp(1, 500)
-    @loft_poll_processing_interval_ms = Setting.get("loft_poll_processing_interval_ms", "2000").to_i.clamp(1000, 30000)
-    @loft_poll_idle_interval_ms = Setting.get("loft_poll_idle_interval_ms", "6000").to_i.clamp(2000, 60000)
-    @loft_poll_slow_interval_ms = Setting.get("loft_poll_slow_interval_ms", "15000").to_i.clamp(5000, 120000)
+    @loft_sync_history = Loft::SyncStatusService.new(tenant: current_tenant).history(limit: 5)
+    @loft_preserve_manual_fields = tenant_setting_get("loft_preserve_manual_fields", "true") == "true"
+    @loft_sync_batch_size = tenant_setting_get("loft_sync_batch_size", "100").to_i.clamp(1, 1000)
+    @loft_images_sync_limit = tenant_setting_get("loft_images_sync_limit", "100").to_i.clamp(1, 500)
+    @loft_poll_processing_interval_ms = tenant_setting_get("loft_poll_processing_interval_ms", "2000").to_i.clamp(1000, 30000)
+    @loft_poll_idle_interval_ms = tenant_setting_get("loft_poll_idle_interval_ms", "6000").to_i.clamp(2000, 60000)
+    @loft_poll_slow_interval_ms = tenant_setting_get("loft_poll_slow_interval_ms", "15000").to_i.clamp(5000, 120000)
   end
 
   def current_host
-    Setting.get("loft_host").to_s.presence || ENV.fetch("VISTA_HOST", "").to_s
+    tenant_setting_get("loft_host").to_s
   end
 
   def current_token
-    Setting.get("loft_token").to_s.presence || ENV.fetch("VISTA_KEY", "").to_s
+    tenant_setting_get("loft_token").to_s
   end
 
   def loft_params
@@ -185,7 +185,13 @@ class Admin::LoftIntegrationsController < Admin::BaseController
     value.to_s.strip.chomp("/")
   end
 
+  def tenant_setting_get(key, default = nil)
+    Setting.tenant_get(key, default, tenant: current_tenant)
+  end
 
+  def tenant_setting_set(key, value, description)
+    Setting.set(key, value, description, tenant: current_tenant)
+  end
 
   def ensure_enabled_and_credentials!
     raise "Integração Loft Soft desativada." unless @loft_enabled

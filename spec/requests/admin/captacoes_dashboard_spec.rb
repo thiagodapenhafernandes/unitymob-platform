@@ -17,13 +17,16 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     sign_out admin
     sign_in dashboard_admin
 
-    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 900_000_00, valor_locacao_cents: 0, regiao_foco: "Centro")
-    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 700_000_00, valor_locacao_cents: 0, regiao_foco: "Não")
-    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 4_000_00, regiao_foco: "Sim", salute_rental_management_flag: true)
-    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false)
-    create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 2.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
-    create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 1.day.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
-    create(:habitation, :broker_intake, tenant:, codigo: "REL-OLD-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 1.year.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
+    effective_at = Time.current
+    create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "admin_approved", admin_reviewed_at: effective_at, valor_venda_cents: 900_000_00, valor_locacao_cents: 0, regiao_foco: "Centro")
+    create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "internal", admin_reviewed_at: effective_at, valor_venda_cents: 700_000_00, valor_locacao_cents: 0, regiao_foco: "Não")
+    create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "internal", admin_reviewed_at: effective_at, valor_venda_cents: 0, valor_locacao_cents: 4_000_00, regiao_foco: "Sim", salute_rental_management_flag: true)
+    create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", admin_reviewed_at: effective_at, broker_released_at: 1.day.ago, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false, exibir_no_site_flag: true)
+    create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", admin_reviewed_at: effective_at, broker_released_at: 2.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0, exibir_no_site_flag: true)
+    create(:habitation, :broker_intake, tenant:, codigo: "DRAFT-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "draft", valor_venda_cents: 3_000_000_00, valor_locacao_cents: 8_000_00)
+    create(:habitation, :broker_intake, tenant:, codigo: "REVIEW-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "submitted_for_admin_review", submitted_for_review_at: effective_at, valor_venda_cents: 3_000_000_00, valor_locacao_cents: 8_000_00)
+    create(:habitation, :broker_intake, tenant:, codigo: "RETURN-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "returned_to_broker", admin_reviewed_at: effective_at, valor_venda_cents: 3_000_000_00, valor_locacao_cents: 8_000_00)
+    create(:habitation, :broker_intake, tenant:, codigo: "REL-OLD-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", admin_reviewed_at: 1.year.ago, broker_released_at: 1.year.ago, valor_venda_cents: 0, valor_locacao_cents: 0, exibir_no_site_flag: true)
 
     get dashboard_admin_captacoes_path
 
@@ -31,6 +34,9 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include("capt-dashboard-workspace")
     expect(response.body).to include("capt-dashboard-filters")
     expect(response.body).to include("capt-dashboard-kpis")
+    expect(response.body).to include("Captações efetivas")
+    expect(response.body).not_to include("Rascunho/devolvido")
+    expect(response.body).not_to include("Em aprovação")
     expect(response.body).not_to include("capt-dash-hero")
     expect(response.body).not_to include("capt-tv-toolbar")
     expect(response.body).to include("Região foco Venda")
@@ -52,12 +58,15 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
   end
 
   it "permite ao administrador editar o título do dashboard" do
+    get dashboard_admin_captacoes_path
+    token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
+
     patch dashboard_title_admin_captacoes_path, params: {
       dashboard: {
         eyebrow: "Meta do mês",
         title: "Captação Salute"
       }
-    }
+    }, headers: { "X-CSRF-Token" => token }
 
     expect(response).to redirect_to(dashboard_admin_captacoes_path)
     follow_redirect!
@@ -66,7 +75,7 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include("Captação Salute")
   end
 
-  it "usa o mês selecionado como período efetivo mesmo quando datas antigas permanecem no formulário" do
+  it "usa o mês selecionado como período efetivo até o dia corrente" do
     travel_to Time.zone.local(2026, 8, 4, 10, 0, 0) do
       tenant = Tenant.create!(name: "Tenant agosto #{SecureRandom.hex(4)}", slug: "tenant-agosto-#{SecureRandom.hex(4)}")
       dashboard_admin = create(:admin_user, tenant:, profile: tenant.profiles.find_by!(key: "tenant_owner"), role: :editor)
@@ -75,10 +84,23 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
 
       create(
         :habitation,
+        :broker_intake,
         tenant:,
         codigo: "AGO-LOC-#{SecureRandom.hex(4)}",
         admin_user: dashboard_admin,
-        data_cadastro_crm: Time.zone.local(2026, 8, 3, 14, 0, 0),
+        intake_status: "admin_approved",
+        admin_reviewed_at: Time.zone.local(2026, 8, 3, 14, 0, 0),
+        valor_venda_cents: 0,
+        valor_locacao_cents: 5_000_00
+      )
+      create(
+        :habitation,
+        :broker_intake,
+        tenant:,
+        codigo: "AGO-FUTURE-#{SecureRandom.hex(4)}",
+        admin_user: dashboard_admin,
+        intake_status: "admin_approved",
+        admin_reviewed_at: Time.zone.local(2026, 8, 20, 14, 0, 0),
         valor_venda_cents: 0,
         valor_locacao_cents: 5_000_00
       )
@@ -92,6 +114,8 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Agosto")
       page = Nokogiri::HTML(response.body)
+      expect(page.at_css('input[name="start_date"]')["value"]).to eq("2026-08-01")
+      expect(page.at_css('input[name="end_date"]')["value"]).to eq("2026-08-04")
       locacao_summary = page.css("#tab-locacao .capt-total-card").find { |card| card.text.include?("Total Captação Locação") }
       expect(locacao_summary&.text&.squish).to include("Total Captação Locação 1")
     end
@@ -165,20 +189,20 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
 
       get dashboard_admin_captacoes_path
 
-      expect(response.body).to include("20/06")
-      expect(response.body).to include("26/06")
-      expect(response.body).not_to include("19/06")
-      expect(response.body).not_to include("10/06")
+      page = Nokogiri::HTML(response.body)
+      heatmap_headers = page.css(".heatmap-table thead th").map { |header| header.text.squish }
+      expect(heatmap_headers).to include("20/06", "26/06")
+      expect(heatmap_headers).not_to include("19/06", "10/06")
 
       get dashboard_admin_captacoes_path, params: {
         heatmap_start_date: "2026-06-09",
         heatmap_end_date: "2026-06-10"
       }
 
-      expect(response.body).to include("09/06")
-      expect(response.body).to include("10/06")
-      expect(response.body).not_to include("20/06")
-      expect(response.body).not_to include("26/06")
+      page = Nokogiri::HTML(response.body)
+      heatmap_headers = page.css(".heatmap-table thead th").map { |header| header.text.squish }
+      expect(heatmap_headers).to include("09/06", "10/06")
+      expect(heatmap_headers).not_to include("20/06", "26/06")
     end
   end
 

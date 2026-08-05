@@ -4,7 +4,8 @@ RSpec.describe "Compartilhamento social do imóvel (OG)", type: :request do
   before { host! "localhost" }
 
   it "usa a foto externa (import Vista/DWV) como og:image e inclui o código no título" do
-    habitation = create(:habitation, codigo: "8903", slug: "apartamento-share-8903",
+    code = "8903-#{SecureRandom.hex(3)}"
+    habitation = create(:habitation, codigo: code, slug: "apartamento-share-#{SecureRandom.hex(3)}",
                         pictures: [{ "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/foto-8903.jpg", "ordem" => 1, "principal" => true }])
 
     get habitation_path(habitation)
@@ -15,6 +16,6 @@ RSpec.describe "Compartilhamento social do imóvel (OG)", type: :request do
     expect(og_image).not_to include("icon.png")
 
     og_title = response.body[/<meta property="og:title" content="([^"]*)"/, 1]
-    expect(og_title).to include("8903")
+    expect(og_title).to include(code)
   end
 end

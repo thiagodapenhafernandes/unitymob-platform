@@ -1,0 +1,37 @@
+/* Site skin Salute Imóveis.
+   Mantém o desenho público atual e remapeia os aliases legados para o brand do tenant. */
+[data-public-site-theme="saluteimoveis"] {
+  --blue-three: var(--color-primary, #022b3a);
+  --blue-one: var(--color-secondary, #053c5e);
+  --golden-one: var(--color-accent, #bfab25);
+  --golden-two: color-mix(in srgb, var(--color-accent, #bfab25) 82%, #fff);
+  --public-theme-surface: #ffffff;
+  --public-theme-subtle: #f8fafc;
+  --public-theme-border: color-mix(in srgb, var(--color-primary, #022b3a) 12%, #e5e7eb);
+  --public-theme-shadow: 0 14px 34px rgba(15, 23, 42, .1);
+  --public-theme-radius: 16px;
+}
+
+[data-public-site-theme="saluteimoveis"] :where(.bg-blue-three) {
+  background-color: var(--color-primary, #022b3a) !important;
+}
+
+[data-public-site-theme="saluteimoveis"] :where(.hover\:bg-blue-one:hover) {
+  background-color: var(--color-secondary, #053c5e) !important;
+}
+
+[data-public-site-theme="saluteimoveis"] :where(.text-blue-three) {
+  color: var(--color-primary, #022b3a) !important;
+}
+
+[data-public-site-theme="saluteimoveis"] :where(.border-blue-three) {
+  border-color: var(--color-primary, #022b3a) !important;
+}
+
+[data-public-site-theme="saluteimoveis"] :where(.bg-golden-one) {
+  background-color: var(--color-accent, #bfab25) !important;
+}
+
+[data-public-site-theme="saluteimoveis"] :where(.text-golden-one) {
+  color: var(--color-accent, #bfab25) !important;
+}

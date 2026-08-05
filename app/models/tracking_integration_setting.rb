@@ -42,10 +42,10 @@ class TrackingIntegrationSetting
 
   def self.build_current(tenant: Current.tenant)
     new({
-      google_tag_manager_enabled: Setting.get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true",
-      google_tag_manager_container_id: Setting.get(GTM_CONTAINER_ID_KEY, "", tenant: tenant),
-      meta_pixel_enabled: Setting.get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true",
-      meta_pixel_id: Setting.get(META_PIXEL_ID_KEY, "", tenant: tenant)
+      google_tag_manager_enabled: Setting.tenant_get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true",
+      google_tag_manager_container_id: Setting.tenant_get(GTM_CONTAINER_ID_KEY, "", tenant: tenant),
+      meta_pixel_enabled: Setting.tenant_get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true",
+      meta_pixel_id: Setting.tenant_get(META_PIXEL_ID_KEY, "", tenant: tenant)
     }, tenant: tenant)
   end
 
@@ -54,19 +54,19 @@ class TrackingIntegrationSetting
   end
 
   def self.google_tag_manager_enabled?(tenant: Current.tenant)
-    Setting.get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true" && google_tag_manager_container_id(tenant: tenant).present?
+    Setting.tenant_get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true" && google_tag_manager_container_id(tenant: tenant).present?
   end
 
   def self.google_tag_manager_container_id(tenant: Current.tenant)
-    normalize_gtm_container_id(Setting.get(GTM_CONTAINER_ID_KEY, "", tenant: tenant))
+    normalize_gtm_container_id(Setting.tenant_get(GTM_CONTAINER_ID_KEY, "", tenant: tenant))
   end
 
   def self.meta_pixel_enabled?(tenant: Current.tenant)
-    Setting.get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true" && meta_pixel_id(tenant: tenant).present?
+    Setting.tenant_get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true" && meta_pixel_id(tenant: tenant).present?
   end
 
   def self.meta_pixel_id(tenant: Current.tenant)
-    normalize_meta_pixel_id(Setting.get(META_PIXEL_ID_KEY, "", tenant: tenant))
+    normalize_meta_pixel_id(Setting.tenant_get(META_PIXEL_ID_KEY, "", tenant: tenant))
   end
 
   def self.normalize_gtm_container_id(value)

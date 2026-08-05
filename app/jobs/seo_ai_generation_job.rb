@@ -8,7 +8,7 @@ class SeoAiGenerationJob < ApplicationJob
     seo_setting = tenant.seo_settings.find_by(id: seo_setting_id)
     return if seo_setting.blank?
     return if seo_setting.manual_mode?
-    return unless Ai::SeoContentService.connected?
+    return unless Ai::SeoContentService.connected?(tenant: tenant)
 
     Current.set(tenant: tenant) { Ai::SeoContentService.new(seo_setting).generate! }
   end

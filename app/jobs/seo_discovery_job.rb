@@ -6,7 +6,7 @@ class SeoDiscoveryJob < ApplicationJob
   # cross-tenant.
   def perform(generate_ai: true)
     Current.set(tenant: Tenant.public_for) do
-      next unless Seo::DiscoveryService.enabled?
+      next unless Seo::DiscoveryService.enabled?(tenant: Current.tenant)
 
       Seo::DiscoveryService.new(generate_ai: generate_ai).call
     end

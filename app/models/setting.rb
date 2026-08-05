@@ -26,9 +26,9 @@ class Setting < ApplicationRecord
     tenant
   end
 
-  def self.get(key, default = nil, tenant: Current.tenant)
+  def self.get(key, default = nil, tenant: Current.tenant, fallback_global: true)
     scope_tenant = scoped_tenant_for(key, tenant)
-    cache_key = [key.to_s, scope_tenant&.id]
+    cache_key = [key.to_s, scope_tenant&.id, fallback_global]
     cache = request_cache
     return cache[cache_key] if cache.key?(cache_key)
 
@@ -37,8 +37,16 @@ class Setting < ApplicationRecord
       return cache[cache_key] = scoped if scoped.present?
     end
 
+    return cache[cache_key] = default if scope_tenant && !fallback_global
+
     global = tenant_scoping_available? ? find_by(tenant_id: nil, key: key)&.value : find_by(key: key)&.value
     cache[cache_key] = global.presence || default
+  end
+
+  def self.tenant_get(key, default = nil, tenant: Current.tenant)
+    return default if tenant.blank?
+
+    get(key, default, tenant: tenant, fallback_global: false)
   end
 
   def self.set(key, value, description = nil, tenant: Current.tenant)
@@ -68,6 +76,6 @@ class Setting < ApplicationRecord
 
   def self.clear_request_cache_for(key, scope_tenant)
     cache = request_cache
-    cache.delete_if { |(cached_key, tenant_id), _| cached_key == key.to_s && tenant_id == scope_tenant&.id }
+    cache.delete_if { |(cached_key, tenant_id, _fallback_global), _| cached_key == key.to_s && tenant_id == scope_tenant&.id }
   end
 end

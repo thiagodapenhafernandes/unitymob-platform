@@ -250,8 +250,7 @@ module Storage
     def allowed_image_hosts
       @allowed_image_hosts ||= (
         [
-        Storage::PublicPropertyPhoto.public_base_url,
-        ENV["DO_SPACES_PUBLIC_BASE_URL"]
+        Storage::PublicPropertyPhoto.public_base_url(tenant: Current.tenant)
         ].filter_map { |url| host_from_url(url) } +
         trusted_external_image_hosts
       ).uniq

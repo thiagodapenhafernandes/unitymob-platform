@@ -41,17 +41,17 @@ module Ai
       O valor do aluguel já contempla todas as taxas, garantindo mais praticidade e comodidade para você. Sem surpresas no final do mês, apenas o valor anunciado!
     PROMPT
 
-    def self.api_key
-      Setting.get(API_KEY_SETTING).to_s
+    def self.api_key(tenant: Current.tenant)
+      Setting.tenant_get(API_KEY_SETTING, nil, tenant: tenant).to_s
     end
 
-    def self.model
-      Setting.get(MODEL_SETTING, DEFAULT_MODEL).to_s.presence || DEFAULT_MODEL
+    def self.model(tenant: Current.tenant)
+      Setting.tenant_get(MODEL_SETTING, DEFAULT_MODEL, tenant: tenant).to_s.presence || DEFAULT_MODEL
     end
 
     def self.instructions(tenant: Current.tenant)
       fallback = default_prompt(tenant)
-      Setting.get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
+      Setting.tenant_get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
     end
 
     def self.default_prompt(tenant)
@@ -66,8 +66,8 @@ module Ai
         .gsub("Barra Sul", city)
     end
 
-    def self.connected?
-      api_key.present?
+    def self.connected?(tenant: Current.tenant)
+      api_key(tenant: tenant).present?
     end
 
     def initialize(habitation, admin_user: nil)
@@ -122,7 +122,7 @@ module Ai
     private
 
     def request_generation
-      response = OpenAi::Client.new(api_key: self.class.api_key).create_response(openai_payload)
+      response = OpenAi::Client.new(api_key: self.class.api_key(tenant: @habitation.tenant)).create_response(openai_payload)
       text = extract_text(response)
       parsed = JSON.parse(text)
       validate_response!(parsed)
@@ -131,7 +131,7 @@ module Ai
 
     def openai_payload
       {
-        model: self.class.model,
+        model: self.class.model(tenant: @habitation.tenant),
         instructions: system_instructions,
         input: user_payload,
         text: {

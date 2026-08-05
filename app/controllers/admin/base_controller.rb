@@ -9,6 +9,8 @@ class Admin::BaseController < ApplicationController
     admin/profiles
     admin/account_memberships
     admin/system
+    admin/system/tenants
+    admin/system/tenant_domains
   ].freeze
 
   SYSTEM_ADMIN_GLOBAL_CONTROLLERS = %w[

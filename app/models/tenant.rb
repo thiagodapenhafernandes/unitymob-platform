@@ -1,7 +1,20 @@
 class Tenant < ApplicationRecord
   DEFAULT_SLUG = "default".freeze
+  PUBLIC_SITE_THEMES = {
+    "saluteimoveis" => {
+      label: "Salute Imóveis",
+      description: "Mantém o desenho atual do site e herda cores, logo e conteúdo da conta.",
+      stylesheet: "public_site_themes/saluteimoveis"
+    },
+    "conexaoimobiliaria" => {
+      label: "Conexão Imobiliária",
+      description: "Usa os mesmos componentes públicos com uma expressão visual própria para a Conexão.",
+      stylesheet: "public_site_themes/conexaoimobiliaria"
+    }
+  }.freeze
 
   has_many :profiles, dependent: :restrict_with_error
+  has_many :tenant_domains, dependent: :destroy
   has_many :admin_users, dependent: :restrict_with_error
   has_one :storage_integration_setting, dependent: :destroy
   has_many :account_memberships, dependent: :destroy
@@ -72,6 +85,7 @@ class Tenant < ApplicationRecord
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true
+  validates :public_site_theme, inclusion: { in: PUBLIC_SITE_THEMES.keys }, if: -> { has_attribute?(:public_site_theme) }
 
   # Expiração de sessão por conta (guard pré-migration 20260707000002)
   if (column_names.include?("session_timeout_days") rescue false)
@@ -82,7 +96,24 @@ class Tenant < ApplicationRecord
   scope :active, -> { where(active: true) }
 
   before_validation :normalize_slug
+  before_validation :normalize_public_site_theme
   after_create :ensure_builtin_profiles!
+
+  def public_site_theme_key
+    inferred_public_site_theme_key
+  end
+
+  def public_site_theme_label
+    PUBLIC_SITE_THEMES.fetch(public_site_theme_key)[:label]
+  end
+
+  def public_site_theme_description
+    PUBLIC_SITE_THEMES.fetch(public_site_theme_key)[:description]
+  end
+
+  def public_site_stylesheet
+    PUBLIC_SITE_THEMES.fetch(public_site_theme_key)[:stylesheet]
+  end
 
   def self.public_for(slug: nil)
     requested_slug = slug.to_s.strip.presence || ENV["PUBLIC_TENANT_SLUG"].to_s.strip.presence
@@ -169,5 +200,21 @@ class Tenant < ApplicationRecord
 
   def normalize_slug
     self.slug = name.to_s.parameterize if slug.blank? && name.present?
+  end
+
+  def normalize_public_site_theme
+    return unless has_attribute?(:public_site_theme)
+
+    self.public_site_theme = public_site_theme.to_s.presence_in(PUBLIC_SITE_THEMES.keys) || "saluteimoveis"
+  end
+
+  def inferred_public_site_theme_key
+    public_site_theme_identity_candidates.find { |candidate| PUBLIC_SITE_THEMES.key?(candidate) } || "saluteimoveis"
+  end
+
+  def public_site_theme_identity_candidates
+    [slug, name].filter_map do |value|
+      value.to_s.parameterize.delete("-").presence
+    end.uniq
   end
 end

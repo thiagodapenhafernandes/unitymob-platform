@@ -1,5 +1,10 @@
+require "net/http"
+
 class HabitationsController < ApplicationController
   SOCIAL_IMAGE_TRANSFORMATIONS = { resize_to_limit: [1200, 1200] }.freeze
+  SOCIAL_IMAGE_PROBE_TIMEOUT = 2
+  SOCIAL_IMAGE_PROBE_ATTEMPTS = 2
+  SOCIAL_IMAGE_PROBE_USER_AGENT = "WhatsApp/2.23.20.0".freeze
   PUBLIC_LISTING_PER_PAGE = 12
   MAX_PUBLIC_LISTING_PAGE = ENV.fetch("PUBLIC_LISTING_MAX_PAGE", 50).to_i
 
@@ -280,7 +285,14 @@ class HabitationsController < ApplicationController
       }, status: :unprocessable_entity
     end
 
-    ensure_social_photo_public!(@habitation)
+    social_photo = ensure_social_photo_public!(@habitation)
+    unless social_photo[:ready]
+      return render json: {
+        success: false,
+        error: "A foto do imóvel ainda está sendo preparada. Tente compartilhar novamente em instantes."
+      }, status: :unprocessable_entity
+    end
+
     link = HabitationShareLink.create_or_reuse_for(
       habitation: @habitation,
       admin_user: current_admin_user
@@ -306,7 +318,7 @@ class HabitationsController < ApplicationController
   def ensure_social_photo_public!(habitation)
     source = habitation.primary_image_source
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
-    return unless attachment&.blob&.image?
+    return social_image_ready_from_source(source) unless attachment&.blob&.image?
 
     Storage::PublicPropertyPhoto.publish_attachment!(attachment)
     variant = attachment.blob.variant(**SOCIAL_IMAGE_TRANSFORMATIONS)
@@ -314,6 +326,8 @@ class HabitationsController < ApplicationController
 
     if variant_image&.attached?
       Storage::PublicPropertyPhoto.publish_blob!(variant_image.blob, raise_errors: true)
+      variant_url = Storage::PublicPropertyPhoto.public_url_for_blob(variant_image.blob, tenant: habitation.tenant)
+      return { ready: true, url: variant_url } if social_image_url_accessible?(variant_url)
     else
       Storage::PrepareSocialImageJob.perform_later(
         habitation.id,
@@ -322,8 +336,68 @@ class HabitationsController < ApplicationController
         transformations: SOCIAL_IMAGE_TRANSFORMATIONS
       )
     end
+
+    original_url = Storage::PublicPropertyPhoto.public_url_for_attachment(attachment)
+    return { ready: true, url: original_url } if social_image_url_accessible?(original_url)
+
+    { ready: false, url: original_url }
   rescue StandardError => e
     Rails.logger.warn("[social_image_publish] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")
+    { ready: false, url: nil }
+  end
+
+  def social_image_ready_from_source(source)
+    url = Storage::PublicCdnImageUrl.resolve(source)
+    return { ready: true, url: nil } if url.blank?
+
+    # URLs de payload já passam pelo allowlist do resolver; não fazemos probe
+    # aqui para não bloquear compartilhamento de fotos importadas já públicas.
+    { ready: true, url: url }
+  end
+
+  def social_image_url_accessible?(url, attempts: SOCIAL_IMAGE_PROBE_ATTEMPTS)
+    return false if url.blank?
+
+    uri = URI.parse(url.to_s)
+    return false unless uri.is_a?(URI::HTTP)
+
+    attempts.times do |attempt|
+      return true if social_image_probe_success?(uri)
+
+      sleep 0.25 if attempt < attempts - 1
+    end
+
+    false
+  rescue URI::InvalidURIError, StandardError => e
+    Rails.logger.warn("[social_image_probe] url=#{url.to_s.truncate(120)} error=#{e.class}: #{e.message}")
+    false
+  end
+
+  def social_image_probe_success?(uri)
+    response = perform_social_image_probe(uri, Net::HTTP::Head)
+    return true if social_image_probe_response_success?(response)
+    return false unless response.is_a?(Net::HTTPMethodNotAllowed) || response.is_a?(Net::HTTPForbidden)
+
+    social_image_probe_response_success?(perform_social_image_probe(uri, Net::HTTP::Get))
+  end
+
+  def perform_social_image_probe(uri, request_class)
+    Net::HTTP.start(
+      uri.host,
+      uri.port,
+      use_ssl: uri.scheme == "https",
+      open_timeout: SOCIAL_IMAGE_PROBE_TIMEOUT,
+      read_timeout: SOCIAL_IMAGE_PROBE_TIMEOUT
+    ) do |http|
+      request = request_class.new(uri)
+      request["User-Agent"] = SOCIAL_IMAGE_PROBE_USER_AGENT
+      request["Range"] = "bytes=0-0" if request.is_a?(Net::HTTP::Get)
+      http.request(request)
+    end
+  end
+
+  def social_image_probe_response_success?(response)
+    response.is_a?(Net::HTTPSuccess) && response["content-type"].to_s.start_with?("image/")
   end
 
   def set_shareable_habitation
@@ -580,7 +654,7 @@ class HabitationsController < ApplicationController
   def remember_share_link(link)
     cookies.signed[HabitationShareLink::COOKIE_KEY] = {
       value: link.token,
-      expires: HabitationShareLink.expiration_period.from_now,
+      expires: HabitationShareLink.expiration_period(tenant: @habitation.tenant).from_now,
       same_site: :lax,
       httponly: true
     }

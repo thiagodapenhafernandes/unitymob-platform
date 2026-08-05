@@ -2,13 +2,13 @@ require "rails_helper"
 
 # Isolamento do feed de portais: a base de imóveis DEVE partir do tenant da
 # integração, nunca do Habitation global (que cruzaria todos os tenants).
-# Estes testes usam doubles para ficar independentes do schema — validam a
-# lógica de escopo mesmo antes da migration que adiciona tenant_id.
+# Estes testes usam doubles para validar a lógica de escopo sem depender de
+# dados reais de portais.
 RSpec.describe Portal::EligibilityScope do
   # Relação vazia real para servir de âncora ao encadeamento de scopes.
   let(:empty_relation) { Habitation.none }
 
-  def integration_double(tenant:, has_tenant_column: true)
+  def integration_double(tenant:)
     instance_double(
       PortalIntegration,
       tenant: tenant,
@@ -16,9 +16,7 @@ RSpec.describe Portal::EligibilityScope do
       allowed_business_types: %w[venda aluguel],
       require_exibir_no_site?: false,
       portal: "zapimoveis"
-    ).tap do |integration|
-      allow(integration).to receive(:has_attribute?).with(:tenant_id).and_return(has_tenant_column)
-    end
+    )
   end
 
   describe "#eligible_scope" do

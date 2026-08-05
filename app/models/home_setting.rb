@@ -25,16 +25,18 @@ class HomeSetting < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 24, less_than_or_equal_to: 96, allow_blank: true }
   validates :hero_subtitle_font_size,
             numericality: { only_integer: true, greater_than_or_equal_to: 12, less_than_or_equal_to: 36, allow_blank: true }
+  validates :public_header_css, length: { maximum: 2000 }, allow_blank: true
+  validate :public_header_css_must_be_declarations_only
   
   # Singleton pattern - só existe um registro
   def self.instance(tenant: Current.tenant || Tenant.public_for)
     raise ArgumentError, "Tenant obrigatório para configurações da home" if tenant.blank?
 
     where(tenant: tenant).first_or_create!(
-      hero_title: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú.",
-      hero_subtitle: "Aqui o lar é o centro das grandes histórias da vida.",
-      cta_title: "Pronto para Encontrar Seu Imóvel?",
-      cta_subtitle: "Entre em contato conosco e descubra as melhores oportunidades do mercado.",
+      hero_title: "Encontre o imóvel ideal com a #{tenant.name}.",
+      hero_subtitle: "Compra, locação e oportunidades imobiliárias em um só lugar.",
+      cta_title: "Pronto para encontrar seu imóvel?",
+      cta_subtitle: "Entre em contato e descubra as melhores oportunidades para o seu momento.",
       services_active: true,
       why_choose_active: true,
       cta_contact_active: true,
@@ -52,8 +54,13 @@ class HomeSetting < ApplicationRecord
       search_filter_backdrop_blur: 16,
       search_filter_border_radius: 22,
       hero_title_font_size: 72,
-      hero_subtitle_font_size: 20
+      hero_subtitle_font_size: 20,
+      public_header_css: nil
     )
+  end
+
+  def public_header_style
+    public_header_css.to_s.strip.presence
   end
 
   def search_filter_background_rgba
@@ -109,5 +116,13 @@ class HomeSetting < ApplicationRecord
     blue = hex[5..6].to_i(16)
 
     "rgba(#{red}, #{green}, #{blue}, #{opacity})"
+  end
+
+  def public_header_css_must_be_declarations_only
+    return if public_header_css.blank?
+
+    if public_header_css.match?(/[{}<>]/)
+      errors.add(:public_header_css, "deve conter apenas declarações CSS, sem seletores ou tags")
+    end
   end
 end

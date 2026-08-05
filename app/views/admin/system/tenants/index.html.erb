@@ -1,0 +1,145 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Contas</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_system_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-hdd-stack"></i><span>Painel</span>
+  <% end %>
+<% end %>
+
+<div class="ax-system">
+  <%= ax_workspace_heading(
+        eyebrow: "Admin do Sistema",
+        icon: "building",
+        title: "Contas",
+        subtitle: "Gerencie tenants da plataforma e acesse áreas operacionais por impersonação.",
+        metrics: [
+          { value: number_with_delimiter(@tenants.total_entries), label: "contas" }
+        ],
+        actions: ax_button("Nova conta", new_admin_system_tenant_path, variant: :primary, size: :sm, icon: "plus-lg")
+      ) %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Filtro",
+        title: "Localizar conta",
+        actions: ax_badge("tenant global", tone: :gray)
+      ) do %>
+    <%= form_with url: admin_system_tenants_path, method: :get, local: true, class: "ax-filter-form", data: { controller: "auto-submit" } do |f| %>
+      <div class="ax-field-grid">
+        <div class="ax-field ax-span-7">
+          <%= f.label :q, "Busca", class: "ax-field__label" %>
+          <%= f.search_field :q, value: @query, class: "ax-input", placeholder: "Nome ou slug da conta" %>
+        </div>
+        <div class="ax-field ax-span-3">
+          <%= f.label :status, "Status", class: "ax-field__label" %>
+          <%= f.select :status,
+                options_for_select([["Todas", "all"], ["Ativas", "active"], ["Inativas", "inactive"]], @status),
+                {},
+                class: "ax-input",
+                data: { action: "change->auto-submit#submit" } %>
+        </div>
+        <div class="ax-field ax-span-2 ax-system-filter-actions">
+          <%= f.button type: "submit", class: "ax-btn ax-btn--primary" do %>
+            <i class="bi bi-search"></i><span>Filtrar</span>
+          <% end %>
+          <%= link_to admin_system_tenants_path, class: "ax-btn ax-btn--ghost" do %>
+            <i class="bi bi-x-circle"></i><span>Limpar</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Contas",
+        title: "Tenants cadastrados",
+        actions: safe_join([
+          (ax_badge("dev: #{@local_public_tenant.name}", tone: :blue, dot: true) if @local_public_tenant),
+          ax_badge("impersonação auditada", tone: :green, dot: true)
+        ].compact, " ")
+      ) do %>
+    <% if @tenants.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table ax-system-tenant-table">
+          <caption class="tw-sr-only">Contas cadastradas na plataforma</caption>
+          <thead>
+            <tr>
+              <th scope="col">Conta</th>
+              <th scope="col">Slug</th>
+              <th scope="col">Dono da conta</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="ax-system-tenant-table__actions-heading">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @tenants.each do |tenant| %>
+              <% owner = @tenant_owners_by_tenant_id[tenant.id] %>
+              <tr>
+                <td class="ax-strong">
+                  <div class="ax-system-tenant-account">
+                    <%= link_to tenant.name, admin_system_tenant_path(tenant), class: "ax-system-tenant-account__name" %>
+                    <span><%= pluralize(@account_user_counts_by_tenant_id.fetch(tenant.id, 0), "usuário", "usuários") %></span>
+                  </div>
+                </td>
+                <td><code class="ax-system-tenant-slug"><%= tenant.slug %></code></td>
+                <td>
+                  <div class="ax-system-tenant-owner-cell">
+                    <span><%= owner&.name || "Sem dono ativo" %></span>
+                  </div>
+                </td>
+                <td><%= ax_badge(tenant.active? ? "Ativa" : "Inativa", tone: tenant.active? ? :green : :gray, dot: true) %></td>
+                <td class="ax-system-tenant-table__actions">
+                  <div class="ax-system-tenant-actions-cell">
+                    <div class="ax-system-tenant-actions-cell__secondary">
+                      <%= link_to admin_system_tenant_path(tenant), class: "ax-btn ax-btn--ghost ax-btn--sm ax-system-tenant-action" do %>
+                        <i class="bi bi-eye"></i><span>Ver</span>
+                      <% end %>
+                      <%= link_to edit_admin_system_tenant_path(tenant), class: "ax-btn ax-btn--ghost ax-btn--sm ax-system-tenant-action" do %>
+                        <i class="bi bi-pencil-square"></i><span>Editar</span>
+                      <% end %>
+                    </div>
+
+                    <% if Tenants::LocalPublicHostOverride.available? %>
+                      <div class="ax-system-tenant-actions-cell__runtime">
+                        <% if @local_public_tenant&.id == tenant.id %>
+                          <span class="ax-badge ax-badge--blue ax-system-tenant-dev-badge">
+                            <i class="bi bi-display"></i><span>em uso no dev</span>
+                          </span>
+                        <% elsif tenant.active? %>
+                          <%= button_to safe_join([tag.i(class: "bi bi-display"), tag.span("Usar no dev")], " "),
+                                activate_dev_host_admin_system_tenant_path(tenant),
+                                method: :patch,
+                                class: "ax-btn ax-btn--info ax-btn--sm ax-system-tenant-action",
+                                form: { class: "ax-system-tenant-action-form", data: { turbo_confirm: "Usar #{tenant.name} em https://#{Tenants::LocalPublicHostOverride::HOST}/ neste ambiente local?" } } %>
+                        <% end %>
+                      </div>
+                    <% end %>
+
+                    <% if tenant.active? && owner %>
+                      <%= button_to safe_join([tag.i(class: "bi bi-person-bounding-box"), tag.span("Impersonar")], " "),
+                            admin_system_tenant_owner_impersonation_path(tenant),
+                            method: :post,
+                            class: "ax-btn ax-btn--primary ax-btn--sm ax-system-tenant-action ax-system-tenant-action--primary",
+                            form: { class: "ax-system-tenant-action-form ax-system-tenant-action-form--primary", data: { turbo: false, turbo_confirm: "Entrar em #{tenant.name} como #{owner.name}?" } } %>
+                    <% elsif tenant.active? %>
+                      <span class="ax-system-tenant-action-note">Sem dono</span>
+                    <% else %>
+                      <span class="ax-system-tenant-action-note">Inativa</span>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%= ax_pagination @tenants, params: request.query_parameters %>
+    <% else %>
+      <%= ax_empty_state(title: "Nenhuma conta encontrada", description: "Ajuste os filtros ou cadastre uma nova conta.", icon: "building") %>
+    <% end %>
+  <% end %>
+</div>

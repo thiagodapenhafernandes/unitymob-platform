@@ -20,7 +20,7 @@ class Admin::HomeSettingsController < Admin::BaseController
   private
   
   def set_home_setting
-    @home_setting = HomeSetting.instance
+    @home_setting = HomeSetting.instance(tenant: current_tenant)
   end
   
   def home_setting_params
@@ -52,6 +52,7 @@ class Admin::HomeSettingsController < Admin::BaseController
       :search_filter_field_background_opacity,
       :search_filter_backdrop_blur,
       :search_filter_border_radius,
+      :public_header_css,
       hero_slide_images: [],
       hero_slides_attributes: [:id, :position, :active, :alt_text, :_destroy]
     )
@@ -70,7 +71,7 @@ class Admin::HomeSettingsController < Admin::BaseController
       slide = @home_setting.hero_slides.build(
         position: next_position,
         active: true,
-        alt_text: "Salute Imóveis - Imagem #{next_position}"
+        alt_text: "#{current_tenant.name} - Imagem #{next_position}"
       )
       slide.image.attach(
         io: optimized_file,

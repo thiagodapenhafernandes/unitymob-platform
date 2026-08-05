@@ -4,6 +4,7 @@ module Admin
     DASHBOARD_TITLE_SETTING = "captacao_dashboard_title".freeze
     DEFAULT_DASHBOARD_EYEBROW = "Palavra do Ano".freeze
     DEFAULT_DASHBOARD_TITLE = "Captação".freeze
+    EFFECTIVE_CAPTURE_INTAKE_STATUSES = %w[admin_approved internal published].freeze
 
     before_action -> { check_permission!(:view, :captacoes) }, except: [:dashboard]
     before_action -> { check_permission!(:view, :captacao_dashboard) }, only: [:dashboard]
@@ -19,7 +20,6 @@ module Admin
       @target_month_label = target_month_label(@month_filter)
 
       scope = captacao_habitation_scope
-      scope = scope.where("EXTRACT(MONTH FROM COALESCE(habitations.data_cadastro_crm, habitations.created_at)) = ?", @month_filter.to_i) if @month_filter.present?
       captacao_owner_ids = visible_owner_ids(:captacoes)
       scope = scope.where(admin_user_id: captacao_owner_ids) unless captacao_owner_ids.nil?
 
@@ -69,23 +69,20 @@ module Admin
       @regiao_foco_locacao_percent = percentage(@regiao_foco_locacao, @total_locacao)
       @captacao_adm_locacao_percent = percentage(@captacao_adm_locacao, @total_locacao)
 
-      intake_scope = current_tenant.habitations.broker_intakes.where(created_at: @period_start.beginning_of_day..@period_end.end_of_day)
-      intake_scope = intake_scope.where("EXTRACT(MONTH FROM habitations.created_at) = ?", @month_filter.to_i) if @month_filter.present?
+      intake_scope = effective_capture_scope
       unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
         pre_cadastro_owner_ids = visible_owner_ids(:captacoes)
         intake_scope = intake_scope.where(admin_user_id: pre_cadastro_owner_ids) unless pre_cadastro_owner_ids.nil?
       end
 
       @pre_cadastro_total = intake_scope.count
-      @pre_cadastro_draft = intake_scope.where(intake_status: [nil, "draft", "returned_to_broker"]).count
-      @pre_cadastro_review = intake_scope.where(intake_status: "submitted_for_admin_review").count
       @pre_cadastro_admin_approved = intake_scope.where(intake_status: "admin_approved").count
+      @pre_cadastro_internal = intake_scope.where(intake_status: "internal").count
       @pre_cadastro_published = intake_scope.where(intake_status: "published").count
 
       release_scope = current_tenant.habitations.broker_intakes
         .where(intake_status: "published")
         .where(broker_released_at: @period_start.beginning_of_day..@period_end.end_of_day)
-      release_scope = release_scope.where("EXTRACT(MONTH FROM habitations.broker_released_at) = ?", @month_filter.to_i) if @month_filter.present?
       unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
         release_owner_ids = visible_owner_ids(:captacoes)
         release_scope = release_scope.where(admin_user_id: release_owner_ids) unless release_owner_ids.nil?
@@ -105,8 +102,8 @@ module Admin
       return if performed?
 
       attrs = dashboard_title_params
-      Setting.set(DASHBOARD_EYEBROW_SETTING, attrs[:eyebrow].to_s.strip.presence || DEFAULT_DASHBOARD_EYEBROW, "Texto superior do dashboard de captação")
-      Setting.set(DASHBOARD_TITLE_SETTING, attrs[:title].to_s.strip.presence || DEFAULT_DASHBOARD_TITLE, "Título principal do dashboard de captação")
+      Setting.set(DASHBOARD_EYEBROW_SETTING, attrs[:eyebrow].to_s.strip.presence || DEFAULT_DASHBOARD_EYEBROW, "Texto superior do dashboard de captação", tenant: current_tenant)
+      Setting.set(DASHBOARD_TITLE_SETTING, attrs[:title].to_s.strip.presence || DEFAULT_DASHBOARD_TITLE, "Título principal do dashboard de captação", tenant: current_tenant)
 
       redirect_to dashboard_admin_captacoes_path, notice: "Título do dashboard atualizado."
     end
@@ -191,8 +188,8 @@ module Admin
     private
 
     def set_dashboard_title
-      @dashboard_eyebrow = Setting.get(DASHBOARD_EYEBROW_SETTING, DEFAULT_DASHBOARD_EYEBROW)
-      @dashboard_title = Setting.get(DASHBOARD_TITLE_SETTING, DEFAULT_DASHBOARD_TITLE)
+      @dashboard_eyebrow = Setting.tenant_get(DASHBOARD_EYEBROW_SETTING, DEFAULT_DASHBOARD_EYEBROW, tenant: current_tenant)
+      @dashboard_title = Setting.tenant_get(DASHBOARD_TITLE_SETTING, DEFAULT_DASHBOARD_TITLE, tenant: current_tenant)
     end
 
     def dashboard_title_params
@@ -208,7 +205,12 @@ module Admin
       if @month_filter.present?
         month_start = Date.new(@dashboard_year, @month_filter.to_i, 1)
         @period_start = month_start.beginning_of_month
-        @period_end = month_start.end_of_month
+        @period_end =
+          if month_start.month == Date.current.month && month_start.year == Date.current.year
+            Date.current
+          else
+            month_start.end_of_month
+          end
       else
         @period_start = parsed_start || Date.current.beginning_of_year
         @period_end = parsed_end || Date.current
@@ -229,9 +231,19 @@ module Admin
     end
 
     def captacao_habitation_scope
-      current_tenant.habitations
+      effective_capture_scope
         .where("COALESCE(habitations.tipo, '') <> 'Empreendimento'")
-        .where("COALESCE(habitations.data_cadastro_crm, habitations.created_at) BETWEEN ? AND ?", @period_start.beginning_of_day, @period_end.end_of_day)
+    end
+
+    def effective_capture_scope
+      current_tenant.habitations
+        .broker_intakes
+        .where(intake_status: EFFECTIVE_CAPTURE_INTAKE_STATUSES)
+        .where("#{effective_capture_timestamp_sql} BETWEEN ? AND ?", @period_start.beginning_of_day, @period_end.end_of_day)
+    end
+
+    def effective_capture_timestamp_sql
+      "COALESCE(habitations.admin_reviewed_at, habitations.broker_released_at)"
     end
 
     def percentage(value, total)

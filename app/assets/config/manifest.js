@@ -25,5 +25,6 @@
 //= link public_habitations_index_refresh.css
 //= link public_habitations_show_refresh.css
 //= link public_development_show_refresh.css
+//= link_tree ../stylesheets/public_site_themes .css
 //= link ax_toast.css
 //= link field_theme.css

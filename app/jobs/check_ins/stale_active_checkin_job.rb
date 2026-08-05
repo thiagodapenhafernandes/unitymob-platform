@@ -20,7 +20,7 @@ module CheckIns
         Current.set(tenant: tenant) do
           # Flag POR-TENANT: avaliar já com o tenant no contexto, senão
           # Current.tenant=nil lê a global inexistente e aborta a varredura.
-          next unless FieldFeatureGate.field_checkin_enabled?
+          next unless FieldFeatureGate.field_checkin_enabled?(tenant: tenant)
 
           active_scope = tenant.check_ins.where(status: :active)
 
