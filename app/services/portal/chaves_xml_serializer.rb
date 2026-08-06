@@ -1,104 +1,115 @@
 require "builder"
 
 module Portal
-  # Chaves na Mão XML — formato proprietário
+  # Chaves na Mão XML - formato proprietário
   # Spec: https://tecnologiacnm.github.io/cnm-xml-documentation/arquivo/especificacoes/especificacoes-tags.html
   # Tags em PT-BR (referencia, transacao, finalidade, tipo, valor, etc.)
   # Lido 1x por dia pelo portal.
   class ChavesXmlSerializer
+    RESIDENTIAL_TYPES = {
+      /apartamento/i => "Apartamento",
+      /casa.*condom[ií]nio|condom[ií]nio.*casa/i => "Casa / Sobrado em Condomínio",
+      /cobertura/i => "Cobertura",
+      /flat/i => "Flat",
+      /kitnet|studio|st[uú]dio/i => "Kitnet / Stúdio",
+      /loft/i => "Loft",
+      /s[ií]tio|sitio|ch[aá]cara|chacara/i => "Sítio / Chácara",
+      /terreno.*condom[ií]nio|condom[ií]nio.*terreno/i => "Terreno em Condomínio",
+      /terreno|lote/i => "Terreno / Lote",
+      /casa|sobrado/i => "Casa / Sobrado"
+    }.freeze
+
+    COMMERCIAL_TYPES = {
+      /casa.*comercial|sobrado.*comercial/i => "Casa / Sobrado Comercial",
+      /sala|conjunto|escrit[oó]rio/i => "Conj. Comercial / Sala",
+      /fazenda/i => "Fazenda",
+      /galp[aã]o|dep[oó]sito/i => "Galpão / Depósito",
+      /garagem/i => "Garagem",
+      /ponto|loja/i => "Ponto Comercial",
+      /pr[eé]dio/i => "Prédio",
+      /terreno/i => "Terreno comercial"
+    }.freeze
+
+    RENTAL_PERIODS = {
+      "por_mes" => "1",
+      "por_dia" => "2",
+      "por_ano" => "3",
+      "por_semana" => "4"
+    }.freeze
+
     def initialize(habitations:, integration:)
       @habitations = habitations
       @integration = integration
-      @identity = Tenants::PublicIdentity.new(integration.tenant)
+      @tenant = integration.tenant
     end
 
     def to_xml(target: nil)
       xml = Builder::XmlMarkup.new(**{ indent: 2 }.merge(target ? { target: target } : {}))
       xml.instruct!
 
-      xml.imoveis(gerado_em: Time.current.iso8601, total: @habitations.respond_to?(:size) ? @habitations.size : nil) do
-        @habitations.each do |habitation|
-          xml.imovel do
-            # Identificação obrigatória
-            xml.referencia habitation.codigo
-            xml.transacao  transacao_for(habitation)
-            xml.finalidade finalidade_for(habitation)
-            xml.tipo       tipo_for(habitation)
-            xml.valor      valor_for(habitation)
-
-            # Localização obrigatória
-            xml.estado habitation.uf.to_s.upcase
-            xml.cidade { xml.cdata!(habitation.cidade.to_s) }
-            xml.bairro { xml.cdata!(habitation.bairro.to_s) }
-
-            # Endereço opcional
-            xml.endereco { xml.cdata!(habitation.endereco.to_s) } if habitation.endereco.present?
-            xml.numero    habitation.numero.to_s if habitation.numero.present?
-            xml.complemento habitation.complemento.to_s if habitation.complemento.to_s.strip.present?
-            xml.cep       sanitize_cep(habitation.cep) if habitation.cep.present?
-
-            if (lat = coordinate(habitation, :latitude))
-              xml.latitude lat
-            end
-            if (lng = coordinate(habitation, :longitude))
-              xml.longitude lng
-            end
-
-            # Descrição obrigatória (max 3000 chars)
-            xml.descritivo { xml.cdata!(description_for(habitation).first(3000)) }
-
-            # Destaque (0 ou 1)
-            xml.destaque destaque_for(habitation)
-
-            # Transação secundária e valor de locação se aplicável
-            if habitation.valor_venda_cents.to_i.positive? && habitation.valor_locacao_cents.to_i.positive?
-              xml.transacao2     "L"
-              xml.valor_locacao  format_money(habitation.valor_locacao_cents)
-            end
-
-            # Áreas
-            xml.area_total format_decimal(habitation.area_total_m2) if habitation.area_total_m2.to_f.positive?
-            xml.area_util  format_decimal(habitation.area_privativa_m2) if habitation.area_privativa_m2.to_f.positive?
-
-            # Cômodos
-            xml.quartos   habitation.dormitorios_qtd.to_i if habitation.dormitorios_qtd.to_i.positive?
-            xml.suites    habitation.suites_qtd.to_i      if habitation.suites_qtd.to_i.positive?
-            xml.banheiro  habitation.banheiros_qtd.to_i   if habitation.banheiros_qtd.to_i.positive?
-            xml.garagem   habitation.vagas_qtd.to_i       if habitation.vagas_qtd.to_i.positive?
-
-            # Valores adicionais
-            xml.condominio format_money(habitation.valor_condominio_cents) if habitation.valor_condominio_cents.to_i.positive?
-            xml.iptu       format_money(habitation.valor_iptu_cents)       if habitation.valor_iptu_cents.to_i.positive?
-
-            # Opções específicas do portal
-            if habitation.respond_to?(:periodo_locacao_chaves_na_mao) && habitation.periodo_locacao_chaves_na_mao.present?
-              xml.periodo_locacao habitation.periodo_locacao_chaves_na_mao
-            end
-
-            # Características (lista plana)
-            features = features_for(habitation)
-            if features.any?
-              xml.caracteristicas do
-                features.each { |f| xml.caracteristica { xml.cdata!(f) } }
-              end
-            end
-
-            # Fotos (nested)
-            xml.fotos_imovel do
-              habitation.image_urls.first(20).each_with_index do |url, idx|
-                xml.foto do
-                  xml.url url.to_s
-                  xml.principal idx.zero? ? "1" : "0"
-                  xml.ordem (idx + 1)
+      xml.Document do
+        xml.imoveis do
+          @habitations.each do |habitation|
+            xml.imovel do
+              xml.referencia text_value(habitation.codigo)
+              xml.codigo_cliente text_value(habitation.codigo)
+              xml.link_cliente property_url_for(habitation)
+              xml.titulo { xml.cdata!(title_for(habitation).first(120)) }
+              xml.transacao transacao_for(habitation)
+              xml.transacao2 secondary_transaction_for(habitation)
+              xml.finalidade finalidade_for(habitation)
+              xml.finalidade2 ""
+              xml.destaque destaque_for(habitation)
+              xml.tipo tipo_for(habitation)
+              xml.tipo2 ""
+              xml.valor valor_for(habitation)
+              xml.valor_locacao rental_value_for(habitation)
+              xml.valor_iptu money_value(habitation.valor_iptu_cents)
+              xml.valor_condominio money_value(habitation.valor_condominio_cents)
+              xml.area_total decimal_value(habitation.area_total_m2)
+              xml.area_util decimal_value(habitation.area_privativa_m2)
+              xml.quartos integer_value(habitation.dormitorios_qtd)
+              xml.suites integer_value(habitation.suites_qtd)
+              xml.garagem integer_value(habitation.vagas_qtd)
+              xml.banheiro integer_value(habitation.banheiros_qtd)
+              xml.closet ""
+              xml.salas ""
+              xml.despensa ""
+              xml.bar ""
+              xml.cozinha ""
+              xml.quarto_empregada ""
+              xml.escritorio ""
+              xml.area_servico ""
+              xml.lareira ""
+              xml.varanda ""
+              xml.lavanderia ""
+              xml.estado habitation.uf.to_s.upcase.first(2)
+              xml.cidade { xml.cdata!(text_value(habitation.cidade)) }
+              xml.bairro { xml.cdata!(text_value(habitation.bairro)) }
+              xml.cep sanitize_cep(habitation.cep).first(9)
+              xml.endereco { xml.cdata!(text_value(habitation.endereco).first(200)) }
+              xml.numero text_value(habitation.numero).first(10)
+              xml.complemento text_value(habitation.complemento).first(20)
+              xml.descritivo { xml.cdata!(description_for(habitation).first(3000)) }
+              xml.fotos_imovel do
+                habitation.image_urls.first(30).each do |url|
+                  xml.foto do
+                    xml.url url.to_s
+                    xml.data_atualizacao timestamp_for(habitation)
+                  end
                 end
               end
-            end
-
-            # Contato
-            xml.contato do
-              xml.nome     @identity.name
-              xml.email    @identity.email
-              xml.telefone @identity.phone
+              xml.data_atualizacao timestamp_for(habitation)
+              xml.latitude coordinate(habitation, :latitude).to_s
+              xml.longitude coordinate(habitation, :longitude).to_s
+              xml.video ""
+              xml.area_comum
+              xml.area_privativa
+              xml.aceita_troca "0"
+              xml.periodo_locacao rental_period_for(habitation)
+              xml.esconder_endereco_imovel "0"
+              xml.tour_360 ""
+              xml.aceita_pet ""
             end
           end
         end
@@ -127,8 +138,13 @@ module Portal
     end
 
     def tipo_for(habitation)
-      # Tipo do imóvel — texto livre que faz sentido para o portal
-      habitation.categoria.presence || "Imóvel"
+      category = habitation.categoria.to_s
+      mapping = finalidade_for(habitation) == "CO" ? COMMERCIAL_TYPES : RESIDENTIAL_TYPES
+      mapping.each do |pattern, value|
+        return value if category.match?(pattern)
+      end
+
+      finalidade_for(habitation) == "CO" ? "Conj. Comercial / Sala" : "Apartamento"
     end
 
     def valor_for(habitation)
@@ -144,6 +160,12 @@ module Portal
       habitation.destaque_web_flag ? "1" : "0"
     end
 
+    def title_for(habitation)
+      habitation.titulo_anuncio.presence ||
+        [tipo_for(habitation), habitation.bairro, habitation.cidade].compact_blank.join(" - ").presence ||
+        "Imóvel #{habitation.codigo}"
+    end
+
     def description_for(habitation)
       habitation.descricao_web.to_plain_text.presence ||
         habitation.meta_description.to_plain_text.presence ||
@@ -152,21 +174,80 @@ module Portal
       "Sem descrição"
     end
 
-    def features_for(habitation)
-      values = []
-      values.concat(Array(habitation.infra_estrutura))
-      values.concat(Array(habitation.caracteristicas&.values)) if habitation.caracteristicas.respond_to?(:values)
-      values.concat(Array(habitation.unique_features)) if habitation.respond_to?(:unique_features)
-      values.map { |v| v.to_s.strip }.reject(&:blank?).uniq.first(40)
+    def secondary_transaction_for(habitation)
+      return "L" if habitation.valor_venda_cents.to_i.positive? && habitation.valor_locacao_cents.to_i.positive?
+
+      ""
+    end
+
+    def rental_value_for(habitation)
+      return "" unless habitation.valor_venda_cents.to_i.positive? && habitation.valor_locacao_cents.to_i.positive?
+
+      format_money(habitation.valor_locacao_cents)
+    end
+
+    def rental_period_for(habitation)
+      return "" unless locacao_available?(habitation)
+
+      RENTAL_PERIODS[habitation.periodo_locacao_chaves_na_mao.to_s] || ""
+    end
+
+    def locacao_available?(habitation)
+      habitation.valor_locacao_cents.to_i.positive?
+    end
+
+    def property_url_for(habitation)
+      slug = habitation.slug.presence || habitation.codigo
+      return "" if slug.blank?
+
+      "#{public_base_url}/imovel/#{slug}"
+    end
+
+    def public_base_url
+      @public_base_url ||= begin
+        host = @tenant&.tenant_domains&.active&.primary_first&.first&.hostname
+        if host.present?
+          "https://#{host}"
+        else
+          ENV.fetch("APP_HOST", "https://saluteimoveis.com.br").to_s.delete_suffix("/")
+        end
+      end
     end
 
     def format_money(cents)
-      # Reais com 2 casas decimais e ponto como separador (spec: "valor com ponto (.) para casas decimais")
       format("%.2f", cents.to_i / 100.0)
     end
 
     def format_decimal(value)
       format("%.2f", value.to_f)
+    end
+
+    def money_value(cents)
+      return "" unless cents.to_i.positive?
+
+      format_money(cents)
+    end
+
+    def decimal_value(value)
+      return "" unless value.to_f.positive?
+
+      format_decimal(value)
+    end
+
+    def integer_value(value)
+      integer = value.to_i
+      return "" unless integer.positive?
+
+      integer.to_s
+    end
+
+    def text_value(value)
+      value.to_s.strip
+    end
+
+    def timestamp_for(habitation)
+      time = habitation.updated_at || habitation.created_at || Time.current
+      time.strftime("%Y-%m-%d %H:%M:%S")
     end
 
     def sanitize_cep(cep)
