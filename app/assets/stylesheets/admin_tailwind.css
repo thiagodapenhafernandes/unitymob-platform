@@ -15484,7 +15484,7 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
 }
 
 .capt-ranking-row .bar-cell--stacked {
-  height: 36px;
+  height: 22px;
 }
 
 .capt-ranking-row__progress.ax-progress {
@@ -15527,7 +15527,7 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
   align-items: center;
   min-width: 0;
   height: 100%;
-  padding: 0 6px;
+  padding: 0 8px;
 }
 
 .capt-ranking-stacked__segment--internal {
@@ -15539,8 +15539,12 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
 }
 
 .capt-ranking-stacked__segment-label {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
+  gap: 4px;
   color: #fff;
   font-size: .72rem;
   font-weight: 800;
@@ -15549,16 +15553,16 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
   white-space: nowrap;
 }
 
-.capt-ranking-stacked__legend {
-  display: block;
-  margin-top: 2px;
+.capt-ranking-stacked__segment-count {
+  flex: 0 0 auto;
+  font-size: .84rem;
+  font-weight: 900;
+}
+
+.capt-ranking-stacked__segment-text {
+  min-width: 0;
   overflow: hidden;
-  color: #475569;
-  font-size: .68rem;
-  font-weight: 800;
-  line-height: 12px;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .capt-heatmap-card .ax-card__body {
@@ -24835,9 +24839,6 @@ html[data-admin-theme="dark"] .capt-dashboard-workspace .capt-ranking-row .bar-c
 }
 html[data-admin-theme="dark"] .capt-dashboard-workspace .capt-ranking-stacked {
   background: #25364d !important;
-}
-html[data-admin-theme="dark"] .capt-dashboard-workspace .capt-ranking-stacked__legend {
-  color: var(--capt-dark-subtle) !important;
 }
 
 html[data-admin-theme="dark"] .capt-dashboard-workspace .capt-total-card {
