@@ -7,16 +7,15 @@
 <% has_secondary_count = secondary_count_key.present? %>
 <% max_secondary_ct = has_secondary_count ? rows.map { |row| row.public_send(secondary_count_key).to_i }.max.to_i : 1 %>
 <% max_secondary_ct = 1 if max_secondary_ct.zero? %>
-<% secondary_bar_max = secondary_stacked_count_segments.any? ? max_ct : max_secondary_ct %>
 <div class="ax-table-wrap">
   <table class="ax-table">
     <thead class="capt-ranking-table__head">
       <tr>
         <th class="ax-table__col--w-40">Rank</th>
         <th>Corretor</th>
-        <th class="capt-ranking-table__col-chart">Captação</th>
+        <th class="capt-ranking-table__col-chart"><%= stacked_count_segments.any? ? "Captação - Interno/Site" : "Captação" %></th>
         <% if has_secondary_count %>
-          <th class="capt-ranking-table__col-chart"><%= secondary_count_label %></th>
+          <th class="capt-ranking-table__col-chart"><%= secondary_stacked_count_segments.any? ? "#{secondary_count_label} - Interno/Site" : secondary_count_label %></th>
         <% end %>
         <th class="tw-text-right"><%= value_label %></th>
       </tr>
@@ -29,18 +28,17 @@
           <td><%= row.name %></td>
           <td>
             <% if stacked_count_segments.any? %>
-              <% count_percent = (row.ct.to_f / max_ct * 100).round(2) %>
               <% segment_texts = stacked_count_segments.filter_map { |segment| segment_count = row.public_send(segment[:key]).to_i; "#{segment_count} #{segment[:label]}" if segment_count.positive? } %>
               <div class="bar-cell bar-cell--stacked">
                 <div class="capt-ranking-stacked" role="img" aria-label="<%= "#{row.name}: #{segment_texts.presence&.join(', ') || '0 captações'}" %>">
-                  <div class="capt-ranking-stacked__fill" style="width: <%= count_percent %>%;">
+                  <div class="capt-ranking-stacked__fill" style="width: 100%;">
                     <% stacked_count_segments.each do |segment| %>
                       <% segment_count = row.public_send(segment[:key]).to_i %>
                       <% next if segment_count.zero? %>
-                      <span class="capt-ranking-stacked__segment capt-ranking-stacked__segment--<%= segment[:tone] %>" style="flex: <%= segment_count %>;" title="<%= "#{segment_count} #{segment[:label]}" %>">
+                      <% segment_min_width = [28, (segment_count.to_s.length * 10) + 16].max %>
+                      <span class="capt-ranking-stacked__segment capt-ranking-stacked__segment--<%= segment[:tone] %>" style="flex: <%= segment_count %> 1 0; min-width: <%= segment_min_width %>px;" title="<%= "#{segment_count} #{segment[:label]}" %>">
                         <span class="capt-ranking-stacked__segment-label">
                           <span class="capt-ranking-stacked__segment-count"><%= segment_count %></span>
-                          <span class="capt-ranking-stacked__segment-text"><%= segment[:label] %></span>
                         </span>
                       </span>
                     <% end %>
@@ -61,18 +59,17 @@
           <% if has_secondary_count %>
             <td>
               <% if secondary_stacked_count_segments.any? %>
-                <% secondary_percent = (secondary_count.to_f / secondary_bar_max * 100).round(2) %>
                 <% secondary_segment_texts = secondary_stacked_count_segments.filter_map { |segment| segment_count = row.public_send(segment[:key]).to_i; "#{segment_count} #{segment[:label]}" if segment_count.positive? } %>
                 <div class="bar-cell bar-cell--stacked">
                   <div class="capt-ranking-stacked" role="img" aria-label="<%= "#{row.name}: #{secondary_segment_texts.presence&.join(', ') || '0 captações'} com administração" %>">
-                    <div class="capt-ranking-stacked__fill" style="width: <%= secondary_percent %>%;">
+                    <div class="capt-ranking-stacked__fill" style="width: 100%;">
                       <% secondary_stacked_count_segments.each do |segment| %>
                         <% segment_count = row.public_send(segment[:key]).to_i %>
                         <% next if segment_count.zero? %>
-                        <span class="capt-ranking-stacked__segment capt-ranking-stacked__segment--<%= segment[:tone] %>" style="flex: <%= segment_count %>;" title="<%= "#{segment_count} #{segment[:label]}" %>">
+                        <% segment_min_width = [28, (segment_count.to_s.length * 10) + 16].max %>
+                        <span class="capt-ranking-stacked__segment capt-ranking-stacked__segment--<%= segment[:tone] %>" style="flex: <%= segment_count %> 1 0; min-width: <%= segment_min_width %>px;" title="<%= "#{segment_count} #{segment[:label]}" %>">
                           <span class="capt-ranking-stacked__segment-label">
                             <span class="capt-ranking-stacked__segment-count"><%= segment_count %></span>
-                            <span class="capt-ranking-stacked__segment-text"><%= segment[:label] %></span>
                           </span>
                         </span>
                       <% end %>

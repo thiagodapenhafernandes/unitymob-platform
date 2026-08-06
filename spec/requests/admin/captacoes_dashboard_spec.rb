@@ -50,16 +50,21 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     locacao_table = page.at_css("#tab-locacao .capt-ranking-table__head")&.text&.squish
     locacao_row = page.css("#tab-locacao .capt-ranking-row").find { |row| row.text.include?(dashboard_admin.name) }&.text&.squish
     release_ranking = page.at_css(".capt-release-ranking-card")&.text&.squish
-    expect(locacao_table).to include("Captação", "Captação com Adm", "Total Locação")
+    expect(locacao_table).to include("Captação - Interno/Site", "Captação com Adm - Interno/Site", "Total Locação")
     expect(locacao_row).to include(dashboard_admin.name, "R$ 9.000")
     expect(release_ranking).to include("Liberações por corretor", dashboard_admin.name, "2")
     locacao_stacked_bars = page.css("#tab-locacao .capt-ranking-row").find { |row| row.text.include?(dashboard_admin.name) }.css(".capt-ranking-stacked")
     primary_segments = locacao_stacked_bars.first.css(".capt-ranking-stacked__segment-label").map { |segment| segment.text.squish }
     secondary_segments = locacao_stacked_bars.last.css(".capt-ranking-stacked__segment-label").map { |segment| segment.text.squish }
-    expect(primary_segments).to eq(["1 interno", "2 site"])
-    expect(secondary_segments).to eq(["1 interno", "1 site"])
-    expect(locacao_stacked_bars.first.at_css(".capt-ranking-stacked__fill")["style"]).to include("width: 100.0%;")
-    expect(locacao_stacked_bars.last.at_css(".capt-ranking-stacked__fill")["style"]).to include("width: 66.67%;")
+    primary_titles = locacao_stacked_bars.first.css(".capt-ranking-stacked__segment").map { |segment| segment["title"] }
+    secondary_titles = locacao_stacked_bars.last.css(".capt-ranking-stacked__segment").map { |segment| segment["title"] }
+    expect(primary_segments).to eq(["1", "2"])
+    expect(secondary_segments).to eq(["1", "1"])
+    expect(primary_titles).to eq(["1 interno", "2 site"])
+    expect(secondary_titles).to eq(["1 interno", "1 site"])
+    expect(locacao_stacked_bars.first.at_css(".capt-ranking-stacked__fill")["style"]).to include("width: 100%;")
+    expect(locacao_stacked_bars.last.at_css(".capt-ranking-stacked__fill")["style"]).to include("width: 100%;")
+    expect(locacao_stacked_bars.css(".capt-ranking-stacked__segment").map { |segment| segment["style"] }).to all(include("min-width: 28px;"))
     expect(locacao_stacked_bars.css(".capt-ranking-stacked__legend")).to be_empty
     expect(locacao_stacked_bars.text).not_to include("0 interno", "0 site")
     ranking_progress = Nokogiri::HTML(response.body).css(".capt-ranking-row__progress progress.ax-progress__bar")
