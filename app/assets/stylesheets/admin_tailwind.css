@@ -15525,9 +15525,10 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
 .capt-ranking-stacked__segment {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-width: 0;
   height: 100%;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 .capt-ranking-stacked__segment--internal {
@@ -15541,12 +15542,11 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
 .capt-ranking-stacked__segment-label {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  gap: 4px;
   color: #fff;
-  font-size: .72rem;
   font-weight: 800;
   line-height: 22px;
   text-overflow: ellipsis;
@@ -15557,12 +15557,6 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__item.is-active { background: c
   flex: 0 0 auto;
   font-size: .84rem;
   font-weight: 900;
-}
-
-.capt-ranking-stacked__segment-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .capt-heatmap-card .ax-card__body {
