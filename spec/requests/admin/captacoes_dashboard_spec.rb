@@ -22,6 +22,7 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "internal", admin_reviewed_at: effective_at, valor_venda_cents: 700_000_00, valor_locacao_cents: 0, regiao_foco: "Não")
     create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "internal", admin_reviewed_at: effective_at, valor_venda_cents: 0, valor_locacao_cents: 4_000_00, regiao_foco: "Sim", salute_rental_management_flag: true)
     create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", admin_reviewed_at: effective_at, broker_released_at: 1.day.ago, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false, exibir_no_site_flag: true)
+    create(:habitation, :broker_intake, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", admin_reviewed_at: effective_at, valor_venda_cents: 0, valor_locacao_cents: 2_000_00, regiao_foco: "Sim", salute_rental_management_flag: true, exibir_no_site_flag: true)
     create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", admin_reviewed_at: effective_at, broker_released_at: 2.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0, exibir_no_site_flag: true)
     create(:habitation, :broker_intake, tenant:, codigo: "DRAFT-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "draft", valor_venda_cents: 3_000_000_00, valor_locacao_cents: 8_000_00)
     create(:habitation, :broker_intake, tenant:, codigo: "REVIEW-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "submitted_for_admin_review", submitted_for_review_at: effective_at, valor_venda_cents: 3_000_000_00, valor_locacao_cents: 8_000_00)
@@ -43,15 +44,17 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include("Região foco Locação")
     expect(response.body).to include("Captação com Adm")
     expect(response.body).to include("de 2 captações de venda")
-    expect(response.body).to include("de 2 captações de locação")
+    expect(response.body).to include("de 3 captações de locação")
     expect(response.body).to include("50%")
     page = Nokogiri::HTML(response.body)
     locacao_table = page.at_css("#tab-locacao .capt-ranking-table__head")&.text&.squish
     locacao_row = page.css("#tab-locacao .capt-ranking-row").find { |row| row.text.include?(dashboard_admin.name) }&.text&.squish
     release_ranking = page.at_css(".capt-release-ranking-card")&.text&.squish
     expect(locacao_table).to include("Captação", "Captação com Adm", "Total Locação")
-    expect(locacao_row).to include(dashboard_admin.name, "2", "1", "R$ 7.000")
+    expect(locacao_row).to include(dashboard_admin.name, "1 interno · 2 site", "1 interno · 1 site", "R$ 9.000")
     expect(release_ranking).to include("Liberações por corretor", dashboard_admin.name, "2")
+    stacked_bars = page.css("#tab-locacao .capt-ranking-stacked")
+    expect(stacked_bars.size).to be >= 2
     ranking_progress = Nokogiri::HTML(response.body).css(".capt-ranking-row__progress progress.ax-progress__bar")
     expect(ranking_progress).not_to be_empty
     expect(ranking_progress).to all(satisfy { |bar| bar["style"].nil? && bar["max"] == "100" })
@@ -59,14 +62,13 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
 
   it "permite ao administrador editar o título do dashboard" do
     get dashboard_admin_captacoes_path
-    token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
 
     patch dashboard_title_admin_captacoes_path, params: {
       dashboard: {
         eyebrow: "Meta do mês",
         title: "Captação Salute"
       }
-    }, headers: { "X-CSRF-Token" => token }
+    }
 
     expect(response).to redirect_to(dashboard_admin_captacoes_path)
     follow_redirect!

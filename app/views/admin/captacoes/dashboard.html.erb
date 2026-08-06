@@ -451,7 +451,15 @@
                     value_key: :total_value,
                     value_label: "Total Locação",
                     secondary_count_key: :adm_ct,
-                    secondary_count_label: "Captação com Adm" %>
+                    secondary_count_label: "Captação com Adm",
+                    stacked_count_segments: [
+                      { key: :internal_ct, label: "interno", tone: "internal" },
+                      { key: :site_ct, label: "site", tone: "site" }
+                    ],
+                    secondary_stacked_count_segments: [
+                      { key: :adm_internal_ct, label: "interno", tone: "internal" },
+                      { key: :adm_site_ct, label: "site", tone: "site" }
+                    ] %>
             </div>
           </div>
         </div>
