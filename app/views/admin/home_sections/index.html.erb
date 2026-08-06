@@ -8,8 +8,8 @@
     <thead>
       <tr>
         <th class="ax-table__col--w-80">Ordem</th>
-        <th class="ax-table__col--w-220">Tipo</th>
         <th>Título</th>
+        <th class="ax-table__col--w-320">Conteúdo e filtros</th>
         <th class="ax-table__col--w-120">Status</th>
         <th class="ax-num ax-table__col--md">Ações</th>
       </tr>
@@ -22,16 +22,18 @@
             <span class="ax-badge ax-badge--gray tw-ml-1"><%= section.order_position || '-' %></span>
           </td>
           <td>
-            <span class="ax-badge ax-badge--blue"><%= section.section_type_label %></span>
+            <span class="ax-strong"><%= section.title %></span>
+            <% if section.subtitle.present? %><div class="tw-text-2xs tw-text-ink-faint"><%= truncate(section.subtitle, length: 60) %></div><% end %>
+          </td>
+          <td>
+            <span class="ax-badge ax-badge--blue"><%= section.public_section_kind_label %></span>
             <% if section.property_filter_labels.any? %>
               <div class="tw-flex tw-flex-wrap tw-gap-1 tw-mt-1">
                 <% section.property_filter_labels.each do |label| %><span class="ax-badge ax-badge--gray"><%= label %></span><% end %>
               </div>
+            <% else %>
+              <div class="tw-text-2xs tw-text-ink-faint tw-mt-1">Sem filtros adicionais</div>
             <% end %>
-          </td>
-          <td>
-            <span class="ax-strong"><%= section.title %></span>
-            <% if section.subtitle.present? %><div class="tw-text-2xs tw-text-ink-faint"><%= truncate(section.subtitle, length: 60) %></div><% end %>
           </td>
           <td>
             <%= button_to toggle_active_admin_home_section_path(section), method: :patch, form_class: "tw-inline-block",

@@ -87,4 +87,36 @@ RSpec.describe Ai::PropertySearch::CatalogContext do
     expect(catalog.fetch(:developments).map { |item| item.fetch(:name) }).to include("Alpha")
     expect(catalog.fetch(:developments).map { |item| item.fetch(:name) }).not_to include("Outro Empreendimento")
   end
+
+  it "inclui nomes de empreendimentos cadastrados nas unidades publicáveis" do
+    create(
+      :habitation,
+      tenant:,
+      tipo: "Unitário",
+      categoria: "Apartamento",
+      codigo: "UNIT-AQUALINA",
+      nome_empreendimento: "Aqualina Residence"
+    )
+
+    context = described_class.new(setting:, tenant:, text: "Aqualina Residence", current_filters: {}).call
+
+    names = context.fetch(:catalog).fetch(:developments).map { |item| item.fetch(:name) }
+    expect(names).to include("Aqualina Residence")
+  end
+
+  it "inclui nomes de unidades por similaridade quando o termo tem pequena diferença de grafia" do
+    create(
+      :habitation,
+      tenant:,
+      tipo: "Unitário",
+      categoria: "Apartamento",
+      codigo: "UNIT-ACQUALINA",
+      nome_empreendimento: "Acqualina Residence"
+    )
+
+    context = described_class.new(setting:, tenant:, text: "Aqualina Residence", current_filters: {}).call
+
+    names = context.fetch(:catalog).fetch(:developments).map { |item| item.fetch(:name) }
+    expect(names).to include("Acqualina Residence")
+  end
 end

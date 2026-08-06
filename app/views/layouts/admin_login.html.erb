@@ -2,10 +2,12 @@
 <html lang="pt-BR">
   <head>
     <% login_layout_setting = @layout_setting || LayoutSetting.instance %>
-    <% login_site_name = login_layout_setting&.site_name.presence || "Salute Imóveis" %>
+    <% login_pwa_tenant = login_layout_setting&.tenant || public_tenant %>
+    <% login_site_name = login_layout_setting&.site_name.presence || login_pwa_tenant&.name.presence || "Unitymob" %>
     <% login_admin_area_name = login_layout_setting.respond_to?(:admin_area_label) ? login_layout_setting.admin_area_label : "Plataforma" %>
     <% login_theme = login_layout_setting.effective_admin_theme(mode: AdminUser::ADMIN_THEME_MODE_DEFAULT) %>
-    <% login_icon_href = "/pwa-icon-192?v=#{login_layout_setting&.updated_at.to_i}" %>
+    <% login_icon_href = "/pwa-icon-192?tenant=#{login_pwa_tenant.slug}&v=#{login_layout_setting&.updated_at.to_i}" %>
+    <% login_icon_512_href = "/pwa-icon-512?tenant=#{login_pwa_tenant.slug}&v=#{login_layout_setting&.updated_at.to_i}" %>
     <title>Login - <%= login_site_name %> <%= login_admin_area_name %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <%= csrf_meta_tags %>
@@ -13,9 +15,9 @@
     <%= render "layouts/no_zoom" %>
     <%= render "layouts/pwa_meta",
                theme_color: login_theme[:header],
-               manifest_href: admin_manifest_path(format: :json),
+               manifest_href: admin_manifest_path(format: :json, tenant: login_pwa_tenant.slug),
                icon_href: login_icon_href %>
-    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512?v=<%= login_layout_setting&.updated_at.to_i %>">
+    <link rel="icon" type="image/png" sizes="512x512" href="<%= login_icon_512_href %>">
     <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
     <%= javascript_include_tag "admin_login_submit_guard", defer: true %>
 

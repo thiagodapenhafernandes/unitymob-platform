@@ -13,19 +13,24 @@ RSpec.describe "Field theme shell", type: :request do
 
   it "usa a identidade primária do tenant no modo claro da pessoa" do
     broker.update!(admin_theme_mode: "light")
-    LayoutSetting.instance(tenant: broker.tenant).update!(admin_primary_color: "#3E6F9E")
+    broker.tenant.update!(name: "Conexão Imobiliária", slug: "conexao-imobiliaria-#{SecureRandom.hex(3)}")
+    LayoutSetting.instance(tenant: broker.tenant).update!(site_name: "Conexão Imobiliária", admin_primary_color: "#3E6F9E")
     other_tenant = Tenant.create!(name: "Outro Field", slug: "outro-field-#{SecureRandom.hex(3)}")
-    LayoutSetting.instance(tenant: other_tenant).update!(admin_primary_color: "#DC2626")
+    LayoutSetting.instance(tenant: other_tenant).update!(site_name: "Salute Imóveis", admin_primary_color: "#DC2626")
 
     get field_root_path, headers: mobile_headers
 
     document = Nokogiri::HTML(response.body)
     expect(response).to have_http_status(:ok)
+    expect(document.at_css("title").text).to eq("Conexão Imobiliária — Campo")
+    expect(document.at_css('meta[name="apple-mobile-web-app-title"]')["content"]).to eq("Conexão Imobiliária Campo")
+    expect(document.at_css('link[rel="manifest"]')["href"]).to eq("/field/manifest?tenant=#{broker.tenant.slug}")
+    expect(document.at_css('link[rel="apple-touch-icon"]')["href"]).to include("/pwa-icon-192?tenant=#{broker.tenant.slug}&v=")
     expect(document.at_css("html")["data-field-theme"]).to eq("light")
     expect(document.css('meta[name="theme-color"]').size).to eq(1)
     expect(document.at_css('meta[name="theme-color"]')["content"]).to eq("#3E6F9E")
     expect(response.body).to include("--field-primary: #3E6F9E")
-    expect(response.body).not_to include("#DC2626", "#0d6efd", "#0a58ca")
+    expect(response.body).not_to include("Salute Campo", "Salute Imóveis — Campo", "#DC2626", "#0d6efd", "#0a58ca")
   end
 
   it "aplica o modo escuro da pessoa sem consumir o modo legado do tenant" do

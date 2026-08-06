@@ -16,6 +16,8 @@ module Ai
       end
 
       def call
+        return empty_result if specific_filters?
+
         variants.each do |variant|
           result = DatabaseQuery.new(
             tenant: @tenant,
@@ -33,10 +35,20 @@ module Ai
             )
           end
         end
-        Result.new(records: [], message: nil, filters: {}, relaxed: [])
+        empty_result
       end
 
       private
+
+      def empty_result
+        Result.new(records: [], message: nil, filters: {}, relaxed: [])
+      end
+
+      def specific_filters?
+        @filters["property_code"].present? ||
+          @filters["development_name"].present? ||
+          Array(@filters["_development_codes"]).compact_blank.any?
+      end
 
       def variants
         candidates = []

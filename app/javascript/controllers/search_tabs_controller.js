@@ -11,6 +11,8 @@ export default class extends Controller {
     // Set initial state based on input value or default
     this.updateTabs(this.inputTarget.value || 'venda')
     this.advancedOpen = false
+    this.advancedStateTimeout = null
+    this.syncAdvancedState()
   }
 
   switch(event) {
@@ -24,10 +26,12 @@ export default class extends Controller {
     this.tabTargets.forEach(tab => {
       if (tab.dataset.value === activeValue) {
         tab.classList.remove('text-gray-600', 'hover:text-blue-three', 'bg-transparent')
-        tab.classList.add('bg-hero-button', 'text-blue-three', 'shadow-sm')
+        tab.classList.add('active-tab', 'bg-hero-button', 'text-blue-three', 'shadow-sm')
+        tab.setAttribute('aria-pressed', 'true')
       } else {
         tab.classList.add('text-gray-600', 'hover:text-blue-three', 'bg-transparent')
-        tab.classList.remove('bg-hero-button', 'text-blue-three', 'shadow-sm')
+        tab.classList.remove('active-tab', 'bg-hero-button', 'text-blue-three', 'shadow-sm')
+        tab.setAttribute('aria-pressed', 'false')
       }
     })
   }
@@ -53,8 +57,10 @@ export default class extends Controller {
   toggleAdvanced(event) {
     event.preventDefault()
     this.advancedOpen = !this.advancedOpen
+    window.clearTimeout(this.advancedStateTimeout)
 
     if (this.advancedOpen) {
+      this.syncAdvancedState()
       this.advancedPanelTarget.classList.remove("max-h-0", "opacity-0", "pointer-events-none")
       this.advancedPanelTarget.classList.add("max-h-[900px]", "opacity-100")
       this.advancedLabelTarget.textContent = "Simples"
@@ -66,7 +72,12 @@ export default class extends Controller {
       this.advancedLabelTarget.textContent = "Avançado"
       this.advancedIconTarget.classList.add("bi-list")
       this.advancedIconTarget.classList.remove("bi-chevron-up")
+      this.advancedStateTimeout = window.setTimeout(() => this.syncAdvancedState(), 520)
     }
+  }
+
+  syncAdvancedState() {
+    this.element.classList.toggle("is-advanced-open", this.advancedOpen)
   }
 
   openAdvanced() {

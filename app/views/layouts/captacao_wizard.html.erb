@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-admin-theme="<%= current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>">
   <head>
+    <% wizard_pwa_identity = Field::PwaIdentity.new(current_tenant || current_admin_user&.tenant) %>
     <% admin_theme_mode = current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>
     <% admin_theme = (@layout_setting || LayoutSetting.platform_defaults).effective_admin_theme(mode: admin_theme_mode) %>
-    <title>Captação — Salute Imóveis</title>
+    <title>Captação — <%= wizard_pwa_identity.brand_name %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="theme-color" content="<%= admin_theme[:header] %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Salute Campo">
+    <meta name="apple-mobile-web-app-title" content="<%= wizard_pwa_identity.apple_title %>">
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= render 'layouts/no_zoom' %>
 
-    <link rel="manifest" href="/captacao-manifest.json">
-    <link rel="apple-touch-icon" href="/field-icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
+    <link rel="manifest" href="<%= field_manifest_path(format: :json, tenant: wizard_pwa_identity.tenant_slug) %>">
+    <link rel="apple-touch-icon" href="<%= wizard_pwa_identity.icon_src(192) %>">
+    <link rel="icon" type="image/png" sizes="192x192" href="<%= wizard_pwa_identity.icon_src(192) %>">
+    <link rel="icon" type="image/png" sizes="512x512" href="<%= wizard_pwa_identity.icon_src(512) %>">
     <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
 
     <%# Bootstrap e ícones self-hosted (antes jsdelivr) %>
@@ -1372,7 +1373,7 @@
   <body>
     <nav class="admin-navbar d-none d-md-flex">
       <%
-        wizard_site_name = @layout_setting&.site_name.presence || 'Salute'
+        wizard_site_name = @layout_setting&.site_name.presence || wizard_pwa_identity.brand_name
         wizard_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : 'Plataforma'
       %>
       <%= link_to((tenant_owner? ? admin_root_path : field_root_path), class: "admin-navbar-brand") do %>

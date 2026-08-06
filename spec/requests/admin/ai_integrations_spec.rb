@@ -22,6 +22,8 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(response.body).to include("Token dedicado da OpenAI")
     expect(response.body).to include("Modelo de interpretação")
     expect(response.body).to include("Modelo de transcrição")
+    expect(response.body).to include("Automático recomendado")
+    expect(response.body).to include("Modelo personalizado")
     expect(response.body).to include("ax-progress")
     expect(response.body).not_to include("progress-bar")
     progress = Nokogiri::HTML(response.body).at_css(".ax-progress progress.ax-progress__bar")
@@ -38,8 +40,9 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
         ai: {
           section: "voice_pwa",
           property_search_api_key: "voice-token",
-          property_search_model: "gpt-4.1-mini",
-          property_search_transcription_model: "gpt-4o-mini-transcribe"
+          property_search_model_choice: OpenAi::ModelCatalog::CUSTOM_VALUE,
+          property_search_model_custom: "gpt-4.1-mini",
+          property_search_transcription_model_choice: "gpt-4o-mini-transcribe"
         }
       }
     end
@@ -49,6 +52,38 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(Setting.get(Ai::PropertySearch::Configuration::MODEL_SETTING, nil, tenant: admin.tenant)).to eq("gpt-4.1-mini")
     expect(Setting.get(Ai::PropertySearch::Configuration::TRANSCRIPTION_MODEL_SETTING, nil, tenant: admin.tenant)).to eq("gpt-4o-mini-transcribe")
     expect(Setting.get(Ai::PropertyContentService::PROMPT_SETTING, nil, tenant: admin.tenant)).to eq("Prompt de conteúdo")
+  end
+
+  it "salva modelo automático e modelo personalizado de conteúdo" do
+    with_forgery_protection_disabled do
+      patch admin_ai_integration_path, params: {
+        ai: {
+          section: "content",
+          api_key: "general-token",
+          model_choice: OpenAi::ModelCatalog::CUSTOM_VALUE,
+          model_custom: "gpt-custom-test",
+          property_enrichment_prompt: "Prompt customizado"
+        }
+      }
+    end
+
+    expect(response).to redirect_to(admin_ai_integration_path)
+    expect(Setting.get(Ai::PropertyContentService::API_KEY_SETTING, nil, tenant: admin.tenant)).to eq("general-token")
+    expect(Setting.get(Ai::PropertyContentService::MODEL_SETTING, nil, tenant: admin.tenant)).to eq("gpt-custom-test")
+    expect(Setting.get(Ai::PropertyContentService::PROMPT_SETTING, nil, tenant: admin.tenant)).to eq("Prompt customizado")
+
+    with_forgery_protection_disabled do
+      patch admin_ai_integration_path, params: {
+        ai: {
+          section: "content",
+          model_choice: OpenAi::ModelCatalog::AUTOMATIC_VALUE,
+          property_enrichment_prompt: "Prompt automático"
+        }
+      }
+    end
+
+    expect(Setting.get(Ai::PropertyContentService::MODEL_SETTING, nil, tenant: admin.tenant)).to eq(OpenAi::ModelCatalog::AUTOMATIC_VALUE)
+    expect(Ai::PropertyContentService.resolved_model(tenant: admin.tenant)).to eq(OpenAi::ModelCatalog::RESPONSE_FALLBACK_MODEL)
   end
 
   def with_forgery_protection_disabled

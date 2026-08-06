@@ -96,7 +96,12 @@ RSpec.describe Notifications::PushDispatcher do
     expect(result).to eq(1)
     expect(WebPush).to have_received(:payload_send).with(
       hash_including(
-        message: include("\"tag\":\"lead-#{lead.id}-#{admin_user.id}\"", "\"require_interaction\":true"),
+        message: satisfy { |message|
+          payload = JSON.parse(message)
+          payload["tag"] == "lead-#{lead.id}-#{admin_user.id}" &&
+            payload["require_interaction"] == true &&
+            payload["icon"].start_with?("/pwa-icon-192?tenant=#{admin_user.tenant.slug}&v=")
+        },
         endpoint: subscription.endpoint,
         ttl: 900,
         urgency: "high"

@@ -224,7 +224,7 @@ export default class extends Controller {
       script.onload = resolve
       script.onerror = () => {
         window.__unitymobGoogleMapsPromise = null
-        reject(new Error("Não foi possível carregar o Google Maps"))
+        reject(new Error("Não foi possível carregar o mapa"))
       }
       document.head.appendChild(script)
     })

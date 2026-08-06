@@ -11,6 +11,9 @@ class HomeSection < ApplicationRecord
   }.freeze
 
   PROPERTY_FILTER_OPTIONS = {
+    "venda" => { label: "Venda", scope: :for_sale },
+    "locacao" => { label: "Locação", scope: :for_rent },
+    "empreendimentos" => { label: "Empreendimentos", scope: :empreendimentos_publicos },
     "destaque_web" => { label: "Destaque Web", column: :destaque_web_flag },
     "super_destaque" => { label: "Super Destaque", column: :festival_salute_flag },
     "lancamento" => { label: "Lançamento", column: :lancamento_flag },
@@ -52,6 +55,13 @@ class HomeSection < ApplicationRecord
   }.freeze
   PROPERTY_FILTER_ARRAY_KEYS = %w[selected_property_ids].freeze
   PROPERTY_FILTER_PARAM_KEYS = (PROPERTY_FILTER_OPTIONS.keys + PROPERTY_FILTER_ARRAY_KEYS).freeze
+  PROPERTY_SECTION_TYPES = %w[featured_properties opportunities developments rentals].freeze
+  LEGACY_SECTION_TYPE_FILTERS = {
+    "featured_properties" => %w[destaque_web],
+    "opportunities" => %w[preco_reduzido],
+    "developments" => %w[empreendimentos],
+    "rentals" => %w[locacao]
+  }.freeze
 
   # Associations
   has_many :home_section_items, dependent: :destroy
@@ -81,6 +91,17 @@ class HomeSection < ApplicationRecord
     section_types.keys.map { |key| [SECTION_TYPE_LABELS.fetch(key, key.humanize), key] }
   end
 
+  def self.infer_section_type_from_filters(filters, fallback: nil)
+    normalized_filters = filters || {}
+    enabled = ->(key) { ActiveModel::Type::Boolean.new.cast(normalized_filters[key.to_s] || normalized_filters[key.to_sym]) }
+
+    return "developments" if enabled.call("empreendimentos")
+    return "rentals" if enabled.call("locacao")
+    return "opportunities" if enabled.call("preco_reduzido")
+
+    fallback.presence_in(section_types.keys) || "featured_properties"
+  end
+
   def section_type_label
     SECTION_TYPE_LABELS.fetch(section_type, section_type.to_s.humanize)
   end
@@ -101,6 +122,29 @@ class HomeSection < ApplicationRecord
     labels = enabled_property_filters.map { |key| PROPERTY_FILTER_OPTIONS.dig(key, :label) }
     labels << "#{selected_property_ids.size} imóveis selecionados" if selected_property_ids.any?
     labels
+  end
+
+  def property_content_section?
+    section_type.in?(PROPERTY_SECTION_TYPES) || enabled_property_filters.any? || selected_property_ids.any?
+  end
+
+  def development_content?
+    property_filter_enabled?("empreendimentos") || section_type == "developments"
+  end
+
+  def corporate_showcase?
+    property_filter_enabled?("vitrine_corporate") || section_type == "rentals"
+  end
+
+  def public_section_kind_label
+    return section_type_label unless property_content_section?
+    return "Empreendimentos" if development_content?
+
+    "Imóveis"
+  end
+
+  def legacy_filter_keys
+    LEGACY_SECTION_TYPE_FILTERS.fetch(section_type, [])
   end
 
   def selected_property_ids

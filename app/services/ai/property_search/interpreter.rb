@@ -15,7 +15,10 @@ module Ai
       def call
         raise ArgumentError, "Descreva o imóvel que você procura." if @text.blank?
 
-        response = OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).create_response(payload)
+        response = OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).create_response(
+          payload,
+          fallback_model: OpenAi::ModelCatalog.fallback_response_model(Configuration.resolved_model(tenant: @setting.tenant))
+        )
         parsed = JSON.parse(extract_text(response))
         Result.new(
           intent: parsed.fetch("intent"),
@@ -29,7 +32,7 @@ module Ai
 
       def payload
         {
-          model: Configuration.model(tenant: @setting.tenant),
+          model: Configuration.resolved_model(tenant: @setting.tenant),
           instructions: instructions,
           input: {
             request: @text,
@@ -55,6 +58,9 @@ module Ai
           Use português do Brasil em tudo: texto, nomes de filtros, perguntas e valores retornados.
           Normalize termos para pt-BR quando fizer sentido: "apartment" vira "Apartamento", "apartments" vira "Apartamentos" e variações equivalentes devem ser convertidas para a forma usual do mercado imobiliário brasileiro.
           O JSON de contexto do catálogo é sua referência indireta e segura para reconhecer nomes, bairros, cidades, empreendimentos, incorporadoras e características disponíveis no tenant.
+          Quando a fala mencionar código, cód., referência ou ref. do imóvel, use property_code com o valor informado e não interprete esse número como quartos, preço, área ou outro filtro.
+          Quando a fala mencionar empreendimento, edifício, prédio, condomínio ou residencial seguido de nome próprio, use development_name com esse nome.
+          Buscas por código ou por nome próprio de empreendimento/edifício/condomínio são específicas; não amplie a intenção para imóveis parecidos ou características sem correspondência direta.
           Quando houver current_filters, trate-os como a busca em andamento; se a fala indicar nova busca, ignore o contexto anterior.
           Quando o pedido trouxer uma faixa, interprete como intervalo:
           - "entre R$ 1,5 milhão e R$ 2 milhões" => price_min = 1500000 e price_max = 2000000

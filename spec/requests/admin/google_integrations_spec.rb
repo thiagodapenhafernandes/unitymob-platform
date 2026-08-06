@@ -24,7 +24,7 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     expect(response.body).to include("Google")
     expect(response.body).to include("Google Sheets")
     expect(response.body).to include("Agenda")
-    expect(response.body).to include("Maps")
+    expect(response.body).to include("Mapa")
     expect(response.body).to include("Coluna-chave para atualização")
     expect(response.body).to include("Cód. imóvel CRM")
     expect(response.body).not_to include("Como esta integração será usada")
@@ -54,10 +54,11 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     expect { GoogleSheetsIntegrationSetting.current(tenant: nil) }.to raise_error(ArgumentError, /Tenant obrigatório/)
   end
 
-  it "salva a configuração do Google Maps por conta" do
+  it "salva a configuração do mapa com provedor Google por conta" do
     patch admin_google_integration_path, params: {
       google_maps: {
         enabled: "true",
+        provider: "google",
         api_key: "maps-key-restrita",
         default_display_mode: "approximate",
         approximate_radius_meters: "300",
@@ -72,6 +73,7 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     setting = GoogleMapsIntegrationSetting.find_by!(tenant: admin.tenant)
     expect(setting).to have_attributes(
       enabled: true,
+      provider: "google",
       default_display_mode: "approximate",
       approximate_radius_meters: 300,
       default_zoom: 16,
@@ -84,11 +86,12 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
 
   it "preserva a chave do Maps quando o campo vem em branco" do
     setting = GoogleMapsIntegrationSetting.for(admin.tenant)
-    setting.update!(enabled: true, api_key: "maps-key-atual")
+    setting.update!(enabled: true, provider: "google", api_key: "maps-key-atual")
 
     patch admin_google_integration_path, params: {
       google_maps: {
         enabled: "true",
+        provider: "google",
         api_key: "",
         default_display_mode: "exact",
         approximate_radius_meters: "220",
@@ -104,14 +107,36 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     expect(setting.default_display_mode).to eq("exact")
   end
 
+  it "salva o mapa livre sem exigir chave de API" do
+    patch admin_google_integration_path, params: {
+      google_maps: {
+        enabled: "true",
+        provider: "leaflet",
+        api_key: "",
+        default_display_mode: "approximate",
+        approximate_radius_meters: "250",
+        default_zoom: "15",
+        satellite_enabled: "false",
+        street_view_enabled: "false",
+        external_link_enabled: "true"
+      }
+    }
+
+    expect(response).to redirect_to(admin_google_integration_path(tab: "maps"))
+    setting = GoogleMapsIntegrationSetting.find_by!(tenant: admin.tenant)
+    expect(setting).to be_configured
+    expect(setting.provider).to eq("leaflet")
+    expect(setting.api_key_configured?).to be(false)
+  end
+
   it "renderiza a prévia somente para a configuração da conta atual" do
     setting = GoogleMapsIntegrationSetting.for(admin.tenant)
-    setting.update!(enabled: true, api_key: "maps-key-preview")
+    setting.update!(enabled: true, provider: "google", api_key: "maps-key-preview")
 
     get admin_google_integration_path(tab: "maps")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Prévia da integração")
+    expect(response.body).to include("Prévia do mapa")
     expect(response.body).to include("maps-key-preview")
     expect(response.body).to include("data-public-property-map-provider-value=\"google\"")
   end

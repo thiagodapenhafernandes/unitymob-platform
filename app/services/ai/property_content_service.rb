@@ -49,6 +49,10 @@ module Ai
       Setting.tenant_get(MODEL_SETTING, DEFAULT_MODEL, tenant: tenant).to_s.presence || DEFAULT_MODEL
     end
 
+    def self.resolved_model(tenant: Current.tenant)
+      OpenAi::ModelCatalog.resolve_response_model(model(tenant: tenant))
+    end
+
     def self.instructions(tenant: Current.tenant)
       fallback = default_prompt(tenant)
       Setting.tenant_get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
@@ -122,7 +126,10 @@ module Ai
     private
 
     def request_generation
-      response = OpenAi::Client.new(api_key: self.class.api_key(tenant: @habitation.tenant)).create_response(openai_payload)
+      response = OpenAi::Client.new(api_key: self.class.api_key(tenant: @habitation.tenant)).create_response(
+        openai_payload,
+        fallback_model: OpenAi::ModelCatalog.fallback_response_model(self.class.resolved_model(tenant: @habitation.tenant))
+      )
       text = extract_text(response)
       parsed = JSON.parse(text)
       validate_response!(parsed)
@@ -131,7 +138,7 @@ module Ai
 
     def openai_payload
       {
-        model: self.class.model(tenant: @habitation.tenant),
+        model: self.class.resolved_model(tenant: @habitation.tenant),
         instructions: system_instructions,
         input: user_payload,
         text: {

@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-field-theme="<%= current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>">
   <head>
-    <% field_layout_setting = defined?(LayoutSetting) ? LayoutSetting.instance : nil %>
+    <% field_identity = Field::PwaIdentity.new(current_tenant) %>
+    <% field_layout_setting = field_identity.layout %>
     <% field_primary_color = field_layout_setting&.admin_primary_color.presence || '#365F8F' %>
-    <% field_icon_version = field_layout_setting&.updated_at.to_i %>
     <% field_theme_mode = current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>
     <% field_theme_color = field_theme_mode == "dark" ? LayoutSetting::ADMIN_DARK_THEME[:header] : field_primary_color %>
-    <title>Salute Imóveis — Campo</title>
+    <title><%= field_identity.full_name %></title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="<%= field_theme_color %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Salute Campo">
+    <meta name="apple-mobile-web-app-title" content="<%= field_identity.apple_title %>">
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= render 'layouts/no_zoom' %>
 
-    <link rel="manifest" href="<%= field_manifest_path(format: :json) %>">
-    <link rel="apple-touch-icon" href="/pwa-icon-192?v=<%= field_icon_version %>">
-    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=<%= field_icon_version %>">
-    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512?v=<%= field_icon_version %>">
+    <link rel="manifest" href="<%= field_manifest_path(format: :json, tenant: field_identity.tenant_slug) %>">
+    <link rel="apple-touch-icon" href="<%= field_identity.icon_src(192) %>">
+    <link rel="icon" type="image/png" sizes="192x192" href="<%= field_identity.icon_src(192) %>">
+    <link rel="icon" type="image/png" sizes="512x512" href="<%= field_identity.icon_src(512) %>">
     <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
 
     <%# Bootstrap e ícones self-hosted (antes jsdelivr) %>
@@ -248,7 +248,7 @@
           <div class="field-install-icon">
             <i class="bi bi-phone"></i>
           </div>
-          <h3>Instale o app Salute Campo</h3>
+          <h3>Instale o app <%= field_identity.apple_title %></h3>
           <p>Experiência mais rápida, notificações e acesso offline.</p>
         </div>
 

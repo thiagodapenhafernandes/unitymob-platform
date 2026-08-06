@@ -17,9 +17,9 @@
 %>
 
 <%= link_to public_habitation_detail_path(development),
-    class: "group block h-full rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-golden-one focus-visible:ring-offset-2",
+    class: "public-development-card-link group block h-full rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-golden-one focus-visible:ring-offset-2",
     aria: { label: title } do %>
-  <article class="relative min-h-[430px] overflow-hidden rounded-xl bg-blue-three shadow-[0_18px_40px_rgba(2,43,58,0.18)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_26px_56px_rgba(2,43,58,0.24)]">
+  <article class="public-development-card relative min-h-[430px] overflow-hidden rounded-xl bg-blue-three shadow-[0_18px_40px_rgba(2,43,58,0.18)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_26px_56px_rgba(2,43,58,0.24)]">
     <% if image.present? %>
       <%= image_tag public_image_url(image, resize_to_fill: [720, 860], format: :webp),
           alt: title,

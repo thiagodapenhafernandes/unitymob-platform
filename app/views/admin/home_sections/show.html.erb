@@ -8,8 +8,8 @@
     <div class="ax-card__body">
       <%= ax_field_grid do %>
         <div class="ax-span-6">
-          <strong>Tipo:</strong>
-          <span class="ax-badge ax-badge--blue"><%= @home_section.section_type_label %></span>
+          <strong>Conteúdo:</strong>
+          <span class="ax-badge ax-badge--blue"><%= @home_section.public_section_kind_label %></span>
         </div>
         <div class="ax-span-6">
           <strong>Status:</strong>
@@ -25,11 +25,6 @@
           <p><%= @home_section.subtitle %></p>
         </div>
       <% end %>
-
-      <div class="tw-mb-3">
-        <strong>Ordem de Exibição:</strong>
-        <span class="ax-badge ax-badge--gray"><%= @home_section.order_position || @home_section.display_order || '-' %></span>
-      </div>
 
       <div class="tw-mb-3">
         <strong>Filtros dos imóveis:</strong>

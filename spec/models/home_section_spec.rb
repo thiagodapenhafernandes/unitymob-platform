@@ -58,5 +58,28 @@ RSpec.describe HomeSection, type: :model do
       expect(filtered).to include(matching)
       expect(filtered).not_to include(without_discount, without_location)
     end
+
+    it "aplica filtros de transação como curadoria operacional" do
+      section = described_class.new(
+        section_type: "featured_properties",
+        title: "Locação",
+        property_filters: { "locacao" => "1" }
+      )
+      rental = create(:habitation, valor_locacao_cents: 4_500_00, valor_venda_cents: 0)
+      sale = create(:habitation, valor_locacao_cents: 0, valor_venda_cents: 950_000_00)
+
+      filtered = section.apply_property_filters(Habitation.all)
+
+      expect(filtered).to include(rental)
+      expect(filtered).not_to include(sale)
+      expect(section.property_filter_labels).to include("Locação")
+    end
+
+    it "infere o tipo tecnico a partir dos filtros selecionados" do
+      expect(described_class.infer_section_type_from_filters({ "empreendimentos" => "1" })).to eq("developments")
+      expect(described_class.infer_section_type_from_filters({ "locacao" => "1" })).to eq("rentals")
+      expect(described_class.infer_section_type_from_filters({ "preco_reduzido" => "1" })).to eq("opportunities")
+      expect(described_class.infer_section_type_from_filters({})).to eq("featured_properties")
+    end
   end
 end

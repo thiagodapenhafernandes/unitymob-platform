@@ -31,8 +31,16 @@ module Ai
         Setting.tenant_get(MODEL_SETTING, DEFAULT_MODEL, tenant:).to_s.strip.presence || DEFAULT_MODEL
       end
 
+      def resolved_model(tenant: Current.tenant)
+        OpenAi::ModelCatalog.resolve_response_model(model(tenant:))
+      end
+
       def transcription_model(tenant: Current.tenant)
         Setting.tenant_get(TRANSCRIPTION_MODEL_SETTING, DEFAULT_TRANSCRIPTION_MODEL, tenant:).to_s.strip.presence || DEFAULT_TRANSCRIPTION_MODEL
+      end
+
+      def resolved_transcription_model(tenant: Current.tenant)
+        OpenAi::ModelCatalog.resolve_transcription_model(transcription_model(tenant:))
       end
     end
   end

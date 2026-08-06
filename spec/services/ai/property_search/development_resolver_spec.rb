@@ -37,6 +37,21 @@ RSpec.describe Ai::PropertySearch::DevelopmentResolver do
     expect(result.candidates.map { |item| item[:name] }).to contain_exactly("Reserva do Parque", "Reserva Jardim")
   end
 
+  it "não usa fuzzy em busca específica por nome de empreendimento" do
+    development(name: "Azure Residence", code: "DEV-AZURE")
+
+    result = described_class.new(
+      tenant:,
+      setting:,
+      filters: { development_name: "Aqualina Residence" },
+      exact: true
+    ).call
+
+    expect(result).not_to be_resolved
+    expect(result.match_type).to be_nil
+    expect(result.filters).to eq("development_name" => "Aqualina Residence")
+  end
+
   it "identifica por incorporadora, localização, lançamento e características" do
     target = development(name: "Vivaz Parque Freguesia", code: "DEV-VIVAZ", neighborhood: "Freguesia", developer: "Vivaz")
     target.update!(lancamento_flag: true, infra_estrutura: ["Lazer completo"])

@@ -1596,6 +1596,16 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     letter-spacing: 0;
     text-transform: none;
   }
+  .habitations-command-menu__group {
+    margin: .44rem .56rem .08rem;
+    padding: 0 .44rem;
+    color: #94a3b8;
+    font-size: .58rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
   .habitations-command-menu__item {
     display: grid;
     grid-template-columns: 24px minmax(0, 1fr) 18px;

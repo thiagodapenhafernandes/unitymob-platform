@@ -22,4 +22,15 @@ RSpec.describe Ai::PropertySearch::Configuration do
     expect(described_class.model(tenant:)).to eq("gpt-4.1-mini")
     expect(described_class.transcription_model(tenant:)).to eq("gpt-4o-mini-transcribe")
   end
+
+  it "resolve modelos automáticos para os fallbacks operacionais" do
+    Setting.set(Ai::PropertyContentService::MODEL_SETTING, OpenAi::ModelCatalog::AUTOMATIC_VALUE, "Modelo geral", tenant:)
+    Setting.set(described_class::MODEL_SETTING, OpenAi::ModelCatalog::AUTOMATIC_VALUE, "Modelo voice", tenant:)
+    Setting.set(described_class::TRANSCRIPTION_MODEL_SETTING, OpenAi::ModelCatalog::AUTOMATIC_VALUE, "Modelo transcrição", tenant:)
+
+    expect(Ai::PropertyContentService.model(tenant:)).to eq(OpenAi::ModelCatalog::AUTOMATIC_VALUE)
+    expect(Ai::PropertyContentService.resolved_model(tenant:)).to eq(OpenAi::ModelCatalog::RESPONSE_FALLBACK_MODEL)
+    expect(described_class.resolved_model(tenant:)).to eq(OpenAi::ModelCatalog::RESPONSE_FALLBACK_MODEL)
+    expect(described_class.resolved_transcription_model(tenant:)).to eq(OpenAi::ModelCatalog::TRANSCRIPTION_FALLBACK_MODEL)
+  end
 end

@@ -7,19 +7,14 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v10";
+const CACHE_VERSION = "v11";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
 const OFFLINE_FALLBACK_PAGE = "/offline.html";
 
 const SHELL_URLS = [
-  "/field",
-  OFFLINE_FALLBACK_PAGE,
-  "/pwa-icon-192",
-  "/pwa-icon-512",
-  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-  "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+  OFFLINE_FALLBACK_PAGE
 ];
 
 // ---------- Install / Activate ----------
@@ -79,7 +74,7 @@ self.addEventListener("fetch", (event) => {
           if (offlineCached) return offlineCached;
 
           return new Response(
-            "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Salute Imóveis</title></head><body><h1>Sem conexão</h1><p>Não foi possível carregar a página no momento.</p></body></html>",
+            "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Plataforma</title></head><body><h1>Sem conexão</h1><p>Não foi possível carregar a página no momento.</p></body></html>",
             {
               status: 503,
               headers: { "Content-Type": "text/html; charset=utf-8" }
@@ -103,28 +98,18 @@ self.addEventListener("fetch", (event) => {
   if (request.method === "GET") {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(SHELL_CACHE).then((cache) => cache.put(request, clone).catch(() => {}));
-          }
-          return response;
-        })
+        .then((response) => response)
         .catch(() =>
-          caches.match(request).then((cached) => {
-            if (cached) return cached;
+          caches.match(OFFLINE_FALLBACK_PAGE).then((offlineCached) => {
+            if (offlineCached) return offlineCached;
 
-            return caches.match("/field").then((shellCached) => {
-              if (shellCached) return shellCached;
-
-              return new Response(
-                "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Salute Campo</title></head><body><h1>Sem conexão</h1><p>O aplicativo não conseguiu abrir agora.</p></body></html>",
-                {
-                  status: 503,
-                  headers: { "Content-Type": "text/html; charset=utf-8" }
-                }
-              );
-            });
+            return new Response(
+              "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Campo</title></head><body><h1>Sem conexão</h1><p>O aplicativo não conseguiu abrir agora.</p></body></html>",
+              {
+                status: 503,
+                headers: { "Content-Type": "text/html; charset=utf-8" }
+              }
+            );
           })
         )
     );
@@ -230,7 +215,7 @@ self.addEventListener("push", (event) => {
   }
   console.log("[push] payload", data);
 
-  const title = data.title || "Salute Campo";
+  const title = data.title || "Campo";
   const options = {
     body:  data.body || "Nova atualização",
     icon:  data.icon || "/pwa-icon-192",

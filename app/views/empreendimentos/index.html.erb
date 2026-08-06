@@ -97,18 +97,18 @@
           </h3>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-20">
+        <div class="public-development-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-20">
           <% @empreendimentos.each do |empreendimento| %>
             <% unit_count = @unit_counts[empreendimento.codigo] || 0 %>
             <% image = empreendimento.primary_image_source %>
             <% image_url = public_image_url(image, resize_to_fill: [840, 512], format: :webp) if image.present? %>
             
-            <div class="bg-white rounded-3xl shadow-sm hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 h-full flex flex-col transform hover:-translate-y-2 cursor-pointer"
+            <div class="public-development-card public-development-card--listing bg-white rounded-3xl shadow-sm hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 h-full flex flex-col transform hover:-translate-y-2 cursor-pointer"
                  data-controller="clickable-card"
                  data-clickable-card-url-value="<%= empreendimento_details_path(empreendimento) %>">
               
               <!-- Image Section -->
-              <div class="relative h-64 overflow-hidden bg-gray-100">
+              <div class="public-development-card__media relative h-64 overflow-hidden bg-gray-100">
                 <% if image_url.present? %>
                   <img src="<%= image_url %>"
                        sizes="(min-width: 1024px) 352px, (min-width: 768px) 50vw, 100vw"
@@ -140,7 +140,7 @@
               </div>
 
               <!-- Content Section -->
-              <div class="p-6 flex-grow flex flex-col">
+              <div class="public-development-card__body p-6 flex-grow flex flex-col">
                 <h3 class="text-xl font-extrabold text-blue-three mb-2 group-hover:text-golden-one transition-colors line-clamp-2 leading-tight">
                   <%= empreendimento.nome_empreendimento %>
                 </h3>

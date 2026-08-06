@@ -27,8 +27,9 @@ RSpec.describe Ai::PropertySearch::Interpreter do
     captured_payload = nil
     client = instance_double(OpenAi::Client)
     allow(OpenAi::Client).to receive(:new).and_return(client)
-    allow(client).to receive(:create_response) do |payload|
+    allow(client).to receive(:create_response) do |payload, fallback_model: nil|
       captured_payload = payload
+      expect(fallback_model).to be_nil
       { "output_text" => response_body }
     end
 
@@ -47,6 +48,7 @@ RSpec.describe Ai::PropertySearch::Interpreter do
     expect(input.fetch("current_filters")).to include("bedrooms_min" => 3)
     expect(input.fetch("catalog")).to include("tenant", "search_config", "catalog")
     expect(captured_payload.fetch(:instructions)).to include("JSON de contexto do catálogo")
+    expect(captured_payload.fetch(:instructions)).to include("property_code", "development_name", "Buscas por código")
     expect(captured_payload.fetch(:text).dig(:format, :name)).to eq("ai_property_search_filters")
   end
 end

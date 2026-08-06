@@ -262,12 +262,20 @@ module ApplicationHelper
   end
 
   def listing_geo_schema(habitation)
-    return if habitation.latitude.blank? || habitation.longitude.blank?
+    public_map = if defined?(@public_map) && @public_map&.property == habitation
+                   @public_map
+                 else
+                   PublicMaps::PropertyPresentation.new(habitation)
+                 end
+    coordinates = public_map.center_coordinates
+    return if coordinates.blank?
+
+    latitude, longitude = coordinates
 
     {
       "@type" => "GeoCoordinates",
-      "latitude" => habitation.latitude.to_f,
-      "longitude" => habitation.longitude.to_f
+      "latitude" => latitude.to_f,
+      "longitude" => longitude.to_f
     }
   end
 

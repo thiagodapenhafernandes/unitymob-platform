@@ -898,14 +898,7 @@ export default class extends Controller {
     const message = `As novas fotos selecionadas somam ${this.formatBytes(totalBytes)}. Envie no máximo ${this.formatBytes(this.constructor.maxUploadBytes)} por vez.`
     this.showMediaTab()
 
-    if (this.hasUploadLimitFeedbackTarget) {
-      this.uploadLimitFeedbackTarget.textContent = message
-      this.uploadLimitFeedbackTarget.hidden = false
-    } else {
-      const feedback = this.ensureUploadLimitFeedback()
-      feedback.textContent = message
-      feedback.hidden = false
-    }
+    this.setFeedbackText(message, { isError: true })
 
     if (this.hasInputTarget) this.inputTarget.value = ""
     this.element.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -922,12 +915,7 @@ export default class extends Controller {
   }
 
   clearUploadLimitFeedback() {
-    const feedback = this.hasUploadLimitFeedbackTarget ? this.uploadLimitFeedbackTarget : this.fallbackUploadLimitFeedback
-    if (!feedback) return
-
-    feedback.textContent = ""
-    feedback.hidden = true
-    feedback.classList.remove("is-error", "is-success")
+    this.clearFeedbackElements()
   }
 
   async uploadNewFiles(fileEntries) {
@@ -1209,30 +1197,21 @@ export default class extends Controller {
   }
 
   showTransientFeedback(message, isError = false) {
-    const feedback = this.hasUploadLimitFeedbackTarget ? this.uploadLimitFeedbackTarget : this.ensureUploadLimitFeedback()
-    feedback.textContent = message
-    feedback.hidden = false
-    feedback.classList.toggle("is-error", isError)
+    this.setFeedbackText(message, { isError })
 
     window.clearTimeout(this.feedbackTimeout)
     this.feedbackTimeout = window.setTimeout(() => {
-      feedback.textContent = ""
-      feedback.hidden = true
-      feedback.classList.remove("is-error")
+      this.clearFeedbackElements()
     }, isError ? 6000 : 2500)
   }
 
   showProgressFeedback(message, percent = 0, state = "active") {
-    const feedback = this.hasUploadLimitFeedbackTarget ? this.uploadLimitFeedbackTarget : this.ensureUploadLimitFeedback()
     const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)))
     const isError = state === "error"
     const isSuccess = state === "success"
 
     window.clearTimeout(this.feedbackTimeout)
-    feedback.hidden = false
-    feedback.classList.toggle("is-error", isError)
-    feedback.classList.toggle("is-success", isSuccess)
-    feedback.innerHTML = `
+    this.setFeedbackHtml(`
       <div class="ax-media-upload-progress" role="status" aria-live="polite">
         <div class="ax-upload-progress__header">
           <span>${this.escapeHtml(message)}</span>
@@ -1242,18 +1221,15 @@ export default class extends Controller {
           <i class="${isError ? "ax-upload-progress__fill--danger" : isSuccess ? "ax-upload-progress__fill--success" : ""}" style="width:${safePercent}%"></i>
         </div>
       </div>
-    `
+    `, { isError, isSuccess })
   }
 
   hideProgressLater(delay = 3000) {
-    const feedback = this.hasUploadLimitFeedbackTarget ? this.uploadLimitFeedbackTarget : this.fallbackUploadLimitFeedback
-    if (!feedback) return
+    if (this.feedbackElements().length === 0) return
 
     window.clearTimeout(this.feedbackTimeout)
     this.feedbackTimeout = window.setTimeout(() => {
-      feedback.textContent = ""
-      feedback.hidden = true
-      feedback.classList.remove("is-error", "is-success")
+      this.clearFeedbackElements()
     }, delay)
   }
 
@@ -1304,10 +1280,50 @@ export default class extends Controller {
 
     const feedback = document.createElement("div")
     feedback.className = "ax-media-upload-panel__feedback"
+    feedback.setAttribute("role", "status")
+    feedback.setAttribute("aria-live", "polite")
     feedback.hidden = true
     this.element.prepend(feedback)
     this.fallbackUploadLimitFeedback = feedback
     return feedback
+  }
+
+  feedbackElements({ ensure = false } = {}) {
+    const elements = []
+    if (this.hasUploadLimitFeedbackTarget) elements.push(this.uploadLimitFeedbackTarget)
+    this.form?.querySelectorAll("[data-photo-upload-feedback]").forEach((element) => elements.push(element))
+    if (this.fallbackUploadLimitFeedback) elements.push(this.fallbackUploadLimitFeedback)
+    if (ensure && elements.length === 0) elements.push(this.ensureUploadLimitFeedback())
+
+    return Array.from(new Set(elements)).filter(Boolean)
+  }
+
+  setFeedbackText(message, { isError = false, isSuccess = false } = {}) {
+    this.feedbackElements({ ensure: true }).forEach((feedback) => {
+      feedback.textContent = message
+      this.showFeedbackElement(feedback, { isError, isSuccess })
+    })
+  }
+
+  setFeedbackHtml(html, { isError = false, isSuccess = false } = {}) {
+    this.feedbackElements({ ensure: true }).forEach((feedback) => {
+      feedback.innerHTML = html
+      this.showFeedbackElement(feedback, { isError, isSuccess })
+    })
+  }
+
+  showFeedbackElement(feedback, { isError = false, isSuccess = false } = {}) {
+    feedback.hidden = false
+    feedback.classList.toggle("is-error", isError)
+    feedback.classList.toggle("is-success", isSuccess)
+  }
+
+  clearFeedbackElements() {
+    this.feedbackElements().forEach((feedback) => {
+      feedback.textContent = ""
+      feedback.hidden = true
+      feedback.classList.remove("is-error", "is-success")
+    })
   }
 
   formatBytes(bytes) {

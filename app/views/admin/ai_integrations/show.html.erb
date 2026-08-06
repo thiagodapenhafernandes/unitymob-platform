@@ -49,9 +49,23 @@
             </div>
 
             <div class="tw-mb-3">
-              <%= f.label :model, "Modelo", class: "ax-label tw-font-semibold" %>
-              <%= f.text_field :model, class: "ax-control", value: @openai_model %>
-              <div class="ax-field-hint">Padrão: <code><%= Ai::PropertyContentService::DEFAULT_MODEL %></code>.</div>
+              <%= f.label :model_choice, "Modelo", class: "ax-label tw-font-semibold" %>
+              <%= f.select :model_choice,
+                  options_for_select(@openai_model_options, @openai_model),
+                  {},
+                  class: "ax-control" %>
+              <div class="ax-field-hint">
+                Use automático para manter o padrão operacional. Se o modelo configurado ficar indisponível, o sistema tenta o fallback <code><%= OpenAi::ModelCatalog::RESPONSE_FALLBACK_MODEL %></code>.
+              </div>
+            </div>
+
+            <div class="tw-mb-3">
+              <%= f.label :model_custom, "Modelo personalizado", class: "ax-label tw-font-semibold" %>
+              <%= f.text_field :model_custom,
+                  class: "ax-control",
+                  value: @openai_model_custom,
+                  placeholder: "Ex.: gpt-4.1-mini" %>
+              <div class="ax-field-hint">Use apenas quando o modelo desejado não aparecer no select.</div>
             </div>
 
             <div class="tw-mb-3">
@@ -153,21 +167,41 @@
             <% end %>
 
             <div class="property-settings-ai-fields">
-              <%= ax_standalone_field(
-                    name: "ai[property_search_model]",
-                    id: "ai_property_search_model",
+              <%= ax_standalone_select_field(
+                    name: "ai[property_search_model_choice]",
+                    id: "ai_property_search_model_choice",
                     label: "Modelo de interpretação",
-                    value: @property_search_model,
+                    choices: @property_search_model_options,
+                    selected: @property_search_model,
                     class_name: "ax-span-6",
-                    hint: "Padrão: #{Ai::PropertySearch::Configuration::DEFAULT_MODEL}."
+                    hint: "Use automático para manter o padrão operacional."
                   ) %>
               <%= ax_standalone_field(
-                    name: "ai[property_search_transcription_model]",
-                    id: "ai_property_search_transcription_model",
-                    label: "Modelo de transcrição",
-                    value: @property_search_transcription_model,
+                    name: "ai[property_search_model_custom]",
+                    id: "ai_property_search_model_custom",
+                    label: "Modelo de interpretação personalizado",
+                    value: @property_search_model_custom,
                     class_name: "ax-span-6",
-                    hint: "Padrão: #{Ai::PropertySearch::Configuration::DEFAULT_TRANSCRIPTION_MODEL}."
+                    placeholder: "Ex.: gpt-4.1-mini",
+                    hint: "Use apenas quando o modelo desejado não aparecer no select."
+                  ) %>
+              <%= ax_standalone_select_field(
+                    name: "ai[property_search_transcription_model_choice]",
+                    id: "ai_property_search_transcription_model_choice",
+                    label: "Modelo de transcrição",
+                    choices: @property_search_transcription_model_options,
+                    selected: @property_search_transcription_model,
+                    class_name: "ax-span-6",
+                    hint: "Se ficar indisponível, o sistema tenta o fallback #{OpenAi::ModelCatalog::TRANSCRIPTION_FALLBACK_MODEL}."
+                  ) %>
+              <%= ax_standalone_field(
+                    name: "ai[property_search_transcription_model_custom]",
+                    id: "ai_property_search_transcription_model_custom",
+                    label: "Modelo de transcrição personalizado",
+                    value: @property_search_transcription_model_custom,
+                    class_name: "ax-span-6",
+                    placeholder: "Ex.: gpt-4o-mini-transcribe",
+                    hint: "Use apenas quando o modelo desejado não aparecer no select."
                   ) %>
             </div>
 

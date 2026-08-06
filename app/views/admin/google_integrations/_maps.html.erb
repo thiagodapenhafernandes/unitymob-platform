@@ -2,7 +2,7 @@
 
 <%= ax_field_grid(columns: 12, gap: :compact) do %>
   <div class="ax-span-7">
-    <%= ax_operational_panel(eyebrow: "Site público", title: "Google Maps") do %>
+    <%= ax_operational_panel(eyebrow: "Site público", title: "Mapa público") do %>
       <%= ax_inline_notice(
             tone: setting.configured? ? :success : :warning,
             icon: setting.configured? ? "check-circle" : "exclamation-triangle",
@@ -19,7 +19,7 @@
 
       <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_maps, local: true do |f| %>
         <%= ax_switch_field(
-              label: tag.span("Usar Google Maps nas páginas de imóveis", class: "tw-font-semibold"),
+              label: tag.span("Ativar provedor selecionado nas páginas de imóveis", class: "tw-font-semibold"),
               form: f,
               method: :enabled,
               checked_value: "true",
@@ -28,7 +28,17 @@
               input_html: { checked: setting.enabled? }
             ) %>
 
-        <%= ax_text_field(form: f, method: :api_key, label: "Chave da API do Google Maps", type: :password, autocomplete: "new-password", placeholder: (setting.api_key_configured? ? "Chave já configurada. Preencha apenas para substituir." : "Informe a chave restrita por domínio"), hint: "A chave fica criptografada no banco. Restrinja-a por domínio e por API no Google Cloud.", field_class: "tw-mb-3") %>
+        <%= ax_select_field(
+              form: f,
+              method: :provider,
+              label: "Provedor do mapa",
+              choices: GoogleMapsIntegrationSetting.provider_options,
+              select_options: { selected: setting.provider },
+              html_options: {}
+            ) %>
+        <p class="form-text tw-mt-1 tw-mb-3">Mapa livre usa Leaflet/OpenStreetMap e não exige chave. Google mantém satélite, vista da rua e link para Google Maps.</p>
+
+        <%= ax_text_field(form: f, method: :api_key, label: "Chave da API do mapa", type: :password, autocomplete: "new-password", placeholder: (setting.api_key_configured? ? "Chave já configurada. Preencha apenas para substituir." : "Obrigatória apenas para Google Maps"), hint: "Usada somente quando o provedor selecionado for Google Maps. A chave fica criptografada no banco.", field_class: "tw-mb-3") %>
 
         <%= ax_field_grid(columns: 12, gap: :compact) do %>
           <div class="ax-span-6">
@@ -67,11 +77,11 @@
         <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-2 tw-my-3">
           <%= ax_switch_field(label: "Permitir satélite", form: f, method: :satellite_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.satellite_enabled? }) %>
           <%= ax_switch_field(label: "Permitir vista da rua", form: f, method: :street_view_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.street_view_enabled? }) %>
-          <%= ax_switch_field(label: "Link para Google Maps", form: f, method: :external_link_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.external_link_enabled? }) %>
+          <%= ax_switch_field(label: "Link externo do mapa", form: f, method: :external_link_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.external_link_enabled? }) %>
         </div>
 
         <%= ax_inline_notice(tone: :warning, icon: "shield-exclamation", class_name: "tw-mb-3") do %>
-          <span>A vista da rua pode revelar o endereço exato. O padrão seguro é mantê-la desligada e liberar somente nos imóveis autorizados.</span>
+          <span>Satélite e vista da rua dependem do provedor Google. A vista da rua pode revelar o endereço exato; libere somente nos imóveis autorizados.</span>
         <% end %>
 
         <%= ax_form_actions(sticky: false) do %><%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %><% end %>
@@ -80,22 +90,22 @@
   </div>
 
   <div class="ax-span-5">
-    <%= ax_operational_panel(eyebrow: "Validação", title: "Prévia da integração") do %>
+    <%= ax_operational_panel(eyebrow: "Validação", title: "Prévia do mapa") do %>
       <% if setting.configured? %>
         <div class="google-maps-preview"
              data-controller="public-property-map"
-             data-public-property-map-provider-value="google"
-             data-public-property-map-api-key-value="<%= setting.api_key %>"
+             data-public-property-map-provider-value="<%= setting.provider %>"
+             data-public-property-map-api-key-value="<%= setting.api_key if setting.google_provider? %>"
              data-public-property-map-latitude-value="-26.9906000"
              data-public-property-map-longitude-value="-48.6348000"
              data-public-property-map-radius-value="<%= setting.approximate_radius_meters %>"
              data-public-property-map-zoom-value="<%= setting.default_zoom %>"
              data-public-property-map-satellite-enabled-value="<%= setting.satellite_enabled? %>">
-          <div class="google-maps-preview__canvas" data-public-property-map-target="map" aria-label="Prévia do Google Maps"></div>
+          <div class="google-maps-preview__canvas" data-public-property-map-target="map" aria-label="Prévia do mapa"></div>
         </div>
         <p class="form-text tw-mt-2">Prévia técnica em Balneário Camboriú. As páginas públicas carregam o mapa somente quando ele entra na área visível.</p>
       <% else %>
-        <%= ax_empty_state(icon: "map", title: "Prévia indisponível", description: "Ative a integração e salve uma chave válida para carregar o mapa.") %>
+        <%= ax_empty_state(icon: "map", title: "Prévia indisponível", description: "Ative o provedor e complete as credenciais exigidas para carregar o mapa.") %>
       <% end %>
     <% end %>
   </div>
