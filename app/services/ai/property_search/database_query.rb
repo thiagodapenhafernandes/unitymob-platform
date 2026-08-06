@@ -2,13 +2,16 @@ module Ai
   module PropertySearch
     class DatabaseQuery
       Result = Data.define(:records, :flexible, :applied_filters)
+      PROPERTY_CODE_COLUMNS = %w[codigo vista_codigo vista_imo_codigo vista_referencia_externa codigo_dwv].freeze
 
       def initialize(tenant:, admin_user:, setting:, filters:, sort: nil, allow_flexible: true)
+        raw_filters = filters.to_h.stringify_keys
         @tenant = tenant
         @admin_user = admin_user
         @setting = setting
-        @development_codes = Array(filters.to_h.stringify_keys["_development_codes"]).compact_blank.first(10)
-        @filters = FilterContract.new(setting).normalize(filters)
+        @development_codes = Array(raw_filters["_development_codes"]).compact_blank.first(10)
+        @development_names = (Array(raw_filters["_development_names"]) + [raw_filters["development_name"]]).compact_blank.uniq.first(10)
+        @filters = FilterContract.new(setting).normalize(raw_filters)
         @sort = sort.to_s.presence_in(PropertySetting::AI_PROPERTY_SEARCH_SORTS) || setting.ai_property_search_default_sort
         @allow_flexible = allow_flexible
       end
@@ -52,11 +55,22 @@ module Ai
         query = query.where("habitations.area_total_m2 <= ?", filters["total_area_max"]) if filters["total_area_max"]
         query = apply_location(query, filters)
         query = apply_money(query, filters)
-        query = query.where("habitations.codigo ILIKE ?", filters["property_code"]) if filters["property_code"].present?
+        query = apply_property_code(query, filters["property_code"]) if filters["property_code"].present?
         Array(filters["amenities"]).each do |amenity|
           query = Habitations::AmenityFilter.call(query, amenity)
         end
         query
+      end
+
+      def apply_property_code(query, property_code)
+        code = property_code.to_s.strip
+        columns = PROPERTY_CODE_COLUMNS & Habitation.column_names
+        return query.none if code.blank? || columns.empty?
+
+        conditions = columns.map do |column|
+          "LOWER(BTRIM(COALESCE(habitations.#{column}, ''))) = LOWER(:code)"
+        end
+        query.where(conditions.join(" OR "), code:)
       end
 
       def apply_location(query, filters)
@@ -67,13 +81,42 @@ module Ai
           )
         end
         if @development_codes.any?
-          query = query.where(codigo_empreendimento: @development_codes)
+          query = apply_resolved_development(query)
         elsif filters["development_name"].present?
-          query = query.where("unaccent(COALESCE(habitations.nome_empreendimento, '')) ILIKE unaccent(?)", "%#{filters['development_name']}%")
+          query = apply_development_name(query, [filters["development_name"]])
         end
         query = query.where("unaccent(COALESCE(habitations.construtora, '')) ILIKE unaccent(?)", "%#{filters['developer_name']}%") if filters["developer_name"].present?
         query = query.where(lancamento_flag: true) if filters["property_condition"] == "launch"
         query
+      end
+
+      def apply_resolved_development(query)
+        return query.where(codigo_empreendimento: @development_codes) if @development_names.empty?
+
+        name_sql, name_values = development_name_sql(@development_names, exclude_developments: true)
+        query.where(
+          ["habitations.codigo_empreendimento IN (?) OR #{name_sql}", @development_codes, *name_values]
+        )
+      end
+
+      def apply_development_name(query, names)
+        name_sql, name_values = development_name_sql(names)
+        query.where([name_sql, *name_values])
+      end
+
+      def development_name_sql(names, exclude_developments: false)
+        clauses = names.map do
+          <<~SQL.squish
+            (
+              unaccent(COALESCE(habitations.nome_empreendimento, '')) ILIKE unaccent(?)
+              OR unaccent(COALESCE(habitations.titulo_anuncio, '')) ILIKE unaccent(?)
+            )
+          SQL
+        end
+        sql = clauses.join(" OR ")
+        sql = "(COALESCE(habitations.tipo, '') <> 'Empreendimento' AND (#{sql}))" if exclude_developments
+        values = names.flat_map { |name| pattern = "%#{name}%"; [pattern, pattern] }
+        [sql, values]
       end
 
       def apply_money(query, filters)

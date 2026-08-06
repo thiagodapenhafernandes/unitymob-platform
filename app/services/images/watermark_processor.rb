@@ -2,6 +2,8 @@ require "mini_magick"
 
 module Images
   class WatermarkProcessor
+    class ProcessingError < StandardError; end
+
     Result = Struct.new(:attachable, :tempfile, keyword_init: true)
 
     GRAVITIES = {
@@ -12,13 +14,14 @@ module Images
       "center" => "Center"
     }.freeze
 
-    def self.call(upload, setting:)
-      new(upload, setting: setting).call
+    def self.call(upload, setting:, raise_errors: false)
+      new(upload, setting: setting, raise_errors: raise_errors).call
     end
 
-    def initialize(upload, setting:)
+    def initialize(upload, setting:, raise_errors: false)
       @upload = upload
       @setting = setting
+      @raise_errors = raise_errors
     end
 
     def call
@@ -51,13 +54,16 @@ module Images
         )
       end
     rescue StandardError => error
-      Rails.logger.warn("[WatermarkProcessor] Falha ao aplicar marca d'água em #{upload_filename}: #{error.class} - #{error.message}")
+      message = "Falha ao aplicar marca d'água em #{upload_filename}: #{error.class} - #{error.message}"
+      Rails.logger.warn("[WatermarkProcessor] #{message}")
+      raise ProcessingError, message if raise_errors
+
       Result.new(attachable: upload)
     end
 
     private
 
-    attr_reader :upload, :setting
+    attr_reader :upload, :setting, :raise_errors
 
     def processable?
       setting&.watermark_configured? &&

@@ -1835,6 +1835,17 @@ i.spin {
   font-weight: 700;
 }
 
+.ax-media-modal__footer-feedback {
+  flex: 1 1 360px;
+  min-width: 220px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.ax-media-modal__footer-feedback[hidden] {
+  display: none;
+}
+
 .ax-media-modal__footer:has(.ax-media-modal__footer-meta) {
   min-height: 58px;
   padding: 8px 10px;
@@ -2108,6 +2119,14 @@ i.spin {
   .ax-media-entry-card__content {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .ax-media-modal__footer-feedback {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
   }
 
   .ax-media-modal__header--compact {

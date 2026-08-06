@@ -1,0 +1,214 @@
+<%
+  company_name = public_site_profile&.legal_name.presence || brand_name
+  company_address = public_site_profile&.legal_address.to_s.squish
+  company_document = public_site_profile&.legal_document.to_s.squish
+  company_creci = public_site_profile&.creci.to_s.squish
+  broker_name = habitation.admin_user&.name.presence || habitation.corretor_nome.presence || current_admin_user&.name
+  owner_name = habitation.proprietario_nome.to_s.squish
+  owner_phone = habitation.proprietario_telefone.to_s.squish
+  owner_business_phone = habitation.proprietario_telefone_comercial_display.to_s.squish
+  owner_email = habitation.proprietario_email_display.to_s.squish
+  company_details = [
+    company_address,
+    (company_document.present? ? "Documento: #{company_document}" : nil),
+    (company_creci.present? ? "CRECI: #{company_creci}" : nil)
+  ].compact_blank
+
+  value_for = lambda do |attribute|
+    habitation.respond_to?(attribute) ? habitation.public_send(attribute).presence : nil
+  end
+
+  money_for = lambda do |attribute|
+    cents = value_for.call("#{attribute}_cents")
+    cents.to_i.positive? ? habitation.public_send("#{attribute}_formatted") : nil
+  end
+
+  metric_for = lambda do |attribute|
+    value = value_for.call(attribute)
+    value.to_f.positive? ? "#{number_with_precision(value.to_f, precision: 2, separator: ",", delimiter: ".")} m²" : nil
+  end
+
+  feature_values = (habitation.property_features_for_display + habitation.leisure_features_for_display).map do |feature|
+    I18n.transliterate(feature.to_s).downcase
+  end
+
+  checked = lambda do |label|
+    normalized = I18n.transliterate(label.to_s).downcase
+    feature_values.any? { |feature| feature.include?(normalized) } ? "x" : " "
+  end
+
+  property_features = [
+    "Adega", "Água quente", "Alarme", "Ar central", "Ar condicionado", "Armários embutidos",
+    "Área de serviço", "Banheiro social", "Banheiro de empregada", "Bar", "Churrasqueira", "Copa",
+    "Copa cozinha", "Cozinha", "Cozinha americana", "Cozinha planejada", "Deck", "Dependência de empregada",
+    "Despensa", "Dormitório com armários", "Edícula", "Escritório", "Espera para split", "Estar íntimo",
+    "Reformado", "Gradeado", "Hall", "Hidromassagem", "Home theater", "Jardim de inverno",
+    "Lareira", "Lavabo", "Mobiliado", "Piscina", "Piso elevado", "Quintal", "Frente Mar",
+    "Sacada", "Sacada com churrasqueira", "Sala com armários", "Sala de jantar", "Sala de TV", "Sauna",
+    "Semi mobiliado", "Split", "Suíte master", "Terraço", "Vista panorâmica", "Vista para o mar", "Quadra Mar"
+  ]
+
+  infrastructure_features = [
+    "Aquecimento central", "Bicicletário", "Brinquedoteca", "Churrasqueira coletiva", "Circuito de TV",
+    "Condomínio fechado", "Depósito", "Elevador", "Elevador de serviço", "Empresa de monitoramento",
+    "Entrada de serviço", "Espaço gourmet", "Estacionamento", "Estacionamento para visitantes", "Guarita",
+    "Gás central", "Heliponto", "Interfone", "Jardim", "Lavanderia", "Pilotis", "Piscina aquecida",
+    "Piscina coletiva", "Piscina infantil", "Playground", "Portaria", "Portaria 24h", "Porteiro eletrônico",
+    "Quadra de esportes", "Quadra de tênis", "Quiosque", "Sala fitness", "Sala de jogos", "Salão de festas",
+    "Sauna coletiva", "Segurança", "Spa", "Terraço coletivo", "Vigilância 24h", "Zelador"
+  ]
+%>
+
+<article class="capture-sheet">
+  <header class="capture-sheet__header">
+    <div>
+      <h1 class="capture-sheet__title">Ficha de captação<br>Residencial</h1>
+      <div class="capture-sheet__field">
+        <span>Referência:</span>
+        <span class="capture-sheet__value"><%= habitation.codigo.presence || habitation.id %></span>
+      </div>
+      <div class="capture-sheet__field">
+        <span>Nome Captador:</span>
+        <span class="capture-sheet__value"><%= broker_name %></span>
+      </div>
+    </div>
+
+    <div class="capture-sheet__brand">
+      <svg class="capture-sheet__brand-plate" viewBox="0 0 118 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <rect width="118" height="60" rx="12" ry="12" style="fill: <%= @print_brand_badge_color %>;"></rect>
+      </svg>
+      <% if layout_setting&.logo&.attached? %>
+        <%= image_tag layout_setting.logo, alt: brand_name %>
+      <% else %>
+        <span class="capture-sheet__brand-fallback"><%= brand_name %></span>
+      <% end %>
+    </div>
+
+    <div class="capture-sheet__company">
+      <strong><%= company_name %></strong>
+      <% company_details.each do |detail| %>
+        <span><%= detail %></span>
+      <% end %>
+      <span>Emitida em <%= generated_label %></span>
+      <span>Página <%= page_number %><%= total_pages.present? ? " / #{total_pages}" : "" %></span>
+    </div>
+  </header>
+
+  <section class="capture-sheet__address">
+    <h2 class="capture-sheet__section-title">Localização do imóvel</h2>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-6"><span>End.:</span><span class="capture-sheet__value"><%= habitation.logradouro || habitation.endereco %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-1"><span>Nº:</span><span class="capture-sheet__value"><%= habitation.numero %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-3"><span>Complemento:</span><span class="capture-sheet__value"><%= habitation.complemento %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-2"><span>Bloco:</span><span class="capture-sheet__value"><%= value_for.call(:bloco) %></span></div>
+    </div>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-3"><span>Bairro:</span><span class="capture-sheet__value"><%= habitation.public_neighborhood.presence || habitation.bairro %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-4"><span>Cidade:</span><span class="capture-sheet__value"><%= habitation.cidade %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-2"><span>UF:</span><span class="capture-sheet__value"><%= habitation.uf %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-3"><span>CEP:</span><span class="capture-sheet__value"><%= habitation.cep %></span></div>
+    </div>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-12"><span>Imediações:</span><span class="capture-sheet__value"><%= Array(habitation.imediacoes).join(", ") %></span></div>
+    </div>
+  </section>
+
+  <section class="capture-sheet__section">
+    <div class="capture-sheet__columns">
+      <div>
+        <h2 class="capture-sheet__section-title">Dados básicos</h2>
+        <div class="capture-sheet__stack">
+          <div class="capture-sheet__field"><span>Categoria:</span><span class="capture-sheet__value"><%= habitation.categoria %></span></div>
+          <div class="capture-sheet__field"><span>Bairro:</span><span class="capture-sheet__value"><%= habitation.public_neighborhood.presence || habitation.bairro %></span></div>
+          <div class="capture-sheet__field"><span>Dormitório(s):</span><span class="capture-sheet__value"><%= value_for.call(:dormitorios_qtd) %></span></div>
+          <div class="capture-sheet__field"><span>Nº de vagas:</span><span class="capture-sheet__value"><%= value_for.call(:vagas_qtd) %></span></div>
+          <div class="capture-sheet__field"><span>Banheiro(s):</span><span class="capture-sheet__value"><%= value_for.call(:banheiros_qtd) %></span></div>
+          <div class="capture-sheet__field"><span>Suíte(s):</span><span class="capture-sheet__value"><%= value_for.call(:suites_qtd) %></span></div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="capture-sheet__section-title">Área</h2>
+        <div class="capture-sheet__stack">
+          <div class="capture-sheet__field"><span>Privativa:</span><span class="capture-sheet__value"><%= metric_for.call(:area_privativa_m2) %></span></div>
+          <div class="capture-sheet__field"><span>Total:</span><span class="capture-sheet__value"><%= metric_for.call(:area_total_m2) %></span></div>
+          <div class="capture-sheet__field"><span>Dimens. do terreno:</span><span class="capture-sheet__value"><%= value_for.call(:dimensoes_terreno) %></span></div>
+          <div class="capture-sheet__field"><span>Topografia:</span><span class="capture-sheet__value"><%= value_for.call(:topografia) %></span></div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="capture-sheet__section-title">Valores</h2>
+        <div class="capture-sheet__stack">
+          <div class="capture-sheet__field"><span>Venda:</span><span class="capture-sheet__value"><%= money_for.call(:valor_venda) %></span></div>
+          <div class="capture-sheet__field"><span>Locação:</span><span class="capture-sheet__value"><%= money_for.call(:valor_locacao) %></span></div>
+          <div class="capture-sheet__field"><span>Condomínio:</span><span class="capture-sheet__value"><%= money_for.call(:valor_condominio) %></span></div>
+          <div class="capture-sheet__field"><span>IPTU:</span><span class="capture-sheet__value"><%= money_for.call(:valor_iptu) %></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="capture-sheet__section">
+    <h2 class="capture-sheet__section-title">Características do imóvel</h2>
+    <div class="capture-sheet__check-grid capture-sheet__check-grid--four">
+      <% property_features.each do |label| %>
+        <span class="capture-sheet__check">( <%= checked.call(label) %> ) <%= label %></span>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="capture-sheet__section">
+    <h2 class="capture-sheet__section-title">Infraestrutura</h2>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-10"><span>Nome do empreendimento:</span><span class="capture-sheet__value"><%= habitation.nome_empreendimento %></span></div>
+    </div>
+    <div class="capture-sheet__check-grid capture-sheet__check-grid--four">
+      <% infrastructure_features.each do |label| %>
+        <span class="capture-sheet__check">( <%= checked.call(label) %> ) <%= label %></span>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="capture-sheet__section">
+    <h2 class="capture-sheet__section-title">Dados do proprietário do imóvel</h2>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-8"><span>Nome:</span><span class="capture-sheet__value"><%= owner_name %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-4"><span>Fone res.:</span><span class="capture-sheet__value"><%= format_phone(owner_phone) %></span></div>
+    </div>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-7"><span>End.:</span><span class="capture-sheet__value"></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-1"><span>Nº:</span><span class="capture-sheet__value"></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-4"><span>Fone com.:</span><span class="capture-sheet__value"><%= format_phone(owner_business_phone) %></span></div>
+    </div>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-3"><span>Bairro:</span><span class="capture-sheet__value"></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-4"><span>Cidade:</span><span class="capture-sheet__value"><%= habitation.proprietario_cidade %></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-5"><span>Celular:</span><span class="capture-sheet__value"><%= format_phone(value_for.call(:proprietario_celular)) %></span></div>
+    </div>
+    <div class="capture-sheet__row">
+      <div class="capture-sheet__field capture-sheet__field--span-4"><span>CEP:</span><span class="capture-sheet__value"></span></div>
+      <div class="capture-sheet__field capture-sheet__field--span-8"><span>Email:</span><span class="capture-sheet__value"><%= owner_email %></span></div>
+    </div>
+
+    <p class="capture-sheet__authorization">
+      Autorizo a imobiliária proceder a divulgação do imóvel acima descrito nos meios de comunicação que habitualmente utiliza,
+      por suas próprias expensas, bem como a dar assessoria e acompanhamento da venda até a sua efetiva conclusão.
+      A imobiliária receberá a remuneração de ______ % - ( ______________________________ por cento), calculados sobre o valor da venda.
+    </p>
+
+    <div class="capture-sheet__signatures">
+      <div class="capture-sheet__field"><span>Data:</span><span class="capture-sheet__value"></span></div>
+      <div class="capture-sheet__signature">Assinatura captador</div>
+      <div class="capture-sheet__signature">Assinatura proprietário</div>
+    </div>
+  </section>
+
+  <section class="capture-sheet__section">
+    <h2 class="capture-sheet__section-title">Observações</h2>
+    <div class="capture-sheet__notes">
+      <div class="capture-sheet__note-line"><%= value_for.call(:observacoes) %></div>
+      <div class="capture-sheet__note-line">&nbsp;</div>
+    </div>
+  </section>
+</article>

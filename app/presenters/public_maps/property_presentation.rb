@@ -17,7 +17,7 @@ module PublicMaps
     end
 
     def provider
-      setting.configured? ? "google" : "leaflet"
+      setting.configured? ? setting.provider : GoogleMapsIntegrationSetting::DEFAULT_PROVIDER
     end
 
     def display_mode
@@ -52,12 +52,12 @@ module PublicMaps
       case property.public_street_view_mode.to_s
       when "enabled" then true
       when "disabled" then false
-      else setting.street_view_enabled?
+      else !approximate? && setting.street_view_enabled?
       end
     end
 
     def external_link_enabled?
-      provider == "google" && setting.external_link_enabled?
+      setting.external_link_enabled?
     end
 
     def api_key
@@ -72,7 +72,14 @@ module PublicMaps
       return unless external_link_enabled? && center_coordinates.present?
 
       latitude, longitude = center_coordinates
-      "https://www.google.com/maps/search/?api=1&query=#{format('%.7f', latitude)},#{format('%.7f', longitude)}"
+      formatted_latitude = format("%.7f", latitude)
+      formatted_longitude = format("%.7f", longitude)
+
+      if provider == "google"
+        "https://www.google.com/maps/search/?api=1&query=#{formatted_latitude},#{formatted_longitude}"
+      else
+        "https://www.openstreetmap.org/?mlat=#{formatted_latitude}&mlon=#{formatted_longitude}#map=#{zoom}/#{formatted_latitude}/#{formatted_longitude}"
+      end
     end
 
     def approximate?

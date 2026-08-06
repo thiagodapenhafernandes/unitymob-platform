@@ -1,4 +1,4 @@
-\restrict DiFgr06u35D64XL9S92ex6pVcJ4WgaCgcHYN53wEzg0oQSWi93247yaabo16h6L
+\restrict pPugAwCd2GDoodR445ssM8ACDt4gPaHaKM2PXeqzwBT42bpfE4e642tbtkTHROZ
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2707,7 +2707,8 @@ CREATE TABLE public.google_maps_integration_settings (
     street_view_enabled boolean DEFAULT true NOT NULL,
     external_link_enabled boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    provider character varying DEFAULT 'leaflet'::character varying NOT NULL
 );
 
 
@@ -16121,11 +16122,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict DiFgr06u35D64XL9S92ex6pVcJ4WgaCgcHYN53wEzg0oQSWi93247yaabo16h6L
+\unrestrict pPugAwCd2GDoodR445ssM8ACDt4gPaHaKM2PXeqzwBT42bpfE4e642tbtkTHROZ
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260805162000'),
+('20260805145500'),
 ('20260804140500'),
 ('20260804140000'),
 ('20260804135000'),

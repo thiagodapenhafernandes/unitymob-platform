@@ -102,20 +102,20 @@ module Ai
       end
 
       def development_candidates
-        records = matching_developments
-        records = fallback_developments if records.empty?
+        payloads = []
+        payloads.concat(unit_development_payloads(fuzzy: true)) if setting.ai_property_search_fuzzy_matching_enabled? && fuzzy_search_terms.any?
+        payloads.concat(matching_developments.map { |record| development_record_payload(record) })
+        payloads.concat(unit_development_payloads)
 
-        records.first(limit_for(:developments)).map do |record|
-          {
-            name: development_name(record),
-            aliases: development_aliases(record),
-            developer_name: record.construtora.presence,
-            city: record_city(record),
-            neighborhood: record_neighborhood(record),
-            property_type: record.categoria.presence,
-            highlights: development_highlights(record)
-          }.compact_blank
+        if payloads.empty?
+          payloads = unit_development_payloads(fallback: true)
+          payloads.concat(fallback_developments.map { |record| development_record_payload(record) })
         end
+
+        payloads
+          .compact_blank
+          .uniq { |payload| DevelopmentAlias.normalize(payload[:name]) }
+          .first(limit_for(:developments))
       end
 
       def feature_terms
@@ -160,9 +160,87 @@ module Ai
           .to_a
       end
 
+      def development_record_payload(record)
+        {
+          name: development_name(record),
+          aliases: development_aliases(record),
+          developer_name: record.construtora.presence,
+          city: record_city(record),
+          neighborhood: record_neighborhood(record),
+          property_type: record.categoria.presence,
+          highlights: development_highlights(record)
+        }.compact_blank
+      end
+
+      def unit_development_payloads(fallback: false, fuzzy: false)
+        rows = unit_development_rows(fallback:, fuzzy:)
+        rows.map do |name, count, category, city, neighborhood|
+          {
+            name: name,
+            property_type: category.presence,
+            city: city.presence,
+            neighborhood: neighborhood.presence,
+            highlights: ["#{count.to_i} imóvel(is)"]
+          }.compact_blank
+        end
+      rescue StandardError
+        []
+      end
+
+      def unit_development_rows(fallback: false, fuzzy: false)
+        scope = catalog_scope
+          .left_outer_joins(:address)
+          .where("COALESCE(habitations.tipo, '') <> 'Empreendimento'")
+          .where("NULLIF(BTRIM(COALESCE(habitations.nome_empreendimento, '')), '') IS NOT NULL")
+
+        terms = fuzzy ? fuzzy_search_terms : search_terms
+        if terms.any? && !fallback
+          search_blob = fuzzy ? unit_development_name_sql : unit_development_search_blob_sql
+          if fuzzy
+            threshold = [setting.ai_property_search_fuzzy_similarity_threshold.to_f, 0.45].max
+            values = terms.flat_map { |term| [term, threshold] }
+            where_sql = terms.map { "similarity(#{search_blob}, ?) >= ?" }.join(" OR ")
+            scope = scope.where(where_sql, *values)
+          else
+            patterns = terms.map { "%#{ActiveRecord::Base.sanitize_sql_like(_1)}%" }
+            where_sql = terms.map { "#{search_blob} LIKE ?" }.join(" OR ")
+            scope = scope.where(where_sql, *patterns)
+          end
+        end
+
+        order_values = if fuzzy
+          [
+            Arel.sql(Habitation.sanitize_sql_array(["MAX(similarity(#{unit_development_name_sql}, ?)) DESC", terms.first])),
+            Arel.sql("COUNT(*) DESC")
+          ]
+        else
+          [Arel.sql("COUNT(*) DESC"), Arel.sql("MIN(habitations.updated_at) DESC")]
+        end
+
+        scope
+          .group("habitations.nome_empreendimento")
+          .order(*order_values)
+          .limit(limit_for(:developments) * 2)
+          .pluck(
+            "habitations.nome_empreendimento",
+            Arel.sql("COUNT(*)"),
+            Arel.sql("MIN(habitations.categoria)"),
+            Arel.sql("MIN(COALESCE(addresses.cidade, habitations.cidade))"),
+            Arel.sql("MIN(COALESCE(addresses.bairro, habitations.bairro))")
+          )
+      end
+
       def development_search_blob_sql
         alias_name = setting.ai_property_search_development_aliases_enabled? ? "COALESCE(development_aliases.normalized_name, '')" : "''"
         "regexp_replace(unaccent(lower(CONCAT_WS(' ', habitations.nome_empreendimento, habitations.titulo_anuncio, habitations.construtora, COALESCE(addresses.cidade, habitations.cidade, ''), COALESCE(addresses.bairro, habitations.bairro, ''), #{alias_name}))), '[^a-z0-9]+', ' ', 'g')"
+      end
+
+      def unit_development_search_blob_sql
+        "regexp_replace(unaccent(lower(CONCAT_WS(' ', habitations.nome_empreendimento, habitations.titulo_anuncio, habitations.construtora, COALESCE(addresses.cidade, habitations.cidade, ''), COALESCE(addresses.bairro, habitations.bairro, '')))), '[^a-z0-9]+', ' ', 'g')"
+      end
+
+      def unit_development_name_sql
+        "regexp_replace(unaccent(lower(COALESCE(habitations.nome_empreendimento, ''))), '[^a-z0-9]+', ' ', 'g')"
       end
 
       def search_terms
@@ -175,6 +253,13 @@ module Ai
           .reject { |token| stopword?(token) || token.length < 3 || token.match?(/\A\d+\z/) }
           .uniq
           .first(8)
+      end
+
+      def fuzzy_search_terms
+        term = DevelopmentAlias.normalize(text)
+        return [] if term.length < 3
+
+        [term]
       end
 
       def extract_terms_from_filters

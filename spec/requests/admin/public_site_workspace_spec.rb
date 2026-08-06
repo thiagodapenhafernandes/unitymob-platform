@@ -313,10 +313,15 @@ RSpec.describe "Admin public site workspace", type: :request do
     get edit_admin_home_section_path(filter_section)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("ax-chip-grid", "ax-toggle-chip", "Curadoria de imóveis")
+    expect(response.body).not_to include("Tipo de Seção", "Ordem de Exibição")
     expect(response.body).to include("Imóvel do tenant atual")
     expect(response.body).not_to include("Imóvel de outro tenant")
     html = Nokogiri::HTML(response.body)
+    expect(html.at_css('select[name="home_section[section_type]"]')).to be_nil
+    expect(html.at_css('input[name="home_section[order_position]"]')).to be_nil
     expect(html.css('input[type="checkbox"][name^="home_section[property_filters]"]').size).to eq(HomeSection::PROPERTY_FILTER_OPTIONS.size)
+    expect(html.css('input[type="checkbox"][name="home_section[property_filters][locacao]"]')).to be_present
+    expect(html.css('input[type="checkbox"][name="home_section[property_filters][empreendimentos]"]')).to be_present
     property_select = html.at_css('select[name="home_section[property_filters][selected_property_ids][]"][multiple]')
     expect(property_select).to be_present
     expect(property_select["data-controller"]).to include("tom-select")
@@ -327,5 +332,21 @@ RSpec.describe "Admin public site workspace", type: :request do
     get new_admin_home_section_home_section_item_path(section)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Novo Item", "home_section_item[icon]")
+  end
+
+  it "cria seção com tipo tecnico implicito a partir dos filtros" do
+    post admin_home_sections_path, params: {
+      home_section: {
+        title: "Locações selecionadas",
+        active: "1",
+        property_filters: { "locacao" => "1" }
+      }
+    }
+
+    expect(response).to redirect_to(admin_home_sections_path)
+    section = admin.tenant.home_sections.order(:created_at).last
+    expect(section.section_type).to eq("rentals")
+    expect(section.order_position).to eq(1)
+    expect(section.property_filter_enabled?("locacao")).to be(true)
   end
 end

@@ -8,10 +8,11 @@ module Ai
 
       NORMALIZED_NAME_SQL = "regexp_replace(unaccent(lower(COALESCE(habitations.nome_empreendimento, habitations.titulo_anuncio, ''))), '[^a-z0-9]+', ' ', 'g')".freeze
 
-      def initialize(tenant:, setting:, filters:)
+      def initialize(tenant:, setting:, filters:, exact: false)
         @tenant = tenant
         @setting = setting
         @filters = filters.stringify_keys
+        @exact = exact
       end
 
       def call
@@ -22,9 +23,11 @@ module Ai
         resolved_filters = @filters
         if records.any?
           record = records.first
+          development_names = ([@filters["development_name"]] + records.map { |candidate| display_name(candidate) }).compact_blank.uniq
           resolved_filters = @filters.merge(
             "development_name" => records.one? ? display_name(record) : @filters["development_name"],
-            "_development_codes" => records.filter_map(&:codigo).first(10)
+            "_development_codes" => records.filter_map(&:codigo).first(10),
+            "_development_names" => development_names.first(10)
           )
         end
         Result.new(filters: resolved_filters, candidates: options, match_type: match_type)
@@ -57,7 +60,7 @@ module Ai
         partial = base.where("#{NORMALIZED_NAME_SQL} LIKE ?", "%#{Habitation.sanitize_sql_like(term)}%").limit(7).to_a
         return [partial, "partial"] if partial.any?
 
-        if @setting.ai_property_search_fuzzy_matching_enabled?
+        if @setting.ai_property_search_fuzzy_matching_enabled? && !exact?
           threshold = @setting.ai_property_search_fuzzy_similarity_threshold.to_f
           fuzzy = base.where("similarity(#{NORMALIZED_NAME_SQL}, ?) >= ?", term, threshold)
             .order(Arel.sql(Habitation.sanitize_sql_array(["similarity(#{NORMALIZED_NAME_SQL}, ?) DESC", term])))
@@ -99,6 +102,10 @@ module Ai
         return [[], nil] unless characteristic_lookup?
 
         [scope.limit(7).to_a, "characteristics"]
+      end
+
+      def exact?
+        @exact == true
       end
 
       def option(record)

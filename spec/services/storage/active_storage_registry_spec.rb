@@ -34,6 +34,17 @@ RSpec.describe Storage::ActiveStorageRegistry do
     end
   end
 
+  describe "Active Storage controller hooks" do
+    it "registra serviços dinâmicos antes de servir representações públicas" do
+      callbacks = ActiveStorage::Representations::RedirectController._process_action_callbacks
+      register_callback = callbacks.find do |callback|
+        callback.kind == :before && callback.filter == :register_dynamic_active_storage_services
+      end
+
+      expect(register_callback).to be_present
+    end
+  end
+
   describe ".add_static_compatibility_aliases!" do
     it "expõe do_spaces_db usando a configuração estática legada" do
       legacy = { service: "S3", bucket: "legacy-bucket" }

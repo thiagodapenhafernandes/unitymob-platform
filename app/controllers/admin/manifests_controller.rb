@@ -12,7 +12,8 @@ module Admin
     def show
       respond_to do |format|
         format.json do
-          response.headers["Cache-Control"] = "public, max-age=3600"
+          response.headers["Cache-Control"] = "private, max-age=300"
+          response.headers["Vary"] = "Cookie"
           render json: manifest_payload
         end
       end
@@ -22,11 +23,12 @@ module Admin
 
     def manifest_payload
       layout = layout_setting
-      brand = layout.site_name.to_s.strip.presence || "Salute Imóveis"
+      tenant = manifest_tenant
+      brand = layout.site_name.to_s.strip.presence || tenant&.name.to_s.strip.presence || "Unitymob"
       icon_version = layout.updated_at.to_i
 
       {
-        id: "/admin",
+        id: tenant&.slug.present? ? "/admin?tenant=#{tenant.slug}" : "/admin",
         name: "#{brand} — Plataforma",
         short_name: brand.truncate(12, omission: ""),
         description: "CRM e atendimento #{brand}.",
@@ -38,15 +40,23 @@ module Admin
         lang: "pt-BR",
         categories: %w[business productivity],
         icons: [
-          { src: "/pwa-icon-192?v=#{icon_version}", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "/pwa-icon-512?v=#{icon_version}", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+          { src: admin_icon_src(192, tenant, icon_version), sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: admin_icon_src(512, tenant, icon_version), sizes: "512x512", type: "image/png", purpose: "any maskable" }
         ]
       }
     end
 
     def layout_setting
-      tenant = current_admin_user&.tenant || Tenant.public_for
+      tenant = manifest_tenant
       LayoutSetting.find_by(tenant: tenant) || LayoutSetting.instance(tenant: tenant)
+    end
+
+    def manifest_tenant
+      @manifest_tenant ||= current_admin_user&.tenant || public_tenant
+    end
+
+    def admin_icon_src(size, tenant, icon_version)
+      tenant&.slug.present? ? "/pwa-icon-#{size}?tenant=#{tenant.slug}&v=#{icon_version}" : "/pwa-icon-#{size}?v=#{icon_version}"
     end
   end
 end

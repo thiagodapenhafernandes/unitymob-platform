@@ -60,6 +60,8 @@ RSpec.describe PropertySetting, type: :model do
     setting.valid?
 
     expect(setting.ai_property_search_instructions).to include("Nunca interrompa a busca com pergunta complementar")
+    expect(setting.ai_property_search_instructions).to include("Busca específica")
+    expect(setting.ai_property_search_instructions).to include("property_code")
     expect(setting.ai_property_search_instructions).to include("Retorne clarifying_question como null")
     expect(setting.ai_property_search_instructions).not_to include("solicite esclarecimento")
 
@@ -73,6 +75,17 @@ RSpec.describe PropertySetting, type: :model do
     setting = described_class.new(
       watermark_position: "bottom_left",
       ai_property_search_instructions: "  #{described_class::LEGACY_AI_PROPERTY_SEARCH_INSTRUCTIONS.gsub("\n", "\r\n  ")}  "
+    )
+
+    setting.valid?
+
+    expect(setting.ai_property_search_instructions).to eq(described_class::DEFAULT_AI_PROPERTY_SEARCH_INSTRUCTIONS)
+  end
+
+  it "atualiza somente o texto padrão anterior da busca inteligente" do
+    setting = described_class.new(
+      watermark_position: "bottom_left",
+      ai_property_search_instructions: "  #{described_class::PREVIOUS_DEFAULT_AI_PROPERTY_SEARCH_INSTRUCTIONS.gsub("\n", "\r\n  ")}  "
     )
 
     setting.valid?

@@ -3,6 +3,7 @@ require "tempfile"
 
 RSpec.describe "Admin::HabitationMedia", type: :request do
   include Devise::Test::IntegrationHelpers
+  include ActiveJob::TestHelper
 
   let(:admin) { create(:admin_user, :admin, email: "media-admin-#{SecureRandom.hex(8)}@salute.test") }
 
@@ -47,6 +48,8 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("draggable-item")
     expect(response.body).to include("media-photo-drag-handle")
     expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
+    expect(response.body).to include("ax-media-modal__footer-feedback")
+    expect(response.body).to include("data-photo-upload-feedback")
     expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
   end
 
@@ -73,6 +76,36 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(payload.dig("counts", "photos")).to eq(1)
     expect(payload.dig("inputs", "ordered_photo_ids")).to eq(attachment.id.to_s)
     expect(habitation.tour_virtual).to eq("https://example.com/tour-360")
+  end
+
+  it "aceita os parâmetros operacionais enviados pelo modal de mídia sem warning de strong params" do
+    previous_action = ActionController::Parameters.action_on_unpermitted_parameters
+    ActionController::Parameters.action_on_unpermitted_parameters = :raise
+
+    habitation = create_media_habitation
+    habitation.photos.attach(io: StringIO.new("foto removivel"), filename: "removivel.jpg", content_type: "image/jpeg")
+    attachment = habitation.photos.attachments.first
+
+    patch admin_habitation_media_path(habitation), params: {
+      habitation: {
+        foto_classificacao: "",
+        apply_photo_watermark: "1",
+        photos: [""],
+        ordered_photo_ids: attachment.id.to_s,
+        ordered_picture_indices: "",
+        site_hidden_photo_ids: "",
+        site_hidden_picture_urls: "",
+        remove_photo_ids: attachment.id.to_s,
+        remove_picture_indices: "",
+        tour_virtual: "",
+        podcast_url: ""
+      }
+    }, headers: { "Accept" => "application/json", "X-Requested-With" => "XMLHttpRequest" }
+
+    expect(response).to have_http_status(:ok)
+    expect(habitation.reload.photos.attachments).to be_empty
+  ensure
+    ActionController::Parameters.action_on_unpermitted_parameters = previous_action
   end
 
   it "expõe o gatilho do modal dentro da aba de mídia da edição" do
@@ -122,6 +155,37 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(habitation.photos.attachments.size).to eq(1)
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_attachment!).with(instance_of(ActiveStorage::Attachment))
   ensure
+    uploaded_photo&.close
+    uploaded_photo&.unlink
+  end
+
+  it "agenda marca d'água no upload assíncrono quando o seletor está ativo" do
+    previous_queue_adapter = ActiveJob::Base.queue_adapter
+    ActiveJob::Base.queue_adapter = :test
+    clear_enqueued_jobs
+
+    habitation = create_media_habitation
+    setting = PropertySetting.instance
+    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    uploaded_photo = Tempfile.new(["media-upload-watermark", ".jpg"])
+    uploaded_photo.write("foto nova")
+    uploaded_photo.rewind
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.example.test/media-upload-watermark.jpg")
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_return(true)
+
+    expect do
+      post upload_admin_habitation_media_path(habitation, format: :json), params: {
+        habitation: {
+          apply_photo_watermark: "1",
+          photos: [Rack::Test::UploadedFile.new(uploaded_photo.path, "image/jpeg")]
+        }
+      }
+    end.to have_enqueued_job(HabitationPhotoWatermarkJob).on_queue("media")
+
+    expect(response).to have_http_status(:ok)
+  ensure
+    clear_enqueued_jobs if ActiveJob::Base.queue_adapter.is_a?(ActiveJob::QueueAdapters::TestAdapter)
+    ActiveJob::Base.queue_adapter = previous_queue_adapter
     uploaded_photo&.close
     uploaded_photo&.unlink
   end

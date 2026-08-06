@@ -70,7 +70,10 @@ module Ai
     private
 
     def request_generation
-      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(openai_payload)
+      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
+        openai_payload,
+        fallback_model: OpenAi::ModelCatalog.fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
+      )
       parsed = JSON.parse(extract_text(response))
       validate!(parsed)
       parsed
@@ -78,7 +81,7 @@ module Ai
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.model(tenant: tenant),
+        model: Ai::PropertyContentService.resolved_model(tenant: tenant),
         instructions: system_instructions,
         input: page_payload.to_json,
         text: {

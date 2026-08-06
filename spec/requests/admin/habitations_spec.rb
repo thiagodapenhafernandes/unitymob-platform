@@ -2663,6 +2663,20 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
+  it "mantem o último filtro salvo na sessão dentro de um payload pequeno" do
+    long_query = "x" * 500
+    many_amenities = Array.new(30) { |index| "Característica #{index}" }
+
+    get admin_habitations_path(ownership: "all", q: long_query, amenities: many_amenities)
+
+    expect(response).to have_http_status(:ok)
+    filter_key = session.keys.find { |key| key.to_s.start_with?("admin_habitations_last_filter:") }
+    saved_filter = session.fetch(filter_key)
+
+    expect(saved_filter.fetch("q").length).to eq(Admin::HabitationsController::HABITATIONS_FILTER_SESSION_MAX_VALUE_LENGTH)
+    expect(saved_filter.fetch("amenities").length).to eq(Admin::HabitationsController::HABITATIONS_FILTER_SESSION_MAX_ARRAY_ITEMS)
+  end
+
   it "remove filtros vazios do retorno para manter a URL do cadastro enxuta" do
     habitation = create(:habitation, codigo: "RET-LIMPO-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel com retorno limpo")
     noisy_return_path = "/admin/habitations?ownership=all&q=#{CGI.escape(habitation.codigo)}&bairro=&status=&dorms%5B%5D=&vagas%5B%5D="
@@ -2939,17 +2953,181 @@ RSpec.describe "Admin::Habitations", type: :request do
     create(:habitation, codigo: "PRINT-#{SecureRandom.hex(6)}", categoria: "Terreno", titulo_anuncio: "Terreno para impressão")
 
     %w[
+      visit_sheet
+      capture_sheet_commercial
+      capture_sheet_residential
+      capture_sheet_land
       photos_sheet
       client_sheet_commercial
       client_sheet_residential
       client_sheet_land
       vitrine_sheet
+      sale_rent_total_values
+      property_list
+      property_list_with_m2
+      property_list_by_broker
+      property_count_by_broker
     ].each do |report_type|
       get print_admin_habitations_path(report_type: report_type, full_print: "1")
 
       expect(response).to have_http_status(:ok), "esperava abrir o relatório #{report_type}"
       expect(response.body).to include(Admin::HabitationsController::REPORT_TYPES.fetch(report_type))
     end
+  end
+
+  it "abre a ficha de visita com campos de avaliação e assinatura" do
+    habitation = create(
+      :habitation,
+      codigo: "VISIT-#{SecureRandom.hex(6)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Apartamento para visita",
+      descricao_web: "Descrição usada na ficha de visita.",
+      valor_venda_cents: 1_250_000_00,
+      dormitorios_qtd: 3,
+      suites_qtd: 1,
+      vagas_qtd: 2
+    )
+
+    get print_admin_habitations_path(report_type: "visit_sheet", selected_ids: habitation.id.to_s, full_print: "1")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ficha de visita")
+    expect(response.body).to include("VISIT-")
+    expect(response.body).to include("Dados do cliente interessado")
+    expect(response.body).to include("Avaliação da visita")
+    expect(response.body).to include("Assinatura do cliente interessado")
+  end
+
+  it "gera ficha de visita única respeitando filtros e ignorando seleção em massa" do
+    selected_habitation = create(
+      :habitation,
+      codigo: "VISIT-SELECTED-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Imóvel selecionado fora do filtro"
+    )
+    filtered_habitation = create(
+      :habitation,
+      codigo: "VISIT-FILTER-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Imóvel filtrado para ficha"
+    )
+
+    get print_admin_habitations_path(
+      report_type: "visit_sheet",
+      selected_ids: selected_habitation.id.to_s,
+      codigo: filtered_habitation.codigo,
+      full_print: "1"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(filtered_habitation.codigo)
+    expect(response.body).not_to include(selected_habitation.codigo)
+  end
+
+  it "gera ficha de captação comercial única respeitando apenas filtros da listagem" do
+    selected_habitation = create(
+      :habitation,
+      codigo: "CAP-RES-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Residencial selecionado fora da ficha comercial"
+    )
+    filtered_habitation = create(
+      :habitation,
+      codigo: "CAP-FILTER-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Imóvel filtrado para ficha de captação",
+      salas_qtd: 2,
+      banheiros_qtd: 1,
+      valor_venda_cents: 950_000_00
+    )
+
+    get print_admin_habitations_path(
+      report_type: "capture_sheet_commercial",
+      selected_ids: selected_habitation.id.to_s,
+      codigo: filtered_habitation.codigo,
+      full_print: "1"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ficha de captação")
+    expect(response.body).to include("Comercial")
+    expect(response.body).to include(filtered_habitation.codigo)
+    expect(response.body).to include("Dados do proprietário do imóvel")
+    expect(response.body).not_to include(selected_habitation.codigo)
+  end
+
+  it "gera ficha de captação residencial única respeitando filtros da listagem" do
+    selected_habitation = create(
+      :habitation,
+      codigo: "CAP-COM-#{SecureRandom.hex(4)}",
+      categoria: "Sala Comercial",
+      titulo_anuncio: "Comercial selecionado fora da ficha residencial"
+    )
+    filtered_habitation = create(
+      :habitation,
+      codigo: "CAP-RES-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Residencial filtrado para ficha de captação",
+      dormitorios_qtd: 3,
+      suites_qtd: 1,
+      banheiros_qtd: 2,
+      vagas_qtd: 2,
+      valor_venda_cents: 1_350_000_00
+    )
+
+    get print_admin_habitations_path(
+      report_type: "capture_sheet_residential",
+      selected_ids: selected_habitation.id.to_s,
+      codigo: filtered_habitation.codigo,
+      full_print: "1"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ficha de captação")
+    expect(response.body).to include("Residencial")
+    expect(response.body).to include(filtered_habitation.codigo)
+    expect(response.body).to include("Características do imóvel")
+    expect(response.body).to include("Infraestrutura")
+    expect(response.body).not_to include(selected_habitation.codigo)
+  end
+
+  it "gera ficha de captação de terrenos única respeitando filtros da listagem" do
+    selected_habitation = create(
+      :habitation,
+      codigo: "CAP-APT-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Apartamento selecionado fora da ficha de terreno"
+    )
+    filtered_habitation = create(
+      :habitation,
+      codigo: "CAP-LAND-#{SecureRandom.hex(4)}",
+      categoria: "Terreno",
+      titulo_anuncio: "Terreno filtrado para ficha de captação",
+      lote: "12",
+      quadra: "B",
+      area_total_m2: 450,
+      dimensoes_terreno: "15 x 30",
+      topografia: "Plano",
+      face: "Norte",
+      valor_venda_cents: 720_000_00,
+      tem_placa_flag: true,
+      exclusivo_flag: true
+    )
+
+    get print_admin_habitations_path(
+      report_type: "capture_sheet_land",
+      selected_ids: selected_habitation.id.to_s,
+      codigo: filtered_habitation.codigo,
+      full_print: "1"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ficha de captação")
+    expect(response.body).to include("Terreno")
+    expect(response.body).to include(filtered_habitation.codigo)
+    expect(response.body).to include("Lote")
+    expect(response.body).to include("Infraestrutura")
+    expect(response.body).not_to include(selected_habitation.codigo)
   end
 
   it "salva o imóvel completo e libera a captação para o corretor publicar" do

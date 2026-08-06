@@ -110,4 +110,36 @@ RSpec.describe Ai::PropertySearch::SuggestionFinder do
     expect(result.records).to be_empty
     expect(result.relaxed).to be_empty
   end
+
+  it "não relaxa busca específica por código do imóvel" do
+    tenant = Tenant.default
+    broker = create(:admin_user, tenant: tenant)
+    setting = PropertySetting.instance(tenant: tenant)
+    setting.update!(ai_property_search_allow_flexible_results: true, ai_property_search_resilient_search_enabled: true)
+    create(:habitation, tenant:, admin_user: broker, categoria: "Apartamento", dormitorios_qtd: 4, codigo: "SUGGESTION-CODE")
+
+    result = described_class.new(
+      tenant:, admin_user: broker, setting:,
+      filters: { "property_code" => "9345", "property_type" => "Apartamento", "bedrooms_min" => 5 }
+    ).call
+
+    expect(result.records).to be_empty
+    expect(result.relaxed).to be_empty
+  end
+
+  it "não relaxa busca específica por empreendimento" do
+    tenant = Tenant.default
+    broker = create(:admin_user, tenant: tenant)
+    setting = PropertySetting.instance(tenant: tenant)
+    setting.update!(ai_property_search_allow_flexible_results: true, ai_property_search_resilient_search_enabled: true)
+    create(:habitation, tenant:, admin_user: broker, categoria: "Apartamento", dormitorios_qtd: 4, codigo: "SUGGESTION-DEVELOPMENT")
+
+    result = described_class.new(
+      tenant:, admin_user: broker, setting:,
+      filters: { "development_name" => "Admirar", "property_type" => "Apartamento", "bedrooms_min" => 5 }
+    ).call
+
+    expect(result.records).to be_empty
+    expect(result.relaxed).to be_empty
+  end
 end

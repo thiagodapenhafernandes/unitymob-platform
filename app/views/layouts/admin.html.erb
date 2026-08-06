@@ -2,21 +2,24 @@
 <html lang="pt-BR" data-admin-theme="<%= current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>">
   <head>
     <%
-      account_site_name = @layout_setting&.site_name.presence || 'Salute Imóveis'
+      admin_pwa_tenant = current_tenant || @layout_setting&.tenant || Tenant.public_for
+      account_site_name = @layout_setting&.site_name.presence || admin_pwa_tenant&.name.presence || 'Unitymob'
       account_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : 'Plataforma'
       admin_theme_mode = current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT
       admin_theme = (@layout_setting || LayoutSetting.platform_defaults).effective_admin_theme(mode: admin_theme_mode)
       admin_icon_version = @layout_setting&.updated_at.to_i
+      admin_icon_192_href = "/pwa-icon-192?tenant=#{admin_pwa_tenant.slug}&v=#{admin_icon_version}"
+      admin_icon_512_href = "/pwa-icon-512?tenant=#{admin_pwa_tenant.slug}&v=#{admin_icon_version}"
     %>
     <title><%= current_admin_user&.system_admin? ? 'Unitymob Plataforma' : "#{account_site_name} - #{account_admin_area_name}" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-    <link rel="manifest" href="<%= admin_manifest_path(format: :json) %>">
+    <link rel="manifest" href="<%= admin_manifest_path(format: :json, tenant: admin_pwa_tenant.slug) %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="<%= @layout_setting&.site_name.presence || 'Plataforma' %>">
-    <link rel="apple-touch-icon" href="/pwa-icon-192?v=<%= admin_icon_version %>">
-    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=<%= admin_icon_version %>">
-    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512?v=<%= admin_icon_version %>">
+    <meta name="apple-mobile-web-app-title" content="<%= account_site_name %>">
+    <link rel="apple-touch-icon" href="<%= admin_icon_192_href %>">
+    <link rel="icon" type="image/png" sizes="192x192" href="<%= admin_icon_192_href %>">
+    <link rel="icon" type="image/png" sizes="512x512" href="<%= admin_icon_512_href %>">
     <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <%= csrf_meta_tags %>

@@ -13,6 +13,8 @@ class HabitationPhotoWatermarkJob < ApplicationJob
     tenant ||= habitation.tenant
 
     Current.set(tenant: habitation.tenant) do
+      Storage::ActiveStorageRegistry.register_if_available! if defined?(Storage::ActiveStorageRegistry)
+
       setting = property_setting_id.present? ? PropertySetting.find_by(id: property_setting_id) : PropertySetting.instance
       return unless setting&.watermark_configured?
 
@@ -34,10 +36,12 @@ class HabitationPhotoWatermarkJob < ApplicationJob
     result = nil
     blob.open do |file|
       upload = BlobUpload.new(blob, file)
-      result = Images::WatermarkProcessor.call(upload, setting: setting)
+      result = Images::WatermarkProcessor.call(upload, setting: setting, raise_errors: true)
     end
 
-    return unless result&.attachable.is_a?(Hash)
+    unless result&.attachable.is_a?(Hash)
+      raise Images::WatermarkProcessor::ProcessingError, "Marca d'água não gerou arquivo processado para blob #{blob.id}"
+    end
 
     new_blob = create_watermarked_blob(blob, result.attachable)
     Storage::PublicPropertyPhoto.publish_blob!(new_blob, raise_errors: true)

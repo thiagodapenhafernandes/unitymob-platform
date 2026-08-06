@@ -54,6 +54,8 @@ RSpec.describe "AI property share collections", type: :request do
     expect(response.body).to include(%(rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=))
     expect(response.body).to include('data-controller="property-share-interest"')
     expect(response.body).to include('data-controller="fancybox-gallery"')
+    expect(response.body).to include("shared-property-identity-modal", "shared-property-identity-modal__submit", "Seu nome completo", "(47) 99999-9999")
+    expect(response.body).to include('data-controller="phone-input"', 'data-property-share-interest-target="selectedProperty"')
     expect(response.body).to include("property-share-interest#preview", preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id))
   end
 

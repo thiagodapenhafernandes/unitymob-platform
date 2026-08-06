@@ -45,16 +45,20 @@ class Admin::HabitationMediaController < Admin::BaseController
     @habitation.skip_auto_audit = true
 
     permitted_attributes = habitation_media_params
+    apply_watermark = ActiveModel::Type::Boolean.new.cast(permitted_attributes.delete(:apply_photo_watermark))
+    photo_ids_for_removal = media_id_list(permitted_attributes.delete(:remove_photo_ids))
+    picture_indices_for_removal = media_id_list(permitted_attributes.delete(:remove_picture_indices))
     media_update = habitation_media_updater
     new_photo_uploads = media_update.extract_photo_uploads!(permitted_attributes)
     @habitation.assign_attributes(permitted_attributes)
-    media_update.touch_manual_habitation_update!(force: new_photo_uploads.present? || media_update.media_removal_requested?)
-    media_update.apply_picture_removals_to_memory
+    media_removal_requested = photo_ids_for_removal.any? || picture_indices_for_removal.any?
+    media_update.touch_manual_habitation_update!(force: new_photo_uploads.present? || media_removal_requested)
+    media_update.apply_picture_removals_to_memory(picture_indices_for_removal)
 
     if @habitation.save
-      media_update.attach_new_photos(new_photo_uploads)
+      media_update.attach_new_photos(new_photo_uploads, apply_watermark: apply_watermark)
       media_update.record_habitation_updated(before_snapshot: before_snapshot)
-      media_update.apply_saved_photo_removals
+      media_update.apply_saved_photo_removals(photo_ids_for_removal)
 
       respond_to do |format|
         format.html do
@@ -80,6 +84,7 @@ class Admin::HabitationMediaController < Admin::BaseController
 
     media_update = habitation_media_updater
     permitted_attributes = upload_params
+    apply_watermark = ActiveModel::Type::Boolean.new.cast(permitted_attributes.delete(:apply_photo_watermark))
     new_photo_uploads = media_update.extract_photo_uploads!(permitted_attributes)
 
     if new_photo_uploads.blank?
@@ -90,7 +95,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     media_update.touch_manual_habitation_update!(force: true)
 
     if @habitation.save
-      media_update.attach_new_photos(new_photo_uploads)
+      media_update.attach_new_photos(new_photo_uploads, apply_watermark: apply_watermark)
       media_update.record_habitation_updated(before_snapshot: before_snapshot)
       respond_with_media_success("Fotos enviadas com sucesso.")
     else
@@ -333,6 +338,9 @@ class Admin::HabitationMediaController < Admin::BaseController
       :ordered_picture_indices,
       :site_hidden_photo_ids,
       :site_hidden_picture_urls,
+      :apply_photo_watermark,
+      :remove_photo_ids,
+      :remove_picture_indices,
       :tour_virtual,
       :podcast_url,
       videos: [],
@@ -342,6 +350,15 @@ class Admin::HabitationMediaController < Admin::BaseController
     permitted = permitted.slice(*media_field_lock_policy.allowed_top_level_params)
 
     strip_blank_photo_uploads!(permitted)
+  end
+
+  def media_id_list(value)
+    Array(value)
+      .flat_map { |entry| entry.to_s.split(",") }
+      .map(&:strip)
+      .select { |entry| entry.match?(/\A\d+\z/) }
+      .map(&:to_i)
+      .uniq
   end
 
   def upload_params

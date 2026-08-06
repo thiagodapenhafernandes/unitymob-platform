@@ -10,7 +10,8 @@ module Field
     def show
       respond_to do |format|
         format.json do
-          response.headers["Cache-Control"] = "public, max-age=3600"
+          response.headers["Cache-Control"] = "private, max-age=300"
+          response.headers["Vary"] = "Cookie"
           render json: manifest_payload
         end
       end
@@ -19,28 +20,30 @@ module Field
     private
 
     def manifest_payload
-      identity = Tenants::PublicIdentity.new(public_tenant)
-      layout = LayoutSetting.instance(tenant: public_tenant)
-      brand = identity.name
-      icon_version = layout.updated_at.to_i
+      identity = Field::PwaIdentity.new(field_manifest_tenant)
+
       {
-        id: "/field",
-        name: "#{brand} — Campo",
-        short_name: "#{brand} Campo".truncate(12, omission: ""),
+        id: identity.manifest_id,
+        name: identity.full_name,
+        short_name: identity.short_name,
         description: "Check-in geolocalizado dos corretores em plantão.",
-        start_url: "/field",
+        start_url: identity.start_url,
         scope: "/",
         display: "standalone",
         orientation: "portrait",
         background_color: "#f8f9fa",
-        theme_color: layout.admin_primary_color.presence || "#365F8F",
+        theme_color: identity.theme_color,
         lang: "pt-BR",
         categories: ["business", "productivity"],
         icons: [
-          { src: "/pwa-icon-192?v=#{icon_version}", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "/pwa-icon-512?v=#{icon_version}", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+          { src: identity.icon_src(192), sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: identity.icon_src(512), sizes: "512x512", type: "image/png", purpose: "any maskable" }
         ]
       }
+    end
+
+    def field_manifest_tenant
+      current_admin_user&.tenant || public_tenant
     end
   end
 end

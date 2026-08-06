@@ -6,58 +6,7 @@ class HomeController < ApplicationController
     @home_sections = Rails.cache.fetch("home_sections_active_v3:tenant:#{public_tenant.id}", expires_in: 1.hour) do
       public_tenant.home_sections.active.to_a
     end
-    @sections_map = @home_sections.index_by(&:section_type)
-    
-    # Carrossel de Destaques - 12 imóveis (only if section is active)
-    if (section = @sections_map["featured_properties"])&.active?
-      @featured_properties = cached_home_properties(section, "featured_properties") do
-        prioritized_home_property_ids(
-          section,
-          public_habitations.active.featured,
-          limit: 12
-        )
-      end
-    end
-    
-    # Carrossel de Oportunidades - 12 imóveis com desconto (only if section is active)
-    if (section = @sections_map["opportunities"])&.active?
-      @opportunity_properties = cached_home_properties(section, "opportunities") do
-        prioritized_home_property_ids(
-          section,
-          public_habitations
-            .active
-            .where("valor_venda_anterior_cents > valor_venda_cents AND valor_venda_cents > 0"),
-          limit: 12
-        )
-      end
-    end
-    
-    # Carrossel de Empreendimentos (only if section is active)
-    if (section = @sections_map["developments"])&.active?
-      development_payload = cached_home_development_payload(section)
-      @recent_properties = load_home_properties(development_payload[:ids])
-      @dev_unit_counts = development_payload[:unit_counts]
-      @dev_unit_metrics = development_payload[:unit_metrics]
-    end
-    
-    # Imóveis para Locação (only if section is active)
-    if (section = @sections_map["rentals"])&.active?
-      @rental_properties = cached_home_properties(section, "rentals") do
-        prioritized_home_property_ids(
-          section,
-          public_habitations.active.for_rent,
-          limit: 6,
-          manual_scope: public_habitations.active.for_rent
-        )
-      end
-      @corporate_properties = cached_home_properties(section, "corporate_properties") do
-        public_habitations
-          .active
-          .home_corporate
-          .limit(3)
-          .pluck(:id)
-      end
-    end
+    @home_section_payloads = build_home_section_payloads(@home_sections)
     
     # Tipos de imóveis disponíveis (para o formulário de busca) - CACHED
     @property_types = Rails.cache.fetch(Habitation.public_filter_property_types_cache_key(public_tenant.id), expires_in: 12.hours) do
@@ -157,6 +106,77 @@ class HomeController < ApplicationController
         unit_counts: development_unit_counts_for(dev_codes),
         unit_metrics: development_unit_metrics_for(dev_codes)
       }
+    end
+  end
+
+  def build_home_section_payloads(sections)
+    sections.each_with_object({}) do |section, payloads|
+      next unless section.property_content_section?
+
+      payloads[section.id] =
+        if section.development_content?
+          development_payload_for(section)
+        else
+          property_payload_for(section)
+        end
+    end
+  end
+
+  def development_payload_for(section)
+    development_payload = cached_home_development_payload(section)
+    {
+      kind: "developments",
+      records: load_home_properties(development_payload[:ids]),
+      unit_counts: development_payload[:unit_counts],
+      unit_metrics: development_payload[:unit_metrics],
+      cta_label: "Ver Todos os Empreendimentos",
+      cta_path: empreendimentos_path
+    }
+  end
+
+  def property_payload_for(section)
+    properties = cached_home_properties(section, "properties") do
+      prioritized_home_property_ids(
+        section,
+        home_property_auto_scope,
+        limit: home_property_limit(section),
+        manual_scope: home_property_manual_scope(section)
+      )
+    end
+
+    payload = home_property_cta(section).merge(kind: "properties", records: properties)
+    payload[:corporate_records] = cached_home_properties(section, "corporate_properties") do
+      public_habitations.active.home_corporate.limit(3).pluck(:id)
+    end if section.corporate_showcase?
+    payload
+  end
+
+  def home_property_auto_scope
+    public_habitations.active.without_developments
+  end
+
+  def home_property_manual_scope(section)
+    scope = public_habitations.active.without_developments
+    scope = scope.for_rent if section.property_filter_enabled?("locacao") || section.section_type == "rentals"
+    scope = scope.for_sale if section.property_filter_enabled?("venda")
+    scope
+  end
+
+  def home_property_limit(section)
+    section.property_filter_enabled?("locacao") || section.section_type == "rentals" ? 6 : 12
+  end
+
+  def home_property_cta(section)
+    if section.property_filter_enabled?("locacao") || section.section_type == "rentals"
+      { cta_label: "Ver Todos os Imóveis para Alugar", cta_path: habitations_path(transaction_type: "aluguel") }
+    elsif section.property_filter_enabled?("venda")
+      { cta_label: "Ver Todos os Imóveis à Venda", cta_path: habitations_path(transaction_type: "venda") }
+    elsif section.property_filter_enabled?("preco_reduzido")
+      { cta_label: "Ver Todas as Oportunidades", cta_path: habitations_path(characteristics: ["opportunity"]) }
+    elsif section.property_filter_enabled?("destaque_web")
+      { cta_label: "Ver Todos os Destaques", cta_path: habitations_path(characteristics: ["featured"]) }
+    else
+      { cta_label: "Ver Todos os Imóveis", cta_path: habitations_path }
     end
   end
 
@@ -296,6 +316,6 @@ class HomeController < ApplicationController
         .with_public_listing_price
         .newest_first
         .limit(20)
-    ).detect(&:has_public_images?)&.public_image_sources&.first
+    ).detect { |habitation| habitation.public_image_sources.any? }&.public_image_sources&.first
   end
 end

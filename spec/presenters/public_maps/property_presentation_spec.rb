@@ -26,6 +26,7 @@ RSpec.describe PublicMaps::PropertyPresentation do
     GoogleMapsIntegrationSetting.new(
       tenant: tenant,
       enabled: false,
+      provider: "leaflet",
       default_display_mode: "approximate",
       approximate_radius_meters: 220,
       default_zoom: 15,
@@ -63,8 +64,39 @@ RSpec.describe PublicMaps::PropertyPresentation do
     expect(described_class.new(property, setting: setting)).not_to be_street_view_enabled
   end
 
+  it "não herda vista da rua global quando o mapa do imóvel é aproximado" do
+    setting.enabled = true
+    setting.provider = "google"
+    setting.street_view_enabled = true
+    allow(setting).to receive(:configured?).and_return(true)
+
+    expect(described_class.new(property, setting: setting)).not_to be_street_view_enabled
+  end
+
+  it "usa OpenStreetMap no link externo quando o provedor é mapa livre" do
+    setting.enabled = true
+    setting.provider = "leaflet"
+    presentation = described_class.new(property, setting: setting)
+
+    expect(presentation.provider).to eq("leaflet")
+    expect(presentation.external_url).to include("openstreetmap.org")
+    expect(presentation.external_url).to include("mlat=")
+  end
+
+  it "mantém o link externo do Google quando o provedor Google está configurado" do
+    setting.enabled = true
+    setting.provider = "google"
+    allow(setting).to receive(:configured?).and_return(true)
+    allow(setting).to receive(:api_key).and_return("maps-key")
+    presentation = described_class.new(property, setting: setting)
+
+    expect(presentation.provider).to eq("google")
+    expect(presentation.external_url).to include("google.com/maps/search")
+  end
+
   it "usa as coordenadas exatas para a vista da rua somente após liberação explícita" do
     property.update!(public_street_view_mode: "enabled")
+    setting.provider = "google"
     setting.street_view_enabled = true
     allow(setting).to receive(:configured?).and_return(true)
     allow(setting).to receive(:api_key).and_return("maps-key")

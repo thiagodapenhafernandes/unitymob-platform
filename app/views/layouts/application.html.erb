@@ -195,6 +195,7 @@
   <% public_site_theme = public_tenant.public_site_theme_key %>
   <body class="antialiased public-site-theme public-site-theme--<%= public_site_theme %>"
         data-public-site-theme="<%= public_site_theme %>"
+        data-public-tenant-slug="<%= public_tenant.slug %>"
         data-controller="lead-capture public-interest-tracker"
         data-lead-capture-enabled-value="<%= @lead_capture_enabled %>"
         data-lead-capture-phone-settings-value="<%= json_escape(@site_phone_settings.to_json) %>"

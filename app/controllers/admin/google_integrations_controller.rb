@@ -68,7 +68,7 @@ class Admin::GoogleIntegrationsController < Admin::BaseController
     @google_maps_setting.api_key = api_key if api_key.present?
 
     if @google_maps_setting.save
-      redirect_to admin_google_integration_path(tab: "maps"), notice: "Configurações do Google Maps salvas com sucesso."
+      redirect_to admin_google_integration_path(tab: "maps"), notice: "Configurações do mapa salvas com sucesso."
     else
       @active_tab = "maps"
       flash.now[:alert] = "Revise os campos destacados antes de salvar."
@@ -87,6 +87,7 @@ class Admin::GoogleIntegrationsController < Admin::BaseController
   def google_maps_params
     params.require(:google_maps).permit(
       :enabled,
+      :provider,
       :api_key,
       :default_display_mode,
       :approximate_radius_meters,

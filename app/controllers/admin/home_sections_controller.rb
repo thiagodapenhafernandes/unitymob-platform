@@ -11,7 +11,7 @@ class Admin::HomeSectionsController < Admin::BaseController
   end
   
   def new
-    @home_section = current_tenant.home_sections.new
+    @home_section = current_tenant.home_sections.new(section_type: "featured_properties")
   end
   
   def create
@@ -61,12 +61,9 @@ class Admin::HomeSectionsController < Admin::BaseController
   
   def home_section_params
     permitted = params.require(:home_section).permit(
-      :section_type,
       :title,
       :subtitle,
       :active,
-      :display_order,
-      :order_position,
       property_filters: [
         *HomeSection::PROPERTY_FILTER_OPTIONS.keys,
         { selected_property_ids: [] }
@@ -79,9 +76,23 @@ class Admin::HomeSectionsController < Admin::BaseController
                 filters.to_h
               else
                 {}
-              end
+    end
     filters["selected_property_ids"] = permitted_property_ids(filters["selected_property_ids"])
-    permitted.to_h.merge(property_filters: filters)
+    attrs = permitted.to_h.merge(property_filters: filters)
+    attrs[:section_type] = HomeSection.infer_section_type_from_filters(filters, fallback: section_type_fallback)
+    attrs[:order_position] = next_order_position unless @home_section&.persisted?
+    attrs
+  end
+
+  def section_type_fallback
+    current_type = @home_section&.section_type
+    return if current_type.in?(HomeSection::PROPERTY_SECTION_TYPES)
+
+    current_type
+  end
+
+  def next_order_position
+    current_tenant.home_sections.maximum(:order_position).to_i + 1
   end
 
   def permitted_property_ids(values)

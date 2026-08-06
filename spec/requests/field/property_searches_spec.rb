@@ -229,6 +229,99 @@ RSpec.describe "Field::PropertySearches", type: :request do
     expect(payload.fetch("relaxed_labels")).to be_present
   end
 
+  it "prioriza código específico como busca nova e ignora filtros anteriores" do
+    setting.update!(ai_property_search_allow_flexible_results: true)
+    target = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "AI-CODE-SEARCH", vista_codigo: "9345", categoria: "Apartamento", dormitorios_qtd: 1)
+    create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "AI-CODE-OLD-FILTER", categoria: "Casa", dormitorios_qtd: 5)
+    interpretation = Ai::PropertySearch::Interpreter::Result.new(
+      intent: "search_properties",
+      filters: { "property_type" => "Casa", "bedrooms_min" => 5 },
+      missing_required_information: [],
+      clarifying_question: nil
+    )
+    allow(Ai::PropertySearch::Interpreter).to receive(:new).and_return(instance_double(Ai::PropertySearch::Interpreter, call: interpretation))
+
+    post field_property_search_path(format: :json),
+         params: { query: "código do imóvel 9345", current_filters: { property_type: "Casa", bedrooms_min: 5 }.to_json },
+         headers: json_headers
+
+    payload = response.parsed_body
+    expect(response).to have_http_status(:ok)
+    expect(payload.fetch("search_mode")).to eq("specific")
+    expect(payload.fetch("filters")).to eq("property_code" => "9345")
+    expect(payload.fetch("results").map { |item| item["id"] }).to eq([target.id])
+    expect(payload.fetch("suggestions")).to be_empty
+  end
+
+  it "não relaxa busca específica por código quando não há correspondência" do
+    setting.update!(ai_property_search_allow_flexible_results: true)
+    create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "AI-NOT-SPECIFIC-SUGGESTION", categoria: "Apartamento", dormitorios_qtd: 4)
+    interpretation = Ai::PropertySearch::Interpreter::Result.new(
+      intent: "search_properties",
+      filters: { "property_type" => "Apartamento", "bedrooms_min" => 5 },
+      missing_required_information: [],
+      clarifying_question: nil
+    )
+    allow(Ai::PropertySearch::Interpreter).to receive(:new).and_return(instance_double(Ai::PropertySearch::Interpreter, call: interpretation))
+
+    post field_property_search_path(format: :json), params: { query: "código 999999" }, headers: json_headers
+
+    payload = response.parsed_body
+    expect(response).to have_http_status(:ok)
+    expect(payload.fetch("search_mode")).to eq("specific")
+    expect(payload.fetch("results")).to be_empty
+    expect(payload.fetch("suggestions")).to be_empty
+    expect(payload.fetch("match_quality")).to eq("none")
+  end
+
+  it "busca nome de edifício como empreendimento específico sem usar filtros abrangentes da IA" do
+    setting.update!(
+      ai_property_search_allowed_fields: (setting.ai_property_search_allowed_fields | ["development"]),
+      ai_property_search_development_name_enabled: true,
+      ai_property_search_development_aliases_enabled: true
+    )
+    development = create(:habitation, tenant: broker.tenant, tipo: "Empreendimento", codigo: "DEV-ADMIRA", nome_empreendimento: "Admirá")
+    unit = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "UNIT-ADMIRA", codigo_empreendimento: development.codigo, categoria: "Apartamento")
+    create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "UNIT-RANDOM", categoria: "Apartamento", dormitorios_qtd: 4)
+    interpretation = Ai::PropertySearch::Interpreter::Result.new(
+      intent: "search_properties",
+      filters: { "property_type" => "Apartamento", "bedrooms_min" => 4 },
+      missing_required_information: [],
+      clarifying_question: nil
+    )
+    allow(Ai::PropertySearch::Interpreter).to receive(:new).and_return(instance_double(Ai::PropertySearch::Interpreter, call: interpretation))
+
+    post field_property_search_path(format: :json), params: { query: "edifício Admirá" }, headers: json_headers
+
+    payload = response.parsed_body
+    expect(response).to have_http_status(:ok)
+    expect(payload.fetch("search_mode")).to eq("specific")
+    expect(payload.fetch("filters")).to include("development_name" => "Admirá")
+    expect(payload.fetch("results").map { |item| item["id"] }).to eq([unit.id])
+  end
+
+  it "não sugere alternativas quando a IA interpreta o texto como empreendimento específico" do
+    setting.update!(ai_property_search_allow_flexible_results: true, ai_property_search_resilient_search_enabled: true)
+    create(:habitation, tenant: broker.tenant, admin_user: broker, categoria: "Apartamento", dormitorios_qtd: 4, codigo: "SPECIFIC-FALLBACK")
+    interpretation = Ai::PropertySearch::Interpreter::Result.new(
+      intent: "search_properties",
+      filters: { "development_name" => "Admirar", "property_type" => "Apartamento", "bedrooms_min" => 5 },
+      missing_required_information: [],
+      clarifying_question: nil
+    )
+    allow(Ai::PropertySearch::Interpreter).to receive(:new).and_return(instance_double(Ai::PropertySearch::Interpreter, call: interpretation))
+
+    post field_property_search_path(format: :json), params: { query: "Admirar" }, headers: json_headers
+
+    payload = response.parsed_body
+    expect(response).to have_http_status(:ok)
+    expect(payload.fetch("search_mode")).to eq("specific")
+    expect(payload.fetch("match_quality")).to eq("none")
+    expect(payload.fetch("results")).to be_empty
+    expect(payload.fetch("suggestions")).to be_empty
+    expect(payload.fetch("suggestion_message")).to be_nil
+  end
+
   it "busca resiliente sugere alternativas mesmo com a flexibilidade padrão desligada" do
     setting.update!(ai_property_search_allow_flexible_results: false, ai_property_search_resilient_search_enabled: true)
     alternative = create(:habitation, tenant: broker.tenant, admin_user: broker, categoria: "Apartamento", dormitorios_qtd: 4, cidade: "Cidade Garantida", codigo: "RESILIENT-REQUEST")

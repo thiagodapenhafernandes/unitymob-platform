@@ -21,11 +21,17 @@ module Field
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       transcription = search_text
       interpretation = interpreted_request(transcription)
+      specific_request = Ai::PropertySearch::SpecificRequest.new(
+        setting: @setting,
+        tenant: current_tenant,
+        text: transcription,
+        interpreted_filters: interpretation.filters
+      ).call
       contextual = Ai::PropertySearch::ContextualFilters.new(
         setting: @setting,
         text: transcription,
-        current_filters: parsed_current_filters,
-        interpreted_filters: interpretation.filters
+        current_filters: specific_request.exact ? {} : parsed_current_filters,
+        interpreted_filters: specific_request.filters
       ).call
 
       location_resolution = Ai::PropertySearch::LocationResolver.new(
@@ -37,7 +43,8 @@ module Field
       development_resolution = Ai::PropertySearch::DevelopmentResolver.new(
         tenant: current_tenant,
         setting: @setting,
-        filters: location_resolution.filters
+        filters: location_resolution.filters,
+        exact: specific_request.exact
       ).call
       interpreted_filters = development_resolution.filters
 
@@ -51,7 +58,7 @@ module Field
       )
       presenter = Ai::PropertySearch::ResultPresenter.new(@setting)
       results = query_result.records.map { |habitation| presenter.call(habitation) }
-      suggestion = if results.empty? && suggestions_enabled?
+      suggestion = if results.empty? && suggestions_enabled? && !specific_request.exact
         Ai::PropertySearch::SuggestionFinder.new(
           tenant: current_tenant,
           admin_user: current_admin_user,
@@ -78,7 +85,7 @@ module Field
         metadata: {
           source: "field_property_search",
           history_id: history&.id,
-          search_mode: contextual.mode,
+          search_mode: search_mode(contextual, specific_request),
           flexible: query_result.flexible,
           match_quality: results.any? ? "exact" : (suggestions.any? ? "approximate" : "none"),
           relaxed_criteria: suggestion&.relaxed || []
@@ -89,7 +96,7 @@ module Field
         status: "completed",
         transcription:,
         filters: query_result.applied_filters,
-        search_mode: contextual.mode,
+        search_mode: search_mode(contextual, specific_request),
         flexible: query_result.flexible,
         match_quality: results.any? ? "exact" : (suggestions.any? ? "approximate" : "none"),
         results:,
@@ -159,6 +166,10 @@ module Field
 
         format(label, tolerance: tolerance)
       end
+    end
+
+    def search_mode(contextual, specific_request)
+      specific_request.exact ? "specific" : contextual.mode
     end
 
     def authorize_ai_property_search!

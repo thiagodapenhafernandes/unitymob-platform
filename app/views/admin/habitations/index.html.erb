@@ -182,18 +182,22 @@
             <span>Modelos de impressão</span>
             <small><%= @report_types.to_h.size %> opções</small>
           </li>
-          <% @report_types.to_h.each do |report_key, report_label| %>
-            <li>
-              <%= link_to print_admin_habitations_path(printable_params.merge(report_type: report_key, full_print: "1")),
-                          class: "habitations-command-menu__item",
-                          target: "_blank",
-                          rel: "noopener",
-                          data: { turbo: false } do %>
-                  <span class="habitations-command-menu__item-icon"><i class="bi bi-file-earmark-text"></i></span>
-                  <span class="habitations-command-menu__item-label"><%= report_label %></span>
-                  <span class="habitations-command-menu__item-status"><i class="bi bi-arrow-up-right-square"></i></span>
-              <% end %>
-            </li>
+          <% Admin::HabitationsController::REPORT_GROUPS.each do |group_label, report_keys| %>
+            <li class="habitations-command-menu__group"><%= group_label %></li>
+            <% report_keys.each do |report_key| %>
+              <% report_label = @report_types.to_h.fetch(report_key) %>
+              <li>
+                <%= link_to print_admin_habitations_path(printable_params.merge(report_type: report_key, full_print: "1")),
+                            class: "habitations-command-menu__item",
+                            target: "_blank",
+                            rel: "noopener",
+                            data: { turbo: false } do %>
+                    <span class="habitations-command-menu__item-icon"><i class="bi <%= report_key == 'visit_sheet' ? 'bi-clipboard2-check' : 'bi-file-earmark-text' %>"></i></span>
+                    <span class="habitations-command-menu__item-label"><%= report_label %></span>
+                    <span class="habitations-command-menu__item-status"><i class="bi bi-arrow-up-right-square"></i></span>
+                <% end %>
+              </li>
+            <% end %>
           <% end %>
         </ul>
       </div>

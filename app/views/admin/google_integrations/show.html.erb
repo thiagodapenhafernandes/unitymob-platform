@@ -1,4 +1,5 @@
-<%= ax_workspace_heading(eyebrow: "Integrações · Google", icon: "google", title: "Google", pills: [@active_tab.to_s.humanize], subtitle: "Configure os produtos Google usados pelos fluxos administrativos.") %>
+<% active_tab_label = { "sheets" => "Google Sheets", "calendar" => "Agenda", "maps" => "Mapa" }.fetch(@active_tab, @active_tab.to_s.humanize) %>
+<%= ax_workspace_heading(eyebrow: "Integrações", icon: "google", title: "Google e Mapa", pills: [active_tab_label], subtitle: "Configure integrações administrativas e o provedor de mapa do site público.") %>
 
 <ul class="ax-form-tabs tw-mb-4">
   <li>
@@ -13,7 +14,7 @@
   </li>
   <li>
     <%= link_to admin_google_integration_path(tab: "maps"), class: ["ax-form-tabs__item", ("active" if @active_tab == "maps")].compact.join(" "), aria: { current: ("page" if @active_tab == "maps") } do %>
-      <i class="bi bi-map" aria-hidden="true"></i>Maps
+      <i class="bi bi-map" aria-hidden="true"></i>Mapa
     <% end %>
   </li>
 </ul>

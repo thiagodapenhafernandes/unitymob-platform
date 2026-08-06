@@ -1,4 +1,7 @@
 class Admin::HabitationsController < Admin::BaseController
+  HABITATIONS_FILTER_SESSION_MAX_ARRAY_ITEMS = 20
+  HABITATIONS_FILTER_SESSION_MAX_VALUE_LENGTH = 180
+
   include RentalGuaranteeParamNormalizer
 
   before_action -> { check_permission!(:view, :imoveis) }
@@ -10,18 +13,41 @@ class Admin::HabitationsController < Admin::BaseController
   require "uri"
 
   REPORT_TYPES = {
-    "photos_sheet" => "Ficha de fotos",
-    "client_sheet_commercial" => "Ficha para clientes - Imoveis comerciais",
-    "client_sheet_residential" => "Ficha para clientes - Imoveis residenciais",
-    "client_sheet_land" => "Ficha para clientes - Terrenos",
-    "vitrine_sheet" => "Ficha vitrine",
-    "sale_rent_total_values" => "Ficha Imoveis com valor geral de venda e aluguel",
-    "property_list" => "Ficha Listagem de imoveis",
-    "property_list_with_m2" => "Ficha Listagem de imoveis com Valor do M2",
-    "property_list_by_broker" => "Ficha Listagem de imoveis por corretor",
-    "property_count_by_broker" => "Ficha Numero de imoveis por corretor"
+    "visit_sheet" => "Ficha de visita",
+    "capture_sheet_commercial" => "Ficha de captação - Imóveis comerciais",
+    "capture_sheet_residential" => "Ficha de captação - Imóveis residenciais",
+    "capture_sheet_land" => "Ficha de captação - Terrenos",
+    "photos_sheet" => "Lista de fotos",
+    "client_sheet_commercial" => "Lista para clientes - Imóveis comerciais",
+    "client_sheet_residential" => "Lista para clientes - Imóveis residenciais",
+    "client_sheet_land" => "Lista para clientes - Terrenos",
+    "vitrine_sheet" => "Lista vitrine",
+    "sale_rent_total_values" => "Resumo de valores de venda e aluguel",
+    "property_list" => "Listagem de imóveis",
+    "property_list_with_m2" => "Listagem de imóveis com valor do m²",
+    "property_list_by_broker" => "Listagem de imóveis por corretor",
+    "property_count_by_broker" => "Resumo de imóveis por corretor"
+  }.freeze
+  REPORT_GROUPS = {
+    "Fichas" => %w[visit_sheet capture_sheet_commercial capture_sheet_residential capture_sheet_land],
+    "Listas e resumos" => %w[
+      photos_sheet
+      client_sheet_commercial
+      client_sheet_residential
+      client_sheet_land
+      vitrine_sheet
+      sale_rent_total_values
+      property_list
+      property_list_with_m2
+      property_list_by_broker
+      property_count_by_broker
+    ]
   }.freeze
   REPORT_PAGE_SIZE = {
+    "visit_sheet" => 1,
+    "capture_sheet_commercial" => 1,
+    "capture_sheet_residential" => 1,
+    "capture_sheet_land" => 1,
     "property_list" => 24,
     "property_list_with_m2" => 24,
     "property_list_by_broker" => 14
@@ -202,7 +228,9 @@ class Admin::HabitationsController < Admin::BaseController
       "ownership" => params[:ownership].presence_in(%w[mine all]) || "all",
       "codigo" => catalog_code
     }
-    session[habitations_filter_session_key] = compact_blank_return_params(code_filter_params)
+    session[habitations_filter_session_key] = compact_habitations_filter_session_payload(
+      compact_blank_return_params(code_filter_params)
+    )
 
     return_to_path = admin_habitations_path(code_filter_params)
     path = can_edit_habitation?(habitation) ? edit_admin_habitation_path(habitation.id) : admin_habitation_path(habitation.id)
@@ -217,9 +245,10 @@ class Admin::HabitationsController < Admin::BaseController
     @report_title = REPORT_TYPES[@report_type]
     @report_generated_at = Time.current
     @full_print_mode = full_print_mode?
+    @public_site_profile = PublicSiteProfile.current(tenant: current_tenant)
 
     scope = filtered_habitations_scope.order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
-    ids = sanitized_selected_ids
+    ids = single_habitation_sheet_report? ? [] : sanitized_selected_ids
     scope = scope.where(id: ids) if ids.any?
 
     case @report_type
@@ -231,7 +260,9 @@ class Admin::HabitationsController < Admin::BaseController
       scope = scope.where(categoria: Habitation::CATEGORIES.select { |c| c.match?(/Terreno|Área/i) })
     end
 
-    if @report_type == "property_count_by_broker"
+    if single_habitation_sheet_report?
+      setup_single_habitation_sheet_report(scope)
+    elsif @report_type == "property_count_by_broker"
       @broker_rows = scope.reorder(nil)
         .group("COALESCE(NULLIF(TRIM(corretor_nome), ''), 'Sem corretor')")
         .order(Arel.sql("COUNT(*) DESC"))
@@ -1202,7 +1233,7 @@ class Admin::HabitationsController < Admin::BaseController
     )
 
     if meaningful_habitations_filter_params(filter_params).present?
-      session[habitations_filter_session_key] = filter_params
+      session[habitations_filter_session_key] = compact_habitations_filter_session_payload(filter_params)
     end
   end
 
@@ -1223,6 +1254,23 @@ class Admin::HabitationsController < Admin::BaseController
         .slice(*habitations_filter_session_keys)
         .except("ownership", "visualizacao", "sort", "direction", "per_page", "page", "clear_filters")
     )
+  end
+
+  def compact_habitations_filter_session_payload(value)
+    case value
+    when Hash
+      value.each_with_object({}) do |(key, nested_value), compacted|
+        compacted_value = compact_habitations_filter_session_payload(nested_value)
+        compacted[key] = compacted_value unless blank_return_param?(compacted_value)
+      end
+    when Array
+      value.first(HABITATIONS_FILTER_SESSION_MAX_ARRAY_ITEMS).filter_map do |nested_value|
+        compacted_value = compact_habitations_filter_session_payload(nested_value)
+        compacted_value unless blank_return_param?(compacted_value)
+      end
+    else
+      value.to_s.strip.truncate(HABITATIONS_FILTER_SESSION_MAX_VALUE_LENGTH, omission: "").presence
+    end
   end
 
   def extract_multi_select_integers(param_key)
@@ -1829,6 +1877,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def data_export_count_for(scope)
+    return @habitations.size if single_habitation_sheet_report? && defined?(@habitations)
     return @broker_rows.size if defined?(@broker_rows) && @broker_rows.present?
     return @summary_rows.size if defined?(@summary_rows) && @summary_rows.present?
 
@@ -2438,8 +2487,24 @@ class Admin::HabitationsController < Admin::BaseController
     @report_limited_to_max_pages = raw_total_entries > max_entries
   end
 
+  def setup_single_habitation_sheet_report(scope)
+    habitation = scope.to_a.last
+    records = [habitation].compact
+
+    @habitations = records
+    @report_pages_data = [records]
+    @report_total_entries = records.size
+    @report_total_pages = 1
+    @report_page = 1
+    @report_limited_to_max_pages = false
+  end
+
   def full_print_mode?
     params[:full_print].to_s != "0"
+  end
+
+  def single_habitation_sheet_report?
+    %w[visit_sheet capture_sheet_commercial capture_sheet_residential capture_sheet_land].include?(@report_type)
   end
 
   def habitation_params

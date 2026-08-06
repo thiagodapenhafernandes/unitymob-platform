@@ -18,7 +18,8 @@ module Ai
         OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).transcribe(
           file: @audio,
           language: @setting.ai_property_search_language,
-          model: Configuration.transcription_model(tenant: @setting.tenant),
+          model: Configuration.resolved_transcription_model(tenant: @setting.tenant),
+          fallback_model: OpenAi::ModelCatalog.fallback_transcription_model(Configuration.resolved_transcription_model(tenant: @setting.tenant)),
           prompt: vocabulary_prompt
         )
       end

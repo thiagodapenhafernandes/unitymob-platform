@@ -36,12 +36,17 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
       tempfile: processed_file
     )
 
-    allow(Images::WatermarkProcessor).to receive(:call).and_return(result)
+    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+    allow(Images::WatermarkProcessor).to receive(:call).with(
+      an_instance_of(described_class::BlobUpload),
+      setting: setting,
+      raise_errors: true
+    ).and_return(result)
     allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!).and_return(true)
 
     expect do
       described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
-      end.to have_enqueued_job(Storage::SafePurgeJob).with(original_blob.id).at(
+    end.to have_enqueued_job(Storage::SafePurgeJob).with(original_blob.id).at(
       be_within(2.seconds).of(described_class::ORIGINAL_BLOB_PURGE_DELAY.from_now)
     )
 
@@ -52,8 +57,42 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
       attachment.blob,
       raise_errors: true
     )
+    expect(Storage::ActiveStorageRegistry).to have_received(:register_if_available!)
     expect(ActiveStorage::Blob.exists?(original_blob.id)).to be(true)
   ensure
     processed_file&.close!
+  end
+
+  it "falha explicitamente quando a marca d'água configurada não pode ser aplicada" do
+    suffix = SecureRandom.hex(3)
+    tenant = Tenant.create!(name: "Tenant watermark failure #{suffix}", slug: "tenant-watermark-failure-#{suffix}")
+    habitation = create(:habitation, tenant: tenant)
+    setting = PropertySetting.create!(tenant: tenant, watermark_position: "center")
+    setting.watermark_image.attach(
+      io: StringIO.new("watermark"),
+      filename: "watermark.png",
+      content_type: "image/png"
+    )
+    habitation.photos.attach(
+      io: StringIO.new("original-photo"),
+      filename: "photo.jpg",
+      content_type: "image/jpeg"
+    )
+    attachment = habitation.photos.attachments.last
+    original_blob = attachment.blob
+
+    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+    allow(Images::WatermarkProcessor).to receive(:call).and_raise(
+      Images::WatermarkProcessor::ProcessingError,
+      "marca ausente"
+    )
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!)
+
+    expect do
+      described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
+    end.to raise_error(Images::WatermarkProcessor::ProcessingError, /marca ausente/)
+
+    expect(attachment.reload.blob_id).to eq(original_blob.id)
+    expect(Storage::PublicPropertyPhoto).not_to have_received(:publish_blob!)
   end
 end

@@ -1,4 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
+import {
+  dispatchFavoritesChanged,
+  readFavorites,
+  writeFavorites
+} from "controllers/public_favorites_storage"
 
 export default class extends Controller {
   static targets = ["primaryImage", "counter", "favorite", "status"]
@@ -135,9 +140,9 @@ export default class extends Controller {
       favorites.unshift(property)
     }
 
-    localStorage.setItem("salute:favorite-properties", JSON.stringify(favorites))
+    writeFavorites(favorites)
     this.setFavoriteState(!active)
-    window.dispatchEvent(new CustomEvent("salute:favorites-changed"))
+    dispatchFavoritesChanged()
   }
 
   share() {
@@ -184,12 +189,7 @@ export default class extends Controller {
   }
 
   readFavorites() {
-    try {
-      const favorites = JSON.parse(localStorage.getItem("salute:favorite-properties") || "[]")
-      return Array.isArray(favorites) ? favorites : []
-    } catch (_error) {
-      return []
-    }
+    return readFavorites()
   }
 
   showStatus(message) {

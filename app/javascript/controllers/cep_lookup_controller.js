@@ -207,23 +207,22 @@ export default class extends Controller {
   locationFeedback(result, displayName, fullAddress) {
     const requestedNumber = this.hasNumberTarget ? this.numberTarget.value.trim() : ""
     const foundNumber = (result?.house_number || result?.address?.house_number)?.toString()
-    const provider = result?.provider === "google" ? "Google Maps" : "OpenStreetMap"
     const precision = result?.precision?.toString()
 
     if (requestedNumber && foundNumber && foundNumber === requestedNumber && ["rooftop", "house_number"].includes(precision)) {
-      return { kind: "success", message: `Localizado com precisão pelo ${provider}: ${displayName}` }
+      return { kind: "success", message: `Localizado com precisão no mapa: ${displayName}` }
     }
 
     if (requestedNumber && foundNumber && foundNumber === requestedNumber) {
-      return { kind: "success", message: `Localizado no número ${requestedNumber} pelo ${provider}: ${displayName}` }
+      return { kind: "success", message: `Localizado no número ${requestedNumber} pelo mapa: ${displayName}` }
     }
 
     if (requestedNumber && !foundNumber) {
-      return { kind: "warn", message: `Consulta feita com número: ${fullAddress}. A base do ${provider} retornou só a rua, sem confirmar o número ${requestedNumber}. Clique no mapa ou arraste o marcador para o ponto exato.` }
+      return { kind: "warn", message: `Consulta feita com número: ${fullAddress}. A base do mapa retornou só a rua, sem confirmar o número ${requestedNumber}. Clique no mapa ou arraste o marcador para o ponto exato.` }
     }
 
     if (requestedNumber && foundNumber !== requestedNumber) {
-      return { kind: "warn", message: `Consulta feita com número: ${fullAddress}. A base do ${provider} retornou o número ${foundNumber} em vez de ${requestedNumber}. Clique no mapa ou arraste o marcador para o ponto exato.` }
+      return { kind: "warn", message: `Consulta feita com número: ${fullAddress}. A base do mapa retornou o número ${foundNumber} em vez de ${requestedNumber}. Clique no mapa ou arraste o marcador para o ponto exato.` }
     }
 
     return { kind: "warn", message: `Localizado: ${displayName}. Informe o número para ter ajuste fino.` }

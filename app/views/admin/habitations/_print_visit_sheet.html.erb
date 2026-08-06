@@ -1,0 +1,128 @@
+<%
+  company_name = public_site_profile&.legal_name.presence || brand_name
+  company_address = public_site_profile&.legal_address.to_s.squish
+  company_document = public_site_profile&.legal_document.to_s.squish
+  company_creci = public_site_profile&.creci.to_s.squish
+  location_label = [habitation.public_neighborhood.presence || habitation.bairro, habitation.cidade].compact_blank.join(" - ")
+  address_label = habitation.full_address.presence || location_label
+  description_text = habitation.display_description_plain_text.presence || "Sem descrição cadastrada."
+  description_text = truncate(description_text, length: 1_150, separator: " ")
+  photo_source = habitation.primary_image
+  photo_url = photo_source.present? ? public_image_url(photo_source, resize_to_limit: [760, 620], format: :webp).presence : nil
+  broker_signature_name = current_admin_user&.name.presence || habitation.corretor_nome.presence || "Corretor responsável"
+  company_details = [
+    company_address,
+    (company_document.present? ? "Documento: #{company_document}" : nil),
+    (company_creci.present? ? "CRECI: #{company_creci}" : nil)
+  ].compact_blank
+
+  visit_facts = [
+    ["Categoria", habitation.categoria],
+    ["Área privativa", habitation.area_privativa_m2.to_f.positive? ? "#{number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".")} m²" : nil],
+    ["Área total", habitation.area_total_m2.to_f.positive? ? "#{number_with_precision(habitation.area_total_m2.to_f, precision: 2, separator: ",", delimiter: ".")} m²" : nil],
+    ["Dormitórios", habitation.dormitorios_qtd.to_i.positive? ? habitation.dormitorios_qtd : nil],
+    ["Suítes", habitation.suites_qtd.to_i.positive? ? habitation.suites_qtd : nil],
+    ["Vagas", habitation.vagas_qtd.to_i.positive? ? habitation.vagas_qtd : nil],
+    ["Venda", habitation.valor_venda_cents.to_i.positive? ? habitation.valor_venda_formatted : nil],
+    ["Locação", habitation.valor_locacao_cents.to_i.positive? ? habitation.valor_locacao_formatted : nil],
+    ["Condomínio", habitation.valor_condominio_cents.to_i.positive? ? habitation.valor_condominio_formatted : nil],
+    ["IPTU", habitation.valor_iptu_cents.to_i.positive? ? habitation.valor_iptu_formatted : nil]
+  ].select { |(_label, value)| value.present? }
+%>
+
+<article class="visit-sheet">
+  <header class="visit-sheet__header">
+    <div>
+      <h1 class="visit-sheet__title">Ficha de visita</h1>
+      <div class="visit-sheet__reference">
+        <span>Referência:</span>
+        <strong><%= habitation.codigo.presence || habitation.id %></strong>
+      </div>
+    </div>
+
+    <div class="visit-sheet__brand">
+      <svg class="visit-sheet__brand-plate" viewBox="0 0 120 62" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <rect width="120" height="62" rx="12" ry="12" style="fill: <%= @print_brand_badge_color %>;"></rect>
+      </svg>
+      <% if layout_setting&.logo&.attached? %>
+        <%= image_tag layout_setting.logo, alt: brand_name %>
+      <% else %>
+        <span class="visit-sheet__brand-fallback"><%= brand_name %></span>
+      <% end %>
+    </div>
+
+    <div class="visit-sheet__company">
+      <strong><%= company_name %></strong>
+      <% company_details.each do |detail| %>
+        <span><%= detail %></span>
+      <% end %>
+      <span>Emitida em <%= generated_label %></span>
+      <span>Página <%= page_number %><%= total_pages.present? ? " / #{total_pages}" : "" %></span>
+    </div>
+  </header>
+
+  <div class="visit-sheet__location">
+    <%= address_label.presence || habitation.display_title %>
+  </div>
+
+  <div class="visit-sheet__body">
+    <div class="visit-sheet__column">
+      <div class="visit-sheet__photo">
+        <% if photo_url.present? %>
+          <%= image_tag photo_url, alt: habitation.display_title %>
+        <% else %>
+          <span class="visit-sheet__empty-photo">Sem foto principal</span>
+        <% end %>
+      </div>
+
+      <h2 class="visit-sheet__section-title">Descrição do imóvel</h2>
+      <div class="visit-sheet__description"><%= description_text %></div>
+
+      <% if visit_facts.any? %>
+        <div class="visit-sheet__facts">
+          <% visit_facts.each do |label, value| %>
+            <div class="visit-sheet__fact">
+              <span><%= label %></span>
+              <strong><%= value %></strong>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="visit-sheet__column">
+      <h2 class="visit-sheet__section-title">Dados do cliente interessado</h2>
+      <div class="visit-sheet__form-grid">
+        <div class="visit-sheet__line visit-sheet__line--full"><span>Nome:</span><span class="visit-sheet__blank"></span></div>
+        <div class="visit-sheet__line"><span>Telefone:</span><span class="visit-sheet__blank"></span></div>
+        <div class="visit-sheet__line"><span>E-mail:</span><span class="visit-sheet__blank"></span></div>
+        <div class="visit-sheet__line"><span>CPF:</span><span class="visit-sheet__blank"></span></div>
+        <div class="visit-sheet__line"><span>RG:</span><span class="visit-sheet__blank"></span></div>
+      </div>
+
+      <h2 class="visit-sheet__section-title">Avaliação da visita</h2>
+      <p>Na sua opinião, que nota você daria para:</p>
+      <div class="visit-sheet__rating">
+        <% ["Estado de conservação do imóvel", "Localização do imóvel", "Valor do imóvel"].each do |label| %>
+          <div class="visit-sheet__rating-row">
+            <span><%= label %>:</span>
+            <span class="visit-sheet__scale">1 [ ] &nbsp; 2 [ ] &nbsp; 3 [ ] &nbsp; 4 [ ] &nbsp; 5 [ ]</span>
+          </div>
+        <% end %>
+      </div>
+
+      <h2 class="visit-sheet__section-title">Interesse do cliente pelo imóvel</h2>
+      <div class="visit-sheet__checks">
+        <span>[ ] Descartou &nbsp;&nbsp; [ ] Interessou &nbsp;&nbsp; [ ] Interessou e assinou proposta</span>
+        <span>O imóvel foi visitado? &nbsp;&nbsp; [ ] Sim &nbsp;&nbsp; [ ] Não</span>
+      </div>
+
+      <div class="visit-sheet__signatures">
+        <div class="visit-sheet__signature-line">Assinatura do proprietário (se presente)</div>
+        <div class="visit-sheet__signature-line">Assinatura do cliente interessado</div>
+      </div>
+
+      <div class="visit-sheet__broker-signature"><%= broker_signature_name %></div>
+    </div>
+  </div>
+</article>

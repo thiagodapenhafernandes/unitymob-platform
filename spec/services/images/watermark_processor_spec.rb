@@ -30,6 +30,22 @@ RSpec.describe Images::WatermarkProcessor do
     expect(result.tempfile).to be_nil
   end
 
+  it "raises an explicit processing error when configured to surface failures" do
+    watermark_attachment = instance_double(ActiveStorage::Attached::One)
+    setting = instance_double(
+      PropertySetting,
+      watermark_configured?: true,
+      watermark_image: watermark_attachment
+    )
+    upload = png_upload("property.png", "320x220", "#d9e4ec", "#1f2937")
+
+    allow(watermark_attachment).to receive(:open).and_raise(ActiveStorage::FileNotFoundError)
+
+    expect do
+      described_class.call(upload, setting: setting, raise_errors: true)
+    end.to raise_error(Images::WatermarkProcessor::ProcessingError, /Falha ao aplicar marca d'água/)
+  end
+
   it "sizes watermarks from the configured percentage" do
     setting = PropertySetting.instance
     setting.update!(watermark_position: "center", watermark_size_percentage: 120)

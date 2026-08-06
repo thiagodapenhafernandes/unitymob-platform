@@ -26,13 +26,16 @@ module InterestIntelligence
     private
 
     def request_summary
-      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(openai_payload)
+      response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key(tenant: tenant)).create_response(
+        openai_payload,
+        fallback_model: OpenAi::ModelCatalog.fallback_response_model(Ai::PropertyContentService.resolved_model(tenant: tenant))
+      )
       JSON.parse(extract_text(response))
     end
 
     def openai_payload
       {
-        model: Ai::PropertyContentService.model(tenant: tenant),
+        model: Ai::PropertyContentService.resolved_model(tenant: tenant),
         instructions: system_instructions,
         input: user_payload,
         text: {

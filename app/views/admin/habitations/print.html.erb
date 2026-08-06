@@ -1,8 +1,10 @@
 <%
-  paginated_report = %w[property_list property_list_with_m2 property_list_by_broker].include?(@report_type)
+  paginated_report = %w[visit_sheet property_list property_list_with_m2 property_list_by_broker].include?(@report_type)
   full_print_mode = @full_print_mode != false
   landscape_report = %w[property_list property_list_with_m2 property_list_by_broker sale_rent_total_values property_count_by_broker].include?(@report_type)
   brand_name = @layout_setting&.site_name.presence || "Salute Imóveis"
+  brand_badge_color = @layout_setting&.primary_color.presence || "#111827"
+  @print_brand_badge_color = brand_badge_color
   generated_label = l(@report_generated_at, format: :short)
   total_entries_label = if @report_type == "sale_rent_total_values"
                           @summary_totals[:units]
@@ -313,6 +315,496 @@
     .report-table--broker col.area { width: 8%; }
     .report-table--broker col.money { width: 10%; }
 
+    .visit-sheet {
+      display: flex;
+      flex-direction: column;
+      min-height: <%= landscape_report ? "190mm" : "277mm" %>;
+      padding: 8mm;
+      border: 1.5px solid #111827;
+      color: #111827;
+      font-size: 11px;
+    }
+
+    .visit-sheet__header {
+      display: grid;
+      grid-template-columns: 1fr 150px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid #111827;
+    }
+
+    .visit-sheet__title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .visit-sheet__reference {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .visit-sheet__reference strong {
+      font-size: 18px;
+    }
+
+    .visit-sheet__brand {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      justify-self: center;
+      width: 120px;
+      min-height: 62px;
+      padding: 8px 12px;
+      border: 1px solid rgb(255 255 255 / .16);
+      border-radius: 12px;
+      background: <%= brand_badge_color %>;
+      box-shadow: 0 1px 2px rgb(15 23 42 / .12);
+      overflow: hidden;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .visit-sheet__brand-plate,
+    .capture-sheet__brand-plate {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .visit-sheet__brand img {
+      position: relative;
+      z-index: 1;
+      max-width: 96px;
+      max-height: 46px;
+      object-fit: contain;
+    }
+
+    .visit-sheet__brand-fallback {
+      position: relative;
+      z-index: 1;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .visit-sheet__company {
+      text-align: left;
+    }
+
+    .visit-sheet__company strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 10.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .visit-sheet__company span {
+      display: block;
+      margin-top: 2px;
+      font-size: 9.5px;
+      line-height: 1.25;
+    }
+
+    .visit-sheet__location {
+      padding: 6px 0 8px;
+      border-bottom: 1px solid #111827;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .visit-sheet__body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      flex: 1 1 auto;
+      padding-top: 8px;
+    }
+
+    .visit-sheet__column {
+      min-width: 0;
+    }
+
+    .visit-sheet__column + .visit-sheet__column {
+      padding-left: 10px;
+      border-left: 1px dashed #111827;
+    }
+
+    .visit-sheet__photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80mm;
+      margin-bottom: 8px;
+      background: #f1f5f9;
+      overflow: hidden;
+    }
+
+    .visit-sheet__photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .visit-sheet__empty-photo {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .visit-sheet__section-title {
+      margin: 0 0 5px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .visit-sheet__description {
+      min-height: 48mm;
+      padding: 5px;
+      border: 1px solid #111827;
+      font-size: 10.5px;
+      line-height: 1.35;
+      white-space: pre-line;
+    }
+
+    .visit-sheet__facts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 10px;
+      margin-top: 7px;
+      font-size: 10.5px;
+    }
+
+    .visit-sheet__fact {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px dotted #94a3b8;
+    }
+
+    .visit-sheet__fact span {
+      color: #475569;
+      font-weight: 700;
+    }
+
+    .visit-sheet__fact strong {
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .visit-sheet__form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+      margin: 14px 0 24px;
+    }
+
+    .visit-sheet__line {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px;
+      align-items: end;
+      min-height: 18px;
+      font-size: 10.5px;
+    }
+
+    .visit-sheet__line--full {
+      grid-column: 1 / -1;
+    }
+
+    .visit-sheet__blank {
+      display: block;
+      min-height: 1px;
+      border-bottom: 1px solid #111827;
+    }
+
+    .visit-sheet__rating {
+      display: grid;
+      gap: 10px;
+      margin: 10px 0 24px;
+      font-size: 10.5px;
+    }
+
+    .visit-sheet__rating-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .visit-sheet__scale {
+      white-space: nowrap;
+    }
+
+    .visit-sheet__checks {
+      display: grid;
+      gap: 12px;
+      margin: 10px 0 20px;
+      font-size: 10.5px;
+    }
+
+    .visit-sheet__signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: auto;
+      padding-top: 25px;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    .visit-sheet__signature-line {
+      padding-top: 5px;
+      border-top: 1px solid #111827;
+    }
+
+    .visit-sheet__broker-signature {
+      width: 62%;
+      margin: 26px auto 0;
+      padding-top: 5px;
+      border-top: 1px solid #111827;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    .capture-sheet {
+      min-height: <%= landscape_report ? "190mm" : "277mm" %>;
+      padding: 5mm;
+      border: 1.5px solid #111827;
+      color: #111827;
+      font-size: 9.7px;
+      line-height: 1.24;
+    }
+
+    .capture-sheet__header {
+      display: grid;
+      grid-template-columns: 1fr 138px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #111827;
+    }
+
+    .capture-sheet__title {
+      margin: 0 0 9px;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.02;
+    }
+
+    .capture-sheet__brand {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      justify-self: center;
+      width: 118px;
+      min-height: 60px;
+      padding: 8px 12px;
+      border: 1px solid rgb(255 255 255 / .16);
+      border-radius: 12px;
+      background: <%= brand_badge_color %>;
+      box-shadow: 0 1px 2px rgb(15 23 42 / .12);
+      overflow: hidden;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .capture-sheet__brand img {
+      position: relative;
+      z-index: 1;
+      max-width: 94px;
+      max-height: 44px;
+      object-fit: contain;
+    }
+
+    .capture-sheet__brand-fallback {
+      position: relative;
+      z-index: 1;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .capture-sheet__company {
+      min-width: 0;
+    }
+
+    .capture-sheet__company strong {
+      display: block;
+      font-size: 10.4px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .capture-sheet__company span {
+      display: block;
+      margin-top: 1px;
+      font-size: 8.8px;
+      line-height: 1.16;
+    }
+
+    .capture-sheet__address {
+      padding: 7px 0 9px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    .capture-sheet__row {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .capture-sheet__field {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px;
+      align-items: end;
+      min-height: 14px;
+    }
+
+    .capture-sheet__field > span:first-child {
+      white-space: nowrap;
+    }
+
+    .capture-sheet__field--span-2 { grid-column: span 2; }
+    .capture-sheet__field--span-3 { grid-column: span 3; }
+    .capture-sheet__field--span-4 { grid-column: span 4; }
+    .capture-sheet__field--span-5 { grid-column: span 5; }
+    .capture-sheet__field--span-6 { grid-column: span 6; }
+    .capture-sheet__field--span-7 { grid-column: span 7; }
+    .capture-sheet__field--span-8 { grid-column: span 8; }
+    .capture-sheet__field--span-9 { grid-column: span 9; }
+    .capture-sheet__field--span-10 { grid-column: span 10; }
+    .capture-sheet__field--span-12 { grid-column: span 12; }
+
+    .capture-sheet__value {
+      min-height: 1px;
+      border-bottom: 1px solid #111827;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .capture-sheet__section {
+      padding: 9px 0 5px;
+      border-bottom: 1px dashed #111827;
+    }
+
+    .capture-sheet__section:last-child {
+      border-bottom: 0;
+    }
+
+    .capture-sheet__section-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 7px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .capture-sheet__section-title::after {
+      content: "";
+      flex: 1 1 auto;
+      border-bottom: 1px dashed #111827;
+    }
+
+    .capture-sheet__columns {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .capture-sheet__columns--two {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    }
+
+    .capture-sheet__stack {
+      display: grid;
+      gap: 6px;
+    }
+
+    .capture-sheet__stack + .capture-sheet__section-title {
+      margin-top: 12px;
+    }
+
+    .capture-sheet__section-title + .capture-sheet__row,
+    .capture-sheet__section-title + .capture-sheet__columns,
+    .capture-sheet__section-title + .capture-sheet__check-grid {
+      margin-top: 7px;
+    }
+
+    .capture-sheet__check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px 14px;
+      margin-top: 7px;
+    }
+
+    .capture-sheet__check-grid--four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .capture-sheet__check {
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+
+    .capture-sheet__authorization {
+      margin: 10px 0 0;
+      font-size: 9.3px;
+      line-height: 1.34;
+    }
+
+    .capture-sheet__signatures {
+      display: grid;
+      grid-template-columns: 110px 1fr 1fr;
+      gap: 22px;
+      align-items: end;
+      margin-top: 18px;
+    }
+
+    .capture-sheet__signature {
+      padding-top: 4px;
+      border-top: 1px solid #111827;
+      text-align: center;
+      font-size: 8.8px;
+      font-weight: 800;
+    }
+
+    .capture-sheet__notes {
+      display: grid;
+      gap: 13px;
+      margin-top: 5px;
+    }
+
+    .capture-sheet__notes--land {
+      gap: 15px;
+      margin-top: 8px;
+    }
+
+    .capture-sheet__note-line {
+      border-bottom: 1px solid #cbd5e1;
+    }
+
     @media print {
       html,
       body {
@@ -358,6 +850,14 @@
       a[href]::after {
         content: "" !important;
       }
+
+      .visit-sheet {
+        min-height: calc(297mm - 14mm);
+      }
+
+      .capture-sheet {
+        min-height: calc(297mm - 10mm);
+      }
     }
   </style>
 </head>
@@ -402,7 +902,79 @@
   <% end %>
 
   <div class="paper-wrap">
-    <% if @report_type == "sale_rent_total_values" %>
+    <% if @report_type == "visit_sheet" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% records.each_with_index do |habitation, record_index| %>
+          <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+          <section class="paper <%= 'page-break' if page_index < pages.size - 1 || record_index < records.size - 1 %>">
+            <%= render "admin/habitations/print_visit_sheet",
+                       habitation: habitation,
+                       brand_name: brand_name,
+                       layout_setting: @layout_setting,
+                       public_site_profile: @public_site_profile,
+                       generated_label: generated_label,
+                       page_number: page_number,
+                       total_pages: @report_total_pages %>
+          </section>
+        <% end %>
+      <% end %>
+
+    <% elsif @report_type == "capture_sheet_commercial" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% records.each_with_index do |habitation, record_index| %>
+          <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+          <section class="paper <%= 'page-break' if page_index < pages.size - 1 || record_index < records.size - 1 %>">
+            <%= render "admin/habitations/print_capture_sheet_commercial",
+                       habitation: habitation,
+                       brand_name: brand_name,
+                       layout_setting: @layout_setting,
+                       public_site_profile: @public_site_profile,
+                       generated_label: generated_label,
+                       page_number: page_number,
+                       total_pages: @report_total_pages %>
+          </section>
+        <% end %>
+      <% end %>
+
+    <% elsif @report_type == "capture_sheet_residential" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% records.each_with_index do |habitation, record_index| %>
+          <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+          <section class="paper <%= 'page-break' if page_index < pages.size - 1 || record_index < records.size - 1 %>">
+            <%= render "admin/habitations/print_capture_sheet_residential",
+                       habitation: habitation,
+                       brand_name: brand_name,
+                       layout_setting: @layout_setting,
+                       public_site_profile: @public_site_profile,
+                       generated_label: generated_label,
+                       page_number: page_number,
+                       total_pages: @report_total_pages %>
+          </section>
+        <% end %>
+      <% end %>
+
+    <% elsif @report_type == "capture_sheet_land" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% records.each_with_index do |habitation, record_index| %>
+          <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+          <section class="paper <%= 'page-break' if page_index < pages.size - 1 || record_index < records.size - 1 %>">
+            <%= render "admin/habitations/print_capture_sheet_land",
+                       habitation: habitation,
+                       brand_name: brand_name,
+                       layout_setting: @layout_setting,
+                       public_site_profile: @public_site_profile,
+                       generated_label: generated_label,
+                       page_number: page_number,
+                       total_pages: @report_total_pages %>
+          </section>
+        <% end %>
+      <% end %>
+
+    <% elsif @report_type == "sale_rent_total_values" %>
       <section class="paper">
         <%= render "admin/habitations/print_report_header",
                    brand_name: brand_name,

@@ -61,6 +61,11 @@
       <i class="bi bi-cloud-arrow-up"></i>
       <span><%= media_count %> mídia(s)</span>
     </div>
+    <div class="ax-media-modal__footer-feedback ax-media-upload-panel__feedback"
+         role="status"
+         aria-live="polite"
+         hidden
+         data-photo-upload-feedback></div>
     <div class="ax-media-modal__footer-actions">
       <button type="button" class="ax-btn" data-action="ax-modal#close">Fechar</button>
       <%= f.submit "Salvar mídia", class: "ax-btn ax-btn--primary" %>

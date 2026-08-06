@@ -2,7 +2,7 @@ module Notifications
   # Envia notificações Web Push (VAPID) para um AdminUser.
   # Remove subscriptions expiradas (410 Gone) automaticamente.
   class PushDispatcher
-    def self.deliver(admin_user_id:, title:, body:, url: "/field", icon: "/pwa-icon-192", accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false)
+    def self.deliver(admin_user_id:, title:, body:, url: "/field", icon: nil, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false)
       new(admin_user_id: admin_user_id).deliver(
         title: title,
         body: body,
@@ -42,7 +42,7 @@ module Notifications
         title: title,
         body: body,
         url: url,
-        icon: icon,
+        icon: icon.presence || tenant_icon_src,
         accept_url: accept_url,
         tag: tag,
         timestamp: Time.current.to_i * 1000,
@@ -106,6 +106,17 @@ module Notifications
 
     def push_setting
       @push_setting ||= PushSetting.instance
+    end
+
+    def admin_user
+      @admin_user ||= AdminUser.find_by(id: @admin_user_id)
+    end
+
+    def tenant_icon_src
+      tenant = admin_user&.tenant
+      return "/pwa-icon-192" unless tenant
+
+      Field::PwaIdentity.new(tenant).icon_src(192)
     end
 
     # Credenciais VAPID da conta (PushSetting), com fallback para ENV legado.

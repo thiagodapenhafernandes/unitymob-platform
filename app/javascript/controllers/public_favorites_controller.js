@@ -1,23 +1,29 @@
 import { Controller } from "@hotwired/stimulus"
-
-const FAVORITES_KEY = "salute:favorite-properties"
+import {
+  clearFavorites,
+  dispatchFavoritesChanged,
+  offFavoritesChanged,
+  onFavoritesChanged,
+  readFavorites,
+  writeFavorites
+} from "controllers/public_favorites_storage"
 
 export default class extends Controller {
   static targets = ["list", "empty", "count", "clear"]
 
   connect() {
     this.render = this.render.bind(this)
-    window.addEventListener("salute:favorites-changed", this.render)
+    onFavoritesChanged(this.render)
     this.render()
   }
 
   disconnect() {
-    window.removeEventListener("salute:favorites-changed", this.render)
+    offFavoritesChanged(this.render)
   }
 
   clear() {
-    localStorage.removeItem(FAVORITES_KEY)
-    window.dispatchEvent(new CustomEvent("salute:favorites-changed"))
+    clearFavorites()
+    dispatchFavoritesChanged()
   }
 
   render() {
@@ -74,16 +80,11 @@ export default class extends Controller {
 
   remove(id) {
     const favorites = this.readFavorites().filter((favorite) => favorite.id !== String(id))
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
-    window.dispatchEvent(new CustomEvent("salute:favorites-changed"))
+    writeFavorites(favorites)
+    dispatchFavoritesChanged()
   }
 
   readFavorites() {
-    try {
-      const value = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]")
-      return Array.isArray(value) ? value : []
-    } catch (_error) {
-      return []
-    }
+    return readFavorites()
   }
 }

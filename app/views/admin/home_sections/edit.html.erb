@@ -1,4 +1,4 @@
 <div class="public-site-workspace">
-  <%= ax_workspace_heading(eyebrow: "Site público · Home", icon: "pencil-square", title: @home_section.title, pills: [@home_section.active? ? "Ativa" : "Inativa"], subtitle: "Edite conteúdo, filtro, ordem e publicação.", actions: ax_button("Voltar", admin_home_sections_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
+  <%= ax_workspace_heading(eyebrow: "Site público · Home", icon: "pencil-square", title: @home_section.title, pills: [@home_section.active? ? "Ativa" : "Inativa"], subtitle: "Edite conteúdo, filtros e publicação.", actions: ax_button("Voltar", admin_home_sections_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
   <%= render 'form' %>
 </div>

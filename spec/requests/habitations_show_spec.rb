@@ -672,6 +672,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("public-favorites")
       expect(response.body).to include("Imóveis favoritos")
+      expect(response.body).to include('data-public-tenant-slug="default"')
     end
 
     it "não envia as coordenadas exatas no modo aproximado" do
@@ -694,6 +695,8 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Região aproximada do imóvel")
+      expect(response.body).to include("Abrir no mapa")
+      expect(response.body).not_to include("Abrir no Google")
       expect(response.body).not_to include("-26.9906000")
       expect(response.body).not_to include("-48.6348000")
     end

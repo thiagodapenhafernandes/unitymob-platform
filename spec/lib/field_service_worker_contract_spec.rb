@@ -16,7 +16,7 @@ RSpec.describe "field service worker contract" do
   end
 
   it "normaliza o destino do clique antes de abrir a janela" do
-    expect(worker_source).to include('const CACHE_VERSION = "v9"')
+    expect(worker_source).to include('const CACHE_VERSION = "v11"')
     expect(worker_source).to include("function notificationTargetUrl(raw)")
     expect(worker_source).to include("function sameClientUrl(clientUrl, targetUrl)")
     expect(worker_source).to include("function sameOriginClient(clientUrl, targetUrl)")
@@ -46,11 +46,20 @@ RSpec.describe "field service worker contract" do
     expect(static_admin_manifest["display"]).to eq("standalone")
     expect(static_field_manifest["scope"]).to eq("/")
     expect(static_field_manifest["display"]).to eq("standalone")
+    expect(static_field_manifest["name"]).not_to include("Salute")
   end
 
   it "preserva fallback offline para navegacoes fora do field sem cachear paginas admin" do
     expect(worker_source).to include('const OFFLINE_FALLBACK_PAGE = "/offline.html"')
     expect(worker_source).to include('!url.pathname.startsWith("/field") && request.method === "GET" && request.mode === "navigate"')
     expect(worker_source).to include("caches.match(OFFLINE_FALLBACK_PAGE)")
+  end
+
+  it "não precacheia o shell autenticado do Field" do
+    shell_urls = worker_source[/const SHELL_URLS = \[(.*?)\];/m, 1]
+
+    expect(shell_urls).to include('OFFLINE_FALLBACK_PAGE')
+    expect(shell_urls).not_to include('"/field"', '"/pwa-icon-192"', '"/pwa-icon-512"')
+    expect(worker_source).not_to include("cache.put(request, clone)")
   end
 end

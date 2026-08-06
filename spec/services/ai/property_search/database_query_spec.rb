@@ -41,14 +41,68 @@ RSpec.describe Ai::PropertySearch::DatabaseQuery do
     setting = PropertySetting.instance(tenant: tenant)
     development = create(:habitation, tenant:, tipo: "Empreendimento", codigo: "DEV-TARGET", nome_empreendimento: "Reserva do Parque")
     target = create(:habitation, tenant:, admin_user: broker, codigo: "UNIT-TARGET", codigo_empreendimento: development.codigo, categoria: "Apartamento")
-    create(:habitation, tenant:, admin_user: broker, codigo: "UNIT-OTHER", nome_empreendimento: "Reserva do Parque", categoria: "Apartamento")
+    same_named_unit = create(:habitation, tenant:, admin_user: broker, codigo: "UNIT-OTHER", nome_empreendimento: "Reserva do Parque", categoria: "Apartamento")
 
     result = described_class.new(
       tenant:, admin_user: broker, setting:,
       filters: { "development_name" => "Reserva do Parque", "_development_codes" => [development.codigo] }
     ).call
 
-    expect(result.records.map(&:id)).to eq([target.id])
+    expect(result.records.map(&:id)).to include(target.id, same_named_unit.id)
+    expect(result.records.map(&:id)).not_to include(development.id)
+  end
+
+  it "mantém fallback por nome quando as unidades não estão vinculadas ao código do empreendimento" do
+    tenant = Tenant.default
+    broker = create(:admin_user, tenant:)
+    setting = PropertySetting.instance(tenant:)
+    development = create(:habitation, tenant:, tipo: "Empreendimento", codigo: "DEV-ADMIRA", nome_empreendimento: "Admirá")
+    target = create(
+      :habitation,
+      tenant:,
+      admin_user: broker,
+      codigo: "UNIT-ADMIRA",
+      codigo_empreendimento: nil,
+      tipo: "Unitário",
+      nome_empreendimento: "Admirá",
+      categoria: "Apartamento"
+    )
+    create(:habitation, tenant:, admin_user: broker, codigo: "UNIT-OTHER", nome_empreendimento: "Outro Prédio", categoria: "Apartamento")
+
+    result = described_class.new(
+      tenant:,
+      admin_user: broker,
+      setting:,
+      filters: {
+        "development_name" => "Admirá",
+        "_development_codes" => [development.codigo],
+        "_development_names" => ["Admirá"]
+      }
+    ).call
+
+    expect(result.records.map(&:id)).to include(target.id)
+    expect(result.records.map(&:id)).not_to include(development.id)
+    expect(result.records.map(&:codigo)).not_to include("UNIT-OTHER")
+  end
+
+  it "busca código exato nos identificadores locais e de integrações sem sair do tenant" do
+    tenant = Tenant.default
+    broker = create(:admin_user, tenant:)
+    setting = PropertySetting.instance(tenant:)
+    by_local_code = create(:habitation, tenant:, admin_user: broker, codigo: "9345", vista_codigo: "VISTA-LOCAL")
+    by_vista_code = create(:habitation, tenant:, admin_user: broker, codigo: "LOCAL-VISTA", vista_codigo: "VISTA-9345")
+    by_dwv_code = create(:habitation, tenant:, admin_user: broker, codigo: "LOCAL-DWV", codigo_dwv: "DWV-9345")
+    create(:habitation, tenant:, admin_user: broker, codigo: "93450", vista_codigo: "VISTA-93450", codigo_dwv: "DWV-93450")
+    other_tenant = Tenant.create!(name: "Outro código IA #{SecureRandom.hex(3)}", slug: "outro-codigo-ia-#{SecureRandom.hex(3)}")
+    create(:habitation, tenant: other_tenant, codigo: "OUTSIDE-9345", vista_codigo: "VISTA-9345")
+
+    local_result = described_class.new(tenant:, admin_user: broker, setting:, filters: { "property_code" => "9345" }).call
+    vista_result = described_class.new(tenant:, admin_user: broker, setting:, filters: { "property_code" => "VISTA-9345" }).call
+    dwv_result = described_class.new(tenant:, admin_user: broker, setting:, filters: { "property_code" => "DWV-9345" }).call
+
+    expect(local_result.records.map(&:id)).to eq([by_local_code.id])
+    expect(vista_result.records.map(&:id)).to eq([by_vista_code.id])
+    expect(dwv_result.records.map(&:id)).to eq([by_dwv_code.id])
   end
 
   it "usa a mesma regra estruturada de Frente Mar do catálogo" do
