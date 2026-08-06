@@ -3,10 +3,10 @@ require "rails_helper"
 RSpec.describe "Portal feeds", type: :request do
   before { host! "localhost" }
 
-  def create_integration
+  def create_integration(portal: "vivareal_vrsync")
     PortalIntegration.find_or_initialize_by(
       tenant: Current.tenant,
-      portal: "vivareal_vrsync"
+      portal: portal
     ).tap do |integration|
       integration.assign_attributes(
         enabled: true,
@@ -28,13 +28,30 @@ RSpec.describe "Portal feeds", type: :request do
 
     get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token), headers: { "If-None-Match" => etag }
 
-    expect(response).to have_http_status(:not_modified)
-    expect(integration.reload.updated_at).to eq(original_updated_at)
-    expect(integration.last_feed_at).to be_present
-  end
+      expect(response).to have_http_status(:not_modified)
+      expect(integration.reload.updated_at).to eq(original_updated_at)
+      expect(integration.last_feed_at).to be_present
+    end
 
-  it "does not serialize the feed body for HEAD requests" do
-    integration = create_integration
+    it "does not return 304 for Chaves na Mão when the feed serializer version changes" do
+      old_versions = { "chaves_xml" => "chaves_xml_old" }
+      new_versions = { "chaves_xml" => "chaves_xml_v2" }
+      integration = create_integration(portal: "chavesnamao")
+
+      stub_const("Integrations::Portals::FeedsController::FEED_CACHE_VERSIONS", old_versions)
+      get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token)
+      stale_etag = response.headers.fetch("ETag")
+
+      stub_const("Integrations::Portals::FeedsController::FEED_CACHE_VERSIONS", new_versions)
+      get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token),
+          headers: { "If-None-Match" => stale_etag }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("<Document>")
+    end
+
+    it "does not serialize the feed body for HEAD requests" do
+      integration = create_integration
 
     expect(Portal::VrsyncXmlSerializer).not_to receive(:new)
 

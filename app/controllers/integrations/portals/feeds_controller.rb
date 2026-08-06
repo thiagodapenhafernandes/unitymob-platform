@@ -1,6 +1,10 @@
 module Integrations
   module Portals
     class FeedsController < ApplicationController
+      FEED_CACHE_VERSIONS = {
+        "chaves_xml" => "chaves_xml_v2"
+      }.freeze
+
       skip_before_action :load_layout_settings
 
       before_action :set_integration
@@ -13,7 +17,7 @@ module Integrations
         scope = Portal::EligibilityScope.new(@integration).eligible_scope.includes(:address)
         scope_last_update = scope.maximum(:updated_at)
         should_render = stale?(
-          etag: [@portal, @integration.updated_at.to_i, scope_last_update&.to_i],
+          etag: [@portal, @integration.updated_at.to_i, scope_last_update&.to_i, feed_cache_version],
           last_modified: scope_last_update,
           public: false
         )
@@ -78,6 +82,10 @@ module Integrations
         return 1000 if value <= 0
 
         value.clamp(1, 5000)
+      end
+
+      def feed_cache_version
+        FEED_CACHE_VERSIONS[@integration.feed_strategy]
       end
 
       def render_feed(habitations)
