@@ -1,0 +1,18 @@
+<div class="lead-stage-grid-header">
+  <span class="lead-stage-grid-header__spacer" aria-hidden="true"></span>
+  <div class="lead-stage-grid-header__fields">
+    <%= ax_field_label(
+          text: "Nome da etapa",
+          tooltip: "Nome visível no funil, filtros e formulários. Ex.: Novo, Em atendimento, Visita agendada."
+        ) %>
+    <%= ax_field_label(
+          text: "Subtítulo",
+          tooltip: "Texto opcional para orientar a equipe sobre o que acontece nesta etapa."
+        ) %>
+    <%= ax_field_label(
+          text: "Tipo da etapa",
+          tooltip: "Classificação interna usada para saber se a etapa continua aberta, conclui como ganha, conclui como perdida ou fica arquivada."
+        ) %>
+  </div>
+  <span class="lead-stage-grid-header__spacer lead-stage-grid-header__spacer--remove" aria-hidden="true"></span>
+</div>

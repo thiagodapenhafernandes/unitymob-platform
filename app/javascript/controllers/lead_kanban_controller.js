@@ -8,7 +8,7 @@ import {
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 
 export default class extends Controller {
-  static targets = ["column"]
+  static targets = ["column", "loader"]
 
   connect() {
     this.isTouchDevice = window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window
@@ -16,6 +16,9 @@ export default class extends Controller {
     this.dragState = null
     this.recentlyDragged = false
     this.dragBlockedCard = null
+    this.dynamicCardCleanups = []
+    this.loaderObservers = new Map()
+    this.loadingColumns = new Set()
 
     this.trackDragPointer = (event) => this.rememberPointer(event)
     this.capturePointerDown = (event) => this.preparePointerIntent(event)
@@ -35,15 +38,29 @@ export default class extends Controller {
       })
     )
 
+    this.observeLoaders()
     this.restoreReturnedCard()
   }
 
   disconnect() {
     this.cleanupDragAndDrop?.()
+    this.dynamicCardCleanups.forEach((cleanup) => cleanup?.())
+    this.dynamicCardCleanups = []
+    this.disconnectLoaderObservers()
     this.stopBoardAutoScroll()
     this.unbindDragListeners()
     this.element.removeEventListener("pointerdown", this.capturePointerDown, true)
     this.element.removeEventListener("click", this.openCardFromClick)
+  }
+
+  loaderTargetConnected(loader) {
+    if (!this.loaderObservers) return
+
+    this.observeLoader(loader)
+  }
+
+  loaderTargetDisconnected(loader) {
+    this.unobserveLoader(loader)
   }
 
   registerColumn(column) {
@@ -63,6 +80,9 @@ export default class extends Controller {
   }
 
   registerCard(card) {
+    if (card.dataset.leadKanbanRegistered === "true") return () => {}
+
+    card.dataset.leadKanbanRegistered = "true"
     return draggable({
       element: card,
       canDrag: () => this.dragBlockedCard !== card,
@@ -148,7 +168,12 @@ export default class extends Controller {
     if (beforeCard) {
       column.insertBefore(card, beforeCard)
     } else {
-      column.appendChild(card)
+      const loader = this.loaderForColumn(column)
+      if (loader) {
+        column.insertBefore(card, loader)
+      } else {
+        column.appendChild(card)
+      }
     }
   }
 
@@ -363,6 +388,113 @@ export default class extends Controller {
 
     if (card.parentElement !== column) column.prepend(card)
     this.snapColumnIntoView(column)
+  }
+
+  observeLoaders() {
+    this.loaderTargets.forEach((loader) => this.observeLoader(loader))
+  }
+
+  observeLoader(loader) {
+    if (!loader || loader.hidden || loader.dataset.leadKanbanHasMore !== "true") return
+
+    if (!("IntersectionObserver" in window)) {
+      this.loadMore(loader)
+      return
+    }
+
+    if (this.loaderObservers.has(loader)) return
+
+    const root = loader.closest("[data-lead-kanban-target~='column']")
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) this.loadMore(loader)
+    }, {
+      root,
+      rootMargin: "180px 0px 180px 0px",
+      threshold: 0.01
+    })
+
+    observer.observe(loader)
+    this.loaderObservers.set(loader, observer)
+  }
+
+  unobserveLoader(loader) {
+    const observer = this.loaderObservers?.get(loader)
+    if (!observer) return
+
+    observer.disconnect()
+    this.loaderObservers.delete(loader)
+  }
+
+  disconnectLoaderObservers() {
+    this.loaderObservers?.forEach((observer) => observer.disconnect())
+    this.loaderObservers?.clear()
+  }
+
+  async loadMore(loader) {
+    if (!loader || loader.hidden || loader.dataset.leadKanbanHasMore !== "true") return
+
+    const status = loader.dataset.leadKanbanStatus
+    if (!status || this.loadingColumns.has(status)) return
+
+    this.loadingColumns.add(status)
+    loader.setAttribute("aria-busy", "true")
+
+    try {
+      const url = new URL(loader.dataset.leadKanbanUrl, window.location.origin)
+      url.searchParams.set("offset", loader.dataset.leadKanbanOffset || "0")
+      url.searchParams.set("return_to", window.location.pathname + window.location.search)
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      })
+      const data = await this.parseResponse(response)
+
+      if (!response.ok) {
+        throw new Error(data.message || "Não foi possível carregar mais leads.")
+      }
+
+      const column = loader.closest("[data-lead-kanban-target~='column']")
+      this.appendLoadedCards(column, loader, data.html)
+
+      const nextOffset = Number.parseInt(data.next_offset, 10)
+      const fallbackOffset = (Number.parseInt(loader.dataset.leadKanbanOffset, 10) || 0) + (Number.parseInt(data.loaded_count, 10) || 0)
+      loader.dataset.leadKanbanOffset = String(Number.isFinite(nextOffset) ? nextOffset : fallbackOffset)
+      loader.dataset.leadKanbanHasMore = data.has_more ? "true" : "false"
+
+      if (!data.has_more || Number.parseInt(data.loaded_count, 10) === 0) {
+        loader.hidden = true
+        this.unobserveLoader(loader)
+      }
+    } catch (error) {
+      this.notify(error.message || "Não foi possível carregar mais leads.", "danger")
+    } finally {
+      loader.removeAttribute("aria-busy")
+      this.loadingColumns.delete(status)
+    }
+  }
+
+  appendLoadedCards(column, loader, html) {
+    if (!column || !html) return
+
+    const template = document.createElement("template")
+    template.innerHTML = html.trim()
+    const cards = Array.from(template.content.querySelectorAll(".lead-kanban-card"))
+    const existingIds = new Set(Array.from(column.querySelectorAll(".lead-kanban-card")).map((card) => card.dataset.leadId))
+    const cardsToRegister = cards.filter((card) => !existingIds.has(card.dataset.leadId))
+
+    cards.forEach((card) => {
+      if (existingIds.has(card.dataset.leadId)) card.remove()
+    })
+
+    loader.before(template.content)
+    cardsToRegister.forEach((card) => this.dynamicCardCleanups.push(this.registerCard(card)))
+  }
+
+  loaderForColumn(column) {
+    return column?.querySelector?.("[data-lead-kanban-target~='loader']") || null
   }
 
   snapColumnIntoView(columnBody) {

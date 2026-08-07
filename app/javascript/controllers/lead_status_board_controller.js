@@ -6,10 +6,9 @@ import Sortable from "sortablejs"
 // via Admin::LeadStatusesController#bulk_update e recarrega a página.
 export default class extends Controller {
   static targets = ["list", "template", "error", "submit"]
-  static values = { url: String }
+  static values = { url: String, pipelineId: Number }
 
   connect() {
-    console.log("[lead-status-board] connect", { url: this.urlValue, rows: this.listTarget.querySelectorAll(".lead-status-row").length })
     this.sortable = new Sortable(this.listTarget, {
       animation: 150,
       handle: ".lead-status-row__handle",
@@ -23,7 +22,6 @@ export default class extends Controller {
 
   addRow(event) {
     event.preventDefault()
-    console.log("[lead-status-board] addRow")
     const fragment = this.templateTarget.content.cloneNode(true)
     this.listTarget.appendChild(fragment)
     const row = this.listTarget.lastElementChild
@@ -34,7 +32,6 @@ export default class extends Controller {
     event.preventDefault()
     const row = event.target.closest(".lead-status-row")
     if (!row) return
-    console.log("[lead-status-board] removeRow", { id: row.dataset.id || "(novo)" })
 
     if (row.dataset.id) {
       row.dataset.destroy = "true"
@@ -46,7 +43,6 @@ export default class extends Controller {
 
   save(event) {
     event.preventDefault()
-    console.log("[lead-status-board] save: click recebido")
     this.hideError()
 
     const statuses = Array.from(this.listTarget.querySelectorAll(".lead-status-row"))
@@ -54,6 +50,7 @@ export default class extends Controller {
         id: row.dataset.id || null,
         name: row.querySelector('[data-lead-status-field="name"]')?.value.trim() || "",
         description: row.querySelector('[data-lead-status-field="description"]')?.value.trim() || "",
+        stage_type: row.querySelector('[data-lead-status-field="stage_type"]')?.value || "open",
         _destroy: row.dataset.destroy === "true"
       }))
       .filter((status) => status.id || status.name || status._destroy)
@@ -68,7 +65,6 @@ export default class extends Controller {
       return
     }
 
-    console.log("[lead-status-board] save: enviando", statuses)
     this.setLoading(true)
 
     fetch(this.urlValue, {
@@ -78,11 +74,10 @@ export default class extends Controller {
         "Content-Type": "application/json",
         "X-CSRF-Token": this.csrfToken()
       },
-      body: JSON.stringify({ statuses })
+      body: JSON.stringify({ lead_pipeline_id: this.pipelineIdValue, statuses })
     })
       .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
       .then(({ ok, data }) => {
-        console.log("[lead-status-board] save: resposta", { ok, data })
         if (!ok || !data.ok) throw new Error(data.error || "Não foi possível salvar as colunas.")
         // Mantém o loading: a página recarrega e o toast (flash) aparece.
         window.location.reload()

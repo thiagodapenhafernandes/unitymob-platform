@@ -122,16 +122,43 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       admin_user: admin,
       codigo: "CAP-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Captação compacta",
+      nome_empreendimento: "Edifício Compacto",
       intake_status: "draft"
     )
+    intake.address.update!(logradouro: "Rua Compacta", numero: "120")
 
     get admin_captacoes_path(team: "0", status: "draft")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('name="team"', 'value="0"')
     expect(response.body).to include('href="/admin/captacoes?team=0"')
-    expect(response.body).to include("aria-label=\"Continuar captação #{intake.display_title}\"")
+    expect(response.body).to include("Edifício Compacto", "Rua Compacta, 120")
+    expect(response.body).not_to include("Captação compacta")
+    expect(response.body).to include("aria-label=\"Continuar captação Edifício Compacto · Rua Compacta, 120\"")
     expect(response.body).not_to include("captacoes-empty-state")
+  end
+
+  it "mostra prédio endereço e unidade na coluna imóvel das captações" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      codigo: "CAP-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento aluguel 3 dormitórios no Centro",
+      nome_empreendimento: "Edifício Aurora",
+      bloco: "1203",
+      intake_status: "submitted_for_admin_review"
+    )
+    intake.address.update!(logradouro: "Rua 3000", numero: "455", bairro: "Centro", cidade: "Balneário Camboriú")
+
+    get admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Edifício Aurora")
+    expect(response.body).to include("Rua 3000, 455")
+    expect(response.body).to include("Unidade 1203")
+    expect(response.body).to include("Centro · Balneário Camboriú")
+    expect(response.body).not_to include("Apartamento aluguel 3 dormitórios no Centro")
   end
 
   it "não conta captação com fotos anexadas como sem fotos" do
@@ -154,62 +181,62 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     manager_profile, administrative_profile = default_administrative_profiles
     creator = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Criador")
     other = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Outro")
-    own_draft = create(:habitation, :broker_intake, admin_user: creator, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho do criador")
-    other_draft = create(:habitation, :broker_intake, admin_user: other, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho de outro usuário")
-    submitted = create(:habitation, :broker_intake, admin_user: other, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Ficha em revisão")
+    own_draft = create(:habitation, :broker_intake, admin_user: creator, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho do criador", nome_empreendimento: "Edifício do Criador")
+    other_draft = create(:habitation, :broker_intake, admin_user: other, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho de outro usuário", nome_empreendimento: "Edifício de Outro Usuário")
+    submitted = create(:habitation, :broker_intake, admin_user: other, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Ficha em revisão", nome_empreendimento: "Edifício em Revisão")
 
     sign_in creator
     get admin_captacoes_path(status: "draft")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(own_draft.titulo_anuncio)
-    expect(response.body).not_to include(other_draft.titulo_anuncio)
+    expect(response.body).to include(own_draft.nome_empreendimento)
+    expect(response.body).not_to include(other_draft.nome_empreendimento)
 
     get admin_captacoes_path
 
-    expect(response.body).to include(submitted.titulo_anuncio)
+    expect(response.body).to include(submitted.nome_empreendimento)
   end
 
   it "mostra somente captações em revisão na lista padrão e mantém demais status por filtro explícito" do
     first_broker = create(:admin_user, name: "Corretor Alfa")
     second_broker = create(:admin_user, name: "Corretor Beta")
-    first_visible = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão")
-    second_visible = create(:habitation, :broker_intake, admin_user: second_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Captação Beta aprovada")
-    returned = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker", titulo_anuncio: "Captação Alfa devolvida")
-    internal = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "internal", titulo_anuncio: "Captação Alfa interna")
-    published = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "published", titulo_anuncio: "Captação Alfa publicada")
+    first_visible = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão", nome_empreendimento: "Edifício Alfa Revisão")
+    second_visible = create(:habitation, :broker_intake, admin_user: second_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Captação Beta aprovada", nome_empreendimento: "Edifício Beta Aprovado")
+    returned = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker", titulo_anuncio: "Captação Alfa devolvida", nome_empreendimento: "Edifício Alfa Devolvido")
+    internal = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "internal", titulo_anuncio: "Captação Alfa interna", nome_empreendimento: "Edifício Alfa Interno")
+    published = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "published", titulo_anuncio: "Captação Alfa publicada", nome_empreendimento: "Edifício Alfa Publicado")
 
     get admin_captacoes_path
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('name="corretor_id"')
-    expect(response.body).to include(first_visible.titulo_anuncio)
-    expect(response.body).not_to include(second_visible.titulo_anuncio)
-    expect(response.body).not_to include(returned.titulo_anuncio)
-    expect(response.body).not_to include(internal.titulo_anuncio)
-    expect(response.body).not_to include(published.titulo_anuncio)
+    expect(response.body).to include(first_visible.nome_empreendimento)
+    expect(response.body).not_to include(second_visible.nome_empreendimento)
+    expect(response.body).not_to include(returned.nome_empreendimento)
+    expect(response.body).not_to include(internal.nome_empreendimento)
+    expect(response.body).not_to include(published.nome_empreendimento)
 
     get admin_captacoes_path(corretor_id: first_broker.id)
 
-    expect(response.body).to include(first_visible.titulo_anuncio)
-    expect(response.body).not_to include(second_visible.titulo_anuncio)
-    expect(response.body).not_to include(returned.titulo_anuncio)
-    expect(response.body).not_to include(internal.titulo_anuncio)
+    expect(response.body).to include(first_visible.nome_empreendimento)
+    expect(response.body).not_to include(second_visible.nome_empreendimento)
+    expect(response.body).not_to include(returned.nome_empreendimento)
+    expect(response.body).not_to include(internal.nome_empreendimento)
 
     get admin_captacoes_path(status: "admin_approved")
 
-    expect(response.body).to include(second_visible.titulo_anuncio)
-    expect(response.body).not_to include(first_visible.titulo_anuncio)
+    expect(response.body).to include(second_visible.nome_empreendimento)
+    expect(response.body).not_to include(first_visible.nome_empreendimento)
 
     get admin_captacoes_path(status: "internal")
 
-    expect(response.body).to include(internal.titulo_anuncio)
-    expect(response.body).not_to include(first_visible.titulo_anuncio)
+    expect(response.body).to include(internal.nome_empreendimento)
+    expect(response.body).not_to include(first_visible.nome_empreendimento)
 
     get admin_captacoes_path(status: "returned_to_broker")
 
-    expect(response.body).to include(returned.titulo_anuncio)
-    expect(response.body).not_to include(first_visible.titulo_anuncio)
+    expect(response.body).to include(returned.nome_empreendimento)
+    expect(response.body).not_to include(first_visible.nome_empreendimento)
   end
 
   it "usa rótulos claros para enviar análise e publicar no site pelo captador" do
@@ -669,6 +696,57 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       "topografia" => "plano",
       "face" => "Norte"
     )
+  end
+
+  it "exibe e salva ocupação e situação para galpão na etapa de características" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      categoria: "Galpão",
+      intake_step: "caracteristicas",
+      area_privativa_m2: nil,
+      ocupacao_status: nil,
+      situacao: nil
+    )
+
+    get edit_admin_captacao_path(intake, step: "caracteristicas")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('select[name$="[ocupacao]"]')).to be_present
+    expect(document.at_css('select[name$="[situacao_imovel]"]')).to be_present
+    expect(document.at_css('input[name$="[banheiros]"]')).to be_present
+    expect(document.at_css('input[type="number"][name="captacao[extras][frente_metros]"]')).to be_present
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "caracteristicas",
+      direction: "forward",
+      captacao: {
+        area_privativa: "340",
+        banheiros: "2",
+        vagas_garagem: "1",
+        salas: "1",
+        ocupacao: "Desocupado",
+        situacao_imovel: "Usado",
+        caracteristicas_imovel: ["Gradeado"],
+        extras: {
+          frente_metros: "18",
+          topografia: "plano",
+          face: "Norte"
+        }
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "infraestrutura"))
+    intake.reload
+    expect(intake.area_privativa_m2.to_i).to eq(340)
+    expect(intake.ocupacao_status).to eq("Desocupado")
+    expect(intake.situacao).to eq("Usado")
+    expect(intake.banheiros_qtd).to eq(2)
+    expect(intake.dimensoes_terreno).to include("Frente: 18 m")
+    expect(intake.topografia).to eq("Plano")
+    expect(intake.face).to eq("Norte")
   end
 
   it "não bloqueia etapa de características quando a política específica não exige área nem características" do

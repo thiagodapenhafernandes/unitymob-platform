@@ -27,6 +27,8 @@ module TenantScoped
       profile
       created_by
       assigned_admin_user
+      lead_pipeline
+      lead_pipeline_stage
       reenabled_by
       lead
       habitation

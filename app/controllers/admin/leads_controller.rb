@@ -1,6 +1,6 @@
 class Admin::LeadsController < Admin::BaseController
-  # Kanban nunca renderiza mais que isso por coluna (paginação continua na lista).
-  KANBAN_COLUMN_LIMIT = 75
+  # Kanban carrega em pequenos lotes por coluna para manter a tela responsiva.
+  KANBAN_COLUMN_PAGE_SIZE = 5
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
 
@@ -13,38 +13,14 @@ class Admin::LeadsController < Admin::BaseController
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
-  before_action :load_origin_options, only: [:index, :new, :create, :show, :update]
+  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :new, :create, :show, :update]
+  before_action :load_origin_options, only: [:index, :kanban_column, :new, :create, :show, :update]
 
   def index
-    @q = params[:q]
-    @status = params[:status]
-    @origin = params[:origin]
-    @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
-    @broker_id = params[:broker_id]
-    @property_filter = params[:property_filter]
-    @property_q = params[:property_q].to_s.strip
-    @contact_filter = params[:contact_filter]
-    @start_date = params[:start_date]
-    @end_date = params[:end_date]
+    assign_lead_filter_state
     @view_mode = resolve_view_mode
 
-    lead_scope = lead_scope_for_current_user
-    
-    if @q.present?
-      term = "%#{ActiveRecord::Base.sanitize_sql_like(@q.to_s.strip)}%"
-      lead_scope = lead_scope.where(
-        "leads.name ILIKE :q OR leads.email ILIKE :q OR leads.phone ILIKE :q OR leads.client_name ILIKE :q OR leads.client_email ILIKE :q OR leads.client_phone ILIKE :q OR leads.origin ILIKE :q OR leads.product ILIKE :q",
-        q: term
-      )
-    end
-    
-    lead_scope = lead_scope.where(leads: { status: Lead.status_value(@status) }) if @status.present?
-    lead_scope = lead_scope.by_origin(@origin)
-    lead_scope = lead_scope.with_any_tags(@tags)
-    lead_scope = apply_broker_filter(lead_scope)
-    lead_scope = apply_property_filter(lead_scope)
-    lead_scope = apply_contact_filter(lead_scope)
-    lead_scope = apply_created_at_filter(lead_scope)
+    lead_scope = filtered_lead_scope_for_current_user
 
     stats_scope = lead_scope.reorder(nil)
     @total_leads = stats_scope.count
@@ -59,16 +35,16 @@ class Admin::LeadsController < Admin::BaseController
     @lead_statuses = if @status.present?
                         [Lead.status_value(@status)]
                       else
-                        (Lead.status_options + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
+                        (lead_status_options_for_selected_context + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
                       end
     @leads_by_status = @lead_statuses.index_with { |status| [] }
-    # Teto por coluna DIRETO NO BANCO (janela por status): antes carregava a
+    # Primeiro lote por coluna DIRETO NO BANCO (janela por status): antes carregava a
     # base inteira de leads na memória a cada visita ao kanban.
     ranked = lead_scope.reorder(nil).select(
       "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.created_at DESC) AS kanban_rank"
     )
     @kanban_leads = Lead.from(ranked, :leads)
-                        .where("kanban_rank <= ?", KANBAN_COLUMN_LIMIT)
+                        .where("kanban_rank <= ?", KANBAN_COLUMN_PAGE_SIZE)
                         .includes(:admin_user, lead_labelings: :lead_label)
                         .order(created_at: :desc)
                         .to_a
@@ -82,12 +58,52 @@ class Admin::LeadsController < Admin::BaseController
       @lead_counts_by_status[Lead.status_value(status)] += count
     end
     @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
-    @kanban_column_limit = KANBAN_COLUMN_LIMIT
+    @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
     property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @kanban_leads.first || @leads.first
     @page_title = "Gerenciar Leads"
+  end
+
+  def kanban_column
+    assign_lead_filter_state
+
+    status = Lead.status_value(params[:status], tenant: current_tenant)
+    offset = [params[:offset].to_i, 0].max
+    lead_scope = filtered_lead_scope_for_current_user.where(leads: { status: status })
+    total = lead_scope.reorder(nil).count
+    leads = lead_scope
+            .includes(:admin_user, lead_labelings: :lead_label)
+            .order(created_at: :desc)
+            .offset(offset)
+            .limit(KANBAN_COLUMN_PAGE_SIZE)
+            .to_a
+    property_ids = leads.filter_map(&:property_id).uniq
+    @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
+    return_to_path = safe_return_path(params[:return_to]) || admin_leads_path(request.query_parameters.except("offset", "return_to").merge(view: "kanban"))
+
+    html = leads.map do |lead|
+      render_to_string(
+        partial: "admin/leads/kanban_card",
+        formats: [:html],
+        locals: {
+          lead: lead,
+          property: (@properties_by_id[lead.property_id] if lead.property_id.present?),
+          status_tone: kanban_status_tone,
+          return_to_path: return_to_path
+        }
+      )
+    end.join
+    next_offset = offset + leads.size
+
+    render json: {
+      html: html,
+      next_offset: next_offset,
+      has_more: next_offset < total,
+      loaded_count: leads.size,
+      total: total
+    }
   end
 
   def show
@@ -152,7 +168,9 @@ class Admin::LeadsController < Admin::BaseController
 
   def new
     @lead = current_tenant.leads.new(
-      status: Lead.default_status(tenant: current_tenant),
+      lead_pipeline: @selected_pipeline,
+      lead_pipeline_stage: @selected_pipeline&.default_stage,
+      status: Lead.default_status(tenant: current_tenant, pipeline: @selected_pipeline),
       origin: MANUAL_LEAD_ORIGIN,
       admin_user_id: current_admin_user&.id
     )
@@ -277,6 +295,58 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   private
+
+  def assign_lead_filter_state
+    @q = params[:q]
+    @status = params[:status]
+    @pipeline_id = @selected_pipeline&.id
+    @origin = params[:origin]
+    @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
+    @broker_id = params[:broker_id]
+    @property_filter = params[:property_filter]
+    @property_q = params[:property_q].to_s.strip
+    @contact_filter = params[:contact_filter]
+    @start_date = params[:start_date]
+    @end_date = params[:end_date]
+    @parsed_start_date = nil
+    @parsed_end_date = nil
+  end
+
+  def filtered_lead_scope_for_current_user
+    scope = lead_scope_for_current_user
+
+    if @q.present?
+      term = "%#{ActiveRecord::Base.sanitize_sql_like(@q.to_s.strip)}%"
+      scope = scope.where(
+        "leads.name ILIKE :q OR leads.email ILIKE :q OR leads.phone ILIKE :q OR leads.client_name ILIKE :q OR leads.client_email ILIKE :q OR leads.client_phone ILIKE :q OR leads.origin ILIKE :q OR leads.product ILIKE :q",
+        q: term
+      )
+    end
+
+    scope = scope.where(leads: { lead_pipeline_id: @selected_pipeline.id }) if @selected_pipeline.present?
+    scope = scope.where(leads: { status: Lead.status_value(@status, tenant: current_tenant) }) if @status.present?
+    scope = scope.by_origin(@origin)
+    scope = scope.with_any_tags(@tags)
+    scope = apply_broker_filter(scope)
+    scope = apply_property_filter(scope)
+    scope = apply_contact_filter(scope)
+    apply_created_at_filter(scope)
+  end
+
+  def kanban_status_tone
+    @kanban_status_tone ||= lambda do |status|
+      {
+        "success" => :green,
+        "danger" => :red,
+        "warning" => :amber,
+        "info" => :blue,
+        "primary" => :blue,
+        "secondary" => :gray,
+        "light" => :gray,
+        "dark" => :gray
+      }[Lead.status_badge_class(status)] || :gray
+    end
+  end
 
   def apply_broker_filter(scope)
     return scope if @broker_id.blank?
@@ -516,11 +586,12 @@ class Admin::LeadsController < Admin::BaseController
   def new_lead_params
     attributes = params.require(:lead).permit(
       :name, :email, :phone,
-      :status, :origin, :product, :lead_type,
+      :status, :origin, :product, :lead_type, :lead_pipeline_id, :lead_pipeline_stage_id,
       :notes, :tags
     )
 
     attributes[:status] = Lead.status_value(attributes[:status], tenant: current_tenant)
+    normalize_pipeline_params!(attributes)
     attributes[:origin] = attributes[:origin].presence || MANUAL_LEAD_ORIGIN
     # tags: o model já parseia string separada por vírgula (normalize_tags_value).
 
@@ -573,7 +644,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_params
-    permitted = [:status, :notes]
+    permitted = [:status, :notes, :lead_pipeline_id, :lead_pipeline_stage_id]
     # Reatribuir corretor: só gestores (escopo team/all em Leads); corretor
     # com escopo "own" edita o lead, mas não troca o dono.
     permitted << :admin_user_id if can?(:edit, :leads) && current_admin_user.scope_for(:leads) != "own"
@@ -582,16 +653,51 @@ class Admin::LeadsController < Admin::BaseController
     if attributes[:admin_user_id].present? && permitted_admin_user_ids_for_leads.exclude?(attributes[:admin_user_id].to_i)
       attributes.delete(:admin_user_id)
     end
+    normalize_pipeline_params!(attributes)
 
     attributes
+  end
+
+  def load_lead_pipeline_context
+    @lead_pipelines = current_tenant.lead_pipelines.active.ordered.to_a
+    @selected_pipeline = if params[:lead_pipeline_id].present?
+      current_tenant.lead_pipelines.find(params[:lead_pipeline_id])
+    elsif @lead&.lead_pipeline.present?
+      @lead.lead_pipeline
+    elsif action_name.in?(%w[new create])
+      LeadPipeline.ensure_default!(tenant: current_tenant)
+    end
+    if @lead_pipelines.blank? || (@selected_pipeline.present? && @lead_pipelines.exclude?(@selected_pipeline))
+      @lead_pipelines = current_tenant.lead_pipelines.active.ordered.to_a
+    end
+    @pipeline_options = @lead_pipelines.map { |pipeline| [pipeline.name, pipeline.id] }
+  end
+
+  def normalize_pipeline_params!(attributes)
+    pipeline = current_tenant.lead_pipelines.find_by(id: attributes[:lead_pipeline_id].presence) || @selected_pipeline
+    stage = pipeline&.stages&.find_by(id: attributes[:lead_pipeline_stage_id].presence)
+    stage ||= LeadPipelineStage.matching_name(tenant: current_tenant, pipeline: pipeline, name: attributes[:status]) if attributes[:status].present?
+    stage ||= pipeline&.default_stage
+
+    attributes[:lead_pipeline_id] = pipeline.id if pipeline
+    attributes[:lead_pipeline_stage_id] = stage.id if stage
+    attributes[:status] = stage.name if stage
   end
 
   def load_origin_options
     option_scope = lead_scope_for_current_user.reorder(nil)
     @origin_options = Lead.origin_options(scope: option_scope, tenant: current_tenant)
     @tag_options = Lead.tag_options(scope: option_scope)
-    @status_options = Lead.status_options
+    @status_options = lead_status_options_for_selected_context
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
+  end
+
+  def lead_status_options_for_selected_context
+    return Lead.status_options(pipeline: @selected_pipeline, tenant: current_tenant) if @selected_pipeline.present?
+
+    pipeline_statuses = current_tenant.lead_pipeline_stages.active.ordered.pluck(:name)
+    existing_statuses = lead_scope_for_current_user.reorder(nil).distinct.pluck(:status).compact
+    (pipeline_statuses + existing_statuses + Lead::LEGACY_STATUSES).compact_blank.uniq
   end
 
   def actionable_lead_tasks(tasks)
@@ -674,7 +780,7 @@ class Admin::LeadsController < Admin::BaseController
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
-    @funnel_statuses = Lead.status_options
+    @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
     load_origin_options

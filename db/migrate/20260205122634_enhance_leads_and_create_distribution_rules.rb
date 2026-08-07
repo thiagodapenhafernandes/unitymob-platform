@@ -27,11 +27,11 @@ class EnhanceLeadsAndCreateDistributionRules < ActiveRecord::Migration[7.1]
       t.string :client_name
       t.string :client_email
       t.string :client_phone
-      t.string :client_c2s_id
+      t.string :client_external_id
       t.string :agent_name
       t.string :agent_email
       t.string :agent_phone
-      t.string :agent_c2s_id
+      t.string :agent_external_id
       t.string :event_name
       t.string :origin
       t.string :product
@@ -41,7 +41,7 @@ class EnhanceLeadsAndCreateDistributionRules < ActiveRecord::Migration[7.1]
       t.references :admin_user, foreign_key: true
     end
 
-    add_index :leads, :client_c2s_id
+    add_index :leads, :client_external_id
     add_index :leads, :origin
 
     # 3. Create Distribution Rule Agents

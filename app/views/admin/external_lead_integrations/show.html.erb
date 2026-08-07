@@ -1,0 +1,234 @@
+<%
+  connected = @integration.connected?
+  status_tone = case @integration.status
+                when "connected" then :green
+                when "failed" then :red
+                when "inactive" then :gray
+                else :amber
+                end
+  sync_tone = case @integration.sync_status
+              when "completed" then :green
+              when "failed" then :red
+              when "processing" then :blue
+              else :gray
+              end
+  mapped_sellers_count = @seller_rows.count { |row| row[:eligible] }
+  imported_total = @integration.imported_count.to_i + @integration.updated_count.to_i + @integration.failed_count.to_i
+  progress = @integration.total_count.to_i.positive? ? ((imported_total.to_f / @integration.total_count) * 100).round : 0
+  webhook_listening_active = @integration.webhook_subscription_active?(@webhook_url)
+  webhook_listening_label = if webhook_listening_active
+                              "Escuta ativa"
+                            elsif @integration.webhook_listening_enabled?
+                              "Escuta pendente"
+                            else
+                              "Escuta desligada"
+                            end
+  webhook_listening_tone = if webhook_listening_active
+                             :green
+                           elsif @integration.webhook_listening_enabled?
+                             :amber
+                           else
+                             :gray
+                           end
+%>
+
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <span>Integrações</span>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Migração de Leads</strong>
+<% end %>
+
+<div class="integration-workspace lead-migration-workspace">
+  <%= ax_workspace_heading(
+        eyebrow: "Integrações · Leads",
+        icon: "arrow-left-right",
+        title: "Migração de Leads",
+        subtitle: "Migre o histórico para Leads, acompanhe novos eventos e espelhe funil, status e corretor durante a transição.",
+        pills: [connected ? "conectada" : "pendente", @integration.sync_status],
+        metrics: [
+          { value: number_with_delimiter(@integration.total_count.to_i), label: "leads no legado" },
+          { value: number_with_delimiter(@integration.imported_count.to_i), label: "criados" },
+          { value: number_with_delimiter(@integration.updated_count.to_i), label: "atualizados" },
+          { value: mapped_sellers_count, label: "corretores mapeados" }
+        ],
+        actions: ax_badge(@integration.status.humanize, tone: status_tone, dot: connected)
+      ) %>
+
+  <div class="integration-split-layout">
+    <main class="integration-split-layout__main">
+      <%= ax_operational_panel(eyebrow: "Acesso", title: "Conexão da conta externa", actions: ax_badge(@integration.token_preview || "Sem token", tone: @integration.access_token.present? ? :blue : :gray)) do %>
+        <%= form_with model: @integration, url: admin_external_lead_integration_path, method: :patch, local: true, class: "lead-migration-settings-form" do |f| %>
+          <div class="lead-migration-settings-form__toggle">
+            <%= ax_switch_field(label: "Manter integração de leads ativa", form: f, method: :enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.enabled? }) %>
+            <%= ax_switch_field(label: "Escutar novos leads automaticamente", form: f, method: :webhook_listening_enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.webhook_listening_enabled? }) %>
+          </div>
+
+          <%= ax_field_grid do %>
+            <div class="ax-span-8">
+              <%= ax_field_label(f, :access_token, text: "Token da API externa", tooltip: "O token salvo não é exibido. Preencha somente para conectar ou substituir.") %>
+              <%= f.password_field :access_token, class: "ax-control", autocomplete: "new-password", placeholder: (@integration.access_token.present? ? "Token configurado · deixe vazio para manter" : "Cole o token fornecido pela API externa") %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_field_label(text: "Empresa detectada") %>
+              <div class="lead-migration-readonly-field"><%= @integration.company_name.presence || "Aguardando validação" %></div>
+            </div>
+          <% end %>
+
+          <%= ax_inline_notice(tone: :info, icon: "diagram-3", compact: true) do %>
+            O histórico entra sem redistribuir leads antigos. Com a escuta habilitada, novos eventos passam pelo fluxo normal usando a regra de apoio <strong><%= ExternalLeadIntegration::SUPPORT_RULE_NAME %></strong>.
+          <% end %>
+
+          <div class="lead-migration-actions">
+            <%= f.submit "Salvar e validar", class: "ax-btn ax-btn--primary" %>
+            <% if @integration.access_token.present? %>
+              <%= button_tag "Testar conexão", type: "submit", form: "lead-migration-test-connection-form", class: "ax-btn" %>
+            <% end %>
+          </div>
+        <% end %>
+        <%= form_with url: test_connection_admin_external_lead_integration_path, method: :post, local: true, id: "lead-migration-test-connection-form", class: "tw-hidden" do %><% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Operação", title: "Migração e acompanhamento") do %>
+        <div class="lead-migration-command-grid">
+          <%= form_with url: backfill_admin_external_lead_integration_path, method: :post, local: true, class: "lead-migration-command-form" do %>
+            <%= button_tag type: "submit", class: "lead-migration-command lead-migration-command--primary", disabled: !connected do %>
+              <i class="bi bi-database-down"></i>
+              <span><strong>Importar histórico</strong><small>Busca todos os leads existentes na conta externa em lotes.</small></span>
+            <% end %>
+          <% end %>
+          <%= form_with url: sync_now_admin_external_lead_integration_path, method: :post, local: true, class: "lead-migration-command-form" do %>
+            <%= button_tag type: "submit", class: "lead-migration-command", disabled: !connected do %>
+              <i class="bi bi-arrow-repeat"></i>
+              <span><strong>Sincronizar agora</strong><small>Reprocessa leads alterados desde o último cursor.</small></span>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="lead-migration-progress">
+          <div>
+            <strong><%= @integration.sync_message.presence || "Nenhuma sincronização iniciada." %></strong>
+            <span>Página <%= @integration.current_page.to_i %> · <%= number_with_delimiter(imported_total) %>/<%= number_with_delimiter(@integration.total_count.to_i) %></span>
+          </div>
+          <%= ax_progress(value: progress, tone: sync_tone, label: "#{progress}%") %>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Funil", title: "Etapas de Lead usadas na migração", actions: ax_badge("#{@lead_pipeline_stages.size} etapas", tone: :blue)) do %>
+        <div class="lead-migration-funnel-list">
+          <% if @lead_pipeline_stages.any? %>
+            <% @lead_pipeline_stages.each do |stage| %>
+              <span><%= stage.lead_pipeline.name %> · <%= stage.name %></span>
+            <% end %>
+          <% else %>
+            <span><%= Lead.default_status(tenant: current_tenant) %></span>
+          <% end %>
+        </div>
+        <p class="lead-migration-panel-hint">Quando a API externa enviar uma etapa nova, ela é criada no catálogo de status do Lead deste tenant e passa a aparecer no funil.</p>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Leads", title: "Últimos leads migrados") do %>
+        <% if @recent_external_leads.any? %>
+          <div class="ax-table-responsive">
+            <table class="ax-table lead-migration-table">
+              <thead>
+                <tr>
+                  <th>Lead</th>
+                  <th>Status</th>
+                  <th>Corretor</th>
+                  <th>ID legado</th>
+                  <th>Sincronizado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_external_leads.each do |lead| %>
+                  <tr>
+                    <td><%= link_to lead.name.presence || "Lead ##{lead.id}", admin_lead_path(lead) %></td>
+                    <td><%= lead.status %></td>
+                    <td><%= lead.admin_user&.name || "Não mapeado" %></td>
+                    <td><code><%= lead.external_internal_id.presence || lead.external_lead_id %></code></td>
+                    <td><%= lead.external_last_synced_at ? l(lead.external_last_synced_at, format: :short) : "—" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="lead-migration-empty-state">
+            <i class="bi bi-inboxes"></i>
+            <span>Nenhum lead importado neste tenant.</span>
+          </div>
+        <% end %>
+      <% end %>
+    </main>
+
+    <aside class="integration-split-layout__aside">
+      <%= ax_operational_panel(eyebrow: "Webhook", title: "Endpoint da transição", actions: ax_badge(webhook_listening_label, tone: webhook_listening_tone)) do %>
+        <%= ax_status_list(rows: [
+          { label: "Escuta", value: webhook_listening_label },
+          { label: "URL", value: @webhook_url.present? ? tag.code(@webhook_url, class: "lead-migration-webhook-code") : "Gerada ao salvar" },
+          { label: "Último webhook", value: @integration.last_webhook_at ? l(@integration.last_webhook_at, format: :short) : "—" },
+          { label: "Último incremental", value: @integration.last_incremental_sync_at ? l(@integration.last_incremental_sync_at, format: :short) : "—" },
+          { label: "Cursor", value: @integration.last_cursor_at ? l(@integration.last_cursor_at, format: :short) : "—" }
+        ], class_name: "lead-migration-webhook-list") %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Distribuição", title: "Regra de apoio") do %>
+        <%= ax_status_list(rows: [
+          { label: "Regra", value: @integration.distribution_rule ? link_to(@integration.distribution_rule.name, edit_admin_distribution_rule_path(@integration.distribution_rule)) : "Criada ao validar" },
+          { label: "Canal", value: "Webhook · tag #{ExternalLeadIntegration::WEBHOOK_TAG}" },
+          { label: "Modo", value: @integration.distribution_rule&.distribution_mode&.humanize || "Roleta" },
+          { label: "Corretores", value: mapped_sellers_count }
+        ]) %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Corretores", title: "Espelhamento de distribuição") do %>
+        <% if @seller_rows.any? %>
+          <div class="lead-migration-seller-list">
+            <% @seller_rows.first(12).each do |row| %>
+              <div class="lead-migration-seller-row">
+                <div>
+                  <strong><%= row[:name] %></strong>
+                  <span><%= row[:email].presence || row[:phone].presence || "Sem contato na origem" %></span>
+                </div>
+                <% seller_badge = if row[:eligible]
+                     { label: row[:local_user].name, tone: :green }
+                   elsif row[:local_user]
+                     { label: "Fora da roleta", tone: :amber }
+                   else
+                     { label: "Sem par", tone: :gray }
+                   end %>
+                <%= ax_badge(seller_badge[:label], tone: seller_badge[:tone]) %>
+              </div>
+            <% end %>
+            <% if @seller_rows.size > 12 %>
+              <p class="lead-migration-panel-hint"><%= @seller_rows.size - 12 %> vendedores adicionais ocultos nesta visão.</p>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="lead-migration-empty-state lead-migration-empty-state--compact">
+            <i class="bi bi-person-lines-fill"></i>
+            <span>Valide o token para carregar vendedores.</span>
+          </div>
+        <% end %>
+      <% end %>
+
+      <% if @integration.last_error_message.present? %>
+        <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %>
+          <strong>Último erro:</strong> <%= @integration.last_error_message.truncate(240) %>
+        <% end %>
+      <% end %>
+
+      <% if @integration.persisted? %>
+        <div class="integration-danger-zone">
+          <div>
+            <strong>Inativar integração</strong>
+            <span>Cancela o webhook externo e mantém os leads já importados.</span>
+          </div>
+          <%= button_to "Inativar", deactivate_admin_external_lead_integration_path, method: :delete, class: "ax-btn ax-btn--danger ax-btn--sm", data: { turbo_confirm: "Inativar a integração de leads deste tenant?" } %>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

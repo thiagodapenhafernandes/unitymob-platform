@@ -10,7 +10,7 @@ class Proprietor < ApplicationRecord
     "API",
     "Busca Paga | Facebook Ads",
     "Busca Paga | Google",
-    "C2Sbot",
+    "API de Leads",
     "Casa Mineira",
     "Chat",
     "Chaves na Mão",

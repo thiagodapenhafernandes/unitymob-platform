@@ -18,6 +18,9 @@ class Lead < ApplicationRecord
   belongs_to :admin_user, optional: true
   belongs_to :shared_by_admin_user, class_name: "AdminUser", optional: true
   belongs_to :distribution_rule, optional: true
+  belongs_to :external_lead_integration, optional: true
+  belongs_to :lead_pipeline, optional: true
+  belongs_to :lead_pipeline_stage, optional: true
   has_many :lead_audit_logs
   has_many :activities, class_name: "LeadActivity", dependent: :destroy
   has_many :secure_links, dependent: :destroy
@@ -69,11 +72,12 @@ class Lead < ApplicationRecord
   after_create :record_audit_create
   after_update :record_audit_update
   after_destroy :record_audit_destroy
-  after_create_commit :route_lead
-  after_create_commit :dispatch_automation_created
-  after_update_commit :dispatch_automation_stage_changed
+  after_create_commit :route_lead, unless: :skip_automatic_routing?
+  after_create_commit :dispatch_automation_created, unless: :skip_automatic_routing?
+  after_update_commit :dispatch_automation_stage_changed, unless: :skip_automatic_routing?
 
   before_validation :normalize_status
+  before_validation :sync_pipeline_stage
   before_validation :normalize_tags
   normalize_phone_fields :phone, :client_phone, :agent_phone
 
@@ -109,6 +113,12 @@ class Lead < ApplicationRecord
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
   validates :phone, presence: true, unless: -> { business_scoped_user_id.present? }
   validate :associated_records_must_belong_to_tenant
+
+  attr_writer :skip_automatic_routing
+
+  def skip_automatic_routing?
+    @skip_automatic_routing == true
+  end
   
   def display_name
     client_name.presence || name
@@ -224,8 +234,17 @@ class Lead < ApplicationRecord
        .map { |part| part.to_s.strip.gsub(/["']/, "") }
   end
 
-  def self.status_options
-    tenant = Current.tenant || raise(ArgumentError, "Tenant obrigatório para listar status de leads")
+  def self.status_options(pipeline: nil, tenant: Current.tenant)
+    tenant ||= Current.tenant
+    raise ArgumentError, "Tenant obrigatório para listar status de leads" if tenant.blank?
+
+    tenant = pipeline.tenant if pipeline.present?
+    if pipeline.present? || tenant.lead_pipelines.exists?
+      target_pipeline = pipeline || LeadPipeline.default_for(tenant:)
+      stages = target_pipeline&.stages&.active&.ordered&.pluck(:name)
+      return stages if stages.present?
+    end
+
     relation = tenant.attribute_options.where(context: "lead", category: "status")
     relation = if AttributeOption.column_names.include?("position")
                  relation.order(Arel.sql("position ASC NULLS LAST")).order(name: :asc)
@@ -245,14 +264,22 @@ class Lead < ApplicationRecord
     STATUS_ALIASES[raw] || STATUS_ALIASES[raw.downcase] || raw
   end
 
-  def self.default_status(tenant: Current.tenant)
+  def self.default_status(tenant: Current.tenant, pipeline: nil)
+    target_pipeline = pipeline || (LeadPipeline.default_for(tenant:) if tenant&.respond_to?(:lead_pipelines))
+    stage_name = target_pipeline&.default_stage&.name
+    return stage_name if stage_name.present?
+
     status_options_for_tenant(tenant).first || DEFAULT_STATUS
   rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ArgumentError
     DEFAULT_STATUS
   end
 
-  def self.status_options_for_tenant(tenant)
+  def self.status_options_for_tenant(tenant, pipeline: nil)
     raise ArgumentError, "Tenant obrigatório para listar status de leads" if tenant.blank?
+
+    target_pipeline = pipeline || LeadPipeline.default_for(tenant:)
+    stages = target_pipeline&.stages&.active&.ordered&.pluck(:name)
+    return stages if stages.present?
 
     relation = tenant.attribute_options.where(context: "lead", category: "status")
     relation = if AttributeOption.column_names.include?("position")
@@ -284,6 +311,31 @@ class Lead < ApplicationRecord
     self.status = self.class.status_value(status)
   end
 
+  def sync_pipeline_stage
+    return if tenant.blank?
+
+    self.lead_pipeline ||= lead_pipeline_stage&.lead_pipeline
+    self.lead_pipeline ||= LeadPipeline.default_for(tenant:)
+
+    if status.present? && (lead_pipeline_stage.blank? || status.to_s != lead_pipeline_stage.name.to_s || will_save_change_to_lead_pipeline_id?)
+      matched_stage = LeadPipelineStage.matching_name(tenant: tenant, pipeline: lead_pipeline, name: status)
+      self.lead_pipeline_stage = matched_stage if matched_stage
+    end
+
+    if lead_pipeline_stage.present?
+      self.lead_pipeline = lead_pipeline_stage.lead_pipeline
+      self.status = lead_pipeline_stage.name
+      return
+    end
+
+    stage = LeadPipelineStage.matching_name(tenant: tenant, pipeline: lead_pipeline, name: status)
+    stage ||= lead_pipeline&.default_stage if status.blank?
+    if stage.present?
+      self.lead_pipeline_stage = stage
+      self.status = stage.name
+    end
+  end
+
   def normalize_tags
     self.tags = self.class.normalize_tags_value(tags)
   end
@@ -294,7 +346,9 @@ class Lead < ApplicationRecord
     {
       admin_user: admin_user,
       shared_by_admin_user: shared_by_admin_user,
-      distribution_rule: distribution_rule
+      distribution_rule: distribution_rule,
+      lead_pipeline: lead_pipeline,
+      lead_pipeline_stage: lead_pipeline_stage
     }.each do |attribute, record|
       next if record.blank? || record.tenant_id == tenant_id
 
@@ -303,6 +357,10 @@ class Lead < ApplicationRecord
 
     if property_id.present? && !tenant.habitations.exists?(id: property_id)
       errors.add(:property_id, "deve pertencer ao mesmo Tenant")
+    end
+
+    if lead_pipeline_stage.present? && lead_pipeline.present? && lead_pipeline_stage.lead_pipeline_id != lead_pipeline_id
+      errors.add(:lead_pipeline_stage, "deve pertencer ao funil do lead")
     end
   end
 

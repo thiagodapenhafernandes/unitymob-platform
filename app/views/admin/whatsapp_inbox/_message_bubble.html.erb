@@ -4,6 +4,7 @@
 <% media_url = local_assigns[:media_url].presence || (message.media? ? message_media_admin_whatsapp_conversation_path(message.whatsapp_conversation, message_id: message.id) : (message.media_file.attached? ? rails_blob_path(message.media_file, disposition: "inline") : message.media_url)) %>
 <% media_meta = [] %>
 <% media_label = { "image" => "Imagem", "video" => "Vídeo", "audio" => "Áudio", "document" => "Documento" }[message.msg_type] || message.msg_type.to_s.humanize %>
+<% media_meta << message.media_file.filename.to_s if message.media_file.attached? %>
 <% media_meta << message.media_format_label if message.media_format_label.present? %>
 <% media_meta << message.media_size_label if message.media_size_label.present? %>
 <% media_message = message.media? %>
@@ -133,6 +134,7 @@
         </div>
       <% elsif message.audio? && media_url.present? %>
         <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--audio"
+             data-inline-viewer-media="true"
              data-controller="wa-audio-preview">
           <div class="wa-audio-preview wa-audio-preview--message">
             <button type="button"
@@ -170,7 +172,7 @@
 
           <audio data-src="<%= media_url %>"
                  class="wa-audio-preview__audio"
-                 preload="metadata"
+                 preload="none"
                  data-wa-audio-preview-target="audio"
                  data-action="loadedmetadata->wa-audio-preview#syncDuration timeupdate->wa-audio-preview#syncProgress play->wa-audio-preview#handlePlay pause->wa-audio-preview#syncState ended->wa-audio-preview#syncState"></audio>
         </div>

@@ -1,0 +1,41 @@
+/* Lead funnel stage editor rows shared by create/edit modals. */
+.lead-stage-grid-header {
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+  margin: .75rem 0 -.35rem;
+  padding: 0 .35rem;
+}
+
+.lead-stage-grid-header__spacer {
+  flex: 0 0 26px;
+  width: 26px;
+  min-height: 16px;
+}
+
+.lead-stage-grid-header__spacer--remove {
+  flex-basis: 34px;
+  width: 34px;
+}
+
+.lead-stage-grid-header__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(150px, .42fr);
+  gap: .4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lead-status-row__fields {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(150px, .42fr);
+}
+
+@media (max-width: 720px) {
+  .lead-stage-grid-header {
+    display: none;
+  }
+
+  .lead-status-row__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

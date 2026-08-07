@@ -7,20 +7,27 @@
            class="ax-control ax-control--sm"
            data-lead-status-field="name"
            value="<%= local_assigns[:name] %>"
-           placeholder="Nome do status"
-           aria-label="Nome do status">
+           placeholder="Nome da etapa"
+           aria-label="Nome da etapa">
     <input type="text"
            class="ax-control ax-control--sm"
            data-lead-status-field="description"
            value="<%= local_assigns[:description] %>"
            placeholder="Subtítulo (opcional)"
            aria-label="Subtítulo do status">
+    <select class="ax-control ax-control--sm"
+            data-lead-status-field="stage_type"
+            aria-label="Tipo da etapa">
+      <% LeadPipelineStage::STAGE_TYPES.each do |value, label| %>
+        <option value="<%= value %>" <%= "selected" if local_assigns[:stage_type].presence == value %>><%= label %></option>
+      <% end %>
+    </select>
   </div>
   <button type="button"
           class="ax-icon-btn lead-status-row__remove"
           data-action="lead-status-board#removeRow"
-          aria-label="Remover status"
-          title="Remover status">
+          aria-label="Remover etapa"
+          title="Remover etapa">
     <i class="bi bi-trash"></i>
   </button>
 </div>

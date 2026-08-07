@@ -52,6 +52,9 @@ class Tenant < ApplicationRecord
   has_many :email_settings, dependent: :destroy
   has_one :google_calendar_integration_setting, dependent: :destroy
   has_one :google_maps_integration_setting, dependent: :destroy
+  has_one :external_lead_integration, dependent: :destroy
+  has_many :lead_pipelines, dependent: :restrict_with_error
+  has_many :lead_pipeline_stages, dependent: :restrict_with_error
   has_many :manual_checkin_requests, dependent: :restrict_with_error
   has_many :proprietors, dependent: :restrict_with_error
   has_many :access_audit_logs, dependent: :restrict_with_error
@@ -98,6 +101,7 @@ class Tenant < ApplicationRecord
   before_validation :normalize_slug
   before_validation :normalize_public_site_theme
   after_create :ensure_builtin_profiles!
+  after_create :ensure_default_lead_pipeline!
 
   def public_site_theme_key
     inferred_public_site_theme_key
@@ -180,7 +184,21 @@ class Tenant < ApplicationRecord
     end
   end
 
+  def ensure_default_lead_pipeline!
+    return unless lead_pipeline_tables_available?
+
+    LeadPipeline.ensure_default!(tenant: self)
+  end
+
   private
+
+  def lead_pipeline_tables_available?
+    connection = self.class.connection
+    connection.data_source_exists?("lead_pipelines") &&
+      connection.data_source_exists?("lead_pipeline_stages")
+  rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
+    false
+  end
 
   def ensure_internal_management_profile!
     profiles.vertical.find_or_create_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME) do |profile|

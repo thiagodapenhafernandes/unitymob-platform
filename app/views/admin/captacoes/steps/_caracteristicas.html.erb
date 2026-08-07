@@ -1,6 +1,9 @@
 <%
   kind = @captacao.property_kind.to_s
   features_imovel = captacao_feature_options(@internal_features, @captacao.caracteristicas_imovel)
+  ocupacao_choices = [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]]
+  situacao_choices = [["Novo", "Novo"], ["Usado", "Usado"], ["Em construção", "Em construção"]]
+  topografia_choices = [["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]]
 %>
 
 <h1 class="wizard-section-title"><i class="bi bi-rulers tw-text-primary"></i>Características do imóvel</h1>
@@ -76,7 +79,7 @@
     <div class="ax-span-4">
       <%= ax_select_field(form: f, method: :ocupacao,
             label: safe_join(["Ocupação", tag.span("*", class: "required-star")], " "),
-            choices: [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]],
+            choices: ocupacao_choices,
             select_options: { include_blank: "—" }, class_name: "wizard-field-group",
             html_options: { class: field_state.call(:ocupacao, "ax-control") }) %>
       <% if field_invalid.call(:ocupacao) %><div class="invalid-feedback d-block">Informe a ocupação.</div><% end %>
@@ -89,7 +92,7 @@
     <div class="ax-span-4">
       <%= ax_select_field(form: f, method: :situacao_imovel,
             label: safe_join(["Situação", tag.span("*", class: "required-star")], " "),
-            choices: [["Em construção", "Em construção"], ["Novo", "Novo"], ["Usado", "Usado"]],
+            choices: situacao_choices,
             select_options: { include_blank: "—" }, class_name: "wizard-field-group",
             html_options: { class: field_state.call(:situacao_imovel, "ax-control") }) %>
       <% if field_invalid.call(:situacao_imovel) %><div class="invalid-feedback d-block">Informe a situação.</div><% end %>
@@ -124,7 +127,7 @@
     <div class="ax-span-6">
       <%= ax_select_field(form: f, method: :ocupacao,
             label: safe_join(["Ocupação", tag.span("*", class: "required-star")], " "),
-            choices: [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]],
+            choices: ocupacao_choices,
             select_options: { include_blank: "—" }, class_name: "wizard-field-group",
             html_options: { class: field_state.call(:ocupacao, "ax-control") }) %>
       <% if field_invalid.call(:ocupacao) %><div class="invalid-feedback d-block">Informe a ocupação.</div><% end %>
@@ -132,14 +135,29 @@
     <div class="ax-span-6">
       <%= ax_select_field(form: f, method: :situacao_imovel,
             label: safe_join(["Situação", tag.span("*", class: "required-star")], " "),
-            choices: [["Novo", "Novo"], ["Usado", "Usado"], ["Em construção", "Em construção"]],
+            choices: situacao_choices,
             select_options: { include_blank: "—" }, class_name: "wizard-field-group",
             html_options: { class: field_state.call(:situacao_imovel, "ax-control") }) %>
       <% if field_invalid.call(:situacao_imovel) %><div class="invalid-feedback d-block">Informe a situação.</div><% end %>
     </div>
   <% end %>
 
-<% else  # terreno %>
+<% elsif @captacao.property_kind_galpao? %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-4">
+      <%= ax_number_field(form: f, method: :banheiros, label: "Banheiros", min: 0,
+            inputmode: "numeric", class_name: "wizard-field-group") %>
+    </div>
+    <div class="ax-span-4">
+      <%= ax_number_field(form: f, method: :vagas_garagem, label: "Vagas", min: 0,
+            inputmode: "numeric", class_name: "wizard-field-group") %>
+    </div>
+    <div class="ax-span-4">
+      <%= ax_number_field(form: f, method: :salas, label: "Salas/ambientes", min: 0,
+            inputmode: "numeric", class_name: "wizard-field-group") %>
+    </div>
+  <% end %>
+
   <%= ax_field_grid do %>
     <div class="ax-span-6">
       <%= ax_standalone_field(name: "captacao[extras][frente_metros]", id: "captacao_extras_frente_metros",
@@ -148,7 +166,43 @@
     </div>
     <div class="ax-span-6">
       <%= ax_standalone_select_field(name: "captacao[extras][topografia]", id: "captacao_extras_topografia",
-            label: "Topografia", choices: [["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]],
+            label: "Topografia", choices: topografia_choices,
+            selected: @captacao.extras["topografia"], include_blank: "—", class_name: "wizard-field-group") %>
+    </div>
+  <% end %>
+  <%= ax_standalone_select_field(name: "captacao[extras][face]", id: "captacao_extras_face",
+        label: "Face predominante", choices: %w[Norte Sul Leste Oeste Nordeste Noroeste Sudeste Sudoeste],
+        selected: @captacao.extras["face"], include_blank: "—", class_name: "wizard-field-group") %>
+
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
+      <%= ax_select_field(form: f, method: :ocupacao,
+            label: safe_join(["Ocupação", tag.span("*", class: "required-star")], " "),
+            choices: ocupacao_choices,
+            select_options: { include_blank: "—" }, class_name: "wizard-field-group",
+            html_options: { class: field_state.call(:ocupacao, "ax-control") }) %>
+      <% if field_invalid.call(:ocupacao) %><div class="invalid-feedback d-block">Informe a ocupação.</div><% end %>
+    </div>
+    <div class="ax-span-6">
+      <%= ax_select_field(form: f, method: :situacao_imovel,
+            label: safe_join(["Situação", tag.span("*", class: "required-star")], " "),
+            choices: situacao_choices,
+            select_options: { include_blank: "—" }, class_name: "wizard-field-group",
+            html_options: { class: field_state.call(:situacao_imovel, "ax-control") }) %>
+      <% if field_invalid.call(:situacao_imovel) %><div class="invalid-feedback d-block">Informe a situação.</div><% end %>
+    </div>
+  <% end %>
+
+<% elsif @captacao.property_kind_terreno? %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
+      <%= ax_standalone_field(name: "captacao[extras][frente_metros]", id: "captacao_extras_frente_metros",
+            label: "Frente (m)", value: @captacao.extras["frente_metros"], type: :number,
+            class_name: "wizard-field-group", step: 0.1, inputmode: "decimal") %>
+    </div>
+    <div class="ax-span-6">
+      <%= ax_standalone_select_field(name: "captacao[extras][topografia]", id: "captacao_extras_topografia",
+            label: "Topografia", choices: topografia_choices,
             selected: @captacao.extras["topografia"], include_blank: "—", class_name: "wizard-field-group") %>
     </div>
   <% end %>

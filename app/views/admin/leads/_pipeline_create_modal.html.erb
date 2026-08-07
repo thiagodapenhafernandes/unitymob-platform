@@ -1,0 +1,76 @@
+<%
+  default_create_stages = [
+    { name: "Novo", stage_type: "open" },
+    { name: "Em Atendimento", stage_type: "open" },
+    { name: "Negócio fechado", stage_type: "won" },
+    { name: "Descartado", stage_type: "lost" }
+  ]
+
+  modal_body = capture do %>
+    <%= ax_inline_notice(tone: :neutral, icon: "diagram-3") do %>
+      Crie um grupo de etapas independente para venda, locação ou outro fluxo operacional.
+    <% end %>
+
+    <%= form_with model: [:admin, LeadPipeline.new(kind: "custom")],
+                  url: admin_lead_pipelines_path,
+                  method: :post,
+                  local: true,
+                  id: "newLeadPipelineForm",
+                  class: "tw-grid tw-gap-3" do |f| %>
+      <%= hidden_field_tag :view, @view_mode %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <%= ax_text_field(form: f, method: :name, label: "Nome do funil",
+                            tooltip: "Nome usado para identificar este grupo de etapas na tela de Leads.",
+                            placeholder: "Ex.: Locação") %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :kind, label: "Tipo",
+                              tooltip: "Define a operação do funil e qual fluxo será usado automaticamente para novos leads.",
+                              choices: LeadPipeline::KINDS.map { |value, label| [label, value] },
+                              select_options: { selected: "custom" }) %>
+        </div>
+      <% end %>
+
+      <%= render "admin/leads/pipeline_stage_grid_header" %>
+
+      <div class="lead-status-board lead-stage-grid" data-lead-pipeline-form-target="list">
+        <% default_create_stages.each_with_index do |stage, index| %>
+          <%= render "admin/leads/pipeline_stage_field_row",
+                     index: index,
+                     name: stage[:name],
+                     description: "",
+                     stage_type: stage[:stage_type] %>
+        <% end %>
+      </div>
+
+      <button type="button" class="ax-btn ax-btn--sm lead-status-board__add" data-action="lead-pipeline-form#addStage">
+        <i class="bi bi-plus-lg"></i> Adicionar etapa
+      </button>
+    <% end %>
+
+    <template data-lead-pipeline-form-target="template">
+      <%= render "admin/leads/pipeline_stage_field_row",
+                 index: "NEW_STAGE",
+                 name: "",
+                 description: "",
+                 stage_type: "open" %>
+    </template>
+  <% end
+
+  modal_footer = capture do %>
+    <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+    <button type="submit" form="newLeadPipelineForm" class="ax-btn ax-btn--primary">
+      Criar funil
+    </button>
+  <% end
+%>
+
+<%= ax_quick_modal(
+      id: "leadPipelineCreateModal",
+      title: "Criar funil",
+      size: :lg,
+      body: modal_body,
+      footer: modal_footer,
+      data: { controller: "lead-pipeline-form" }
+    ) %>

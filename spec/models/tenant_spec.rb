@@ -18,6 +18,20 @@ RSpec.describe Tenant, type: :model do
     expect { tenant.ensure_builtin_profiles! }.not_to change { tenant.profiles.count }
   end
 
+  it "cria um funil principal editável para contas novas" do
+    tenant = described_class.create!(name: "Conta Funil #{SecureRandom.hex(3)}", slug: "conta-funil-#{SecureRandom.hex(3)}")
+
+    pipeline = tenant.lead_pipelines.find_by!(name: "Principal")
+    expect(pipeline).to have_attributes(
+      kind: "mixed",
+      active: true,
+      default_general: true,
+      default_for_sale: true,
+      default_for_rental: true
+    )
+    expect(pipeline.stages.order(:position).pluck(:name)).to include("Novo", "Em Atendimento")
+  end
+
   it "resolve tenant publico por slug ativo e preserva default como fallback" do
     tenant = described_class.create!(name: "Conta Publica #{SecureRandom.hex(3)}", slug: "conta-publica-#{SecureRandom.hex(3)}")
 
