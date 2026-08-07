@@ -1,28 +1,24 @@
 module Admin
-  # Gerencia as colunas do funil de leads (AttributeOption context=lead/category=status):
-  # reordenar, renomear, subtítulo, adicionar e remover. Renomear/remover delegam aos
-  # callbacks do AttributeOption (AttributeOptions::SyncUsageService), que ajustam os
-  # leads existentes.
+  # Gerencia as etapas do funil de leads selecionado.
   class LeadStatusesController < Admin::BaseController
     before_action -> { check_permission!(:manage, :catalogos) }
 
     def index
-      render json: statuses_scope.map { |option|
-        { id: option.id, name: option.name, description: option.description }
+      render json: stages_scope.map { |stage|
+        { id: stage.id, name: stage.name, description: stage.description, stage_type: stage.stage_type }
       }
     end
 
     def bulk_update
-      rows = params.permit(statuses: [:id, :name, :description, :_destroy]).fetch(:statuses, [])
+      rows = params.permit(:lead_pipeline_id, statuses: [:id, :name, :description, :stage_type, :_destroy]).fetch(:statuses, [])
 
-      AttributeOption.transaction do
+      LeadPipelineStage.transaction do
         rows.each_with_index do |row, index|
           apply_row(row, index)
         end
       end
 
-      # Persiste para o reload subsequente — o layout renderiza como toast.
-      flash[:notice] = "Colunas do funil atualizadas."
+      flash[:notice] = "Etapas do funil atualizadas."
       render json: { ok: true }
     rescue ActiveRecord::RecordInvalid => e
       message = e.record&.errors&.full_messages&.to_sentence
@@ -35,30 +31,47 @@ module Admin
       id = row[:id].presence
       name = row[:name].to_s.strip
       description = row[:description].to_s.strip
+      stage_type = row[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open"
       destroy = ActiveModel::Type::Boolean.new.cast(row[:_destroy])
 
       if id.present?
-        option = current_tenant.attribute_options.find_by(id: id, context: "lead", category: "status")
-        return if option.nil?
+        stage = selected_pipeline.stages.find_by(id: id)
+        return if stage.nil?
 
         if destroy
-          option.destroy!
+          fallback_stage = selected_pipeline.stages.where.not(id: stage.id).ordered.first
+          current_tenant.leads.where(lead_pipeline_stage_id: stage.id).update_all(
+            lead_pipeline_stage_id: fallback_stage&.id,
+            status: fallback_stage&.name || Lead.default_status(tenant: current_tenant, pipeline: selected_pipeline),
+            updated_at: Time.current
+          )
+          stage.destroy!
         else
-          option.update!(name: name, description: description, position: index)
+          stage.update!(name: name, description: description, stage_type: stage_type, position: index)
         end
       elsif !destroy && name.present?
-        current_tenant.attribute_options.create!(
-          context: "lead",
-          category: "status",
+        current_tenant.lead_pipeline_stages.create!(
+          lead_pipeline: selected_pipeline,
           name: name,
           description: description,
+          stage_type: stage_type,
           position: index
         )
       end
     end
 
-    def statuses_scope
-      current_tenant.attribute_options.where(context: "lead", category: "status").ordered
+    def selected_pipeline
+      @selected_pipeline ||= begin
+        if params[:lead_pipeline_id].present?
+          current_tenant.lead_pipelines.find_by(id: params[:lead_pipeline_id]) || LeadPipeline.ensure_default!(tenant: current_tenant)
+        else
+          LeadPipeline.ensure_default!(tenant: current_tenant)
+        end
+      end
+    end
+
+    def stages_scope
+      selected_pipeline.stages.ordered
     end
   end
 end

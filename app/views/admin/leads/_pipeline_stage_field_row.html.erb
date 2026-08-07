@@ -1,0 +1,44 @@
+<%
+  stage_index = local_assigns.fetch(:index)
+  stage_name = local_assigns[:name].to_s
+  stage_description = local_assigns[:description].to_s
+  stage_type = local_assigns[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open"
+%>
+
+<div class="lead-status-row" data-lead-pipeline-form-target="stageRow">
+  <span class="lead-status-row__handle" aria-hidden="true">
+    <i class="bi bi-grip-vertical"></i>
+  </span>
+  <div class="lead-status-row__fields">
+    <input type="text"
+           class="ax-control ax-control--sm"
+           name="stages[<%= stage_index %>][name]"
+           id="lead_pipeline_stage_<%= stage_index %>_name"
+           value="<%= stage_name %>"
+           placeholder="Nome da etapa"
+           data-lead-pipeline-form-target="stageName"
+           aria-label="Nome da etapa">
+    <input type="text"
+           class="ax-control ax-control--sm"
+           name="stages[<%= stage_index %>][description]"
+           id="lead_pipeline_stage_<%= stage_index %>_description"
+           value="<%= stage_description %>"
+           placeholder="Subtítulo (opcional)"
+           aria-label="Subtítulo da etapa">
+    <select class="ax-control ax-control--sm"
+            name="stages[<%= stage_index %>][stage_type]"
+            id="lead_pipeline_stage_<%= stage_index %>_stage_type"
+            aria-label="Tipo da etapa">
+      <% LeadPipelineStage::STAGE_TYPES.each do |value, label| %>
+        <option value="<%= value %>" <%= "selected" if stage_type == value %>><%= label %></option>
+      <% end %>
+    </select>
+  </div>
+  <button type="button"
+          class="ax-icon-btn lead-status-row__remove"
+          data-action="lead-pipeline-form#removeStage"
+          aria-label="Remover etapa"
+          title="Remover etapa">
+    <i class="bi bi-trash"></i>
+  </button>
+</div>

@@ -235,7 +235,8 @@ module Storage
 
     def validated_cdn_url(url)
       value = url.to_s.strip
-      return if value.blank? || value.start_with?("#<", "/", "data:", "blob:")
+      return if value.blank? || value.start_with?("#<", "data:", "blob:")
+      return value if value.start_with?("/") && !value.start_with?("//")
 
       uri = URI.parse(value)
       return unless uri.is_a?(URI::HTTP)

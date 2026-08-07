@@ -205,7 +205,7 @@ module Leads
     end
 
     def matches_webhook_tags?(rule)
-      return true unless rule.source_webhook? && @lead.origin.to_s.downcase == "webhook"
+      return true unless rule.source_webhook? && webhook_origin?(@lead.origin.to_s.downcase)
 
       expected_tags = Array(rule.webhook_tags).map { |tag| normalize_tag(tag) }.reject(&:blank?)
       return true if expected_tags.blank?
@@ -271,7 +271,9 @@ module Leads
     end
 
     def webhook_origin?(origin)
-      origin == "webhook"
+      origin == "webhook" ||
+        origin == ExternalLeadMigration::LeadMapper::PROVIDER_KEY ||
+        origin == ExternalLeadIntegration::LEAD_ORIGIN.downcase
     end
 
     def site_origin?(origin)

@@ -21,11 +21,17 @@
           <span class="wa-inbox-chat-header__avatar" aria-hidden="true"><%= wa_initials(conversation.display_name) %></span>
           <div class="wa-inbox-chat-header__copy">
             <strong><%= conversation.display_name %></strong>
-            <span><i class="bi bi-whatsapp"></i> <%= channel_label %></span>
+            <span><i class="bi bi-whatsapp"></i> Atendimento sem sair do lead · <%= channel_label %></span>
           </div>
         </div>
         <div class="wa-inbox-chat-header__actions">
           <%= render "admin/whatsapp_inbox/presentation_tools", conversation: conversation, variant: :icon %>
+          <%= link_to admin_whatsapp_conversation_path(conversation),
+                      class: "wa-inbox-chat-header__icon",
+                      title: "Tela dedicada",
+                      aria: { label: "Tela dedicada" } do %>
+            <i class="bi bi-box-arrow-up-right"></i>
+          <% end %>
           <span class="wa-inbox-chat-header__status"><i class="bi bi-circle-fill"></i> Ativo</span>
           <button type="button"
                   class="wa-inbox-chat-header__icon"
@@ -71,7 +77,7 @@
               templates: templates,
               return_to: return_to,
               file_input_id: "lead-whatsapp-media-file",
-              placeholder: "Digite uma mensagem...",
+              placeholder: "Escreva uma mensagem...",
               compact_mode: true,
               class_name: "lead-whatsapp-card__composer" %>
       <% end %>

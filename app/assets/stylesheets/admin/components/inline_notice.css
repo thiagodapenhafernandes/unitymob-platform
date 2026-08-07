@@ -66,6 +66,11 @@
   white-space: pre-line;
 }
 
+.ax-inline-notice + :where(.ax-inline-notice, .ax-field-grid, .ax-form-actions, .ax-status-list, .ax-table-responsive, form),
+:where(.ax-field-grid, .ax-form-actions, .ax-status-list, .ax-table-responsive, form) + .ax-inline-notice {
+  margin-top: 8px;
+}
+
 .ax-inline-notice--compact {
   min-height: 28px;
   gap: 6px;

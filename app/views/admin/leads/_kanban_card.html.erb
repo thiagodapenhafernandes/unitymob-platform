@@ -2,7 +2,8 @@
   status_value = lead.status.presence || Lead.default_status
   tone = status_tone.call(lead.status)
   property = local_assigns[:property]
-  lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
+  lead_return_base_path = local_assigns[:return_to_path].presence || request.fullpath
+  lead_return_to_path = "#{lead_return_base_path}#lead_#{lead.id}"
   lead_details_path = admin_lead_path(lead, return_to: lead_return_to_path)
 %>
 <article class="ax-board__card lead-kanban-card"

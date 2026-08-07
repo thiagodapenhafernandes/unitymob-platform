@@ -128,6 +128,23 @@ RSpec.describe "Admin lead creation", type: :request do
 
     before { sign_in user }
 
+    it "entrega o formulário com troca dinâmica de etapas por funil" do
+      pipeline = create(:lead_pipeline, tenant: tenant, name: "Locação")
+      stage = create(:lead_pipeline_stage, lead_pipeline: pipeline, tenant: tenant, name: "Proposta locação")
+
+      get new_admin_lead_path(lead_pipeline_id: pipeline.id)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      wrapper = document.at_css('[data-controller="lead-pipeline-stage-select"]')
+      expect(wrapper).to be_present
+      expect(wrapper["data-lead-pipeline-stage-select-url-value"]).to eq(admin_lead_statuses_path(format: :json))
+      expect(document.at_css('select#lead_lead_pipeline_id')["data-action"]).to include("change->lead-pipeline-stage-select#changePipeline")
+      expect(document.at_css('select#lead_status')["data-action"]).to include("change->lead-pipeline-stage-select#changeStage")
+      expect(document.at_css('select#lead_status option[data-stage-id]')["data-stage-id"]).to eq(stage.id.to_s)
+      expect(document.at_css("input#lead_lead_pipeline_stage_id")["value"]).to eq(stage.id.to_s)
+    end
+
     it "grava status, origem, produto, tags e observações" do
       post_lead(valid_params(
         status: "Em Atendimento",

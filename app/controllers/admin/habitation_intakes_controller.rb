@@ -18,7 +18,7 @@ module Admin
       @status = params[:status].presence
       @q = params[:q].to_s.strip
       build_index_dashboard
-      @habitations = filtered_intakes_scope.includes(:admin_user, :admin_reviewed_by, :address)
+      @habitations = filtered_intakes_scope.includes(:admin_user, :admin_reviewed_by, :address, :empreendimento)
       @habitations = @habitations.order(updated_at: :desc).paginate(page: params[:page], per_page: 20)
       @captacoes = @habitations
       @captacao_brokers = captacao_broker_options

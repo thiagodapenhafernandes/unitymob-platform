@@ -25,14 +25,88 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("<details class=\"lead-filter-collapse\">")
       expect(response.body).not_to include("<details class=\"lead-filter-collapse\" open")
       expect(response.body).to include("Filtros do funil")
-      expect(response.body.scan("<section class=\"ax-filter-form ax-leads-filters\">").size).to eq(1)
       document = Nokogiri::HTML(response.body)
+      expect(document.css("section.ax-filter-form.ax-leads-filters").size).to eq(1)
+      expect(document.at_css('button[data-ax-modal-open="#leadPipelineCreateModal"]')).to be_present
+      expect(document.at_css('button[data-ax-modal-open="#leadStatusBoardModal"]')).to be_present
+      expect(document.at_css('a.ax-nav__link[href="/admin/leads?view=list"]')).to be_present
+      expect(document.at_css(".ax-nav__link--group").text).to include("Funil")
+      expect(document.at_css("#leadPipelineCreateModal.ax-quick-modal--lg")).to be_present
+      expect(document.at_css("#leadStatusBoardModal.ax-quick-modal--lg")).to be_present
+      expect(document.at_css("#leadStatusBoardModal").to_html).not_to include("Criar novo funil")
+      create_modal_html = document.at_css("#leadPipelineCreateModal").to_html
+      edit_modal_html = document.at_css("#leadStatusBoardModal").to_html
+      expect(create_modal_html).to include("stages[0][name]", "Negócio fechado")
+      expect(create_modal_html).not_to include("Defaults")
+      expect(edit_modal_html).not_to include("Defaults")
+      expect(edit_modal_html).not_to include("Funil em edição")
+      expect(edit_modal_html).to include("Nome do funil", "Tipo de funil")
+      expect(create_modal_html).to include("Nome da etapa", "Subtítulo", "Tipo da etapa")
+      expect(create_modal_html).to include("Nome visível no funil", "Classificação interna usada")
+      expect(create_modal_html).to include("Define a operação do funil")
       expect(document.at_css("details.lead-filter-collapse .ax-leads-filter-overlay")).to be_nil
       expect(document.at_css("details.lead-filter-collapse + .ax-leads-filter-overlay")).to be_present
-      expect(response.body).to include("data-lead-url=\"#{admin_lead_path(Lead.find_by!(name: "Cliente Kanban"))}\"")
+      lead_card_url = document.at_css("article.lead-kanban-card[data-lead-url]")["data-lead-url"]
+      expect(lead_card_url).to start_with(admin_lead_path(Lead.find_by!(name: "Cliente Kanban")))
       expect(response.body).to include("Cliente Kanban")
       expect(response.body).to include("Em Atendimento")
       expect(response.body).not_to include("data-lead-kanban-drag-handle")
+    end
+
+    it "renderiza apenas o primeiro lote de 5 leads por coluna no kanban" do
+      base_time = Time.zone.parse("2026-08-06 12:00:00")
+      6.times do |index|
+        create(
+          :lead,
+          tenant: admin.tenant,
+          name: "Lead Novo #{index}",
+          phone: "1199999999#{index}",
+          status: "Novo",
+          created_at: base_time - index.minutes
+        )
+      end
+
+      get admin_leads_path(view: "kanban")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      column = document.at_css('[data-lead-kanban-status="Novo"]')
+      expect(column.css(".lead-kanban-card").size).to eq(5)
+      expect(column.to_html).to include("Lead Novo 0", "Lead Novo 4")
+      expect(column.to_html).not_to include("Lead Novo 5")
+      expect(column.at_css('.lead-kanban-loader[data-lead-kanban-offset="5"][data-lead-kanban-has-more="true"]')).to be_present
+    end
+
+    it "carrega o proximo lote de uma coluna do kanban respeitando filtros" do
+      base_time = Time.zone.parse("2026-08-06 12:00:00")
+      6.times do |index|
+        create(
+          :lead,
+          tenant: admin.tenant,
+          name: "Lead Incremental #{index}",
+          phone: "1188888888#{index}",
+          status: "Novo",
+          origin: "webhook",
+          created_at: base_time - index.minutes
+        )
+      end
+      create(:lead, tenant: admin.tenant, name: "Lead de Portal", status: "Novo", origin: "portal")
+
+      get kanban_column_admin_leads_path(
+        view: "kanban",
+        status: "Novo",
+        origin: "webhook",
+        offset: 5,
+        return_to: admin_leads_path(view: "kanban", origin: "webhook")
+      )
+
+      expect(response).to have_http_status(:ok)
+      payload = JSON.parse(response.body)
+      expect(payload["loaded_count"]).to eq(1)
+      expect(payload["has_more"]).to eq(false)
+      expect(payload["next_offset"]).to eq(6)
+      expect(payload["html"]).to include("Lead Incremental 5")
+      expect(payload["html"]).not_to include("Lead de Portal")
     end
 
     it "mantem a visualizacao em lista como alternativa" do
@@ -43,9 +117,44 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("lead-list-workspace")
       expect(response.body).to include("Total filtrado")
+      expect(response.body.index('class="ax-metric-grid lead-list-summary"')).to be < response.body.index('<details class="lead-filter-collapse">')
+      expect(Nokogiri::HTML(response.body).at_css(".ax-workspace-heading")).to be_nil
       expect(response.body).to include("WhatsApp")
       expect(response.body).not_to include("<table")
       expect(response.body).to include("Cliente Lista")
+    end
+
+    it "mostra todos os leads na listagem geral sem filtrar por funil" do
+      sale_pipeline = create(:lead_pipeline, tenant: admin.tenant, name: "Venda")
+      sale_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: sale_pipeline, name: "Proposta venda")
+      rental_pipeline = create(:lead_pipeline, tenant: admin.tenant, name: "Locação")
+      rental_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: rental_pipeline, name: "Proposta locação")
+      create(:lead, tenant: admin.tenant, name: "Lead Venda Geral", phone: "11999999999", lead_pipeline: sale_pipeline, lead_pipeline_stage: sale_stage, status: sale_stage.name)
+      create(:lead, tenant: admin.tenant, name: "Lead Locação Geral", phone: "11888888888", lead_pipeline: rental_pipeline, lead_pipeline_stage: rental_stage, status: rental_stage.name)
+
+      get admin_leads_path(view: "list")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Venda Geral", "Lead Locação Geral")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css("select#lead_pipeline_id option[value='']").text).to include("Todos os funis")
+    end
+
+    it "lista leads por rota dedicada do funil sem perder o filtro do funil" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant, name: "Venda")
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Proposta")
+      matching = create(:lead, tenant: admin.tenant, name: "Lead do Funil Venda", phone: "11999999999", lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+      create(:lead, tenant: admin.tenant, name: "Lead de Outro Funil", phone: "11888888888", status: "Novo")
+
+      get admin_lead_pipeline_leads_path(pipeline, view: "list")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(matching.name)
+      expect(response.body).not_to include("Lead de Outro Funil")
+      document = Nokogiri::HTML(response.body)
+      today_link = document.at_css(".lead-filter-quick__chip[href*='start_date']")
+      expect(today_link["href"]).to include("lead_pipeline_id=#{pipeline.id}")
+      expect(document.at_css("a.ax-nav__link.active[href='#{admin_lead_pipeline_leads_path(pipeline, view: "kanban")}']")).to be_present
     end
 
     it "lembra a visualizacao escolhida pelo usuario entre sessoes" do
@@ -398,7 +507,7 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "ativa o lead com template aprovado e enfileira envio" do
-      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      allow(Whatsapp::SendMessageJob).to receive(:dispatch)
       lead = create(:lead, status: "Novo", phone: "47999990002")
       template = WhatsappTemplate.create!(tenant: admin.tenant, name: "lead_template", language: "pt_BR", status: "APPROVED", body: "Olá do template")
 
@@ -410,7 +519,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to redirect_to(admin_lead_path(lead))
       expect(message.template_name).to eq("lead_template")
       expect(message.msg_type).to eq("template")
-      expect(Whatsapp::SendMessageJob).to have_received(:perform_later).with(message.id, tenant_id: message.tenant_id)
+      expect(Whatsapp::SendMessageJob).to have_received(:dispatch).with(message.id, tenant_id: message.tenant_id)
     end
 
     it "bloqueia abertura de conversa quando o lead não possui telefone ou BSUID" do
@@ -431,6 +540,9 @@ RSpec.describe "Admin::Leads", type: :request do
       broker = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-shark-#{SecureRandom.hex(4)}@salute.test")
       rule = create(:distribution_rule, distribution_mode: :shark_tank)
       rule_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker)
+      integration = WhatsappBusinessIntegration.current(broker.tenant)
+      integration.save! unless integration.persisted?
+      integration.update!(status: "disconnected", waba_id: nil, phone_number_id: nil, access_token: nil, inbox_attendance_enabled: false)
       PushSetting.instance.update!(lead_click_action: "system")
       Lead.skip_callback(:commit, :after, :route_lead)
       lead = create(:lead, status: :waiting_acceptance, admin_user: nil, distribution_rule: rule)

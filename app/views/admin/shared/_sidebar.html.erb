@@ -118,10 +118,33 @@
     <%# 4. Leads %>
     <% if can_access.call(:view, :leads) %>
       <li>
-        <%= link_to admin_leads_path, class: "ax-nav__link #{'active' if controller_name == 'leads'}" do %>
+        <%= link_to admin_leads_path(view: "list"), class: "ax-nav__link #{'active' if controller_name == 'leads' && params[:lead_pipeline_id].blank?}" do %>
           <i class="bi bi-person-badge"></i><span>Leads</span>
         <% end %>
       </li>
+
+      <%
+        sidebar_lead_pipelines = current_tenant.lead_pipelines.active.ordered.to_a
+        funnel_open = controller_name == "leads" && params[:lead_pipeline_id].present?
+      %>
+      <% if sidebar_lead_pipelines.any? %>
+        <li class="ax-nav__group <%= 'is-open' if funnel_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= funnel_open %>">
+          <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= funnel_open %>">
+            <i class="bi bi-diagram-3"></i><span>Funil</span>
+            <i class="bi bi-chevron-down ax-nav__chevron"></i>
+          </button>
+          <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless funnel_open %>>
+            <% sidebar_lead_pipelines.each do |pipeline| %>
+              <li>
+                <%= link_to admin_lead_pipeline_leads_path(pipeline, view: "kanban"),
+                            class: "ax-nav__link #{'active' if params[:lead_pipeline_id].to_i == pipeline.id}" do %>
+                  <i class="bi bi-kanban"></i><span><%= pipeline.name %></span>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </li>
+      <% end %>
     <% end %>
         </ul>
       </li>
@@ -341,6 +364,7 @@
         <li><%= link_to admin_meta_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'meta_integrations'}" do %><i class="bi bi-meta"></i><span>Meta Leads</span><% end %></li>
         <li><%= link_to admin_google_integration_path, class: "ax-nav__link #{'active' if controller_name == 'google_integrations'}" do %><i class="bi bi-google"></i><span>Google</span><% end %></li>
         <li><%= link_to admin_tracking_integration_path, class: "ax-nav__link #{'active' if controller_name == 'tracking_integrations'}" do %><i class="bi bi-bullseye"></i><span>Rastreamento</span><% end %></li>
+        <li><%= link_to admin_external_lead_integration_path, class: "ax-nav__link #{'active' if controller_name == 'external_lead_integrations'}" do %><i class="bi bi-arrow-left-right"></i><span>Migração de Leads</span><% end %></li>
         <li><%= link_to admin_storage_integration_path, class: "ax-nav__link #{'active' if controller_name == 'storage_integrations'}" do %><i class="bi bi-cloud-arrow-up"></i><span>Armazenamento</span><% end %></li>
       <% end %>
       <% if schedule_context %>

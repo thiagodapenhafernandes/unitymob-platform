@@ -1,5 +1,9 @@
-<% kanban_params = request.query_parameters.merge(view: "kanban", page: nil).compact %>
-<% list_params = request.query_parameters.merge(view: "list", page: nil).compact %>
+<%
+  lead_pipeline_param = params[:lead_pipeline_id].presence
+  lead_query_params = request.query_parameters.merge("lead_pipeline_id" => lead_pipeline_param).compact
+  kanban_params = lead_query_params.merge(view: "kanban", page: nil).compact
+  list_params = lead_query_params.merge(view: "list", page: nil).compact
+%>
 <%
   # Mapeia a classe contextual de status (Bootstrap legado em Lead.status_badge_class)
   # para os tons do design system. Mantém paridade com axToneFor() do lead_kanban_controller.
@@ -337,6 +341,43 @@
     justify-content: center;
   }
 
+  .ax-leads-board .ax-board__column {
+    max-height: calc(100vh - 222px);
+    min-height: min(520px, calc(100vh - 222px));
+  }
+
+  .ax-leads-board .ax-board__col-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-bottom: 88px;
+  }
+
+  .lead-kanban-loader {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 2px;
+  }
+
+  .lead-kanban-loader[hidden] {
+    display: none;
+  }
+
+  .lead-kanban-loader__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 6px 10px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--admin-muted, #64748b);
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  }
+
   @media (max-width: 991.98px) {
     .lead-list-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
@@ -443,8 +484,9 @@
 </style>
 
 <%
-  leads_heading_pills = [params[:status].presence || "Todos"]
+  leads_heading_pills = [@selected_pipeline&.name || "Todos os leads", params[:status].presence || "Todos"]
   lead_filter_labels = []
+  lead_filter_labels << "Funil" if params[:lead_pipeline_id].present?
   lead_filter_labels << "Busca" if @q.present?
   lead_filter_labels << "Status" if @status.present?
   lead_filter_labels << "Origem" if @origin.present?
@@ -457,15 +499,21 @@
   leads_heading_pills << "#{lead_active_filter_count} filtro(s)" if lead_active_filter_count.positive?
 
   leads_can_manage_statuses = defined?(can?) && can?(:manage, :catalogos)
-  lead_quick_base_params = request.query_parameters.except("page")
+  lead_quick_base_params = lead_query_params.except("page", :page)
 
   leads_heading_actions = capture do %>
     <% if leads_can_manage_statuses %>
       <button type="button"
               class="ax-workspace-heading__tool"
+              data-ax-modal-open="#leadPipelineCreateModal"
+              title="Criar novo funil">
+        <i class="bi bi-diagram-3"></i> Novo funil
+      </button>
+      <button type="button"
+              class="ax-workspace-heading__tool"
               data-ax-modal-open="#leadStatusBoardModal"
-              title="Configurar colunas do funil">
-        <i class="bi bi-gear"></i> Status
+              title="Editar funil e etapas">
+        <i class="bi bi-gear"></i> Etapas
       </button>
     <% end %>
     <div class="ax-view-toggle" aria-label="Alternar visualização">
@@ -511,15 +559,20 @@
         <% end %>
       </div>
       <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :lead_pipeline_id, label: "Funil",
+                              choices: @pipeline_options,
+                              select_options: { include_blank: "Todos os funis", selected: @selected_pipeline&.id }) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :status, label: "Etapa",
+                              choices: @status_options,
+                              select_options: { include_blank: "Todas as etapas", selected: @status }) %>
+        </div>
         <div class="ax-span-12">
           <%= ax_text_field(form: f, method: :q, label: "Buscar",
                             value: params[:q],
                             placeholder: "Nome, e-mail, telefone, origem ou produto...") %>
-        </div>
-        <div class="ax-span-6">
-          <%= ax_select_field(form: f, method: :status, label: "Status",
-                              choices: @status_options,
-                              select_options: { include_blank: "Todos os status", selected: @status }) %>
         </div>
         <div class="ax-span-6">
           <%= ax_select_field(form: f, method: :origin, label: "Origem",
@@ -582,22 +635,37 @@
     <% end %>
   <% end %>
 
+  <% lead_list_summary = capture do %>
+    <div class="ax-metric-grid lead-list-summary" aria-label="Resumo dos leads filtrados">
+      <%= ax_metric_card(label: "Total filtrado", value: number_with_delimiter(@total_leads.to_i)) %>
+      <%= ax_metric_card(label: "Novos", value: number_with_delimiter(@new_leads.to_i), badge: ax_badge("Entrada", tone: :amber)) %>
+      <%= ax_metric_card(label: "Em atendimento", value: number_with_delimiter(@in_service_leads.to_i)) %>
+      <%= ax_metric_card(label: "Sem corretor", value: number_with_delimiter(@unassigned_leads.to_i), badge: ax_badge("Atenção", tone: :red)) %>
+    </div>
+  <% end %>
+
 <div class="ax-leads-mobile-shell tw-flex tw-flex-col tw-gap-3"
      data-controller="ax-aside"
      data-ax-aside-storage-key-value="admin-leads-filters-collapsed">
-  <%= ax_workspace_heading(
-        eyebrow: "Funil de leads",
-        icon: "megaphone",
-        title: "Leads",
-        pills: leads_heading_pills,
-        subtitle: "Acompanhe o funil por status ou use a listagem tradicional.",
-        metrics: [
-          { value: number_with_delimiter(@total_leads.to_i), label: "no filtro" },
-          { value: number_with_delimiter(@new_leads.to_i), label: "novos" },
-          { value: number_with_delimiter(@unassigned_leads.to_i), label: "sem corretor" }
-        ],
-        actions: leads_heading_actions
-      ) %>
+  <% if @view_mode == "kanban" %>
+    <%= ax_workspace_heading(
+          eyebrow: "Funil de leads",
+          icon: "megaphone",
+          title: "Leads",
+          pills: leads_heading_pills,
+          subtitle: "Acompanhe o funil por status ou use a listagem tradicional.",
+          metrics: [
+            { value: number_with_delimiter(@total_leads.to_i), label: "no filtro" },
+            { value: number_with_delimiter(@new_leads.to_i), label: "novos" },
+            { value: number_with_delimiter(@unassigned_leads.to_i), label: "sem corretor" }
+          ],
+          actions: leads_heading_actions
+        ) %>
+  <% end %>
+
+  <% if @view_mode == "list" && @leads.any? %>
+    <%= lead_list_summary %>
+  <% end %>
 
   <details class="lead-filter-collapse">
     <summary class="lead-filter-collapse__summary">
@@ -656,11 +724,41 @@
               class_name: "ax-leads-board__column",
               empty_text: "Sem leads aqui. Verifique outros status ou ajuste os filtros."
             ) do %>
-          <% @leads_by_status[status].to_a.each do |lead| %>
+          <% column_leads = @leads_by_status[status].to_a %>
+          <% column_leads.each do |lead| %>
             <%= render "admin/leads/kanban_card",
                        lead: lead,
                        property: (@properties_by_id[lead.property_id] if lead.property_id.present?),
-                       status_tone: ax_status_tone %>
+                       status_tone: ax_status_tone,
+                       return_to_path: request.fullpath %>
+          <% end %>
+          <%
+            loaded_count = column_leads.size
+            total_count = @lead_counts_by_status[status].to_i
+            has_more = loaded_count < total_count
+            loader_params = lead_query_params.merge(
+              view: "kanban",
+              status: status,
+              offset: loaded_count,
+              return_to: request.fullpath,
+              page: nil
+            ).compact
+          %>
+          <%= tag.div(
+                class: "lead-kanban-loader",
+                hidden: !has_more,
+                data: {
+                  lead_kanban_target: "loader",
+                  lead_kanban_url: kanban_column_admin_leads_path(loader_params),
+                  lead_kanban_offset: loaded_count,
+                  lead_kanban_status: status,
+                  lead_kanban_has_more: has_more
+                }
+              ) do %>
+            <span class="lead-kanban-loader__pill">
+              <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+              Carregando mais leads
+            </span>
           <% end %>
         <% end %>
       <% end %>
@@ -668,13 +766,6 @@
   <% else %>
     <% if @leads.any? %>
       <div class="lead-list-workspace">
-        <div class="ax-metric-grid lead-list-summary" aria-label="Resumo dos leads filtrados">
-          <%= ax_metric_card(label: "Total filtrado", value: number_with_delimiter(@total_leads.to_i)) %>
-          <%= ax_metric_card(label: "Novos", value: number_with_delimiter(@new_leads.to_i), badge: ax_badge("Entrada", tone: :amber)) %>
-          <%= ax_metric_card(label: "Em atendimento", value: number_with_delimiter(@in_service_leads.to_i)) %>
-          <%= ax_metric_card(label: "Sem corretor", value: number_with_delimiter(@unassigned_leads.to_i), badge: ax_badge("Atenção", tone: :red)) %>
-        </div>
-
         <div class="lead-list" role="list">
           <% @leads.each do |lead| %>
             <%
@@ -785,5 +876,6 @@
 </div>
 
 <% if leads_can_manage_statuses %>
+  <%= render "admin/leads/pipeline_create_modal" %>
   <%= render "admin/leads/status_board_modal" %>
 <% end %>

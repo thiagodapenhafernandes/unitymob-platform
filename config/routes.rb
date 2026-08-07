@@ -56,6 +56,9 @@ Rails.application.routes.draw do
     end
     
     resources :attribute_options, only: [:index, :create, :update, :destroy]
+    resources :lead_pipelines, only: [:create, :update] do
+      resources :leads, only: [:index], controller: "leads"
+    end
     resources :lead_statuses, only: [:index] do
       post :bulk_update, on: :collection
     end
@@ -154,6 +157,13 @@ Rails.application.routes.draw do
       post :test_calendar
     end
     resource :tracking_integration, only: [:show, :update]
+    resource :external_lead_integration, only: [:show, :update] do
+      post :test_connection
+      post :subscribe
+      post :backfill
+      post :sync_now
+      delete :deactivate
+    end
     resource :storage_integration, only: [:show, :update] do
       post :test_connection
       post :provision_digital_ocean
@@ -225,6 +235,7 @@ Rails.application.routes.draw do
       delete "purge_attachment/:association/:attachment_id", on: :member, action: :purge_attachment, as: :purge_attachment
     end
     resources :leads, only: [:index, :new, :create, :show, :update, :destroy] do
+      get :kanban_column, on: :collection
       get :attend, on: :member
       post :log_contact, on: :member
       post :reprocess_interest, on: :member
@@ -595,6 +606,7 @@ Rails.application.routes.draw do
   # Webhooks
   namespace :webhooks do
     post "inbound/leads", to: "inbound#leads", as: :inbound_leads
+    post "external_leads/:token", to: "external_leads#receive", as: :external_lead
     post "meta", to: "meta#receive_leads"
     get "meta", to: "meta#receive_leads"
     get "whatsapp", to: "whatsapp#verify"

@@ -138,11 +138,15 @@
       </thead>
       <tbody>
         <% @captacoes.each do |c| %>
-          <% mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"] %>
+          <%
+            mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"]
+            captacao_title = captacao_identity_title(c)
+            captacao_subtitle = captacao_identity_subtitle(c)
+          %>
           <tr>
             <td>
-              <div class="ax-strong"><%= c.display_title %></div>
-              <% if c.city.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= c.city %></div><% end %>
+              <div class="ax-strong"><%= captacao_title %></div>
+              <% if captacao_subtitle.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= captacao_subtitle %></div><% end %>
             </td>
             <td><% if c.codigo.present? %><%= link_to c.codigo, admin_habitations_path(q: c.codigo) %><% else %>—<% end %></td>
             <td><span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span></td>
@@ -156,9 +160,9 @@
             <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(c.updated_at) %></td>
             <td class="ax-num">
               <% if c.completed? %>
-                <%= ax_icon_button label: "Ver captação #{c.display_title}", icon: "eye", url: admin_captacao_path(c) %>
+                <%= ax_icon_button label: "Ver captação #{captacao_title}", icon: "eye", url: admin_captacao_path(c) %>
               <% else %>
-                <%= ax_icon_button label: "Continuar captação #{c.display_title}", icon: "pencil", url: edit_admin_captacao_path(c) %>
+                <%= ax_icon_button label: "Continuar captação #{captacao_title}", icon: "pencil", url: edit_admin_captacao_path(c) %>
               <% end %>
             </td>
           </tr>
@@ -179,13 +183,17 @@
 
   <div class="captacoes-mobile-list" aria-label="Lista de captações">
     <% @captacoes.each do |c| %>
-      <% mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"] %>
+      <%
+        mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"]
+        captacao_title = captacao_identity_title(c)
+        captacao_subtitle = captacao_identity_subtitle(c)
+      %>
       <article class="captacao-mobile-card">
         <div class="captacao-mobile-card__main">
-          <div class="captacao-mobile-card__title"><%= c.display_title %></div>
+          <div class="captacao-mobile-card__title"><%= captacao_title %></div>
           <div class="captacao-mobile-card__meta">
             <% if c.codigo.present? %><span>Cod. <%= c.codigo %></span><% end %>
-            <% if c.city.present? %><span><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= c.city %></span><% end %>
+            <% if captacao_subtitle.present? %><span><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= captacao_subtitle %></span><% end %>
             <% if can_filter_intakes_by_broker? %><span><i class="bi bi-person" aria-hidden="true"></i> <%= c.corretor.name %></span><% end %>
           </div>
           <div class="captacao-mobile-card__badges">

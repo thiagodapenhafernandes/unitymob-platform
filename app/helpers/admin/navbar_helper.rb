@@ -29,6 +29,7 @@ module Admin::NavbarHelper
     "dwv_integrations" => "DWV",
     "google_integrations" => "Google",
     "tracking_integrations" => "Rastreamento",
+    "external_lead_integrations" => "Migração de Leads",
     "storage_integrations" => "Armazenamento",
     "scheduling_integrations" => "Agendamento",
     "ai_integrations" => "IA",

@@ -6,20 +6,20 @@ class ContactsController < ApplicationController
   end
   
   def create
-    c2s_intent = contact_params[:interest_intent].presence || "ambos"
-    c2s_queue = case c2s_intent
-                when "vender" then "c2s_venda"
-                when "locar" then "c2s_locacao"
-                else "c2s_ambos"
-                end
+    lead_intent = contact_params[:interest_intent].presence || "ambos"
+    lead_queue = case lead_intent
+                 when "vender" then "lead_venda"
+                 when "locar" then "lead_locacao"
+                 else "lead_ambos"
+                 end
 
     payload = contact_params.to_h
     payload["phone"] = Phones::Normalizer.call(payload["phone"]).to_s if payload["phone"].present?
 
     # Enviar webhook
     WebhookService.send_form_data("contact_form", payload.merge(
-      c2s_intent: c2s_intent,
-      c2s_queue: c2s_queue
+      lead_intent: lead_intent,
+      lead_queue: lead_queue
     ), request: request)
     
     # Aqui você pode adicionar lógica para enviar email, salvar no banco, etc.
