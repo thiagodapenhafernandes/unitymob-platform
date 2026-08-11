@@ -15,19 +15,30 @@ class SeedMissingHabitationFeatureOptions < ActiveRecord::Migration[7.1]
 
   def up
     FEATURE_NAMES.each do |name|
-      AttributeOption.find_or_create_by!(
-        context: "habitation",
-        category: "feature",
-        name: name
-      )
+      next if select_value(<<~SQL.squish)
+        SELECT 1
+          FROM attribute_options
+         WHERE context = 'habitation'
+           AND category = 'feature'
+           AND lower(name) = lower(#{connection.quote(name)})
+         LIMIT 1
+      SQL
+
+      execute(<<~SQL.squish)
+        INSERT INTO attribute_options (context, category, name, created_at, updated_at)
+        VALUES ('habitation', 'feature', #{connection.quote(name)}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      SQL
     end
   end
 
   def down
-    AttributeOption.where(
-      context: "habitation",
-      category: "feature",
-      name: FEATURE_NAMES
-    ).destroy_all
+    quoted_names = FEATURE_NAMES.map { |name| connection.quote(name) }.join(", ")
+
+    execute(<<~SQL.squish)
+      DELETE FROM attribute_options
+       WHERE context = 'habitation'
+         AND category = 'feature'
+         AND name IN (#{quoted_names})
+    SQL
   end
 end
