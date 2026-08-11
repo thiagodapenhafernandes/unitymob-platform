@@ -68,7 +68,7 @@ class RepairDwvApiDefaultsAndRecurringTasks < ActiveRecord::Migration[7.1]
     keys = attrs.keys
     execute(<<~SQL.squish)
       INSERT INTO settings (#{keys.map { |key| quote_column_name(key) }.join(", ")})
-      VALUES (#{keys.map { |key| quote(attrs[key]) }.join(", ")})
+      VALUES (#{keys.map { |key| attrs[key].nil? ? "NULL" : quote(attrs[key]) }.join(", ")})
     SQL
   end
 end
