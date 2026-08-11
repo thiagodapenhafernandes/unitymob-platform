@@ -5,12 +5,22 @@ class AddDwvPayloadToHabitations < ActiveRecord::Migration[7.1]
 
     return unless table_exists?(:settings)
 
-    setting = Setting.find_or_initialize_by(key: "dwv_sync_max_pages")
-    if setting.value.to_i <= 10
-      setting.value = "100"
-      setting.description = "Máximo de páginas da sincronização DWV"
-      setting.save!
-    end
+    execute(<<~SQL)
+      UPDATE settings
+      SET value = '100',
+          description = 'Máximo de páginas da sincronização DWV',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE key = 'dwv_sync_max_pages'
+        AND COALESCE(NULLIF(value, '')::integer, 0) <= 10
+    SQL
+
+    execute(<<~SQL)
+      INSERT INTO settings (key, value, description, created_at, updated_at)
+      SELECT 'dwv_sync_max_pages', '100', 'Máximo de páginas da sincronização DWV', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      WHERE NOT EXISTS (
+        SELECT 1 FROM settings WHERE key = 'dwv_sync_max_pages'
+      )
+    SQL
   end
 
   def down
