@@ -70,6 +70,13 @@ RSpec.describe PublicMaps::PropertyPresentation do
     expect(presentation.send(:exact_coordinates)).to eq([-27.0032358, -48.618065])
   end
 
+  it "não exibe mapa quando nem endereço nem imóvel têm coordenadas" do
+    property.address.update!(latitude: nil, longitude: nil)
+    property.update_columns(latitude: nil, longitude: nil)
+
+    expect(described_class.new(property.reload, setting: setting)).not_to be_visible
+  end
+
   it "não libera vista da rua pelo padrão seguro" do
     expect(described_class.new(property, setting: setting)).not_to be_street_view_enabled
   end

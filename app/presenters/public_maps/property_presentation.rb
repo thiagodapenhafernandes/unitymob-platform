@@ -90,6 +90,7 @@ module PublicMaps
 
     def exact_coordinates
       latitude, longitude = coordinate_candidates
+      return unless latitude && longitude
       return unless latitude.between?(-90, 90) && longitude.between?(-180, 180)
       return if latitude.zero? && longitude.zero?
 
