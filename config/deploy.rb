@@ -25,6 +25,7 @@ set :shared_dirs, fetch(:shared_dirs, []) | [
 set :shared_files, fetch(:shared_files, []) | [
   "config/database.yml",
   "config/master.key",
+  "config/credentials.yml.enc",
   ".env"
 ]
 
