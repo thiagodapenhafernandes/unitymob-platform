@@ -2,10 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["search", "list", "filterButton"]
+  static values = { initialFilter: String }
 
   connect() {
     this.handleKeydown = this.handleKeydown.bind(this)
-    this.activeFilter = "all"
+    this.activeFilter = this.initialFilterValue || "all"
     this.observer = new MutationObserver(() => this.apply())
     if (this.hasListTarget) {
       this.observer.observe(this.listTarget, { childList: true })
@@ -38,6 +39,7 @@ export default class extends Controller {
     this.filterButtonTargets.forEach((button) => {
       button.classList.toggle("is-active", button.dataset.filter === this.activeFilter)
     })
+    this.applyFilterUrl()
     this.apply()
   }
 
@@ -60,6 +62,8 @@ export default class extends Controller {
     switch (this.activeFilter) {
       case "unread":
         return item.dataset.unread === "true"
+      case "pending_reply":
+        return item.dataset.pendingReply === "true"
       case "unlinked":
         return item.dataset.lead !== "true"
       default:
@@ -77,6 +81,18 @@ export default class extends Controller {
     if (!activeItem || !this.hasListTarget) return
 
     activeItem.hidden = false
+  }
+
+  applyFilterUrl() {
+    if (!window.history?.replaceState) return
+
+    const url = new URL(window.location.href)
+    if (this.activeFilter === "all") {
+      url.searchParams.delete("filter")
+    } else {
+      url.searchParams.set("filter", this.activeFilter)
+    }
+    window.history.replaceState(window.history.state, "", url)
   }
 
   handleKeydown(event) {

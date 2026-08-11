@@ -3,6 +3,10 @@ class Admin::LeadsController < Admin::BaseController
   KANBAN_COLUMN_PAGE_SIZE = 5
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
+  CONTACT_ACTIVITY_KINDS = %w[
+    accepted note whatsapp_out appointment_created appointment_done
+    proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
+  ].freeze
 
   before_action -> { check_permission!(:view, :leads) }
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
@@ -301,11 +305,13 @@ class Admin::LeadsController < Admin::BaseController
     @status = params[:status]
     @pipeline_id = @selected_pipeline&.id
     @origin = params[:origin]
+    @attribution_channel = params[:attribution_channel]
     @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
     @broker_id = params[:broker_id]
     @property_filter = params[:property_filter]
     @property_q = params[:property_q].to_s.strip
     @contact_filter = params[:contact_filter]
+    @attention_filter = params[:attention_filter]
     @start_date = params[:start_date]
     @end_date = params[:end_date]
     @parsed_start_date = nil
@@ -326,10 +332,12 @@ class Admin::LeadsController < Admin::BaseController
     scope = scope.where(leads: { lead_pipeline_id: @selected_pipeline.id }) if @selected_pipeline.present?
     scope = scope.where(leads: { status: Lead.status_value(@status, tenant: current_tenant) }) if @status.present?
     scope = scope.by_origin(@origin)
+    scope = apply_attribution_channel_filter(scope)
     scope = scope.with_any_tags(@tags)
     scope = apply_broker_filter(scope)
     scope = apply_property_filter(scope)
     scope = apply_contact_filter(scope)
+    scope = apply_attention_filter(scope)
     apply_created_at_filter(scope)
   end
 
@@ -388,6 +396,50 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
+  def apply_attribution_channel_filter(scope)
+    case @attribution_channel.to_s
+    when ""
+      scope
+    when "direct"
+      scope.where(attribution_channel: [nil, "", "direct"])
+    else
+      scope.where(attribution_channel: @attribution_channel)
+    end
+  end
+
+  def apply_attention_filter(scope)
+    case @attention_filter.to_s
+    when "requires_action"
+      scope.where(status: active_lead_status_values_with_blank).where(attention_leads_sql)
+    when "stalled"
+      scope.where(status: active_lead_status_values_with_blank).where("leads.updated_at < ?", 2.days.ago)
+    when "unassigned"
+      scope.where(admin_user_id: nil, status: active_lead_status_values_with_blank)
+    when "holding"
+      scope.holding
+    when "no_first_contact"
+      scope.where(status: active_lead_status_values_with_blank)
+        .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
+    when "sla_overdue"
+      scope.where(status: active_lead_status_values_with_blank)
+        .where("leads.created_at < ?", first_contact_sla_hours.hours.ago)
+        .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
+    when "with_opportunity"
+      scope.where(
+        "leads.status = :closed OR leads.id IN (:appointment_ids) OR leads.id IN (:proposal_ids)",
+        closed: Lead.status_value(:concluido),
+        appointment_ids: Appointment.where(kind: "visita").select(:lead_id),
+        proposal_ids: Proposal.where.not(status: "rascunho").select(:lead_id)
+      )
+    else
+      scope
+    end
+  end
+
+  def first_contact_sla_hours
+    @first_contact_sla_hours ||= LeadSetting.instance(tenant: current_tenant).first_contact_sla_hours_value
+  end
+
   def apply_created_at_filter(scope)
     if parsed_start_date.present?
       scope = scope.where("leads.created_at >= ?", parsed_start_date.beginning_of_day)
@@ -406,6 +458,22 @@ class Admin::LeadsController < Admin::BaseController
 
   def parsed_end_date
     @parsed_end_date ||= parse_filter_date(@end_date)
+  end
+
+  def active_lead_status_values
+    Lead::LEGACY_STATUSES - [Lead.status_value(:descartado), Lead.status_value(:concluido)]
+  end
+
+  def active_lead_status_values_with_blank
+    active_lead_status_values + [nil]
+  end
+
+  def attention_leads_sql
+    ActiveRecord::Base.sanitize_sql_array([
+      "leads.status = ? OR leads.admin_user_id IS NULL OR leads.updated_at < ?",
+      Lead.status_value(:represado),
+      2.days.ago
+    ])
   end
 
   def parse_filter_date(value)

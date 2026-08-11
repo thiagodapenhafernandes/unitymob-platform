@@ -41,7 +41,16 @@
         <%= form_with url: public_form_submissions_path(form.slug),
                       scope: :public_form_submission,
                       method: :post,
-                      html: { class: "public-form-modal__form", data: { action: "submit->public-form-modal#submit", public_form_modal_target: "form" } } do %>
+                      html: {
+                        class: "public-form-modal__form",
+                        data: {
+                          action: "submit->public-form-modal#submit",
+                          public_form_modal_target: "form",
+                          public_interest_form: "public_form",
+                          public_form_slug: form.slug,
+                          public_form_title: form.title
+                        }
+                      } do %>
           <%= hidden_field_tag :page_url, request.original_url %>
 
           <div class="public-form-modal__grid">

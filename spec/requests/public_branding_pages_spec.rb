@@ -43,6 +43,65 @@ RSpec.describe "Public branding pages", type: :request do
     expect(response.body).not_to include("balneariocamboriu.sc.gov.br")
   end
 
+  it "prioriza os links rápidos cadastrados no rodapé sobre a lista automática" do
+    footer_setting = FooterSetting.instance(tenant: Tenant.default)
+    footer_setting.footer_links.create!(label: "Página institucional", url: "/sobre", position: 1)
+    footer_setting.footer_links.create!(label: "Atendimento direto", url: "/contato", position: 2)
+
+    allow(Footer::QuickLinksService).to receive(:call).and_return([
+      Footer::QuickLinksService::Link.new(label: "Link automático", url: "/automatico")
+    ])
+
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    footer_links = html.css("footer a").map { |link| [link.text.squish, link["href"]] }
+
+    expect(response).to have_http_status(:ok)
+    expect(footer_links).to include(["Página institucional", "/sobre"], ["Atendimento direto", "/contato"])
+    expect(footer_links).not_to include(["Link automático", "/automatico"])
+    expect(Footer::QuickLinksService).not_to have_received(:call)
+  end
+
+  it "usa os dados de contato como fallback no footer público" do
+    tenant = Tenant.default
+    FooterSetting.instance(tenant: tenant).update!(whatsapp: nil, email: nil)
+    ContactSetting.instance(tenant: tenant).update!(
+      whatsapp_primary: "(11) 99999-1111",
+      whatsapp_secondary: "(11) 98888-2222",
+      phone: "(11) 3000-3333",
+      email_primary: "atendimento@example.com",
+      facebook_url: "https://facebook.com/imobiliaria",
+      instagram_url: "https://instagram.com/imobiliaria",
+      youtube_url: "https://youtube.com/@imobiliaria",
+      blog_url: "https://imobiliaria.example.com/blog",
+      linkedin_url: "https://linkedin.com/company/imobiliaria"
+    )
+
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    footer = html.at_css("footer")
+    footer_hrefs = footer.css("a").map { |link| link["href"] }
+    social_hrefs = footer.css("a[aria-label]").map { |link| link["href"] }
+
+    expect(response).to have_http_status(:ok)
+    expect(footer_hrefs).to include(
+      "https://wa.me/5511999991111",
+      "https://wa.me/5511988882222",
+      "tel:+551130003333",
+      "mailto:atendimento@example.com"
+    )
+    expect(footer.text).to include("atendimento@example.com")
+    expect(social_hrefs).to include(
+      "https://facebook.com/imobiliaria",
+      "https://instagram.com/imobiliaria",
+      "https://youtube.com/@imobiliaria",
+      "https://imobiliaria.example.com/blog",
+      "https://linkedin.com/company/imobiliaria"
+    )
+  end
+
   it "renderiza o tema público inferido pela identidade do tenant com tokens de marca" do
     tenant = Tenant.default
     tenant.update!(name: "Conexão Imobiliária")
@@ -82,6 +141,75 @@ RSpec.describe "Public branding pages", type: :request do
     header = Nokogiri::HTML(response.body).at_css("header[data-controller='navbar']")
     expect(header["style"]).to include("background-color: rgba(0,9,16,0.4);")
     expect(header["style"]).to include("backdrop-filter: blur(15px);")
+  end
+
+  it "renderiza CSS restrito para customização da logo pública" do
+    layout_setting = LayoutSetting.instance(tenant: Tenant.default)
+    layout_setting.logo.attach(
+      io: StringIO.new(%(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40"><text x="0" y="24">Logo</text></svg>)),
+      filename: "logo.svg",
+      content_type: "image/svg+xml"
+    )
+    layout_setting.update!(
+      custom_logo_css: <<~CSS
+        .custom-logo::after { content: "Prime"; display: block; }
+        .custom-logo img { width: 210px; object-fit: contain; }
+        body { display: none; }
+      CSS
+    )
+
+    get root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('class="custom-logo flex items-center"')
+    expect(response.body).to include('id="custom-logo-css"')
+    expect(response.body).to include('.custom-logo::after { content: "Prime"; display: block; }')
+    expect(response.body).to include(".custom-logo img { width: 210px; object-fit: contain; }")
+    expect(response.body).not_to include("body { display: none; }")
+  end
+
+  it "renderiza busca global por drawer nas páginas públicas" do
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    button = html.at_css(".public-global-search__button")
+    drawer = html.at_css("#public-global-search-drawer")
+    form = drawer.at_css("form")
+
+    expect(response).to have_http_status(:ok)
+    expect(button.text.squish).to eq("Filtrar imóveis")
+    expect(button["data-action"]).to include("global-search-drawer#open")
+    expect(drawer["aria-hidden"]).to eq("true")
+    expect(form["action"]).to eq(habitations_path)
+    expect(form.at_css('input[name="transaction_type"]')["value"]).to eq("venda")
+    expect(form.at_css('input[name="search"]')).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="frente_mar"]')).to be_present
+    expect(form.css('select[name="min_bedrooms"] option').map(&:text)).to eq(["Todos", "1", "2", "3", "4+"])
+    expect(form.at_css(".public-global-search__advanced")).to be_present
+    expect(form.at_css(".public-global-search__advanced-toggle")["aria-expanded"]).to eq("false")
+    expect(form.at_css("#public-global-search-advanced-panel")).to be_present
+    expect(form.text).to include("Características do imóvel", "Características do condomínio")
+    expect(form.at_css('input[name="characteristics[]"][value="sacada"]')).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="piscina"]')).to be_present
+  end
+
+  it "renderiza crédito global da Unitymob dentro do footer público" do
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    footer = html.at_css("footer")
+    credit = footer.at_css(".public-unitymob-credit")
+    link = credit.at_css('a[href="https://unitymob.com.br/"]')
+
+    expect(response).to have_http_status(:ok)
+    expect(footer).to be_present
+    expect(credit.text.squish).to eq("Developed with care by Unitymob")
+    expect(credit["class"]).to include("text-white/70")
+    expect(credit["class"]).not_to include("bg-white")
+    expect(link.text).to eq("Unitymob")
+    expect(link["target"]).to eq("_blank")
+    expect(link["rel"]).to include("noopener", "noreferrer")
+    expect(link["style"]).to include("#65f4c7")
   end
 
   it "não usa identidade pública da Salute quando o tenant ativo no dev não tem logo próprio" do

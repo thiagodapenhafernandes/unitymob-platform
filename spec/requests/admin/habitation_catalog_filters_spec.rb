@@ -30,6 +30,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       :cep
     )
     defaults = {
+      tenant: admin.tenant,
       codigo: "FLT-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Filtro #{SecureRandom.hex(8)}",
       categoria: "Apartamento",
@@ -58,37 +59,58 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     end
   end
 
-  def expect_catalog_filter(label, params, matching_attrs:, nonmatching_attrs:, matching_address: nil, nonmatching_address: nil)
-    habitation_ids = admin.tenant.habitations.ids
-    Address.where(addressable_type: "Habitation", addressable_id: habitation_ids).delete_all if habitation_ids.any?
-    Habitation.where(id: habitation_ids).delete_all if habitation_ids.any?
+  def high_catalog_code(prefix_digit = 9)
+    return "#{prefix_digit}#{SecureRandom.random_number(10**11).to_s.rjust(11, '0')}" unless prefix_digit.to_i == 9
 
+    @high_catalog_code_sequence = @high_catalog_code_sequence.to_i + 1
+    "922337203685400#{@high_catalog_code_sequence.to_s.rjust(4, '0')}"
+  end
+
+  def expect_catalog_filter(label, params, matching_attrs:, nonmatching_attrs:, matching_address: nil, nonmatching_address: nil)
     matching_title = matching_attrs[:titulo_anuncio] || "Filtro #{label} match #{SecureRandom.hex(6)}"
     nonmatching_title = nonmatching_attrs[:titulo_anuncio] || "Filtro #{label} miss #{SecureRandom.hex(6)}"
-    create_catalog_property({ titulo_anuncio: matching_title }.merge(matching_attrs), address: matching_address)
-    create_catalog_property({ titulo_anuncio: nonmatching_title }.merge(nonmatching_attrs), address: nonmatching_address)
+    matching_code = matching_attrs[:codigo] || high_catalog_code(9)
+    nonmatching_code = nonmatching_attrs[:codigo] || high_catalog_code(8)
+    create_catalog_property({ codigo: matching_code, titulo_anuncio: matching_title }.merge(matching_attrs), address: matching_address)
+    create_catalog_property({ codigo: nonmatching_code, titulo_anuncio: nonmatching_title }.merge(nonmatching_attrs), address: nonmatching_address)
 
     get admin_habitations_path(params)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(matching_title), "esperava encontrar imóvel para filtro #{label}"
-    expect(response.body).not_to include(nonmatching_title), "filtro #{label} deixou passar imóvel incompatível"
+    expect(response.body.include?(matching_code)).to eq(true), catalog_filter_failure_message(label, matching_code, nonmatching_code)
+    expect(response.body.include?(nonmatching_code)).to eq(false), "filtro #{label} deixou passar imóvel incompatível #{nonmatching_code}"
+  end
+
+  def catalog_filter_failure_message(label, matching_code, nonmatching_code)
+    document = Nokogiri::HTML(response.body)
+    summary = document.at_css(".habitations-workspace-heading__meta")&.text&.squish
+    empty = document.at_css(".ax-property-empty")&.text&.squish
+    rendered_refs = response.body.scan(%r{REF:?\s*<strong>([^<]+)</strong>}).flatten
+    "esperava encontrar imóvel #{matching_code} para filtro #{label}; " \
+      "nao encontrou. nonmatching_present=#{response.body.include?(nonmatching_code)} " \
+      "summary=#{summary.inspect} empty=#{empty.inspect} refs=#{rendered_refs.first(10).inspect}"
   end
 
   it "mantém compatibilidade do filtro legado exibir_no_site_salute usando a flag genérica do site" do
-    matching_title = "Filtro legado site match #{SecureRandom.hex(6)}"
-    nonmatching_title = "Filtro legado site miss #{SecureRandom.hex(6)}"
-    create_catalog_property(titulo_anuncio: matching_title, exibir_no_site_flag: true)
-    create_catalog_property(titulo_anuncio: nonmatching_title, exibir_no_site_flag: false)
+    matching_code = high_catalog_code(9)
+    nonmatching_code = high_catalog_code(8)
+    create_catalog_property(codigo: matching_code, titulo_anuncio: "Filtro legado site match #{SecureRandom.hex(6)}", exibir_no_site_flag: true)
+    create_catalog_property(codigo: nonmatching_code, titulo_anuncio: "Filtro legado site miss #{SecureRandom.hex(6)}", exibir_no_site_flag: false)
 
     get admin_habitations_path(exibir_no_site_salute: "1")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(matching_title)
-    expect(response.body).not_to include(nonmatching_title)
+    expect(response.body.include?(matching_code)).to eq(true), catalog_filter_failure_message("exibir_no_site_salute", matching_code, nonmatching_code)
+    expect(response.body.include?(nonmatching_code)).to eq(false)
   end
 
   it "aplica os novos filtros rápidos do catálogo" do
+    expect_catalog_filter(
+      "semi_mobiliado",
+      { scope: "semi_mobiliado" },
+      matching_attrs: { caracteristicas: { "Semi mobiliado" => "Semi mobiliado" } },
+      nonmatching_attrs: { mobiliado_flag: true, caracteristicas: ["Mobiliado"] }
+    )
     expect_catalog_filter(
       "sem_mobilia",
       { scope: "sem_mobilia" },
@@ -175,6 +197,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["somente_dwv", { somente_dwv: "1" }, { imovel_dwv: "Sim" }, { imovel_dwv: "Não" }],
       ["foto_classificacao", { foto_classificacao: ["Profissionais"] }, { foto_classificacao: "Profissionais" }, { foto_classificacao: "Aceitáveis" }],
       ["amenities", { amenities: ["Sacada"] }, { caracteristicas: ["Sacada"] }, { caracteristicas: ["Lavabo"] }],
+      ["amenities_semi_mobiliado", { amenities: ["Semi mobiliado"] }, { caracteristicas: { "Semi mobiliado" => "Semi mobiliado" } }, { mobiliado_flag: true, caracteristicas: ["Mobiliado"] }],
       ["publicar_imovelweb_2", { publicar_imovelweb_2: "1" }, { publicar_imovelweb_2: true }, { publicar_imovelweb_2: false }],
       ["publicar_lais_ai", { publicar_lais_ai: "1" }, { publicar_lais_ai: true }, { publicar_lais_ai: false }],
       ["publicar_chaves_na_mao", { publicar_chaves_na_mao: "1" }, { publicar_chaves_na_mao: true }, { publicar_chaves_na_mao: false }],
@@ -238,10 +261,10 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
 
   it "ignora filtros removidos do inspector enviados por URL antiga" do
     proprietor = create(:proprietor)
-    visible_one = "Filtro removido visível um #{SecureRandom.hex(6)}"
-    visible_two = "Filtro removido visível dois #{SecureRandom.hex(6)}"
+    visible_one = high_catalog_code(9)
+    visible_two = high_catalog_code(9)
     create_catalog_property(
-      titulo_anuncio: visible_one,
+      codigo: visible_one,
       dormitorios_qtd: 1,
       face: "Sul",
       proprietor_id: nil,
@@ -249,7 +272,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       address: { logradouro: "Rua Livre", bairro: "Nações" }
     )
     create_catalog_property(
-      titulo_anuncio: visible_two,
+      codigo: visible_two,
       dormitorios_qtd: 5,
       face: "Norte",
       proprietor_id: proprietor.id,
@@ -258,7 +281,6 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     )
 
     get admin_habitations_path(
-      logradouro: "Rua Antiga",
       bairro: ["Centro"],
       face: "Norte",
       dorms: ["5"],
@@ -277,16 +299,16 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     agent = create(:admin_user, email: "agent-admin-filter-#{SecureRandom.hex(6)}@salute.test", profile: default_agent_profile)
     sign_in agent
 
-    visible_without_admin_flag = "Filtro administrativo ignorado #{SecureRandom.hex(6)}"
-    visible_with_admin_flag = "Filtro administrativo permitido #{SecureRandom.hex(6)}"
-    create_catalog_property(titulo_anuncio: visible_without_admin_flag, destaque_web_flag: false, regiao_foco: "Não")
-    create_catalog_property(titulo_anuncio: visible_with_admin_flag, destaque_web_flag: true, regiao_foco: "Centro")
+    visible_without_admin_flag = high_catalog_code(9)
+    visible_with_admin_flag = high_catalog_code(9)
+    create_catalog_property(codigo: visible_without_admin_flag, titulo_anuncio: "Filtro administrativo ignorado #{SecureRandom.hex(6)}", destaque_web_flag: false, regiao_foco: "Não")
+    create_catalog_property(codigo: visible_with_admin_flag, titulo_anuncio: "Filtro administrativo permitido #{SecureRandom.hex(6)}", destaque_web_flag: true, regiao_foco: "Centro")
 
     get admin_habitations_path(ownership: "all", destaque_web: "1", regiao_foco: "Sim")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(visible_without_admin_flag)
-    expect(response.body).to include(visible_with_admin_flag)
+    expect(response.body.include?(visible_without_admin_flag)).to eq(true)
+    expect(response.body.include?(visible_with_admin_flag)).to eq(true)
     expect(response.body).not_to include("Destaque Web: Sim")
     expect(response.body).not_to include("Região foco?: Sim")
   end

@@ -144,9 +144,9 @@ RSpec.describe Habitation::SearchScopes, type: :model do
         tipo: "Unitário",
         codigo_empreendimento: development.codigo,
         pictures: [],
-        fotos_empreendimento: [{ "url" => "https://example.com/development-payload.jpg" }],
-        use_development_photos_flag: false
+        fotos_empreendimento: [{ "url" => "https://example.com/development-payload.jpg" }]
       )
+      unit.update_column(:use_development_photos_flag, false)
 
       expect(Habitation.with_photos).not_to include(unit)
     end
@@ -188,9 +188,9 @@ RSpec.describe Habitation::SearchScopes, type: :model do
         codigo: "UNIT-NO-FALLBACK",
         codigo_empreendimento: development.codigo,
         pictures: [],
-        fotos_empreendimento: [],
-        use_development_photos_flag: false
+        fotos_empreendimento: []
       )
+      unit.update_column(:use_development_photos_flag, false)
 
       expect(Habitation.with_photos).not_to include(unit)
     end
@@ -289,12 +289,33 @@ RSpec.describe Habitation::SearchScopes, type: :model do
     end
   end
 
+  describe ".semi_mobiliado" do
+    it "matches semi furnished records across imported feature fields" do
+      object_feature = create(:habitation, caracteristicas: { "Semi mobiliado" => "Semi mobiliado" })
+      array_feature = create(:habitation, caracteristicas: ["Semi-mobiliado"])
+      unique_feature = create(:habitation, caracteristica_unica: ["Semi mobiliada"])
+      create(:habitation, mobiliado_flag: true, caracteristicas: ["Mobiliado"])
+
+      expect(Habitation.semi_mobiliado).to contain_exactly(object_feature, array_feature, unique_feature)
+    end
+  end
+
   describe ".advanced_search" do
     it "filters by dependencia de empregada characteristic" do
       matching = create(:habitation, caracteristicas: ["Dep. Empregada"])
       non_matching = create(:habitation, caracteristicas: ["Lavanderia"])
 
       result = Habitation.advanced_search(characteristics: ["dependencia_empregada"])
+
+      expect(result).to include(matching)
+      expect(result).not_to include(non_matching)
+    end
+
+    it "filters by semi furnished characteristic without matching furnished only records" do
+      matching = create(:habitation, caracteristicas: { "Semi mobiliado" => "Semi mobiliado" })
+      non_matching = create(:habitation, mobiliado_flag: true, caracteristicas: ["Mobiliado"])
+
+      result = Habitation.advanced_search(characteristics: ["semi_mobiliado"])
 
       expect(result).to include(matching)
       expect(result).not_to include(non_matching)

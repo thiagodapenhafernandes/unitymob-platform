@@ -162,6 +162,25 @@
                   </div>
                 </div>
               </div>
+
+              <div class="ax-field layout-settings-custom-logo-css">
+                <%= ax_field_label(f, :custom_logo_css, text: "CSS da logo pública") %>
+                <div class="layout-settings-css-editor" data-controller="css-micro-editor">
+                  <pre class="layout-settings-css-editor__highlight" aria-hidden="true"><code data-css-micro-editor-target="highlight"></code></pre>
+                  <%= f.text_area(
+                        :custom_logo_css,
+                        rows: 8,
+                        class: "ax-control layout-settings-css-editor__input",
+                        spellcheck: false,
+                        placeholder: ".custom-logo img {\n  width: 170px;\n  object-fit: contain;\n}\n\n@media (max-width: 767px) {\n  .custom-logo img {\n    width: 140px;\n  }\n}\n\n@media (min-width: 1080px) {\n  .custom-logo::before {\n    content: \"\";\n    display: block;\n  }\n}",
+                        data: {
+                          css_micro_editor_target: "input",
+                          action: "input->css-micro-editor#sync scroll->css-micro-editor#syncScroll keydown->css-micro-editor#handleKeydown"
+                        }
+                      ) %>
+                </div>
+                <p class="ax-field__hint">Micro editor limitado aos seletores <code>.custom-logo</code>, <code>.custom-logo::before</code>, <code>.custom-logo::after</code> e <code>.custom-logo img</code>. Aceita <code>@media (max-width: 767px)</code> e <code>@media (min-width: 1080px)</code>.</p>
+              </div>
             </div>
 
             <div class="layout-settings-brand-preview">

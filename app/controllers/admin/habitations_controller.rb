@@ -1602,15 +1602,14 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def apply_dashboard_quality_filter(scope, filter)
+    return scope.where.not(id: Habitation.with_photos.select(:id)) if filter == "missing_photos"
+    return scope.without_operational_price if filter == "missing_price"
+
     scope = scope.publicly_listable if filter.present?
 
     case filter
     when "missing_address"
       scope.without_operational_address
-    when "missing_photos"
-      scope.without_operational_photos
-    when "missing_price"
-      scope.without_operational_price
     when "stale"
       scope.where("COALESCE(habitations.data_atualizacao_crm, habitations.updated_at) < ?", 90.days.ago)
     else
@@ -2360,6 +2359,8 @@ class Admin::HabitationsController < Admin::BaseController
       scope.where("unaccent(COALESCE(habitations.situacao, '')) ILIKE unaccent(?) OR unaccent(COALESCE(habitations.situacao, '')) = unaccent(?)", "%Planta%", "Construção")
     when "mobiliado"
       apply_catalog_text_feature_filter(scope, "mobiliado", boolean_column: :mobiliado_flag)
+    when "semi_mobiliado"
+      scope.semi_mobiliado
     when "sem_mobilia"
       apply_catalog_text_feature_filter(scope, "sem mob", boolean_column: :sem_mobilia_flag)
     when "diferenciado"

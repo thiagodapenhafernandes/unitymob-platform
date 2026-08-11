@@ -13,6 +13,7 @@ import ClickableCardController from "controllers/clickable_card_controller"
 import CodeSearchController from "controllers/code_search_controller"
 import FiltersController from "controllers/filters_controller"
 import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
+import GlobalSearchDrawerController from "controllers/global_search_drawer_controller"
 import HeroSliderController from "controllers/hero_slider_controller"
 import LeadCaptureController from "controllers/lead_capture_controller"
 import LgpdConsentController from "controllers/lgpd_consent_controller"
@@ -24,6 +25,7 @@ import PhoneInputController from "controllers/phone_input_controller"
 import PropertyShareInterestController from "controllers/property_share_interest_controller"
 import PropertyCarouselController from "controllers/property_carousel_controller"
 import PublicPropertyMapController from "controllers/public_property_map_controller"
+import PublicInterestTrackerController from "controllers/public_interest_tracker_controller"
 import PublicFormModalController from "controllers/public_form_modal_controller"
 import SearchFormController from "controllers/search_form_controller"
 import SearchTabsController from "controllers/search_tabs_controller"
@@ -38,6 +40,7 @@ application.register("clickable-card", ClickableCardController)
 application.register("code-search", CodeSearchController)
 application.register("filters", FiltersController)
 application.register("fancybox-gallery", FancyboxGalleryController)
+application.register("global-search-drawer", GlobalSearchDrawerController)
 application.register("hero-slider", HeroSliderController)
 application.register("lead-capture", LeadCaptureController)
 application.register("lgpd-consent", LgpdConsentController)
@@ -49,6 +52,7 @@ application.register("phone-input", PhoneInputController)
 application.register("property-share-interest", PropertyShareInterestController)
 application.register("property-carousel", PropertyCarouselController)
 application.register("public-property-map", PublicPropertyMapController)
+application.register("public-interest-tracker", PublicInterestTrackerController)
 application.register("public-form-modal", PublicFormModalController)
 application.register("search-form", SearchFormController)
 application.register("search-tabs", SearchTabsController)

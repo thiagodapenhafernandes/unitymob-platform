@@ -34,8 +34,38 @@ RSpec.describe "Public navigation events", type: :request do
       expect(response).to have_http_status(:ok)
       event = PublicNavigationEvent.last
       expect(event.name).to eq("property_view")
+      expect(event.tenant).to eq(habitation.tenant)
+      expect(event.public_navigation_session.tenant).to eq(habitation.tenant)
       expect(event.habitation).to eq(habitation)
       expect(event.property_snapshot["city"]).to eq("Balneário Camboriú")
+    end
+
+    it "records a home section click with metadata" do
+      expect do
+        post "/navigation_events",
+          params: {
+            navigation_event: {
+              name: "home_section_click",
+              path: "/",
+              metadata: {
+                home_section_id: "12",
+                home_section_type: "featured_properties",
+                home_section_title: "Imóveis em destaque",
+                target_url: "/imoveis"
+              }
+            }
+          },
+          as: :json
+      end.to change(PublicNavigationEvent, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      event = PublicNavigationEvent.last
+      expect(event.name).to eq("home_section_click")
+      expect(event.metadata).to include(
+        "home_section_id" => "12",
+        "home_section_type" => "featured_properties",
+        "home_section_title" => "Imóveis em destaque"
+      )
     end
 
     it "requires consent when public tracking consent is enabled" do

@@ -22,6 +22,9 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(response.body).to include("Token dedicado da OpenAI")
     expect(response.body).to include("Modelo de interpretação")
     expect(response.body).to include("Modelo de transcrição")
+    expect(response.body).to include("Diagnóstico textual do dashboard")
+    expect(response.body).to include("Limite semanal de diagnósticos")
+    expect(response.body).to include("Teto mensal estimado em centavos")
     expect(response.body).to include("Automático recomendado")
     expect(response.body).to include("Modelo personalizado")
     expect(response.body).to include("ax-progress")
@@ -62,7 +65,10 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
           api_key: "general-token",
           model_choice: OpenAi::ModelCatalog::CUSTOM_VALUE,
           model_custom: "gpt-custom-test",
-          property_enrichment_prompt: "Prompt customizado"
+          property_enrichment_prompt: "Prompt customizado",
+          dashboard_diagnosis_enabled: "1",
+          dashboard_diagnosis_weekly_limit: "2",
+          dashboard_diagnosis_monthly_budget_cents: "2500"
         }
       }
     end
@@ -71,6 +77,9 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(Setting.get(Ai::PropertyContentService::API_KEY_SETTING, nil, tenant: admin.tenant)).to eq("general-token")
     expect(Setting.get(Ai::PropertyContentService::MODEL_SETTING, nil, tenant: admin.tenant)).to eq("gpt-custom-test")
     expect(Setting.get(Ai::PropertyContentService::PROMPT_SETTING, nil, tenant: admin.tenant)).to eq("Prompt customizado")
+    expect(Setting.get(Dashboard::AiDiagnosis::ENABLED_SETTING, nil, tenant: admin.tenant)).to eq("true")
+    expect(Setting.get(Dashboard::AiDiagnosis::WEEKLY_REQUEST_LIMIT_SETTING, nil, tenant: admin.tenant)).to eq("2")
+    expect(Setting.get(Dashboard::AiDiagnosis::MONTHLY_BUDGET_CENTS_SETTING, nil, tenant: admin.tenant)).to eq("2500")
 
     with_forgery_protection_disabled do
       patch admin_ai_integration_path, params: {

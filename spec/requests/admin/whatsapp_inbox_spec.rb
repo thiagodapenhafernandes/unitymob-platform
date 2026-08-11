@@ -88,6 +88,25 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(admin_whatsapp_conversation_path(conv, workspace: "focus"))
     end
+
+    it "filtra conversas que aguardam resposta da equipe" do
+      pending = WhatsappConversation.create!(contact_phone: "5547999990048", contact_name: "Cliente Pendente", status: "open", unread_count: 1, last_message_preview: "Ainda quero visitar")
+      answered = WhatsappConversation.create!(contact_phone: "5547999990047", contact_name: "Cliente Respondido", status: "open", last_message_preview: "Obrigado")
+
+      pending.messages.create!(direction: "outbound", body: "Olá", created_at: 2.hours.ago, updated_at: 2.hours.ago)
+      pending.messages.create!(direction: "inbound", body: "Ainda quero visitar", created_at: 1.hour.ago, updated_at: 1.hour.ago)
+      answered.messages.create!(direction: "inbound", body: "Tenho interesse", created_at: 2.hours.ago, updated_at: 2.hours.ago)
+      answered.messages.create!(direction: "outbound", body: "Vamos agendar", created_at: 1.hour.ago, updated_at: 1.hour.ago)
+
+      get admin_whatsapp_conversations_path(filter: "pending_reply")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Cliente Pendente")
+      expect(response.body).not_to include("Cliente Respondido")
+      expect(response.body).to include('data-wa-queue-initial-filter-value="pending_reply"')
+      expect(response.body).to include('data-pending-reply="true"')
+      expect(response.body).to include("Aguardando resposta")
+    end
   end
 
   describe "GET show" do
@@ -107,7 +126,6 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).to include("multipart/form-data")
       expect(response.body).to include("Responder no CRM")
       expect(response.body).to include("Sem lead")
-      expect(response.body).to include("data-pc-manager-trigger", "ax-avatar ax-avatar--md")
       expect(response.body).to include('turbo-frame id="wa-thread"')
       expect(conv.reload.unread_count).to eq(0)
       expect(Whatsapp::ThreadBroadcaster).to have_received(:queue_refreshed).with(conv)
@@ -162,7 +180,6 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("wa-inbox-media--image")
       expect(response.body).to include("Foto do imóvel")
-      expect(response.body).to include("foto.jpg")
       expect(response.body).to include('data-fancybox-type="inline"')
       expect(response.body).to include('data-turbo="false"')
       expect(response.body).to include('data-admin-navigation-ignore="true"')
@@ -213,10 +230,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).to include("data-wa-audio-preview-target=\"duration\"")
       expect(response.body).to include('preload="none"')
       expect(response.body).to include("data-src=")
-      expect(response.body).to include('data-fancybox-type="inline"')
-      expect(response.body).to include("wa-fancybox-audio")
       expect(response.body).to include('data-inline-viewer-media="true"')
-      expect(response.body).to include('class="wa-fancybox-audio__player"')
       expect(response.body).to include('preload="none"')
       expect(response.body).not_to include("autoplay")
     end

@@ -24,6 +24,24 @@ class LayoutSetting < ApplicationRecord
   LEGACY_ADMIN_PRIMARY_DEFAULT = '#2563EB'.freeze
   ADMIN_MENU_SECTION_SHADOW_DEFAULT = "inset 2px 0 0 #365F8F".freeze
   ADMIN_MENU_SECTION_SHADOW_PATTERN = /\A(?:inset\s+)?(?:0|-?\d+(?:\.\d+)?px)\s+(?:0|-?\d+(?:\.\d+)?px)(?:\s+(?:0|\d+(?:\.\d+)?px)){0,2}\s+#[0-9a-fA-F]{6}\z/.freeze
+  CUSTOM_LOGO_CSS_SELECTORS = {
+    ".custom-logo" => ".custom-logo",
+    ".custom-logo:before" => ".custom-logo::before",
+    ".custom-logo::before" => ".custom-logo::before",
+    ".custom-logo:after" => ".custom-logo::after",
+    ".custom-logo::after" => ".custom-logo::after",
+    ".custom-logo img" => ".custom-logo img"
+  }.freeze
+  CUSTOM_LOGO_CSS_PROPERTIES = %w[
+    align-items background background-color border border-color border-radius border-style border-width bottom
+    box-shadow color content display filter flex-direction font-family font-size font-style font-weight gap height
+    justify-content left letter-spacing line-height margin margin-bottom margin-left margin-right margin-top max-height
+    max-width min-height min-width object-fit object-position opacity overflow overflow-x overflow-y padding
+    padding-bottom padding-left padding-right padding-top position right text-shadow top transform width z-index
+  ].freeze
+  CUSTOM_LOGO_CSS_MEDIA_PATTERN = /\A@media\s*\(\s*(min|max)-width\s*:\s*(\d{2,4})px\s*\)\z/i.freeze
+  CUSTOM_LOGO_CSS_MAX_MEDIA_WIDTH = 2400
+  CUSTOM_LOGO_CSS_FORBIDDEN_VALUE_PATTERN = /(?:@|<|>|url\s*\(|expression\s*\(|javascript:|data:|behavior\s*:|-moz-binding|import)/i.freeze
   ADMIN_MENU_SECTION_STYLE_DEFAULTS = {
     "product" => { "background_color" => "#E8F0FB", "background_opacity" => 100, "text_color" => "#245486", "border_color" => "#C7D8EE", "box_shadow" => "inset 2px 0 0 #365F8F" },
     "operation" => { "background_color" => "#EBFFFE", "background_opacity" => 100, "text_color" => "#0F766E", "border_color" => "#C9EEEB", "box_shadow" => "inset 2px 0 0 #0F766E" },
@@ -39,6 +57,7 @@ class LayoutSetting < ApplicationRecord
   validates :secondary_color, presence: true
   validates :accent_color, presence: true
   validates :admin_theme_mode, inclusion: { in: ADMIN_THEME_MODES }, if: -> { has_attribute?(:admin_theme_mode) }
+  before_validation :normalize_custom_logo_css_attribute, if: -> { has_attribute?(:custom_logo_css) }
 
   def admin_dark_mode?
     has_attribute?(:admin_theme_mode) && admin_theme_mode == 'dark'
@@ -142,6 +161,12 @@ class LayoutSetting < ApplicationRecord
     self.class.normalized_admin_menu_section_styles(self[:admin_menu_section_colors])
   end
 
+  def public_custom_logo_css
+    return "" unless has_attribute?(:custom_logo_css)
+
+    self.class.normalized_custom_logo_css(custom_logo_css)
+  end
+
   def self.normalized_admin_menu_section_styles(raw_styles)
     raw_styles = raw_styles.to_h.stringify_keys
 
@@ -175,5 +200,109 @@ class LayoutSetting < ApplicationRecord
   def self.normalized_box_shadow(value, fallback = ADMIN_MENU_SECTION_SHADOW_DEFAULT)
     candidate = value.to_s.squish
     candidate.match?(ADMIN_MENU_SECTION_SHADOW_PATTERN) ? candidate : fallback
+  end
+
+  def self.normalized_custom_logo_css(raw_css)
+    normalized_custom_logo_css_rules(raw_css, allow_media: true).join("\n")
+  end
+
+  def self.normalized_custom_logo_css_rules(raw_css, allow_media:)
+    custom_logo_css_blocks(raw_css).each_with_object([]) do |(raw_header, raw_body), rules|
+      if allow_media
+        media_query = normalized_custom_logo_media_query(raw_header)
+
+        if media_query.present?
+          nested_rules = normalized_custom_logo_css_rules(raw_body, allow_media: false)
+          next if nested_rules.blank?
+
+          rules << "#{media_query} {\n#{nested_rules.map { |rule| "  #{rule}" }.join("\n")}\n}"
+          next
+        end
+      end
+
+      rule = normalized_custom_logo_css_rule(raw_header, raw_body)
+      rules << rule if rule.present?
+    end
+  end
+
+  def self.custom_logo_css_blocks(raw_css)
+    css = raw_css.to_s.gsub(%r{/\*[\s\S]*?\*/}, "")
+    blocks = []
+    index = 0
+
+    while index < css.length
+      index += 1 while index < css.length && css[index].match?(/\s/)
+      header_start = index
+      index += 1 while index < css.length && css[index] != "{"
+      break if index >= css.length
+
+      header = css[header_start...index].to_s.squish
+      index += 1
+      body_start = index
+      depth = 1
+
+      while index < css.length && depth.positive?
+        depth += 1 if css[index] == "{"
+        depth -= 1 if css[index] == "}"
+        index += 1
+      end
+
+      next unless depth.zero?
+
+      body = css[body_start...(index - 1)].to_s
+      blocks << [header, body] if header.present?
+    end
+
+    blocks
+  end
+
+  def self.normalized_custom_logo_media_query(raw_header)
+    match = raw_header.to_s.squish.match(CUSTOM_LOGO_CSS_MEDIA_PATTERN)
+    return if match.blank?
+
+    width = match[2].to_i
+    return unless width.positive? && width <= CUSTOM_LOGO_CSS_MAX_MEDIA_WIDTH
+
+    "@media (#{match[1].downcase}-width: #{width}px)"
+  end
+
+  def self.normalized_custom_logo_css_rule(raw_selector, raw_declarations)
+    selector = CUSTOM_LOGO_CSS_SELECTORS[raw_selector.to_s.squish]
+    return if selector.blank?
+
+    declarations = normalized_custom_logo_css_declarations(raw_declarations)
+    return if declarations.blank?
+
+    "#{selector} { #{declarations.join('; ')}; }"
+  end
+
+  def self.normalized_custom_logo_css_declarations(raw_declarations)
+    raw_declarations.to_s.split(";").filter_map do |raw_declaration|
+      property, value = raw_declaration.split(":", 2).map { |part| part.to_s.strip }
+      next if property.blank? || value.blank?
+
+      normalized_property = property.downcase
+      next unless CUSTOM_LOGO_CSS_PROPERTIES.include?(normalized_property)
+      next if value.match?(CUSTOM_LOGO_CSS_FORBIDDEN_VALUE_PATTERN)
+      next unless safe_custom_logo_css_value?(normalized_property, value)
+
+      "#{normalized_property}: #{value.squish}"
+    end
+  end
+
+  def self.safe_custom_logo_css_value?(property, value)
+    return value.match?(/\A(?:none|normal|["'][^"']{0,120}["'])\z/) if property == "content"
+    return value.match?(/\A(?:static|relative|absolute)\z/) if property == "position"
+    return value.match?(/\A(?:inherit|initial|revert|unset|serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace|[-_a-zA-Z0-9 ]+(?:,\s*[-_a-zA-Z0-9 ]+)*)\z/) if property == "font-family"
+    return value.match?(/\A(?:normal|italic|oblique|inherit|initial|revert|unset)\z/) if property == "font-style"
+    return value.match?(/\A(?:0|0?\.\d+|1(?:\.0+)?)\z/) if property == "opacity"
+    return value.match?(/\A(?:visible|hidden|clip|scroll|auto)\z/) if property.in?(%w[overflow overflow-x overflow-y])
+    return value.match?(/\A-?\d{1,4}\z/) if property == "z-index"
+
+    value.length <= 240 && value.match?(/\A[[:alnum:]\s#.,%()+\-"'\/]*\z/)
+  end
+
+  def normalize_custom_logo_css_attribute
+    self.custom_logo_css = self.class.normalized_custom_logo_css(custom_logo_css).presence
   end
 end

@@ -120,6 +120,25 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(other_setting.reload.about_title).to eq("Rodapé externo")
   end
 
+  it "salva links rápidos sem exigir loja vazia criada automaticamente" do
+    footer_setting = FooterSetting.instance(tenant: admin.tenant)
+
+    patch admin_footer_setting_path, params: {
+      footer_setting: {
+        footer_links_attributes: {
+          "0" => { label: "Teste", url: "/imoveis", position: "1" }
+        },
+        footer_stores_attributes: {
+          "0" => { name: "", address: "", zip_code: "", creci: "", phone: "", position: "1", _destroy: "false" }
+        }
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_footer_setting_path)
+    expect(footer_setting.reload.footer_links.pluck(:label, :url)).to include(["Teste", "/imoveis"])
+    expect(footer_setting.footer_stores).to be_empty
+  end
+
   it "inicializa a previa do overlay da Home pelos campos sem estilo inline" do
     setting = HomeSetting.instance(tenant: admin.tenant)
     setting.update!(overlay_color: "#123456", overlay_opacity: 0.4)

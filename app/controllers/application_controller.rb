@@ -5,7 +5,7 @@ class ApplicationController < ActionController::Base
   before_action :set_admin_robots_header
   before_action :load_layout_settings
   helper_method :current_public_seo_setting, :lgpd_consent_accepted?, :admin_page_render_metrics, :admin_context_items,
-                :public_tenant, :public_habitations
+                :public_tenant, :public_habitations, :public_filter_property_types, :public_filter_location_options
 
   LGPD_CONSENT_COOKIE = "salute_lgpd_consent".freeze
 
@@ -45,6 +45,18 @@ class ApplicationController < ActionController::Base
 
   def public_habitations
     public_tenant.habitations
+  end
+
+  def public_filter_property_types
+    @public_filter_property_types ||= Rails.cache.fetch(Habitation.public_filter_property_types_cache_key(public_tenant.id), expires_in: 12.hours) do
+      public_habitations.public_property_types
+    end
+  end
+
+  def public_filter_location_options
+    @public_filter_location_options ||= Rails.cache.fetch(Habitation.public_filter_location_options_cache_key(public_tenant.id), expires_in: 6.hours) do
+      public_habitations.public_location_options
+    end
   end
 
   private
@@ -128,11 +140,12 @@ class ApplicationController < ActionController::Base
     return if request.path.start_with?("/admin")
 
     @home_setting = HomeSetting.instance(tenant: public_tenant)
+    @contact_setting = ContactSetting.instance(tenant: public_tenant)
     @footer_setting = FooterSetting.instance(tenant: public_tenant)
-    @footer_links = Footer::QuickLinksService.call
+    @footer_links = @footer_setting.footer_links.to_a.presence || Footer::QuickLinksService.call
     @footer_stores = public_tenant.stores.active.order(:id).to_a
     @footer_stores = @footer_setting.footer_stores.to_a if @footer_stores.empty?
-    @footer_social_links = @footer_setting.footer_social_links.where(enabled: true).to_a
+    @footer_social_links = @footer_setting.footer_social_links.where(enabled: true).to_a.presence || @contact_setting.footer_social_links
     @lead_capture_enabled = WebhookSetting.lead_capture_enabled?(tenant: public_tenant)
     @site_phone_settings = WhatsappBusinessIntegration.cached_site_phone_settings(public_tenant)
     @interest_settings = InterestIntelligence::Settings.new(@layout_setting)

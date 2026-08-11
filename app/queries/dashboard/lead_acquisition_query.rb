@@ -15,9 +15,7 @@ module Dashboard
     end
 
     def call
-      counts = @scope.group(:attribution_channel).count
-      counts["direct"] = counts.fetch("direct", 0) + counts.delete(nil).to_i
-      counts.delete("direct") if counts["direct"].zero?
+      counts = normalized_channel_counts(@scope.group(:attribution_channel).count)
       total = counts.values.sum
       unknown = counts.fetch("direct", 0)
 
@@ -28,11 +26,22 @@ module Dashboard
         attribution_rate: total.zero? ? 0 : (((total - unknown).to_f / total) * 100).round(1),
         channels: channel_rows(counts, total),
         trend: trend_rows,
-        campaigns: campaign_rows
+        campaigns: campaign_rows,
+        channel_quality: channel_quality_rows(counts)
       }
     end
 
     private
+
+    def normalized_channel_counts(raw_counts)
+      raw_counts.each_with_object(Hash.new(0)) do |(channel, count), grouped|
+        grouped[normalized_channel(channel)] += count.to_i
+      end.reject { |_channel, count| count.zero? }
+    end
+
+    def normalized_channel(channel)
+      channel.to_s.presence || "direct"
+    end
 
     def channel_rows(counts, total)
       counts.map do |channel, count|
@@ -43,7 +52,7 @@ module Dashboard
 
     def trend_rows
       raw = @scope.group("DATE(leads.created_at)", :attribution_channel).count
-      raw.map { |(date, channel), count| { date: date.to_date.iso8601, channel: channel.presence || "direct", count: count } }
+      raw.map { |(date, channel), count| { date: date.to_date.iso8601, channel: normalized_channel(channel), count: count } }
     end
 
     def campaign_rows
@@ -63,6 +72,39 @@ module Dashboard
         { channel: channel, channel_label: CHANNEL_LABELS.fetch(channel), name: name,
           external_id: external_id, count: values[:count] }
       end.sort_by { |row| -row[:count] }.first(8)
+    end
+
+    def channel_quality_rows(counts)
+      visits = outcome_counts(Appointment.where(kind: "visita"), "appointments.lead_id")
+      proposals = outcome_counts(Proposal.where.not(status: "rascunho"), "proposals.lead_id")
+      closed = normalized_channel_counts(@scope.where(status: Lead.status_value(:concluido)).group(:attribution_channel).count)
+
+      counts.map do |channel, total|
+        visit_count = visits[channel].to_i
+        proposal_count = proposals[channel].to_i
+        closed_count = closed[channel].to_i
+        opportunity_count = [visit_count, proposal_count, closed_count].max
+
+        {
+          key: channel,
+          label: CHANNEL_LABELS.fetch(channel, channel.to_s.humanize),
+          total: total,
+          visits: visit_count,
+          proposals: proposal_count,
+          closed: closed_count,
+          opportunity_rate: total.zero? ? 0 : ((opportunity_count.to_f / total) * 100).round(1)
+        }
+      end.sort_by { |row| [-row[:opportunity_rate], -row[:total]] }.first(6)
+    end
+
+    def outcome_counts(relation, counted_column)
+      raw_counts = relation
+        .joins(:lead)
+        .merge(@scope)
+        .group("leads.attribution_channel")
+        .distinct
+        .count(counted_column)
+      normalized_channel_counts(raw_counts)
     end
   end
 end

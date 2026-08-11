@@ -1,6 +1,7 @@
 class PublicNavigationSession < ApplicationRecord
   COOKIE_KEY = "unitymob_public_navigation".freeze
 
+  belongs_to :tenant, optional: true
   belongs_to :lead, optional: true
   has_many :events, class_name: "PublicNavigationEvent", dependent: :destroy
 
@@ -11,10 +12,16 @@ class PublicNavigationSession < ApplicationRecord
 
   scope :recent, -> { order(last_seen_at: :desc) }
 
-  def self.find_or_create_for_token(token, request:)
+  def self.find_or_create_for_token(token, request:, tenant: Current.tenant)
     clean_token = token.to_s.strip.presence || SecureRandom.uuid
+    session = find_by(token: clean_token)
+    if session&.tenant_id.present? && tenant&.id.present? && session.tenant_id != tenant.id
+      clean_token = SecureRandom.uuid
+      session = nil
+    end
 
-    find_or_initialize_by(token: clean_token).tap do |session|
+    (session || new(token: clean_token)).tap do |session|
+      session.tenant ||= tenant || session.lead&.tenant
       session.first_seen_at ||= Time.current
       session.last_seen_at = Time.current
       session.user_agent_digest ||= Digest::SHA256.hexdigest(request.user_agent.to_s).first(64)
@@ -30,8 +37,8 @@ class PublicNavigationSession < ApplicationRecord
   def link_to_lead!(lead)
     return unless lead
 
-    update!(lead: lead, last_seen_at: Time.current)
-    events.where(lead_id: nil).update_all(lead_id: lead.id, updated_at: Time.current)
+    update!(lead: lead, tenant: tenant || lead.tenant, last_seen_at: Time.current)
+    events.where(lead_id: nil).update_all(lead_id: lead.id, tenant_id: lead.tenant_id, updated_at: Time.current)
   end
 
   private

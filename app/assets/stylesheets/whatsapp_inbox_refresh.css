@@ -68,6 +68,7 @@
   display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
   border: 1px solid #e2e6ea; border-radius: 999px; background: #fff; color: #475467;
   font-size: 12px; font-weight: 650; cursor: pointer;
+  text-decoration: none;
   transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
 .wa-inbox-page .wa-inbox-list-filter:hover { border-color: #c4d0df; }

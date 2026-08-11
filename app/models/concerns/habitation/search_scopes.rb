@@ -545,7 +545,12 @@ module Habitation::SearchScopes
     }
     
     scope :semi_mobiliado, -> {
-      where("EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) WHERE unaccent(lower(value)) ILIKE '%semi%mobiliado%')")
+      where(
+        "LOWER(unaccent(COALESCE(habitations.searchable_features, ''))) LIKE '%semi%mobiliad%' OR " \
+        "(jsonb_typeof(habitations.caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(habitations.caracteristicas) value WHERE LOWER(unaccent(value)) LIKE '%semi%mobiliad%')) OR " \
+        "(jsonb_typeof(habitations.caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(habitations.caracteristicas) kv WHERE LOWER(unaccent(CONCAT_WS(' ', kv.key, kv.value))) LIKE '%semi%mobiliad%')) OR " \
+        "EXISTS (SELECT 1 FROM unnest((#{UNIQUE_FEATURES_ARRAY_SQL})) AS feature WHERE LOWER(unaccent(feature)) LIKE '%semi%mobiliad%')"
+      )
     }
     
     scope :lavabo, -> {

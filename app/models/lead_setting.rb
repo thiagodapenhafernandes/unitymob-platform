@@ -4,6 +4,7 @@ class LeadSetting < ApplicationRecord
   OWNERS    = %w[attended any_assignment].freeze
   FALLBACKS = %w[active_in_rule active_any].freeze
   PUSH_CLICK_ACTIONS = PushSetting::LEAD_CLICK_ACTIONS.freeze
+  DEFAULT_FIRST_CONTACT_SLA_HOURS = 4
 
   # Status que contam como "atendido de fato" pelo corretor (owner = attended).
   ATTENDED_STATUSES = %i[em_atendimento concluido].freeze
@@ -16,6 +17,8 @@ class LeadSetting < ApplicationRecord
             allow_nil: true
   validates :secure_link_expiry_days,
             numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :first_contact_sla_hours,
+            numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 168 }
   validates :push_lead_click_action, inclusion: { in: PUSH_CLICK_ACTIONS }
 
   # Singleton.
@@ -51,6 +54,10 @@ class LeadSetting < ApplicationRecord
 
   def attended_status_values
     ATTENDED_STATUSES.map { |s| Lead.status_value(s) }.uniq
+  end
+
+  def first_contact_sla_hours_value
+    first_contact_sla_hours.presence || DEFAULT_FIRST_CONTACT_SLA_HOURS
   end
 
   # Configuração operacional do push, persistida em PushSetting para manter as

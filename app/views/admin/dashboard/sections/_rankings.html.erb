@@ -6,17 +6,27 @@
         <div class="ax-dashboard-panel__header">
           <div>
             <span class="ax-dashboard-panel__eyebrow">Comercial · <%= @dashboard_period %> dias</span>
-            <h2>Desempenho por corretor</h2>
+            <h2>Performance e gargalo por corretor</h2>
           </div>
           <%= link_to "Ver leads", admin_leads_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
         </div>
         <div class="ax-dashboard-performance">
           <% @broker_performance.each do |row| %>
-            <%= link_to admin_leads_path(broker_id: row[:id], start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601), class: "ax-dashboard-performance__row", data: { turbo_frame: "_top" } do %>
-              <strong><%= row[:name] %></strong>
-              <span><%= row[:total] %> leads</span>
-              <span><%= row[:closed] %> concluídos</span>
-              <b><%= number_to_percentage(row[:conversion], precision: 1, strip_insignificant_zeros: true) %></b>
+            <% row_path = row[:attention].positive? ? admin_leads_path(broker_id: row[:id], attention_filter: "requires_action") : admin_leads_path(broker_id: row[:id], start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601) %>
+            <%= link_to row_path, class: "ax-dashboard-performance__row", data: { turbo_frame: "_top" } do %>
+              <span class="ax-dashboard-performance__identity">
+                <strong><%= row[:name] %></strong>
+                <small><%= row[:total] %> leads no período</small>
+              </span>
+              <span><b><%= row[:visits] %></b><small>visitas</small></span>
+              <span><b><%= row[:proposals] %></b><small>propostas</small></span>
+              <span><b><%= row[:closed] %></b><small>concluídos</small></span>
+              <span class="ax-dashboard-performance__rate"><b><%= number_to_percentage(row[:opportunity_rate], precision: 1, strip_insignificant_zeros: true) %></b><small>avanço</small></span>
+              <% if row[:attention].positive? %>
+                <span class="ax-dashboard-performance__attention ax-dashboard-performance__attention--red"><b><%= row[:attention] %></b><small>agir</small></span>
+              <% else %>
+                <span class="ax-dashboard-performance__attention ax-dashboard-performance__attention--green"><i class="bi bi-check2"></i><small>ok</small></span>
+              <% end %>
             <% end %>
           <% end %>
           <% if @broker_performance.empty? %><div class="ax-dashboard-empty-row">Sem leads atribuídos no período.</div><% end %>

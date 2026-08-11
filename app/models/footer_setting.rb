@@ -8,9 +8,14 @@ class FooterSetting < ApplicationRecord
 
   normalize_phone_fields :whatsapp
 
-  accepts_nested_attributes_for :footer_links, allow_destroy: true, reject_if: :all_blank
-  accepts_nested_attributes_for :footer_stores, allow_destroy: true, reject_if: :all_blank
-  accepts_nested_attributes_for :footer_social_links, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :footer_links, allow_destroy: true, reject_if: :blank_nested_item?
+  accepts_nested_attributes_for :footer_stores, allow_destroy: true, reject_if: :blank_nested_item?
+  accepts_nested_attributes_for :footer_social_links, allow_destroy: true, reject_if: :blank_nested_item?
+
+  def blank_nested_item?(attributes)
+    attributes.except("id", "_destroy", "position", "enabled").values.all?(&:blank?)
+  end
+
   def self.instance(tenant: Current.tenant || Tenant.public_for)
     raise ArgumentError, "Tenant obrigatório para configurações do rodapé" if tenant.blank?
 

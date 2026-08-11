@@ -22,6 +22,7 @@ class PublicNavigationEventsController < ApplicationController
     session = public_navigation_session
     habitation = find_habitation
     event = session.events.create!(
+      tenant: public_tenant,
       lead: session.lead,
       habitation: habitation,
       name: normalized_event_name,
@@ -43,7 +44,7 @@ class PublicNavigationEventsController < ApplicationController
 
   def public_navigation_session
     token = cookies.signed[PublicNavigationSession::COOKIE_KEY].to_s
-    session = PublicNavigationSession.find_or_create_for_token(token, request: request)
+    session = PublicNavigationSession.find_or_create_for_token(token, request: request, tenant: public_tenant)
 
     cookies.signed[PublicNavigationSession::COOKIE_KEY] = {
       value: session.token,
@@ -55,7 +56,15 @@ class PublicNavigationEventsController < ApplicationController
   end
 
   def navigation_event_params
-    params.require(:navigation_event).permit(:name, :path, :habitation_id, :duration_seconds)
+    @navigation_event_params ||= params.require(:navigation_event).permit(
+      :name,
+      :path,
+      :habitation_id,
+      :duration_seconds,
+      search_params: {},
+      property_snapshot: {},
+      metadata: {}
+    )
   end
 
   def event_name
@@ -72,20 +81,22 @@ class PublicNavigationEventsController < ApplicationController
   end
 
   def search_params_payload
-    params.fetch(:navigation_event, {}).fetch(:search_params, {}).to_unsafe_h
-  rescue NoMethodError
-    {}
+    permitted_hash_payload(:search_params)
   end
 
   def property_snapshot_payload
-    params.fetch(:navigation_event, {}).fetch(:property_snapshot, {}).to_unsafe_h
-  rescue NoMethodError
-    {}
+    permitted_hash_payload(:property_snapshot)
   end
 
   def metadata_payload
-    raw = params.fetch(:navigation_event, {}).fetch(:metadata, {})
-    raw.respond_to?(:to_unsafe_h) ? raw.to_unsafe_h : {}
+    permitted_hash_payload(:metadata)
+  end
+
+  def permitted_hash_payload(key)
+    raw = navigation_event_params[key]
+    return raw.to_h if raw.respond_to?(:to_h)
+
+    {}
   end
 
   def property_snapshot_for(habitation)

@@ -17,7 +17,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :whatsapp_primary, text: "WhatsApp principal") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp tw-text-green-600", aria: { hidden: true })) do %>
-                <%= f.text_field :whatsapp_primary, class: "ax-control", placeholder: "(47) 99123-4567", autocomplete: "tel", data: { controller: "phone-input" } %>
+                <%= f.text_field :whatsapp_primary, class: "ax-control", placeholder: "(11) 99999-0000", autocomplete: "tel", data: { controller: "phone-input" } %>
               <% end %>
               <p class="ax-field__hint">Formato: código do país + DDD + número.</p>
             </div>
@@ -25,7 +25,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :phone, text: "Telefone fixo") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-telephone tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 3311-1067", autocomplete: "tel", data: { controller: "phone-input" } %>
+                <%= f.text_field :phone, class: "ax-control", placeholder: "(11) 3000-0000", autocomplete: "tel", data: { controller: "phone-input" } %>
               <% end %>
               <p class="ax-field__hint">Telefone fixo da empresa.</p>
             </div>
@@ -33,7 +33,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :email_primary, text: "E-mail principal") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope tw-text-red-600", aria: { hidden: true })) do %>
-                <%= f.email_field :email_primary, class: "ax-control", placeholder: "contato@saluteimoveis.com" %>
+                <%= f.email_field :email_primary, class: "ax-control", placeholder: "contato@suaimobiliaria.com.br" %>
               <% end %>
               <p class="ax-field__hint">E-mail principal para contato.</p>
             </div>
@@ -44,7 +44,7 @@
                 <%= ax_badge("Opcional", tone: :gray) %>
               </div>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp tw-text-green-600", aria: { hidden: true })) do %>
-                <%= f.text_field :whatsapp_secondary, class: "ax-control", placeholder: "(47) 99123-4567", autocomplete: "tel", data: { controller: "phone-input" } %>
+                <%= f.text_field :whatsapp_secondary, class: "ax-control", placeholder: "(11) 98888-0000", autocomplete: "tel", data: { controller: "phone-input" } %>
               <% end %>
               <p class="ax-field__hint">Canal alternativo de WhatsApp.</p>
             </div>
@@ -58,7 +58,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :facebook_url, text: "Facebook") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-facebook tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.url_field :facebook_url, class: "ax-control", placeholder: "https://facebook.com/saluteimoveis" %>
+                <%= f.url_field :facebook_url, class: "ax-control", placeholder: "https://facebook.com/suaimobiliaria" %>
               <% end %>
               <p class="ax-field__hint">URL completa da página do Facebook.</p>
             </div>
@@ -66,7 +66,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :instagram_url, text: "Instagram") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-instagram tw-text-red-600", aria: { hidden: true })) do %>
-                <%= f.url_field :instagram_url, class: "ax-control", placeholder: "https://instagram.com/saluteimoveis" %>
+                <%= f.url_field :instagram_url, class: "ax-control", placeholder: "https://instagram.com/suaimobiliaria" %>
               <% end %>
               <p class="ax-field__hint">URL completa do perfil do Instagram.</p>
             </div>
@@ -74,7 +74,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :youtube_url, text: "YouTube") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-youtube tw-text-red-600", aria: { hidden: true })) do %>
-                <%= f.url_field :youtube_url, class: "ax-control", placeholder: "https://youtube.com/@saluteimoveis" %>
+                <%= f.url_field :youtube_url, class: "ax-control", placeholder: "https://youtube.com/@suaimobiliaria" %>
               <% end %>
               <p class="ax-field__hint">URL completa do canal do YouTube.</p>
             </div>
@@ -82,7 +82,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :blog_url, text: "Blog") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-journal-text tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.url_field :blog_url, class: "ax-control", placeholder: "https://blog.empresa.com.br" %>
+                <%= f.url_field :blog_url, class: "ax-control", placeholder: "https://suaimobiliaria.com.br/blog" %>
               <% end %>
               <p class="ax-field__hint">URL completa do blog exibido no menu público.</p>
             </div>
@@ -90,7 +90,7 @@
             <div class="ax-field">
               <%= ax_field_label(f, :linkedin_url, text: "LinkedIn") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-linkedin tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.url_field :linkedin_url, class: "ax-control", placeholder: "https://linkedin.com/company/saluteimoveis" %>
+                <%= f.url_field :linkedin_url, class: "ax-control", placeholder: "https://linkedin.com/company/suaimobiliaria" %>
               <% end %>
               <p class="ax-field__hint">URL completa da página do LinkedIn.</p>
             </div>

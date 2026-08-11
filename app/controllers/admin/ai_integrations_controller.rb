@@ -50,6 +50,11 @@ class Admin::AiIntegrationsController < Admin::BaseController
     @batch_progress = tenant_setting_get("openai_batch_progress", "0").to_i.clamp(0, 100)
     @batch_message = tenant_setting_get("openai_batch_message", "Nenhum lote executado ainda.")
     @batch_last_at = Time.zone.parse(tenant_setting_get("openai_batch_last_at").to_s) rescue nil
+    @dashboard_diagnosis_enabled = Dashboard::AiDiagnosis.enabled?(tenant: current_tenant)
+    @dashboard_diagnosis_weekly_limit = Dashboard::AiDiagnosis.weekly_request_limit(tenant: current_tenant)
+    @dashboard_diagnosis_monthly_budget_cents = Dashboard::AiDiagnosis.monthly_budget_cents(tenant: current_tenant)
+    @dashboard_diagnosis_weekly_used = OpenAiUsageEvent.requests_count(tenant: current_tenant, feature: Dashboard::AiDiagnosis::FEATURE, since: Time.current.beginning_of_week)
+    @dashboard_diagnosis_monthly_cost_cents = OpenAiUsageEvent.estimated_cost_cents(tenant: current_tenant, feature: Dashboard::AiDiagnosis::FEATURE, since: Time.current.beginning_of_month)
     # Escopado pelo tenant via habitation (AiPropertySuggestion não é TenantScoped)
     # — antes contava sugestões de TODAS as contas no painel.
     tenant_suggestions = AiPropertySuggestion.joins(:habitation)
@@ -59,18 +64,28 @@ class Admin::AiIntegrationsController < Admin::BaseController
   end
 
   def update_content_settings
-    token = ai_params[:api_key].to_s.strip
+    permitted = ai_params.to_h.with_indifferent_access
+    token = permitted[:api_key].to_s.strip
     model = selected_model_value(
-      choice: ai_params[:model_choice],
-      custom: ai_params[:model_custom],
-      legacy: ai_params[:model],
+      choice: permitted[:model_choice],
+      custom: permitted[:model_custom],
+      legacy: permitted[:model],
       default: Ai::PropertyContentService::DEFAULT_MODEL
     )
-    prompt = ai_params[:property_enrichment_prompt].to_s
+    prompt = permitted[:property_enrichment_prompt].to_s
 
     tenant_setting_set(Ai::PropertyContentService::API_KEY_SETTING, token, "Token da OpenAI") if token.present?
     tenant_setting_set(Ai::PropertyContentService::MODEL_SETTING, model, "Modelo OpenAI para enriquecimento de imóveis")
     tenant_setting_set(Ai::PropertyContentService::PROMPT_SETTING, prompt, "Instruções de IA para título e descrição dos imóveis")
+    if permitted.key?(:dashboard_diagnosis_enabled)
+      tenant_setting_set(Dashboard::AiDiagnosis::ENABLED_SETTING, ActiveModel::Type::Boolean.new.cast(permitted[:dashboard_diagnosis_enabled]).to_s, "Habilita diagnóstico textual do BI com OpenAI")
+    end
+    if permitted.key?(:dashboard_diagnosis_weekly_limit)
+      tenant_setting_set(Dashboard::AiDiagnosis::WEEKLY_REQUEST_LIMIT_SETTING, permitted[:dashboard_diagnosis_weekly_limit].to_i.clamp(0, 10).to_s, "Limite semanal de diagnósticos do BI com OpenAI")
+    end
+    if permitted.key?(:dashboard_diagnosis_monthly_budget_cents)
+      tenant_setting_set(Dashboard::AiDiagnosis::MONTHLY_BUDGET_CENTS_SETTING, permitted[:dashboard_diagnosis_monthly_budget_cents].to_i.clamp(0, 100_000).to_s, "Teto mensal estimado do diagnóstico do BI com OpenAI")
+    end
   end
 
   def update_voice_pwa_settings
@@ -114,6 +129,9 @@ class Admin::AiIntegrationsController < Admin::BaseController
       :model_custom,
       :model,
       :property_enrichment_prompt,
+      :dashboard_diagnosis_enabled,
+      :dashboard_diagnosis_weekly_limit,
+      :dashboard_diagnosis_monthly_budget_cents,
       :property_search_api_key,
       :clear_property_search_api_key,
       :property_search_model_choice,

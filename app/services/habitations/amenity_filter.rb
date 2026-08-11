@@ -24,6 +24,7 @@ module Habitations
       when /lavabo/ then @scope.lavabo
       when /depend.*empreg|wc.*empreg/ then @scope.dependencia_empregada
       when /sacada/ then @scope.where("varanda_gourmet_flag = true OR searchable_features LIKE '%sacada%'")
+      when /semi.*mobiliad/ then @scope.semi_mobiliado
       when /mobiliado/ then @scope.where("mobiliado_flag = true OR searchable_features LIKE '%mobiliado%'")
       when /cozinha.*gourmet.*churrasqueir/ then @scope.cozinha_gourmet_churrasqueira
       when /sol.*manha/ then @scope.sol_manha

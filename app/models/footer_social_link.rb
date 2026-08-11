@@ -10,6 +10,7 @@ class FooterSocialLink < ApplicationRecord
     when 'youtube' then 'bi-youtube'
     when 'tiktok' then 'bi-tiktok'
     when 'whatsapp' then 'bi-whatsapp'
+    when 'blog' then 'bi-journal-text'
     else 'bi-share'
     end
   end

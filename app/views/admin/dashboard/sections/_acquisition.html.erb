@@ -41,5 +41,59 @@
         <div class="ax-dashboard-empty-row">Nenhuma campanha paga no período.</div>
       <% end %>
     </section>
+
+    <section class="ax-dashboard-channel-quality">
+      <div class="ax-dashboard-acquisition__title">
+        <h3>Qual canal está gerando oportunidade?</h3>
+        <small>Avanço considera leads que chegaram a visita, proposta ou conclusão</small>
+      </div>
+
+      <% if @acquisition_channel_quality.any? %>
+        <div class="ax-dashboard-channel-quality__rows">
+          <% @acquisition_channel_quality.each do |row| %>
+            <%= link_to admin_leads_path(attribution_channel: row[:key], start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601),
+                        class: "ax-dashboard-channel-quality__row",
+                        data: { turbo_frame: "_top" } do %>
+              <span class="ax-dashboard-channel-quality__identity">
+                <strong><%= row[:label] %></strong>
+                <small><%= row[:total] %> leads no período</small>
+              </span>
+              <span><b><%= row[:visits] %></b><small>visitas</small></span>
+              <span><b><%= row[:proposals] %></b><small>propostas</small></span>
+              <span><b><%= row[:closed] %></b><small>concluídos</small></span>
+              <span class="ax-dashboard-channel-quality__rate"><b><%= number_to_percentage(row[:opportunity_rate], precision: 1, strip_insignificant_zeros: true) %></b><small>avanço</small></span>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="ax-dashboard-empty-row">Sem canais com leads no período.</div>
+      <% end %>
+    </section>
+
+    <section class="ax-dashboard-channel-quality">
+      <div class="ax-dashboard-acquisition__title">
+        <h3>Onde pode estar vazando dinheiro?</h3>
+        <small>Combina mídia paga, campanhas com orçamento e imóveis com demanda sem avanço</small>
+      </div>
+
+      <% if @lost_money_rows.any? %>
+        <div class="ax-dashboard-channel-quality__rows">
+          <% @lost_money_rows.each do |row| %>
+            <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+              <span class="ax-dashboard-channel-quality__identity">
+                <strong><%= row[:label] %></strong>
+                <small><%= row[:detail] %></small>
+              </span>
+              <span class="ax-dashboard-channel-quality__rate">
+                <b><%= number_with_delimiter(row[:value]) %></b>
+                <small><%= row[:tone] == "green" ? "ok" : "atenção" %></small>
+              </span>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="ax-dashboard-empty-row">Sem sinais de desperdício no período.</div>
+      <% end %>
+    </section>
   </article>
 <% end %>

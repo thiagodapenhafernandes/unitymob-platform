@@ -167,17 +167,7 @@ class HomeController < ApplicationController
   end
 
   def home_property_cta(section)
-    if section.property_filter_enabled?("locacao") || section.section_type == "rentals"
-      { cta_label: "Ver Todos os Imóveis para Alugar", cta_path: habitations_path(transaction_type: "aluguel") }
-    elsif section.property_filter_enabled?("venda")
-      { cta_label: "Ver Todos os Imóveis à Venda", cta_path: habitations_path(transaction_type: "venda") }
-    elsif section.property_filter_enabled?("preco_reduzido")
-      { cta_label: "Ver Todas as Oportunidades", cta_path: habitations_path(characteristics: ["opportunity"]) }
-    elsif section.property_filter_enabled?("destaque_web")
-      { cta_label: "Ver Todos os Destaques", cta_path: habitations_path(characteristics: ["featured"]) }
-    else
-      { cta_label: "Ver Todos os Imóveis", cta_path: habitations_path }
-    end
+    { cta_label: section.public_property_cta_label, cta_path: habitations_path(section.public_property_filter_params) }
   end
 
   def home_section_cache_key(section, cache_name)

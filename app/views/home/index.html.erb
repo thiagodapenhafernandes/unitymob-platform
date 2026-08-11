@@ -17,8 +17,11 @@
   <% when 'properties' %>
     <% properties = payload[:records] || [] %>
     <% if properties.present? %>
-      <% cache ['home_section_properties_v1', section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
-        <section class="home-deferred-section py-16 <%= bg_class %>">
+      <% cache ['home_section_properties_v2', section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+        <section class="home-deferred-section py-16 <%= bg_class %>"
+                 data-public-home-section="<%= section.id %>"
+                 data-public-home-section-type="<%= section.section_type %>"
+                 data-public-home-section-title="<%= section.title %>">
           <div class="container-custom">
             <div class="text-center mb-12">
               <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-2">
@@ -34,7 +37,13 @@
             <%= render 'shared/property_carousel', properties: properties %>
 
             <div class="text-center mt-8">
-              <%= link_to payload[:cta_path] || habitations_path, class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
+              <%= link_to payload[:cta_path] || habitations_path,
+                    class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5",
+                    data: {
+                      public_home_section_id: section.id,
+                      public_home_section_type: section.section_type,
+                      public_home_section_title: section.title
+                    } do %>
                 <%= payload[:cta_label] || "Ver Todos os Imóveis" %>
               <% end %>
             </div>
@@ -51,7 +60,10 @@
     <% developments = payload[:records] || [] %>
     <% if developments.present? %>
       <% cache ['home_section_developments_v1', section.id, section.updated_at.to_i, developments.map(&:id), developments.map(&:updated_at).max, payload[:unit_counts], payload[:unit_metrics]] do %>
-        <section class="home-deferred-section py-16 <%= bg_class %>">
+        <section class="home-deferred-section py-16 <%= bg_class %>"
+                 data-public-home-section="<%= section.id %>"
+                 data-public-home-section-type="<%= section.section_type %>"
+                 data-public-home-section-title="<%= section.title %>">
           <div class="container-custom">
             <div class="text-center mb-12">
               <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-2">
@@ -67,7 +79,13 @@
             <%= render 'shared/development_carousel', developments: developments, unit_counts: payload[:unit_counts], unit_metrics: payload[:unit_metrics] %>
 
             <div class="text-center mt-8">
-              <%= link_to payload[:cta_path] || empreendimentos_path, class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
+              <%= link_to payload[:cta_path] || empreendimentos_path,
+                    class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5",
+                    data: {
+                      public_home_section_id: section.id,
+                      public_home_section_type: section.section_type,
+                      public_home_section_title: section.title
+                    } do %>
                 <%= payload[:cta_label] || "Ver Todos os Empreendimentos" %>
               <% end %>
             </div>
@@ -86,7 +104,10 @@
     
     <% when 'cta_contact' %>
     <!-- CTA Contact Section -->
-    <section class="home-deferred-section py-20 bg-blue-three text-white">
+    <section class="home-deferred-section py-20 bg-blue-three text-white"
+             data-public-home-section="<%= section.id %>"
+             data-public-home-section-type="<%= section.section_type %>"
+             data-public-home-section-title="<%= section.title %>">
       <div class="container-custom text-center">
         <h2 class="text-3xl lg:text-4xl font-bold mb-6">
           <%= section.title %>
@@ -98,7 +119,13 @@
         <% end %>
         
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <%= link_to contato_path, class: "px-8 py-3 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-golden-two transition-colors" do %>
+          <%= link_to contato_path,
+                class: "px-8 py-3 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-golden-two transition-colors",
+                data: {
+                  public_home_section_id: section.id,
+                  public_home_section_type: section.section_type,
+                  public_home_section_title: section.title
+                } do %>
             Fale Conosco
           <% end %>
 
@@ -110,7 +137,13 @@
                 ) %>
           <% end %>
           
-          <%= link_to "tel:+5547999999999", class: "px-8 py-3 border-2 border-white text-white font-bold rounded-lg hover:bg-white hover:text-blue-three transition-colors" do %>
+          <%= link_to "tel:+5547999999999",
+                class: "px-8 py-3 border-2 border-white text-white font-bold rounded-lg hover:bg-white hover:text-blue-three transition-colors",
+                data: {
+                  public_home_section_id: section.id,
+                  public_home_section_type: section.section_type,
+                  public_home_section_title: section.title
+                } do %>
             WhatsApp
           <% end %>
         </div>

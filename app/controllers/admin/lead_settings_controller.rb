@@ -50,6 +50,7 @@ module Admin
         :stickiness_owner,
         :stickiness_fallback,
         :stickiness_window_days,
+        :first_contact_sla_hours,
         :secure_links_enabled,
         :secure_link_expiry_days,
         :secure_link_whatsapp,

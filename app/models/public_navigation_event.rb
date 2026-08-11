@@ -5,11 +5,13 @@ class PublicNavigationEvent < ApplicationRecord
     property_whatsapp_click
     property_phone_click
     property_share
+    home_section_click
     lead_form_started
     lead_form_submitted
   ].freeze
   SEARCH_EVENT_NAMES = %w[property_search page_view search_no_results].freeze
 
+  belongs_to :tenant, optional: true
   belongs_to :public_navigation_session
   belongs_to :lead, optional: true
   belongs_to :habitation, optional: true
@@ -18,6 +20,7 @@ class PublicNavigationEvent < ApplicationRecord
   validates :occurred_at, presence: true
 
   before_validation :set_defaults
+  before_validation :infer_tenant
 
   scope :recent, -> { order(occurred_at: :desc, id: :desc) }
   scope :property_signals, -> { where(name: PROPERTY_EVENT_NAMES) }
@@ -34,5 +37,9 @@ class PublicNavigationEvent < ApplicationRecord
     self.search_params = {} unless search_params.is_a?(Hash)
     self.property_snapshot = {} unless property_snapshot.is_a?(Hash)
     self.metadata = {} unless metadata.is_a?(Hash)
+  end
+
+  def infer_tenant
+    self.tenant ||= public_navigation_session&.tenant || lead&.tenant || habitation&.tenant || Current.tenant
   end
 end

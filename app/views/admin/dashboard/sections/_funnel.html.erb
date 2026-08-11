@@ -8,29 +8,93 @@
       <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
     </div>
 
-    <div class="ax-dashboard-funnel">
-      <div class="ax-dashboard-funnel__visual" aria-label="Funil comercial dos últimos 30 dias">
-        <% @commercial_funnel_rows.each do |row| %>
-          <div class="ax-dashboard-funnel__stage ax-dashboard-funnel__stage--<%= row[:tone] %>">
-            <span class="ax-dashboard-funnel__stage-label"><%= row[:label] %></span>
-            <strong><%= number_with_delimiter(row[:value]) %></strong>
+    <div class="ax-dashboard-acquisition__grid ax-dashboard-funnel-layout">
+      <div class="ax-dashboard-funnel-layout__main">
+        <div class="ax-dashboard-funnel">
+          <div class="ax-dashboard-funnel__visual" aria-label="Funil comercial dos últimos 30 dias">
+            <% @commercial_funnel_rows.each do |row| %>
+              <div class="ax-dashboard-funnel__stage ax-dashboard-funnel__stage--<%= row[:tone] %>">
+                <span class="ax-dashboard-funnel__stage-label"><%= row[:label] %></span>
+                <strong><%= number_with_delimiter(row[:value]) %></strong>
+              </div>
+            <% end %>
           </div>
-        <% end %>
+
+          <div class="ax-dashboard-funnel__rates" aria-label="Taxas observadas e faixas de referência">
+            <% @commercial_funnel_rows.each_cons(2) do |from, to| %>
+              <div class="ax-dashboard-funnel__rate">
+                <span><%= from[:label].split.first %> -> <%= to[:label].split.first %></span>
+                <strong><%= number_to_percentage(to[:conversion_rate], precision: 1, strip_insignificant_zeros: true) %></strong>
+                <small>Referência: <%= from[:benchmark] %></small>
+              </div>
+            <% end %>
+            <div class="ax-dashboard-funnel__rate ax-dashboard-funnel__rate--overall">
+              <span>Impacto -> venda</span>
+              <strong><%= number_to_percentage(@commercial_funnel_rows.last[:overall_conversion_rate], precision: 1, strip_insignificant_zeros: true) %></strong>
+              <small>Referência: <%= @commercial_funnel_rows.last[:benchmark] %></small>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="ax-dashboard-funnel__rates" aria-label="Taxas observadas e faixas de referência">
-        <% @commercial_funnel_rows.each_cons(2) do |from, to| %>
-          <div class="ax-dashboard-funnel__rate">
-            <span><%= from[:label].split.first %> -> <%= to[:label].split.first %></span>
-            <strong><%= number_to_percentage(to[:conversion_rate], precision: 1, strip_insignificant_zeros: true) %></strong>
-            <small>Referência: <%= from[:benchmark] %></small>
+      <div class="ax-dashboard-channel-quality__rows ax-dashboard-funnel-layout__side">
+        <section class="ax-dashboard-channel-quality ax-dashboard-channel-quality--compact">
+          <div class="ax-dashboard-acquisition__title">
+            <h3>Tempo médio em cada etapa</h3>
+            <small>Última mudança de status ou criação do lead</small>
           </div>
-        <% end %>
-        <div class="ax-dashboard-funnel__rate ax-dashboard-funnel__rate--overall">
-          <span>Impacto -> venda</span>
-          <strong><%= number_to_percentage(@commercial_funnel_rows.last[:overall_conversion_rate], precision: 1, strip_insignificant_zeros: true) %></strong>
-          <small>Referência: <%= @commercial_funnel_rows.last[:benchmark] %></small>
-        </div>
+
+          <% if @stage_time_rows.any? %>
+            <div class="ax-dashboard-channel-quality__rows">
+              <% @stage_time_rows.first(4).each do |row| %>
+                <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+                  <span class="ax-dashboard-channel-quality__identity">
+                    <strong><%= row[:label] %></strong>
+                    <small><%= row[:detail] %></small>
+                  </span>
+                  <span class="ax-dashboard-channel-quality__rate"><b><%= number_with_precision(row[:value], precision: 1, strip_insignificant_zeros: true) %>h</b><small>média</small></span>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="ax-dashboard-empty-row">Sem leads abertos com movimentação no período.</div>
+          <% end %>
+        </section>
+
+        <section class="ax-dashboard-channel-quality ax-dashboard-channel-quality--compact">
+          <div class="ax-dashboard-acquisition__title">
+            <h3>Perdas e reaberturas</h3>
+            <small>Etapas que perderam ou voltaram para atendimento</small>
+          </div>
+          <% flow_rows = @stage_loss_rows.map { |row| row.merge(unit: "perdas") } + @stage_reopen_rows.map { |row| row.merge(unit: "voltas") } %>
+          <% if flow_rows.any? %>
+            <div class="ax-dashboard-channel-quality__rows">
+              <% flow_rows.first(5).each do |row| %>
+                <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+                  <span class="ax-dashboard-channel-quality__identity"><strong><%= row[:label] %></strong><small><%= row[:detail] %></small></span>
+                  <span class="ax-dashboard-channel-quality__rate"><b><%= number_with_delimiter(row[:value]) %></b><small><%= row[:unit] %></small></span>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="ax-dashboard-empty-row">Sem perda ou reabertura registrada no período.</div>
+          <% end %>
+        </section>
+
+        <section class="ax-dashboard-channel-quality ax-dashboard-channel-quality--compact">
+          <div class="ax-dashboard-acquisition__title">
+            <h3>Leads quentes/mornos sem ação</h3>
+            <small>Tags comerciais sem atualização recente</small>
+          </div>
+          <div class="ax-dashboard-channel-quality__rows">
+            <% @lead_temperature_rows.each do |row| %>
+              <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+                <span class="ax-dashboard-channel-quality__identity"><strong><%= row[:label] %></strong><small><%= row[:detail] %></small></span>
+                <span class="ax-dashboard-channel-quality__rate"><b><%= number_with_delimiter(row[:value]) %></b><small>leads</small></span>
+              <% end %>
+            <% end %>
+          </div>
+        </section>
       </div>
     </div>
   </article>

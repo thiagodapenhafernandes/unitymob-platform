@@ -47,16 +47,43 @@
 
       <div class="ax-dashboard-quality" aria-label="Qualidade da publicação">
         <% @catalog_quality_metrics.each do |metric| %>
-          <%= link_to admin_habitations_path(ownership: "all", dashboard_quality: metric[:filter]), class: "ax-dashboard-quality__item", data: { turbo_frame: "_top" } do %>
+          <% metric_path_params = metric[:path_params].presence || { ownership: "all", dashboard_quality: metric[:filter] } %>
+          <%= link_to admin_habitations_path(metric_path_params), class: "ax-dashboard-quality__item", data: { turbo_frame: "_top" } do %>
             <span class="ax-dashboard-quality__icon ax-dashboard-quality__icon--<%= metric[:tone] %>"><i class="bi bi-<%= metric[:icon] %>"></i></span>
             <span>
               <strong><%= number_with_delimiter(metric[:value]) %></strong>
               <small><%= metric[:label] %></small>
+              <% if metric[:detail].present? %>
+                <small><%= metric[:detail] %></small>
+              <% end %>
             </span>
             <i class="bi bi-chevron-right"></i>
           <% end %>
         <% end %>
       </div>
+
+      <section class="ax-dashboard-channel-quality">
+        <div class="ax-dashboard-acquisition__title">
+          <h3>Interesse alto e baixa evolução</h3>
+          <small>Imóveis com leads/sinais públicos e sem visita ou proposta no período</small>
+        </div>
+
+        <% if @property_low_progress_rows.any? %>
+          <div class="ax-dashboard-channel-quality__rows">
+            <% @property_low_progress_rows.each do |row| %>
+              <%= link_to row[:path], class: "ax-dashboard-channel-quality__row", data: { turbo_frame: "_top" } do %>
+                <span class="ax-dashboard-channel-quality__identity">
+                  <strong><%= row[:label] %></strong>
+                  <small><%= row[:detail] %></small>
+                </span>
+                <span class="ax-dashboard-channel-quality__rate"><b><%= number_with_delimiter(row[:value]) %></b><small>sinais</small></span>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="ax-dashboard-empty-row">Nenhum imóvel com interesse travado no período.</div>
+        <% end %>
+      </section>
 
       <div class="ax-dashboard-table-wrap">
         <table class="ax-table ax-dashboard-table">

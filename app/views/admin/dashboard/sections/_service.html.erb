@@ -1,0 +1,69 @@
+<%= turbo_frame_tag "admin_dashboard_service" do %>
+  <div class="ax-dashboard-grid ax-dashboard-grid--service">
+    <article class="ax-dashboard-panel ax-dashboard-service-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Atendimento</span>
+          <h2>SLA e fila de leads</h2>
+        </div>
+        <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
+      </div>
+
+      <div class="ax-dashboard-service-list">
+        <% @service_sla_rows.each do |row| %>
+          <%= link_to row[:path], class: "ax-dashboard-service-row ax-dashboard-service-row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+            <span>
+              <strong><%= row[:label] %></strong>
+              <small><%= row[:detail] %></small>
+            </span>
+            <b><%= number_with_delimiter(row[:value]) %></b>
+          <% end %>
+        <% end %>
+      </div>
+    </article>
+
+    <article class="ax-dashboard-panel ax-dashboard-service-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">WhatsApp</span>
+          <h2>Atendimento pelo inbox</h2>
+        </div>
+        <%= link_to "Abrir inbox", admin_whatsapp_conversations_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
+      </div>
+
+      <div class="ax-dashboard-service-list">
+        <% @service_whatsapp_rows.each do |row| %>
+          <%= link_to row[:path], class: "ax-dashboard-service-row ax-dashboard-service-row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+            <span>
+              <strong><%= row[:label] %></strong>
+              <small><%= row[:detail] %></small>
+            </span>
+            <b><%= number_with_delimiter(row[:value]) %><%= " min" if row[:label] == "Tempo médio de resposta" && row[:value].to_i.positive? %></b>
+          <% end %>
+        <% end %>
+      </div>
+    </article>
+
+    <article class="ax-dashboard-panel ax-dashboard-service-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Campanhas</span>
+          <h2>Disparos e retornos</h2>
+        </div>
+        <%= link_to "Ver campanhas", admin_whatsapp_campaigns_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
+      </div>
+
+      <div class="ax-dashboard-service-list">
+        <% @service_campaign_rows.each do |row| %>
+          <%= link_to row[:path], class: "ax-dashboard-service-row ax-dashboard-service-row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+            <span>
+              <strong><%= row[:label] %></strong>
+              <small><%= row[:detail] %></small>
+            </span>
+            <b><%= number_with_delimiter(row[:value]) %></b>
+          <% end %>
+        <% end %>
+      </div>
+    </article>
+  </div>
+<% end %>

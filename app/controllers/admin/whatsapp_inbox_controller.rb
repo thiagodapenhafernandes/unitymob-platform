@@ -235,10 +235,16 @@ class Admin::WhatsappInboxController < Admin::BaseController
   def load_inbox
     @focus_mode = params[:workspace] == "focus"
     @integration = WhatsappBusinessIntegration.current(current_tenant)
-    @conversations = conversation_scope.recent.limit(queue_limit)
+    @queue_filter = queue_filter
+    @conversation_base_scope = conversation_scope
+    @conversations = apply_queue_filter(@conversation_base_scope).recent.limit(queue_limit)
     @templates = current_tenant.whatsapp_templates.approved.ordered
-    @conversation_count = @conversations.size
-    @total_unread = conversation_scope.unread.sum(:unread_count)
+    @conversation_count = @conversation_base_scope.count
+    @unread_conversation_count = @conversation_base_scope.unread.count
+    @unlinked_conversation_count = @conversation_base_scope.where(lead_id: nil).count
+    @pending_reply_conversation_count = @conversation_base_scope.pending_reply_since.count
+    @pending_reply_conversation_ids = @conversation_base_scope.pending_reply_since.where(id: @conversations.map(&:id)).pluck(:id)
+    @total_unread = @conversation_base_scope.unread.sum(:unread_count)
   end
 
   def load_thread_dependencies
@@ -265,6 +271,23 @@ class Admin::WhatsappInboxController < Admin::BaseController
   def queue_limit
     limit = ENV["WA_INBOX_QUEUE_LIMIT"].to_i
     limit.positive? ? limit : DEFAULT_QUEUE_LIMIT
+  end
+
+  def queue_filter
+    params[:filter].to_s.presence_in(%w[all unread unlinked pending_reply]) || "all"
+  end
+
+  def apply_queue_filter(scope)
+    case @queue_filter
+    when "unread"
+      scope.unread
+    when "unlinked"
+      scope.where(lead_id: nil)
+    when "pending_reply"
+      scope.pending_reply_since
+    else
+      scope
+    end
   end
 
   def load_thread_context

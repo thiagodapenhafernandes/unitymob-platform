@@ -1,0 +1,172 @@
+<turbo-frame id="admin_dashboard_site">
+  <% site_has_activity = @site_kpis.values.sum.positive? %>
+  <div class="ax-dashboard-grid ax-dashboard-grid--site">
+    <section class="ax-dashboard-panel ax-dashboard-panel--wide" aria-labelledby="dashboard-site-title">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Site público</span>
+          <h2 id="dashboard-site-title">O site está gerando intenção?</h2>
+        </div>
+        <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
+      </div>
+
+      <div class="ax-dashboard-site-kpis">
+        <%= link_to request.path, class: "ax-dashboard-site-kpi ax-dashboard-site-kpi--blue", data: { turbo_frame: "_top" } do %>
+          <strong><%= number_with_delimiter(@site_kpis[:visits]) %></strong>
+          <span>visitas</span>
+          <small>page views rastreados</small>
+        <% end %>
+        <%= link_to admin_habitations_path(ownership: "all"), class: "ax-dashboard-site-kpi ax-dashboard-site-kpi--green", data: { turbo_frame: "_top" } do %>
+          <strong><%= number_with_delimiter(@site_kpis[:property_views]) %></strong>
+          <span>imóveis vistos</span>
+          <small>aberturas de detalhe</small>
+        <% end %>
+        <%= link_to habitations_path, class: "ax-dashboard-site-kpi ax-dashboard-site-kpi--amber", data: { turbo_frame: "_top" } do %>
+          <strong><%= number_with_delimiter(@site_kpis[:searches]) %></strong>
+          <span>buscas</span>
+          <small><%= number_with_delimiter(@site_kpis[:no_results]) %> sem resultado</small>
+        <% end %>
+        <%= link_to admin_leads_path(start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601), class: "ax-dashboard-site-kpi ax-dashboard-site-kpi--red", data: { turbo_frame: "_top" } do %>
+          <strong><%= number_with_delimiter(@site_kpis[:whatsapp_clicks] + @site_kpis[:phone_clicks] + @site_kpis[:form_submissions]) %></strong>
+          <span>ações de contato</span>
+          <small>WhatsApp, telefone e formulário</small>
+        <% end %>
+      </div>
+
+      <% unless site_has_activity %>
+        <div class="ax-dashboard-investigation__empty">
+          <i class="bi bi-info-circle"></i>
+          Ainda não há eventos públicos reais no período. A captura passa a alimentar este painel conforme visitantes navegam no site.
+        </div>
+      <% end %>
+    </section>
+
+    <% if site_has_activity %>
+    <section class="ax-dashboard-panel ax-dashboard-panel--wide" aria-labelledby="dashboard-site-funnel-title">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Conversão</span>
+          <h2 id="dashboard-site-funnel-title">Onde o visitante avança ou abandona?</h2>
+        </div>
+      </div>
+
+      <div class="ax-dashboard-investigation__rows ax-dashboard-investigation__rows--compact">
+        <% @site_conversion_funnel.each do |row| %>
+          <div class="ax-dashboard-investigation__row ax-dashboard-investigation__row--<%= row[:tone] %>">
+            <span>
+              <strong><%= row[:label] %></strong>
+              <small>
+                <%= row[:detail] %>
+                <% if row[:conversion_rate] %>
+                  · <%= number_with_precision(row[:conversion_rate], precision: 1, strip_insignificant_zeros: true) %>% da etapa anterior
+                <% end %>
+              </small>
+            </span>
+            <b><%= number_with_delimiter(row[:value]) %></b>
+          </div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="ax-dashboard-panel" aria-labelledby="dashboard-site-pages-title">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Páginas</span>
+          <h2 id="dashboard-site-pages-title">Quais páginas puxam atenção?</h2>
+        </div>
+      </div>
+
+      <div class="ax-dashboard-investigation__rows">
+        <% if @site_top_pages.any? %>
+          <% @site_top_pages.each do |row| %>
+            <%= link_to row[:path], class: "ax-dashboard-investigation__row ax-dashboard-investigation__row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+              <span>
+                <strong><%= row[:label] %></strong>
+                <small><%= row[:detail] %></small>
+              </span>
+              <b><%= number_with_delimiter(row[:value]) %></b>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-investigation__empty"><i class="bi bi-check2-circle"></i> Sem páginas rastreadas no período.</div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="ax-dashboard-panel" aria-labelledby="dashboard-site-properties-title">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Imóveis</span>
+          <h2 id="dashboard-site-properties-title">Quais imóveis geram sinais?</h2>
+        </div>
+      </div>
+
+      <div class="ax-dashboard-investigation__rows">
+        <% if @site_top_properties.any? %>
+          <% @site_top_properties.each do |row| %>
+            <%= link_to row[:path], class: "ax-dashboard-investigation__row ax-dashboard-investigation__row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+              <span>
+                <strong><%= row[:label] %></strong>
+                <small><%= row[:detail] %></small>
+              </span>
+              <b><%= number_with_delimiter(row[:value]) %></b>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-investigation__empty"><i class="bi bi-check2-circle"></i> Sem imóveis rastreados no período.</div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="ax-dashboard-panel" aria-labelledby="dashboard-site-home-sections-title">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Home</span>
+          <h2 id="dashboard-site-home-sections-title">Quais seções recebem cliques?</h2>
+        </div>
+      </div>
+
+      <div class="ax-dashboard-investigation__rows">
+        <% if @site_home_section_clicks.any? %>
+          <% @site_home_section_clicks.each do |row| %>
+            <%= link_to row[:path], class: "ax-dashboard-investigation__row ax-dashboard-investigation__row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+              <span>
+                <strong><%= row[:label] %></strong>
+                <small><%= row[:detail] %></small>
+              </span>
+              <b><%= number_with_delimiter(row[:value]) %></b>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-investigation__empty"><i class="bi bi-info-circle"></i> Ainda não há cliques de seção da home rastreados no período.</div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="ax-dashboard-panel ax-dashboard-panel--wide" aria-labelledby="dashboard-site-search-title">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Buscas e filtros</span>
+          <h2 id="dashboard-site-search-title">O que o visitante procura?</h2>
+        </div>
+      </div>
+
+      <div class="ax-dashboard-investigation__rows ax-dashboard-investigation__rows--compact">
+        <% if @site_search_filters.any? %>
+          <% @site_search_filters.each do |row| %>
+            <%= link_to row[:path], class: "ax-dashboard-investigation__row ax-dashboard-investigation__row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+              <span>
+                <strong><%= row[:label] %></strong>
+                <small><%= row[:detail] %></small>
+              </span>
+              <b><%= number_with_delimiter(row[:value]) %></b>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-investigation__empty"><i class="bi bi-info-circle"></i> Ainda não há filtros públicos rastreados no período.</div>
+        <% end %>
+      </div>
+    </section>
+    <% end %>
+  </div>
+</turbo-frame>

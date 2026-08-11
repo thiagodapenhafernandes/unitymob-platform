@@ -79,6 +79,38 @@
               </div>
             </div>
 
+            <div class="tw-mb-3" id="ai-dashboard-diagnosis">
+              <%= ax_operational_panel(eyebrow: "BI", title: "Diagnóstico textual do dashboard", actions: ax_badge(@dashboard_diagnosis_enabled ? "habilitado" : "desligado", tone: @dashboard_diagnosis_enabled ? :green : :gray)) do %>
+                <div class="tw-mb-3">
+                  <%= hidden_field_tag "ai[dashboard_diagnosis_enabled]", "0" %>
+                  <%= ax_check_field(
+                        name: "ai[dashboard_diagnosis_enabled]",
+                        value: "1",
+                        id: "ai_dashboard_diagnosis_enabled",
+                        checked: @dashboard_diagnosis_enabled,
+                        label: "Usar OpenAI para o diagnóstico semanal do BI"
+                      ) %>
+                  <div class="ax-field-hint">Quando desligado, o dashboard mostra um diagnóstico determinístico sem custo externo.</div>
+                </div>
+
+                <%= ax_field_grid do %>
+                  <div class="ax-span-6">
+                    <%= f.label :dashboard_diagnosis_weekly_limit, "Limite semanal de diagnósticos", class: "ax-label tw-font-semibold" %>
+                    <%= f.number_field :dashboard_diagnosis_weekly_limit, class: "ax-control", min: 0, max: 10, value: @dashboard_diagnosis_weekly_limit %>
+                    <div class="ax-field-hint"><%= @dashboard_diagnosis_weekly_used %> usado(s) nesta semana.</div>
+                  </div>
+                  <div class="ax-span-6">
+                    <%= f.label :dashboard_diagnosis_monthly_budget_cents, "Teto mensal estimado em centavos", class: "ax-label tw-font-semibold" %>
+                    <%= f.number_field :dashboard_diagnosis_monthly_budget_cents, class: "ax-control", min: 0, max: 100000, step: 100, value: @dashboard_diagnosis_monthly_budget_cents %>
+                    <div class="ax-field-hint">
+                      Gasto estimado no mês:
+                      <%= number_to_currency(@dashboard_diagnosis_monthly_cost_cents.to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>.
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+
             <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
           <% end %>
         <% end %>

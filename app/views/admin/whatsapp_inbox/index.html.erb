@@ -6,6 +6,12 @@
   thread_compact = true
   composer_compact = true
   thread_panel_compact = true
+  queue_filter_path = ->(filter) do
+    options = {}
+    options[:workspace] = "focus" if @focus_mode
+    options[:filter] = filter unless filter == "all"
+    admin_whatsapp_conversations_path(options)
+  end
 %>
 
 <% heading_actions = capture do %>
@@ -75,13 +81,11 @@
     </div>
   <% end %>
 
-  <% unread_conversation_count = @conversations.count { |conv| conv.unread_count.to_i.positive? } %>
-  <% unlinked_conversation_count = @conversations.count { |conv| conv.lead.blank? } %>
-
   <section class="wa-inbox-panel wa-inbox-panel--list wa-inbox-panel--compact" aria-label="Conversas do WhatsApp">
     <div id="wa-inbox-queue"
          class="wa-inbox-list-shell"
          data-controller="wa-queue"
+         data-wa-queue-initial-filter-value="<%= @queue_filter %>"
          data-turbo-permanent>
       <div class="wa-inbox-list-toolbar">
         <label class="wa-inbox-list-search-shell" for="wa-inbox-search">
@@ -98,30 +102,30 @@
                  data-wa-queue-target="search">
         </label>
         <div class="wa-inbox-list-filters">
-          <button type="button"
-                  class="wa-inbox-list-filter is-active"
-                  data-filter="all"
-                  data-action="wa-queue#filter"
-                  data-wa-queue-target="filterButton">
+          <%= link_to queue_filter_path.call("all"),
+                  class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'all'}",
+                  data: { filter: "all", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
             <span>Todas</span>
             <small data-wa-inbox-filter-count="all"><%= @conversation_count %></small>
-          </button>
-          <button type="button"
-                  class="wa-inbox-list-filter"
-                  data-filter="unread"
-                  data-action="wa-queue#filter"
-                  data-wa-queue-target="filterButton">
+          <% end %>
+          <%= link_to queue_filter_path.call("unread"),
+                  class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'unread'}",
+                  data: { filter: "unread", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
             <span>Não lidas</span>
-            <small data-wa-inbox-filter-count="unread"><%= unread_conversation_count %></small>
-          </button>
-          <button type="button"
-                  class="wa-inbox-list-filter"
-                  data-filter="unlinked"
-                  data-action="wa-queue#filter"
-                  data-wa-queue-target="filterButton">
+            <small data-wa-inbox-filter-count="unread"><%= @unread_conversation_count %></small>
+          <% end %>
+          <%= link_to queue_filter_path.call("pending_reply"),
+                  class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'pending_reply'}",
+                  data: { filter: "pending_reply", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
+            <span>Aguardando resposta</span>
+            <small data-wa-inbox-filter-count="pending_reply"><%= @pending_reply_conversation_count %></small>
+          <% end %>
+          <%= link_to queue_filter_path.call("unlinked"),
+                  class: "wa-inbox-list-filter #{'is-active' if @queue_filter == 'unlinked'}",
+                  data: { filter: "unlinked", wa_queue_target: "filterButton", turbo_frame: "_top" } do %>
             <span>Sem lead</span>
-            <small data-wa-inbox-filter-count="unlinked"><%= unlinked_conversation_count %></small>
-          </button>
+            <small data-wa-inbox-filter-count="unlinked"><%= @unlinked_conversation_count %></small>
+          <% end %>
         </div>
       </div>
 
@@ -130,7 +134,7 @@
            data-wa-queue-target="list">
       <% if @conversations.any? %>
         <% @conversations.each do |conv| %>
-          <%= render "conversation_item", conv: conv, active: @conversation&.id == conv.id, focus_mode: @focus_mode, compact_mode: queue_compact %>
+          <%= render "conversation_item", conv: conv, active: @conversation&.id == conv.id, focus_mode: @focus_mode, compact_mode: queue_compact, pending_reply: @pending_reply_conversation_ids.include?(conv.id) %>
         <% end %>
       <% else %>
         <div class="wa-inbox-list__empty">

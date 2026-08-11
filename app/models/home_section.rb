@@ -17,9 +17,9 @@ class HomeSection < ApplicationRecord
     "destaque_web" => { label: "Destaque Web", column: :destaque_web_flag },
     "super_destaque" => { label: "Super Destaque", column: :festival_salute_flag },
     "lancamento" => { label: "Lançamento", column: :lancamento_flag },
-    "frente_mar" => { label: "Frente mar", scope: :frente_mar },
-    "quadra_mar" => { label: "Quadra mar", scope: :quadra_mar },
-    "vista_mar" => { label: "Vista mar", scope: :vista_mar },
+    "frente_mar" => { label: "Frente Mar", scope: :frente_mar },
+    "quadra_mar" => { label: "Quadra Mar", scope: :quadra_mar },
+    "vista_mar" => { label: "Vista Mar", scope: :vista_mar },
     "preco_reduzido" => { label: "Preço reduzido", scope: :opportunity },
     "garden" => { label: "Garden", scope: :garden },
     "pronto" => { label: "Pronto para morar", scope: :pronto },
@@ -56,6 +56,31 @@ class HomeSection < ApplicationRecord
   PROPERTY_FILTER_ARRAY_KEYS = %w[selected_property_ids].freeze
   PROPERTY_FILTER_PARAM_KEYS = (PROPERTY_FILTER_OPTIONS.keys + PROPERTY_FILTER_ARRAY_KEYS).freeze
   PROPERTY_SECTION_TYPES = %w[featured_properties opportunities developments rentals].freeze
+  PUBLIC_CHARACTERISTIC_FILTERS = {
+    "destaque_web" => "featured",
+    "super_destaque" => "festival_salute_flag",
+    "lancamento" => "lancamento",
+    "frente_mar" => "frente_mar",
+    "quadra_mar" => "quadra_mar",
+    "vista_mar" => "vista_mar",
+    "preco_reduzido" => "opportunity",
+    "garden" => "garden",
+    "pronto" => "pronto",
+    "na_planta" => "na_planta",
+    "em_construcao" => "em_construcao",
+    "sol_manha" => "sol_manha",
+    "sol_tarde" => "sol_tarde",
+    "mobiliado" => "mobiliado",
+    "decorado" => "decorado"
+  }.freeze
+  PUBLIC_BOOLEAN_FILTER_PARAMS = {
+    "aceita_permuta" => :accepts_exchange,
+    "aceita_financiamento" => :accepts_financing
+  }.freeze
+  PUBLIC_CTA_SUFFIX_FILTERS = %w[
+    frente_mar quadra_mar vista_mar garden pronto na_planta em_construcao sol_manha sol_tarde
+    mobiliado decorado lancamento
+  ].freeze
   LEGACY_SECTION_TYPE_FILTERS = {
     "featured_properties" => %w[destaque_web],
     "opportunities" => %w[preco_reduzido],
@@ -141,6 +166,38 @@ class HomeSection < ApplicationRecord
     return "Empreendimentos" if development_content?
 
     "Imóveis"
+  end
+
+  def public_property_filter_params
+    params = {}
+    characteristics = []
+
+    params[:transaction_type] = "aluguel" if property_filter_enabled?("locacao") || section_type == "rentals"
+    params[:transaction_type] = "venda" if property_filter_enabled?("venda")
+
+    PUBLIC_CHARACTERISTIC_FILTERS.each do |filter_key, param_value|
+      characteristics << param_value if property_filter_enabled?(filter_key)
+    end
+
+    PUBLIC_BOOLEAN_FILTER_PARAMS.each do |filter_key, param_key|
+      params[param_key] = "1" if property_filter_enabled?(filter_key)
+    end
+
+    params[:characteristics] = characteristics if characteristics.any?
+    params
+  end
+
+  def public_property_cta_label
+    base_label = if property_filter_enabled?("locacao") || section_type == "rentals"
+                   "Ver Todos os Imóveis para Alugar"
+                 else
+                   "Ver Todos os Imóveis"
+                 end
+    suffix_labels = PUBLIC_CTA_SUFFIX_FILTERS.filter_map do |filter_key|
+      PROPERTY_FILTER_OPTIONS.dig(filter_key, :label) if property_filter_enabled?(filter_key)
+    end
+
+    ([base_label] + suffix_labels).join(" ")
   end
 
   def legacy_filter_keys

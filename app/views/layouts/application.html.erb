@@ -180,6 +180,9 @@
       <%= stylesheet_link_tag stylesheet, "data-turbo-track": "reload" %>
     <% end %>
     <%= stylesheet_link_tag public_tenant.public_site_stylesheet, "data-turbo-track": "reload" %>
+    <% if @layout_setting&.public_custom_logo_css.present? %>
+      <style id="custom-logo-css"><%= @layout_setting.public_custom_logo_css.html_safe %></style>
+    <% end %>
     <link rel="preload"
           href="<%= asset_path("ax_toast.css") %>"
           as="style"
@@ -248,6 +251,7 @@
     
     <%= render 'shared/code_search_modal' %>
     <%= render 'shared/lead_modal' %>
+    <%= render 'shared/global_property_search_drawer' %>
     <%= render 'shared/lgpd_consent' %>
   </body>
 </html>

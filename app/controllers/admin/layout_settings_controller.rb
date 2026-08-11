@@ -42,6 +42,7 @@ module Admin
         :favicon,
         :site_name,
         :admin_area_name,
+        :custom_logo_css,
         :interest_intelligence_enabled,
         :interest_intelligence_instructions,
         interest_intelligence_settings: {},

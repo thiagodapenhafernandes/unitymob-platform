@@ -18,7 +18,7 @@ export default class extends Controller {
   connect() {
     this.startedAt = Date.now()
     this.tracked = new Set()
-    this.formStarted = false
+    this.startedForms = new Set()
     this.trackPage()
     this.boundClick = this.trackClick.bind(this)
     this.boundFocusIn = this.trackFocusIn.bind(this)
@@ -62,6 +62,8 @@ export default class extends Controller {
     const trigger = event.target.closest("[data-action*='lead-capture#open']")
     const phoneTrigger = event.target.closest("a[href^='tel:']")
     const shareTrigger = event.target.closest("[data-share], a[href*='whatsapp://send'], a[href*='api.whatsapp.com/send']")
+    const homeSectionTrigger = event.target.closest("[data-public-home-section-id], [data-public-home-section]")
+    if (homeSectionTrigger) this.trackHomeSectionClick(homeSectionTrigger, event.target.closest("a, button"))
 
     if (trigger) {
       this.enqueue("property_whatsapp_click", {
@@ -79,18 +81,42 @@ export default class extends Controller {
     }
   }
 
-  trackFocusIn(event) {
-    if (this.formStarted) return
-    if (!event.target.closest("#lead-capture-modal form")) return
+  trackHomeSectionClick(section, target) {
+    const sectionId = section.dataset.publicHomeSectionId || section.dataset.publicHomeSection || ""
+    this.enqueue("home_section_click", {
+      dedupe_key: `home-section:${sectionId}:${target?.href || ""}`,
+      metadata: {
+        home_section_id: sectionId,
+        home_section_type: section.dataset.publicHomeSectionType || "",
+        home_section_title: section.dataset.publicHomeSectionTitle || "",
+        target_url: target?.href || "",
+        label: target?.textContent?.trim() || ""
+      }
+    })
+  }
 
-    this.formStarted = true
-    this.enqueue("lead_form_started")
+  trackFocusIn(event) {
+    const form = this.publicTrackedForm(event.target)
+    if (!form) return
+
+    const formKey = this.publicFormKey(form)
+    if (this.startedForms.has(formKey)) return
+
+    this.startedForms.add(formKey)
+    this.enqueue("lead_form_started", {
+      dedupe_key: `form-started:${formKey}`,
+      metadata: this.publicFormMetadata(form)
+    })
   }
 
   trackSubmit(event) {
-    if (!event.target.closest("#lead-capture-modal form")) return
+    const form = this.publicTrackedForm(event.target)
+    if (!form) return
 
-    this.track("lead_form_submitted")
+    this.track("lead_form_submitted", {
+      dedupe_key: `form-submitted:${this.publicFormKey(form)}`,
+      metadata: this.publicFormMetadata(form)
+    })
   }
 
   trackVisibility() {
@@ -136,7 +162,7 @@ export default class extends Controller {
     if (!this.canTrack()) return
 
     const csrfToken = document.querySelector("[name='csrf-token']")?.content
-    const dedupeKey = `${name}:${overrides.habitation_id || this.propertyIdValue || ""}:${Math.floor((Date.now() - this.startedAt) / 5000)}`
+    const dedupeKey = `${name}:${overrides.dedupe_key || overrides.habitation_id || this.propertyIdValue || ""}:${Math.floor((Date.now() - this.startedAt) / 5000)}`
     if (this.tracked.has(dedupeKey) && !overrides.beacon) return
     this.tracked.add(dedupeKey)
 
@@ -201,6 +227,35 @@ export default class extends Controller {
       if (value) payload[key] = value
     })
     return payload
+  }
+
+  publicTrackedForm(target) {
+    const form = target.closest("form")
+    if (!form) return null
+
+    if (form.matches("[data-public-interest-form], #lead-capture-modal form, .public-form-modal__form")) return form
+    if (form.action && form.action.includes("/public_forms/")) return form
+
+    return null
+  }
+
+  publicFormKey(form) {
+    return form.dataset.publicInterestForm ||
+      form.dataset.publicFormSlug ||
+      form.id ||
+      form.action ||
+      "public-form"
+  }
+
+  publicFormMetadata(form) {
+    return {
+      form_key: this.publicFormKey(form),
+      form_kind: form.dataset.publicInterestForm || "",
+      form_slug: form.dataset.publicFormSlug || "",
+      form_title: form.dataset.publicFormTitle || "",
+      form_action: form.action || "",
+      form_method: form.method || ""
+    }
   }
 
   propertySnapshot() {

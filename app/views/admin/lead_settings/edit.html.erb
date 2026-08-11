@@ -83,6 +83,17 @@
           </div>
         <% end %>
 
+        <%# ===== SLA ===== %>
+        <%= ax_operational_panel(eyebrow: "Atendimento", title: "SLA de primeiro contato") do %>
+          <div class="ax-panel-body">
+            <%= ax_number_field(form: f, method: :first_contact_sla_hours, label: "Prazo em horas",
+                  min: 1,
+                  max: 168,
+                  placeholder: LeadSetting::DEFAULT_FIRST_CONTACT_SLA_HOURS,
+                  hint: "Usado no dashboard e nos filtros de leads para apontar quem passou do prazo sem primeiro atendimento.") %>
+          </div>
+        <% end %>
+
         <%# ===== Comportamento do push ===== %>
         <%= ax_operational_panel(eyebrow: "Push", title: "Ao tocar na notificação") do %>
           <div class="ax-panel-body">
@@ -145,6 +156,7 @@
             <% lead_status_rows << { label: "Janela", value: ax_badge(@lead_setting.window_forever? ? "Para sempre" : "#{@lead_setting.stickiness_window_days} dias", tone: :blue) } %>
           <% end %>
           <% lead_status_rows.concat([
+            { label: "SLA 1º contato", value: ax_badge("#{@lead_setting.first_contact_sla_hours_value}h", tone: :blue) },
             { label: "Link seguro", value: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) },
             { label: "Clique no push", value: ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) }
           ]) %>

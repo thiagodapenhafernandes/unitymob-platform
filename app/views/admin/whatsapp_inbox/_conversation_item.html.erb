@@ -9,6 +9,7 @@
 <% compact_mode = local_assigns.fetch(:compact_mode, false) %>
 <% lead_labels = local_assigns.key?(:lead_labels) ? local_assigns[:lead_labels] : (conv.lead ? conv.lead.preloaded_labels_for(current_admin_user) : []) %>
 <% initials = wa_initials(conv.display_name) %>
+<% pending_reply = local_assigns.key?(:pending_reply) ? local_assigns[:pending_reply] : conv.class.where(id: conv.id).pending_reply_since.exists? %>
 
 <%= link_to (focus_mode ? admin_whatsapp_conversation_path(conv, workspace: "focus") : admin_whatsapp_conversation_path(conv)),
       class: ["wa-inbox-conversation", ("wa-inbox-conversation--compact" if compact_mode), ("is-active" if active)].compact.join(" "),
@@ -20,6 +21,7 @@
         conversation_default_href: admin_whatsapp_conversation_path(conv),
         conversation_focus_href: admin_whatsapp_conversation_path(conv, workspace: "focus"),
         unread: conv.unread_count.to_i.positive?,
+        pending_reply: pending_reply,
         lead: conv.lead.present?,
         search: [conv.contact_phone, conv.display_name, conv.lead&.name, conv.last_message_preview].compact.join(" ").downcase
       } do %>

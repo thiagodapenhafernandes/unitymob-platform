@@ -18,6 +18,29 @@ class WhatsappConversation < ApplicationRecord
   # e "updated_at" ficaria ambíguo (leads também tem a coluna).
   scope :recent, -> { order(Arel.sql("whatsapp_conversations.last_message_at DESC NULLS LAST, whatsapp_conversations.updated_at DESC")) }
   scope :unread, -> { where("unread_count > 0") }
+  scope :pending_reply_since, ->(starts_at = nil) {
+    starts_at ||= Time.zone.at(0)
+    open.where(
+      <<~SQL.squish,
+        EXISTS (
+          SELECT 1
+          FROM whatsapp_messages inbound_messages
+          WHERE inbound_messages.whatsapp_conversation_id = whatsapp_conversations.id
+            AND inbound_messages.tenant_id = whatsapp_conversations.tenant_id
+            AND inbound_messages.direction = 'inbound'
+            AND inbound_messages.created_at >= :starts_at
+            AND inbound_messages.created_at > COALESCE((
+              SELECT MAX(outbound_messages.created_at)
+              FROM whatsapp_messages outbound_messages
+              WHERE outbound_messages.whatsapp_conversation_id = whatsapp_conversations.id
+                AND outbound_messages.tenant_id = whatsapp_conversations.tenant_id
+                AND outbound_messages.direction = 'outbound'
+            ), TIMESTAMP '1970-01-01')
+        )
+      SQL
+      starts_at: starts_at
+    )
+  }
 
   def display_name
     contact_name.presence || lead&.display_name.presence || contact_phone

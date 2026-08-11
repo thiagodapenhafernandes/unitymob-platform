@@ -1,4 +1,4 @@
-\restrict R1uCrDXJI2iGqcBNP23lCyCoeUoxEJQfezyNNUqFJ49Yrfdp0gPkYe4ubcHkkiQ
+\restrict ORMm7QBwIF7wGfd9SruXDHXFNwzLvFqi6Ukgb5nm2jknfJd2c8b0i5hnZDGv8Ys
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3328,7 +3328,8 @@ CREATE TABLE public.layout_settings (
     interest_intelligence_settings jsonb DEFAULT '{}'::jsonb NOT NULL,
     admin_menu_section_colors jsonb DEFAULT '{"growth": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#DB2777", "border_color": "#ECC1D4", "background_color": "#DB2777", "background_opacity": 10}, "account": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#475569", "border_color": "#B0C1D8", "background_color": "#475569", "background_opacity": 10}, "product": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#245486", "border_color": "#C7D8EE", "background_color": "#E8F0FB", "background_opacity": 100}, "settings": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#64748B", "border_color": "#AFC3DE", "background_color": "#64748B", "background_opacity": 10}, "operation": {"box_shadow": "inset 2px 0 0 #0F766E", "text_color": "#0F766E", "border_color": "#C9EEEB", "background_color": "#EBFFFE", "background_opacity": 100}, "management": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#7C3AED", "border_color": "#D2C0F2", "background_color": "#ECE0FF", "background_opacity": 100}, "public_site": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#0891B2", "border_color": "#BDDDE5", "background_color": "#0891B2", "background_opacity": 10}, "integrations": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#D97706", "border_color": "#E2D0BB", "background_color": "#D97706", "background_opacity": 10}}'::jsonb NOT NULL,
     admin_theme_mode character varying DEFAULT 'light'::character varying NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    custom_logo_css text
 );
 
 
@@ -3626,7 +3627,8 @@ CREATE TABLE public.lead_settings (
     secure_link_whatsapp boolean DEFAULT true NOT NULL,
     secure_link_email boolean DEFAULT true NOT NULL,
     secure_link_push boolean DEFAULT true NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    first_contact_sla_hours integer DEFAULT 4 NOT NULL
 );
 
 
@@ -3956,6 +3958,45 @@ CREATE SEQUENCE public.notification_template_settings_id_seq
 --
 
 ALTER SEQUENCE public.notification_template_settings_id_seq OWNED BY public.notification_template_settings.id;
+
+
+--
+-- Name: open_ai_usage_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.open_ai_usage_events (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint,
+    feature character varying NOT NULL,
+    model character varying,
+    status character varying DEFAULT 'succeeded'::character varying NOT NULL,
+    input_tokens integer DEFAULT 0 NOT NULL,
+    output_tokens integer DEFAULT 0 NOT NULL,
+    estimated_cost_cents integer DEFAULT 0 NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: open_ai_usage_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.open_ai_usage_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: open_ai_usage_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.open_ai_usage_events_id_seq OWNED BY public.open_ai_usage_events.id;
 
 
 --
@@ -4725,7 +4766,8 @@ CREATE TABLE public.public_navigation_events (
     property_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -4763,7 +4805,8 @@ CREATE TABLE public.public_navigation_sessions (
     last_seen_at timestamp(6) without time zone NOT NULL,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -7221,6 +7264,13 @@ ALTER TABLE ONLY public.notification_template_settings ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: open_ai_usage_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.open_ai_usage_events ALTER COLUMN id SET DEFAULT nextval('public.open_ai_usage_events_id_seq'::regclass);
+
+
+--
 -- Name: operational_user_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8309,6 +8359,14 @@ ALTER TABLE ONLY public.notification_template_settings
 
 
 --
+-- Name: open_ai_usage_events open_ai_usage_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.open_ai_usage_events
+    ADD CONSTRAINT open_ai_usage_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: operational_user_events operational_user_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9219,6 +9277,13 @@ CREATE INDEX idx_on_tenant_id_automation_workflow_id_d14f88f362 ON public.automa
 
 
 --
+-- Name: idx_on_tenant_id_feature_created_at_59ac16a250; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_feature_created_at_59ac16a250 ON public.open_ai_usage_events USING btree (tenant_id, feature, created_at);
+
+
+--
 -- Name: idx_on_tenant_id_phone_number_id_9c3acbd0a4; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9391,6 +9456,20 @@ CREATE INDEX idx_public_nav_events_lead_name ON public.public_navigation_events 
 --
 
 CREATE INDEX idx_public_nav_events_session_time ON public.public_navigation_events USING btree (public_navigation_session_id, occurred_at);
+
+
+--
+-- Name: idx_public_nav_events_tenant_name_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_public_nav_events_tenant_name_time ON public.public_navigation_events USING btree (tenant_id, name, occurred_at);
+
+
+--
+-- Name: idx_public_nav_events_tenant_path_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_public_nav_events_tenant_path_time ON public.public_navigation_events USING btree (tenant_id, path, occurred_at);
 
 
 --
@@ -12313,6 +12392,27 @@ CREATE INDEX index_notification_template_settings_on_whatsapp_template_id ON pub
 
 
 --
+-- Name: index_open_ai_usage_events_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_open_ai_usage_events_on_admin_user_id ON public.open_ai_usage_events USING btree (admin_user_id);
+
+
+--
+-- Name: index_open_ai_usage_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_open_ai_usage_events_on_tenant_id ON public.open_ai_usage_events USING btree (tenant_id);
+
+
+--
+-- Name: index_open_ai_usage_events_on_tenant_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_open_ai_usage_events_on_tenant_id_and_created_at ON public.open_ai_usage_events USING btree (tenant_id, created_at);
+
+
+--
 -- Name: index_operational_user_events_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12810,6 +12910,13 @@ CREATE INDEX index_public_navigation_events_on_public_navigation_session_id ON p
 
 
 --
+-- Name: index_public_navigation_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_events_on_tenant_id ON public.public_navigation_events USING btree (tenant_id);
+
+
+--
 -- Name: index_public_navigation_sessions_on_last_seen_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12821,6 +12928,13 @@ CREATE INDEX index_public_navigation_sessions_on_last_seen_at ON public.public_n
 --
 
 CREATE INDEX index_public_navigation_sessions_on_lead_id ON public.public_navigation_sessions USING btree (lead_id);
+
+
+--
+-- Name: index_public_navigation_sessions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_sessions_on_tenant_id ON public.public_navigation_sessions USING btree (tenant_id);
 
 
 --
@@ -14375,6 +14489,14 @@ ALTER TABLE ONLY public.ai_property_suggestions
 
 
 --
+-- Name: open_ai_usage_events fk_rails_172ef4ef7a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.open_ai_usage_events
+    ADD CONSTRAINT fk_rails_172ef4ef7a FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: ai_property_share_audit_events fk_rails_17b96feb65; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15735,6 +15857,14 @@ ALTER TABLE ONLY public.seo_settings
 
 
 --
+-- Name: public_navigation_events fk_rails_af97a57d80; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_events
+    ADD CONSTRAINT fk_rails_af97a57d80 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: habitations fk_rails_b0b092703f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16279,6 +16409,14 @@ ALTER TABLE ONLY public.whatsapp_conversations
 
 
 --
+-- Name: open_ai_usage_events fk_rails_e475e7611c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.open_ai_usage_events
+    ADD CONSTRAINT fk_rails_e475e7611c FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_campaign_messages fk_rails_e477ef2c00; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16471,6 +16609,14 @@ ALTER TABLE ONLY public.habitation_photo_shares
 
 
 --
+-- Name: public_navigation_sessions fk_rails_f88c0daa37; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_sessions
+    ADD CONSTRAINT fk_rails_f88c0daa37 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: vista_file_assets fk_rails_fdbde1c8b5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16514,11 +16660,15 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict R1uCrDXJI2iGqcBNP23lCyCoeUoxEJQfezyNNUqFJ49Yrfdp0gPkYe4ubcHkkiQ
+\unrestrict ORMm7QBwIF7wGfd9SruXDHXFNwzLvFqi6Ukgb5nm2jknfJd2c8b0i5hnZDGv8Ys
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260809173000'),
+('20260809170000'),
+('20260809143000'),
+('20260808182000'),
 ('20260806161000'),
 ('20260806150000'),
 ('20260806143100'),

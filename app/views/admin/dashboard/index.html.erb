@@ -15,27 +15,6 @@
       "Painel pessoal: #{@leads_today} leads hoje, #{@properties_count} imóveis atribuídos."
     end
 
-  today_metrics = [
-    [@today_new_habitations, "building", "Imóveis atualizados"],
-    [@leads_today, "megaphone", "Leads recebidos"],
-    [@today_captacoes, "journal-plus", "Captações criadas"]
-  ]
-  today_metrics << [@today_checkins_count, "geo-fill", "Check-ins"] if @field_feature_enabled
-
-  pending_items = []
-  if @drafts_count.to_i.positive?
-    draft_detail = if @stale_drafts_count.to_i.positive?
-      "#{@stale_drafts_count} sem atualização há mais de 30 dias"
-    elsif @oldest_draft_updated_at
-      "mais antiga atualizada há #{time_ago_in_words(@oldest_draft_updated_at)}"
-    end
-    pending_items << { path: admin_captacoes_path(status: "draft"), icon: "file-earmark-text", tone: "amber", label: "Captações em rascunho", count: @drafts_count, detail: draft_detail }
-  end
-  pending_items << { path: admin_leads_path(status: "represado"), icon: "hourglass-split", tone: "red", label: "Leads represados", count: @holding_leads, detail: "aguardando distribuição" } if @holding_leads.to_i.positive?
-  if @field_feature_enabled && @pending_manual_requests.to_i.positive?
-    pending_items << { path: admin_field_manual_checkin_requests_path, icon: "hand-index-thumb", tone: "amber", label: "Pedidos manuais pendentes", count: @pending_manual_requests }
-  end
-  pending_items << { path: admin_habitations_path(status: "error"), icon: "exclamation-triangle-fill", tone: "red", label: "Imóveis com erro de sync", count: @sync_errors_count, detail: "requerem revisão da integração" } if @sync_errors_count.to_i.positive?
 %>
 
 <section class="ax-dashboard" aria-label="Dashboard operacional">
@@ -63,13 +42,28 @@
   </header>
 
   <nav class="ax-dashboard-tabs" aria-label="Áreas do dashboard">
-    <% dashboard_tabs = [["overview", "Visão geral", "grid-1x2"], ["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"]] %>
+    <% dashboard_tabs = [["overview", "Visão geral", "grid-1x2"], ["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"], ["site", "Site público", "globe2"]] %>
     <% dashboard_tabs << ["field", "Campo", "geo-alt"] if @field_feature_enabled %>
     <% dashboard_tabs.each do |key, label, icon| %>
       <%= link_to admin_root_path(tab: key, period: @dashboard_period, broker_id: @dashboard_broker_id),
                   class: "ax-dashboard-tabs__item #{'is-active' if @dashboard_tab == key}",
                   aria: { current: (@dashboard_tab == key ? "page" : nil) } do %>
-        <i class="bi bi-<%= icon %>"></i><span><%= label %></span>
+        <span class="ax-dashboard-tabs__main">
+          <i class="bi bi-<%= icon %>"></i>
+          <span class="ax-dashboard-tabs__label"><%= label %></span>
+        </span>
+        <% if (badges = @dashboard_tab_badges[key]).present? %>
+          <span class="ax-dashboard-tabs__badges" aria-label="Indicadores de <%= label %>">
+            <% badges.each do |badge| %>
+              <span class="ax-dashboard-tabs__badge ax-dashboard-tabs__badge--<%= badge[:tone] %>"
+                    title="<%= badge[:title] %>"
+                    aria-label="<%= "#{badge[:label]}: #{number_with_delimiter(badge[:value])}. #{badge[:title]}" %>">
+                <span class="ax-dashboard-tabs__badge-value"><%= number_with_delimiter(badge[:value]) %></span>
+                <span class="ax-dashboard-tabs__badge-label"><%= badge[:label] %></span>
+              </span>
+            <% end %>
+          </span>
+        <% end %>
       <% end %>
     <% end %>
   </nav>
@@ -84,100 +78,154 @@
   <% end %>
 
   <% if @dashboard_tab == "overview" %>
-  <div class="ax-dashboard-kpis <%= 'ax-dashboard-kpis--compact' if @is_admin_view && !@field_feature_enabled %>">
-    <%= link_to admin_habitations_path(ownership: "all"), class: "ax-dashboard-kpi-link", aria: { label: "Ver imóveis no catálogo" } do %>
-      <%= ax_metric_card(
-          label: "Imóveis no catálogo",
-          value: number_with_delimiter(@properties_count),
-          badge: ax_badge("Ativos", tone: :green, dot: true),
-          hint: "#{@featured_count} destaques · #{@developments_count} empreendimentos",
-          class_name: "ax-dashboard-kpi"
-          ) %>
-    <% end %>
-
-    <%= link_to admin_leads_path(start_date: Date.current.iso8601, end_date: Date.current.iso8601, broker_id: @dashboard_broker_id), class: "ax-dashboard-kpi-link", aria: { label: "Ver leads recebidos hoje" } do %>
-      <%= ax_metric_card(
-          label: "Leads hoje",
-          value: number_with_delimiter(@leads_today),
-          badge: ax_badge("#{@leads_last_7_days} em 7d", tone: :gray),
-          hint: ["#{@holding_leads} represados", "#{@new_leads} novos", (@leads_period_change.nil? ? nil : "#{@leads_period_change.positive? ? '+' : ''}#{@leads_period_change}% vs. período anterior")].compact.join(" · "),
-          class_name: "ax-dashboard-kpi"
-          ) %>
-    <% end %>
-
-    <% if @is_admin_view %>
-      <% if @field_feature_enabled %>
-        <%= link_to admin_field_check_ins_path(status: "active"), class: "ax-dashboard-kpi-link", aria: { label: "Ver check-ins ativos" } do %>
-          <%= ax_metric_card(
-              label: "Check-ins ativos",
-              value: @active_checkins_count,
-              badge: @active_checkins_count.positive? ? ax_badge("Ao vivo", tone: :green, dot: true) : ax_badge("Sem ativos", tone: :gray),
-              hint: "#{@today_checkins_count} hoje · #{@suspicious_checkins} suspeitos",
-              class_name: "ax-dashboard-kpi"
-              ) %>
-        <% end %>
-      <% end %>
-
-      <%= link_to admin_distribution_rules_path, class: "ax-dashboard-kpi-link", aria: { label: "Ver regras de distribuição" } do %>
-        <%= ax_metric_card(
-            label: "Regras de distribuição",
-            value: "#{@distribution_rules_active}/#{@distribution_rules_total}",
-            badge: ax_badge("#{@rules_with_checkin} c/ check-in", tone: :blue),
-            hint: "#{@brokers_active} corretores · #{@stores_active_count} lojas",
-            progress: @distribution_rules_total.to_i.positive? ? ((@distribution_rules_active.to_f / @distribution_rules_total) * 100) : 0,
-            class_name: "ax-dashboard-kpi"
-            ) %>
-      <% end %>
-    <% end %>
-  </div>
-
-  <aside class="ax-dashboard-panel ax-dashboard-attention" aria-labelledby="dashboard-attention-title">
+  <section class="ax-dashboard-panel ax-dashboard-actions" aria-labelledby="dashboard-actions-title">
     <div class="ax-dashboard-panel__header">
       <div>
-        <span class="ax-dashboard-panel__eyebrow">Prioridade operacional</span>
-        <h2 id="dashboard-attention-title">Atenção necessária</h2>
+        <span class="ax-dashboard-panel__eyebrow">Ações recomendadas</span>
+        <h2 id="dashboard-actions-title">Por onde começar agora?</h2>
       </div>
       <div class="ax-dashboard-panel__actions">
-        <span class="ax-dashboard-attention__date"><i class="bi bi-calendar3"></i> <%= l(Date.current, format: :short) %></span>
-        <%= ax_badge("#{pending_items.size} pend.", tone: pending_items.any? ? :amber : :green) %>
-        <% if @is_admin_view && !@field_feature_enabled %>
-          <%= ax_button("Ativar campo", edit_admin_field_settings_path, size: :sm, icon: "toggles2") %>
-        <% end %>
+        <%= ax_badge("#{@recommended_actions.size} ações", tone: @recommended_actions.any? ? :amber : :green) %>
       </div>
     </div>
 
-    <div class="ax-dashboard-attention__body">
-      <div class="ax-dashboard-today-grid ax-dashboard-today-grid--summary" aria-label="Resumo de hoje">
-        <% today_metrics.each do |value, icon, label| %>
-          <div class="ax-dashboard-today-cell">
-            <strong><%= number_with_delimiter(value) %></strong>
-            <span><i class="bi bi-<%= icon %>"></i> <%= label %></span>
+    <div class="ax-dashboard-actions__grid">
+      <% if @recommended_actions.any? %>
+        <% @recommended_actions.each do |action| %>
+          <%= link_to action[:path], class: "ax-dashboard-action ax-dashboard-action--#{action[:tone]}", data: { turbo_frame: "_top" } do %>
+            <span class="ax-dashboard-action__icon"><i class="bi bi-<%= action[:icon] %>"></i></span>
+            <span class="ax-dashboard-action__body">
+              <strong><%= action[:title] %></strong>
+              <small><%= action[:detail] %></small>
+            </span>
+            <b><%= number_with_delimiter(action[:value]) %></b>
+          <% end %>
+        <% end %>
+      <% else %>
+        <div class="ax-dashboard-action ax-dashboard-action--green">
+          <span class="ax-dashboard-action__icon"><i class="bi bi-check2-circle"></i></span>
+          <span class="ax-dashboard-action__body">
+            <strong>Nenhuma ação crítica agora</strong>
+            <small>Os principais sinais operacionais estão sem alerta no período.</small>
+          </span>
+          <b>0</b>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <% diagnosis_limit = @dashboard_ai_diagnosis[:limit_status].to_h.with_indifferent_access %>
+  <section class="ax-dashboard-panel ax-dashboard-actions" aria-labelledby="dashboard-ai-diagnosis-title">
+    <div class="ax-dashboard-panel__header">
+      <div>
+        <span class="ax-dashboard-panel__eyebrow">IA textual</span>
+        <h2 id="dashboard-ai-diagnosis-title"><%= @dashboard_ai_diagnosis[:title] %></h2>
+      </div>
+      <div class="ax-dashboard-panel__actions">
+        <%= ax_badge(@dashboard_ai_diagnosis[:source].to_s.start_with?("openai") ? "OpenAI" : "determinístico", tone: @dashboard_ai_diagnosis[:source].to_s.start_with?("openai") ? :blue : :gray) %>
+        <%= link_to "Limites", admin_ai_integration_path(anchor: "ai-dashboard-diagnosis"), class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
+      </div>
+    </div>
+
+    <div class="ax-dashboard-panel__body ax-dashboard-ai-diagnosis">
+      <p class="ax-dashboard-ai-diagnosis__summary"><%= @dashboard_ai_diagnosis[:summary] %></p>
+
+      <div class="ax-dashboard-actions__grid ax-dashboard-actions__grid--flush">
+        <% diagnosis_recommendations = Array(@dashboard_ai_diagnosis[:recommendations]).first(4) %>
+        <% if diagnosis_recommendations.any? %>
+        <% diagnosis_recommendations.each do |item| %>
+          <% item = item.with_indifferent_access %>
+          <div class="ax-dashboard-action ax-dashboard-action--<%= item[:tone].presence || "blue" %>">
+            <span class="ax-dashboard-action__icon"><i class="bi bi-stars"></i></span>
+            <span class="ax-dashboard-action__body">
+              <strong><%= item[:title] %></strong>
+              <small><%= item[:detail] %></small>
+            </span>
+            <b><%= number_with_delimiter(item[:value].to_i) %></b>
+          </div>
+        <% end %>
+        <% else %>
+          <div class="ax-dashboard-action ax-dashboard-action--green">
+            <span class="ax-dashboard-action__icon"><i class="bi bi-check2-circle"></i></span>
+            <span class="ax-dashboard-action__body">
+              <strong>Sem recomendação crítica</strong>
+              <small>Os principais sinais operacionais estão dentro do esperado para o período.</small>
+            </span>
+            <b>0</b>
           </div>
         <% end %>
       </div>
 
-      <div class="ax-dashboard-list ax-dashboard-list--attention">
-        <% if pending_items.any? %>
-          <% pending_items.each do |item| %>
-            <% pending_link_content = capture do %>
-              <span class="ax-dashboard-pending-copy">
-                <strong><i class="bi bi-<%= item[:icon] %>"></i> <%= item[:label] %></strong>
-                <% if item[:detail].present? %><small><%= item[:detail] %></small><% end %>
-              </span>
-              <span class="ax-badge ax-badge--<%= item[:tone] == 'red' ? 'red' : 'amber' %>"><%= item[:count] %></span>
-            <% end %>
-            <%= link_to pending_link_content, item[:path], class: "ax-dashboard-list__row ax-dashboard-list__row--link" %>
-          <% end %>
-        <% else %>
-          <div class="ax-dashboard-empty-row"><i class="bi bi-check-circle-fill"></i> Nenhuma pendência no momento.</div>
-        <% end %>
+      <div class="ax-dashboard-ai-diagnosis__limits">
+        <%= ax_badge("#{diagnosis_limit[:weekly_used].to_i}/#{diagnosis_limit[:weekly_limit].to_i} diagnóstico(s) IA na semana", tone: diagnosis_limit[:weekly_remaining].to_i.positive? ? :blue : :amber) %>
+        <%= ax_badge("#{number_to_currency(diagnosis_limit[:monthly_cost_cents].to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".")} / #{number_to_currency(diagnosis_limit[:monthly_budget_cents].to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".")} no mês", tone: diagnosis_limit[:monthly_budget_remaining_cents].to_i.positive? ? :blue : :amber) %>
       </div>
     </div>
-  </aside>
+  </section>
+
+  <section class="ax-dashboard-panel ax-dashboard-questions ax-dashboard-questions--decision" aria-labelledby="dashboard-questions-title">
+    <div class="ax-dashboard-panel__header">
+      <div>
+        <span class="ax-dashboard-panel__eyebrow">Decisão operacional</span>
+        <h2 id="dashboard-questions-title"><%= @decision_questions.any? ? "O que exige ação agora?" : "Operação sem alerta crítico agora" %></h2>
+      </div>
+      <div class="ax-dashboard-panel__actions">
+        <%= ax_badge("#{@dashboard_period} dias", tone: @decision_questions.any? ? :amber : :green) %>
+      </div>
+    </div>
+
+    <div class="ax-dashboard-questions__grid">
+      <% visible_questions = @decision_questions.any? ? @decision_questions : @health_questions.first(2) %>
+      <% visible_questions.each do |item| %>
+        <%= link_to item[:path], class: "ax-dashboard-question ax-dashboard-question--#{item[:tone]} #{'ax-dashboard-question--featured' if item[:featured]}", data: { turbo_frame: "_top" } do %>
+          <span class="ax-dashboard-question__icon"><i class="bi bi-<%= item[:icon] %>"></i></span>
+          <span class="ax-dashboard-question__body">
+            <strong><%= item[:question] %></strong>
+            <small><%= item[:answer] %></small>
+          </span>
+          <span class="ax-dashboard-question__action">
+            <b><%= number_with_delimiter(item[:metric]) %></b>
+            <em><%= item[:action] %></em>
+          </span>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="ax-dashboard-investigations" aria-label="Mapa de investigação operacional">
+    <% @overview_investigations.each do |item| %>
+      <article class="ax-dashboard-investigation ax-dashboard-investigation--<%= item[:tone] %>">
+        <div class="ax-dashboard-investigation__head">
+          <span class="ax-dashboard-investigation__icon"><i class="bi bi-<%= item[:icon] %>"></i></span>
+          <span>
+            <strong><%= item[:question] %></strong>
+            <small><%= item[:answer] %></small>
+          </span>
+        </div>
+
+        <div class="ax-dashboard-investigation__rows">
+          <% if item[:rows].any? %>
+            <% item[:rows].each do |row| %>
+              <%= link_to row[:path], class: "ax-dashboard-investigation__row ax-dashboard-investigation__row--#{row[:tone]}", data: { turbo_frame: "_top" } do %>
+                <span>
+                  <strong><%= row[:label] %></strong>
+                  <small><%= row[:detail] %></small>
+                </span>
+                <b><%= number_with_delimiter(row[:value]) %></b>
+              <% end %>
+            <% end %>
+          <% else %>
+            <div class="ax-dashboard-investigation__empty"><i class="bi bi-check2-circle"></i> <%= item[:empty] %></div>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  </section>
+
   <% end %>
 
   <% if @dashboard_tab == "leads" %>
-  <div class="ax-dashboard-grid ax-dashboard-grid--insights">
+  <div class="ax-dashboard-grid ax-dashboard-grid--primary ax-dashboard-grid--lead-top">
     <%= turbo_frame_tag "admin_dashboard_charts", src: admin_dashboard_section_path("charts", dashboard_filter_params) do %>
       <%= render "admin/dashboard/sections/loading_panel",
                  title: "Leads - últimos 30 dias",
@@ -185,22 +233,27 @@
                  chart: true %>
     <% end %>
 
-    <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel", dashboard_filter_params) do %>
-      <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", chart: true, compact: true %>
-    <% end %>
-
     <%= turbo_frame_tag "admin_dashboard_status", src: admin_dashboard_section_path("status", dashboard_filter_params) do %>
       <%= render "admin/dashboard/sections/loading_panel", title: "Leads por status", eyebrow: "Status", chart: true, compact: true %>
     <% end %>
   </div>
 
+  <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel", dashboard_filter_params) do %>
+    <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", rows: 4 %>
+  <% end %>
+
   <%= turbo_frame_tag "admin_dashboard_acquisition", src: admin_dashboard_section_path("acquisition", dashboard_filter_params), loading: "lazy" do %>
     <%= render "admin/dashboard/sections/loading_panel", title: "Origem dos leads", eyebrow: "Aquisição", chart: true %>
   <% end %>
 
-  <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
-    <%= render "admin/dashboard/sections/loading_panel", title: "Desempenho por corretor", eyebrow: "Comercial", rows: 5 %>
+  <%= turbo_frame_tag "admin_dashboard_service", src: admin_dashboard_section_path("service", dashboard_filter_params), loading: "lazy" do %>
+    <div class="ax-dashboard-grid ax-dashboard-grid--service">
+      <%= render "admin/dashboard/sections/loading_panel", title: "SLA e fila de leads", eyebrow: "Atendimento", rows: 4 %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Atendimento pelo inbox", eyebrow: "WhatsApp", rows: 3 %>
+    </div>
   <% end %>
+
+  <%= render "admin/dashboard/sections/rankings" %>
   <% end %>
 
   <% if @dashboard_tab == "properties" %>
@@ -224,6 +277,15 @@
       <%= render "admin/dashboard/sections/loading_panel", title: "Distribuição por categoria", eyebrow: "Mix", rows: 6 %>
     </div>
   <% end %>
+  <% end %>
+
+  <% if @dashboard_tab == "site" %>
+    <%= turbo_frame_tag "admin_dashboard_site", src: admin_dashboard_section_path("site", dashboard_filter_params), loading: "lazy" do %>
+      <div class="ax-dashboard-grid ax-dashboard-grid--site">
+        <%= render "admin/dashboard/sections/loading_panel", title: "Navegação e conversões do site", eyebrow: "Site público", rows: 6 %>
+        <%= render "admin/dashboard/sections/loading_panel", title: "Imóveis e buscas com atenção", eyebrow: "Intenção", rows: 6 %>
+      </div>
+    <% end %>
   <% end %>
 
   <% if @dashboard_tab == "field" && @field_feature_enabled %>

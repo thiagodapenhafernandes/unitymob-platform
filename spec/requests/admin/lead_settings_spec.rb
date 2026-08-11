@@ -5,6 +5,14 @@ RSpec.describe "Admin::LeadSettings", type: :request do
 
   let(:admin) { create(:admin_user, :admin) }
 
+  around do |example|
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = false
+    example.run
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
   before do
     host! "localhost"
     sign_in admin
@@ -15,6 +23,8 @@ RSpec.describe "Admin::LeadSettings", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Ao tocar na notificação")
+    expect(response.body).to include("SLA de primeiro contato")
+    expect(response.body).to include("lead_setting[first_contact_sla_hours]")
     expect(response.body).to include("Detalhes do lead primeiro")
     expect(response.body).to include("WhatsApp do lead direto")
     document = Nokogiri::HTML(response.body)
@@ -35,6 +45,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
         stickiness_owner: "attended",
         stickiness_fallback: "active_in_rule",
         stickiness_window_days: "",
+        first_contact_sla_hours: "6",
         secure_links_enabled: "1",
         secure_link_expiry_days: "7",
         secure_link_whatsapp: "1",
@@ -52,6 +63,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     }
 
     expect(response).to redirect_to(edit_admin_lead_setting_path)
+    expect(LeadSetting.instance(tenant: admin.tenant).reload.first_contact_sla_hours_value).to eq(6)
     expect(PushSetting.instance.reload.lead_click_action_value).to eq("system")
   end
 
@@ -66,6 +78,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
         stickiness_owner: "attended",
         stickiness_fallback: "active_in_rule",
         stickiness_window_days: "",
+        first_contact_sla_hours: "4",
         secure_links_enabled: "0",
         secure_link_expiry_days: "7",
         push_lead_click_action: "system"

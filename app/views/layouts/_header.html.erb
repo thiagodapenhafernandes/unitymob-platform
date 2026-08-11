@@ -16,7 +16,7 @@
       <div class="flex items-center gap-4">
         <%= link_to root_path, class: "flex items-center" do %>
           <% if @layout_setting&.logo&.attached? %>
-            <span class="flex items-center">
+            <span class="custom-logo flex items-center">
               <% if @layout_setting.logo.content_type == 'image/svg+xml' || @layout_setting.logo.filename.to_s.downcase.end_with?('.svg') %>
                 <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'h-10', style: 'width: 170px; object-fit: contain;' %>
               <% else %>

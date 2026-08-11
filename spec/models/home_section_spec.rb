@@ -81,5 +81,38 @@ RSpec.describe HomeSection, type: :model do
       expect(described_class.infer_section_type_from_filters({ "preco_reduzido" => "1" })).to eq("opportunities")
       expect(described_class.infer_section_type_from_filters({})).to eq("featured_properties")
     end
+
+    it "monta CTA público e parâmetros de URL a partir dos filtros da seção" do
+      section = described_class.new(
+        section_type: "featured_properties",
+        title: "Seleção Frente Mar",
+        property_filters: { "venda" => "1", "frente_mar" => "1" }
+      )
+
+      section.valid?
+
+      expect(section.public_property_cta_label).to eq("Ver Todos os Imóveis Frente Mar")
+      expect(section.public_property_filter_params).to eq(
+        transaction_type: "venda",
+        characteristics: ["frente_mar"]
+      )
+    end
+
+    it "mantém URL pública para locação e filtros booleanos suportados" do
+      section = described_class.new(
+        section_type: "featured_properties",
+        title: "Locações mobiliadas",
+        property_filters: { "locacao" => "1", "mobiliado" => "1", "aceita_permuta" => "1" }
+      )
+
+      section.valid?
+
+      expect(section.public_property_cta_label).to eq("Ver Todos os Imóveis para Alugar Mobiliado")
+      expect(section.public_property_filter_params).to eq(
+        transaction_type: "aluguel",
+        accepts_exchange: "1",
+        characteristics: ["mobiliado"]
+      )
+    end
   end
 end

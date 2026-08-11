@@ -1,5 +1,13 @@
 <footer class="bg-gradient-to-br from-blue-three to-blue-one text-white">
   <% public_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant) %>
+  <% public_contact_setting = @contact_setting || ContactSetting.instance(tenant: public_tenant) %>
+  <% footer_whatsapp_value = @footer_setting.whatsapp.presence || public_contact_setting.whatsapp_primary.presence %>
+  <% footer_email_value = @footer_setting.email.presence || public_contact_setting.email_primary.presence %>
+  <% footer_phone_value = public_contact_setting.phone.presence %>
+  <% footer_secondary_whatsapp_value = public_contact_setting.whatsapp_secondary.presence %>
+  <% footer_whatsapp = Phones::Normalizer.call(footer_whatsapp_value) %>
+  <% footer_secondary_whatsapp = Phones::Normalizer.call(footer_secondary_whatsapp_value) %>
+  <% footer_phone = Phones::Normalizer.call(footer_phone_value) %>
   <div class="container-custom py-12 lg:py-16">
     
     <!-- Main Footer Content -->
@@ -91,24 +99,47 @@
       <div>
         <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.contact_title %></h3>
         <ul class="space-y-3 text-white/80 mb-6 font-medium">
-          <% if @footer_setting.whatsapp.present? %>
-            <% footer_whatsapp = Phones::Normalizer.call(@footer_setting.whatsapp) %>
+          <% if footer_whatsapp_value.present? %>
             <li class="flex items-center">
               <i class="bi bi-whatsapp mr-2 flex-shrink-0 text-golden-one text-lg"></i>
               <% if footer_whatsapp.present? %>
                 <a href="https://wa.me/<%= footer_whatsapp %>" target="_blank" class="hover:text-white transition-colors">
-                  <%= format_phone(@footer_setting.whatsapp) %>
+                  <%= format_phone(footer_whatsapp_value) %>
                 </a>
               <% else %>
-                <%= @footer_setting.whatsapp %>
+                <%= footer_whatsapp_value %>
               <% end %>
             </li>
           <% end %>
-          <% if @footer_setting.email.present? %>
+          <% if footer_secondary_whatsapp_value.present? && footer_secondary_whatsapp != footer_whatsapp %>
+            <li class="flex items-center">
+              <i class="bi bi-whatsapp mr-2 flex-shrink-0 text-golden-one text-lg"></i>
+              <% if footer_secondary_whatsapp.present? %>
+                <a href="https://wa.me/<%= footer_secondary_whatsapp %>" target="_blank" class="hover:text-white transition-colors">
+                  <%= format_phone(footer_secondary_whatsapp_value) %>
+                </a>
+              <% else %>
+                <%= footer_secondary_whatsapp_value %>
+              <% end %>
+            </li>
+          <% end %>
+          <% if footer_phone_value.present? %>
+            <li class="flex items-center">
+              <i class="bi bi-telephone mr-2 flex-shrink-0 text-golden-one text-lg"></i>
+              <% if footer_phone.present? %>
+                <a href="tel:+<%= footer_phone %>" class="hover:text-white transition-colors">
+                  <%= format_phone(footer_phone_value) %>
+                </a>
+              <% else %>
+                <%= footer_phone_value %>
+              <% end %>
+            </li>
+          <% end %>
+          <% if footer_email_value.present? %>
             <li class="flex items-center">
               <i class="bi bi-envelope mr-2 flex-shrink-0 text-golden-one text-lg"></i>
-              <a href="mailto:<%= @footer_setting.email %>" class="hover:text-white transition-colors">
-                <%= @footer_setting.email %>
+              <a href="mailto:<%= footer_email_value %>" class="hover:text-white transition-colors">
+                <%= footer_email_value %>
               </a>
             </li>
           <% end %>
@@ -142,6 +173,14 @@
         </div>
       </div>
     </div>
-    
+
+    <div class="public-unitymob-credit mt-6 border-t border-white/10 pt-4 text-center text-xs font-semibold text-white/70">
+      Developed with care by
+      <a href="https://unitymob.com.br/"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="font-extrabold transition-colors hover:opacity-80"
+         style="color: #65f4c7;">Unitymob</a>
+    </div>
   </div>
 </footer>
