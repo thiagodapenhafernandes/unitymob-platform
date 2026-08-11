@@ -74,7 +74,10 @@ RSpec.describe PublicMaps::PropertyPresentation do
     property.address.update!(latitude: nil, longitude: nil)
     property.update_columns(latitude: nil, longitude: nil)
 
-    expect(described_class.new(property.reload, setting: setting)).not_to be_visible
+    presentation = described_class.new(property.reload, setting: setting)
+
+    expect(presentation).not_to be_visible
+    expect(presentation).not_to be_street_view_enabled
   end
 
   it "não libera vista da rua pelo padrão seguro" do

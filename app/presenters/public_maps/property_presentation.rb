@@ -48,6 +48,7 @@ module PublicMaps
 
     def street_view_enabled?
       return false unless provider == "google"
+      return false unless exact_coordinates.present?
 
       case property.public_street_view_mode.to_s
       when "enabled" then true
