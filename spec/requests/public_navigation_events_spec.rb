@@ -90,6 +90,29 @@ RSpec.describe "Public navigation events", type: :request do
       expect(JSON.parse(response.body)).to include("consent_required" => true)
     end
 
+    it "uses the generic LGPD consent cookie for public navigation tracking" do
+      LayoutSetting.instance.update!(
+        interest_intelligence_settings: InterestIntelligence::Settings::DEFAULTS.merge(
+          "requires_public_tracking_consent" => true
+        )
+      )
+
+      cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "accepted"
+
+      expect do
+        post "/navigation_events",
+          params: {
+            navigation_event: {
+              name: "page_view",
+              path: "/"
+            }
+          },
+          as: :json
+      end.to change(PublicNavigationEvent, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it "rejects unknown event names" do
       expect do
         post "/navigation_events",

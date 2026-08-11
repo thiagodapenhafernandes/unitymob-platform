@@ -31,6 +31,28 @@ RSpec.describe "Public branding pages", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
+  it "não exibe aviso específico de experiência personalizada na home" do
+    LayoutSetting.instance.update!(
+      interest_intelligence_enabled: true,
+      interest_intelligence_settings: InterestIntelligence::Settings::DEFAULTS.merge(
+        "requires_public_tracking_consent" => true
+      )
+    )
+
+    get root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Experiência personalizada")
+  end
+
+  it "informa na política de privacidade o uso de navegação para qualificar atendimento" do
+    get privacy_policy_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("interações de navegação")
+    expect(response.body).to include("qualificar o atendimento")
+  end
+
   it "publica somente os links úteis persistidos para o tenant" do
     tenant = Tenant.default
     expect(PublicSiteProfile.new({ useful_links: "Portal próprio|https://portal.example.com|Serviço do tenant|building" }, tenant: tenant).save).to be(true)
