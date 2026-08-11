@@ -24,6 +24,7 @@ class Admin::ContactSettingsController < Admin::BaseController
       :whatsapp_primary,
       :whatsapp_secondary,
       :phone,
+      :show_phone_in_header,
       :email_primary,
       :email_commercial,
       :address,

@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unitymob | Plataforma Operacional Imobiliária</title>
+  <meta name="description" content="Unitymob centraliza site, imóveis, leads, WhatsApp, atendimento, automações, BI e gestão comercial para imobiliárias que querem sair de vários sistemas desconectados." />
+  <link rel="icon" type="image/svg+xml" href="/unitymob-favicon.svg" />
+  <link rel="apple-touch-icon" href="/unitymob-favicon.svg" />
+
+  <style>
+    :root{
+      --bg:#050713;
+      --bg2:#080d1f;
+      --card:rgba(255,255,255,.075);
+      --card2:rgba(255,255,255,.105);
+      --line:rgba(255,255,255,.13);
+      --text:#f8fbff;
+      --muted:#aeb8d8;
+      --muted2:#7782a5;
+      --brand:#5accf9;
+      --blue:#2d70f5;
+      --purple:#8a38e0;
+      --accent:#9bdefb;
+      --yellow:#ffd166;
+      --red:#ff6688;
+      --green:#5cffb1;
+      --radius:28px;
+      --shadow:0 32px 110px rgba(0,0,0,.42);
+      --max:1200px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      background:
+        radial-gradient(circle at 14% -6%,rgba(90,204,249,.22),transparent 32%),
+        radial-gradient(circle at 92% 8%,rgba(45,112,245,.22),transparent 34%),
+        radial-gradient(circle at 52% 38%,rgba(138,56,224,.16),transparent 34%),
+        linear-gradient(180deg,#070a18,#080b1d 42%,#050713);
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    a{text-decoration:none;color:inherit}
+    button,input{font:inherit}
+    .container{width:min(var(--max),calc(100% - 40px));margin:0 auto}
+    .hide-mobile{display:inline-flex}
+
+    .noise{
+      pointer-events:none;
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      opacity:.08;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:9px 13px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(255,255,255,.065);
+      color:var(--muted);
+      backdrop-filter:blur(18px);
+      font-size:13px;
+      line-height:1;
+    }
+    .pill strong{color:var(--accent)}
+    .pill.hot{border-color:rgba(90,204,249,.34);background:rgba(45,112,245,.12);color:#e8f6ff}
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      min-height:48px;
+      padding:14px 19px;
+      border-radius:16px;
+      border:1px solid transparent;
+      cursor:pointer;
+      font-weight:850;
+      transition:.22s ease;
+      white-space:nowrap;
+    }
+    .btn-primary{
+      color:#06101a;
+      background:linear-gradient(135deg,var(--brand),#67a8ff 48%,var(--purple));
+      box-shadow:0 22px 64px rgba(45,112,245,.28);
+    }
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 26px 80px rgba(90,204,249,.22)}
+    .btn-ghost{
+      color:var(--text);
+      background:rgba(255,255,255,.065);
+      border-color:var(--line);
+    }
+    .btn-ghost:hover{background:rgba(255,255,255,.11);transform:translateY(-2px)}
+    .btn-dark{
+      color:var(--text);
+      background:#0c1227;
+      border-color:rgba(255,255,255,.10);
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:50;
+      transition:.25s;
+      border-bottom:1px solid transparent;
+    }
+    header.scrolled{
+      background:rgba(5,7,19,.82);
+      backdrop-filter:blur(18px);
+      border-bottom-color:var(--line);
+    }
+    .nav{
+      height:76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-weight:950;
+      font-size:24px;
+      letter-spacing:-.045em;
+    }
+    .logo{
+      width:42px;height:42px;border-radius:15px;
+      display:grid;place-items:center;
+      color:#06101a;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(155,222,251,.24);
+      box-shadow:0 18px 60px rgba(45,112,245,.20);
+      backdrop-filter:blur(14px);
+      overflow:hidden;
+    }
+    .logo img{width:28px;height:28px;display:block;object-fit:contain}
+    nav.menu{display:flex;align-items:center;gap:22px;color:var(--muted);font-size:14px}
+    nav.menu a,
+    nav.menu button{
+      color:inherit;
+      background:transparent;
+      border:0;
+      padding:0;
+      cursor:pointer;
+      font:inherit;
+    }
+    nav.menu a:hover,
+    nav.menu button:hover{color:var(--text)}
+    .nav-actions{display:flex;align-items:center;gap:10px}
+
+    .hero{
+      padding:88px 0 70px;
+      position:relative;
+    }
+    .hero-grid{
+      display:grid;
+      grid-template-columns:1fr .96fr;
+      gap:52px;
+      align-items:center;
+    }
+    .kicker{margin-bottom:22px}
+    h1{
+      margin:0;
+      font-size:clamp(46px,6.2vw,88px);
+      line-height:.92;
+      letter-spacing:-.075em;
+      max-width:820px;
+    }
+    .grad{
+      background:linear-gradient(135deg,#fff 4%,var(--accent) 28%,var(--brand) 48%,#67a8ff 68%,#c8b8ff 92%);
+      -webkit-background-clip:text;
+      color:transparent;
+    }
+    .lead{
+      color:var(--muted);
+      font-size:20px;
+      line-height:1.65;
+      margin:28px 0 0;
+      max-width:690px;
+    }
+    .hero-actions{display:flex;gap:13px;flex-wrap:wrap;margin-top:34px}
+    .trust-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:26px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .trust-row span{
+      padding:9px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(255,255,255,.045);
+    }
+
+    .hero-visual{min-height:660px;position:relative}
+    .product-shell{
+      position:absolute;
+      right:0;top:14px;
+      width:560px;
+      min-height:610px;
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:
+        linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.04)),
+        rgba(255,255,255,.04);
+      backdrop-filter:blur(20px);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      padding:16px;
+    }
+    .browser-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 10px 18px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .dots{display:flex;gap:7px}
+    .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.24)}
+    .dot:nth-child(1){background:var(--red)}
+    .dot:nth-child(2){background:var(--yellow)}
+    .dot:nth-child(3){background:var(--brand)}
+    .app{
+      display:grid;
+      grid-template-columns:150px 1fr;
+      gap:12px;
+      min-height:544px;
+    }
+    .sidebar,.mainpanel,.right-floating,.mobile-card{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      border-radius:24px;
+    }
+    .sidebar{padding:14px}
+    .side-title{font-weight:900;letter-spacing:-.03em;margin-bottom:14px}
+    .side-item{
+      display:flex;align-items:center;gap:9px;
+      padding:10px;
+      border-radius:13px;
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:7px;
+    }
+    .side-item.active{background:rgba(90,204,249,.13);color:#e8f6ff}
+    .side-item svg{width:16px;height:16px;stroke-width:2;flex:none}
+    .mainpanel{padding:16px;position:relative;overflow:hidden}
+    .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .kpi{
+      padding:13px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.055);
+    }
+    .kpi small{display:block;color:var(--muted);font-size:11px}
+    .kpi b{display:block;font-size:23px;margin-top:5px;letter-spacing:-.04em}
+    .pipeline{margin-top:13px;display:grid;gap:9px}
+    .lead-card{
+      display:grid;
+      grid-template-columns:34px 1fr auto;
+      gap:10px;
+      align-items:center;
+      padding:11px;
+      border:1px solid var(--line);
+      border-radius:17px;
+      background:rgba(255,255,255,.055);
+    }
+    .avatar{
+      width:34px;height:34px;border-radius:13px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg,rgba(90,204,249,.24),rgba(138,56,224,.18));
+    }
+    .lead-card strong{display:block;font-size:13px}
+    .lead-card span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+    .tag{
+      font-size:11px;
+      color:var(--brand);
+      background:rgba(90,204,249,.10);
+      border:1px solid rgba(90,204,249,.22);
+      border-radius:999px;
+      padding:6px 8px;
+    }
+    .chart-mini{
+      height:126px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      margin-top:13px;
+      background:
+        linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+      background-size:28px 28px;
+      display:flex;align-items:flex-end;gap:9px;padding:14px;
+    }
+    .chart-mini i{
+      flex:1;
+      border-radius:10px 10px 0 0;
+      background:linear-gradient(180deg,var(--brand),rgba(138,56,224,.62));
+      min-height:16px;
+      animation:grow 1.4s ease both;
+      transform-origin:bottom;
+    }
+    @keyframes grow{from{transform:scaleY(.12);opacity:.5}to{transform:scaleY(1);opacity:1}}
+    .float-chip{
+      position:absolute;
+      z-index:4;
+      display:flex;align-items:center;gap:10px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:17px;
+      background:rgba(255,255,255,.10);
+      backdrop-filter:blur(18px);
+      box-shadow:0 24px 70px rgba(0,0,0,.24);
+      color:#edf7ff;
+      font-size:13px;
+      animation:float 5s ease-in-out infinite;
+    }
+    .float-chip svg{width:17px;height:17px;stroke-width:2.2;flex:none}
+    .float-chip b{color:var(--brand)}
+    .c1{right:420px;top:74px}
+    .c2{right:-20px;top:140px;animation-delay:.7s}
+    .c3{right:390px;top:365px;animation-delay:1.3s}
+    .c4{right:52px;top:602px;animation-delay:.3s}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+
+    .section{padding:92px 0;position:relative}
+    .section-header{max-width:820px;margin-bottom:42px}
+    .section-header.center{text-align:center;margin-inline:auto}
+    h2{
+      margin:14px 0 0;
+      font-size:clamp(34px,4.4vw,62px);
+      line-height:.98;
+      letter-spacing:-.06em;
+    }
+    .section-header p{
+      color:var(--muted);
+      font-size:18px;
+      line-height:1.7;
+      margin:18px 0 0;
+    }
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center}
+    .card{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(255,255,255,.082),rgba(255,255,255,.038));
+      border-radius:var(--radius);
+      padding:26px;
+      box-shadow:0 18px 80px rgba(0,0,0,.12);
+      position:relative;
+      overflow:hidden;
+    }
+    .card h3{font-size:24px;letter-spacing:-.04em;margin:16px 0 10px}
+    .card p,.card li{color:var(--muted);line-height:1.7;font-size:15px}
+    .card ul{padding-left:20px;margin-bottom:0}
+    .icon{
+      width:52px;height:52px;border-radius:18px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg,rgba(90,204,249,.14),rgba(138,56,224,.12));
+      border:1px solid rgba(255,255,255,.13);
+    }
+    .icon svg{width:25px;height:25px;stroke:var(--brand);stroke-width:2}
+
+    .systems-strip{
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:rgba(255,255,255,.055);
+      padding:24px;
+      overflow:hidden;
+    }
+    .systems-row{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:12px;
+      align-items:stretch;
+    }
+    .sys{
+      min-height:120px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.16);
+      border-radius:22px;
+      padding:18px 14px;
+      text-align:center;
+      color:var(--muted);
+      display:grid;
+      place-items:center;
+      gap:8px;
+    }
+    .sys strong{display:block;color:var(--text);font-size:15px}
+    .sys-icon{
+      width:38px;height:38px;border-radius:15px;
+      display:grid;place-items:center;
+      background:rgba(90,204,249,.10);
+      border:1px solid rgba(90,204,249,.18);
+    }
+    .sys-icon svg{width:20px;height:20px;stroke:var(--brand);stroke-width:2}
+    .arrow-down{text-align:center;margin:26px 0;color:var(--brand);font-weight:900}
+    .one-platform{
+      border:1px solid rgba(90,204,249,.28);
+      background:linear-gradient(135deg,rgba(90,204,249,.13),rgba(138,56,224,.10));
+      border-radius:26px;
+      padding:24px;
+      text-align:center;
+      font-size:22px;
+      font-weight:900;
+      letter-spacing:-.03em;
+    }
+    .one-platform span{color:var(--brand)}
+
+    .module{
+      min-height:238px;
+      transition:.25s;
+    }
+    .module:hover{transform:translateY(-6px);background:rgba(255,255,255,.09)}
+    .module h3{font-size:19px}
+
+    .calc{
+      display:grid;
+      grid-template-columns:.9fr 1.1fr;
+      gap:24px;
+      align-items:stretch;
+    }
+    .calc-box{
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:rgba(255,255,255,.06);
+      padding:28px;
+      min-width:0;
+    }
+    .slider-row{margin:24px 0}
+    .slider-row label{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:10px}
+    input[type=range]{width:100%;accent-color:var(--brand)}
+    .saving{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:14px;
+      margin-top:18px;
+    }
+    .saving-card{
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(0,0,0,.17);
+      padding:20px;
+      min-width:0;
+    }
+    .saving-card small{color:var(--muted)}
+    .saving-card b{display:block;font-size:34px;letter-spacing:-.05em;margin-top:8px}
+    .saving-card.positive b{color:var(--brand)}
+
+    .pricing{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:18px;
+      align-items:stretch;
+    }
+    .price-card{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.04));
+      border-radius:32px;
+      padding:30px;
+      position:relative;
+      overflow:hidden;
+    }
+    .price-card.featured{
+      border-color:rgba(90,204,249,.42);
+      transform:scale(1.035);
+      box-shadow:0 28px 100px rgba(45,112,245,.18);
+    }
+    .price-card.featured:before{
+      content:"Oferta principal";
+      position:absolute;right:22px;top:22px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(90,204,249,.13);
+      border:1px solid rgba(90,204,249,.28);
+      color:#dffef5;
+      font-size:12px;
+      font-weight:900;
+    }
+    .price-name{font-size:24px;font-weight:950;letter-spacing:-.04em}
+    .price-desc{color:var(--muted);line-height:1.6;min-height:52px}
+    .price{
+      margin:22px 0 6px;
+      font-size:46px;
+      font-weight:950;
+      letter-spacing:-.07em;
+    }
+    .price small{font-size:15px;color:var(--muted);letter-spacing:0}
+    .setup{
+      margin-top:28px;
+      padding:22px;
+      border:1px solid rgba(255,255,255,.13);
+      border-radius:26px;
+      background:rgba(0,0,0,.16);
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      align-items:center;
+    }
+    .setup p{margin:6px 0 0;color:var(--muted);line-height:1.6}
+
+    .compare-table{
+      overflow:hidden;
+      border:1px solid var(--line);
+      border-radius:30px;
+      background:rgba(255,255,255,.045);
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:18px 20px;border-bottom:1px solid var(--line);text-align:left;color:var(--muted)}
+    th{color:var(--text);background:rgba(255,255,255,.055)}
+    td strong{color:var(--text)}
+    tr:last-child td{border-bottom:0}
+    .yes{color:var(--brand);font-weight:900}
+    .no{color:var(--red);font-weight:900}
+
+    .steps{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:16px;
+      counter-reset:steps;
+    }
+    .step{
+      border:1px solid var(--line);
+      border-radius:26px;
+      padding:24px;
+      background:rgba(255,255,255,.055);
+      position:relative;
+    }
+    .step:before{
+      counter-increment:steps;
+      content:counter(steps);
+      width:38px;height:38px;
+      display:grid;place-items:center;
+      border-radius:14px;
+      background:linear-gradient(135deg,var(--brand),var(--blue));
+      color:#06101a;
+      font-weight:950;
+      margin-bottom:18px;
+    }
+    .step h3{margin:0 0 10px;font-size:20px;letter-spacing:-.035em}
+    .step p{margin:0;color:var(--muted);line-height:1.65;font-size:15px}
+
+    .faq{max-width:900px;margin:0 auto;display:grid;gap:12px}
+    .faq-item{
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(255,255,255,.055);
+      overflow:hidden;
+    }
+    .faq-q{
+      width:100%;
+      border:0;
+      background:transparent;
+      color:var(--text);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      cursor:pointer;
+      padding:22px;
+      font-weight:900;
+      text-align:left;
+      font-size:17px;
+    }
+    .faq-a{
+      max-height:0;
+      overflow:hidden;
+      transition:.25s;
+      color:var(--muted);
+      line-height:1.7;
+      padding:0 22px;
+    }
+    .faq-item.open .faq-a{max-height:260px;padding-bottom:22px}
+
+    .cta-box{
+      border:1px solid rgba(90,204,249,.30);
+      border-radius:42px;
+      padding:74px;
+      text-align:center;
+      background:
+        radial-gradient(circle at 22% 18%,rgba(90,204,249,.20),transparent 30%),
+        radial-gradient(circle at 78% 0%,rgba(138,56,224,.16),transparent 32%),
+        rgba(255,255,255,.065);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .cta-box h2{font-size:clamp(38px,5vw,72px)}
+    .cta-box p{color:var(--muted);font-size:19px;line-height:1.7;max-width:760px;margin:20px auto 0}
+    .form{
+      margin:32px auto 0;
+      max-width:780px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .form input{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.20);
+      color:var(--text);
+      padding:16px 18px;
+      border-radius:16px;
+      outline:none;
+    }
+
+    footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted)}
+    .footer-row{display:flex;align-items:center;justify-content:space-between;gap:22px}
+
+    .qual-chat-button{
+      position:fixed;
+      right:22px;
+      bottom:22px;
+      z-index:80;
+      min-height:56px;
+      padding:0 20px;
+      border:1px solid rgba(155,222,251,.24);
+      border-radius:999px;
+      background:linear-gradient(135deg,var(--brand),#67a8ff 48%,var(--purple));
+      color:#06101a;
+      box-shadow:0 22px 70px rgba(45,112,245,.30);
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font-weight:950;
+      cursor:pointer;
+    }
+    .qual-chat-button svg{width:20px;height:20px;stroke-width:2.4}
+    .qual-chat{
+      position:fixed;
+      right:22px;
+      bottom:92px;
+      z-index:90;
+      width:min(420px,calc(100vw - 32px));
+      border:1px solid rgba(155,222,251,.20);
+      border-radius:26px;
+      background:rgba(9,13,31,.94);
+      -webkit-backdrop-filter:blur(22px);
+      backdrop-filter:blur(22px);
+      box-shadow:0 34px 120px rgba(0,0,0,.46);
+      overflow:hidden;
+      opacity:0;
+      transform:translateY(18px) scale(.98);
+      pointer-events:none;
+      transition:.24s ease;
+    }
+    .qual-chat.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+    .qual-chat__head{
+      padding:18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(135deg,rgba(90,204,249,.10),rgba(138,56,224,.10));
+    }
+    .qual-chat__brand{display:flex;align-items:center;gap:11px;font-weight:950}
+    .qual-chat__brand img{width:32px;height:32px;border-radius:10px}
+    .qual-chat__close{
+      border:0;
+      background:rgba(255,255,255,.08);
+      color:var(--text);
+      width:38px;height:38px;
+      border-radius:13px;
+      cursor:pointer;
+      display:grid;place-items:center;
+    }
+    .qual-chat__body{padding:18px;display:grid;gap:14px}
+    .qual-chat__progress{height:5px;border-radius:999px;background:rgba(255,255,255,.10);overflow:hidden}
+    .qual-chat__bar{height:100%;width:0;background:linear-gradient(90deg,var(--brand),var(--purple));transition:.24s ease}
+    .qual-chat__bubble{
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:14px;
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      line-height:1.55;
+      font-weight:750;
+    }
+    .qual-chat__field{
+      width:100%;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:15px;
+      background:rgba(0,0,0,.22);
+      color:var(--text);
+      padding:14px 15px;
+      outline:none;
+    }
+    .qual-chat__options{display:grid;gap:9px}
+    .qual-chat__option{
+      border:1px solid rgba(155,222,251,.18);
+      border-radius:15px;
+      padding:12px 14px;
+      background:rgba(255,255,255,.055);
+      color:var(--text);
+      text-align:left;
+      cursor:pointer;
+      font-weight:800;
+    }
+    .qual-chat__option:hover{border-color:rgba(90,204,249,.46);background:rgba(90,204,249,.10)}
+    .qual-chat__option.is-selected{
+      border-color:rgba(90,204,249,.72);
+      background:rgba(90,204,249,.14);
+      box-shadow:inset 0 0 0 1px rgba(90,204,249,.18);
+    }
+    .qual-chat__actions{display:flex;gap:10px}
+    .qual-chat__actions .btn{flex:1}
+    .qual-chat__muted{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
+
+    .reveal{opacity:0;transform:translateY(26px);transition:.7s ease}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+
+    @media(max-width:1040px){
+      nav.menu{display:none}
+      .hero-grid,.grid-2,.calc{grid-template-columns:1fr}
+      .hero-visual{min-height:650px}
+      .product-shell{left:50%;right:auto;transform:translateX(-50%);width:min(560px,100%)}
+      .float-chip{display:none}
+      .grid-3,.pricing{grid-template-columns:1fr}
+      .price-card.featured{transform:none}
+      .grid-4,.systems-row,.steps{grid-template-columns:repeat(2,1fr)}
+      .form{grid-template-columns:1fr}
+      .setup{flex-direction:column;align-items:flex-start}
+    }
+    @media(max-width:640px){
+      .container{width:min(100% - 28px,var(--max))}
+      .hide-mobile{display:none}
+      .nav{gap:10px}
+      .nav-actions .btn{min-height:46px;padding:12px 14px;border-radius:14px;font-size:14px}
+      .nav{height:68px}
+      .brand{font-size:20px}
+      .logo{width:38px;height:38px}
+      h1{font-size:43px;line-height:1}
+      .lead{font-size:18px}
+      .hero{padding:52px 0}
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .product-shell{min-height:auto}
+      .hero-visual{min-height:520px}
+      .grid-4,.systems-row,.saving,.steps{grid-template-columns:1fr}
+      .section{padding:70px 0}
+      .cta-box{padding:42px 22px;border-radius:30px}
+      .qual-chat-button{right:14px;bottom:14px;min-height:52px;padding:0 16px}
+      .qual-chat{right:14px;bottom:78px;width:calc(100vw - 28px)}
+      th,td{padding:14px;font-size:13px}
+      .footer-row{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <header id="header">
+    <div class="container nav">
+      <a class="brand" href="#">
+        <span class="logo" aria-hidden="true">
+          <img src="/unitymob-icon.svg" alt="" />
+        </span>
+        Unitymob
+      </a>
+
+      <nav class="menu">
+        <a href="#problema">Dor</a>
+        <a href="#plataforma">Consolidação</a>
+        <a href="#modulos">Módulos</a>
+        <a href="#economia">Economia</a>
+        <a href="#precos">Investimento</a>
+        <button type="button" data-chat-open>Diagnóstico</button>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="btn btn-ghost hide-mobile" href="#economia">Comparar custos</a>
+        <button class="btn btn-primary" type="button" data-chat-open>Agendar diagnóstico</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="reveal">
+          <div class="kicker pill hot"><strong>Unitymob OS</strong> Para imobiliárias que querem sair da operação fragmentada</div>
+          <h1>Pare de operar sua imobiliária em <span class="grad">vários sistemas desconectados.</span></h1>
+          <p class="lead">
+            Centralize site, imóveis, leads, WhatsApp, atendimento, automações, equipe comercial e indicadores em uma única plataforma feita para imobiliárias maduras, com operação ativa e gestão orientada por dados.
+          </p>
+
+          <div class="hero-actions">
+            <button type="button" class="btn btn-primary" data-chat-open>Avaliar minha operação</button>
+            <a href="#plataforma" class="btn btn-ghost">Ver o que substitui</a>
+          </div>
+
+          <div class="trust-row">
+            <span>Site + CRM + Imóveis</span>
+            <span>WhatsApp integrado</span>
+            <span>BI e gestão comercial</span>
+            <span>Implantação assistida</span>
+          </div>
+        </div>
+
+        <div class="hero-visual reveal">
+          <div class="float-chip c1"><i data-lucide="building-2"></i> <b>1.284</b> imóveis organizados</div>
+          <div class="float-chip c2"><i data-lucide="messages-square"></i> WhatsApp no histórico do lead</div>
+          <div class="float-chip c3"><i data-lucide="zap"></i> Lead distribuído com regra</div>
+          <div class="float-chip c4"><i data-lucide="chart-no-axes-combined"></i> Gestor com visão 360°</div>
+
+          <div class="product-shell">
+            <div class="browser-top">
+              <div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <span>app.unitymob.com.br / operação</span>
+            </div>
+
+            <div class="app">
+              <aside class="sidebar">
+                <div class="side-title">Unitymob</div>
+                <div class="side-item active"><i data-lucide="layout-dashboard"></i> Painel</div>
+                <div class="side-item"><i data-lucide="globe-2"></i> Site</div>
+                <div class="side-item"><i data-lucide="target"></i> Leads</div>
+                <div class="side-item"><i data-lucide="building-2"></i> Imóveis</div>
+                <div class="side-item"><i data-lucide="messages-square"></i> WhatsApp</div>
+                <div class="side-item"><i data-lucide="users-round"></i> Equipes</div>
+                <div class="side-item"><i data-lucide="workflow"></i> Automação</div>
+                <div class="side-item"><i data-lucide="smartphone"></i> Mobile</div>
+              </aside>
+
+              <section class="mainpanel">
+                <div class="kpi-grid">
+                  <div class="kpi"><small>Leads integrados</small><b>248</b></div>
+                  <div class="kpi"><small>Conversão geral</small><b>31,8%</b></div>
+                  <div class="kpi"><small>SLA médio</small><b>2m</b></div>
+                </div>
+
+                <div class="pipeline">
+                  <div class="lead-card"><div class="avatar">A</div><div><strong>Ana Souza</strong><span>Lead do site interessado em frente mar</span></div><div class="tag">quente</div></div>
+                  <div class="lead-card"><div class="avatar">R</div><div><strong>Rafael Lima</strong><span>Lead Meta Ads · Distribuído para equipe Sul</span></div><div class="tag">novo</div></div>
+                  <div class="lead-card"><div class="avatar">M</div><div><strong>Marina Costa</strong><span>Visita agendada · Funil atualizado</span></div><div class="tag">visita</div></div>
+                </div>
+
+                <div class="chart-mini">
+                  <i style="height:42%"></i><i style="height:63%"></i><i style="height:50%"></i><i style="height:82%"></i><i style="height:71%"></i><i style="height:92%"></i>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="problema" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">A dor real da operação</div>
+          <h2>O crescimento começa a travar quando cada área usa uma ferramenta diferente.</h2>
+          <p>Imobiliárias como a sua já têm equipe, carteira, mídia, atendimento e processo comercial. O problema é que tudo isso costuma ficar espalhado em fornecedores e planilhas diferentes.</p>
+        </div>
+
+        <div class="grid-3">
+          <div class="card reveal"><div class="icon"><i data-lucide="blocks"></i></div><h3>Fornecedor para cada parte</h3><p>Site em um lugar, CRM em outro, WhatsApp separado, imóveis duplicados e relatórios que dependem de planilha.</p></div>
+          <div class="card reveal"><div class="icon"><i data-lucide="repeat-2"></i></div><h3>Equipe perdendo tempo</h3><p>Corretores e gestores precisam conferir dados em telas diferentes para entender o status real de um cliente ou imóvel.</p></div>
+          <div class="card reveal"><div class="icon"><i data-lucide="chart-no-axes-column-decreasing"></i></div><h3>Decisão sem visão completa</h3><p>A diretoria não enxerga a jornada inteira: origem, lead, corretor, atendimento, imóvel, visita, proposta e resultado.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="plataforma" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Vários sistemas → uma operação</div>
+          <h2>A Unitymob substitui a colcha de retalhos por uma plataforma centralizada.</h2>
+          <p>Em vez de contratar e integrar ferramentas soltas, você passa a operar aquisição, atendimento, carteira, equipe e gestão no mesmo ambiente.</p>
+        </div>
+
+        <div class="systems-strip reveal">
+          <div class="systems-row">
+            <div class="sys"><span class="sys-icon"><i data-lucide="globe-2"></i></span><strong>Site público</strong><span>Vitrine</span></div>
+            <div class="sys"><span class="sys-icon"><i data-lucide="building-2"></i></span><strong>Gestão de imóveis</strong><span>Carteira</span></div>
+            <div class="sys"><span class="sys-icon"><i data-lucide="target"></i></span><strong>CRM de leads</strong><span>Comercial</span></div>
+            <div class="sys"><span class="sys-icon"><i data-lucide="messages-square"></i></span><strong>WhatsApp</strong><span>Atendimento</span></div>
+            <div class="sys"><span class="sys-icon"><i data-lucide="workflow"></i></span><strong>Automação</strong><span>Fluxos</span></div>
+            <div class="sys"><span class="sys-icon"><i data-lucide="chart-no-axes-combined"></i></span><strong>BI</strong><span>Indicadores</span></div>
+            <div class="sys"><span class="sys-icon"><i data-lucide="users-round"></i></span><strong>Equipe</strong><span>Regras</span></div>
+          </div>
+          <div class="arrow-down">↓ tudo converge para ↓</div>
+          <div class="one-platform">Unitymob: <span>site, CRM, imóveis, atendimento e gestão no mesmo lugar</span></div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section">
+      <div class="container grid-2">
+        <div class="section-header reveal">
+          <div class="pill">Para quem faz sentido</div>
+          <h2>Feita para imobiliárias que já passaram da fase improvisada.</h2>
+          <p>
+            A Unitymob não foi pensada para quem só precisa de um cadastro barato. Ela faz sentido quando a operação já tem volume, equipe, mídia, atendimento e necessidade real de controle.
+          </p>
+        </div>
+        <div class="card reveal">
+          <div class="icon"><i data-lucide="landmark"></i></div>
+          <h3>Perfil ideal de cliente</h3>
+          <p>
+            Imobiliárias de alto padrão, operações comerciais com tráfego ativo, times com vários corretores e gestores que precisam reduzir dependência de ferramentas separadas.
+          </p>
+          <ul>
+            <li>Querem sair de vários sistemas e fornecedores.</li>
+            <li>Precisam padronizar atendimento e distribuição de leads.</li>
+            <li>Valorizam site, marca, carteira e experiência comercial.</li>
+            <li>Conseguem investir a partir de R$ 3 mil/mês para ganhar controle.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="modulos" class="section">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="pill">O que entra na centralização</div>
+          <h2>Os módulos que normalmente ficam espalhados passam a conversar entre si.</h2>
+          <p>Você não troca apenas uma tela. Troca o modelo operacional: site, carteira, leads, atendimento, automações e gestão passam a trabalhar em conjunto.</p>
+        </div>
+
+        <div class="grid-4">
+          <div class="card module reveal"><div class="icon"><i data-lucide="globe-2"></i></div><h3>Site imobiliário</h3><p>Vitrine pública conectada à carteira, seções comerciais, filtros e identidade da conta.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="building-2"></i></div><h3>Carteira de imóveis</h3><p>Cadastro, fotos, características, proprietários, documentos, status e histórico operacional.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="target"></i></div><h3>Leads e CRM</h3><p>Meta Ads, Google, portais, site, WhatsApp, indicações, funis, tarefas e follow-up.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="messages-square"></i></div><h3>WhatsApp comercial</h3><p>Atendimento, campanhas, templates, histórico e automações conectadas ao lead.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="route"></i></div><h3>Distribuição inteligente</h3><p>Round robin, equipes, filiais, SLA, elegibilidade e regras comerciais por operação.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="workflow"></i></div><h3>Automações</h3><p>Fluxos condicionais, webhooks, nutrição, alertas, tarefas e integrações operacionais.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="chart-no-axes-combined"></i></div><h3>BI operacional</h3><p>Conversão, ROI, mídia, corretores, equipes, imóveis, visitas e desempenho comercial.</p></div>
+          <div class="card module reveal"><div class="icon"><i data-lucide="smartphone"></i></div><h3>Operação mobile</h3><p>Leads, agenda, visitas, check-in, notificações e atendimento em campo.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="economia" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Comparação de investimento</div>
+          <h2>Quanto custa manter site, CRM, WhatsApp, BI e automações separados?</h2>
+          <p>A Unitymob não entra como mais uma mensalidade. Ela substitui custos, reduz integrações frágeis e diminui o tempo perdido com retrabalho.</p>
+        </div>
+
+        <div class="calc reveal">
+          <div class="calc-box">
+            <h3 style="font-size:28px;margin:0 0 12px;">Custo mensal da operação fragmentada</h3>
+            <p style="color:var(--muted);line-height:1.7;">Ajuste os valores aproximados que sua imobiliária gasta ou perde ao manter ferramentas separadas.</p>
+
+            <div class="slider-row"><label>Site + manutenção <strong id="crmLabel">R$ 1.200</strong></label><input id="crm" type="range" min="300" max="4000" step="100" value="1200"></div>
+            <div class="slider-row"><label>WhatsApp/API <strong id="zapLabel">R$ 800</strong></label><input id="zap" type="range" min="200" max="4000" step="100" value="800"></div>
+            <div class="slider-row"><label>CRM / Comercial <strong id="biLabel">R$ 500</strong></label><input id="biCost" type="range" min="0" max="3000" step="100" value="500"></div>
+            <div class="slider-row"><label>Automação <strong id="autoLabel">R$ 600</strong></label><input id="auto" type="range" min="0" max="3000" step="100" value="600"></div>
+            <div class="slider-row"><label>BI, integrações e retrabalho <strong id="intLabel">R$ 400</strong></label><input id="int" type="range" min="0" max="3000" step="100" value="400"></div>
+          </div>
+
+          <div class="calc-box">
+            <div class="pill hot">Plano principal: Unitymob Professional</div>
+            <h3 style="font-size:34px;margin:18px 0 0;">Operação centralizada a partir de R$ 2.997/mês</h3>
+            <p style="color:var(--muted);line-height:1.7;">Inclui site imobiliário, gestão de imóveis, leads, WhatsApp, distribuição inteligente, automações, BI operacional e mobile para equipes comerciais.</p>
+
+            <div class="saving">
+              <div class="saving-card"><small>Gasto atual estimado</small><b id="totalAtual">R$ 3.500</b></div>
+              <div class="saving-card"><small>Unitymob Professional</small><b>R$ 2.997</b></div>
+              <div class="saving-card positive"><small>Economia mensal</small><b id="economiaMensal">R$ 503</b></div>
+              <div class="saving-card positive"><small>Economia anual</small><b id="economiaAnual">R$ 6.036</b></div>
+            </div>
+
+            <div style="margin-top:22px;">
+              <button type="button" class="btn btn-primary" data-chat-open>Agendar diagnóstico de consolidação</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="precos" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Investimento</div>
+          <h2>Planos para imobiliárias que querem consolidar a operação.</h2>
+          <p>Não é uma licença simples de CRM. É uma implantação operacional para reduzir ferramentas soltas, padronizar processos e dar controle para a gestão.</p>
+        </div>
+
+        <div class="pricing">
+          <div class="price-card reveal">
+            <div class="price-name">Professional Start</div>
+            <p class="price-desc">Para imobiliárias que querem centralizar site, imóveis, leads e atendimento em uma base única.</p>
+            <div class="price">R$ 2.997<small>/mês</small></div>
+            <p style="color:var(--muted)">Operação comercial em consolidação</p>
+            <ul>
+              <li>Site imobiliário integrado</li>
+              <li>Gestão comercial</li>
+              <li>Gestão de imóveis</li>
+              <li>Gestão de leads</li>
+              <li>WhatsApp integrado</li>
+              <li>Dashboards operacionais</li>
+            </ul>
+            <button type="button" class="btn btn-ghost" style="margin-top:24px;width:100%" data-chat-open>Avaliar Start</button>
+          </div>
+
+          <div class="price-card featured reveal">
+            <div class="price-name">Professional Scale</div>
+            <p class="price-desc">Para operações comerciais com tráfego, equipe, regras de distribuição e necessidade de gestão mais forte.</p>
+            <div class="price">R$ 3.997<small>/mês</small></div>
+            <p style="color:var(--muted)">Operação com equipe e regras avançadas</p>
+            <ul>
+              <li>Tudo do Professional Start</li>
+              <li>Distribuição inteligente de leads</li>
+              <li>Automações comerciais</li>
+              <li>BI operacional avançado</li>
+              <li>Aplicativo mobile</li>
+              <li>Regras por equipe e filial</li>
+              <li>Modelo Shark Tank</li>
+            </ul>
+            <button type="button" class="btn btn-primary" style="margin-top:24px;width:100%" data-chat-open>Agendar diagnóstico</button>
+          </div>
+
+          <div class="price-card reveal">
+            <div class="price-name">Enterprise</div>
+            <p class="price-desc">Para redes, incorporadoras e operações com múltiplas unidades, integrações ou regras próprias.</p>
+            <div class="price">Sob consulta</div>
+            <p style="color:var(--muted)">Operação acima de 30 usuários</p>
+            <ul>
+              <li>Multi-filial</li>
+              <li>Multi-operação</li>
+              <li>APIs avançadas</li>
+              <li>Integrações dedicadas</li>
+              <li>Treinamento personalizado</li>
+              <li>Sucesso do Cliente</li>
+            </ul>
+            <button type="button" class="btn btn-ghost" style="margin-top:24px;width:100%" data-chat-open>Falar com especialista</button>
+          </div>
+        </div>
+
+        <div class="setup reveal">
+          <div>
+            <h3 style="margin:0;font-size:24px;">Setup de implantação</h3>
+            <p>Mapeamento da operação atual, migração, parametrização, treinamento, revisão de funis, configuração de equipes e ativação dos módulos.</p>
+          </div>
+          <div style="font-size:30px;font-weight:950;letter-spacing:-.05em;">A partir de R$ 2.500</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Comparativo financeiro</div>
+          <h2>Você não está comprando mais um sistema. Está reduzindo complexidade.</h2>
+        </div>
+
+        <div class="compare-table reveal">
+          <table>
+            <thead>
+              <tr>
+                <th>Necessidade</th>
+                <th>Modelo tradicional</th>
+                <th>Unitymob Professional</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Gestão comercial</strong></td><td>Ferramenta separada</td><td class="yes">Incluso</td></tr>
+              <tr><td><strong>Gestão de imóveis</strong></td><td>Sistema separado</td><td class="yes">Incluso</td></tr>
+              <tr><td><strong>WhatsApp/API</strong></td><td>Contrato separado</td><td class="yes">Incluso na operação</td></tr>
+              <tr><td><strong>BI e relatórios</strong></td><td>Planilhas ou BI externo</td><td class="yes">Dashboards operacionais</td></tr>
+              <tr><td><strong>Automação</strong></td><td>Ferramenta externa</td><td class="yes">Fluxos nativos</td></tr>
+              <tr><td><strong>Integrações</strong></td><td>Manutenção constante</td><td class="yes">Ecossistema centralizado</td></tr>
+              <tr><td><strong>Custo percebido</strong></td><td class="no">R$ 4.000 a R$ 9.000 / mês</td><td class="yes">A partir de R$ 2.997 / mês</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Migração assistida</div>
+          <h2>Você não precisa trocar tudo sozinho.</h2>
+          <p>O maior risco de sair de vários sistemas é a transição. Por isso a implantação começa pelo entendimento da operação atual antes de qualquer virada.</p>
+        </div>
+
+        <div class="steps">
+          <div class="step reveal">
+            <h3>Mapeamento</h3>
+            <p>Levantamos site atual, carteira, origens de leads, WhatsApp, funis, equipes, regras e indicadores usados pela gestão.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Migração essencial</h3>
+            <p>Organizamos dados importantes, imóveis, usuários, etapas comerciais e configurações para começar com base operacional consistente.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Parametrização</h3>
+            <p>Configuramos identidade, site, permissões, distribuição, automações, formulários, filtros e painéis de acompanhamento.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Ativação da equipe</h3>
+            <p>Treinamos o time, acompanhamos a adoção inicial e ajustamos o fluxo para reduzir atrito na mudança de ferramenta.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">FAQ</div>
+          <h2>Dúvidas comuns antes de consolidar a operação.</h2>
+        </div>
+
+        <div class="faq reveal">
+          <div class="faq-item open">
+            <button class="faq-q">A Unitymob é apenas um CRM? <span>+</span></button>
+            <div class="faq-a">Não. CRM é apenas uma parte da plataforma. A Unitymob conecta site, imóveis, leads, WhatsApp, atendimento, automações, distribuição, equipe e indicadores.</div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q">Preciso trocar todos os sistemas no primeiro dia? <span>+</span></button>
+            <div class="faq-a">Não. A implantação pode ser feita por prioridade: site e imóveis, leads e atendimento, WhatsApp, automações ou BI. O objetivo é consolidar sem paralisar a operação.</div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q">Para quem a Unitymob não faz sentido? <span>+</span></button>
+            <div class="faq-a">Para operações muito pequenas que querem apenas um cadastro simples e barato. A Unitymob faz mais sentido quando existe equipe, carteira, mídia, atendimento e necessidade de gestão integrada.</div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q">Por que o investimento começa perto de R$ 3 mil/mês? <span>+</span></button>
+            <div class="faq-a">Porque a proposta não é substituir apenas um CRM. É consolidar sistemas, operação comercial, site, atendimento, dados e gestão. O valor deve ser comparado ao custo total de ferramentas separadas e retrabalho.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container footer-row">
+      <a class="brand" href="#"><span class="logo" aria-hidden="true"><img src="/unitymob-icon.svg" alt="" /></span>Unitymob</a>
+      <div>© 2026 Unitymob. Consolidação operacional para imobiliárias em crescimento.</div>
+    </div>
+  </footer>
+
+  <button class="qual-chat-button" type="button" data-chat-open>
+    <i data-lucide="message-circle-question"></i>
+    Avaliar minha operação
+  </button>
+
+  <aside class="qual-chat" id="qualChat" aria-hidden="true" aria-label="Pré-qualificação Unitymob">
+    <div class="qual-chat__head">
+      <div class="qual-chat__brand">
+        <img src="/unitymob-icon.svg" alt="" />
+        <div>
+          <div>Diagnóstico Unitymob</div>
+          <small style="color:var(--muted);font-weight:800;">Pré-qualificação rápida</small>
+        </div>
+      </div>
+      <button class="qual-chat__close" type="button" data-chat-close aria-label="Fechar chat"><i data-lucide="x"></i></button>
+    </div>
+    <div class="qual-chat__body">
+      <div class="qual-chat__progress"><div class="qual-chat__bar" data-chat-progress></div></div>
+      <div class="qual-chat__bubble" data-chat-question></div>
+      <div data-chat-answer></div>
+      <p class="qual-chat__muted" data-chat-helper></p>
+      <div class="qual-chat__actions" data-chat-actions></div>
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/lucide@1.30.0/dist/umd/lucide.min.js"></script>
+  <script>
+    const header=document.getElementById('header');
+    const reveals=document.querySelectorAll('.reveal');
+    const revealObserver='IntersectionObserver' in window
+      ? new IntersectionObserver((entries)=>{
+          entries.forEach(entry=>{
+            if(entry.isIntersecting) entry.target.classList.add('visible');
+          });
+        },{threshold:.12,rootMargin:'0px 0px -70px 0px'})
+      : null;
+
+    function formatBRL(v){
+      return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(v);
+    }
+
+    function updateCalc(){
+      const crm=+document.getElementById('crm').value;
+      const zap=+document.getElementById('zap').value;
+      const bi=+document.getElementById('biCost').value;
+      const auto=+document.getElementById('auto').value;
+      const int=+document.getElementById('int').value;
+      const total=crm+zap+bi+auto+int;
+      const plano=2997;
+      const economia=Math.max(total-plano,0);
+
+      document.getElementById('crmLabel').textContent=formatBRL(crm);
+      document.getElementById('zapLabel').textContent=formatBRL(zap);
+      document.getElementById('biLabel').textContent=formatBRL(bi);
+      document.getElementById('autoLabel').textContent=formatBRL(auto);
+      document.getElementById('intLabel').textContent=formatBRL(int);
+      document.getElementById('totalAtual').textContent=formatBRL(total);
+      document.getElementById('economiaMensal').textContent=formatBRL(economia);
+      document.getElementById('economiaAnual').textContent=formatBRL(economia*12);
+    }
+
+    function revealVisible(){
+      reveals.forEach(el=>{
+        if(el.getBoundingClientRect().top < window.innerHeight - 90) el.classList.add('visible');
+      });
+    }
+
+    function onScroll(){
+      header.classList.toggle('scrolled',window.scrollY>20);
+      revealVisible();
+    }
+
+    document.querySelectorAll('.faq-q').forEach(btn=>{
+      btn.addEventListener('click',()=>btn.closest('.faq-item').classList.toggle('open'));
+    });
+
+    if(revealObserver){
+      reveals.forEach(el=>revealObserver.observe(el));
+    }
+
+    function renderIcons(){
+      if(window.lucide) window.lucide.createIcons({attrs:{'aria-hidden':'true'}});
+    }
+
+    const whatsappNumber='5521990872427';
+    const chatState={step:0,answers:{}};
+    const chatSteps=[
+      {key:'nome',label:'Nome',question:'Pra começar, qual é o seu nome?',type:'text',placeholder:'Seu nome'},
+      {key:'imobiliaria',label:'Imobiliária',question:'Qual é o nome da imobiliária?',type:'text',placeholder:'Nome da imobiliária'},
+      {key:'site',label:'Site da imobiliária',question:'Qual é a URL do site atual da imobiliária?',type:'url',placeholder:'https://www.suaimobiliaria.com.br'},
+      {key:'whatsapp',label:'WhatsApp',question:'Qual WhatsApp podemos usar para retorno?',type:'tel',placeholder:'(00) 00000-0000',inputmode:'numeric',mask:'phone'},
+      {key:'cidade',label:'Cidade/estado',question:'Em qual cidade e estado a operação atua?',type:'text',placeholder:'Ex: Balneário Camboriú, SC'},
+      {key:'equipe',label:'Tamanho da equipe',question:'Quantos corretores ou usuários participam da operação?',type:'choice',options:['Até 5','6 a 15','16 a 30','Mais de 30']},
+      {key:'sistemas',label:'Sistemas atuais',question:'Hoje vocês usam quantos sistemas/ferramentas para operar?',type:'choice',options:['1 ou 2','3 a 5','Mais de 5','Não tenho certeza']},
+      {key:'dor',label:'Principais dores',question:'Quais são as principais dores hoje?',type:'multi',options:['Site e imóveis desconectados','Leads e atendimento espalhados','WhatsApp sem controle','Falta de BI/gestão','Retrabalho e integrações']},
+      {key:'investimento',label:'Faixa de investimento',question:'Qual faixa de investimento mensal faz sentido se consolidar a operação?',type:'choice',options:['Até R$ 1.500','R$ 2.000 a R$ 3.000','R$ 3.000 a R$ 5.000','Acima de R$ 5.000']},
+      {key:'urgencia',label:'Urgência',question:'Quando vocês querem resolver isso?',type:'choice',options:['Agora','Nos próximos 30 dias','Em 2 a 3 meses','Estou só pesquisando']}
+    ];
+
+    function buildWhatsappUrl(answers){
+      const lines=[
+        'Olá, quero avaliar a Unitymob para minha imobiliária.',
+        '',
+        'Pré-qualificação:',
+        `Nome: ${answers.nome || '-'}`,
+        `Imobiliária: ${answers.imobiliaria || '-'}`,
+        `Site: ${answers.site || '-'}`,
+        `WhatsApp: ${answers.whatsapp || '-'}`,
+        `Cidade/estado: ${answers.cidade || '-'}`,
+        `Equipe: ${answers.equipe || '-'}`,
+        `Sistemas atuais: ${answers.sistemas || '-'}`,
+        `Principais dores: ${formatAnswer(answers.dor)}`,
+        `Investimento mensal: ${answers.investimento || '-'}`,
+        `Urgência: ${answers.urgencia || '-'}`,
+        '',
+        'Pode me chamar para o diagnóstico.'
+      ];
+      return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
+    }
+
+    function openWhatsapp(answers){
+      window.open(buildWhatsappUrl(answers),'_blank','noopener,noreferrer');
+    }
+
+    function digitsOnly(value){
+      return value.replace(/\D/g,'').slice(0,11);
+    }
+
+    function formatPhone(value){
+      const digits=digitsOnly(value);
+      if(digits.length<=2) return digits;
+      if(digits.length<=6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+      if(digits.length<=10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+      return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    }
+
+    function formatAnswer(value){
+      if(Array.isArray(value)) return value.length ? value.join(', ') : '-';
+      return value || '-';
+    }
+
+    function goBack(){
+      if(chatState.step>0){
+        chatState.step-=1;
+        renderChat();
+      }
+    }
+
+    function createBackButton(){
+      const back=document.createElement('button');
+      back.type='button';
+      back.className='btn btn-ghost';
+      back.textContent='Voltar';
+      back.addEventListener('click',goBack);
+      return back;
+    }
+
+    function renderChat(){
+      const chat=document.getElementById('qualChat');
+      const questionEl=document.querySelector('[data-chat-question]');
+      const answerEl=document.querySelector('[data-chat-answer]');
+      const actionsEl=document.querySelector('[data-chat-actions]');
+      const helperEl=document.querySelector('[data-chat-helper]');
+      const progressEl=document.querySelector('[data-chat-progress]');
+      const step=chatSteps[chatState.step];
+      const progress=Math.round((chatState.step/chatSteps.length)*100);
+
+      progressEl.style.width=`${progress}%`;
+      answerEl.innerHTML='';
+      actionsEl.innerHTML='';
+      helperEl.textContent='';
+
+      if(!step){
+        progressEl.style.width='100%';
+        questionEl.textContent='Pronto. Montei o resumo da sua operação para enviar pelo WhatsApp.';
+        const summary=document.createElement('div');
+        summary.className='qual-chat__bubble';
+        summary.style.fontWeight='650';
+        summary.innerHTML=chatSteps.map(item=>`<div><strong>${item.label}:</strong> ${formatAnswer(chatState.answers[item.key])}</div>`).join('');
+        answerEl.appendChild(summary);
+
+        const send=document.createElement('button');
+        send.type='button';
+        send.className='btn btn-primary';
+        send.textContent='Enviar pelo WhatsApp';
+        send.addEventListener('click',()=>openWhatsapp(chatState.answers));
+
+        const restart=document.createElement('button');
+        restart.type='button';
+        restart.className='btn btn-ghost';
+        restart.textContent='Refazer';
+        restart.addEventListener('click',()=>{chatState.step=0;chatState.answers={};renderChat();});
+
+        const back=createBackButton();
+        actionsEl.append(back,send,restart);
+        return;
+      }
+
+      questionEl.textContent=step.question;
+      helperEl.textContent=`Pergunta ${chatState.step+1} de ${chatSteps.length}`;
+
+      if(step.type==='choice'){
+        const options=document.createElement('div');
+        options.className='qual-chat__options';
+        step.options.forEach(option=>{
+          const button=document.createElement('button');
+          button.type='button';
+          button.className='qual-chat__option';
+          button.textContent=option;
+          if(chatState.answers[step.key]===option) button.classList.add('is-selected');
+          button.addEventListener('click',()=>{
+            chatState.answers[step.key]=option;
+            chatState.step+=1;
+            renderChat();
+          });
+          options.appendChild(button);
+        });
+        answerEl.appendChild(options);
+        if(chatState.step>0) actionsEl.appendChild(createBackButton());
+      }else if(step.type==='multi'){
+        const selected=new Set(Array.isArray(chatState.answers[step.key]) ? chatState.answers[step.key] : []);
+        const options=document.createElement('div');
+        options.className='qual-chat__options';
+        step.options.forEach(option=>{
+          const button=document.createElement('button');
+          button.type='button';
+          button.className='qual-chat__option';
+          button.textContent=option;
+          if(selected.has(option)) button.classList.add('is-selected');
+          button.addEventListener('click',()=>{
+            if(selected.has(option)){
+              selected.delete(option);
+              button.classList.remove('is-selected');
+            }else{
+              selected.add(option);
+              button.classList.add('is-selected');
+            }
+            chatState.answers[step.key]=Array.from(selected);
+          });
+          options.appendChild(button);
+        });
+        answerEl.appendChild(options);
+
+        const next=document.createElement('button');
+        next.type='button';
+        next.className='btn btn-primary';
+        next.textContent='Continuar';
+        next.addEventListener('click',()=>{
+          if(selected.size===0){
+            helperEl.textContent='Selecione pelo menos uma opção.';
+            return;
+          }
+          chatState.answers[step.key]=Array.from(selected);
+          chatState.step+=1;
+          renderChat();
+        });
+        if(chatState.step>0) actionsEl.appendChild(createBackButton());
+        actionsEl.appendChild(next);
+      }else{
+        const input=document.createElement('input');
+        input.className='qual-chat__field';
+        input.type=step.type;
+        if(step.inputmode) input.inputMode=step.inputmode;
+        input.placeholder=step.placeholder;
+        input.value=chatState.answers[step.key] || '';
+        if(step.mask==='phone'){
+          input.value=formatPhone(input.value);
+          input.addEventListener('input',()=>{input.value=formatPhone(input.value);});
+        }
+        input.addEventListener('keydown',(event)=>{
+          if(event.key==='Enter'){
+            event.preventDefault();
+            next.click();
+          }
+        });
+        answerEl.appendChild(input);
+
+        var next=document.createElement('button');
+        next.type='button';
+        next.className='btn btn-primary';
+        next.textContent='Continuar';
+        next.addEventListener('click',()=>{
+          const value=input.value.trim();
+          const phoneInvalid=step.mask==='phone' && digitsOnly(value).length<10;
+          if(!value || phoneInvalid){
+            helperEl.textContent=phoneInvalid ? 'Informe um WhatsApp com DDD.' : `Pergunta ${chatState.step+1} de ${chatSteps.length}`;
+            input.focus();
+            return;
+          }
+          chatState.answers[step.key]=value;
+          chatState.step+=1;
+          renderChat();
+        });
+        if(chatState.step>0) actionsEl.appendChild(createBackButton());
+        actionsEl.appendChild(next);
+        setTimeout(()=>input.focus(),60);
+      }
+    }
+
+    function openChat(){
+      const chat=document.getElementById('qualChat');
+      chat.classList.add('open');
+      chat.setAttribute('aria-hidden','false');
+      renderChat();
+      renderIcons();
+    }
+
+    function closeChat(){
+      const chat=document.getElementById('qualChat');
+      chat.classList.remove('open');
+      chat.setAttribute('aria-hidden','true');
+    }
+
+    document.querySelectorAll('[data-chat-open]').forEach(button=>button.addEventListener('click',openChat));
+    document.querySelectorAll('[data-chat-close]').forEach(button=>button.addEventListener('click',closeChat));
+    document.addEventListener('keydown',(event)=>{if(event.key==='Escape') closeChat();});
+
+    ['crm','zap','biCost','auto','int'].forEach(id=>document.getElementById(id).addEventListener('input',updateCalc));
+    window.addEventListener('load',()=>{renderIcons();onScroll();updateCalc();setTimeout(revealVisible,250);});
+    window.addEventListener('scroll',onScroll);
+  </script>
+</body>
+</html>

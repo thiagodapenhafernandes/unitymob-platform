@@ -1,4 +1,4 @@
-\restrict ORMm7QBwIF7wGfd9SruXDHXFNwzLvFqi6Ukgb5nm2jknfJd2c8b0i5hnZDGv8Ys
+\restrict WxTVrEROXlxCWeNg4T4qQJhgFKqxmSsjbN5mGMCdyBP2TKJlYySaDeCq2iA7Ebm
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1782,7 +1782,8 @@ CREATE TABLE public.contact_settings (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     tenant_id bigint NOT NULL,
-    blog_url character varying
+    blog_url character varying,
+    show_phone_in_header boolean DEFAULT true NOT NULL
 );
 
 
@@ -16660,11 +16661,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ORMm7QBwIF7wGfd9SruXDHXFNwzLvFqi6Ukgb5nm2jknfJd2c8b0i5hnZDGv8Ys
+\unrestrict WxTVrEROXlxCWeNg4T4qQJhgFKqxmSsjbN5mGMCdyBP2TKJlYySaDeCq2iA7Ebm
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260811101500'),
 ('20260809173000'),
 ('20260809170000'),
 ('20260809143000'),

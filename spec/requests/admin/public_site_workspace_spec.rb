@@ -67,6 +67,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("public-site-workspace")
     expect(response.body).not_to include("Preview dos Links")
+    expect(response.body).to include("Exibir telefone no header")
 
     get edit_admin_footer_setting_path
     expect(response).to have_http_status(:ok)
@@ -76,6 +77,26 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Pilares institucionais")
     expect(response.body).to include("Links úteis")
+  end
+
+  it "salva a visibilidade do telefone do header somente no tenant autenticado" do
+    other_tenant = Tenant.create!(name: "Outro contato #{SecureRandom.hex(3)}", slug: "outro-contato-#{SecureRandom.hex(4)}")
+    other_setting = ContactSetting.instance(tenant: other_tenant)
+    other_setting.update!(phone: "(11) 3000-0000", show_phone_in_header: true)
+
+    patch admin_contact_setting_path, params: {
+      contact_setting: {
+        phone: "(47) 3515-4920",
+        show_phone_in_header: "0"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_contact_setting_path)
+    expect(ContactSetting.instance(tenant: admin.tenant)).to have_attributes(
+      phone: "554735154920",
+      show_phone_in_header: false
+    )
+    expect(other_setting.reload.show_phone_in_header).to be(true)
   end
 
   it "organiza e salva o rodapé somente no tenant autenticado" do

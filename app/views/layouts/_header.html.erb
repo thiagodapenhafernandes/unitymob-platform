@@ -30,7 +30,7 @@
             </span>
           <% end %>
         <% end %>
-        <% if public_phone.present? %>
+        <% if public_contact_setting.show_phone_in_header? && public_phone.present? %>
           <div class="hidden lg:flex items-center gap-2 text-sm font-semibold text-gray-700">
             <i class="bi bi-telephone"></i>
             <span><%= format_phone(public_phone) %></span>

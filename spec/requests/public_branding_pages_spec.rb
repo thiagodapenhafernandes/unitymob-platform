@@ -165,6 +165,27 @@ RSpec.describe "Public branding pages", type: :request do
     expect(header["style"]).to include("backdrop-filter: blur(15px);")
   end
 
+  it "oculta somente o telefone do header quando configurado" do
+    tenant = Tenant.default
+    ContactSetting.instance(tenant: tenant).update!(
+      phone: "(47) 3515-4920",
+      show_phone_in_header: false
+    )
+
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    header = html.at_css("header[data-controller='navbar']")
+    expect(response).to have_http_status(:ok)
+    expect(header.text).not_to include("(47) 3515-4920")
+
+    get privacy_policy_path
+
+    html = Nokogiri::HTML(response.body)
+    expect(response).to have_http_status(:ok)
+    expect(html.text).to include("(47) 3515-4920")
+  end
+
   it "renderiza CSS restrito para customização da logo pública" do
     layout_setting = LayoutSetting.instance(tenant: Tenant.default)
     layout_setting.logo.attach(

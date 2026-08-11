@@ -31,6 +31,16 @@
             </div>
 
             <div class="ax-field">
+              <label class="tw-flex tw-items-start tw-gap-3 tw-rounded-lg tw-border tw-border-slate-200 tw-bg-white tw-p-3">
+                <%= f.check_box :show_phone_in_header, class: "tw-mt-1 tw-h-4 tw-w-4 tw-rounded tw-border-slate-300 tw-text-primary focus:tw-ring-primary" %>
+                <span>
+                  <strong class="tw-block tw-text-sm tw-font-semibold tw-text-slate-800">Exibir telefone no header</strong>
+                  <span class="tw-block tw-text-xs tw-text-slate-500">Controla somente o telefone ao lado da logo no site público.</span>
+                </span>
+              </label>
+            </div>
+
+            <div class="ax-field">
               <%= ax_field_label(f, :email_primary, text: "E-mail principal") %>
               <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope tw-text-red-600", aria: { hidden: true })) do %>
                 <%= f.email_field :email_primary, class: "ax-control", placeholder: "contato@suaimobiliaria.com.br" %>
