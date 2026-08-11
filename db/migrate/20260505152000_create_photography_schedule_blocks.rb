@@ -16,10 +16,23 @@ class CreatePhotographyScheduleBlocks < ActiveRecord::Migration[7.1]
       "agenda_fotografia" => { "view" => true, "manage" => false }
     }
 
-    Profile.find_or_create_by!(name: "Fotógrafo") do |profile|
-      profile.active = true
-      profile.permissions = photographer_permissions
-    end
+    permissions_json = connection.quote(photographer_permissions.to_json)
+
+    execute(<<~SQL)
+      UPDATE profiles
+      SET active = TRUE,
+          permissions = #{permissions_json}::jsonb,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE name = 'Fotógrafo'
+    SQL
+
+    execute(<<~SQL)
+      INSERT INTO profiles (name, active, permissions, created_at, updated_at)
+      SELECT 'Fotógrafo', TRUE, #{permissions_json}::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      WHERE NOT EXISTS (
+        SELECT 1 FROM profiles WHERE name = 'Fotógrafo'
+      )
+    SQL
   end
 
   def down
