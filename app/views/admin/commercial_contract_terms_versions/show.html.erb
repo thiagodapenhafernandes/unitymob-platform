@@ -1,0 +1,18 @@
+<%= ax_workspace_heading(
+      eyebrow: "Contratos B2B · Termos",
+      icon: "file-text",
+      title: @terms_version.title,
+      subtitle: "Versão #{@terms_version.version}",
+      pills: [ax_badge(@terms_version.active? ? "Ativa" : "Inativa", tone: @terms_version.active? ? :green : :gray)],
+      actions: safe_join([
+        ax_button("Voltar", admin_commercial_contract_terms_versions_path, variant: :ghost, size: :sm, icon: "arrow-left"),
+        (@terms_version.commercial_contract_proposals.exists? ? nil : ax_button("Editar", edit_admin_commercial_contract_terms_version_path(@terms_version), variant: :secondary, size: :sm, icon: "pencil"))
+      ].compact, " ")
+    ) %>
+
+<%= ax_operational_panel(eyebrow: "Texto", title: "Termos vinculáveis a propostas") do %>
+  <div class="tw-p-4 tw-space-y-3">
+    <div><%= ax_badge("SHA-256 #{@terms_version.document_hash}", tone: :gray) %></div>
+    <div class="tw-text-sm tw-leading-6 tw-text-ink-muted"><%= simple_format(@terms_version.body) %></div>
+  </div>
+<% end %>

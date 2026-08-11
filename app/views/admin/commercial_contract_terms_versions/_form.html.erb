@@ -1,0 +1,32 @@
+<%= form_with model: terms_version, url: terms_version.persisted? ? admin_commercial_contract_terms_version_path(terms_version) : admin_commercial_contract_terms_versions_path, scope: :commercial_contract_terms_version do |f| %>
+  <%= ax_error_summary(terms_version, title: "Revise os termos") %>
+  <%= ax_operational_panel(eyebrow: "Versão contratual", title: "Texto dos termos") do %>
+    <div class="tw-grid tw-gap-3 tw-p-4">
+      <div class="tw-grid tw-gap-3 md:tw-grid-cols-[.35fr_.65fr]">
+        <div class="ax-field">
+          <%= ax_field_label(f, :version, text: "Versão") %>
+          <%= f.text_field :version, class: "ax-control", required: true, placeholder: "2026.08" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :title, text: "Título") %>
+          <%= f.text_field :title, class: "ax-control", required: true %>
+        </div>
+      </div>
+      <div class="ax-field">
+        <%= ax_field_label(f, :body, text: "Termos gerais") %>
+        <%= f.text_area :body, class: "ax-control tw-min-h-96", required: true %>
+      </div>
+      <label class="tw-flex tw-items-start tw-gap-3 tw-rounded-lg tw-border tw-border-slate-200 tw-bg-white tw-p-3">
+        <%= f.check_box :active, class: "tw-mt-1 tw-h-4 tw-w-4 tw-rounded tw-border-slate-300 tw-text-primary focus:tw-ring-primary" %>
+        <span>
+          <strong class="tw-block tw-text-sm tw-font-semibold tw-text-slate-800">Versão ativa</strong>
+          <span class="tw-block tw-text-xs tw-text-slate-500">Versões ativas podem ser usadas em novas propostas.</span>
+        </span>
+      </label>
+    </div>
+  <% end %>
+  <div class="tw-flex tw-justify-end tw-gap-2 tw-mt-4">
+    <%= ax_button("Cancelar", terms_version.persisted? ? admin_commercial_contract_terms_version_path(terms_version) : admin_commercial_contract_terms_versions_path, variant: :ghost) %>
+    <%= f.button terms_version.persisted? ? "Atualizar termos" : "Publicar versão", class: "ax-btn ax-btn--primary" %>
+  </div>
+<% end %>

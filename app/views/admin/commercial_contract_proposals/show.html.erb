@@ -1,0 +1,110 @@
+<%
+  public_url = commercial_contract_proposal_url(@proposal.public_token)
+  action_items = safe_join([
+    ax_button("Lista", admin_commercial_contract_proposals_path, variant: :ghost, size: :sm, icon: "arrow-left"),
+    (@proposal.editable? ? ax_button("Editar", edit_admin_commercial_contract_proposal_path(@proposal), variant: :secondary, size: :sm, icon: "pencil") : nil),
+    link_to("Abrir link público", public_url, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm ax-btn--secondary"),
+    ax_button("Proposta PDF", proposal_pdf_admin_commercial_contract_proposal_path(@proposal), variant: :secondary, size: :sm, icon: "filetype-pdf"),
+    (@proposal.accepted? ? ax_button("Contrato PDF", contract_pdf_admin_commercial_contract_proposal_path(@proposal), variant: :secondary, size: :sm, icon: "filetype-pdf") : nil),
+    (@proposal.accepted? ? ax_button("Certificado", certificate_pdf_admin_commercial_contract_proposal_path(@proposal), variant: :secondary, size: :sm, icon: "patch-check") : nil)
+  ].compact, " ")
+%>
+
+<%= ax_workspace_heading(
+      eyebrow: "Contratos B2B",
+      icon: "file-earmark-check",
+      title: @proposal.legal_business_name,
+      subtitle: @proposal.public_token,
+      pills: [commercial_contract_status_badge(@proposal)],
+      actions: action_items
+    ) %>
+
+<div class="tw-grid tw-gap-3 lg:tw-grid-cols-[1.1fr_.9fr]">
+  <%= ax_operational_panel(eyebrow: "Resumo", title: "Condição contratada") do %>
+    <div class="tw-grid tw-gap-3 tw-p-4 md:tw-grid-cols-3">
+      <div>
+        <span class="tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Mensalidade</span>
+        <strong class="tw-block tw-text-xl tw-text-ink"><%= commercial_contract_money(@proposal.monthly_fee_cents) %></strong>
+      </div>
+      <div>
+        <span class="tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Plano</span>
+        <strong class="tw-block tw-text-sm tw-text-ink"><%= @proposal.plan_name %></strong>
+      </div>
+      <div>
+        <span class="tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Termos</span>
+        <strong class="tw-block tw-text-sm tw-text-ink"><%= @proposal.terms_version.version %></strong>
+      </div>
+    </div>
+    <div class="tw-border-t tw-border-slate-200 tw-p-4">
+      <dl class="tw-grid tw-gap-2 md:tw-grid-cols-2">
+        <div><dt class="tw-text-xs tw-text-ink-muted">CNPJ</dt><dd class="tw-font-semibold"><%= commercial_contract_document(@proposal.cnpj) %></dd></div>
+        <div><dt class="tw-text-xs tw-text-ink-muted">E-mail</dt><dd class="tw-font-semibold"><%= @proposal.client_email.presence || "-" %></dd></div>
+        <div><dt class="tw-text-xs tw-text-ink-muted">Expiração</dt><dd class="tw-font-semibold"><%= @proposal.expires_at ? l(@proposal.expires_at, format: :short) : "Sem expiração" %></dd></div>
+        <div><dt class="tw-text-xs tw-text-ink-muted">Criada por</dt><dd class="tw-font-semibold"><%= @proposal.admin_user.name %></dd></div>
+      </dl>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Link", title: "Envio e aceite") do %>
+    <div class="tw-p-4 tw-space-y-3">
+      <div class="tw-rounded-lg tw-border tw-border-slate-200 tw-bg-slate-50 tw-p-3">
+        <span class="tw-block tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Link público</span>
+        <code class="tw-break-all tw-text-xs tw-text-primary"><%= public_url %></code>
+      </div>
+      <div class="tw-flex tw-flex-wrap tw-gap-2">
+        <% if @proposal.editable? %>
+          <%= button_to send_proposal_admin_commercial_contract_proposal_path(@proposal), method: :patch, class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+            <i class="bi bi-send ax-ico"></i><span>Marcar enviada</span>
+          <% end %>
+          <%= button_to cancel_admin_commercial_contract_proposal_path(@proposal), method: :patch, class: "ax-btn ax-btn--danger ax-btn--sm", form: { data: { turbo_confirm: "Cancelar esta proposta?" } } do %>
+            <i class="bi bi-x-circle ax-ico"></i><span>Cancelar</span>
+          <% end %>
+        <% end %>
+      </div>
+      <% if @proposal.acceptance %>
+        <div class="tw-rounded-lg tw-border tw-border-emerald-200 tw-bg-emerald-50 tw-p-3 tw-text-sm tw-text-emerald-900">
+          Aceito por <strong><%= @proposal.acceptance.representative_name %></strong>
+          em <%= l(@proposal.acceptance.accepted_at, format: :long) %>.
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<div class="tw-grid tw-gap-3 lg:tw-grid-cols-2 tw-mt-3">
+  <%= ax_operational_panel(eyebrow: "Escopo", title: "Incluso no plano") do %>
+    <div class="tw-p-4 tw-text-sm tw-leading-6 tw-text-ink-muted"><%= simple_format(@proposal.scope_summary) %></div>
+  <% end %>
+  <%= ax_operational_panel(eyebrow: "Terceiros", title: "Custos repassáveis") do %>
+    <div class="tw-p-4 tw-text-sm tw-leading-6 tw-text-ink-muted"><%= simple_format(@proposal.external_costs_note) %></div>
+  <% end %>
+</div>
+
+<div class="tw-grid tw-gap-3 lg:tw-grid-cols-[.9fr_1.1fr] tw-mt-3">
+  <%= ax_operational_panel(eyebrow: "Termos", title: @proposal.terms_version.title) do %>
+    <div class="tw-p-4 tw-text-sm tw-leading-6 tw-text-ink-muted">
+      <div class="tw-mb-3"><%= ax_badge("Versão #{@proposal.terms_version.version}", tone: :blue) %> <%= ax_badge("SHA-256 #{@proposal.terms_version.document_hash.first(12)}...", tone: :gray) %></div>
+      <%= simple_format(@proposal.terms_version.body) %>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Auditoria", title: "Eventos da proposta") do %>
+    <div class="tw-divide-y tw-divide-slate-200">
+      <% @events.each do |event| %>
+        <div class="tw-flex tw-gap-3 tw-p-4">
+          <span class="tw-flex tw-h-8 tw-w-8 tw-items-center tw-justify-center tw-rounded-lg tw-bg-slate-100 tw-text-primary"><i class="bi bi-clock-history"></i></span>
+          <div class="tw-min-w-0 tw-flex-1">
+            <strong class="tw-block tw-text-sm tw-text-ink"><%= event.event_type.humanize %></strong>
+            <span class="tw-block tw-text-xs tw-text-ink-muted"><%= l(event.created_at, format: :long) %> · <%= event.admin_user&.name || "público" %> · <%= event.ip_address.presence || "sem IP" %></span>
+            <% if event.metadata.present? %>
+              <code class="tw-mt-1 tw-block tw-break-all tw-text-2xs tw-text-ink-faint"><%= event.metadata.to_json %></code>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if @events.empty? %>
+        <div class="tw-p-4"><%= ax_empty_state(title: "Sem eventos", description: "Os eventos de envio, visualização, OTP e aceite aparecerão aqui.", icon: "clock-history", compact: true) %></div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -159,7 +159,7 @@
 
     <%# 4a. Comercial: Tarefas + Agenda %>
     <% if can_access.call(:view, :comercial) %>
-      <% comercial_open = %w[tasks appointments proposals].include?(controller_name) %>
+      <% comercial_open = %w[tasks appointments proposals commercial_contract_proposals].include?(controller_name) %>
       <li class="ax-nav__group <%= 'is-open' if comercial_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= comercial_open %>">
         <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= comercial_open %>">
           <i class="bi bi-briefcase"></i><span>Comercial</span>
@@ -168,6 +168,7 @@
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless comercial_open %>>
           <li><%= link_to admin_tasks_path, class: "ax-nav__link #{'active' if controller_name == 'tasks'}" do %><i class="bi bi-check2-square"></i><span>Minhas Tarefas</span><% end %></li>
           <li><%= link_to admin_appointments_path, class: "ax-nav__link #{'active' if controller_name == 'appointments'}" do %><i class="bi bi-calendar-event"></i><span>Agenda</span><% end %></li>
+          <li><%= link_to admin_commercial_contract_proposals_path, class: "ax-nav__link #{'active' if controller_name == 'commercial_contract_proposals'}" do %><i class="bi bi-file-earmark-check"></i><span>Contratos B2B</span><% end %></li>
         </ul>
       </li>
     <% end %>

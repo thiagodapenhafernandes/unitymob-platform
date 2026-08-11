@@ -1,0 +1,91 @@
+<%= form_with model: proposal, url: proposal.persisted? ? admin_commercial_contract_proposal_path(proposal) : admin_commercial_contract_proposals_path, scope: :commercial_contract_proposal do |f| %>
+  <%= ax_error_summary(proposal, title: "Revise a proposta") %>
+
+  <div class="tw-grid tw-gap-3 lg:tw-grid-cols-[1.2fr_.8fr]">
+    <%= ax_operational_panel(eyebrow: "Contratante", title: "Empresa e representante comercial") do %>
+      <div class="tw-grid tw-gap-3 md:tw-grid-cols-2 tw-p-4">
+        <div class="ax-field md:tw-col-span-2">
+          <%= ax_field_label(f, :legal_business_name, text: "Razão social") %>
+          <%= f.text_field :legal_business_name, class: "ax-control", required: true, placeholder: "Ex.: Conexão Imobiliária Ltda" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :trade_name, text: "Nome fantasia") %>
+          <%= f.text_field :trade_name, class: "ax-control", placeholder: "Ex.: Conexão Imobiliária" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :cnpj, text: "CNPJ") %>
+          <%= f.text_field :cnpj, class: "ax-control", required: true, placeholder: "00.000.000/0000-00" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :client_email, text: "E-mail da empresa") %>
+          <%= f.email_field :client_email, class: "ax-control", placeholder: "financeiro@cliente.com.br" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :client_phone, text: "Telefone da empresa") %>
+          <%= f.telephone_field :client_phone, class: "ax-control", placeholder: "(00) 0000-0000" %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Plano", title: "Condição comercial") do %>
+      <div class="tw-grid tw-gap-3 tw-p-4">
+        <div class="ax-field">
+          <%= ax_field_label(f, :title, text: "Título") %>
+          <%= f.text_field :title, class: "ax-control", required: true %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :plan_name, text: "Plano") %>
+          <%= f.text_field :plan_name, class: "ax-control", required: true %>
+        </div>
+        <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+          <div class="ax-field">
+            <%= ax_field_label(f, :monthly_fee, text: "Mensalidade") %>
+            <%= f.text_field :monthly_fee, class: "ax-control", value: number_with_precision(proposal.monthly_fee, precision: 2, separator: ",", delimiter: "."), required: true %>
+          </div>
+          <div class="ax-field">
+            <%= ax_field_label(f, :setup_fee, text: "Implantação") %>
+            <%= f.text_field :setup_fee, class: "ax-control", value: number_with_precision(proposal.setup_fee, precision: 2, separator: ",", delimiter: ".") %>
+          </div>
+        </div>
+        <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+          <div class="ax-field">
+            <%= ax_field_label(f, :minimum_term_months, text: "Prazo mínimo") %>
+            <%= f.number_field :minimum_term_months, class: "ax-control", min: 0 %>
+          </div>
+          <div class="ax-field">
+            <%= ax_field_label(f, :starts_on, text: "Início") %>
+            <%= f.date_field :starts_on, class: "ax-control" %>
+          </div>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :expires_at, text: "Expira em") %>
+          <%= f.datetime_local_field :expires_at, class: "ax-control", value: proposal.expires_at&.strftime("%Y-%m-%dT%H:%M") %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="tw-grid tw-gap-3 lg:tw-grid-cols-2 tw-mt-3">
+    <%= ax_operational_panel(eyebrow: "Escopo", title: "O que está incluso") do %>
+      <div class="tw-p-4">
+        <%= f.text_area :scope_summary, class: "ax-control tw-min-h-40", required: true %>
+      </div>
+    <% end %>
+    <%= ax_operational_panel(eyebrow: "Custos externos", title: "Repasses quando aplicável") do %>
+      <div class="tw-p-4">
+        <%= f.text_area :external_costs_note, class: "ax-control tw-min-h-40", required: true %>
+      </div>
+    <% end %>
+  </div>
+
+  <%= ax_operational_panel(eyebrow: "Cobrança", title: "Observações comerciais", class_name: "tw-mt-3") do %>
+    <div class="tw-p-4">
+      <%= f.text_area :billing_notes, class: "ax-control tw-min-h-28", placeholder: "Ex.: vencimento mensal, forma de pagamento, condições específicas." %>
+    </div>
+  <% end %>
+
+  <div class="tw-flex tw-justify-end tw-gap-2 tw-mt-4">
+    <%= ax_button("Cancelar", proposal.persisted? ? admin_commercial_contract_proposal_path(proposal) : admin_commercial_contract_proposals_path, variant: :ghost) %>
+    <%= f.button proposal.persisted? ? "Atualizar proposta" : "Criar proposta", class: "ax-btn ax-btn--primary" %>
+  </div>
+<% end %>

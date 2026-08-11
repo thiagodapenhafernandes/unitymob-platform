@@ -48,7 +48,7 @@ export default class extends Controller {
     })
 
     xhr.addEventListener("load", () => this.handleResponse(xhr))
-    xhr.addEventListener("error", () => this.fail("Não foi possível enviar os anexos. Verifique sua conexão e tente novamente."))
+    xhr.addEventListener("error", () => this.fallbackNativeSubmit("Conexão instável. Tentando concluir pelo envio padrão do navegador."))
     xhr.addEventListener("abort", () => this.fail("Envio cancelado."))
 
     xhr.send(formData)
@@ -86,6 +86,17 @@ export default class extends Controller {
   appendSubmitter(formData) {
     if (!this.submitter || !this.submitter.name) return
     formData.append(this.submitter.name, this.submitter.value || "")
+  }
+
+  appendSubmitterInput() {
+    if (!this.submitter || !this.submitter.name) return
+
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = this.submitter.name
+    input.value = this.submitter.value || ""
+    input.dataset.captacaoSubmitProgressFallback = "true"
+    this.element.appendChild(input)
   }
 
   hasSelectedFiles() {
@@ -128,6 +139,12 @@ export default class extends Controller {
       button.disabled = false
       button.classList.remove("disabled")
     })
+  }
+
+  fallbackNativeSubmit(message) {
+    this.showIndeterminate("Reenviando anexos", message)
+    this.appendSubmitterInput()
+    this.element.submit()
   }
 
   fail(message) {

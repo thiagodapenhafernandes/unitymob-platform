@@ -1,0 +1,92 @@
+<% content_for :title, "Proposta Unitymob #{@proposal.public_token}" %>
+<% accepted = @proposal.acceptance %>
+<% otp_step = params[:step].to_s == "otp" || @proposal.status == "otp_pending" %>
+
+<div class="pp-brandbar">Contratação eletrônica Unitymob</div>
+
+<div class="pp-card pp-contract">
+  <div class="pp-hero">
+    <small><%= @proposal.public_token %></small>
+    <h1><%= @proposal.title %></h1>
+    <div style="opacity:.9;font-size:13px;margin-top:4px"><%= @proposal.legal_business_name %></div>
+  </div>
+
+  <div class="pp-body">
+    <% if notice.present? %><div class="pp-status ok"><%= notice %></div><% end %>
+    <% if alert.present? %><div class="pp-status no"><%= alert %></div><% end %>
+
+    <div class="pp-row">
+      <span class="k">Plano</span>
+      <span class="v"><%= @proposal.plan_name %></span>
+    </div>
+    <div class="pp-row">
+      <span class="k">Implantação</span>
+      <span class="v"><%= @proposal.setup_fee_cents.to_i.positive? ? number_to_currency(@proposal.setup_fee, unit: "R$ ", separator: ",", delimiter: ".") : "Sem cobrança inicial" %></span>
+    </div>
+    <div class="pp-row">
+      <span class="k">Validade</span>
+      <span class="v"><%= @proposal.expires_at ? l(@proposal.expires_at, format: :short) : "Sem expiração" %></span>
+    </div>
+
+    <div class="pp-cond">
+      <strong>Incluso no plano</strong><br>
+      <%= @proposal.scope_summary %>
+    </div>
+
+    <div class="pp-cond">
+      <strong>Custos de terceiros</strong><br>
+      <%= @proposal.external_costs_note %>
+    </div>
+
+    <% if @proposal.billing_notes.present? %>
+      <div class="pp-cond">
+        <strong>Condições comerciais</strong><br>
+        <%= @proposal.billing_notes %>
+      </div>
+    <% end %>
+
+    <div class="pp-actions pp-actions--single">
+      <%= link_to "Baixar proposta em PDF", proposal_pdf_commercial_contract_proposal_path(@proposal.public_token), class: "pp-btn pp-secondary", target: "_blank", rel: "noopener" %>
+    </div>
+
+    <% if accepted.present? %>
+      <div class="pp-status ok">Contrato aceito em <%= l(accepted.accepted_at, format: :long) %>.</div>
+      <div class="pp-actions">
+        <%= link_to "Contrato final", contract_pdf_commercial_contract_proposal_path(@proposal.public_token), class: "pp-btn pp-secondary", target: "_blank", rel: "noopener" %>
+        <%= link_to "Certificado", certificate_pdf_commercial_contract_proposal_path(@proposal.public_token), class: "pp-btn pp-secondary", target: "_blank", rel: "noopener" %>
+      </div>
+    <% elsif @proposal.canceled? %>
+      <div class="pp-status no">Esta proposta foi cancelada.</div>
+    <% elsif @proposal.expired? %>
+      <div class="pp-status exp">Esta proposta expirou. Solicite uma nova condição comercial.</div>
+    <% elsif otp_step %>
+      <%= form_with url: accept_commercial_contract_proposal_path(@proposal.public_token), method: :post, class: "pp-form" do |f| %>
+        <label class="pp-label" for="otp_code">Código enviado para <%= @proposal.representative_email %></label>
+        <%= text_field_tag :otp_code, nil, class: "pp-input", inputmode: "numeric", maxlength: 6, placeholder: "000000", required: true %>
+        <%= f.button "Confirmar aceite", class: "pp-btn pp-accept pp-full" %>
+      <% end %>
+      <div class="pp-meta">Ao confirmar, você declara possuir poderes para representar a empresa e aceita a proposta, os termos e as evidências eletrônicas registradas.</div>
+    <% else %>
+      <%= form_with model: @proposal, url: request_otp_commercial_contract_proposal_path(@proposal.public_token), scope: :commercial_contract_proposal, method: :post, class: "pp-form" do |f| %>
+        <div class="pp-form-title">Dados do representante</div>
+        <%= f.text_field :representative_name, class: "pp-input", placeholder: "Nome completo", required: true %>
+        <%= f.text_field :representative_cpf, class: "pp-input", placeholder: "CPF", required: true %>
+        <%= f.text_field :representative_role, class: "pp-input", placeholder: "Cargo", required: true %>
+        <%= f.email_field :representative_email, class: "pp-input", placeholder: "E-mail corporativo", required: true, value: @proposal.representative_email.presence || @proposal.client_email %>
+        <%= f.telephone_field :representative_phone, class: "pp-input", placeholder: "WhatsApp/telefone" %>
+        <label class="pp-check">
+          <%= check_box_tag "commercial_contract_proposal[authority_confirmed]", "1", false, required: true %>
+          <span>Declaro que possuo poderes para representar a empresa e concordo com a proposta e os termos apresentados.</span>
+        </label>
+        <%= f.button "Enviar código para aceitar", class: "pp-btn pp-accept pp-full" %>
+      <% end %>
+    <% end %>
+
+    <div class="pp-meta">
+      Termos: <strong><%= @proposal.terms_version.version %></strong>.
+      Hash SHA-256: <%= @proposal.terms_version.document_hash.first(16) %>...
+    </div>
+  </div>
+</div>
+
+<div class="pp-footer">Link individual. O aceite depende de confirmação por e-mail.</div>

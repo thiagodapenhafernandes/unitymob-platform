@@ -1,0 +1,9 @@
+<%= ax_workspace_heading(
+      eyebrow: "Contratos B2B · Termos",
+      icon: "file-text",
+      title: "Editar termos",
+      subtitle: @terms_version.version,
+      actions: ax_button("Voltar", admin_commercial_contract_terms_version_path(@terms_version), variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<%= render "form", terms_version: @terms_version %>

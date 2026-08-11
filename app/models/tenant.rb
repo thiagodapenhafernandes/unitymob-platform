@@ -82,6 +82,10 @@ class Tenant < ApplicationRecord
   has_many :seo_redirects, dependent: :restrict_with_error
   has_many :public_navigation_sessions, dependent: :restrict_with_error
   has_many :public_navigation_events, dependent: :restrict_with_error
+  has_many :commercial_contract_terms_versions, dependent: :restrict_with_error
+  has_many :commercial_contract_proposals, dependent: :restrict_with_error
+  has_many :commercial_contract_acceptances, dependent: :restrict_with_error
+  has_many :commercial_contract_events, dependent: :restrict_with_error
   has_one :layout_setting, dependent: :restrict_with_error
   has_one :home_setting, dependent: :restrict_with_error
   has_one :footer_setting, dependent: :restrict_with_error

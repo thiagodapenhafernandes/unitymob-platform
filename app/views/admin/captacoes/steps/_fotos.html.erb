@@ -160,9 +160,10 @@
             accept: "image/*,application/pdf",
             direct_upload: true,
             input_class: field_state.call(:autorizacoes_venda),
+            input_data: { captacao_photos_target: "authorizationInput", action: "change->captacao-photos#authorizationChanged" },
             class_name: "ax-btn ax-btn--ghost captacao-authorization-upload__button"
           ) %>
-      <span>Print, imagem ou PDF.</span>
+      <span data-captacao-photos-target="authorizationStatus">Print, imagem ou PDF.</span>
     </div>
     <% if field_invalid.call(:autorizacoes_venda) %><div class="invalid-feedback d-block">Anexe a autorização do proprietário.</div><% end %>
   </div>

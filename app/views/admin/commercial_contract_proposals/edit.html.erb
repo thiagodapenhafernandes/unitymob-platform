@@ -1,0 +1,10 @@
+<%= ax_workspace_heading(
+      eyebrow: "Contratos B2B",
+      icon: "file-earmark-text",
+      title: "Editar proposta",
+      subtitle: @proposal.public_token,
+      pills: [commercial_contract_status_badge(@proposal)],
+      actions: ax_button("Voltar", admin_commercial_contract_proposal_path(@proposal), variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<%= render "form", proposal: @proposal %>

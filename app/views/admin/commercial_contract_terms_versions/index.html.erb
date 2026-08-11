@@ -1,0 +1,48 @@
+<%= ax_workspace_heading(
+      eyebrow: "Contratos B2B · Termos",
+      icon: "file-text",
+      title: "Versões dos termos",
+      subtitle: "Publique versões por conta. Propostas já criadas preservam a versão vinculada.",
+      metrics: [
+        { value: number_with_delimiter(@terms_versions.size), label: "versões" },
+        { value: number_with_delimiter(@terms_versions.count(&:active?)), label: "ativas" }
+      ],
+      actions: safe_join([
+        ax_button("Contratos", admin_commercial_contract_proposals_path, variant: :ghost, size: :sm, icon: "arrow-left"),
+        ax_button("Nova versão", new_admin_commercial_contract_terms_version_path, variant: :primary, size: :sm, icon: "plus-lg")
+      ], " ")
+    ) %>
+
+<%= ax_operational_panel(eyebrow: "Jurídico", title: "Termos publicados") do %>
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead>
+        <tr>
+          <th>Versão</th>
+          <th>Título</th>
+          <th>Status</th>
+          <th>Hash</th>
+          <th class="ax-num ax-table__col--compact">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @terms_versions.each do |terms| %>
+          <tr>
+            <td><div class="ax-strong"><%= terms.version %></div><div class="tw-text-2xs tw-text-ink-faint"><%= l(terms.published_at || terms.created_at, format: :short) %></div></td>
+            <td><%= terms.title %></td>
+            <td><%= ax_badge(terms.active? ? "Ativa" : "Inativa", tone: terms.active? ? :green : :gray, dot: true) %></td>
+            <td><code class="tw-text-2xs"><%= terms.document_hash.first(18) %>...</code></td>
+            <td class="ax-num">
+              <span class="tw-inline-flex tw-gap-0.5">
+                <%= link_to admin_commercial_contract_terms_version_path(terms), class: "ax-ico-btn", title: "Abrir" do %><i class="bi bi-eye"></i><% end %>
+                <% unless terms.commercial_contract_proposals.exists? %>
+                  <%= link_to edit_admin_commercial_contract_terms_version_path(terms), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+                <% end %>
+              </span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

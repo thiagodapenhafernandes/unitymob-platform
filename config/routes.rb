@@ -342,6 +342,16 @@ Rails.application.routes.draw do
         get :pdf
       end
     end
+    resources :commercial_contract_terms_versions, path: "contratos-b2b/termos", except: [:destroy]
+    resources :commercial_contract_proposals, path: "contratos-b2b" do
+      member do
+        patch :send_proposal
+        patch :cancel
+        get :proposal_pdf
+        get :contract_pdf
+        get :certificate_pdf
+      end
+    end
 
     resources :access_audit_logs, only: [:index]
     resources :user_activity_sessions, only: [:index, :show]
@@ -583,6 +593,14 @@ Rails.application.routes.draw do
   # Propostas comerciais — página pública compartilhável
   get "p/:token", to: "proposals#show", as: :public_proposal
   post "p/:token/decidir", to: "proposals#decide", as: :decide_public_proposal
+
+  # Contratação B2B Unitymob — aceite eletrônico com OTP e evidências.
+  get "contratar/:token", to: "commercial_contract_proposals#show", as: :commercial_contract_proposal
+  get "contratar/:token/proposta.pdf", to: "commercial_contract_proposals#proposal_pdf", as: :proposal_pdf_commercial_contract_proposal
+  post "contratar/:token/otp", to: "commercial_contract_proposals#request_otp", as: :request_otp_commercial_contract_proposal
+  post "contratar/:token/aceitar", to: "commercial_contract_proposals#accept", as: :accept_commercial_contract_proposal
+  get "contratar/:token/contrato.pdf", to: "commercial_contract_proposals#contract_pdf", as: :contract_pdf_commercial_contract_proposal
+  get "contratar/:token/certificado.pdf", to: "commercial_contract_proposals#certificate_pdf", as: :certificate_pdf_commercial_contract_proposal
 
   # Aceite público de convite multi-conta: o token do e-mail é a credencial de
   # entrada; o aceite em si exige login com o e-mail convidado.

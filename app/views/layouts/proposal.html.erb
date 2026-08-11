@@ -28,9 +28,19 @@
     .pp-cond { margin-top: 14px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: #374151; white-space: pre-wrap; }
     .pp-meta { margin-top: 16px; font-size: 12.5px; color: #6b7280; }
     .pp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+    .pp-actions--single { grid-template-columns: 1fr; }
     .pp-btn { display: block; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; font-size: 15px; border: 0; cursor: pointer; text-decoration: none; }
     .pp-accept { background: var(--brand); color: #fff; }
     .pp-refuse { background: #fff; color: #b91c1c; border: 1.5px solid #fecaca; }
+    .pp-secondary { background: #f8fafc; color: #1f2937; border: 1.5px solid #e2e8f0; }
+    .pp-full { width: 100%; margin-top: 10px; }
+    .pp-form { display: grid; gap: 10px; margin-top: 18px; }
+    .pp-form-title { font-size: 13px; font-weight: 800; color: #334155; letter-spacing: .04em; text-transform: uppercase; }
+    .pp-label { font-size: 13px; color: #475569; font-weight: 700; }
+    .pp-input { width: 100%; border: 1.5px solid #d7dde7; border-radius: 12px; padding: 13px 14px; font: inherit; font-weight: 600; color: #1f2937; background: #fff; }
+    .pp-input:focus { outline: 3px solid color-mix(in srgb, var(--brand) 18%, transparent); border-color: var(--brand); }
+    .pp-check { display: flex; gap: 10px; align-items: flex-start; color: #475569; font-size: 13px; line-height: 1.45; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
+    .pp-check input { margin-top: 2px; accent-color: var(--brand); }
     .pp-status { margin-top: 18px; text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 14px; }
     .pp-status.ok { background: #ecfdf5; color: #047857; }
     .pp-status.no { background: #fef2f2; color: #b91c1c; }

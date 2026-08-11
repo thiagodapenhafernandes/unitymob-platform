@@ -1,4 +1,4 @@
-\restrict WxTVrEROXlxCWeNg4T4qQJhgFKqxmSsjbN5mGMCdyBP2TKJlYySaDeCq2iA7Ebm
+\restrict h54aVaQWoojt2ojQKcNGBl4m9KmJD7IdqVhSONGeQ2qMclzbGkFmPHuQ3ktUc3r
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1728,6 +1728,192 @@ CREATE SEQUENCE public.client_property_interests_id_seq
 --
 
 ALTER SEQUENCE public.client_property_interests_id_seq OWNED BY public.client_property_interests.id;
+
+
+--
+-- Name: commercial_contract_acceptances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.commercial_contract_acceptances (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    proposal_id bigint NOT NULL,
+    terms_version_id bigint NOT NULL,
+    acceptance_token character varying NOT NULL,
+    legal_business_name character varying NOT NULL,
+    cnpj character varying NOT NULL,
+    representative_name character varying NOT NULL,
+    representative_cpf character varying NOT NULL,
+    representative_role character varying NOT NULL,
+    representative_email character varying NOT NULL,
+    representative_phone character varying,
+    ip_address character varying,
+    user_agent text,
+    terms_hash character varying NOT NULL,
+    proposal_hash character varying NOT NULL,
+    otp_confirmation_hash character varying NOT NULL,
+    accepted_at timestamp(6) without time zone NOT NULL,
+    evidence jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: commercial_contract_acceptances_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.commercial_contract_acceptances_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: commercial_contract_acceptances_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.commercial_contract_acceptances_id_seq OWNED BY public.commercial_contract_acceptances.id;
+
+
+--
+-- Name: commercial_contract_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.commercial_contract_events (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    proposal_id bigint NOT NULL,
+    admin_user_id bigint,
+    event_type character varying NOT NULL,
+    ip_address character varying,
+    user_agent text,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: commercial_contract_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.commercial_contract_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: commercial_contract_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.commercial_contract_events_id_seq OWNED BY public.commercial_contract_events.id;
+
+
+--
+-- Name: commercial_contract_proposals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.commercial_contract_proposals (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    terms_version_id bigint NOT NULL,
+    public_token character varying NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    title character varying NOT NULL,
+    legal_business_name character varying NOT NULL,
+    trade_name character varying,
+    cnpj character varying NOT NULL,
+    client_email character varying,
+    client_phone character varying,
+    plan_name character varying DEFAULT 'Unitymob completo'::character varying NOT NULL,
+    monthly_fee_cents integer DEFAULT 300000 NOT NULL,
+    setup_fee_cents integer DEFAULT 0 NOT NULL,
+    minimum_term_months integer DEFAULT 0 NOT NULL,
+    starts_on date,
+    expires_at timestamp(6) without time zone,
+    scope_summary text,
+    billing_notes text,
+    external_costs_note text,
+    sent_at timestamp(6) without time zone,
+    viewed_at timestamp(6) without time zone,
+    accepted_at timestamp(6) without time zone,
+    canceled_at timestamp(6) without time zone,
+    representative_name character varying,
+    representative_cpf character varying,
+    representative_role character varying,
+    representative_email character varying,
+    representative_phone character varying,
+    otp_digest character varying,
+    otp_sent_at timestamp(6) without time zone,
+    otp_expires_at timestamp(6) without time zone,
+    otp_attempts integer DEFAULT 0 NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: commercial_contract_proposals_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.commercial_contract_proposals_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: commercial_contract_proposals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.commercial_contract_proposals_id_seq OWNED BY public.commercial_contract_proposals.id;
+
+
+--
+-- Name: commercial_contract_terms_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.commercial_contract_terms_versions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    version character varying NOT NULL,
+    title character varying NOT NULL,
+    body text NOT NULL,
+    document_hash character varying,
+    published_at timestamp(6) without time zone,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: commercial_contract_terms_versions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.commercial_contract_terms_versions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: commercial_contract_terms_versions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.commercial_contract_terms_versions_id_seq OWNED BY public.commercial_contract_terms_versions.id;
 
 
 --
@@ -6936,6 +7122,34 @@ ALTER TABLE ONLY public.client_property_interests ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Name: commercial_contract_acceptances id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_acceptances ALTER COLUMN id SET DEFAULT nextval('public.commercial_contract_acceptances_id_seq'::regclass);
+
+
+--
+-- Name: commercial_contract_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_events ALTER COLUMN id SET DEFAULT nextval('public.commercial_contract_events_id_seq'::regclass);
+
+
+--
+-- Name: commercial_contract_proposals id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_proposals ALTER COLUMN id SET DEFAULT nextval('public.commercial_contract_proposals_id_seq'::regclass);
+
+
+--
+-- Name: commercial_contract_terms_versions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_terms_versions ALTER COLUMN id SET DEFAULT nextval('public.commercial_contract_terms_versions_id_seq'::regclass);
+
+
+--
 -- Name: constructors id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7981,6 +8195,38 @@ ALTER TABLE ONLY public.client_interactions
 
 ALTER TABLE ONLY public.client_property_interests
     ADD CONSTRAINT client_property_interests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: commercial_contract_acceptances commercial_contract_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_acceptances
+    ADD CONSTRAINT commercial_contract_acceptances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: commercial_contract_events commercial_contract_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_events
+    ADD CONSTRAINT commercial_contract_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: commercial_contract_proposals commercial_contract_proposals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_proposals
+    ADD CONSTRAINT commercial_contract_proposals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: commercial_contract_terms_versions commercial_contract_terms_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_terms_versions
+    ADD CONSTRAINT commercial_contract_terms_versions_pkey PRIMARY KEY (id);
 
 
 --
@@ -9030,6 +9276,69 @@ CREATE UNIQUE INDEX idx_automation_workflow_versions_unique_number ON public.aut
 --
 
 CREATE INDEX idx_checkins_store_turno_status_date ON public.check_ins USING btree (store_id, turno, status_chegada, checked_in_at);
+
+
+--
+-- Name: idx_contract_acceptances_proposal; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_contract_acceptances_proposal ON public.commercial_contract_acceptances USING btree (proposal_id);
+
+
+--
+-- Name: idx_contract_acceptances_tenant_accepted; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_acceptances_tenant_accepted ON public.commercial_contract_acceptances USING btree (tenant_id, accepted_at);
+
+
+--
+-- Name: idx_contract_acceptances_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_contract_acceptances_token ON public.commercial_contract_acceptances USING btree (acceptance_token);
+
+
+--
+-- Name: idx_contract_events_proposal_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_events_proposal_created ON public.commercial_contract_events USING btree (proposal_id, created_at);
+
+
+--
+-- Name: idx_contract_events_tenant_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_events_tenant_type ON public.commercial_contract_events USING btree (tenant_id, event_type);
+
+
+--
+-- Name: idx_contract_proposals_tenant_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_proposals_tenant_created ON public.commercial_contract_proposals USING btree (tenant_id, created_at);
+
+
+--
+-- Name: idx_contract_proposals_tenant_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_proposals_tenant_status ON public.commercial_contract_proposals USING btree (tenant_id, status);
+
+
+--
+-- Name: idx_contract_terms_tenant_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_contract_terms_tenant_active ON public.commercial_contract_terms_versions USING btree (tenant_id, active);
+
+
+--
+-- Name: idx_contract_terms_tenant_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_contract_terms_tenant_version ON public.commercial_contract_terms_versions USING btree (tenant_id, version);
 
 
 --
@@ -10766,6 +11075,83 @@ CREATE UNIQUE INDEX index_client_property_interests_on_source_table_and_source_k
 --
 
 CREATE INDEX index_client_property_interests_on_vista_import_batch_id ON public.client_property_interests USING btree (vista_import_batch_id);
+
+
+--
+-- Name: index_commercial_contract_acceptances_on_proposal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_acceptances_on_proposal_id ON public.commercial_contract_acceptances USING btree (proposal_id);
+
+
+--
+-- Name: index_commercial_contract_acceptances_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_acceptances_on_tenant_id ON public.commercial_contract_acceptances USING btree (tenant_id);
+
+
+--
+-- Name: index_commercial_contract_acceptances_on_terms_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_acceptances_on_terms_version_id ON public.commercial_contract_acceptances USING btree (terms_version_id);
+
+
+--
+-- Name: index_commercial_contract_events_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_events_on_admin_user_id ON public.commercial_contract_events USING btree (admin_user_id);
+
+
+--
+-- Name: index_commercial_contract_events_on_proposal_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_events_on_proposal_id ON public.commercial_contract_events USING btree (proposal_id);
+
+
+--
+-- Name: index_commercial_contract_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_events_on_tenant_id ON public.commercial_contract_events USING btree (tenant_id);
+
+
+--
+-- Name: index_commercial_contract_proposals_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_proposals_on_admin_user_id ON public.commercial_contract_proposals USING btree (admin_user_id);
+
+
+--
+-- Name: index_commercial_contract_proposals_on_public_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_commercial_contract_proposals_on_public_token ON public.commercial_contract_proposals USING btree (public_token);
+
+
+--
+-- Name: index_commercial_contract_proposals_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_proposals_on_tenant_id ON public.commercial_contract_proposals USING btree (tenant_id);
+
+
+--
+-- Name: index_commercial_contract_proposals_on_terms_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_proposals_on_terms_version_id ON public.commercial_contract_proposals USING btree (terms_version_id);
+
+
+--
+-- Name: index_commercial_contract_terms_versions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_commercial_contract_terms_versions_on_tenant_id ON public.commercial_contract_terms_versions USING btree (tenant_id);
 
 
 --
@@ -14506,6 +14892,14 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 
 --
+-- Name: commercial_contract_proposals fk_rails_18bfcd97fc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_proposals
+    ADD CONSTRAINT fk_rails_18bfcd97fc FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: admin_users fk_rails_18edaf9350; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14591,6 +14985,14 @@ ALTER TABLE ONLY public.seo_focus_keywords
 
 ALTER TABLE ONLY public.portal_integration_events
     ADD CONSTRAINT fk_rails_23eb6add0b FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: commercial_contract_events fk_rails_254ad99242; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_events
+    ADD CONSTRAINT fk_rails_254ad99242 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -15194,6 +15596,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
 
 
 --
+-- Name: commercial_contract_terms_versions fk_rails_6049bb1f42; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_terms_versions
+    ADD CONSTRAINT fk_rails_6049bb1f42 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: home_hero_slides fk_rails_612e24602a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15594,6 +16004,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_recipients
 
 
 --
+-- Name: commercial_contract_acceptances fk_rails_8ca2b250be; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_acceptances
+    ADD CONSTRAINT fk_rails_8ca2b250be FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_campaign_unsubscribes fk_rails_8cdc0b98a2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15786,6 +16204,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: commercial_contract_proposals fk_rails_9fedbc2fdb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_proposals
+    ADD CONSTRAINT fk_rails_9fedbc2fdb FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: crm_contacts fk_rails_a0d5f4035f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15834,6 +16260,14 @@ ALTER TABLE ONLY public.stores
 
 
 --
+-- Name: commercial_contract_events fk_rails_a620171642; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_events
+    ADD CONSTRAINT fk_rails_a620171642 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: admin_users fk_rails_a6e17e12bd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15855,6 +16289,14 @@ ALTER TABLE ONLY public.captacao_goals
 
 ALTER TABLE ONLY public.seo_settings
     ADD CONSTRAINT fk_rails_aa64cc642d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: commercial_contract_events fk_rails_ac64d95b71; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_events
+    ADD CONSTRAINT fk_rails_ac64d95b71 FOREIGN KEY (proposal_id) REFERENCES public.commercial_contract_proposals(id);
 
 
 --
@@ -16023,6 +16465,14 @@ ALTER TABLE ONLY public.property_settings
 
 ALTER TABLE ONLY public.ai_property_search_histories
     ADD CONSTRAINT fk_rails_becdcfa42e FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: commercial_contract_acceptances fk_rails_bf0b58ee64; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_acceptances
+    ADD CONSTRAINT fk_rails_bf0b58ee64 FOREIGN KEY (terms_version_id) REFERENCES public.commercial_contract_terms_versions(id);
 
 
 --
@@ -16287,6 +16737,14 @@ ALTER TABLE ONLY public.crm_appointments
 
 ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
     ADD CONSTRAINT fk_rails_d85b823492 FOREIGN KEY (whatsapp_campaign_message_id) REFERENCES public.whatsapp_campaign_messages(id);
+
+
+--
+-- Name: commercial_contract_proposals fk_rails_d8829faa45; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_proposals
+    ADD CONSTRAINT fk_rails_d8829faa45 FOREIGN KEY (terms_version_id) REFERENCES public.commercial_contract_terms_versions(id);
 
 
 --
@@ -16618,6 +17076,14 @@ ALTER TABLE ONLY public.public_navigation_sessions
 
 
 --
+-- Name: commercial_contract_acceptances fk_rails_f9f70bf6de; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.commercial_contract_acceptances
+    ADD CONSTRAINT fk_rails_f9f70bf6de FOREIGN KEY (proposal_id) REFERENCES public.commercial_contract_proposals(id);
+
+
+--
 -- Name: vista_file_assets fk_rails_fdbde1c8b5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16661,11 +17127,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WxTVrEROXlxCWeNg4T4qQJhgFKqxmSsjbN5mGMCdyBP2TKJlYySaDeCq2iA7Ebm
+\unrestrict h54aVaQWoojt2ojQKcNGBl4m9KmJD7IdqVhSONGeQ2qMclzbGkFmPHuQ3ktUc3r
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260811133000'),
 ('20260811101500'),
 ('20260809173000'),
 ('20260809170000'),
@@ -17047,3 +17514,4 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
+

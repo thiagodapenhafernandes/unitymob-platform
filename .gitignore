@@ -54,6 +54,9 @@ public/system/
 # Local Vista backup dumps
 /crm-saluteim*/
 
+# Local generated documents/reports
+/output/
+
 # IDE
 .vscode/
 .idea/

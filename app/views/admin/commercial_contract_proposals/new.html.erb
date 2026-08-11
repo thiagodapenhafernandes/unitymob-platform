@@ -1,0 +1,9 @@
+<%= ax_workspace_heading(
+      eyebrow: "Contratos B2B",
+      icon: "file-earmark-plus",
+      title: "Nova proposta",
+      subtitle: "Preencha os dados da empresa e envie um link único para aceite eletrônico.",
+      actions: ax_button("Voltar", admin_commercial_contract_proposals_path, variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<%= render "form", proposal: @proposal %>

@@ -21,6 +21,8 @@ export default class extends Controller {
     "scheduledAtLabel",
     "scheduledAtHint",
     "scheduledAtInput",
+    "authorizationInput",
+    "authorizationStatus",
     "calendarGrid",
     "slotList"
   ]
@@ -44,6 +46,22 @@ export default class extends Controller {
     this.selectedFiles = this.selectedFiles.concat(incomingFiles)
     this.syncInputFiles()
     this.renderNewFiles()
+  }
+
+  authorizationChanged(event) {
+    if (!this.hasAuthorizationStatusTarget) return
+
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) {
+      this.authorizationStatusTarget.textContent = "Print, imagem ou PDF."
+      this.authorizationStatusTarget.classList.remove("is-ready")
+      return
+    }
+
+    const names = files.map((file) => file.name).join(", ")
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0)
+    this.authorizationStatusTarget.textContent = `${names} selecionado${files.length > 1 ? "s" : ""} (${this.formatSize(totalSize)}). Toque em continuar para salvar.`
+    this.authorizationStatusTarget.classList.add("is-ready")
   }
 
   moveNewUp(event) {

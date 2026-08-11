@@ -1,0 +1,71 @@
+<%= ax_workspace_heading(
+      eyebrow: "Comercial · Contratação B2B",
+      icon: "file-earmark-check",
+      title: "Contratos B2B",
+      subtitle: "Gere proposta, envie link de aceite eletrônico e acompanhe evidências por conta.",
+      metrics: [
+        { value: number_with_delimiter(@proposals.size), label: "propostas" },
+        { value: number_with_delimiter(@counts["accepted"].to_i), label: "aceitas" },
+        { value: number_with_delimiter(@counts["otp_pending"].to_i), label: "aguardando código" }
+      ],
+      actions: safe_join([
+        ax_button("Termos", admin_commercial_contract_terms_versions_path, variant: :secondary, size: :sm, icon: "file-text"),
+        ax_button("Nova proposta", new_admin_commercial_contract_proposal_path, variant: :primary, size: :sm, icon: "plus-lg")
+      ], " ")
+    ) %>
+
+<div class="tw-flex tw-flex-wrap tw-gap-1.5 tw-mb-3">
+  <%= link_to "Todas", admin_commercial_contract_proposals_path, class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @status.blank?}" %>
+  <% CommercialContractProposal::STATUS_LABELS.each do |key, label| %>
+    <%= link_to "#{label} #{@counts[key].to_i}", admin_commercial_contract_proposals_path(status: key), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @status == key}" %>
+  <% end %>
+</div>
+
+<%= ax_operational_panel(eyebrow: "Contratos", title: "Propostas de contratação") do %>
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th class="ax-num">Mensalidade</th>
+          <th>Validade</th>
+          <th class="ax-num ax-table__col--compact">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @proposals.each do |proposal| %>
+          <tr>
+            <td>
+              <div class="ax-strong"><%= proposal.legal_business_name %></div>
+              <div class="tw-text-2xs tw-text-ink-faint"><%= proposal.public_token %> · <%= commercial_contract_document(proposal.cnpj) %></div>
+            </td>
+            <td>
+              <div class="ax-strong"><%= proposal.plan_name %></div>
+              <div class="tw-text-2xs tw-text-ink-faint"><%= proposal.terms_version.version %></div>
+            </td>
+            <td><%= commercial_contract_status_badge(proposal) %></td>
+            <td class="ax-num ax-strong"><%= commercial_contract_money(proposal.monthly_fee_cents) %></td>
+            <td class="tw-text-2xs tw-text-ink-muted"><%= proposal.expires_at ? l(proposal.expires_at, format: :short) : "Sem expiração" %></td>
+            <td class="ax-num">
+              <span class="tw-inline-flex tw-gap-0.5">
+                <%= link_to admin_commercial_contract_proposal_path(proposal), class: "ax-ico-btn", title: "Abrir" do %><i class="bi bi-eye"></i><% end %>
+                <% if proposal.editable? %>
+                  <%= link_to edit_admin_commercial_contract_proposal_path(proposal), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+                <% end %>
+              </span>
+            </td>
+          </tr>
+        <% end %>
+        <% if @proposals.empty? %>
+          <tr>
+            <td colspan="6">
+              <%= ax_empty_state(title: "Nenhuma proposta B2B", description: "Crie a primeira proposta para enviar um link de contratação eletrônica.", icon: "file-earmark-check", action: ax_button("Nova proposta", new_admin_commercial_contract_proposal_path, variant: :primary, size: :sm), compact: true) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
