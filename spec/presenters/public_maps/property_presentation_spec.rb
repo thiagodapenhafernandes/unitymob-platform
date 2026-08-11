@@ -60,6 +60,16 @@ RSpec.describe PublicMaps::PropertyPresentation do
     expect(presentation.radius_meters).to eq(0)
   end
 
+  it "usa as coordenadas legadas do imóvel quando o endereço perdeu latitude e longitude" do
+    property.address.update!(latitude: nil, longitude: nil)
+    property.update_columns(latitude: -27.0032358, longitude: -48.618065)
+
+    presentation = described_class.new(property.reload, setting: setting)
+
+    expect(presentation).to be_visible
+    expect(presentation.send(:exact_coordinates)).to eq([-27.0032358, -48.618065])
+  end
+
   it "não libera vista da rua pelo padrão seguro" do
     expect(described_class.new(property, setting: setting)).not_to be_street_view_enabled
   end
@@ -71,6 +81,16 @@ RSpec.describe PublicMaps::PropertyPresentation do
     allow(setting).to receive(:configured?).and_return(true)
 
     expect(described_class.new(property, setting: setting)).not_to be_street_view_enabled
+  end
+
+  it "herda vista da rua global quando o mapa da conta está em modo exato" do
+    setting.enabled = true
+    setting.provider = "google"
+    setting.default_display_mode = "exact"
+    setting.street_view_enabled = true
+    allow(setting).to receive(:configured?).and_return(true)
+
+    expect(described_class.new(property, setting: setting)).to be_street_view_enabled
   end
 
   it "usa OpenStreetMap no link externo quando o provedor é mapa livre" do

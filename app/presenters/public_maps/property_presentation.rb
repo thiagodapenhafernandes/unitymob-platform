@@ -89,12 +89,36 @@ module PublicMaps
     private
 
     def exact_coordinates
-      latitude = property.latitude.to_f
-      longitude = property.longitude.to_f
+      latitude, longitude = coordinate_candidates
       return unless latitude.between?(-90, 90) && longitude.between?(-180, 180)
       return if latitude.zero? && longitude.zero?
 
       [latitude, longitude]
+    end
+
+    def coordinate_candidates
+      address_latitude = numeric_coordinate(property.address&.latitude)
+      address_longitude = numeric_coordinate(property.address&.longitude)
+      return [address_latitude, address_longitude] if address_latitude && address_longitude
+
+      [
+        numeric_coordinate(attribute_coordinate(:latitude)),
+        numeric_coordinate(attribute_coordinate(:longitude))
+      ]
+    end
+
+    def attribute_coordinate(name)
+      return unless property.has_attribute?(name)
+
+      property.read_attribute(name)
+    end
+
+    def numeric_coordinate(value)
+      return if value.blank?
+
+      BigDecimal(value.to_s).to_f
+    rescue ArgumentError
+      nil
     end
 
     def approximate_coordinates
