@@ -35,11 +35,24 @@ class AlignAccessProfilePermissions < ActiveRecord::Migration[7.1]
   private
 
   def update_profile!(name)
-    profile = Profile.find_by(name: name)
-    return unless profile
+    rows = select_all(<<~SQL)
+      SELECT id, permissions
+      FROM profiles
+      WHERE name = #{connection.quote(name)}
+    SQL
 
-    permissions = profile.permissions.to_h
-    yield permissions
-    profile.update!(permissions: permissions)
+    rows.each do |row|
+      permissions = row["permissions"].presence || {}
+      permissions = JSON.parse(permissions) if permissions.is_a?(String)
+      permissions = permissions.to_h
+      yield permissions
+
+      execute(<<~SQL)
+        UPDATE profiles
+        SET permissions = #{connection.quote(permissions.to_json)}::jsonb,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{row["id"].to_i}
+      SQL
+    end
   end
 end
