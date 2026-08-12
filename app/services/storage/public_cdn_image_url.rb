@@ -165,6 +165,7 @@ module Storage
       return if transform_failed?(blob)
 
       variant = blob.variant(**variant_transformations)
+      return representation_path(variant) if options.fetch(:force_variant, false)
       return representation_path(variant) if variant_processed?(variant) && variant_blob_exists?(variant)
 
       enqueue_variant_processing(blob)

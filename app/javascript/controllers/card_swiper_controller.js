@@ -1,15 +1,47 @@
 import { Controller } from "@hotwired/stimulus"
-import Swiper from "swiper/bundle"
+
+let swiperBundlePromise = null
 
 export default class extends Controller {
-  connect() {
-    this.initializeSwiper();
+  static values = {
+    priority: { type: Boolean, default: false }
   }
 
-  initializeSwiper() {
-    if (this.swiper) return;
+  connect() {
+    if (this.priorityValue) {
+      this.initializeSwiper()
+      return
+    }
+
+    this.deferUntilNearViewport()
+  }
+
+  deferUntilNearViewport() {
+    if (!("IntersectionObserver" in window)) {
+      this.initializeSwiper()
+      return
+    }
+
+    this.observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+
+      this.observer?.disconnect()
+      this.observer = null
+      this.initializeSwiper()
+    }, { rootMargin: "700px 0px" })
+
+    this.observer.observe(this.element)
+  }
+
+  async initializeSwiper() {
+    if (this.swiper || this.initializing) return
+
+    this.initializing = true
 
     try {
+      const Swiper = await this.loadSwiper()
+      if (!this.element.isConnected || this.swiper) return
+
       this.swiper = new Swiper(this.element, {
         slidesPerView: 1,
         spaceBetween: 0,
@@ -62,7 +94,17 @@ export default class extends Controller {
       });
     } catch (error) {
       console.error('Error initializing card swiper:', error);
+    } finally {
+      this.initializing = false
     }
+  }
+
+  loadSwiper() {
+    if (!swiperBundlePromise) {
+      swiperBundlePromise = import("swiper/bundle").then((module) => module.default)
+    }
+
+    return swiperBundlePromise
   }
 
   keepInside(event) {
@@ -82,6 +124,11 @@ export default class extends Controller {
   }
 
   disconnect() {
+    if (this.observer) {
+      this.observer.disconnect()
+      this.observer = null
+    }
+
     if (this.swiper) {
       this.swiper.destroy(true, true);
       this.swiper = null;
