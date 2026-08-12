@@ -126,6 +126,39 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480], format: :webp)
   end
 
+  it "retorna rota de representação imediatamente quando force_variant está ativo" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image"),
+      filename: "foto.jpg",
+      content_type: "image/jpeg"
+    )
+    variant = instance_double(
+      ActiveStorage::VariantWithRecord,
+      blob: instance_double(ActiveStorage::Blob, signed_id: "signed-blob"),
+      variation: instance_double(ActiveStorage::Variation, key: "signed-variation"),
+      filename: ActiveStorage::Filename.new("foto.webp")
+    )
+
+    allow(blob).to receive(:variable?).and_return(true)
+    allow(blob).to receive(:variant).with(resize_to_fill: [640, 480], format: :webp).and_return(variant)
+    allow(Rails.application.routes.url_helpers)
+      .to receive(:rails_blob_representation_proxy_path)
+      .with("signed-blob", "signed-variation", ActiveStorage::Filename.new("foto.webp"))
+      .and_return("/rails/active_storage/representations/proxy/signed/foto.webp")
+    allow(Storage::TransformVariantJob).to receive(:perform_later)
+
+    result = described_class.resolve(
+      blob,
+      resize_to_fill: [640, 480],
+      format: :webp,
+      representation_proxy: true,
+      force_variant: true
+    )
+
+    expect(result).to eq("/rails/active_storage/representations/proxy/signed/foto.webp")
+    expect(Storage::TransformVariantJob).not_to have_received(:perform_later)
+  end
+
   it "não reenfileira variante temporariamente bloqueada por falha de integridade" do
     blob = ActiveStorage::Blob.create_and_upload!(
       io: StringIO.new("image"),
