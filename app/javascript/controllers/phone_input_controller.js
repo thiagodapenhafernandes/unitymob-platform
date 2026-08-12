@@ -16,19 +16,22 @@ export default class extends Controller {
     this.handleCountryChange = this.handleCountryChange.bind(this)
     this.handleNormalizeRequest = this.handleNormalizeRequest.bind(this)
     this.handleMetadataRequest = this.handleMetadataRequest.bind(this)
+    this.ensureEnhancedInput = this.ensureEnhancedInput.bind(this)
 
     this.element.form?.addEventListener("submit", this.handleSubmit)
     this.element.addEventListener("input", this.handleInput)
+    this.element.addEventListener("focus", this.ensureEnhancedInput)
+    this.element.addEventListener("pointerdown", this.ensureEnhancedInput)
     this.element.addEventListener("countrychange", this.handleCountryChange)
     this.element.addEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.element.addEventListener("phone-input:metadata", this.handleMetadataRequest)
-    this.loadStylesheet()
-    this.initialize()
   }
 
   disconnect() {
     this.element.form?.removeEventListener("submit", this.handleSubmit)
     this.element.removeEventListener("input", this.handleInput)
+    this.element.removeEventListener("focus", this.ensureEnhancedInput)
+    this.element.removeEventListener("pointerdown", this.ensureEnhancedInput)
     this.element.removeEventListener("countrychange", this.handleCountryChange)
     this.element.removeEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.element.removeEventListener("phone-input:metadata", this.handleMetadataRequest)
@@ -43,6 +46,8 @@ export default class extends Controller {
 
     this.loadIntlTelInput()
       .then((intlTelInput) => {
+        if (!this.element.isConnected || this.iti) return
+
         this.iti = intlTelInput(this.element, {
           initialCountry: this.initialCountryValue,
           preferredCountries: ["br", "us", "pt"],
@@ -222,6 +227,11 @@ export default class extends Controller {
     }
 
     return intlTelInputPromise
+  }
+
+  ensureEnhancedInput() {
+    this.loadStylesheet()
+    this.initialize()
   }
 
   loadStylesheet() {

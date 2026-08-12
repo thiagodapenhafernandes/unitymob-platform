@@ -1,13 +1,31 @@
 import { Controller } from "@hotwired/stimulus"
-import Swiper from "swiper/bundle"
+
+let swiperBundlePromise = null
 
 export default class extends Controller {
   connect() {
-    this.initSwiper()
+    this.deferUntilNearViewport()
   }
 
-  initSwiper() {
-    if (this.swiper) return
+  deferUntilNearViewport() {
+    if (!("IntersectionObserver" in window)) {
+      this.initSwiper()
+      return
+    }
+
+    this.observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+
+      this.observer?.disconnect()
+      this.observer = null
+      this.initSwiper()
+    }, { rootMargin: "700px 0px" })
+
+    this.observer.observe(this.element)
+  }
+
+  async initSwiper() {
+    if (this.swiper || this.initializing) return
 
     // Encontrar wrapper pai
     const wrapper = this.element.closest('.property-carousel-wrapper')
@@ -17,74 +35,109 @@ export default class extends Controller {
       return
     }
 
-    // Buscar elementos dentro do wrapper específico deste carousel
-    const nextEl = wrapper.querySelector('.property-carousel-next')
-    const prevEl = wrapper.querySelector('.property-carousel-prev')
-    const paginationEl = wrapper.querySelector('.swiper-pagination')
+    this.initializing = true
 
-    this.swiper = new Swiper(this.element, {
-      // Mobile first (1 slide)
-      slidesPerView: 1,
-      spaceBetween: 20,
+    try {
+      const Swiper = await this.loadSwiper()
+      if (!this.element.isConnected || this.swiper) return
 
-      // Navigation - passar os elementos diretamente
-      navigation: {
-        nextEl: nextEl,
-        prevEl: prevEl,
-        disabledClass: 'swiper-button-disabled',
-      },
+      // Buscar elementos dentro do wrapper específico deste carousel
+      const nextEl = wrapper.querySelector('.property-carousel-next')
+      const prevEl = wrapper.querySelector('.property-carousel-prev')
+      const paginationEl = wrapper.querySelector('.swiper-pagination')
 
-      // Pagination
-      pagination: {
-        el: paginationEl,
-        clickable: false,
-        dynamicBullets: true,
-      },
+      this.swiper = new Swiper(this.element, {
+        // Mobile first (1 slide)
+        slidesPerView: 1,
+        spaceBetween: 20,
 
-      // Breakpoints explícitos
-      breakpoints: {
-        // Tablet (>= 640px)
-        640: {
-          slidesPerView: 2,
-          spaceBetween: 20,
+        // Navigation - passar os elementos diretamente
+        navigation: {
+          nextEl: nextEl,
+          prevEl: prevEl,
+          disabledClass: 'swiper-button-disabled',
         },
-        // Desktop (>= 1024px)
-        1024: {
-          slidesPerView: 3,
-          spaceBetween: 30,
+
+        // Pagination
+        pagination: {
+          el: paginationEl,
+          clickable: false,
+          dynamicBullets: true,
         },
-        // Large Desktop (>= 1280px)
-        1280: {
-          slidesPerView: 3,
-          spaceBetween: 30,
-        }
-      },
 
-      // Loop apenas se houver slides suficientes
-      loop: this.element.querySelectorAll('.swiper-slide').length > 3,
+        // Breakpoints explícitos
+        breakpoints: {
+          // Tablet (>= 640px)
+          640: {
+            slidesPerView: 2,
+            spaceBetween: 20,
+          },
+          // Desktop (>= 1024px)
+          1024: {
+            slidesPerView: 3,
+            spaceBetween: 30,
+          },
+          // Large Desktop (>= 1280px)
+          1280: {
+            slidesPerView: 3,
+            spaceBetween: 30,
+          }
+        },
 
-      // Observer para mudanças
-      observer: true,
-      observeParents: true,
-      watchOverflow: true,
+        // Loop apenas se houver slides suficientes
+        loop: this.element.querySelectorAll('.swiper-slide').length > 3,
 
-      // CRITICAL: Prevenir navegação ao arrastar
-      threshold: 5, // Mínimo de 5px para considerar como drag
-      touchRatio: 1,
-      touchAngle: 45,
+        // Observer para mudanças
+        observer: true,
+        observeParents: true,
+        watchOverflow: true,
 
-      // Prevenir cliques quando há movimento
-      preventClicks: true,
-      preventClicksPropagation: true,
+        // CRITICAL: Prevenir navegação ao arrastar
+        threshold: 5, // Mínimo de 5px para considerar como drag
+        touchRatio: 1,
+        touchAngle: 45,
 
-      // Só considera como clique se não houver movimento
-      touchMoveStopPropagation: true,
+        // Prevenir cliques quando há movimento
+        preventClicks: true,
+        preventClicksPropagation: true,
 
-      on: {}
-    })
+        // Só considera como clique se não houver movimento
+        touchMoveStopPropagation: true,
+
+        on: {}
+      })
+    } catch (error) {
+      console.error('Error initializing property carousel:', error)
+    } finally {
+      this.initializing = false
+    }
+  }
+
+  loadSwiper() {
+    if (!swiperBundlePromise) {
+      this.loadStylesheet()
+      swiperBundlePromise = import("swiper/bundle").then((module) => module.default)
+    }
+
+    return swiperBundlePromise
+  }
+
+  loadStylesheet() {
+    if (document.querySelector("link[data-swiper-css]")) return
+
+    const link = document.createElement("link")
+    link.rel = "stylesheet"
+    link.href = "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+    link.dataset.swiperCss = "true"
+    document.head.appendChild(link)
   }
 
   disconnect() {
+    if (this.observer) {
+      this.observer.disconnect()
+      this.observer = null
+    }
+
     if (this.swiper) {
       this.swiper.destroy()
       this.swiper = null
