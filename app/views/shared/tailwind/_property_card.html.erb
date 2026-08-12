@@ -4,6 +4,7 @@
 <% sale_discount = property.sale_discount? %>
 <% rent_discount = property.rent_discount? %>
 <% available_units_count = property.empreendimento? ? property.available_units_count : 0 %>
+<% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
     "public-property-card-v5",
@@ -11,7 +12,8 @@
     request.host,
     property.cache_key_with_version,
     property_constructor&.cache_key_with_version,
-    current_admin_user.present?
+    current_admin_user.present?,
+    priority_image
   ]
 %>
 <% cache card_cache_key, expires_in: 5.minutes do %>
@@ -79,7 +81,8 @@
                     width: 640,
                     height: 480,
                     class: "w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700",
-                    loading: "lazy",
+                    loading: (priority_image && index.zero? ? "eager" : "lazy"),
+                    fetchpriority: (priority_image && index.zero? ? "high" : nil),
                     decoding: "async",
                     sizes: "(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw",
                     data: (index.zero? ? {} : { src: image_source })) %>

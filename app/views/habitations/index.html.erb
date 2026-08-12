@@ -121,8 +121,8 @@
       
       <% if @habitations.any? %>
         <div class="public-habitations-index__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
-          <% @habitations.each do |property| %>
-            <%= render 'shared/tailwind/property_card', property: property %>
+          <% @habitations.each_with_index do |property, index| %>
+            <%= render 'shared/tailwind/property_card', property: property, priority_image: index < 2 %>
           <% end %>
         </div>
         

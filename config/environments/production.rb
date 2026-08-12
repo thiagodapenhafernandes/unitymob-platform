@@ -104,12 +104,19 @@ Rails.application.configure do
     }
   end
 
-  # Cache em memória por processo. Solid Queue continua sendo a fila de jobs;
-  # o cache aqui é apenas para leituras síncronas curtas do site público.
-  config.cache_store = :memory_store, {
-    size: ENV.fetch("RAILS_MEMORY_CACHE_SIZE_MB", 64).to_i.megabytes,
-    expires_in: 1.day
-  }
+  if ENV["REDIS_URL"].present?
+    config.cache_store = :redis_cache_store, {
+      url: ENV.fetch("RAILS_CACHE_REDIS_URL", ENV.fetch("REDIS_URL")),
+      namespace: ENV.fetch("RAILS_CACHE_NAMESPACE", "unitymob-platform:production"),
+      expires_in: 1.day
+    }
+  else
+    # Fallback local para ambientes de produção sem Redis configurado.
+    config.cache_store = :memory_store, {
+      size: ENV.fetch("RAILS_MEMORY_CACHE_SIZE_MB", 64).to_i.megabytes,
+      expires_in: 1.day
+    }
+  end
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   config.active_job.queue_adapter = :solid_queue

@@ -3,6 +3,7 @@ require "uri"
 module Storage
   class PublicCdnImageUrl
     TRANSFORM_ENQUEUE_TTL = 15.minutes
+    VARIANT_EXISTENCE_TTL = 12.hours
     TRANSFORM_FAILURE_METADATA_KEY = "public_variant_failures".freeze
     SOURCE_URL_KEYS = [
       "url",
@@ -58,6 +59,10 @@ module Storage
     def self.transform_cache_key(blob_id, transformations)
       digest = ActiveStorage::Variation.wrap(transformations).digest
       "storage/public_cdn_image_url/transform/queued/#{blob_id}/#{digest}"
+    end
+
+    def self.variant_existence_cache_key(original_blob_id, variant_blob_id)
+      "storage/public_cdn_image_url/variant_exists/#{original_blob_id}/#{variant_blob_id}"
     end
 
     def self.mark_transform_failed(blob:, transformations:, error:)
@@ -160,7 +165,7 @@ module Storage
       return if transform_failed?(blob)
 
       variant = blob.variant(**variant_transformations)
-      return representation_path(variant) if variant_processed?(variant)
+      return representation_path(variant) if variant_processed?(variant) && variant_blob_exists?(variant)
 
       enqueue_variant_processing(blob)
       nil
@@ -183,6 +188,39 @@ module Storage
       variant.respond_to?(:processed?, true) && variant.send(:processed?)
     end
 
+    def variant_blob_exists?(variant)
+      return false unless variant.respond_to?(:image)
+
+      variant_blob = variant.image&.blob
+      return false if variant_blob.blank?
+      return false if variant_blob.service_name != variant.blob.service_name
+
+      cache_key = self.class.variant_existence_cache_key(variant.blob.id, variant_blob.id)
+      cached = Rails.cache.read(cache_key)
+      return cached unless cached.nil?
+
+      exists = variant_blob.service.exist?(variant_blob.key)
+      Rails.cache.write(cache_key, exists, expires_in: VARIANT_EXISTENCE_TTL)
+      exists
+    rescue StandardError => e
+      if s3_private_existence_check?(e)
+        Rails.cache.write(cache_key, true, expires_in: VARIANT_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
+        return true
+      end
+
+      Rails.cache.write(cache_key, false, expires_in: VARIANT_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
+      Rails.logger.warn("[public_cdn_image_url] variant missing blob_id=#{variant&.blob&.id} error=#{e.class}: #{e.message}")
+      false
+    end
+
+    def s3_private_existence_check?(error)
+      s3_private_existence_check_name?(error.class.name)
+    end
+
+    def s3_private_existence_check_name?(error_name)
+      error_name.to_s.in?(%w[Aws::S3::Errors::AccessDenied Aws::S3::Errors::Forbidden])
+    end
+
     def representation_path(variant)
       routes = Rails.application.routes.url_helpers
       if options.fetch(:representation_proxy, false) && routes.respond_to?(:rails_blob_representation_proxy_path)
@@ -198,7 +236,10 @@ module Storage
 
     def transform_failed?(blob)
       failures = blob.metadata.to_h.fetch(self.class::TRANSFORM_FAILURE_METADATA_KEY, {}).to_h
-      failures.key?(self.class.transform_digest(variant_transformations))
+      failure = failures[self.class.transform_digest(variant_transformations)]
+      return false if failure.blank?
+
+      !s3_private_existence_check_name?(failure["error"])
     end
 
     def enqueue_variant_processing(blob)

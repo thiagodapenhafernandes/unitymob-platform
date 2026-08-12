@@ -44,7 +44,6 @@
     <%# Resource Hints %>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <% if defined?(@hero_preload_source) && @hero_preload_source.present? %>
       <%
         hero_preload_mobile_source = @hero_preload_mobile_source || @hero_preload_source
@@ -146,7 +145,7 @@
     <meta name="fancybox-css-path" content="<%= stylesheet_path('vendor/fancybox') %>">
 
     <%# Critical Third Party Styles %>
-    <%= stylesheet_link_tag "vendor/bootstrap-icons", media: "print", onload: "this.media='all'" %>
+    <%= stylesheet_link_tag "vendor/bootstrap-icons", media: "print", onload: "this.media='all'", preload_links_header: false %>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" media="print" onload="this.media='all'">
 
     <%# Fonts loading with swap %>
@@ -164,8 +163,8 @@
     </style>
 
     <%# Theme Styles %>
-    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload", preload_links_header: false %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload", preload_links_header: false %>
     <%
       public_page_stylesheets = []
       if controller_path == "habitations"
@@ -177,9 +176,9 @@
       end
     %>
     <% public_page_stylesheets.each do |stylesheet| %>
-      <%= stylesheet_link_tag stylesheet, "data-turbo-track": "reload" %>
+      <%= stylesheet_link_tag stylesheet, "data-turbo-track": "reload", preload_links_header: false %>
     <% end %>
-    <%= stylesheet_link_tag public_tenant.public_site_stylesheet, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag public_tenant.public_site_stylesheet, "data-turbo-track": "reload", preload_links_header: false %>
     <% if @layout_setting&.public_custom_logo_css.present? %>
       <style id="custom-logo-css"><%= @layout_setting.public_custom_logo_css.html_safe %></style>
     <% end %>
@@ -188,7 +187,7 @@
           as="style"
           onload="this.onload=null;this.rel='stylesheet'"
           data-turbo-track="reload">
-    <noscript><%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %></noscript>
+    <noscript><%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload", preload_links_header: false %></noscript>
     
     <%# JS with Defer %>
     <%= javascript_importmap_tags "public" %>
@@ -227,6 +226,8 @@
     <%# Performance: Defer non-critical external libraries %>
     <script>
       function loadDeferredAssets() {
+        if (!document.querySelector('[data-aos]')) return;
+
         var scripts = [
           'https://unpkg.com/aos@2.3.1/dist/aos.js'
         ];
@@ -244,8 +245,17 @@
         });
       }
 
-      if (window.addEventListener) window.addEventListener('load', loadDeferredAssets);
-      else if (window.attachEvent) window.attachEvent('onload', loadDeferredAssets);
+      function scheduleDeferredAssets() {
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(loadDeferredAssets, { timeout: 3500 });
+          return;
+        }
+
+        window.setTimeout(loadDeferredAssets, 2500);
+      }
+
+      if (window.addEventListener) window.addEventListener('load', scheduleDeferredAssets);
+      else if (window.attachEvent) window.attachEvent('onload', scheduleDeferredAssets);
     </script>
     
     <%= render 'shared/code_search_modal' %>

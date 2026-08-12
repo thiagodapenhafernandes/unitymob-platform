@@ -31,6 +31,8 @@ class EmpreendimentosController < ApplicationController
       @page_description = @strategic_landing[:description]
       @page_keywords = [@strategic_landing[:label], "empreendimentos", default_public_city, public_site_name].compact_blank.join(", ")
     end
+
+    expires_in 15.minutes, public: true unless params[:q].present?
   end
 
   def search

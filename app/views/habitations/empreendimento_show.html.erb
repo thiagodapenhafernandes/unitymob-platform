@@ -103,11 +103,23 @@
 <div class="public-development-show bg-gray-50 min-h-screen">
   
   <!-- Hero Section with Background Image -->
-  <% hero_image = public_image_url(@habitation.all_images.first) %>
-  <div class="public-development-show__hero relative h-[60vh] min-h-[500px] bg-cover bg-center mt-[72px] <%= 'bg-gradient-to-br from-blue-three to-blue-one' unless hero_image %>" 
-       <% if hero_image %>
-         style="background-image: linear-gradient(rgba(2, 43, 58, 0.7), rgba(2, 43, 58, 0.7)), url('<%= hero_image %>');"
-       <% end %>>
+  <% hero_image_source = @habitation.all_images.first %>
+  <% hero_image = public_image_url(hero_image_source, resize_to_fill: [1400, 820], format: :webp, representation_proxy: true) if hero_image_source %>
+  <% hero_image_srcset = public_image_srcset(hero_image_source, widths: [640, 960, 1400], aspect_ratio: 1400.0 / 820, crop: true, format: :webp, representation_proxy: true) if hero_image_source %>
+  <div class="public-development-show__hero relative h-[60vh] min-h-[500px] bg-cover bg-center mt-[72px] <%= 'bg-gradient-to-br from-blue-three to-blue-one' unless hero_image %>">
+    <% if hero_image.present? %>
+      <%= image_tag hero_image,
+          alt: development_name,
+          class: "absolute inset-0 h-full w-full object-cover",
+          fetchpriority: "high",
+          loading: "eager",
+          decoding: "async",
+          width: 1400,
+          height: 820,
+          srcset: hero_image_srcset,
+          sizes: "100vw" %>
+      <div class="absolute inset-0 bg-blue-three/70"></div>
+    <% end %>
     <div class="absolute inset-0 flex items-center">
       <div class="container-custom">
         <div class="public-development-show__hero-content max-w-4xl text-white">

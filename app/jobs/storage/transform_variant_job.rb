@@ -23,6 +23,22 @@ module Storage
         error: error
       )
       raise
+    rescue StandardError => error
+      raise unless s3_access_error?(error)
+
+      Storage::PublicCdnImageUrl.mark_transform_failed(
+        blob: blob,
+        transformations: transformations,
+        error: error
+      )
+      Rails.logger.warn("[storage_variant] acesso negado ao processar variante; transformacao descartada blob_id=#{blob.id} error=#{error.class}: #{error.message}")
+      nil
+    end
+
+    private
+
+    def s3_access_error?(error)
+      error.class.name.in?(%w[Aws::S3::Errors::AccessDenied Aws::S3::Errors::Forbidden])
     end
   end
 end
