@@ -1,5 +1,12 @@
 class HomeSetting < ApplicationRecord
   include TenantScoped
+
+  SEARCH_FILTER_DISPLAY_MODES = %w[hero floating].freeze
+  SEARCH_FILTER_DISPLAY_MODE_OPTIONS = [
+    ["Filtro no hero", "hero"],
+    ["Botão flutuante", "floating"]
+  ].freeze
+
   # ActiveStorage attachments
   has_one_attached :hero_background_desktop
   has_one_attached :hero_background_mobile
@@ -25,6 +32,9 @@ class HomeSetting < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 24, less_than_or_equal_to: 96, allow_blank: true }
   validates :hero_subtitle_font_size,
             numericality: { only_integer: true, greater_than_or_equal_to: 12, less_than_or_equal_to: 36, allow_blank: true }
+  validates :search_filter_display_mode,
+            :mobile_search_filter_display_mode,
+            inclusion: { in: SEARCH_FILTER_DISPLAY_MODES }
   validates :public_header_css, length: { maximum: 2000 }, allow_blank: true
   validate :public_header_css_must_be_declarations_only
   
@@ -55,8 +65,50 @@ class HomeSetting < ApplicationRecord
       search_filter_border_radius: 22,
       hero_title_font_size: 72,
       hero_subtitle_font_size: 20,
+      search_filter_display_mode: "hero",
+      mobile_search_filter_display_mode: "hero",
       public_header_css: nil
     )
+  end
+
+  def search_filter_in_hero?
+    search_filter_display_mode != "floating"
+  end
+
+  def mobile_search_filter_in_hero?
+    mobile_search_filter_display_mode != "floating"
+  end
+
+  def floating_search_filter?
+    search_filter_display_mode == "floating"
+  end
+
+  def mobile_floating_search_filter?
+    mobile_search_filter_display_mode == "floating"
+  end
+
+  def renders_hero_search_filter?
+    search_filter_in_hero? || mobile_search_filter_in_hero?
+  end
+
+  def renders_floating_search_filter?
+    floating_search_filter? || mobile_floating_search_filter?
+  end
+
+  def hero_search_filter_visibility_class
+    return nil if search_filter_in_hero? && mobile_search_filter_in_hero?
+    return "hidden md:block" if search_filter_in_hero?
+    return "md:hidden" if mobile_search_filter_in_hero?
+
+    nil
+  end
+
+  def floating_search_filter_visibility_class
+    return nil if floating_search_filter? && mobile_floating_search_filter?
+    return "public-global-search--desktop-only" if floating_search_filter?
+    return "public-global-search--mobile-only" if mobile_floating_search_filter?
+
+    nil
   end
 
   def public_header_style

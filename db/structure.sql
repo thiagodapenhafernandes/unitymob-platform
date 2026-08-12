@@ -1,4 +1,4 @@
-\restrict h54aVaQWoojt2ojQKcNGBl4m9KmJD7IdqVhSONGeQ2qMclzbGkFmPHuQ3ktUc3r
+\restrict m70qHPPTPCCSZd2C8By38A5aGQed5TnQQBb7FvS3K63uhKv4jnephRVhEwobSHm
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3395,7 +3395,9 @@ CREATE TABLE public.home_settings (
     hero_title_font_size integer,
     hero_subtitle_font_size integer,
     tenant_id bigint NOT NULL,
-    public_header_css text
+    public_header_css text,
+    search_filter_display_mode character varying DEFAULT 'hero'::character varying NOT NULL,
+    mobile_search_filter_display_mode character varying DEFAULT 'hero'::character varying NOT NULL
 );
 
 
@@ -17127,11 +17129,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict h54aVaQWoojt2ojQKcNGBl4m9KmJD7IdqVhSONGeQ2qMclzbGkFmPHuQ3ktUc3r
+\unrestrict m70qHPPTPCCSZd2C8By38A5aGQed5TnQQBb7FvS3K63uhKv4jnephRVhEwobSHm
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260812121000'),
+('20260812115000'),
 ('20260811133000'),
 ('20260811101500'),
 ('20260809173000'),

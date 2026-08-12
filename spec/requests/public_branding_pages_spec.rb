@@ -212,6 +212,11 @@ RSpec.describe "Public branding pages", type: :request do
   end
 
   it "renderiza busca global por drawer nas páginas públicas" do
+    HomeSetting.instance(tenant: Tenant.default).update!(
+      search_filter_display_mode: "floating",
+      mobile_search_filter_display_mode: "floating"
+    )
+
     get root_path
 
     html = Nokogiri::HTML(response.body)
@@ -234,6 +239,39 @@ RSpec.describe "Public branding pages", type: :request do
     expect(form.text).to include("Características do imóvel", "Características do condomínio")
     expect(form.at_css('input[name="characteristics[]"][value="sacada"]')).to be_present
     expect(form.at_css('input[name="characteristics[]"][value="piscina"]')).to be_present
+  end
+
+  it "renderiza filtro no hero e oculta drawer quando configurado" do
+    HomeSetting.instance(tenant: Tenant.default).update!(
+      search_filter_display_mode: "hero",
+      mobile_search_filter_display_mode: "hero"
+    )
+
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+
+    expect(response).to have_http_status(:ok)
+    expect(html.at_css(".public-global-search__button")).to be_nil
+    expect(html.at_css("#hero form")).to be_present
+  end
+
+  it "permite filtro no hero no desktop e botão flutuante somente no mobile" do
+    HomeSetting.instance(tenant: Tenant.default).update!(
+      search_filter_display_mode: "hero",
+      mobile_search_filter_display_mode: "floating"
+    )
+
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    hero_search = html.at_css("#hero .hidden.md\\:block")
+    drawer = html.at_css(".public-global-search")
+
+    expect(response).to have_http_status(:ok)
+    expect(hero_search.at_css("form")).to be_present
+    expect(drawer["class"]).to include("public-global-search--mobile-only")
+    expect(drawer.at_css(".public-global-search__button").text.squish).to eq("Filtrar imóveis")
   end
 
   it "renderiza crédito global da Unitymob dentro do footer público" do

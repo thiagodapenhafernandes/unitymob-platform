@@ -14,6 +14,18 @@
   z-index: 1200;
 }
 
+@media (min-width: 768px) {
+  .public-global-search--mobile-only {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-global-search--desktop-only {
+    display: none;
+  }
+}
+
 .public-global-search__button {
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
@@ -521,11 +533,19 @@
 
 @media (max-width: 767px) {
   .public-global-search__button {
-    right: 14px;
+    left: 50%;
+    right: auto;
     bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px));
-    min-height: 52px;
-    padding: 0 18px;
-    font-size: 14px;
+    transform: translateX(-50%);
+  }
+
+  .public-global-search__button:hover,
+  .public-global-search__button:focus-visible {
+    transform: translateX(-50%) translateY(-2px);
+  }
+
+  .public-global-search.is-open .public-global-search__button {
+    transform: translateX(-50%) translateY(10px) scale(.96);
   }
 
   .public-global-search__drawer {

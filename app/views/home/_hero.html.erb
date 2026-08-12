@@ -75,10 +75,12 @@
       </p>
     </div>
 
-    <!-- Search Form Imobill Style -->
-    <div class="relative z-20">
-      <%= render 'shared/search_hero_imobill' %>
-    </div>
+    <% if @home_setting.renders_hero_search_filter? %>
+      <!-- Search Form Imobill Style -->
+      <div class="relative z-20 <%= @home_setting.hero_search_filter_visibility_class %>">
+        <%= render 'shared/search_hero_imobill' %>
+      </div>
+    <% end %>
   </div>
 
   <!-- Bottom Fade to Content (atrás do conteúdo, z baixo pra não cobrir o card) -->

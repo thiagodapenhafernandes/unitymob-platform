@@ -40,7 +40,9 @@
   drawer_quantity_options = [["Todos", ""], ["1", "1"], ["2", "2"], ["3", "3"], ["4+", "4"]]
 %>
 
-<div class="public-global-search"
+<% drawer_visibility_class = @home_setting&.floating_search_filter_visibility_class %>
+
+<div class="public-global-search <%= drawer_visibility_class %>"
      data-controller="global-search-drawer"
      data-global-search-drawer-open-class="is-open"
      data-global-search-drawer-closing-class="is-closing">

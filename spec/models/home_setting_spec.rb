@@ -23,4 +23,57 @@ RSpec.describe HomeSetting, type: :model do
     expect(setting).not_to be_valid
     expect(setting.errors[:public_header_css]).to include("deve conter apenas declarações CSS, sem seletores ou tags")
   end
+
+  it "controla onde o filtro público de imóveis aparece" do
+    setting = described_class.new(
+      tenant: Tenant.default,
+      hero_title: "Hero",
+      hero_subtitle: "Sub",
+      search_filter_display_mode: "hero"
+    )
+
+    expect(setting).to be_valid
+    expect(setting.search_filter_in_hero?).to be(true)
+    expect(setting.floating_search_filter?).to be(false)
+    expect(setting.mobile_search_filter_in_hero?).to be(true)
+    expect(setting.mobile_floating_search_filter?).to be(false)
+
+    setting.search_filter_display_mode = "floating"
+    setting.mobile_search_filter_display_mode = "floating"
+
+    expect(setting).to be_valid
+    expect(setting.search_filter_in_hero?).to be(false)
+    expect(setting.floating_search_filter?).to be(true)
+    expect(setting.mobile_search_filter_in_hero?).to be(false)
+    expect(setting.mobile_floating_search_filter?).to be(true)
+  end
+
+  it "separa visibilidade do filtro entre desktop e mobile" do
+    setting = described_class.new(
+      tenant: Tenant.default,
+      hero_title: "Hero",
+      hero_subtitle: "Sub",
+      search_filter_display_mode: "hero",
+      mobile_search_filter_display_mode: "floating"
+    )
+
+    expect(setting).to be_valid
+    expect(setting.renders_hero_search_filter?).to be(true)
+    expect(setting.renders_floating_search_filter?).to be(true)
+    expect(setting.hero_search_filter_visibility_class).to eq("hidden md:block")
+    expect(setting.floating_search_filter_visibility_class).to eq("public-global-search--mobile-only")
+  end
+
+  it "rejeita modo inválido de exibição do filtro público" do
+    setting = described_class.new(
+      tenant: Tenant.default,
+      hero_title: "Hero",
+      hero_subtitle: "Sub",
+      search_filter_display_mode: "both",
+      mobile_search_filter_display_mode: "hero"
+    )
+
+    expect(setting).not_to be_valid
+    expect(setting.errors[:search_filter_display_mode]).to be_present
+  end
 end

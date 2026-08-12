@@ -52,6 +52,8 @@ class Admin::HomeSettingsController < Admin::BaseController
       :search_filter_field_background_opacity,
       :search_filter_backdrop_blur,
       :search_filter_border_radius,
+      :search_filter_display_mode,
+      :mobile_search_filter_display_mode,
       :public_header_css,
       hero_slide_images: [],
       hero_slides_attributes: [:id, :position, :active, :alt_text, :_destroy]

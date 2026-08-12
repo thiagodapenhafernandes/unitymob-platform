@@ -178,6 +178,26 @@
           <div class="ax-span-12">
             <%= ax_operational_panel(eyebrow: "Busca", title: "Filtro de busca") do %>
               <%= ax_field_grid do %>
+                <div class="ax-span-6 tw-mb-3">
+                  <%= ax_radio_group(
+                        form: f,
+                        method: :search_filter_display_mode,
+                        label: "Como exibir o filtro no desktop",
+                        choices: HomeSetting::SEARCH_FILTER_DISPLAY_MODE_OPTIONS,
+                        item_class: "tw-min-w-[180px]"
+                      ) %>
+                </div>
+
+                <div class="ax-span-6 tw-mb-3">
+                  <%= ax_radio_group(
+                        form: f,
+                        method: :mobile_search_filter_display_mode,
+                        label: "Como exibir o filtro no mobile",
+                        choices: HomeSetting::SEARCH_FILTER_DISPLAY_MODE_OPTIONS,
+                        item_class: "tw-min-w-[180px]"
+                      ) %>
+                </div>
+
                 <div class="ax-span-4 tw-mb-3">
                   <%= ax_color_field(
                         form: f, method: :search_filter_background_color, label: "Cor do fundo do filtro",

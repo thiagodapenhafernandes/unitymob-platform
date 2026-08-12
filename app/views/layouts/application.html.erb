@@ -260,7 +260,7 @@
     
     <%= render 'shared/code_search_modal' %>
     <%= render 'shared/lead_modal' %>
-    <%= render 'shared/global_property_search_drawer' %>
+    <%= render 'shared/global_property_search_drawer' if @home_setting&.renders_floating_search_filter? %>
     <%= render 'shared/lgpd_consent' %>
   </body>
 </html>
