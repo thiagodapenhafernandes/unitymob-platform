@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import Swiper from "swiper/bundle"
+
+let swiperBundlePromise = null
 
 export default class extends Controller {
   connect() {
@@ -7,46 +8,68 @@ export default class extends Controller {
     this.initFancybox()
   }
 
-  initSwiper() {
-    if (this.swiper) return
+  async initSwiper() {
+    if (this.swiper || this.initializing) return
 
-    // Elementos de navegação
-    const nextEl = this.element.querySelector('.swiper-button-next')
-    const prevEl = this.element.querySelector('.swiper-button-prev')
-    const paginationEl = this.element.querySelector('.swiper-pagination')
+    this.initializing = true
 
-    this.swiper = new Swiper(this.element, {
-      slidesPerView: 1,
-      spaceBetween: 0,
+    try {
+      const Swiper = await this.loadSwiper()
+      if (!this.element.isConnected || this.swiper) return
 
-      // Navigation
-      navigation: {
-        nextEl: nextEl,
-        prevEl: prevEl,
-      },
+      const nextEl = this.element.querySelector('.swiper-button-next')
+      const prevEl = this.element.querySelector('.swiper-button-prev')
+      const paginationEl = this.element.querySelector('.swiper-pagination')
 
-      // Pagination
-      pagination: {
-        el: paginationEl,
-        clickable: true,
-        dynamicBullets: true,
-      },
+      this.swiper = new Swiper(this.element, {
+        slidesPerView: 1,
+        spaceBetween: 0,
 
-      // Loop se houver mais de uma imagem
-      loop: this.element.querySelectorAll('.swiper-slide').length > 1,
+        navigation: {
+          nextEl: nextEl,
+          prevEl: prevEl,
+        },
 
-      // Keyboard
-      keyboard: {
-        enabled: true,
-      },
+        pagination: {
+          el: paginationEl,
+          clickable: true,
+          dynamicBullets: true,
+        },
 
-      // Lazy loading
-      lazy: true,
+        loop: this.element.querySelectorAll('.swiper-slide').length > 1,
 
-      // Observer
-      observer: true,
-      observeParents: true,
-    })
+        keyboard: {
+          enabled: true,
+        },
+
+        lazy: true,
+        observer: true,
+        observeParents: true,
+      })
+    } catch (error) {
+      console.error('Error initializing photo gallery:', error)
+    } finally {
+      this.initializing = false
+    }
+  }
+
+  loadSwiper() {
+    if (!swiperBundlePromise) {
+      this.loadStylesheet()
+      swiperBundlePromise = import("swiper/bundle").then((module) => module.default)
+    }
+
+    return swiperBundlePromise
+  }
+
+  loadStylesheet() {
+    if (document.querySelector("link[data-swiper-css]")) return
+
+    const link = document.createElement("link")
+    link.rel = "stylesheet"
+    link.href = "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+    link.dataset.swiperCss = "true"
+    document.head.appendChild(link)
   }
 
   initFancybox() {
