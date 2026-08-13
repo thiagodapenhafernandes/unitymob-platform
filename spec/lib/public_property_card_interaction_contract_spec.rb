@@ -21,7 +21,8 @@ RSpec.describe "Interação do card público de imóvel" do
     expect(card_partial).to include("representation_proxy: true, force_variant: true")
     expect(card_partial).to include("public_image_url(pic)")
     expect(card_partial).to include("eager_card_image = priority_image && index.zero?")
-    expect(card_partial).to include("image_tag(eager_card_image ? image_source : placeholder")
-    expect(card_partial).to include("data: (eager_card_image ? {} : { src: image_source })")
+    expect(card_partial).to include("visible_card_image = index.zero?")
+    expect(card_partial).to include("image_tag(visible_card_image ? image_source : placeholder")
+    expect(card_partial).to include("data: (visible_card_image ? {} : { src: image_source })")
   end
 end
