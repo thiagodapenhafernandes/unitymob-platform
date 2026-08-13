@@ -138,7 +138,13 @@ class SyncPropertyService
       hb['Empreendimento'].to_s.strip.presence
     )
 
-    normalized_status = Habitation.normalize_status(hb['Status'])
+    valor_venda_cents = parse_money(hb['ValorVenda'])
+    valor_locacao_cents = parse_money(hb['ValorLocacao'])
+    normalized_status = Habitation.normalize_status(
+      hb['Status'],
+      valor_venda_cents: valor_venda_cents,
+      valor_locacao_cents: valor_locacao_cents
+    )
     habitation_attrs = {
       titulo_anuncio: hb['TituloSite'],
       categoria: categoria.presence,
@@ -157,8 +163,8 @@ class SyncPropertyService
       vagas_qtd: hb['Vagas'].to_i,
       area_privativa_m2: hb['AreaPrivativa'].to_f,
       area_total_m2: hb['AreaTotal'].to_f,
-      valor_venda_cents: parse_money(hb['ValorVenda']),
-      valor_locacao_cents: parse_money(hb['ValorLocacao']),
+      valor_venda_cents: valor_venda_cents,
+      valor_locacao_cents: valor_locacao_cents,
       valor_condominio_cents: parse_money(hb['ValorCondominio']),
       valor_iptu_cents: parse_money(hb['ValorIptu']),
       caracteristica_unica: normalize_csv_list(hb['CaracteristicaUnica']),

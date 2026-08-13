@@ -1,6 +1,39 @@
 require "rails_helper"
 
 RSpec.describe Habitation, type: :model do
+  describe ".normalize_status" do
+    it "maps external commercial status variations into canonical options" do
+      expect(described_class.normalize_status("Locação anual")).to eq("Aluguel")
+      expect(described_class.normalize_status("Para alugar")).to eq("Aluguel")
+      expect(described_class.normalize_status("À venda")).to eq("Venda")
+      expect(described_class.normalize_status("Temporada")).to eq("Diária")
+      expect(described_class.normalize_status("imóvel vendido por terceiros")).to eq("Vendido terceiros")
+    end
+
+    it "uses commercial prices as fallback for operational statuses" do
+      expect(described_class.normalize_status("Liberar site", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)).to eq("Aluguel")
+      expect(described_class.normalize_status("Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)).to eq("Venda")
+    end
+  end
+
+  describe "#normalize_commercial_status" do
+    it "persists the canonical status before validation" do
+      habitation = build(:habitation, status: "Locação anual", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
+
+      habitation.validate
+
+      expect(habitation.status).to eq("Aluguel")
+    end
+
+    it "normalizes operational publication status using the current commercial price" do
+      habitation = build(:habitation, status: "Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+
+      habitation.validate
+
+      expect(habitation.status).to eq("Venda")
+    end
+  end
+
   describe ".next_automatic_codigo" do
     it "continues the CRM sequence after the highest imported Vista reference" do
       reference_codigo = (described_class.highest_numeric_codigo + 100).to_s
