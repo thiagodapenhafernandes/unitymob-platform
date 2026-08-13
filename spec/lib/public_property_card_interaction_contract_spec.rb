@@ -16,10 +16,11 @@ RSpec.describe "Interação do card público de imóvel" do
     expect(Rails.root.join("app/javascript/controllers/card_swiper_controller.js").read).to include("preventClicksPropagation: true")
   end
 
-  it "mantém variants otimizadas somente nas três primeiras imagens do card" do
+  it "mantém somente as três primeiras imagens do card sem depender de representation proxy" do
     expect(card_partial).to include("property.card_image_sources(3)")
-    expect(card_partial).to include("representation_proxy: true, force_variant: true")
     expect(card_partial).to include("public_image_url(pic)")
+    expect(card_partial).not_to include("force_variant: true")
+    expect(card_partial).not_to include("representation_proxy: true")
     expect(card_partial).to include("eager_card_image = priority_image && index.zero?")
     expect(card_partial).to include("visible_card_image = index.zero?")
     expect(card_partial).to include("image_tag(visible_card_image ? image_source : placeholder")
