@@ -221,6 +221,43 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.parsed_body.fetch("url")).to include("share_token=")
     end
 
+    it "uses explicit id lookup for tracked share links when another property has the same numeric code" do
+      admin = create(:admin_user)
+      target = create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "SHARE-RENT-ID",
+        slug: nil,
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 4_925_00
+      )
+      create(
+        :habitation,
+        :unavailable,
+        tenant: admin.tenant,
+        codigo: target.id.to_s,
+        slug: "property-with-colliding-code",
+        status: "Vendido terceiros"
+      )
+      sign_in admin
+      csrf_token = csrf_token_from(habitation_path(target.id, lookup: "id"))
+
+      post share_link_habitation_path(target.id, lookup: "id"), headers: { "X-CSRF-Token" => csrf_token }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      shared_url = response.parsed_body.fetch("url")
+      expect(shared_url).to include("/imoveis/#{target.id}")
+      expect(shared_url).to include("lookup=id")
+      token = Rack::Utils.parse_query(URI.parse(shared_url).query).fetch("share_token")
+
+      sign_out admin
+      get habitation_path(target.id, lookup: "id", share_token: token)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(target.display_title)
+    end
+
     it "creates a tracked share link for priced sale properties with operational status" do
       admin = create(:admin_user)
       habitation = create(

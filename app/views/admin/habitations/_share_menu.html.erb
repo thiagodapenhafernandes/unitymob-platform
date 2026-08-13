@@ -7,8 +7,8 @@
 
 <div class="admin-property-action-dropdown"
      data-controller="broker-share ax-dropdown"
-     data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(imovel) : "" %>"
-     data-broker-share-fallback-url-value="<%= habitation_url(imovel) %>"
+     data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(imovel.id, lookup: "id") : "" %>"
+     data-broker-share-fallback-url-value="<%= habitation_url(imovel.id, lookup: "id") %>"
      data-broker-share-property-title-value="<%= imovel.display_title %>">
   <button type="button"
           class="<%= button_class %>"

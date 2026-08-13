@@ -315,7 +315,7 @@ class HabitationsController < ApplicationController
 
     render json: {
       success: true,
-      url: habitation_url(@habitation, share_token: link.token, preview: link.updated_at.to_i),
+      url: habitation_url(@habitation.id, lookup: "id", share_token: link.token, preview: link.updated_at.to_i),
       expires_at: link.expires_at.iso8601
     }
   rescue StandardError => e
@@ -415,10 +415,15 @@ class HabitationsController < ApplicationController
   end
 
   def set_shareable_habitation
-    @habitation = find_habitation_in_scope(params[:id], current_admin_user.tenant.habitations)
+    scope = current_admin_user.tenant.habitations
+    @habitation = internal_id_lookup? ? scope.find_by(id: params[:id]) : find_habitation_in_scope(params[:id], scope)
     return if @habitation
 
     render json: { success: false, error: "Imóvel não encontrado nesta conta." }, status: :not_found
+  end
+
+  def internal_id_lookup?
+    params[:lookup].to_s == "id"
   end
   
   def set_habitation
@@ -442,6 +447,11 @@ class HabitationsController < ApplicationController
   end
 
   def find_public_habitation(identifier)
+    if internal_id_lookup?
+      habitation = public_habitation_lookup_scope.find_by(id: identifier)
+      return habitation if habitation
+    end
+
     find_habitation_in_scope(identifier, public_habitation_lookup_scope)
   end
 
