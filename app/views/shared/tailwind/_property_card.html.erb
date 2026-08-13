@@ -7,7 +7,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v6",
+    "public-property-card-v7",
     public_tenant.id,
     request.host,
     property.cache_key_with_version,
@@ -72,8 +72,7 @@
          style="overflow: hidden !important;">
       <div class="swiper-wrapper" style="display: flex !important; width: 100% !important;">
         <% card_images = property.card_image_sources(3).filter_map do |pic|
-             public_image_url(pic, resize_to_fill: [640, 480], format: :webp, representation_proxy: true, force_variant: true).presence ||
-               public_image_url(pic).presence
+             public_image_url(pic).presence
            end %>
         <% if card_images.present? %>
           <% card_images.each_with_index do |image_source, index| %>
