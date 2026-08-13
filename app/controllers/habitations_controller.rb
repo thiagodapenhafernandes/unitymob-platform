@@ -326,7 +326,7 @@ class HabitationsController < ApplicationController
   private
 
   def shareable_commercial_status?(habitation)
-    Habitation.normalize_status(habitation.status).in?(%w[Venda Aluguel])
+    habitation.shareable_commercial_status?
   end
 
   def ensure_social_photo_public!(habitation)
