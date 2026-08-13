@@ -370,8 +370,12 @@ RSpec.describe "Admin::Habitations", type: :request do
 
       expect(field).to be_present
       expect(field.key?("disabled")).to be(false)
-      expect(panel).to be_present
-      expect(panel.key?("hidden")).to be(false)
+      if field_id.in?(%w[habitation_tipo_vaga habitation_numero_box])
+        expect(panel).to be_nil
+      else
+        expect(panel).to be_present
+        expect(panel.key?("hidden")).to be(false)
+      end
     end
 
     closed_value = html.at_css('input[type="hidden"][name="habitation[valor_vendido_terceiros_formatted]"]')
@@ -479,14 +483,17 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     html = Nokogiri::HTML(response.body)
     key_panel = html.at_css('#habitation_key_location_notes').ancestors.find { |ancestor| ancestor["data-conditional-reveal-target"] == "panel" }
-    parking_panel = html.at_css('#habitation_numero_box').ancestors.find { |ancestor| ancestor["data-conditional-reveal-target"] == "panel" }
+    parking_type = html.at_css('#habitation_tipo_vaga')
+    parking_box = html.at_css('#habitation_numero_box')
     portal_group = html.at_css('#habitation_publicar_imovelweb_2').ancestors.find { |ancestor| ancestor["data-controller"].to_s.split.include?("conditional-reveal") }
     portal_panel = portal_group.at_css('[data-conditional-reveal-target="panel"]')
 
     expect(key_panel["data-conditional-reveal-preserve"]).to eq("true")
     expect(key_panel.key?("hidden")).to be(false)
-    expect(parking_panel["data-conditional-reveal-preserve"]).to eq("true")
-    expect(parking_panel.key?("hidden")).to be(false)
+    expect(parking_type).to be_present
+    expect(parking_type.key?("disabled")).to be(false)
+    expect(parking_box).to be_present
+    expect(parking_box.key?("disabled")).to be(false)
     expect(portal_panel.key?("hidden")).to be(true)
     expect(habitation.reload.publicar_imovelweb_2).to be(false)
   end
