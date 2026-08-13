@@ -39,6 +39,38 @@ RSpec.describe SyncPropertyService do
     end
   end
 
+  describe "status normalization" do
+    it "normalizes Vista rental variations before building habitation attributes" do
+      service = described_class.new("SYNC-RENT")
+      habitation_attrs, = service.send(
+        :map_vista_payload,
+        {
+          "Status" => "Locação anual",
+          "ValorVenda" => "0",
+          "ValorLocacao" => "4925"
+        }
+      )
+
+      expect(habitation_attrs[:status]).to eq("Aluguel")
+      expect(habitation_attrs[:valor_locacao_cents]).to eq(492_500)
+    end
+
+    it "normalizes operational Vista statuses using commercial prices" do
+      service = described_class.new("SYNC-SALE")
+      habitation_attrs, = service.send(
+        :map_vista_payload,
+        {
+          "Status" => "Liberar site",
+          "ValorVenda" => "900000",
+          "ValorLocacao" => "0"
+        }
+      )
+
+      expect(habitation_attrs[:status]).to eq("Venda")
+      expect(habitation_attrs[:valor_venda_cents]).to eq(90_000_000)
+    end
+  end
+
   describe "tenant isolation" do
     it "não usa Tenant.default quando não há contexto" do
       Current.tenant = nil

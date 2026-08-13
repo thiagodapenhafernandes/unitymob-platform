@@ -249,7 +249,13 @@ module Vista
                  @categories[normalize_code(row["CODIGO_CT"])] ||
                  infer_category(row) ||
                  "Apartamento"
-      status = Habitation.normalize_status(present_value(row["STATUS"])) || "Pendente"
+      valor_venda_cents = money_cents(row["VLR_VENDA"])
+      valor_locacao_cents = money_cents(row["VALOR_ALUGUEL"]) || money_cents(row["VLR_ALUGUEL"])
+      status = Habitation.normalize_status(
+        present_value(row["STATUS"]),
+        valor_venda_cents: valor_venda_cents,
+        valor_locacao_cents: valor_locacao_cents
+      ) || "Pendente"
       owner_name = proprietor&.name || @clients.dig(normalize_code(row["CODIGO_C"]), "NOME")
 
       {
@@ -283,8 +289,8 @@ module Vista
         area_total_m2: decimal_value(row["AREA_TOTAL"]),
         area_terreno_m2: decimal_value(row["AREA_TERRENO"]),
         area_util_m2: decimal_value(row["AREA_CONSTRUIDA"]),
-        valor_venda_cents: money_cents(row["VLR_VENDA"]),
-        valor_locacao_cents: money_cents(row["VALOR_ALUGUEL"]) || money_cents(row["VLR_ALUGUEL"]),
+        valor_venda_cents: valor_venda_cents,
+        valor_locacao_cents: valor_locacao_cents,
         valor_condominio_cents: money_cents(row["VLR_CONDOMINIO"]),
         valor_iptu_cents: money_cents(row["VLR_IPTU"]),
         valor_total_aluguel_cents: rent_total_cents(row),

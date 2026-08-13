@@ -337,7 +337,11 @@ module Vista
       tenant.habitations.new(
         codigo: value(api["Codigo"]).presence || codigo.to_s.strip,
         categoria: value(api["Categoria"]).presence || "Apartamento",
-        status: Habitation.normalize_status(value(api["Status"])).presence || "Venda",
+        status: Habitation.normalize_status(
+          value(api["Status"]),
+          valor_venda_cents: money_cents(api["ValorVenda"]),
+          valor_locacao_cents: money_cents(api["ValorLocacao"])
+        ).presence || "Venda",
         skip_auto_audit: true
       )
     end
@@ -445,7 +449,13 @@ module Vista
       development_pictures = preserve_picture_order(habitation.fotos_empreendimento, pictures_payload(development_photos))
       development_code = codigo_empreendimento_from_api(api, habitation)
 
-      normalized_status = Habitation.normalize_status(value(api["Status"]))
+      valor_venda_cents = money_cents(api["ValorVenda"])
+      valor_locacao_cents = money_cents(api["ValorLocacao"])
+      normalized_status = Habitation.normalize_status(
+        value(api["Status"]),
+        valor_venda_cents: valor_venda_cents,
+        valor_locacao_cents: valor_locacao_cents
+      )
       attrs = compact_attrs(
         categoria: value(api["Categoria"]),
         tipo: habitation_type(api),
@@ -478,8 +488,8 @@ module Vista
         varandas_qtd: integer(api["QtdVarandas"]),
         area_privativa_m2: decimal(api["AreaPrivativa"]),
         area_total_m2: decimal(api["AreaTotal"]),
-        valor_venda_cents: money_cents(api["ValorVenda"]),
-        valor_locacao_cents: money_cents(api["ValorLocacao"]),
+        valor_venda_cents: valor_venda_cents,
+        valor_locacao_cents: valor_locacao_cents,
         valor_condominio_cents: money_cents(api["ValorCondominio"]),
         valor_iptu_cents: money_cents(api["ValorIptu"]),
         data_cadastro_crm: datetime(api["DataCadastro"]),

@@ -48,11 +48,18 @@ class Habitation < ApplicationRecord
   STATUS_NORMALIZATION_MAP = {
     "venda"                => "Venda",
     "venda e aluguel"      => "Venda",
+    "venda aluguel"        => "Venda",
+    "a venda"              => "Venda",
+    "para venda"           => "Venda",
     "aluguel"              => "Aluguel",
     "locacao"              => "Aluguel",
     "locação"              => "Aluguel",
+    "locacao anual"        => "Aluguel",
+    "locação anual"        => "Aluguel",
+    "para alugar"          => "Aluguel",
     "diaria"               => "Diária",
     "diária"               => "Diária",
+    "temporada"            => "Diária",
     "pendente"             => "Pendente",
     "lancamento"           => "Lançamento",
     "lançamento"           => "Lançamento",
@@ -65,7 +72,22 @@ class Habitation < ApplicationRecord
     "vendido terceiros"    => "Vendido terceiros"
   }.freeze
 
-  PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Locação', 'Locacao'].freeze
+  STATUS_KEYWORD_NORMALIZATION = [
+    [/\b(?:diaria|temporada)\b/, "Diária"],
+    [/\bpendente\b/, "Pendente"],
+    [/\blancamento\b/, "Lançamento"],
+    [/\bsuspenso\b/, "Suspenso"],
+    [/\balugado\b.*\bimobiliaria\b|\bimobiliaria\b.*\balugado\b/, "Alugado imobiliária"],
+    [/\balugado\b.*\bterceiros\b|\bterceiros\b.*\balugado\b/, "Alugado terceiros"],
+    [/\balugado\b/, "Alugado terceiros"],
+    [/\bvendido\b.*\bimobiliaria\b|\bimobiliaria\b.*\bvendido\b/, "Vendido imobiliária"],
+    [/\bvendido\b.*\bterceiros\b|\bterceiros\b.*\bvendido\b/, "Vendido terceiros"],
+    [/\bvendido\b/, "Vendido terceiros"],
+    [/\b(?:aluguel|locacao|alugar)\b/, "Aluguel"],
+    [/\b(?:venda|vende|vender)\b/, "Venda"]
+  ].freeze
+
+  PUBLIC_STATUSES = ['Venda', 'Aluguel'].freeze
   INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido pendente].freeze
   INACTIVE_COMMERCIAL_STATUS_REGEX = "(suspenso|alugado|vendido|pendente)".freeze
   SITE_PUBLICATION_FIELDS = %i[exibir_no_site_flag exibir_no_site_salute_flag].freeze
@@ -74,10 +96,19 @@ class Habitation < ApplicationRecord
   TEMPORARY_CODIGO_PREFIX = "RASCUNHO-".freeze
   STANDALONE_CATEGORIES_WITHOUT_DEVELOPMENT_NAME = %w[casa sobrado rural chacara sitio].freeze
 
-  def self.normalize_status(value)
+  def self.normalize_status(value, valor_venda_cents: nil, valor_locacao_cents: nil)
     return nil if value.blank?
-    key = value.to_s.strip.downcase
-    STATUS_NORMALIZATION_MAP[key] || value.to_s.strip
+    raw = value.to_s.strip.squish
+    key = I18n.transliterate(raw).downcase
+
+    normalized = STATUS_NORMALIZATION_MAP[key] ||
+      STATUS_KEYWORD_NORMALIZATION.find { |pattern, _status| key.match?(pattern) }&.last
+    return normalized if normalized.present?
+
+    return "Aluguel" if valor_locacao_cents.to_i.positive? && !valor_venda_cents.to_i.positive?
+    return "Venda" if valor_venda_cents.to_i.positive?
+
+    raw
   end
 
   def self.standalone_category_without_development_name?(category)
@@ -478,6 +509,7 @@ class Habitation < ApplicationRecord
   validate :broker_intake_snapshot_is_immutable
   
   # Callbacks
+  before_validation :normalize_commercial_status, prepend: true
   before_validation :unpublish_when_commercial_status_inactive
   before_validation :clear_category_mismatched_slug, prepend: true
   before_validation :assign_codigo_automaticamente, on: :create
@@ -2284,6 +2316,14 @@ class Habitation < ApplicationRecord
     return if self.class.normalize_status(status) == "Suspenso"
 
     self.motivo_suspensao = nil
+  end
+
+  def normalize_commercial_status
+    self.status = self.class.normalize_status(
+      status,
+      valor_venda_cents: valor_venda_cents,
+      valor_locacao_cents: valor_locacao_cents
+    )
   end
 
   def inactive_commercial_status_details_required
