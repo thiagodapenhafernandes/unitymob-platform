@@ -7,7 +7,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v5",
+    "public-property-card-v6",
     public_tenant.id,
     request.host,
     property.cache_key_with_version,
@@ -80,7 +80,8 @@
             <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
               <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
               <% eager_card_image = priority_image && index.zero? %>
-              <%= image_tag(eager_card_image ? image_source : placeholder,
+              <% visible_card_image = index.zero? %>
+              <%= image_tag(visible_card_image ? image_source : placeholder,
                     alt: property_title,
                     width: 640,
                     height: 480,
@@ -89,7 +90,7 @@
                     fetchpriority: (eager_card_image ? "high" : nil),
                     decoding: "async",
                     sizes: "(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw",
-                    data: (eager_card_image ? {} : { src: image_source })) %>
+                    data: (visible_card_image ? {} : { src: image_source })) %>
             </div>
           <% end %>
         <% else %>
