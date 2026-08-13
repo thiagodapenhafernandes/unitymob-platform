@@ -60,7 +60,7 @@ RSpec.describe HomeSetting, type: :model do
     expect(setting).to be_valid
     expect(setting.renders_hero_search_filter?).to be(true)
     expect(setting.renders_floating_search_filter?).to be(true)
-    expect(setting.hero_search_filter_visibility_class).to eq("hidden md:block")
+    expect(setting.hero_search_filter_visibility_class).to eq("public-hero-search--desktop-only")
     expect(setting.floating_search_filter_visibility_class).to eq("public-global-search--mobile-only")
   end
 

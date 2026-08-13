@@ -265,7 +265,7 @@ RSpec.describe "Public branding pages", type: :request do
     get root_path
 
     html = Nokogiri::HTML(response.body)
-    hero_search = html.at_css("#hero .hidden.md\\:block")
+    hero_search = html.at_css("#hero .public-hero-search--desktop-only")
     drawer = html.at_css(".public-global-search")
 
     expect(response).to have_http_status(:ok)

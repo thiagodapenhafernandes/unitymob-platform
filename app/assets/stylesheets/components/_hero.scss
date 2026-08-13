@@ -112,6 +112,14 @@
   margin-top: 0.75rem;
 }
 
+.public-hero-search--desktop-only {
+  display: none;
+}
+
+.public-hero-search--mobile-only {
+  display: block;
+}
+
 @media (max-width: 374px), (max-height: 700px) and (max-width: 767px) {
   #hero {
     padding-top: calc(5rem + env(safe-area-inset-top));
@@ -177,6 +185,14 @@
 
   .hero-search {
     margin-top: 2rem;
+  }
+
+  .public-hero-search--desktop-only {
+    display: block;
+  }
+
+  .public-hero-search--mobile-only {
+    display: none;
   }
 }
 

@@ -97,8 +97,8 @@ class HomeSetting < ApplicationRecord
 
   def hero_search_filter_visibility_class
     return nil if search_filter_in_hero? && mobile_search_filter_in_hero?
-    return "hidden md:block" if search_filter_in_hero?
-    return "md:hidden" if mobile_search_filter_in_hero?
+    return "public-hero-search--desktop-only" if search_filter_in_hero?
+    return "public-hero-search--mobile-only" if mobile_search_filter_in_hero?
 
     nil
   end
