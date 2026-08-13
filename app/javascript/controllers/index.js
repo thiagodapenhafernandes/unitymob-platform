@@ -1,8 +1,10 @@
 import { application } from "controllers/application"
 import { lazyLoadControllersFrom } from "@hotwired/stimulus-loading"
+import BrokerShareController from "controllers/broker_share_controller"
 import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
 import PublicGalleryMobileController from "controllers/public_gallery_mobile_controller"
 
+application.register("broker-share", BrokerShareController)
 application.register("fancybox-gallery", FancyboxGalleryController)
 application.register("public-gallery-mobile", PublicGalleryMobileController)
 
