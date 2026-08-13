@@ -13,6 +13,10 @@ RSpec.describe "Habitation details", type: :request do
 
   def csrf_token_from(path)
     get path
+    csrf_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')
+    return csrf_token["content"] if csrf_token
+
+    get admin_habitations_path
     Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
   end
 
@@ -197,6 +201,46 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.parsed_body.fetch("url")).to include("preview=")
     end
 
+    it "creates a tracked share link for rental statuses imported with locação variants" do
+      admin = create(:admin_user)
+      habitation = create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "SHARE-RENT-VARIANT",
+        slug: "share-rent-variant",
+        status: "Locação anual",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 4_925_00
+      )
+      sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
+
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch("url")).to include("share_token=")
+    end
+
+    it "creates a tracked share link for priced sale properties with operational status" do
+      admin = create(:admin_user)
+      habitation = create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "SHARE-SALE-OP",
+        slug: "share-sale-operational",
+        status: "Liberar site",
+        valor_venda_cents: 900_000_00,
+        valor_locacao_cents: 0
+      )
+      sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
+
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch("url")).to include("share_token=")
+    end
+
     it "does not create a tracked share link while the local property photo is not public yet" do
       admin = create(:admin_user)
       habitation = create(:habitation, tenant: admin.tenant, codigo: "SHARE-PENDING", slug: "share-pending")
@@ -224,8 +268,9 @@ RSpec.describe "Habitation details", type: :request do
       admin = create(:admin_user)
       habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-OFF", slug: "share-off")
       sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
 
-      post share_link_habitation_path(habitation), as: :json
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:ok)
       shared_url = response.parsed_body.fetch("url")
@@ -245,8 +290,9 @@ RSpec.describe "Habitation details", type: :request do
       admin = create(:admin_user)
       habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY", slug: "share-day", status: "Diária")
       sign_in admin
+      csrf_token = csrf_token_from(habitation_path(habitation))
 
-      post share_link_habitation_path(habitation), as: :json
+      post share_link_habitation_path(habitation), headers: { "X-CSRF-Token" => csrf_token }, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
       expect(response.parsed_body.fetch("error")).to include("Venda ou Aluguel")

@@ -2030,6 +2030,19 @@ class Habitation < ApplicationRecord
     status.to_s.downcase.include?("venda") || valor_venda_cents.to_i.positive?
   end
 
+  def shareable_commercial_status?
+    normalized = self.class.normalize_status(status)
+    return true if normalized.in?(%w[Venda Aluguel])
+
+    raw_status = I18n.transliterate(status.to_s).downcase.squish
+    return false if raw_status.match?(/\b(diaria|temporada)\b/)
+    return false if raw_status.match?(Regexp.new(INACTIVE_COMMERCIAL_STATUS_REGEX))
+
+    raw_status.match?(/\b(venda|aluguel|locacao)\b/) ||
+      valor_venda_cents.to_i.positive? ||
+      valor_locacao_cents.to_i.positive?
+  end
+
   def title_category_terms_in_title
     title_key = normalize_title_category(titulo_anuncio)
 

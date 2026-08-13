@@ -296,6 +296,30 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "#shareable_commercial_status?" do
+    it "accepts rental variants and priced commercial properties with operational status" do
+      rent_variant = build(:habitation, status: "Locação anual", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
+      operational_sale = build(:habitation, status: "Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+      operational_rent = build(:habitation, status: "Liberar site", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
+
+      expect(rent_variant).to be_shareable_commercial_status
+      expect(operational_sale).to be_shareable_commercial_status
+      expect(operational_rent).to be_shareable_commercial_status
+    end
+
+    it "blocks daily, seasonal and inactive statuses even when prices are present" do
+      daily = build(:habitation, status: "Diária", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
+      seasonal = build(:habitation, status: "Temporada", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
+      pending = build(:habitation, status: "Pendente", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+      sold = build(:habitation, status: "Vendido terceiros", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+
+      expect(daily).not_to be_shareable_commercial_status
+      expect(seasonal).not_to be_shareable_commercial_status
+      expect(pending).not_to be_shareable_commercial_status
+      expect(sold).not_to be_shareable_commercial_status
+    end
+  end
+
   describe "development hierarchy sync" do
     it "copies public development data without replacing the unit broker" do
       development_broker = create(:admin_user)
