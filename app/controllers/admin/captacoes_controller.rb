@@ -85,16 +85,22 @@ module Admin
       @pre_cadastro_published = intake_scope.where(intake_status: "published").count
 
       release_scope = current_tenant.habitations.broker_intakes
-        .where(intake_status: "published")
-        .where(broker_released_at: @period_start.beginning_of_day..@period_end.end_of_day)
+        .where(intake_status: %w[admin_approved internal published])
+        .where("#{release_effective_timestamp_sql} BETWEEN ? AND ?", @period_start.beginning_of_day, @period_end.end_of_day)
       unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
         release_owner_ids = visible_owner_ids(:captacoes)
         release_scope = release_scope.where(admin_user_id: release_owner_ids) unless release_owner_ids.nil?
       end
       @release_ranking = release_scope
-        .left_joins(:admin_user)
-        .group("admin_users.id", "admin_users.name")
-        .select("admin_users.id, COALESCE(admin_users.name, 'Sem corretor') AS name, COUNT(habitations.id) AS releases_count, MAX(habitations.broker_released_at) AS last_release_at")
+        .joins("LEFT JOIN admin_users release_users ON release_users.id = #{release_user_id_sql}")
+        .group("release_users.id", "release_users.name")
+        .select(
+          "release_users.id, COALESCE(release_users.name, 'Sem usuário') AS name, " \
+          "SUM(CASE WHEN habitations.intake_status IN ('admin_approved', 'published') THEN 1 ELSE 0 END) AS site_releases_count, " \
+          "SUM(CASE WHEN habitations.intake_status = 'internal' THEN 1 ELSE 0 END) AS internal_releases_count, " \
+          "COUNT(habitations.id) AS releases_count, " \
+          "MAX(#{release_effective_timestamp_sql}) AS last_release_at"
+        )
         .order("releases_count DESC, last_release_at DESC")
         .limit(15)
 
@@ -248,6 +254,14 @@ module Admin
 
     def effective_capture_timestamp_sql
       "COALESCE(habitations.admin_reviewed_at, habitations.broker_released_at)"
+    end
+
+    def release_effective_timestamp_sql
+      "COALESCE(habitations.broker_released_at, habitations.admin_reviewed_at)"
+    end
+
+    def release_user_id_sql
+      "COALESCE(habitations.admin_reviewed_by_id, habitations.admin_user_id)"
     end
 
     def percentage(value, total)

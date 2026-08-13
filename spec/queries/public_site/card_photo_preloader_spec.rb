@@ -58,6 +58,32 @@ RSpec.describe PublicSite::CardPhotoPreloader do
     expect(record.empreendimento.photos_attachments.size).to eq(5)
   end
 
+  it "hydrates attachment records to avoid reloading the property while rendering image URLs" do
+    habitation = create(:habitation)
+    attach_photos(habitation, 2)
+    record = Habitation.find(habitation.id)
+
+    described_class.new([record], limit: 2).call
+
+    expect(record.photos_attachments).to all(satisfy { |attachment|
+      attachment.association(:record).loaded? && attachment.record.equal?(record)
+    })
+  end
+
+  it "preloads development unit summary used by public cards" do
+    development = create(:habitation, tipo: "Empreendimento", codigo: "DEV-SUMMARY")
+    create(:habitation, codigo_empreendimento: development.codigo, dormitorios_qtd: 2, suites_qtd: 1, vagas_qtd: 1, area_privativa_m2: 80)
+    create(:habitation, codigo_empreendimento: development.codigo, dormitorios_qtd: 4, suites_qtd: 3, vagas_qtd: 2, area_privativa_m2: 145)
+
+    described_class.new([development], limit: 1).call
+
+    expect(development.available_units_count).to eq(2)
+    expect(development.card_dormitorios_text).to eq("2 a 4")
+    expect(development.card_suites_text).to eq("1 a 3")
+    expect(development.card_vagas_text).to eq("1 a 2")
+    expect(development.card_area_text).to eq("80 a 145 m²")
+  end
+
   it "fills the card with later visible photos when the first attachments are hidden" do
     habitation = create(:habitation)
     attach_photos(habitation, 9)

@@ -42,7 +42,10 @@
   <!-- Search Form Container -->
   <div class="relative z-30 shadow-[0_24px_80px_rgba(8,31,48,0.24)]"
        style="<%= search_filter_style %>; background-color: var(--search-filter-bg); border: var(--search-filter-border); border-radius: var(--search-filter-radius); color: var(--search-filter-text); backdrop-filter: blur(var(--search-filter-blur)); -webkit-backdrop-filter: blur(var(--search-filter-blur));">
-    <%= form_with url: habitations_path, method: :get, class: "p-3 sm:p-4" do |f| %>
+    <%= form_with url: habitations_path,
+                  method: :get,
+                  class: "p-3 sm:p-4",
+                  data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do |f| %>
 
       <input type="hidden" name="transaction_type" id="transaction_type_input" value="<%= params[:transaction_type] || 'venda' %>" data-search-tabs-target="input">
       <% selected_characteristics = Array(params[:characteristics]).map(&:to_s) %>

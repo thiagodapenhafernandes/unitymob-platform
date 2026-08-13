@@ -166,11 +166,12 @@ export default class extends Controller {
 
   getIcon(type) {
     const icons = {
-      cidade: '🏙️',
-      bairro: '📍',
-      empreendimento: '🏢'
+      cidade: 'Cidade',
+      bairro: 'Bairro',
+      empreendimento: 'Empreendimento',
+      codigo: 'Código'
     }
-    return icons[type] || '📍'
+    return icons[type] || 'Local'
   }
 
   select(event) {
@@ -179,8 +180,7 @@ export default class extends Controller {
     const url = item.dataset.url
     const type = item.dataset.type
 
-    // Se for empreendimento e tiver URL, redireciona
-    if (type === 'empreendimento' && url) {
+    if (url) {
       window.location.href = url
       return
     }
@@ -209,4 +209,3 @@ export default class extends Controller {
     }
   }
 }
-

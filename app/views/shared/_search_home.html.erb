@@ -1,6 +1,9 @@
 <!-- Search Home Component - V2 Style -->
 <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-  <%= form_with url: habitations_path, method: :get, class: "space-y-4" do |f| %>
+  <%= form_with url: habitations_path,
+                method: :get,
+                class: "space-y-4",
+                data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do |f| %>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       

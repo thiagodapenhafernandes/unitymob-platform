@@ -15,6 +15,7 @@ export default class extends Controller {
     ambienteUrl: String,
     organizeUrl: String,
     shareUrl: String,
+    downloadUrl: String,
     ambientes: Array,
     canEdit: Boolean
   }
@@ -24,6 +25,7 @@ export default class extends Controller {
     this.activePictureIndex = null
     this.selectedPhotoIds = new Set()
     this.selectedPictureIndices = new Set()
+    this.selectedDevelopmentIndices = new Set()
     this.selectedDownloadUrls = new Map()
     this.populateAmbienteOptions()
   }
@@ -31,6 +33,7 @@ export default class extends Controller {
   disconnect() {
     this.selectedPhotoIds.clear()
     this.selectedPictureIndices.clear()
+    this.selectedDevelopmentIndices.clear()
     this.selectedDownloadUrls.clear()
   }
 
@@ -129,44 +132,44 @@ export default class extends Controller {
   toggleSelect(event) {
     const photoId = event.params?.photoId
     const pictureIndex = event.params?.pictureIndex
+    const developmentIndex = event.params?.developmentIndex
     if ((photoId === undefined || photoId === null || photoId === "") &&
-        (pictureIndex === undefined || pictureIndex === null || pictureIndex === "")) return
+        (pictureIndex === undefined || pictureIndex === null || pictureIndex === "") &&
+        (developmentIndex === undefined || developmentIndex === null || developmentIndex === "")) return
 
-    const id = String(photoId ?? pictureIndex)
-    const selection = photoId === undefined || photoId === null || photoId === "" ? this.selectedPictureIndices : this.selectedPhotoIds
+    const kind = this.selectionKind(photoId, pictureIndex, developmentIndex)
+    const id = String(kind === "photo" ? photoId : (kind === "development" ? developmentIndex : pictureIndex))
+    const selection = this.selectionSet(kind)
     const checked = event.currentTarget?.checked ?? !selection.has(id)
 
     if (checked) {
       selection.add(id)
-      if (event.params?.downloadUrl) this.selectedDownloadUrls.set(`${photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo"}:${id}`, event.params.downloadUrl)
+      if (event.params?.downloadUrl) this.selectedDownloadUrls.set(`${kind}:${id}`, event.params.downloadUrl)
     } else {
       selection.delete(id)
-      this.selectedDownloadUrls.delete(`${photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo"}:${id}`)
+      this.selectedDownloadUrls.delete(`${kind}:${id}`)
     }
 
-    this.reflectSelectionState(id, checked, photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo")
+    this.reflectSelectionState(id, checked, kind)
   }
 
   downloadSelected(event) {
     event?.preventDefault?.()
 
-    const urls = Array.from(this.selectedDownloadUrls.values()).filter(Boolean)
-    if (urls.length === 0) {
+    const photoIds = Array.from(this.selectedPhotoIds)
+    const pictureIndices = Array.from(this.selectedPictureIndices)
+    const developmentIndices = Array.from(this.selectedDevelopmentIndices)
+    if (photoIds.length === 0 && pictureIndices.length === 0 && developmentIndices.length === 0) {
       this.toast("Selecione ao menos uma foto para baixar.", "warning")
       return
     }
 
-    urls.forEach((url, index) => {
-      window.setTimeout(() => {
-        const link = document.createElement("a")
-        link.href = url
-        link.download = ""
-        link.rel = "noopener"
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-      }, index * 150)
-    })
+    if (this.hasDownloadUrlValue) {
+      this.submitDownloadForm(photoIds, pictureIndices, developmentIndices)
+      return
+    }
+
+    this.downloadUrlsDirectly()
   }
 
   async openShare(event) {
@@ -240,7 +243,7 @@ export default class extends Controller {
   // --- Estado da seleção -----------------------------------------------------
 
   reflectSelectionState(id, checked, kind = "photo") {
-    const attribute = kind === "picture" ? "data-media-tools-picture-index-param" : "data-media-tools-photo-id-param"
+    const attribute = kind === "picture" ? "data-media-tools-picture-index-param" : (kind === "development" ? "data-media-tools-development-index-param" : "data-media-tools-photo-id-param")
     const input = this.element.querySelector(`[data-action*="media-tools#toggleSelect"][${attribute}="${CSS.escape(id)}"]`)
     input?.closest(".ax-media-grid__item")?.classList?.toggle("is-media-selected", checked)
   }
@@ -249,12 +252,15 @@ export default class extends Controller {
     const container = this.previewContainer(this.photoUploadController())
     const presentPhotos = new Set()
     const presentPictures = new Set()
+    const presentDevelopments = new Set()
 
     container?.querySelectorAll('[data-action*="media-tools#toggleSelect"]').forEach((input) => {
       const photoId = input.getAttribute("data-media-tools-photo-id-param")
       const pictureIndex = input.getAttribute("data-media-tools-picture-index-param")
+      const developmentIndex = input.getAttribute("data-media-tools-development-index-param")
       if (photoId !== null) presentPhotos.add(String(photoId))
       if (pictureIndex !== null) presentPictures.add(String(pictureIndex))
+      if (developmentIndex !== null) presentDevelopments.add(String(developmentIndex))
     })
 
     if (presentPhotos.size > 0) {
@@ -267,14 +273,20 @@ export default class extends Controller {
         if (!presentPictures.has(id)) this.selectedPictureIndices.delete(id)
       })
     }
+    if (presentDevelopments.size > 0) {
+      Array.from(this.selectedDevelopmentIndices).forEach((id) => {
+        if (!presentDevelopments.has(id)) this.selectedDevelopmentIndices.delete(id)
+      })
+    }
 
     this.selectedDownloadUrls.clear()
     container?.querySelectorAll('[data-action*="media-tools#toggleSelect"]').forEach((input) => {
       const photoId = input.getAttribute("data-media-tools-photo-id-param")
       const pictureIndex = input.getAttribute("data-media-tools-picture-index-param")
-      const kind = photoId !== null ? "photo" : "picture"
-      const id = String(photoId !== null ? photoId : pictureIndex)
-      const checked = kind === "photo" ? this.selectedPhotoIds.has(id) : this.selectedPictureIndices.has(id)
+      const developmentIndex = input.getAttribute("data-media-tools-development-index-param")
+      const kind = photoId !== null ? "photo" : (developmentIndex !== null ? "development" : "picture")
+      const id = String(kind === "photo" ? photoId : (kind === "development" ? developmentIndex : pictureIndex))
+      const checked = this.selectionSet(kind).has(id)
       if ("checked" in input) input.checked = checked
       input.closest(".ax-media-grid__item")?.classList?.toggle("is-media-selected", checked)
       if (checked && input.getAttribute("data-media-tools-download-url-param")) {
@@ -430,6 +442,64 @@ export default class extends Controller {
 
   csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content
+  }
+
+  submitDownloadForm(photoIds, pictureIndices, developmentIndices = []) {
+    const form = document.createElement("form")
+    form.method = "post"
+    form.action = this.downloadUrlValue
+    form.target = "_blank"
+    form.dataset.turbo = "false"
+
+    const csrfToken = this.csrfToken()
+    if (csrfToken) this.appendHiddenField(form, "authenticity_token", csrfToken)
+    photoIds.forEach((id) => this.appendHiddenField(form, "habitation[photo_ids][]", id))
+    pictureIndices.forEach((index) => this.appendHiddenField(form, "habitation[picture_indices][]", index))
+    developmentIndices.forEach((index) => this.appendHiddenField(form, "habitation[development_indices][]", index))
+
+    document.body.appendChild(form)
+    form.submit()
+    form.remove()
+  }
+
+  selectionKind(photoId, pictureIndex, developmentIndex) {
+    if (photoId !== undefined && photoId !== null && photoId !== "") return "photo"
+    if (developmentIndex !== undefined && developmentIndex !== null && developmentIndex !== "") return "development"
+    return "picture"
+  }
+
+  selectionSet(kind) {
+    if (kind === "photo") return this.selectedPhotoIds
+    if (kind === "development") return this.selectedDevelopmentIndices
+    return this.selectedPictureIndices
+  }
+
+  appendHiddenField(form, name, value) {
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = name
+    input.value = value
+    form.appendChild(input)
+  }
+
+  downloadUrlsDirectly() {
+    const urls = Array.from(this.selectedDownloadUrls.values()).filter(Boolean)
+    if (urls.length === 0) {
+      this.toast("Selecione ao menos uma foto para baixar.", "warning")
+      return
+    }
+
+    urls.forEach((url, index) => {
+      window.setTimeout(() => {
+        const link = document.createElement("a")
+        link.href = url
+        link.download = ""
+        link.rel = "noopener"
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      }, index * 150)
+    })
   }
 
   setBusy(button, isBusy) {

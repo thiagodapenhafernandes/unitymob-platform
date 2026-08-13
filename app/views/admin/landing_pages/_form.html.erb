@@ -25,6 +25,15 @@
     <%= ax_operational_panel(eyebrow: "Segmentação", title: "Filtros de imóveis", class_name: "tw-mb-4") do %>
         <%= f.fields_for :filter_params do |fp| %>
           <%= ax_field_grid do %>
+            <div class="ax-span-12">
+              <%= ax_text_field(
+                    form: fp,
+                    method: :q,
+                    label: "Código, bairro ou empreendimento",
+                    placeholder: "Digite código, bairro, título ou nome do empreendimento",
+                    data: { action: "input->property-page-preview#refresh" }
+                  ) %>
+            </div>
             <div class="ax-span-6">
               <%= ax_autocomplete_select_field(form: fp, method: :category, label: "Categoria(s)", choices: @property_categories, multiple: true, placeholder: "Selecione categorias", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
             </div>

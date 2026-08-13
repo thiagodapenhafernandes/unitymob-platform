@@ -290,7 +290,7 @@
 
         <%= display_banner('property_detail', container_class: 'w-full my-8') %>
 
-        <% property_features = @habitation.property_features_for_display %>
+        <% property_features = @habitation.public_property_features_for_display %>
         <% leisure_features = @habitation.leisure_features_for_display %>
         <% if property_features.any? || leisure_features.any? %>
           <section class="public-habitations-show__amenities space-y-5">
@@ -363,7 +363,7 @@
         </section>
 
         <% if @public_map.visible? %>
-          <% map_place_label = public_property_map_place_label(@habitation) %>
+          <% map_place_label = public_property_map_place_label(@habitation, exact: !@public_map.approximate?) %>
           <section id="localizacao-imovel" class="public-habitations-show__map-card rounded-2xl bg-white p-6 shadow-sm">
             <div class="public-habitations-show__map-heading">
               <div>
@@ -409,6 +409,15 @@
               <p class="public-habitations-show__map-place mt-3 text-sm font-semibold text-gray-700"><%= map_place_label %></p>
             <% end %>
           </section>
+        <% elsif @public_map.display_mode != "hidden" %>
+          <% fallback_place_label = public_property_map_place_label(@habitation, exact: @public_map.display_mode == "exact") %>
+          <% if fallback_place_label.present? %>
+            <section id="endereco-imovel" class="public-habitations-show__map-card rounded-2xl bg-white p-6 shadow-sm">
+              <h3 class="public-habitations-show__section-title text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Localização</h3>
+              <p class="public-habitations-show__map-subtitle mt-2 text-sm text-gray-500">Endereço do imóvel</p>
+              <p class="public-habitations-show__map-place mt-3 text-sm font-semibold text-gray-700"><%= fallback_place_label %></p>
+            </section>
+          <% end %>
         <% end %>
 
         <%= display_banner('sidebar', container_class: 'mt-6', force_mobile: true) %>

@@ -13,7 +13,10 @@
         </button>
       </div>
       
-      <%= form_with url: habitations_path, method: :get, id: "advanced-filters-form" do |f| %>
+      <%= form_with url: habitations_path,
+                    method: :get,
+                    id: "advanced-filters-form",
+                    data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do |f| %>
         <%= hidden_field_tag :target_price, params[:target_price] %>
 
         <div class="public-habitations-index__drawer-main-filters space-y-3 mb-6">
@@ -43,7 +46,10 @@
   <!-- Horizontal Filter Bar (TOP) -->
   <div class="public-habitations-index__filterbar bg-white border-b border-gray-200 z-30 shadow-sm py-3">
     <div class="container-custom">
-      <%= form_with url: habitations_path, method: :get, class: "public-habitations-index__filter-form flex flex-col gap-3" do |f| %>
+      <%= form_with url: habitations_path,
+                    method: :get,
+                    class: "public-habitations-index__filter-form flex flex-col gap-3",
+                    data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do |f| %>
         
         <!-- Row 1: Main Filters -->
         <div class="public-habitations-index__filter-row flex flex-wrap lg:flex-nowrap items-center gap-3 w-full">

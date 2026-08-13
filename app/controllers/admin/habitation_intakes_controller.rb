@@ -211,7 +211,10 @@ module Admin
         saved = @habitation.save
         raise ActiveRecord::Rollback unless saved
 
-        habitation_media_updater.attach_new_photos(photo_uploads)
+        habitation_media_updater.attach_new_photos(
+          photo_uploads,
+          apply_watermark: @property_setting&.watermark_configured?
+        )
       end
 
       saved
@@ -589,6 +592,8 @@ module Admin
       scope = scope.where.not(categoria: ["Terreno", "Sala Comercial"]) if params[:property_kind] == "residencial"
 
       case params[:status].presence
+      when "all"
+        scope = scope
       when "draft"
         scope = scope.where(intake_status: [nil, "draft"])
       when "completed", "submitted_for_admin_review"
@@ -602,7 +607,7 @@ module Admin
       when "published"
         scope = scope.where(intake_status: "published")
       when nil, ""
-        scope = scope.where(intake_status: "submitted_for_admin_review")
+        scope = default_intake_status_scope(scope)
       else
         scope = scope.where(intake_status: params[:status]) if params[:status].present?
       end
@@ -620,6 +625,12 @@ module Admin
       end
 
       scope
+    end
+
+    def default_intake_status_scope(scope)
+      return scope if can_filter_intakes_by_broker?
+
+      scope.where(intake_status: [nil, "draft", "submitted_for_admin_review", "admin_approved"])
     end
 
     def build_index_dashboard

@@ -1414,7 +1414,9 @@ class Admin::HabitationsController < Admin::BaseController
 
   def filtered_habitations_scope
     scope = current_tenant.habitations.left_outer_joins(:address)
-    scope = if @intake_review == "pending"
+    scope = if @codigo.present?
+              apply_ownership_scope(scope)
+            elsif @intake_review == "pending"
               pending_intake_review_scope(scope)
             else
               catalog_visible_habitations_scope(scope)
@@ -1733,7 +1735,11 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def pending_intake_review_scope(scope)
-    review_statuses = tenant_owner? ? Habitation::PENDING_REVIEW_INTAKE_STATUSES : %w[submitted_for_admin_review]
+    review_statuses = if can_review_intakes?
+                        %w[submitted_for_admin_review admin_approved]
+                      else
+                        %w[draft submitted_for_admin_review admin_approved]
+                      end
     scope = scope.broker_intakes.where(intake_status: review_statuses)
 
     if can_review_intakes?

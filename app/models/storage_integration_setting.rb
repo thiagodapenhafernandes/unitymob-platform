@@ -28,11 +28,14 @@ class StorageIntegrationSetting < ApplicationRecord
   end
 
   def self.current(tenant: Current.tenant)
-    instance(tenant: tenant)
+    raise ArgumentError, "Tenant obrigatório para armazenamento" unless tenant
+
+    cache = Current.storage_integration_settings_cache ||= {}
+    cache[tenant.id] ||= instance(tenant: tenant)
   end
 
   def self.clear_current_cache
-    nil
+    Current.storage_integration_settings_cache = nil
   end
 
   def self.create_from_environment!(tenant:)

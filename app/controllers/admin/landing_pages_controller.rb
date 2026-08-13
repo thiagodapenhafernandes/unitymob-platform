@@ -61,6 +61,7 @@ class Admin::LandingPagesController < Admin::BaseController
 
     render json: {
       count: total_count,
+      items: preview_items(habitations_scope),
       metrics: {
         avg_price: view_context.number_to_currency(avg_price_cents / 100.0),
         min_price: view_context.number_to_currency(min_price_cents / 100.0),
@@ -70,7 +71,7 @@ class Admin::LandingPagesController < Admin::BaseController
     }
   rescue StandardError => e
     logger.error "[LandingPagePreview] tenant_id=#{current_tenant.id} error=#{e.class.name}"
-    render json: { count: 0, metrics: { avg_price: "R$ 0,00", min_price: "R$ 0,00", max_price: "R$ 0,00", distribution: {} } }
+    render json: { count: 0, items: [], metrics: { avg_price: "R$ 0,00", min_price: "R$ 0,00", max_price: "R$ 0,00", distribution: {} } }
   end
 
   private
@@ -82,15 +83,37 @@ class Admin::LandingPagesController < Admin::BaseController
   def landing_page_params
     params.require(:landing_page).permit(
       :title, :slug, :description, :content, :meta_title, :meta_description, :active, 
-      filter_params: [:transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status, category: [], city: [], neighborhood: [], characteristics: []]
+      filter_params: [:q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status, category: [], city: [], neighborhood: [], characteristics: []]
     )
   end
 
   def preview_params
     params.permit(
-      :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status,
+      :q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status,
       category: [], city: [], neighborhood: [], characteristics: []
     )
+  end
+
+  def preview_items(scope)
+    scope.unscope(:order).includes(:address).order(updated_at: :desc).limit(8).map do |habitation|
+      {
+        code: habitation.codigo.to_s,
+        title: habitation.display_title,
+        development: habitation.nome_empreendimento.to_s.presence,
+        location: [habitation.public_neighborhood, habitation.cidade].compact_blank.join(" - "),
+        price: preview_price_label(habitation)
+      }
+    end
+  end
+
+  def preview_price_label(habitation)
+    if habitation.valor_venda_cents.to_i.positive?
+      view_context.number_to_currency(habitation.valor_venda_cents.to_i / 100.0)
+    elsif habitation.valor_locacao_cents.to_i.positive?
+      "#{view_context.number_to_currency(habitation.valor_locacao_cents.to_i / 100.0)}/mês"
+    else
+      "Sob consulta"
+    end
   end
 
   def load_filter_options

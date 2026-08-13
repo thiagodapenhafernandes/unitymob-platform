@@ -17,8 +17,8 @@
   catalog_heading = ["REF: #{imovel.codigo}", catalog_heading_subject].compact_blank.join(" · ")
   has_photo = image_urls.any? || imovel.has_any_photo?
   publication_channels = admin_habitation_publication_channels(imovel)
-  captador_name = imovel.primary_captador_name
-  captador_label = captador_name.presence || "Não informado"
+  captador_summary = admin_habitation_captador_summary(imovel)
+  captador_label = captador_summary[:label]
   owner_contact = admin_habitation_catalog_owner_contact(imovel)
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
   seconds_since_update = [Time.current - data_referencia, 0].max
@@ -170,7 +170,7 @@
       <% if development_name.present? %>
         <span><i class="bi bi-building"></i> Empreendimento: <strong><%= development_name %></strong></span>
       <% end %>
-      <span><i class="bi bi-person-badge"></i> Captador: <strong><%= captador_label %></strong></span>
+      <span title="<%= captador_summary[:title] %>"><i class="bi bi-person-badge"></i> Captador: <strong><%= captador_label %></strong></span>
       <% if owner_contact.present? %>
         <span class="ax-property-card__owner-contact">
           <i class="bi bi-person-lines-fill"></i>

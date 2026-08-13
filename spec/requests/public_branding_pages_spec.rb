@@ -211,7 +211,7 @@ RSpec.describe "Public branding pages", type: :request do
     expect(response.body).not_to include("body { display: none; }")
   end
 
-  it "renderiza busca global por drawer nas páginas públicas" do
+  it "renderiza busca global por drawer quando desktop e mobile usam botão flutuante" do
     HomeSetting.instance(tenant: Tenant.default).update!(
       search_filter_display_mode: "floating",
       mobile_search_filter_display_mode: "floating"
@@ -220,25 +220,41 @@ RSpec.describe "Public branding pages", type: :request do
     get root_path
 
     html = Nokogiri::HTML(response.body)
+    wrapper = html.at_css(".public-global-search")
     button = html.at_css(".public-global-search__button")
     drawer = html.at_css("#public-global-search-drawer")
     form = drawer.at_css("form")
 
     expect(response).to have_http_status(:ok)
+    expect(html.at_css("#hero form")).to be_nil
+    expect(wrapper["class"]).not_to include("public-global-search--desktop-only")
+    expect(wrapper["class"]).not_to include("public-global-search--mobile-only")
     expect(button.text.squish).to eq("Filtrar imóveis")
     expect(button["data-action"]).to include("global-search-drawer#open")
     expect(drawer["aria-hidden"]).to eq("true")
     expect(form["action"]).to eq(habitations_path)
+    expect(form["data-controller"]).to include("public-search-url")
+    expect(form["data-action"]).to include("submit->public-search-url#submit")
     expect(form.at_css('input[name="transaction_type"]')["value"]).to eq("venda")
-    expect(form.at_css('input[name="search"]')).to be_present
+    search_field = form.at_css('.public-global-search__field--autocomplete input[name="search"]')
+    expect(search_field).to be_present
+    expect(search_field["data-action"]).to include("input->autocomplete#search")
+    expect(form.at_css('[data-autocomplete-target="results"]')).to be_present
     expect(form.at_css('input[name="characteristics[]"][value="frente_mar"]')).to be_present
-    expect(form.css('select[name="min_bedrooms"] option').map(&:text)).to eq(["Todos", "1", "2", "3", "4+"])
-    expect(form.at_css(".public-global-search__advanced")).to be_present
-    expect(form.at_css(".public-global-search__advanced-toggle")["aria-expanded"]).to eq("false")
-    expect(form.at_css("#public-global-search-advanced-panel")).to be_present
-    expect(form.text).to include("Características do imóvel", "Características do condomínio")
+    expect(form.css('input[type="radio"][name="min_bedrooms"]').map { |input| input["value"] }).to eq(["1", "2", "3", "4", ""])
+    expect(form.css('input[type="radio"][name="min_suites"]').map { |input| input["value"] }).to eq(["1", "2", "3", "4", ""])
+    expect(form.css('input[type="radio"][name="min_parking"]').map { |input| input["value"] }).to eq(["1", "2", "3", "4", ""])
+    expect(form.at_css(".public-global-search__highlights")).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="opportunity"]')).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="lancamento"]')).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="na_planta"]')).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="pronto"]')).to be_present
+    expect(form.at_css(".public-global-search__features")).to be_present
+    expect(form.text).to include("Características")
     expect(form.at_css('input[name="characteristics[]"][value="sacada"]')).to be_present
+    expect(form.at_css('input[name="characteristics[]"][value="cozinha_gourmet_churrasqueira"]')).to be_present
     expect(form.at_css('input[name="characteristics[]"][value="piscina"]')).to be_present
+    expect(form.at_css(".public-global-search__advanced")).not_to be_present
   end
 
   it "renderiza filtro no hero e oculta drawer quando configurado" do
@@ -270,6 +286,26 @@ RSpec.describe "Public branding pages", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(hero_search.at_css("form")).to be_present
+    expect(drawer["class"]).to include("public-global-search--mobile-only")
+    expect(drawer.at_css(".public-global-search__button").text.squish).to eq("Filtrar imóveis")
+  end
+
+  it "permite filtro no hero e botão flutuante juntos no mobile" do
+    HomeSetting.instance(tenant: Tenant.default).update!(
+      search_filter_display_mode: "hero",
+      mobile_search_filter_display_mode: "both"
+    )
+
+    get root_path
+
+    html = Nokogiri::HTML(response.body)
+    hero_search = html.at_css("#hero .relative.z-20")
+    drawer = html.at_css(".public-global-search")
+
+    expect(response).to have_http_status(:ok)
+    expect(hero_search.at_css("form")).to be_present
+    expect(hero_search["class"]).not_to include("public-hero-search--desktop-only")
+    expect(hero_search["class"]).not_to include("public-hero-search--mobile-only")
     expect(drawer["class"]).to include("public-global-search--mobile-only")
     expect(drawer.at_css(".public-global-search__button").text.squish).to eq("Filtrar imóveis")
   end

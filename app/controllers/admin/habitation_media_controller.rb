@@ -1,3 +1,7 @@
+require "open-uri"
+require "ipaddr"
+require "resolv"
+
 class Admin::HabitationMediaController < Admin::BaseController
   RETURN_PARAM_DENYLIST = %w[
     controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
@@ -8,9 +12,9 @@ class Admin::HabitationMediaController < Admin::BaseController
   before_action :set_habitation
   before_action :scope_habitation_by_permission
   before_action :load_property_setting
-  before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo ambiente organize share]
+  before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:abrir_organizador_midia") }, only: %i[show modal]
-  before_action -> { authorize_profile_field!("photos") }, only: %i[upload reorder visibility destroy_photo ambiente organize share]
+  before_action -> { authorize_profile_field!("photos") }, only: %i[upload reorder visibility destroy_photo ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:gerenciar_ordem_fotos") }, only: :reorder
   before_action -> { authorize_profile_action!("acao:alterar_visibilidade_fotos") }, only: :visibility
   before_action -> { authorize_profile_action!("acao:remover_foto") }, only: :destroy_photo
@@ -248,6 +252,30 @@ class Admin::HabitationMediaController < Admin::BaseController
     }
   end
 
+  # POST /admin/habitations/:habitation_id/media/download
+  # Baixa as fotos selecionadas em um único ZIP para evitar abertura em abas.
+  def download
+    return render_media_forbidden unless can_manage_media_tools?
+
+    entries = selected_download_entries(
+      photo_ids: share_photo_ids_param,
+      picture_indices: share_picture_indices_param,
+      development_indices: development_picture_indices_param
+    )
+
+    if entries.blank?
+      redirect_to admin_habitation_media_path(@habitation.id), alert: "Selecione ao menos uma foto disponível para baixar."
+      return
+    end
+
+    send_data(
+      Downloads::ZipArchive.build(entries),
+      filename: "fotos-imovel-#{@habitation.codigo.presence || @habitation.id}.zip",
+      type: "application/zip",
+      disposition: "attachment"
+    )
+  end
+
   private
 
   def authorize_media_management!
@@ -315,6 +343,16 @@ class Admin::HabitationMediaController < Admin::BaseController
       .uniq
   end
 
+  def development_picture_indices_param
+    raw = params.dig(:habitation, :development_indices)
+    Array(raw)
+      .flat_map { |id| id.to_s.split(",") }
+      .map(&:strip)
+      .select { |id| id.match?(/\A\d+\z/) }
+      .map(&:to_i)
+      .uniq
+  end
+
   def share_picture_urls_for(indices)
     return [] if indices.blank?
 
@@ -328,6 +366,93 @@ class Admin::HabitationMediaController < Admin::BaseController
 
       Storage::PublicCdnImageUrl.resolve(picture).presence
     end.uniq
+  end
+
+  def selected_download_entries(photo_ids:, picture_indices:, development_indices: [])
+    local_photo_download_entries(photo_ids) +
+      external_picture_download_entries(picture_indices) +
+      development_picture_download_entries(development_indices)
+  end
+
+  def local_photo_download_entries(photo_ids)
+    return [] if photo_ids.blank?
+
+    @habitation.photos.attachments.includes(:blob).where(id: photo_ids).filter_map do |attachment|
+      next unless attachment.blob&.persisted?
+
+      {
+        name: download_entry_name(attachment.filename.to_s, fallback: "foto-#{attachment.id}.jpg"),
+        data: attachment.blob.download
+      }
+    end
+  end
+
+  def external_picture_download_entries(indices)
+    share_picture_urls_for(indices).each_with_index.filter_map do |url, index|
+      data = download_external_picture(url)
+      next if data.blank?
+
+      {
+        name: download_entry_name(File.basename(URI.parse(url).path), fallback: "foto-externa-#{index + 1}.jpg"),
+        data: data
+      }
+    end
+  end
+
+  def development_picture_download_entries(indices)
+    return [] if indices.blank?
+
+    indexed_sources = Habitations::MediaGallery.new(@habitation)
+      .development_media_sources
+      .each_with_index
+      .to_h { |source, index| [index, source] }
+
+    indices.filter_map do |index|
+      source = indexed_sources[index]
+      url = source.is_a?(Hash) ? helpers.public_image_url(source) : source.to_s
+      data = download_external_picture(url)
+      next if data.blank?
+
+      {
+        name: download_entry_name(File.basename(URI.parse(url).path), fallback: "foto-empreendimento-#{index + 1}.jpg"),
+        data: data
+      }
+    end
+  end
+
+  def download_external_picture(url)
+    uri = URI.parse(url.to_s)
+    return unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
+    return if private_download_host?(uri.host)
+
+    URI.open(uri, open_timeout: 5, read_timeout: 15) do |io|
+      data = String.new.b
+      while (chunk = io.read(64.kilobytes))
+        data << chunk
+        break if data.bytesize > 40.megabytes
+      end
+      data.bytesize <= 40.megabytes ? data : nil
+    end
+  rescue StandardError => e
+    Rails.logger.warn("[media_download] habitation_id=#{@habitation.id} url=#{url} error=#{e.class}: #{e.message}")
+    nil
+  end
+
+  def private_download_host?(host)
+    return true if host.blank?
+
+    Resolv.getaddresses(host).any? do |address|
+      ip = IPAddr.new(address)
+      ip.loopback? || ip.private? || ip.link_local?
+    end
+  rescue Resolv::ResolvError, IPAddr::InvalidAddressError
+    true
+  end
+
+  def download_entry_name(name, fallback:)
+    sanitized = File.basename(name.to_s).presence
+    sanitized = fallback if sanitized.blank? || sanitized == "."
+    sanitized
   end
 
   def habitation_media_params

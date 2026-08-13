@@ -31,7 +31,8 @@
           <% image = property.primary_image_source || property.primary_image_url %>
           <%= link_to public_habitation_detail_path(property), class: "group relative block rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all min-h-[320px]" do %>
             <% if image.present? %>
-              <%= image_tag public_image_url(image, resize_to_fill: [560, 640]),
+              <% image_source = public_image_url(image, resize_to_fill: [560, 640], force_variant: true, representation_proxy: true).presence || public_image_url(image).presence || image %>
+              <%= image_tag image_source,
                     alt: property.display_title,
                     class: "absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300",
                     loading: "lazy",

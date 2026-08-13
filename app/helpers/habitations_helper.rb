@@ -89,8 +89,26 @@ module HabitationsHelper
     [lat, lng]
   end
 
-  def public_property_map_place_label(property)
+  def public_property_map_place_label(property, exact: false)
+    return public_property_area_label(property) unless exact
+
+    public_property_address_label(property).presence || public_property_area_label(property)
+  end
+
+  def public_property_area_label(property)
     [property&.public_neighborhood, property&.cidade, property&.uf].compact_blank.join(" - ")
+  end
+
+  def public_property_address_label(property)
+    address = property&.address
+    street = address&.logradouro.presence || property&.endereco
+    number = address&.numero.presence || property&.numero
+    neighborhood = address&.bairro_comercial.presence || address&.bairro.presence || property&.public_neighborhood
+    city = address&.cidade.presence || property&.cidade
+    state = address&.uf.presence || property&.uf
+    street_line = [street, number].compact_blank.join(", ")
+
+    [street_line, neighborhood, city, state].compact_blank.join(" - ")
   end
 
   def public_property_media_url(property)

@@ -24,7 +24,7 @@
                   <%= ax_file_upload_button(
                         label: "Adicionar arquivos",
                         input_id: "habitation_fichas_cadastro",
-                        accept: "image/*,application/pdf",
+                        accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt",
                         label_data: { internal_document_upload_label: true }
                       ) %>
                 <% else %>
@@ -33,7 +33,7 @@
                         method: :fichas_cadastro,
                         label: "Adicionar arquivos",
                         input_id: "habitation_fichas_cadastro",
-                        accept: "image/*,application/pdf"
+                        accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt"
                       ) %>
                 <% end %>
                 <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_fichas_cadastro"></div>
@@ -92,7 +92,7 @@
                   <%= ax_file_upload_button(
                         label: "Adicionar arquivos",
                         input_id: "habitation_autorizacoes_venda",
-                        accept: "image/*,application/pdf",
+                        accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt",
                         label_data: { internal_document_upload_label: true }
                       ) %>
                 <% else %>
@@ -101,7 +101,7 @@
                         method: :autorizacoes_venda,
                         label: "Adicionar arquivos",
                         input_id: "habitation_autorizacoes_venda",
-                        accept: "image/*,application/pdf"
+                        accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt"
                       ) %>
                 <% end %>
                 <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_autorizacoes_venda"></div>
@@ -131,7 +131,7 @@
                   <% end %>
                   <%= ax_attachment_item(
                         attachment:,
-                        url: rails_blob_path(attachment, disposition: "attachment"),
+                        url: rails_blob_path(attachment, disposition: "inline"),
                         meta: number_to_human_size(attachment.byte_size),
                         image_preview: true,
                         actions: attachment_actions

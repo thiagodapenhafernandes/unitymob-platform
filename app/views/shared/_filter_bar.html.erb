@@ -1,5 +1,8 @@
 <div class="filter-bar-wrapper">
-  <%= form_with url: habitations_path, method: :get, class: "filter-bar", data: { controller: "filters", turbo_frame: "properties-list" } do |f| %>
+  <%= form_with url: habitations_path,
+                method: :get,
+                class: "filter-bar",
+                data: { controller: "public-search-url filters", action: "submit->public-search-url#submit", turbo_frame: "properties-list" } do |f| %>
     <div class="filter-bar-inner">
       <!-- Localização -->
       <div class="filter-dropdown">
