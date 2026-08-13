@@ -8783,6 +8783,64 @@ html[data-admin-theme="dark"] .home-settings-slide-thumb {
 
 .landing-page-preview__empty i { font-size: 22px; }
 
+.landing-page-preview__matches {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.landing-page-preview__match-list {
+  display: grid;
+  gap: 7px;
+}
+
+.landing-page-preview__match {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.landing-page-preview__match strong,
+.landing-page-preview__match span,
+.landing-page-preview__match small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-page-preview__match strong {
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.landing-page-preview__match span,
+.landing-page-preview__match small {
+  color: var(--admin-text-muted);
+  font-size: 10.5px;
+}
+
+.landing-page-preview__match-side {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  max-width: 112px;
+}
+
+.landing-page-preview__match b {
+  color: var(--admin-primary);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 [data-admin-theme="dark"] .landing-page-preview__loading { color: var(--ax-dark-text-muted); }
 [data-admin-theme="dark"] .landing-page-preview__actions { border-color: var(--ax-dark-border-soft); }
 [data-admin-theme="dark"] .landing-page-preview__hero,
@@ -8796,9 +8854,16 @@ html[data-admin-theme="dark"] .home-settings-slide-thumb {
 [data-admin-theme="dark"] .landing-page-preview__stat-value--compact span,
 [data-admin-theme="dark"] .landing-page-preview__empty { color: var(--ax-dark-text-muted); }
 [data-admin-theme="dark"] .landing-page-preview__stat-value,
-[data-admin-theme="dark"] .landing-page-preview__distribution-label { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .landing-page-preview__distribution-label,
+[data-admin-theme="dark"] .landing-page-preview__match strong { color: var(--ax-dark-text); }
 [data-admin-theme="dark"] .landing-page-preview__progress,
 [data-admin-theme="dark"] .landing-page-preview__progress::-webkit-progress-bar { background: var(--ax-dark-border-soft); }
+[data-admin-theme="dark"] .landing-page-preview__match {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+}
+[data-admin-theme="dark"] .landing-page-preview__match span,
+[data-admin-theme="dark"] .landing-page-preview__match small { color: var(--ax-dark-text-muted); }
 
 @media (max-width: 900px) {
   .landing-page-preview { position: static; }

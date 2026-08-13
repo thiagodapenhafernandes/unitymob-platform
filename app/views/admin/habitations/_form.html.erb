@@ -397,7 +397,7 @@
       <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
       <%= file_field_tag "habitation[#{association}][]",
                          multiple: true,
-                         accept: "image/*,application/pdf",
+                         accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt",
                          id: input_id,
                          class: "ax-file-upload__input",
                          data: {

@@ -725,6 +725,34 @@ RSpec.describe "Habitation details", type: :request do
       expect(document.at_css('[data-controller~="public-property-map"]')).to be_nil
     end
 
+    it "mantém a localização textual quando o mapa não tem coordenadas mas não está oculto" do
+      habitation = create(
+        :habitation,
+        codigo: "MAP-ADDRESS",
+        slug: "endereco-sem-mapa",
+        public_map_display_mode: "exact",
+        address_attributes: {
+          logradouro: "Avenida Brasil",
+          numero: "1000",
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC",
+          latitude: nil,
+          longitude: nil
+        }
+      )
+      habitation.update_columns(latitude: nil, longitude: nil)
+
+      get habitation_path(habitation)
+
+      document = Nokogiri::HTML(response.body)
+      location_card = document.at_css("#endereco-imovel")
+
+      expect(response).to have_http_status(:ok)
+      expect(document.at_css("#localizacao-imovel")).to be_nil
+      expect(location_card.text.squish).to include("Avenida Brasil, 1000 - Centro - Balneário Camboriú - SC")
+    end
+
     it "exibe condições comerciais compactas junto ao preço" do
       habitation = create(
         :habitation,
@@ -741,6 +769,26 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Financiamento", "Até 36 parcelas", "Permuta", "Valor promocional")
+    end
+
+    it "não mistura condições comerciais no bloco público de características" do
+      habitation = create(
+        :habitation,
+        codigo: "FEATURE-COMMERCIAL",
+        slug: "caracteristicas-comerciais",
+        aceita_permuta_flag: true,
+        caracteristicas: ["Aceita Permuta", "Churrasqueira"]
+      )
+
+      get habitation_path(habitation)
+
+      document = Nokogiri::HTML(response.body)
+      amenities = document.css(".public-habitations-show__amenities").text.squish
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Permuta")
+      expect(amenities).to include("Churrasqueira")
+      expect(amenities).not_to include("Aceita Permuta")
     end
   end
 
@@ -1073,6 +1121,56 @@ RSpec.describe "Habitation details", type: :request do
       expect(codes).not_to include("9102", "9103")
     end
 
+    it "accepts friendly public search urls while keeping the query-string listing compatible" do
+      matching = create(
+        :habitation,
+        codigo: "9151",
+        categoria: "Apartamento",
+        valor_venda_cents: 1_000_000_00,
+        valor_locacao_cents: 0,
+        vista_frente_mar_flag: true,
+        mobiliado_flag: true
+      ).tap { |habitation| habitation.address.update!(cidade: "Balneário Camboriú", bairro: "Centro") }
+      create(
+        :habitation,
+        codigo: "9152",
+        categoria: "Casa",
+        valor_venda_cents: 1_000_000_00,
+        valor_locacao_cents: 0,
+        vista_frente_mar_flag: true,
+        mobiliado_flag: true
+      ).tap { |habitation| habitation.address.update!(cidade: "Balneário Camboriú", bairro: "Centro") }
+      create(
+        :habitation,
+        codigo: "9153",
+        categoria: "Apartamento",
+        valor_venda_cents: 1_000_000_00,
+        valor_locacao_cents: 0,
+        vista_frente_mar_flag: true,
+        mobiliado_flag: true
+      ).tap { |habitation| habitation.address.update!(cidade: "Blumenau", bairro: "Centro") }
+
+      get "/imoveis/venda/apartamento/centro-balneario-camboriu/frente-mar+mobiliado",
+          params: { format: :json }
+
+      expect(response).to have_http_status(:ok)
+      codes = JSON.parse(response.body).map { |item| item.fetch("codigo") }
+      expect(codes).to include(matching.codigo)
+      expect(codes).not_to include("9152", "9153")
+
+      get habitations_path(
+        category: ["Apartamento"],
+        city: ["Centro - Balneário Camboriú"],
+        transaction_type: "venda",
+        characteristics: ["frente_mar", "mobiliado"],
+        format: :json
+      )
+
+      expect(response).to have_http_status(:ok)
+      legacy_codes = JSON.parse(response.body).map { |item| item.fetch("codigo") }
+      expect(legacy_codes).to include(matching.codigo)
+    end
+
     it "accepts legacy home search param names" do
       matching = create(
         :habitation,
@@ -1159,6 +1257,59 @@ RSpec.describe "Habitation details", type: :request do
       expect(codes).to include(matching.codigo)
       expect(codes).not_to include("9402")
       expect(codes).not_to include("9403")
+    end
+  end
+
+  describe "GET /imoveis/autocomplete" do
+    it "retorna código de imóvel público com URL direta" do
+      habitation = create(
+        :habitation,
+        codigo: "AUTO-COD-123",
+        slug: "apartamento-auto-cod-123",
+        titulo_anuncio: "Apartamento com vista para o mar"
+      )
+
+      get autocomplete_habitations_path(q: "AUTO-COD")
+
+      expect(response).to have_http_status(:ok)
+      item = JSON.parse(response.body).find { |entry| entry.fetch("type") == "codigo" }
+      expect(item).to include(
+        "label" => "AUTO-COD-123 - Apartamento com vista para o mar",
+        "value" => habitation.codigo,
+        "type" => "codigo",
+        "url" => habitation_path(habitation)
+      )
+    end
+
+    it "retorna empreendimento público com URL direta" do
+      development = create(
+        :habitation,
+        codigo: "DEV-YACHT-123",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Yachthouse By Pininfarina",
+        slug: "yachthouse-by-pininfarina",
+        valor_venda_cents: 0,
+        pictures: [],
+        fotos_empreendimento: [{ "url" => public_photo_url("development-yacht.jpg") }]
+      )
+      create(
+        :habitation,
+        codigo: "UNIT-YACHT-123",
+        codigo_empreendimento: development.codigo,
+        nome_empreendimento: development.nome_empreendimento,
+        valor_venda_cents: 1_500_000_00
+      )
+
+      get autocomplete_habitations_path(q: "Yach")
+
+      expect(response).to have_http_status(:ok)
+      item = JSON.parse(response.body).find { |entry| entry.fetch("type") == "empreendimento" }
+      expect(item).to include(
+        "label" => "Yachthouse By Pininfarina (Empreendimento)",
+        "value" => development.nome_empreendimento,
+        "type" => "empreendimento",
+        "url" => empreendimento_details_path(development)
+      )
     end
   end
 end

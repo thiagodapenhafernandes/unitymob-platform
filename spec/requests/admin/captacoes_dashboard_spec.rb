@@ -7,6 +7,7 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
   let(:admin) { create(:admin_user, :admin) }
 
   before do
+    ActionController::Base.allow_forgery_protection = false
     host! "localhost"
     sign_in admin
   end
@@ -52,7 +53,10 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     release_ranking = page.at_css(".capt-release-ranking-card")&.text&.squish
     expect(locacao_table).to include("Captação - Interno/Site", "Captação com Adm - Interno/Site", "Total Locação")
     expect(locacao_row).to include(dashboard_admin.name, "R$ 9.000")
-    expect(release_ranking).to include("Liberações por corretor", dashboard_admin.name, "2")
+    expect(release_ranking).to include("Liberações por usuário", "Para site", "Internas", "Total", dashboard_admin.name)
+    release_row = page.css(".capt-release-ranking-card tbody tr").find { |row| row.text.include?(dashboard_admin.name) }
+    release_cells = release_row.css("td").map { |cell| cell.text.squish }
+    expect(release_cells[2..4]).to eq(%w[4 2 6])
     locacao_stacked_bars = page.css("#tab-locacao .capt-ranking-row").find { |row| row.text.include?(dashboard_admin.name) }.css(".capt-ranking-stacked")
     primary_segments = locacao_stacked_bars.first.css(".capt-ranking-stacked__segment-label").map { |segment| segment.text.squish }
     secondary_segments = locacao_stacked_bars.last.css(".capt-ranking-stacked__segment-label").map { |segment| segment.text.squish }

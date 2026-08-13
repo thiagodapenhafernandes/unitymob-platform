@@ -3,7 +3,10 @@ require "rails_helper"
 RSpec.describe "Admin user governance", type: :request do
   include Devise::Test::IntegrationHelpers
 
-  before { host! "localhost" }
+  before do
+    ActionController::Base.allow_forgery_protection = false
+    host! "localhost"
+  end
 
   def create_vertical_profile(tenant, name, position, permissions = {})
     Profile.create!(

@@ -10,6 +10,7 @@ module PublicSite
     def call
       return records if records.empty? || limit <= 0
 
+      preload_development_unit_summaries
       attachments_by_record = candidate_attachments.group_by(&:record_id)
       records.each do |record|
         load_selected_attachments(record, attachments_by_record.fetch(record.id, []))
@@ -85,9 +86,46 @@ module PublicSite
         .sort_by { |attachment| [priority_positions.fetch(attachment.id, priority_ids.length), attachment.id] }
         .first(limit)
 
+      selected.each do |attachment|
+        record_association = attachment.association(:record)
+        record_association.target = record
+        record_association.loaded!
+      end
+
       association = record.association(:photos_attachments)
       association.target = selected
       association.loaded!
+    end
+
+    def preload_development_unit_summaries
+      developments = records.select(&:empreendimento?)
+      return if developments.empty?
+
+      keys = developments.map { |record| [record.tenant_id, record.codigo] }.select { |_tenant_id, codigo| codigo.present? }
+      return if keys.empty?
+
+      summaries = Hash.new { |hash, key| hash[key] = empty_unit_summary }
+
+      Habitation
+        .where(tenant_id: keys.map(&:first).uniq, codigo_empreendimento: keys.map(&:last).uniq)
+        .active
+        .pluck(:tenant_id, :codigo_empreendimento, :dormitorios_qtd, :suites_qtd, :vagas_qtd, :area_privativa_m2)
+        .each do |tenant_id, codigo_empreendimento, dormitorios, suites, vagas, area|
+          summary = summaries[[tenant_id, codigo_empreendimento]]
+          summary[:count] += 1
+          summary[:dormitorios] << dormitorios.to_i if dormitorios.to_i.positive?
+          summary[:suites] << suites.to_i if suites.to_i.positive?
+          summary[:vagas] << vagas.to_i if vagas.to_i.positive?
+          summary[:areas] << area.to_f if area.to_f.positive?
+        end
+
+      developments.each do |record|
+        record.public_card_unit_summary = summaries[[record.tenant_id, record.codigo]]
+      end
+    end
+
+    def empty_unit_summary
+      { count: 0, dormitorios: [], suites: [], vagas: [], areas: [] }
     end
 
     def normalized_ids(values)

@@ -64,6 +64,22 @@ RSpec.describe HomeSetting, type: :model do
     expect(setting.floating_search_filter_visibility_class).to eq("public-global-search--mobile-only")
   end
 
+  it "permite exibir hero e botão flutuante juntos no mobile" do
+    setting = described_class.new(
+      tenant: Tenant.default,
+      hero_title: "Hero",
+      hero_subtitle: "Sub",
+      search_filter_display_mode: "hero",
+      mobile_search_filter_display_mode: "both"
+    )
+
+    expect(setting).to be_valid
+    expect(setting.mobile_search_filter_in_hero?).to be(true)
+    expect(setting.mobile_floating_search_filter?).to be(true)
+    expect(setting.hero_search_filter_visibility_class).to be_nil
+    expect(setting.floating_search_filter_visibility_class).to eq("public-global-search--mobile-only")
+  end
+
   it "rejeita modo inválido de exibição do filtro público" do
     setting = described_class.new(
       tenant: Tenant.default,

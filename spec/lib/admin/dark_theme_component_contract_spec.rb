@@ -3941,7 +3941,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(edit_view).to include("ax_workspace_heading(", "render 'form'")
     expect(form_view.scan(/ax_operational_panel\(/).size).to eq(3)
     expect(form_view).to include("ax_error_summary(", "ax_input_group(", "ax_field_group(", "ax_chip_grid do", "ax_toggle_chip(", "ax_switch_field(", "ax_form_actions(")
-    expect(form_view.scan(/ax_text_field\(/).size).to eq(6)
+    expect(form_view.scan(/ax_text_field\(/).size).to eq(7)
     expect(form_view.scan(/ax_autocomplete_select_field\(/).size).to eq(3)
     expect(form_view.scan(/ax_select_field\(/).size).to eq(1)
     expect(form_view.scan(/ax_number_field\(/).size).to eq(4)
@@ -3950,9 +3950,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(form_view.scan(/f\.text_field/).size).to eq(1)
     expect(form_view).to include('controller: "property-page-preview"', 'data-property-page-preview-target="count"', 'data-property-page-preview-target="results"', 'aria-live="polite"', 'aria-busy="true"')
     expect(form_view).to include('name: "landing_page[filter_params][characteristics][]"', "include_hidden: false", 'change->property-page-preview#refresh', "@property_categories", "@property_cities", "@property_neighborhoods")
-    expect(stylesheet).to include(".landing-page-preview", ".landing-page-preview__count", ".landing-page-preview__loading", ".landing-page-preview__actions", ".landing-page-preview__hero", ".landing-page-preview__stat", ".landing-page-preview__progress", ".landing-page-preview__empty")
+    expect(stylesheet).to include(".landing-page-preview", ".landing-page-preview__count", ".landing-page-preview__loading", ".landing-page-preview__actions", ".landing-page-preview__hero", ".landing-page-preview__stat", ".landing-page-preview__progress", ".landing-page-preview__empty", ".landing-page-preview__match")
     expect(stylesheet).to match(/@media \(max-width: 900px\)[\s\S]*?\.landing-page-preview \{ position: static; \}/)
-    expect(property_page_preview_controller).to include('new AbortController()', 'escapeHtml(value)', 'class="landing-page-preview__progress"', 'role="alert"', 'this.countTarget.hidden = false', 'this.resultsTarget.setAttribute("aria-busy", "false")')
+    expect(property_page_preview_controller).to include('new AbortController()', 'escapeHtml(value)', 'renderItem(item)', 'class="landing-page-preview__progress"', 'role="alert"', 'this.countTarget.hidden = false', 'this.resultsTarget.setAttribute("aria-busy", "false")')
     expect(property_page_preview_controller).not_to include("console.log", "alert alert-danger", "text-center py-5", "preview-stat-card", 'style="')
   end
 

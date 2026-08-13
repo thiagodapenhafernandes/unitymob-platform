@@ -51,6 +51,56 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("ax-media-modal__footer-feedback")
     expect(response.body).to include("data-photo-upload-feedback")
     expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
+    expect(response.body).to include(download_admin_habitation_media_path(habitation))
+  end
+
+  it "baixa fotos selecionadas em um arquivo zip" do
+    habitation = create_media_habitation
+    habitation.photos.attach(io: StringIO.new("foto um"), filename: "um.jpg", content_type: "image/jpeg")
+    habitation.photos.attach(io: StringIO.new("foto dois"), filename: "dois.jpg", content_type: "image/jpeg")
+    attachment_ids = habitation.photos.attachments.order(:id).pluck(:id)
+
+    post download_admin_habitation_media_path(habitation), params: {
+      habitation: {
+        photo_ids: attachment_ids
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/zip")
+    expect(response.headers["Content-Disposition"]).to include("attachment")
+    expect(response.headers["Content-Disposition"]).to include("fotos-imovel-#{habitation.codigo}")
+    expect(response.body.bytes.first(2).pack("C*")).to eq("PK")
+    expect(response.body).to include("um.jpg")
+    expect(response.body).to include("dois.jpg")
+  end
+
+  it "baixa fotos herdadas do empreendimento no mesmo fluxo de zip" do
+    development = create_media_habitation(
+      codigo: "DEV-DOWNLOAD-#{SecureRandom.hex(6)}",
+      tipo: "Empreendimento",
+      pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/serenity-externa.jpg" }]
+    )
+    unit = create_media_habitation(
+      codigo_empreendimento: development.codigo,
+      use_development_photos_flag: true,
+      pictures: []
+    )
+    allow_any_instance_of(Admin::HabitationMediaController)
+      .to receive(:download_external_picture)
+      .and_return("foto empreendimento")
+
+    post download_admin_habitation_media_path(unit), params: {
+      habitation: {
+        development_indices: ["0"]
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/zip")
+    expect(response.body.bytes.first(2).pack("C*")).to eq("PK")
+    expect(response.body).to include("serenity-externa.jpg")
+    expect(response.body).to include("foto empreendimento")
   end
 
   it "salva mídia por JSON e devolve payload para manter o modal na tela" do
@@ -160,32 +210,30 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
   end
 
   it "agenda marca d'água no upload assíncrono quando o seletor está ativo" do
-    previous_queue_adapter = ActiveJob::Base.queue_adapter
-    ActiveJob::Base.queue_adapter = :test
-    clear_enqueued_jobs
-
     habitation = create_media_habitation
-    setting = PropertySetting.instance
+    setting = PropertySetting.instance(tenant: habitation.tenant)
     setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
     uploaded_photo = Tempfile.new(["media-upload-watermark", ".jpg"])
     uploaded_photo.write("foto nova")
     uploaded_photo.rewind
     allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.example.test/media-upload-watermark.jpg")
     allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_return(true)
+    expect(HabitationPhotoWatermarkJob).to receive(:perform_later) do |habitation_id, attachment_ids, setting_id, tenant_id:|
+      expect(habitation_id).to eq(habitation.id)
+      expect(attachment_ids).to all(be_a(Integer))
+      expect(setting_id).to eq(setting.id)
+      expect(tenant_id).to eq(habitation.tenant_id)
+    end
 
-    expect do
-      post upload_admin_habitation_media_path(habitation, format: :json), params: {
-        habitation: {
-          apply_photo_watermark: "1",
-          photos: [Rack::Test::UploadedFile.new(uploaded_photo.path, "image/jpeg")]
-        }
+    post upload_admin_habitation_media_path(habitation, format: :json), params: {
+      habitation: {
+        apply_photo_watermark: "1",
+        photos: [Rack::Test::UploadedFile.new(uploaded_photo.path, "image/jpeg")]
       }
-    end.to have_enqueued_job(HabitationPhotoWatermarkJob).on_queue("media")
+    }
 
     expect(response).to have_http_status(:ok)
   ensure
-    clear_enqueued_jobs if ActiveJob::Base.queue_adapter.is_a?(ActiveJob::QueueAdapters::TestAdapter)
-    ActiveJob::Base.queue_adapter = previous_queue_adapter
     uploaded_photo&.close
     uploaded_photo&.unlink
   end
@@ -296,6 +344,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("https://cdn.saluteimoveis.com.br/serenity-externa.jpg")
     expect(response.body).to include("Foto herdada do empreendimento")
+    expect(response.body).to include("data-media-tools-development-index-param=\"0\"")
     expect(response.body).to include("2 itens vinculados")
   end
 

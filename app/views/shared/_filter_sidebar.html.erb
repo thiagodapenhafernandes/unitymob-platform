@@ -13,7 +13,10 @@
     </div>
 
     <!-- Form Content -->
-    <%= form_with url: habitations_path, method: :get, class: "h-100 d-flex flex-column", data: { controller: "filters" } do |f| %>
+    <%= form_with url: habitations_path,
+                  method: :get,
+                  class: "h-100 d-flex flex-column",
+                  data: { controller: "public-search-url filters", action: "submit->public-search-url#submit" } do |f| %>
       
       <div class="sidebar-content">
         <!-- Busca por Código -->

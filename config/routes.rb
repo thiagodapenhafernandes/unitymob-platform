@@ -227,6 +227,7 @@ Rails.application.routes.draw do
         patch :ambiente
         post :organize
         post :share
+        post :download
         delete :destroy_photo
       end
       post :generate_ai_preview, on: :member
@@ -540,6 +541,10 @@ Rails.application.routes.draw do
   get 'favoritos', to: 'habitations#favorites', as: :favorite_habitations
   
   # Habitations - SEO friendly routes
+  get "imoveis/:friendly_transaction(/:friendly_categories)(/:friendly_locations)(/:friendly_characteristics)",
+      to: "habitations#index",
+      as: :friendly_habitations,
+      constraints: { friendly_transaction: /venda|comprar|aluguel|alugar|locacao|locação/ }
   get "imoveis/:seo_slug",
       to: "habitations#index",
       as: :strategic_habitations,

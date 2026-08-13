@@ -70,7 +70,7 @@
     "description" => @page_description.presence || @habitation.seo_description.presence || development_summary.presence,
     "numberOfAvailableAccommodationUnits" => (development_units_count if development_units_count.positive?),
     "aggregateRating" => public_rating_schema(@habitation),
-    "amenityFeature" => (@habitation.property_features_for_display + @habitation.leisure_features_for_display).first(20).map do |feature|
+    "amenityFeature" => (@habitation.public_property_features_for_display + @habitation.leisure_features_for_display).first(20).map do |feature|
       { "@type" => "LocationFeatureSpecification", "name" => feature }
     end.presence
   }.compact
@@ -370,7 +370,7 @@
         <% end %>
 
         <!-- Features & Infrastructure -->
-        <% property_features = @habitation.property_features_for_display %>
+        <% property_features = @habitation.public_property_features_for_display %>
         <% leisure_features = @habitation.leisure_features_for_display %>
         
         <% if property_features.any? || leisure_features.any? %>

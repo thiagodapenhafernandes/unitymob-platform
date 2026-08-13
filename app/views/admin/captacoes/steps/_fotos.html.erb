@@ -157,7 +157,7 @@
             label: tag.i(class: "bi bi-paperclip") + "Anexar autorização",
             input_id: "captacao_autorizacao",
             multiple: @captacao.is_a?(Habitation),
-            accept: "image/*,application/pdf",
+            accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt",
             direct_upload: true,
             input_class: field_state.call(:autorizacoes_venda),
             input_data: { captacao_photos_target: "authorizationInput", action: "change->captacao-photos#authorizationChanged" },

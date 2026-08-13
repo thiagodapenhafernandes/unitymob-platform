@@ -641,30 +641,30 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
-    expect(response.body).not_to include(approved.titulo_anuncio)
+    expect(response.body).to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
     expect(response.body).not_to include(returned.titulo_anuncio)
     expect(response.body).to include("Em revisão administrativa")
-    expect(response.body).not_to include("Publicar no site")
+    expect(response.body).to include("Publicar no site")
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
     html = Nokogiri::HTML(response.body)
     expect(response.body).to include("ax-property-chip--intake-review")
-    expect(response.body).not_to include("ax-property-chip--intake-approved")
+    expect(response.body).to include("ax-property-chip--intake-approved")
 
     get admin_habitations_path(intake_review: "pending", ownership: "all", visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Em revisão administrativa")
-    expect(response.body).not_to include("Publicar no site")
+    expect(response.body).to include("Publicar no site")
     expect(response.body).to include("ax-property-chip--intake-review")
-    expect(response.body).not_to include("ax-property-chip--intake-approved")
+    expect(response.body).to include("ax-property-chip--intake-approved")
     expect(response.body).not_to include("Interno")
     expect(response.body).not_to include("Publicado no site")
   end
 
-  it "mostra para o administrativo apenas captações enviadas para revisão, não as aguardando aceite do corretor" do
+  it "mostra para o administrativo captações em revisão e aguardando aceite do corretor" do
     manager_profile, administrative_profile = default_administrative_profiles
     administrative = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Revisão")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-SUB-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão do administrativo")
@@ -677,7 +677,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
-    expect(response.body).not_to include(approved.titulo_anuncio)
+    expect(response.body).to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
     expect(response.body).not_to include(returned.titulo_anuncio)
   end
@@ -700,22 +700,43 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include('habitations-view-toggle__item is-active')
   end
 
-  it "mostra para o corretor somente suas captações em revisão administrativa" do
+  it "encontra por código captação aguardando publicação no site" do
+    approved = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      codigo: "APP-CODE-#{SecureRandom.hex(6)}",
+      intake_status: "admin_approved",
+      titulo_anuncio: "Captação aguardando publicação por código"
+    )
+
+    get admin_habitations_path(codigo: approved.codigo, ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(approved.codigo)
+    expect(response.body).to include(approved.titulo_anuncio)
+    expect(response.body).to include("Publicar no site")
+  end
+
+  it "mostra para o corretor suas captações em rascunho, revisão e liberar para site" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Indalécio")
     patricia = create(:admin_user, profile: broker_profile, name: "Patrícia Paula")
     own_waiting = create(:habitation, :broker_intake, admin_user: luciana, codigo: "OWN-REV-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Aguardando aceite Luciana")
     other_waiting = create(:habitation, :broker_intake, admin_user: patricia, codigo: "OTH-REV-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Aguardando aceite Patrícia")
     submitted = create(:habitation, :broker_intake, admin_user: luciana, codigo: "SUB-REV-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Em revisão administrativa Luciana")
+    draft = create(:habitation, :broker_intake, admin_user: luciana, codigo: "DRAFT-REV-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho Luciana")
 
     sign_in luciana
     get admin_habitations_path(intake_review: "pending", ownership: "all")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include(own_waiting.titulo_anuncio)
+    expect(response.body).to include(own_waiting.titulo_anuncio)
     expect(response.body).not_to include(other_waiting.titulo_anuncio)
     expect(response.body).to include(submitted.titulo_anuncio)
+    expect(response.body).to include(draft.titulo_anuncio)
     expect(response.body).to include("Em revisão administrativa")
+    expect(response.body).to include("Publicar no site")
   end
 
   it "abre novo imóvel como cadastro direto fora do fluxo de revisão" do
@@ -1269,7 +1290,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
     expect(card).to be_present
-    expect(card.text).to include("Captador: Captador Principal")
+    expect(card.text).to include("Captador: Captador Principal +1")
+    expect(card.at_css("[title='Captador Principal | Captador Secundário']")).to be_present
     expect(card.text).to include("Proprietário:")
     expect(card.text).to include(owner_name)
     expect(response.body).to include("https://wa.me/5547999999999")
@@ -1281,7 +1303,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
     expect(card).to be_present
-    expect(card.text).to include("Captador: Captador Principal")
+    expect(card.text).to include("Captador: Captador Principal +1")
     expect(card.text).not_to include("Proprietário:")
     expect(response.body).not_to include(owner_name)
     expect(response.body).not_to include("https://wa.me/5547999999999")

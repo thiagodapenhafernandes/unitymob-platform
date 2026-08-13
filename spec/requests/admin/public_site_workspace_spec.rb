@@ -6,6 +6,7 @@ RSpec.describe "Admin public site workspace", type: :request do
   let(:admin) { create(:admin_user, :admin) }
 
   before do
+    ActionController::Base.allow_forgery_protection = false
     host! "localhost"
     sign_in admin
   end
@@ -266,6 +267,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response.body).not_to include('type="hidden" name="landing_page[filter_params][characteristics][]"')
     html = Nokogiri::HTML(response.body)
     expect(html.at_css('.ax-field input[name="landing_page[title]"]')).to be_present
+    expect(html.at_css('.ax-field input[name="landing_page[filter_params][q]"]')).to be_present
     expect(html.at_css('.ax-input-group input[name="landing_page[slug]"]')).to be_present
     expect(html.css('select.ax-autocomplete-select[multiple]').map { |select| select["name"] }).to contain_exactly(
       "landing_page[filter_params][category][]",
@@ -297,6 +299,7 @@ RSpec.describe "Admin public site workspace", type: :request do
             city: ["Balneário Camboriú"],
             neighborhood: ["Centro"],
             transaction_type: "venda",
+            q: "Centro",
             target_price: "1500000",
             min_area: "80",
             min_bedrooms: "2",
@@ -317,6 +320,7 @@ RSpec.describe "Admin public site workspace", type: :request do
       "city" => ["Balneário Camboriú"],
       "neighborhood" => ["Centro"],
       "transaction_type" => "venda",
+      "q" => "Centro",
       "characteristics" => %w[frente_mar piscina]
     )
     expect(foreign_page.reload.title).to eq("Landing externa")
@@ -333,6 +337,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response).to have_http_status(:ok)
     payload = response.parsed_body
     expect(payload["count"]).to eq(1)
+    expect(payload["items"].first).to include("code", "title", "location", "price")
     expect(payload.dig("metrics", "distribution")).to eq(category => 1)
     expect(payload.dig("metrics", "avg_price")).to include("1.250.000")
   end

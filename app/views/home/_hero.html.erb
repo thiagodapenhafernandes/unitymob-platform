@@ -12,10 +12,12 @@
   <div class="hero-slider-container">
     <% if @hero_images.present? %>
       <% @hero_images.each_with_index do |image, index| %>
-        <% desktop_source = public_image_url(image[:source], resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true).presence || image[:source] %>
-        <% desktop_source_1440 = public_image_url(image[:source], resize_to_limit: [1440, 810], format: :webp, representation_proxy: true).presence || desktop_source %>
-        <% mobile_source_640 = public_image_url(image[:mobile_source] || image[:source], resize_to_limit: [640, 1138], format: :webp, representation_proxy: true).presence || image[:mobile_source] || image[:source] %>
-        <% mobile_source_900 = public_image_url(image[:mobile_source] || image[:source], resize_to_limit: [900, 1600], format: :webp, representation_proxy: true).presence || mobile_source_640 %>
+        <% hero_source = image[:source] %>
+        <% hero_mobile_source = image[:mobile_source] || hero_source %>
+        <% desktop_source = public_image_url(hero_source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(hero_source).presence || hero_source %>
+        <% desktop_source_1440 = index.zero? ? public_image_url(hero_source, resize_to_limit: [1440, 810], format: :webp, force_variant: true, representation_proxy: true).presence || desktop_source : desktop_source %>
+        <% mobile_source_640 = index.zero? ? public_image_url(hero_mobile_source, resize_to_limit: [640, 1138], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(hero_mobile_source).presence || hero_mobile_source : desktop_source %>
+        <% mobile_source_900 = index.zero? ? public_image_url(hero_mobile_source, resize_to_limit: [900, 1600], format: :webp, force_variant: true, representation_proxy: true).presence || mobile_source_640 : desktop_source %>
         <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
         <div class="hero-slide <%= 'active' if index == 0 %>" data-hero-slider-target="slide">
           <% if index.zero? %>

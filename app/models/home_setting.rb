@@ -6,6 +6,12 @@ class HomeSetting < ApplicationRecord
     ["Filtro no hero", "hero"],
     ["Botão flutuante", "floating"]
   ].freeze
+  MOBILE_SEARCH_FILTER_DISPLAY_MODES = %w[floating hero both].freeze
+  MOBILE_SEARCH_FILTER_DISPLAY_MODE_OPTIONS = [
+    ["Só botão flutuante", "floating"],
+    ["Só filtro no hero", "hero"],
+    ["Hero + botão flutuante", "both"]
+  ].freeze
 
   # ActiveStorage attachments
   has_one_attached :hero_background_desktop
@@ -32,9 +38,8 @@ class HomeSetting < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 24, less_than_or_equal_to: 96, allow_blank: true }
   validates :hero_subtitle_font_size,
             numericality: { only_integer: true, greater_than_or_equal_to: 12, less_than_or_equal_to: 36, allow_blank: true }
-  validates :search_filter_display_mode,
-            :mobile_search_filter_display_mode,
-            inclusion: { in: SEARCH_FILTER_DISPLAY_MODES }
+  validates :search_filter_display_mode, inclusion: { in: SEARCH_FILTER_DISPLAY_MODES }
+  validates :mobile_search_filter_display_mode, inclusion: { in: MOBILE_SEARCH_FILTER_DISPLAY_MODES }
   validates :public_header_css, length: { maximum: 2000 }, allow_blank: true
   validate :public_header_css_must_be_declarations_only
   
@@ -76,7 +81,7 @@ class HomeSetting < ApplicationRecord
   end
 
   def mobile_search_filter_in_hero?
-    mobile_search_filter_display_mode != "floating"
+    mobile_search_filter_display_mode.in?(%w[hero both])
   end
 
   def floating_search_filter?
@@ -84,7 +89,7 @@ class HomeSetting < ApplicationRecord
   end
 
   def mobile_floating_search_filter?
-    mobile_search_filter_display_mode == "floating"
+    mobile_search_filter_display_mode.in?(%w[floating both])
   end
 
   def renders_hero_search_filter?

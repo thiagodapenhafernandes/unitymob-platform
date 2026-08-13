@@ -884,8 +884,9 @@ module Habitation::SearchScopes
       end
       
       # Busca textual geral (título, descrição, endereço, código)
-      if params[:search].present?
-        search_term = params[:search].strip
+      search_value = params[:search].presence || params[:q].presence
+      if search_value.present?
+        search_term = search_value.to_s.strip
         
         # Busca em campos principais
         query = query.left_outer_joins(:address).where(

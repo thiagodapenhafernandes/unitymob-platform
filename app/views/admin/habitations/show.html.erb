@@ -643,7 +643,7 @@
                 <% attachments.each do |attachment| %>
                   <%= ax_attachment_item(
                         attachment:,
-                        url: rails_blob_path(attachment, disposition: "attachment"),
+                        url: rails_blob_path(attachment, disposition: group_label == "Autorizações de venda" ? "inline" : "attachment"),
                         meta: number_to_human_size(attachment.byte_size)
                       ) %>
                 <% end %>

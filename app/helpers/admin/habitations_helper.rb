@@ -86,7 +86,6 @@ module Admin::HabitationsHelper
   end
 
   def admin_habitation_pending_intake_status(habitation, intake_review:)
-    return unless intake_review == "pending"
     return unless habitation.broker_intake?
     return unless habitation.intake_status.in?(Habitation::PENDING_WORKFLOW_INTAKE_STATUSES)
 
@@ -243,6 +242,21 @@ module Admin::HabitationsHelper
 
       PUBLICATION_CHANNEL_LABELS[column] || publication_channel_label_for(column)
     end
+  end
+
+  def admin_habitation_captador_summary(habitation)
+    names = if habitation.respond_to?(:captador_names)
+              habitation.captador_names
+            else
+              [habitation&.primary_captador_name]
+            end
+    names = names.map { |name| name.to_s.squish }.compact_blank.uniq
+    return { label: "Não informado", title: nil, names: [] } if names.blank?
+
+    remaining_count = names.size - 1
+    label = remaining_count.positive? ? "#{names.first} +#{remaining_count}" : names.first
+
+    { label:, title: names.join(" | "), names: }
   end
 
   def admin_habitation_editor_tab_missing_counts(habitation, property_setting: nil)

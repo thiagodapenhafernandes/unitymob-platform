@@ -74,7 +74,7 @@ export default class extends Controller {
   }
 
   renderDashboard(data) {
-    const { count, metrics } = data
+    const { count, metrics, items = [] } = data
 
     if (count === 0) {
       this.resultsTarget.innerHTML = `
@@ -111,6 +111,14 @@ export default class extends Controller {
     const averagePrice = this.escapeHtml(metrics.avg_price)
     const minimumPrice = this.escapeHtml(metrics.min_price)
     const maximumPrice = this.escapeHtml(metrics.max_price)
+    const itemsHtml = items.length > 0 ? `
+      <div class="landing-page-preview__matches">
+        <div class="landing-page-preview__stat-label"><i class="bi bi-buildings" aria-hidden="true"></i> Amostra de imóveis</div>
+        <div class="landing-page-preview__match-list">
+          ${items.map(item => this.renderItem(item)).join('')}
+        </div>
+      </div>
+    ` : ''
 
     this.resultsTarget.innerHTML = `
       <div class="landing-page-preview__hero">
@@ -142,6 +150,7 @@ export default class extends Controller {
           </div>
         </div>
       </div>
+      ${itemsHtml}
     `
 
     // Hide the legacy count badge if it exists
@@ -154,5 +163,27 @@ export default class extends Controller {
     const element = document.createElement("div")
     element.textContent = String(value ?? "")
     return element.innerHTML
+  }
+
+  renderItem(item) {
+    const code = this.escapeHtml(item.code)
+    const title = this.escapeHtml(item.title)
+    const development = this.escapeHtml(item.development)
+    const location = this.escapeHtml(item.location)
+    const price = this.escapeHtml(item.price)
+    const meta = [development, location].filter(Boolean).join(" · ")
+
+    return `
+      <div class="landing-page-preview__match">
+        <div>
+          <strong>${title}</strong>
+          <span>${this.escapeHtml(meta)}</span>
+        </div>
+        <div class="landing-page-preview__match-side">
+          <small>${code}</small>
+          <b>${price}</b>
+        </div>
+      </div>
+    `
   }
 }

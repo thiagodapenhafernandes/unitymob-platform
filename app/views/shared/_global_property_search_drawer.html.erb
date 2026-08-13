@@ -10,34 +10,39 @@
     ["frente_mar", "Frente Mar", "bi-water"],
     ["quadra_mar", "Quadra Mar", "bi-building"],
     ["vista_mar", "Vista Mar", "bi-eye"],
-    ["mobiliado", "Mobiliado", "bi-house-heart"],
-    ["pronto", "Pronto para morar", "bi-check2-circle"],
-    ["na_planta", "Na planta", "bi-map"],
-    ["opportunity", "Ofertas", "bi-tag-fill"],
-    ["lancamento", "Lançamento", "bi-stars"]
+    ["mobiliado", "Mobiliado", "bi-house-heart"]
   ]
-  drawer_property_feature_filters = [
+  drawer_highlight_filters = [
+    ["opportunity", "Oportunidade (Valor Reduzido)"],
+    ["lancamento", "Lançamento"],
+    ["na_planta", "Na Planta"],
+    ["pronto", "Pronto Para Morar"]
+  ]
+  drawer_feature_filters = [
+    ["churrasqueira", "Churrasqueira"],
+    ["cozinha_gourmet_churrasqueira", "Cozinha gourmet com churrasqueira"],
     ["sacada", "Sacada"],
-    ["varanda", "Varanda"],
+    ["decorado", "Decorado"],
+    ["closet", "Closet"],
+    ["semi_mobiliado", "Semi Mobiliado"],
     ["lavabo", "Lavabo"],
     ["lavanderia", "Lavanderia"],
-    ["closet", "Closet"],
-    ["semi_mobiliado", "Semi mobiliado"],
-    ["decorado", "Decorado"],
-    ["cozinha_gourmet_churrasqueira", "Cozinha gourmet"],
     ["dependencia_empregada", "Dependência de empregada"],
     ["hidromassagem", "Hidromassagem"],
-    ["sala_estar", "Sala de estar"],
-    ["sala_jantar", "Sala de jantar"],
+    ["piscina", "Piscina"],
+    ["sala_estar", "Sala de Estar"],
+    ["sala_jantar", "Sala de Jantar"],
     ["sol_manha", "Sol da manhã"],
     ["sol_tarde", "Sol da tarde"],
-    ["sol_dia_todo", "Sol o dia todo"]
+    ["sol_dia_todo", "Sol o dia todo"],
+    ["varanda", "Varanda"]
   ]
-  drawer_condominium_feature_filters = [
-    ["piscina", "Piscina"],
-    ["churrasqueira", "Churrasqueira"]
+  drawer_quantity_filters = [
+    [:min_bedrooms, "Dormitórios"],
+    [:min_suites, "Suítes"],
+    [:min_parking, "Vagas de Garagem"]
   ]
-  drawer_quantity_options = [["Todos", ""], ["1", "1"], ["2", "2"], ["3", "3"], ["4+", "4"]]
+  drawer_quantity_options = [["1+", "1"], ["2+", "2"], ["3+", "3"], ["4+", "4"], ["Todos", ""]]
 %>
 
 <% drawer_visibility_class = @home_setting&.floating_search_filter_visibility_class %>
@@ -86,7 +91,8 @@
                     method: :get,
                     class: "public-global-search__form",
                     data: {
-                      controller: "search-tabs",
+                      controller: "public-search-url search-tabs",
+                      action: "submit->public-search-url#submit",
                       search_tabs_sale_price_options_value: json_escape(public_price_range_options("venda").to_json),
                       search_tabs_rent_price_options_value: json_escape(public_price_range_options("aluguel").to_json)
                     } do |f| %>
@@ -95,15 +101,23 @@
                value="<%= drawer_transaction_type %>"
                data-search-tabs-target="input">
 
-        <div class="public-global-search__field public-global-search__field--full">
+        <div class="public-global-search__field public-global-search__field--full public-global-search__field--autocomplete"
+             data-controller="autocomplete"
+             data-autocomplete-url-value="<%= autocomplete_habitations_path %>">
           <%= f.label :search, "Código, bairro ou empreendimento" %>
           <div class="public-global-search__input-icon">
             <i class="bi bi-search" aria-hidden="true"></i>
             <%= f.search_field :search,
                   value: params[:search],
                   placeholder: "Digite código, região ou nome",
-                  autocomplete: "off" %>
+                  autocomplete: "off",
+                  data: {
+                    autocomplete_target: "input",
+                    action: "focus->autocomplete#focus input->autocomplete#search"
+                  } %>
           </div>
+          <div class="public-global-search__autocomplete hidden"
+               data-autocomplete-target="results"></div>
         </div>
 
         <div class="public-global-search__segment" role="group" aria-label="Finalidade">
@@ -213,23 +227,22 @@
                   data: { search_tabs_target: "priceSelect" } %>
           </div>
 
-          <div class="public-global-search__field">
-            <%= f.label :min_bedrooms, "Quartos" %>
-            <%= f.select :min_bedrooms,
-                  options_for_select(drawer_quantity_options, params[:min_bedrooms]) %>
-          </div>
-
-          <div class="public-global-search__field">
-            <%= f.label :min_suites, "Suítes" %>
-            <%= f.select :min_suites,
-                  options_for_select(drawer_quantity_options, params[:min_suites]) %>
-          </div>
-
-          <div class="public-global-search__field">
-            <%= f.label :min_parking, "Vagas" %>
-            <%= f.select :min_parking,
-                  options_for_select(drawer_quantity_options, params[:min_parking]) %>
-          </div>
+          <% drawer_quantity_filters.each do |field_name, label| %>
+            <fieldset class="public-global-search__quantity">
+              <legend><%= label %></legend>
+              <div class="public-global-search__quantity-options">
+                <% drawer_quantity_options.each do |option_label, option_value| %>
+                  <label>
+                    <%= radio_button_tag field_name,
+                                         option_value,
+                                         params[field_name].to_s == option_value.to_s,
+                                         class: "public-global-search__quantity-input" %>
+                    <span><%= option_label %></span>
+                  </label>
+                <% end %>
+              </div>
+            </fieldset>
+          <% end %>
         </div>
 
         <fieldset class="public-global-search__chips">
@@ -245,44 +258,33 @@
           <% end %>
         </fieldset>
 
-        <div class="public-global-search__advanced"
-             data-global-search-drawer-target="advanced">
-          <button type="button"
-                  class="public-global-search__advanced-toggle"
-                  data-global-search-drawer-target="advancedToggle"
-                  data-action="click->global-search-drawer#toggleAdvanced"
-                  aria-expanded="false"
-                  aria-controls="public-global-search-advanced-panel">
-            <span>Mais filtros</span>
-            <i class="bi bi-chevron-down" data-global-search-drawer-target="advancedIcon" aria-hidden="true"></i>
-          </button>
+        <fieldset class="public-global-search__highlights">
+          <legend>Destaques</legend>
+          <% drawer_highlight_filters.each do |value, label| %>
+            <label>
+              <span><%= label %></span>
+              <%= check_box_tag "characteristics[]",
+                                value,
+                                drawer_selected_characteristics.include?(value),
+                                class: "public-global-search__highlight-input" %>
+              <span class="public-global-search__switch" aria-hidden="true"></span>
+            </label>
+          <% end %>
+        </fieldset>
 
-          <div id="public-global-search-advanced-panel"
-               class="public-global-search__advanced-panel"
-               data-global-search-drawer-target="advancedPanel">
-            <div class="public-global-search__advanced-groups">
-            <fieldset class="public-global-search__checklist">
-              <legend>Características do imóvel</legend>
-              <% drawer_property_feature_filters.each do |value, label| %>
-                <label>
-                  <%= check_box_tag "characteristics[]", value, drawer_selected_characteristics.include?(value) %>
-                  <span><%= label %></span>
-                </label>
-              <% end %>
-            </fieldset>
-
-            <fieldset class="public-global-search__checklist">
-              <legend>Características do condomínio</legend>
-              <% drawer_condominium_feature_filters.each do |value, label| %>
-                <label>
-                  <%= check_box_tag "characteristics[]", value, drawer_selected_characteristics.include?(value) %>
-                  <span><%= label %></span>
-                </label>
-              <% end %>
-            </fieldset>
-            </div>
-          </div>
-        </div>
+        <fieldset class="public-global-search__features">
+          <legend>Características</legend>
+          <% drawer_feature_filters.each do |value, label| %>
+            <label>
+              <span><%= label %></span>
+              <%= check_box_tag "characteristics[]",
+                                value,
+                                drawer_selected_characteristics.include?(value),
+                                class: "public-global-search__feature-input" %>
+              <span class="public-global-search__switch" aria-hidden="true"></span>
+            </label>
+          <% end %>
+        </fieldset>
 
         <div class="public-global-search__actions">
           <%= link_to "Limpar", habitations_path, class: "public-global-search__clear" %>

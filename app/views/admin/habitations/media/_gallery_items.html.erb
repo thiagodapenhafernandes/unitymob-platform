@@ -226,6 +226,17 @@
         </span>
       <% end %>
     <% end %>
+    <% development_select_control = capture do %>
+      <% if can_edit_media %>
+        <label class="ax-media-select-check" title="Selecionar foto para download">
+          <input type="checkbox"
+                 data-action="media-tools#toggleSelect"
+                 data-media-tools-development-index-param="<%= index %>"
+                 data-media-tools-download-url-param="<%= development_photo_url %>">
+          <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+        </label>
+      <% end %>
+    <% end %>
     <%= ax_media_tile(
           link_url: development_photo_url,
           image_source: development_photo_url,
@@ -233,7 +244,7 @@
           caption: "Foto do empreendimento #{index + 1}",
           position: development_position_offset + index + 1,
           image_class: "opacity-75",
-          top_right: tag.span("Empreendimento", class: "ax-media-tag ax-media-tag--info", title: "Foto herdada do empreendimento"),
+          top_right: safe_join([development_select_control, tag.span("Empreendimento", class: "ax-media-tag ax-media-tag--info", title: "Foto herdada do empreendimento")]),
           bottom_left: development_featured
         ) %>
   <% end %>

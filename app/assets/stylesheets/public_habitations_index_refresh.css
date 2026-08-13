@@ -80,10 +80,16 @@
 .public-habitations-index__primary-link {
   border: 1px solid var(--phi-navy);
   background: var(--phi-navy);
-  color: #fff;
+  color: #fff !important;
   font-weight: 800;
   letter-spacing: 0.01em;
   box-shadow: 0 8px 18px rgba(2, 43, 58, 0.16);
+}
+
+.public-habitations-index__apply-button i,
+.public-habitations-index__primary-button i,
+.public-habitations-index__primary-link i {
+  color: currentColor !important;
 }
 
 .public-habitations-index__apply-button:hover,
@@ -91,7 +97,7 @@
 .public-habitations-index__primary-link:hover {
   background: var(--phi-navy-2);
   border-color: var(--phi-navy-2);
-  color: #fff;
+  color: #fff !important;
 }
 
 .public-habitations-index__more-filters,
@@ -186,10 +192,29 @@
   box-shadow: 0 10px 24px rgba(190, 139, 38, 0.24);
 }
 
+.public-habitations-index__drawer .public-habitations-index__primary-button.bg-blue-three {
+  border-color: var(--phi-navy);
+  background: var(--phi-navy);
+  color: #fff !important;
+}
+
 .public-habitations-index__drawer .public-habitations-index__primary-button:hover {
   border-color: var(--phi-gold-2);
   background: var(--phi-gold-2);
   color: var(--phi-navy);
+}
+
+.public-habitations-index__drawer .public-habitations-index__primary-button.bg-blue-three:hover {
+  border-color: var(--phi-navy-2);
+  background: var(--phi-navy-2);
+  color: #fff !important;
+}
+
+.public-habitations-index__drawer input.peer:checked + div,
+.public-habitations-index__drawer input.peer:checked + div:hover {
+  border-color: var(--phi-navy) !important;
+  background: var(--phi-navy) !important;
+  color: #fff !important;
 }
 
 .public-habitations-index__floating-filter {

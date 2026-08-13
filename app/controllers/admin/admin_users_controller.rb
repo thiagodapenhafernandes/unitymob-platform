@@ -292,7 +292,7 @@ module Admin
         mode: params[:portfolio_action]
       )
 
-      notice = +"Usuário inativado."
+      notice = +"Acesso removido. Usuário inativado."
       if params[:portfolio_action].to_s == "detach"
         notice << " Carteira desvinculada: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."
       else
@@ -300,7 +300,7 @@ module Admin
       end
       redirect_to admin_admin_users_path(status: "inactive"), notice: notice
     rescue AdminUsers::InactivationTransfer::Error, ActiveRecord::RecordInvalid => e
-      redirect_to admin_admin_users_path, alert: "Não foi possível inativar o usuário: #{e.message}"
+      redirect_to admin_admin_users_path, alert: "Não foi possível remover o acesso do usuário: #{e.message}"
     end
 
     private

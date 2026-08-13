@@ -69,4 +69,25 @@ RSpec.describe Storage::ActiveStorageRegistry do
       expect(configurations).not_to have_key(:do_spaces_db)
     end
   end
+
+  describe ".add_dynamic_compatibility_alias!" do
+    it "expõe o serviço tenant-specific a partir do alias base legado" do
+      registry = ActiveStorage::Blob.services
+      original_configurations = registry.instance_variable_get(:@configurations)
+      original_services = registry.instance_variable_get(:@services)
+      base = { service: "Disk", root: Rails.root.join("tmp/storage") }
+      registry.instance_variable_set(:@configurations, { do_spaces_db: base })
+      registry.instance_variable_set(:@services, {})
+
+      described_class.add_dynamic_compatibility_alias!(:do_spaces_db_tenant_42)
+
+      configurations = registry.instance_variable_get(:@configurations)
+      expect(configurations[:do_spaces_db_tenant_42]).to eq(base)
+      expect(configurations[:do_spaces_db_tenant_42]).not_to equal(base)
+    ensure
+      registry.instance_variable_set(:@configurations, original_configurations)
+      registry.instance_variable_set(:@services, original_services)
+      registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(original_configurations))
+    end
+  end
 end

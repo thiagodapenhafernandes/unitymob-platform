@@ -18,6 +18,7 @@ class HabitationsController < ApplicationController
   # GET /habitations
   # GET /imoveis
   def index
+    apply_friendly_search_params
     apply_strategic_landing_params
     return if reject_invalid_public_listing_page!
 
@@ -132,6 +133,20 @@ class HabitationsController < ApplicationController
     results = []
 
     if term.present?
+      codigos = public_habitation_scope.active
+                                      .where("codigo ILIKE ?", "%#{term}%")
+                                      .order(:codigo)
+                                      .limit(5)
+
+      results += codigos.map do |habitation|
+        {
+          label: "#{habitation.codigo} - #{habitation.display_title}",
+          value: habitation.codigo,
+          type: "codigo",
+          url: public_habitation_details_path(habitation)
+        }
+      end
+
       # 1. Cidades
       cidades = public_habitation_scope.active
                          .left_outer_joins(:address)
@@ -156,7 +171,6 @@ class HabitationsController < ApplicationController
       empreendimentos = public_habitation_scope.empreendimentos_publicos
                                   .where("unaccent(nome_empreendimento) ILIKE unaccent(?)", "%#{term}%")
                                   .limit(5)
-                                  .select(:nome_empreendimento, :slug)
       
       results += empreendimentos.map do |e| 
         { 
@@ -612,6 +626,14 @@ class HabitationsController < ApplicationController
     return if @strategic_landing.blank?
 
     @strategic_landing[:params].each do |key, value|
+      params[key] = value
+    end
+  end
+
+  def apply_friendly_search_params
+    return if params[:friendly_transaction].blank?
+
+    PublicSearch::FriendlyUrl.new(tenant: public_tenant).params_for(params).each do |key, value|
       params[key] = value
     end
   end

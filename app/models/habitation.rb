@@ -562,6 +562,25 @@ class Habitation < ApplicationRecord
     primary_captador&.name.presence || corretor_nome.presence
   end
 
+  def captador_names
+    names = []
+
+    assignment_names = if broker_assignments.loaded?
+                         broker_assignments.reject(&:marked_for_destruction?)
+                       else
+                         broker_assignments.includes(:admin_user)
+                       end
+      .select { |assignment| assignment.role == "captador" && assignment.admin_user.present? }
+      .map { |assignment| assignment.admin_user.name }
+
+    names.concat(assignment_names)
+    names << admin_user&.name
+    names << dwv_owner_user&.name if dwv_property?
+    names << corretor_nome
+
+    names.map { |name| name.to_s.squish }.compact_blank.uniq
+  end
+
   def property_kind
     return "casa_rua" if street_house?
     return "terreno" if categoria.to_s.match?(/terreno/i)
@@ -1825,6 +1844,8 @@ class Habitation < ApplicationRecord
   # Conta quantas unidades disponíveis esse empreendimento tem
   def available_units_count
     return 0 unless empreendimento?
+    return public_card_unit_summary[:count].to_i if public_card_unit_summary
+
     development_units.count
   end
   
@@ -1839,6 +1860,8 @@ class Habitation < ApplicationRecord
 
   def card_dormitorios_text
     if empreendimento?
+      return range_label_for_card_values(public_card_unit_summary[:dormitorios]) if public_card_unit_summary
+
       values = development_units.where("dormitorios_qtd > 0").pluck(:dormitorios_qtd).compact.uniq.sort
       return nil if values.empty?
       values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
@@ -1849,6 +1872,8 @@ class Habitation < ApplicationRecord
 
   def card_vagas_text
     if empreendimento?
+      return range_label_for_card_values(public_card_unit_summary[:vagas]) if public_card_unit_summary
+
       values = development_units.where("vagas_qtd > 0").pluck(:vagas_qtd).compact.uniq.sort
       return nil if values.empty?
       values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
@@ -1859,6 +1884,8 @@ class Habitation < ApplicationRecord
 
   def card_suites_text
     if empreendimento?
+      return range_label_for_card_values(public_card_unit_summary[:suites]) if public_card_unit_summary
+
       values = development_units.where("suites_qtd > 0").pluck(:suites_qtd).compact.uniq.sort
       return nil if values.empty?
       values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
@@ -1869,6 +1896,15 @@ class Habitation < ApplicationRecord
 
   def card_area_text
     if empreendimento?
+      if public_card_unit_summary
+        values = Array(public_card_unit_summary[:areas]).compact
+        return nil if values.empty?
+
+        min = values.min.to_i
+        max = values.max.to_i
+        return min == max ? "#{min} m²" : "#{min} a #{max} m²"
+      end
+
       values = development_units.where("area_privativa_m2 > 0").pluck(:area_privativa_m2).compact
       return nil if values.empty?
       min = values.min.to_i
@@ -1888,6 +1924,21 @@ class Habitation < ApplicationRecord
     return area_terreno_m2 if area_terreno_m2.to_f.positive?
 
     nil
+  end
+
+  def public_card_unit_summary
+    @public_card_unit_summary
+  end
+
+  def public_card_unit_summary=(summary)
+    @public_card_unit_summary = summary
+  end
+
+  def range_label_for_card_values(values)
+    values = Array(values).compact.map(&:to_i).select(&:positive?).uniq.sort
+    return nil if values.empty?
+
+    values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
   end
   
   # Retorna o título para exibição
@@ -1910,6 +1961,10 @@ class Habitation < ApplicationRecord
 
   def property_features_for_display
     normalize_feature_values(caracteristicas, category: "feature")
+  end
+
+  def public_property_features_for_display
+    property_features_for_display.reject { |feature| public_commercial_feature_label?(feature) }
   end
 
   def leisure_features_for_display
@@ -2499,6 +2554,16 @@ class Habitation < ApplicationRecord
     else
       source.map { |key, value| value.to_s.strip.presence || key.to_s.strip }
     end
+  end
+
+  def public_commercial_feature_label?(feature)
+    normalized = I18n.transliterate(feature.to_s).downcase.squish
+    normalized.in?([
+      "aceita permuta",
+      "permuta",
+      "aceita financiamento",
+      "financiamento"
+    ])
   end
 
   def boolean_like_value?(value)

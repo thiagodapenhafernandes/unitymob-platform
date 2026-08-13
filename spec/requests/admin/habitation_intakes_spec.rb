@@ -3,6 +3,7 @@ require "csv"
 
 RSpec.describe "Admin::HabitationIntakes", type: :request do
   include Devise::Test::IntegrationHelpers
+  include ActiveJob::TestHelper
 
   let(:admin) { create(:admin_user, :admin) }
 
@@ -197,7 +198,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include(submitted.nome_empreendimento)
   end
 
-  it "mostra somente captações em revisão na lista padrão e mantém demais status por filtro explícito" do
+  it "mostra todas as captações visíveis na lista padrão e mantém filtro explícito por status" do
     first_broker = create(:admin_user, name: "Corretor Alfa")
     second_broker = create(:admin_user, name: "Corretor Beta")
     first_visible = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão", nome_empreendimento: "Edifício Alfa Revisão")
@@ -211,17 +212,18 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('name="corretor_id"')
     expect(response.body).to include(first_visible.nome_empreendimento)
-    expect(response.body).not_to include(second_visible.nome_empreendimento)
-    expect(response.body).not_to include(returned.nome_empreendimento)
-    expect(response.body).not_to include(internal.nome_empreendimento)
-    expect(response.body).not_to include(published.nome_empreendimento)
+    expect(response.body).to include(second_visible.nome_empreendimento)
+    expect(response.body).to include(returned.nome_empreendimento)
+    expect(response.body).to include(internal.nome_empreendimento)
+    expect(response.body).to include(published.nome_empreendimento)
+    expect(response.body).to include("Todos")
 
     get admin_captacoes_path(corretor_id: first_broker.id)
 
     expect(response.body).to include(first_visible.nome_empreendimento)
     expect(response.body).not_to include(second_visible.nome_empreendimento)
-    expect(response.body).not_to include(returned.nome_empreendimento)
-    expect(response.body).not_to include(internal.nome_empreendimento)
+    expect(response.body).to include(returned.nome_empreendimento)
+    expect(response.body).to include(internal.nome_empreendimento)
 
     get admin_captacoes_path(status: "admin_approved")
 
@@ -237,6 +239,27 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response.body).to include(returned.nome_empreendimento)
     expect(response.body).not_to include(first_visible.nome_empreendimento)
+  end
+
+  it "abre captações do corretor com rascunho revisão administrativa e publicar no site por padrão" do
+    broker_profile = default_agent_profile
+    broker = create(:admin_user, profile: broker_profile, name: "Corretor Default")
+    draft = create(:habitation, :broker_intake, admin_user: broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", nome_empreendimento: "Rascunho Default")
+    submitted = create(:habitation, :broker_intake, admin_user: broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", nome_empreendimento: "Revisão Default")
+    approved = create(:habitation, :broker_intake, admin_user: broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", nome_empreendimento: "Publicar Default")
+    returned = create(:habitation, :broker_intake, admin_user: broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker", nome_empreendimento: "Devolvida Default")
+    internal = create(:habitation, :broker_intake, admin_user: broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "internal", nome_empreendimento: "Interna Default")
+
+    sign_in broker
+    get admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(draft.nome_empreendimento)
+    expect(response.body).to include(submitted.nome_empreendimento)
+    expect(response.body).to include(approved.nome_empreendimento)
+    expect(response.body).not_to include(returned.nome_empreendimento)
+    expect(response.body).not_to include(internal.nome_empreendimento)
+    expect(response.body).to include("Minhas pendências")
   end
 
   it "usa rótulos claros para enviar análise e publicar no site pelo captador" do
@@ -1439,6 +1462,41 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "review"))
     expect(intake.reload.photos.attachments.size).to eq(1)
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_attachment!).with(instance_of(ActiveStorage::Attachment))
+  end
+
+  it "agenda marca d'água para fotos enviadas pela captação quando há logo configurada" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "fotos", photo_flow_choice: "upload")
+    setting = PropertySetting.instance(tenant: intake.tenant)
+    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    authorization = Rack::Test::UploadedFile.new(
+      StringIO.new("autorizacao"),
+      "image/png",
+      original_filename: "autorizacao.png"
+    )
+    uploaded_photo = Rack::Test::UploadedFile.new(
+      StringIO.new("foto nova"),
+      "image/jpeg",
+      original_filename: "foto-nova.jpg"
+    )
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.example.test/foto-nova.jpg")
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_return(true)
+    expect(HabitationPhotoWatermarkJob).to receive(:perform_later) do |habitation_id, attachment_ids, setting_id, tenant_id:|
+      expect(habitation_id).to eq(intake.id)
+      expect(attachment_ids).to all(be_a(Integer))
+      expect(setting_id).to eq(setting.id)
+      expect(tenant_id).to eq(intake.tenant_id)
+    end
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "fotos",
+      direction: "forward",
+      habitation: {
+        photos: [uploaded_photo],
+        autorizacoes_venda: [authorization]
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "review"))
   end
 
   it "não remove anexos existentes quando o navegador envia campos de arquivo vazios" do

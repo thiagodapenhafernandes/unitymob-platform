@@ -115,7 +115,7 @@
                   <% if user != current_admin_user %>
                     <% if user.active? %>
                       <%= ax_icon_button(
-                            label: "Inativar usuário #{user.name}",
+                            label: "Remover acesso de #{user.name}",
                             icon: "person-dash",
                             data: {
                               controller: "admin-user-inactivation",
@@ -158,10 +158,10 @@
   <%= ax_pagination @admin_users, params: request.query_parameters %>
 </div>
 
-<%= ax_quick_modal(id: "inactivateUserModal", title: "Inativação de usuário", size: :md, footer: nil) do %>
+<%= ax_quick_modal(id: "inactivateUserModal", title: "Remover acesso do usuário", size: :md, footer: nil) do %>
   <div data-controller="admin-user-inactivation">
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-      <span>Você está inativando <strong data-admin-user-inactivation-target="name">este usuário</strong>. Ele sairá da distribuição e do site.</span>
+      <span>Você está removendo o acesso de <strong data-admin-user-inactivation-target="name">este usuário</strong>. Ele sairá da distribuição e do site.</span>
     <% end %>
 
     <%= form_tag("", method: :patch, data: { admin_user_inactivation_target: "form" }, class: "reassign-delete__form") do %>
@@ -193,7 +193,7 @@
 
       <%= ax_form_actions(sticky: false) do %>
         <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
-        <button type="submit" class="ax-btn ax-btn--danger">Inativar usuário</button>
+        <button type="submit" class="ax-btn ax-btn--danger">Remover acesso</button>
       <% end %>
     <% end %>
   </div>
