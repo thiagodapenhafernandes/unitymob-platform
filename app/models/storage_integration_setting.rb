@@ -273,13 +273,15 @@ class StorageIntegrationSetting < ApplicationRecord
 
   def digital_ocean_service_config
     {
-      service: "S3",
+      service: "DigitalOceanSpaces",
       access_key_id: do_spaces_access_key_id,
       secret_access_key: do_spaces_secret_access_key,
       region: do_spaces_region,
       endpoint: do_spaces_endpoint,
       bucket: do_spaces_bucket,
-      force_path_style: false
+      force_path_style: false,
+      request_checksum_calculation: "when_required",
+      response_checksum_validation: "when_required"
     }
   end
 
