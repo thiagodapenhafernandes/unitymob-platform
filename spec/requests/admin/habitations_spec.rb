@@ -215,7 +215,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       status: "Aluguel",
       valor_venda_cents: 0,
       valor_locacao_cents: 6_700_00,
-      salute_rental_management_flag: true
+      rental_management_flag: true
     )
 
     get admin_habitation_path(habitation)
@@ -237,7 +237,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       status: "Aluguel",
       valor_venda_cents: 0,
       valor_locacao_cents: 6_700_00,
-      salute_rental_management_flag: false
+      rental_management_flag: false
     )
     sale = create(
       :habitation,
@@ -245,7 +245,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       status: "Venda",
       valor_venda_cents: 900_000_00,
       valor_locacao_cents: 0,
-      salute_rental_management_flag: false
+      rental_management_flag: false
     )
 
     get admin_habitation_path(rental)
@@ -2846,19 +2846,21 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(clear_link["data-action"].to_s).not_to include("ax-aside#collapse")
   end
 
-  it "libera todos os status de imóvel no filtro do catálogo para corretor" do
+  it "libera todos os status comerciais padronizados no filtro do catálogo para corretor" do
     agent = create(:admin_user, email: "agent-statuses-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)
-    create(:habitation, status: "Status operacional personalizado", codigo: "STATUS-FILTER-#{SecureRandom.hex(6)}")
+    create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Status operacional personalizado", codigo: "STATUS-FILTER-#{SecureRandom.hex(6)}")
+    sign_out admin
     sign_in agent
 
     get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
-    expected_statuses = Habitation::STATUS_OPTIONS + ["Todos", "Status operacional personalizado"]
+    expected_statuses = Habitation::STATUS_OPTIONS + ["Todos"]
     expected_statuses.each do |status|
       expect(response.body).to include(status)
     end
+    expect(response.body).not_to include("Status operacional personalizado")
     status_options = Nokogiri::HTML.fragment(response.body).css("select[name='status[]'] option").map(&:text)
     expect(status_options).to include(*expected_statuses)
     expect(status_options.first).to eq("Todos")
@@ -4555,7 +4557,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "registra qualquer campo do cadastro do imóvel, mesmo fora da lista principal" do
-    habitation = create(:habitation, codigo: "AUD-FULL-#{SecureRandom.hex(6)}", festival_salute_flag: false, ocupacao_status: "Desocupado")
+    habitation = create(:habitation, codigo: "AUD-FULL-#{SecureRandom.hex(6)}", festival_flag: false, ocupacao_status: "Desocupado")
     habitation.create_address!(
       logradouro: "Rua Auditoria",
       numero: "20",
@@ -4566,7 +4568,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     patch admin_habitation_path(habitation), params: {
       habitation: {
-        festival_salute_flag: "1",
+        festival_flag: "1",
         ocupacao_status: "Ocupado",
         address_attributes: {
           id: habitation.address.id,
@@ -4581,11 +4583,11 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to redirect_to(admin_habitations_path)
     log = HabitationAuditLog.where(habitation_id: habitation.id).last
-    expect(log.changed_fields).to include("festival_salute_flag", "ocupacao_status", "address.logradouro")
+    expect(log.changed_fields).to include("festival_flag", "ocupacao_status", "address.logradouro")
 
     get edit_admin_habitation_path(habitation)
 
-    expect(response.body).to include('name="habitation[festival_salute_flag]"')
+    expect(response.body).to include('name="habitation[festival_flag]"')
     expect(response.body).to include('name="habitation[ocupacao_status]"')
     expect(response.body).to include("Rua Auditoria Atualizada")
   end

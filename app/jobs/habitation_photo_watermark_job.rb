@@ -30,7 +30,7 @@ class HabitationPhotoWatermarkJob < ApplicationJob
   def process_attachment(attachment, setting)
     blob = attachment.blob
     return if blob.blank?
-    return if ActiveModel::Type::Boolean.new.cast(blob.metadata&.dig("salute_watermarked"))
+    return if ActiveModel::Type::Boolean.new.cast(blob.metadata&.dig("watermarked"))
     return unless blob.content_type.to_s.start_with?("image/")
 
     result = nil
@@ -53,8 +53,8 @@ class HabitationPhotoWatermarkJob < ApplicationJob
 
   def create_watermarked_blob(original_blob, attachable)
     metadata = original_blob.metadata.to_h.merge(
-      "salute_watermarked" => true,
-      "salute_original_blob_id" => original_blob.id
+      "watermarked" => true,
+      "original_blob_id" => original_blob.id
     )
 
     ActiveStorage::Blob.create_and_upload!(

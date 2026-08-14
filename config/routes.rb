@@ -515,7 +515,7 @@ Rails.application.routes.draw do
   # Static pages
   get 'trabalhe-conosco', to: 'pages#trabalhe_conosco', as: :trabalhe_conosco
   get 'parcerias', to: 'pages#parcerias', as: :parcerias
-  get 'salute-parcerias', to: 'pages#legacy_salute_parcerias'
+  get 'salute-parcerias', to: 'pages#legacy_partnerships'
   get 'simulador-financiamento', to: 'pages#simulador', as: :simulador
   get 'politica-de-privacidade', to: 'pages#privacy_policy', as: :privacy_policy
   get 'termos-de-uso', to: 'pages#terms_of_use', as: :terms_of_use
@@ -568,7 +568,7 @@ Rails.application.routes.draw do
   post "formularios/:slug", to: "public_form_submissions#create", as: :public_form_submissions
   post 'trabalhe-conosco/submit', to: 'pages#submit_trabalhe_conosco', as: :submit_trabalhe_conosco
   post 'parcerias/submit', to: 'pages#submit_parcerias', as: :submit_parcerias
-  post 'salute-parcerias/submit', to: 'pages#submit_legacy_salute_parcerias'
+  post 'salute-parcerias/submit', to: 'pages#submit_legacy_partnerships'
   # Alternative routes for SEO
   get 'imovel/:id', to: 'habitations#show', as: :property
   get 'venda', to: 'habitations#index', defaults: { transaction_type: 'venda' }, as: :venda

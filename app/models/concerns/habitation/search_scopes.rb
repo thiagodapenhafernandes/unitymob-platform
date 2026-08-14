@@ -488,12 +488,12 @@ module Habitation::SearchScopes
     }
 
     # Super destaque
-    scope :festival_salute, lambda {
-      where(festival_salute_flag: true)
+    scope :festival, lambda {
+      where(festival_flag: true)
     }
 
     # Compatibilidade para filtros antigos da publicação comercial.
-    scope :exibir_site_salute, lambda {
+    scope :exibir_site_portal, lambda {
       where(exibir_no_site_flag: true)
     }
 
@@ -942,9 +942,9 @@ module Habitation::SearchScopes
         "aceita_permuta_flag" => :aceita_permuta,
         "aceita_financiamento_flag" => :aceita_financiamento,
         "garden_flag" => :garden,
-        "festival_salute_flag" => :festival_salute,
-        "exibir_no_site_flag" => :exibir_site_salute,
-        "exibir_no_site_salute_flag" => :exibir_site_salute,
+        "festival_flag" => :festival,
+        "exibir_no_site_flag" => :exibir_site_portal,
+        "exibir_no_site_portal_flag" => :exibir_site_portal,
         "opportunity" => :opportunity,
         "na_planta" => :na_planta,
         "lancamento" => :lancamento,

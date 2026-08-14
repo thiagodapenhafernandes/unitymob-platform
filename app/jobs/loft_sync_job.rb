@@ -130,10 +130,10 @@ class LoftSyncJob < ApplicationJob
     tenant.habitations
       .where(Habitation::VISTA_REFERENCE_CODIGO_SQL)
       .where.not(codigo: api_codes.map(&:to_s))
-      .where("exibir_no_site_flag = TRUE OR exibir_no_site_salute_flag = TRUE OR last_sync_status <> ?", "missing_from_vista_api")
+      .where("exibir_no_site_flag = TRUE OR exibir_no_site_portal_flag = TRUE OR last_sync_status <> ?", "missing_from_vista_api")
       .update_all(
         exibir_no_site_flag: false,
-        exibir_no_site_salute_flag: false,
+        exibir_no_site_portal_flag: false,
         last_sync_status: "missing_from_vista_api",
         last_sync_message: "Ocultado porque não retornou na API Vista em #{now.strftime("%d/%m/%Y %H:%M")}",
         last_sync_at: now,

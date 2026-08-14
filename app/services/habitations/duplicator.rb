@@ -23,11 +23,11 @@ module Habitations
       terceira_avenida_flag arriba_flag avenida_brasil_flag bairro_fazenda_itajai_flag
       balneario_picarras_flag barra_flag barra_norte_flag barra_sul_flag cabecudas_flag camboriu_flag
       centro_flag estaleirinho_flag frente_mar_avenida_atlantica_flag itajai_flag itapema_flag nacoes_flag
-      pioneiros_flag praia_brava_flag praia_dos_amores_flag vista_frente_mar_flag festival_salute_flag
+      pioneiros_flag praia_brava_flag praia_dos_amores_flag vista_frente_mar_flag festival_flag
       categoria_grupo data_entrega tour_virtual face perfil_construcao tipo_vaga hidromassagem_qtd
       ocupacao_status estado_conservacao andar ano_construcao demi_suites_qtd numero_box
       dimensoes_terreno topografia foto_classificacao podcast_url
-      captador_commission_percentage broker_commission_percentage salute_rental_management_flag
+      captador_commission_percentage broker_commission_percentage rental_management_flag
       valor_aceito_permuta_cents aceita_permuta_veiculo_flag aceita_permuta_imovel_flag aceita_permuta_outros_flag
       tipo_veiculo_aceito_permuta ano_minimo_veiculo_aceito_permuta permuta_valor_cents
       permuta_localizacao permuta_dormitorios_qtd permuta_suites_qtd permuta_garagens_qtd
@@ -35,7 +35,7 @@ module Habitations
       responsavel_reserva zelador_nome zelador_telefone observacoes_visitas regiao_foco tipo_fachada andares_qtd
       destaque_chaves_na_mao periodo_locacao_chaves_na_mao modelo_casa_mineira tipo_publicacao_viva_real
       divulgar_endereco_viva_real tipo_publicacao_imovelweb mostrar_mapa_imovelweb tipo_publicacao_imovelweb_2
-      mostrar_mapa_imovelweb_2 aceita_parcelamento_flag salute_rental_management_answer aceita_permuta_answer
+      mostrar_mapa_imovelweb_2 aceita_parcelamento_flag rental_management_answer aceita_permuta_answer
       motivo_venda intake_modalidade use_development_photos_flag motivo_suspensao valor_alugado_terceiros_cents
       valor_vendido_terceiros_cents rental_guarantee_method permuta_valor_percentual frente_terreno_m fundo_terreno_m
       permuta_veiculo_valor_cents permuta_outros_valor_cents permuta_outros_descricao

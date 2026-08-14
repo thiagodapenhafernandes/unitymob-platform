@@ -1102,13 +1102,6 @@ class Admin::HabitationsController < Admin::BaseController
                                       .pluck(Arel.sql(commercial_neighborhood_sql))
                                       .reject { |name| excluded_commercial_neighborhood?(name) }
                                       .sort,
-        statuses: (["Todos"] + (
-          Habitation::STATUS_OPTIONS +
-          tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
-                             .distinct
-                             .pluck(:status)
-        ).compact_blank.uniq
-          .sort_by { |status| I18n.transliterate(status).downcase }),
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
         amenity_features: normalized_amenity_filter_options(
@@ -1136,7 +1129,7 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_cities = cached[:cities]
     @filter_bairros = cached[:bairros]
     @filter_bairros_comerciais = cached[:bairros_comerciais]
-    @filter_statuses = cached[:statuses]
+    @filter_statuses = filter_status_options_for(tenant_habitations)
     @filter_key_locations = cached[:key_locations]
     @filter_empreendimentos = cached[:empreendimentos]
     @filter_amenity_feature_options = cached[:amenity_features] || []
@@ -1149,6 +1142,15 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_ocupacao_statuses = cached[:ocupacao_statuses]
     @filter_estado_conservacoes = cached[:estado_conservacoes]
     @filter_regioes_foco = Habitation::REGIAO_FOCO_OPTIONS
+  end
+
+  def filter_status_options_for(scope)
+    statuses = Habitation::STATUS_OPTIONS +
+      scope.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
+           .distinct
+           .pluck(:status)
+
+    ["Todos"] + statuses.compact_blank.uniq.sort_by { |status| I18n.transliterate(status).downcase }
   end
 
   def selected_filter_proprietors
@@ -1168,7 +1170,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def extra_filter_keys
     keys = %w[
-      codigo cidade logradouro numero bairro_comercial promotion_status accepts_exchange accepts_installments key_location salute_rental_management min_price max_price
+      codigo cidade logradouro numero bairro_comercial promotion_status accepts_exchange accepts_installments key_location rental_management min_price max_price
       amenities
       permuta_vehicle permuta_property permuta_others
       situacao area_total_min area_total_max area_privativa_min area_privativa_max
@@ -1179,7 +1181,7 @@ class Admin::HabitationsController < Admin::BaseController
 
     if can_view_habitation_administrative_filters?
       keys += %w[
-        destaque_web festival_salute exibir_no_site exibir_no_site_salute tem_placa exclusivo regiao_foco
+        destaque_web festival exibir_no_site exibir_no_site_portal tem_placa exclusivo regiao_foco
         foto_classificacao publicar_imovelweb_2 publicar_lais_ai
         publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
         captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
@@ -1342,7 +1344,7 @@ class Admin::HabitationsController < Admin::BaseController
     @permuta_min_suites = nil
     @permuta_min_garagens = nil
     @key_location = params[:key_location]
-    @salute_rental_management = params[:salute_rental_management]
+    @rental_management = params[:rental_management]
     @empreendimento_codigos = filter_values(params[:empreendimento_codigo], except: "Todos").filter_map { |value| normalize_development_filter_value(value) }
     @empreendimento_codigo = @empreendimento_codigos.first
     @corretor_ids = can_filter_by_broker? ? catalog_filter_admin_user_ids(params[:corretor_id]) : []
@@ -1350,8 +1352,8 @@ class Admin::HabitationsController < Admin::BaseController
     @corretor_filter_labels = @corretor_ids.any? ? catalog_filter_admin_users.where(id: @corretor_ids).order(:name).pluck(:name) : []
     @proprietor_id = nil
     @destaque_web = params[:destaque_web]
-    @festival_salute = params[:festival_salute]
-    @exibir_no_site = params[:exibir_no_site].presence || params[:exibir_no_site_salute]
+    @festival = params[:festival]
+    @exibir_no_site = params[:exibir_no_site].presence || params[:exibir_no_site_portal]
     @publicar_imovelweb_2 = params[:publicar_imovelweb_2]
     @publicar_netimoveis_2 = params[:publicar_netimoveis_2]
     @publicar_lais_ai = params[:publicar_lais_ai]
@@ -1389,7 +1391,7 @@ class Admin::HabitationsController < Admin::BaseController
     unless can_view_habitation_administrative_filters?
       @regiao_foco = nil
       @destaque_web = nil
-      @festival_salute = nil
+      @festival = nil
       @exibir_no_site = nil
       @publicar_imovelweb_2 = nil
       @publicar_netimoveis_2 = nil
@@ -1541,7 +1543,7 @@ class Admin::HabitationsController < Admin::BaseController
     end
     scope = scope.where(proprietor_id: @proprietor_id) if @proprietor_id.present?
 
-    scope = apply_boolean_filter(scope, @salute_rental_management, :salute_rental_management_flag)
+    scope = apply_boolean_filter(scope, @rental_management, :rental_management_flag)
     scope = apply_price_range_filter(scope)
 
     captacao_inicio = parse_date_param(@captacao_inicio)
@@ -1572,7 +1574,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.where("area_privativa_m2 >= ?", area_privativa_min) if area_privativa_min
     scope = scope.where("area_privativa_m2 <= ?", area_privativa_max) if area_privativa_max
     scope = apply_boolean_filter(scope, @destaque_web, :destaque_web_flag)
-    scope = apply_boolean_filter(scope, @festival_salute, :festival_salute_flag)
+    scope = apply_boolean_filter(scope, @festival, :festival_flag)
     scope = apply_boolean_filter(scope, @exibir_no_site, :exibir_no_site_flag)
     scope = apply_boolean_filter(scope, @publicar_imovelweb_2, :publicar_imovelweb_2)
     scope = apply_boolean_filter(scope, @publicar_netimoveis_2, :publicar_netimoveis_2)
@@ -2354,7 +2356,7 @@ class Admin::HabitationsController < Admin::BaseController
     when "destaque_web"
       scope.where(destaque_web_flag: true)
     when "super_destaque"
-      scope.where(festival_salute_flag: true)
+      scope.where(festival_flag: true)
     when "oportunidade"
       scope.opportunity
     when "frente_mar"
@@ -2808,7 +2810,7 @@ class Admin::HabitationsController < Admin::BaseController
       :cabecudas_flag, :camboriu_flag, :centro_flag, :estaleirinho_flag, 
       :frente_mar_avenida_atlantica_flag, :itajai_flag, :itapema_flag, :nacoes_flag, 
       :pioneiros_flag, :praia_brava_flag, :praia_dos_amores_flag, :vista_frente_mar_flag, 
-      :festival_salute_flag, :exibir_no_site_salute_flag, :tem_placa_flag, :imovel_dwv,
+      :festival_flag, :exibir_no_site_portal_flag, :tem_placa_flag, :imovel_dwv,
       :publicar_imovelweb_2, :publicar_netimoveis_2, :publicar_lais_ai, :publicar_loft,
       :publicar_chaves_na_mao, :publicar_casa_mineira, :publicar_imovelweb, :publicar_viva_real_vrsync,
       :destaque_chaves_na_mao, :periodo_locacao_chaves_na_mao,
@@ -2825,8 +2827,8 @@ class Admin::HabitationsController < Admin::BaseController
       :permuta_localizacao, :permuta_dormitorios_qtd, :permuta_suites_qtd, :permuta_garagens_qtd,
       :permuta_outros_descricao,
       :agenciador, :captador_commission_percentage, :broker_commission_percentage,
-      :salute_rental_management_answer,
-      :salute_rental_management_flag, :home_corporate_flag, :home_corporate_position,
+      :rental_management_answer,
+      :rental_management_flag, :home_corporate_flag, :home_corporate_position,
       :key_location, :key_location_notes, :senha_portaria, :senha_imovel, :ordered_photo_ids, :ordered_picture_indices, :site_hidden_photo_ids, :site_hidden_picture_urls, :intake_status,
       :use_development_photos_flag,
       rental_guarantee_method: [],
@@ -2869,7 +2871,7 @@ class Admin::HabitationsController < Admin::BaseController
     result = PropertyReviewPolicyResolver.for_habitation(habitation, property_setting: @property_setting)
     rule = result.policy || @property_setting
     habitation.assign_attributes(
-      intake_review_policy_version: rule.respond_to?(:version) ? rule.version : @property_setting.review_policy_version,
+      intake_review_policy_version: review_policy_version_for(rule),
       intake_review_policy_snapshot: {
         source: result.source.to_s,
         registration_type: result.registration_type,
@@ -2881,6 +2883,13 @@ class Admin::HabitationsController < Admin::BaseController
         broker_capture_layer_enabled: rule.broker_capture_layer_enabled
       }
     )
+  end
+
+  def review_policy_version_for(rule)
+    return rule.version if rule.respond_to?(:version)
+    return rule.review_policy_version if rule.respond_to?(:review_policy_version)
+
+    nil
   end
 
   def broker_protected_habitation_param_keys

@@ -488,7 +488,7 @@ RSpec.describe Habitation, type: :model do
         status: "Suspenso",
         motivo_suspensao: nil,
         exibir_no_site_flag: true,
-        exibir_no_site_salute_flag: true,
+        exibir_no_site_portal_flag: true,
         publicar_lais_ai: true,
         publicar_zapimoveis: true,
         publicar_netimoveis_2: true,
@@ -503,7 +503,7 @@ RSpec.describe Habitation, type: :model do
       expect(habitation).not_to be_valid
       expect(habitation.errors[:motivo_suspensao]).to include("deve ser informado quando o status estiver Suspenso")
       expect(habitation.exibir_no_site_flag).to be(false)
-      expect(habitation.exibir_no_site_salute_flag).to be(false)
+      expect(habitation.exibir_no_site_portal_flag).to be(false)
       expect(habitation.publicar_lais_ai).to be(false)
       expect(habitation.publicar_zapimoveis).to be(false)
       expect(habitation.publicar_netimoveis_2).to be(false)
@@ -520,7 +520,7 @@ RSpec.describe Habitation, type: :model do
         :habitation,
         status: "Pendente",
         exibir_no_site_flag: true,
-        exibir_no_site_salute_flag: true,
+        exibir_no_site_portal_flag: true,
         publicar_lais_ai: true,
         publicar_zapimoveis: true,
         publicar_netimoveis_2: true,
@@ -534,7 +534,7 @@ RSpec.describe Habitation, type: :model do
 
       expect(habitation).to be_valid
       expect(habitation.exibir_no_site_flag).to be(false)
-      expect(habitation.exibir_no_site_salute_flag).to be(false)
+      expect(habitation.exibir_no_site_portal_flag).to be(false)
       expect(habitation.publicar_lais_ai).to be(false)
       expect(habitation.publicar_zapimoveis).to be(false)
       expect(habitation.publicar_netimoveis_2).to be(false)

@@ -12,9 +12,9 @@
 
   data_filter_keys = %w[codigo empreendimento_codigo corretor_id status categoria min_price max_price]
   location_filter_keys = %w[cidade logradouro numero bairro_comercial]
-  business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location salute_rental_management permuta_vehicle permuta_property permuta_others]
+  business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location rental_management permuta_vehicle permuta_property permuta_others]
   feature_filter_keys = %w[dorms_min dorms_max suites_min suites_max banheiros_min banheiros_max vagas_min vagas_max area_total_min area_total_max area_privativa_min area_privativa_max amenities]
-  administrative_filter_keys = %w[destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim regiao_foco]
+  administrative_filter_keys = %w[destaque_web festival exibir_no_site_portal tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim regiao_foco]
   quick_filter_count = filter_active_count.call(%w[q]) + (params[:scope].present? ? 1 : 0)
   quick_filters = [
     { key: "destaque_web", label: "Destaque Web", icon: "star-fill" },
@@ -297,7 +297,7 @@
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :key_location, label: "Chaves", choices: @filter_key_locations, select_options: { include_blank: "Todos", selected: params[:key_location] }, placeholder: "Todos") %>
         </div>
         <div>
-          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :salute_rental_management, label: "Administração de locação", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:salute_rental_management] }, placeholder: "Todos") %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :rental_management, label: "Administração de locação", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:rental_management] }, placeholder: "Todos") %>
         </div>
         <div class="ax-span-2 ax-filter-checks">
           <%= ax_filter_check(name: :permuta_vehicle, checked: params[:permuta_vehicle] == "1", label: "Aceita veículo", id: "permuta_vehicle_filter") %>
@@ -374,10 +374,10 @@
             <%= ax_autocomplete_select_field(clearable: true, form: f, method: :destaque_web, label: "Destaque", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:destaque_web] }, placeholder: "Todos") %>
           </div>
           <div>
-            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :festival_salute, label: "Super destaque", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:festival_salute] }, placeholder: "Todos") %>
+            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :festival, label: "Super destaque", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:festival] }, placeholder: "Todos") %>
           </div>
           <div class="ax-span-2">
-            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :exibir_no_site_salute, label: "Exibir no site", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:exibir_no_site_salute] }, placeholder: "Todos") %>
+            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :exibir_no_site_portal, label: "Exibir no site", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:exibir_no_site_portal] }, placeholder: "Todos") %>
           </div>
           <div class="ax-span-2 ax-filter-checks">
             <%= ax_filter_check(name: :somente_com_imagens, checked: params[:somente_com_imagens] == "1", label: "Somente com imagens", id: "somente_com_imagens_filter") %>

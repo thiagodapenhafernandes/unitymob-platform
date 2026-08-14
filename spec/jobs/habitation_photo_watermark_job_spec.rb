@@ -52,7 +52,7 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
 
     attachment.reload
     expect(attachment.blob_id).not_to eq(original_blob.id)
-    expect(attachment.blob.metadata["salute_watermarked"]).to be(true)
+    expect(attachment.blob.metadata["watermarked"]).to be(true)
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_blob!).with(
       attachment.blob,
       raise_errors: true

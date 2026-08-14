@@ -239,7 +239,7 @@ module Vista
         broker_commission_percentage: decimal_value(row["COMISSAO_CORRETOR"]),
         valor_comissao_cents: commission_amount_cents(row),
         valor_livre_proprietario_cents: money_cents(row["VLR_LIVRE_PROPRIETARIO"]),
-        salute_rental_management_flag: rental_management_flag(row),
+        rental_management_flag: rental_management_flag(row),
         publicar_zapimoveis: active_value(row["TIPO_OFERTA_ZAP"]).present?,
         publicar_viva_real_vrsync: active_value(row["TIPO_PUBLICACAO_VIVA_REAL"]).present? || active_value(row["DIVULGAR_ENDERECO_VIVA_REAL"]).present?,
         publicar_imovelweb: active_value(row["TIPO_PUBLICACAO_IMOVELWEB"]).present? || active_value(row["MODELO_IMOVELWEB"]).present? || active_value(row["MOSTRAR_MAPA"]).present?,

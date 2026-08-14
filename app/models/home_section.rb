@@ -15,7 +15,7 @@ class HomeSection < ApplicationRecord
     "locacao" => { label: "Locação", scope: :for_rent },
     "empreendimentos" => { label: "Empreendimentos", scope: :empreendimentos_publicos },
     "destaque_web" => { label: "Destaque Web", column: :destaque_web_flag },
-    "super_destaque" => { label: "Super Destaque", column: :festival_salute_flag },
+    "super_destaque" => { label: "Super Destaque", column: :festival_flag },
     "lancamento" => { label: "Lançamento", column: :lancamento_flag },
     "frente_mar" => { label: "Frente Mar", scope: :frente_mar },
     "quadra_mar" => { label: "Quadra Mar", scope: :quadra_mar },
@@ -47,18 +47,18 @@ class HomeSection < ApplicationRecord
       where: ["LOWER(TRIM(COALESCE(habitations.imovel_dwv, ''))) = ?", "sim"]
     },
     "exibir_no_site" => { label: "Exibir no site", column: :exibir_no_site_flag },
-    "administracao_locacao_salute" => { label: "Administração de locação", column: :salute_rental_management_flag },
+    "administracao_locacao" => { label: "Administração de locação", column: :rental_management_flag },
     "vitrine_corporate" => { label: "Vitrine Corporate da Página Inicial", column: :home_corporate_flag }
   }.freeze
   LEGACY_PROPERTY_FILTER_KEYS = {
-    "exibir_site_salute" => "exibir_no_site"
+    "exibir_site_portal" => "exibir_no_site"
   }.freeze
   PROPERTY_FILTER_ARRAY_KEYS = %w[selected_property_ids].freeze
   PROPERTY_FILTER_PARAM_KEYS = (PROPERTY_FILTER_OPTIONS.keys + PROPERTY_FILTER_ARRAY_KEYS).freeze
   PROPERTY_SECTION_TYPES = %w[featured_properties opportunities developments rentals].freeze
   PUBLIC_CHARACTERISTIC_FILTERS = {
     "destaque_web" => "featured",
-    "super_destaque" => "festival_salute_flag",
+    "super_destaque" => "festival_flag",
     "lancamento" => "lancamento",
     "frente_mar" => "frente_mar",
     "quadra_mar" => "quadra_mar",

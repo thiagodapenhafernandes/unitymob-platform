@@ -382,8 +382,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_20_130000) do
     t.boolean "praia_brava_flag"
     t.boolean "praia_dos_amores_flag"
     t.boolean "vista_frente_mar_flag"
-    t.boolean "festival_salute_flag"
-    t.boolean "exibir_no_site_salute_flag"
+    t.boolean "festival_flag"
+    t.boolean "exibir_no_site_portal_flag"
     t.string "categoria_grupo"
     t.date "data_entrega"
     t.string "tour_virtual"
@@ -421,7 +421,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_20_130000) do
     t.string "podcast_url"
     t.decimal "captador_commission_percentage", precision: 5, scale: 2
     t.decimal "broker_commission_percentage", precision: 5, scale: 2
-    t.boolean "salute_rental_management_flag", default: false, null: false
+    t.boolean "rental_management_flag", default: false, null: false
     t.string "key_location"
     t.string "key_location_notes"
     t.bigint "proprietor_id"
@@ -509,7 +509,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_20_130000) do
     t.index ["publicar_viva_real_vrsync"], name: "index_habitations_on_publicar_viva_real_vrsync"
     t.index ["publicar_zapimoveis"], name: "index_habitations_on_publicar_zapimoveis"
     t.index ["quadra_mar_flag"], name: "index_habitations_on_quadra_mar_flag"
-    t.index ["salute_rental_management_flag"], name: "index_habitations_on_salute_rental_management_flag"
+    t.index ["rental_management_flag"], name: "index_habitations_on_rental_management_flag"
     t.index ["slug"], name: "index_habitations_on_slug", unique: true
     t.index ["status", "categoria", "cidade"], name: "idx_habitations_status_categoria_cidade"
     t.index ["updated_at"], name: "index_habitations_on_updated_at"

@@ -439,7 +439,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       regiao_foco: "Sim",
       valor_venda_cents: 17_000_000_00,
       valor_locacao_cents: 0,
-      salute_rental_management_answer: "nao",
+      rental_management_answer: "nao",
       foto_classificacao: "Não tem fotos/ruins",
       exibir_no_site_flag: false
     )
@@ -1758,7 +1758,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       intake_modalidade: "locacao_anual",
       valor_venda_cents: 0,
       valor_locacao_cents: 8_000_00,
-      salute_rental_management_answer: "sim",
+      rental_management_answer: "sim",
       rental_guarantee_method: nil,
       intake_step: "negociacao"
     )
@@ -1770,7 +1770,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
         valor_locacao: "8.000,00",
         valor_condominio: "500,00",
         valor_iptu: "100,00",
-        salute_rental_management_answer: "sim",
+        rental_management_answer: "sim",
         rental_guarantee_method: ""
       }
     }
@@ -1790,7 +1790,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       valor_locacao_cents: 8_000_00,
       valor_condominio_cents: 500_00,
       valor_iptu_cents: 100_00,
-      salute_rental_management_answer: "sim",
+      rental_management_answer: "sim",
       rental_guarantee_method: "Seguro fiança",
       intake_step: "negociacao"
     )
@@ -1808,7 +1808,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
         valor_locacao: "8.000,00",
         valor_condominio: "500,00",
         valor_iptu: "100,00",
-        salute_rental_management_answer: "sim",
+        rental_management_answer: "sim",
         rental_guarantee_method: ["Seguro fiança", "Caução"]
       }
     }
@@ -2117,7 +2117,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       intake_modalidade: "ambos",
       valor_venda_cents: 1_200_000_00,
       valor_locacao_cents: 8_500_00,
-      salute_rental_management_answer: "sim"
+      rental_management_answer: "sim"
     )
     intake.create_address!(
       cep: "88330-100",

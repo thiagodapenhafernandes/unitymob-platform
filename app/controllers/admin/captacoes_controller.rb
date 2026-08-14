@@ -54,11 +54,11 @@ module Admin
         .select(
           "admin_users.id, COALESCE(admin_users.name, 'Sem corretor') AS name, " \
           "COUNT(habitations.id) AS ct, " \
-          "SUM(CASE WHEN habitations.salute_rental_management_flag = TRUE THEN 1 ELSE 0 END) AS adm_ct, " \
+          "SUM(CASE WHEN habitations.rental_management_flag = TRUE THEN 1 ELSE 0 END) AS adm_ct, " \
           "SUM(CASE WHEN habitations.exibir_no_site_flag = TRUE THEN 1 ELSE 0 END) AS site_ct, " \
           "SUM(CASE WHEN habitations.exibir_no_site_flag = TRUE THEN 0 ELSE 1 END) AS internal_ct, " \
-          "SUM(CASE WHEN habitations.salute_rental_management_flag = TRUE AND habitations.exibir_no_site_flag = TRUE THEN 1 ELSE 0 END) AS adm_site_ct, " \
-          "SUM(CASE WHEN habitations.salute_rental_management_flag = TRUE AND habitations.exibir_no_site_flag = TRUE THEN 0 WHEN habitations.salute_rental_management_flag = TRUE THEN 1 ELSE 0 END) AS adm_internal_ct, " \
+          "SUM(CASE WHEN habitations.rental_management_flag = TRUE AND habitations.exibir_no_site_flag = TRUE THEN 1 ELSE 0 END) AS adm_site_ct, " \
+          "SUM(CASE WHEN habitations.rental_management_flag = TRUE AND habitations.exibir_no_site_flag = TRUE THEN 0 WHEN habitations.rental_management_flag = TRUE THEN 1 ELSE 0 END) AS adm_internal_ct, " \
           "COALESCE(SUM(habitations.valor_locacao_cents),0) / 100.0 AS total_value"
         )
         .order("ct DESC, total_value DESC")
@@ -68,7 +68,7 @@ module Admin
       @goal_locacao_obj = CaptacaoGoal.current_foco(start_date: @period_start, end_date: @period_end, kind: :locacao, tenant: current_tenant)
       @regiao_foco_venda = venda_scope.where(regiao_foco_positive_condition).count
       @regiao_foco_locacao = locacao_scope.where(regiao_foco_positive_condition).count
-      @captacao_adm_locacao = locacao_scope.where(salute_rental_management_flag: true).count
+      @captacao_adm_locacao = locacao_scope.where(rental_management_flag: true).count
       @regiao_foco_venda_percent = percentage(@regiao_foco_venda, @total_venda)
       @regiao_foco_locacao_percent = percentage(@regiao_foco_locacao, @total_locacao)
       @captacao_adm_locacao_percent = percentage(@captacao_adm_locacao, @total_locacao)

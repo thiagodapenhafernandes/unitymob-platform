@@ -94,11 +94,11 @@ module Captacoes
     end
 
     def administration_label(captacao)
-      explicit = captacao.salute_rental_management_answer.to_s
+      explicit = captacao.rental_management_answer.to_s
       return "SIM" if explicit == "sim"
       return "NÃO" if explicit == "nao"
 
-      yes_no(captacao.salute_rental_management_flag?)
+      yes_no(captacao.rental_management_flag?)
     end
 
     def publication_status(captacao)

@@ -878,7 +878,7 @@ module Admin
           missing << @habitation.intake_rent_price_requirement_message
         end
         missing << "Informe ao menos condomínio ou IPTU." if intake_check_enabled?(:financeiro) && @habitation.requires_intake_expense_amount? && @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
-        if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
+        if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.rental_management_answer.blank?
           missing << "Informe se a administração da locação será feita internamente."
         end
         missing << "Informe o meio de garantia locatícia." if intake_check_enabled?(:garantia_locaticia) && @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
@@ -925,7 +925,7 @@ module Admin
         next unless habitation.has_attribute?(:intake_review_policy_snapshot)
 
         habitation.update_columns(
-          intake_review_policy_version: rule.respond_to?(:version) ? rule.version : @property_setting.review_policy_version,
+          intake_review_policy_version: review_policy_version_for(rule),
           intake_review_policy_snapshot: {
             source: result.source.to_s,
             registration_type: result.registration_type,
@@ -939,6 +939,13 @@ module Admin
           updated_at: Time.current
         )
       end
+    end
+
+    def review_policy_version_for(rule)
+      return rule.version if rule.respond_to?(:version)
+      return rule.review_policy_version if rule.respond_to?(:review_policy_version)
+
+      nil
     end
 
     def build_broker_intake_snapshot
@@ -1000,7 +1007,7 @@ module Admin
           fields[:valor_condominio] = true
           fields[:valor_iptu] = true
         end
-        fields[:salute_rental_management_answer] = true if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
+        fields[:rental_management_answer] = true if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.rental_management_answer.blank?
         fields[:rental_guarantee_method] = true if intake_check_enabled?(:garantia_locaticia) && @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
         fields[:numero_prestacoes] = true if intake_check_enabled?(:parcelamento) && @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
       when "fotos"
@@ -1141,7 +1148,7 @@ module Admin
         :proprietario_telefone_comercial, :proprietario_telefone_residencial,
         :proprietario_codigo, :proprietor_id, :admin_user_id,
         :photo_flow_choice, :photo_session_requested_at, :photo_session_url,
-        :salute_rental_management_answer, :aceita_permuta_answer,
+        :rental_management_answer, :aceita_permuta_answer,
         :aceita_parcelamento_flag, :numero_prestacoes, :aceita_financiamento_flag,
         :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
         :mobiliado_flag, :exclusivo_flag, :ocupacao_status, :estado_conservacao,
