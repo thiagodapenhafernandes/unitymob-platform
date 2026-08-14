@@ -423,7 +423,7 @@ class HabitationsController < ApplicationController
   end
 
   def internal_id_lookup?
-    params[:lookup].to_s == "id"
+    params[:lookup].to_s.split(":", 2).first == "id"
   end
   
   def set_habitation

@@ -17,7 +17,7 @@ RSpec.describe "Habitation details", type: :request do
     return csrf_token["content"] if csrf_token
 
     get admin_habitations_path
-    Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
+    Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content").to_s
   end
 
   describe "GET /imoveis/:id" do
@@ -238,7 +238,8 @@ RSpec.describe "Habitation details", type: :request do
         tenant: admin.tenant,
         codigo: target.id.to_s,
         slug: "property-with-colliding-code",
-        status: "Vendido terceiros"
+        status: "Vendido terceiros",
+        valor_vendido_terceiros_cents: 850_000_00
       )
       sign_in admin
       csrf_token = csrf_token_from(habitation_path(target.id, lookup: "id"))
@@ -256,6 +257,36 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(target.display_title)
+    end
+
+    it "accepts legacy id lookup values emitted by admin share buttons" do
+      admin = create(:admin_user)
+      target = create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "SHARE-LEGACY-ID",
+        slug: nil,
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 4_925_00
+      )
+      create(
+        :habitation,
+        :unavailable,
+        tenant: admin.tenant,
+        codigo: target.id.to_s,
+        slug: "legacy-lookup-code-collision",
+        status: "Vendido terceiros",
+        valor_vendido_terceiros_cents: 850_000_00
+      )
+      sign_in admin
+
+      post share_link_habitation_path(target.id, lookup: "id:1"), as: :json
+
+      expect(response).to have_http_status(:ok)
+      shared_url = response.parsed_body.fetch("url")
+      expect(shared_url).to include("/imoveis/#{target.id}")
+      expect(shared_url).to include("lookup=id")
     end
 
     it "creates a tracked share link for priced sale properties with operational status" do

@@ -16173,19 +16173,19 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   min-height: 0;
 }
 
-.capt-venda-layout {
+.capt-performance-layout {
   align-items: stretch;
 }
 
-.capt-venda-layout__left,
-.capt-venda-layout__right {
+.capt-performance-layout__left,
+.capt-performance-layout__right {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
 
-.capt-venda-layout__right .capt-ranking-card--expanded {
+.capt-performance-layout__right .capt-ranking-card--expanded {
   flex: 1 1 auto;
   min-height: 732px;
   height: auto;
