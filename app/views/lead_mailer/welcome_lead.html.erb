@@ -7,7 +7,7 @@
     <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
       <h2 style="color: #022B3A; margin-bottom: 20px;">Olá, <%= @lead.name.split.first %>! 👋</h2>
       
-      <p>Obrigado pelo seu contato com a <strong>Salute Imóveis</strong>.</p>
+      <p>Obrigado pelo seu contato com a <strong><%= @site_name %></strong>.</p>
       
       <p>Recebemos sua mensagem e um de nossos especialistas entrará em contato com você o mais breve possível.</p>
       
@@ -24,12 +24,16 @@
       
       <p style="font-size: 14px; color: #666;">
         Precisa falar com a gente agora?<br>
-        Ligue ou chame no WhatsApp: <strong>(47) 3311-1067</strong>
+        <% if @public_phone.present? %>
+          Ligue ou chame no WhatsApp: <strong><%= @public_phone %></strong>
+        <% else %>
+          Responda este e-mail e nossa equipe dará sequência ao atendimento.
+        <% end %>
       </p>
       
       <p style="font-size: 12px; color: #999; text-align: center; margin-top: 30px;">
-        Salute Imóveis - Balneário Camboriú/SC<br>
-        <a href="<%= root_url %>" style="color: #999;">www.saluteimoveis.com</a>
+        <%= [@site_name, @public_city].compact_blank.join(" - ") %><br>
+        <a href="<%= @public_host %>" style="color: #999;"><%= URI.parse(@public_host).host %></a>
       </p>
     </div>
   </body>

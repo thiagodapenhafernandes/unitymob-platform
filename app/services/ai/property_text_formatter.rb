@@ -3,7 +3,7 @@ module Ai
     FINAL_PHRASES = [
       "Não perca a oportunidade de viver em um dos destinos mais desejados de Santa Catarina!",
       "O valor do aluguel já contempla todas as taxas, garantindo mais praticidade e comodidade para você. Sem surpresas no final do mês, apenas o valor anunciado!",
-      "A Salute Imóveis está localizada em Balneário Camboriú, Santa Catarina.",
+      "A imobiliária atua na região com atendimento especializado.",
       "O seu DNA é o atendimento diferenciado para quem quer comprar ou vender um imóvel. Fale com a gente em um dos nossos canais de atendimento ou venha nos fazer uma visita.",
       "Os valores estão sujeitos a alteração sem aviso prévio."
     ].freeze

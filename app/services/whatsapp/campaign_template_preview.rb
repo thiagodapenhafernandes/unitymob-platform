@@ -8,7 +8,7 @@ module Whatsapp
       "status" => "Novo",
       "tags" => "Produto, Premium",
       "produto" => "Apartamento decorado",
-      "empresa" => "Salute Imóveis",
+      "empresa" => "Sua Imobiliária",
       "observacoes" => "Contato pediu retorno no periodo da tarde",
       "corretor" => "Corretor Responsável",
       "corretor_telefone" => "5511999990000",

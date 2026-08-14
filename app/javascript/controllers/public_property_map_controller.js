@@ -233,10 +233,11 @@ export default class extends Controller {
   }
 
   waitForPrivacyConsent() {
-    if (!window.SaluteLgpdConsent || window.SaluteLgpdConsent.accepted()) return Promise.resolve()
+    const consent = window.UnitymobLgpdConsent
+    if (!consent || consent.accepted()) return Promise.resolve()
 
     return new Promise((resolve) => {
-      window.addEventListener("salute:lgpd-consent-accepted", resolve, { once: true })
+      window.addEventListener("unitymob:lgpd-consent-accepted", resolve, { once: true })
     })
   }
 

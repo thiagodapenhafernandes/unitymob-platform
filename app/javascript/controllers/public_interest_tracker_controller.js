@@ -210,7 +210,7 @@ export default class extends Controller {
   consentAccepted() {
     return window.localStorage.getItem(this.consentKey()) === "accepted" ||
       document.cookie.includes("unitymob_interest_consent=accepted") ||
-      document.cookie.includes("salute_lgpd_consent=accepted")
+      document.cookie.includes("unitymob_lgpd_consent=accepted")
   }
 
   renderConsentState() {

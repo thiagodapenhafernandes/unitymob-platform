@@ -163,7 +163,7 @@ class Habitation < ApplicationRecord
     "sim" => "Sim",
     "nao" => "Não"
   }.freeze
-  PHOTO_SCHEDULE_URL = "https://calendly.com/fotografias-saluteimoveis/30min".freeze
+  PHOTO_SCHEDULE_URL = "".freeze
   MINIMUM_INTAKE_SALE_PRICE_CENTS = 10_000_00
   MINIMUM_INTAKE_RENT_PRICE_CENTS = 100_00
   STRATEGIC_TAX_PLACEHOLDER_CENTS = [1, 100].freeze

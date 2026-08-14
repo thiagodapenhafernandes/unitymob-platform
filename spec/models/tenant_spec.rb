@@ -47,10 +47,10 @@ RSpec.describe Tenant, type: :model do
     expect(tenant.public_site_stylesheet).to eq("public_site_themes/conexaoimobiliaria")
   end
 
-  it "usa Salute como fallback quando a conta nao possui skin propria" do
+  it "usa tema neutro como fallback quando a conta nao possui skin propria" do
     tenant = described_class.create!(name: "Conta Tema #{SecureRandom.hex(3)}")
 
-    expect(tenant.public_site_theme_key).to eq("saluteimoveis")
-    expect(tenant.public_site_stylesheet).to eq("public_site_themes/saluteimoveis")
+    expect(tenant.public_site_theme_key).to eq("default")
+    expect(tenant.public_site_stylesheet).to eq("public_site_themes/default")
   end
 end

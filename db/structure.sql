@@ -1,4 +1,4 @@
-\restrict e9AxdwdVjT1P55YqnGrgA2rud7bLYKfbY4Y3EaXpF6gnIQjXP4Jg8hXru45J8BC
+\restrict JQNd3fy0hqdo8bszClgwDcMcWtzmVtHMF4amtWl5oTdyLfswSxoxHGu94iwvGq4
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -6177,7 +6177,7 @@ CREATE TABLE public.tenants (
     session_epoch_at timestamp(6) without time zone,
     use_global_whatsapp_fallback boolean DEFAULT false NOT NULL,
     use_global_email_fallback boolean DEFAULT false NOT NULL,
-    public_site_theme character varying DEFAULT 'saluteimoveis'::character varying NOT NULL
+    public_site_theme character varying DEFAULT 'default'::character varying NOT NULL
 );
 
 
@@ -17129,11 +17129,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict e9AxdwdVjT1P55YqnGrgA2rud7bLYKfbY4Y3EaXpF6gnIQjXP4Jg8hXru45J8BC
+\unrestrict JQNd3fy0hqdo8bszClgwDcMcWtzmVtHMF4amtWl5oTdyLfswSxoxHGu94iwvGq4
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260814121000'),
+('20260814120000'),
 ('20260813172000'),
 ('20260812121000'),
 ('20260812115000'),

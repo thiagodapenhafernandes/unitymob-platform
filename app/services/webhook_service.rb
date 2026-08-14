@@ -60,7 +60,7 @@ class WebhookService
         body: body,
         headers: {
           'Content-Type' => 'application/json',
-          'User-Agent' => 'Salute-Imoveis-Webhook/1.0'
+          'User-Agent' => 'Unitymob-Webhook/1.0'
         }.merge(signature_headers(body)),
         timeout: TIMEOUT
       )
@@ -131,8 +131,8 @@ class WebhookService
       timestamp = Time.current.to_i.to_s
       digest = OpenSSL::HMAC.hexdigest("SHA256", secret, "#{timestamp}.#{body}")
       {
-        "X-Salute-Timestamp" => timestamp,
-        "X-Salute-Signature" => "sha256=#{digest}"
+        "X-Unitymob-Timestamp" => timestamp,
+        "X-Unitymob-Signature" => "sha256=#{digest}"
       }
     end
   end

@@ -68,7 +68,7 @@ class WebhookSetting < ApplicationRecord
     target_url = whatsapp_webhook_url.presence || webhook_url
     
     WebhookService.send_form_data('test_webhook', {
-      message: 'Test webhook from Salute Imóveis',
+      message: "Test webhook from #{tenant&.name.presence || 'Unitymob'}",
       timestamp: Time.current.iso8601
     }, url: target_url)
   end

@@ -1,6 +1,6 @@
 module Vista
   class CleanImportService
-    DEFAULT_PASSWORD = "salute123456"
+    DEFAULT_PASSWORD = "unitymob123456"
     PHOTO_BASE_URL = "https://cdn.vistahost.com.br/saluteim20174/vista.imobi/fotos/".freeze
 
     Result = Struct.new(:batch_id, :dry_run, :stats, :errors, keyword_init: true)
@@ -43,7 +43,7 @@ module Vista
     end
 
     def admin_email
-      ENV.fetch("ADMIN_EMAIL", "admin@saluteimoveis.com.br")
+      ENV.fetch("ADMIN_EMAIL", "admin@example.com")
     end
 
     def load_categories
@@ -628,7 +628,7 @@ module Vista
         return email unless existing
       end
 
-      "corretor#{vista_id}@saluteimoveis.local"
+      "corretor#{vista_id}@unitymob.local"
     end
 
     def role_for_agent(row)

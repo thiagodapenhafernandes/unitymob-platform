@@ -73,7 +73,7 @@ Rails.application.configure do
   )
 
   # URLs generated outside a request (mailers/jobs) need an explicit host.
-  public_app_url = URI.parse(ENV.fetch("APP_HOST", "https://saluteimoveis.com.br"))
+  public_app_url = URI.parse(ENV.fetch("APP_HOST", "https://unitymob.com.br"))
   config.action_mailer.default_url_options = {
     host: public_app_url.host,
     protocol: public_app_url.scheme

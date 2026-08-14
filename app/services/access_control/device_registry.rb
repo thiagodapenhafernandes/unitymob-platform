@@ -1,6 +1,6 @@
 module AccessControl
   class DeviceRegistry
-    COOKIE_KEY = "salute_admin_device_id".freeze
+    COOKIE_KEY = "unitymob_admin_device_id".freeze
 
     def self.call(controller, admin_user)
       new(controller, admin_user).call

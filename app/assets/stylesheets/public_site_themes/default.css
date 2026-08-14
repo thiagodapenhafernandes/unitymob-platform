@@ -1,0 +1,31 @@
+/* Tema público neutro usado quando a conta não possui skin própria. */
+[data-public-site-theme="default"] {
+  --public-theme-primary: #022b3a;
+  --public-theme-secondary: #053c5e;
+  --public-theme-accent: #bfab25;
+  --public-theme-ink: #1f2733;
+}
+
+[data-public-site-theme="default"] :where(.bg-blue-three) {
+  background-color: var(--public-theme-primary) !important;
+}
+
+[data-public-site-theme="default"] :where(.hover\:bg-blue-one:hover) {
+  background-color: var(--public-theme-secondary) !important;
+}
+
+[data-public-site-theme="default"] :where(.text-blue-three) {
+  color: var(--public-theme-primary) !important;
+}
+
+[data-public-site-theme="default"] :where(.border-blue-three) {
+  border-color: var(--public-theme-primary) !important;
+}
+
+[data-public-site-theme="default"] :where(.bg-golden-one) {
+  background-color: var(--public-theme-accent) !important;
+}
+
+[data-public-site-theme="default"] :where(.text-golden-one) {
+  color: var(--public-theme-accent) !important;
+}

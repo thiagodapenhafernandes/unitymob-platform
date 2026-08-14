@@ -24,11 +24,15 @@ class LeadMailer < ApplicationMailer
 
     @property = lead_tenant.habitations.find_by(id: @lead.property_id)
     admin_contact = ContactSetting.instance(tenant: lead_tenant)
-    site_name = LayoutSetting.instance(tenant: lead_tenant).site_name.presence || lead_tenant.name
+    @site_name = LayoutSetting.instance(tenant: lead_tenant).site_name.presence || lead_tenant.name
+    @public_identity = Tenants::PublicIdentity.new(lead_tenant)
+    @public_phone = @public_identity.phone
+    @public_city = @public_identity.primary_city
+    @public_host = root_url
 
     mail(
       to: @lead.email,
-      subject: "Recebemos seu contato! - #{site_name}",
+      subject: "Recebemos seu contato! - #{@site_name}",
       reply_to: admin_contact.email_primary
     )
   end

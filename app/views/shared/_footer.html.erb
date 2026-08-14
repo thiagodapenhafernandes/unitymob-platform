@@ -1,24 +1,26 @@
 <footer id="footer">
+  <% footer_tenant = Current.tenant || (respond_to?(:public_tenant) ? public_tenant : Tenant.public_for) %>
+  <% footer_identity = Tenants::PublicIdentity.new(footer_tenant) %>
+  <% footer_layout = @layout_setting || LayoutSetting.instance(tenant: footer_tenant) %>
+  <% footer_setting = @footer_setting || FooterSetting.instance(tenant: footer_tenant) %>
   <div class="footer-top">
     <div class="container">
       <div class="row">
 
         <div class="col-lg-3 col-md-6 footer-info">
-          <%= image_tag "salute-imoveis-white.svg", alt: "Salute Imóveis", style: "height: 32px;" %>
+          <% if footer_layout.logo.attached? %>
+            <%= image_tag footer_layout.logo, alt: footer_identity.name, style: "height: 32px;" %>
+          <% else %>
+            <strong><%= footer_identity.name %></strong>
+          <% end %>
           <br><br>
-          <strong>Loja Atlântica</strong>
-          <p>
-            Av. Atlântica, 3750 - Sala E<br>
-            Balneário Camboriú - SC<br>
-            <strong>Tel:</strong> (47) 3311-1067<br>
-          </p>
-          <br>
-          <strong>Loja Brasil Sul</strong>
-          <p>
-            Av. Brasil, 3160 - sala 1<br>
-            Balneário Camboriú - SC<br>
-            <strong>Tel:</strong> (47) 2122-8669<br>
-          </p>
+          <% footer_identity.locations.each do |location| %>
+            <strong><%= location[:name] %></strong>
+            <p><%= simple_format(location[:address]) %></p>
+          <% end %>
+          <% if footer_identity.phone.present? %>
+            <p><strong>Tel:</strong> <%= footer_identity.phone %></p>
+          <% end %>
           
           <div class="social-links mt-3">
             <a href="#" class="twitter"><i class="bi bi-tiktok"></i></a>
@@ -52,10 +54,10 @@
 
         <div class="col-lg-4 col-md-6 footer-newsletter">
           <h4>Quem somos</h4>
-          <p>A Salute Imóveis nasceu do ideal de garantir o melhor negócio para aqueles que buscam adquirir um imóvel, seja para investir ou para morar.</p>
+          <p><%= footer_setting.about_text.presence || "Encontre oportunidades imobiliárias e fale com nossa equipe." %></p>
           <p>© <%= Time.current.year %></p>
           
-          <h4>Inscreva-se na Salute</h4>
+          <h4>Inscreva-se na <%= footer_identity.name %></h4>
           <p>Receba as melhores oportunidades do mercado.</p>
           <form action="" method="post">
             <input type="email" name="email"><input type="submit" value="Inscreva-se">
@@ -68,7 +70,7 @@
 
   <div class="container">
     <div class="copyright">
-      &copy; Copyright <strong><span>Salute Imóveis</span></strong>. Todos os direitos reservados
+      &copy; Copyright <strong><span><%= footer_identity.name %></span></strong>. Todos os direitos reservados
     </div>
   </div>
 </footer>

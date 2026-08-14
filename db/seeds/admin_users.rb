@@ -1,9 +1,12 @@
 # Criar primeiro usuário admin
-AdminUser.find_or_create_by!(email: 'admin@saluteimoveis.com.br') do |admin|
+default_admin_email = ENV.fetch('SEED_ADMIN_EMAIL', 'admin@example.com')
+default_admin_password = ENV.fetch('SEED_ADMIN_PASSWORD', 'change-me-123456')
+
+AdminUser.find_or_create_by!(email: default_admin_email) do |admin|
   admin.name = 'Administrador'
-  admin.password = 'salute2024'
-  admin.password_confirmation = 'salute2024'
+  admin.password = default_admin_password
+  admin.password_confirmation = default_admin_password
   admin.role = :admin
 end
 
-puts "✅ Admin user criado: admin@saluteimoveis.com.br / salute2024"
+puts "✅ Admin user criado: #{default_admin_email}"
