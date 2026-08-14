@@ -1,4 +1,6 @@
 class AddIntakeReviewPolicySnapshotToHabitations < ActiveRecord::Migration[7.1]
+  disable_ddl_transaction!
+
   def change
     add_column_if_allowed :habitations, :intake_review_policy_version, :integer
     add_column_if_allowed :habitations, :intake_review_policy_snapshot, :jsonb, default: {}, null: false

@@ -1,4 +1,6 @@
 class RenameSaluteHabitationFieldsToGeneric < ActiveRecord::Migration[7.1]
+  disable_ddl_transaction!
+
   def change
     rename_column_if_exists :habitations, :festival_salute_flag, :festival_flag
     rename_column_if_exists :habitations, :exibir_no_site_salute_flag, :exibir_no_site_portal_flag
