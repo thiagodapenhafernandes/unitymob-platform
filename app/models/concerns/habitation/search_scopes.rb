@@ -489,7 +489,7 @@ module Habitation::SearchScopes
 
     # Super destaque
     scope :festival, lambda {
-      where(festival_flag: true)
+      where(Habitation.physical_column_name(:festival_flag) => true)
     }
 
     # Compatibilidade para filtros antigos da publicação comercial.

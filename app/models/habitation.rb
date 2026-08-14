@@ -20,6 +20,24 @@ class Habitation < ApplicationRecord
   include Habitation::SearchScopes
   include Habitation::CacheableMethods
   include Habitation::SeoHelpers
+
+  LEGACY_GENERIC_COLUMN_ALIASES = {
+    "festival_flag" => "festival_salute_flag",
+    "exibir_no_site_portal_flag" => "exibir_no_site_salute_flag",
+    "rental_management_flag" => "salute_rental_management_flag",
+    "rental_management_answer" => "salute_rental_management_answer"
+  }.freeze
+
+  LEGACY_GENERIC_COLUMN_ALIASES.each do |generic_name, legacy_name|
+    alias_attribute generic_name, legacy_name if columns_hash.key?(legacy_name) && !columns_hash.key?(generic_name)
+  end
+
+  def self.physical_column_name(name)
+    name = name.to_s
+    return name if columns_hash.key?(name)
+
+    LEGACY_GENERIC_COLUMN_ALIASES.fetch(name, name)
+  end
   
   # Constantes Padronizadas para Enums e Atributos
   CATEGORIES = [

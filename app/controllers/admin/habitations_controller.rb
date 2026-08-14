@@ -2294,7 +2294,8 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def apply_boolean_filter(scope, raw_param, column_name)
-    column = ActiveRecord::Base.connection.quote_column_name(column_name.to_s)
+    physical_name = Habitation.physical_column_name(column_name)
+    column = ActiveRecord::Base.connection.quote_column_name(physical_name)
     case raw_param
     when '1' then scope.where("habitations.#{column} IS TRUE")
     when '0' then scope.where("habitations.#{column} IS NOT TRUE")
@@ -2356,7 +2357,7 @@ class Admin::HabitationsController < Admin::BaseController
     when "destaque_web"
       scope.where(destaque_web_flag: true)
     when "super_destaque"
-      scope.where(festival_flag: true)
+      scope.where(Habitation.physical_column_name(:festival_flag) => true)
     when "oportunidade"
       scope.opportunity
     when "frente_mar"

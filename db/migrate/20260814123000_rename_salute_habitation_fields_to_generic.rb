@@ -51,6 +51,10 @@ class RenameSaluteHabitationFieldsToGeneric < ActiveRecord::Migration[7.1]
     return if column_exists?(table, new_name)
 
     rename_column table, old_name, new_name
+  rescue ActiveRecord::StatementInvalid => error
+    raise unless insufficient_privilege?(error)
+
+    say "Skipping #{table}.#{old_name} -> #{new_name}: database user is not table owner", true
   end
 
   def rename_index_if_exists(table, old_name, new_name)
@@ -58,5 +62,13 @@ class RenameSaluteHabitationFieldsToGeneric < ActiveRecord::Migration[7.1]
     return if index_name_exists?(table, new_name)
 
     rename_index table, old_name, new_name
+  rescue ActiveRecord::StatementInvalid => error
+    raise unless insufficient_privilege?(error)
+
+    say "Skipping index #{old_name} -> #{new_name}: database user is not table owner", true
+  end
+
+  def insufficient_privilege?(error)
+    error.cause.is_a?(PG::InsufficientPrivilege) || error.message.include?("must be owner")
   end
 end

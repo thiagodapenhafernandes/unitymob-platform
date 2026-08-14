@@ -215,7 +215,8 @@ class HomeSection < ApplicationRecord
     enabled_property_filters.reduce(scope) do |filtered_scope, key|
       option = PROPERTY_FILTER_OPTIONS[key]
       if option[:column]
-        filtered_scope.where(option[:column] => true)
+        column = Habitation.physical_column_name(option[:column])
+        filtered_scope.where(column => true)
       elsif option[:scope] && filtered_scope.respond_to?(option[:scope])
         filtered_scope.public_send(option[:scope])
       elsif option[:where]
