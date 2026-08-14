@@ -1,4 +1,4 @@
-const CACHE = "salute-admin-cache-v4";
+const CACHE = "unitymob-public-cache-v5";
 const offlineFallbackPage = "/offline.html";
 const fieldFallbackPage = "/field";
 
@@ -37,7 +37,7 @@ self.addEventListener("fetch", function (event) {
             if (offlineCached) return offlineCached;
 
             return new Response(
-              "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Salute Imóveis</title></head><body><h1>Sem conexão</h1><p>Não foi possível carregar a página no momento.</p></body></html>",
+              "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Sem conexão</title></head><body><h1>Sem conexão</h1><p>Não foi possível carregar a página no momento.</p></body></html>",
               {
                 status: 503,
                 headers: { "Content-Type": "text/html; charset=utf-8" }

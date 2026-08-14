@@ -262,13 +262,13 @@ RSpec.describe "Admin::System", type: :request do
     get admin_system_tenant_path(tenant)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Identidade visual resolvida", "Alterar no editor", "Salute Imóveis")
+    expect(response.body).to include("Identidade visual resolvida", "Alterar no editor", "Padrão")
     expect(response.body).not_to include("tenant_public_site_theme", "Salvar tema", "Salvar conta")
 
     get edit_admin_system_tenant_path(tenant)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Identidade visual resolvida", "Salvar alterações", "public_site_themes/saluteimoveis.css")
+    expect(response.body).to include("Identidade visual resolvida", "Salvar alterações", "public_site_themes/default.css")
     expect(response.body).not_to include("tenant_public_site_theme", "Salvar tema", "Salvar conta")
 
     patch admin_system_tenant_path(tenant),
@@ -281,7 +281,7 @@ RSpec.describe "Admin::System", type: :request do
 
     expect(response).to redirect_to(admin_system_tenant_path(tenant))
     expect(tenant.reload.public_site_theme_key).to eq("conexaoimobiliaria")
-    expect(tenant.public_site_theme).to eq("saluteimoveis")
+    expect(tenant.public_site_theme).to eq("default")
     expect(tenant.public_site_stylesheet).to eq("public_site_themes/conexaoimobiliaria")
     expect(AccessAuditLog.where(event_type: "tenant_updated", admin_user: sys)).to exist
   end

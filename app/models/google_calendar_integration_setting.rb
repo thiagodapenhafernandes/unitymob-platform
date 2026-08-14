@@ -1,7 +1,7 @@
 class GoogleCalendarIntegrationSetting < ApplicationRecord
   include EncryptionAvailability
 
-  DEFAULT_CALENDAR_ID = "fotografias.saluteimoveis@gmail.com".freeze
+  DEFAULT_CALENDAR_ID = "".freeze
   DEFAULT_DURATION_MINUTES = 60
   MIN_DURATION_MINUTES = 15
   MAX_DURATION_MINUTES = 480

@@ -25,10 +25,10 @@ RSpec.describe "Public branding pages", type: :request do
     expect(response.body).not_to include("Salute Parcerias")
   end
 
-  it "mantém o endereço antigo de parcerias acessível" do
+  it "redireciona o endereço antigo de parcerias para a rota sem marca em tenants não-Salute" do
     get "/salute-parcerias"
 
-    expect(response).to have_http_status(:ok)
+    expect(response).to redirect_to(parcerias_path)
   end
 
   it "não exibe aviso específico de experiência personalizada na home" do
@@ -127,6 +127,8 @@ RSpec.describe "Public branding pages", type: :request do
   it "renderiza o tema público inferido pela identidade do tenant com tokens de marca" do
     tenant = Tenant.default
     tenant.update!(name: "Conexão Imobiliária")
+    host! Tenants::LocalPublicHostOverride::HOST
+    Tenants::LocalPublicHostOverride.activate!(tenant)
     LayoutSetting.instance(tenant: tenant).update!(
       primary_color: "#123456",
       secondary_color: "#234567",

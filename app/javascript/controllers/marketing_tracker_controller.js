@@ -51,6 +51,6 @@ export default class extends Controller {
   }
 
   canTrack() {
-    return window.SaluteLgpdConsent?.accepted?.() === true
+    return window.UnitymobLgpdConsent?.accepted?.() === true
   }
 }

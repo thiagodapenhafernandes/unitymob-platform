@@ -13,6 +13,13 @@ class PagesController < ApplicationController
     @page_description = "Seja um corretor parceiro da #{@public_identity.name} e tenha acesso a imóveis, suporte especializado e novas oportunidades de negócio."
     @partnership_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_PARTNERSHIP_SLUG) if PublicForm.table_exists?
   end
+
+  def legacy_salute_parcerias
+    return redirect_to parcerias_path, status: :moved_permanently unless public_tenant.public_site_theme_key == "saluteimoveis"
+
+    parcerias
+    render :parcerias
+  end
   
   def submit_trabalhe_conosco
     payload = work_params.to_h
@@ -31,6 +38,12 @@ class PagesController < ApplicationController
     WebhookService.send_form_data('partnership_form', payload, request: request)
 
     redirect_to parcerias_path, notice: 'Solicitação enviada com sucesso! Nosso time de parcerias entrará em contato.'
+  end
+
+  def submit_legacy_salute_parcerias
+    return redirect_to parcerias_path, status: :moved_permanently unless public_tenant.public_site_theme_key == "saluteimoveis"
+
+    submit_parcerias
   end
 
   def simulador

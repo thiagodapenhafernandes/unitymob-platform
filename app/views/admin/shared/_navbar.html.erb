@@ -1,6 +1,6 @@
 <%# LEGADO não-renderizado — candidato a remoção. %>
 <%
-  legacy_navbar_site_name = @layout_setting&.site_name.presence || "Salute Imóveis"
+  legacy_navbar_site_name = @layout_setting&.site_name.presence || Current.tenant&.name.presence || "Unitymob"
   legacy_navbar_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
 %>
 <nav class="admin-navbar">

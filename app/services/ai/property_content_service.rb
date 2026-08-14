@@ -33,7 +33,7 @@ module Ai
 
       Use sempre ao final as seguintes frases, sem alterar:
       Não perca a oportunidade de viver em um dos destinos mais desejados de Santa Catarina!
-      A Salute Imóveis está localizada em Balneário Camboriú, Santa Catarina.
+      A imobiliária está localizada na região de atuação informada pela conta.
       O seu DNA é o atendimento diferenciado para quem quer comprar ou vender um imóvel. Fale com a gente em um dos nossos canais de atendimento ou venha nos fazer uma visita.
       Os valores estão sujeitos a alteração sem aviso prévio.
 
@@ -64,8 +64,7 @@ module Ai
       identity = Tenants::PublicIdentity.new(tenant)
       city = identity.primary_city.presence || "sua região"
       DEFAULT_PROMPT
-        .gsub("Salute Imóveis", identity.name)
-        .gsub("Balneário Camboriú", city)
+        .gsub("A imobiliária está localizada na região de atuação informada pela conta.", "A #{identity.name} atua em #{city} e região.")
         .gsub("Praia Brava", city)
         .gsub("Barra Sul", city)
     end

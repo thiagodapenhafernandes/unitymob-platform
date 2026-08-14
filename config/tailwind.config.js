@@ -19,7 +19,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Salute Imóveis Brand Colors
+        // Default public brand colors
         primary: {
           50: '#e6f2ff',
           100: '#b3d9ff',

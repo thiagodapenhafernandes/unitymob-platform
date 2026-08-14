@@ -8,7 +8,6 @@ RSpec.describe WebhookService do
         webhook_url: "https://example.test/webhook"
       )
 
-      response = instance_double(HTTParty::Response, success?: true)
       request = instance_double(
         ActionDispatch::Request,
         original_url: "https://dev.unitymob.com.br/leads",
@@ -17,7 +16,7 @@ RSpec.describe WebhookService do
         query_parameters: { "utm_campaign" => "frente-mar" }
       )
 
-      allow(HTTParty).to receive(:post).and_return(response)
+      allow(WebhookDeliveryJob).to receive(:perform_later)
 
       described_class.send_form_data(
         "whatsapp_lead",
@@ -30,21 +29,21 @@ RSpec.describe WebhookService do
         request: request
       )
 
-      expect(HTTParty).to have_received(:post) do |_url, options|
-        payload = JSON.parse(options.fetch(:body))
+      expect(WebhookDeliveryJob).to have_received(:perform_later) do |_url, raw_payload|
+        payload = raw_payload.with_indifferent_access
 
-        expect(payload["origin_form"]).to eq("whatsapp_lead")
-        expect(payload["source"]).to include(
+        expect(payload[:origin_form]).to eq("whatsapp_lead")
+        expect(payload[:source].with_indifferent_access).to include(
           "page_url" => "https://dev.unitymob.com.br/imoveis/apartamento-123",
           "request_url" => "https://dev.unitymob.com.br/leads",
           "referrer_url" => "https://dev.unitymob.com.br/imoveis/apartamento-123?utm_campaign=frente-mar",
           "user_agent" => "RSpec Browser"
         )
-        expect(payload.dig("source", "utm")).to include(
+        expect(payload.dig(:source, :utm).with_indifferent_access).to include(
           "utm_source" => "google",
           "utm_campaign" => "frente-mar"
         )
-        expect(payload["data"]).to include(
+        expect(payload[:data].with_indifferent_access).to include(
           "name" => "Cliente Teste",
           "business_type" => "sale"
         )

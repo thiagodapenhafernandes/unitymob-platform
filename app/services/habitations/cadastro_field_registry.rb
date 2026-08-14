@@ -213,7 +213,7 @@ module Habitations
           { key: "valor_livre_proprietario_formatted", label: "Valor livre do proprietário" },
           { key: "home_corporate_flag", label: "Home corporativo", kind: :flag },
           { key: "home_corporate_position", label: "Posição no home corporativo" },
-          { key: "salute_rental_management_flag", label: "Administração de locação Salute", kind: :flag }
+          { key: "salute_rental_management_flag", label: "Administração de locação da imobiliária", kind: :flag }
         ]
       },
       {

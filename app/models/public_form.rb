@@ -77,7 +77,7 @@ class PublicForm < ApplicationRecord
       modal_enabled: true,
       modal_config: {
         "eyebrow" => "Anuncie seu imóvel",
-        "headline" => "Alcance compradores certos com a curadoria premium da Salute.",
+        "headline" => "Alcance compradores certos com uma curadoria imobiliária especializada.",
         "benefits" => ["Visibilidade privilegiada", "Consultoria especializada", "Fotos profissionais"]
       }
     }

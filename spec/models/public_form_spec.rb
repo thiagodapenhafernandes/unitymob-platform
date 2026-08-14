@@ -11,6 +11,7 @@ RSpec.describe PublicForm do
     expect(form.category).to eq("property_announcement")
     expect(form.fields.pluck(:name)).to include("name", "phone", "interest", "property_details")
     expect(form.fields.find_by!(name: "interest").normalized_options.map { |option| option["value"] }).to contain_exactly("venda", "locacao")
+    expect(form.modal_config.to_json).not_to include("Salute")
   end
 
   it "cria os formulários públicos padrão que entram no builder" do

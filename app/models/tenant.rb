@@ -1,6 +1,12 @@
 class Tenant < ApplicationRecord
   DEFAULT_SLUG = "default".freeze
+  DEFAULT_PUBLIC_SITE_THEME = "default".freeze
   PUBLIC_SITE_THEMES = {
+    "default" => {
+      label: "Padrão",
+      description: "Usa os componentes públicos compartilhados com cores neutras e dados da própria conta.",
+      stylesheet: "public_site_themes/default"
+    },
     "saluteimoveis" => {
       label: "Salute Imóveis",
       description: "Mantém o desenho atual do site e herda cores, logo e conteúdo da conta.",
@@ -229,16 +235,23 @@ class Tenant < ApplicationRecord
   def normalize_public_site_theme
     return unless has_attribute?(:public_site_theme)
 
-    self.public_site_theme = public_site_theme.to_s.presence_in(PUBLIC_SITE_THEMES.keys) || "saluteimoveis"
+    self.public_site_theme = public_site_theme.to_s.presence_in(PUBLIC_SITE_THEMES.keys) || DEFAULT_PUBLIC_SITE_THEME
   end
 
   def inferred_public_site_theme_key
-    public_site_theme_identity_candidates.find { |candidate| PUBLIC_SITE_THEMES.key?(candidate) } || "saluteimoveis"
+    public_site_theme_identity_candidates.find { |candidate| PUBLIC_SITE_THEMES.key?(candidate) } || DEFAULT_PUBLIC_SITE_THEME
   end
 
   def public_site_theme_identity_candidates
-    [slug, name].filter_map do |value|
+    [name, slug, explicit_non_default_public_site_theme].filter_map do |value|
       value.to_s.parameterize.delete("-").presence
     end.uniq
+  end
+
+  def explicit_non_default_public_site_theme
+    return unless has_attribute?(:public_site_theme)
+    return if public_site_theme.to_s == DEFAULT_PUBLIC_SITE_THEME
+
+    public_site_theme
   end
 end

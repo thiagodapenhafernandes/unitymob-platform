@@ -42,5 +42,19 @@ RSpec.describe LeadMailer, type: :mailer do
 
       expect(mail.message).to be_a(ActionMailer::Base::NullMail)
     end
+
+    it "usa a identidade da conta no conteúdo enviado ao lead" do
+      tenant = Tenant.create!(name: "Conexão Mailer", slug: "conexao-welcome-#{SecureRandom.hex(3)}", active: true)
+      LayoutSetting.instance(tenant: tenant).update!(site_name: "Conexão Imobiliária")
+      ContactSetting.instance(tenant: tenant).update!(phone: "(47) 3333-0000")
+      lead = create(:lead, tenant: tenant, name: "Maria Cliente", email: "maria@example.com")
+
+      mail = described_class.with(lead: lead).welcome_lead
+      body = mail.html_part.body.decoded
+
+      expect(mail.subject).to include("Conexão Imobiliária")
+      expect(body).to include("Conexão Imobiliária", "554733330000")
+      expect(body).not_to include("Salute Imóveis", "www.saluteimoveis.com")
+    end
   end
 end

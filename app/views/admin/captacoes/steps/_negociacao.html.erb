@@ -47,11 +47,11 @@
   <% if field_invalid.call(:valor_locacao) %><div class="invalid-feedback d-block"><%= @captacao.intake_rent_price_requirement_message %></div><% end %>
 
   <%= ax_select_field(form: f, method: :salute_rental_management_answer,
-        label: safe_join(["Administração de locação feita pela Salute?", tag.span("*", class: "required-star")], " "),
+        label: safe_join(["Administração de locação feita pela imobiliária?", tag.span("*", class: "required-star")], " "),
         choices: Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
         select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group",
         html_options: { class: field_state.call(:salute_rental_management_answer, "ax-control") }) %>
-  <% if field_invalid.call(:salute_rental_management_answer) %><div class="invalid-feedback d-block">Informe se a administração será feita pela Salute.</div><% end %>
+  <% if field_invalid.call(:salute_rental_management_answer) %><div class="invalid-feedback d-block">Informe se a administração será feita pela imobiliária.</div><% end %>
 
   <div class="wizard-field-group">
     <%= ax_field_label(f, :rental_guarantee_method,

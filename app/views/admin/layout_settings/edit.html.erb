@@ -25,7 +25,7 @@
   public_primary = @layout_setting.primary_color.presence || "#022B3A"
   public_secondary = @layout_setting.secondary_color.presence || "#053C5E"
   public_accent = @layout_setting.accent_color.presence || "#BFAB25"
-  account_brand_name = @layout_setting.site_name.presence || "Salute Imóveis"
+  account_brand_name = @layout_setting.site_name.presence || current_tenant&.name.presence || "Unitymob"
   account_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
   admin_theme_tokens = [
     { attr: :admin_surface_color, token: "surface", label: "surface.DEFAULT", value: admin_surface, default: LayoutSetting::ADMIN_SURFACE_DEFAULT },
@@ -112,7 +112,7 @@
                     form: f,
                     method: :site_name,
                     label: "Nome da conta/marca",
-                    placeholder: "Ex.: Salute Imóveis",
+                    placeholder: "Ex.: Sua Imobiliária",
                     hint: "Marca principal da conta. Use o nome que o cliente reconhece no atendimento e no site.",
                     clearable: true
                   ) %>

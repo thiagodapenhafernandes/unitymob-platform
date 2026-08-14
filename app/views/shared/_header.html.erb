@@ -1,9 +1,16 @@
 <header id="header" class="fixed-top d-flex align-items-center">
+  <% header_tenant = Current.tenant || (respond_to?(:public_tenant) ? public_tenant : Tenant.public_for) %>
+  <% header_identity = Tenants::PublicIdentity.new(header_tenant) %>
+  <% header_layout = @layout_setting || LayoutSetting.instance(tenant: header_tenant) %>
   <div class="container d-flex align-items-center justify-content-between">
 
     <div class="logo">
       <a href="<%= root_path %>">
-        <%= image_tag "salute-imoveis.svg", alt: "Salute Imóveis", class: "img-fluid" %>
+        <% if header_layout.logo.attached? %>
+          <%= image_tag header_layout.logo, alt: header_identity.name, class: "img-fluid" %>
+        <% else %>
+          <span><%= header_identity.name %></span>
+        <% end %>
       </a>
     </div>
 

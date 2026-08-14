@@ -48,7 +48,7 @@
             </div>
 
             <div class="ax-span-6">
-              <%= ax_text_field(form: fp, method: :caracteristica_unica, label: "Característica Única (Tag/Badge)", placeholder: "Ex: Festival Salute 2026", data: { action: "input->property-page-preview#refresh" }) %>
+              <%= ax_text_field(form: fp, method: :caracteristica_unica, label: "Característica Única (Tag/Badge)", placeholder: "Ex: Oportunidade exclusiva", data: { action: "input->property-page-preview#refresh" }) %>
             </div>
 
             <div class="ax-span-6">
@@ -90,8 +90,8 @@
                 ['aceita_permuta_flag', 'Aceita Permuta'],
                 ['aceita_financiamento_flag', 'Aceita Financiamento'],
                 ['garden_flag', 'Garden'],
-                ['festival_salute_flag', 'Festival Salute'],
-                ['exibir_no_site_salute_flag', 'Exibir no Site Salute'],
+                ['festival_salute_flag', 'Oportunidade especial'],
+                ['exibir_no_site_salute_flag', 'Exibir no site'],
                 ['opportunity', 'Oportunidade (Preço Reduzido)']
               ].each do |value, label| %>
                 <%= ax_toggle_chip(

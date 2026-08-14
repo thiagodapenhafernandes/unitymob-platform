@@ -2,7 +2,7 @@
   paginated_report = %w[visit_sheet property_list property_list_with_m2 property_list_by_broker].include?(@report_type)
   full_print_mode = @full_print_mode != false
   landscape_report = %w[property_list property_list_with_m2 property_list_by_broker sale_rent_total_values property_count_by_broker].include?(@report_type)
-  brand_name = @layout_setting&.site_name.presence || "Salute Imóveis"
+  brand_name = @layout_setting&.site_name.presence || Current.tenant&.name.presence || "Unitymob"
   brand_badge_color = @layout_setting&.primary_color.presence || "#111827"
   @print_brand_badge_color = brand_badge_color
   generated_label = l(@report_generated_at, format: :short)

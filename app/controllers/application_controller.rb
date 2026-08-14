@@ -7,7 +7,7 @@ class ApplicationController < ActionController::Base
   helper_method :current_public_seo_setting, :lgpd_consent_accepted?, :admin_page_render_metrics, :admin_context_items,
                 :public_tenant, :public_habitations, :public_filter_property_types, :public_filter_location_options
 
-  LGPD_CONSENT_COOKIE = "salute_lgpd_consent".freeze
+  LGPD_CONSENT_COOKIE = "unitymob_lgpd_consent".freeze
 
   def current_public_seo_setting
     return @current_public_seo_setting if defined?(@current_public_seo_setting)

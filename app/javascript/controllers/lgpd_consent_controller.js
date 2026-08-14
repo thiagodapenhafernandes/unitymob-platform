@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
-const STORAGE_KEY = "salute_lgpd_consent_v1"
-const COOKIE_KEY = "salute_lgpd_consent"
+const STORAGE_KEY = "unitymob_lgpd_consent_v1"
+const COOKIE_KEY = "unitymob_lgpd_consent"
 const ACCEPTED_VALUE = "accepted"
 const COOKIE_MAX_AGE = 180 * 24 * 60 * 60
 
@@ -15,7 +15,7 @@ function consentAccepted() {
   }
 }
 
-window.SaluteLgpdConsent = {
+window.UnitymobLgpdConsent = {
   accepted: consentAccepted
 }
 
@@ -31,10 +31,10 @@ export default class extends Controller {
       window.localStorage.setItem(STORAGE_KEY, ACCEPTED_VALUE)
       document.cookie = `${COOKIE_KEY}=${ACCEPTED_VALUE}; Max-Age=${COOKIE_MAX_AGE}; Path=/; SameSite=Lax`
     } catch (_error) {
-      window.SaluteLgpdConsent.accepted = () => true
+      window.UnitymobLgpdConsent.accepted = () => true
     }
 
-    window.dispatchEvent(new CustomEvent("salute:lgpd-consent-accepted"))
+    window.dispatchEvent(new CustomEvent("unitymob:lgpd-consent-accepted"))
     this.bannerTarget.classList.add("hidden")
   }
 }

@@ -209,7 +209,7 @@ module Portal
         if host.present?
           "https://#{host}"
         else
-          ENV.fetch("APP_HOST", "https://saluteimoveis.com.br").to_s.delete_suffix("/")
+          ENV.fetch("APP_HOST", "https://example.com").to_s.delete_suffix("/")
         end
       end
     end

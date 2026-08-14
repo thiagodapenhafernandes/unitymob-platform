@@ -487,12 +487,12 @@ module Habitation::SearchScopes
       )
     }
 
-    # Festival Salute
+    # Super destaque
     scope :festival_salute, lambda {
       where(festival_salute_flag: true)
     }
 
-    # Compatibilidade para filtros antigos que usavam "Exibir no Site Salute".
+    # Compatibilidade para filtros antigos da publicação comercial.
     scope :exibir_site_salute, lambda {
       where(exibir_no_site_flag: true)
     }

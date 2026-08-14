@@ -1,10 +1,11 @@
 <%
+  sample_base_url = request.base_url
   sample_webhook_payload = {
     origin_form: "whatsapp_lead",
     timestamp: "2026-05-26T14:30:00-03:00",
     source: {
-      page_url: "https://saluteimoveis.com.br/imoveis/apartamento-frente-mar-123",
-      request_url: "https://saluteimoveis.com.br/leads",
+      page_url: "#{sample_base_url}/imoveis/apartamento-frente-mar-123",
+      request_url: "#{sample_base_url}/leads",
       referrer_url: "https://google.com/search?q=apartamento+balneario+camboriu",
       user_agent: "Mozilla/5.0",
       utm: {
@@ -25,10 +26,10 @@
       property_id: 123,
       property_code: "8001",
       property_title: "Apartamento frente mar",
-      property_url: "https://saluteimoveis.com.br/imoveis/apartamento-frente-mar-123",
+      property_url: "#{sample_base_url}/imoveis/apartamento-frente-mar-123",
       business_type: "sale",
       business_type_label: "Venda",
-      source_url: "https://saluteimoveis.com.br/imoveis/apartamento-frente-mar-123",
+      source_url: "#{sample_base_url}/imoveis/apartamento-frente-mar-123",
       share_token: "abc123"
     }
   }

@@ -8,8 +8,8 @@
 <% if has_gtm || has_meta_pixel %>
   <script>
     (function(w,d){
-      var COOKIE_KEY = "salute_lgpd_consent";
-      var STORAGE_KEY = "salute_lgpd_consent_v1";
+      var COOKIE_KEY = "unitymob_lgpd_consent";
+      var STORAGE_KEY = "unitymob_lgpd_consent_v1";
       var ACCEPTED_VALUE = "accepted";
       var loaded = false;
 
@@ -60,9 +60,9 @@
         <% end %>
       }
 
-      w.SaluteTracking = { load: loadTracking };
+      w.UnitymobTracking = { load: loadTracking };
       loadTracking();
-      w.addEventListener("salute:lgpd-consent-accepted", loadTracking);
+      w.addEventListener("unitymob:lgpd-consent-accepted", loadTracking);
     })(window, document);
   </script>
 <% end %>
