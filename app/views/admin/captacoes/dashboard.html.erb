@@ -321,8 +321,8 @@
       </div>
     </div>
 
-    <%= ax_field_grid do %>
-      <div class="ax-span-5">
+    <%= ax_field_grid class_name: "capt-venda-layout" do %>
+      <div class="ax-span-5 capt-venda-layout__left">
         <div class="ax-card capt-panel-main">
           <div class="ax-card__body">
             <div class="capt-panel-title capt-panel-title--spaced">Acompanhamento de Meta</div>
@@ -357,18 +357,8 @@
             <% end %>
           </div>
         </div>
-      </div>
 
-      <div class="ax-span-7">
-        <div class="ax-card capt-ranking-card capt-panel-main">
-          <div class="ax-card__body">
-            <div class="capt-panel-title capt-panel-title--spaced">Ranking de corretores</div>
-            <div class="capt-ranking-scroll">
-              <%= render "ranking_table", rows: @ranking_venda, value_key: :total_value, value_label: "Total Venda" %>
-            </div>
-          </div>
-        </div>
-        <div class="capt-summary-card tw-mt-3 capt-panel-secondary">
+        <div class="capt-summary-card capt-summary-card--compact tw-mt-3">
           <%= ax_field_grid class_name: "text-center tw-h-full" do %>
             <div class="ax-span-6">
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
@@ -383,6 +373,17 @@
               </div>
             </div>
           <% end %>
+        </div>
+      </div>
+
+      <div class="ax-span-7 capt-venda-layout__right">
+        <div class="ax-card capt-ranking-card capt-ranking-card--expanded">
+          <div class="ax-card__body">
+            <div class="capt-panel-title capt-panel-title--spaced">Ranking de corretores</div>
+            <div class="capt-ranking-scroll">
+              <%= render "ranking_table", rows: @ranking_venda, value_key: :total_value, value_label: "Total Venda" %>
+            </div>
+          </div>
         </div>
       </div>
     <% end %>

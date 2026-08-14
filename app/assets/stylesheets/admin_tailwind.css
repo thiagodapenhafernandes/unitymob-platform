@@ -16139,6 +16139,10 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   height: 220px;
 }
 
+.capt-summary-card--compact {
+  height: 160px;
+}
+
 .capt-summary-card .summary-label {
   color: #64748b;
   font-size: .86rem;
@@ -16167,6 +16171,28 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.capt-venda-layout {
+  align-items: stretch;
+}
+
+.capt-venda-layout__left,
+.capt-venda-layout__right {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.capt-venda-layout__right .capt-ranking-card--expanded {
+  flex: 1 1 auto;
+  min-height: 732px;
+  height: auto;
+}
+
+.capt-ranking-card--expanded .capt-ranking-scroll {
+  overflow-y: visible;
 }
 
 .capt-ranking-scroll {

@@ -56,13 +56,26 @@ class HabitationPhotoWatermarkJob < ApplicationJob
       "watermarked" => true,
       "original_blob_id" => original_blob.id
     )
+    service_name = original_blob.service_name.to_s.presence || ActiveStorage::Blob.service.name
+    Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name == "local"
 
     ActiveStorage::Blob.create_and_upload!(
+      key: watermarked_key_for(original_blob, attachable.fetch(:filename)),
       io: attachable.fetch(:io),
       filename: attachable.fetch(:filename),
       content_type: attachable[:content_type].presence || original_blob.content_type,
-      metadata: metadata
+      identify: false,
+      metadata: metadata,
+      service_name: service_name
     )
+  end
+
+  def watermarked_key_for(original_blob, filename)
+    dirname = File.dirname(original_blob.key.to_s)
+    basename = filename.to_s.parameterize.presence || original_blob.filename.to_s.parameterize.presence || "foto"
+    key = "#{SecureRandom.base58(24)}-watermarked-#{basename}"
+
+    dirname == "." ? key : [dirname, key].join("/")
   end
 
   def schedule_original_blob_purge(blob)
