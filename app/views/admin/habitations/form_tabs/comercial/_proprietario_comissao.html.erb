@@ -163,7 +163,7 @@
         <%= ax_number_field(form: f, method: :broker_commission_percentage, label: "Comissão corretor (%)", min: 0, max: 100, step: 0.01, placeholder: "0,00") %>
       </div>
       <div class="ax-span-12 ax-field-align-end">
-        <%= ax_toggle_chip(f, :salute_rental_management_flag, label: "Administração de locação", class_name: "ax-toggle-chip--full") %>
+        <%= ax_toggle_chip(f, :rental_management_flag, label: "Administração de locação", class_name: "ax-toggle-chip--full") %>
       </div>
       <div class="ax-span-12"
            data-controller="conditional-reveal"

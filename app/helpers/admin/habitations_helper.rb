@@ -528,7 +528,7 @@ module Admin::HabitationsHelper
     when "Financeiro e valores"
       { mode: "positive_any", names: %w[habitation[valor_condominio_formatted] habitation[valor_iptu_formatted]] }
     when "Administração da locação"
-      { mode: "any_present", names: %w[habitation[salute_rental_management_answer]] }
+      { mode: "any_present", names: %w[habitation[rental_management_answer]] }
     when "Meio de garantia locatícia"
       { mode: "any_present", names: %w[habitation[rental_guarantee_method] habitation[rental_guarantee_method][] captacao[rental_guarantee_method] captacao[rental_guarantee_method][]] }
     when "Aceita permuta"

@@ -33,7 +33,7 @@ RSpec.describe Habitations::Duplicator do
       nome_empreendimento: "Residencial Clone",
       bloco: "901",
       exibir_no_site_flag: true,
-      exibir_no_site_salute_flag: true,
+      exibir_no_site_portal_flag: true,
       publicar_chaves_na_mao: true,
       publicar_imovelweb: true,
       destaque_web_flag: true,
@@ -74,7 +74,7 @@ RSpec.describe Habitations::Duplicator do
     expect(duplicate.nome_empreendimento).to eq("Residencial Clone")
     expect(duplicate.bloco).to eq("901")
     expect(duplicate.exibir_no_site_flag).to be(false)
-    expect(duplicate.exibir_no_site_salute_flag).to be(false)
+    expect(duplicate.exibir_no_site_portal_flag).to be(false)
     expect(duplicate.publicar_chaves_na_mao).to be(false)
     expect(duplicate.publicar_imovelweb).to be(false)
     expect(duplicate.destaque_web_flag).to be(false)

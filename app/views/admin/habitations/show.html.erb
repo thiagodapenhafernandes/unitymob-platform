@@ -211,7 +211,7 @@
     ["Total aluguel", total_rent_price],
     ["Condomínio", money.call(@habitation.valor_condominio_cents), true],
     ["IPTU", money.call(@habitation.valor_iptu_cents), true],
-    ["Administração de locação", rental_listing ? yes_no.call(@habitation.salute_rental_management_flag) : nil, rental_listing],
+    ["Administração de locação", rental_listing ? yes_no.call(@habitation.rental_management_flag) : nil, rental_listing],
     ["Aceita parcelamento", yes_no.call(@habitation.aceita_parcelamento_flag)],
     ["Parcelas", @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.present? ? "#{@habitation.numero_prestacoes}x" : nil],
     ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
@@ -293,7 +293,7 @@
   publication_fields = [
     ["Site público", yes_no.call(@habitation.exibir_no_site_flag)],
     ["Destaque web", yes_no.call(@habitation.destaque_web_flag)],
-    ["Super destaque", yes_no.call(@habitation.festival_salute_flag)],
+    ["Super destaque", yes_no.call(@habitation.festival_flag)],
     ["Lançamento", yes_no.call(@habitation.lancamento_flag)],
     ["Tem placa", yes_no.call(@habitation.tem_placa_flag)],
     ["Exclusivo", yes_no.call(@habitation.exclusivo_flag)],

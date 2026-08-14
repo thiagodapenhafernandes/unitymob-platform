@@ -242,7 +242,7 @@ class PropertySetting < ApplicationRecord
       aceita_parcelamento
       aceita_parcelamento_flag
       numero_prestacoes
-      salute_rental_management_answer
+      rental_management_answer
       rental_guarantee_method
       aceita_financiamento_flag
       aceita_permuta_veiculo_flag

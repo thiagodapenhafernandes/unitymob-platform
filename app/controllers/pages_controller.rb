@@ -14,7 +14,7 @@ class PagesController < ApplicationController
     @partnership_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_PARTNERSHIP_SLUG) if PublicForm.table_exists?
   end
 
-  def legacy_salute_parcerias
+  def legacy_partnerships
     return redirect_to parcerias_path, status: :moved_permanently unless public_tenant.public_site_theme_key == "saluteimoveis"
 
     parcerias
@@ -40,7 +40,7 @@ class PagesController < ApplicationController
     redirect_to parcerias_path, notice: 'Solicitação enviada com sucesso! Nosso time de parcerias entrará em contato.'
   end
 
-  def submit_legacy_salute_parcerias
+  def submit_legacy_partnerships
     return redirect_to parcerias_path, status: :moved_permanently unless public_tenant.public_site_theme_key == "saluteimoveis"
 
     submit_parcerias

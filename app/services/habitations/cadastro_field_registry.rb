@@ -38,7 +38,7 @@ module Habitations
         items: [
           { key: "exibir_no_site_flag", label: "Site", kind: :flag },
           { key: "destaque_web_flag", label: "Destaque", kind: :flag },
-          { key: "festival_salute_flag", label: "Super destaque", kind: :flag },
+          { key: "festival_flag", label: "Super destaque", kind: :flag },
           { key: "lancamento_flag", label: "Lançamento", kind: :flag },
           { key: "tem_placa_flag", label: "Placa", kind: :flag },
           { key: "exclusivo_flag", label: "Exclusivo", kind: :flag },
@@ -213,7 +213,7 @@ module Habitations
           { key: "valor_livre_proprietario_formatted", label: "Valor livre do proprietário" },
           { key: "home_corporate_flag", label: "Home corporativo", kind: :flag },
           { key: "home_corporate_position", label: "Posição no home corporativo" },
-          { key: "salute_rental_management_flag", label: "Administração de locação da imobiliária", kind: :flag }
+          { key: "rental_management_flag", label: "Administração de locação da imobiliária", kind: :flag }
         ]
       },
       {
@@ -296,6 +296,9 @@ module Habitations
           { key: "meta_title", label: "Meta Title" },
           { key: "meta_description", label: "Meta Description (SEO)" },
           { key: "meta_keywords", label: "Palavras-chave (Tags)" },
+          { key: "public_rating_value", label: "Avaliação pública" },
+          { key: "public_rating_count", label: "Quantidade de avaliações públicas" },
+          { key: "public_rating_source", label: "Fonte da avaliação pública" },
           { key: "slug", label: "URL amigável (Slug) (somente leitura)" }
         ]
       }

@@ -6,7 +6,7 @@
   extras_open = true
   advanced_filter_keys = %w[
     situacao face ocupacao_status estado_conservacao area_total_min area_total_max area_privativa_min area_privativa_max
-    destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo banheiros dorms suites vagas
+    destaque_web festival exibir_no_site_portal tem_placa exclusivo banheiros dorms suites vagas
     foto_classificacao
     amenities
     publicar_imovelweb_2 publicar_lais_ai
@@ -457,8 +457,8 @@
   active_filter_chips << "Preço reduzido: Sim" if params[:promotion_status] == "with_promo"
   active_filter_chips << "Preço reduzido: Não" if params[:promotion_status] == "without_promo"
   active_filter_chips << "Chaves: #{params[:key_location]}" if params[:key_location].present?
-  active_filter_chips << "Adm. locação: Sim" if params[:salute_rental_management] == "1"
-  active_filter_chips << "Adm. locação: Não" if params[:salute_rental_management] == "0"
+  active_filter_chips << "Adm. locação: Sim" if params[:rental_management] == "1"
+  active_filter_chips << "Adm. locação: Não" if params[:rental_management] == "0"
   active_filter_chips << "Parcelamento: Sim" if params[:accepts_installments] == "1"
   active_filter_chips << "Parcelamento: Não" if params[:accepts_installments] == "0"
   active_filter_chips << "Preço mín.: R$ #{params[:min_price]}" if params[:min_price].present?
@@ -494,10 +494,10 @@
     active_filter_chips << "Somente imóveis do DWV" if params[:somente_dwv] == "1"
     active_filter_chips << "Destaque Web: Sim" if params[:destaque_web] == "1"
     active_filter_chips << "Destaque Web: Não" if params[:destaque_web] == "0"
-    active_filter_chips << "Super Destaque: Sim" if params[:festival_salute] == "1"
-    active_filter_chips << "Super Destaque: Não" if params[:festival_salute] == "0"
-    active_filter_chips << "Exibir no site: Sim" if params[:exibir_no_site_salute] == "1"
-    active_filter_chips << "Exibir no site: Não" if params[:exibir_no_site_salute] == "0"
+    active_filter_chips << "Super Destaque: Sim" if params[:festival] == "1"
+    active_filter_chips << "Super Destaque: Não" if params[:festival] == "0"
+    active_filter_chips << "Exibir no site: Sim" if params[:exibir_no_site_portal] == "1"
+    active_filter_chips << "Exibir no site: Não" if params[:exibir_no_site_portal] == "0"
     active_filter_chips << "Portal: Imovelweb 2" if params[:publicar_imovelweb_2] == "1"
     active_filter_chips << "Portal: Lais Ai" if params[:publicar_lais_ai] == "1"
     active_filter_chips << "Portal: Chaves Na Mao" if params[:publicar_chaves_na_mao] == "1"

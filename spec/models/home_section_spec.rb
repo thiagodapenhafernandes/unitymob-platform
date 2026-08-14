@@ -2,11 +2,11 @@ require "rails_helper"
 
 RSpec.describe HomeSection, type: :model do
   describe "property filters" do
-    it "normaliza o filtro legado de exibir_site_salute para exibir_no_site" do
+    it "normaliza o filtro legado de exibir_site_portal para exibir_no_site" do
       section = described_class.new(
         section_type: "featured_properties",
         title: "Destaques",
-        property_filters: { "exibir_site_salute" => "1" }
+        property_filters: { "exibir_site_portal" => "1" }
       )
 
       section.valid?

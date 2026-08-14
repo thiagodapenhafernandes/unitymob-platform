@@ -91,16 +91,16 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       "summary=#{summary.inspect} empty=#{empty.inspect} refs=#{rendered_refs.first(10).inspect}"
   end
 
-  it "mantém compatibilidade do filtro legado exibir_no_site_salute usando a flag genérica do site" do
+  it "mantém compatibilidade do filtro legado exibir_no_site_portal usando a flag genérica do site" do
     matching_code = high_catalog_code(9)
     nonmatching_code = high_catalog_code(8)
     create_catalog_property(codigo: matching_code, titulo_anuncio: "Filtro legado site match #{SecureRandom.hex(6)}", exibir_no_site_flag: true)
     create_catalog_property(codigo: nonmatching_code, titulo_anuncio: "Filtro legado site miss #{SecureRandom.hex(6)}", exibir_no_site_flag: false)
 
-    get admin_habitations_path(exibir_no_site_salute: "1")
+    get admin_habitations_path(exibir_no_site_portal: "1")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body.include?(matching_code)).to eq(true), catalog_filter_failure_message("exibir_no_site_salute", matching_code, nonmatching_code)
+    expect(response.body.include?(matching_code)).to eq(true), catalog_filter_failure_message("exibir_no_site_portal", matching_code, nonmatching_code)
     expect(response.body.include?(nonmatching_code)).to eq(false)
   end
 
@@ -173,7 +173,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["accepts_exchange", { accepts_exchange: "1" }, { aceita_permuta_flag: true }, { aceita_permuta_flag: false }],
       ["accepts_installments", { accepts_installments: "1" }, { aceita_parcelamento_flag: true }, { aceita_parcelamento_flag: false }],
       ["key_location", { key_location: "Portaria" }, { key_location: "Portaria" }, { key_location: "Zelador" }],
-      ["salute_rental_management", { salute_rental_management: "1" }, { salute_rental_management_flag: true }, { salute_rental_management_flag: false }],
+      ["rental_management", { rental_management: "1" }, { rental_management_flag: true }, { rental_management_flag: false }],
       ["regiao_foco", { regiao_foco: "Sim" }, { regiao_foco: "Centro" }, { regiao_foco: "Não" }],
       ["dorms_min", { dorms_min: "3" }, { dormitorios_qtd: 4 }, { dormitorios_qtd: 2 }],
       ["dorms_max", { dorms_max: "2" }, { dormitorios_qtd: 2 }, { dormitorios_qtd: 4 }],
@@ -188,8 +188,8 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["area_privativa_min", { area_privativa_min: "90" }, { area_privativa_m2: 100 }, { area_privativa_m2: 70 }],
       ["area_privativa_max", { area_privativa_max: "80" }, { area_privativa_m2: 70 }, { area_privativa_m2: 120 }],
       ["destaque_web", { destaque_web: "1" }, { destaque_web_flag: true }, { destaque_web_flag: false }],
-      ["festival_salute", { festival_salute: "1" }, { festival_salute_flag: true }, { festival_salute_flag: false }],
-      ["exibir_no_site_salute", { exibir_no_site_salute: "1" }, { exibir_no_site_flag: true }, { exibir_no_site_flag: false }],
+      ["festival", { festival: "1" }, { festival_flag: true }, { festival_flag: false }],
+      ["exibir_no_site_portal", { exibir_no_site_portal: "1" }, { exibir_no_site_flag: true }, { exibir_no_site_flag: false }],
       ["tem_placa", { tem_placa: "1" }, { tem_placa_flag: true }, { tem_placa_flag: false }],
       ["exclusivo", { exclusivo: "1" }, { exclusivo_flag: true }, { exclusivo_flag: false }],
       ["somente_com_imagens", { somente_com_imagens: "1" }, { pictures: [{ "url" => "https://example.com/with.jpg" }] }, { pictures: [] }],

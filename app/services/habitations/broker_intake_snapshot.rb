@@ -115,7 +115,7 @@ module Habitations
           row("Aceita financiamento", yes_no(@habitation.aceita_financiamento_flag?)),
           row("Aceita parcelamento", yes_no(@habitation.aceita_parcelamento_flag?)),
           row("Número de parcelas", @habitation.numero_prestacoes),
-          row("Administração de locação", yes_no(@habitation.salute_rental_management_answer.presence || @habitation.salute_rental_management_flag?)),
+          row("Administração de locação", yes_no(@habitation.rental_management_answer.presence || @habitation.rental_management_flag?)),
           row("Garantia locatícia", list(@habitation.rental_guarantee_methods)),
           row("Condições de negociação", @habitation.condicoes_negociacao)
         ]),

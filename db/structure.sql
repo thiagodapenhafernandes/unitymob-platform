@@ -1,4 +1,4 @@
-\restrict JQNd3fy0hqdo8bszClgwDcMcWtzmVtHMF4amtWl5oTdyLfswSxoxHGu94iwvGq4
+\restrict FWQzuxPv3Dq09Wy8KxlhSZ9DLusQSKJm4puaFBXVfUndebDXYN2LA6FO1eCgGk9
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2545,8 +2545,8 @@ CREATE TABLE public.habitations (
     praia_brava_flag boolean,
     praia_dos_amores_flag boolean,
     vista_frente_mar_flag boolean,
-    festival_salute_flag boolean,
-    exibir_no_site_salute_flag boolean,
+    festival_flag boolean,
+    exibir_no_site_portal_flag boolean,
     categoria_grupo character varying,
     data_entrega date,
     tour_virtual character varying,
@@ -2584,7 +2584,7 @@ CREATE TABLE public.habitations (
     podcast_url character varying,
     captador_commission_percentage numeric(5,2),
     broker_commission_percentage numeric(5,2),
-    salute_rental_management_flag boolean DEFAULT false NOT NULL,
+    rental_management_flag boolean DEFAULT false NOT NULL,
     key_location character varying,
     key_location_notes character varying,
     proprietor_id bigint,
@@ -2644,7 +2644,7 @@ CREATE TABLE public.habitations (
     photo_session_requested_at timestamp(6) without time zone,
     photo_session_url character varying,
     aceita_parcelamento_flag boolean DEFAULT false NOT NULL,
-    salute_rental_management_answer character varying,
+    rental_management_answer character varying,
     aceita_permuta_answer character varying,
     intake_step character varying DEFAULT 'intro'::character varying NOT NULL,
     motivo_venda character varying,
@@ -2688,7 +2688,9 @@ CREATE TABLE public.habitations (
     broker_intake_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     public_rating_value numeric(3,2),
     public_rating_count integer,
-    public_rating_source character varying
+    public_rating_source character varying,
+    intake_review_policy_version integer,
+    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -12004,10 +12006,10 @@ CREATE INDEX index_habitations_on_quadra_mar_flag ON public.habitations USING bt
 
 
 --
--- Name: index_habitations_on_salute_rental_management_flag; Type: INDEX; Schema: public; Owner: -
+-- Name: index_habitations_on_rental_management_flag; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_habitations_on_salute_rental_management_flag ON public.habitations USING btree (salute_rental_management_flag);
+CREATE INDEX index_habitations_on_rental_management_flag ON public.habitations USING btree (rental_management_flag);
 
 
 --
@@ -12043,6 +12045,13 @@ CREATE UNIQUE INDEX index_habitations_on_tenant_id_and_codigo ON public.habitati
 --
 
 CREATE UNIQUE INDEX index_habitations_on_tenant_id_and_codigo_dwv_unique_when_dwv ON public.habitations USING btree (tenant_id, codigo_dwv) WHERE (((imovel_dwv)::text = 'Sim'::text) AND (codigo_dwv IS NOT NULL) AND ((codigo_dwv)::text <> ''::text));
+
+
+--
+-- Name: index_habitations_on_tenant_intake_policy_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitations_on_tenant_intake_policy_version ON public.habitations USING btree (tenant_id, intake_status, intake_review_policy_version);
 
 
 --
@@ -17129,11 +17138,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JQNd3fy0hqdo8bszClgwDcMcWtzmVtHMF4amtWl5oTdyLfswSxoxHGu94iwvGq4
+\unrestrict FWQzuxPv3Dq09Wy8KxlhSZ9DLusQSKJm4puaFBXVfUndebDXYN2LA6FO1eCgGk9
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260814124500'),
+('20260814123000'),
 ('20260814121000'),
 ('20260814120000'),
 ('20260813172000'),

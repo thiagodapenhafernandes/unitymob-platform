@@ -40,7 +40,7 @@ RSpec.describe Habitations::CadastroFieldRegistry do
     expect(group.fetch(:items).map { |item| [item[:key], item[:label], item[:kind]] }).to eq([
       ["exibir_no_site_flag", "Site", :flag],
       ["destaque_web_flag", "Destaque", :flag],
-      ["festival_salute_flag", "Super destaque", :flag],
+      ["festival_flag", "Super destaque", :flag],
       ["lancamento_flag", "Lançamento", :flag],
       ["tem_placa_flag", "Placa", :flag],
       ["exclusivo_flag", "Exclusivo", :flag],

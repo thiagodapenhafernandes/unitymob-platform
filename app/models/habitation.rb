@@ -90,7 +90,7 @@ class Habitation < ApplicationRecord
   PUBLIC_STATUSES = ['Venda', 'Aluguel'].freeze
   INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido pendente].freeze
   INACTIVE_COMMERCIAL_STATUS_REGEX = "(suspenso|alugado|vendido|pendente)".freeze
-  SITE_PUBLICATION_FIELDS = %i[exibir_no_site_flag exibir_no_site_salute_flag].freeze
+  SITE_PUBLICATION_FIELDS = %i[exibir_no_site_flag exibir_no_site_portal_flag].freeze
   NUMERIC_CODIGO_SQL = "codigo ~ '^[0-9]+$'".freeze
   VISTA_REFERENCE_CODIGO_SQL = "#{NUMERIC_CODIGO_SQL} AND COALESCE(imovel_dwv, '') <> 'Sim'".freeze
   TEMPORARY_CODIGO_PREFIX = "RASCUNHO-".freeze
@@ -1274,7 +1274,7 @@ class Habitation < ApplicationRecord
     missing << intake_sale_price_requirement_message if check.call("valor_negociacao") && requires_sale_price? && !valid_intake_sale_price?
     missing << intake_rent_price_requirement_message if check.call("valor_negociacao") && requires_rent_price? && !valid_intake_rent_price?
     missing << "Financeiro e valores" if check.call("financeiro") && requires_intake_expense_amount? && valor_condominio_cents.blank? && valor_iptu_cents.blank?
-    missing << "Administração da locação" if check.call("admin_locacao") && rental_intake? && salute_rental_management_answer.blank?
+    missing << "Administração da locação" if check.call("admin_locacao") && rental_intake? && rental_management_answer.blank?
     missing << "Meio de garantia locatícia" if check.call("garantia_locaticia") && rental_intake? && rental_guarantee_method.blank?
     missing << "Quantidade de parcelas" if check.call("parcelamento") && aceita_parcelamento_flag? && numero_prestacoes.blank?
     missing << "Chaves" if check.call("chaves") && requires_intake_key_location? && key_location.blank?
@@ -1748,7 +1748,7 @@ class Habitation < ApplicationRecord
 
   def sync_intake_answers
     self.aceita_permuta_flag = aceita_permuta_answer == "sim" if aceita_permuta_answer.present? && will_save_change_to_aceita_permuta_answer?
-    self.salute_rental_management_flag = salute_rental_management_answer == "sim" if salute_rental_management_answer.present? && will_save_change_to_salute_rental_management_answer?
+    self.rental_management_flag = rental_management_answer == "sim" if rental_management_answer.present? && will_save_change_to_rental_management_answer?
   end
 
   def normalize_blank_exchange_answer
