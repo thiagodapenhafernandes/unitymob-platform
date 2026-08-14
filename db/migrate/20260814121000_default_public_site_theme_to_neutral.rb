@@ -1,4 +1,6 @@
 class DefaultPublicSiteThemeToNeutral < ActiveRecord::Migration[7.1]
+  disable_ddl_transaction!
+
   def up
     return unless column_exists?(:tenants, :public_site_theme)
 
