@@ -243,15 +243,8 @@ class Tenant < ApplicationRecord
   end
 
   def public_site_theme_identity_candidates
-    [name, slug, explicit_non_default_public_site_theme].filter_map do |value|
+    [name, slug].filter_map do |value|
       value.to_s.parameterize.delete("-").presence
     end.uniq
-  end
-
-  def explicit_non_default_public_site_theme
-    return unless has_attribute?(:public_site_theme)
-    return if public_site_theme.to_s == DEFAULT_PUBLIC_SITE_THEME
-
-    public_site_theme
   end
 end
