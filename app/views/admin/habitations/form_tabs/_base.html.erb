@@ -28,7 +28,9 @@
                f: f,
                can_edit_protected_habitation_fields: true %>
 
-    <%= render "admin/habitations/form_tabs/estrutura/dimensoes", f: f %>
+    <%= render "admin/habitations/form_tabs/estrutura/dimensoes",
+               f: f,
+               registration_profile: inferred_cadastro_type %>
 
     <%= render "admin/habitations/form_tabs/comercial/financeiro", f: f %>
   </div>

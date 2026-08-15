@@ -1,31 +1,11 @@
 <%
-  cadastro_categories = {
-    "apartamentos" => ["Apartamento", "Cobertura", "Loft", "Studio"],
-    "comerciais_industriais" => ["Sala Comercial", "Loja", "Prédio Comercial", "Galpão", "Galpão Industrial", "Área", "Casa comercial", "Condomínio Industrial", "Ponto Comercial", "Salas/Conjuntos"],
-    "empreendimento" => ["Empreendimento"],
-    "imoveis_residenciais" => ["Casa", "Casa em Condomínio", "Sobrado", "Rural", "Condomínio", "Chácara", "Sítio"],
-    "terrenos" => ["Terreno", "Terreno em Condomínio", "Área", "Terreno Comercial", "Terreno Industrial"]
-  }
-  cadastro_tipo_by_type = {
-    "empreendimento" => "Empreendimento",
-    "apartamentos" => "Unitário",
-    "comerciais_industriais" => "Unitário",
-    "imoveis_residenciais" => "Unitário",
-    "terrenos" => "Unitário"
-  }
-  cadastro_type_labels = {
-    "apartamentos" => "Apartamentos",
-    "comerciais_industriais" => "Comerciais e Industriais",
-    "empreendimento" => "Empreendimento",
-    "imoveis_residenciais" => "Imóveis Residenciais",
-    "terrenos" => "Terrenos"
-  }
+  cadastro_profiles = Habitation::REGISTRATION_PROFILES
+  cadastro_categories = cadastro_profiles.transform_values { |config| config.fetch(:categories) }
+  cadastro_tipo_by_type = cadastro_profiles.transform_values { |config| config.fetch(:tipo) }
+  cadastro_type_labels = cadastro_profiles.transform_values { |config| config.fetch(:label) }
   inferred_cadastro_type =
-    if habitation.tipo == "Empreendimento"
-      "empreendimento"
-    else
-      cadastro_categories.find { |_key, values| values.include?(habitation.categoria) }&.first || "imoveis_residenciais"
-    end
+    habitation.registration_profile.presence ||
+    Habitation.registration_profile_for(tipo: habitation.tipo, categoria: habitation.categoria)
   show_development_context = habitation.codigo_empreendimento.present? || habitation.proprietor_id.present? || habitation.tipo == "Empreendimento"
   cadastro_reference_at = habitation.data_cadastro_crm
   updated_reference_at = [habitation.data_atualizacao_crm, habitation.updated_at].compact.max
@@ -167,6 +147,7 @@
   <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
   <%= hidden_field_tag :source_habitation_id, source_habitation.id if source_habitation.present? %>
   <%= hidden_field_tag :intake_mode, "paper" if habitation.new_record? && habitation.broker_intake? %>
+  <%= f.hidden_field :registration_profile, value: (habitation.registration_profile.presence || inferred_cadastro_type) %>
 
   <% action_footer_meta = capture do %>
     <% if updated_reference_at %>
@@ -283,6 +264,8 @@
 
 <%= render "admin/habitations/form_tabs/estrutura",
            f: f,
+           habitation: habitation,
+           registration_profile: inferred_cadastro_type,
            can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 
 <%= render "admin/habitations/form_tabs/empreendimento",

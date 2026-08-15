@@ -14,7 +14,8 @@
 
 <%= ax_form_section(title: "Características internas", eyebrow: "Checklist", icon: "stars", actions: feature_actions) do %>
   <% current_chars = f.object.caracteristicas.is_a?(Hash) ? f.object.caracteristicas.keys : Array(f.object.caracteristicas) %>
-  <% internal_feature_options = (@internal_features.to_a + current_chars).compact_blank.uniq.sort_by { |feature| I18n.transliterate(feature.to_s).downcase } %>
+  <% standard_feature_options = local_assigns[:standard_feature_options].presence || f.object.standard_feature_options %>
+  <% internal_feature_options = (@internal_features.to_a + standard_feature_options.to_a + current_chars).compact_blank.uniq.sort_by { |feature| I18n.transliterate(feature.to_s).downcase } %>
   <%= ax_chip_grid(id: "features-checkbox-list") do %>
     <% internal_feature_options.each do |feature| %>
       <% checked = current_chars.include?(feature) %>

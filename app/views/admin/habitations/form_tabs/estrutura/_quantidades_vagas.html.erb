@@ -1,28 +1,48 @@
+<%
+  profile = local_assigns[:registration_profile].presence || f.object.registration_profile.presence || "imoveis_residenciais"
+  residential_profile = profile.in?(%w[apartamentos imoveis_residenciais])
+  commercial_profile = profile == "comerciais_industriais"
+%>
+
 <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :andar, label: "Andar") %>
-  </div>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :dormitorios_qtd, label: "Dorm.") %>
-  </div>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :suites_qtd, label: "Suítes") %>
-  </div>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :demi_suites_qtd, label: "Demi") %>
-  </div>
+  <% if residential_profile || commercial_profile %>
+    <div class="ax-span-1">
+      <%= ax_number_field(form: f, method: :andar, label: "Andar") %>
+    </div>
+  <% end %>
+
+  <% if residential_profile %>
+    <div class="ax-span-1">
+      <%= ax_number_field(form: f, method: :dormitorios_qtd, label: "Dorm.") %>
+    </div>
+    <div class="ax-span-1">
+      <%= ax_number_field(form: f, method: :suites_qtd, label: "Suítes") %>
+    </div>
+    <div class="ax-span-1">
+      <%= ax_number_field(form: f, method: :demi_suites_qtd, label: "Demi") %>
+    </div>
+  <% end %>
+
   <div class="ax-span-1">
     <%= ax_number_field(form: f, method: :salas_qtd, label: "Salas") %>
   </div>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :varandas_qtd, label: "Varanda") %>
-  </div>
+
+  <% if residential_profile %>
+    <div class="ax-span-1">
+      <%= ax_number_field(form: f, method: :varandas_qtd, label: "Varanda") %>
+    </div>
+  <% end %>
+
   <div class="ax-span-1">
     <%= ax_number_field(form: f, method: :banheiros_qtd, label: "Banh.") %>
   </div>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :hidromassagem_qtd, label: "Hidro") %>
-  </div>
+
+  <% if residential_profile %>
+    <div class="ax-span-1">
+      <%= ax_number_field(form: f, method: :hidromassagem_qtd, label: "Hidro") %>
+    </div>
+  <% end %>
+
   <div class="ax-span-1">
     <%= ax_number_field(
           form: f,

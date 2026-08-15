@@ -1,0 +1,113 @@
+<%
+  profiles = registration_profiles.presence || Habitation::REGISTRATION_PROFILES
+  selected_profile = habitation.registration_profile.presence || "apartamentos"
+  selected_config = profiles.fetch(selected_profile, profiles.fetch("apartamentos"))
+  selected_category = habitation.categoria.presence || selected_config.fetch(:categories).first
+  selected_status = habitation.status.presence || "Venda"
+  categories_by_profile = profiles.transform_values { |config| config.fetch(:categories) }
+  tipo_by_profile = profiles.transform_values { |config| config.fetch(:tipo) }
+  status_labels = {
+    "Aluguel" => "Locação anual",
+    "Diária" => "Locação diária"
+  }
+  status_icons = {
+    "Venda" => "bi-cash-coin",
+    "Aluguel" => "bi-calendar-month",
+    "Diária" => "bi-calendar-day",
+    "Pendente" => "bi-hourglass-split",
+    "Lançamento" => "bi-rocket-takeoff",
+    "Suspenso" => "bi-pause-circle",
+    "Alugado imobiliária" => "bi-building-check",
+    "Alugado terceiros" => "bi-house-check",
+    "Vendido imobiliária" => "bi-patch-check",
+    "Vendido terceiros" => "bi-check2-circle"
+  }
+  current_user_name = current_admin_user.name.to_s.split.first.presence || current_admin_user.email.to_s
+%>
+
+<section class="habitation-registration-start">
+  <%= ax_inline_notice(tone: :info, icon: "info-circle-fill", class_name: "habitation-new-mode-notice") do %>
+    O cadastro e o código do imóvel só serão criados quando você salvar a ficha. Esta etapa apenas define o tipo de cadastro e quais campos serão exibidos.
+  <% end %>
+
+  <div class="ax-card habitation-registration-start__card">
+    <header class="habitation-registration-start__header">
+      <div>
+        <span class="habitation-registration-start__eyebrow">Novo imóvel administrativo</span>
+        <h1 class="wizard-section-title"><i class="bi bi-house-heart-fill tw-text-primary"></i>Vamos começar</h1>
+        <p class="wizard-section-subtitle">
+          Olá, <strong><%= current_user_name %></strong>! Defina o perfil antes de abrir a ficha completa.
+        </p>
+      </div>
+    </header>
+
+    <%= form_with url: new_admin_habitation_path, method: :get, local: true, class: "wizard-start-grid habitation-registration-start__form",
+                  data: {
+                    controller: "habitation-form",
+                    habitation_form_categories_by_type_value: json_escape(categories_by_profile.to_json),
+                    habitation_form_tipo_by_type_value: json_escape(tipo_by_profile.to_json)
+                  } do %>
+      <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
+
+      <div class="wizard-field-group habitation-registration-start__profiles">
+        <label class="ax-label">Tipo de cadastro <span class="required-star">*</span></label>
+        <div class="wizard-option-grid" data-controller="option-picker">
+          <% profiles.each do |profile, config| %>
+            <div>
+              <label class="wizard-option-card <%= 'selected' if selected_profile == profile %>">
+                <%= radio_button_tag "habitation[registration_profile]",
+                                     profile,
+                                     selected_profile == profile,
+                                     data: {
+                                       habitation_form_target: "cadastroType",
+                                       action: "change->option-picker#pick change->habitation-form#cadastroTypeChanged"
+                                     } %>
+                <div class="icon"><i class="bi <%= config.fetch(:icon) %>"></i></div>
+                <div class="wizard-option-card__text"><%= config.fetch(:label) %></div>
+              </label>
+            </div>
+          <% end %>
+        </div>
+        <%= hidden_field_tag "habitation[tipo]", selected_config.fetch(:tipo), data: { habitation_form_target: "tipo" } %>
+      </div>
+
+      <div class="habitation-registration-start__details">
+        <div class="wizard-field-group">
+          <%= ax_field_label(nil, nil, text: "Categoria") %>
+          <%= select_tag "habitation[categoria]",
+                         options_for_select(selected_config.fetch(:categories), selected_category),
+                         include_blank: "Selecione...",
+                         id: "habitation_categoria",
+                         class: "ax-control",
+                         data: { habitation_form_target: "category" } %>
+          <p class="habitation-registration-start__hint">A categoria será limitada ao tipo de cadastro escolhido.</p>
+        </div>
+
+        <div class="wizard-field-group">
+          <label class="ax-label">Status comercial <span class="required-star">*</span></label>
+          <div class="wizard-status-grid" data-controller="option-picker">
+            <% Habitation::STATUS_OPTIONS.each do |value| %>
+              <label class="wizard-status-chip <%= 'selected' if selected_status == value %>">
+                <%= radio_button_tag "habitation[status]", value, selected_status == value, data: { action: "change->option-picker#pick" } %>
+                <i class="bi <%= status_icons.fetch(value, "bi-tag") %>"></i>
+                <span><%= status_labels.fetch(value, value) %></span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="habitation-registration-start__summary">
+          <strong>Próxima etapa</strong>
+          <span>A ficha será aberta com campos, labels e seções coerentes com o perfil selecionado.</span>
+        </div>
+
+        <div class="habitation-registration-start__actions">
+          <%= link_to "Cancelar", return_path, class: "ax-btn" %>
+          <%= button_tag type: "submit", class: "ax-btn ax-btn--primary" do %>
+            Iniciar cadastro<i class="bi bi-arrow-right ax-ico"></i>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</section>

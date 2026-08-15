@@ -1078,6 +1078,32 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(document.at_css('input[type="number"][name="habitation[andares_total]"]')).to be_present
   end
 
+  it "carrega características técnicas padrão para captações corporativas e terrenos" do
+    galpao = create(:habitation, :broker_intake, admin_user: admin, categoria: "Galpão", intake_step: "caracteristicas")
+    terreno = create(:habitation, :broker_intake, admin_user: admin, categoria: "Terreno", intake_step: "caracteristicas")
+
+    get edit_admin_captacao_path(galpao, step: "caracteristicas")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Galpão cross-docking")
+
+    get edit_admin_captacao_path(galpao, step: "infraestrutura")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Docas")
+
+    get edit_admin_captacao_path(terreno, step: "caracteristicas")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Viabilidade de loteamento")
+
+    get edit_admin_captacao_path(terreno, step: "infraestrutura")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Rede de água")
+    expect(response.body).not_to include("Terrenos não precisam de características de edifício")
+  end
+
   it "separa características do imóvel e do edifício em etapas diferentes" do
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "caracteristicas")
 

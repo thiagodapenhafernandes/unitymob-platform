@@ -18,7 +18,8 @@
               turbo_frame: dom_id(habitation, :ai_content_preview),
               action: "click->ai-preview#submit",
               ai_preview_method: "POST",
-              ai_preview_loading_text: "Gerando..."
+              ai_preview_loading_text: "Gerando...",
+              admin_navigation_ignore: "true"
             } do %>
           <i class="bi bi-magic" aria-hidden="true"></i>
           <span>Gerar prévia</span>
@@ -36,56 +37,17 @@
     <% end %>
 
     <% if suggestion.present? %>
-      <div class="ax-ai-preview__result">
-        <div class="ax-ai-preview__content">
-          <div class="ax-ai-preview__block">
-            <div class="ax-ai-preview__label">Título sugerido</div>
-            <div class="ax-ai-preview__text ax-ai-preview__text--strong"><%= suggestion.generated_title %></div>
-          </div>
-
-          <div class="ax-ai-preview__block">
-            <div class="ax-ai-preview__label">Descrição sugerida</div>
-            <div class="ax-ai-preview__description"><%= suggestion.generated_description %></div>
-          </div>
-
-          <% if suggestion.seo_keywords_list.any? %>
-            <div class="ax-ai-preview__block">
-              <div class="ax-ai-preview__label">Palavras-chave SEO sugeridas</div>
-              <div class="ax-ai-preview__keywords">
-                <% suggestion.seo_keywords_list.each do |keyword| %>
-                  <span class="ax-ai-preview__keyword"><%= keyword %></span>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-
-          <div class="ax-ai-preview__actions">
-            <%= link_to format_ai_suggestion_admin_habitation_path(habitation.id, suggestion_id: suggestion.id),
-                class: "ax-btn ax-btn--ghost ax-btn--sm",
-                data: {
-                  turbo_frame: dom_id(habitation, :ai_content_preview),
-                  action: "click->ai-preview#submit",
-                  ai_preview_method: "PATCH",
-                  ai_preview_loading_text: "Formatando..."
-                } do %>
-              <i class="bi bi-text-paragraph" aria-hidden="true"></i>
-              <span>Formatar texto</span>
-            <% end %>
-            <%= link_to apply_ai_suggestion_admin_habitation_path(habitation.id, suggestion_id: suggestion.id),
-                class: "ax-btn ax-btn--primary ax-btn--sm",
-                data: {
-                  turbo_frame: dom_id(habitation, :ai_content_preview),
-                  action: "click->ai-preview#submit",
-                  ai_preview_method: "PATCH",
-                  ai_preview_confirm_message: "Aplicar esta sugestão ao título, descrição e SEO do imóvel?",
-                  ai_preview_loading_text: "Aplicando..."
-                } do %>
-              <i class="bi bi-check2-circle" aria-hidden="true"></i>
-              <span>Aplicar sugestão</span>
-            <% end %>
-          </div>
-        </div>
-      </div>
+      <%
+        formatted_description = Ai::PropertyTextFormatter.call(suggestion.generated_description)
+        description_html = safe_join(
+          formatted_description.to_s.split(/\n{2,}/).map { |paragraph| tag.p(paragraph) }
+        )
+        seo_keywords = suggestion.seo_keywords_list.join(", ")
+      %>
+      <span class="tw-hidden"
+            data-ai-preview-fill-title="<%= suggestion.generated_title.to_s %>"
+            data-ai-preview-fill-description-html="<%= description_html %>"
+            data-ai-preview-fill-seo-keywords="<%= seo_keywords %>"></span>
     <% elsif show_button %>
       <%= ax_inline_notice(tone: :neutral,
                            icon: "info-circle",

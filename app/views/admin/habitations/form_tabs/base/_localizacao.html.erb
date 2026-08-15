@@ -142,18 +142,54 @@
               ) %>
         </div>
 
-        <div class="ax-span-1">
-          <%= ax_text_field(
-                form: f,
-                method: :bloco,
-                label: "Bloco",
-                readonly: !habitation_field_editable?("bloco"),
-                data: {
-                  habitation_duplicate_check_target: "unit",
-                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-                }
-              ) %>
-        </div>
+        <%
+          show_tower_field = f.object.property_kind_apartment_unit?
+          show_lot_block_fields = f.object.condominium_house? || f.object.condominium_land?
+          show_building_block_field = !f.object.condominium_land?
+          building_block_label = show_tower_field ? "Torre" : "Bloco"
+        %>
+
+        <% if show_building_block_field %>
+          <div class="ax-span-1">
+            <%= ax_text_field(
+                  form: f,
+                  method: :bloco,
+                  label: building_block_label,
+                  readonly: !habitation_field_editable?("bloco"),
+                  data: {
+                    habitation_duplicate_check_target: "unit",
+                    action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                  }
+                ) %>
+          </div>
+        <% end %>
+
+        <% if show_lot_block_fields %>
+          <div class="ax-span-1">
+            <%= ax_text_field(
+                  form: f,
+                  method: :lote,
+                  label: "Lote",
+                  readonly: !habitation_field_editable?("lote"),
+                  data: {
+                    habitation_duplicate_check_target: "lot",
+                    action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                  }
+                ) %>
+          </div>
+          <div class="ax-span-1">
+            <%= ax_text_field(
+                  form: f,
+                  method: :quadra,
+                  label: "Quadra",
+                  readonly: !habitation_field_editable?("quadra"),
+                  data: {
+                    habitation_duplicate_check_target: "blockSection",
+                    action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                  }
+                ) %>
+          </div>
+        <% end %>
 
         <div class="ax-span-12">
           <% selected_imediacoes = case address_form.object.imediacoes

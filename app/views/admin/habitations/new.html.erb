@@ -14,4 +14,11 @@
   <%= admin_contextbar_link("Voltar", return_path, icon: "arrow-left") %>
 <% end %>
 
-<%= render 'form', habitation: @habitation %>
+<% if @show_registration_profile_start %>
+  <%= render "admin/habitations/registration_profile_start",
+             habitation: @habitation,
+             registration_profiles: @registration_profiles,
+             return_path: return_path %>
+<% else %>
+  <%= render 'form', habitation: @habitation %>
+<% end %>

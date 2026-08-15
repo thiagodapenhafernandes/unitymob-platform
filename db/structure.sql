@@ -1,4 +1,4 @@
-\restrict FWQzuxPv3Dq09Wy8KxlhSZ9DLusQSKJm4puaFBXVfUndebDXYN2LA6FO1eCgGk9
+\restrict 2g2H5OAsFmOP88JJ5ryyR9ARFiF2Otz2LUCsDyfBgdAhercYAH4Gx5xIYlaAhf2
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2690,7 +2690,8 @@ CREATE TABLE public.habitations (
     public_rating_count integer,
     public_rating_source character varying,
     intake_review_policy_version integer,
-    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
+    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    registration_profile character varying
 );
 
 
@@ -12006,6 +12007,13 @@ CREATE INDEX index_habitations_on_quadra_mar_flag ON public.habitations USING bt
 
 
 --
+-- Name: index_habitations_on_registration_profile; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitations_on_registration_profile ON public.habitations USING btree (registration_profile);
+
+
+--
 -- Name: index_habitations_on_rental_management_flag; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17138,11 +17146,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FWQzuxPv3Dq09Wy8KxlhSZ9DLusQSKJm4puaFBXVfUndebDXYN2LA6FO1eCgGk9
+\unrestrict 2g2H5OAsFmOP88JJ5ryyR9ARFiF2Otz2LUCsDyfBgdAhercYAH4Gx5xIYlaAhf2
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260814152000'),
 ('20260814124500'),
 ('20260814123000'),
 ('20260814121000'),

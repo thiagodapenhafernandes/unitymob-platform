@@ -257,17 +257,26 @@ RSpec.describe Habitation, type: :model do
       expect(described_class.new(categoria: "Apartamento")).to be_requires_intake_address_complement
       expect(described_class.new(categoria: "Casa em Condomínio")).to be_requires_intake_address_complement
       expect(described_class.new(categoria: "Sala Comercial")).to be_requires_intake_address_complement
-      expect(described_class.new(categoria: "Terreno")).to be_requires_intake_address_complement
+      expect(described_class.new(categoria: "Terreno")).not_to be_requires_intake_address_complement
+      expect(described_class.new(categoria: "Terreno em Condomínio")).not_to be_requires_intake_address_complement
       expect(described_class.new(categoria: "Casa")).not_to be_requires_intake_address_complement
+    end
+
+    it "requires lot and block for condominium houses and condominium land" do
+      expect(described_class.new(categoria: "Casa em Condomínio")).to be_requires_intake_lot_block
+      expect(described_class.new(categoria: "Terreno em Condomínio")).to be_requires_intake_lot_block
+      expect(described_class.new(categoria: "Terreno")).not_to be_requires_intake_lot_block
     end
 
     it "uses complement and block to identify land lots when present" do
       land_with_complement = described_class.new(categoria: "Terreno")
       land_with_complement.build_address(complemento: "Lote 106")
       land_with_block = described_class.new(categoria: "Terreno", bloco: "Quadra B")
+      land_with_lot = described_class.new(categoria: "Terreno em Condomínio", lote: "12", quadra: "B")
 
       expect(land_with_complement.duplicate_identity_scope).to eq(:condominium_unit)
       expect(land_with_block.duplicate_identity_scope).to eq(:condominium_unit)
+      expect(land_with_lot.duplicate_identity_scope).to eq(:condominium_unit)
       expect(described_class.new(categoria: "Terreno").duplicate_identity_scope)
         .to eq(:street)
     end
@@ -350,6 +359,44 @@ RSpec.describe Habitation, type: :model do
       expect(seasonal).not_to be_shareable_commercial_status
       expect(pending).not_to be_shareable_commercial_status
       expect(sold).not_to be_shareable_commercial_status
+    end
+  end
+
+  describe "registration_profile" do
+    it "infers the profile from category and type for imported records" do
+      apartment = create(:habitation, categoria: "Apartamento", registration_profile: nil)
+      land = create(:habitation, categoria: "Terreno", registration_profile: nil)
+      area = create(:habitation, categoria: "Área", registration_profile: nil)
+      development = create(:habitation, tipo: "Empreendimento", categoria: "Empreendimento", registration_profile: nil)
+      commercial = create(:habitation, categoria: "Galpão Industrial", registration_profile: nil)
+      condominium = create(:habitation, tipo: "Empreendimento", categoria: "Condomínio", registration_profile: nil)
+
+      expect(apartment.registration_profile).to eq("apartamentos")
+      expect(land.registration_profile).to eq("terrenos")
+      expect(area.registration_profile).to eq("terrenos")
+      expect(development.registration_profile).to eq("empreendimento")
+      expect(commercial.registration_profile).to eq("comerciais_industriais")
+      expect(commercial.categoria).to eq("Galpão")
+      expect(condominium.registration_profile).to eq("empreendimento")
+    end
+
+    it "does not allow changing the profile after it has been defined" do
+      habitation = create(:habitation, categoria: "Apartamento", registration_profile: "apartamentos")
+
+      habitation.registration_profile = "terrenos"
+
+      expect(habitation).not_to be_valid
+      expect(habitation.errors[:registration_profile]).to include("não pode ser alterado depois de definido")
+    end
+
+    it "exposes standard technical options for corporate and land profiles" do
+      corporate = build(:habitation, categoria: "Galpão", registration_profile: "comerciais_industriais")
+      land = build(:habitation, categoria: "Terreno", registration_profile: "terrenos")
+
+      expect(corporate.standard_feature_options).to include("Galpão cross-docking", "Pé-direito livre")
+      expect(corporate.standard_infrastructure_options).to include("Docas", "Sistema de sprinklers")
+      expect(land.standard_feature_options).to include("Viabilidade de loteamento", "Matrícula individualizada")
+      expect(land.standard_infrastructure_options).to include("Rede de água", "Licença ambiental")
     end
   end
 

@@ -1,6 +1,6 @@
 <%
   kind = @captacao.property_kind.to_s
-  features_imovel = captacao_feature_options(@internal_features, @captacao.caracteristicas_imovel)
+  features_imovel = captacao_feature_options(@internal_features, @captacao.standard_feature_options, @captacao.caracteristicas_imovel)
   ocupacao_choices = [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]]
   situacao_choices = [["Novo", "Novo"], ["Usado", "Usado"], ["Em construção", "Em construção"]]
   topografia_choices = [["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]]
