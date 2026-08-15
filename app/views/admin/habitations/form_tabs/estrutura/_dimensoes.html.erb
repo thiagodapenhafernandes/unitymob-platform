@@ -1,4 +1,9 @@
 <%= ax_form_section(title: "Dimensões e estrutura física", eyebrow: "Estrutura", icon: "rulers") do %>
-  <%= render "admin/habitations/form_tabs/estrutura/quantidades_vagas", f: f %>
+  <% profile = local_assigns[:registration_profile].presence || f.object.registration_profile.presence || "imoveis_residenciais" %>
+  <% if profile != "terrenos" && profile != "empreendimento" %>
+    <%= render "admin/habitations/form_tabs/estrutura/quantidades_vagas",
+               f: f,
+               registration_profile: profile %>
+  <% end %>
   <%= render "admin/habitations/form_tabs/estrutura/areas_terreno", f: f %>
 <% end %>

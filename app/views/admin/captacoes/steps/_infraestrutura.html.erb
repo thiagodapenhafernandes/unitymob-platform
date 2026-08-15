@@ -10,13 +10,15 @@
                                []
                              end
 
-  features_predio = captacao_feature_options(@external_features, fallback_features_predio, @captacao.caracteristicas_predio)
+  standard_infrastructure = @captacao.standard_infrastructure_options
+  features_predio = captacao_feature_options(@external_features, fallback_features_predio, standard_infrastructure, @captacao.caracteristicas_predio)
+  show_infrastructure_fields = @captacao.uses_building_infrastructure? || standard_infrastructure.any?
 %>
 
 <h1 class="wizard-section-title"><i class="bi bi-building tw-text-primary"></i>Edifício e lazer</h1>
 <p class="wizard-section-subtitle">Informe estrutura do prédio, condomínio e áreas de lazer.</p>
 
-<% if @captacao.property_kind_terreno? %>
+<% if @captacao.property_kind_terreno? && !show_infrastructure_fields %>
   <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
     Terrenos não precisam de características de edifício. Avance para continuar a ficha.
   <% end %>
@@ -37,13 +39,13 @@
   <%= ax_number_field(form: f, method: :distancia_praia, label: "Distância da praia (m)", min: 0,
         inputmode: "decimal", class_name: "wizard-field-group") %>
 
-  <% unless @captacao.uses_building_infrastructure? %>
+  <% unless show_infrastructure_fields %>
     <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
       Este tipo de imóvel não precisa de dados de edifício. Avance para continuar a ficha.
     <% end %>
   <% end %>
 
-  <% if @captacao.uses_building_infrastructure? && features_predio.any? %>
+  <% if show_infrastructure_fields && features_predio.any? %>
     <hr class="my-3">
     <div class="wizard-field-group">
       <label class="ax-label">Características do edifício, lazer e condomínio</label>

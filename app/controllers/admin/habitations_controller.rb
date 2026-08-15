@@ -253,11 +253,14 @@ class Admin::HabitationsController < Admin::BaseController
 
     case @report_type
     when "client_sheet_commercial"
-      scope = scope.where(categoria: Habitation::CATEGORIES.select { |c| c.match?(/Comercial|Loja|Galpão|Prédio/i) })
+      scope = scope.where(categoria: Habitation::REGISTRATION_PROFILES.dig("comerciais_industriais", :categories))
     when "client_sheet_residential"
-      scope = scope.where.not(categoria: Habitation::CATEGORIES.select { |c| c.match?(/Comercial|Loja|Galpão|Prédio|Terreno|Área/i) })
+      excluded_categories =
+        Habitation::REGISTRATION_PROFILES.dig("comerciais_industriais", :categories) +
+        Habitation::REGISTRATION_PROFILES.dig("terrenos", :categories)
+      scope = scope.where.not(categoria: excluded_categories)
     when "client_sheet_land"
-      scope = scope.where(categoria: Habitation::CATEGORIES.select { |c| c.match?(/Terreno|Área/i) })
+      scope = scope.where(categoria: Habitation::REGISTRATION_PROFILES.dig("terrenos", :categories))
     end
 
     if single_habitation_sheet_report?
@@ -521,12 +524,14 @@ class Admin::HabitationsController < Admin::BaseController
 
   def new
     @habitation = current_tenant.habitations.new
+    @registration_profiles = Habitation::REGISTRATION_PROFILES
     assign_new_habitation_defaults(@habitation)
     prepare_development_from_source(@habitation)
     prepare_admin_paper_intake(@habitation) if admin_paper_intake_form?
     @habitation.build_address
     @page_title = admin_paper_intake_form? ? "Nova ficha interna de captação" : "Novo Imóvel"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
+    @show_registration_profile_start = !admin_paper_intake_form? && !source_habitation.present? && !admin_habitation_profile_started?
   end
 
   def show
@@ -807,7 +812,7 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     suggestion = Ai::PropertyContentService.new(@habitation, admin_user: current_admin_user).generate_suggestion!
-    return render_ai_content_preview(suggestion: suggestion, message: "Sugestão com IA gerada para revisão.", message_type: "success") if turbo_frame_request?
+    return render_ai_content_preview(suggestion: suggestion, message: "Sugestão gerada e carregada nos campos para revisão.", message_type: "success") if turbo_frame_request?
 
     redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Sugestão com IA gerada para revisão."
   rescue => e
@@ -2216,8 +2221,42 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def assign_new_habitation_defaults(habitation)
-    defaults = params.fetch(:habitation, ActionController::Parameters.new).permit(:tipo, :categoria, :status)
+    defaults = params.fetch(:habitation, ActionController::Parameters.new).permit(:registration_profile, :tipo, :categoria, :status)
+    normalize_registration_profile_selection!(defaults)
+    defaults[:status] = "Venda" if defaults[:status].blank?
     habitation.assign_attributes(defaults)
+  end
+
+  def admin_habitation_profile_started?
+    params.dig(:habitation, :registration_profile).present? ||
+      params.dig(:habitation, :categoria).present? ||
+      params.dig(:habitation, :status).present?
+  end
+
+  def default_category_for_registration_profile(profile)
+    Habitation::REGISTRATION_PROFILES.dig(profile.to_s, :categories)&.first
+  end
+
+  def default_tipo_for_registration_profile(profile)
+    Habitation::REGISTRATION_PROFILES.dig(profile.to_s, :tipo)
+  end
+
+  def normalize_registration_profile_selection!(attributes)
+    profile = attributes[:registration_profile].to_s.presence_in(Habitation::REGISTRATION_PROFILE_KEYS)
+
+    if profile.blank?
+      attributes.delete(:registration_profile)
+      return attributes
+    end
+
+    config = Habitation::REGISTRATION_PROFILES.fetch(profile)
+    categories = config.fetch(:categories)
+    attributes[:categoria] = Habitation.normalize_registration_category(attributes[:categoria])
+
+    attributes[:registration_profile] = profile
+    attributes[:tipo] = config.fetch(:tipo)
+    attributes[:categoria] = categories.first unless attributes[:categoria].to_s.in?(categories)
+    attributes
   end
 
   def link_source_habitation_to_development!(development)
@@ -2521,6 +2560,7 @@ class Admin::HabitationsController < Admin::BaseController
     normalize_rental_guarantee_method_param!
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     responsible_attributes = permitted.slice(:admin_user_id, :broker_assignments_attributes)
+    normalize_registration_profile_selection!(permitted)
     strip_blank_photo_uploads!(permitted)
     normalize_blank_address_list_values!(permitted)
 
@@ -2780,7 +2820,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def permitted_habitation_fields
     [
-      :slug, :categoria, :status, :situacao, :tipo, :codigo_empreendimento, 
+      :slug, :registration_profile, :categoria, :status, :situacao, :tipo, :codigo_empreendimento,
       :nome_empreendimento,
       :dormitorios_qtd, :suites_qtd, :salas_qtd, :varandas_qtd, :banheiros_qtd, :hidromassagem_qtd, :vagas_qtd, :elevadores_qtd, 
       :area_privativa_m2, :area_total_m2, :area_terreno_m2, :area_util_m2, 

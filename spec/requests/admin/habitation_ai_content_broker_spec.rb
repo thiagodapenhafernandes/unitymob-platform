@@ -28,4 +28,35 @@ RSpec.describe "Admin::Habitations conteúdo IA x corretor", type: :request do
     # admin passa pelo guard; sem token OpenAI cai no aviso de configurar, NÃO no de restrição
     expect(flash[:alert].to_s).not_to include("restrita ao administrador")
   end
+
+  it "retorna sugestão com dados para preencher título e descrição no formulário" do
+    admin = create(:admin_user, :admin, email: "admin-ai-fill-#{SecureRandom.hex(6)}@salute.test")
+    habitation = create(:habitation, tenant: admin.tenant, admin_user: admin, codigo: "AI-FILL-#{SecureRandom.hex(4)}")
+    suggestion = AiPropertySuggestion.create!(
+      habitation: habitation,
+      admin_user: admin,
+      status: "pending",
+      generated_title: "Apartamento frente mar pronto para morar",
+      generated_description: "Primeiro parágrafo da descrição. Segundo parágrafo da descrição.",
+      generated_seo_keywords: "frente mar, apartamento"
+    )
+    service = instance_double(Ai::PropertyContentService, generate_suggestion!: suggestion)
+
+    allow(Ai::PropertyContentService).to receive(:connected?).and_return(true)
+    allow(Ai::PropertyContentService).to receive(:new).with(habitation, admin_user: admin).and_return(service)
+
+    sign_in admin
+    post generate_ai_preview_admin_habitation_path(habitation),
+         headers: { "Turbo-Frame" => ActionView::RecordIdentifier.dom_id(habitation, :ai_content_preview) }
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    payload = document.at_css("[data-ai-preview-fill-title]")
+    expect(payload["data-ai-preview-fill-title"]).to eq("Apartamento frente mar pronto para morar")
+    expect(payload["data-ai-preview-fill-description-html"]).to include("<p>Primeiro parágrafo da descrição.")
+    expect(payload["data-ai-preview-fill-seo-keywords"]).to eq("frente mar, apartamento")
+    expect(response.body).to include("Sugestão gerada e carregada nos campos para revisão.")
+    expect(response.body).not_to include("Título sugerido")
+    expect(response.body).not_to include("Aplicar sugestão")
+  end
 end

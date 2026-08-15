@@ -41,9 +41,187 @@ class Habitation < ApplicationRecord
   
   # Constantes Padronizadas para Enums e Atributos
   CATEGORIES = [
-    'Apartamento', 'Casa', 'Casa em Condomínio', 'Cobertura', 'Sobrado',
-    'Terreno', 'Terreno em Condomínio', 'Loft', 'Studio', 'Sala Comercial',
-    'Loja', 'Prédio Comercial', 'Galpão', 'Área', 'Rural'
+    'Apartamento', 'Cobertura', 'Loft',
+    'Casa', 'Casa em Condomínio', 'Sobrado', 'Chácara', 'Sítio',
+    'Casa Comercial', 'Condomínio Industrial', 'Galpão', 'Galpão em Condomínio',
+    'Loja', 'Ponto Comercial', 'Prédio Comercial', 'Sala Comercial',
+    'Área', 'Terreno', 'Terreno em Condomínio',
+    'Condomínio', 'Empreendimento'
+  ].freeze
+
+  REGISTRATION_PROFILES = {
+    "apartamentos" => {
+      label: "Apartamentos",
+      icon: "bi-building-fill",
+      tipo: "Unitário",
+      categories: ["Apartamento", "Cobertura", "Loft"]
+    },
+    "comerciais_industriais" => {
+      label: "Comerciais e industriais",
+      icon: "bi-shop",
+      tipo: "Unitário",
+      categories: ["Casa Comercial", "Condomínio Industrial", "Galpão", "Galpão em Condomínio", "Loja", "Ponto Comercial", "Prédio Comercial", "Sala Comercial"]
+    },
+    "empreendimento" => {
+      label: "Empreendimento",
+      icon: "bi-buildings-fill",
+      tipo: "Empreendimento",
+      categories: ["Condomínio", "Empreendimento"]
+    },
+    "imoveis_residenciais" => {
+      label: "Imóveis residenciais",
+      icon: "bi-house-door-fill",
+      tipo: "Unitário",
+      categories: ["Casa", "Casa em Condomínio", "Sobrado", "Chácara", "Sítio"]
+    },
+    "terrenos" => {
+      label: "Terrenos",
+      icon: "bi-tree-fill",
+      tipo: "Unitário",
+      categories: ["Área", "Terreno", "Terreno em Condomínio"]
+    }
+  }.freeze
+  REGISTRATION_CATEGORY_ALIASES = {
+    "area" => "Área",
+    "casa comercial" => "Casa Comercial",
+    "chacara" => "Chácara",
+    "condominio" => "Condomínio",
+    "condominio industrial" => "Condomínio Industrial",
+    "galpao industrial" => "Galpão",
+    "galpao em condominio" => "Galpão em Condomínio",
+    "kitnet" => "Apartamento",
+    "rural" => "Sítio",
+    "salas conjuntos" => "Sala Comercial",
+    "salas comerciais" => "Sala Comercial",
+    "sala conjunto" => "Sala Comercial",
+    "sitio" => "Sítio",
+    "terreno comercial" => "Terreno",
+    "terreno industrial" => "Terreno"
+  }.freeze
+  REGISTRATION_PROFILE_KEYS = REGISTRATION_PROFILES.keys.freeze
+  REGISTRATION_PROFILE_CATEGORY_INDEX = REGISTRATION_PROFILES.each_with_object({}) do |(profile, config), index|
+    config.fetch(:categories).each { |category| index[category] = profile }
+  end.freeze
+
+  CORPORATE_FEATURE_OPTIONS = [
+    "Galpão logístico/industrial em condomínio",
+    "Galpão pré-moldado comum",
+    "Galpão cross-docking",
+    "Galpão autoportante",
+    "Galpão lonado/sanfonado",
+    "Galpão de alvenaria tradicional",
+    "Galpão de estrutura metálica",
+    "Barracão simples",
+    "Operação logística/e-commerce",
+    "Operação industrial",
+    "Operação para alimentos",
+    "Operação para químicos",
+    "Layout porta-paletes",
+    "Layout em bloco",
+    "Layout automatizado",
+    "Classe AAA",
+    "Classe A+",
+    "Classe A",
+    "Zoneamento industrial",
+    "Zoneamento logístico",
+    "Zoneamento comercial",
+    "Piso industrial",
+    "Piso de concreto simples",
+    "Chão batido",
+    "Pé-direito livre",
+    "Área de armazenagem",
+    "Modulação de colunas",
+    "Licenças operacionais"
+  ].freeze
+
+  CORPORATE_INFRASTRUCTURE_OPTIONS = [
+    "Docas",
+    "Docas niveladoras",
+    "Pátio de manobras",
+    "Área para caminhões",
+    "Portaria 24h",
+    "Controle de acesso",
+    "Vigilância 24h",
+    "CFTV",
+    "Câmeras IP 4K 360",
+    "Reconhecimento facial",
+    "Leitura de placas",
+    "Alarmes",
+    "Sistema de sprinklers",
+    "Sprinklers ESFR",
+    "Sprinklers CMSA",
+    "Sistema pré-action",
+    "Sistema deluge",
+    "Water mist",
+    "Sistema de espuma",
+    "Reservatório de incêndio",
+    "Casa de bombas",
+    "Detecção inteligente de incêndio",
+    "BMS integrado",
+    "Cabine primária",
+    "Subestação",
+    "Gerador diesel",
+    "Energia trifásica",
+    "Placas fotovoltaicas",
+    "Iluminação LED",
+    "Ventilação natural",
+    "Climatização",
+    "Mezanino",
+    "Escritórios de apoio",
+    "Vestiários",
+    "Refeitório",
+    "Ponte rolante",
+    "Tratamento de efluentes",
+    "Gás industrial"
+  ].freeze
+
+  LAND_FEATURE_OPTIONS = [
+    "Loteamento fechado",
+    "Loteamento aberto",
+    "Gleba",
+    "Lote",
+    "Fração ideal",
+    "Terreno de marinha",
+    "Terreno industrial",
+    "Zona urbana",
+    "Zona rural",
+    "Zona de expansão",
+    "Matrícula individualizada",
+    "Inscrição imobiliária",
+    "CCIR",
+    "CAR",
+    "ITR/CIB",
+    "Registro de parcelamento",
+    "Topografia plana",
+    "Topografia aclive",
+    "Topografia declive",
+    "Topografia irregular",
+    "Histórico de enchente",
+    "Formato regular",
+    "Formato irregular",
+    "Potencial de valorização",
+    "Viabilidade de loteamento"
+  ].freeze
+
+  LAND_INFRASTRUCTURE_OPTIONS = [
+    "Rede de água",
+    "Rede de esgoto",
+    "Energia elétrica",
+    "Iluminação pública",
+    "Pavimentação",
+    "Drenagem",
+    "Acesso por rodovia",
+    "Acesso por estrada municipal",
+    "Próximo a rodovias",
+    "Próximo a portos",
+    "Próximo a aeroportos",
+    "Estudo ambiental",
+    "Estudo geotécnico",
+    "Licença ambiental",
+    "Zoneamento definido",
+    "Coeficiente de aproveitamento definido",
+    "Taxa de ocupação definida",
+    "Recuos definidos"
   ].freeze
 
   PUBLIC_FILTER_EXTRA_CATEGORIES = [
@@ -131,6 +309,47 @@ class Habitation < ApplicationRecord
 
   def self.standalone_category_without_development_name?(category)
     STANDALONE_CATEGORIES_WITHOUT_DEVELOPMENT_NAME.include?(category.to_s.parameterize)
+  end
+
+  def self.registration_profile_for(tipo:, categoria:)
+    normalized_category = normalize_registration_category(categoria)
+    return "empreendimento" if tipo.to_s == "Empreendimento" || normalized_category.to_s.in?(%w[Empreendimento Condomínio])
+
+    REGISTRATION_PROFILE_CATEGORY_INDEX[normalized_category.to_s].presence || "imoveis_residenciais"
+  end
+
+  def self.standard_feature_options_for(registration_profile: nil, categoria: nil, tipo: nil)
+    profile = registration_profile.presence || registration_profile_for(tipo: tipo, categoria: categoria)
+    category = normalize_registration_category(categoria).to_s
+
+    if profile == "terrenos"
+      LAND_FEATURE_OPTIONS
+    elsif profile == "comerciais_industriais" || category.match?(/galp|industrial|comercial|loja|ponto/i)
+      CORPORATE_FEATURE_OPTIONS
+    else
+      []
+    end
+  end
+
+  def self.standard_infrastructure_options_for(registration_profile: nil, categoria: nil, tipo: nil)
+    profile = registration_profile.presence || registration_profile_for(tipo: tipo, categoria: categoria)
+    category = normalize_registration_category(categoria).to_s
+
+    if profile == "terrenos"
+      LAND_INFRASTRUCTURE_OPTIONS
+    elsif profile == "comerciais_industriais" || category.match?(/galp|industrial|comercial|loja|ponto/i)
+      CORPORATE_INFRASTRUCTURE_OPTIONS
+    else
+      []
+    end
+  end
+
+  def self.normalize_registration_category(value)
+    raw = value.to_s.strip.squish
+    return nil if raw.blank?
+
+    key = I18n.transliterate(raw).downcase.gsub(%r{[/_-]+}, " ").squish
+    REGISTRATION_CATEGORY_ALIASES.fetch(key, raw)
   end
 
   def self.highest_numeric_codigo
@@ -519,15 +738,19 @@ class Habitation < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0 },
             allow_nil: true
   validates :key_location, inclusion: { in: KEY_LOCATION_OPTIONS }, allow_blank: true
+  validates :registration_profile, inclusion: { in: REGISTRATION_PROFILE_KEYS }, allow_blank: true
   validate :rental_guarantee_methods_must_be_valid
   validate :codigo_empreendimento_must_exist, if: :validate_codigo_empreendimento?
   validate :codigo_empreendimento_cannot_reference_self
   validate :key_location_notes_required_for_other
   validate :inactive_commercial_status_details_required
   validate :broker_intake_snapshot_is_immutable
+  validate :registration_profile_is_immutable, on: :update
   
   # Callbacks
   before_validation :normalize_commercial_status, prepend: true
+  before_validation :normalize_registration_category, prepend: true
+  before_validation :infer_registration_profile
   before_validation :unpublish_when_commercial_status_inactive
   before_validation :clear_category_mismatched_slug, prepend: true
   before_validation :assign_codigo_automaticamente, on: :create
@@ -633,7 +856,7 @@ class Habitation < ApplicationRecord
 
   def property_kind
     return "casa_rua" if street_house?
-    return "terreno" if categoria.to_s.match?(/terreno/i)
+    return "terreno" if categoria.to_s.match?(/terreno|área|area/i)
     return "sala_comercial" if categoria.to_s.match?(/sala|loja|comercial|ponto|conjunto/i)
     return "galpao" if categoria.to_s.match?(/galp/i)
     "residencial"
@@ -643,6 +866,7 @@ class Habitation < ApplicationRecord
     self.categoria = case value
                      when "sala_comercial" then "Sala Comercial"
                      when "terreno" then "Terreno"
+                     when "galpao" then "Galpão"
                      else "Apartamento"
                      end
   end
@@ -703,13 +927,12 @@ class Habitation < ApplicationRecord
     requires_unit_number? ||
       condominium_house? ||
       property_kind_sala_comercial? ||
-      property_kind_galpao? ||
-      property_kind_terreno?
+      property_kind_galpao?
   end
 
-  # Casa em condomínio localiza a unidade por lote/quadra dentro do empreendimento.
+  # Imóveis em condomínio localizam a unidade/lote dentro do empreendimento.
   def requires_intake_lot_block?
-    condominium_house?
+    condominium_house? || condominium_land?
   end
 
   def intake_address_complement_label
@@ -749,7 +972,8 @@ class Habitation < ApplicationRecord
   end
 
   def duplicate_identity_scope
-    if (condominium_house? || property_kind_terreno?) && (complemento.present? || bloco.present?)
+    if (condominium_house? || property_kind_terreno?) &&
+        (complemento.present? || bloco.present? || lote.present? || (respond_to?(:quadra) && quadra.present?))
       return :condominium_unit
     end
 
@@ -934,6 +1158,8 @@ class Habitation < ApplicationRecord
 
   def caracteristicas_imovel = normalize_captacao_list(caracteristicas, category: "feature")
   def caracteristicas_predio = normalize_captacao_list(infra_estrutura, category: "infrastructure")
+  def standard_feature_options = self.class.standard_feature_options_for(registration_profile: registration_profile, categoria: categoria, tipo: tipo)
+  def standard_infrastructure_options = self.class.standard_infrastructure_options_for(registration_profile: registration_profile, categoria: categoria, tipo: tipo)
   def aceita_permuta
     aceita_permuta_answer == "sim" || aceita_permuta_flag? ? ["Sim"] : []
   end
@@ -2176,6 +2402,22 @@ class Habitation < ApplicationRecord
 
   def validate_codigo_empreendimento?
     codigo_empreendimento.present? && (new_record? || will_save_change_to_codigo_empreendimento?)
+  end
+
+  def infer_registration_profile
+    self.registration_profile = self.class.registration_profile_for(tipo: tipo, categoria: categoria) if registration_profile.blank?
+  end
+
+  def normalize_registration_category
+    normalized_category = self.class.normalize_registration_category(categoria)
+    self.categoria = normalized_category if normalized_category.present?
+  end
+
+  def registration_profile_is_immutable
+    return unless will_save_change_to_registration_profile?
+    return if registration_profile_was.blank?
+
+    errors.add(:registration_profile, "não pode ser alterado depois de definido")
   end
 
   def codigo_empreendimento_must_exist

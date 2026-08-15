@@ -14,8 +14,9 @@
 
 <%= ax_form_section(title: "Infraestrutura e lazer", eyebrow: "Checklist", icon: "tree", actions: infrastructure_actions) do %>
   <% current_infra = f.object.infra_estrutura.is_a?(Array) ? f.object.infra_estrutura : [] %>
+  <% infrastructure_options = (@external_features.to_a + f.object.standard_infrastructure_options.to_a + current_infra).compact_blank.uniq.sort_by { |feature| I18n.transliterate(feature.to_s).downcase } %>
   <%= ax_chip_grid(id: "infra-checkbox-list") do %>
-    <% @external_features.to_a.each do |feature| %>
+    <% infrastructure_options.each do |feature| %>
       <% checked = current_infra.include?(feature) %>
       <label class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
         <input type="checkbox" name="habitation[infra_estrutura][]" value="<%= feature %>" <%= 'checked' if checked %>>

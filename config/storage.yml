@@ -7,13 +7,15 @@ local:
   root: <%= Rails.root.join("storage") %>
 
 do_spaces:
-  service: S3
+  service: DigitalOceanSpaces
   access_key_id: <%= ENV["DO_SPACES_ACCESS_KEY_ID"] %>
   secret_access_key: <%= ENV["DO_SPACES_SECRET_ACCESS_KEY"] %>
   region: <%= ENV.fetch("DO_SPACES_REGION", "sfo3") %>
   endpoint: <%= ENV.fetch("DO_SPACES_ENDPOINT", "https://sfo3.digitaloceanspaces.com") %>
   bucket: <%= ENV["DO_SPACES_BUCKET"] %>
   force_path_style: false
+  request_checksum_calculation: when_required
+  response_checksum_validation: when_required
 
 # Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
 # amazon:

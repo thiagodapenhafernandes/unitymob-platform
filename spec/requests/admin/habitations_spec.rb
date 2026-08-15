@@ -746,18 +746,192 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Publicar no site")
   end
 
-  it "abre novo imóvel como cadastro direto fora do fluxo de revisão" do
+  it "abre a etapa inicial antes do cadastro administrativo direto" do
     get new_admin_habitation_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Vamos começar")
+    expect(response.body).to include("Tipo de cadastro")
+    expect(response.body).to include("Iniciar cadastro")
+    expect(response.body).not_to include('novalidate="novalidate"')
+  end
+
+  it "exibe todos os status comerciais canônicos na etapa inicial" do
+    get new_admin_habitation_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    rendered_statuses = document.css('input[name="habitation[status]"]').map { |input| input["value"] }
+    expect(rendered_statuses).to eq(Habitation::STATUS_OPTIONS)
+    expect(response.body).to include("Locação anual", "Locação diária")
+  end
+
+  it "abre novo imóvel como cadastro direto fora do fluxo de revisão depois do tipo definido" do
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "apartamentos",
+        categoria: "Apartamento",
+        status: "Venda"
+      }
+    }
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('novalidate="novalidate"')
     expect(response.body).to include("Cadastro direto de imóvel")
     expect(response.body).to include("não passa pelo fluxo de captação/revisão")
     expect(response.body).to include("Criar ficha de captação interna")
+    expect(response.body).to include('name="habitation[registration_profile]"')
+    expect(response.body).to include('value="apartamentos"')
+    expect(response.body).to include("Apartamentos")
     expect(response.body).not_to include("Enviar para corretor")
     expect(response.body).not_to include("Salvar Interno")
     expect(response.body).to include("Salvar")
     expect(response.body).to include("Salvar e sair")
+  end
+
+  it "ajusta os campos exibidos conforme o tipo de cadastro administrativo" do
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "comerciais_industriais",
+        categoria: "Sala Comercial",
+        status: "Aluguel"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Comerciais e industriais")
+    expect(response.body).to include("Salas")
+    expect(response.body).to include("Banh.")
+    expect(response.body).not_to include('name="habitation[dormitorios_qtd]"')
+    expect(response.body).not_to include('name="habitation[suites_qtd]"')
+  end
+
+  it "renderiza a ficha correta para todos os perfis de cadastro administrativo" do
+    checks = {
+      "apartamentos" => {
+        category: "Apartamento",
+        includes: ['name="habitation[dormitorios_qtd]"', 'name="habitation[suites_qtd]"', 'name="habitation[vagas_qtd]"']
+      },
+      "imoveis_residenciais" => {
+        category: "Casa",
+        includes: ['name="habitation[dormitorios_qtd]"', 'name="habitation[suites_qtd]"']
+      },
+      "comerciais_industriais" => {
+        category: "Casa Comercial",
+        includes: ['name="habitation[salas_qtd]"', 'name="habitation[banheiros_qtd]"'],
+        excludes: ['name="habitation[dormitorios_qtd]"', 'name="habitation[suites_qtd]"']
+      },
+      "empreendimento" => {
+        category: "Condomínio",
+        includes: ["Empreendimento"],
+        excludes: ['name="habitation[vagas_qtd]"']
+      },
+      "terrenos" => {
+        category: "Terreno",
+        includes: ['name="habitation[area_terreno_m2]"', 'name="habitation[topografia]"'],
+        excludes: ['name="habitation[dormitorios_qtd]"', 'name="habitation[vagas_qtd]"']
+      }
+    }
+
+    checks.each do |profile, expectation|
+      get new_admin_habitation_path, params: {
+        habitation: {
+          registration_profile: profile,
+          categoria: expectation.fetch(:category),
+          status: "Venda"
+        }
+      }
+
+      expect(response).to have_http_status(:ok), "perfil #{profile} deveria renderizar"
+      expect(response.body).to include('novalidate="novalidate"')
+      expectation.fetch(:includes, []).each { |content| expect(response.body).to include(content), "perfil #{profile} deveria conter #{content}" }
+      expectation.fetch(:excludes, []).each { |content| expect(response.body).not_to include(content), "perfil #{profile} não deveria conter #{content}" }
+    end
+  end
+
+  it "inclui características técnicas padrão para cadastros corporativos e terrenos" do
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "comerciais_industriais",
+        categoria: "Galpão",
+        status: "Venda"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Galpão cross-docking")
+    expect(response.body).to include("Docas")
+
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "terrenos",
+        categoria: "Terreno",
+        status: "Venda"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Viabilidade de loteamento")
+    expect(response.body).to include("Rede de água")
+  end
+
+  it "normaliza categoria incompatível com o tipo de cadastro administrativo" do
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "apartamentos",
+        categoria: "Galpão",
+        tipo: "Empreendimento",
+        status: "Venda"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('value="apartamentos"')
+    expect(response.body).to include('value="Unitário"')
+    selected_category = Nokogiri::HTML(response.body).at_css("select#habitation_categoria option[selected]")
+    expect(selected_category["value"]).to eq("Apartamento")
+  end
+
+  it "normaliza categorias legadas para a matriz administrativa atual" do
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "comerciais_industriais",
+        categoria: "Salas/Conjuntos",
+        status: "Aluguel"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    selected_category = Nokogiri::HTML(response.body).at_css("select#habitation_categoria option[selected]")
+    expect(selected_category["value"]).to eq("Sala Comercial")
+    expect(response.body).not_to include(">Salas/Conjuntos<")
+  end
+
+  it "renderiza torre para apartamentos e lote/quadra para imóveis em condomínio" do
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "apartamentos",
+        categoria: "Apartamento",
+        status: "Venda"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Torre")
+    expect(response.body).not_to include('name="habitation[lote]"')
+
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "terrenos",
+        categoria: "Terreno em Condomínio",
+        status: "Venda"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('name="habitation[lote]"')
+    expect(response.body).to include('name="habitation[quadra]"')
+    expect(response.body).not_to include(">Torre<")
   end
 
   it "bloqueia exclusão de imóvel para perfil operacional mesmo com delete e escopo total" do
@@ -971,6 +1145,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       post admin_habitations_path, params: {
         habitation: {
           categoria: "Apartamento",
+          registration_profile: "apartamentos",
           status: "Venda",
           tipo: "Unitário",
           nome_empreendimento: "Edifício Direto #{SecureRandom.hex(4)}",
@@ -989,6 +1164,34 @@ RSpec.describe "Admin::Habitations", type: :request do
     habitation = Habitation.order(:created_at).last
     expect(habitation).not_to be_broker_intake
     expect(habitation.intake_origin).to be_blank
+    expect(habitation.registration_profile).to eq("apartamentos")
+  end
+
+  it "cria imóvel direto preservando a consistência do perfil de cadastro" do
+    expect {
+      post admin_habitations_path, params: {
+        habitation: {
+          categoria: "Galpão",
+          registration_profile: "apartamentos",
+          status: "Venda",
+          tipo: "Empreendimento",
+          nome_empreendimento: "Edifício Normalizado #{SecureRandom.hex(4)}",
+          bloco: "301",
+          address_attributes: {
+            logradouro: "Rua Normalizada #{SecureRandom.hex(4)}",
+            numero: "30",
+            bairro: "Centro",
+            cidade: "Balneário Camboriú",
+            uf: "SC"
+          }
+        }
+      }
+    }.to change(Habitation, :count).by(1)
+
+    habitation = Habitation.order(:created_at).last
+    expect(habitation.registration_profile).to eq("apartamentos")
+    expect(habitation.categoria).to eq("Apartamento")
+    expect(habitation.tipo).to eq("Unitário")
   end
 
   it "cria ficha interna como captação quando o modo paper é enviado" do
