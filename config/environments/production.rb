@@ -79,9 +79,13 @@ Rails.application.configure do
     protocol: public_app_url.scheme
   }
 
-  # Log to STDOUT by default
-  config.logger = ActiveSupport::Logger.new(STDOUT)
-    .tap  { |logger| logger.formatter = ::Logger::Formatter.new }
+  # Keep STDOUT for journald/container diagnostics and also persist production.log
+  # under shared/log in Mina releases.
+  log_formatter = ::Logger::Formatter.new
+  stdout_logger = ActiveSupport::Logger.new(STDOUT).tap { |logger| logger.formatter = log_formatter }
+  file_logger = ActiveSupport::Logger.new(Rails.root.join("log", "production.log"), 10, 100.megabytes).tap { |logger| logger.formatter = log_formatter }
+
+  config.logger = ActiveSupport::BroadcastLogger.new(stdout_logger, file_logger)
     .then { |logger| ActiveSupport::TaggedLogging.new(logger) }
 
   # Prepend all log lines with the following tags.
