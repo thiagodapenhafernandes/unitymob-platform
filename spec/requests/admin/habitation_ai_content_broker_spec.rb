@@ -18,13 +18,16 @@ RSpec.describe "Admin::Habitations conteúdo IA x corretor", type: :request do
                         codigo: "AI-#{SecureRandom.hex(4)}")
 
     sign_in agent
-    post generate_ai_preview_admin_habitation_path(habitation)
+    post generate_ai_preview_admin_habitation_path(habitation),
+         params: csrf_params_from_habitation(habitation)
     expect(response).to redirect_to(edit_admin_habitation_path(habitation.id, anchor: "features"))
     expect(flash[:alert]).to include("restrita ao administrador")
 
     admin = create(:admin_user, :admin, email: "admin-ai-#{SecureRandom.hex(6)}@salute.test")
     sign_in admin
-    post generate_ai_preview_admin_habitation_path(habitation)
+    @csrf_token = nil
+    post generate_ai_preview_admin_habitation_path(habitation),
+         params: csrf_params_from_habitation(habitation)
     # admin passa pelo guard; sem token OpenAI cai no aviso de configurar, NÃO no de restrição
     expect(flash[:alert].to_s).not_to include("restrita ao administrador")
   end
@@ -47,7 +50,11 @@ RSpec.describe "Admin::Habitations conteúdo IA x corretor", type: :request do
 
     sign_in admin
     post generate_ai_preview_admin_habitation_path(habitation),
-         headers: { "Turbo-Frame" => ActionView::RecordIdentifier.dom_id(habitation, :ai_content_preview) }
+         params: csrf_params_from_habitation(habitation),
+         headers: {
+           "Turbo-Frame" => ActionView::RecordIdentifier.dom_id(habitation, :ai_content_preview),
+           "X-CSRF-Token" => csrf_token_from_habitation(habitation)
+         }
 
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
@@ -58,5 +65,17 @@ RSpec.describe "Admin::Habitations conteúdo IA x corretor", type: :request do
     expect(response.body).to include("Sugestão gerada e carregada nos campos para revisão.")
     expect(response.body).not_to include("Título sugerido")
     expect(response.body).not_to include("Aplicar sugestão")
+  end
+
+  def csrf_params_from_habitation(habitation)
+    token = csrf_token_from_habitation(habitation)
+    token.present? ? { authenticity_token: token } : {}
+  end
+
+  def csrf_token_from_habitation(habitation)
+    return @csrf_token if defined?(@csrf_token) && @csrf_token.present?
+
+    get edit_admin_habitation_path(habitation)
+    @csrf_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content").to_s
   end
 end

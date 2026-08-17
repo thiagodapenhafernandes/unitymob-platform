@@ -43,7 +43,8 @@ RSpec.describe "Admin user governance", type: :request do
     expect(doc.at_css('section.ax-filter-form[role="search"]')).to be_present
     expect(doc.css('.ax-filter-form label[for]').size).to eq(5)
     expect(doc.at_css('table.ax-table caption.tw-sr-only')).to be_present
-    expect(doc.css('table.ax-table thead th[scope="col"]').size).to eq(7)
+    expect(doc.css('table.ax-table thead th[scope="col"]').size).to eq(8)
+    expect(doc.css('table.ax-table thead th[scope="col"]').map(&:text)).to include("Leads")
     expect(doc.at_css('select#reassign_to_id[name="reassign_to_id"][data-reassign-delete-target="select"]')).to be_present
     expect(doc.at_css("#reassignDeleteModal .ax-form-actions--static")).to be_present
     expect(doc.at_css("#inactivateUserModal")).to be_present
@@ -58,6 +59,34 @@ RSpec.describe "Admin user governance", type: :request do
 
     get edit_admin_admin_user_path(outside)
     expect(response).to redirect_to(admin_admin_users_path)
+  end
+
+  it "exibe a quantidade de leads atribuida a cada usuario da conta" do
+    tenant = Tenant.create!(name: "Tenant leads usuarios #{SecureRandom.hex(3)}", slug: "tenant-leads-usuarios-#{SecureRandom.hex(3)}")
+    other_tenant = Tenant.create!(name: "Outro tenant leads #{SecureRandom.hex(3)}", slug: "outro-tenant-leads-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner Leads")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor com Leads")
+    without_leads = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor sem Leads")
+    other_user = create(:admin_user, tenant: other_tenant, name: "Outro tenant")
+
+    create_list(:lead, 3, tenant: tenant, admin_user: broker)
+    create(:lead, tenant: other_tenant, admin_user: other_user)
+
+    sign_in owner
+
+    get admin_admin_users_path
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+
+    broker_row = doc.css("table.ax-table tbody tr").find { |row| row.text.include?(broker.name) }
+    without_leads_row = doc.css("table.ax-table tbody tr").find { |row| row.text.include?(without_leads.name) }
+
+    expect(broker_row.css("td")[5].text.squish).to eq("3")
+    expect(without_leads_row.css("td")[5].text.squish).to eq("0")
+    expect(response.body).not_to include(other_user.name)
   end
 
   it "lista apenas usuarios ativos por padrao e permite consultar inativos por filtro explicito" do

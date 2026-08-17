@@ -1,0 +1,19 @@
+Convite: Visita agendada
+
+Uma visita foi agendada com <%= @lead&.display_name %>.
+
+Quando: <%= l(@appointment.starts_at, format: "%d/%m/%Y às %H:%M") %>
+<% if @appointment.ends_at.present? -%>
+Até: <%= l(@appointment.ends_at, format: "%d/%m/%Y às %H:%M") %>
+<% end -%>
+<% if @appointment.location.present? -%>
+Local: <%= @appointment.location %>
+<% end -%>
+<% if @appointment.properties_to_visit_count.present? -%>
+Imóveis a visitar: <%= @appointment.properties_to_visit_count %>
+<% end -%>
+<% if @appointment.notes.present? -%>
+Observações: <%= @appointment.notes %>
+<% end -%>
+
+Anexamos um convite de calendário (.ics) para você adicionar este compromisso à sua agenda.

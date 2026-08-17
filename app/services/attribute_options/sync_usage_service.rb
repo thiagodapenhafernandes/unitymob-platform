@@ -19,6 +19,10 @@ module AttributeOptions
       when ["habitation", "feature"] then sync_habitation_features
       when ["habitation", "infrastructure"] then sync_habitation_infrastructure
       when ["habitation", "unique_feature"] then sync_habitation_unique_features
+      when ["habitation", "street_type"] then sync_habitation_address_scalar(:tipo_endereco, legacy_column: :tipo_endereco)
+      when ["habitation", "city"] then sync_habitation_address_scalar(:cidade, legacy_column: :cidade)
+      when ["habitation", "neighborhood"] then sync_habitation_address_scalar(:bairro, legacy_column: :bairro)
+      when ["habitation", "commercial_neighborhood"] then sync_habitation_address_scalar(:bairro_comercial, legacy_column: :bairro_comercial)
       when ["habitation", "imediacoes"] then sync_habitation_surroundings
       when ["habitation", "sale_reason"] then sync_habitation_sale_reasons
       end
@@ -148,6 +152,19 @@ module AttributeOptions
       end
     end
 
+    def sync_habitation_address_scalar(attribute, legacy_column: nil)
+      address_scope = Address.where(addressable_type: "Habitation", addressable_id: habitation_scope.select(:id))
+
+      if rename?
+        return if @new_name.blank? || @new_name == @old_name
+        address_scope.where(attribute => @old_name).update_all(attribute => @new_name, updated_at: Time.current)
+        sync_legacy_habitation_address_column(legacy_column, @new_name)
+      elsif delete?
+        address_scope.where(attribute => @old_name).update_all(attribute => nil, updated_at: Time.current)
+        sync_legacy_habitation_address_column(legacy_column, nil)
+      end
+    end
+
     def sync_habitation_sale_reasons
       return unless Habitation.column_names.include?("motivo_venda")
 
@@ -165,6 +182,13 @@ module AttributeOptions
 
     def habitation_scope
       @tenant.habitations
+    end
+
+    def sync_legacy_habitation_address_column(column, value)
+      return if column.blank?
+      return unless Habitation.column_names.include?(column.to_s)
+
+      habitation_scope.where(column => @old_name).update_all(column => value, updated_at: Time.current)
     end
 
     def unique_features_array_column?

@@ -64,6 +64,7 @@
           <th scope="col" class="ax-num">Status</th>
           <th scope="col" class="ax-num">Atuação</th>
           <th scope="col">Gestor</th>
+          <th scope="col" class="ax-num">Leads</th>
           <th scope="col" class="ax-num">Imóveis</th>
           <th scope="col" class="ax-num">Ações</th>
         </tr>
@@ -108,6 +109,7 @@
                   <span class="au-muted">—</span>
                 <% end %>
               </td>
+              <td class="ax-num"><%= ax_badge(@leads_count_by_admin_user.fetch(user.id, 0).to_s, tone: :gray) %></td>
               <td class="ax-num"><%= ax_badge(@habitations_count_by_admin_user.fetch(user.id, 0).to_s, tone: :gray) %></td>
               <td class="ax-num">
                 <span class="au-actions">

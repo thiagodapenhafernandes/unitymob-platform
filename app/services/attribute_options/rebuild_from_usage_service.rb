@@ -5,10 +5,14 @@ require "set"
 module AttributeOptions
   class RebuildFromUsageService
     CONTEXT = "habitation"
-    CATEGORIES = %w[feature infrastructure unique_feature imediacoes].freeze
+    CATEGORIES = %w[
+      feature infrastructure unique_feature
+      street_type city neighborhood commercial_neighborhood imediacoes
+    ].freeze
 
-    def initialize(tenant: nil)
+    def initialize(tenant: nil, categories: nil)
       @tenant = tenant || Current.tenant
+      @categories = Array(categories.presence || CATEGORIES).map(&:to_s) & CATEGORIES
       raise ArgumentError, "Tenant obrigatório para reconstruir catálogo dinâmico" if @tenant.blank?
     end
 
@@ -17,10 +21,14 @@ module AttributeOptions
         "feature" => extract_feature_values,
         "infrastructure" => extract_infrastructure_values,
         "unique_feature" => extract_unique_feature_values,
+        "street_type" => extract_address_scalar_values(:tipo_endereco, legacy_column: :tipo_endereco),
+        "city" => extract_address_scalar_values(:cidade, legacy_column: :cidade),
+        "neighborhood" => extract_address_scalar_values(:bairro, legacy_column: :bairro),
+        "commercial_neighborhood" => extract_address_scalar_values(:bairro_comercial, legacy_column: :bairro_comercial),
         "imediacoes" => extract_imediacoes_values
       }
 
-      upsert_values(values_by_category)
+      upsert_values(values_by_category.slice(*@categories))
     end
 
     private
@@ -29,7 +37,7 @@ module AttributeOptions
       now = Time.current
       rows = []
 
-      existing = attribute_option_scope.where(context: CONTEXT, category: CATEGORIES).pluck(:category, :name)
+      existing = attribute_option_scope.where(context: CONTEXT, category: @categories).pluck(:category, :name)
       existing_lookup = existing.each_with_object({}) do |(category, name), acc|
         acc[[category, normalized_key(name)]] = true
       end
@@ -120,6 +128,24 @@ module AttributeOptions
 
       Address.where(addressable_type: "Habitation", addressable_id: habitation_scope.select(:id)).find_each do |address|
         normalize_items(address.imediacoes, category: "feature").each { |item| values << item }
+      end
+
+      values.to_a.sort
+    end
+
+    def extract_address_scalar_values(attribute, legacy_column: nil)
+      values = Set.new
+
+      Address.where(addressable_type: "Habitation", addressable_id: habitation_scope.select(:id)).pluck(attribute).each do |value|
+        normalized = value.to_s.squish
+        values << normalized if normalized.present?
+      end
+
+      if legacy_column.present? && Habitation.column_names.include?(legacy_column.to_s)
+        habitation_scope.where.not(legacy_column => [nil, ""]).pluck(legacy_column).each do |value|
+          normalized = value.to_s.squish
+          values << normalized if normalized.present?
+        end
       end
 
       values.to_a.sort

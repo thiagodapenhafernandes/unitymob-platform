@@ -1,10 +1,13 @@
 module Admin
   class AttributeOptionsController < Admin::BaseController
     before_action -> { check_permission!(:manage, :catalogos) }
+    before_action :require_tenant_owner_for_address_catalog!, only: [:index, :create]
+    before_action :require_tenant_owner_for_existing_address_catalog!, only: [:update, :destroy]
     before_action :set_attribute_option, only: [:update]
 
     def index
       # This action serves both the sidebar page (HTML) and modal usage (JSON)
+      rebuild_address_catalog_from_usage_if_needed
       @options = current_tenant.attribute_options
 
       if modal_request?
@@ -88,6 +91,60 @@ module Admin
 
     def set_attribute_option
       @attribute_option = current_tenant.attribute_options.find(params[:id])
+    end
+
+    def rebuild_address_catalog_from_usage_if_needed
+      return unless modal_request?
+      return unless habitation_address_catalog_category?(params[:category])
+      return unless address_catalog_action_allowed?(params[:category])
+
+      AttributeOptions::RebuildFromUsageService.new(
+        tenant: current_tenant,
+        categories: [params[:category]]
+      ).call
+    end
+
+    def require_tenant_owner_for_address_catalog!
+      return unless habitation_address_catalog_category?(params[:category] || params.dig(:attribute_option, :category))
+      return if address_catalog_action_allowed?(params[:category] || params.dig(:attribute_option, :category))
+
+      deny_address_catalog_access
+    end
+
+    def require_tenant_owner_for_existing_address_catalog!
+      option = current_tenant.attribute_options.find_by(id: params[:id])
+      return unless option && habitation_address_catalog_category?(option.category)
+      return if address_catalog_action_allowed?(option.category)
+
+      deny_address_catalog_access
+    end
+
+    def habitation_address_catalog_category?(category)
+      address_catalog_action_key(category).present?
+    end
+
+    def address_catalog_action_allowed?(category)
+      return true if current_admin_user&.tenant_owner?
+
+      action_key = address_catalog_action_key(category)
+      action_key.present? && !Habitations::FieldLockPolicy.for(current_admin_user).action_locked?(action_key)
+    end
+
+    def address_catalog_action_key(category)
+      {
+        "street_type" => "acao:gerenciar_tipos_endereco",
+        "city" => "acao:gerenciar_cidades",
+        "neighborhood" => "acao:gerenciar_bairros",
+        "commercial_neighborhood" => "acao:gerenciar_bairros_comerciais",
+        "imediacoes" => "acao:gerenciar_imediacoes"
+      }[category.to_s]
+    end
+
+    def deny_address_catalog_access
+      respond_to do |format|
+        format.html { redirect_to admin_attribute_options_path, alert: "Apenas o dono da conta pode gerenciar opções de endereço." }
+        format.json { render json: { error: "forbidden" }, status: :forbidden }
+      end
     end
 
     def attribute_option_params

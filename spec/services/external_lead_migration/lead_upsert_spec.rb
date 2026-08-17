@@ -98,6 +98,7 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
       attribution_source: "Portal parceiro"
     )
     expect(lead.other_information["webhook_tags"]).to include(ExternalLeadIntegration::WEBHOOK_TAG, "landing praia")
+    expect(lead.lead_labels.pluck(:name)).to include("Landing Praia")
     expect(lead.other_information["source"]).to eq("external_lead_migration")
     expect(lead.attribution_data.dig("facebook", "leadgen_id")).to eq("fb-123")
     expect(lead.custom_answers).to include("key" => "Objetivo", "answer" => "Comprar")
@@ -122,5 +123,49 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.name).to eq("Maria Atualizada")
     expect(lead.status).to eq("Proposta enviada")
     expect(lead.activities.where(kind: "external_message").count).to eq(1)
+  end
+
+  it "usa os campos de agendamento do C2S para criar tarefas e visitas na data correta" do
+    c2s_payload = payload.deep_dup
+    c2s_payload["id"] = "lead-c2s-schedule-fields"
+    c2s_payload["attributes"]["customer"]["id"] = "customer-c2s-schedule"
+    c2s_payload["attributes"]["customer"]["name"] = "Cliente Agenda C2S"
+    c2s_payload["attributes"]["schedulated_actions"] = [
+      {
+        "id" => "schedule-return",
+        "status" => "Em aberto",
+        "created_at" => "2026-08-15T13:43:30.000-03:00",
+        "schedulated_action_date" => "2026-08-20T09:00:00.000-03:00",
+        "schedulated_action_name" => "Retornar para o cliente",
+        "schedulated_action_type_alias" => "feedback_customer"
+      },
+      {
+        "id" => "schedule-visit",
+        "status" => "Em aberto",
+        "created_at" => "2026-08-15T13:44:30.000-03:00",
+        "schedulated_action_date" => "2026-08-21T15:30:00.000-03:00",
+        "schedulated_action_name" => "Visita Agendada",
+        "schedulated_action_type_alias" => "scheduled_visit"
+      }
+    ]
+
+    described_class.call(integration:, payload: c2s_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-c2s-schedule-fields")
+    task = lead.tasks.find_by!(title: "Retornar para o cliente")
+    appointment = lead.appointments.find_by!(title: "Visita Agendada")
+
+    expect(task).to have_attributes(
+      admin_user: broker,
+      kind: "follow_up",
+      status: "pendente",
+      due_at: Time.zone.parse("2026-08-20T09:00:00.000-03:00")
+    )
+    expect(appointment).to have_attributes(
+      admin_user: broker,
+      kind: "visita",
+      status: "agendado",
+      starts_at: Time.zone.parse("2026-08-21T15:30:00.000-03:00")
+    )
   end
 end

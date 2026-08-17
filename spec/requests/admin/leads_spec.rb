@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Admin::Leads", type: :request do
   include Devise::Test::IntegrationHelpers
+  include ActiveSupport::Testing::TimeHelpers
 
   let(:admin) { create(:admin_user, :admin, email: "leads-#{SecureRandom.hex(8)}@salute.test") }
 
@@ -45,7 +46,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(create_modal_html).to include("Nome visível no funil", "Classificação interna usada")
       expect(create_modal_html).to include("Define a operação do funil")
       expect(document.at_css("details.lead-filter-collapse .ax-leads-filter-overlay")).to be_nil
-      expect(document.at_css("details.lead-filter-collapse + .ax-leads-filter-overlay")).to be_present
+      expect(document.at_css("details.lead-filter-collapse ~ .ax-leads-filter-overlay")).to be_present
       lead_card_url = document.at_css("article.lead-kanban-card[data-lead-url]")["data-lead-url"]
       expect(lead_card_url).to start_with(admin_lead_path(Lead.find_by!(name: "Cliente Kanban")))
       expect(response.body).to include("Cliente Kanban")
@@ -122,6 +123,125 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("WhatsApp")
       expect(response.body).not_to include("<table")
       expect(response.body).to include("Cliente Lista")
+    end
+
+    it "renderiza a experiencia PWA com abas e favoritos nativos do corretor logado" do
+      favorite = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Favorito PWA", phone: "11999999999", status: "Em Atendimento")
+      create(:lead_favorite, tenant: admin.tenant, admin_user: admin, lead: favorite)
+      other = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Normal PWA", phone: "11888888888", status: "Novo")
+
+      get admin_leads_path(view: "list", mobile_tab: "favorites")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".lead-pwa-screen")).to be_present
+      expect(document.css(".lead-pwa-tab").map(&:text).join).to include("A fazer", "Visitas", "Futuras", "Favoritos", "Todos")
+      expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Favoritos")
+      expect(document.css(".lead-pwa-card").map(&:text).join).to include("Lead Favorito PWA")
+      expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Lead Normal PWA")
+      expect(response.body).to include("bi-star-fill")
+      expect(other).to be_persisted
+    end
+
+    it "reconcilia as abas PWA com agendamentos C2S ja importados" do
+      travel_to Time.zone.local(2026, 8, 15, 10, 0, 0) do
+        future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Futuro C2S", phone: "11999999991", status: "Em Atendimento")
+        due = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Hoje C2S", phone: "11999999992", status: "Em Atendimento")
+        visit = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Visita C2S", phone: "11999999993", status: "Em Atendimento")
+
+        create(
+          :lead,
+          tenant: admin.tenant,
+          admin_user: admin,
+          name: "Lead Novo Sem Agenda",
+          phone: "11999999994",
+          status: "Novo"
+        )
+
+        create(
+          :task,
+          tenant: admin.tenant,
+          lead: future,
+          admin_user: admin,
+          title: "Ação agendada do legado",
+          due_at: Time.zone.local(2026, 8, 15, 9, 0, 0),
+          status: "pendente",
+          kind: "follow_up"
+        ).tap do |task|
+          LeadActivity.log!(
+            lead: future,
+            kind: "external_scheduled_action",
+            metadata: {
+              source: ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+              external_key: "future-1",
+              task_id: task.id,
+              title: "Ação agendada do legado",
+              due_at: task.due_at.iso8601,
+              raw: {
+                id: "future-1",
+                status: "Em aberto",
+                schedulated_action_date: "2026-08-20T09:00:00.000-03:00",
+                schedulated_action_name: "Retornar para o cliente",
+                schedulated_action_type_alias: "feedback_customer"
+              }
+            }
+          )
+        end
+
+        LeadActivity.log!(
+          lead: due,
+          kind: "external_scheduled_action",
+          metadata: {
+            source: ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+            external_key: "due-1",
+            raw: {
+              id: "due-1",
+              status: "Em aberto",
+              schedulated_action_date: "2026-08-15T14:00:00.000-03:00",
+              schedulated_action_name: "Retornar para o cliente",
+              schedulated_action_type_alias: "feedback_customer"
+            }
+          }
+        )
+
+        LeadActivity.log!(
+          lead: visit,
+          kind: "external_scheduled_action",
+          metadata: {
+            source: ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+            external_key: "visit-1",
+            raw: {
+              id: "visit-1",
+              status: "Em aberto",
+              schedulated_action_date: "2026-08-17T15:30:00.000-03:00",
+              schedulated_action_name: "Visita Agendada",
+              schedulated_action_type_alias: "scheduled_visit"
+            }
+          }
+        )
+
+        get admin_leads_path(view: "list", mobile_tab: "future")
+
+        expect(response).to have_http_status(:ok)
+        document = Nokogiri::HTML(response.body)
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "1")
+        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Retorno Futuro C2S", "Retornar para o cliente - 20/08/2026 09:00")
+        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Retorno Hoje C2S", "Visita C2S")
+
+        get admin_leads_path(view: "list", mobile_tab: "visits")
+
+        document = Nokogiri::HTML(response.body)
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Visitas", "1")
+        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Visita C2S", "Visita marcada - 17/08/2026 15:30")
+
+        get admin_leads_path(view: "list", mobile_tab: "todo")
+
+        document = Nokogiri::HTML(response.body)
+        card_text = document.css(".lead-pwa-card").map(&:text).join
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "2")
+        expect(card_text).to include("Retorno Hoje C2S", "Lead Novo Sem Agenda")
+        expect(card_text).not_to include("Retorno Futuro C2S", "Visita C2S")
+      end
     end
 
     it "mostra todos os leads na listagem geral sem filtrar por funil" do
@@ -220,6 +340,99 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("Lead Popular")
     end
 
+    it "renderiza o filtro mobile com campos reais do backend" do
+      create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead com filtro PWA", phone: "11999999999", status: "Novo", tags: ["Quente"])
+
+      get admin_leads_path(view: "list")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      panel = document.at_css(".lead-pwa-filter-panel")
+      overlay = document.at_css(".lead-pwa-filter-overlay")
+      expect(panel).to be_present
+      expect(overlay).to be_present
+      expect(overlay.attribute("hidden")).to be_present
+      expect(document.at_css('.ax-leads-mobile-shell[data-controller="lead-pwa-filter"]')).to be_present
+      expect(document.at_css('.lead-pwa-filter[data-action="lead-pwa-filter#open"]')).to be_present
+      expect(panel.at_css('.lead-pwa-filter-panel__close[data-action="lead-pwa-filter#close"]')).to be_present
+      expect(response.body).not_to include("data-controller=\"ax-aside\"")
+      expect(response.body).not_to include("data-ax-aside-target")
+      expect(panel.text).to include("Minha visualização dos leads", "Natureza de negociação", "Status do lead", "Atividade atual do lead", "Faixa de preço")
+      expect(panel.at_css("input[name='business_filter[]'][value='sale']")).to be_present
+      expect(panel.at_css("input[name='activity_filter[]'][value='scheduled_visit']")).to be_present
+      expect(panel.at_css("input[name='channel_filter[]'][value='whatsapp']")).to be_present
+      expect(panel.at_css("input[name='price_min']")).to be_present
+      expect(panel.at_css("input[name='closed_start_date']")).to be_present
+    end
+
+    it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do
+      property = create(:habitation, tenant: admin.tenant, titulo_anuncio: "Cobertura Venda", valor_venda_cents: 850_000_00, valor_locacao_cents: 0)
+      matching = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Lead Compra WhatsApp",
+        phone: "11999999999",
+        status: "Novo",
+        origin: "WhatsApp",
+        lead_type: "whatsapp",
+        product: "Compra cobertura",
+        property_id: property.id
+      )
+      create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Lead Locacao Site",
+        phone: "11888888888",
+        status: "Novo",
+        origin: "Site",
+        product: "Aluguel apartamento",
+        attribution_data: { "product" => { "price_float" => "3500.0" } }
+      )
+
+      get admin_leads_path(
+        view: "list",
+        business_filter: ["sale"],
+        channel_filter: ["whatsapp"],
+        price_min: "800000",
+        price_max: "900000"
+      )
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(matching.name)
+      expect(response.body).to include("Natureza", "Canal de origem", "Preço")
+      expect(response.body).not_to include("Lead Locacao Site")
+    end
+
+    it "aplica filtros mobile de atividade usando tarefas e visitas reais" do
+      visit_lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Visita Real", phone: "11999999991", status: "Em Atendimento")
+      task_lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Retorno Real", phone: "11999999992", status: "Em Atendimento")
+      create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Sem Agenda", phone: "11999999993", status: "Em Atendimento")
+      Appointment.create!(
+        tenant: admin.tenant,
+        lead: visit_lead,
+        admin_user: admin,
+        title: "Visita no imóvel",
+        kind: "visita",
+        status: "agendado",
+        starts_at: 2.days.from_now
+      )
+      create(:task, tenant: admin.tenant, lead: task_lead, admin_user: admin, title: "Retornar para o cliente", due_at: 1.day.from_now)
+
+      get admin_leads_path(view: "list", activity_filter: ["scheduled_visit"])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Visita Real")
+      expect(response.body).not_to include("Lead Retorno Real", "Lead Sem Agenda")
+
+      get admin_leads_path(view: "list", activity_filter: ["return_customer"])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Retorno Real")
+      expect(response.body).not_to include("Lead Visita Real", "Lead Sem Agenda")
+    end
+
     it "nao filtra por corretor de outro tenant mesmo se houver lead legado inconsistente" do
       other_tenant = Tenant.create!(name: "Outro leads filter #{SecureRandom.hex(3)}", slug: "outro-leads-filter-#{SecureRandom.hex(3)}")
       other_profile = other_tenant.profiles.find_by!(key: "agent")
@@ -271,6 +484,60 @@ RSpec.describe "Admin::Leads", type: :request do
     end
   end
 
+  describe "GET /admin/leads/:id" do
+    it "renderiza o detalhe PWA preservando a tela completa do desktop" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Detalhe PWA", phone: "11999999999", status: "Em Atendimento")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".lead-pwa-detail")).to be_present
+      expect(document.at_css(".lead-pwa-detail").text).to include("Lead Detalhe PWA")
+      expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
+      expect(document.at_css(".lead-show-workspace .ax-workspace-heading")).to be_present
+    end
+  end
+
+  describe "GET /admin/leads/pwa_leads_page" do
+    it "pagina a lista PWA em lotes de 15 por aba" do
+      22.times do |i|
+        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Todo #{i}", phone: "1199999#{format('%04d', i)}", status: "Novo")
+      end
+
+      get admin_leads_path(view: "list", mobile_tab: "todo")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("lead-pwa-list__loader")
+      expect(response.body).to include('data-has-more="true"')
+
+      get pwa_leads_page_admin_leads_path(mobile_tab: "todo", offset: 15), headers: { "Accept" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["loaded_count"]).to eq(7)
+      expect(json["total"]).to eq(22)
+      expect(json["has_more"]).to eq(false)
+      expect(json["next_offset"]).to eq(22)
+      expect(json["html"]).to include("lead-pwa-card")
+    end
+  end
+
+  describe "PATCH /admin/leads/:id/toggle_favorite" do
+    it "marca e desmarca favorito do corretor logado" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Favoritavel", phone: "11999999999")
+
+      expect {
+        patch toggle_favorite_admin_lead_path(lead)
+      }.to change { admin.lead_favorites.where(lead: lead).count }.from(0).to(1)
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+
+      expect {
+        patch toggle_favorite_admin_lead_path(lead)
+      }.to change { admin.lead_favorites.where(lead: lead).count }.from(1).to(0)
+    end
+  end
+
   describe "PATCH /admin/leads/:id" do
     before do
       allow_any_instance_of(Admin::LeadsController).to receive(:verified_request?).and_return(true)
@@ -305,6 +572,80 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(lead.notes).to eq("Contato conferido")
     end
 
+    it "transfere o lead para outro corretor via modal (admin_user_id)" do
+      other_broker = create(:admin_user, tenant: admin.tenant, email: "broker-transfer-#{SecureRandom.hex(4)}@salute.test")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Novo")
+
+      get admin_lead_path(lead)
+      expect(response.body).to include("Transferir lead")
+
+      patch admin_lead_path(lead), params: { lead: { admin_user_id: other_broker.id } }
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(lead.reload.admin_user_id).to eq(other_broker.id)
+    end
+
+    it "permite que um corretor com escopo own transfira o PROPRIO lead" do
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+      broker = create(:admin_user, profile: broker_profile, tenant: admin.tenant, email: "broker-own-transfer-#{SecureRandom.hex(4)}@salute.test")
+      colleague = create(:admin_user, tenant: admin.tenant, email: "colleague-#{SecureRandom.hex(4)}@salute.test")
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: "Novo")
+
+      sign_out admin
+      sign_in broker
+
+      get admin_lead_path(lead)
+      expect(response.body).to include("Transferir lead")
+
+      patch admin_lead_path(lead), params: { lead: { admin_user_id: colleague.id } }
+
+      expect(lead.reload.admin_user_id).to eq(colleague.id)
+    end
+
+    it "nao permite que um corretor com escopo own reatribua lead de outra pessoa" do
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+      broker = create(:admin_user, profile: broker_profile, tenant: admin.tenant, email: "broker-other-transfer-#{SecureRandom.hex(4)}@salute.test")
+      colleague = create(:admin_user, tenant: admin.tenant, email: "colleague-#{SecureRandom.hex(4)}@salute.test")
+      lead = create(:lead, tenant: admin.tenant, admin_user: colleague, status: "Novo")
+
+      sign_out admin
+      sign_in broker
+
+      patch admin_lead_path(lead), params: { lead: { admin_user_id: broker.id } }
+
+      expect(lead.reload.admin_user_id).to eq(colleague.id)
+    end
+
+    it "salva o parecer quando o usuario e admin" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Novo")
+
+      get admin_lead_path(lead)
+      expect(response.body).to include("Parecer")
+
+      patch admin_lead_path(lead), params: { lead: { parecer: "Cliente qualificado, alto potencial." } }
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(lead.reload.parecer).to eq("Cliente qualificado, alto potencial.")
+    end
+
+    it "nao permite que um corretor comum veja ou grave o parecer" do
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+      broker = create(:admin_user, profile: broker_profile, tenant: admin.tenant, email: "broker-parecer-#{SecureRandom.hex(4)}@salute.test")
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: "Novo")
+
+      sign_out admin
+      sign_in broker
+
+      get admin_lead_path(lead)
+      expect(response.body).not_to include("Parecer interno")
+
+      patch admin_lead_path(lead), params: { lead: { parecer: "Tentativa de corretor comum" } }
+      expect(lead.reload.parecer).to be_nil
+    end
+
     it "permite que o corretor atualize status do proprio lead via json" do
       broker_profile = Tenant.default.profiles.find_by!(key: "agent")
       broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
@@ -324,7 +665,10 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(JSON.parse(response.body)).to include("status" => "Em Atendimento")
     end
 
-    it "nao permite que corretor reatribua lead ou altere origem por parametro forjado" do
+    it "permite que corretor transfira o PROPRIO lead mas nao altere origem por parametro forjado" do
+      # Transferir é ação de dono do lead (não administrativa): corretor com
+      # escopo "own" pode passar o PRÓPRIO lead pra outro colega. Origem
+      # continua imutável pelo update administrativo, independente disso.
       broker_profile = Tenant.default.profiles.find_by!(key: "agent")
       broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       broker = create(:admin_user, profile: broker_profile, email: "broker-lock-#{SecureRandom.hex(4)}@salute.test")
@@ -341,7 +685,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to redirect_to(admin_lead_path(lead))
       lead.reload
       expect(lead.status).to eq("Em Atendimento")
-      expect(lead.admin_user_id).to eq(broker.id)
+      expect(lead.admin_user_id).to eq(other_broker.id)
       expect(lead.origin).to eq("webhook")
     end
 

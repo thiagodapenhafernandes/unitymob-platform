@@ -76,10 +76,16 @@ module Habitations
           { key: "uf", label: "UF", param_path: "address_attributes.uf" },
           { key: "cep", label: "CEP", param_path: "address_attributes.cep" },
           { key: "bloco", label: "Bloco / Unidade" },
+          { key: "lote", label: "Lote" },
+          { key: "quadra", label: "Quadra" },
           { key: "imediacoes", label: "Imediações", param_path: "address_attributes.imediacoes" },
           { key: "public_map_display_mode", label: "Localização pública (mapa)" },
           { key: "public_street_view_mode", label: "Localização pública (street view)" },
           { key: "acao:buscar_cep", label: "Buscar endereço pelo CEP", kind: :action },
+          { key: "acao:gerenciar_tipos_endereco", label: "Gerenciar tipos de endereço", kind: :action },
+          { key: "acao:gerenciar_bairros", label: "Gerenciar bairros", kind: :action },
+          { key: "acao:gerenciar_bairros_comerciais", label: "Gerenciar bairros comerciais", kind: :action },
+          { key: "acao:gerenciar_cidades", label: "Gerenciar cidades", kind: :action },
           { key: "acao:gerenciar_imediacoes", label: "Gerenciar imediações", kind: :action }
         ]
       },

@@ -796,10 +796,17 @@ class Admin::HabitationsController < Admin::BaseController
       return
     end
 
-    @habitation.skip_auto_audit = true
-    record_habitation_destroyed(@habitation)
-    @habitation.destroy
+    Habitation.transaction do
+      @habitation.skip_auto_audit = true
+      record_habitation_destroyed(@habitation)
+      release_habitation_destroy_references(@habitation)
+      @habitation.destroy!
+    end
+
     redirect_to admin_habitations_path, notice: "Imóvel excluído com sucesso."
+  rescue ActiveRecord::InvalidForeignKey => error
+    Rails.logger.error("[habitation_destroy] failed id=#{@habitation&.id} error=#{error.class}: #{error.message}")
+    redirect_to edit_admin_habitation_path(@habitation), alert: "Não foi possível excluir o imóvel porque ainda existem vínculos internos. O erro foi registrado para correção."
   end
 
   def generate_ai_preview
@@ -1032,6 +1039,7 @@ class Admin::HabitationsController < Admin::BaseController
 
     cached = Rails.cache.fetch("admin/habitations/form_options/v2/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       base_address_scope = tenant_habitations.left_outer_joins(:address)
+      habitation_address_catalogs = current_tenant.attribute_options.where(context: "habitation")
 
       {
         categories: (
@@ -1047,17 +1055,30 @@ class Admin::HabitationsController < Admin::BaseController
           .where("NULLIF(TRIM(COALESCE(addresses.cidade, habitations.cidade)), '') IS NOT NULL AND COALESCE(addresses.cidade, habitations.cidade) != '.'")
           .distinct
           .pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)"))
+          .concat(habitation_address_catalogs.where(category: "city").pluck(:name))
+          .compact_blank
+          .uniq
           .sort,
         neighborhoods: base_address_scope
           .where("NULLIF(TRIM(COALESCE(addresses.bairro, habitations.bairro)), '') IS NOT NULL AND COALESCE(addresses.bairro, habitations.bairro) != '.'")
           .distinct
           .pluck(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)"))
+          .concat(habitation_address_catalogs.where(category: "neighborhood").pluck(:name))
+          .compact_blank
+          .uniq
           .sort,
         commercial_neighborhoods: base_address_scope
           .where("NULLIF(TRIM(addresses.bairro_comercial), '') IS NOT NULL AND addresses.bairro_comercial != '.'")
           .distinct
           .pluck(Arel.sql("addresses.bairro_comercial"))
+          .concat(habitation_address_catalogs.where(category: "commercial_neighborhood").pluck(:name))
+          .compact_blank
+          .uniq
           .sort,
+        street_types: (
+          Habitation::STREET_TYPES +
+          habitation_address_catalogs.where(category: "street_type").order(name: :asc).pluck(:name)
+        ).compact_blank.uniq.sort,
         badges: current_tenant.attribute_options.where(context: 'habitation', category: 'unique_feature').order(name: :asc).pluck(:name),
         imediacoes_options: current_tenant.attribute_options.where(context: 'habitation', category: 'imediacoes').order(name: :asc).pluck(:name),
         internal_features: current_tenant.attribute_options.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name),
@@ -1068,6 +1089,7 @@ class Admin::HabitationsController < Admin::BaseController
     @cities = cached[:cities]
     @neighborhoods = cached[:neighborhoods]
     @commercial_neighborhoods = cached[:commercial_neighborhoods]
+    @street_types = cached[:street_types]
     @badges = cached[:badges]
     @imediacoes_options = cached[:imediacoes_options]
     @internal_features = cached[:internal_features]
@@ -2673,6 +2695,47 @@ class Admin::HabitationsController < Admin::BaseController
     ).record_destroy!
   end
 
+  def release_habitation_destroy_references(habitation)
+    destroy_habitation_child_records(habitation)
+    nullify_habitation_history_references(habitation)
+  end
+
+  def destroy_habitation_child_records(habitation)
+    [
+      AiPropertyShareItem,
+      HabitationPhotoShare,
+      LeadPropertyInterest
+    ].each do |model|
+      model.where(habitation_id: habitation.id).destroy_all
+    end
+  end
+
+  def nullify_habitation_history_references(habitation)
+    [
+      [AiPropertySearchHistory, :selected_habitation_id],
+      [AiPropertyShareAuditEvent, :habitation_id],
+      [Appointment, :habitation_id],
+      [ClientInteraction, :habitation_id],
+      [ClientPropertyInterest, :habitation_id],
+      [CrmAppointment, :habitation_id],
+      [OperationalUserEvent, :habitation_id],
+      [PortalIntegrationEvent, :habitation_id],
+      [PortalListingState, :habitation_id],
+      [Proposal, :habitation_id],
+      [PublicNavigationEvent, :habitation_id],
+      [SeoConversionEvent, :habitation_id],
+      [VistaFileAsset, :habitation_id]
+    ].each do |model, column|
+      nullify_habitation_reference(model, column, habitation.id)
+    end
+  end
+
+  def nullify_habitation_reference(model, column, habitation_id)
+    attributes = { column => nil }
+    attributes[:updated_at] = Time.current if model.column_names.include?("updated_at")
+    model.where(column => habitation_id).update_all(attributes)
+  end
+
   def record_habitation_attachment_removed(habitation, association:, attachment_payload:)
     Habitations::AuditChangeRecorder.new(
       habitation,
@@ -2955,11 +3018,10 @@ class Admin::HabitationsController < Admin::BaseController
     tenant_owner? || owns_all_resource?(:imoveis) || can_review_captacao?(@habitation)
   end
 
-  # Trello rw4mT6Ry: o lixeiro deve ficar restrito ao Admin do Sistema.
-  # Usuários de tenant, inclusive Dono da conta/perfis com :delete legado, não
-  # removem imóveis pela tela operacional.
+  # Exclusão de imóvel é destrutiva e fica restrita ao dono/admin da conta.
+  # Perfis operacionais com :delete legado continuam bloqueados.
   def can_destroy_habitation?(_habitation = @habitation)
-    current_admin_user&.system_admin?
+    current_admin_user&.tenant_owner?
   end
 
   def can_duplicate_habitation?(habitation = @habitation)

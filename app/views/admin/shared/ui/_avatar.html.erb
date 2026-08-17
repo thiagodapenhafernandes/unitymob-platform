@@ -1,5 +1,29 @@
-<% if image.respond_to?(:attached?) ? image.attached? : image.present? %>
-  <%= image_tag image, class: classes, alt: name %>
-<% else %>
-  <span class="<%= classes %>" role="img" aria-label="<%= name %>"><%= initials %></span>
-<% end %>
+<%
+  image_attached = image.respond_to?(:attached?) ? image.attached? : image.present?
+  image_blob = image.blob if image_attached && image.respond_to?(:blob)
+  image_renderable =
+    if image_blob
+      image_blob.image? && (image_blob.service_name != "local" || image_blob.service.exist?(image_blob.key))
+    else
+      image_attached
+    end
+%>
+
+<span class="<%= classes %>" role="img" aria-label="<%= name %>">
+  <span class="ax-avatar__initials" aria-hidden="true"><%= initials %></span>
+  <% if image_renderable %>
+    <%= image_tag(
+          image,
+          class: "ax-avatar__image",
+          alt: "",
+          loading: "lazy",
+          decoding: "async",
+          aria: { hidden: true },
+          data: {
+            controller: "image-fallback",
+            action: "error->image-fallback#hide",
+            image_fallback_container_selector_value: ".ax-avatar"
+          }
+        ) %>
+  <% end %>
+</span>

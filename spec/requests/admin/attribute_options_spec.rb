@@ -40,6 +40,7 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
 
     expect {
       post admin_attribute_options_path, params: {
+        **csrf_params_from_response,
         attribute_option: {
           context: "lead",
           category: "source",
@@ -61,12 +62,13 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
     Rails.cache.write(filter_cache_key, { amenities: ["cache antigo"] })
 
     post admin_attribute_options_path(format: :json), params: {
+      **csrf_params_from_response,
       attribute_option: {
         context: "habitation",
         category: "feature",
         name: attribute_name
       }
-    }, headers: { "X-Requested-With" => "XMLHttpRequest" }
+    }, headers: json_headers
 
     expect(response).to have_http_status(:created)
     expect(Rails.cache.read(form_cache_key)).to be_nil
@@ -76,11 +78,111 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
     Rails.cache.write(form_cache_key, { internal_features: [attribute_name] })
     Rails.cache.write(filter_cache_key, { amenities: [attribute_name] })
 
-    delete admin_attribute_option_path(option, format: :json), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    delete admin_attribute_option_path(option, format: :json), params: csrf_params_from_response, headers: json_headers
 
     expect(response).to have_http_status(:no_content)
     expect(admin.tenant.attribute_options.where(id: option.id)).to be_empty
     expect(Rails.cache.read(form_cache_key)).to be_nil
     expect(Rails.cache.read(filter_cache_key)).to be_nil
+  end
+
+  it "permite ao dono da conta criar opção de cidade pelo modal" do
+    post admin_attribute_options_path(format: :json), params: {
+      **csrf_params_from_response,
+      attribute_option: {
+        context: "habitation",
+        category: "city",
+        name: "Camboriú"
+      }
+    }, headers: json_headers
+
+    expect(response).to have_http_status(:created)
+    expect(admin.tenant.attribute_options.find_by!(context: "habitation", category: "city", name: "Camboriú")).to be_present
+  end
+
+  it "lista no modal opções de endereço já usadas mesmo sem cadastro prévio no catálogo" do
+    habitation = create(:habitation, tenant: admin.tenant, admin_user: admin)
+    habitation.address.update!(bairro: "Alto Perequê")
+
+    expect(admin.tenant.attribute_options.where(context: "habitation", category: "neighborhood", name: "Alto Perequê")).to be_empty
+
+    get admin_attribute_options_path(format: :json),
+        params: { context: "habitation", category: "neighborhood" },
+        headers: json_headers
+
+    expect(response).to have_http_status(:ok)
+    names = JSON.parse(response.body).map { |option| option.fetch("name") }
+    expect(names).to include("Alto Perequê")
+    expect(admin.tenant.attribute_options.find_by!(context: "habitation", category: "neighborhood", name: "Alto Perequê")).to be_present
+  end
+
+  it "permite gerenciar bairro para perfil não dono com ação liberada no cadastro de imóvel" do
+    locked_fields = Habitations::CadastroFieldRegistry.all_keys - ["acao:gerenciar_bairros"]
+    manager_profile = admin.tenant.profiles.create!(
+      name: "Gestor bairro #{SecureRandom.hex(3)}",
+      axis: Profile::AXES[:vertical],
+      position: 20,
+      active: true,
+      permissions: {
+        "catalogos" => { "manage" => true },
+        "imoveis" => { "view" => true, "edit" => true, "scope" => "all", "locked_fields" => locked_fields }
+      }
+    )
+    manager = create(:admin_user, tenant: admin.tenant, profile: manager_profile, email: "catalog-neighborhood-manager-#{SecureRandom.hex(6)}@salute.test")
+    sign_in manager
+    @csrf_token = nil
+
+    post admin_attribute_options_path(format: :json), params: {
+      **csrf_params_from_response,
+      attribute_option: {
+        context: "habitation",
+        category: "neighborhood",
+        name: "Nova Praia"
+      }
+    }, headers: json_headers
+
+    expect(response).to have_http_status(:created)
+    expect(admin.tenant.attribute_options.find_by!(context: "habitation", category: "neighborhood", name: "Nova Praia")).to be_present
+  end
+
+  it "bloqueia opção de endereço para usuário que não é dono da conta" do
+    manager_profile = admin.tenant.profiles.create!(
+      name: "Gestor catálogo #{SecureRandom.hex(3)}",
+      axis: Profile::AXES[:vertical],
+      position: 20,
+      active: true,
+      permissions: { "catalogos" => { "manage" => true } }
+    )
+    manager = create(:admin_user, tenant: admin.tenant, profile: manager_profile, email: "catalog-manager-#{SecureRandom.hex(6)}@salute.test")
+    sign_in manager
+    @csrf_token = nil
+
+    post admin_attribute_options_path(format: :json), params: {
+      **csrf_params_from_response,
+      attribute_option: {
+        context: "habitation",
+        category: "city",
+        name: "Cidade bloqueada"
+      }
+    }, headers: json_headers
+
+    expect(response).to have_http_status(:forbidden)
+    expect(admin.tenant.attribute_options.where(category: "city", name: "Cidade bloqueada")).to be_empty
+  end
+
+  def csrf_params_from_response
+    token = csrf_token_from_catalog
+    token.present? ? { authenticity_token: token } : {}
+  end
+
+  def csrf_token_from_catalog
+    return @csrf_token if defined?(@csrf_token) && @csrf_token.present?
+
+    get admin_attribute_options_path
+    @csrf_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content").to_s
+  end
+
+  def json_headers
+    { "X-Requested-With" => "XMLHttpRequest", "X-CSRF-Token" => csrf_token_from_catalog.to_s }
   end
 end

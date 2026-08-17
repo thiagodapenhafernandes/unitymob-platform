@@ -40,6 +40,14 @@ RSpec.describe AttributeOption, type: :model do
     expect(option).to be_valid
   end
 
+  it "aceita categorias de catálogo de endereço para imóveis" do
+    tenant = Tenant.create!(name: "Catalog address #{SecureRandom.hex(3)}", slug: "catalog-address-#{SecureRandom.hex(3)}")
+
+    option = tenant.attribute_options.build(context: "habitation", category: "city", name: "Itajaí")
+
+    expect(option).to be_valid
+  end
+
   it "remove característica excluída dos imóveis do mesmo tenant" do
     tenant = Tenant.create!(name: "Catalog delete #{SecureRandom.hex(3)}", slug: "catalog-delete-#{SecureRandom.hex(3)}")
     option = tenant.attribute_options.create!(context: "habitation", category: "feature", name: "Piscina")
@@ -48,5 +56,16 @@ RSpec.describe AttributeOption, type: :model do
     option.destroy!
 
     expect(habitation.reload.caracteristicas).to eq("Lavabo" => "Lavabo")
+  end
+
+  it "renomeia cidade de catálogo nos endereços do mesmo tenant" do
+    tenant = Tenant.create!(name: "Catalog city #{SecureRandom.hex(3)}", slug: "catalog-city-#{SecureRandom.hex(3)}")
+    option = tenant.attribute_options.create!(context: "habitation", category: "city", name: "Camboriu")
+    habitation = create(:habitation, tenant: tenant)
+    habitation.address.update!(cidade: "Camboriu")
+
+    option.update!(name: "Camboriú")
+
+    expect(habitation.address.reload.cidade).to eq("Camboriú")
   end
 end

@@ -1,0 +1,72 @@
+<%
+  lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
+  property = lead.property_id.present? ? @properties_by_id[lead.property_id] : nil
+  display_name = lead.display_name.presence || lead.name
+  conversion = lead_conversion_summary(lead)
+  contacted = @pwa_contacted_lead_ids.include?(lead.id)
+  favorited = @pwa_favorite_lead_ids.include?(lead.id)
+  next_visit = @pwa_next_visits_by_lead_id.fetch(lead.id, []).first
+  next_task = @pwa_next_tasks_by_lead_id.fetch(lead.id, []).first
+  attention = !contacted || next_task&.atrasada? || Lead.status_value(lead.status) == Lead.status_value(:represado)
+  badge_label = if !contacted
+                  "Não interagido"
+                elsif next_task&.atrasada?
+                  "Retorno vencido"
+                else
+                  lead.status.presence || Lead.default_status
+                end
+  badge_blue = contacted && !next_task&.atrasada?
+  interest_line = lead_card_interest_line(lead, conversion)
+  business_label = lead_card_business_label(lead)
+  note_line = lead_card_note_line(lead, conversion)
+  footer_label = if next_visit
+                   "Visita marcada"
+                 elsif next_task
+                   next_task.title
+                 elsif !contacted
+                   "Primeiro contato"
+                 else
+                   "Atualizado"
+                 end
+  footer_time = if next_visit
+                  l(next_visit.starts_at, format: "%d/%m/%Y %H:%M")
+                elsif next_task&.due_at
+                  l(next_task.due_at, format: "%d/%m/%Y %H:%M")
+                else
+                  l(lead.updated_at, format: "%d/%m/%Y %H:%M")
+                end
+%>
+<%= link_to admin_lead_path(lead, return_to: lead_return_to_path),
+            id: "lead_#{lead.id}",
+            class: "lead-pwa-card #{'lead-pwa-card--attention' if attention}",
+            role: "listitem" do %>
+  <div class="lead-pwa-card__head">
+    <strong class="lead-pwa-card__name"><%= display_name %></strong>
+    <% if business_label.present? %>
+      <span class="lead-pwa-card__deal"><%= business_label %></span>
+    <% end %>
+    <span class="lead-pwa-card__badge <%= 'lead-pwa-card__badge--blue' if badge_blue %>">
+      <% if favorited %><i class="bi bi-star-fill" aria-hidden="true"></i><% end %>
+      <%= badge_label %>
+    </span>
+  </div>
+  <div class="lead-pwa-card__body">
+    <div class="lead-pwa-card__line">
+      <i class="bi bi-megaphone" aria-hidden="true"></i>
+      <span><%= conversion[:origin].presence || conversion[:channel_label] %></span>
+      <strong class="lead-pwa-card__channel"><%= conversion[:channel_label] %></strong>
+    </div>
+    <div class="lead-pwa-card__line">
+      <i class="bi bi-currency-dollar" aria-hidden="true"></i>
+      <span><%= interest_line %></span>
+      <% if property.present? %>
+        <strong class="lead-pwa-card__channel"><%= property.codigo %></strong>
+      <% end %>
+    </div>
+    <div class="lead-pwa-card__note"><%= note_line %></div>
+  </div>
+  <div class="lead-pwa-card__foot">
+    <span><%= footer_label %> - <%= footer_time %></span>
+    <strong><%= lead.admin_user&.name.presence || "Sem corretor" %></strong>
+  </div>
+<% end %>

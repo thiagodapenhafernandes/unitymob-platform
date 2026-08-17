@@ -1,0 +1,30 @@
+<%# locals: lead, broker_options %>
+<div data-controller="ax-modal" class="tw-inline-block">
+  <button type="button" class="lead-pwa-detail__icon-btn" data-action="ax-modal#open" title="Transferir lead" aria-label="Transferir lead">
+    <i class="bi bi-arrow-left-right"></i>
+  </button>
+  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-modal-panel" role="dialog" aria-modal="true">
+      <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
+        <strong><i class="bi bi-arrow-left-right ax-ico tw-text-primary"></i> Transferir lead</strong>
+        <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <%= form_with model: lead, url: admin_lead_path(lead), method: :patch, local: true do |f| %>
+        <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
+          <%= ax_autocomplete_select_field(
+                form: f,
+                method: :admin_user_id,
+                label: "Transferir para",
+                choices: broker_options,
+                select_options: { selected: lead.admin_user_id },
+                placeholder: "Buscar corretor..."
+              ) %>
+        </div>
+        <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
+          <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
+          <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Transferir</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -1,12 +1,95 @@
 class Admin::LeadsController < Admin::BaseController
   # Kanban carrega em pequenos lotes por coluna para manter a tela responsiva.
   KANBAN_COLUMN_PAGE_SIZE = 5
+  # Lista PWA de leads: carrega em lotes por aba (scroll infinito).
+  PWA_LEAD_LIST_PAGE_SIZE = 15
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
   CONTACT_ACTIVITY_KINDS = %w[
     accepted note whatsapp_out appointment_created appointment_done
     proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
   ].freeze
+  EXTERNAL_SCHEDULE_KIND = "external_scheduled_action".freeze
+  EXTERNAL_SCHEDULE_DATE_SQL = <<~SQL.squish.freeze
+    NULLIF(COALESCE(
+      lead_activities.metadata #>> '{raw,schedulated_action_date}',
+      lead_activities.metadata #>> '{raw,due_at}',
+      lead_activities.metadata #>> '{raw,scheduled_at}',
+      lead_activities.metadata #>> '{raw,date}',
+      lead_activities.metadata #>> '{raw,datetime}',
+      lead_activities.metadata ->> 'due_at'
+    ), '')::timestamptz
+  SQL
+  EXTERNAL_SCHEDULE_TEXT_SQL = <<~SQL.squish.freeze
+    LOWER(CONCAT_WS(' ',
+      lead_activities.metadata #>> '{raw,schedulated_action_name}',
+      lead_activities.metadata #>> '{raw,schedulated_action_type_alias}',
+      lead_activities.metadata #>> '{raw,name}',
+      lead_activities.metadata #>> '{raw,title}',
+      lead_activities.metadata #>> '{raw,alias}',
+      lead_activities.metadata #>> '{raw,type}',
+      lead_activities.metadata ->> 'title'
+    ))
+  SQL
+  EXTERNAL_SCHEDULE_STATUS_SQL = "LOWER(COALESCE(lead_activities.metadata #>> '{raw,status}', lead_activities.metadata #>> '{raw,status_name}', lead_activities.metadata #>> '{raw,done}', ''))".freeze
+  EXTERNAL_VISIT_SCHEDULE_SQL = "(#{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%visita%' OR #{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%scheduled_visit%' OR #{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%reuniao%')".freeze
+  EXTERNAL_CLOSED_SCHEDULE_SQL = "(#{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%cancel%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%conclu%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} LIKE '%finalizado%' OR #{EXTERNAL_SCHEDULE_STATUS_SQL} = 'true')".freeze
+  LEAD_FILTER_TEXT_SQL = <<~SQL.squish.freeze
+    LOWER(CONCAT_WS(' ',
+      leads.origin,
+      leads.lead_type,
+      leads.product,
+      leads.notes,
+      leads.status,
+      leads.source_url,
+      leads.other_information::text,
+      leads.attribution_data::text
+    ))
+  SQL
+  LEAD_PRICE_SQL = <<~SQL.squish.freeze
+    COALESCE(
+      NULLIF(habitations.valor_venda_cents, 0) / 100.0,
+      NULLIF(habitations.valor_locacao_cents, 0) / 100.0,
+      CASE
+        WHEN NULLIF(regexp_replace(COALESCE(
+          leads.attribution_data #>> '{product,price_float}',
+          leads.other_information #>> '{external_lead_payload,attributes,product,price_float}',
+          leads.other_information #>> '{webhook_payload,price}',
+          leads.other_information #>> '{webhook_payload,valor}',
+          leads.other_information #>> '{webhook_payload,value}',
+          ''
+        ), '[^0-9\\.]', '', 'g'), '') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN NULLIF(regexp_replace(COALESCE(
+          leads.attribution_data #>> '{product,price_float}',
+          leads.other_information #>> '{external_lead_payload,attributes,product,price_float}',
+          leads.other_information #>> '{webhook_payload,price}',
+          leads.other_information #>> '{webhook_payload,valor}',
+          leads.other_information #>> '{webhook_payload,value}',
+          ''
+        ), '[^0-9\\.]', '', 'g'), '')::numeric
+      END
+    )
+  SQL
+  BUSINESS_FILTERS = {
+    "sale" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%venda%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%compra%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%comprar%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%sale%')",
+    "rental" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%loca%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%aluguel%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%alugar%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%rental%')",
+    "launch" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%lanc%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%lanç%')",
+    "capture" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%capt%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%proprietar%')"
+  }.freeze
+  CHANNEL_FILTERS = {
+    "showroom" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%showroom%')",
+    "phone" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%telefone%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%phone%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%ligacao%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%ligação%')",
+    "social" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%facebook%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%instagram%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%meta%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%rede social%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%social%')",
+    "whatsapp" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%whatsapp%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%whats%')",
+    "internet" => "(#{LEAD_FILTER_TEXT_SQL} LIKE '%internet%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%site%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%google%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%portal%')"
+  }.freeze
+  PwaExternalSchedule = Struct.new(:lead_id, :title, :kind, :due_at, :task_id, keyword_init: true) do
+    alias starts_at due_at
+
+    def atrasada?
+      kind != "visita" && due_at.present? && due_at < Time.current
+    end
+  end
 
   before_action -> { check_permission!(:view, :leads) }
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
@@ -15,10 +98,10 @@ class Admin::LeadsController < Admin::BaseController
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
-  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :new, :create, :show, :update]
-  before_action :load_origin_options, only: [:index, :kanban_column, :new, :create, :show, :update]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :archive, :close_deal, :schedule_activity]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :archive, :close_deal, :schedule_activity]
+  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
+  before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
 
   def index
     assign_lead_filter_state
@@ -36,8 +119,8 @@ class Admin::LeadsController < Admin::BaseController
 
     lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
 
-    @lead_statuses = if @status.present?
-                        [Lead.status_value(@status)]
+    @lead_statuses = if @status_filters.present?
+                        @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank
                       else
                         (lead_status_options_for_selected_context + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
                       end
@@ -64,7 +147,8 @@ class Admin::LeadsController < Admin::BaseController
     @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
-    property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
+    load_pwa_leads_context(stats_scope)
+    property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @kanban_leads.first || @leads.first
     @page_title = "Gerenciar Leads"
@@ -110,6 +194,39 @@ class Admin::LeadsController < Admin::BaseController
     }
   end
 
+  def pwa_leads_page
+    assign_lead_filter_state
+
+    tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
+    offset = [params[:offset].to_i, 0].max
+    base_scope = filtered_lead_scope_for_current_user.where(admin_user_id: current_admin_user&.id)
+    lead_scope = pwa_lead_scope_for_tab(base_scope, tab)
+    total = lead_scope.reorder(nil).count
+    leads = lead_scope
+            .includes(:admin_user, lead_labelings: :lead_label)
+            .order(updated_at: :desc, created_at: :desc)
+            .offset(offset)
+            .limit(PWA_LEAD_LIST_PAGE_SIZE)
+            .to_a
+
+    property_ids = leads.filter_map(&:property_id).uniq
+    @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
+    load_pwa_lead_activity_context(leads)
+
+    html = leads.map do |lead|
+      render_to_string(partial: "admin/leads/pwa_lead_card", formats: [:html], locals: { lead: lead })
+    end.join
+    next_offset = offset + leads.size
+
+    render json: {
+      html: html,
+      next_offset: next_offset,
+      has_more: next_offset < total,
+      loaded_count: leads.size,
+      total: total
+    }
+  end
+
   def show
     @page_title = "Lead: #{@lead.name}"
     @return_to_path = safe_return_path(params[:return_to])
@@ -124,10 +241,25 @@ class Admin::LeadsController < Admin::BaseController
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
+    @archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
     @funnel_statuses = Lead.status_options
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
     load_interest_intelligence
+    load_lead_favorite_context
+  end
+
+  def toggle_favorite
+    favorite = current_admin_user.lead_favorites.find_by(lead: @lead)
+    if favorite
+      favorite.destroy
+      notice = "Lead removido dos favoritos."
+    else
+      current_admin_user.lead_favorites.create!(lead: @lead, tenant: current_tenant)
+      notice = "Lead adicionado aos favoritos."
+    end
+
+    redirect_back fallback_location: admin_lead_path(@lead), notice: notice
   end
 
   # Destino do clique na notificação push de novo lead. Decide no momento do
@@ -286,6 +418,56 @@ class Admin::LeadsController < Admin::BaseController
     redirect_to(return_path || admin_lead_path(@lead), alert: e.message)
   end
 
+  def archive
+    check_permission!(:manage, :comercial)
+
+    reason = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").find_by(id: params[:archive_reason_id])
+    @lead.archiving = true
+    @lead.assign_attributes(
+      status: Lead.status_value("Descartado", tenant: current_tenant),
+      archive_reason: reason,
+      archive_note: params[:archive_note],
+      archived_at: Time.current,
+      archived_by_admin_user: current_admin_user
+    )
+
+    if @lead.save
+      LeadActivity.log!(
+        lead: @lead,
+        kind: "archived",
+        metadata: { reason: reason&.name, note: @lead.archive_note, by: current_admin_user&.name }
+      )
+      redirect_to admin_lead_path(@lead), notice: "Lead arquivado."
+    else
+      redirect_to admin_lead_path(@lead), alert: @lead.errors.full_messages.to_sentence
+    end
+  end
+
+  def close_deal
+    check_permission!(:manage, :comercial)
+
+    previous_status = @lead.status
+    if @lead.update(status: Lead.status_value("Concluido", tenant: current_tenant))
+      LeadActivity.log!(lead: @lead, kind: "deal_closed", metadata: { from: previous_status, by: current_admin_user&.name })
+      redirect_to admin_lead_path(@lead), notice: "Negócio marcado como fechado."
+    else
+      redirect_to admin_lead_path(@lead), alert: @lead.errors.full_messages.to_sentence
+    end
+  end
+
+  def schedule_activity
+    check_permission!(:manage, :comercial)
+
+    case params[:activity_kind].to_s
+    when "return"
+      schedule_return_activity
+    when "visit"
+      schedule_visit_activity
+    else
+      redirect_to admin_lead_path(@lead), alert: "Selecione o tipo de atividade."
+    end
+  end
+
   def destroy
     # Antes daqui só passavam :view + escopo do registro — ou seja, quem
     # enxergasse o lead podia apagá-lo. Excluir agora exige a permissão própria.
@@ -303,19 +485,32 @@ class Admin::LeadsController < Admin::BaseController
   def assign_lead_filter_state
     @q = params[:q]
     @status = params[:status]
+    @status_filters = Array(params[:status]).map(&:to_s).reject(&:blank?)
     @pipeline_id = @selected_pipeline&.id
     @origin = params[:origin]
     @attribution_channel = params[:attribution_channel]
     @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
-    @broker_id = params[:broker_id]
+    @only_mine = params[:only_mine].to_s == "1"
+    @broker_id = @only_mine ? current_admin_user&.id.to_s : params[:broker_id]
     @property_filter = params[:property_filter]
     @property_q = params[:property_q].to_s.strip
     @contact_filter = params[:contact_filter]
     @attention_filter = params[:attention_filter]
+    @business_filters = Array(params[:business_filter]).map(&:to_s).reject(&:blank?)
+    @activity_filters = Array(params[:activity_filter]).map(&:to_s).reject(&:blank?)
+    @channel_filters = Array(params[:channel_filter]).map(&:to_s).reject(&:blank?)
+    @bot_attended = params[:bot_attended].to_s == "1"
+    @price_min = params[:price_min].to_s.strip
+    @price_max = params[:price_max].to_s.strip
     @start_date = params[:start_date]
     @end_date = params[:end_date]
+    @closed_start_date = params[:closed_start_date]
+    @closed_end_date = params[:closed_end_date]
     @parsed_start_date = nil
     @parsed_end_date = nil
+    @parsed_closed_start_date = nil
+    @parsed_closed_end_date = nil
+    @lead_filter_habitation_joined = false
   end
 
   def filtered_lead_scope_for_current_user
@@ -330,7 +525,7 @@ class Admin::LeadsController < Admin::BaseController
     end
 
     scope = scope.where(leads: { lead_pipeline_id: @selected_pipeline.id }) if @selected_pipeline.present?
-    scope = scope.where(leads: { status: Lead.status_value(@status, tenant: current_tenant) }) if @status.present?
+    scope = apply_status_filter(scope)
     scope = scope.by_origin(@origin)
     scope = apply_attribution_channel_filter(scope)
     scope = scope.with_any_tags(@tags)
@@ -338,7 +533,20 @@ class Admin::LeadsController < Admin::BaseController
     scope = apply_property_filter(scope)
     scope = apply_contact_filter(scope)
     scope = apply_attention_filter(scope)
+    scope = apply_business_filter(scope)
+    scope = apply_activity_filter(scope)
+    scope = apply_channel_filter(scope)
+    scope = apply_bot_filter(scope)
+    scope = apply_price_filter(scope)
+    scope = apply_closed_at_filter(scope)
     apply_created_at_filter(scope)
+  end
+
+  def apply_status_filter(scope)
+    return scope if @status_filters.blank?
+
+    values = @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank
+    values.present? ? scope.where(leads: { status: values }) : scope
   end
 
   def kanban_status_tone
@@ -407,6 +615,82 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
+  def apply_business_filter(scope)
+    return scope if @business_filters.blank?
+
+    values = @business_filters & (BUSINESS_FILTERS.keys + ["undefined"])
+    return scope if values.blank?
+
+    scope = with_filter_habitation_join(scope)
+    clauses = values.filter_map do |value|
+      case value
+      when "sale"
+        "(COALESCE(habitations.valor_venda_cents, 0) > 0 OR #{BUSINESS_FILTERS.fetch(value)})"
+      when "rental"
+        "(COALESCE(habitations.valor_locacao_cents, 0) > 0 OR #{BUSINESS_FILTERS.fetch(value)})"
+      when "undefined"
+        known = BUSINESS_FILTERS.values.join(" OR ")
+        "(COALESCE(habitations.valor_venda_cents, 0) <= 0 AND COALESCE(habitations.valor_locacao_cents, 0) <= 0 AND NOT (#{known}))"
+      else
+        BUSINESS_FILTERS[value]
+      end
+    end
+
+    clauses.present? ? scope.where(clauses.join(" OR ")) : scope
+  end
+
+  def apply_activity_filter(scope)
+    return scope if @activity_filters.blank?
+
+    values = @activity_filters & %w[first_contact schedule_activity return_customer scheduled_visit]
+    return scope if values.blank?
+
+    clauses = values.filter_map do |value|
+      case value
+      when "first_contact"
+        "leads.id NOT IN (#{LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id).to_sql})"
+      when "schedule_activity"
+        "leads.id IN (#{Task.where(tenant_id: current_tenant.id).pendentes.select(:lead_id).to_sql}) OR leads.id IN (#{pwa_external_schedule_scope(scope, visits: false).select(:lead_id).to_sql})"
+      when "return_customer"
+        returning_tasks = Task.where(tenant_id: current_tenant.id).pendentes.where("LOWER(tasks.title) LIKE '%retornar%'").select(:lead_id)
+        returning_external = pwa_external_schedule_scope(scope, visits: false).where("#{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%retornar%' OR #{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%feedback_customer%'").select(:lead_id)
+        "leads.id IN (#{returning_tasks.to_sql}) OR leads.id IN (#{returning_external.to_sql})"
+      when "scheduled_visit"
+        appointments = Appointment.where(tenant_id: current_tenant.id, kind: "visita", status: "agendado").upcoming.select(:lead_id)
+        "leads.id IN (#{appointments.to_sql}) OR leads.id IN (#{pwa_external_schedule_scope(scope, visits: true).select(:lead_id).to_sql})"
+      end
+    end
+
+    clauses.present? ? scope.where(clauses.map { |clause| "(#{clause})" }.join(" OR ")) : scope
+  end
+
+  def apply_channel_filter(scope)
+    return scope if @channel_filters.blank?
+
+    clauses = (@channel_filters & CHANNEL_FILTERS.keys).map { |value| CHANNEL_FILTERS.fetch(value) }
+    clauses.present? ? scope.where(clauses.join(" OR ")) : scope
+  end
+
+  def apply_bot_filter(scope)
+    return scope unless @bot_attended
+
+    scope.where(
+      "leads.id IN (:activity_leads) OR #{LEAD_FILTER_TEXT_SQL} LIKE '%bot%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%robô%' OR #{LEAD_FILTER_TEXT_SQL} LIKE '%robo%'",
+      activity_leads: LeadActivity.where(kind: %w[automation automation_event]).select(:lead_id)
+    )
+  end
+
+  def apply_price_filter(scope)
+    min = parse_decimal_filter(@price_min)
+    max = parse_decimal_filter(@price_max)
+    return scope if min.blank? && max.blank?
+
+    scope = with_filter_habitation_join(scope)
+    scope = scope.where("#{LEAD_PRICE_SQL} >= :min", min: min) if min.present?
+    scope = scope.where("#{LEAD_PRICE_SQL} <= :max", max: max) if max.present?
+    scope
+  end
+
   def apply_attention_filter(scope)
     case @attention_filter.to_s
     when "requires_action"
@@ -452,12 +736,49 @@ class Admin::LeadsController < Admin::BaseController
     scope
   end
 
+  def apply_closed_at_filter(scope)
+    return scope if parsed_closed_start_date.blank? && parsed_closed_end_date.blank?
+
+    scope = scope.where(status: Lead.status_value(:concluido))
+    scope = scope.where("leads.updated_at >= ?", parsed_closed_start_date.beginning_of_day) if parsed_closed_start_date.present?
+    scope = scope.where("leads.updated_at <= ?", parsed_closed_end_date.end_of_day) if parsed_closed_end_date.present?
+    scope
+  end
+
   def parsed_start_date
     @parsed_start_date ||= parse_filter_date(@start_date)
   end
 
   def parsed_end_date
     @parsed_end_date ||= parse_filter_date(@end_date)
+  end
+
+  def parsed_closed_start_date
+    @parsed_closed_start_date ||= parse_filter_date(@closed_start_date)
+  end
+
+  def parsed_closed_end_date
+    @parsed_closed_end_date ||= parse_filter_date(@closed_end_date)
+  end
+
+  def parse_decimal_filter(value)
+    normalized = value.to_s.gsub(/[^\d,\.]/, "")
+    return nil if normalized.blank?
+
+    if normalized.include?(",")
+      normalized = normalized.gsub(".", "").tr(",", ".")
+    end
+
+    BigDecimal(normalized)
+  rescue ArgumentError
+    nil
+  end
+
+  def with_filter_habitation_join(scope)
+    return scope if @lead_filter_habitation_joined
+
+    @lead_filter_habitation_joined = true
+    scope.joins("LEFT JOIN habitations ON habitations.id = leads.property_id AND habitations.tenant_id = leads.tenant_id")
   end
 
   def active_lead_status_values
@@ -546,6 +867,71 @@ class Admin::LeadsController < Admin::BaseController
 
   def normalize_whatsapp_phone(value)
     Phones::Normalizer.call(value).to_s
+  end
+
+  def schedule_return_activity
+    task = current_tenant.tasks.create(
+      lead: @lead,
+      admin_user: current_admin_user,
+      created_by_id: current_admin_user.id,
+      title: "Retornar para o cliente",
+      kind: "follow_up",
+      due_at: params[:due_at].presence,
+      description: params[:notes]
+    )
+
+    if task.persisted?
+      LeadActivity.log!(lead: @lead, kind: "activity_scheduled", metadata: { activity_kind: "return", due_at: task.due_at, by: current_admin_user&.name })
+      redirect_to admin_lead_path(@lead), notice: "Retorno agendado."
+    else
+      redirect_to admin_lead_path(@lead), alert: task.errors.full_messages.to_sentence
+    end
+  end
+
+  def schedule_visit_activity
+    appointment = current_tenant.appointments.new(
+      lead: @lead,
+      admin_user: current_admin_user,
+      habitation_id: @lead.property_id,
+      title: "Visita — #{@lead.display_name}",
+      kind: "visita",
+      starts_at: params[:starts_at].presence,
+      ends_at: params[:ends_at].presence,
+      location: params[:location],
+      notes: params[:notes],
+      properties_to_visit_count: params[:properties_to_visit_count].presence,
+      invite_via_email: ActiveModel::Type::Boolean.new.cast(params[:invite_via_email]),
+      invite_via_whatsapp: ActiveModel::Type::Boolean.new.cast(params[:invite_via_whatsapp]),
+      invite_email_recipients: params[:invite_email_recipients]
+    )
+
+    unless appointment.save
+      return redirect_to admin_lead_path(@lead), alert: appointment.errors.full_messages.to_sentence
+    end
+
+    send_visit_invites(appointment)
+    LeadActivity.log!(lead: @lead, kind: "activity_scheduled", metadata: { activity_kind: "visit", starts_at: appointment.starts_at, by: current_admin_user&.name })
+    redirect_to admin_lead_path(@lead), notice: "Visita agendada."
+  end
+
+  def send_visit_invites(appointment)
+    if appointment.invite_via_email?
+      recipients = appointment.invite_email_recipients.to_s.split(/[,;\s]+/).map(&:strip).select { |email| email.match?(URI::MailTo::EMAIL_REGEXP) }
+      AppointmentMailer.with(appointment: appointment, recipients: recipients, tenant: appointment.tenant).invite.deliver_later if recipients.present?
+    end
+
+    return unless appointment.invite_via_whatsapp?
+
+    begin
+      conversation = find_or_create_whatsapp_conversation_for!(@lead)
+      body = "Visita agendada para #{l(appointment.starts_at, format: "%d/%m/%Y às %H:%M")}" \
+             "#{appointment.location.present? ? " em #{appointment.location}" : ""}."
+      message = conversation.messages.create!(direction: "outbound", status: "pending", msg_type: "text", body: body, admin_user: current_admin_user)
+      conversation.touch_last_message!(message)
+      Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
+    rescue ArgumentError => e
+      Rails.logger.warn("[Admin::LeadsController#send_visit_invites] convite WhatsApp não enviado: #{e.message}")
+    end
   end
 
   def load_lead_whatsapp_context
@@ -711,14 +1097,50 @@ class Admin::LeadsController < Admin::BaseController
     tenant_owner? || current_admin_user.scope_for(:leads) != "own"
   end
 
+  # Transferir é uma ação do dono do lead, não um privilégio administrativo:
+  # quem tem escopo "own" ainda pode passar o PRÓPRIO lead pra frente (ex.:
+  # sair de férias, repassar pra outro corretor). Escopo além de "own" (ou
+  # tenant_owner) libera transferir qualquer lead, igual já fazia antes.
+  def can_transfer_lead?(lead)
+    return false unless current_admin_user
+    return false unless can?(:edit, :leads)
+    return true if tenant_owner? || current_admin_user.scope_for(:leads) != "own"
+
+    lead.present? && lead.admin_user_id == current_admin_user.id
+  end
+  helper_method :can_transfer_lead?
+
+  # Lista de destinatários pro modal/select de transferência. Quem já tem
+  # escopo além de "own" (ou é tenant_owner) usa a mesma lista de sempre
+  # (@broker_options). Corretor com escopo "own" transferindo o PRÓPRIO lead
+  # pode escolher qualquer usuário ativo da conta — a restrição de escopo é
+  # sobre quem ele enxerga/gerencia no dia a dia, não sobre pra quem ele pode
+  # repassar algo que já é dele.
+  def transfer_broker_options(lead)
+    return @broker_options if current_admin_user&.scope_for(:leads) != "own"
+    return @broker_options unless lead.present? && lead.admin_user_id == current_admin_user&.id
+
+    current_tenant.admin_users.active.order(:name).pluck(:name, :id)
+  end
+  helper_method :transfer_broker_options
+
+  def valid_transfer_target?(admin_user_id)
+    return true if permitted_admin_user_ids_for_leads.include?(admin_user_id.to_i)
+    return false unless current_admin_user&.scope_for(:leads) == "own" && @lead&.admin_user_id == current_admin_user.id
+
+    current_tenant.admin_users.active.where(id: admin_user_id).exists?
+  end
+
   def lead_params
     permitted = [:status, :notes, :lead_pipeline_id, :lead_pipeline_stage_id]
-    # Reatribuir corretor: só gestores (escopo team/all em Leads); corretor
-    # com escopo "own" edita o lead, mas não troca o dono.
-    permitted << :admin_user_id if can?(:edit, :leads) && current_admin_user.scope_for(:leads) != "own"
+    # Transferir: dono do lead sempre pode passar pra frente; reatribuir o
+    # lead de outra pessoa exige escopo além de "own" (ou ser tenant_owner).
+    permitted << :admin_user_id if can_transfer_lead?(@lead)
+    # Parecer: nota interna visível/editável só pelo time administrativo.
+    permitted << :parecer if current_admin_user&.admin?
     attributes = params.require(:lead).permit(permitted)
 
-    if attributes[:admin_user_id].present? && permitted_admin_user_ids_for_leads.exclude?(attributes[:admin_user_id].to_i)
+    if attributes[:admin_user_id].present? && !valid_transfer_target?(attributes[:admin_user_id])
       attributes.delete(:admin_user_id)
     end
     normalize_pipeline_params!(attributes)
@@ -758,6 +1180,222 @@ class Admin::LeadsController < Admin::BaseController
     @tag_options = Lead.tag_options(scope: option_scope)
     @status_options = lead_status_options_for_selected_context
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
+  end
+
+  def load_pwa_leads_context(filtered_scope)
+    @pwa_lead_tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
+    @pwa_queue_position = current_user_distribution_queue_position
+
+    base_scope = filtered_scope.where(admin_user_id: current_admin_user&.id)
+    @pwa_tab_counts = {
+      "todo" => pwa_lead_scope_for_tab(base_scope, "todo").reorder(nil).count,
+      "visits" => pwa_lead_scope_for_tab(base_scope, "visits").reorder(nil).count,
+      "future" => pwa_lead_scope_for_tab(base_scope, "future").reorder(nil).count,
+      "favorites" => pwa_lead_scope_for_tab(base_scope, "favorites").reorder(nil).count,
+      "all" => pwa_lead_scope_for_tab(base_scope, "all").reorder(nil).count
+    }
+
+    @pwa_leads = pwa_lead_scope_for_tab(base_scope, @pwa_lead_tab)
+                 .includes(:admin_user, lead_labelings: :lead_label)
+                 .order(updated_at: :desc, created_at: :desc)
+                 .limit(PWA_LEAD_LIST_PAGE_SIZE)
+                 .to_a
+    load_pwa_lead_activity_context(@pwa_leads)
+  end
+
+  def pwa_lead_scope_for_tab(base_scope, tab)
+    case tab
+    when "todo"
+      pwa_actionable_leads(base_scope)
+    when "visits"
+      base_scope.where(id: pwa_future_visit_lead_ids(base_scope))
+    when "future"
+      base_scope.where(id: pwa_future_task_lead_ids(base_scope))
+    when "favorites"
+      base_scope.joins(:lead_favorites).where(lead_favorites: { admin_user_id: current_admin_user&.id })
+    else
+      base_scope
+    end
+  end
+
+  def pwa_actionable_leads(base_scope)
+    base_scope
+      .where(status: active_lead_status_values_with_blank)
+      .where(
+        "leads.id IN (:due_task_ids) OR (leads.status IN (:priority_statuses) AND leads.id NOT IN (:scheduled_later_ids))",
+        due_task_ids: pwa_due_task_lead_ids(base_scope),
+        priority_statuses: [Lead.status_value(:novo), Lead.status_value(:waiting_acceptance), Lead.status_value(:represado)],
+        scheduled_later_ids: pwa_later_scheduled_lead_ids(base_scope)
+      )
+  end
+
+  def pwa_future_visit_lead_ids(base_scope)
+    appointment_ids = Appointment
+      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id, kind: "visita", status: "agendado")
+      .upcoming
+      .select(:lead_id)
+
+    base_scope
+      .where("leads.id IN (:appointment_ids) OR leads.id IN (:external_visit_ids)",
+             appointment_ids: appointment_ids,
+             external_visit_ids: pwa_external_schedule_lead_ids(base_scope, visits: true, timing: :upcoming))
+      .select(:id)
+  end
+
+  def pwa_future_task_lead_ids(base_scope)
+    task_ids = Task
+      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
+      .pendentes
+      .where("due_at > ?", Time.current.end_of_day)
+      .select(:lead_id)
+
+    base_scope
+      .where("leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
+             task_ids: task_ids,
+             external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :future))
+      .select(:id)
+  end
+
+  def pwa_due_task_lead_ids(base_scope)
+    task_ids = Task
+      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
+      .pendentes
+      .where("due_at IS NULL OR due_at <= ?", Time.current.end_of_day)
+      .where.not(id: pwa_external_future_task_ids(base_scope))
+      .select(:lead_id)
+
+    base_scope
+      .where("leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
+             task_ids: task_ids,
+             external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :due))
+      .select(:id)
+  end
+
+  def pwa_later_scheduled_lead_ids(base_scope)
+    base_scope
+      .where("leads.id IN (:future_task_ids) OR leads.id IN (:future_visit_ids)",
+             future_task_ids: pwa_future_task_lead_ids(base_scope),
+             future_visit_ids: pwa_future_visit_lead_ids(base_scope))
+      .select(:id)
+  end
+
+  def pwa_external_schedule_lead_ids(base_scope, visits:, timing:)
+    scope = pwa_external_schedule_scope(base_scope, visits: visits)
+    scope =
+      case timing
+      when :future
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
+      when :due
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} <= ?", Time.current.end_of_day)
+      when :upcoming
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} >= ?", Time.current.beginning_of_day)
+      else
+        scope
+      end
+    scope.select(:lead_id)
+  end
+
+  def pwa_external_future_task_ids(base_scope)
+    pwa_external_schedule_scope(base_scope, visits: false)
+      .where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
+      .where("NULLIF(lead_activities.metadata ->> 'task_id', '') ~ '^[0-9]+$'")
+      .select(Arel.sql("CAST(NULLIF(lead_activities.metadata ->> 'task_id', '') AS bigint)"))
+  end
+
+  def pwa_external_schedule_scope(base_scope, visits:)
+    scope = LeadActivity
+            .where(kind: EXTERNAL_SCHEDULE_KIND, lead_id: base_scope.select(:id))
+            .where("NULLIF(COALESCE(lead_activities.metadata #>> '{raw,schedulated_action_date}', lead_activities.metadata #>> '{raw,due_at}', lead_activities.metadata #>> '{raw,scheduled_at}', lead_activities.metadata #>> '{raw,date}', lead_activities.metadata #>> '{raw,datetime}', lead_activities.metadata ->> 'due_at'), '') IS NOT NULL")
+            .where("NOT #{EXTERNAL_CLOSED_SCHEDULE_SQL}")
+    visits ? scope.where(EXTERNAL_VISIT_SCHEDULE_SQL) : scope.where("NOT #{EXTERNAL_VISIT_SCHEDULE_SQL}")
+  end
+
+  def load_pwa_lead_activity_context(leads)
+    lead_ids = leads.map(&:id)
+    @pwa_contacted_lead_ids = LeadActivity.where(lead_id: lead_ids, kind: CONTACT_ACTIVITY_KINDS).distinct.pluck(:lead_id)
+    @pwa_next_tasks_by_lead_id = Task
+                                  .where(tenant_id: current_tenant.id, lead_id: lead_ids, admin_user_id: current_admin_user&.id)
+                                  .pendentes
+                                  .order(Arel.sql("due_at ASC NULLS FIRST"), :created_at)
+                                  .to_a
+                                  .group_by(&:lead_id)
+    @pwa_next_visits_by_lead_id = Appointment
+                                   .where(tenant_id: current_tenant.id, lead_id: lead_ids, admin_user_id: current_admin_user&.id, kind: "visita", status: "agendado")
+                                   .upcoming
+                                   .to_a
+                                   .group_by(&:lead_id)
+    pwa_external_schedule_records_for(lead_ids).each do |action|
+      target = action.kind == "visita" ? @pwa_next_visits_by_lead_id : @pwa_next_tasks_by_lead_id
+      target[action.lead_id] ||= []
+      target[action.lead_id].reject! { |item| action.task_id.present? && item.respond_to?(:id) && item.id == action.task_id.to_i }
+      target[action.lead_id] << action
+      target[action.lead_id].sort_by! { |item| item.due_at || Time.zone.at(0) }
+    end
+    @pwa_favorite_lead_ids = current_admin_user
+                             .lead_favorites
+                             .where(lead_id: lead_ids)
+                             .pluck(:lead_id)
+  end
+
+  def pwa_external_schedule_records_for(lead_ids)
+    return [] if lead_ids.blank?
+
+    LeadActivity
+      .where(kind: EXTERNAL_SCHEDULE_KIND, lead_id: lead_ids)
+      .where("NULLIF(COALESCE(lead_activities.metadata #>> '{raw,schedulated_action_date}', lead_activities.metadata #>> '{raw,due_at}', lead_activities.metadata #>> '{raw,scheduled_at}', lead_activities.metadata #>> '{raw,date}', lead_activities.metadata #>> '{raw,datetime}', lead_activities.metadata ->> 'due_at'), '') IS NOT NULL")
+      .where("NOT #{EXTERNAL_CLOSED_SCHEDULE_SQL}")
+      .pluck(:lead_id, :metadata)
+      .filter_map { |lead_id, metadata| pwa_external_schedule_record(lead_id, metadata) }
+  end
+
+  def pwa_external_schedule_record(lead_id, metadata)
+    raw = metadata["raw"].presence || {}
+    due_at = parse_pwa_external_schedule_time(
+      raw["schedulated_action_date"].presence ||
+      raw["due_at"].presence ||
+      raw["scheduled_at"].presence ||
+      raw["date"].presence ||
+      raw["datetime"].presence ||
+      metadata["due_at"]
+    )
+    return nil if due_at.blank?
+
+    title = raw["schedulated_action_name"].presence ||
+      raw["name"].presence ||
+      raw["title"].presence ||
+      metadata["title"].presence ||
+      "Ação agendada"
+    text = [
+      raw["schedulated_action_name"],
+      raw["schedulated_action_type_alias"],
+      raw["name"],
+      raw["title"],
+      raw["alias"],
+      raw["type"],
+      metadata["title"]
+    ].compact.join(" ").parameterize(separator: "_")
+    kind = (text.include?("visita") || text.include?("scheduled_visit") || text.include?("reuniao")) ? "visita" : "follow_up"
+    PwaExternalSchedule.new(lead_id: lead_id, title: title, kind: kind, due_at: due_at, task_id: metadata["task_id"])
+  end
+
+  def parse_pwa_external_schedule_time(value)
+    Time.zone.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  def load_lead_favorite_context
+    @lead_favorited = current_admin_user&.lead_favorites&.exists?(lead_id: @lead.id)
+  end
+
+  def current_user_distribution_queue_position
+    return nil if current_admin_user.blank?
+
+    DistributionRuleAgent
+      .joins(:distribution_rule)
+      .where(admin_user_id: current_admin_user.id, distribution_rules: { tenant_id: current_tenant.id, active: true })
+      .order(Arel.sql("distribution_rule_agents.position ASC, distribution_rule_agents.id ASC"))
+      .pick("distribution_rule_agents.position")
   end
 
   def lead_status_options_for_selected_context
@@ -848,11 +1486,13 @@ class Admin::LeadsController < Admin::BaseController
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
+    @archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
     @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
     load_origin_options
     load_interest_intelligence
+    load_lead_favorite_context
   end
 
   def push_delivery_events_for(lead)

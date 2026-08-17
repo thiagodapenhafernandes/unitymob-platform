@@ -960,8 +960,42 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(flash[:alert]).to eq("Você não tem permissão para excluir imóveis.")
   end
 
-  # Antes este caso era barrado pela ausência da permissão de excluir. Agora a
-  # regra do lixeiro é mais restritiva: qualquer usuário de tenant fica bloqueado.
+  it "permite exclusão de imóvel para o dono da conta e exibe o botão no cadastro" do
+    habitation = create(:habitation, tenant: admin.tenant, admin_user: admin, codigo: "DEL-OWNER-#{SecureRandom.hex(6)}")
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(admin_habitation_path(habitation.id))
+    expect(response.body).to include("Excluir imóvel")
+
+    expect {
+      delete admin_habitation_path(habitation)
+    }.to change(Habitation, :count).by(-1)
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(flash[:notice]).to eq("Imóvel excluído com sucesso.")
+  end
+
+  it "permite exclusão de imóvel com interesses históricos de cliente vinculados" do
+    habitation = create(:habitation, tenant: admin.tenant, admin_user: admin, codigo: "DEL-CPI-#{SecureRandom.hex(6)}")
+    interest = ClientPropertyInterest.create!(
+      source_table: "Atendimentos",
+      source_key: "DEL-CPI-#{SecureRandom.hex(6)}",
+      habitation: habitation,
+      admin_user: admin
+    )
+
+    expect {
+      delete admin_habitation_path(habitation)
+    }.to change(Habitation, :count).by(-1)
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(flash[:notice]).to eq("Imóvel excluído com sucesso.")
+    expect(interest.reload.habitation_id).to be_nil
+  end
+
+  # A permissão de excluir do perfil não libera o lixeiro: somente o dono da conta.
   it "bloqueia exclusão de imóvel para perfil que gerencia mas não tem permissão de excluir" do
     tenant = Tenant.create!(name: "Tenant team delete #{SecureRandom.hex(3)}", slug: "tenant-team-delete-#{SecureRandom.hex(3)}")
     profile = Profile.create!(

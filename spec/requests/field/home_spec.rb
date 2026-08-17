@@ -68,7 +68,7 @@ RSpec.describe "Field::Home", type: :request do
 
   it "mostra prioridades, dados do lead e ações de contato" do
     broker = create(:admin_user, :field_agent, name: "Thiago Dev")
-    create(
+    lead = create(
       :lead,
       admin_user: broker,
       name: "Thiago do Lead",
@@ -90,6 +90,13 @@ RSpec.describe "Field::Home", type: :request do
     get field_root_path, headers: mobile_headers
 
     expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    hrefs = doc.css("a[href]").map { |link| link["href"] }
+    todo_leads_path = admin_leads_path(view: "list", mobile_tab: "todo")
+    all_leads_path = admin_leads_path(view: "list", mobile_tab: "all")
+
+    expect(hrefs).to include(todo_leads_path, all_leads_path, admin_lead_path(lead, return_to: all_leads_path))
+    expect(hrefs).not_to include(admin_leads_path, admin_leads_path(status: Lead.status_value(:novo)))
     expect(response.body).to include("Prioridades")
     expect(response.body).to include("Leads sem contato")
     expect(response.body).to include("Leads a atender")

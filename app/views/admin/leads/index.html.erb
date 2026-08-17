@@ -289,15 +289,19 @@
     transform: rotate(180deg);
   }
 
-  .lead-filter-collapse:not([open]) + .ax-leads-filter-overlay {
+  .lead-filter-collapse:not([open]) ~ .ax-leads-filter-overlay {
     display: none;
+  }
+
+  .lead-filter-collapse:not([open]) ~ .ax-leads-filter-overlay.lead-pwa-filter-overlay:not([hidden]) {
+    display: block !important;
   }
 
   .lead-filter-collapse[open] {
     border-radius: 10px 10px 0 0;
   }
 
-  .lead-filter-collapse[open] + .ax-leads-filter-overlay {
+  .lead-filter-collapse[open] ~ .ax-leads-filter-overlay {
     display: block;
     border: 1px solid var(--ab-line, #d8dee8);
     border-top: 0;
@@ -341,6 +345,30 @@
     justify-content: center;
   }
 
+  .lead-pwa-filter-panel {
+    display: none;
+  }
+
+  .lead-pwa-filter-overlay[hidden] {
+    display: none !important;
+  }
+
+  .lead-pwa-filter-empty-option {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    padding: 0 11px;
+    border: 1px dashed var(--lead-pwa-line);
+    border-radius: 10px;
+    color: var(--lead-pwa-muted);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .lead-desktop-filter-panel {
+    display: none;
+  }
+
   .ax-leads-board .ax-board__column {
     max-height: calc(100vh - 222px);
     min-height: min(520px, calc(100vh - 222px));
@@ -380,6 +408,10 @@
 
   @media (max-width: 991.98px) {
     .lead-list-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .lead-desktop-filter-panel {
+      display: none !important;
+    }
 
     .lead-list-row {
       grid-template-columns: minmax(0, 1fr);
@@ -427,6 +459,582 @@
   }
 
   @media (max-width: 767.98px) {
+    body.ax-app .ax-navbar,
+    body.ax-app .ax-sidebar-contextbar,
+    body.ax-app .ax-contextbar {
+      display: none !important;
+    }
+
+    body.ax-app > .ax-main {
+      min-height: 100dvh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: var(--admin-workspace-bg, #f6f8fb) !important;
+    }
+
+    html[data-admin-theme="dark"] body.ax-app > .ax-main {
+      background: var(--ax-dark-workspace, #0f1726) !important;
+    }
+
+    .lead-pwa-screen {
+      --lead-pwa-bg: var(--admin-workspace-bg, #f6f8fb);
+      --lead-pwa-surface: var(--admin-surface, #fff);
+      --lead-pwa-surface-soft: var(--admin-surface-header, #eef2f7);
+      --lead-pwa-ink: var(--admin-ink, #0f172a);
+      --lead-pwa-muted: var(--ab-muted, #64748b);
+      --lead-pwa-line: var(--ab-line, #dfe5ed);
+      --lead-pwa-line-soft: var(--ab-line-soft, #e5eaf1);
+      --lead-pwa-primary: var(--admin-primary, #2478e8);
+      --lead-pwa-primary-soft: color-mix(in srgb, var(--admin-primary, #2478e8) 14%, var(--admin-surface, #fff));
+      --lead-pwa-head-height: calc(91px + env(safe-area-inset-top, 0px));
+      display: grid !important;
+      align-content: start;
+      gap: 6px;
+      min-height: 100dvh;
+      margin: 0;
+      padding: var(--lead-pwa-head-height) 8px calc(76px + env(safe-area-inset-bottom, 0px));
+      background: var(--lead-pwa-bg);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-screen {
+      --lead-pwa-bg: var(--ax-dark-workspace, #0f1726);
+      --lead-pwa-surface: var(--ax-dark-surface, #172238);
+      --lead-pwa-surface-soft: var(--ax-dark-surface-raised, #202d43);
+      --lead-pwa-ink: var(--ax-dark-text, #e8eef7);
+      --lead-pwa-muted: var(--ax-dark-text-muted, #9eabc0);
+      --lead-pwa-line: var(--ax-dark-border, #3b4d68);
+      --lead-pwa-line-soft: var(--ax-dark-border-soft, #33445d);
+      --lead-pwa-primary: var(--ax-dark-link, #9bc5ef);
+      --lead-pwa-primary-soft: color-mix(in srgb, var(--ax-dark-link, #9bc5ef) 16%, var(--ax-dark-surface, #172238));
+    }
+
+    .ax-leads-mobile-shell > .ax-workspace-heading,
+    .ax-leads-mobile-shell > .lead-list-summary,
+    .ax-leads-mobile-shell > .ax-leads-mobile-filter-button,
+    .ax-leads-mobile-shell > .ax-leads-board,
+    .ax-leads-mobile-shell > .lead-list-workspace,
+    .ax-leads-mobile-shell > .ax-leads-pagination,
+    .ax-leads-mobile-shell > .ax-empty-state {
+      display: none !important;
+    }
+
+    .lead-pwa-sticky-head {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 0;
+      z-index: 1070;
+      display: grid;
+      gap: 5px;
+      min-height: var(--lead-pwa-head-height);
+      margin: 0;
+      padding: max(6px, env(safe-area-inset-top, 0px)) 8px 0;
+      border-bottom: 1px solid var(--lead-pwa-line);
+      background: color-mix(in srgb, var(--lead-pwa-bg) 96%, transparent);
+      box-shadow: 0 10px 22px color-mix(in srgb, #000 8%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-sticky-head {
+      background: color-mix(in srgb, var(--lead-pwa-bg) 94%, transparent);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+    }
+
+    .lead-pwa-topbar {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) 36px;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .lead-pwa-queue {
+      display: grid;
+      place-items: center;
+      min-height: 30px;
+      color: var(--lead-pwa-ink);
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .lead-pwa-queue strong {
+      color: var(--lead-pwa-primary);
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    .lead-pwa-queue span {
+      margin-top: 2px;
+      color: var(--lead-pwa-muted);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .lead-pwa-search {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 13px;
+      background: var(--lead-pwa-surface);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .lead-pwa-search i {
+      color: var(--lead-pwa-muted);
+      font-size: 16px;
+    }
+
+    .lead-pwa-search input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      color: var(--lead-pwa-ink);
+      font-size: 13px;
+      font-weight: 300;
+      background: transparent;
+      color-scheme: light dark;
+    }
+
+    .lead-pwa-search input::placeholder {
+      color: var(--lead-pwa-muted);
+      opacity: .72;
+    }
+
+    .lead-pwa-filter {
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 13px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-muted);
+      font-size: 16px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .lead-pwa-filter__badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 17px;
+      height: 17px;
+      padding: 0 4px;
+      border: 2px solid var(--lead-pwa-bg);
+      border-radius: 999px;
+      background: var(--lead-pwa-primary);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .lead-pwa-tabs {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(64px, 1fr);
+      gap: 0;
+      overflow-x: auto;
+      margin: 0 -8px;
+      padding: 0;
+      border-bottom: 0;
+      scrollbar-width: none;
+    }
+
+    .lead-pwa-tabs::-webkit-scrollbar { display: none; }
+
+    .lead-pwa-tab {
+      position: relative;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 1px;
+      min-height: 44px;
+      padding: 2px 3px 5px;
+      color: var(--lead-pwa-muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-tab i {
+      color: var(--lead-pwa-muted);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .lead-pwa-tab__label,
+    .lead-pwa-tab__count {
+      display: block;
+      color: inherit;
+      line-height: 1.05;
+    }
+
+    .lead-pwa-tab__label {
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    .lead-pwa-tab__count {
+      color: color-mix(in srgb, currentColor 74%, var(--lead-pwa-muted));
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    .lead-pwa-tab.is-active {
+      color: var(--lead-pwa-primary);
+    }
+
+    .lead-pwa-tab.is-active i {
+      color: var(--lead-pwa-primary);
+    }
+
+    .lead-pwa-tab.is-active::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+      background: var(--lead-pwa-primary);
+    }
+
+    .lead-pwa-list {
+      display: grid;
+      gap: 8px;
+      padding-top: 10px;
+    }
+
+    .lead-pwa-list__loader {
+      display: flex;
+      justify-content: center;
+      padding: 6px 0 2px;
+    }
+
+    .lead-pwa-list__loader[hidden] {
+      display: none;
+    }
+
+    .lead-pwa-list__loader-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 6px 12px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 999px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .lead-pwa-card {
+      position: relative;
+      display: grid;
+      overflow: hidden;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 9px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-ink);
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, .055);
+    }
+
+    .lead-pwa-card--attention::before {
+      content: none;
+    }
+
+    .lead-pwa-card--attention {
+      border-color: color-mix(in srgb, #ff8500 38%, var(--lead-pwa-line));
+    }
+
+    .lead-pwa-card__head,
+    .lead-pwa-card__body,
+    .lead-pwa-card__foot {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      padding: 9px 11px;
+    }
+
+    .lead-pwa-card__head {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 6px;
+      padding-bottom: 2px;
+    }
+
+    .lead-pwa-card__body {
+      padding-top: 3px;
+      padding-bottom: 7px;
+    }
+
+    .lead-pwa-card__name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 15px;
+      font-weight: 950;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 23px;
+      padding: 0 8px;
+      border: 1px solid #ef4444;
+      border-radius: 999px;
+      color: #ef4444;
+      font-size: 11px;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__badge--blue {
+      border-color: var(--lead-pwa-primary);
+      color: var(--lead-pwa-primary);
+    }
+
+    .lead-pwa-card__deal {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 7px;
+      border: 1px solid color-mix(in srgb, var(--lead-pwa-primary) 38%, var(--lead-pwa-line));
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--lead-pwa-primary) 12%, var(--lead-pwa-surface));
+      color: var(--lead-pwa-primary);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__line {
+      display: grid;
+      grid-template-columns: 17px minmax(0, 1fr) auto;
+      gap: 4px;
+      align-items: start;
+      min-width: 0;
+      color: var(--lead-pwa-muted);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.25;
+    }
+
+    .lead-pwa-card__line i {
+      color: var(--lead-pwa-muted);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .lead-pwa-card__line span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__body .lead-pwa-card__line:first-child {
+      align-items: center;
+      margin-bottom: 1px;
+    }
+
+    .lead-pwa-card__body .lead-pwa-card__line:first-child span,
+    .lead-pwa-card__body .lead-pwa-card__line:first-child .lead-pwa-card__channel {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 7px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 999px;
+      background: var(--lead-pwa-surface-soft);
+      color: var(--lead-pwa-ink);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .lead-pwa-card__channel {
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__body .lead-pwa-card__line:first-child .lead-pwa-card__channel {
+      color: var(--lead-pwa-ink);
+      font-size: 11px;
+    }
+
+    .lead-pwa-card__note {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__foot {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      margin: 0 11px 9px;
+      padding: 6px 0 0;
+      border-top: 1px solid var(--lead-pwa-line-soft);
+      color: var(--lead-pwa-muted);
+      font-size: 10px;
+      font-weight: 750;
+    }
+
+    .lead-pwa-card__foot span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-card__foot strong {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--lead-pwa-muted);
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-empty {
+      display: grid;
+      gap: 8px;
+      padding: 24px 18px;
+      border: 1px dashed var(--lead-pwa-line);
+      border-radius: 12px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-muted);
+      text-align: center;
+    }
+
+    .lead-pwa-empty strong {
+      color: var(--lead-pwa-ink);
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .lead-pwa-fab {
+      position: fixed;
+      right: 14px;
+      bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+      z-index: 1060;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 12px 0 8px;
+      border: 1px solid color-mix(in srgb, #fff 36%, var(--lead-pwa-primary));
+      border-radius: 999px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--lead-pwa-primary) 92%, #0f172a), color-mix(in srgb, var(--lead-pwa-primary) 72%, #0f172a));
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-decoration: none;
+      box-shadow: 0 8px 22px color-mix(in srgb, var(--lead-pwa-primary) 28%, transparent), 0 2px 0 rgba(255, 255, 255, .14) inset;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .lead-pwa-fab i {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .16);
+      color: #fff;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .lead-pwa-fab span {
+      transform: translateY(-.5px);
+      white-space: nowrap;
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-fab {
+      border-color: #61c461);
+      background: color-mix(in srgb, green 72%, green);
+      color: var(--lead-pwa-ink);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, .28), 0 0 0 1px rgba(255, 255, 255, .03) inset;
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-fab i {
+      background: color-mix(in srgb, var(--lead-pwa-primary) 20%, transparent);
+      color: var(--lead-pwa-primary);
+    }
+
+    .lead-pwa-bottom-nav {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1050;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      min-height: calc(62px + env(safe-area-inset-bottom, 0px));
+      padding: 6px 4px env(safe-area-inset-bottom, 0px);
+      border-top: 1px solid var(--lead-pwa-line);
+      background: color-mix(in srgb, var(--lead-pwa-surface) 96%, transparent);
+      box-shadow: 0 -6px 18px rgba(15, 23, 42, .08);
+    }
+
+    .lead-pwa-bottom-nav a {
+      display: grid;
+      place-items: center;
+      gap: 0;
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .lead-pwa-bottom-nav a i {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .lead-pwa-bottom-nav a.is-active {
+      color: var(--lead-pwa-primary);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-bottom-nav {
+      background: color-mix(in srgb, var(--lead-pwa-surface) 94%, transparent);
+    }
+
+    html.lead-pwa-filter-lock,
+    html.lead-pwa-filter-lock body {
+      overflow: hidden;
+    }
+
     .lead-filter-collapse {
       display: contents;
       overflow: visible;
@@ -440,63 +1048,408 @@
       display: none;
     }
 
-    .lead-filter-collapse:not([open]) + .ax-leads-filter-overlay {
-      display: none;
+    .lead-pwa-filter-overlay {
+      display: block !important;
+      position: fixed;
+      inset: 0;
+      z-index: 1090;
+      overflow-y: auto;
+      padding: max(12px, env(safe-area-inset-top, 0px)) 10px calc(88px + env(safe-area-inset-bottom, 0px));
+      background: var(--ab-control-bg);
+      color: var(--lead-pwa-ink);
     }
 
-    .ax-leads-mobile-shell[data-ax-aside-ready="true"]:not(.is-inspector-collapsed) .lead-filter-collapse + .ax-leads-filter-overlay {
-      display: flex;
+    .lead-pwa-filter-overlay[hidden] {
+      display: none !important;
     }
 
-    .ax-leads-filter-overlay .ax-filter-form {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 0;
-      padding: 10px;
-    }
-
-    .ax-leads-filter-overlay .ax-filter-form__fields {
+    .lead-pwa-filter-panel {
       display: grid;
-      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .lead-pwa-filter-panel__head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 38px;
+      align-items: center;
+      min-height: 46px;
+      margin: -12px -10px 0;
+      padding: max(8px, env(safe-area-inset-top, 0px)) 10px 8px;
+      background: color-mix(in srgb, var(--lead-pwa-bg) 96%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .lead-pwa-filter-panel__title {
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-filter-panel__close,
+    .lead-pwa-filter-panel__reset {
+      display: inline-grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 12px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-muted);
+      text-decoration: none;
+    }
+
+    .lead-pwa-filter-panel__form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .lead-pwa-filter-panel__form .ax-field {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .lead-pwa-filter-box__row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 10px;
+      align-items: center;
     }
 
-    .ax-leads-filter-overlay .ax-field-grid {
-      grid-template-columns: 1fr !important;
-      gap: 9px;
+    .lead-pwa-filter-box__row strong,
+    .lead-pwa-filter-box__label {
+      color: var(--lead-pwa-ink);
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.15;
     }
 
-    .ax-leads-filter-overlay .ax-field-grid > [class*="ax-span-"] {
-      grid-column: 1 / -1 !important;
+    .lead-pwa-filter-box__row span {
+      display: block;
+      margin-top: 3px;
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 550;
+      line-height: 1.25;
     }
 
-    .ax-leads-filter-overlay .lead-filter-quick {
+    .ax-filter-checks {
+      margin-top: 2px;
+    }
+
+    .lead-pwa-filter-grid {
+      display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 7px;
+      gap: 8px;
     }
 
-    .ax-leads-filter-overlay .lead-filter-quick__chip {
-      min-height: 36px;
-      padding: 0 8px;
+    .lead-pwa-filter-divider {
+      height: 1px;
+      margin: 2px 0;
+      background: var(--lead-pwa-line-soft);
+    }
+
+    .lead-pwa-filter-actions {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 3;
+      display: grid;
+      padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid var(--lead-pwa-line-soft);
+      background: color-mix(in srgb, var(--lead-pwa-bg) 94%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .lead-pwa-filter-overlay .lead-pwa-filter-actions button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid color-mix(in srgb, var(--lead-pwa-primary, #2478e8) 60%, transparent);
+      border-radius: 11px;
+      background: var(--lead-pwa-primary, #2478e8);
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--lead-pwa-primary, #2478e8) 35%, transparent);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 991.98px) {
+    .lead-pwa-filter-overlay {
+      --lead-pwa-bg: var(--admin-workspace-bg, #f6f8fb);
+      --lead-pwa-surface: var(--admin-surface, #fff);
+      --lead-pwa-surface-soft: var(--admin-surface-header, #eef2f7);
+      --lead-pwa-ink: var(--admin-ink, #0f172a);
+      --lead-pwa-muted: var(--ab-muted, #64748b);
+      --lead-pwa-line: var(--ab-line, #dfe5ed);
+      --lead-pwa-line-soft: var(--ab-line-soft, #e5eaf1);
+      --lead-pwa-primary: var(--admin-primary, #2478e8);
+      --lead-pwa-primary-soft: color-mix(in srgb, var(--admin-primary, #2478e8) 14%, var(--admin-surface, #fff));
+      display: block !important;
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 1090;
+      overflow-y: auto;
+      max-width: none;
+      width: 100%;
+      padding: max(12px, env(safe-area-inset-top, 0px)) 10px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: var(--lead-pwa-bg) !important;
+      color: var(--lead-pwa-ink);
+      box-shadow: none !important;
+    }
+
+    .lead-pwa-filter-overlay[hidden] {
+      display: none !important;
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-filter-overlay {
+      --lead-pwa-bg: var(--ax-dark-workspace, #0f1726);
+      --lead-pwa-surface: var(--ax-dark-surface, #172238);
+      --lead-pwa-surface-soft: var(--ax-dark-surface-raised, #202d43);
+      --lead-pwa-ink: var(--ax-dark-text, #e8eef7);
+      --lead-pwa-muted: var(--ax-dark-text-muted, #9eabc0);
+      --lead-pwa-line: var(--ax-dark-border, #3b4d68);
+      --lead-pwa-line-soft: var(--ax-dark-border-soft, #33445d);
+      --lead-pwa-primary: var(--ax-dark-link, #9bc5ef);
+      --lead-pwa-primary-soft: color-mix(in srgb, var(--ax-dark-link, #9bc5ef) 16%, var(--ax-dark-surface, #172238));
+    }
+
+    .lead-pwa-filter-overlay > .lead-desktop-filter-panel,
+    .lead-pwa-filter-overlay > .ax-filter-form,
+    .lead-pwa-filter-overlay > .ax-leads-filters {
+      display: none !important;
+    }
+
+    .lead-pwa-filter-overlay > .lead-pwa-filter-panel {
+      display: grid !important;
+      gap: 16px;
+    }
+
+    .lead-pwa-filter-panel__head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 38px;
+      align-items: center;
+      min-height: 46px;
+      margin: -12px -10px 0;
+      padding: max(8px, env(safe-area-inset-top, 0px)) 10px 8px;
+      background: color-mix(in srgb, var(--lead-pwa-bg) 96%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .lead-pwa-filter-panel__title {
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-filter-panel__close,
+    .lead-pwa-filter-panel__reset {
+      display: inline-grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 12px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-muted);
+      text-decoration: none;
+    }
+
+    .lead-pwa-filter-panel__form {
+      display: grid;
+      gap: 15px;
+    }
+
+    .lead-pwa-filter-panel__form .ax-field {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .lead-pwa-filter-box__row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .lead-pwa-filter-box__row strong,
+    .lead-pwa-filter-box__label {
+      color: var(--lead-pwa-ink);
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.15;
+    }
+
+    .lead-pwa-filter-box__row span {
+      display: block;
+      margin-top: 3px;
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 550;
+      line-height: 1.25;
+    }
+
+    .ax-filter-checks {
+      margin-top: 2px;
+    }
+
+    .lead-pwa-filter-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .lead-pwa-filter-divider {
+      height: 1px;
+      margin: 2px 0;
+      background: var(--lead-pwa-line-soft);
+    }
+
+    .lead-pwa-filter-actions {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 3;
+      display: grid;
+      padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid var(--lead-pwa-line-soft);
+      background: color-mix(in srgb, var(--lead-pwa-bg) 94%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .lead-pwa-filter-overlay .lead-pwa-filter-actions button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid color-mix(in srgb, var(--lead-pwa-primary, #2478e8) 60%, transparent);
+      border-radius: 11px;
+      background: var(--lead-pwa-primary, #2478e8);
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--lead-pwa-primary, #2478e8) 35%, transparent);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+    }
+  }
+
+  @media (max-width: 991.98px) {
+    .lead-pwa-filter-overlay .ax-filter-section + .ax-filter-section {
+      margin-top: 8px;
+    }
+
+    .lead-pwa-filter-overlay .lead-pwa-filter-panel__heading {
+      display: grid;
+      gap: 2px;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .lead-pwa-filter-overlay .lead-pwa-filter-panel__subtitle {
+      overflow: hidden;
+      color: var(--lead-pwa-primary);
+      font-size: 11px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-filter-overlay .lead-pwa-filter-actions__count {
+      opacity: .88;
+      font-weight: 800;
+    }
+
+    .lead-pwa-filter-overlay .lead-pwa-filter-empty-option {
+      border: 1.5px dashed color-mix(in srgb, var(--lead-pwa-line) 56%, var(--lead-pwa-ink));
+      background: color-mix(in srgb, var(--lead-pwa-surface-soft) 80%, var(--lead-pwa-surface));
+      color: var(--lead-pwa-muted);
+    }
+  }
+
+  /*
+   * `.ax-field select`/`.ax-field input` beats the shared `.ax-control` dark
+   * rule on specificity (the dark rule wraps its selector list in :where()),
+   * so native controls stay light-themed here unless we win that tie locally.
+   */
+  html[data-admin-theme="dark"] .lead-pwa-filter-overlay .ax-field select,
+  html[data-admin-theme="dark"] .lead-pwa-filter-overlay .ax-field input:not([type="checkbox"]) {
+    background-color: var(--ax-dark-surface);
+    border-color: var(--ax-dark-border);
+    color: var(--ax-dark-text);
+    color-scheme: dark;
+  }
+
+  html[data-admin-theme="dark"] .lead-pwa-filter-overlay .ax-field input::placeholder {
+    color: var(--ax-dark-placeholder);
+    opacity: 1;
+  }
+
+  html[data-admin-theme="dark"] .lead-pwa-filter-overlay .ax-field select option {
+    background: var(--ax-dark-surface);
+    color: var(--ax-dark-text);
+  }
+
+  @media (min-width: 768px) {
+    .lead-pwa-screen {
+      display: none !important;
+    }
+  }
+
+  @media (min-width: 992px) {
+    .lead-desktop-filter-panel {
+      display: contents;
     }
   }
 </style>
 
 <%
-  leads_heading_pills = [@selected_pipeline&.name || "Todos os leads", params[:status].presence || "Todos"]
+  status_heading = @status_filters.present? ? @status_filters.join(", ") : "Todos"
+  leads_heading_pills = [@selected_pipeline&.name || "Todos os leads", status_heading]
   lead_filter_labels = []
   lead_filter_labels << "Funil" if params[:lead_pipeline_id].present?
   lead_filter_labels << "Busca" if @q.present?
-  lead_filter_labels << "Status" if @status.present?
+  lead_filter_labels << "Status" if @status_filters.present?
   lead_filter_labels << "Origem" if @origin.present?
   lead_filter_labels << "Canal" if @attribution_channel.present?
   lead_filter_labels << "Tags" if @tags.present?
-  lead_filter_labels << "Corretor" if @broker_id.present?
+  lead_filter_labels << (@only_mine ? "Meus leads" : "Corretor") if @broker_id.present?
   lead_filter_labels << "Imóvel" if @property_filter.present? || @property_q.present?
   lead_filter_labels << "Contato" if @contact_filter.present?
   lead_filter_labels << "Atenção operacional" if @attention_filter.present?
-  lead_filter_labels << "Período" if @start_date.present? || @end_date.present?
+  lead_filter_labels << "Natureza" if @business_filters.present?
+  lead_filter_labels << "Atividade" if @activity_filters.present?
+  lead_filter_labels << "Canal de origem" if @channel_filters.present?
+  lead_filter_labels << "Bot" if @bot_attended
+  lead_filter_labels << "Preço" if @price_min.present? || @price_max.present?
+  lead_filter_labels << "Período" if @start_date.present? || @end_date.present? || @closed_start_date.present? || @closed_end_date.present?
   lead_active_filter_count = lead_filter_labels.size
   leads_heading_pills << "#{lead_active_filter_count} filtro(s)" if lead_active_filter_count.positive?
 
@@ -571,7 +1524,7 @@
         <div class="ax-span-6">
           <%= ax_select_field(form: f, method: :status, label: "Etapa",
                               choices: @status_options,
-                              select_options: { include_blank: "Todas as etapas", selected: @status }) %>
+                              select_options: { include_blank: "Todas as etapas", selected: @status_filters.first }) %>
         </div>
         <div class="ax-span-12">
           <%= ax_text_field(form: f, method: :q, label: "Buscar",
@@ -639,6 +1592,140 @@
     <% end %>
   <% end %>
 
+  <% pwa_filter_form = capture do %>
+    <% business_filter_options = [["Compra", "sale"], ["Aluguel", "rental"], ["Indefinido", "undefined"], ["Lançamento", "launch"], ["Captação", "capture"]] %>
+    <% status_filter_options = [["Novo", "Novo"], ["Em negociação", "Em Atendimento"], ["Negócio fechado", "Concluido"], ["Arquivado", "Descartado"], ["Pendente", "Aguardando Aceite"]] %>
+    <% activity_filter_options = [["Primeiro contato", "first_contact"], ["Agendar atividade", "schedule_activity"], ["Retornar para o cliente", "return_customer"], ["Visita agendada", "scheduled_visit"]] %>
+    <% channel_filter_options = [["Showroom", "showroom"], ["Telefone", "phone"], ["Rede Social", "social"], ["WhatsApp", "whatsapp"], ["Internet", "internet"]] %>
+    <% pwa_price_filter_count = [@price_min, @price_max].count(&:present?) %>
+    <% pwa_date_filter_count = [@start_date, @end_date, @closed_start_date, @closed_end_date].count(&:present?) %>
+    <% pwa_origin_filter_count = @channel_filters.size + (@origin.present? ? 1 : 0) %>
+    <section class="lead-pwa-filter-panel" aria-label="Minha visualização dos leads">
+      <div class="lead-pwa-filter-panel__head">
+        <button type="button"
+                class="lead-pwa-filter-panel__close"
+                data-action="lead-pwa-filter#close"
+                aria-expanded="false"
+                aria-label="Voltar">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <div class="lead-pwa-filter-panel__heading">
+          <strong class="lead-pwa-filter-panel__title">Minha visualização dos leads</strong>
+          <% if lead_active_filter_count.positive? %>
+            <span class="lead-pwa-filter-panel__subtitle"><%= lead_active_filter_count %> filtro<%= lead_active_filter_count > 1 ? "s" : "" %> aplicado<%= lead_active_filter_count > 1 ? "s" : "" %></span>
+          <% end %>
+        </div>
+        <%= link_to admin_leads_path(view: "list", mobile_tab: @pwa_lead_tab), class: "lead-pwa-filter-panel__reset", aria: { label: "Limpar filtros" } do %>
+          <i class="bi bi-arrow-counterclockwise"></i>
+        <% end %>
+      </div>
+
+      <%= form_with url: admin_leads_path, method: :get, local: true, class: "lead-pwa-filter-panel__form" do |f| %>
+        <%= f.hidden_field :view, value: "list" %>
+        <%= f.hidden_field :mobile_tab, value: @pwa_lead_tab %>
+        <%= f.hidden_field :q, value: @q if @q.present? %>
+        <%= f.hidden_field :lead_pipeline_id, value: @selected_pipeline&.id if @selected_pipeline.present? %>
+
+        <% if @broker_options.size > 1 || @broker_id.present? %>
+          <%= ax_filter_section(title: "Meus leads", open: @only_mine) do %>
+            <div class="lead-pwa-filter-box__row">
+              <span>
+                <strong>Ver apenas meus leads</strong>
+                <span>Quando desligado, mantém a abrangência permitida pelo seu perfil.</span>
+              </span>
+              <%= ax_switch_field(name: "only_mine", value: "1", checked: @only_mine, input_html: { "aria-label": "Ver apenas meus leads" }) %>
+            </div>
+          <% end %>
+        <% end %>
+
+        <%= ax_filter_section(title: "Etiquetas", count: @tags.size, open: @tags.any?) do %>
+          <% if @tag_options.any? %>
+            <select class="ax-control" name="tags[]" multiple size="<%= [@tag_options.size, 4].min %>" aria-label="Selecionar etiquetas">
+              <% @tag_options.each do |tag| %>
+                <option value="<%= tag %>" <%= "selected" if @tags.include?(tag.to_s) %>><%= tag %></option>
+              <% end %>
+            </select>
+          <% else %>
+            <div class="lead-pwa-filter-empty-option">Nenhuma etiqueta criada</div>
+          <% end %>
+        <% end %>
+
+        <%= ax_filter_section(title: "Natureza de negociação", count: @business_filters.size, open: @business_filters.any?) do %>
+          <div class="ax-filter-checks">
+            <% business_filter_options.each do |label, value| %>
+              <%= ax_filter_check(name: "business_filter[]", value: value, checked: @business_filters.include?(value), label: label, id: "pwa_business_#{value}") %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= ax_filter_section(title: "Status do lead", count: @status_filters.size, open: @status_filters.any?) do %>
+          <div class="ax-filter-checks">
+            <% status_filter_options.each do |label, value| %>
+              <%= ax_filter_check(name: "status[]", value: value, checked: @status_filters.include?(value), label: label, id: "pwa_status_#{value.parameterize}") %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= ax_filter_section(title: "Atividade atual do lead", count: @activity_filters.size, open: @activity_filters.any?) do %>
+          <div class="ax-filter-checks">
+            <% activity_filter_options.each do |label, value| %>
+              <%= ax_filter_check(name: "activity_filter[]", value: value, checked: @activity_filters.include?(value), label: label, id: "pwa_activity_#{value}") %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= ax_filter_section(title: "Origem", count: pwa_origin_filter_count, open: pwa_origin_filter_count.positive?) do %>
+          <div class="lead-pwa-filter-box__label">Canal</div>
+          <div class="ax-filter-checks">
+            <% channel_filter_options.each do |label, value| %>
+              <%= ax_filter_check(name: "channel_filter[]", value: value, checked: @channel_filters.include?(value), label: label, id: "pwa_channel_#{value}") %>
+            <% end %>
+          </div>
+          <div class="lead-pwa-filter-divider"></div>
+          <%= ax_select_field(form: f, method: :origin, label: "Fonte principal",
+                              choices: @origin_options,
+                              select_options: { include_blank: "Todas as fontes", selected: @origin }) %>
+        <% end %>
+
+        <%= ax_filter_section(title: "Equipes", count: (@broker_id.present? ? 1 : 0), open: @broker_id.present?) do %>
+          <%= ax_select_field(form: f, method: :broker_id, label: "Corretor ou responsável",
+                              choices: [["Sem corretor", "unassigned"]] + @broker_options,
+                              select_options: { include_blank: "Todos permitidos", selected: @broker_id }) %>
+        <% end %>
+
+        <%= ax_filter_section(title: "Faixa de preço", count: pwa_price_filter_count, open: pwa_price_filter_count.positive?) do %>
+          <div class="lead-pwa-filter-grid">
+            <%= ax_text_field(form: f, method: :price_min, label: "Preço mínimo", value: @price_min, inputmode: "decimal", placeholder: "R$ Mínimo") %>
+            <%= ax_text_field(form: f, method: :price_max, label: "Preço máximo", value: @price_max, inputmode: "decimal", placeholder: "R$ Máximo") %>
+          </div>
+        <% end %>
+
+        <%= ax_filter_section(title: "Datas", count: pwa_date_filter_count, open: pwa_date_filter_count.positive?) do %>
+          <div class="lead-pwa-filter-box__label">Data de recebimento do lead</div>
+          <div class="lead-pwa-filter-grid">
+            <%= ax_date_field(form: f, method: :start_date, label: "Recebido de", value: @start_date) %>
+            <%= ax_date_field(form: f, method: :end_date, label: "Recebido até", value: @end_date) %>
+          </div>
+          <div class="lead-pwa-filter-divider"></div>
+          <div class="lead-pwa-filter-box__label">Data do negócio fechado</div>
+          <div class="lead-pwa-filter-grid">
+            <%= ax_date_field(form: f, method: :closed_start_date, label: "Fechado de", value: @closed_start_date) %>
+            <%= ax_date_field(form: f, method: :closed_end_date, label: "Fechado até", value: @closed_end_date) %>
+          </div>
+        <% end %>
+
+        <div class="lead-pwa-filter-actions">
+          <button type="submit">
+            Aplicar
+            <% if lead_active_filter_count.positive? %>
+              <span class="lead-pwa-filter-actions__count">(<%= lead_active_filter_count %>)</span>
+            <% end %>
+          </button>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+
   <% lead_list_summary = capture do %>
     <div class="ax-metric-grid lead-list-summary" aria-label="Resumo dos leads filtrados">
       <%= ax_metric_card(label: "Total filtrado", value: number_with_delimiter(@total_leads.to_i)) %>
@@ -649,8 +1736,121 @@
   <% end %>
 
 <div class="ax-leads-mobile-shell tw-flex tw-flex-col tw-gap-3"
-     data-controller="ax-aside"
-     data-ax-aside-storage-key-value="admin-leads-filters-collapsed">
+     data-controller="lead-pwa-filter">
+  <section class="lead-pwa-screen" aria-label="Leads no PWA">
+    <div class="lead-pwa-sticky-head">
+      <div class="lead-pwa-topbar">
+        <%= link_to admin_distribution_rules_path, class: "lead-pwa-queue", title: "Ver fila de distribuição" do %>
+          <strong><%= @pwa_queue_position.present? ? "#{@pwa_queue_position}º" : "-" %></strong>
+          <span>na fila</span>
+        <% end %>
+
+        <%= form_with url: admin_leads_path, method: :get, class: "lead-pwa-search", local: true do |f| %>
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <%= f.hidden_field :view, value: "list" %>
+          <%= f.hidden_field :mobile_tab, value: @pwa_lead_tab %>
+          <%= f.search_field :q, value: @q, placeholder: "Busque por nome, telefone...", autocomplete: "off", aria: { label: "Buscar leads" } %>
+        <% end %>
+
+        <button type="button"
+                class="lead-pwa-filter"
+                data-lead-pwa-filter-target="trigger"
+                data-action="lead-pwa-filter#open"
+                aria-expanded="false"
+                aria-label="Abrir filtros detalhados"
+                title="Filtros detalhados">
+          <i class="bi bi-funnel"></i>
+          <% if lead_active_filter_count.positive? %>
+            <span class="lead-pwa-filter__badge"><%= lead_active_filter_count %></span>
+          <% end %>
+        </button>
+      </div>
+
+      <nav class="lead-pwa-tabs" aria-label="Abas de leads">
+        <%
+          pwa_tab_items = [
+            ["todo", "A fazer", "house-door"],
+            ["visits", "Visitas", "bullseye"],
+            ["future", "Futuras", "clock"],
+            ["favorites", "Favoritos", "star"],
+            ["all", "Todos", "archive"]
+          ]
+        %>
+        <% pwa_tab_items.each do |key, label, icon| %>
+          <% tab_path = admin_leads_path(lead_query_params.merge(view: "list", mobile_tab: key, page: nil).compact) %>
+          <%= link_to tab_path, class: "lead-pwa-tab #{'is-active' if @pwa_lead_tab == key}" do %>
+            <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+            <small>
+              <span class="lead-pwa-tab__label"><%= label %></span>
+              <span class="lead-pwa-tab__count"><%= number_with_delimiter(@pwa_tab_counts.fetch(key, 0)) %></span>
+            </small>
+          <% end %>
+        <% end %>
+      </nav>
+    </div>
+
+    <div class="lead-pwa-list"
+         role="list"
+         data-controller="lead-pwa-infinite-scroll"
+         data-lead-pwa-infinite-scroll-url-value="<%= pwa_leads_page_admin_leads_path(lead_query_params.merge(mobile_tab: @pwa_lead_tab, page: nil).compact) %>">
+      <% if @pwa_leads.any? %>
+        <%= render partial: "admin/leads/pwa_lead_card", collection: @pwa_leads, as: :lead %>
+        <%
+          pwa_loaded_count = @pwa_leads.size
+          pwa_total_count = @pwa_tab_counts.fetch(@pwa_lead_tab, pwa_loaded_count)
+          pwa_has_more = pwa_loaded_count < pwa_total_count
+        %>
+        <%= tag.div(
+              class: "lead-pwa-list__loader",
+              hidden: !pwa_has_more,
+              data: {
+                lead_pwa_infinite_scroll_target: "loader",
+                offset: pwa_loaded_count,
+                has_more: pwa_has_more
+              }
+            ) do %>
+          <span class="lead-pwa-list__loader-pill">
+            <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+            Carregando mais leads
+          </span>
+        <% end %>
+      <% else %>
+        <div class="lead-pwa-empty">
+          <% if @pwa_lead_tab == "favorites" %>
+            <strong>Nenhum favorito ainda</strong>
+            <span>Abra um lead e toque na estrela para manter ele nesta aba.</span>
+          <% else %>
+            <strong>Nenhum lead nesta aba</strong>
+            <span>Ajuste os filtros ou volte em Todos para ver sua carteira completa.</span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <%= link_to new_admin_lead_path, class: "lead-pwa-fab" do %>
+      <i class="bi bi-plus" aria-hidden="true"></i>
+      <span>Novo lead</span>
+    <% end %>
+
+    <nav class="lead-pwa-bottom-nav" aria-label="Navegação principal do PWA">
+      <%= link_to field_root_path do %>
+        <i class="bi bi-grid-1x2" aria-hidden="true"></i><span>Home</span>
+      <% end %>
+      <%= link_to admin_leads_path(view: "list", mobile_tab: "todo"), class: "is-active" do %>
+        <i class="bi bi-house-door" aria-hidden="true"></i><span>Leads</span>
+      <% end %>
+      <%= link_to admin_habitations_path do %>
+        <i class="bi bi-building" aria-hidden="true"></i><span>Imóveis</span>
+      <% end %>
+      <%= link_to admin_captacoes_path do %>
+        <i class="bi bi-inboxes" aria-hidden="true"></i><span>Captações</span>
+      <% end %>
+      <%= link_to admin_distribution_rules_path do %>
+        <i class="bi bi-list-ol" aria-hidden="true"></i><span>Fila</span>
+      <% end %>
+    </nav>
+  </section>
+
   <% if @view_mode == "kanban" %>
     <%= ax_workspace_heading(
           eyebrow: "Funil de leads",
@@ -687,26 +1887,22 @@
     </summary>
   </details>
 
-  <div class="ax-leads-filter-overlay" aria-label="Filtros do funil" data-ax-aside-target="panel">
-    <div class="ax-leads-filter-overlay__header">
-      <span><i class="bi bi-funnel"></i> Filtros do funil</span>
-      <button type="button"
-              class="ax-leads-filter-overlay__close"
-              data-action="ax-aside#collapse"
-              data-ax-aside-target="toggle"
-              aria-expanded="false"
-              aria-label="Fechar filtros"
-              title="Fechar filtros">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>
+  <div class="lead-desktop-filter-panel">
     <%= leads_filter_form %>
+  </div>
+
+  <div class="ax-leads-filter-overlay lead-pwa-filter-overlay"
+       aria-label="Minha visualização dos leads"
+       data-lead-pwa-filter-target="panel"
+       data-action="keydown@window->lead-pwa-filter#closeOnEscape"
+       hidden>
+    <%= pwa_filter_form %>
   </div>
 
   <button type="button"
           class="ax-leads-mobile-filter-button"
-          data-ax-aside-target="rail toggle"
-          data-action="ax-aside#toggle"
+          data-lead-pwa-filter-target="trigger"
+          data-action="lead-pwa-filter#open"
           aria-expanded="false"
           aria-label="Abrir filtros do funil">
     <i class="bi bi-funnel"></i>

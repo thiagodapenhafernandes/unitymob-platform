@@ -237,12 +237,17 @@ Rails.application.routes.draw do
     end
     resources :leads, only: [:index, :new, :create, :show, :update, :destroy] do
       get :kanban_column, on: :collection
+      get :pwa_leads_page, on: :collection
       get :attend, on: :member
+      patch :toggle_favorite, on: :member
       post :log_contact, on: :member
       post :reprocess_interest, on: :member
       post :simulate_interest, on: :member
       post :open_whatsapp_conversation, on: :member
       post :activate_whatsapp_template, on: :member
+      post :archive, on: :member
+      post :close_deal, on: :member
+      post :schedule_activity, on: :member
       resources :proposals, only: [:new, :create]
       resources :lead_labels, only: [:index, :create, :update, :destroy] do
         post :toggle, on: :member

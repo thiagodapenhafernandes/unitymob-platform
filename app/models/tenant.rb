@@ -73,6 +73,7 @@ class Tenant < ApplicationRecord
   has_many :habitation_audit_logs, dependent: :restrict_with_error
   has_many :lead_audit_logs, dependent: :restrict_with_error
   has_many :lead_activities, dependent: :restrict_with_error
+  has_many :lead_favorites, dependent: :restrict_with_error
   has_many :habitation_exports, dependent: :restrict_with_error
   has_many :captacao_goals, dependent: :restrict_with_error
   has_many :landing_pages, dependent: :restrict_with_error

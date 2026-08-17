@@ -2,7 +2,11 @@ class AttributeOption < ApplicationRecord
   include TenantScoped
 
   CONTEXTS = %w[habitation lead].freeze
-  CATEGORIES = %w[feature infrastructure unique_feature source status imediacoes sale_reason].freeze
+  CATEGORIES = %w[
+    feature infrastructure unique_feature source status
+    street_type city neighborhood commercial_neighborhood imediacoes
+    sale_reason archive_reason
+  ].freeze
 
   before_validation :normalize_fields
   after_commit :clear_habitation_catalog_caches, on: [:create, :update, :destroy]

@@ -1,19 +1,53 @@
 <%= ax_form_section(title: "Endereço e localização", eyebrow: "Localização", icon: "geo-alt") do %>
+  <%
+    can_manage_address_catalog_action = lambda do |action_key|
+      current_admin_user&.tenant_owner? ||
+        (can?(:manage, :catalogos) && !Habitations::FieldLockPolicy.for(current_admin_user).action_locked?(action_key))
+    end
+
+    address_catalog_action = lambda do |category:, field_name:, select_id:, title:, field_lock_action:|
+      next unless can_manage_address_catalog_action.call(field_lock_action)
+
+      tag.button(
+        tag.i("", class: "bi bi-gear", aria: { hidden: true }),
+        type: "button",
+        class: "ax-btn ax-btn--ghost",
+        title: title,
+        aria: { label: title },
+        data: {
+          attribute_manager_context_value: "habitation",
+          attribute_manager_category_value: category,
+          attribute_manager_field_name_value: field_name,
+          attribute_manager_modal_id_value: "attributeManagerModal",
+          action: "click->attribute-manager#open",
+          field_lock_action: field_lock_action,
+          title: title,
+          select_id: select_id
+        }
+      )
+    end
+  %>
+
   <%= f.fields_for :address do |address_form| %>
     <div data-controller="cep-search">
       <%= ax_field_grid(columns: 12, gap: :compact) do %>
         <div class="ax-span-2">
-          <%= ax_select_field(
-                form: address_form,
-                method: :tipo_endereco,
-                label: "Endereço",
-                choices: Habitation::STREET_TYPES,
-                select_options: { include_blank: true },
-                html_options: {
-                  disabled: !habitation_field_editable?("tipo_endereco"),
-                  data: { controller: "tom-select", placeholder: "Selecione...", cep_search_target: "tipo", habitation_form_target: "streetTypeSelect" }
-                }
-              ) %>
+          <% street_type_select_id = "habitation_address_attributes_tipo_endereco" %>
+          <div class="ax-field">
+            <%= ax_field_label(address_form, :tipo_endereco, text: "Endereço") %>
+            <%= ax_input_group(action: address_catalog_action.call(category: "street_type", field_name: "habitation[address_attributes][tipo_endereco]", select_id: street_type_select_id, title: "Gerenciar tipos de endereço", field_lock_action: "acao:gerenciar_tipos_endereco")) do %>
+              <%= address_form.select :tipo_endereco,
+                  options_for_select(@street_types.presence || Habitation::STREET_TYPES, address_form.object.tipo_endereco),
+                  { include_blank: true },
+                  {
+                    id: street_type_select_id,
+                    class: "ax-control",
+                    disabled: !habitation_field_editable?("tipo_endereco"),
+                    data: { controller: "tom-select", placeholder: "Selecione...", cep_search_target: "tipo", habitation_form_target: "streetTypeSelect" }
+                  } %>
+            <% end %>
+            <%= render "admin/shared/ui/field_error", form: address_form, method: :tipo_endereco %>
+          </div>
         </div>
 
         <div class="ax-span-4">
@@ -101,45 +135,60 @@
         </div>
 
         <div class="ax-span-3">
-          <%= ax_select_field(
-                form: address_form,
-                method: :bairro,
-                label: "Bairro",
-                choices: @neighborhoods,
-                select_options: { include_blank: true, selected: address_form.object.bairro },
-                html_options: {
-                  disabled: !habitation_field_editable?("bairro"),
-                  data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "bairro", habitation_form_target: "neighborhoodSelect" }
-                }
-              ) %>
+          <% neighborhood_select_id = "habitation_address_attributes_bairro" %>
+          <div class="ax-field">
+            <%= ax_field_label(address_form, :bairro, text: "Bairro") %>
+            <%= ax_input_group(action: address_catalog_action.call(category: "neighborhood", field_name: "habitation[address_attributes][bairro]", select_id: neighborhood_select_id, title: "Gerenciar bairros", field_lock_action: "acao:gerenciar_bairros")) do %>
+              <%= address_form.select :bairro,
+                  options_for_select(@neighborhoods, address_form.object.bairro),
+                  { include_blank: true },
+                  {
+                    id: neighborhood_select_id,
+                    class: "ax-control",
+                    disabled: !habitation_field_editable?("bairro"),
+                    data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "bairro", habitation_form_target: "neighborhoodSelect" }
+                  } %>
+            <% end %>
+            <%= render "admin/shared/ui/field_error", form: address_form, method: :bairro %>
+          </div>
         </div>
 
         <div class="ax-span-2">
-          <%= ax_select_field(
-                form: address_form,
-                method: :bairro_comercial,
-                label: "Bairro comercial",
-                choices: (@commercial_neighborhoods || []),
-                select_options: { include_blank: true, selected: address_form.object.bairro_comercial },
-                html_options: {
-                  disabled: !habitation_field_editable?("bairro_comercial"),
-                  data: { controller: "tom-select", tom_select_create_value: true, habitation_form_target: "commercialNeighborhoodSelect" }
-                }
-              ) %>
+          <% commercial_neighborhood_select_id = "habitation_address_attributes_bairro_comercial" %>
+          <div class="ax-field">
+            <%= ax_field_label(address_form, :bairro_comercial, text: "Bairro comercial") %>
+            <%= ax_input_group(action: address_catalog_action.call(category: "commercial_neighborhood", field_name: "habitation[address_attributes][bairro_comercial]", select_id: commercial_neighborhood_select_id, title: "Gerenciar bairros comerciais", field_lock_action: "acao:gerenciar_bairros_comerciais")) do %>
+              <%= address_form.select :bairro_comercial,
+                  options_for_select(@commercial_neighborhoods || [], address_form.object.bairro_comercial),
+                  { include_blank: true },
+                  {
+                    id: commercial_neighborhood_select_id,
+                    class: "ax-control",
+                    disabled: !habitation_field_editable?("bairro_comercial"),
+                    data: { controller: "tom-select", tom_select_create_value: true, habitation_form_target: "commercialNeighborhoodSelect" }
+                  } %>
+            <% end %>
+            <%= render "admin/shared/ui/field_error", form: address_form, method: :bairro_comercial %>
+          </div>
         </div>
 
         <div class="ax-span-3">
-          <%= ax_select_field(
-                form: address_form,
-                method: :cidade,
-                label: "Cidade",
-                choices: @cities,
-                select_options: { include_blank: true, selected: address_form.object.cidade },
-                html_options: {
-                  disabled: !habitation_field_editable?("cidade"),
-                  data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "cidade", habitation_form_target: "citySelect" }
-                }
-              ) %>
+          <% city_select_id = "habitation_address_attributes_cidade" %>
+          <div class="ax-field">
+            <%= ax_field_label(address_form, :cidade, text: "Cidade") %>
+            <%= ax_input_group(action: address_catalog_action.call(category: "city", field_name: "habitation[address_attributes][cidade]", select_id: city_select_id, title: "Gerenciar cidades", field_lock_action: "acao:gerenciar_cidades")) do %>
+              <%= address_form.select :cidade,
+                  options_for_select(@cities, address_form.object.cidade),
+                  { include_blank: true },
+                  {
+                    id: city_select_id,
+                    class: "ax-control",
+                    disabled: !habitation_field_editable?("cidade"),
+                    data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "cidade", habitation_form_target: "citySelect" }
+                  } %>
+            <% end %>
+            <%= render "admin/shared/ui/field_error", form: address_form, method: :cidade %>
+          </div>
         </div>
 
         <%
@@ -197,6 +246,16 @@
              else Array(address_form.object.imediacoes)
              end.flatten.compact.map(&:to_s).map(&:strip).reject(&:blank?).uniq %>
           <% imediacoes_options = (@imediacoes_options.to_a + selected_imediacoes).uniq %>
+          <% surrounding_manager = can_manage_address_catalog_action.call("acao:gerenciar_imediacoes") ? {
+                  title: "Gerenciar Imediações",
+                  aria_label: "Gerenciar Imediações",
+                  modal_title: "Gerenciar Imediações",
+                  context: "habitation",
+                  category: "imediacoes",
+                  field_lock_action: "acao:gerenciar_imediacoes",
+                  field_name: "habitation[address_attributes][imediacoes][]",
+                  modal_id: "attributeManagerModal"
+                } : nil %>
           <%= ax_multiselect_field(
                 form: address_form,
                 method: :imediacoes,
@@ -208,16 +267,7 @@
                 # pode editar — por isso não segue can_edit_protected aqui.
                 disabled: false,
                 placeholder: "Selecione ou digite...",
-                manager: {
-                  title: "Gerenciar Imediações",
-                  aria_label: "Gerenciar Imediações",
-                  modal_title: "Gerenciar Imediações",
-                  context: "habitation",
-                  category: "imediacoes",
-                  field_lock_action: "acao:gerenciar_imediacoes",
-                  field_name: "habitation[address_attributes][imediacoes][]",
-                  modal_id: "attributeManagerModal"
-                }
+                manager: surrounding_manager
               ) %>
         </div>
 

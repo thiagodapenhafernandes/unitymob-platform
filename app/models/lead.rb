@@ -21,6 +21,8 @@ class Lead < ApplicationRecord
   belongs_to :external_lead_integration, optional: true
   belongs_to :lead_pipeline, optional: true
   belongs_to :lead_pipeline_stage, optional: true
+  belongs_to :archive_reason, class_name: "AttributeOption", optional: true
+  belongs_to :archived_by_admin_user, class_name: "AdminUser", optional: true
   has_many :lead_audit_logs
   has_many :activities, class_name: "LeadActivity", dependent: :destroy
   has_many :secure_links, dependent: :destroy
@@ -43,6 +45,7 @@ class Lead < ApplicationRecord
   has_many :appointments, dependent: :nullify
   has_many :proposals, dependent: :destroy
   has_many :lead_labelings, dependent: :destroy
+  has_many :lead_favorites, dependent: :destroy
   has_many :property_interests, class_name: "LeadPropertyInterest", dependent: :destroy
   has_many :interest_properties, through: :property_interests, source: :habitation
   has_many :lead_labels, through: :lead_labelings
@@ -113,6 +116,18 @@ class Lead < ApplicationRecord
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
   validates :phone, presence: true, unless: -> { business_scoped_user_id.present? }
   validate :associated_records_must_belong_to_tenant
+
+  # Motivo e justificativa só são exigidos no fluxo dedicado de arquivar
+  # (Admin::LeadsController#archive) — o update genérico (funil/kanban) segue
+  # sem essa exigência.
+  attr_writer :archiving
+
+  def archiving?
+    @archiving == true
+  end
+
+  validates :archive_reason_id, presence: { message: "é obrigatório para arquivar o lead" }, if: :archiving?
+  validates :archive_note, presence: { message: "é obrigatória para arquivar o lead" }, if: :archiving?
 
   attr_writer :skip_automatic_routing
 

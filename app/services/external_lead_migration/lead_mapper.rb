@@ -78,6 +78,15 @@ module ExternalLeadMigration
       end
     end
 
+    def label_names
+      Array.wrap(@attributes["tags"])
+        .filter_map { |item| item.is_a?(Hash) ? item["name"].presence || item["tag_name"] : item }
+        .flat_map { |item| item.to_s.split(",") }
+        .map { |item| item.strip.gsub(/\s+/, " ") }
+        .reject(&:blank?)
+        .uniq
+    end
+
     def messages
       Array.wrap(@entry["messages"].presence || @attributes["messages"]).filter_map do |message|
         message.to_h.presence

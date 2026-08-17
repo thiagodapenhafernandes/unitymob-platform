@@ -69,6 +69,10 @@ RSpec.describe Habitations::CadastroFieldRegistry do
     end
     expected_actions = {
       "acao:buscar_cep" => "cep-search#search",
+      "acao:gerenciar_tipos_endereco" => "field_lock_action: \"acao:gerenciar_tipos_endereco\"",
+      "acao:gerenciar_bairros" => "field_lock_action: \"acao:gerenciar_bairros\"",
+      "acao:gerenciar_bairros_comerciais" => "field_lock_action: \"acao:gerenciar_bairros_comerciais\"",
+      "acao:gerenciar_cidades" => "field_lock_action: \"acao:gerenciar_cidades\"",
       "acao:gerenciar_imediacoes" => "field_lock_action: \"acao:gerenciar_imediacoes\"",
       "acao:vincular_empreendimento" => "field_lock_action: \"acao:vincular_empreendimento\"",
       "acao:gerar_ia" => "action_locked?(\"acao:gerar_ia\")",

@@ -465,9 +465,10 @@ export default class extends Controller {
       container.appendChild(label)
       this.sortCheckboxList(container)
     } else {
-      const option = new Option(attr.name, attr.name)
+      const option = new Option(attr.name, attr.name, true, true)
       container.add(option, undefined)
       this.sortSelectOptions(container)
+      container.dispatchEvent(new Event("change", { bubbles: true }))
     }
   }
 
@@ -521,9 +522,12 @@ export default class extends Controller {
 
     const option = Array.from(container.options).find((opt) => opt.value === oldName)
     if (option) {
+      const wasSelected = option.selected
       option.value = newName
       option.text = newName
+      option.selected = wasSelected
       this.sortSelectOptions(container)
+      container.dispatchEvent(new Event("change", { bubbles: true }))
     }
   }
 

@@ -12,7 +12,7 @@ export default class extends Controller {
     this.selectedIds = new Set()
     this.previewCloseHandler = () => document.documentElement.classList.remove("field-preview-open")
     if (this.hasPreviewDialogTarget) this.previewDialogTarget.addEventListener("close", this.previewCloseHandler)
-    if (this.autoStartValue && this.hasMicButtonTarget) window.requestAnimationFrame(() => this.startRecording())
+    if (this.autoStartValue && this.hasMicButtonTarget) this.scheduleAutoStartRecording()
   }
 
   disconnect() {
@@ -30,6 +30,7 @@ export default class extends Controller {
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.rememberMicrophonePermission("granted")
       const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((type) => MediaRecorder.isTypeSupported(type))
       this.recorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined)
       this.chunks = []
@@ -50,8 +51,51 @@ export default class extends Controller {
       this.timerId = window.setInterval(() => this.updateRecordingTimer(), 250)
       this.updateRecordingTimer()
     } catch (_) {
+      this.rememberMicrophonePermission("denied")
       this.showError("Não foi possível acessar o microfone. Verifique a permissão do navegador.")
     }
+  }
+
+  scheduleAutoStartRecording() {
+    window.requestAnimationFrame(async () => {
+      if (await this.canAutoStartRecording()) this.startRecording()
+    })
+  }
+
+  async canAutoStartRecording() {
+    if (this.microphonePermissionState === "granted") return true
+
+    const state = await this.browserMicrophonePermissionState()
+    if (state === "granted") {
+      this.rememberMicrophonePermission("granted")
+      return true
+    }
+    if (state === "denied") this.rememberMicrophonePermission("denied")
+
+    return false
+  }
+
+  async browserMicrophonePermissionState() {
+    if (!navigator.permissions?.query) return null
+
+    try {
+      const permission = await navigator.permissions.query({ name: "microphone" })
+      return permission.state
+    } catch (_) {
+      return null
+    }
+  }
+
+  rememberMicrophonePermission(state) {
+    try { window.localStorage?.setItem(this.microphonePermissionKey, state) } catch (_) {}
+  }
+
+  get microphonePermissionState() {
+    try { return window.localStorage?.getItem(this.microphonePermissionKey) } catch (_) { return null }
+  }
+
+  get microphonePermissionKey() {
+    return "field-property-search:microphone-permission"
   }
 
   sendRecording() {

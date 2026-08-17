@@ -100,6 +100,10 @@ module Admin
         .where(admin_user_id: @admin_users.map(&:id))
         .group(:admin_user_id)
         .count
+      @leads_count_by_admin_user = current_tenant.leads
+        .where(admin_user_id: @admin_users.map(&:id))
+        .group(:admin_user_id)
+        .count
     end
 
     # Árvore de hierarquia (gestor -> subordinados), montada em memória para evitar N+1.

@@ -15,6 +15,7 @@ module ExternalLeadMigration
 
     def call
       create_property_interest!
+      sync_labels!
       log_first_message!
       log_messages!
       log_entries!
@@ -30,6 +31,23 @@ module ExternalLeadMigration
 
       lead.property_interests.find_or_create_by!(habitation_id: lead.property_id) do |interest|
         interest.tenant = lead.tenant
+      end
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+      nil
+    end
+
+    def sync_labels!
+      return if responsible_user.blank?
+
+      mapper.label_names.each do |name|
+        label = responsible_user.lead_labels.find_or_initialize_by(name: name)
+        label.tenant ||= lead.tenant
+        label.color ||= "gray"
+        label.save! if label.changed?
+
+        lead.lead_labelings.find_or_create_by!(lead_label: label) do |labeling|
+          labeling.tenant = lead.tenant
+        end
       end
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
       nil
@@ -98,11 +116,12 @@ module ExternalLeadMigration
     def sync_task!(action, due_at, index)
       title = action_title(action)
       status = task_status(action)
-      task = lead.tasks.find_or_initialize_by(
-        admin_user: responsible_user,
-        title: title,
-        due_at: due_at
-      )
+      task = existing_task_for(action, index) ||
+        lead.tasks.find_or_initialize_by(
+          admin_user: responsible_user,
+          title: title,
+          due_at: due_at
+        )
       task.assign_attributes(
         tenant: lead.tenant,
         created_by: integration.connected_by_admin_user,
@@ -123,11 +142,12 @@ module ExternalLeadMigration
 
     def sync_appointment!(action, starts_at)
       title = action_title(action)
-      appointment = lead.appointments.find_or_initialize_by(
-        admin_user: responsible_user,
-        title: title,
-        starts_at: starts_at
-      )
+      appointment = existing_appointment_for(action, starts_at) ||
+        lead.appointments.find_or_initialize_by(
+          admin_user: responsible_user,
+          title: title,
+          starts_at: starts_at
+        )
       appointment.assign_attributes(
         tenant: lead.tenant,
         habitation_id: lead.property_id,
@@ -162,7 +182,9 @@ module ExternalLeadMigration
     def action_title(action)
       action["title"].presence ||
         action["name"].presence ||
+        action["schedulated_action_name"].presence ||
         action["alias"].presence ||
+        action["schedulated_action_type_alias"].presence ||
         action["type"].presence ||
         "Ação agendada do legado"
     end
@@ -173,7 +195,8 @@ module ExternalLeadMigration
 
     def action_due_at(action)
       parse_time(
-        action["due_at"].presence ||
+        action["schedulated_action_date"].presence ||
+          action["due_at"].presence ||
           action["scheduled_at"].presence ||
           action["date"].presence ||
           action["datetime"].presence ||
@@ -182,12 +205,12 @@ module ExternalLeadMigration
     end
 
     def appointment_action?(action)
-      text = [action["title"], action["name"], action["alias"], action["type"]].compact.join(" ").parameterize(separator: "_")
+      text = action_classification_text(action)
       text.include?("visita") || text.include?("reuniao")
     end
 
     def task_kind(action)
-      text = [action["title"], action["name"], action["alias"], action["type"]].compact.join(" ").parameterize(separator: "_")
+      text = action_classification_text(action)
       return "ligacao" if text.include?("ligacao") || text.include?("call")
       return "visita" if text.include?("visita")
       return "email" if text.include?("email")
@@ -196,11 +219,48 @@ module ExternalLeadMigration
     end
 
     def appointment_kind(action)
-      text = [action["title"], action["name"], action["alias"], action["type"]].compact.join(" ").parameterize(separator: "_")
+      text = action_classification_text(action)
       return "reuniao" if text.include?("reuniao")
       return "ligacao" if text.include?("ligacao")
 
       "visita"
+    end
+
+    def action_classification_text(action)
+      [
+        action["title"],
+        action["name"],
+        action["schedulated_action_name"],
+        action["alias"],
+        action["schedulated_action_type_alias"],
+        action["type"]
+      ].compact.join(" ").parameterize(separator: "_")
+    end
+
+    def existing_task_for(action, index)
+      task_id = existing_activity_for("external_scheduled_action", action, index)&.metadata&.dig("task_id")
+      return nil if task_id.blank?
+
+      lead.tasks.find_by(id: task_id)
+    end
+
+    def existing_appointment_for(action, starts_at)
+      key = action["id"].presence || "appointment:#{mapper.external_lead_id}:#{starts_at.to_i}"
+      appointment_id = lead.activities
+                           .where(kind: "external_appointment")
+                           .where("metadata @> ?", { source: SOURCE, external_key: key.to_s }.to_json)
+                           .pick(Arel.sql("metadata ->> 'appointment_id'"))
+      return nil if appointment_id.blank?
+
+      lead.appointments.find_by(id: appointment_id)
+    end
+
+    def existing_activity_for(kind, action, index)
+      key = action["id"].presence || "scheduled:#{mapper.external_lead_id}:#{index}"
+      lead.activities
+          .where(kind: kind)
+          .where("metadata @> ?", { source: SOURCE, external_key: key.to_s }.to_json)
+          .first
     end
 
     def task_status(action)

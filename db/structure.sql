@@ -1,4 +1,4 @@
-\restrict 2g2H5OAsFmOP88JJ5ryyR9ARFiF2Otz2LUCsDyfBgdAhercYAH4Gx5xIYlaAhf2
+\restrict 2297FVqudPUageYrH3NzJAoEsmPzuPmQY1f4glkHgUbbzYV1yp60apTChgGH9l7
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -976,7 +976,11 @@ CREATE TABLE public.appointments (
     notes text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    properties_to_visit_count integer,
+    invite_via_email boolean DEFAULT false NOT NULL,
+    invite_via_whatsapp boolean DEFAULT false NOT NULL,
+    invite_email_recipients text
 );
 
 
@@ -3618,6 +3622,39 @@ ALTER SEQUENCE public.lead_audit_logs_id_seq OWNED BY public.lead_audit_logs.id;
 
 
 --
+-- Name: lead_favorites; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_favorites (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_favorites_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_favorites_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_favorites_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_favorites_id_seq OWNED BY public.lead_favorites.id;
+
+
+--
 -- Name: lead_labelings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3889,7 +3926,12 @@ CREATE TABLE public.leads (
     external_internal_id bigint,
     external_last_synced_at timestamp(6) without time zone,
     lead_pipeline_id bigint,
-    lead_pipeline_stage_id bigint
+    lead_pipeline_stage_id bigint,
+    archive_reason_id bigint,
+    archive_note text,
+    archived_at timestamp(6) without time zone,
+    archived_by_admin_user_id bigint,
+    parecer text
 );
 
 
@@ -7393,6 +7435,13 @@ ALTER TABLE ONLY public.lead_audit_logs ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: lead_favorites id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_favorites ALTER COLUMN id SET DEFAULT nextval('public.lead_favorites_id_seq'::regclass);
+
+
+--
 -- Name: lead_labelings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8504,6 +8553,14 @@ ALTER TABLE ONLY public.lead_activities
 
 ALTER TABLE ONLY public.lead_audit_logs
     ADD CONSTRAINT lead_audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_favorites lead_favorites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_favorites
+    ADD CONSTRAINT lead_favorites_pkey PRIMARY KEY (id);
 
 
 --
@@ -12287,6 +12344,41 @@ CREATE INDEX index_lead_audit_logs_on_tenant_id ON public.lead_audit_logs USING 
 
 
 --
+-- Name: index_lead_favorites_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_favorites_on_admin_user_id ON public.lead_favorites USING btree (admin_user_id);
+
+
+--
+-- Name: index_lead_favorites_on_admin_user_id_and_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_favorites_on_admin_user_id_and_lead_id ON public.lead_favorites USING btree (admin_user_id, lead_id);
+
+
+--
+-- Name: index_lead_favorites_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_favorites_on_lead_id ON public.lead_favorites USING btree (lead_id);
+
+
+--
+-- Name: index_lead_favorites_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_favorites_on_tenant_id ON public.lead_favorites USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_favorites_on_tenant_id_and_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_favorites_on_tenant_id_and_admin_user_id ON public.lead_favorites USING btree (tenant_id, admin_user_id);
+
+
+--
 -- Name: index_lead_labelings_on_lead_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12438,6 +12530,20 @@ CREATE UNIQUE INDEX index_lead_settings_on_unique_tenant_id ON public.lead_setti
 --
 
 CREATE INDEX index_leads_on_admin_user_id ON public.leads USING btree (admin_user_id);
+
+
+--
+-- Name: index_leads_on_archive_reason_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_archive_reason_id ON public.leads USING btree (archive_reason_id);
+
+
+--
+-- Name: index_leads_on_archived_by_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_archived_by_admin_user_id ON public.leads USING btree (archived_by_admin_user_id);
 
 
 --
@@ -15247,14 +15353,6 @@ ALTER TABLE ONLY public.property_review_policies
 
 
 --
--- Name: external_lead_integrations fk_rails_3c3de6e62d; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_3c3de6e62d FOREIGN KEY (connected_by_admin_user_id) REFERENCES public.admin_users(id);
-
-
---
 -- Name: automation_webhook_deliveries fk_rails_3e8969d1cd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15276,14 +15374,6 @@ ALTER TABLE ONLY public.home_settings
 
 ALTER TABLE ONLY public.account_memberships
     ADD CONSTRAINT fk_rails_3fbff27fad FOREIGN KEY (member_admin_user_id) REFERENCES public.admin_users(id);
-
-
---
--- Name: external_lead_integrations fk_rails_40450c5c31; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_40450c5c31 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
 
 
 --
@@ -15751,6 +15841,14 @@ ALTER TABLE ONLY public.portal_integrations
 
 
 --
+-- Name: external_lead_integrations fk_rails_71a6693771; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_71a6693771 FOREIGN KEY (connected_by_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: whatsapp_templates fk_rails_737f4f7e1b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15780,6 +15878,14 @@ ALTER TABLE ONLY public.account_memberships
 
 ALTER TABLE ONLY public.automation_executions
     ADD CONSTRAINT fk_rails_77842b67af FOREIGN KEY (automation_workflow_id) REFERENCES public.automation_workflows(id);
+
+
+--
+-- Name: leads fk_rails_78a40fb132; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_78a40fb132 FOREIGN KEY (archived_by_admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -15820,6 +15926,14 @@ ALTER TABLE ONLY public.operational_user_events
 
 ALTER TABLE ONLY public.lead_pipelines
     ADD CONSTRAINT fk_rails_7d629b8f57 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_favorites fk_rails_7e34b72563; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_favorites
+    ADD CONSTRAINT fk_rails_7e34b72563 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -16279,6 +16393,14 @@ ALTER TABLE ONLY public.stores
 
 
 --
+-- Name: lead_favorites fk_rails_a50c5477fa; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_favorites
+    ADD CONSTRAINT fk_rails_a50c5477fa FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: commercial_contract_events fk_rails_a620171642; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16316,6 +16438,14 @@ ALTER TABLE ONLY public.seo_settings
 
 ALTER TABLE ONLY public.commercial_contract_events
     ADD CONSTRAINT fk_rails_ac64d95b71 FOREIGN KEY (proposal_id) REFERENCES public.commercial_contract_proposals(id);
+
+
+--
+-- Name: external_lead_integrations fk_rails_ade9cba0cf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_ade9cba0cf FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -16447,6 +16577,14 @@ ALTER TABLE ONLY public.automation_workflows
 
 
 --
+-- Name: external_lead_integrations fk_rails_bd21fb50d6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_bd21fb50d6 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
+
+
+--
 -- Name: google_calendar_integration_settings fk_rails_bd34034ff6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16492,6 +16630,14 @@ ALTER TABLE ONLY public.ai_property_search_histories
 
 ALTER TABLE ONLY public.commercial_contract_acceptances
     ADD CONSTRAINT fk_rails_bf0b58ee64 FOREIGN KEY (terms_version_id) REFERENCES public.commercial_contract_terms_versions(id);
+
+
+--
+-- Name: lead_favorites fk_rails_bfc86bf408; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_favorites
+    ADD CONSTRAINT fk_rails_bfc86bf408 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -16591,14 +16737,6 @@ ALTER TABLE ONLY public.automation_execution_steps
 
 
 --
--- Name: external_lead_integrations fk_rails_c5c23f1945; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_c5c23f1945 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
 -- Name: ai_property_share_audit_events fk_rails_c5d6831be9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16612,6 +16750,14 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 ALTER TABLE ONLY public.layout_settings
     ADD CONSTRAINT fk_rails_c760eaba29 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: leads fk_rails_c8056365d4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_c8056365d4 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id);
 
 
 --
@@ -16836,14 +16982,6 @@ ALTER TABLE ONLY public.whatsapp_messages
 
 ALTER TABLE ONLY public.habitation_broker_assignments
     ADD CONSTRAINT fk_rails_dc25c47a24 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
-
-
---
--- Name: leads fk_rails_dfa6ee8ee1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.leads
-    ADD CONSTRAINT fk_rails_dfa6ee8ee1 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id);
 
 
 --
@@ -17079,6 +17217,14 @@ ALTER TABLE ONLY public.public_form_fields
 
 
 --
+-- Name: leads fk_rails_f797884c7c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_f797884c7c FOREIGN KEY (archive_reason_id) REFERENCES public.attribute_options(id) ON DELETE SET NULL;
+
+
+--
 -- Name: habitation_photo_shares fk_rails_f8257292ce; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17146,11 +17292,16 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2g2H5OAsFmOP88JJ5ryyR9ARFiF2Otz2LUCsDyfBgdAhercYAH4Gx5xIYlaAhf2
+\unrestrict 2297FVqudPUageYrH3NzJAoEsmPzuPmQY1f4glkHgUbbzYV1yp60apTChgGH9l7
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260816130000'),
+('20260816120000'),
+('20260815160100'),
+('20260815160000'),
+('20260815120000'),
 ('20260814152000'),
 ('20260814124500'),
 ('20260814123000'),

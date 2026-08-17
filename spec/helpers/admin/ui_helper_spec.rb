@@ -28,6 +28,35 @@ RSpec.describe Admin::UiHelper, type: :helper do
     end
   end
 
+  describe "#ax_avatar" do
+    it "mantem as iniciais como fallback quando nao ha imagem" do
+      document = Nokogiri::HTML.fragment(helper.ax_avatar(name: "Edmar Luiz Cavaca", size: :md))
+
+      expect(document.at_css('.ax-avatar.ax-avatar--md[role="img"][aria-label="Edmar Luiz Cavaca"]')).to be_present
+      expect(document.at_css(".ax-avatar__initials").text).to eq("EL")
+      expect(document.at_css("img")).to be_nil
+    end
+
+    it "nao renderiza imagem quando o blob local anexado nao existe mais" do
+      service = instance_double("ActiveStorage::Service", exist?: false)
+      blob = instance_double("ActiveStorage::Blob", image?: true, service_name: "local", service: service, key: "missing-key")
+      image = double("avatar", attached?: true, blob: blob)
+      document = Nokogiri::HTML.fragment(helper.ax_avatar(name: "Eduardo Antunes", image: image))
+
+      expect(document.at_css(".ax-avatar__initials").text).to eq("EA")
+      expect(document.at_css("img")).to be_nil
+    end
+
+    it "usa o fallback de imagem quando uma URL anexada falha no navegador" do
+      document = Nokogiri::HTML.fragment(helper.ax_avatar(name: "Daniele Bresolin", image: "/avatar.jpg"))
+      image = document.at_css("img.ax-avatar__image")
+
+      expect(image).to be_present
+      expect(image["data-controller"]).to eq("image-fallback")
+      expect(image["data-action"]).to eq("error->image-fallback#hide")
+    end
+  end
+
   describe "#ax_status_list" do
     it "renderiza pares rótulo/estado com semântica de lista descritiva" do
       document = Nokogiri::HTML.fragment(

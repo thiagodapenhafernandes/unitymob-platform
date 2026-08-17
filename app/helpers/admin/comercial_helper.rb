@@ -49,13 +49,19 @@ module Admin::ComercialHelper
   def lead_conversion_summary(lead)
     info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
     attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+    display_origin = lead_display_origin(lead, info, attribution)
     origin = lead.origin.to_s.downcase
     lead_type = lead.lead_type.to_s.downcase
     attributed_channel = lead.attribution_channel.to_s
+    external_migration = external_lead_migration_lead?(lead, info, attribution)
+    external_channel_label = external_lead_migration_channel_label(lead, info, attribution)
+    generic_channel_label = generic_lead_channel_label(lead, info, attribution)
 
     channel, channel_label, icon, color =
-      if origin == "webhook" || lead_type == "webhook" || info["inbound_webhook_endpoint"].present?
-        [:webhook, "Webhook", "bi-plug", "blue"]
+      if external_migration
+        [:external_migration, external_channel_label, "bi-diagram-3", "blue"]
+      elsif origin == "webhook" || lead_type == "webhook" || info["inbound_webhook_endpoint"].present?
+        [:webhook, generic_channel_label.presence || "Integração externa", "bi-plug", "blue"]
       elsif origin.include?("compartilh") || lead.share_token.present?
         [:share, "Link do corretor", "bi-share", "green"]
       elsif origin.include?("zap") || origin.include?("vivareal") || origin.include?("olx")
@@ -102,7 +108,8 @@ module Admin::ComercialHelper
       when :organic_social then "Convertido por rede social"
       when :referral then "Convertido por site de referência"
       when :direct then "Origem direta ou não identificada"
-      when :webhook  then "Convertido via webhook#{" — recebido por #{received_by}" if received_by}"
+      when :external_migration then "Convertido via #{channel_label}"
+      when :webhook  then "Convertido via #{channel_label}#{" — recebido por #{received_by}" if received_by}"
       when :share    then "Convertido pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
       when :portal   then "Convertido via portal (#{channel_label})"
       when :whatsapp then "Convertido respondendo no WhatsApp"
@@ -120,7 +127,8 @@ module Admin::ComercialHelper
       when :organic_social then "Criado por acesso social (#{channel_label})"
       when :referral then "Criado por uma referência externa (#{channel_label})"
       when :direct then "Acesso direto ou origem não identificada"
-      when :webhook  then "Criado via webhook externo#{" · recebido por #{received_by}" if received_by}"
+      when :external_migration then "Criado pela integração C2S (#{channel_label})"
+      when :webhook  then "Criado via #{channel_label}#{" · recebido por #{received_by}" if received_by}"
       when :share    then "Criado pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
       when :portal   then "Criado por um portal imobiliário (#{channel_label})"
       when :whatsapp then wa_campaign.present? ? "Criado a partir da resposta à campanha de WhatsApp “#{wa_campaign}”" : "Criado a partir de uma conversa no WhatsApp"
@@ -135,7 +143,7 @@ module Admin::ComercialHelper
       channel_label: channel_label,
       icon: icon,
       color: color,
-      origin: lead.origin.presence,
+      origin: display_origin.presence,
       source_url: source_url,
       referrer_url: referrer_url,
       campaign: campaign,
@@ -145,6 +153,214 @@ module Admin::ComercialHelper
       received_by: received_by,
       tags: webhook_tags
     }
+  end
+
+  def lead_display_origin(lead, info = nil, attribution = nil)
+    info ||= lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution ||= lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+
+    external_origin = external_lead_migration_display_origin(lead, info, attribution)
+    return external_origin if external_origin.present?
+
+    generic_origin = generic_lead_display_origin(lead, info, attribution)
+    return generic_origin if generic_origin.present?
+
+    lead.origin.presence
+  end
+
+  def generic_lead_display_origin(lead, info, attribution)
+    candidates = [
+      lead.attribution_source,
+      attribution["utm_source"],
+      attribution["source"],
+      attribution["source_name"],
+      info["source_name"],
+      info["lead_source"],
+      info["leadSource"],
+      info["source"],
+      info["origem"],
+      info["origin"],
+      info.dig("webhook_payload", "source_name"),
+      info.dig("webhook_payload", "lead_source"),
+      info.dig("webhook_payload", "origem"),
+      info.dig("webhook_payload", "source"),
+      info.dig("webhook_payload", "utm_source")
+    ]
+
+    candidates.find { |value| useful_generic_origin?(value) }.to_s.squish.presence
+  end
+
+  def generic_lead_channel_label(lead, info, attribution)
+    candidates = [
+      lead.attribution_channel,
+      attribution["channel"],
+      attribution["utm_medium"],
+      info["channel"],
+      info["canal"],
+      info["lead_channel"],
+      info.dig("webhook_payload", "channel"),
+      info.dig("webhook_payload", "canal"),
+      info.dig("webhook_payload", "utm_medium")
+    ]
+
+    raw = candidates.find { |value| useful_generic_origin?(value) }.to_s.squish
+    return nil if raw.blank?
+
+    normalized = raw.parameterize(separator: "_")
+    return "WhatsApp" if normalized.include?("whatsapp") || normalized.include?("whats")
+    return "Rede Social" if normalized.match?(/facebook|instagram|meta|social/)
+    return "Google Ads" if normalized.include?("google")
+    return "Showroom" if normalized.include?("showroom")
+    return "Telefone" if normalized.match?(/telefone|phone|ligacao/)
+    return "Internet" if normalized.match?(/site|portal|internet/)
+
+    raw
+  end
+
+  def useful_generic_origin?(value)
+    normalized = value.to_s.squish
+    return false if normalized.blank?
+
+    ignored = %w[webhook api site form formulario integration integracao external external_lead_migration]
+    ignored.exclude?(normalized.parameterize(separator: "_"))
+  end
+
+  def external_lead_migration_display_origin(lead, info, attribution)
+    return nil unless external_lead_migration_lead?(lead, info, attribution)
+
+    candidates = [
+      lead.attribution_source,
+      attribution.dig("lead_source", "name"),
+      attribution.dig("lead_source", "alias"),
+      info.dig("external_lead_payload", "attributes", "lead_source", "name"),
+      info.dig("external_lead_payload", "attributes", "lead_source", "alias"),
+      attribution.dig("channel", "name"),
+      attribution.dig("channel", "alias")
+    ]
+
+    candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence
+  end
+
+  def external_lead_migration_lead?(lead, info, attribution)
+    provider_keys = [
+      info["source"],
+      attribution["provider"],
+      Array(info["webhook_tags"]).first
+    ].compact.map(&:to_s)
+
+    provider_keys.include?(ExternalLeadMigration::LeadMapper::PROVIDER_KEY) ||
+      lead.origin.to_s == ExternalLeadIntegration::LEAD_ORIGIN
+  end
+
+  def external_lead_migration_channel_label(_lead, info, attribution)
+    candidates = [
+      attribution.dig("channel", "name"),
+      attribution.dig("channel", "alias"),
+      info.dig("external_lead_payload", "attributes", "channel", "name"),
+      info.dig("external_lead_payload", "attributes", "channel", "alias")
+    ]
+
+    candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence || "Integração C2S"
+  end
+
+  def useful_external_origin?(value)
+    normalized = value.to_s.squish
+    return false if normalized.blank?
+
+    normalized_key = normalized.parameterize(separator: "_")
+    ignored = [
+      ExternalLeadIntegration::LEAD_ORIGIN,
+      ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+      "webhook"
+    ].map { |item| item.to_s.parameterize(separator: "_") }
+
+    ignored.exclude?(normalized_key)
+  end
+
+  def lead_card_interest_line(lead, conversion = nil)
+    conversion ||= lead_conversion_summary(lead)
+    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+
+    lead_type_label =
+      if external_lead_migration_lead?(lead, info, attribution)
+        conversion[:channel_label].presence || "Integração C2S"
+      elsif lead.lead_type.to_s.casecmp?("webhook")
+        conversion[:channel_label].presence || "Integração externa"
+      else
+        lead.lead_type.presence
+      end
+
+    [lead_type_label, lead.product.presence].compact.join(" - ").presence || "Contato geral"
+  end
+
+  def lead_card_business_label(lead)
+    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+    external_payload = info["external_lead_payload"].is_a?(Hash) ? info["external_lead_payload"] : {}
+    external_attributes = external_payload["attributes"].is_a?(Hash) ? external_payload["attributes"] : {}
+    product = attribution["product"].is_a?(Hash) ? attribution["product"] : external_attributes["product"].to_h
+
+    text = [
+      lead.lead_type,
+      lead.product,
+      lead.notes,
+      lead.status,
+      product["description"],
+      product["negotiation_name"],
+      product.dig("real_estate_detail", "negotiation_name"),
+      external_attributes["description"],
+      external_attributes.dig("funnel_status", "name"),
+      external_attributes.dig("lead_status", "name")
+    ].compact.join(" ").parameterize(separator: "_")
+
+    return "Captação" if text.match?(/captacao|captar|proprietario|proprietaria/)
+    return "Locação" if text.match?(/locacao|aluguel|alugar|rental|locar/)
+    return "Venda" if text.match?(/venda|comprar|compra|sale|vend/)
+
+    nil
+  end
+
+  def lead_card_note_line(lead, conversion = nil)
+    conversion ||= lead_conversion_summary(lead)
+    raw = lead.notes.to_s.squish.presence || conversion[:origin].presence || conversion[:channel_label]
+
+    humanize_external_lead_text(raw)
+  end
+
+  def humanize_external_lead_text(value)
+    text = value.to_s.squish
+    return text if text.blank?
+
+    replacements = {
+      "full name" => "Nome completo",
+      "fullname" => "Nome completo",
+      "name" => "Nome",
+      "phone number" => "Telefone",
+      "phone" => "Telefone",
+      "mobile phone" => "Celular",
+      "cell phone" => "Celular",
+      "email" => "E-mail",
+      "e-mail" => "E-mail",
+      "message" => "Mensagem",
+      "comments" => "Comentários",
+      "comment" => "Comentário",
+      "observation" => "Observação",
+      "source" => "Origem",
+      "campaign" => "Campanha",
+      "form" => "Formulário",
+      "code" => "Código",
+      "cod" => "Código",
+      "cód" => "Código"
+    }
+
+    replacements.each do |english, portuguese|
+      text = text.gsub(/(^|[\s,;|.\-])#{Regexp.escape(english)}\s*:/i) do
+        "#{$1}#{portuguese}:"
+      end
+    end
+
+    text
   end
 
   def timeline_detail(activity)

@@ -30,6 +30,8 @@ module Field
                                .where(status: [Lead.status_value(:novo), Lead.status_value(:waiting_acceptance)])
                                .where("created_at < ?", 2.hours.ago)
                                .count
+      @field_todo_leads_path = pwa_leads_path(tab: "todo")
+      @field_all_leads_path = pwa_leads_path(tab: "all")
 
       @my_draft_captacoes = intake_scope.where(intake_status: [nil, "draft"]).count
       @my_returned_captacoes = intake_scope.where(intake_status: "returned_to_broker").count
@@ -71,7 +73,7 @@ module Field
           tone: "danger",
           title: "Leads sem contato",
           description: "#{@stale_new_leads_count} aguardando atendimento há mais de 2 horas",
-          path: admin_leads_path(status: Lead.status_value(:novo))
+          path: pwa_leads_path(tab: "todo")
         }
       end
 
@@ -81,7 +83,7 @@ module Field
           tone: "warning",
           title: "Leads a atender",
           description: "#{@pending_leads_count} novo(s) ou aguardando aceite",
-          path: admin_leads_path(status: Lead.status_value(:novo))
+          path: pwa_leads_path(tab: "todo")
         }
       end
 
@@ -106,6 +108,10 @@ module Field
       end
 
       items
+    end
+
+    def pwa_leads_path(tab: "todo", **params)
+      admin_leads_path({ view: "list", mobile_tab: tab }.merge(params).compact)
     end
 
   end

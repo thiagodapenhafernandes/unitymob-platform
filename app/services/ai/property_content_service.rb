@@ -195,6 +195,7 @@ module Ai
         cidade: @habitation.cidade,
         bairro: @habitation.bairro,
         bairro_comercial: @habitation.address&.bairro_comercial,
+        endereco: address_payload,
         dormitorios: @habitation.dormitorios_qtd,
         suites: @habitation.suites_qtd,
         demi_suites: @habitation.demi_suites_qtd,
@@ -217,6 +218,31 @@ module Ai
         imediacoes: @habitation.address&.imediacoes,
         descricao_empreendimento: @habitation.descricao_empreendimento
       }
+    end
+
+    def address_payload
+      address = @habitation.address
+
+      {
+        tipo_endereco: address&.tipo_endereco.presence || @habitation.tipo_endereco,
+        logradouro: address&.logradouro.presence || @habitation.logradouro,
+        numero: address&.numero.presence || @habitation.numero,
+        complemento: address&.complemento.presence || @habitation.complemento,
+        bairro: address&.bairro.presence || @habitation.bairro,
+        bairro_comercial: address&.bairro_comercial.presence || @habitation.bairro_comercial,
+        cidade: address&.cidade.presence || @habitation.cidade,
+        uf: address&.uf.presence || @habitation.uf,
+        cep: address&.cep.presence || @habitation.cep,
+        pais: address&.pais.presence || @habitation.pais,
+        bloco: @habitation.bloco,
+        lote: @habitation.lote,
+        quadra: @habitation.quadra,
+        latitude: address&.latitude.presence || @habitation.latitude,
+        longitude: address&.longitude.presence || @habitation.longitude,
+        imediacoes: address&.imediacoes,
+        localizacao_publica: @habitation.public_map_display_mode,
+        vista_da_rua: @habitation.public_street_view_mode
+      }.compact
     end
 
     def extract_text(response)

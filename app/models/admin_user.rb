@@ -31,6 +31,7 @@ class AdminUser < ApplicationRecord
   has_many :access_control_rules, dependent: :nullify
   has_many :created_whatsapp_campaigns, class_name: "WhatsappCampaign", foreign_key: "created_by_id", dependent: :restrict_with_error
   has_many :lead_labels, dependent: :destroy
+  has_many :lead_favorites, dependent: :destroy
   has_many :presentation_cards, dependent: :destroy
 
   # Field ops (check-in geolocalizado)
