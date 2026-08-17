@@ -51,6 +51,7 @@ module Admin
         :stickiness_fallback,
         :stickiness_window_days,
         :first_contact_sla_hours,
+        :stage_automation_sweep_interval_minutes,
         :secure_links_enabled,
         :secure_link_expiry_days,
         :secure_link_whatsapp,

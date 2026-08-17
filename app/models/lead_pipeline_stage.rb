@@ -10,6 +10,10 @@ class LeadPipelineStage < ApplicationRecord
 
   belongs_to :lead_pipeline
   has_many :leads, dependent: :nullify
+  has_many :automations,
+           class_name: "LeadPipelineStageAutomation",
+           dependent: :destroy,
+           inverse_of: :lead_pipeline_stage
 
   validates :name, presence: true, uniqueness: { scope: [:tenant_id, :lead_pipeline_id], case_sensitive: false }
   validates :stage_type, inclusion: { in: STAGE_TYPES.keys }

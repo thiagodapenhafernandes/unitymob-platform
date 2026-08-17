@@ -41,6 +41,30 @@ export default class extends Controller {
     }
   }
 
+  addAutomation(event) {
+    event.preventDefault()
+    const row = event.target.closest(".lead-status-row")
+    const template = row?.querySelector(".lead-status-row__automation-template")
+    const list = row?.querySelector(".lead-status-row__automation-list")
+    if (!template || !list) return
+
+    list.appendChild(template.content.cloneNode(true))
+    list.lastElementChild?.querySelector('[data-lead-status-automation-field="trigger"]')?.focus()
+  }
+
+  removeAutomation(event) {
+    event.preventDefault()
+    const rule = event.target.closest(".lead-status-row__automation-rule")
+    if (!rule) return
+
+    if (rule.dataset.automationId) {
+      rule.dataset.destroy = "true"
+      rule.hidden = true
+    } else {
+      rule.remove()
+    }
+  }
+
   save(event) {
     event.preventDefault()
     this.hideError()
@@ -51,6 +75,7 @@ export default class extends Controller {
         name: row.querySelector('[data-lead-status-field="name"]')?.value.trim() || "",
         description: row.querySelector('[data-lead-status-field="description"]')?.value.trim() || "",
         stage_type: row.querySelector('[data-lead-status-field="stage_type"]')?.value || "open",
+        automations: this.automationsFor(row),
         _destroy: row.dataset.destroy === "true"
       }))
       .filter((status) => status.id || status.name || status._destroy)
@@ -62,6 +87,18 @@ export default class extends Controller {
     }
     if (active.some((status) => !status.name)) {
       this.showError("Todos os status precisam de um nome.")
+      return
+    }
+    const activeAutomations = active.flatMap((status) => status.automations.filter((automation) => !automation._destroy && automation.active))
+    if (activeAutomations.some((automation) => {
+      const amount = Number.parseInt(automation.after_amount, 10)
+      return !Number.isFinite(amount) || amount <= 0
+    })) {
+      this.showError("Toda automação ativa precisa de um tempo maior que zero.")
+      return
+    }
+    if (activeAutomations.some((automation) => !automation.auto_advance_to_stage_id)) {
+      this.showError("Toda automação ativa precisa de uma etapa de destino.")
       return
     }
 
@@ -112,5 +149,19 @@ export default class extends Controller {
 
   csrfToken() {
     return document.querySelector("meta[name='csrf-token']")?.content
+  }
+
+  automationsFor(row) {
+    return Array.from(row.querySelectorAll(".lead-status-row__automation-rule"))
+      .map((rule) => ({
+        id: rule.dataset.automationId || null,
+        trigger: rule.querySelector('[data-lead-status-automation-field="trigger"]')?.value || "stage_duration",
+        after_amount: rule.querySelector('[data-lead-status-automation-field="after_amount"]')?.value || "",
+        after_unit: rule.querySelector('[data-lead-status-automation-field="after_unit"]')?.value || "days",
+        auto_advance_to_stage_id: rule.querySelector('[data-lead-status-automation-field="auto_advance_to_stage_id"]')?.value || "",
+        active: rule.querySelector('[data-lead-status-automation-field="active"]')?.checked || false,
+        _destroy: rule.dataset.destroy === "true"
+      }))
+      .filter((automation) => automation.id || automation.active || automation.after_amount || automation.auto_advance_to_stage_id || automation._destroy)
   }
 }

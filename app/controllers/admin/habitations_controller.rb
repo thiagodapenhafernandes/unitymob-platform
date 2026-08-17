@@ -3057,7 +3057,7 @@ class Admin::HabitationsController < Admin::BaseController
   # perfil (FieldLockPolicy). Para full-access a config foi semeada vazia, então
   # nada é travado — o filtro roda mas libera tudo.
   def broker_restricted_habitation_edit?
-    @habitation&.persisted? && !current_admin_user&.tenant_owner?
+    current_admin_user.present? && !current_admin_user.tenant_owner?
   end
 
   def broker_habitation_allowed_fields

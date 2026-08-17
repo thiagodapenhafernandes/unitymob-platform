@@ -1,4 +1,4 @@
-\restrict khAZjvWEDH0VBef6YlFvw1uUclNS5jbzwXVVSdWKzNWmaGzSGGNQKgE5me8bFWB
+\restrict pW9x8adICcDl4zV56carrXP3eoPX6fwHO8c3lZwOIydvzFtfWFlNTgb2OdGgwiJ
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3723,6 +3723,44 @@ ALTER SEQUENCE public.lead_labels_id_seq OWNED BY public.lead_labels.id;
 
 
 --
+-- Name: lead_pipeline_stage_automations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_pipeline_stage_automations (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_pipeline_stage_id bigint NOT NULL,
+    auto_advance_to_stage_id bigint,
+    trigger character varying DEFAULT 'stage_duration'::character varying NOT NULL,
+    after_amount integer NOT NULL,
+    after_unit character varying DEFAULT 'days'::character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_pipeline_stage_automations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_pipeline_stage_automations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_pipeline_stage_automations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_pipeline_stage_automations_id_seq OWNED BY public.lead_pipeline_stage_automations.id;
+
+
+--
 -- Name: lead_pipeline_stages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3857,7 +3895,9 @@ CREATE TABLE public.lead_settings (
     secure_link_email boolean DEFAULT true NOT NULL,
     secure_link_push boolean DEFAULT true NOT NULL,
     tenant_id bigint NOT NULL,
-    first_contact_sla_hours integer DEFAULT 4 NOT NULL
+    first_contact_sla_hours integer DEFAULT 4 NOT NULL,
+    stage_automation_sweep_interval_minutes integer DEFAULT 15 NOT NULL,
+    stage_automation_last_swept_at timestamp(6) without time zone
 );
 
 
@@ -7457,6 +7497,13 @@ ALTER TABLE ONLY public.lead_labels ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: lead_pipeline_stage_automations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automations ALTER COLUMN id SET DEFAULT nextval('public.lead_pipeline_stage_automations_id_seq'::regclass);
+
+
+--
 -- Name: lead_pipeline_stages id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8578,6 +8625,14 @@ ALTER TABLE ONLY public.lead_labelings
 
 ALTER TABLE ONLY public.lead_labels
     ADD CONSTRAINT lead_labels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_pipeline_stage_automations lead_pipeline_stage_automations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automations
+    ADD CONSTRAINT lead_pipeline_stage_automations_pkey PRIMARY KEY (id);
 
 
 --
@@ -9871,6 +9926,27 @@ CREATE UNIQUE INDEX idx_settings_global_key_unique ON public.settings USING btre
 --
 
 CREATE UNIQUE INDEX idx_settings_tenant_key_unique ON public.settings USING btree (tenant_id, key) WHERE (tenant_id IS NOT NULL);
+
+
+--
+-- Name: idx_stage_automations_on_destination_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automations_on_destination_stage ON public.lead_pipeline_stage_automations USING btree (auto_advance_to_stage_id);
+
+
+--
+-- Name: idx_stage_automations_on_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automations_on_stage ON public.lead_pipeline_stage_automations USING btree (lead_pipeline_stage_id);
+
+
+--
+-- Name: idx_stage_automations_on_tenant_stage_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automations_on_tenant_stage_active ON public.lead_pipeline_stage_automations USING btree (tenant_id, lead_pipeline_stage_id, active, "position");
 
 
 --
@@ -12433,6 +12509,13 @@ CREATE INDEX index_lead_labels_on_admin_user_id_and_position ON public.lead_labe
 --
 
 CREATE INDEX index_lead_labels_on_tenant_id ON public.lead_labels USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_pipeline_stage_automations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_pipeline_stage_automations_on_tenant_id ON public.lead_pipeline_stage_automations USING btree (tenant_id);
 
 
 --
@@ -15081,6 +15164,14 @@ ALTER TABLE ONLY public.automation_workflow_versions
 
 
 --
+-- Name: lead_pipeline_stage_automations fk_rails_1d4d927a39; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automations
+    ADD CONSTRAINT fk_rails_1d4d927a39 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: leads fk_rails_20d5a6bd75; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15246,6 +15337,14 @@ ALTER TABLE ONLY public.automation_workflows
 
 ALTER TABLE ONLY public.client_interactions
     ADD CONSTRAINT fk_rails_3070096ac7 FOREIGN KEY (proprietor_id) REFERENCES public.proprietors(id);
+
+
+--
+-- Name: lead_pipeline_stage_automations fk_rails_307601fb83; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automations
+    ADD CONSTRAINT fk_rails_307601fb83 FOREIGN KEY (auto_advance_to_stage_id) REFERENCES public.lead_pipeline_stages(id) ON DELETE SET NULL;
 
 
 --
@@ -16641,6 +16740,14 @@ ALTER TABLE ONLY public.commercial_contract_acceptances
 
 
 --
+-- Name: lead_pipeline_stage_automations fk_rails_bfaa55fdc2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automations
+    ADD CONSTRAINT fk_rails_bfaa55fdc2 FOREIGN KEY (lead_pipeline_stage_id) REFERENCES public.lead_pipeline_stages(id);
+
+
+--
 -- Name: lead_favorites fk_rails_bfc86bf408; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17300,11 +17407,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict khAZjvWEDH0VBef6YlFvw1uUclNS5jbzwXVVSdWKzNWmaGzSGGNQKgE5me8bFWB
+\unrestrict pW9x8adICcDl4zV56carrXP3eoPX6fwHO8c3lZwOIydvzFtfWFlNTgb2OdGgwiJ
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260817140000'),
+('20260817134500'),
 ('20260817120000'),
 ('20260816130000'),
 ('20260816120000'),

@@ -5,6 +5,9 @@ class LeadSetting < ApplicationRecord
   FALLBACKS = %w[active_in_rule active_any].freeze
   PUSH_CLICK_ACTIONS = PushSetting::LEAD_CLICK_ACTIONS.freeze
   DEFAULT_FIRST_CONTACT_SLA_HOURS = 4
+  DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 15
+  MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 5
+  MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 1440
 
   # Status que contam como "atendido de fato" pelo corretor (owner = attended).
   ATTENDED_STATUSES = %i[em_atendimento concluido].freeze
@@ -19,6 +22,12 @@ class LeadSetting < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :first_contact_sla_hours,
             numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 168 }
+  validates :stage_automation_sweep_interval_minutes,
+            numericality: {
+              only_integer: true,
+              greater_than_or_equal_to: MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+              less_than_or_equal_to: MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES
+            }
   validates :push_lead_click_action, inclusion: { in: PUSH_CLICK_ACTIONS }
 
   # Singleton.
@@ -58,6 +67,15 @@ class LeadSetting < ApplicationRecord
 
   def first_contact_sla_hours_value
     first_contact_sla_hours.presence || DEFAULT_FIRST_CONTACT_SLA_HOURS
+  end
+
+  def stage_automation_sweep_interval_minutes_value
+    stage_automation_sweep_interval_minutes.presence || DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES
+  end
+
+  def stage_automation_sweep_due?(now: Time.current)
+    stage_automation_last_swept_at.blank? ||
+      stage_automation_last_swept_at <= stage_automation_sweep_interval_minutes_value.minutes.ago(now)
   end
 
   # Configuração operacional do push, persistida em PushSetting para manter as

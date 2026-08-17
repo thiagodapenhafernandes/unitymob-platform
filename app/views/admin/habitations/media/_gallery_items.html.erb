@@ -86,6 +86,7 @@
           <input type="checkbox"
 	                 data-action="media-tools#toggleSelect"
 	                 data-media-tools-photo-id-param="<%= photo.id %>"
+	                 data-media-tools-label-param="<%= photo.filename.to_s %>"
 	                 data-media-tools-download-url-param="<%= photo_public_url %>">
           <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
         </label>
@@ -192,6 +193,7 @@
           <input type="checkbox"
 	                 data-action="media-tools#toggleSelect"
 	                 data-media-tools-picture-index-param="<%= original_index %>"
+	                 data-media-tools-label-param="<%= "Foto ativa #{display_position}" %>"
 	                 data-media-tools-download-url-param="<%= picture_public_url %>">
           <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
         </label>
@@ -232,6 +234,7 @@
           <input type="checkbox"
                  data-action="media-tools#toggleSelect"
                  data-media-tools-development-index-param="<%= index %>"
+                 data-media-tools-label-param="<%= "Foto do empreendimento #{index + 1}" %>"
                  data-media-tools-download-url-param="<%= development_photo_url %>">
           <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
         </label>

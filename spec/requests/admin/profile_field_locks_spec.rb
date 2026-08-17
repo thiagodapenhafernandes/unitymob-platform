@@ -3,13 +3,28 @@ require "rails_helper"
 RSpec.describe "Admin::Profiles trava de campos do cadastro", type: :request do
   include Devise::Test::IntegrationHelpers
 
-  before { host! "localhost" }
+  before do
+    host! "localhost"
+    allow_any_instance_of(Admin::ProfilesController).to receive(:verified_request?).and_return(true)
+    allow_any_instance_of(Admin::HabitationsController).to receive(:verified_request?).and_return(true)
+  end
 
   def custom_profile
     Tenant.default.profiles.create!(
       name: "Custom #{SecureRandom.hex(4)}", axis: "vertical", position: 500 + SecureRandom.random_number(9000),
       permissions: { "imoveis" => { "view" => true, "media" => true, "manage" => false, "scope" => "own" } }
     )
+  end
+
+  def tenant_owner_profile_id(profile)
+    profile.tenant.profiles.vertical.find_by!(key: "tenant_owner").id
+  end
+
+  def csrf_params_from_response
+    token =
+      Nokogiri::HTML(response.body).at_css('input[name="authenticity_token"]')&.[]("value") ||
+      Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
+    token.present? ? { authenticity_token: token } : {}
   end
 
   it "renderiza o botão e o modal de campos do cadastro na edição do perfil" do
@@ -34,7 +49,13 @@ RSpec.describe "Admin::Profiles trava de campos do cadastro", type: :request do
     profile = custom_profile
     sign_in create(:admin_user, :admin, tenant: profile.tenant)
 
-    get new_admin_habitation_path
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "apartamentos",
+        categoria: "Apartamento",
+        status: "Venda"
+      }
+    }
 
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
@@ -79,10 +100,65 @@ RSpec.describe "Admin::Profiles trava de campos do cadastro", type: :request do
     expect(allowed_actions).not_to include("acao:gerenciar_responsaveis")
   end
 
+  it "expõe ao formulário as travas da função horizontal efetiva do usuário" do
+    tenant = Tenant.default
+    vertical = tenant.profiles.create!(
+      name: "Gestor vertical #{SecureRandom.hex(4)}",
+      axis: "vertical",
+      position: 700 + SecureRandom.random_number(2000),
+      permissions: {
+        "imoveis" => { "view" => true, "edit" => true, "scope" => "team", "locked_fields" => ["nome_empreendimento"] }
+      }
+    )
+    horizontal = tenant.profiles.create!(
+      name: "Administrativo horizontal #{SecureRandom.hex(4)}",
+      axis: "horizontal",
+      vertical_profile: vertical,
+      permissions: {
+        "imoveis" => { "view" => true, "edit" => true, "scope" => "all", "locked_fields" => ["status"] }
+      }
+    )
+    user = create(:admin_user, tenant: tenant, profile: vertical, horizontal_profile: horizontal)
+    habitation = create(:habitation, tenant: tenant, admin_user: user)
+    sign_in user
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    root = Nokogiri::HTML(response.body).at_css(".habitation-form-ui[data-controller*='broker-field-policy']")
+    allowed_fields = JSON.parse(root["data-broker-field-policy-allowed-fields-value"])
+    expect(allowed_fields).to include("nome_empreendimento")
+    expect(allowed_fields).not_to include("status")
+  end
+
+  it "aplica a política de travas também no formulário de cadastro novo" do
+    profile = custom_profile
+    permissions = profile.permissions.deep_dup
+    permissions["imoveis"]["create"] = true
+    permissions["imoveis"]["edit"] = true
+    permissions["imoveis"]["locked_fields"] = ["status"]
+    profile.update!(permissions: permissions)
+    sign_in create(:admin_user, tenant: profile.tenant, profile: profile)
+
+    get new_admin_habitation_path, params: {
+      habitation: {
+        registration_profile: "apartamentos",
+        categoria: "Apartamento",
+        status: "Venda"
+      }
+    }
+
+    expect(response).to have_http_status(:ok)
+    root = Nokogiri::HTML(response.body).at_css(".habitation-form-ui[data-controller*='broker-field-policy']")
+    expect(root).to be_present
+    allowed_fields = JSON.parse(root["data-broker-field-policy-allowed-fields-value"])
+    expect(allowed_fields).not_to include("status")
+  end
+
   it "descarta no update os valores travados mesmo se a requisição for manipulada" do
     profile = custom_profile
     permissions = profile.permissions.deep_dup
-    permissions["imoveis"]["manage"] = true
+    permissions["imoveis"]["edit"] = true
     permissions["imoveis"]["locked_fields"] = ["titulo_anuncio", "logradouro"]
     profile.update!(permissions: permissions)
     user = create(:admin_user, tenant: profile.tenant, profile: profile)
@@ -90,7 +166,10 @@ RSpec.describe "Admin::Profiles trava de campos do cadastro", type: :request do
     habitation.create_address!(logradouro: "Rua original", bairro: "Centro", cidade: "Cidade original", uf: "SC")
     sign_in user
 
+    get edit_admin_habitation_path(habitation)
+
     patch admin_habitation_path(habitation), params: {
+      **csrf_params_from_response,
       habitation: {
         titulo_anuncio: "Título indevido",
         status: "Aluguel",
@@ -111,8 +190,11 @@ RSpec.describe "Admin::Profiles trava de campos do cadastro", type: :request do
     profile = custom_profile
     sign_in create(:admin_user, :admin, tenant: profile.tenant)
 
+    get edit_admin_profile_path(profile)
+
     patch admin_profile_path(profile), params: {
-      profile: { name: profile.name, active: "1", axis: "vertical", position: profile.position.to_s,
+      **csrf_params_from_response,
+      profile: { name: profile.name, active: "1", axis: "vertical", insert_after_profile_id: tenant_owner_profile_id(profile),
         permissions: { imoveis: { view: "1", scope: "own",
           locked_fields: ["", "tipo", "categoria", "publicar_lais_ai", "acao:gerar_ia", "chave_invalida_xyz"] } } }
     }
@@ -127,8 +209,11 @@ RSpec.describe "Admin::Profiles trava de campos do cadastro", type: :request do
     profile = custom_profile
     sign_in create(:admin_user, :admin, tenant: profile.tenant)
 
+    get edit_admin_profile_path(profile)
+
     patch admin_profile_path(profile), params: {
-      profile: { name: profile.name, active: "1", axis: "vertical", position: profile.position.to_s,
+      **csrf_params_from_response,
+      profile: { name: profile.name, active: "1", axis: "vertical", insert_after_profile_id: tenant_owner_profile_id(profile),
         permissions: { imoveis: { view: "1", scope: "own", locked_fields: [""] } } }
     }
 

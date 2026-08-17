@@ -1,7 +1,79 @@
+<%
+  stage_id = local_assigns[:id].presence
+  stage_options = Array(local_assigns[:stage_options])
+  automations = Array(local_assigns[:automations])
+
+  automation_row = lambda do |automation, new_record: false|
+    automation_id = automation.respond_to?(:id) ? automation.id : nil
+    trigger = automation.respond_to?(:trigger) ? automation.trigger : "stage_duration"
+    after_amount = automation.respond_to?(:after_amount) ? automation.after_amount : nil
+    after_unit = automation.respond_to?(:after_unit) ? automation.after_unit : "days"
+    destination_id = automation.respond_to?(:auto_advance_to_stage_id) ? automation.auto_advance_to_stage_id : nil
+    active = automation.respond_to?(:active?) ? automation.active? : true
+    row_attrs = new_record ? "data-new-record=\"true\"" : "data-automation-id=\"#{automation_id}\""
+%>
+    <div class="lead-status-row__automation-rule" <%= row_attrs.html_safe %>>
+      <label class="lead-status-row__automation-toggle">
+        <input type="checkbox"
+               data-lead-status-automation-field="active"
+               <%= "checked" if active %>>
+        <span>Ativa</span>
+      </label>
+
+      <select class="ax-control ax-control--sm"
+              data-lead-status-automation-field="trigger"
+              aria-label="Condição da automação da etapa">
+        <% LeadPipelineStageAutomation::TRIGGERS.each do |value, label| %>
+          <option value="<%= value %>" <%= "selected" if trigger == value %>><%= label %></option>
+        <% end %>
+      </select>
+
+      <input type="number"
+             min="1"
+             step="1"
+             class="ax-control ax-control--sm"
+             data-lead-status-automation-field="after_amount"
+             value="<%= after_amount %>"
+             placeholder="Tempo"
+             aria-label="Tempo da automação da etapa">
+
+      <select class="ax-control ax-control--sm"
+              data-lead-status-automation-field="after_unit"
+              aria-label="Unidade do tempo da automação da etapa">
+        <% LeadPipelineStageAutomation::UNITS.each do |value, label| %>
+          <option value="<%= value %>" <%= "selected" if after_unit == value %>><%= label %></option>
+        <% end %>
+      </select>
+
+      <select class="ax-control ax-control--sm"
+              data-lead-status-automation-field="auto_advance_to_stage_id"
+              aria-label="Etapa de destino da automação">
+        <option value="">Mover para...</option>
+        <% stage_options.each do |stage| %>
+          <% next if stage_id.present? && stage.id.to_s == stage_id.to_s %>
+          <option value="<%= stage.id %>" <%= "selected" if destination_id.to_s == stage.id.to_s %>>
+            <%= stage.lead_pipeline.name %> · <%= stage.name %>
+          </option>
+        <% end %>
+      </select>
+
+      <button type="button"
+              class="ax-icon-btn lead-status-row__automation-remove"
+              data-action="lead-status-board#removeAutomation"
+              aria-label="Remover automação"
+              title="Remover automação">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+<%
+  end
+%>
+
 <div class="lead-status-row" data-id="<%= local_assigns[:id] %>">
   <button type="button" class="lead-status-row__handle" aria-label="Reordenar" title="Arraste para reordenar" tabindex="-1">
     <i class="bi bi-grip-vertical"></i>
   </button>
+  <div class="lead-status-row__content">
   <div class="lead-status-row__fields">
     <input type="text"
            class="ax-control ax-control--sm"
@@ -22,6 +94,28 @@
         <option value="<%= value %>" <%= "selected" if local_assigns[:stage_type].presence == value %>><%= label %></option>
       <% end %>
     </select>
+  </div>
+
+  <div class="lead-status-row__automations">
+    <div class="lead-status-row__automations-header">
+      <span>Automações da etapa</span>
+      <button type="button"
+              class="ax-btn ax-btn--sm"
+              data-action="lead-status-board#addAutomation">
+        <i class="bi bi-plus-lg"></i> Adicionar automação
+      </button>
+    </div>
+
+    <div class="lead-status-row__automation-list">
+      <% automations.each do |automation| %>
+        <% automation_row.call(automation) %>
+      <% end %>
+    </div>
+
+    <template class="lead-status-row__automation-template">
+      <% automation_row.call(nil, new_record: true) %>
+    </template>
+  </div>
   </div>
   <button type="button"
           class="ax-icon-btn lead-status-row__remove"

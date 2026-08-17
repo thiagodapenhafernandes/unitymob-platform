@@ -1,6 +1,8 @@
+<% show_auto_advance = local_assigns.fetch(:auto_advance, false) %>
+
 <div class="lead-stage-grid-header">
   <span class="lead-stage-grid-header__spacer" aria-hidden="true"></span>
-  <div class="lead-stage-grid-header__fields">
+  <div class="lead-stage-grid-header__fields <%= "lead-stage-grid-header__fields--automation" if show_auto_advance %>">
     <%= ax_field_label(
           text: "Nome da etapa",
           tooltip: "Nome visível no funil, filtros e formulários. Ex.: Novo, Em atendimento, Visita agendada."
@@ -13,6 +15,12 @@
           text: "Tipo da etapa",
           tooltip: "Classificação interna usada para saber se a etapa continua aberta, conclui como ganha, conclui como perdida ou fica arquivada."
         ) %>
+    <% if show_auto_advance %>
+      <%= ax_field_label(
+            text: "Automação da etapa",
+            tooltip: "Regra simples para agir quando o lead permanecer nesta etapa pelo tempo configurado."
+          ) %>
+    <% end %>
   </div>
   <span class="lead-stage-grid-header__spacer lead-stage-grid-header__spacer--remove" aria-hidden="true"></span>
 </div>

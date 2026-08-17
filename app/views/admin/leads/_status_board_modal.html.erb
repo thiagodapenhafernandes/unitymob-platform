@@ -1,5 +1,7 @@
 <%
   selected_pipeline = @selected_pipeline || LeadPipeline.ensure_default!(tenant: current_tenant)
+  selected_pipeline_stages = selected_pipeline.stages.ordered.to_a
+  automation_stage_options = current_tenant.lead_pipeline_stages.includes(:lead_pipeline).ordered.to_a
 
   modal_body = capture do %>
     <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
@@ -32,9 +34,14 @@
     <%= render "admin/leads/pipeline_stage_grid_header" %>
 
     <div class="lead-status-board lead-stage-grid" data-lead-status-board-target="list">
-      <% selected_pipeline.stages.ordered.each do |stage| %>
+      <% selected_pipeline_stages.each do |stage| %>
         <%= render "admin/leads/status_board_row",
-                   id: stage.id, name: stage.name, description: stage.description, stage_type: stage.stage_type %>
+                   id: stage.id,
+                   name: stage.name,
+                   description: stage.description,
+                   stage_type: stage.stage_type,
+                   automations: stage.automations.ordered,
+                   stage_options: automation_stage_options %>
       <% end %>
     </div>
 
@@ -45,7 +52,13 @@
     <div class="ax-quick-modal__error" data-lead-status-board-target="error" hidden></div>
 
     <template data-lead-status-board-target="template">
-      <%= render "admin/leads/status_board_row", id: nil, name: "", description: "", stage_type: "open" %>
+      <%= render "admin/leads/status_board_row",
+                 id: nil,
+                 name: "",
+                 description: "",
+                 stage_type: "open",
+                 automations: [],
+                 stage_options: automation_stage_options %>
     </template>
   <% end
 
@@ -65,7 +78,7 @@
 <%= ax_quick_modal(
       id: "leadStatusBoardModal",
       title: "Editar funil e etapas",
-      size: :lg,
+      size: :xl,
       body: modal_body,
       footer: modal_footer,
       data: {

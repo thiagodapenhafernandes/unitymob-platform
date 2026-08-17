@@ -25,6 +25,31 @@ export default class extends Controller {
     if (this.hasSecureSectionTarget && cb) this.setVisible(this.secureSectionTarget, cb.checked)
   }
 
+  limitStageAutomationInterval(event) {
+    const input = event.target
+    const max = Number.parseInt(input.dataset.leadSettingsMaxValue, 10)
+    const value = Number.parseInt(input.value, 10)
+
+    if (Number.isFinite(max) && Number.isFinite(value) && value > max) {
+      input.value = max
+    }
+  }
+
+  clampStageAutomationInterval(event) {
+    const input = event.target
+    const min = Number.parseInt(input.dataset.leadSettingsMinValue, 10)
+    const max = Number.parseInt(input.dataset.leadSettingsMaxValue, 10)
+    const value = Number.parseInt(input.value, 10)
+
+    if (!Number.isFinite(value) && Number.isFinite(min)) {
+      input.value = min
+    } else if (Number.isFinite(min) && value < min) {
+      input.value = min
+    } else if (Number.isFinite(max) && value > max) {
+      input.value = max
+    }
+  }
+
   setVisible(el, visible) {
     el.hidden = !visible
     el.classList.toggle("tw-hidden", !visible)

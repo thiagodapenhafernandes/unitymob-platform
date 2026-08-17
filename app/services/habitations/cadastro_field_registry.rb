@@ -204,7 +204,7 @@ module Habitations
         ]
       },
       {
-        tab: "Comercial", section: "Proprietário e comissões",
+        tab: "Comercial", section: "Proprietário e contatos",
         items: [
           { key: "proprietario", label: "Proprietário (nome)" },
           { key: "proprietario_codigo", label: "Código do proprietário" },
@@ -212,7 +212,12 @@ module Habitations
           { key: "proprietario_cidade", label: "Cidade do proprietário" },
           { key: "proprietario_celular", label: "Celular do proprietário" },
           { key: "proprietario_telefone_comercial", label: "Telefone comercial do proprietário" },
-          { key: "proprietario_telefone_residencial", label: "Telefone residencial do proprietário" },
+          { key: "proprietario_telefone_residencial", label: "Telefone residencial do proprietário" }
+        ]
+      },
+      {
+        tab: "Comercial", section: "Comissão e operação",
+        items: [
           { key: "captador_commission_percentage", label: "Comissão do captador (%)" },
           { key: "broker_commission_percentage", label: "Comissão do corretor (%)" },
           { key: "valor_comissao_formatted", label: "Valor da comissão" },
@@ -302,10 +307,15 @@ module Habitations
           { key: "meta_title", label: "Meta Title" },
           { key: "meta_description", label: "Meta Description (SEO)" },
           { key: "meta_keywords", label: "Palavras-chave (Tags)" },
+          { key: "slug", label: "URL amigável (Slug) (somente leitura)" }
+        ]
+      },
+      {
+        tab: "SEO & Controle", section: "Avaliação pública",
+        items: [
           { key: "public_rating_value", label: "Avaliação pública" },
           { key: "public_rating_count", label: "Quantidade de avaliações públicas" },
-          { key: "public_rating_source", label: "Fonte da avaliação pública" },
-          { key: "slug", label: "URL amigável (Slug) (somente leitura)" }
+          { key: "public_rating_source", label: "Fonte da avaliação pública" }
         ]
       }
     ].freeze
@@ -313,7 +323,7 @@ module Habitations
     # Campos do formulário deliberadamente FORA da trava (sempre livres/estruturais):
     # não representam edição de conteúdo do imóvel.
     NON_LOCKABLE_FORM_FIELDS = %w[
-      id codigo intake_status name
+      id codigo intake_status name registration_profile
     ].freeze
 
     module_function

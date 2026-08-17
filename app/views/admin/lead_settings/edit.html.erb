@@ -94,6 +94,23 @@
           </div>
         <% end %>
 
+        <%# ===== Automação de etapas ===== %>
+        <%= ax_operational_panel(eyebrow: "Automação", title: "Verificação das automações de etapa") do %>
+          <div class="ax-panel-body">
+            <%= ax_number_field(form: f, method: :stage_automation_sweep_interval_minutes,
+                  label: "Intervalo mínimo em minutos",
+                  min: LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                  max: LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                  data: {
+                    action: "input->lead-settings#limitStageAutomationInterval change->lead-settings#clampStageAutomationInterval blur->lead-settings#clampStageAutomationInterval",
+                    lead_settings_min_value: LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                    lead_settings_max_value: LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES
+                  },
+                  placeholder: LeadSetting::DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                  hint: "Define de quanto em quanto tempo a conta verifica leads vencidos nas automações das etapas. Aceita apenas valores entre #{LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES} e #{LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES} minutos; valores menores que #{LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES} são ajustados para #{LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES}.") %>
+          </div>
+        <% end %>
+
         <%# ===== Comportamento do push ===== %>
         <%= ax_operational_panel(eyebrow: "Push", title: "Ao tocar na notificação") do %>
           <div class="ax-panel-body">
@@ -157,6 +174,7 @@
           <% end %>
           <% lead_status_rows.concat([
             { label: "SLA 1º contato", value: ax_badge("#{@lead_setting.first_contact_sla_hours_value}h", tone: :blue) },
+            { label: "Automação de etapas", value: ax_badge("a cada #{@lead_setting.stage_automation_sweep_interval_minutes_value} min", tone: :blue) },
             { label: "Link seguro", value: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) },
             { label: "Clique no push", value: ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) }
           ]) %>

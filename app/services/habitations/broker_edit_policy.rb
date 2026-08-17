@@ -139,8 +139,8 @@ module Habitations
         filtered["address_attributes"] = allowed_address if allowed_address.keys.any? { |key| key != "id" }
       end
 
-      filtered.delete("proprietario_email") if habitation.proprietario_email.present?
-      filtered.delete("proprietario_cidade") if habitation.proprietario_cidade.present?
+      filtered.delete("proprietario_email") if habitation&.proprietario_email.present?
+      filtered.delete("proprietario_cidade") if habitation&.proprietario_cidade.present?
       filtered
     end
 

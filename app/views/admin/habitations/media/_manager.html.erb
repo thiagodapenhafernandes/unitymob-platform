@@ -91,6 +91,9 @@
         <div class="ax-media-toolbar__title">
           <h6>Fotos</h6>
           <span><%= "#{media_gallery_count} #{media_gallery_count == 1 ? 'item vinculado' : 'itens vinculados'}" %></span>
+          <span class="ax-media-selection-summary"
+                hidden
+                data-media-tools-target="selectionSummary"></span>
         </div>
         <div class="ax-media-toolbar__actions">
           <% if media_gallery_count.positive? %>

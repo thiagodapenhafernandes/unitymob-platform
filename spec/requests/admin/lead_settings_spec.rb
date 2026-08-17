@@ -25,6 +25,8 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     expect(response.body).to include("Ao tocar na notificação")
     expect(response.body).to include("SLA de primeiro contato")
     expect(response.body).to include("lead_setting[first_contact_sla_hours]")
+    expect(response.body).to include("lead_setting[stage_automation_sweep_interval_minutes]")
+    expect(response.body).to include("Aceita apenas valores entre 5 e 1440 minutos")
     expect(response.body).to include("Detalhes do lead primeiro")
     expect(response.body).to include("WhatsApp do lead direto")
     document = Nokogiri::HTML(response.body)
@@ -46,6 +48,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
         stickiness_fallback: "active_in_rule",
         stickiness_window_days: "",
         first_contact_sla_hours: "6",
+        stage_automation_sweep_interval_minutes: "10",
         secure_links_enabled: "1",
         secure_link_expiry_days: "7",
         secure_link_whatsapp: "1",
@@ -63,7 +66,9 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     }
 
     expect(response).to redirect_to(edit_admin_lead_setting_path)
-    expect(LeadSetting.instance(tenant: admin.tenant).reload.first_contact_sla_hours_value).to eq(6)
+    setting = LeadSetting.instance(tenant: admin.tenant).reload
+    expect(setting.first_contact_sla_hours_value).to eq(6)
+    expect(setting.stage_automation_sweep_interval_minutes_value).to eq(10)
     expect(PushSetting.instance.reload.lead_click_action_value).to eq("system")
   end
 
@@ -79,6 +84,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
         stickiness_fallback: "active_in_rule",
         stickiness_window_days: "",
         first_contact_sla_hours: "4",
+        stage_automation_sweep_interval_minutes: "15",
         secure_links_enabled: "0",
         secure_link_expiry_days: "7",
         push_lead_click_action: "system"

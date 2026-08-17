@@ -45,6 +45,26 @@ RSpec.describe Habitations::FieldLockPolicy do
     expect(policy.allowed_top_level_params).not_to include("status")
   end
 
+  it "usa a função horizontal efetiva quando o usuário tem perfil horizontal" do
+    vertical = profile_with("view" => true, "edit" => true, "scope" => "team", "locked_fields" => ["nome_empreendimento"])
+    horizontal = tenant.profiles.create!(
+      name: "Backoffice #{SecureRandom.hex(4)}",
+      axis: "horizontal",
+      vertical_profile: vertical,
+      permissions: {
+        "imoveis" => { "view" => true, "edit" => true, "scope" => "all", "locked_fields" => ["status"] }
+      }
+    )
+    user = create(:admin_user, tenant: tenant, profile: vertical, horizontal_profile: horizontal)
+
+    policy = described_class.for(user)
+
+    expect(policy.field_locked?("status")).to be(true)
+    expect(policy.field_locked?("nome_empreendimento")).to be(false)
+    expect(policy.allowed_top_level_params).to include("nome_empreendimento")
+    expect(policy.allowed_top_level_params).not_to include("status")
+  end
+
   it "separa ações liberadas dos campos de formulário" do
     user = user_with(profile_with("view" => true, "scope" => "own", "locked_fields" => ["acao:gerar_ia", "status"]))
     policy = described_class.for(user)
@@ -61,6 +81,30 @@ RSpec.describe Habitations::FieldLockPolicy do
     expect(policy.allowed_address_subkeys).to include("cep", "tipo_endereco")
     expect(policy.allowed_top_level_params).to include("bloco")
     expect(policy.allowed_top_level_params).not_to include("cep", "tipo_endereco")
+  end
+
+  it "preserva campos estruturais que não participam das travas do modal" do
+    user = user_with(profile_with("view" => true, "scope" => "own", "locked_fields" => []))
+    policy = described_class.for(user)
+
+    expect(Habitations::CadastroFieldRegistry.all_keys).not_to include("registration_profile")
+    expect(policy.allowed_top_level_params).to include("registration_profile")
+    expect(policy.allowed_frontend_fields).to include("registration_profile")
+  end
+
+  it "filtra parâmetros mesmo no fluxo de criação sem imóvel persistido" do
+    user = user_with(profile_with("view" => true, "create" => true, "edit" => true, "scope" => "own", "locked_fields" => ["status"]))
+    params = ActionController::Parameters.new(
+      "status" => "Venda",
+      "tipo" => "Apartamento",
+      "address_attributes" => { "cidade" => "Balneário Camboriú" }
+    ).permit!
+
+    filtered = Habitations::BrokerEditPolicy.filter(params, habitation: nil, admin_user: user)
+
+    expect(filtered).not_to include("status")
+    expect(filtered).to include("tipo")
+    expect(filtered["address_attributes"]).to include("cidade")
   end
 
   it "aplica cada trava do modal às listas usadas pelo formulário e pelo servidor" do

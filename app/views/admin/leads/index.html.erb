@@ -174,20 +174,25 @@
     color: #05603a;
   }
 
+  .lead-filter-form-body {
+    min-width: 0;
+  }
+
   .lead-filter-quick {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
   .lead-filter-quick__chip {
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 6px;
     min-height: 28px;
-    padding: 0 9px;
+    padding: 0 11px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 999px;
     background: #fff;
@@ -196,6 +201,9 @@
     font-weight: 800;
     line-height: 1;
     text-decoration: none;
+    transition: background var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease),
+                border-color var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease),
+                color var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease);
   }
 
   .lead-filter-quick__chip span {
@@ -1491,6 +1499,7 @@
                        submit_label: "Filtrar",
                        class_name: "ax-leads-filters") do |f| %>
       <%= f.hidden_field :view, value: @view_mode %>
+      <div class="lead-filter-form-body">
       <div class="lead-filter-quick" aria-label="Atalhos de filtro">
         <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: Date.current.iso8601, end_date: Date.current.iso8601)),
                     class: "lead-filter-quick__chip" do %>
@@ -1516,27 +1525,27 @@
       <%= ax_field_grid do %>
         <%= f.hidden_field :attention_filter, value: @attention_filter if @attention_filter.present? %>
         <%= f.hidden_field :attribution_channel, value: @attribution_channel if @attribution_channel.present? %>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_select_field(form: f, method: :lead_pipeline_id, label: "Funil",
                               choices: @pipeline_options,
                               select_options: { include_blank: "Todos os funis", selected: @selected_pipeline&.id }) %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_select_field(form: f, method: :status, label: "Etapa",
                               choices: @status_options,
                               select_options: { include_blank: "Todas as etapas", selected: @status_filters.first }) %>
         </div>
-        <div class="ax-span-12">
+        <div class="ax-span-6">
           <%= ax_text_field(form: f, method: :q, label: "Buscar",
                             value: params[:q],
                             placeholder: "Nome, e-mail, telefone, origem ou produto...") %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_select_field(form: f, method: :origin, label: "Origem",
                               choices: @origin_options,
                               select_options: { include_blank: "Todas as origens", selected: @origin }) %>
         </div>
-        <div class="ax-span-12">
+        <div class="ax-span-6">
           <%= ax_autocomplete_select_field(
                 form: f,
                 method: :tags,
@@ -1549,34 +1558,34 @@
                 placeholder: "Filtrar por uma ou mais tags..."
               ) %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_select_field(form: f, method: :broker_id, label: "Corretor",
                               choices: [["Sem corretor", "unassigned"]] + @broker_options,
                               select_options: { include_blank: "Todos os corretores", selected: @broker_id }) %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_select_field(form: f, method: :property_filter, label: "Vínculo com imóvel",
                               choices: [["Com imóvel vinculado", "with_property"], ["Contato geral", "general"], ["Imóvel indisponível", "unavailable_property"]],
                               select_options: { include_blank: "Todos", selected: @property_filter }) %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_text_field(form: f, method: :property_q, label: "Imóvel",
                             value: @property_q,
                             placeholder: "Código, título ou empreendimento...") %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_select_field(form: f, method: :contact_filter, label: "Contato",
                               choices: [["Com telefone", "with_phone"], ["Com e-mail", "with_email"], ["Sem telefone/e-mail", "missing_contact"]],
                               select_options: { include_blank: "Todos", selected: @contact_filter }) %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_date_field(form: f, method: :start_date, label: "Entrada de", value: @start_date) %>
         </div>
-        <div class="ax-span-6">
+        <div class="ax-span-3">
           <%= ax_date_field(form: f, method: :end_date, label: "Entrada até", value: @end_date) %>
         </div>
         <% if team_available?(:leads) %>
-          <div class="ax-span-12">
+          <div class="ax-span-6">
             <span class="ax-field__label">Abrangência</span>
             <%= ax_team_toggle(:leads) %>
           </div>
@@ -1589,6 +1598,7 @@
           <% end %>
         </div>
       <% end %>
+      </div>
     <% end %>
   <% end %>
 

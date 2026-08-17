@@ -87,6 +87,10 @@ production:
     class: Automation::TickJob
     queue: default
     schedule: every 15 minutes
+  lead_pipeline_stage_auto_advance:
+    class: Leads::PipelineStageAutoAdvanceJob
+    queue: default
+    schedule: every 5 minutes
   # Sem args: o job faz fan-out para os tenants com integração conectada.
   whatsapp_templates_sync:
     class: Whatsapp::SyncTemplatesJob

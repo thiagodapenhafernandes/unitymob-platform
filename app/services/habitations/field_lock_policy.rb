@@ -50,18 +50,24 @@ module Habitations
     # Params de topo (habitation[<param>]) liberados, incluindo os extra_params
     # (ex.: um item "Fotos" libera ordered_photo_ids, site_hidden_photo_ids...).
     def allowed_top_level_params
-      (allowed_field_items + allowed_action_items).flat_map do |item|
-        [CadastroFieldRegistry.top_level_param_for(item[:key]), *item[:extra_params]]
-      end.compact.uniq
+      (
+        CadastroFieldRegistry::NON_LOCKABLE_FORM_FIELDS +
+        (allowed_field_items + allowed_action_items).flat_map do |item|
+          [CadastroFieldRegistry.top_level_param_for(item[:key]), *item[:extra_params]]
+        end
+      ).compact.uniq
     end
 
     # Identificadores que o front (broker-field-policy) usa para reconhecer os
     # campos liberados — inclui paths aninhados (address_attributes.imediacoes)
     # e extra_params. Formato igual ao BrokerEditPolicy::ALLOWED_FIELDS.
     def allowed_frontend_fields
-      (allowed_field_items + allowed_action_items).flat_map do |item|
-        [item[:param_path] || item[:key], *item[:extra_params]]
-      end.compact.reject { |key| key.start_with?("acao:") }.uniq
+      (
+        CadastroFieldRegistry::NON_LOCKABLE_FORM_FIELDS +
+        (allowed_field_items + allowed_action_items).flat_map do |item|
+          [item[:param_path] || item[:key], *item[:extra_params]]
+        end
+      ).compact.reject { |key| key.start_with?("acao:") }.uniq
     end
 
     def allowed_action_keys
@@ -96,12 +102,12 @@ module Habitations
       admin_user&.tenant_owner? || false
     end
 
-    def owns_all_imoveis?
-      permissions.dig("imoveis", "scope").to_s == "all"
+    def permissions
+      effective_profile&.permissions || {}
     end
 
-    def permissions
-      admin_user&.profile&.permissions || {}
+    def effective_profile
+      admin_user&.access_profile || admin_user&.profile
     end
 
     # nil quando o perfil ainda não foi configurado (cai no default).

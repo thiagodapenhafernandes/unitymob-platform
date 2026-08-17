@@ -9,7 +9,7 @@ import { Controller } from "@hotwired/stimulus"
 // retornado pelo backend e delega ao photo-upload a reinicialização do arraste
 // (refreshMediaDragAndDrop), preservando o previewContainer alvo intacto.
 export default class extends Controller {
-  static targets = ["modal", "ambienteSelect", "ambientePositionInput", "ambienteSaveButton", "shareResult"]
+  static targets = ["modal", "ambienteSelect", "ambientePositionInput", "ambienteSaveButton", "shareResult", "selectionSummary"]
 
   static values = {
     ambienteUrl: String,
@@ -27,7 +27,9 @@ export default class extends Controller {
     this.selectedPictureIndices = new Set()
     this.selectedDevelopmentIndices = new Set()
     this.selectedDownloadUrls = new Map()
+    this.selectedLabels = new Map()
     this.populateAmbienteOptions()
+    this.updateSelectionSummary()
   }
 
   disconnect() {
@@ -35,6 +37,7 @@ export default class extends Controller {
     this.selectedPictureIndices.clear()
     this.selectedDevelopmentIndices.clear()
     this.selectedDownloadUrls.clear()
+    this.selectedLabels.clear()
   }
 
   // --- Ambiente por foto -----------------------------------------------------
@@ -145,12 +148,15 @@ export default class extends Controller {
     if (checked) {
       selection.add(id)
       if (event.params?.downloadUrl) this.selectedDownloadUrls.set(`${kind}:${id}`, event.params.downloadUrl)
+      this.selectedLabels.set(`${kind}:${id}`, event.params?.label || this.selectionFallbackLabel(kind, id))
     } else {
       selection.delete(id)
       this.selectedDownloadUrls.delete(`${kind}:${id}`)
+      this.selectedLabels.delete(`${kind}:${id}`)
     }
 
     this.reflectSelectionState(id, checked, kind)
+    this.updateSelectionSummary()
   }
 
   downloadSelected(event) {
@@ -228,6 +234,7 @@ export default class extends Controller {
     // A galeria foi recriada: limpa seleção órfã e reaplica estado visual dos
     // checkboxes que sobreviveram (mesmos photo_ids).
     this.prunAndReflectSelection()
+    this.updateSelectionSummary()
   }
 
   photoUploadController() {
@@ -265,17 +272,26 @@ export default class extends Controller {
 
     if (presentPhotos.size > 0) {
       Array.from(this.selectedPhotoIds).forEach((id) => {
-        if (!presentPhotos.has(id)) this.selectedPhotoIds.delete(id)
+        if (!presentPhotos.has(id)) {
+          this.selectedPhotoIds.delete(id)
+          this.selectedLabels.delete(`photo:${id}`)
+        }
       })
     }
     if (presentPictures.size > 0) {
       Array.from(this.selectedPictureIndices).forEach((id) => {
-        if (!presentPictures.has(id)) this.selectedPictureIndices.delete(id)
+        if (!presentPictures.has(id)) {
+          this.selectedPictureIndices.delete(id)
+          this.selectedLabels.delete(`picture:${id}`)
+        }
       })
     }
     if (presentDevelopments.size > 0) {
       Array.from(this.selectedDevelopmentIndices).forEach((id) => {
-        if (!presentDevelopments.has(id)) this.selectedDevelopmentIndices.delete(id)
+        if (!presentDevelopments.has(id)) {
+          this.selectedDevelopmentIndices.delete(id)
+          this.selectedLabels.delete(`development:${id}`)
+        }
       })
     }
 
@@ -292,7 +308,34 @@ export default class extends Controller {
       if (checked && input.getAttribute("data-media-tools-download-url-param")) {
         this.selectedDownloadUrls.set(`${kind}:${id}`, input.getAttribute("data-media-tools-download-url-param"))
       }
+      if (checked) {
+        this.selectedLabels.set(`${kind}:${id}`, input.getAttribute("data-media-tools-label-param") || this.selectionFallbackLabel(kind, id))
+      }
     })
+  }
+
+  updateSelectionSummary() {
+    if (!this.hasSelectionSummaryTarget) return
+
+    const labels = [
+      ...Array.from(this.selectedPhotoIds).map((id) => this.selectedLabels.get(`photo:${id}`) || this.selectionFallbackLabel("photo", id)),
+      ...Array.from(this.selectedPictureIndices).map((id) => this.selectedLabels.get(`picture:${id}`) || this.selectionFallbackLabel("picture", id)),
+      ...Array.from(this.selectedDevelopmentIndices).map((id) => this.selectedLabels.get(`development:${id}`) || this.selectionFallbackLabel("development", id))
+    ].filter(Boolean)
+
+    if (labels.length === 0) {
+      this.selectionSummaryTarget.hidden = true
+      this.selectionSummaryTarget.textContent = ""
+      this.selectionSummaryTarget.removeAttribute("title")
+      this.selectionSummaryTarget.removeAttribute("aria-label")
+      return
+    }
+
+    const first = labels[0]
+    this.selectionSummaryTarget.hidden = false
+    this.selectionSummaryTarget.textContent = labels.length === 1 ? first : `${first} +${labels.length - 1}`
+    this.selectionSummaryTarget.title = labels.join("\n")
+    this.selectionSummaryTarget.setAttribute("aria-label", `${labels.length} foto${labels.length === 1 ? "" : "s"} selecionada${labels.length === 1 ? "" : "s"}: ${labels.join(", ")}`)
   }
 
   // --- Modal -----------------------------------------------------------------
@@ -472,6 +515,12 @@ export default class extends Controller {
     if (kind === "photo") return this.selectedPhotoIds
     if (kind === "development") return this.selectedDevelopmentIndices
     return this.selectedPictureIndices
+  }
+
+  selectionFallbackLabel(kind, id) {
+    if (kind === "development") return `Foto do empreendimento ${Number(id) + 1}`
+    if (kind === "picture") return `Foto externa ${Number(id) + 1}`
+    return `Foto ${id}`
   }
 
   appendHiddenField(form, name, value) {

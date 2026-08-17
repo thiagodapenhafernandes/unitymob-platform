@@ -39,6 +39,11 @@
   width: min(920px, calc(100vw - 32px));
 }
 
+.ax-quick-modal--xl .ax-quick-modal__panel {
+  width: min(1500px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+}
+
 .ax-quick-modal__header {
   display: flex;
   align-items: center;

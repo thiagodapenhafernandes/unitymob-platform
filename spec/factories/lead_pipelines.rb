@@ -16,4 +16,14 @@ FactoryBot.define do
     stage_type { "open" }
     active { true }
   end
+
+  factory :lead_pipeline_stage_automation do
+    association :lead_pipeline_stage
+    tenant { lead_pipeline_stage.tenant }
+    auto_advance_to_stage { association(:lead_pipeline_stage, tenant: tenant, lead_pipeline: lead_pipeline_stage.lead_pipeline) }
+    trigger { "stage_duration" }
+    after_amount { 2 }
+    after_unit { "days" }
+    active { true }
+  end
 end
