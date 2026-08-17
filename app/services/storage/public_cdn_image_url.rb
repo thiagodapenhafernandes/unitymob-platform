@@ -42,6 +42,9 @@ module Storage
     ].freeze
 
     TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill format].freeze
+    BLOCKED_EXTERNAL_IMAGE_HOSTS = [
+      "cdn.vistahost.com.br"
+    ].freeze
     TRUSTED_EXTERNAL_IMAGE_HOSTS = [
       "dwvimagesv1.b-cdn.net"
     ].freeze
@@ -283,7 +286,9 @@ module Storage
 
       uri = URI.parse(value)
       return unless uri.is_a?(URI::HTTP)
-      return unless allowed_image_hosts.include?(uri.host.to_s.downcase)
+      host = uri.host.to_s.downcase
+      return if blocked_external_image_hosts.include?(host)
+      return unless allowed_image_hosts.include?(host)
 
       uri.path = "/#{uri.path.to_s.sub(%r{\A/+}, "")}" if uri.path.start_with?("//")
       uri.to_s
@@ -306,6 +311,11 @@ module Storage
       (TRUSTED_EXTERNAL_IMAGE_HOSTS + env_hosts)
         .map { |host| host.to_s.strip.downcase }
         .reject(&:blank?)
+        .excluding(*blocked_external_image_hosts)
+    end
+
+    def blocked_external_image_hosts
+      BLOCKED_EXTERNAL_IMAGE_HOSTS
     end
 
     def host_from_url(url)

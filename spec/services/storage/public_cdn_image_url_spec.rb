@@ -17,6 +17,17 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve(source)).to be_nil
   end
 
+  it "bloqueia URL da Vista mesmo quando alguém tenta confiar o host por ENV" do
+    source = "https://cdn.vistahost.com.br/salute/foto.jpg"
+    previous = ENV["TRUSTED_EXTERNAL_IMAGE_HOSTS"]
+
+    ENV["TRUSTED_EXTERNAL_IMAGE_HOSTS"] = "cdn.vistahost.com.br"
+
+    expect(described_class.resolve(source)).to be_nil
+  ensure
+    ENV["TRUSTED_EXTERNAL_IMAGE_HOSTS"] = previous
+  end
+
   it "não aceita origem direta do Spaces como URL pública quando há CDN configurado" do
     source = "https://imob.sfo3.digitaloceanspaces.com/foto.jpg"
 
