@@ -43,7 +43,6 @@ module Storage
 
     TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill format].freeze
     TRUSTED_EXTERNAL_IMAGE_HOSTS = [
-      "cdn.vistahost.com.br",
       "dwvimagesv1.b-cdn.net"
     ].freeze
 

@@ -1641,28 +1641,7 @@ class Habitation < ApplicationRecord
   end
 
   def public_attachment_source_available?(photo, source)
-    return false if stale_vista_materialized_photo?(photo)
-
     Storage::PublicCdnImageUrl.resolve(source).present?
-  end
-
-  def stale_vista_materialized_photo?(photo)
-    return false if imovel_dwv == "Sim"
-    return false unless pictures.is_a?(Array) && pictures.present?
-
-    blob = photo.blob
-    return false if blob.key.to_s.start_with?("vista/property_photo/")
-
-    vista_picture_filenames.include?(photo.filename.to_s)
-  end
-
-  def vista_picture_filenames
-    @vista_picture_filenames ||= pictures.filter_map do |picture|
-      url = picture.is_a?(Hash) ? (picture["url"].presence || picture["Foto"].presence || picture["FotoOriginal"].presence || picture["FotoPequena"].presence) : picture.to_s
-      File.basename(URI.parse(url.to_s).path) if url.present?
-    rescue URI::InvalidURIError
-      File.basename(url.to_s.split("?").first)
-    end
   end
 
   def use_development_photos?

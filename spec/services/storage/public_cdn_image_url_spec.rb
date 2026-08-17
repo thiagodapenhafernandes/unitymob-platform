@@ -11,10 +11,10 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve(source)).to be_nil
   end
 
-  it "resolve URL externa da Vista como fallback confiável" do
+  it "não resolve URL externa da Vista como fonte pública própria" do
     source = "https://cdn.vistahost.com.br/salute/foto.jpg"
 
-    expect(described_class.resolve(source)).to eq(source)
+    expect(described_class.resolve(source)).to be_nil
   end
 
   it "não aceita origem direta do Spaces como URL pública quando há CDN configurado" do
@@ -44,11 +44,11 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve(source)).to eq(source["url"])
   end
 
-  it "não consulta materialização local para payload externo não-CDN" do
+  it "não consulta materialização local nem resolve payload externo não confiável" do
     source = { "url" => "https://cdn.vistahost.com.br/salute/foto.jpg" }
 
     expect(VistaFileAsset).not_to receive(:where)
-    expect(described_class.resolve(source)).to eq(source["url"])
+    expect(described_class.resolve(source)).to be_nil
   end
 
   it "resolve blob publicado para URL de CDN" do
