@@ -15,11 +15,13 @@ RSpec.describe Habitation, type: :model do
 
     it "prioriza fotos anexadas na base para imóveis vindos do Vista" do
       habitation = create(:habitation, codigo: unique_code("VISTA"), address_attributes: address_attributes("Vista 1"), pictures: [vista_picture], imovel_dwv: "Nao")
-      habitation.photos.attach(
+      blob = ActiveStorage::Blob.create_and_upload!(
+        key: "vista/property_photo/#{habitation.codigo}/foto.jpg",
         io: StringIO.new("imagem"),
         filename: "foto.jpg",
         content_type: "image/jpeg"
       )
+      habitation.photos.attach(blob)
 
       first_source = habitation.public_image_sources.first
 
@@ -87,13 +89,6 @@ RSpec.describe Habitation, type: :model do
         filename: "foto.jpg",
         content_type: "image/jpeg"
       )
-      attachment = habitation.photos.attachments.first
-
-      allow(Storage::PublicCdnImageUrl).to receive(:resolve).and_wrap_original do |method, source = nil, **options|
-        next nil if source.is_a?(Hash) && source["attachment"] == attachment
-
-        method.call(source, **options)
-      end
 
       first_source = habitation.reload.public_image_sources.first
 

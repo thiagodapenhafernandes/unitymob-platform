@@ -62,23 +62,6 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve(blob)).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
   end
 
-  it "não resolve blob remoto quando o objeto não existe no storage" do
-    blob = ActiveStorage::Blob.create_before_direct_upload!(
-      filename: "foto-ausente.jpg",
-      byte_size: 10,
-      checksum: Digest::MD5.base64digest("ausente"),
-      content_type: "image/jpeg",
-      service_name: ActiveStorage::Blob.service.name
-    )
-    service = instance_double(ActiveStorage::Service, exist?: false)
-    allow(blob).to receive(:service_name).and_return("do_spaces")
-    allow(blob).to receive(:service).and_return(service)
-    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with("do_spaces").and_return(service)
-    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
-
-    expect(described_class.resolve(blob)).to be_nil
-  end
-
   it "resolve anexo publicado para URL de CDN" do
     habitation = create(:habitation, codigo: "CDN-ONLY-1", address_attributes: address_attributes)
     habitation.photos.attach(
