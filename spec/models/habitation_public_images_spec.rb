@@ -62,7 +62,7 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.photos.attachments.map(&:id)).to contain_exactly(*attachments.map(&:id))
     end
 
-    it "não inclui fotos da API Vista no conjunto público" do
+    it "inclui fotos da API Vista no conjunto público como fallback confiável" do
       habitation = create(
         :habitation,
         codigo: unique_code("API"),
@@ -76,26 +76,48 @@ RSpec.describe Habitation, type: :model do
 
       public_urls = habitation.public_image_sources.map { |source| source["url"] }
 
-      expect(public_urls).to be_empty
+      expect(public_urls).to contain_exactly(vista_picture["url"])
       expect(habitation.pictures.size).to eq(2)
+    end
+
+    it "usa fotos da API Vista quando anexos materializados estão indisponíveis" do
+      habitation = create(:habitation, codigo: unique_code("MISSING"), address_attributes: address_attributes("Missing 1"), pictures: [vista_picture], imovel_dwv: "Nao")
+      habitation.photos.attach(
+        io: StringIO.new("imagem"),
+        filename: "foto.jpg",
+        content_type: "image/jpeg"
+      )
+      attachment = habitation.photos.attachments.first
+
+      allow(Storage::PublicCdnImageUrl).to receive(:resolve).and_wrap_original do |method, source = nil, **options|
+        next nil if source.is_a?(Hash) && source["attachment"] == attachment
+
+        method.call(source, **options)
+      end
+
+      first_source = habitation.reload.public_image_sources.first
+
+      expect(first_source["attachment"]).to be_nil
+      expect(first_source["url"]).to eq(vista_picture["url"])
     end
 
     it "não usa fotos do empreendimento vinculado quando a unidade não optou por esse fallback" do
       development = create(
         :habitation,
-        codigo: "EMP-IMG-1",
+        codigo: unique_code("EMP-IMG-1"),
         tipo: "Empreendimento",
         address_attributes: address_attributes("Empreendimento 1"),
         pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/empreendimento.jpg" }]
       )
       unit = create(
         :habitation,
-        codigo: "UNIT-IMG-1",
+        codigo: unique_code("UNIT-IMG-1"),
         codigo_empreendimento: development.codigo,
         address_attributes: address_attributes("Unidade 1"),
         pictures: [],
         use_development_photos_flag: false
       )
+      unit.update_column(:use_development_photos_flag, false)
 
       expect(unit.public_image_sources).to be_empty
       expect(unit.has_any_photo?).to be(false)
@@ -104,14 +126,14 @@ RSpec.describe Habitation, type: :model do
     it "usa fotos do empreendimento vinculado quando a unidade optou pelo fallback e não tem fotos próprias" do
       development = create(
         :habitation,
-        codigo: "EMP-IMG-2",
+        codigo: unique_code("EMP-IMG-2"),
         tipo: "Empreendimento",
         address_attributes: address_attributes("Empreendimento 2"),
         pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/empreendimento.jpg" }]
       )
       unit = create(
         :habitation,
-        codigo: "UNIT-IMG-2",
+        codigo: unique_code("UNIT-IMG-2"),
         codigo_empreendimento: development.codigo,
         address_attributes: address_attributes("Unidade 2"),
         pictures: [],

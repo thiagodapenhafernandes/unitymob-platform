@@ -81,6 +81,7 @@ RSpec.describe Vista::ApiPictureMaterializationService, type: :service do
         service_name: ActiveStorage::Blob.service.name
       )
       ActiveStorage::Attachment.create!(name: "photos", record: habitation, blob: blob)
+      ActiveStorage::Blob.service.delete(key) if ActiveStorage::Blob.service.exist?(key)
 
       expect(ActiveStorage::Blob.service.exist?(key)).to be(false)
       allow_any_instance_of(described_class).to receive(:download).and_return(StringIO.new(body.b))

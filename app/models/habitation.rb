@@ -1631,7 +1631,10 @@ class Habitation < ApplicationRecord
   end
 
   def own_public_image_sources
-    attached_images = public_ordered_photos.map { |photo| { "attachment" => photo } }
+    attached_images = public_ordered_photos.filter_map do |photo|
+      source = { "attachment" => photo }
+      source if Storage::PublicCdnImageUrl.resolve(source).present?
+    end
     api_images = image_payload_sources
 
     attached_images.presence || api_images
@@ -1643,6 +1646,7 @@ class Habitation < ApplicationRecord
 
   def linked_development_public_image_sources
     return [] if empreendimento? || codigo_empreendimento.blank?
+    return [] unless use_development_photos?
 
     empreendimento&.own_public_image_sources.presence || development_image_payload_sources
   end

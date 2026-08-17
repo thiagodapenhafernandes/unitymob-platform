@@ -11,10 +11,10 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve(source)).to be_nil
   end
 
-  it "não resolve URL externa fora do CDN configurado" do
+  it "resolve URL externa da Vista como fallback confiável" do
     source = "https://cdn.vistahost.com.br/salute/foto.jpg"
 
-    expect(described_class.resolve(source)).to be_nil
+    expect(described_class.resolve(source)).to eq(source)
   end
 
   it "não aceita origem direta do Spaces como URL pública quando há CDN configurado" do
@@ -48,7 +48,7 @@ RSpec.describe Storage::PublicCdnImageUrl do
     source = { "url" => "https://cdn.vistahost.com.br/salute/foto.jpg" }
 
     expect(VistaFileAsset).not_to receive(:where)
-    expect(described_class.resolve(source)).to be_nil
+    expect(described_class.resolve(source)).to eq(source["url"])
   end
 
   it "resolve blob publicado para URL de CDN" do
@@ -60,6 +60,23 @@ RSpec.describe Storage::PublicCdnImageUrl do
     allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
 
     expect(described_class.resolve(blob)).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
+  end
+
+  it "não resolve blob remoto quando o objeto não existe no storage" do
+    blob = ActiveStorage::Blob.create_before_direct_upload!(
+      filename: "foto-ausente.jpg",
+      byte_size: 10,
+      checksum: Digest::MD5.base64digest("ausente"),
+      content_type: "image/jpeg",
+      service_name: ActiveStorage::Blob.service.name
+    )
+    service = instance_double(ActiveStorage::Service, exist?: false)
+    allow(blob).to receive(:service_name).and_return("do_spaces")
+    allow(blob).to receive(:service).and_return(service)
+    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with("do_spaces").and_return(service)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
+
+    expect(described_class.resolve(blob)).to be_nil
   end
 
   it "resolve anexo publicado para URL de CDN" do

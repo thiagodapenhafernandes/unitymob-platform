@@ -4,6 +4,7 @@ module Storage
   class PublicCdnImageUrl
     TRANSFORM_ENQUEUE_TTL = 15.minutes
     VARIANT_EXISTENCE_TTL = 12.hours
+    BLOB_EXISTENCE_TTL = 12.hours
     TRANSFORM_FAILURE_METADATA_KEY = "public_variant_failures".freeze
     SOURCE_URL_KEYS = [
       "url",
@@ -43,6 +44,7 @@ module Storage
 
     TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill format].freeze
     TRUSTED_EXTERNAL_IMAGE_HOSTS = [
+      "cdn.vistahost.com.br",
       "dwvimagesv1.b-cdn.net"
     ].freeze
 
@@ -123,14 +125,19 @@ module Storage
     def cdn_url_for_attachment(attachment)
       return if attachment.blank?
 
-      variant_url_for(attachment.blob) ||
+      blob = attachment.blob
+      return unless blob_available?(blob)
+
+      variant_url_for(blob) ||
         Storage::PublicPropertyPhoto.public_url_for_attachment(attachment) ||
-        active_storage_path_for_blob(attachment.blob)
+        active_storage_path_for_blob(blob)
     rescue StandardError
       nil
     end
 
     def cdn_url_for_blob(blob)
+      return unless blob_available?(blob)
+
       variant_url_for(blob) || original_cdn_url_for_blob(blob)
     rescue StandardError
       nil
@@ -211,6 +218,29 @@ module Storage
 
       Rails.cache.write(cache_key, false, expires_in: VARIANT_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
       Rails.logger.warn("[public_cdn_image_url] variant missing blob_id=#{variant&.blob&.id} error=#{e.class}: #{e.message}")
+      false
+    end
+
+    def blob_available?(blob)
+      return false if blob.blank?
+      return true if blob.service_name.to_sym == :local
+
+      Storage::ActiveStorageRegistry.fetch!(blob.service_name) if defined?(Storage::ActiveStorageRegistry)
+      cache_key = "storage/public_cdn_image_url/blob_exists/#{blob.id}/#{blob.service_name}/#{blob.key}"
+      cached = Rails.cache.read(cache_key)
+      return cached unless cached.nil?
+
+      exists = blob.service.exist?(blob.key)
+      Rails.cache.write(cache_key, exists, expires_in: BLOB_EXISTENCE_TTL)
+      exists
+    rescue StandardError => e
+      if s3_private_existence_check?(e)
+        Rails.cache.write(cache_key, true, expires_in: BLOB_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
+        return true
+      end
+
+      Rails.cache.write(cache_key, false, expires_in: BLOB_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
+      Rails.logger.warn("[public_cdn_image_url] blob missing blob_id=#{blob&.id} error=#{e.class}: #{e.message}")
       false
     end
 
