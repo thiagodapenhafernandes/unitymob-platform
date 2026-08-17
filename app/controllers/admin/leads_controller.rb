@@ -740,8 +740,8 @@ class Admin::LeadsController < Admin::BaseController
     return scope if parsed_closed_start_date.blank? && parsed_closed_end_date.blank?
 
     scope = scope.where(status: Lead.status_value(:concluido))
-    scope = scope.where("leads.updated_at >= ?", parsed_closed_start_date.beginning_of_day) if parsed_closed_start_date.present?
-    scope = scope.where("leads.updated_at <= ?", parsed_closed_end_date.end_of_day) if parsed_closed_end_date.present?
+    scope = scope.where("leads.closed_at >= ?", parsed_closed_start_date.beginning_of_day) if parsed_closed_start_date.present?
+    scope = scope.where("leads.closed_at <= ?", parsed_closed_end_date.end_of_day) if parsed_closed_end_date.present?
     scope
   end
 

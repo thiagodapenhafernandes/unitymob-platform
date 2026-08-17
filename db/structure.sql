@@ -1,4 +1,4 @@
-\restrict 2297FVqudPUageYrH3NzJAoEsmPzuPmQY1f4glkHgUbbzYV1yp60apTChgGH9l7
+\restrict khAZjvWEDH0VBef6YlFvw1uUclNS5jbzwXVVSdWKzNWmaGzSGGNQKgE5me8bFWB
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3931,7 +3931,8 @@ CREATE TABLE public.leads (
     archive_note text,
     archived_at timestamp(6) without time zone,
     archived_by_admin_user_id bigint,
-    parecer text
+    parecer text,
+    closed_at timestamp(6) without time zone
 );
 
 
@@ -12687,6 +12688,13 @@ CREATE INDEX index_leads_on_tenant_id_and_admin_user_id ON public.leads USING bt
 
 
 --
+-- Name: index_leads_on_tenant_id_and_closed_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_id_and_closed_at ON public.leads USING btree (tenant_id, closed_at);
+
+
+--
 -- Name: index_leads_on_tenant_id_and_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17292,11 +17300,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2297FVqudPUageYrH3NzJAoEsmPzuPmQY1f4glkHgUbbzYV1yp60apTChgGH9l7
+\unrestrict khAZjvWEDH0VBef6YlFvw1uUclNS5jbzwXVVSdWKzNWmaGzSGGNQKgE5me8bFWB
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260817120000'),
 ('20260816130000'),
 ('20260816120000'),
 ('20260815160100'),

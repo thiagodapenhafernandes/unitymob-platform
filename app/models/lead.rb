@@ -82,6 +82,7 @@ class Lead < ApplicationRecord
   before_validation :normalize_status
   before_validation :sync_pipeline_stage
   before_validation :normalize_tags
+  before_save :sync_closed_at
   normalize_phone_fields :phone, :client_phone, :agent_phone
 
   scope :novo, -> { where(status: status_value(:novo)) }
@@ -353,6 +354,14 @@ class Lead < ApplicationRecord
 
   def normalize_tags
     self.tags = self.class.normalize_tags_value(tags)
+  end
+
+  def sync_closed_at
+    if self.class.status_value(status) == self.class.status_value(:concluido)
+      self.closed_at ||= Time.current
+    elsif will_save_change_to_status?
+      self.closed_at = nil
+    end
   end
 
   def associated_records_must_belong_to_tenant

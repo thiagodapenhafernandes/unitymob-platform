@@ -405,6 +405,40 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("Lead Locacao Site")
     end
 
+    it "filtra negócio fechado pela data real de fechamento e não pela última edição" do
+      closed_in_period = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Fechado no período",
+        phone: "11999999990",
+        status: "Concluido",
+        closed_at: Time.zone.local(2026, 8, 15, 10, 0, 0),
+        updated_at: Time.zone.local(2026, 8, 17, 10, 0, 0)
+      )
+      edited_after_close = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Fechado antes editado depois",
+        phone: "11999999991",
+        status: "Concluido",
+        closed_at: Time.zone.local(2026, 8, 10, 10, 0, 0),
+        updated_at: Time.zone.local(2026, 8, 15, 10, 0, 0)
+      )
+
+      get admin_leads_path(
+        view: "list",
+        closed_start_date: "2026-08-15",
+        closed_end_date: "2026-08-15"
+      )
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(closed_in_period.name)
+      expect(response.body).to include("Período")
+      expect(response.body).not_to include(edited_after_close.name)
+    end
+
     it "aplica filtros mobile de atividade usando tarefas e visitas reais" do
       visit_lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Visita Real", phone: "11999999991", status: "Em Atendimento")
       task_lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Retorno Real", phone: "11999999992", status: "Em Atendimento")

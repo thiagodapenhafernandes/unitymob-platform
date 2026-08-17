@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Lead, type: :model do
+  include ActiveSupport::Testing::TimeHelpers
+
   around do |example|
     previous_tenant = Current.tenant
     Current.tenant = Tenant.default
@@ -81,6 +83,34 @@ RSpec.describe Lead, type: :model do
       expect(sql.grep(/FROM "lead_labels"/)).to be_empty
     ensure
       ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+    end
+  end
+
+  describe "#closed_at" do
+    it "preenche ao entrar em concluido e preserva em edicoes posteriores" do
+      lead = create(:lead, status: "Novo", closed_at: nil)
+
+      travel_to Time.zone.local(2026, 8, 15, 9, 0, 0) do
+        lead.update!(status: "Concluido")
+      end
+
+      expect(lead.reload.closed_at).to eq(Time.zone.local(2026, 8, 15, 9, 0, 0))
+
+      travel_to Time.zone.local(2026, 8, 17, 9, 0, 0) do
+        lead.update!(notes: "Edição posterior ao fechamento")
+      end
+
+      expect(lead.reload.closed_at).to eq(Time.zone.local(2026, 8, 15, 9, 0, 0))
+    end
+
+    it "limpa a data ao sair de concluido" do
+      lead = create(:lead, status: "Concluido")
+
+      expect(lead.closed_at).to be_present
+
+      lead.update!(status: "Em Atendimento")
+
+      expect(lead.reload.closed_at).to be_nil
     end
   end
 

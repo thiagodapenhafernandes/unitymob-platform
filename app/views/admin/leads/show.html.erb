@@ -478,7 +478,7 @@
 
   <article class="lead-pwa-detail__hero">
     <div class="lead-pwa-detail__hero-head">
-      <h1 class="lead-pwa-detail__name"><%= @lead.display_name %></h1>
+      <h3 class="lead-pwa-detail__name"><%= @lead.display_name %></h3>
       <span class="lead-pwa-detail__badge">
         <% if @lead_favorited %><i class="bi bi-star-fill" aria-hidden="true"></i><% end %>
         <%= @lead.status.presence || Lead.default_status %>
