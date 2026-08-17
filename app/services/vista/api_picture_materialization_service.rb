@@ -397,7 +397,16 @@ module Vista
         service_name: service_name
       )
     rescue ActiveRecord::RecordNotUnique
-      ActiveStorage::Blob.find_by!(key: storage_key_for(habitation, filename))
+      existing_blob = ActiveStorage::Blob.find_by!(key: storage_key_for(habitation, filename))
+      reupload_blob!(existing_blob, io) unless blob_available?(existing_blob)
+      existing_blob
+    end
+
+    def reupload_blob!(blob, io)
+      io.rewind
+      blob.upload(io, identify: false)
+      blob.save!
+      blob
     end
 
     def storage_key_for(habitation, filename)
@@ -405,6 +414,7 @@ module Vista
     end
 
     def blob_available?(blob)
+      Storage::ActiveStorageRegistry.fetch!(blob.service_name) unless blob.service_name.to_sym == :local
       blob.present? && blob.service.exist?(blob.key)
     rescue StandardError
       false
