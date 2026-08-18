@@ -27,6 +27,10 @@ export default class extends Controller {
     this.element.addEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.element.addEventListener("phone-input:metadata", this.handleMetadataRequest)
     this.element.addEventListener("phone-input:enhance", this.handleEnhanceRequest)
+
+    if (this.shouldAutoEnhance()) {
+      window.requestAnimationFrame(() => this.ensureEnhancedInput())
+    }
   }
 
   disconnect() {
@@ -42,7 +46,7 @@ export default class extends Controller {
     this.inputGroup?.classList.remove("phone-input-group")
   }
 
-  initialize() {
+  initializeIntlTelInput() {
     if (this.iti || this.initializing) return
 
     this.initializing = true
@@ -62,7 +66,9 @@ export default class extends Controller {
         })
         this.applyDisplayMask()
       })
-      .catch(() => {})
+      .catch((error) => {
+        console.error("[phone-input] falha ao carregar intl-tel-input", error)
+      })
       .finally(() => {
         this.initializing = false
       })
@@ -110,6 +116,10 @@ export default class extends Controller {
 
   handleEnhanceRequest() {
     this.ensureEnhancedInput()
+  }
+
+  shouldAutoEnhance() {
+    return this.element.closest("#quickProprietorModal")
   }
 
   prepareInitialValue() {
@@ -238,7 +248,7 @@ export default class extends Controller {
 
   ensureEnhancedInput() {
     this.loadStylesheet()
-    this.initialize()
+    this.initializeIntlTelInput()
   }
 
   loadStylesheet() {
