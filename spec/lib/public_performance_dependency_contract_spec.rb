@@ -32,6 +32,7 @@ RSpec.describe "public performance dependency contract" do
     expect(connect_body).not_to include("loadStylesheet()")
     expect(connect_body).not_to include("initialize()")
     expect(phone_input_controller).to include("ensureEnhancedInput()")
+    expect(phone_input_controller).to include('phone-input:enhance')
     expect(phone_input_controller).to include('import("intl-tel-input")')
   end
 end

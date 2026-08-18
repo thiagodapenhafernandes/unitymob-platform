@@ -123,6 +123,7 @@ export default class extends Controller {
     this.createPanelTarget.hidden = false
     this.prefillCreateFields(this.queryTarget.value.trim())
     this.hideSearchSuggestions()
+    this.enhancePhoneField(this.createPhoneTarget)
     this.focusQuickField("create", this.createPanelTarget)
   }
 
@@ -165,6 +166,7 @@ export default class extends Controller {
     this.syncEditNamePermission()
     this.syncEditPhonePermission(proprietor)
     this.dispatchPhoneMask(this.editPhoneTarget)
+    this.enhancePhoneField(this.editPhoneTarget)
     this.focusEditField(options)
   }
 
@@ -370,6 +372,10 @@ export default class extends Controller {
     field?.dispatchEvent(new Event("input", { bubbles: true }))
   }
 
+  enhancePhoneField(field) {
+    field?.dispatchEvent(new CustomEvent("phone-input:enhance", { bubbles: true }))
+  }
+
   hidePanels() {
     if (this.hasCreatePanelTarget) this.createPanelTarget.hidden = true
     if (this.hasEditPanelTarget) this.editPanelTarget.hidden = true
@@ -480,6 +486,7 @@ export default class extends Controller {
     if (/^[\d\s()+.-]+$/.test(query)) {
       this.createPhoneTarget.value = query
       this.dispatchPhoneMask(this.createPhoneTarget)
+      this.enhancePhoneField(this.createPhoneTarget)
     } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query)) {
       this.createEmailTarget.value = query
     } else {

@@ -16,6 +16,7 @@ export default class extends Controller {
     this.handleCountryChange = this.handleCountryChange.bind(this)
     this.handleNormalizeRequest = this.handleNormalizeRequest.bind(this)
     this.handleMetadataRequest = this.handleMetadataRequest.bind(this)
+    this.handleEnhanceRequest = this.handleEnhanceRequest.bind(this)
     this.ensureEnhancedInput = this.ensureEnhancedInput.bind(this)
 
     this.element.form?.addEventListener("submit", this.handleSubmit)
@@ -25,6 +26,7 @@ export default class extends Controller {
     this.element.addEventListener("countrychange", this.handleCountryChange)
     this.element.addEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.element.addEventListener("phone-input:metadata", this.handleMetadataRequest)
+    this.element.addEventListener("phone-input:enhance", this.handleEnhanceRequest)
   }
 
   disconnect() {
@@ -35,6 +37,7 @@ export default class extends Controller {
     this.element.removeEventListener("countrychange", this.handleCountryChange)
     this.element.removeEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.element.removeEventListener("phone-input:metadata", this.handleMetadataRequest)
+    this.element.removeEventListener("phone-input:enhance", this.handleEnhanceRequest)
     this.iti?.destroy()
     this.inputGroup?.classList.remove("phone-input-group")
   }
@@ -103,6 +106,10 @@ export default class extends Controller {
     event.detail.isValidNumber = validNumber
     event.detail.e164 = validNumber ? this.iti.getNumber() : ""
     event.detail.normalized = this.normalizeForAjax(rawValue)
+  }
+
+  handleEnhanceRequest() {
+    this.ensureEnhancedInput()
   }
 
   prepareInitialValue() {
