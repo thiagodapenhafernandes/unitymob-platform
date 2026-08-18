@@ -23,8 +23,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
         waba_id: session_info["waba_id"],
         phone_number_id: session_info["phone_number_id"],
         business_id: session_info["business_id"],
-        access_token: token_info["access_token"],
-        token_expires_at: token_expiration(token_info),
+        access_token: embedded_signup_access_token(token_info),
+        token_expires_at: embedded_signup_token_expiration(token_info),
         status: "connected",
         last_event: event,
         last_error_code: nil,
@@ -389,5 +389,15 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   def token_expiration(token_info)
     expires_in = token_info["expires_in"].to_i
     expires_in.positive? ? Time.current + expires_in.seconds : nil
+  end
+
+  def embedded_signup_access_token(token_info)
+    ENV["META_SYSTEM_USER_TOKEN"].presence || token_info["access_token"]
+  end
+
+  def embedded_signup_token_expiration(token_info)
+    return nil if ENV["META_SYSTEM_USER_TOKEN"].present?
+
+    token_expiration(token_info)
   end
 end

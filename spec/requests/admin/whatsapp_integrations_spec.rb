@@ -77,6 +77,8 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
       "expires_in" => 3600
     })
     client = instance_double(Whatsapp::CloudClient, subscribe_app: { ok: true, status: 200, data: { "success" => true } })
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
 
@@ -99,6 +101,33 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(client).to have_received(:subscribe_app)
   end
 
+  it "prefere o token permanente do system user quando configurado" do
+    service = instance_double(Facebook::WhatsappEmbeddedSignupService, exchange_code!: {
+      "access_token" => "embedded-signup-token",
+      "expires_in" => 3600
+    })
+    client = instance_double(Whatsapp::CloudClient, subscribe_app: { ok: true, status: 200, data: { "success" => true } })
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return("system-user-token")
+    allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+
+    post embedded_signup_callback_admin_whatsapp_integration_path, params: {
+      code: "code-123",
+      event: "FINISH",
+      session_info: {
+        waba_id: "616242481017427",
+        phone_number_id: "649374078254590",
+        business_id: "business-1"
+      }
+    }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
+    expect(integration.access_token).to eq("system-user-token")
+    expect(integration.token_expires_at).to be_nil
+  end
+
   it "mantem conectado e registra aviso quando a assinatura da WABA falha" do
     service = instance_double(Facebook::WhatsappEmbeddedSignupService, exchange_code!: {
       "access_token" => "business-token",
@@ -109,6 +138,8 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
       error: "Missing permission",
       meta_error: { code: 200 }
     })
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
 
