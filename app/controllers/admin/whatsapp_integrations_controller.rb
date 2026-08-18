@@ -34,8 +34,12 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
         connected_by_admin_user: current_admin_user,
         connected_at: Time.current
       )
+      subscription = subscribe_current_whatsapp_app(integration)
 
-      render json: { ok: true, message: "WhatsApp conectado com sucesso." }
+      render json: {
+        ok: true,
+        message: subscription[:ok] ? "WhatsApp conectado com sucesso." : whatsapp_subscription_warning(subscription)
+      }
     else
       error_message = callback_error_message(event, session_info)
       integration.update!(
@@ -91,7 +95,10 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
 
     if integration.save
-      redirect_to admin_whatsapp_integration_path, notice: "Conexão manual do WhatsApp salva."
+      subscription = subscribe_current_whatsapp_app(integration)
+      flash_type = subscription[:ok] || subscription[:skipped] ? :notice : :alert
+      flash_message = subscription[:ok] || subscription[:skipped] ? "Conexão manual do WhatsApp salva." : whatsapp_subscription_warning(subscription)
+      redirect_to admin_whatsapp_integration_path, flash_type => flash_message
     else
       load_page_state
       @manual_connection_errors = integration.errors.full_messages
@@ -111,17 +118,18 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     phone = client.phone_info
     subs = client.subscribed_apps
     subscribed = Array(subs.dig(:data, "data"))
+    receive_ok = subs[:ok] && subscribed.any?
 
     render json: {
-      ok: phone[:ok],
+      ok: phone[:ok] && receive_ok,
       send: {
         ok: phone[:ok],
         label: phone.dig(:data, "display_phone_number").presence || phone.dig(:data, "verified_name"),
         error: phone[:error]
       },
       receive: {
-        ok: subs[:ok] && subscribed.any?,
-        error: subs[:error],
+        ok: receive_ok,
+        error: whatsapp_subscription_test_error(subs, subscribed),
         apps: subscribed.filter_map { |app| app.dig("whatsapp_business_api_data", "name") }
       }
     }
@@ -348,6 +356,34 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     return if session_info["waba_id"].present? && session_info["phone_number_id"].present?
 
     raise Facebook::WhatsappEmbeddedSignupService::Error, "A Meta não retornou WABA ID e Phone Number ID para concluir a conexão."
+  end
+
+  def subscribe_current_whatsapp_app(integration)
+    return { ok: false, skipped: true } unless integration.messaging_ready? && integration.waba_id.present?
+
+    result = Whatsapp::CloudClient.new(integration).subscribe_app
+    if result[:ok]
+      integration.update_columns(last_error_code: nil, last_error_message: nil, updated_at: Time.current)
+    else
+      integration.update_columns(
+        last_error_code: result.dig(:meta_error, :code),
+        last_error_message: whatsapp_subscription_warning(result),
+        updated_at: Time.current
+      )
+    end
+    result
+  end
+
+  def whatsapp_subscription_warning(result)
+    detail = result[:error].presence || "sem detalhes retornados pela Meta"
+    "WhatsApp salvo, mas não foi possível assinar o app Unitymob na WABA: #{detail}."
+  end
+
+  def whatsapp_subscription_test_error(subscriptions_result, subscribed)
+    return subscriptions_result[:error] unless subscriptions_result[:ok]
+    return nil if subscribed.any?
+
+    "App Unitymob não está inscrito na WABA. Refaça a conexão ou salve a conexão manual para tentar assinar o app automaticamente."
   end
 
   def token_expiration(token_info)

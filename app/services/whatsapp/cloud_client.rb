@@ -108,6 +108,18 @@ module Whatsapp
       error_result(e.message)
     end
 
+    # Inscreve o app atual na WABA para receber webhooks e autorizar a Cloud API
+    # a operar em nome dessa conta empresarial.
+    def subscribe_app
+      return error_result("WABA ID não informado") if @integration.waba_id.blank?
+      return error_result("Integração não configurada") unless configured?
+
+      url = "#{base}/#{@integration.waba_id}/subscribed_apps"
+      parse(HTTParty.post(url, query: { access_token: token }, timeout: 15))
+    rescue => e
+      error_result(e.message)
+    end
+
     def fetch_templates
       return error_result("Integração não configurada") unless configured? && @integration.waba_id.present?
 

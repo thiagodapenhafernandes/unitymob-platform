@@ -76,7 +76,9 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
       "access_token" => "business-token",
       "expires_in" => 3600
     })
+    client = instance_double(Whatsapp::CloudClient, subscribe_app: { ok: true, status: 200, data: { "success" => true } })
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
 
     post embedded_signup_callback_admin_whatsapp_integration_path, params: {
       code: "code-123",
@@ -93,6 +95,39 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(integration).to be_connected
     expect(integration.access_token).to eq("business-token")
     expect(integration.connected_by_admin_user).to eq(admin)
+    expect(Whatsapp::CloudClient).to have_received(:new).with(integration)
+    expect(client).to have_received(:subscribe_app)
+  end
+
+  it "mantem conectado e registra aviso quando a assinatura da WABA falha" do
+    service = instance_double(Facebook::WhatsappEmbeddedSignupService, exchange_code!: {
+      "access_token" => "business-token",
+      "expires_in" => 3600
+    })
+    client = instance_double(Whatsapp::CloudClient, subscribe_app: {
+      ok: false,
+      error: "Missing permission",
+      meta_error: { code: 200 }
+    })
+    allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+
+    post embedded_signup_callback_admin_whatsapp_integration_path, params: {
+      code: "code-123",
+      event: "FINISH",
+      session_info: {
+        waba_id: "616242481017427",
+        phone_number_id: "649374078254590",
+        business_id: "business-1"
+      }
+    }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body["message"]).to include("não foi possível assinar")
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
+    expect(integration).to be_connected
+    expect(integration.last_error_code).to eq("200").or eq(200)
+    expect(integration.last_error_message).to include("Missing permission")
   end
 
   it "registra cancelamento sem salvar token" do
@@ -152,5 +187,30 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration.status).to eq("disconnected")
     expect(integration.access_token).to be_nil
+  end
+
+  it "falha o diagnostico quando nao ha app inscrito na WABA" do
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
+    integration.update!(
+      status: "connected",
+      access_token: "business-token",
+      phone_number_id: "649374078254590",
+      waba_id: "616242481017427"
+    )
+    client = instance_double(
+      Whatsapp::CloudClient,
+      configured?: true,
+      phone_info: { ok: true, data: { "display_phone_number" => "+55 47 99999-9999" } },
+      subscribed_apps: { ok: true, data: { "data" => [] } }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    post test_connection_admin_whatsapp_integration_path, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body["ok"]).to be(false)
+    expect(response.parsed_body.dig("send", "ok")).to be(true)
+    expect(response.parsed_body.dig("receive", "ok")).to be(false)
+    expect(response.parsed_body.dig("receive", "error")).to include("não está inscrito na WABA")
   end
 end

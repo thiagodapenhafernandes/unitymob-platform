@@ -79,6 +79,26 @@ RSpec.describe Whatsapp::CloudClient do
       .to eq({ recipient: "US.13491208655302741918" })
     expect(client.send(:recipient_field, "21999990000")).to eq({ to: "5521999990000" })
   end
+
+  it "assina o app na WABA da integracao" do
+    integration = WhatsappBusinessIntegration.new(
+      access_token: "token-123",
+      phone_number_id: "phone-123",
+      waba_id: "waba-123"
+    )
+    response = instance_double(HTTParty::Response, body: { success: true }.to_json, code: 200, success?: true)
+
+    allow(HTTParty).to receive(:post).and_return(response)
+
+    result = described_class.new(integration).subscribe_app
+
+    expect(result).to include(ok: true)
+    expect(HTTParty).to have_received(:post).with(
+      "https://graph.facebook.com/v24.0/waba-123/subscribed_apps",
+      query: { access_token: "token-123" },
+      timeout: 15
+    )
+  end
 end
 
 RSpec.describe Lead do
