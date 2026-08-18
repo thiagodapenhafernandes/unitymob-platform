@@ -176,9 +176,17 @@ module Dwv
 
     def nullify_destroy_blocking_optional_references(habitation_id)
       now = Time.current
+      AiPropertyShareItem.where(habitation_id: habitation_id).delete_all if defined?(AiPropertyShareItem)
+
       vista_attrs = { habitation_id: nil }
       vista_attrs[:updated_at] = now if VistaFileAsset.column_names.include?("updated_at")
       VistaFileAsset.where(habitation_id: habitation_id).update_all(vista_attrs)
+
+      if defined?(AiPropertyShareAuditEvent)
+        share_audit_attrs = { habitation_id: nil }
+        share_audit_attrs[:updated_at] = now if AiPropertyShareAuditEvent.column_names.include?("updated_at")
+        AiPropertyShareAuditEvent.where(habitation_id: habitation_id).update_all(share_audit_attrs)
+      end
 
       seo_attrs = { habitation_id: nil }
       seo_attrs[:updated_at] = now if SeoConversionEvent.column_names.include?("updated_at")

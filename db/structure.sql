@@ -1,4 +1,4 @@
-\restrict pW9x8adICcDl4zV56carrXP3eoPX6fwHO8c3lZwOIydvzFtfWFlNTgb2OdGgwiJ
+\restrict AGjhYYxGAdHuDViu1J03I9BVpemzcmBocCug4dSxtR1oRKjpaW51FBlgORliwce
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -9306,6 +9306,13 @@ CREATE UNIQUE INDEX idx_account_memberships_on_token_digest ON public.account_me
 
 
 --
+-- Name: idx_active_storage_attachments_record_name_blob; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_active_storage_attachments_record_name_blob ON public.active_storage_attachments USING btree (record_type, name, blob_id, record_id);
+
+
+--
 -- Name: idx_active_storage_habitation_photo_records; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9618,6 +9625,27 @@ CREATE INDEX idx_hba_on_vista_payload ON public.habitation_broker_assignments US
 --
 
 CREATE UNIQUE INDEX idx_hba_vista_batch_source_key ON public.habitation_broker_assignments USING btree (vista_import_batch_id, vista_source_key) WHERE (vista_source_key IS NOT NULL);
+
+
+--
+-- Name: idx_lead_activities_tenant_kind_lead_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_activities_tenant_kind_lead_created ON public.lead_activities USING btree (tenant_id, kind, lead_id, created_at);
+
+
+--
+-- Name: idx_leads_tenant_status_admin_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_tenant_status_admin_user ON public.leads USING btree (tenant_id, status, admin_user_id);
+
+
+--
+-- Name: idx_leads_tenant_status_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_tenant_status_updated_at ON public.leads USING btree (tenant_id, status, updated_at);
 
 
 --
@@ -17407,11 +17435,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict pW9x8adICcDl4zV56carrXP3eoPX6fwHO8c3lZwOIydvzFtfWFlNTgb2OdGgwiJ
+\unrestrict AGjhYYxGAdHuDViu1J03I9BVpemzcmBocCug4dSxtR1oRKjpaW51FBlgORliwce
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260818173000'),
 ('20260817140000'),
 ('20260817134500'),
 ('20260817120000'),

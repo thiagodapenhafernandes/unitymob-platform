@@ -4,6 +4,8 @@ class Admin::DashboardController < Admin::BaseController
   DASHBOARD_SECTIONS = %w[charts acquisition funnel status service rankings operations support site].freeze
   DASHBOARD_TABS = %w[overview leads properties site field].freeze
   DASHBOARD_PERIODS = [7, 30, 90].freeze
+  OVERVIEW_CACHE_EXPIRATION = 2.minutes
+  DASHBOARD_AGGREGATE_CACHE_EXPIRATION = 5.minutes
   CONTACT_ACTIVITY_KINDS = %w[
     accepted note whatsapp_out appointment_created appointment_done
     proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
@@ -65,12 +67,12 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   # Os ~18 counts do overview rodavam em TODA visita ao dashboard. KPIs de
-  # visão geral toleram 45s de atraso — cache curto por conta+usuário (o escopo
+  # visão geral toleram atraso curto — cache por conta+usuário (o escopo
   # visível depende do usuário). As seções (charts/funnel/...) seguem ao vivo.
   def load_overview_slice
     metrics = Rails.cache.fetch(
-      ["dashboard-overview-v4", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
-      expires_in: 45.seconds
+      ["dashboard-overview-v5", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      expires_in: OVERVIEW_CACHE_EXPIRATION
     ) { compute_overview_metrics }
     metrics.each { |name, value| instance_variable_set("@#{name}", value) }
     @operational_questions = build_operational_questions
@@ -161,11 +163,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def load_acquisition_slice
-    result = Dashboard::LeadAcquisitionQuery.new(
-      scope: @lead_scope,
-      starts_at: dashboard_window_start,
-      tenant: current_tenant
-    ).call
+    result = lead_acquisition_result
     result.each { |name, value| instance_variable_set("@acquisition_#{name}", value) }
     @lost_money_rows = lost_money_rows
   end
@@ -578,7 +576,10 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def catalog_quality_metrics
-    @catalog_quality_metrics ||= compute_catalog_quality_metrics
+    @catalog_quality_metrics ||= Rails.cache.fetch(
+      ["dashboard-catalog-quality-v2", current_tenant.id],
+      expires_in: DASHBOARD_AGGREGATE_CACHE_EXPIRATION
+    ) { compute_catalog_quality_metrics }
   end
 
   def compute_catalog_quality_metrics
@@ -670,19 +671,19 @@ class Admin::DashboardController < Admin::BaseController
       "site" => [
         {
           label: "Visitas",
-          value: site_events_for_badges.where(name: "page_view").count,
+          value: site_event_badge_counts["page_view"].to_i,
           tone: "blue",
           title: "Páginas públicas vistas no período, geradas pelo rastreamento próprio do site."
         },
         {
           label: "Imóveis vistos",
-          value: site_events_for_badges.where(name: "property_view").count,
+          value: site_event_badge_counts["property_view"].to_i,
           tone: "blue",
           title: "Aberturas reais de páginas de imóveis no site público."
         },
         {
           label: "WhatsApp",
-          value: site_events_for_badges.where(name: "property_whatsapp_click").count,
+          value: site_event_badge_counts["property_whatsapp_click"].to_i,
           tone: "green",
           title: "Cliques reais em chamadas de WhatsApp capturados no site público."
         }
@@ -756,11 +757,7 @@ class Admin::DashboardController < Admin::BaseController
         )
       end
 
-    acquisition = Dashboard::LeadAcquisitionQuery.new(
-      scope: @lead_scope,
-      starts_at: dashboard_window_start,
-      tenant: current_tenant
-    ).call
+    acquisition = lead_acquisition_result
     if acquisition[:unknown].to_i.positive?
       actions << recommended_action(
         title: "Corrigir origem dos leads",
@@ -805,8 +802,8 @@ class Admin::DashboardController < Admin::BaseController
       sla_overdue_leads: @sla_overdue_leads,
       pending_whatsapp_conversations: @pending_whatsapp_conversations,
       avg_whatsapp_response_minutes: @avg_whatsapp_response_minutes,
-      site_visits: site_events_for_badges.where(name: "page_view").count,
-      site_contacts: site_events_for_badges.where(name: %w[property_whatsapp_click property_phone_click lead_form_submitted]).count,
+      site_visits: site_event_badge_counts["page_view"].to_i,
+      site_contacts: site_event_badge_counts.values_at("property_whatsapp_click", "property_phone_click", "lead_form_submitted").sum(&:to_i),
       lost_money_count: lost_money.sum { |row| row[:value].to_i },
       property_low_progress_count: property_low_progress.sum { |row| row[:value].to_i },
       stage_bottleneck_count: slow_stages.size + stage_losses.sum { |row| row[:value].to_i } + reopens.sum { |row| row[:value].to_i },
@@ -968,11 +965,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def demand_channel_investigation
-    acquisition = Dashboard::LeadAcquisitionQuery.new(
-      scope: @lead_scope,
-      starts_at: dashboard_window_start,
-      tenant: current_tenant
-    ).call
+    acquisition = lead_acquisition_result
 
     rows = acquisition[:channels].first(4).map do |channel|
       {
@@ -1528,6 +1521,19 @@ class Admin::DashboardController < Admin::BaseController
     @pending_whatsapp_reply_scope ||= dashboard_whatsapp_conversation_scope.pending_reply_since(dashboard_window_start)
   end
 
+  def lead_acquisition_result
+    @lead_acquisition_result ||= Rails.cache.fetch(
+      ["dashboard-lead-acquisition-v2", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      expires_in: DASHBOARD_AGGREGATE_CACHE_EXPIRATION
+    ) do
+      Dashboard::LeadAcquisitionQuery.new(
+        scope: @lead_scope,
+        starts_at: dashboard_window_start,
+        tenant: current_tenant
+      ).call
+    end
+  end
+
   def average_whatsapp_response_minutes
     value = WhatsappMessage
       .where(tenant_id: current_tenant.id, direction: "inbound")
@@ -1658,6 +1664,18 @@ class Admin::DashboardController < Admin::BaseController
 
   def site_events_for_badges
     @site_events_for_badges ||= scoped_public_navigation_events.where("public_navigation_events.occurred_at >= ?", dashboard_window_start)
+  end
+
+  def site_event_badge_counts
+    @site_event_badge_counts ||= Rails.cache.fetch(
+      ["dashboard-site-event-badges-v1", current_tenant.id, @dashboard_period],
+      expires_in: DASHBOARD_AGGREGATE_CACHE_EXPIRATION
+    ) do
+      site_events_for_badges
+        .where(name: %w[page_view property_view property_whatsapp_click property_phone_click lead_form_submitted])
+        .group(:name)
+        .count
+    end
   end
 
   def site_top_pages(site_events)
