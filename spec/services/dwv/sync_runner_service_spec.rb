@@ -212,6 +212,21 @@ RSpec.describe Dwv::SyncRunnerService do
         habitation: habitation,
         event_type: "sent"
       )
+      operational_session = OperationalUserSession.create!(
+        tenant: current_tenant,
+        admin_user: admin_user,
+        token: "dwv-session-#{SecureRandom.hex(8)}",
+        started_at: 5.minutes.ago,
+        last_seen_at: Time.current
+      )
+      operational_event = OperationalUserEvent.create!(
+        tenant: current_tenant,
+        admin_user: admin_user,
+        operational_user_session: operational_session,
+        habitation: habitation,
+        name: "property_opened",
+        occurred_at: Time.current
+      )
 
       result = described_class.new(tenant: current_tenant).send(:destroy_removed_properties_by_ids, ["DWV-REFS"])
 
@@ -224,6 +239,7 @@ RSpec.describe Dwv::SyncRunnerService do
       expect(HabitationShareLink.where(id: share_link.id)).not_to exist
       expect(AiPropertyShareItem.where(id: ai_share_item.id)).not_to exist
       expect(ai_share_audit.reload.habitation_id).to be_nil
+      expect(operational_event.reload.habitation_id).to be_nil
     end
   end
 end

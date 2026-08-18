@@ -166,6 +166,7 @@ module Dwv
       destroyed = 0
       tenant.habitations.where(imovel_dwv: "Sim", codigo_dwv: removed_ids).find_each do |habitation|
         Habitation.transaction do
+          destroy_destroy_blocking_child_records(habitation.id)
           nullify_destroy_blocking_optional_references(habitation.id)
           habitation.destroy!
         end
@@ -174,23 +175,38 @@ module Dwv
       destroyed
     end
 
+    def destroy_destroy_blocking_child_records(habitation_id)
+      [
+        AiPropertyShareItem,
+        HabitationPhotoShare,
+        LeadPropertyInterest
+      ].each do |model|
+        model.where(habitation_id: habitation_id).delete_all
+      end
+    end
+
     def nullify_destroy_blocking_optional_references(habitation_id)
       now = Time.current
-      AiPropertyShareItem.where(habitation_id: habitation_id).delete_all if defined?(AiPropertyShareItem)
 
-      vista_attrs = { habitation_id: nil }
-      vista_attrs[:updated_at] = now if VistaFileAsset.column_names.include?("updated_at")
-      VistaFileAsset.where(habitation_id: habitation_id).update_all(vista_attrs)
-
-      if defined?(AiPropertyShareAuditEvent)
-        share_audit_attrs = { habitation_id: nil }
-        share_audit_attrs[:updated_at] = now if AiPropertyShareAuditEvent.column_names.include?("updated_at")
-        AiPropertyShareAuditEvent.where(habitation_id: habitation_id).update_all(share_audit_attrs)
+      [
+        [AiPropertySearchHistory, :selected_habitation_id],
+        [AiPropertyShareAuditEvent, :habitation_id],
+        [Appointment, :habitation_id],
+        [ClientInteraction, :habitation_id],
+        [ClientPropertyInterest, :habitation_id],
+        [CrmAppointment, :habitation_id],
+        [OperationalUserEvent, :habitation_id],
+        [PortalIntegrationEvent, :habitation_id],
+        [PortalListingState, :habitation_id],
+        [Proposal, :habitation_id],
+        [PublicNavigationEvent, :habitation_id],
+        [SeoConversionEvent, :habitation_id],
+        [VistaFileAsset, :habitation_id]
+      ].each do |model, column|
+        attrs = { column => nil }
+        attrs[:updated_at] = now if model.column_names.include?("updated_at")
+        model.where(column => habitation_id).update_all(attrs)
       end
-
-      seo_attrs = { habitation_id: nil }
-      seo_attrs[:updated_at] = now if SeoConversionEvent.column_names.include?("updated_at")
-      SeoConversionEvent.where(habitation_id: habitation_id).update_all(seo_attrs)
     end
 
     def local_dwv_ids_missing_from(active_ids)
