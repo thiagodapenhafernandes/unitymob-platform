@@ -36,7 +36,10 @@ export default class extends Controller {
       config_id: this.configIdValue,
       response_type: "code",
       override_default_response_type: true,
-      extras: { setup: {} }
+      extras: {
+        setup: {},
+        sessionInfoVersion: "3"
+      }
     })
   }
 
@@ -102,19 +105,44 @@ export default class extends Controller {
   }
 
   receiveMetaMessage(event) {
-    if (!event.origin.endsWith("facebook.com")) return
+    if (!this.trustedMetaOrigin(event.origin)) return
 
     try {
       const data = JSON.parse(event.data)
-      if (data.type === "WA_EMBEDDED_SIGNUP") this.latestSession = data
+      if (data.type === "WA_EMBEDDED_SIGNUP") {
+        this.latestSession = {
+          ...data,
+          data: this.parseSessionInfo(data.data)
+        }
+      }
     } catch (_error) {
       this.latestSession = {}
     }
   }
 
+  trustedMetaOrigin(origin) {
+    try {
+      const hostname = new URL(origin).hostname
+      return hostname === "facebook.com" || hostname.endsWith(".facebook.com")
+    } catch (_error) {
+      return false
+    }
+  }
+
+  parseSessionInfo(value) {
+    if (!value) return {}
+    if (typeof value === "object") return value
+
+    try {
+      return JSON.parse(value)
+    } catch (_error) {
+      return {}
+    }
+  }
+
   prepareMetaSdk() {
     window.fbAsyncInit = () => {
-      window.FB.init({ appId: this.appIdValue, cookie: true, xfbml: false, version: this.apiVersionValue })
+      window.FB.init({ appId: this.appIdValue, cookie: true, xfbml: true, version: this.apiVersionValue })
     }
 
     if (document.getElementById("facebook-jssdk")) return
