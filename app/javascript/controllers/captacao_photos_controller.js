@@ -43,8 +43,10 @@ export default class extends Controller {
 
   filesChanged(event) {
     const incomingFiles = Array.from(event.target.files || [])
-    this.selectedFiles = this.selectedFiles.concat(incomingFiles)
-    this.syncInputFiles()
+    this.appendSelectedFiles(incomingFiles)
+    const synced = this.syncInputFiles()
+    if (synced && event.target !== this.inputTarget) event.target.value = ""
+    if (!synced && event.target !== this.inputTarget) this.prepareFallbackInput(event.target)
     this.renderNewFiles()
   }
 
@@ -218,8 +220,8 @@ export default class extends Controller {
           </label>
         </div>
         <div class="captacao-photo-actions">
-          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewUp" aria-label="Subir foto" title="Subir"><i class="bi bi-arrow-up"></i></button>
-          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewDown" aria-label="Descer foto" title="Descer"><i class="bi bi-arrow-down"></i></button>
+          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewUp" aria-label="Subir foto" title="Subir" ${index === 0 ? "disabled" : ""}><i class="bi bi-arrow-up"></i></button>
+          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewDown" aria-label="Descer foto" title="Descer" ${index === this.selectedFiles.length - 1 ? "disabled" : ""}><i class="bi bi-arrow-down"></i></button>
           <button type="button" class="captacao-photo-action captacao-photo-action--danger" data-index="${index}" data-action="captacao-photos#removeNew" aria-label="Remover foto" title="Remover"><i class="bi bi-trash"></i></button>
         </div>
       `
@@ -229,9 +231,37 @@ export default class extends Controller {
   }
 
   syncInputFiles() {
-    const dataTransfer = new DataTransfer()
-    this.selectedFiles.forEach((file) => dataTransfer.items.add(file))
-    this.inputTarget.files = dataTransfer.files
+    if (!this.hasInputTarget || typeof DataTransfer !== "function") return false
+
+    try {
+      const dataTransfer = new DataTransfer()
+      this.selectedFiles.forEach((file) => dataTransfer.items.add(file))
+      this.inputTarget.files = dataTransfer.files
+      return true
+    } catch (error) {
+      console.warn("Não foi possível sincronizar a seleção de fotos.", error)
+      return false
+    }
+  }
+
+  appendSelectedFiles(files) {
+    const selectedKeys = new Set(this.selectedFiles.map((file) => this.fileKey(file)))
+    files.forEach((file) => {
+      const key = this.fileKey(file)
+      if (selectedKeys.has(key)) return
+
+      selectedKeys.add(key)
+      this.selectedFiles.push(file)
+    })
+  }
+
+  fileKey(file) {
+    return [file.name, file.size, file.lastModified].join(":")
+  }
+
+  prepareFallbackInput(input) {
+    if (!this.hasInputTarget || !input || input.name) return
+    input.name = this.inputTarget.name
   }
 
   refreshExistingIndexes() {

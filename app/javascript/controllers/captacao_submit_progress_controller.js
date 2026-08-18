@@ -26,8 +26,10 @@ export default class extends Controller {
     this.disableSubmitters()
 
     xhr.open(this.element.method || "POST", this.element.action, true)
-    xhr.setRequestHeader("Accept", "text/html, application/xhtml+xml")
+    xhr.setRequestHeader("Accept", "text/html")
     xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
+    const csrfToken = this.csrfToken()
+    if (csrfToken) xhr.setRequestHeader("X-CSRF-Token", csrfToken)
 
     xhr.upload.addEventListener("loadstart", () => {
       this.showDeterminate("Enviando anexos", "As fotos e autorizações estão sendo enviadas.", 1)
@@ -62,9 +64,8 @@ export default class extends Controller {
     }
 
     if (xhr.status === 422 && xhr.responseText) {
-      document.open()
-      document.write(xhr.responseText)
-      document.close()
+      this.showDeterminate("Revise os campos", "Há pendências na etapa. A tela será atualizada com os campos marcados.", 100)
+      window.setTimeout(() => this.replaceDocument(xhr.responseText), 80)
       return
     }
 
@@ -145,6 +146,16 @@ export default class extends Controller {
     this.showIndeterminate("Reenviando anexos", message)
     this.appendSubmitterInput()
     this.element.submit()
+  }
+
+  csrfToken() {
+    return document.querySelector("meta[name='csrf-token']")?.content
+  }
+
+  replaceDocument(html) {
+    document.open()
+    document.write(html)
+    document.close()
   }
 
   fail(message) {
