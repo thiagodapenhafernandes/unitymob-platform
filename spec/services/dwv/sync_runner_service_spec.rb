@@ -195,6 +195,23 @@ RSpec.describe Dwv::SyncRunnerService do
         commission_type: "percentage"
       )
       share_link = HabitationShareLink.create!(habitation: habitation, admin_user: admin_user)
+      ai_share_collection = AiPropertyShareCollection.create!(
+        tenant: current_tenant,
+        admin_user: admin_user,
+        token: "dwv-share-#{SecureRandom.hex(8)}",
+        expires_at: 1.day.from_now
+      )
+      ai_share_item = AiPropertyShareItem.create!(
+        ai_property_share_collection: ai_share_collection,
+        habitation: habitation
+      )
+      ai_share_audit = AiPropertyShareAuditEvent.create!(
+        tenant: current_tenant,
+        ai_property_share_collection: ai_share_collection,
+        admin_user: admin_user,
+        habitation: habitation,
+        event_type: "sent"
+      )
 
       result = described_class.new(tenant: current_tenant).send(:destroy_removed_properties_by_ids, ["DWV-REFS"])
 
@@ -205,6 +222,8 @@ RSpec.describe Dwv::SyncRunnerService do
       expect(interaction.reload.habitation_id).to be_nil
       expect(HabitationBrokerAssignment.where(id: broker_assignment.id)).not_to exist
       expect(HabitationShareLink.where(id: share_link.id)).not_to exist
+      expect(AiPropertyShareItem.where(id: ai_share_item.id)).not_to exist
+      expect(ai_share_audit.reload.habitation_id).to be_nil
     end
   end
 end
