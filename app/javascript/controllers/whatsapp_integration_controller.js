@@ -13,6 +13,7 @@ export default class extends Controller {
 
   connect() {
     this.latestSession = {}
+    this.submittingSignup = false
     this.receiveMetaMessage = this.receiveMetaMessage.bind(this)
     window.addEventListener("message", this.receiveMetaMessage)
     this.prepareMetaSdk()
@@ -107,16 +108,12 @@ export default class extends Controller {
   receiveMetaMessage(event) {
     if (!this.trustedMetaOrigin(event.origin)) return
 
-    try {
-      const data = JSON.parse(event.data)
-      if (data.type === "WA_EMBEDDED_SIGNUP") {
-        this.latestSession = {
-          ...data,
-          data: this.parseSessionInfo(data.data)
-        }
+    const data = this.parseMetaMessage(event.data)
+    if (data.type === "WA_EMBEDDED_SIGNUP") {
+      this.latestSession = {
+        ...data,
+        data: this.parseSessionInfo(data.data)
       }
-    } catch (_error) {
-      this.latestSession = {}
     }
   }
 
@@ -130,6 +127,17 @@ export default class extends Controller {
   }
 
   parseSessionInfo(value) {
+    if (!value) return {}
+    if (typeof value === "object") return value
+
+    try {
+      return JSON.parse(value)
+    } catch (_error) {
+      return {}
+    }
+  }
+
+  parseMetaMessage(value) {
     if (!value) return {}
     if (typeof value === "object") return value
 
@@ -155,32 +163,47 @@ export default class extends Controller {
 
   submitSignupResult(response) {
     const code = response?.authResponse?.code
-    const payload = {
-      code,
-      event: this.latestSession.event || (code ? "FINISH" : "ERROR"),
-      session_info: this.latestSession.data || {}
-    }
+    const delay = code ? 1500 : 0
 
-    fetch(this.callbackUrlValue, {
-      method: "POST",
-      headers: this.jsonHeaders(),
-      body: JSON.stringify(payload)
-    }).then((result) => (
-      result.json().then((body) => {
-        if (!result.ok) throw new Error(body.message || "Não foi possível concluir a conexão.")
-        return body
+    window.setTimeout(() => {
+      const sessionInfo = this.latestSession.data || {}
+      if (code && !this.hasSignupIds(sessionInfo)) {
+        this.showSignupFeedback("warning", "A Meta autorizou o login, mas não enviou os dados da WABA e do número. Reabra o fluxo e conclua a seleção do número.")
+        this.signupButtonTarget.disabled = false
+        return
+      }
+
+      const payload = {
+        code,
+        event: this.latestSession.event || (code ? "FINISH" : "ERROR"),
+        session_info: sessionInfo
+      }
+
+      fetch(this.callbackUrlValue, {
+        method: "POST",
+        headers: this.jsonHeaders(),
+        body: JSON.stringify(payload)
+      }).then((result) => (
+        result.json().then((body) => {
+          if (!result.ok) throw new Error(body.message || "Não foi possível concluir a conexão.")
+          return body
+        })
+      )).then((body) => {
+        this.showSignupFeedback("success", body.message || "WhatsApp conectado com sucesso.")
+        window.setTimeout(() => {
+          if (window.Turbo) window.Turbo.visit(window.location.href, { action: "replace" })
+          else window.location.reload()
+        }, 900)
+      }).catch((error) => {
+        this.showSignupFeedback("warning", error.message)
+      }).finally(() => {
+        this.signupButtonTarget.disabled = false
       })
-    )).then((body) => {
-      this.showSignupFeedback("success", body.message || "WhatsApp conectado com sucesso.")
-      window.setTimeout(() => {
-        if (window.Turbo) window.Turbo.visit(window.location.href, { action: "replace" })
-        else window.location.reload()
-      }, 900)
-    }).catch((error) => {
-      this.showSignupFeedback("warning", error.message)
-    }).finally(() => {
-      this.signupButtonTarget.disabled = false
-    })
+    }, delay)
+  }
+
+  hasSignupIds(sessionInfo) {
+    return Boolean(sessionInfo?.waba_id && sessionInfo?.phone_number_id)
   }
 
   post(url, body = {}) {

@@ -5,7 +5,10 @@ RSpec.describe "whatsapp integration controller contract" do
 
   it "solicita dados de sessao v3 no Embedded Signup para receber WABA e telefone" do
     expect(source).to include('sessionInfoVersion: "3"')
+    expect(source).to include("parseMetaMessage(event.data)")
     expect(source).to include("parseSessionInfo(data.data)")
     expect(source).to include("trustedMetaOrigin(event.origin)")
+    expect(source).to include("hasSignupIds(sessionInfo)")
+    expect(source).to include("não enviou os dados da WABA")
   end
 end
