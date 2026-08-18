@@ -24,9 +24,16 @@ RSpec.describe "habitation owner selector controller" do
 
     expect(show_create_method).to include("this.prefillCreateFields(this.queryTarget.value.trim())")
     expect(show_create_method).to include("this.hideSearchSuggestions()")
+    expect(show_create_method).to include("this.enhancePhoneField(this.createPhoneTarget)")
     expect(show_create_method).to include('this.focusQuickField("create", this.createPanelTarget)')
     expect(focus_method).to include("panel?.scrollIntoView")
     expect(focus_method).to include("field?.focus()")
+  end
+
+  it "inicializa o phone-input do modal quando o telefone e preenchido por JavaScript" do
+    expect(source).to include('new CustomEvent("phone-input:enhance", { bubbles: true })')
+    expect(source).to include("this.enhancePhoneField(this.editPhoneTarget)")
+    expect(source).to include("this.enhancePhoneField(this.createPhoneTarget)")
   end
 
   it "bloqueia o avanço da captação enquanto o proprietário inline não foi salvo" do
