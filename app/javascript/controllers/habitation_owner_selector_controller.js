@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
+let ownerIntlTelInputPromise = null
+
 export default class extends Controller {
   static targets = [
     "hiddenInput",
@@ -374,6 +376,68 @@ export default class extends Controller {
 
   enhancePhoneField(field) {
     field?.dispatchEvent(new CustomEvent("phone-input:enhance", { bubbles: true }))
+    this.ensureOwnerPhoneInput(field)
+    window.requestAnimationFrame(() => {
+      field?.dispatchEvent(new CustomEvent("phone-input:enhance", { bubbles: true }))
+      this.ensureOwnerPhoneInput(field)
+    })
+  }
+
+  ensureOwnerPhoneInput(field) {
+    if (!field || field.closest(".iti") || field._habitationOwnerIntlTelInput) return
+
+    this.loadOwnerPhoneStylesheet()
+    this.loadOwnerIntlTelInput()
+      .then((intlTelInput) => {
+        if (!field.isConnected || field.closest(".iti") || field._habitationOwnerIntlTelInput) return
+
+        field._habitationOwnerIntlTelInput = intlTelInput(field, {
+          initialCountry: "br",
+          preferredCountries: ["br", "us", "pt"],
+          nationalMode: true,
+          separateDialCode: true,
+          formatAsYouType: false,
+          autoPlaceholder: "aggressive",
+          utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/js/utils.js"
+        })
+      })
+      .catch((error) => {
+        console.error("[habitation-owner-selector] falha ao carregar intl-tel-input", error)
+      })
+  }
+
+  loadOwnerIntlTelInput() {
+    if (!ownerIntlTelInputPromise) {
+      ownerIntlTelInputPromise = import("intl-tel-input").then((module) => module.default || module)
+    }
+
+    return ownerIntlTelInputPromise
+  }
+
+  loadOwnerPhoneStylesheet() {
+    if (!document.querySelector("link[data-phone-input-css]")) {
+      const link = document.createElement("link")
+      link.rel = "stylesheet"
+      link.href = "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/css/intlTelInput.css"
+      link.dataset.phoneInputCss = "true"
+      document.head.appendChild(link)
+    }
+
+    if (document.querySelector("style[data-phone-input-local-css]")) return
+
+    const style = document.createElement("style")
+    style.dataset.phoneInputLocalCss = "true"
+    style.textContent = `
+      .iti { width: 100%; display: block; }
+      .iti input.ax-control,
+      .iti input.form-control,
+      .iti input[type="tel"] { width: 100%; }
+      .iti--separate-dial-code .iti__selected-country {
+        background: #f6f8fb;
+        border-right: 1px solid #d8e0eb;
+      }
+    `
+    document.head.appendChild(style)
   }
 
   hidePanels() {
@@ -555,12 +619,36 @@ export default class extends Controller {
   normalizedPhoneValue(field) {
     const detail = { value: field.value }
     field.dispatchEvent(new CustomEvent("phone-input:normalize", { detail, bubbles: true }))
+    if (detail.value !== field.value) return detail.value
+
+    const ownerNormalizedValue = this.ownerNormalizedPhoneValue(field)
+    if (ownerNormalizedValue) return ownerNormalizedValue
+
     return detail.value || field.value
+  }
+
+  ownerNormalizedPhoneValue(field) {
+    const ownerIntlTelInput = field._habitationOwnerIntlTelInput
+    if (!ownerIntlTelInput?.isValidNumber?.()) return null
+
+    const selectedCountry = ownerIntlTelInput.getSelectedCountryData()?.iso2
+    const e164 = ownerIntlTelInput.getNumber()
+    const digits = String(e164 || field.value || "").replace(/\D/g, "")
+
+    return selectedCountry === "br" ? digits : e164
   }
 
   phoneMetadata(field) {
     const detail = { rawValue: field.value }
     field.dispatchEvent(new CustomEvent("phone-input:metadata", { detail, bubbles: true }))
+    const ownerIntlTelInput = field._habitationOwnerIntlTelInput
+
+    if (ownerIntlTelInput && !detail.countryIso2) {
+      detail.countryIso2 = ownerIntlTelInput.getSelectedCountryData()?.iso2
+      detail.isValidNumber = Boolean(ownerIntlTelInput.isValidNumber?.())
+      detail.e164 = detail.isValidNumber ? ownerIntlTelInput.getNumber() : ""
+    }
+
     return detail
   }
 

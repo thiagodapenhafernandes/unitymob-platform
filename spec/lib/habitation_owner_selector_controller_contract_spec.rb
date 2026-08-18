@@ -32,6 +32,10 @@ RSpec.describe "habitation owner selector controller" do
 
   it "inicializa o phone-input do modal quando o telefone e preenchido por JavaScript" do
     expect(source).to include('new CustomEvent("phone-input:enhance", { bubbles: true })')
+    expect(source).to include("window.requestAnimationFrame")
+    expect(source).to include("ensureOwnerPhoneInput(field)")
+    expect(source).to include('import("intl-tel-input")')
+    expect(source).to include("_habitationOwnerIntlTelInput")
     expect(source).to include("this.enhancePhoneField(this.editPhoneTarget)")
     expect(source).to include("this.enhancePhoneField(this.createPhoneTarget)")
   end

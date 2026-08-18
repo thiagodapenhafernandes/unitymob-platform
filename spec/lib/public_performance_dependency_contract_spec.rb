@@ -4,6 +4,7 @@ RSpec.describe "public performance dependency contract" do
   let(:photo_gallery_controller) { Rails.root.join("app/javascript/controllers/photo_gallery_controller.js").read }
   let(:property_carousel_controller) { Rails.root.join("app/javascript/controllers/property_carousel_controller.js").read }
   let(:phone_input_controller) { Rails.root.join("app/javascript/controllers/phone_input_controller.js").read }
+  let(:controllers_index) { Rails.root.join("app/javascript/controllers/index.js").read }
   let(:card_swiper_controller) { Rails.root.join("app/javascript/controllers/card_swiper_controller.js").read }
   let(:public_layout) { Rails.root.join("app/views/layouts/application.html.erb").read }
 
@@ -30,9 +31,19 @@ RSpec.describe "public performance dependency contract" do
 
     expect(connect_body).to be_present
     expect(connect_body).not_to include("loadStylesheet()")
-    expect(connect_body).not_to include("initialize()")
+    expect(phone_input_controller).not_to include("\n  initialize()")
     expect(phone_input_controller).to include("ensureEnhancedInput()")
+    expect(phone_input_controller).to include("initializeIntlTelInput()")
+    expect(phone_input_controller).to include("shouldAutoEnhance()")
+    expect(phone_input_controller).to include('closest("#quickProprietorModal")')
     expect(phone_input_controller).to include('phone-input:enhance')
     expect(phone_input_controller).to include('import("intl-tel-input")')
+  end
+
+  it "registra phone-input no bundle admin sem baixar a biblioteca internacional no boot" do
+    expect(controllers_index).to include('import PhoneInputController from "controllers/phone_input_controller"')
+    expect(controllers_index).to include('application.register("phone-input", PhoneInputController)')
+    expect(controllers_index).not_to include('import("intl-tel-input")')
+    expect(controllers_index).not_to include("intl-tel-input@")
   end
 end
