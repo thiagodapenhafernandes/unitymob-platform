@@ -457,22 +457,34 @@
                 <%= f.hidden_field :channel, value: "whatsapp" %>
                 <%= f.hidden_field :active, value: "1" %>
                 <%= ax_select_field(form: f, method: :purpose, label: "Finalidade", choices: @notification_template_purpose_options) %>
-                <%= ax_select_field(form: f, method: :whatsapp_template_id, label: "Template aprovado",
-                      choices: @notification_template_options, select_options: { include_blank: "Selecione" }) %>
+                <div class="ax-field">
+                  <%= f.label :whatsapp_template_id, "Template aprovado", class: "ax-label" %>
+                  <%= f.select :whatsapp_template_id,
+                        options_for_select(@notification_template_options),
+                        { include_blank: "Selecione" },
+                        class: "ax-control",
+                        data: {
+                          whatsapp_integration_target: "notificationTemplateSelect",
+                          action: "change->whatsapp-integration#syncNotificationTemplateVariables"
+                        } %>
+                </div>
                 <div class="ax-field">
                   <span class="ax-label">Mapa padrão das variáveis</span>
-                  <div class="wa-variable-map">
+                  <div class="wa-variable-map"
+                       data-whatsapp-integration-target="notificationVariableMap"
+                       data-variable-sources="<%= @notification_template_variable_sources.to_json %>"
+                       data-default-mapping="<%= @new_notification_template_setting.default_variable_mapping.to_json %>">
                     <% @new_notification_template_setting.default_variable_mapping.each do |index, source| %>
                       <label class="wa-variable-map__row">
                         <span>{{<%= index %>}}</span>
                         <%= select_tag "notification_template_setting[variable_mapping][#{index}]",
-                              options_for_select(@new_notification_template_setting.variable_source_options, source),
+                              options_for_select(@notification_template_variable_sources, source),
                               class: "ax-control" %>
                       </label>
                     <% end %>
                   </div>
                 </div>
-                <p class="wa-hint">O sistema usa o mapa acima para preencher dinamicamente os placeholders do template. Em templates com outra quantidade de variáveis, salve e ajuste em Editar.</p>
+                <p class="wa-hint">Ao selecionar um template, o sistema monta o mapa pela quantidade de placeholders e tenta inferir cada fonte pelo texto aprovado. Revise antes de salvar.</p>
                 <div class="whatsapp-sender-modal__actions">
                   <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
                   <button type="submit" class="ax-btn ax-btn--primary">

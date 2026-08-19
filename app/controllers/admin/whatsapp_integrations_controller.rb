@@ -35,10 +35,11 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
         connected_at: Time.current
       )
       subscription = subscribe_current_whatsapp_app(integration)
+      gateway = register_current_whatsapp_gateway_route(integration)
 
       render json: {
         ok: true,
-        message: subscription[:ok] ? "WhatsApp conectado com sucesso." : whatsapp_subscription_warning(subscription)
+        message: whatsapp_connection_message(subscription, gateway)
       }
     else
       error_message = callback_error_message(event, session_info)
@@ -96,8 +97,9 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
     if integration.save
       subscription = subscribe_current_whatsapp_app(integration)
-      flash_type = subscription[:ok] || subscription[:skipped] ? :notice : :alert
-      flash_message = subscription[:ok] || subscription[:skipped] ? "Conexão manual do WhatsApp salva." : whatsapp_subscription_warning(subscription)
+      gateway = register_current_whatsapp_gateway_route(integration)
+      flash_type = whatsapp_connection_success?(subscription, gateway) ? :notice : :alert
+      flash_message = whatsapp_connection_message(subscription, gateway, success_message: "Conexão manual do WhatsApp salva.")
       redirect_to admin_whatsapp_integration_path, flash_type => flash_message
     else
       load_page_state
@@ -140,16 +142,38 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     to = params[:to].to_s.strip
     return render json: { ok: false, message: "Informe um número (ex.: 5547999999999)." }, status: :unprocessable_content if to.blank?
 
+    body = params[:body].presence || "Teste de conexão do CRM ✅"
     result = Whatsapp::CloudClient.new(current_whatsapp_integration).send_text(
       to: to,
-      body: params[:body].presence || "Teste de conexão do CRM ✅"
+      body: body
     )
 
     if result[:ok]
-      render json: { ok: true, message: "Mensagem enviada com sucesso (id #{result[:message_id]})." }
+      message = record_test_message!(to: to, body: body, wa_message_id: result[:message_id])
+      render json: {
+        ok: true,
+        message: "Mensagem enviada com sucesso (id #{result[:message_id]}). Aguardando confirmação de entrega da Meta.",
+        message_id: result[:message_id],
+        status_url: test_message_status_admin_whatsapp_integration_path(message_id: message.id)
+      }
     else
       render json: { ok: false, message: result[:error].presence || "Falha ao enviar a mensagem." }, status: :unprocessable_content
     end
+  end
+
+  def test_message_status
+    message = current_tenant.whatsapp_messages.outbound.find_by(id: params[:message_id])
+    return render json: { ok: false, message: "Mensagem de teste não encontrada." }, status: :not_found if message.blank?
+
+    render json: {
+      ok: true,
+      status: message.status,
+      label: whatsapp_message_status_label(message),
+      terminal: %w[delivered read failed].include?(message.status),
+      delivered_at: message.delivered_at&.iso8601,
+      read_at: message.read_at&.iso8601,
+      error: message.error_message
+    }
   end
 
   def sync_notification_templates
@@ -217,6 +241,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     )
     @notification_template_purpose_options = NotificationTemplateSetting.purpose_options
     @notification_template_options = notification_template_options
+    @notification_template_variable_sources = @new_notification_template_setting.variable_source_options
   end
 
   def notification_template_options
@@ -225,7 +250,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
     scope.ordered.map do |template|
       label = "#{template.name} · #{template.language.presence || 'pt_BR'} · #{template.variable_count} variáveis"
-      [label, template.id]
+      [label, template.id, { data: { variable_references: template.variable_references.to_json } }]
     end
   end
 
@@ -256,6 +281,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def default_webhook_callback_url
+    return Whatsapp::WebhookGatewayClient.public_webhook_url if Whatsapp::WebhookGatewayClient.public_webhook_url.present?
+
     webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
   rescue StandardError
     "#{request.base_url}/webhooks/whatsapp"
@@ -358,6 +385,36 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     raise Facebook::WhatsappEmbeddedSignupService::Error, "A Meta não retornou WABA ID e Phone Number ID para concluir a conexão."
   end
 
+  def record_test_message!(to:, body:, wa_message_id:)
+    normalized_phone = Phones::Normalizer.call(to).to_s
+    conversation = current_tenant.whatsapp_conversations.find_or_create_by!(contact_phone: normalized_phone) do |record|
+      record.status = "open"
+      record.contact_name = "Teste de conexão"
+    end
+    message = conversation.messages.create!(
+      tenant: current_tenant,
+      admin_user: current_admin_user,
+      direction: "outbound",
+      msg_type: "text",
+      body: body,
+      status: "sent",
+      wa_message_id: wa_message_id,
+      sent_at: Time.current
+    )
+    conversation.touch_last_message!(message)
+    message
+  end
+
+  def whatsapp_message_status_label(message)
+    case message.status
+    when "sent" then "Enviada para a Meta. Aguardando entrega no WhatsApp."
+    when "delivered" then "Entregue no WhatsApp."
+    when "read" then "Lida pelo destinatário."
+    when "failed" then "Falha na entrega: #{message.error_message.presence || 'sem detalhe retornado pela Meta'}"
+    else "Aguardando processamento."
+    end
+  end
+
   def subscribe_current_whatsapp_app(integration)
     return { ok: false, skipped: true } unless integration.messaging_ready? && integration.waba_id.present?
 
@@ -377,6 +434,29 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   def whatsapp_subscription_warning(result)
     detail = result[:error].presence || "sem detalhes retornados pela Meta"
     "WhatsApp salvo, mas não foi possível assinar o app Unitymob na WABA: #{detail}."
+  end
+
+  def register_current_whatsapp_gateway_route(integration)
+    Whatsapp::WebhookGatewayClient.new(
+      integration: integration,
+      tenant: current_tenant,
+      target_url: webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
+    ).register_route
+  end
+
+  def whatsapp_connection_success?(subscription, gateway)
+    (subscription[:ok] || subscription[:skipped]) && (gateway.ok? || gateway.skipped?)
+  end
+
+  def whatsapp_connection_message(subscription, gateway, success_message: "WhatsApp conectado com sucesso.")
+    messages = []
+    messages << (subscription[:ok] || subscription[:skipped] ? success_message : whatsapp_subscription_warning(subscription))
+    messages << whatsapp_gateway_warning(gateway) unless gateway.ok? || gateway.skipped?
+    messages.join(" ")
+  end
+
+  def whatsapp_gateway_warning(result)
+    "Não foi possível registrar a rota no gateway de webhooks: #{result.error.presence || 'sem detalhes retornados'}."
   end
 
   def whatsapp_subscription_test_error(subscriptions_result, subscribed)

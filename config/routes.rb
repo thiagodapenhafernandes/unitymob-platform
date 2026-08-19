@@ -391,6 +391,7 @@ Rails.application.routes.draw do
       post :sync_notification_templates
       post :test_connection
       post :send_test
+      get :test_message_status
     end
     resource :dwv_integrations, only: [:show, :update] do
       get :status

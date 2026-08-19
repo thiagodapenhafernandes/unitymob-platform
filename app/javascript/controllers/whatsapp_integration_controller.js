@@ -1,7 +1,14 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["signupButton", "signupFeedback", "testResult", "testTo"]
+  static targets = [
+    "signupButton",
+    "signupFeedback",
+    "testResult",
+    "testTo",
+    "notificationTemplateSelect",
+    "notificationVariableMap"
+  ]
   static values = {
     appId: String,
     apiVersion: String,
@@ -14,6 +21,7 @@ export default class extends Controller {
   connect() {
     this.latestSession = {}
     this.submittingSignup = false
+    this.statusPollTimer = null
     this.receiveMetaMessage = this.receiveMetaMessage.bind(this)
     window.addEventListener("message", this.receiveMetaMessage)
     this.prepareMetaSdk()
@@ -21,6 +29,7 @@ export default class extends Controller {
 
   disconnect() {
     window.removeEventListener("message", this.receiveMetaMessage)
+    this.clearStatusPolling()
   }
 
   launchSignup() {
@@ -70,8 +79,100 @@ export default class extends Controller {
 
     this.showTestResult("info", "Enviando mensagem de teste...")
     this.post(this.sendUrlValue, { to })
-      .then((response) => this.showTestResult(response.ok ? "success" : "warning", this.escapeHtml(response.json?.message || "Sem resposta do servidor.")))
+      .then((response) => {
+        const message = this.escapeHtml(response.json?.message || "Sem resposta do servidor.")
+        this.showTestResult(response.ok ? "success" : "warning", message)
+        if (response.ok && response.json?.status_url) this.pollTestMessageStatus(response.json.status_url)
+      })
       .catch((error) => this.showTestResult("danger", error.message))
+  }
+
+  syncNotificationTemplateVariables() {
+    if (!this.hasNotificationTemplateSelectTarget || !this.hasNotificationVariableMapTarget) return
+
+    const selected = this.notificationTemplateSelectTarget.selectedOptions[0]
+    const references = this.parseJson(selected?.dataset.variableReferences, [])
+    const sources = this.parseJson(this.notificationVariableMapTarget.dataset.variableSources, [])
+    const defaultMapping = this.parseJson(this.notificationVariableMapTarget.dataset.defaultMapping, {})
+    const count = references.reduce((max, item) => Math.max(max, Number(item.index) || 0), 0)
+
+    if (!selected?.value || count === 0) {
+      this.notificationVariableMapTarget.innerHTML = ""
+      return
+    }
+
+    const referencesByIndex = new Map(references.map((item) => [Number(item.index), item]))
+    this.notificationVariableMapTarget.innerHTML = Array.from({ length: count }, (_value, offset) => {
+      const index = offset + 1
+      const reference = referencesByIndex.get(index) || {}
+      const context = reference.context || `Variável {{${index}}}`
+      const selectedSource = this.inferNotificationVariableSource(context, defaultMapping[String(index)])
+      const options = sources.map(([label, value]) => (
+        `<option value="${this.escapeHtml(value)}"${value === selectedSource ? " selected" : ""}>${this.escapeHtml(label)}</option>`
+      )).join("")
+
+      return `
+        <label class="wa-variable-map__row">
+          <span>{{${index}}}<small>${this.escapeHtml(context)}</small></span>
+          <select name="notification_template_setting[variable_mapping][${index}]" class="ax-control">
+            ${options}
+          </select>
+        </label>
+      `
+    }).join("")
+  }
+
+  inferNotificationVariableSource(context, fallback) {
+    const text = this.normalizeForMatch(context)
+    if (text.match(/corretor|broker|responsavel|atendente/)) {
+      if (text.match(/telefone|celular|whatsapp|fone/)) return "broker_phone"
+      if (text.match(/email|e-mail/)) return "broker_email"
+      return "broker_name"
+    }
+    if (text.match(/telefone|celular|whatsapp|fone|contato/)) return "lead_phone_or_link"
+    if (text.match(/email|e-mail/)) return "lead_email_or_link"
+    if (text.match(/origem|canal|fonte/)) return "lead_origin"
+    if (text.match(/produto|imovel|imobiliario|interesse|empreendimento|link/)) return "lead_other_or_link"
+    if (text.match(/nome|cliente|lead/)) return "lead_name"
+
+    return fallback || "lead_other_or_link"
+  }
+
+  normalizeForMatch(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+  }
+
+  pollTestMessageStatus(url, attempt = 1) {
+    this.clearStatusPolling()
+    const maxAttempts = 12
+
+    this.statusPollTimer = window.setTimeout(() => {
+      fetch(url, { headers: this.jsonHeaders() })
+        .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+        .then((response) => {
+          if (!response.ok) throw new Error(response.json?.message || "Não foi possível consultar a entrega.")
+
+          const status = response.json?.status
+          const label = this.escapeHtml(response.json?.label || "Aguardando retorno da Meta.")
+          const tone = status === "failed" ? "warning" : (["delivered", "read"].includes(status) ? "success" : "info")
+          this.showTestResult(tone, label)
+
+          if (!response.json?.terminal && attempt < maxAttempts) {
+            this.pollTestMessageStatus(url, attempt + 1)
+          }
+        })
+        .catch((error) => this.showTestResult("warning", this.escapeHtml(error.message)))
+    }, attempt === 1 ? 2500 : 5000)
+  }
+
+  clearStatusPolling() {
+    if (!this.statusPollTimer) return
+
+    window.clearTimeout(this.statusPollTimer)
+    this.statusPollTimer = null
   }
 
   testSenderConnection(event) {
@@ -145,6 +246,16 @@ export default class extends Controller {
       return JSON.parse(value)
     } catch (_error) {
       return {}
+    }
+  }
+
+  parseJson(value, fallback) {
+    if (!value) return fallback
+
+    try {
+      return JSON.parse(value)
+    } catch (_error) {
+      return fallback
     }
   }
 

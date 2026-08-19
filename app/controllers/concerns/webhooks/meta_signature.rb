@@ -10,10 +10,13 @@ module Webhooks
   # Fora de produção mantém a tolerância (aceita e loga warn) pra não travar dev.
   module MetaSignature
     SIGNATURE_HEADER = "X-Hub-Signature-256".freeze
+    GATEWAY_SIGNATURE_HEADER = "X-Unitymob-Gateway-Signature".freeze
 
     private
 
     def valid_meta_signature?(raw_body)
+      return true if valid_gateway_signature?(raw_body)
+
       secret = meta_webhook_app_secret
       if secret.blank?
         if Rails.env.production?
@@ -30,6 +33,19 @@ module Webhooks
 
       expected = OpenSSL::HMAC.hexdigest("SHA256", secret, raw_body.to_s)
       ActiveSupport::SecurityUtils.secure_compare(signature, expected)
+    end
+
+    def valid_gateway_signature?(raw_body)
+      secret = ENV["WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET"].presence
+      return false if secret.blank?
+
+      signature = request.headers[GATEWAY_SIGNATURE_HEADER].to_s.delete_prefix("sha256=")
+      return false if signature.blank?
+
+      expected = OpenSSL::HMAC.hexdigest("SHA256", secret, raw_body.to_s)
+      ActiveSupport::SecurityUtils.secure_compare(signature, expected)
+    rescue ArgumentError
+      false
     end
 
     # Secret do App Meta: config do Admin do Sistema vence, senão ENV

@@ -1,0 +1,41 @@
+# frozen_string_literal: true
+
+require_relative "config/environment"
+require "active_record/tasks/database_tasks"
+
+ActiveRecord::Tasks::DatabaseTasks.database_configuration = Gateway::Database.configurations
+ActiveRecord::Tasks::DatabaseTasks.db_dir = File.expand_path("db", __dir__)
+ActiveRecord::Tasks::DatabaseTasks.migrations_paths = [File.expand_path("db/migrate", __dir__)]
+ActiveRecord::Tasks::DatabaseTasks.root = __dir__
+ActiveRecord::Tasks::DatabaseTasks.env = Gateway.env
+
+namespace :db do
+  desc "Create the gateway database"
+  task :create do
+    ActiveRecord::Tasks::DatabaseTasks.create_current
+  end
+
+  desc "Drop the gateway database"
+  task :drop do
+    ActiveRecord::Tasks::DatabaseTasks.drop_current
+  end
+
+  desc "Migrate the gateway database"
+  task :migrate do
+    connection_pool = ActiveRecord::Tasks::DatabaseTasks.migration_connection_pool
+    ActiveRecord::MigrationContext
+      .new(
+        ActiveRecord::Tasks::DatabaseTasks.migrations_paths,
+        ActiveRecord::SchemaMigration.new(connection_pool),
+        ActiveRecord::InternalMetadata.new(connection_pool)
+      )
+      .migrate
+  end
+
+  desc "Show migration status"
+  task :migrate_status do
+    ActiveRecord::Tasks::DatabaseTasks.migrate_status
+  end
+end
+
+task default: "db:migrate"

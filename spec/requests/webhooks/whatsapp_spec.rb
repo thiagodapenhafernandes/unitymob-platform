@@ -88,6 +88,24 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       expect(conv.lead.activities.where(kind: "whatsapp_in").count).to eq(1)
     end
 
+    it "aceita payload encaminhado pelo gateway central com assinatura interna" do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return("forward-secret")
+      allow(Whatsapp::InboundWebhookJob).to receive(:perform_later)
+      raw_payload = payload.to_json
+      signature = OpenSSL::HMAC.hexdigest("SHA256", "forward-secret", raw_payload)
+
+      post "/webhooks/whatsapp",
+           params: raw_payload,
+           headers: {
+             "CONTENT_TYPE" => "application/json",
+             "X-Unitymob-Gateway-Signature" => "sha256=#{signature}"
+           }
+
+      expect(response).to have_http_status(:ok)
+      expect(Whatsapp::InboundWebhookJob).to have_received(:perform_later).with(hash_including("entry"))
+    end
+
     it "não duplica mensagem já recebida (dedup por wa_message_id)" do
       post "/webhooks/whatsapp", params: payload, as: :json
       expect {

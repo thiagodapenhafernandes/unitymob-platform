@@ -1,0 +1,8 @@
+services:
+  whatsapp-gateway:
+    build: .
+    container_name: unitymob-whatsapp-gateway
+    env_file:
+      - .env
+    network_mode: host
+    restart: unless-stopped

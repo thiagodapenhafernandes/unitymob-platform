@@ -46,6 +46,32 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(document.at_css('input[type="tel"][name="whatsapp_business_integration[sale_whatsapp_number]"][data-controller="phone-input"]')).to be_present
   end
 
+  it "inclui metadados dos placeholders para mapear variaveis ao selecionar template de notificacao" do
+    template = admin.tenant.whatsapp_templates.create!(
+      name: "lead_distribution_auto_map",
+      language: "pt_BR",
+      category: "UTILITY",
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "none",
+      body: "Lead {{1}} veio de {{2}}. Telefone {{3}}."
+    )
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    option = document.at_css("select[data-whatsapp-integration-target='notificationTemplateSelect'] option[value='#{template.id}']")
+    map = document.at_css("[data-whatsapp-integration-target='notificationVariableMap']")
+    references = JSON.parse(option["data-variable-references"])
+
+    expect(option).to be_present
+    expect(map).to be_present
+    expect(references.map { |item| item["index"] }).to eq([1, 2, 3])
+    expect(references.map { |item| item["context"] }.join(" ")).to include("Lead", "Telefone")
+    expect(JSON.parse(map["data-variable-sources"]).to_h.values).to include("lead_phone_or_link")
+  end
+
   it "exibe e salva telefones do site por tipo de negociacao" do
     get admin_whatsapp_integration_path(tab: "site_phones")
 
@@ -81,6 +107,9 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    allow(Whatsapp::WebhookGatewayClient).to receive(:public_webhook_url).and_return(nil)
+    gateway = instance_double(Whatsapp::WebhookGatewayClient, register_route: Whatsapp::WebhookGatewayClient::Result.new(ok?: true, skipped?: false))
+    allow(Whatsapp::WebhookGatewayClient).to receive(:new).and_return(gateway)
 
     post embedded_signup_callback_admin_whatsapp_integration_path, params: {
       code: "code-123",
@@ -99,6 +128,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(integration.connected_by_admin_user).to eq(admin)
     expect(Whatsapp::CloudClient).to have_received(:new).with(integration)
     expect(client).to have_received(:subscribe_app)
+    expect(gateway).to have_received(:register_route)
   end
 
   it "prefere o token permanente do system user quando configurado" do
@@ -111,6 +141,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return("system-user-token")
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    allow_any_instance_of(Whatsapp::WebhookGatewayClient).to receive(:register_route).and_return(Whatsapp::WebhookGatewayClient::Result.new(ok?: false, skipped?: true))
 
     post embedded_signup_callback_admin_whatsapp_integration_path, params: {
       code: "code-123",
@@ -142,6 +173,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    allow_any_instance_of(Whatsapp::WebhookGatewayClient).to receive(:register_route).and_return(Whatsapp::WebhookGatewayClient::Result.new(ok?: false, skipped?: true))
 
     post embedded_signup_callback_admin_whatsapp_integration_path, params: {
       code: "code-123",
@@ -243,5 +275,52 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.parsed_body.dig("send", "ok")).to be(true)
     expect(response.parsed_body.dig("receive", "ok")).to be(false)
     expect(response.parsed_body.dig("receive", "error")).to include("não está inscrito na WABA")
+  end
+
+  it "registra a mensagem do envio de teste para acompanhar entrega por webhook" do
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
+    integration.update!(
+      status: "connected",
+      access_token: "business-token",
+      phone_number_id: "649374078254590",
+      waba_id: "616242481017427"
+    )
+    client = instance_double(Whatsapp::CloudClient, send_text: { ok: true, message_id: "wamid.TEST-DELIVERY" })
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    expect {
+      post send_test_admin_whatsapp_integration_path, params: { to: "(47) 99999-0000" }, as: :json
+    }.to change(WhatsappMessage, :count).by(1)
+
+    expect(response).to have_http_status(:ok)
+    message = WhatsappMessage.last
+    expect(message).to have_attributes(
+      tenant_id: admin.tenant_id,
+      direction: "outbound",
+      status: "sent",
+      wa_message_id: "wamid.TEST-DELIVERY"
+    )
+    expect(response.parsed_body["status_url"]).to include("message_id=#{message.id}")
+  end
+
+  it "retorna o status atualizado da mensagem de teste" do
+    conversation = admin.tenant.whatsapp_conversations.create!(contact_phone: "5547999990000")
+    message = conversation.messages.create!(
+      tenant: admin.tenant,
+      direction: "outbound",
+      wa_message_id: "wamid.TEST-STATUS",
+      status: "delivered",
+      delivered_at: Time.current
+    )
+
+    get test_message_status_admin_whatsapp_integration_path(message_id: message.id), as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body).to include(
+      "ok" => true,
+      "status" => "delivered",
+      "terminal" => true
+    )
+    expect(response.parsed_body["label"]).to include("Entregue")
   end
 end
