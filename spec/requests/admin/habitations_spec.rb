@@ -3148,6 +3148,55 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Status: Venda, Suspenso")
   end
 
+  it "mantém o último filtro de status ao corretor trocar o texto da busca" do
+    broker = create(:admin_user, profile: default_agent_profile, name: "Corretor Busca")
+    sale = create(
+      :habitation,
+      tenant: broker.tenant,
+      admin_user: broker,
+      status: "Venda",
+      codigo: "BROKER-BUSCA-VENDA",
+      titulo_anuncio: "Apartamento Aurora disponível"
+    )
+    sold = create(
+      :habitation,
+      tenant: broker.tenant,
+      admin_user: broker,
+      status: "Vendido terceiros",
+      valor_vendido_terceiros_cents: 900_000_00,
+      codigo: "BROKER-BUSCA-VENDIDO",
+      titulo_anuncio: "Apartamento Aurora vendido"
+    )
+
+    sign_in broker
+
+    get admin_habitations_path(q: "Vila Serena", status: "Venda")
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitations_path(q: "Aurora")
+    expect(response).to redirect_to(admin_habitations_path(q: "Aurora", status: "Venda"))
+    follow_redirect!
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(sale.codigo)
+    expect(response.body).not_to include(sold.codigo)
+    expect(response.body).to include("Status: Venda")
+  end
+
+  it "não aplica a restrição padrão de disponibilidade do corretor para administradores" do
+    suspended = create(
+      :habitation,
+      status: "Suspenso",
+      motivo_suspensao: "Teste admin",
+      codigo: "ADMIN-TODOS-SUSPENSO"
+    )
+
+    get admin_habitations_path(q: "ADMIN-TODOS", status: "Todos")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(suspended.codigo)
+  end
+
   it "mantém o modal de exportação fora do preloader de navegação global" do
     export = admin.habitation_exports.create!(
       status: "completed",

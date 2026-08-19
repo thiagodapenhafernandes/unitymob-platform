@@ -132,6 +132,11 @@ class Admin::HabitationsController < Admin::BaseController
       return
     end
 
+    if should_redirect_to_effective_habitations_filter_params?
+      redirect_to admin_habitations_path(effective_habitations_filter_params), status: :see_other
+      return
+    end
+
     store_habitations_filter_session!
     load_index_filters
     @return_to_path = safe_admin_habitations_return_path(request.fullpath)
@@ -1258,7 +1263,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def store_habitations_filter_session!
     filter_params = compact_blank_return_params(
-      request.query_parameters.slice(*habitations_filter_session_keys).except("page", "clear_filters")
+      effective_habitations_filter_params.slice(*habitations_filter_session_keys).except("page", "clear_filters")
     )
 
     if meaningful_habitations_filter_params(filter_params).present?
@@ -1283,6 +1288,33 @@ class Admin::HabitationsController < Admin::BaseController
         .slice(*habitations_filter_session_keys)
         .except("ownership", "visualizacao", "sort", "direction", "per_page", "page", "clear_filters")
     )
+  end
+
+  def effective_habitations_filter_params
+    @effective_habitations_filter_params ||= begin
+      filter_params = request.query_parameters.to_h
+      if broker_catalog_user? &&
+         !explicit_habitation_status_filter?(filter_params) &&
+         meaningful_habitations_filter_params(filter_params).present?
+        carried_status = habitations_filter_session_params["status"]
+        carried_status.present? ? filter_params.merge("status" => carried_status) : filter_params
+      else
+        filter_params
+      end
+    end
+  end
+
+  def explicit_habitation_status_filter?(source_params = request.query_parameters)
+    Array(source_params.to_h["status"]).flatten.map(&:to_s).any?(&:present?)
+  end
+
+  def should_redirect_to_effective_habitations_filter_params?
+    return false unless request.get?
+    return false unless broker_catalog_user?
+    return false if explicit_habitation_status_filter?
+    return false if meaningful_habitations_filter_params(request.query_parameters).blank?
+
+    effective_habitations_filter_params["status"].present?
   end
 
   def compact_habitations_filter_session_payload(value)
@@ -1328,7 +1360,7 @@ class Admin::HabitationsController < Admin::BaseController
   def load_index_filters
     @codigo = params[:codigo].to_s.strip
     @q = params[:q]
-    @statuses = Array(params[:status]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
+    @statuses = Array(effective_habitations_filter_params["status"]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
     @status = @statuses.first
     @categorias = filter_values(params[:categoria], except: "Todas")
     @categoria = @categorias.first
@@ -1628,8 +1660,27 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_boolean_filter(scope, @exclusivo, :exclusivo_flag)
 
     scope = apply_quick_scope_filter(scope, @scope)
+    scope = apply_broker_catalog_availability_filter(scope)
 
     scope
+  end
+
+  def apply_broker_catalog_availability_filter(scope)
+    return scope unless broker_catalog_user?
+    return scope if inactive_habitation_status_filter_requested?
+
+    scope.commercially_publishable
+  end
+
+  def inactive_habitation_status_filter_requested?
+    @statuses.any? do |status|
+      next false if I18n.transliterate(status.to_s).downcase == "todos"
+
+      normalized = Habitation.normalize_status(status).to_s
+      I18n.transliterate(normalized.presence || status.to_s)
+        .downcase
+        .match?(Regexp.new(Habitation::INACTIVE_COMMERCIAL_STATUS_REGEX))
+    end
   end
 
   def apply_dashboard_quality_filter(scope, filter)
@@ -3104,6 +3155,14 @@ class Admin::HabitationsController < Admin::BaseController
     profile = current_admin_user&.access_profile
     root_profile = profile&.root_vertical_profile || current_admin_user&.vertical_profile
     root_profile&.administrativo? || root_profile&.gerente?
+  end
+
+  def broker_catalog_user?
+    return false if system_admin? || tenant_owner?
+
+    profile = current_admin_user&.access_profile
+    root_profile = profile&.root_vertical_profile || current_admin_user&.vertical_profile
+    root_profile&.agent?
   end
 
   def can_export_proprietor_data?
