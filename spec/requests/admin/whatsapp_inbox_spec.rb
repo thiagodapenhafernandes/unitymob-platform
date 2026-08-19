@@ -440,6 +440,63 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(data.dig("queue", "html")).to include("Mensagem assíncrona")
     end
 
+    it "envia pelo composer do lead quando a conversa esta fora do recorte do inbox" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      profile = admin.tenant.profiles.create!(
+        name: "Atendimento via lead",
+        axis: "vertical",
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile: profile)
+      lead_owner = create(:admin_user, tenant: admin.tenant)
+      lead = create(:lead, tenant: admin.tenant, admin_user: lead_owner, phone: "5547999990042")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+
+      sign_in user
+
+      expect {
+        post send_message_admin_whatsapp_conversation_path(conv),
+             params: { body: "Mensagem pelo lead", lead_id: lead.id },
+             headers: { "ACCEPT" => "application/json" }
+      }.to change {
+        WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").count
+      }.by(1)
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data["ok"]).to eq(true)
+      expect(data["body"]).to eq("Mensagem pelo lead")
+    end
+
+    it "vincula conversa encontrada por telefone ao lead do composer antes de enviar" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      profile = admin.tenant.profiles.create!(
+        name: "Lead all WhatsApp own",
+        axis: "vertical",
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile: profile)
+      lead = create(:lead, tenant: admin.tenant, phone: "5547999990043")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone)
+
+      sign_in user
+
+      post send_message_admin_whatsapp_conversation_path(conv),
+           params: { body: "Agora vincula", lead_id: lead.id },
+           headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      expect(conv.reload.lead_id).to eq(lead.id)
+    end
+
     it "responde erro json para envio inválido" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       conv = WhatsappConversation.create!(contact_phone: "5547999990041")

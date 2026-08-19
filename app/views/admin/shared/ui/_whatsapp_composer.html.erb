@@ -1,6 +1,7 @@
 <%
   composer_title = local_assigns.fetch(:title)
   conversation = local_assigns.fetch(:conversation)
+  lead_context = local_assigns[:lead]
   templates = Array(local_assigns[:templates])
   return_to = local_assigns[:return_to].presence
   file_input_id = local_assigns.fetch(:file_input_id)
@@ -32,6 +33,9 @@
               } do %>
   <% if return_to.present? %>
     <input type="hidden" name="return_to" value="<%= return_to %>">
+  <% end %>
+  <% if lead_context.present? %>
+    <input type="hidden" name="lead_id" value="<%= lead_context.id %>">
   <% end %>
   <%# Carimbo de apresentação: preenchido via ⚡/seletores; zera se o corretor
       limpar o texto. Viaja no FormData do envio normal. %>
@@ -194,6 +198,7 @@
                 placeholder="<%= body_placeholder %>"
                 aria-label="<%= body_placeholder %>"
                 autocomplete="off"
+                enterkeyhint="send"
                 data-action="input->wa-composer#bodyChanged keydown->wa-composer#submitOnEnter"
                 data-wa-composer-target="body"></textarea>
 

@@ -8,7 +8,8 @@ class Admin::WhatsappInboxController < Admin::BaseController
   # limite esconde conversas da busca — por isso configurável, default 200.
   DEFAULT_QUEUE_LIMIT = 200
   before_action -> { check_permission!(:manage, :whatsapp_inbox) }, only: [:send_message, :sync_templates, *MESSAGE_TOOL_ACTIONS]
-  before_action :set_conversation, only: [:show, :send_message, *MESSAGE_TOOL_ACTIONS]
+  before_action :set_conversation, only: [:show, *MESSAGE_TOOL_ACTIONS]
+  before_action :set_conversation_for_send_message, only: [:send_message]
   before_action :set_message, only: [:media]
 
   def index
@@ -141,6 +142,10 @@ class Admin::WhatsappInboxController < Admin::BaseController
     template_name = params[:template_name].to_s.strip
     media_file = params[:media_file]
     return_path = safe_return_path(params[:return_to])
+
+    if @lead_context_for_send && @conversation.lead_id.blank?
+      @conversation.update!(lead: @lead_context_for_send)
+    end
 
     # Apresentação via composer: o picker preenche o textarea e envia o card_id
     # num hidden; o envio ganha o carimbo de auditoria (regra de ouro preservada:
@@ -316,9 +321,47 @@ class Admin::WhatsappInboxController < Admin::BaseController
     @conversation = conversation_scope.find(params[:id])
   end
 
+  def set_conversation_for_send_message
+    @conversation = conversation_scope.find_by(id: params[:id])
+    return if @conversation
+
+    candidate = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, lead: { lead_labelings: :lead_label }).find(params[:id])
+    @lead_context_for_send = accessible_lead_for_conversation_send(candidate)
+    raise ActiveRecord::RecordNotFound unless @lead_context_for_send
+
+    @conversation = candidate
+  end
+
   def set_message
     @conversation = conversation_scope.find(params[:id])
     @message = @conversation.messages.find(params[:message_id])
+  end
+
+  def accessible_lead_for_conversation_send(conversation)
+    return nil unless can?(:view, :leads)
+
+    lead_ids = [conversation.lead_id, params[:lead_id]].compact_blank.map(&:to_i).uniq
+    return nil if lead_ids.empty?
+
+    accessible_leads_for_whatsapp_send.where(id: lead_ids).detect do |lead|
+      conversation_belongs_to_lead?(conversation, lead)
+    end
+  end
+
+  def accessible_leads_for_whatsapp_send
+    owner_ids = accessible_owner_ids(:leads)
+    return current_tenant.leads if owner_ids.nil?
+
+    current_tenant.leads.where(admin_user_id: owner_ids)
+  end
+
+  def conversation_belongs_to_lead?(conversation, lead)
+    return true if conversation.lead_id.present? && conversation.lead_id == lead.id
+
+    recipient = lead.whatsapp_recipient
+    return conversation.business_scoped_user_id.to_s == recipient[:user_id].to_s if recipient.is_a?(Hash)
+
+    recipient.present? && conversation.contact_phone.to_s == Phones::Normalizer.call(recipient).to_s
   end
 
   def build_outbound(attrs)

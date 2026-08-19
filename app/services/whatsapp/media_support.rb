@@ -53,6 +53,7 @@ module Whatsapp
       ".mp3" => "audio/mpeg",
       ".m4a" => "audio/mp4",
       ".ogg" => "audio/ogg",
+      ".webm" => "audio/webm",
       ".txt" => "text/plain",
       ".pdf" => "application/pdf",
       ".doc" => "application/msword",
@@ -80,7 +81,8 @@ module Whatsapp
       "audio/amr" => "AMR",
       "audio/mpeg" => "MP3",
       "audio/mp4" => "M4A",
-      "audio/ogg" => "OGG"
+      "audio/ogg" => "OGG",
+      "audio/webm" => "WEBM"
     }.freeze
 
     module_function
@@ -155,8 +157,8 @@ module Whatsapp
 
     def resolved_content_type(upload)
       explicit_content_type(upload).presence ||
-        marcel_content_type(upload).presence ||
         extension_content_type(upload).presence ||
+        marcel_content_type(upload).presence ||
         "application/octet-stream"
     end
 

@@ -265,10 +265,6 @@ export default class extends Controller {
         return
       }
 
-      if (permission === "prompt" || permission === null) {
-        this.showError("Autorize o uso do microfone na janela do navegador para gravar o áudio.")
-      }
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.rememberMicrophonePermission("granted")
       const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
