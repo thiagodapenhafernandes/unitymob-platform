@@ -35,22 +35,33 @@ class WhatsappSenderNumber < ApplicationRecord
     tenant.whatsapp_sender_numbers.active.for_notifications.ordered.first
   end
 
-  def self.sync_from_current_integration!(tenant = Current.tenant)
+  def self.sync_from_current_integration!(tenant = Current.tenant, phone_info: {})
     raise ArgumentError, "Tenant obrigatório para sincronizar número de envio WhatsApp" if tenant.blank?
 
     integration = WhatsappBusinessIntegration.current(tenant)
     return nil unless integration.phone_number_id.present?
 
-    tenant.whatsapp_sender_numbers.find_or_create_by!(phone_number_id: integration.phone_number_id) do |number|
-      number.whatsapp_business_integration = integration if integration.persisted?
-      number.waba_id = integration.waba_id
-      number.display_phone_number = integration.default_whatsapp_number.presence || integration.phone_number_id
-      number.verified_name = "WhatsApp principal"
-      number.label = number.verified_name
-      number.status = integration.messaging_ready? ? "connected" : "pending"
-      number.active = true
-      number.use_for_notifications = false if number.has_attribute?(:use_for_notifications)
-    end
+    info = phone_info.to_h.with_indifferent_access
+    number = tenant.whatsapp_sender_numbers.find_or_initialize_by(phone_number_id: integration.phone_number_id)
+    display_phone = info[:display_phone_number].presence ||
+                    integration.default_whatsapp_number.presence ||
+                    number.display_phone_number.presence ||
+                    integration.phone_number_id
+    verified_name = info[:verified_name].presence || number.verified_name.presence || "WhatsApp principal"
+
+    number.assign_attributes(
+      whatsapp_business_integration: (integration if integration.persisted?),
+      waba_id: integration.waba_id.presence || number.waba_id,
+      display_phone_number: display_phone,
+      verified_name: verified_name,
+      quality_rating: info[:quality_rating].presence || number.quality_rating,
+      label: number.label.presence || verified_name,
+      status: integration.messaging_ready? ? "connected" : "pending",
+      active: true
+    )
+    number.use_for_notifications = false if number.has_attribute?(:use_for_notifications) && number.new_record?
+    number.save!
+    number
   end
 
   def access_token

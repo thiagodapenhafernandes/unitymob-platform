@@ -938,7 +938,7 @@ class Admin::LeadsController < Admin::BaseController
     @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
     @whatsapp_templates = current_tenant.whatsapp_templates.approved.ordered.limit(50)
     # 100 e nao 12: com 12 o historico (videos/audios de dias atras) sumia do painel
-    @whatsapp_messages = @whatsapp_conversation ? @whatsapp_conversation.messages.visible.ordered.last(100) : []
+    @whatsapp_messages = @whatsapp_conversation ? lead_whatsapp_panel_messages(@whatsapp_conversation) : []
     snapshot = @whatsapp_conversation ? Whatsapp::ThreadContextSnapshot.new(
       conversation: @whatsapp_conversation,
       messages: @whatsapp_messages,
@@ -947,6 +947,33 @@ class Admin::LeadsController < Admin::BaseController
     ) : nil
     @whatsapp_summary = snapshot ? snapshot.to_h.fetch(:thread_summary) : { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
     @whatsapp_thread_context_locals = snapshot ? snapshot.to_h : {}
+  end
+
+  def lead_whatsapp_panel_messages(conversation)
+    messages = conversation.messages.visible.ordered.last(100)
+    latest_accepted_outbound_at = messages
+      .select { |message| whatsapp_message_accepted_by_meta?(message) }
+      .filter_map(&:created_at)
+      .max
+    return messages unless latest_accepted_outbound_at
+
+    messages.reject do |message|
+      stale_whatsapp_setup_failure?(message, latest_accepted_outbound_at)
+    end
+  end
+
+  def whatsapp_message_accepted_by_meta?(message)
+    message.outbound? &&
+      message.wa_message_id.present? &&
+      %w[sent delivered read].include?(message.status.to_s)
+  end
+
+  def stale_whatsapp_setup_failure?(message, latest_accepted_outbound_at)
+    message.outbound? &&
+      message.failed? &&
+      message.wa_message_id.blank? &&
+      message.created_at < latest_accepted_outbound_at &&
+      message.error_message.to_s.match?(/integra[cç][aã]o n[aã]o configurada/i)
   end
 
   def safe_return_path(value)

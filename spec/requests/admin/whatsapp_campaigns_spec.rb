@@ -30,7 +30,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
     end
 
     it "renderiza a camada de selecao por numero" do
-      create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
+      sender = create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
 
       get admin_whatsapp_campaigns_path
 
@@ -38,7 +38,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Campanhas por número")
       expect(response.body).to include("Importados CSV")
       expect(response.body).to include("Descadastros WhatsApp")
-      expect(response.body).to include("5511988887777")
+      expect(response.body).to include(sender.formatted_phone)
       expect(response.body).to include("Abrir campanhas")
     end
 
@@ -54,7 +54,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Campanha do numero")
       expect(response.body).not_to include("Outra campanha")
       expect(response.body).to include("Disparos WhatsApp")
-      expect(response.body).to include("5511988887777")
+      expect(response.body).to include(sender.formatted_phone)
       expect(response.body).to include("Nova campanha")
       expect(response.body).to include("Documentação")
       expect(response.body).to include(documentation_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id))

@@ -389,6 +389,7 @@ Rails.application.routes.draw do
       patch :phone_settings
       patch :manual_connection
       post :sync_notification_templates
+      post :use_current_number_for_campaigns
       post :test_connection
       post :send_test
       get :test_message_status

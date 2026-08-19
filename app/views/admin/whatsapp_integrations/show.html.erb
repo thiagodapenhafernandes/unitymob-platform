@@ -505,6 +505,14 @@
             <% end %>
 
             <% sender_panel_actions = capture do %>
+              <% if @whatsapp_integration.messaging_ready? && @whatsapp_integration.phone_number_id.present? && !@current_integration_sender_number&.active? %>
+                <%= button_to use_current_number_for_campaigns_admin_whatsapp_integration_path,
+                              method: :post,
+                              class: "ax-btn ax-btn--sm",
+                              form: { data: { turbo_confirm: "Disponibilizar o número já integrado também para campanhas?" } } do %>
+                  <i class="bi bi-check2-circle ax-ico"></i><span>Usar número integrado</span>
+                <% end %>
+              <% end %>
               <%= ax_button("Adicionar número", nil, variant: :success, size: :sm, icon: "plus-circle", data: { ax_modal_open: "#whatsappAccountNumberModal" }) %>
             <% end %>
 
@@ -574,7 +582,7 @@
                 <% if @whatsapp_sender_numbers.empty? %>
                   <%= ax_empty_state(
                     title: "Nenhum número cadastrado",
-                    description: "Adicione os números que poderão ser escolhidos nas campanhas de disparo.",
+                    description: "Use o número já integrado ou adicione outro número que poderá ser escolhido nas campanhas de disparo.",
                     icon: "telephone-plus",
                     compact: true
                   ) %>

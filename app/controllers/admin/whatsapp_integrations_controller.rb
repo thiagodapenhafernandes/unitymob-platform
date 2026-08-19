@@ -192,6 +192,30 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
   end
 
+  def use_current_number_for_campaigns
+    integration = current_whatsapp_integration
+
+    unless integration.messaging_ready? && integration.phone_number_id.present?
+      redirect_to admin_whatsapp_integration_path,
+                  alert: "Configure o número fixo das notificações antes de usá-lo em campanhas."
+      return
+    end
+
+    phone_info = fetch_phone_info_for_sender(integration)
+    sender_number = WhatsappSenderNumber.sync_from_current_integration!(current_tenant, phone_info: phone_info)
+
+    if sender_number
+      redirect_to admin_whatsapp_integration_path,
+                  notice: "Número integrado disponível para campanhas."
+    else
+      redirect_to admin_whatsapp_integration_path,
+                  alert: "Não foi possível localizar o número integrado."
+    end
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_to admin_whatsapp_integration_path,
+                alert: e.record.errors.full_messages.to_sentence.presence || "Não foi possível adicionar o número integrado."
+  end
+
   def disconnect
     current_whatsapp_integration.update!(
       status: "disconnected",
@@ -234,6 +258,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @global_webhook_verify_token = Whatsapp::WebhookGatewayClient.verify_token
     @phone_info = whatsapp_phone_info
     @whatsapp_sender_numbers = campaign_sender_numbers
+    @current_integration_sender_number = current_integration_sender_number
     @new_whatsapp_sender_number = current_tenant.whatsapp_sender_numbers.new
     @notification_template_settings = current_tenant.notification_template_settings.includes(:whatsapp_template).ordered
     @new_notification_template_setting = current_tenant.notification_template_settings.new(
@@ -257,10 +282,28 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def campaign_sender_numbers
-    scope = current_tenant.whatsapp_sender_numbers.active
-    notification_phone_id = @whatsapp_integration.phone_number_id.to_s.presence
-    scope = scope.where.not(phone_number_id: notification_phone_id) if notification_phone_id
-    scope.ordered
+    current_tenant.whatsapp_sender_numbers.active.ordered
+  end
+
+  def current_integration_sender_number
+    phone_number_id = @whatsapp_integration.phone_number_id.to_s.presence
+    return nil if phone_number_id.blank?
+
+    current_tenant.whatsapp_sender_numbers.find_by(phone_number_id: phone_number_id)
+  end
+
+  def fetch_phone_info_for_sender(integration)
+    result = Whatsapp::CloudClient.new(integration).phone_info
+    return {} unless result[:ok]
+
+    {
+      display_phone_number: result.dig(:data, "display_phone_number"),
+      verified_name: result.dig(:data, "verified_name"),
+      quality_rating: result.dig(:data, "quality_rating")
+    }.compact_blank
+  rescue => e
+    Rails.logger.warn("[WhatsappIntegrations] não foi possível buscar dados do número integrado: #{e.class}: #{e.message}")
+    {}
   end
 
   # Snapshot do número (display, nome verificado, quality) vindo da Cloud API.

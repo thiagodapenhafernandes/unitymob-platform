@@ -8,9 +8,11 @@ export default class extends Controller {
     this.recording = false
     this.recorder = null
     this.recordChunks = []
+    this.microphonePermission = this.storedMicrophonePermission
     this.successTimer = null
     this.pendingMessageId = null
     this.optimisticObjectUrls = new Map()
+    this.watchMicrophonePermission()
     this.refreshState()
   }
 
@@ -243,7 +245,18 @@ export default class extends Controller {
     }
 
     try {
+      const permission = await this.currentMicrophonePermission()
+      if (permission === "denied") {
+        this.showError(this.microphonePermissionMessage("denied"))
+        return
+      }
+
+      if (permission === "prompt" || permission === null) {
+        this.showError("Autorize o uso do microfone na janela do navegador para gravar o áudio.")
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.rememberMicrophonePermission("granted")
       const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
         .find((type) => MediaRecorder.isTypeSupported(type))
       this.recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
@@ -269,9 +282,68 @@ export default class extends Controller {
       this.hideError()
       this.updateRecordingTimer()
       this.refreshState()
-    } catch (_error) {
-      this.showError("Não foi possível acessar o microfone. Verifique a permissão do navegador.")
+    } catch (error) {
+      this.showError(this.microphonePermissionMessage(error))
     }
+  }
+
+  async currentMicrophonePermission() {
+    if (!navigator.permissions?.query) return null
+
+    try {
+      const permission = await navigator.permissions.query({ name: "microphone" })
+      this.rememberMicrophonePermission(permission.state)
+      permission.onchange = () => this.rememberMicrophonePermission(permission.state)
+      return permission.state
+    } catch (_error) {
+      return null
+    }
+  }
+
+  async watchMicrophonePermission() {
+    if (!navigator.permissions?.query) return
+
+    try {
+      const permission = await navigator.permissions.query({ name: "microphone" })
+      this.rememberMicrophonePermission(permission.state)
+      permission.onchange = () => this.rememberMicrophonePermission(permission.state)
+    } catch (_error) {
+      /* Permissions API pode não aceitar microphone em alguns navegadores. */
+    }
+  }
+
+  rememberMicrophonePermission(state) {
+    if (!state) return
+
+    this.microphonePermission = state
+    try { window.localStorage?.setItem(this.microphonePermissionKey, state) } catch (_error) {}
+  }
+
+  microphonePermissionMessage(errorOrState) {
+    const name = typeof errorOrState === "string" ? errorOrState : errorOrState?.name
+
+    if (name === "denied" || name === "NotAllowedError" || name === "SecurityError") {
+      this.rememberMicrophonePermission("denied")
+      return "Microfone bloqueado para este site. Clique no cadeado da barra de endereço e permita o microfone para gravar áudio."
+    }
+
+    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      return "Nenhum microfone foi encontrado neste aparelho."
+    }
+
+    if (name === "NotReadableError" || name === "TrackStartError") {
+      return "O microfone está em uso por outro aplicativo. Feche a outra gravação e tente novamente."
+    }
+
+    return "Não foi possível acessar o microfone. Verifique a permissão do navegador."
+  }
+
+  get storedMicrophonePermission() {
+    try { return window.localStorage?.getItem(this.microphonePermissionKey) } catch (_error) { return null }
+  }
+
+  get microphonePermissionKey() {
+    return "wa-composer:microphone-permission"
   }
 
   stopRecording() {

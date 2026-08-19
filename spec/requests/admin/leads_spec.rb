@@ -841,6 +841,34 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("wa-inbox-bubble--compact")
     end
 
+    it "nao exibe falha antiga de setup no painel do lead quando ja houve envio aceito" do
+      lead = create(:lead, status: "Em Atendimento", phone: "47999990010")
+      conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990010", contact_name: "Lead WhatsApp", status: "open", last_message_at: Time.current, last_message_preview: "Tudo certo")
+      conversation.messages.create!(
+        tenant: admin.tenant,
+        direction: "outbound",
+        body: "mensagem antiga que falhou",
+        status: "failed",
+        error_message: "Integração não configurada",
+        created_at: 2.days.ago
+      )
+      conversation.messages.create!(
+        tenant: admin.tenant,
+        direction: "outbound",
+        body: "mensagem aceita pela Meta",
+        status: "read",
+        wa_message_id: "wamid.ok",
+        created_at: 1.day.ago
+      )
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("mensagem aceita pela Meta")
+      expect(response.body).not_to include("mensagem antiga que falhou")
+      expect(response.body).not_to include("Falhou: Integração não configurada")
+    end
+
     it "reutiliza o preview de áudio dentro do lead sem autoplay" do
       lead = create(:lead, status: "Novo", phone: "47999990029")
       conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990029", contact_name: "Lead Audio", status: "open", last_message_at: Time.current, last_message_preview: "[áudio]")

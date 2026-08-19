@@ -93,6 +93,75 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(JSON.parse(map["data-variable-sources"]).to_h.values).to include("lead_phone_or_link")
   end
 
+  it "oferece o numero integrado para campanhas quando ainda nao existe sender cadastrado" do
+    integration = create(:whatsapp_business_integration, tenant: admin.tenant)
+    client = instance_double(Whatsapp::CloudClient, phone_info: {
+      ok: true,
+      data: {
+        "display_phone_number" => "+55 47 3311-1067",
+        "verified_name" => "Salute Imóveis",
+        "quality_rating" => "GREEN"
+      }
+    })
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Usar número integrado")
+    expect(response.body).to include("Adicionar número")
+  end
+
+  it "disponibiliza o numero integrado na lista de campanhas" do
+    integration = create(:whatsapp_business_integration, tenant: admin.tenant)
+    client = instance_double(Whatsapp::CloudClient, phone_info: {
+      ok: true,
+      data: {
+        "display_phone_number" => "+55 47 3311-1067",
+        "verified_name" => "Salute Imóveis",
+        "quality_rating" => "GREEN"
+      }
+    })
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    expect {
+      post use_current_number_for_campaigns_admin_whatsapp_integration_path
+    }.to change(WhatsappSenderNumber, :count).by(1)
+
+    sender = admin.tenant.whatsapp_sender_numbers.find_by!(phone_number_id: integration.phone_number_id)
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    expect(sender).to be_active
+    expect(sender.label).to eq("Salute Imóveis")
+    expect(sender.display_phone_number).to eq("554733111067")
+    expect(sender.waba_id).to eq(integration.waba_id)
+    expect(sender.quality_rating).to eq("GREEN")
+  end
+
+  it "reativa o sender do numero integrado quando ele ja existia desativado" do
+    integration = create(:whatsapp_business_integration, tenant: admin.tenant)
+    sender = create(
+      :whatsapp_sender_number,
+      tenant: admin.tenant,
+      whatsapp_business_integration: integration,
+      phone_number_id: integration.phone_number_id,
+      display_phone_number: "554733111067",
+      label: "Principal antigo",
+      active: false,
+      status: "disconnected"
+    )
+    client = instance_double(Whatsapp::CloudClient, phone_info: { ok: false, error: "indisponível" })
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    expect {
+      post use_current_number_for_campaigns_admin_whatsapp_integration_path
+    }.not_to change(WhatsappSenderNumber, :count)
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    expect(sender.reload).to be_active
+    expect(sender.status).to eq("connected")
+    expect(sender.label).to eq("Principal antigo")
+  end
+
   it "exibe e salva telefones do site por tipo de negociacao" do
     get admin_whatsapp_integration_path(tab: "site_phones")
 
