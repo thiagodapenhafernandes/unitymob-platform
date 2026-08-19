@@ -259,12 +259,7 @@ export default class extends Controller {
     }
 
     try {
-      const permission = await this.currentMicrophonePermission()
-      if (permission === "denied") {
-        this.showError(this.microphonePermissionMessage("denied"))
-        return
-      }
-
+      await this.currentMicrophonePermission()
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.rememberMicrophonePermission("granted")
       const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
@@ -326,7 +321,13 @@ export default class extends Controller {
     if (!state) return
 
     this.microphonePermission = state
-    try { window.localStorage?.setItem(this.microphonePermissionKey, state) } catch (_error) {}
+    try {
+      if (state === "granted") {
+        window.localStorage?.setItem(this.microphonePermissionKey, state)
+      } else {
+        window.localStorage?.removeItem(this.microphonePermissionKey)
+      }
+    } catch (_error) {}
   }
 
   microphonePermissionMessage(errorOrState) {
@@ -334,7 +335,7 @@ export default class extends Controller {
 
     if (name === "denied" || name === "NotAllowedError" || name === "SecurityError") {
       this.rememberMicrophonePermission("denied")
-      return "Microfone bloqueado para este site. Clique no cadeado da barra de endereço e permita o microfone para gravar áudio."
+      return "O navegador recusou o microfone. Abra Configurações de sites > Microfone e marque Permitir; se não aparecer, libere o microfone para o navegador no sistema operacional."
     }
 
     if (name === "NotFoundError" || name === "DevicesNotFoundError") {
