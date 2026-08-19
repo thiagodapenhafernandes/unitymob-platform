@@ -59,13 +59,25 @@ RSpec.describe "Admin lead interest intelligence", type: :request do
   end
 
   describe "GET show" do
-    it "mostra a inteligência de interesse e sugestões compatíveis" do
+    it "carrega a inteligência de interesse por frame lazy" do
       lead = create_interest_context
 
       get admin_lead_path(lead)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Inteligência de Interesse")
+      expect(response.body).to include(interest_intelligence_admin_lead_path(lead))
+      expect(response.body).to include("Carregando sinais")
+    end
+  end
+
+  describe "GET interest_intelligence" do
+    it "mostra sinais e sugestões compatíveis no frame" do
+      lead = create_interest_context
+
+      get interest_intelligence_admin_lead_path(lead), headers: { "Turbo-Frame" => ActionView::RecordIdentifier.dom_id(lead, :interest_intelligence) }
+
+      expect(response).to have_http_status(:ok)
       expect(response.body).to include("imóveis vistos")
       expect(response.body).to include("Apartamento Centro compatível")
       expect(response.body).to include("Reprocessar")

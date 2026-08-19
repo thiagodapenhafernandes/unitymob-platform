@@ -28,7 +28,7 @@
                aria-label="Selecionar <%= habitation.codigo %> para compartilhar">
       </label>
     <% end %>
-    <%= link_to admin_habitation_path(habitation.id), class: "ax-context-pin__link" do %>
+    <%= link_to admin_habitation_path(habitation.id), class: "ax-context-pin__link", target: "_blank", rel: "noopener" do %>
       <i class="bi bi-house-door"></i>
       <span><%= [habitation.codigo, habitation.display_title.presence].compact_blank.join(" · ") %></span>
     <% end %>

@@ -5,10 +5,12 @@
 <% thread_context_locals = local_assigns[:thread_context_locals] || {} %>
 <% messages = Array(local_assigns[:messages]) %>
 <% return_to = local_assigns[:return_to].presence %>
+<% panel_dom_id = local_assigns[:panel_dom_id].presence || "whatsapp" %>
+<% media_file_input_id = local_assigns[:file_input_id].presence || "lead-whatsapp-media-file" %>
 <% channel_label = lead.business_scoped_user_id.present? ? "BSUID #{lead.business_scoped_user_id}" : (lead.display_phone.presence || "Canal não identificado") %>
 <% media_support_label = "Texto, imagem, vídeo, áudio e documento" %>
 
-<div id="whatsapp" class="ax-card tw-mb-4 lead-whatsapp-card" data-lead-whatsapp-panel="true">
+<div id="<%= panel_dom_id %>" class="ax-card tw-mb-4 lead-whatsapp-card" data-lead-whatsapp-panel="true">
   <% if conversation %>
     <%# Mesma anatomia da tela dedicada: header + thread + composer à esquerda,
         contexto (lead/imóvel/apresentação) na coluna de 300px à direita.
@@ -76,7 +78,7 @@
               conversation: conversation,
               templates: templates,
               return_to: return_to,
-              file_input_id: "lead-whatsapp-media-file",
+              file_input_id: media_file_input_id,
               placeholder: "Escreva uma mensagem...",
               compact_mode: true,
               class_name: "lead-whatsapp-card__composer" %>

@@ -76,7 +76,11 @@
               <div class="lead-interest-match">
                 <div>
                   <div class="tw-flex tw-items-center tw-gap-2">
-                    <span class="ax-strong tw-truncate"><%= habitation.display_title %></span>
+                    <%= link_to [habitation.codigo, habitation.display_title].compact_blank.join(" · "),
+                          admin_habitation_path(habitation.id),
+                          class: "ax-strong tw-truncate lead-interest-match__title",
+                          target: "_blank",
+                          rel: "noopener" %>
                     <span class="ax-badge ax-badge--blue"><%= match.score %>%</span>
                   </div>
                   <small><%= [habitation.bairro, habitation.cidade].compact_blank.join(", ") %></small>
@@ -84,7 +88,7 @@
                     <em><%= match.reasons.join(" · ") %></em>
                   <% end %>
                 </div>
-                <%= link_to admin_habitation_path(habitation.id), class: "ax-ico-btn", title: "Abrir imóvel" do %>
+                <%= link_to admin_habitation_path(habitation.id), class: "ax-ico-btn", title: "Abrir imóvel", target: "_blank", rel: "noopener" do %>
                   <i class="bi bi-box-arrow-up-right"></i>
                 <% end %>
               </div>

@@ -317,6 +317,254 @@
       font-weight: 750;
     }
 
+    .lead-pwa-detail__subsection {
+      display: grid;
+      gap: 7px;
+      padding-top: 9px;
+      border-top: 1px solid var(--lead-pwa-line-soft);
+    }
+
+    .lead-pwa-conversation-card {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+      width: 100%;
+      padding: 9px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 12px;
+      background: var(--lead-pwa-surface-soft);
+      color: var(--lead-pwa-ink);
+      text-align: left;
+    }
+
+    .lead-pwa-conversation-card__icon {
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: color-mix(in srgb, #22c55e 14%, var(--lead-pwa-surface));
+      color: #047857;
+      font-size: 18px;
+    }
+
+    .lead-pwa-conversation-card strong,
+    .lead-pwa-conversation-card > span:not(.lead-pwa-conversation-card__icon),
+    .lead-pwa-conversation-card > span:not(.lead-pwa-conversation-card__icon) span {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-conversation-card strong {
+      font-size: 14px;
+      font-weight: 950;
+    }
+
+    .lead-pwa-conversation-card span {
+      margin-top: 2px;
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .lead-pwa-chat-dialog {
+      width: 100vw;
+      max-width: none;
+      height: 100dvh;
+      max-height: none;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: var(--lead-pwa-bg);
+    }
+
+    .lead-pwa-chat-dialog::backdrop {
+      background: rgba(15, 23, 42, .42);
+    }
+
+    .lead-pwa-chat-dialog__shell {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      height: 100dvh;
+      background: var(--lead-pwa-bg);
+    }
+
+    .lead-pwa-chat-dialog__top {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: max(8px, env(safe-area-inset-top, 0px)) 8px 8px;
+      border-bottom: 1px solid var(--lead-pwa-line);
+      background: var(--lead-pwa-surface);
+    }
+
+    .lead-pwa-chat-dialog__top strong,
+    .lead-pwa-chat-dialog__top span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-chat-dialog__top strong {
+      color: var(--lead-pwa-ink);
+      font-size: 16px;
+      font-weight: 950;
+    }
+
+    .lead-pwa-chat-dialog__top span {
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .lead-pwa-chat-dialog__body {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .lead-pwa-chat-dialog .lead-whatsapp-card {
+      height: 100%;
+      margin: 0 !important;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .lead-pwa-chat-dialog .lead-whatsapp-card__stage {
+      height: 100%;
+      border-radius: 0;
+    }
+
+    .lead-pwa-chat-dialog .lead-whatsapp-card__workspace {
+      min-height: 0;
+    }
+
+    .lead-pwa-chat-dialog .wa-inbox-chat-header {
+      display: none !important;
+    }
+
+    .lead-pwa-chat-dialog .lead-whatsapp-card__presentation,
+    .lead-pwa-chat-dialog .wa-thread-context,
+    .lead-pwa-chat-dialog .wa-inbox-chat-header__actions .wa-presentation-tools {
+      display: none !important;
+    }
+
+    .lead-pwa-mobile-interests {
+      display: grid;
+      gap: 8px;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interests {
+      display: grid;
+      gap: 8px;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips {
+      display: grid;
+      gap: 7px;
+    }
+
+    .lead-pwa-detail .lead-property-share-actions,
+    .lead-pwa-detail .lead-property-share-result {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+    }
+
+    .lead-pwa-detail .lead-property-share-actions__expiry {
+      display: grid;
+      grid-template-columns: auto minmax(72px, 96px) auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .lead-pwa-detail .lead-property-share-actions__expiry input,
+    .lead-pwa-detail .lead-property-share-result input {
+      width: 100%;
+      min-height: 38px;
+    }
+
+    .lead-pwa-detail .lead-property-share-result[hidden] {
+      display: none;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interests-select {
+      min-height: 38px;
+    }
+
+    .lead-pwa-share-history {
+      display: grid;
+      gap: 7px;
+    }
+
+    .lead-pwa-share-history__item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 9px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 11px;
+      background: var(--lead-pwa-surface-soft);
+      color: var(--lead-pwa-muted);
+      text-decoration: none;
+    }
+
+    .lead-pwa-share-history__item strong,
+    .lead-pwa-share-history__item span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-share-history__item strong {
+      color: var(--lead-pwa-ink);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .lead-pwa-share-history__item span {
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .lead-pwa-interest-intelligence turbo-frame {
+      display: block;
+    }
+
+    .lead-pwa-interest-intelligence .lead-interest-card {
+      margin: 0;
+      border: 0;
+      box-shadow: none;
+    }
+
+    .lead-pwa-interest-intelligence .lead-interest-metrics {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .lead-pwa-interest-intelligence .lead-interest-match {
+      grid-template-columns: minmax(0, 1fr) 34px;
+    }
+
+    .lead-pwa-interest-intelligence .lead-interest-match .tw-flex {
+      min-width: 0;
+    }
+
+    .lead-pwa-interest-intelligence .lead-interest-match em {
+      overflow-wrap: anywhere;
+    }
+
+    html.lead-pwa-chat-lock {
+      overflow: hidden;
+    }
+
     .lead-pwa-detail__record--alert {
       margin: 0;
       padding: 7px 12px !important;
@@ -450,6 +698,21 @@
   detail_conversion = lead_conversion_summary(@lead)
   detail_phone = @lead.display_phone.to_s.gsub(/[^0-9+]/, "")
   detail_whatsapp_url = @lead.direct_whatsapp_url
+  detail_last_whatsapp_message = @whatsapp_messages.last
+  detail_last_whatsapp_text = detail_last_whatsapp_message&.body.to_s.squish.presence
+  detail_interest_intelligence_locals = if @interest_simulation
+    {
+      lead: @lead,
+      profile: @interest_profile,
+      profile_incomplete: @interest_profile_incomplete,
+      matches: @interest_matches,
+      navigation_events: @interest_navigation_events,
+      property_interests: @interest_property_interests,
+      settings: @interest_settings,
+      simulation: true,
+      embedded: true
+    }
+  end
 %>
 
 <section class="lead-pwa-detail" aria-label="Detalhe do lead no PWA">
@@ -556,10 +819,60 @@
     <% end %>
   </section>
 
+  <% if can?(:view, :whatsapp_inbox) %>
+    <section class="lead-pwa-detail__panel" data-controller="lead-pwa-chat">
+      <div class="lead-pwa-detail__section-title">
+        <span>Conversa</span>
+        <small><%= @whatsapp_conversation ? "interna" : "WhatsApp" %></small>
+      </div>
+      <button type="button"
+              class="lead-pwa-conversation-card"
+              data-action="lead-pwa-chat#open"
+              aria-label="Abrir conversa em tela cheia">
+        <span class="lead-pwa-conversation-card__icon"><i class="bi bi-whatsapp"></i></span>
+        <span>
+          <strong><%= @whatsapp_conversation&.display_name || "WhatsApp individual" %></strong>
+          <span><%= detail_last_whatsapp_text || (@lead.whatsapp_recipient.present? ? "Toque para conversar sem sair do lead." : "Sem canal disponível para este lead.") %></span>
+        </span>
+        <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
+      </button>
+      <dialog class="lead-pwa-chat-dialog"
+              data-lead-pwa-chat-target="dialog"
+              data-action="click->lead-pwa-chat#backdropClose">
+        <div class="lead-pwa-chat-dialog__shell">
+          <div class="lead-pwa-chat-dialog__top">
+            <button type="button"
+                    class="lead-pwa-detail__icon-btn"
+                    data-action="lead-pwa-chat#close"
+                    aria-label="Fechar conversa">
+              <i class="bi bi-arrow-left"></i>
+            </button>
+            <span>
+              <strong><%= @whatsapp_conversation&.display_name || @lead.display_name %></strong>
+              <span>Conversa do lead</span>
+            </span>
+          </div>
+          <div class="lead-pwa-chat-dialog__body">
+            <%= render "admin/shared/ui/lead_whatsapp_panel",
+                  lead: @lead,
+                  conversation: @whatsapp_conversation,
+                  templates: @whatsapp_templates,
+                  summary: @whatsapp_summary,
+                  thread_context_locals: @whatsapp_thread_context_locals,
+                  messages: @whatsapp_messages.last(30),
+                  return_to: request.fullpath,
+                  panel_dom_id: "whatsapp_pwa_#{@lead.id}",
+                  file_input_id: "lead-whatsapp-pwa-media-file-#{@lead.id}" %>
+          </div>
+        </div>
+      </dialog>
+    </section>
+  <% end %>
+
   <section class="lead-pwa-detail__panel">
     <div class="lead-pwa-detail__section-title">
-      <span>Imóvel de interesse</span>
-      <% if @property %><small><%= @property.codigo %></small><% end %>
+      <span>Imóvel de origem</span>
+      <small><%= @property ? @property.codigo : "geral" %></small>
     </div>
     <% if @property %>
       <div class="lead-pwa-detail__record">
@@ -570,6 +883,65 @@
       <p class="lead-pwa-detail__empty">Imóvel referenciado, mas indisponível no catálogo atual.</p>
     <% else %>
       <p class="lead-pwa-detail__empty">Lead sem imóvel específico.</p>
+    <% end %>
+
+    <div class="lead-pwa-detail__subsection lead-pwa-mobile-interests">
+      <div class="lead-pwa-detail__section-title">
+        <span>Imóveis de interesse</span>
+        <small><%= @lead.property_interests.size %></small>
+      </div>
+      <%= render "admin/whatsapp_inbox/thread_property_interests",
+            lead: @lead,
+            show_empty: false,
+            share_url: share_properties_admin_lead_path(@lead),
+            suggest_url: suggest_properties_admin_lead_path(@lead),
+            internal_send_enabled: @whatsapp_conversation.present? && can?(:manage, :whatsapp_inbox),
+            shared_property_ids: @shared_interest_property_ids,
+            shared_property_statuses: @shared_interest_property_statuses,
+            share_expires_in_days: PropertySetting.instance(tenant: current_tenant).ai_property_search_share_expiration_days %>
+    </div>
+
+    <% if @property_share_collections.present? %>
+      <div class="lead-pwa-detail__subsection lead-pwa-share-history">
+        <div class="lead-pwa-detail__section-title">
+          <span>Links gerados</span>
+          <small><%= @property_share_collections.size %></small>
+        </div>
+        <% @property_share_collections.each do |collection| %>
+          <%= link_to ai_property_share_collection_path(collection.token),
+                target: "_blank",
+                rel: "noopener",
+                class: "lead-pwa-share-history__item" do %>
+            <span>
+              <strong><%= pluralize(collection.habitations.size, "imóvel", "imóveis") %></strong>
+              <span><%= l(collection.created_at, format: :short) %> por <%= collection.admin_user&.name || "corretor removido" %></span>
+            </span>
+            <i class="bi bi-box-arrow-up-right"></i>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="lead-pwa-detail__panel lead-pwa-interest-intelligence">
+    <div class="lead-pwa-detail__section-title">
+      <span>Inteligência de Interesse</span>
+      <small>lazy</small>
+    </div>
+    <% if detail_interest_intelligence_locals %>
+      <%= render "admin/leads/interest_intelligence", **detail_interest_intelligence_locals %>
+    <% else %>
+      <%= turbo_frame_tag dom_id(@lead, :pwa_interest_intelligence),
+            src: interest_intelligence_admin_lead_path(@lead),
+            loading: "lazy" do %>
+        <div class="lead-interest-empty">
+          <i class="bi bi-stars"></i>
+          <div>
+            <strong>Carregando sinais</strong>
+            <p>A inteligência será calculada sem travar a abertura do lead.</p>
+          </div>
+        </div>
+      <% end %>
     <% end %>
   </section>
 
@@ -891,18 +1263,22 @@
           <span class="ax-stat-label">Inteligência de Interesse</span>
           <span class="ax-badge ax-badge--gray"><%= interest_badge %></span>
         </div>
-        <%= turbo_frame_tag dom_id(@lead, :interest_intelligence),
-              src: interest_intelligence_admin_lead_path(@lead),
-              loading: "lazy" do %>
-          <div class="lead-interest-card">
-            <div class="lead-interest-empty">
-              <i class="bi bi-hourglass-split"></i>
-              <div>
-                <strong>Carregando sinais</strong>
-                <p>A tela do lead já pode ser usada enquanto a inteligência calcula em segundo plano.</p>
+        <% if detail_interest_intelligence_locals %>
+          <%= render "admin/leads/interest_intelligence", **detail_interest_intelligence_locals %>
+        <% else %>
+          <%= turbo_frame_tag dom_id(@lead, :interest_intelligence),
+                src: interest_intelligence_admin_lead_path(@lead),
+                loading: "lazy" do %>
+            <div class="lead-interest-card">
+              <div class="lead-interest-empty">
+                <i class="bi bi-hourglass-split"></i>
+                <div>
+                  <strong>Carregando sinais</strong>
+                  <p>A tela do lead já pode ser usada enquanto a inteligência calcula em segundo plano.</p>
+                </div>
               </div>
             </div>
-          </div>
+          <% end %>
         <% end %>
 
         <div class="lead-view-divider"></div>

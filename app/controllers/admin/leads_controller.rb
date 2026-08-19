@@ -382,6 +382,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def simulate_interest
     load_show_context
+    load_interest_intelligence
     @interest_simulation = true
     render :show
   end
@@ -405,7 +406,7 @@ class Admin::LeadsController < Admin::BaseController
       }
     )
 
-    frame_id = view_context.dom_id(@lead, :interest_intelligence)
+    frame_id = request.headers["Turbo-Frame"].presence || view_context.dom_id(@lead, :interest_intelligence)
     render html: %(<turbo-frame id="#{ERB::Util.html_escape(frame_id)}">#{html}</turbo-frame>).html_safe, layout: false
   end
 

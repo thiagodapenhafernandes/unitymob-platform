@@ -520,14 +520,22 @@ RSpec.describe "Admin::Leads", type: :request do
 
   describe "GET /admin/leads/:id" do
     it "renderiza o detalhe PWA preservando a tela completa do desktop" do
+      property = create(:habitation, tenant: admin.tenant, codigo: "PWA-001")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Detalhe PWA", phone: "11999999999", status: "Em Atendimento")
+      lead.property_interests.create!(tenant: admin.tenant, habitation: property)
+      lead.ai_property_share_collections.create!(admin_user: admin).tap do |collection|
+        collection.items.create!(habitation: property)
+      end
 
       get admin_lead_path(lead)
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      expect(document.at_css(".lead-pwa-detail")).to be_present
-      expect(document.at_css(".lead-pwa-detail").text).to include("Lead Detalhe PWA")
+      pwa_detail = document.at_css(".lead-pwa-detail")
+      expect(pwa_detail).to be_present
+      expect(pwa_detail.text).to include("Lead Detalhe PWA", "Conversa", "Imóveis de interesse", "PWA-001", "Links gerados", "Inteligência de Interesse")
+      expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_present
+      expect(pwa_detail.at_css("turbo-frame##{ActionView::RecordIdentifier.dom_id(lead, :pwa_interest_intelligence)}")).to be_present
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
       expect(document.at_css(".lead-show-workspace .ax-workspace-heading")).to be_present
     end

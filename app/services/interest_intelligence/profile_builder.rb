@@ -47,9 +47,9 @@ module InterestIntelligence
     def signal_summary
       {
         navigation_events: events.count,
-        property_views: property_events.count,
+        property_views: property_events.count + shared_property_view_ids.size,
         searches: search_events.count,
-        explicit_interests: explicit_interests.count,
+        explicit_interests: explicit_interest_habitation_ids.size,
         total_duration_seconds: events.sum(:duration_seconds).to_i,
         repeated_property_views: repeated_property_views
       }
@@ -77,6 +77,7 @@ module InterestIntelligence
       ids = property_events.where.not(habitation_id: nil).pluck(:habitation_id)
       ids += manual_interests.pluck(:habitation_id)
       ids += explicit_interests.pluck(:habitation_id)
+      ids += shared_property_view_ids
       ids << @lead.property_id if @lead.respond_to?(:property_id) && @lead.property_id.present?
       ids.compact.uniq
     end
@@ -86,6 +87,7 @@ module InterestIntelligence
         snapshots = property_events.map { |event| event.property_snapshot.to_h }
         manual_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
           explicit_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
+          shared_habitations.filter_map { |habitation| snapshot_for(habitation) } +
           snapshots
       end
     end
@@ -140,6 +142,59 @@ module InterestIntelligence
 
     def manual_interests
       @manual_interests ||= @lead.property_interests
+    end
+
+    def share_audit_events
+      @share_audit_events ||= begin
+        collection_ids = @lead.ai_property_share_collections.select(:id)
+        AiPropertyShareAuditEvent
+          .where(tenant_id: @lead.tenant_id)
+          .where(ai_property_share_collection_id: collection_ids)
+          .or(AiPropertyShareAuditEvent.where(tenant_id: @lead.tenant_id, lead_id: @lead.id))
+      end
+    end
+
+    def shared_property_view_ids
+      @shared_property_view_ids ||= begin
+        direct_ids = share_audit_events
+          .where(event_type: %w[property_opened interest_created interest_repeated])
+          .where.not(habitation_id: nil)
+          .pluck(:habitation_id)
+
+        opened_collection_ids = share_audit_events
+          .where(event_type: "collection_opened")
+          .pluck(:ai_property_share_collection_id)
+
+        collection_item_ids = if opened_collection_ids.any?
+          AiPropertyShareItem.where(ai_property_share_collection_id: opened_collection_ids).pluck(:habitation_id)
+        else
+          []
+        end
+
+        (direct_ids + collection_item_ids).map(&:to_i).reject(&:zero?).uniq
+      end
+    end
+
+    def shared_interest_habitation_ids
+      @shared_interest_habitation_ids ||= share_audit_events
+        .where(event_type: %w[interest_created interest_repeated])
+        .where.not(habitation_id: nil)
+        .pluck(:habitation_id)
+        .map(&:to_i)
+        .reject(&:zero?)
+        .uniq
+    end
+
+    def explicit_interest_habitation_ids
+      @explicit_interest_habitation_ids ||= (
+        explicit_interests.pluck(:habitation_id) +
+        manual_interests.pluck(:habitation_id) +
+        shared_interest_habitation_ids
+      ).map(&:to_i).reject(&:zero?).uniq
+    end
+
+    def shared_habitations
+      @shared_habitations ||= Habitation.for_tenant(@lead.tenant_id).where(id: shared_property_view_ids)
     end
 
     def repeated_property_views

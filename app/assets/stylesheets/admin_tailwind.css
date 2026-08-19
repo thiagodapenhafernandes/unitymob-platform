@@ -18868,6 +18868,16 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
   grid-template-columns: 28px minmax(0, 1fr);
 }
 
+.lead-interest-match__title {
+  color: var(--admin-ink, #1f2733);
+  text-decoration: none;
+}
+
+.lead-interest-match__title:hover {
+  color: var(--admin-primary, #365f8f);
+  text-decoration: underline;
+}
+
 .lead-interest-signal > i {
   display: inline-grid;
   place-items: center;
