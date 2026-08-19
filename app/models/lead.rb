@@ -88,6 +88,29 @@ class Lead < ApplicationRecord
     (collection_ids + activity_ids).map(&:to_i).reject(&:zero?).uniq
   end
 
+  def shared_property_statuses
+    statuses = shared_property_ids.index_with { "sent" }
+
+    ai_property_share_collections.includes(:audit_events, :habitations).find_each do |collection|
+      collection_property_ids = collection.habitations.map(&:id)
+
+      collection.audit_events.each do |event|
+        status = property_share_event_status(event.event_type)
+        next if status.blank?
+
+        property_ids = event.habitation_id.present? ? [event.habitation_id] : collection_property_ids
+        property_ids.each do |property_id|
+          property_id = property_id.to_i
+          next if property_id.zero?
+
+          statuses[property_id] = stronger_property_share_status(statuses[property_id], status)
+        end
+      end
+    end
+
+    statuses
+  end
+
   after_create :record_audit_create
   after_update :record_audit_update
   after_destroy :record_audit_destroy
@@ -338,6 +361,22 @@ class Lead < ApplicationRecord
   end
 
   private
+
+  def property_share_event_status(event_type)
+    case event_type.to_s
+    when "collection_opened"
+      "viewed"
+    when "property_opened"
+      "opened"
+    when "interest_created", "interest_repeated"
+      "interested"
+    end
+  end
+
+  def stronger_property_share_status(current, candidate)
+    order = { "sent" => 0, "viewed" => 1, "opened" => 2, "interested" => 3 }
+    order.fetch(candidate, 0) > order.fetch(current, 0) ? candidate : current
+  end
 
   def normalize_status
     self.status = self.class.status_value(status)

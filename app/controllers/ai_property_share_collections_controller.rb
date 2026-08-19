@@ -13,6 +13,7 @@ class AiPropertyShareCollectionsController < ApplicationController
     @habitation = shareable_collection_habitations
       .includes(:address, photos_attachments: :blob)
       .find(params[:habitation_id])
+    @collection.record!("property_opened", habitation: @habitation, metadata: request_metadata)
 
     render partial: "ai_property_share_collections/property_preview",
            formats: [:html],

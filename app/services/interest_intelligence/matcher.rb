@@ -41,6 +41,7 @@ module InterestIntelligence
       # Escopo obrigatório por tenant: sem ele a sugestão vazaria imóveis de
       # outras imobiliárias (Habitation não tem default_scope de tenant).
       scope = Habitation.for_tenant(@lead.tenant_id).active.with_price
+      scope = scope.where.not(id: ignored_property_ids) if ignored_property_ids.any?
       criteria = @profile[:criteria] || {}
 
       if criteria[:cities].present?
@@ -112,6 +113,14 @@ module InterestIntelligence
 
     def habitation_location(habitation, attribute)
       habitation.public_send(attribute).presence || habitation.read_attribute(attribute).presence
+    end
+
+    def ignored_property_ids
+      @ignored_property_ids ||= begin
+        ids = @lead.property_interests.pluck(:habitation_id)
+        ids << @lead.property_id if @lead.respond_to?(:property_id) && @lead.property_id.present?
+        ids.compact.uniq
+      end
     end
 
     def weight(name)

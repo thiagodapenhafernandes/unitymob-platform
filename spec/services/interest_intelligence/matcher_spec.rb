@@ -71,5 +71,6 @@ RSpec.describe InterestIntelligence::Matcher do
     results = described_class.call(lead, limit: 10)
 
     expect(results.map(&:habitation)).to include(compatible)
+    expect(results.map(&:habitation)).not_to include(selected)
   end
 end

@@ -1015,19 +1015,22 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/:id" do
-    it "carrega inteligencia de interesse via frame lazy e preserva marcacao de imoveis enviados" do
+    it "carrega inteligencia de interesse via frame lazy e preserva status de compartilhamento dos imoveis" do
       property = create(:habitation, tenant: admin.tenant, codigo: "SENT-001")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin)
       lead.property_interests.create!(tenant: admin.tenant, habitation: property)
       lead.ai_property_share_collections.create!(admin_user: admin).tap do |collection|
         collection.items.create!(habitation: property)
+        collection.record!("collection_opened")
+        collection.record!("property_opened", habitation: property)
+        collection.record!("interest_created", lead: lead, habitation: property, admin_user: admin)
       end
       allow(InterestIntelligence::Matcher).to receive(:new).and_raise("matching should be lazy")
 
       get admin_lead_path(lead)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("SENT-001", "Enviado", "Carregando sinais")
+      expect(response.body).to include("SENT-001", "Interessado", "Carregando sinais")
       expect(response.body).to include(interest_intelligence_admin_lead_path(lead))
     end
 

@@ -746,6 +746,7 @@
               suggest_url: suggest_properties_admin_lead_path(@lead),
               internal_send_enabled: @whatsapp_conversation.present? && can?(:manage, :whatsapp_inbox),
               shared_property_ids: @shared_interest_property_ids,
+              shared_property_statuses: @shared_interest_property_statuses,
               share_expires_in_days: PropertySetting.instance(tenant: current_tenant).ai_property_search_share_expiration_days %>
         <% if @property_share_collections.present? %>
           <div class="lead-property-share-history">

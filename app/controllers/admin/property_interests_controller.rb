@@ -63,7 +63,8 @@ class Admin::PropertyInterestsController < Admin::BaseController
         locals: {
           lead: @lead,
           share_url: (share_properties_admin_lead_path(@lead) if params[:share].present?),
-          shared_property_ids: @lead.shared_property_ids
+          shared_property_ids: @lead.shared_property_ids,
+          shared_property_statuses: @lead.shared_property_statuses
         }
       )
     }

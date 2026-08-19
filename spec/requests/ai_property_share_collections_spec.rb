@@ -68,6 +68,7 @@ RSpec.describe "AI property share collections", type: :request do
     get preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id)
 
     expect(response).to have_http_status(:ok)
+    expect(collection.audit_events.where(event_type: "property_opened", habitation: first_property)).to exist
     expect(response.body).to include("shared-property-preview", first_property.display_title, "Abrir página completa")
     expect(response.body).to include("shared-property-preview__hero-link", 'data-fancybox="shared-property-preview')
     expect(response.body).to include("shared-property-preview__photo-count", "1 foto")

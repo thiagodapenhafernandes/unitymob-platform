@@ -247,6 +247,7 @@ class Admin::LeadsController < Admin::BaseController
     @push_delivery_events = push_delivery_events_for(@lead)
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
     @shared_interest_property_ids = @lead.shared_property_ids
+    @shared_interest_property_statuses = @lead.shared_property_statuses
     @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context
   end
@@ -650,7 +651,8 @@ class Admin::LeadsController < Admin::BaseController
         lead: @lead,
         show_empty: false,
         share_url: (share_properties_admin_lead_path(@lead) if share),
-        shared_property_ids: @lead.shared_property_ids
+        shared_property_ids: @lead.shared_property_ids,
+        shared_property_statuses: @lead.shared_property_statuses
       }
     )
   end
@@ -1692,6 +1694,7 @@ class Admin::LeadsController < Admin::BaseController
     @push_delivery_events = push_delivery_events_for(@lead)
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
     @shared_interest_property_ids = @lead.shared_property_ids
+    @shared_interest_property_statuses = @lead.shared_property_statuses
     load_origin_options
     @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context

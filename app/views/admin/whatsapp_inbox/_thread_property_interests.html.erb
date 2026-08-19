@@ -11,7 +11,7 @@
   <div class="wa-inbox-thread__interest-chips" data-property-interests-target="list">
     <%= render "admin/whatsapp_inbox/thread_property_interest_chips",
           lead: lead,
-          **local_assigns.slice(:show_empty, :share_url, :shared_property_ids) %>
+          **local_assigns.slice(:show_empty, :share_url, :shared_property_ids, :shared_property_statuses) %>
   </div>
   <% if local_assigns[:share_url].present? %>
     <div class="lead-property-share-actions">
