@@ -109,10 +109,14 @@ class SecureLinksController < ApplicationController
     # (o clique já abriu o WhatsApp direto). Responde vazio, sem abrir tela.
     return head :no_content if params[:ack].present?
 
-    return render :show, layout: false if params[:details].present?
+    if params[:details].present?
+      return redirect_to admin_lead_path(@lead) if current_admin_user
+
+      return render :show, layout: false
+    end
 
     if current_admin_user
-      redirect_to "/admin/leads/#{@lead.id}"
+      redirect_to admin_lead_path(@lead)
     else
       render :show, layout: false
     end

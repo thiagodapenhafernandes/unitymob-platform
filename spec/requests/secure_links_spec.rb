@@ -16,10 +16,20 @@ RSpec.describe "SecureLinks", type: :request do
     Lead.set_callback(:commit, :after, :route_lead)
   end
 
-  it "mostra o card seguro de detalhes quando o push abre com details=1 mesmo logado" do
+  it "abre a tela admin do lead quando o push abre detalhes com usuario logado" do
     lead = create(:lead, name: "Cliente Detalhe", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
     link = SecureLink.link_for(lead, :attend, expiry_days: 7, issued_to: corretor)
-    sign_in admin
+    sign_in corretor
+
+    get secure_link_path(link.token), params: { details: "1" }
+
+    expect(response).to redirect_to(admin_lead_path(lead))
+    expect(lead.reload.status).to eq(Lead.status_value(:em_atendimento))
+  end
+
+  it "mantem o card seguro de detalhes quando o push abre sem usuario logado" do
+    lead = create(:lead, name: "Cliente Detalhe", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
+    link = SecureLink.link_for(lead, :attend, expiry_days: 7, issued_to: corretor)
 
     get secure_link_path(link.token), params: { details: "1" }
 
