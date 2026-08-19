@@ -7,7 +7,7 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v12";
+const CACHE_VERSION = "v13";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
@@ -66,6 +66,8 @@ self.addEventListener("fetch", (event) => {
   // Push clicks may open /admin routes, but this worker only caches /field shell
   // and handles field ping queue requests. Let other routes use the network.
   if (url.origin !== self.location.origin) return;
+
+  if (url.pathname.startsWith("/admin") && !url.pathname.startsWith("/admin/captacoes")) return;
 
   if (!url.pathname.startsWith("/field") && request.method === "GET" && request.mode === "navigate") {
     event.respondWith(

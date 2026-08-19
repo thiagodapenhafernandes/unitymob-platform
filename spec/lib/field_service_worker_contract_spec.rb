@@ -16,7 +16,7 @@ RSpec.describe "field service worker contract" do
   end
 
   it "normaliza o destino do clique antes de abrir a janela" do
-    expect(worker_source).to include('const CACHE_VERSION = "v12"')
+    expect(worker_source).to include('const CACHE_VERSION = "v13"')
     expect(worker_source).to include("function notificationTargetUrl(raw)")
     expect(worker_source).to include("function sameClientUrl(clientUrl, targetUrl)")
     expect(worker_source).to include("function sameOriginClient(clientUrl, targetUrl)")
@@ -54,6 +54,7 @@ RSpec.describe "field service worker contract" do
 
   it "preserva fallback offline para navegacoes fora do field sem cachear paginas admin" do
     expect(worker_source).to include('const OFFLINE_FALLBACK_PAGE = "/offline.html"')
+    expect(worker_source).to include('url.pathname.startsWith("/admin") && !url.pathname.startsWith("/admin/captacoes")')
     expect(worker_source).to include('!url.pathname.startsWith("/field") && request.method === "GET" && request.mode === "navigate"')
     expect(worker_source).to include("caches.match(OFFLINE_FALLBACK_PAGE)")
   end

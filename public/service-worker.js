@@ -1,4 +1,4 @@
-const CACHE = "unitymob-public-cache-v5";
+const CACHE = "unitymob-public-cache-v6";
 const offlineFallbackPage = "/offline.html";
 const fieldFallbackPage = "/field";
 
@@ -24,6 +24,12 @@ self.addEventListener("activate", function (event) {
 });
 
 self.addEventListener("fetch", function (event) {
+  const url = new URL(event.request.url);
+
+  if (url.origin === self.location.origin && url.pathname.startsWith("/admin") && !url.pathname.startsWith("/admin/captacoes")) {
+    return;
+  }
+
   // Only intercept navigation requests (for offline support)
   // Let everything else (images, css, js) go direct to network
   if (event.request.mode === 'navigate') {
