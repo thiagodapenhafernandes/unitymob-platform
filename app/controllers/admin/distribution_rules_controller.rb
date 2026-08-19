@@ -7,6 +7,7 @@ class Admin::DistributionRulesController < Admin::BaseController
   def index
     @distribution_rules = current_tenant.distribution_rules.order(created_at: :desc)
     @holding_leads_count = current_tenant.leads.represado.count
+    @distribution_rule_lead_stats = distribution_rule_lead_stats
   end
 
   def show
@@ -80,6 +81,24 @@ class Admin::DistributionRulesController < Admin::BaseController
   end
 
   private
+
+  def distribution_rule_lead_stats
+    current_tenant
+      .leads
+      .where.not(distribution_rule_id: nil)
+      .group(:distribution_rule_id)
+      .pluck(
+        :distribution_rule_id,
+        Arel.sql("COUNT(*)"),
+        Arel.sql("MAX(leads.created_at)")
+      )
+      .each_with_object({}) do |(rule_id, count, last_lead_at), stats|
+        stats[rule_id] = {
+          count: count.to_i,
+          last_lead_at: last_lead_at&.in_time_zone
+        }
+      end
+  end
 
   def set_rule
     @rule = current_tenant.distribution_rules.find(params[:id])

@@ -1,10 +1,24 @@
-<%# Registra o service worker raiz em produção. No mobile/PWA usamos o worker
-    com Web Push; no desktop mantemos o fallback offline genérico. Em dev,
-    desregistra qualquer SW pré-existente pra evitar surpresa de cache. %>
+<%# Registra Service Worker somente nas superficies PWA. Em telas admin comuns,
+    remove workers/caches antigos para evitar respostas stale controlando rotas
+    autenticadas como /admin/leads. %>
 <script>
   if ('serviceWorker' in navigator) {
     var isProd = <%= Rails.env.production? ? 'true' : 'false' %>;
-    if (isProd) {
+    var pwaPath = <%= raw(request.path.start_with?('/field', '/admin/captacoes').to_json) %>;
+
+    function clearServiceWorkersAndCaches() {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (reg) { reg.unregister(); });
+      }).catch(function () { /* noop */ });
+
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (keys) {
+          keys.forEach(function (k) { caches.delete(k); });
+        }).catch(function () { /* noop */ });
+      }
+    }
+
+    if (isProd && pwaPath) {
       window.addEventListener('load', function () {
         var ua = navigator.userAgent;
         var isIosDevice = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
@@ -17,15 +31,7 @@
           .catch(function (err) { console.warn('[SW] register failed:', err); });
       });
     } else {
-      // DEV: desregistra qualquer SW E apaga TODOS os caches (evita assets stale)
-      navigator.serviceWorker.getRegistrations().then(function (regs) {
-        regs.forEach(function (reg) { reg.unregister(); });
-      }).catch(function () { /* noop */ });
-      if (window.caches && caches.keys) {
-        caches.keys().then(function (keys) {
-          keys.forEach(function (k) { caches.delete(k); });
-        }).catch(function () { /* noop */ });
-      }
+      clearServiceWorkersAndCaches();
     }
   }
 </script>

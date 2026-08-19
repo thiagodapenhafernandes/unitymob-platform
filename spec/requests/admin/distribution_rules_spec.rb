@@ -37,6 +37,36 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response.body).to include("Criar primeira regra")
   end
 
+  it "exibe quantidade de leads da regra e data do ultimo lead sem vazar outro tenant" do
+    tenant = admin.tenant
+    rule = create(:distribution_rule, tenant: tenant, name: "Regra com Leads", source_site: true)
+    empty_rule = create(:distribution_rule, tenant: tenant, name: "Regra sem Leads", source_site: true)
+    other_tenant = Tenant.create!(name: "Outra Conta", slug: "outra-conta-#{SecureRandom.hex(4)}")
+    other_rule = create(:distribution_rule, tenant: other_tenant, name: "Regra Externa", source_site: true)
+    first_lead_at = Time.zone.local(2026, 8, 19, 9, 15)
+    last_lead_at = Time.zone.local(2026, 8, 19, 14, 30)
+
+    create(:lead, tenant: tenant, distribution_rule: rule, created_at: first_lead_at, skip_automatic_routing: true)
+    create(:lead, tenant: tenant, distribution_rule: rule, created_at: last_lead_at, skip_automatic_routing: true)
+    create(:lead, tenant: other_tenant, distribution_rule: other_rule, created_at: 1.hour.from_now, skip_automatic_routing: true)
+
+    get admin_distribution_rules_path
+
+    doc = Nokogiri::HTML(response.body)
+    headers = doc.css("thead th").map { |th| th.text.squish }
+    rule_row = doc.css("tbody tr").find { |row| row.text.include?("Regra com Leads") }
+    empty_rule_row = doc.css("tbody tr").find { |row| row.text.include?("Regra sem Leads") }
+    expected_last_lead_at = tenant.leads.where(distribution_rule: rule).maximum(:created_at)
+
+    expect(response).to have_http_status(:ok)
+    expect(headers).to include("Leads", "Último lead")
+    expect(rule_row.text.squish).to include("2")
+    expect(rule_row.text.squish).to include(I18n.l(expected_last_lead_at, format: :short))
+    expect(empty_rule_row.text.squish).to include("0")
+    expect(empty_rule_row.text.squish).to include("Nenhum lead")
+    expect(response.body).not_to include("Regra Externa")
+  end
+
   it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
     manager = create(:admin_user, :admin, name: "Gestor Praia")
     create(:admin_user, name: "Corretor Cascata", manager: manager)

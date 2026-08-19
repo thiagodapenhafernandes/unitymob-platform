@@ -2,6 +2,9 @@
     No Safari iOS (não instalado) o push nem existe — orienta a instalar. %>
 <script>
   (function () {
+    const serviceWorkerEnabled = <%= raw(request.path.start_with?('/field', '/admin/captacoes').to_json) %>;
+    if (!serviceWorkerEnabled) return;
+
     const ua = navigator.userAgent;
     const isAndroid = /Android/i.test(ua);
     const isIosDevice = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
