@@ -22,6 +22,10 @@ module Whatsapp
       ENV["WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET"].presence
     end
 
+    def self.verify_token
+      ENV["WHATSAPP_WEBHOOK_GATEWAY_VERIFY_TOKEN"].presence
+    end
+
     def initialize(integration:, tenant:, target_url:)
       @integration = integration
       @tenant = tenant

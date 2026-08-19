@@ -229,7 +229,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @diagnostics = diagnostics
     @default_webhook_callback_url = default_webhook_callback_url
     @webhook_callback_url = @whatsapp_integration.webhook_callback_url.presence || @default_webhook_callback_url
-    @webhook_verify_token = @whatsapp_integration.webhook_verify_token!
+    @webhook_verify_token = default_webhook_verify_token
     @phone_info = whatsapp_phone_info
     @whatsapp_sender_numbers = campaign_sender_numbers
     @new_whatsapp_sender_number = current_tenant.whatsapp_sender_numbers.new
@@ -286,6 +286,10 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
   rescue StandardError
     "#{request.base_url}/webhooks/whatsapp"
+  end
+
+  def default_webhook_verify_token
+    Whatsapp::WebhookGatewayClient.verify_token.presence || @whatsapp_integration.webhook_verify_token!
   end
 
   def embedded_signup_config_id

@@ -34,6 +34,24 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response).to redirect_to(admin_meta_integrations_path)
   end
 
+  it "usa webhook central nos placeholders quando o gateway esta configurado" do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_PUBLIC_URL").and_return("https://webhooks.unitymob.com.br/webhooks/whatsapp")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_VERIFY_TOKEN").and_return("gateway-verify-token")
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    callback = document.at_css('input[type="url"][name="whatsapp_business_integration[webhook_callback_url]"]')
+    token = document.at_css('input[name="whatsapp_business_integration[webhook_verify_token]"]')
+
+    expect(callback["placeholder"]).to eq("https://webhooks.unitymob.com.br/webhooks/whatsapp")
+    expect(callback["value"]).to eq("https://webhooks.unitymob.com.br/webhooks/whatsapp")
+    expect(token["value"]).to eq("gateway-verify-token")
+  end
+
   it "renderiza o prefixo semântico dos telefones do site" do
     get admin_whatsapp_integration_path(tab: "site_phones")
 
