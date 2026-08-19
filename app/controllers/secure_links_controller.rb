@@ -98,22 +98,22 @@ class SecureLinksController < ApplicationController
     end
   end
 
-  # Push: o clique vale como aceite do lead (dentro do prazo). Se o corretor
-  # estiver logado no app (o push vai pro aparelho dele), abre o lead completo
-  # no admin; senão, mostra o card seguro do lead.
+  # Push: quando configurado para "detalhes primeiro", o clique abre o card
+  # seguro para o corretor decidir. O aceite fica no clique do contato. No
+  # WhatsApp direto, o service worker envia ack=1 para marcar o aceite.
   def handle_attend
+    return render_lost_turn if link_no_longer_available?
+
+    if params[:details].present?
+      return render :show, layout: false
+    end
+
     mark_attended!(via: "push")
     return render_lost_turn if link_no_longer_available?
 
     # Beacon: o service worker chamou em background só para registrar o aceite
     # (o clique já abriu o WhatsApp direto). Responde vazio, sem abrir tela.
     return head :no_content if params[:ack].present?
-
-    if params[:details].present?
-      return redirect_to admin_lead_path(@lead) if current_admin_user
-
-      return render :show, layout: false
-    end
 
     if current_admin_user
       redirect_to admin_lead_path(@lead)
