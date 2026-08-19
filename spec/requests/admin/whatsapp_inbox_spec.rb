@@ -331,6 +331,30 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.media_type).to eq("application/pdf")
       expect(response.headers["Content-Disposition"]).to include("attachment")
     end
+
+    it "serve mídia da conversa quando o acesso vem pelo contexto do lead" do
+      profile = admin.tenant.profiles.create!(
+        name: "Midia via lead",
+        axis: "vertical",
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile: profile)
+      lead_owner = create(:admin_user, tenant: admin.tenant)
+      lead = create(:lead, tenant: admin.tenant, admin_user: lead_owner, phone: "5547999990044")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+      message = conv.messages.create!(direction: "outbound", msg_type: "audio", status: "failed")
+      message.media_file.attach(io: StringIO.new("fake-audio"), filename: "audio.webm", content_type: "audio/webm")
+
+      sign_in user
+
+      get message_media_admin_whatsapp_conversation_path(conv, message_id: message.id)
+
+      expect(response).to have_http_status(:found)
+      expect(response.headers["Location"]).to include("/rails/active_storage/")
+    end
   end
 
   describe "POST send_message" do

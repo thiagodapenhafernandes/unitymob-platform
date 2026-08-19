@@ -333,7 +333,15 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def set_message
-    @conversation = conversation_scope.find(params[:id])
+    @conversation = conversation_scope.find_by(id: params[:id])
+    unless @conversation
+      candidate = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, lead: { lead_labelings: :lead_label }).find(params[:id])
+      @lead_context_for_media = accessible_lead_for_conversation_send(candidate)
+      raise ActiveRecord::RecordNotFound unless @lead_context_for_media
+
+      @conversation = candidate
+    end
+
     @message = @conversation.messages.find(params[:message_id])
   end
 
