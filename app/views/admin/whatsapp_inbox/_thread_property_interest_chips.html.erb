@@ -6,20 +6,34 @@
 <%
   interests = lead.property_interests.includes(:habitation).order(:created_at)
   show_empty = local_assigns.key?(:show_empty) ? local_assigns[:show_empty] : lead.property_id.blank?
+  share_enabled = local_assigns[:share_url].present?
+  shared_property_ids = Array(local_assigns[:shared_property_ids]).map(&:to_i)
 %>
 <% interests.each do |interest| %>
   <% habitation = interest.habitation %>
   <div class="ax-context-pin ax-context-pin--property">
+    <% if share_enabled %>
+      <label class="lead-property-share-check">
+        <input type="checkbox"
+               value="<%= habitation.id %>"
+               data-property-interests-target="shareCheckbox"
+               data-action="property-interests#toggleShareSelection"
+               aria-label="Selecionar <%= habitation.codigo %> para compartilhar">
+      </label>
+    <% end %>
     <%= link_to admin_habitation_path(habitation.id), class: "ax-context-pin__link" do %>
       <i class="bi bi-house-door"></i>
       <span><%= [habitation.codigo, habitation.display_title.presence].compact_blank.join(" · ") %></span>
+    <% end %>
+    <% if shared_property_ids.include?(habitation.id) %>
+      <span class="lead-property-share-badge">Enviado</span>
     <% end %>
     <button type="button"
             class="ax-context-pin__remove"
             title="Remover imóvel de interesse"
             aria-label="Remover <%= habitation.codigo %> dos interesses"
             data-action="property-interests#remove"
-            data-url="<%= admin_lead_property_interest_path(lead, interest) %>">
+            data-url="<%= admin_lead_property_interest_path(lead, interest, (share_enabled ? { share: "1" } : {})) %>">
       <i class="bi bi-x-lg"></i>
     </button>
   </div>

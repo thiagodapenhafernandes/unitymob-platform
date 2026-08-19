@@ -47,4 +47,29 @@ RSpec.describe InterestIntelligence::Matcher do
     expect(results.map(&:habitation)).to include(compatible)
     expect(results.find { |result| result.habitation == compatible }.reasons).to include("cidade compatível")
   end
+
+  it "uses manually selected lead properties as profile signals" do
+    lead = create(:lead)
+    selected = create(
+      :habitation,
+      cidade: "Balneário Camboriú",
+      bairro: "Centro",
+      categoria: "Apartamento",
+      dormitorios_qtd: 3,
+      valor_venda_cents: 900_000_00
+    )
+    compatible = create(
+      :habitation,
+      cidade: "Balneário Camboriú",
+      bairro: "Centro",
+      categoria: "Apartamento",
+      dormitorios_qtd: 3,
+      valor_venda_cents: 930_000_00
+    )
+    lead.property_interests.create!(tenant: lead.tenant, habitation: selected)
+
+    results = described_class.call(lead, limit: 10)
+
+    expect(results.map(&:habitation)).to include(compatible)
+  end
 end

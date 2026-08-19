@@ -684,6 +684,22 @@ html.wa-fullscreen-lock, html.wa-fullscreen-lock body { overflow: hidden !import
 .lead-property-card .wa-inbox-thread__interests, .lead-property-card .wa-inbox-thread__interest-chips { gap: 8px; }
 .lead-property-card .ax-context-pin { max-width: 100%; background: #f7f8fa; }
 .lead-property-card .ax-context-pin__link { flex: 1; }
+.lead-property-share-check { display: inline-flex; align-items: center; margin: 0 0 0 4px; }
+.lead-property-share-check input { width: 18px; height: 18px; accent-color: #365f8f; }
+.lead-property-share-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 800; }
+.lead-property-share-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.lead-property-share-actions__expiry { display: inline-flex; align-items: center; gap: 6px; color: #64748b; font-size: 12px; font-weight: 800; }
+.lead-property-share-actions__expiry input { width: 72px; min-height: 34px; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 8px; color: #172033; }
+.lead-property-share-result { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 4px; }
+.lead-property-share-result input { min-height: 36px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #172033; font-size: 13px; }
+.lead-property-share-history { display: grid; gap: 8px; margin-top: 12px; }
+.lead-property-share-history__item { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.lead-property-share-history__item div { display: grid; gap: 2px; min-width: 0; }
+.lead-property-share-history__item span { color: #64748b; font-size: 12px; }
+.lead-property-share-history__item a { color: #365f8f; font-weight: 800; text-decoration: none; }
+@media (max-width: 640px) {
+  .lead-property-share-result { grid-template-columns: 1fr; }
+}
 :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__status-badge { flex: none; align-self: center; margin-right: 8px; }
 
 /* Etiquetas: chips preenchidos (.ax-badge / .lead-label-chip do design system) */

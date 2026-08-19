@@ -56,11 +56,16 @@ class Admin::PropertyInterestsController < Admin::BaseController
   end
 
   def state_payload
+    shared_property_ids = @lead.ai_property_share_collections.includes(:habitations).flat_map { |collection| collection.habitations.map(&:id) }.uniq
     {
       chips_html: render_to_string(
         partial: "admin/whatsapp_inbox/thread_property_interest_chips",
         formats: [:html],
-        locals: { lead: @lead }
+        locals: {
+          lead: @lead,
+          share_url: (share_properties_admin_lead_path(@lead) if params[:share].present?),
+          shared_property_ids:
+        }
       )
     }
   end

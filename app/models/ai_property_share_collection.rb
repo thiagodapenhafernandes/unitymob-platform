@@ -2,6 +2,7 @@ class AiPropertyShareCollection < ApplicationRecord
   include TenantScoped
 
   belongs_to :admin_user
+  belongs_to :lead, optional: true
   has_many :items, class_name: "AiPropertyShareItem", dependent: :destroy
   has_many :habitations, through: :items
   has_many :audit_events, class_name: "AiPropertyShareAuditEvent", dependent: :destroy
@@ -9,6 +10,7 @@ class AiPropertyShareCollection < ApplicationRecord
   validates :token, presence: true, uniqueness: true
   validates :expires_at, presence: true
   validate :broker_belongs_to_tenant
+  validate :lead_belongs_to_tenant
 
   scope :active, -> { where("expires_at > ?", Time.current) }
   before_validation :set_defaults, on: :create
@@ -26,5 +28,9 @@ class AiPropertyShareCollection < ApplicationRecord
 
   def broker_belongs_to_tenant
     errors.add(:admin_user, "deve pertencer ao mesmo Tenant") if admin_user && admin_user.tenant_id != tenant_id
+  end
+
+  def lead_belongs_to_tenant
+    errors.add(:lead, "deve pertencer ao mesmo Tenant") if lead && lead.tenant_id != tenant_id
   end
 end

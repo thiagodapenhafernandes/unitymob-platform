@@ -1,4 +1,4 @@
-\restrict AGjhYYxGAdHuDViu1J03I9BVpemzcmBocCug4dSxtR1oRKjpaW51FBlgORliwce
+\restrict z0Wal85iiVngGjgGnjBQnTfautj7eGAhSqqeYGcVmOh8yotrNXOlgfFeoLVbcDV
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -864,7 +864,9 @@ CREATE TABLE public.ai_property_share_collections (
     token character varying NOT NULL,
     expires_at timestamp(6) without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    lead_id bigint,
+    message text
 );
 
 
@@ -10580,6 +10582,13 @@ CREATE INDEX index_ai_property_share_collections_on_admin_user_id ON public.ai_p
 
 
 --
+-- Name: index_ai_property_share_collections_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_collections_on_lead_id ON public.ai_property_share_collections USING btree (lead_id);
+
+
+--
 -- Name: index_ai_property_share_collections_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -16152,6 +16161,14 @@ ALTER TABLE ONLY public.crm_appointments
 
 
 --
+-- Name: ai_property_share_collections fk_rails_82e5af99b5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_collections
+    ADD CONSTRAINT fk_rails_82e5af99b5 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: habitation_broker_assignments fk_rails_837051d439; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17435,11 +17452,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict AGjhYYxGAdHuDViu1J03I9BVpemzcmBocCug4dSxtR1oRKjpaW51FBlgORliwce
+\unrestrict z0Wal85iiVngGjgGnjBQnTfautj7eGAhSqqeYGcVmOh8yotrNXOlgfFeoLVbcDV
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260819041000'),
 ('20260818173000'),
 ('20260817140000'),
 ('20260817134500'),

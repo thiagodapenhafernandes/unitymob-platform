@@ -5,12 +5,50 @@
 %>
 <div class="wa-inbox-thread__interests"
      data-controller="property-interests"
-     data-property-interests-create-url-value="<%= admin_lead_property_interests_path(lead) %>">
+     data-property-interests-create-url-value="<%= admin_lead_property_interests_path(lead, (local_assigns[:share_url].present? ? { share: "1" } : {})) %>"
+     <%= tag.attributes(data: { property_interests_share_url_value: local_assigns[:share_url], property_interests_suggest_url_value: local_assigns[:suggest_url] }.compact) if local_assigns[:share_url].present? %>>
   <p class="wa-inbox-thread__interests-error" data-property-interests-target="error" hidden></p>
   <div class="wa-inbox-thread__interest-chips" data-property-interests-target="list">
     <%= render "admin/whatsapp_inbox/thread_property_interest_chips",
-          lead: lead, **local_assigns.slice(:show_empty) %>
+          lead: lead,
+          **local_assigns.slice(:show_empty, :share_url, :shared_property_ids) %>
   </div>
+  <% if local_assigns[:share_url].present? %>
+    <div class="lead-property-share-actions">
+      <label class="lead-property-share-actions__expiry">
+        <span>Validade do link</span>
+        <input type="number"
+               min="1"
+               max="365"
+               value="<%= local_assigns[:share_expires_in_days] || 30 %>"
+               data-property-interests-target="expires">
+        <span>dias</span>
+      </label>
+      <button type="button"
+              class="ax-btn ax-btn--sm ax-btn--primary"
+              data-property-interests-target="shareButton"
+              data-action="property-interests#share">
+        <i class="bi bi-link-45deg"></i>
+        Gerar link
+      </button>
+      <% if local_assigns[:suggest_url].present? %>
+        <button type="button"
+                class="ax-btn ax-btn--sm"
+                data-property-interests-target="suggestButton"
+                data-action="property-interests#suggest">
+          <i class="bi bi-stars"></i>
+          Sugerir semelhantes
+        </button>
+      <% end %>
+    </div>
+    <div class="lead-property-share-result" data-property-interests-target="shareResult" hidden>
+      <input type="text" readonly data-property-interests-target="shareLink" aria-label="Link gerado para compartilhar imóveis">
+      <a class="ax-btn ax-btn--sm" href="#" target="_blank" rel="noopener" data-property-interests-target="whatsappLink" hidden>
+        <i class="bi bi-whatsapp"></i>
+        Abrir WhatsApp
+      </a>
+    </div>
+  <% end %>
   <select class="ax-autocomplete-select wa-inbox-thread__interests-select"
           aria-label="Adicionar imóvel de interesse"
           data-controller="tom-select"

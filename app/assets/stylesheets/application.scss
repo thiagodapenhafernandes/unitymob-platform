@@ -66,6 +66,9 @@ form.is-submitting input[type="submit"].is-submitting {
 .shared-property-selection header span { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .shared-property-selection header h1 { margin: 4px 0 6px; }
 .shared-property-selection header p { margin: 0; color: #64748b; }
+.shared-property-selection__broker { display: grid; gap: 4px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid #dbe4f0; border-radius: 14px; background: #fff; color: #172033; box-shadow: 0 5px 18px rgb(15 23 42 / .06); }
+.shared-property-selection__broker strong { font-size: 15px; }
+.shared-property-selection__broker span { color: #64748b; font-size: 13px; }
 .shared-property-selection__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .shared-property-card { overflow: hidden; border: 1px solid #dbe4f0; border-radius: 16px; background: #fff; box-shadow: 0 5px 18px rgb(15 23 42 / .08); }
 .shared-property-card img { width: 100%; height: 190px; object-fit: cover; object-position: center center; background: #e2e8f0; }

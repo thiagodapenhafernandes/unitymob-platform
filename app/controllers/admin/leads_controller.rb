@@ -98,8 +98,8 @@ class Admin::LeadsController < Admin::BaseController
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :archive, :close_deal, :schedule_activity]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :archive, :close_deal, :schedule_activity]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
 
@@ -418,6 +418,85 @@ class Admin::LeadsController < Admin::BaseController
     redirect_to(return_path || admin_lead_path(@lead), alert: e.message)
   end
 
+  def share_properties
+    setting = PropertySetting.instance(tenant: current_tenant)
+    unless setting.ai_property_search_sharing_enabled?
+      return render json: { error: setting.ai_property_search_sharing_disabled_message }, status: :forbidden
+    end
+
+    ids = Array(params[:habitation_ids]).map(&:to_i).uniq.first(setting.ai_property_search_share_max_properties)
+    if ids.empty?
+      return render json: { error: "Selecione ao menos um imóvel para compartilhar." }, status: :unprocessable_entity
+    end
+
+    result = Ai::PropertyShareCollectionCreator.call(
+      tenant: current_tenant,
+      admin_user: current_admin_user,
+      setting:,
+      scope: current_tenant.habitations.where(id: ids),
+      source: "lead_detail",
+      min_count: 1,
+      lead: @lead,
+      expires_at: lead_share_expires_at(setting)
+    )
+    url = ai_property_share_collection_url(result.collection.token)
+    message = lead_property_share_message(result.habitations, url, setting)
+    result.collection.update!(message:)
+    ensure_shared_property_interests!(result.habitations)
+    result.collection.record!(
+      "lead_share_link_created",
+      lead: @lead,
+      admin_user: current_admin_user,
+      metadata: {
+        habitation_ids: result.habitations.map(&:id),
+        expires_at: result.collection.expires_at,
+        url:
+      }
+    )
+    LeadActivity.log!(
+      lead: @lead,
+      kind: "property_share",
+      metadata: {
+        by: current_admin_user&.name,
+        share_collection_id: result.collection.id,
+        habitation_ids: result.habitations.map(&:id),
+        expires_at: result.collection.expires_at
+      }.compact
+    )
+
+    render json: {
+      url:,
+      count: result.habitations.size,
+      message:,
+      whatsapp_url: lead_share_whatsapp_url(message),
+      chips_html: render_property_interest_chips(share: true)
+    }
+  rescue Ai::PropertyShareCollectionCreator::TooFewShareableRecords
+    render json: { error: "Selecione ao menos um imóvel com status Venda ou Aluguel." }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Nenhum imóvel selecionado pode ser compartilhado." }, status: :unprocessable_entity
+  end
+
+  def suggest_properties
+    result = InterestIntelligence::LeadPropertySuggestionApplicator.call(
+      lead: @lead,
+      tenant: current_tenant,
+      admin_user: current_admin_user,
+      limit: params[:limit]
+    )
+
+    if result.empty?
+      message = result.profile_incomplete ? "Ainda faltam sinais suficientes para sugerir imóveis." : "Não encontrei novos imóveis compatíveis para este perfil."
+      return render json: { error: message }, status: :unprocessable_entity
+    end
+
+    render json: {
+      count: result.count,
+      suggestions: result.matches.map { |match| property_suggestion_payload(match) },
+      chips_html: render_property_interest_chips(share: true)
+    }
+  end
+
   def archive
     check_permission!(:manage, :comercial)
 
@@ -481,6 +560,63 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   private
+
+  def lead_share_expires_at(setting)
+    days = params[:expires_in_days].to_i
+    days = setting.ai_property_search_share_expiration_days if days <= 0
+    days = days.clamp(1, 365)
+    days.days.from_now
+  end
+
+  def lead_property_share_message(habitations, url, setting)
+    lead_name = @lead.display_name.presence || "Olá"
+    intro = setting.ai_property_search_message(:ai_property_search_share_message, count: habitations.size)
+    property_lines = habitations.map { |habitation| "- #{[habitation.codigo, habitation.display_title.presence].compact_blank.join(" · ")}" }
+
+    [
+      "#{lead_name}, #{intro}",
+      property_lines.join("\n"),
+      url
+    ].compact_blank.join("\n\n")
+  end
+
+  def lead_share_whatsapp_url(message)
+    number = Phones::Normalizer.call(@lead.display_phone)
+    return "https://wa.me/?text=#{ERB::Util.url_encode(message)}" if number.blank?
+
+    "https://wa.me/#{number}?text=#{ERB::Util.url_encode(message)}"
+  end
+
+  def ensure_shared_property_interests!(habitations)
+    habitations.each do |habitation|
+      @lead.property_interests.find_or_create_by!(tenant: current_tenant, habitation:)
+    end
+  end
+
+  def property_suggestion_payload(match)
+    habitation = match.habitation
+    {
+      id: habitation.id,
+      codigo: habitation.codigo,
+      title: habitation.display_title,
+      score: match.score,
+      reasons: match.reasons
+    }
+  end
+
+  def render_property_interest_chips(share: false)
+    shared_property_ids = @lead.ai_property_share_collections.includes(:habitations).flat_map { |collection| collection.habitations.map(&:id) }.uniq
+    render_to_string(
+      partial: "admin/whatsapp_inbox/thread_property_interest_chips",
+      formats: [:html],
+      locals: {
+        lead: @lead,
+        show_empty: false,
+        share_url: (share_properties_admin_lead_path(@lead) if share),
+        shared_property_ids:
+      }
+    )
+  end
 
   def assign_lead_filter_state
     @q = params[:q]
@@ -1517,6 +1653,8 @@ class Admin::LeadsController < Admin::BaseController
     @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
+    @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
+    @shared_interest_property_ids = @property_share_collections.flat_map { |collection| collection.habitations.map(&:id) }.uniq
     load_origin_options
     load_interest_intelligence
     load_lead_favorite_context

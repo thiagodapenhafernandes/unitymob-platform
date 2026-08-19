@@ -27,11 +27,12 @@ class AiPropertyShareCollectionsController < ApplicationController
 
     interest = lead.property_interests.find_or_create_by!(tenant: @collection.tenant, habitation:)
     responsible = lead.admin_user || @collection.admin_user
-    lead.update!(admin_user: responsible) if lead.admin_user.blank?
+    lead.update!(admin_user: responsible) if lead.admin_user.blank? && @collection.lead_id.blank?
     remember(lead)
     event = interest.previously_new_record? ? "interest_created" : "interest_repeated"
     @collection.record!(event, lead:, habitation:, admin_user: responsible, metadata: request_metadata.merge(shared_by_admin_user_id: @collection.admin_user_id))
     LeadActivity.log!(lead:, kind: "property_interest", metadata: { habitation_id: habitation.id, share_collection_id: @collection.id, event: })
+    notify_current_owner!(lead, habitation) if event == "interest_created"
 
     render json: { success: true, message: @setting.ai_property_search_interest_success_message, lead_id: lead.id }
   end
@@ -62,6 +63,8 @@ class AiPropertyShareCollectionsController < ApplicationController
   end
 
   def recognized_lead
+    return @collection.lead if @collection.lead_id.present?
+
     data = cookies.signed[IDENTITY_COOKIE]
     return unless data.is_a?(Hash) && data["tenant_id"].to_i == @collection.tenant_id
     @collection.tenant.leads.find_by(id: data["lead_id"])
@@ -89,5 +92,23 @@ class AiPropertyShareCollectionsController < ApplicationController
 
   def request_metadata
     { ip: request.remote_ip, user_agent: request.user_agent.to_s.first(300) }
+  end
+
+  def notify_current_owner!(lead, habitation)
+    recipient = lead.admin_user || @collection.admin_user
+    return unless recipient
+
+    Notifications::PushDispatcher.deliver(
+      admin_user_id: recipient.id,
+      title: "Interesse em imóvel compartilhado",
+      body: "#{lead.display_name.presence || 'Lead'} demonstrou interesse no imóvel #{habitation.codigo}",
+      url: admin_lead_url(lead),
+      tag: "lead-#{lead.id}-#{recipient.id}",
+      urgency: "high",
+      ttl: 86_400,
+      require_interaction: true
+    )
+  rescue => e
+    Rails.logger.warn("[AiPropertyShareCollections] falha ao notificar interesse lead=#{lead.id}: #{e.class} #{e.message}")
   end
 end

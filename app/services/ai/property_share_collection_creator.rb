@@ -5,13 +5,16 @@ module Ai
 
     def self.call(...) = new(...).call
 
-    def initialize(tenant:, admin_user:, scope:, setting: nil, source: "property_search", min_count: 1)
+    def initialize(tenant:, admin_user:, scope:, setting: nil, source: "property_search", min_count: 1, lead: nil, expires_at: nil, message: nil)
       @tenant = tenant
       @admin_user = admin_user
       @scope = scope
       @setting = setting || PropertySetting.instance(tenant:)
       @source = source
       @min_count = min_count
+      @lead = lead
+      @expires_at = expires_at
+      @message = message
     end
 
     def call
@@ -19,7 +22,12 @@ module Ai
       raise ActiveRecord::RecordNotFound if habitations.empty?
       raise TooFewShareableRecords if habitations.size < min_count
 
-      collection = tenant.ai_property_share_collections.create!(admin_user:)
+      collection = tenant.ai_property_share_collections.create!(
+        admin_user:,
+        lead:,
+        expires_at:,
+        message: message.presence
+      )
 
       AiPropertyShareItem.insert_all!(
         habitations.map do |habitation|
@@ -38,6 +46,7 @@ module Ai
         metadata: {
           habitation_ids: habitations.map(&:id),
           requested_count: requested_count,
+          lead_id: lead&.id,
           source:
         }
       )
@@ -47,7 +56,7 @@ module Ai
 
     private
 
-    attr_reader :tenant, :admin_user, :scope, :setting, :source, :min_count
+    attr_reader :tenant, :admin_user, :scope, :setting, :source, :min_count, :lead, :expires_at, :message
 
     def shareable_habitations
       @shareable_habitations ||= tenant.habitations

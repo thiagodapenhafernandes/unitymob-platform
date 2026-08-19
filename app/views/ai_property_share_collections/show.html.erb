@@ -1,5 +1,11 @@
 <main class="shared-property-selection" data-controller="property-share-interest" data-property-share-interest-url-value="<%= interest_ai_property_share_collection_path(@collection.token) %>" data-property-share-interest-error-message-value="<%= @setting.ai_property_search_interest_error_message %>">
   <header><span><%= @setting.ai_property_search_public_eyebrow %></span><h1><%= @setting.ai_property_search_message(:ai_property_search_public_title, count: @habitations.size) %></h1><p><%= @setting.ai_property_search_public_description %></p></header>
+  <% if @collection.admin_user.present? %>
+    <section class="shared-property-selection__broker">
+      <strong><%= @collection.admin_user.name %></strong>
+      <span><%= [@collection.admin_user.phone.presence, @collection.admin_user.notification_email.presence].compact_blank.join(" · ") %></span>
+    </section>
+  <% end %>
   <div class="shared-property-selection__notice" hidden data-property-share-interest-target="notice"></div>
   <section class="shared-property-selection__grid">
     <% @habitations.each do |property| %>

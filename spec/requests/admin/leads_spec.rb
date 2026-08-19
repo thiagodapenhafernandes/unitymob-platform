@@ -988,4 +988,72 @@ RSpec.describe "Admin::Leads", type: :request do
       Lead.set_callback(:commit, :after, :route_lead)
     end
   end
+
+  describe "POST /admin/leads/:id/share_properties" do
+    it "gera link de selecao vinculado ao lead e mensagem pronta para WhatsApp" do
+      property = create(:habitation, tenant: admin.tenant, codigo: "SEL-001", status: "Venda", exibir_no_site_flag: false)
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Maria", phone: "47999990000")
+
+      post share_properties_admin_lead_path(lead),
+           params: { habitation_ids: [property.id], expires_in_days: 14 },
+           headers: { "Accept" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      collection = AiPropertyShareCollection.order(:created_at).last
+      expect(collection).to have_attributes(tenant_id: admin.tenant_id, admin_user_id: admin.id, lead_id: lead.id)
+      expect(collection.expires_at).to be_within(5.seconds).of(14.days.from_now)
+      expect(collection.habitations).to contain_exactly(property)
+      expect(response.parsed_body["url"]).to eq(ai_property_share_collection_url(collection.token))
+      expect(response.parsed_body["message"]).to include("Maria", "SEL-001", response.parsed_body["url"])
+      expect(response.parsed_body["whatsapp_url"]).to include("https://wa.me/5547999990000?text=")
+      expect(response.parsed_body["chips_html"]).to include("SEL-001", "Enviado")
+      expect(lead.activities.where(kind: "property_share")).to exist
+    end
+  end
+
+  describe "POST /admin/leads/:id/suggest_properties" do
+    it "adiciona imoveis semelhantes aos interesses do lead" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      selected = create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "BASE-IA",
+        cidade: "Balneário Camboriú",
+        bairro: "Centro",
+        categoria: "Apartamento",
+        dormitorios_qtd: 3,
+        valor_venda_cents: 900_000_00
+      )
+      compatible = create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "MATCH-IA",
+        cidade: "Balneário Camboriú",
+        bairro: "Centro",
+        categoria: "Apartamento",
+        dormitorios_qtd: 3,
+        valor_venda_cents: 930_000_00
+      )
+      create(
+        :habitation,
+        tenant: admin.tenant,
+        codigo: "OUT-IA",
+        cidade: "Itajaí",
+        bairro: "Fazenda",
+        categoria: "Terreno",
+        dormitorios_qtd: 0,
+        valor_venda_cents: 400_000_00
+      )
+      lead.property_interests.create!(tenant: admin.tenant, habitation: selected)
+
+      post suggest_properties_admin_lead_path(lead),
+           headers: { "Accept" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["suggestions"].pluck("id")).to include(compatible.id)
+      expect(response.parsed_body["chips_html"]).to include("MATCH-IA")
+      expect(lead.property_interests.where(habitation: compatible)).to exist
+      expect(lead.activities.where(kind: "property_suggestions")).to exist
+    end
+  end
 end

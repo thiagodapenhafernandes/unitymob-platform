@@ -12,11 +12,12 @@ import { Controller } from "@hotwired/stimulus"
 //             data-action="change->property-interests#add">…</select>
 //   </div>
 export default class extends Controller {
-  static targets = ["list", "select", "error"]
-  static values = { createUrl: String }
+  static targets = ["list", "select", "error", "shareCheckbox", "shareButton", "suggestButton", "shareResult", "shareLink", "whatsappLink", "expires"]
+  static values = { createUrl: String, shareUrl: String, suggestUrl: String }
 
   connect() {
     this.busy = false
+    this.updateShareButton()
   }
 
   add(event) {
@@ -33,6 +34,93 @@ export default class extends Controller {
   remove(event) {
     const url = event.currentTarget.dataset.url
     if (url) this.request(url, "DELETE")
+  }
+
+  toggleShareSelection() {
+    this.updateShareButton()
+  }
+
+  async share() {
+    if (!this.hasShareUrlValue || this.busy) return
+
+    const ids = this.selectedShareIds()
+    if (ids.length === 0) {
+      this.showError("Selecione ao menos um imóvel para compartilhar.")
+      return
+    }
+
+    this.busy = true
+    this.setShareBusy(true)
+    try {
+      const body = new FormData()
+      ids.forEach((id) => body.append("habitation_ids[]", id))
+      if (this.hasExpiresTarget) body.append("expires_in_days", this.expiresTarget.value)
+
+      const response = await fetch(this.shareUrlValue, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "X-CSRF-Token": this.csrfToken(),
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        this.showError(data.error || "Não foi possível gerar o link.")
+        return
+      }
+
+      await this.copyText(data.message || data.url)
+      if (typeof data.chips_html === "string" && this.hasListTarget) {
+        this.listTarget.innerHTML = data.chips_html
+      }
+      this.showShareResult(data)
+      if (this.hasErrorTarget) this.errorTarget.hidden = true
+    } catch (_error) {
+      this.showError("Falha de conexão. Tente novamente.")
+    } finally {
+      this.busy = false
+      this.setShareBusy(false)
+      this.updateShareButton()
+    }
+  }
+
+  async suggest() {
+    if (!this.hasSuggestUrlValue || this.busy) return
+
+    this.busy = true
+    this.setSuggestBusy(true)
+    this.setShareBusy(true)
+    try {
+      const response = await fetch(this.suggestUrlValue, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "X-CSRF-Token": this.csrfToken(),
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        this.showError(data.error || "Não foi possível sugerir imóveis semelhantes.")
+        return
+      }
+
+      if (typeof data.chips_html === "string" && this.hasListTarget) {
+        this.listTarget.innerHTML = data.chips_html
+      }
+      if (this.hasErrorTarget) this.errorTarget.hidden = true
+    } catch (_error) {
+      this.showError("Falha de conexão. Tente novamente.")
+    } finally {
+      this.busy = false
+      this.setSuggestBusy(false)
+      this.setShareBusy(false)
+      this.updateShareButton()
+    }
   }
 
   clearSelect() {
@@ -68,6 +156,7 @@ export default class extends Controller {
 
       if (typeof data.chips_html === "string" && this.hasListTarget) {
         this.listTarget.innerHTML = data.chips_html
+        this.updateShareButton()
       }
       if (this.hasErrorTarget) this.errorTarget.hidden = true
       return true
@@ -77,6 +166,59 @@ export default class extends Controller {
     } finally {
       this.busy = false
     }
+  }
+
+  selectedShareIds() {
+    if (!this.hasShareCheckboxTarget) return []
+
+    return this.shareCheckboxTargets.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value)
+  }
+
+  updateShareButton() {
+    if (!this.hasShareButtonTarget) return
+
+    this.shareButtonTarget.disabled = this.selectedShareIds().length === 0 || this.busy
+  }
+
+  setShareBusy(active) {
+    if (!this.hasShareButtonTarget) return
+
+    this.shareButtonTarget.disabled = active
+    this.shareButtonTarget.setAttribute("aria-busy", active ? "true" : "false")
+  }
+
+  setSuggestBusy(active) {
+    if (!this.hasSuggestButtonTarget) return
+
+    this.suggestButtonTarget.disabled = active
+    this.suggestButtonTarget.setAttribute("aria-busy", active ? "true" : "false")
+  }
+
+  showShareResult(data) {
+    if (this.hasShareResultTarget) this.shareResultTarget.hidden = false
+    if (this.hasShareLinkTarget) this.shareLinkTarget.value = data.url || ""
+    if (this.hasWhatsappLinkTarget) {
+      if (data.whatsapp_url) {
+        this.whatsappLinkTarget.href = data.whatsapp_url
+        this.whatsappLinkTarget.hidden = false
+      } else {
+        this.whatsappLinkTarget.hidden = true
+      }
+    }
+  }
+
+  async copyText(text) {
+    if (!text) return
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+
+    if (!this.hasShareLinkTarget) return
+    this.shareLinkTarget.value = text
+    this.shareLinkTarget.select()
+    document.execCommand("copy")
   }
 
   showError(message) {

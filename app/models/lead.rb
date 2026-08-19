@@ -26,6 +26,7 @@ class Lead < ApplicationRecord
   has_many :lead_audit_logs
   has_many :activities, class_name: "LeadActivity", dependent: :destroy
   has_many :secure_links, dependent: :destroy
+  has_many :ai_property_share_collections, dependent: :nullify
 
   # Reivindicação atômica (Shark Tank): o 1º corretor a aceitar vira dono.
   # Retorna true se ESTE corretor pegou o lead; false se já estava com alguém.

@@ -75,6 +75,8 @@ module InterestIntelligence
 
     def property_ids
       ids = property_events.where.not(habitation_id: nil).pluck(:habitation_id)
+      ids += manual_interests.pluck(:habitation_id)
+      ids += explicit_interests.pluck(:habitation_id)
       ids << @lead.property_id if @lead.respond_to?(:property_id) && @lead.property_id.present?
       ids.compact.uniq
     end
@@ -82,7 +84,9 @@ module InterestIntelligence
     def property_snapshots
       @property_snapshots ||= begin
         snapshots = property_events.map { |event| event.property_snapshot.to_h }
-        explicit_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } + snapshots
+        manual_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
+          explicit_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
+          snapshots
       end
     end
 
@@ -132,6 +136,10 @@ module InterestIntelligence
 
     def explicit_interests
       @explicit_interests ||= @lead.client_property_interests
+    end
+
+    def manual_interests
+      @manual_interests ||= @lead.property_interests
     end
 
     def repeated_property_views

@@ -740,7 +740,26 @@
         <div class="lead-view-divider"></div>
         <div class="ax-stat-label tw-mb-2">Imóveis de interesse</div>
         <%= render "admin/whatsapp_inbox/thread_property_interests",
-              lead: @lead, show_empty: false %>
+              lead: @lead,
+              show_empty: false,
+              share_url: share_properties_admin_lead_path(@lead),
+              suggest_url: suggest_properties_admin_lead_path(@lead),
+              shared_property_ids: @shared_interest_property_ids,
+              share_expires_in_days: PropertySetting.instance(tenant: current_tenant).ai_property_search_share_expiration_days %>
+        <% if @property_share_collections.present? %>
+          <div class="lead-property-share-history">
+            <div class="ax-stat-label">Links gerados</div>
+            <% @property_share_collections.each do |collection| %>
+              <div class="lead-property-share-history__item">
+                <div>
+                  <strong><%= pluralize(collection.habitations.size, "imóvel", "imóveis") %></strong>
+                  <span><%= l(collection.created_at, format: :short) %> por <%= collection.admin_user&.name || "corretor removido" %></span>
+                </div>
+                <%= link_to "Abrir", ai_property_share_collection_path(collection.token), target: "_blank", rel: "noopener" %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
       </div>
     </div>
 

@@ -245,6 +245,8 @@ Rails.application.routes.draw do
       post :simulate_interest, on: :member
       post :open_whatsapp_conversation, on: :member
       post :activate_whatsapp_template, on: :member
+      post :share_properties, on: :member
+      post :suggest_properties, on: :member
       post :archive, on: :member
       post :close_deal, on: :member
       post :schedule_activity, on: :member
