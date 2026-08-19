@@ -40,6 +40,7 @@ class Lead < ApplicationRecord
   has_many :client_property_interests, foreign_key: :lead_id, dependent: :nullify
   has_many :automation_events, dependent: :nullify
   has_many :seo_conversion_events, dependent: :nullify
+  has_many :push_delivery_events, dependent: :nullify
   has_many :whatsapp_campaign_messages, dependent: :destroy
   has_many :tasks, dependent: :nullify
   has_many :appointments, dependent: :nullify

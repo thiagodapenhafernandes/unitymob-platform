@@ -126,5 +126,18 @@ RSpec.describe Lead, type: :model do
       expect { lead.destroy! }.not_to raise_error
       expect(event.reload.lead_id).to be_nil
     end
+
+    it "keeps push delivery events and clears the lead reference" do
+      lead = create(:lead)
+      admin_user = create(:admin_user, tenant: lead.tenant)
+      event = PushDeliveryEvent.create!(
+        lead: lead,
+        admin_user: admin_user,
+        event_type: "provider_accepted"
+      )
+
+      expect { lead.destroy! }.not_to raise_error
+      expect(event.reload.lead_id).to be_nil
+    end
   end
 end
