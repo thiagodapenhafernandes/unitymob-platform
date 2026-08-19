@@ -18,7 +18,7 @@ module Leads
       scope = candidates || rule.distribution_rule_agents
       scope.includes(:admin_user).each do |dra|
         agent = dra.admin_user
-        dispatcher.deliver_to_agent(agent) if agent
+        dispatcher.deliver_to_agent(agent, shark_tank: true) if agent
       end
     end
 
@@ -84,11 +84,14 @@ module Leads
 
     # Envia a notificação da regra para um corretor específico (usado no Shark Tank,
     # que notifica todos os corretores elegíveis da regra).
-    def deliver_to_agent(agent)
+    def deliver_to_agent(agent, shark_tank: false)
       return unless @rule && agent
 
       @corretor = agent
+      @shark_tank = shark_tank
       deliver_channels
+    ensure
+      @shark_tank = false
     end
 
     private
@@ -152,9 +155,12 @@ module Leads
 
       # Padrão "WhatsApp": o clique abre a conversa do lead direto e o service worker
       # avisa o sistema do aceite em background (beacon) — sem tela intermediária.
-      whatsapp = @lead.direct_whatsapp_url if click_action == "whatsapp"
+      whatsapp = @lead.direct_whatsapp_url if click_action == "whatsapp" && !shark_tank_push?
 
-      if whatsapp.present?
+      if shark_tank_push?
+        url = "#{links.url(:attend)}?details=1"
+        accept_url = nil
+      elsif whatsapp.present?
         url = whatsapp
         accept_url = secure ? "#{attend_url}?ack=1" : attend_url
       else
@@ -169,7 +175,7 @@ module Leads
 
       sent = Notifications::PushDispatcher.deliver(
         admin_user_id: @corretor.id,
-        title: "Novo lead: #{@lead.display_name}",
+        title: push_title,
         body:  body,
         url:   url,
         accept_url: accept_url,
@@ -198,12 +204,31 @@ module Leads
       parts << @lead.display_phone if !secure && @lead.display_phone.present?
       parts << context if context.present?
 
+      if shark_tank_push?
+        parts << "Pegar esse lead para atender"
+        return parts.join(" · ")
+      end
+
       if parts.present?
         parts << "Toque para atender"
         return parts.join(" · ")
       end
 
       "Contato novo aguardando atendimento"
+    end
+
+    def push_title
+      return "Lead disponível: #{@lead.display_name}" if shark_tank_push?
+
+      "Novo lead: #{@lead.display_name}"
+    end
+
+    def shark_tank_push?
+      @shark_tank == true || (
+        @lead.admin_user_id.blank? &&
+        Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance) &&
+        @rule&.shark_tank?
+      )
     end
 
     def push_context

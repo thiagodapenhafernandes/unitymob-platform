@@ -94,6 +94,34 @@ RSpec.describe Leads::NotificationDispatcher do
     end
   end
 
+  it "usa texto e tela de aceite próprios no push de Shark Tank" do
+    shark_rule = create(:distribution_rule, distribution_mode: :shark_tank, notify_push: true, notify_whatsapp: false, notify_email: false, notify_webhook: false)
+    shark_lead = create(
+      :lead,
+      name: "Lead Corrida",
+      phone: "11988887777",
+      status: :waiting_acceptance,
+      admin_user: nil,
+      distribution_rule: shark_rule
+    )
+    LeadSetting.instance.update!(notify_on_shark_tank: true)
+    PushSetting.instance.update!(lead_click_action: "whatsapp")
+
+    candidate = create(:distribution_rule_agent, distribution_rule: shark_rule, admin_user: corretor)
+
+    described_class.notify_shark_tank(shark_lead, shark_rule, candidates: DistributionRuleAgent.where(id: candidate.id))
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver) do |args|
+      expect(args[:admin_user_id]).to eq(corretor.id)
+      expect(args[:title]).to eq("Lead disponível: Lead Corrida")
+      expect(args[:body]).to eq("Pegar esse lead para atender")
+      expect(args[:url]).to include("/s/")
+      expect(args[:url]).to include("details=1")
+      expect(args[:url]).not_to include("wa.me")
+      expect(args[:accept_url]).to be_nil
+    end
+  end
+
   it "usa o template configurado e mapeia variaveis dinamicamente no WhatsApp" do
     whatsapp_rule = create(:distribution_rule, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
     whatsapp_lead = create(

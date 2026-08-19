@@ -16,11 +16,12 @@ RSpec.describe "field service worker contract" do
   end
 
   it "normaliza o destino do clique antes de abrir a janela" do
-    expect(worker_source).to include('const CACHE_VERSION = "v11"')
+    expect(worker_source).to include('const CACHE_VERSION = "v12"')
     expect(worker_source).to include("function notificationTargetUrl(raw)")
     expect(worker_source).to include("function sameClientUrl(clientUrl, targetUrl)")
     expect(worker_source).to include("function sameOriginClient(clientUrl, targetUrl)")
     expect(worker_source).to include("await c.navigate(target.href)")
+    expect(worker_source).to include('client.postMessage({ type: "push:navigate", url: targetUrl.href })')
     expect(worker_source).to include("clients.openWindow(target.href)")
   end
 
@@ -34,6 +35,8 @@ RSpec.describe "field service worker contract" do
     expect(public_entrypoint).to include('import "pwa_scope_guard"')
     expect(importmap).to include('pin "pwa_scope_guard", preload: false')
     expect(guard_source).to include("window.navigator.standalone === true")
+    expect(guard_source).to include('event.data?.type !== "push:navigate"')
+    expect(guard_source).to include("window.location.assign(url.href)")
     expect(guard_source).to include('link.removeAttribute("target")')
     expect(guard_source).to include('form.removeAttribute("target")')
   end

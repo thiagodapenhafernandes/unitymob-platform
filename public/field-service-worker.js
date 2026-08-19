@@ -7,7 +7,7 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v11";
+const CACHE_VERSION = "v12";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
@@ -387,7 +387,12 @@ self.addEventListener("notificationclick", (event) => {
     }
     for (const c of list) {
       if (sameOriginClient(c.url, target) && "navigate" in c) {
-        await c.navigate(target.href);
+        const navigated = await c.navigate(target.href).catch((error) => {
+          console.warn("[push] navigate falhou; tentando postMessage", error);
+          return null;
+        });
+        postNavigateMessage(navigated || c, target);
+        if (navigated && "focus" in navigated) return navigated.focus();
         if ("focus" in c) return c.focus();
         return c;
       }
@@ -417,5 +422,15 @@ function sameOriginClient(clientUrl, targetUrl) {
     return new URL(clientUrl).origin === targetUrl.origin;
   } catch (_) {
     return false;
+  }
+}
+
+function postNavigateMessage(client, targetUrl) {
+  try {
+    if (client && "postMessage" in client) {
+      client.postMessage({ type: "push:navigate", url: targetUrl.href });
+    }
+  } catch (error) {
+    console.warn("[push] postMessage de navegação falhou", error);
   }
 }

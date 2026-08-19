@@ -17,6 +17,17 @@ const sameOriginUrl = (rawUrl) => {
 
 const shouldKeepInsidePwa = () => isStandalonePwa() && isMobileContext()
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type !== "push:navigate") return
+
+    const url = sameOriginUrl(event.data.url)
+    if (!url || url.href === window.location.href) return
+
+    window.location.assign(url.href)
+  })
+}
+
 document.addEventListener("click", (event) => {
   if (!shouldKeepInsidePwa()) return
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
