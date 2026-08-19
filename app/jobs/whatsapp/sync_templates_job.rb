@@ -40,15 +40,23 @@ module Whatsapp
 
       synced = 0
       Array(result.dig(:data, "data")).each do |tpl|
-        record = tenant.whatsapp_templates.find_or_initialize_by(
-          name: tpl["name"],
-          language: tpl["language"].presence || "pt_BR",
+        name = normalized_template_name(tpl["name"])
+        language = tpl["language"].presence || "pt_BR"
+        meta_id = tpl["id"].to_s.presence
+        record = template_record_for(
+          tenant,
+          meta_id: meta_id,
+          name: name,
+          language: language,
           waba_id: source.waba_id
         )
         record.assign_attributes(
+          name: name,
+          language: language,
+          waba_id: source.waba_id,
           category: normalized_category(tpl["category"]),
           status: tpl["status"].presence || "PENDING",
-          meta_id: tpl["id"],
+          meta_id: meta_id,
           body: body_text(tpl),
           components: Array(tpl["components"]),
           template_type: template_type(tpl),
@@ -65,6 +73,19 @@ module Whatsapp
         synced += 1
       end
       { ok: true, synced: synced }
+    end
+
+    def template_record_for(tenant, meta_id:, name:, language:, waba_id:)
+      if meta_id.present?
+        existing = tenant.whatsapp_templates.find_by(meta_id: meta_id, waba_id: waba_id)
+        return existing if existing
+      end
+
+      tenant.whatsapp_templates.find_or_initialize_by(
+        name: name,
+        language: language,
+        waba_id: waba_id
+      )
     end
 
     def sync_source_for(tenant, sender_number_id)
@@ -201,6 +222,15 @@ module Whatsapp
     def normalized_category(category)
       value = category.to_s.upcase.presence || "MARKETING"
       WhatsappTemplate::CATEGORIES.include?(value) ? value : "MARKETING"
+    end
+
+    def normalized_template_name(name)
+      name.to_s
+          .strip
+          .parameterize(separator: "_")
+          .gsub(/_+/, "_")
+          .delete_prefix("_")
+          .delete_suffix("_")
     end
 
     def header_media_filename(url, format)

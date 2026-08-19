@@ -142,6 +142,46 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
     expect(template.status).to eq("PENDING")
   end
 
+  it "reaproveita template existente quando a Meta retorna nome ainda não normalizado" do
+    tenant.whatsapp_templates.create!(
+      name: "imveis_at_100000000_50ed",
+      language: "pt_BR",
+      waba_id: "waba-sync",
+      meta_id: "tpl_normalized_123",
+      category: "MARKETING",
+      status: "APPROVED",
+      body: "Texto antigo"
+    )
+
+    client = instance_double(Whatsapp::CloudClient)
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    allow(client).to receive(:fetch_templates).and_return(
+      ok: true,
+      data: {
+        "data" => [
+          {
+            "id" => "tpl_normalized_123",
+            "name" => "imveis_at_100000000__50ed",
+            "language" => "pt_BR",
+            "category" => "MARKETING",
+            "status" => "APPROVED",
+            "components" => [
+              { "type" => "BODY", "text" => "Texto atualizado" }
+            ]
+          }
+        ]
+      }
+    )
+
+    expect { described_class.perform_now(tenant.id) }.not_to change(WhatsappTemplate, :count)
+
+    template = tenant.whatsapp_templates.find_by!(meta_id: "tpl_normalized_123", waba_id: "waba-sync")
+    expect(template).to have_attributes(
+      name: "imveis_at_100000000_50ed",
+      body: "Texto atualizado"
+    )
+  end
+
   it "preenche dados editaveis de carousel e flow ao sincronizar" do
     client = instance_double(Whatsapp::CloudClient)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
