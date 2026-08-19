@@ -300,6 +300,77 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).not_to include("href=\"\"")
       expect(response.body).not_to include("wa.me")
     end
+
+    it "mantém modelos aprovados fora do atalho de apresentação" do
+      create(:whatsapp_business_integration,
+             tenant: admin.tenant,
+             connected_by_admin_user: admin,
+             presentation_enabled: true)
+      PresentationCard.ensure_system_default_for(admin.tenant)
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        name: "modelo_survey_aprovado",
+        language: "pt_BR",
+        status: "APPROVED",
+        body: "Oi"
+      )
+      conv = WhatsappConversation.create!(contact_phone: "5547999990050")
+
+      get admin_whatsapp_conversation_path(conv)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      quick_replies = document.at_css('[data-controller="quick-replies"] .wa-composer-popover')
+
+      expect(quick_replies).to be_present
+      expect(quick_replies.text).to include("Apresentação")
+      expect(quick_replies.text).to include("Meus cartões")
+      expect(quick_replies.text).not_to include("Modelos aprovados")
+      expect(quick_replies.text).not_to include("modelo_survey_aprovado")
+      expect(quick_replies.at_css(".wa-composer-popover__icon--template")).to be_nil
+    end
+
+    it "renderiza avatar de apresentação para corretor dono do lead quando a mensagem não tem attachment local" do
+      profile = admin.tenant.profiles.create!(
+        name: "Corretor dono do lead",
+        axis: "vertical",
+        permissions: {
+          "leads" => { "view" => true, "scope" => "own" },
+          "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      broker = create(:admin_user, tenant: admin.tenant, profile: profile)
+      broker.avatar.attach(io: StringIO.new("fake-avatar"), filename: "corretor.jpg", content_type: "image/jpeg")
+      card = PresentationCard.create!(
+        tenant: admin.tenant,
+        admin_user: broker,
+        label: "Meu cartão",
+        greeting: "Oi, sou {nome}",
+        use_photo: true,
+        active: true
+      )
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, phone: "5547999990051")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+      conv.messages.create!(
+        direction: "outbound",
+        msg_type: "image",
+        body: "Oi, sou o corretor",
+        admin_user: broker,
+        presentation_card: card,
+        status: "sent"
+      )
+
+      sign_in broker
+      get admin_whatsapp_conversation_path(conv)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      image = document.at_css(".wa-inbox-media--image")
+
+      expect(image).to be_present
+      expect(image["src"]).to include("/rails/active_storage/blobs")
+      expect(image["src"]).not_to include(message_media_admin_whatsapp_conversation_path(conv, message_id: conv.messages.last.id))
+    end
   end
 
   describe "GET media" do
@@ -349,6 +420,43 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       message.media_file.attach(io: StringIO.new("fake-audio"), filename: "audio.webm", content_type: "audio/webm")
 
       sign_in user
+
+      get message_media_admin_whatsapp_conversation_path(conv, message_id: message.id)
+
+      expect(response).to have_http_status(:found)
+      expect(response.headers["Location"]).to include("/rails/active_storage/")
+    end
+
+    it "serve avatar de apresentação para corretor dono quando não há attachment local" do
+      profile = admin.tenant.profiles.create!(
+        name: "Midia apresentação via lead",
+        axis: "vertical",
+        permissions: {
+          "leads" => { "view" => true, "scope" => "own" },
+          "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      broker = create(:admin_user, tenant: admin.tenant, profile: profile)
+      broker.avatar.attach(io: StringIO.new("fake-avatar"), filename: "corretor.jpg", content_type: "image/jpeg")
+      card = PresentationCard.create!(
+        tenant: admin.tenant,
+        admin_user: broker,
+        label: "Meu cartão",
+        greeting: "Oi, sou {nome}",
+        use_photo: true,
+        active: true
+      )
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, phone: "5547999990052")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+      message = conv.messages.create!(
+        direction: "outbound",
+        msg_type: "image",
+        admin_user: broker,
+        presentation_card: card,
+        status: "sent"
+      )
+
+      sign_in broker
 
       get message_media_admin_whatsapp_conversation_path(conv, message_id: message.id)
 
@@ -425,6 +533,42 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       msg = WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").order(:created_at).last
       expect(msg.msg_type).to eq("video")
       expect(msg.media_file).to be_attached
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
+    end
+
+    it "envia cartão de apresentação com foto como imagem no desktop" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      create(:whatsapp_business_integration,
+             tenant: admin.tenant,
+             connected_by_admin_user: admin,
+             presentation_enabled: true,
+             allow_photo_presentation: true)
+      admin.avatar.attach(io: StringIO.new("fake-avatar"), filename: "corretor.jpg", content_type: "image/jpeg")
+      card = PresentationCard.create!(
+        tenant: admin.tenant,
+        admin_user: admin,
+        label: "Meu cartão",
+        greeting: "Oi, sou {nome}",
+        use_photo: true,
+        active: true
+      )
+      conv = WhatsappConversation.create!(contact_phone: "5547999990053")
+
+      expect {
+        post send_message_admin_whatsapp_conversation_path(conv), params: {
+          body: card.message_body_for(admin),
+          presentation_card_id: card.id
+        }
+      }.to change {
+        WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").count
+      }.by(1)
+
+      msg = WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").order(:created_at).last
+      expect(msg.msg_type).to eq("image")
+      expect(msg.presentation_card_id).to eq(card.id)
+      expect(msg.media_file).to be_attached
+      expect(msg.media_file.blob).to eq(admin.avatar.blob)
       expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
     end
 

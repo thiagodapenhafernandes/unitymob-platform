@@ -53,6 +53,10 @@ class Admin::WhatsappInboxController < Admin::BaseController
       return redirect_to rails_blob_path(@message.media_file, disposition: disposition)
     end
 
+    if (avatar = @message.presentation_avatar_attachment)
+      return redirect_to rails_blob_path(avatar, disposition: "inline")
+    end
+
     return head :not_found if @message.media_url.blank?
 
     download = Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(current_tenant)).download_media(@message.media_url)
@@ -436,8 +440,9 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def media_url_for(message)
-    return message_media_admin_whatsapp_conversation_path(@conversation || message.whatsapp_conversation, message_id: message.id) if message.media?
     return rails_blob_path(message.media_file, disposition: "inline") if message.media_file.attached?
+    return rails_blob_path(message.presentation_avatar_attachment, disposition: "inline") if message.presentation_avatar_attachment
+    return message_media_admin_whatsapp_conversation_path(@conversation || message.whatsapp_conversation, message_id: message.id) if message.media?
 
     nil
   end

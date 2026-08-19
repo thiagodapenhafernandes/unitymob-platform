@@ -27,13 +27,23 @@ class AiPropertyShareCollectionsController < ApplicationController
     return render json: { requires_identity: true }, status: :unprocessable_entity unless lead
 
     interest = lead.property_interests.find_or_create_by!(tenant: @collection.tenant, habitation:)
-    responsible = lead.admin_user || @collection.admin_user
-    lead.update!(admin_user: responsible) if lead.admin_user.blank? && @collection.lead_id.blank?
+    recipient = shared_link_interest_recipient(lead)
+    lead.update!(admin_user: recipient) if lead.admin_user.blank? && @collection.lead_id.blank? && recipient
     remember(lead)
     event = interest.previously_new_record? ? "interest_created" : "interest_repeated"
-    @collection.record!(event, lead:, habitation:, admin_user: responsible, metadata: request_metadata.merge(shared_by_admin_user_id: @collection.admin_user_id))
+    @collection.record!(
+      event,
+      lead:,
+      habitation:,
+      admin_user: recipient,
+      metadata: request_metadata.merge(
+        lead_owner_admin_user_id: lead.admin_user_id,
+        shared_by_admin_user_id: @collection.admin_user_id,
+        notified_admin_user_id: recipient&.id
+      )
+    )
     LeadActivity.log!(lead:, kind: "property_interest", metadata: { habitation_id: habitation.id, share_collection_id: @collection.id, event: })
-    notify_current_owner!(lead, habitation)
+    notify_shared_link_owner!(lead, habitation, recipient)
 
     render json: { success: true, message: @setting.ai_property_search_interest_success_message, lead_id: lead.id }
   end
@@ -95,8 +105,11 @@ class AiPropertyShareCollectionsController < ApplicationController
     { ip: request.remote_ip, user_agent: request.user_agent.to_s.first(300) }
   end
 
-  def notify_current_owner!(lead, habitation)
-    recipient = lead.admin_user || @collection.admin_user
+  def shared_link_interest_recipient(lead)
+    @collection.admin_user || lead.admin_user
+  end
+
+  def notify_shared_link_owner!(lead, habitation, recipient)
     return unless recipient
 
     Notifications::PushDispatcher.deliver(

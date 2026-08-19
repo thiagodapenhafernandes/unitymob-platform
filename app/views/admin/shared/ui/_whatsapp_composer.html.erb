@@ -12,7 +12,7 @@
   form_classes << local_assigns[:class_name]
   form_class = form_classes.compact.join(" ")
   supported_media_summary = "JPG/PNG ate 5 MB · MP4/3GP e audio ate 16 MB · documentos ate 100 MB"
-  # ⚡ Respostas rápidas: cartões de apresentação (se habilitado) + modelos aprovados.
+  # ⚡ Respostas rápidas: cartões de apresentação (se habilitado).
   quick_integration = WhatsappBusinessIntegration.current(current_tenant)
   quick_cards = if quick_integration&.presentation_enabled? && can?(:manage, :whatsapp_inbox)
     PresentationCard.available_for(current_admin_user)
@@ -59,9 +59,6 @@
       <strong><%= composer_title %></strong>
       <span class="wa-inbox-composer__support">
         <%= supported_media_summary %>
-        <% if templates.any? %>
-          · <%= pluralize(templates.size, "modelo aprovado", "modelos aprovados") %>
-        <% end %>
       </span>
     </div>
 
@@ -110,8 +107,8 @@
         <div class="wa-emoji-popover" hidden data-emoji-picker-target="popover"></div>
       </div>
 
-      <%# ⚡ respostas rápidas: apresentação + modelos aprovados %>
-      <% if quick_cards.any? || templates.any? %>
+      <%# ⚡ respostas rápidas: apresentação %>
+      <% if quick_cards.any? %>
         <div data-controller="quick-replies" class="tw-inline-block">
           <button type="button"
                   class="ax-btn ax-btn--sm wa-inbox-composer__tool"
@@ -137,17 +134,6 @@
               <button type="button" data-action="quick-replies#openCards">
                 <i class="bi bi-pencil wa-composer-popover__icon wa-composer-popover__icon--edit"></i><span>Meus cartões</span>
               </button>
-            <% end %>
-            <% if templates.any? %>
-              <div class="wa-composer-popover__caption">Modelos aprovados</div>
-              <% templates.each do |template| %>
-                <button type="button"
-                        data-action="quick-replies#useTemplate"
-                        data-template-name="<%= template.name %>">
-                  <i class="bi bi-patch-check wa-composer-popover__icon wa-composer-popover__icon--template"></i>
-                  <span><%= template.name %></span>
-                </button>
-              <% end %>
             <% end %>
           </div>
         </div>

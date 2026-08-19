@@ -3982,12 +3982,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "mantem o composer compartilhado sem cores inline e com contratos de interacao" do
     expect(whatsapp_composer_view).not_to match(/\bstyle\s*=/i)
-    expect(whatsapp_composer_view.scan(/wa-composer-popover__icon--/).size).to eq(7)
+    expect(whatsapp_composer_view.scan(/wa-composer-popover__icon--/).size).to eq(6)
     expect(whatsapp_composer_view).to include("wa-composer-popover__icon--document", "wa-composer-popover__icon--media", "wa-composer-popover__icon--camera", "wa-composer-popover__icon--audio")
-    expect(whatsapp_composer_view).to include("wa-composer-popover__icon--presentation", "wa-composer-popover__icon--edit", "wa-composer-popover__icon--template")
+    expect(whatsapp_composer_view).to include("wa-composer-popover__icon--presentation", "wa-composer-popover__icon--edit")
+    expect(whatsapp_composer_view).not_to include("wa-composer-popover__icon--template")
     expect(whatsapp_composer_view).to include('controller: "wa-composer"', 'data-controller="attach-menu"', 'data-controller="emoji-picker"', 'data-controller="quick-replies"')
     expect(whatsapp_composer_view).to include('data-wa-composer-target="fileInput"', 'data-wa-composer-target="body"', 'data-wa-composer-target="submit"', 'data-wa-composer-target="recordingBar"')
-    %w[document media camera audio presentation edit template].each do |tone|
+    %w[document media camera audio presentation edit].each do |tone|
       expect(whatsapp_inbox_stylesheet).to include(".wa-composer-popover__icon--#{tone}")
     end
     expect(whatsapp_inbox_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.wa-composer-popover__icon--document/)

@@ -62,7 +62,11 @@ RSpec.describe "AI property share collections", type: :request do
   it "renderiza preview server-side do imóvel selecionado para o cliente" do
     collection = create_collection
     first_property.update!(
-      descricao_web: "-> Empreendimento Piscina infantil <script>alert('x')</script> -> Unidade Living Lavabo"
+      descricao_web: "-> Empreendimento Piscina infantil <script>alert('x')</script> -> Unidade Living Lavabo",
+      pictures: [
+        { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/property-1.jpg", "ordem" => 1, "principal" => true },
+        { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/property-2.jpg", "ordem" => 2 }
+      ]
     )
 
     get preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id)
@@ -71,8 +75,11 @@ RSpec.describe "AI property share collections", type: :request do
     expect(collection.audit_events.where(event_type: "property_opened", habitation: first_property)).to exist
     expect(response.body).to include("shared-property-preview", first_property.display_title, "Abrir página completa")
     expect(response.body).to include("shared-property-preview__hero-link", 'data-fancybox="shared-property-preview')
-    expect(response.body).to include("shared-property-preview__photo-count", "1 foto")
-    expect(response.body).not_to include("shared-property-preview__gallery-link")
+    expect(response.body).to include("shared-property-preview__photo-count", "2 fotos")
+    expect(response.body).to include("Abrir galeria de fotos", "data-gallery-open")
+    expect(response.body).to include("shared-property-preview__gallery-hidden-link")
+    expect(response.body).to include(%(href="#{Storage::PublicPropertyPhoto.public_base_url}/spec/property-2.jpg"))
+    expect(response.body).not_to include("/rails/active_storage/representations")
     expect(response.body).to include("shared-property-preview__description")
     expect(response.body).to include("<p>Empreendimento Piscina infantil")
     expect(response.body).to include("<p>Unidade Living Lavabo</p>")
@@ -121,7 +128,7 @@ RSpec.describe "AI property share collections", type: :request do
     expect(event.metadata["shared_by_admin_user_id"]).to eq(broker.id)
   end
 
-  it "usa o lead vinculado ao link e notifica o dono atual ao registrar interesse" do
+  it "usa o lead vinculado ao link e notifica o corretor que gerou a selecao ao registrar interesse" do
     old_app_host = ENV["APP_HOST"]
     ENV["APP_HOST"] = "https://app.conexaobc.com"
     current_owner = create(:admin_user, tenant: broker.tenant)
@@ -135,21 +142,25 @@ RSpec.describe "AI property share collections", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(lead.reload.interest_properties).to include(first_property)
-    expect(collection.audit_events.where(event_type: "interest_created", lead: lead, admin_user: current_owner)).to exist
+    expect(collection.audit_events.where(event_type: "interest_created", lead: lead, admin_user: broker)).to exist
+    event = collection.audit_events.find_by!(event_type: "interest_created", lead: lead, admin_user: broker)
+    expect(event.metadata["lead_owner_admin_user_id"]).to eq(current_owner.id)
+    expect(event.metadata["shared_by_admin_user_id"]).to eq(broker.id)
+    expect(event.metadata["notified_admin_user_id"]).to eq(broker.id)
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(
       hash_including(
-        admin_user_id: current_owner.id,
+        admin_user_id: broker.id,
         title: "Interesse em imóvel compartilhado",
         url: "https://app.conexaobc.com#{admin_lead_path(lead)}",
         lead_id: lead.id,
-        tag: "lead-#{lead.id}-property-#{first_property.id}-#{current_owner.id}"
+        tag: "lead-#{lead.id}-property-#{first_property.id}-#{broker.id}"
       )
     )
   ensure
     ENV["APP_HOST"] = old_app_host
   end
 
-  it "notifica o dono atual mesmo quando o interesse ja existia no lead" do
+  it "notifica o corretor que gerou a selecao mesmo quando o interesse ja existia no lead" do
     current_owner = create(:admin_user, tenant: broker.tenant)
     lead = create(:lead, tenant: broker.tenant, admin_user: current_owner, name: "Maria Lead", phone: "47999990000")
     lead.property_interests.create!(tenant: broker.tenant, habitation: first_property)
@@ -161,15 +172,30 @@ RSpec.describe "AI property share collections", type: :request do
     post_interest(collection, habitation_id: first_property.id)
 
     expect(response).to have_http_status(:ok)
-    expect(collection.audit_events.where(event_type: "interest_repeated", lead: lead, admin_user: current_owner)).to exist
+    expect(collection.audit_events.where(event_type: "interest_repeated", lead: lead, admin_user: broker)).to exist
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(
       hash_including(
-        admin_user_id: current_owner.id,
+        admin_user_id: broker.id,
         title: "Interesse em imóvel compartilhado",
         lead_id: lead.id,
-        tag: "lead-#{lead.id}-property-#{first_property.id}-#{current_owner.id}"
+        tag: "lead-#{lead.id}-property-#{first_property.id}-#{broker.id}"
       )
     )
+  end
+
+  it "nao envia push para outro corretor quando o lead esta vinculado a outro usuario" do
+    wrong_recipient = create(:admin_user, tenant: broker.tenant, email: "web.iprodutora@example.com")
+    lead = create(:lead, tenant: broker.tenant, admin_user: wrong_recipient, name: "Nome do Lead 01", phone: "47999990000")
+    collection = broker.tenant.ai_property_share_collections.create!(admin_user: broker, lead: lead).tap do |share|
+      share.items.create!(habitation: first_property)
+    end
+    allow(Notifications::PushDispatcher).to receive(:deliver)
+
+    post_interest(collection, habitation_id: first_property.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(admin_user_id: broker.id))
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver).with(hash_including(admin_user_id: wrong_recipient.id))
   end
 
   private

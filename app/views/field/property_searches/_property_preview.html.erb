@@ -163,8 +163,8 @@
   <% if images.many? %>
     <div class="field-property-preview__gallery-links" aria-hidden="true">
       <% images.drop(1).each_with_index do |source, index| %>
-        <%= link_to gallery_url.call(source),
-            "#{habitation.display_title} - Foto #{index + 2}",
+        <%= link_to "#{habitation.display_title} - Foto #{index + 2}",
+            gallery_url.call(source),
             class: "field-property-preview__gallery-hidden-link",
             data: { fancybox: gallery_group, caption: "#{habitation.display_title} - Foto #{index + 2}", thumb_src: image_url.call(source, [420, 300]) },
             tabindex: "-1",

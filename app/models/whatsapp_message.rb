@@ -27,6 +27,13 @@ class WhatsappMessage < ApplicationRecord
   def video? = msg_type == "video"
   def attachment_present? = media_file.attached?
 
+  def presentation_avatar_attachment
+    return unless image? && presentation_card_id.present?
+
+    avatar = admin_user&.avatar
+    avatar if avatar&.attached?
+  end
+
   # "Apagar para mim": mensagens ocultas somem do thread do CRM
   scope :visible, -> { column_names.include?("hidden_at") ? where(hidden_at: nil) : all }
 

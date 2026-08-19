@@ -105,10 +105,17 @@ module Whatsapp
       end
 
       def media_url_for(conversation, message)
+        return blob_path_for(message.media_file) if message.media_file.attached?
+        if (avatar = message.presentation_avatar_attachment)
+          return blob_path_for(avatar)
+        end
         return Rails.application.routes.url_helpers.message_media_admin_whatsapp_conversation_path(conversation, message_id: message.id) if message.media?
-        return Rails.application.routes.url_helpers.rails_blob_path(message.media_file, disposition: "inline") if message.media_file.attached?
 
         nil
+      end
+
+      def blob_path_for(attachment)
+        Rails.application.routes.url_helpers.rails_blob_path(attachment, disposition: "inline", only_path: true)
       end
 
       def status_cursor_for(conversation)

@@ -362,7 +362,8 @@ form.is-submitting input[type="submit"].is-submitting {
 .shared-property-preview__description :is(ul, ol) { padding-left: 1.25rem; }
 .shared-property-preview__description a { color: #365f8f; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
 .shared-property-preview__actions { display: grid; gap: 10px; }
-.shared-property-preview__link { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; border-radius: 12px; background: #365f8f; color: #fff; font-weight: 850; text-decoration: none; }
+.shared-property-preview__link { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; border: 1px solid #365f8f; border-radius: 12px; background: #365f8f; color: #fff; font: inherit; font-weight: 850; text-decoration: none; cursor: pointer; }
+.shared-property-preview__link--secondary { background: #fff; color: #365f8f; }
 .shared-property-preview__loading,
 .shared-property-preview__error { display: grid; min-height: 45dvh; place-items: center; color: #64748b; text-align: center; }
 .shared-property-preview__error { color: #991b1b; }

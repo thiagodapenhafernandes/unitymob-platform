@@ -1,7 +1,7 @@
 <%
   images = habitation.public_image_sources
   image_url = ->(source, fill = [960, 640]) { public_image_url(source, resize_to_fill: fill, format: :webp) }
-  gallery_url = ->(source) { public_image_url(source, resize_to_limit: [1600, 1200], format: :webp, representation_proxy: true) }
+  gallery_url = ->(source) { public_image_url(source) }
   gallery_group = "shared-property-preview-#{habitation.id}"
   photo_count = images.size
   facts = [
@@ -58,8 +58,8 @@
   <% if images.many? %>
     <div class="shared-property-preview__gallery-links" aria-hidden="true">
       <% images.drop(1).each_with_index do |source, index| %>
-        <%= link_to gallery_url.call(source),
-            "#{habitation.display_title} - Foto #{index + 2}",
+        <%= link_to "#{habitation.display_title} - Foto #{index + 2}",
+            gallery_url.call(source),
             class: "shared-property-preview__gallery-hidden-link",
             data: { fancybox: gallery_group, caption: "#{habitation.display_title} - Foto #{index + 2}", thumb_src: image_url.call(source, [420, 300]) },
             tabindex: "-1",
@@ -76,6 +76,12 @@
   <% end %>
 
   <footer class="shared-property-preview__actions">
+    <% if images.any? %>
+      <button type="button" class="shared-property-preview__link shared-property-preview__link--secondary" data-gallery-open>
+        <i class="bi bi-images" aria-hidden="true"></i>
+        Abrir galeria de fotos
+      </button>
+    <% end %>
     <%= link_to "Abrir página completa", habitation_path(habitation), class: "shared-property-preview__link", target: "_blank", rel: "noopener" %>
   </footer>
 </article>

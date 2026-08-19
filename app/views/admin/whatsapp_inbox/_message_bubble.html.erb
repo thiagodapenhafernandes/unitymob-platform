@@ -1,7 +1,13 @@
 <% status_icon = { "read" => "bi-check2-all", "delivered" => "bi-check2-all", "sent" => "bi-check2", "pending" => "bi-clock", "failed" => "bi-exclamation-circle" }[message.status] %>
 <% status_label = { "read" => "Lida", "delivered" => "Entregue", "sent" => "Enviada", "pending" => "Enviando", "failed" => "Falhou" }[message.status] || message.status.to_s.humanize %>
 <% status_label = "Falhou: #{message.error_message}" if message.failed? && message.try(:error_message).present? %>
-<% media_url = local_assigns[:media_url].presence || (message.media? ? message_media_admin_whatsapp_conversation_path(message.whatsapp_conversation, message_id: message.id) : (message.media_file.attached? ? rails_blob_path(message.media_file, disposition: "inline") : message.media_url)) %>
+<% local_media_url =
+     if message.media_file.attached?
+       rails_blob_path(message.media_file, disposition: "inline")
+     elsif message.presentation_avatar_attachment
+       rails_blob_path(message.presentation_avatar_attachment, disposition: "inline")
+     end %>
+<% media_url = local_assigns[:media_url].presence || local_media_url || (message.media? ? message_media_admin_whatsapp_conversation_path(message.whatsapp_conversation, message_id: message.id) : message.media_url) %>
 <% media_meta = [] %>
 <% media_label = { "image" => "Imagem", "video" => "Vídeo", "audio" => "Áudio", "document" => "Documento" }[message.msg_type] || message.msg_type.to_s.humanize %>
 <% media_meta << message.media_file.filename.to_s if message.media_file.attached? %>

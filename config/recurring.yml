@@ -83,6 +83,10 @@ production:
     class: Leads::PocketSweepJob
     queue: default
     schedule: every minute
+  task_due_reminder:
+    class: Tasks::DueReminderJob
+    queue: default
+    schedule: every minute
   automation_tick:
     class: Automation::TickJob
     queue: default
