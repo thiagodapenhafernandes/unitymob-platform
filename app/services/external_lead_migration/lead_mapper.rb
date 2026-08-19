@@ -100,7 +100,7 @@ module ExternalLeadMigration
     end
 
     def first_message
-      @entry["first_message"].presence || @attributes["first_message"]
+      message_body(@entry["first_message"]) || message_body(@attributes["first_message"])
     end
 
     private
@@ -135,8 +135,20 @@ module ExternalLeadMigration
       [
         @attributes["observation"],
         first_message,
-        messages.first.to_h["body"]
+        message_body(messages.first)
       ].compact_blank.join("\n\n").presence
+    end
+
+    def message_body(value)
+      case value
+      when Hash
+        value["body"].presence ||
+          value["message"].presence ||
+          value["text"].presence ||
+          value.dig("text", "body")
+      else
+        value.to_s.presence
+      end
     end
 
     def custom_answers

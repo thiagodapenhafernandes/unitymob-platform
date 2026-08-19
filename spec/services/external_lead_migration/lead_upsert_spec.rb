@@ -125,6 +125,33 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.activities.where(kind: "external_message").count).to eq(1)
   end
 
+  it "extrai o corpo da primeira mensagem quando o provedor envia a mensagem estruturada" do
+    structured_payload = payload.deep_dup
+    structured_payload["id"] = "lead-structured-first-message"
+    structured_payload["attributes"]["customer"]["id"] = "customer-structured-message"
+    structured_payload["first_message"] = {
+      "id" => "d2239250bdea687875dfdf305942680d",
+      "sender_id" => "94a35ac97dc4b9c77eefe9cdde02728b",
+      "recipient_id" => "3e6d3f3db93323638185f413d13a89fa",
+      "sender_type" => "Customer",
+      "recipient_type" => "Seller",
+      "body" => "\n Você está interessado em receber informações sobre imóveis à venda?: sim.\n Full name: Maria Elisabete Marchi Pereira\n Plataforma: Instagram Leads",
+      "created_at" => "2026-08-12T08:14:04.000-03:00"
+    }
+    structured_payload["messages"] = []
+
+    described_class.call(integration:, payload: structured_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-structured-first-message")
+    expect(lead.notes).to include("Full name: Maria Elisabete Marchi Pereira")
+    expect(lead.notes).to include("Plataforma: Instagram Leads")
+    expect(lead.notes).not_to include('"sender_id"=>')
+
+    activity = lead.activities.find_by!(kind: "external_first_message")
+    expect(activity.metadata["body"]).to include("Full name: Maria Elisabete Marchi Pereira")
+    expect(activity.metadata["body"]).not_to include('"sender_id"=>')
+  end
+
   it "usa os campos de agendamento do C2S para criar tarefas e visitas na data correta" do
     c2s_payload = payload.deep_dup
     c2s_payload["id"] = "lead-c2s-schedule-fields"
