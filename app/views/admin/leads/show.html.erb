@@ -500,16 +500,63 @@
     .lead-pwa-mobile-interests {
       display: grid;
       gap: 8px;
+      min-width: 0;
     }
 
     .lead-pwa-detail .wa-inbox-thread__interests {
       display: grid;
       gap: 8px;
+      min-width: 0;
+      width: 100%;
     }
 
     .lead-pwa-detail .wa-inbox-thread__interest-chips {
       display: grid;
       gap: 7px;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: stretch;
+      width: 100%;
+      max-width: none;
+      min-height: 38px;
+      height: auto;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .lead-property-share-check {
+      display: grid;
+      place-items: center;
+      margin: 0;
+      padding: 0 8px;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin__link {
+      width: 100%;
+      padding-right: 8px;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin__link span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .lead-property-share-badge {
+      align-self: center;
+      flex: 0 0 auto;
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin__remove {
+      width: 32px;
+      height: 100%;
+      min-height: 36px;
     }
 
     .lead-pwa-detail .lead-property-share-actions,
