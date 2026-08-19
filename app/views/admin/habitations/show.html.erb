@@ -65,7 +65,8 @@
   infrastructure_names = array_value.call(@habitation.infra_estrutura)
   unique_feature_names = array_value.call(@habitation.caracteristica_unica)
 
-  attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.select { |photo| photo.persisted? && photo.blob&.persisted? }.filter_map.with_index { |photo, index|
+  admin_gallery_photo_limit = 12
+  attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.first(admin_gallery_photo_limit).select { |photo| photo.persisted? && photo.blob&.persisted? }.filter_map.with_index { |photo, index|
     photo_url = public_image_url({ attachment: photo })
     next if photo_url.blank?
 
@@ -97,7 +98,7 @@
     local_development_sources = development_gallery.attached_media_photos.map { |photo| { attachment: photo } }
     dwv_development_sources = development_gallery.api_media_pictures.map { |_picture, _original_index, photo_url| photo_url }
 
-    (local_development_sources + dwv_development_sources).first(24).filter_map.with_index do |source, index|
+    (local_development_sources + dwv_development_sources).first(admin_gallery_photo_limit).filter_map.with_index do |source, index|
       photo_url = source.is_a?(Hash) ? public_image_url(source) : source
       next if photo_url.blank?
 

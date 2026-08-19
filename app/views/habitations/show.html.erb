@@ -1,4 +1,5 @@
 <% images = @habitation.public_image_sources %>
+<% gallery_images = images.first(12) %>
 <% image_url = ->(photo) { public_image_url(photo) } %>
 <% gallery_original_url = ->(photo) { image_url.call(photo) } %>
 <% title = @habitation.display_title %>
@@ -12,7 +13,7 @@
 <% public_media_url = public_property_media_url(@habitation) %>
 <% map_coordinates = @public_map.center_coordinates if @public_map.visible? %>
 <% street_view_coordinates = @public_map.street_view_coordinates if @public_map.street_view_enabled? %>
-<% primary_image_source = images.first %>
+<% primary_image_source = gallery_images.first %>
 <% primary_image_url = public_image_url(primary_image_source, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if primary_image_source %>
 <% primary_image_srcset = public_image_srcset(primary_image_source, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if primary_image_source %>
 
@@ -59,30 +60,30 @@
              data-public-gallery-mobile-property-id-value="<%= @habitation.id %>"
              data-public-gallery-mobile-property-url-value="<%= habitation_path(@habitation) %>"
              data-public-gallery-mobile-property-title-value="<%= title %>"
-             data-public-gallery-mobile-property-image-url-value="<%= image_url.call(images.first) if images.any? %>"
+             data-public-gallery-mobile-property-image-url-value="<%= image_url.call(gallery_images.first) if gallery_images.any? %>"
              data-public-gallery-mobile-property-price-value="<%= number_to_currency((has_rent_price ? @habitation.valor_locacao_cents : @habitation.valor_venda_cents).to_i / 100.0, unit: 'R$ ', separator: ',', delimiter: '.', precision: 0) if (has_rent_price || has_sale_price) %>"
              data-public-gallery-mobile-property-location-value="<%= address_text %>">
-      <% if images.any? %>
+      <% if gallery_images.any? %>
         <div class="public-habitations-show__gallery-badges">
           <% @habitation.display_badges.each do |badge| %>
             <span class="public-habitations-show__gallery-badge bg-<%= badge[:tailwind_color] %>"><%= badge[:text] %></span>
           <% end %>
         </div>
         <div class="public-habitations-show__gallery-grid grid h-[360px] grid-cols-1 gap-2 md:h-[400px] lg:grid-cols-[1.08fr_1fr]">
-          <a href="<%= image_url.call(images.first) %>"
+          <a href="<%= image_url.call(gallery_images.first) %>"
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto 1"
              data-public-gallery-mobile-src="<%= primary_image_url %>"
              data-public-gallery-mobile-srcset="<%= primary_image_srcset %>"
              data-public-gallery-mobile-sizes="(min-width: 1024px) 52vw, 100vw"
-             data-public-gallery-mobile-class="<%= public_gallery_image_class(images.first) %>"
-             data-public-gallery-mobile-style="<%= public_gallery_image_style(images.first, primary: true) %>"
+             data-public-gallery-mobile-class="<%= public_gallery_image_class(gallery_images.first) %>"
+             data-public-gallery-mobile-style="<%= public_gallery_image_style(gallery_images.first, primary: true) %>"
              class="public-habitations-show__gallery-primary relative block h-full overflow-hidden bg-gray-100">
             <%= image_tag primary_image_url,
                 alt: "#{title} - Foto 1",
-                class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105 #{public_gallery_image_class(images.first)}",
+                class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105 #{public_gallery_image_class(gallery_images.first)}",
                 data: { public_gallery_mobile_target: "primaryImage" },
-                style: public_gallery_image_style(images.first, primary: true),
+                style: public_gallery_image_style(gallery_images.first, primary: true),
                 fetchpriority: "high",
                 loading: "eager",
                 decoding: "async",
@@ -93,7 +94,7 @@
           </a>
 
           <div class="public-habitations-show__gallery-thumbs hidden grid-cols-2 gap-2 lg:grid">
-            <% images.drop(1).first(4).each_with_index do |photo, index| %>
+            <% gallery_images.drop(1).first(4).each_with_index do |photo, index| %>
               <a href="<%= image_url.call(photo) %>"
                  data-fancybox="property-gallery"
                  data-caption="<%= title %> - Foto <%= index + 2 %>"
@@ -118,7 +119,7 @@
           </div>
         </div>
 
-        <% images.drop(5).each_with_index do |photo, index| %>
+        <% gallery_images.drop(5).each_with_index do |photo, index| %>
           <% photo_original_url = gallery_original_url.call(photo) %>
           <a href="<%= photo_original_url %>"
              data-fancybox="property-gallery"

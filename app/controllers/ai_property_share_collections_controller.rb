@@ -102,7 +102,8 @@ class AiPropertyShareCollectionsController < ApplicationController
       admin_user_id: recipient.id,
       title: "Interesse em imóvel compartilhado",
       body: "#{lead.display_name.presence || 'Lead'} demonstrou interesse no imóvel #{habitation.codigo}",
-      url: admin_lead_url(lead),
+      url: admin_lead_notification_url(lead),
+      lead_id: lead.id,
       tag: "lead-#{lead.id}-property-#{habitation.id}-#{recipient.id}",
       urgency: "high",
       ttl: 86_400,
@@ -110,5 +111,12 @@ class AiPropertyShareCollectionsController < ApplicationController
     )
   rescue => e
     Rails.logger.warn("[AiPropertyShareCollections] falha ao notificar interesse lead=#{lead.id}: #{e.class} #{e.message}")
+  end
+
+  def admin_lead_notification_url(lead)
+    host = ENV["APP_HOST"].to_s.delete_suffix("/")
+    return "#{host}#{admin_lead_path(lead)}" if host.present?
+
+    admin_lead_url(lead)
   end
 end

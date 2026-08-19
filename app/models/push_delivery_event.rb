@@ -25,7 +25,7 @@ class PushDeliveryEvent < ApplicationRecord
         event_type: event_type,
         admin_user_id: admin_user_id,
         push_subscription: push_subscription,
-        lead_id: lead_id_from_tag(tag),
+        lead_id: attrs[:lead_id].presence || lead_id_from_tag(tag),
         tag: tag,
         endpoint_host: endpoint_host(endpoint),
         endpoint_sha256: endpoint_sha256(endpoint),

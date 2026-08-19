@@ -824,15 +824,11 @@
   <div>
     <%# ===== Card único: atendimento & contexto (seções com divisor) ===== %>
     <%
-      interest_signals = ((@interest_profile || {}).with_indifferent_access[:signals] || {})
-      interest_signal_count = interest_signals.values.sum(&:to_i)
       interest_enabled = @interest_settings&.enabled?
       interest_badge = if !interest_enabled
         "Desativada"
-      elsif interest_signal_count.positive?
-        "#{(@interest_profile || {}).with_indifferent_access[:confidence].to_i}% confiança · #{interest_signal_count} sinais"
       else
-        "Sem sinais"
+        "Carregando"
       end
     %>
     <div class="ax-card lead-next-action-card">
@@ -894,16 +890,19 @@
           <span class="ax-stat-label">Inteligência de Interesse</span>
           <span class="ax-badge ax-badge--gray"><%= interest_badge %></span>
         </div>
-        <%= render "admin/leads/interest_intelligence",
-              lead: @lead,
-              profile: @interest_profile,
-              profile_incomplete: @interest_profile_incomplete,
-              matches: @interest_matches,
-              navigation_events: @interest_navigation_events,
-              property_interests: @interest_property_interests,
-              settings: @interest_settings,
-              simulation: @interest_simulation,
-              embedded: true %>
+        <%= turbo_frame_tag dom_id(@lead, :interest_intelligence),
+              src: interest_intelligence_admin_lead_path(@lead),
+              loading: "lazy" do %>
+          <div class="lead-interest-card">
+            <div class="lead-interest-empty">
+              <i class="bi bi-hourglass-split"></i>
+              <div>
+                <strong>Carregando sinais</strong>
+                <p>A tela do lead já pode ser usada enquanto a inteligência calcula em segundo plano.</p>
+              </div>
+            </div>
+          </div>
+        <% end %>
 
         <div class="lead-view-divider"></div>
 

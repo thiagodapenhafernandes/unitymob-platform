@@ -1014,6 +1014,42 @@ RSpec.describe "Admin::Leads", type: :request do
 
   end
 
+  describe "GET /admin/leads/:id" do
+    it "carrega inteligencia de interesse via frame lazy e preserva marcacao de imoveis enviados" do
+      property = create(:habitation, tenant: admin.tenant, codigo: "SENT-001")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      lead.property_interests.create!(tenant: admin.tenant, habitation: property)
+      lead.ai_property_share_collections.create!(admin_user: admin).tap do |collection|
+        collection.items.create!(habitation: property)
+      end
+      allow(InterestIntelligence::Matcher).to receive(:new).and_raise("matching should be lazy")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("SENT-001", "Enviado", "Carregando sinais")
+      expect(response.body).to include(interest_intelligence_admin_lead_path(lead))
+    end
+
+    it "renderiza a inteligencia de interesse no endpoint lazy" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      matcher = instance_double(
+        InterestIntelligence::Matcher,
+        profile: { signals: {}, criteria: {}, confidence: 0 },
+        profile_incomplete?: true,
+        call: []
+      )
+      allow(InterestIntelligence::Matcher).to receive(:new).with(lead).and_return(matcher)
+      frame_id = ActionView::RecordIdentifier.dom_id(lead, :interest_intelligence)
+
+      get interest_intelligence_admin_lead_path(lead), headers: { "Turbo-Frame" => frame_id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(id="#{frame_id}"))
+      expect(response.body).to include("Perfil ainda incompleto")
+    end
+  end
+
   describe "POST /admin/leads/:id/suggest_properties" do
     it "adiciona imoveis semelhantes aos interesses do lead" do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin)

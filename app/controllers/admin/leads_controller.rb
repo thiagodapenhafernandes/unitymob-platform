@@ -98,8 +98,8 @@ class Admin::LeadsController < Admin::BaseController
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
 
@@ -245,7 +245,9 @@ class Admin::LeadsController < Admin::BaseController
     @funnel_statuses = Lead.status_options
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
-    load_interest_intelligence
+    @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
+    @shared_interest_property_ids = @lead.shared_property_ids
+    @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context
   end
 
@@ -381,6 +383,29 @@ class Admin::LeadsController < Admin::BaseController
     load_show_context
     @interest_simulation = true
     render :show
+  end
+
+  def interest_intelligence
+    load_interest_intelligence
+
+    html = render_to_string(
+      partial: "admin/leads/interest_intelligence",
+      formats: [:html],
+      locals: {
+        lead: @lead,
+        profile: @interest_profile,
+        profile_incomplete: @interest_profile_incomplete,
+        matches: @interest_matches,
+        navigation_events: @interest_navigation_events,
+        property_interests: @interest_property_interests,
+        settings: @interest_settings,
+        simulation: false,
+        embedded: true
+      }
+    )
+
+    frame_id = view_context.dom_id(@lead, :interest_intelligence)
+    render html: %(<turbo-frame id="#{ERB::Util.html_escape(frame_id)}">#{html}</turbo-frame>).html_safe, layout: false
   end
 
   def open_whatsapp_conversation
@@ -1668,7 +1693,7 @@ class Admin::LeadsController < Admin::BaseController
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
     @shared_interest_property_ids = @lead.shared_property_ids
     load_origin_options
-    load_interest_intelligence
+    @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context
   end
 

@@ -121,6 +121,8 @@ RSpec.describe "AI property share collections", type: :request do
   end
 
   it "usa o lead vinculado ao link e notifica o dono atual ao registrar interesse" do
+    old_app_host = ENV["APP_HOST"]
+    ENV["APP_HOST"] = "https://app.conexaobc.com"
     current_owner = create(:admin_user, tenant: broker.tenant)
     lead = create(:lead, tenant: broker.tenant, admin_user: current_owner, name: "Maria Lead", phone: "47999990000")
     collection = broker.tenant.ai_property_share_collections.create!(admin_user: broker, lead: lead).tap do |share|
@@ -137,10 +139,13 @@ RSpec.describe "AI property share collections", type: :request do
       hash_including(
         admin_user_id: current_owner.id,
         title: "Interesse em imóvel compartilhado",
-        url: admin_lead_url(lead),
+        url: "https://app.conexaobc.com#{admin_lead_path(lead)}",
+        lead_id: lead.id,
         tag: "lead-#{lead.id}-property-#{first_property.id}-#{current_owner.id}"
       )
     )
+  ensure
+    ENV["APP_HOST"] = old_app_host
   end
 
   it "notifica o dono atual mesmo quando o interesse ja existia no lead" do
@@ -160,6 +165,7 @@ RSpec.describe "AI property share collections", type: :request do
       hash_including(
         admin_user_id: current_owner.id,
         title: "Interesse em imóvel compartilhado",
+        lead_id: lead.id,
         tag: "lead-#{lead.id}-property-#{first_property.id}-#{current_owner.id}"
       )
     )

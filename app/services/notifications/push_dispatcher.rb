@@ -2,7 +2,7 @@ module Notifications
   # Envia notificações Web Push (VAPID) para um AdminUser.
   # Remove subscriptions expiradas (410 Gone) automaticamente.
   class PushDispatcher
-    def self.deliver(admin_user_id:, title:, body:, url: "/field", icon: nil, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false)
+    def self.deliver(admin_user_id:, title:, body:, url: "/field", icon: nil, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false, lead_id: nil)
       new(admin_user_id: admin_user_id).deliver(
         title: title,
         body: body,
@@ -12,7 +12,8 @@ module Notifications
         tag: tag,
         urgency: urgency,
         ttl: ttl,
-        require_interaction: require_interaction
+        require_interaction: require_interaction,
+        lead_id: lead_id
       )
     end
 
@@ -23,10 +24,10 @@ module Notifications
     # accept_url (opcional): endpoint que o service worker chama em background no
     # clique para registrar o "aceite", abrindo o `url` (ex.: WhatsApp do lead)
     # direto, sem passar por tela do sistema.
-    def deliver(title:, body:, url:, icon:, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false)
+    def deliver(title:, body:, url:, icon:, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false, lead_id: nil)
       unless push_setting.configured?
         Rails.logger.warn("[PushDispatcher] push indisponivel para admin_user_id=#{@admin_user_id}: configuracao incompleta ou desativada")
-        record_delivery_event("push_unavailable", tag: tag, urgency: urgency, ttl: ttl)
+        record_delivery_event("push_unavailable", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id)
         return 0
       end
 
@@ -34,7 +35,7 @@ module Notifications
       subs = PushSubscription.active.where(admin_user_id: @admin_user_id)
       if subs.empty?
         Rails.logger.warn("[PushDispatcher] sem subscriptions ativas para admin_user_id=#{@admin_user_id}")
-        record_delivery_event("no_active_subscription", tag: tag, urgency: urgency, ttl: ttl)
+        record_delivery_event("no_active_subscription", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id)
         return 0
       end
 
@@ -72,6 +73,7 @@ module Notifications
             tag: tag,
             urgency: urgency,
             ttl: ttl,
+            lead_id: lead_id,
             provider_status: response&.code || "ok"
           )
           Rails.logger.info("[PushDispatcher] aceito pelo provedor admin_user_id=#{@admin_user_id} sub=#{sub.id} status=#{response&.code || 'ok'} urgency=#{urgency} ttl=#{ttl}")
@@ -81,7 +83,8 @@ module Notifications
             subscription: sub,
             tag: tag,
             urgency: urgency,
-            ttl: ttl
+            ttl: ttl,
+            lead_id: lead_id
           )
           sub.update_column(:active, false)
         rescue => e
@@ -91,6 +94,7 @@ module Notifications
             tag: tag,
             urgency: urgency,
             ttl: ttl,
+            lead_id: lead_id,
             error_class: e.class.name,
             error_message: e.message
           )
@@ -136,7 +140,7 @@ module Notifications
       subject.to_s.start_with?("mailto:", "http") ? subject : "mailto:#{subject}"
     end
 
-    def record_delivery_event(event_type, subscription: nil, tag: nil, urgency: nil, ttl: nil, **attrs)
+    def record_delivery_event(event_type, subscription: nil, tag: nil, urgency: nil, ttl: nil, lead_id: nil, **attrs)
       PushDeliveryEvent.record!(
         event_type: event_type,
         admin_user_id: @admin_user_id,
@@ -146,6 +150,7 @@ module Notifications
         user_agent: subscription&.user_agent,
         urgency: urgency,
         ttl: ttl,
+        lead_id: lead_id,
         **attrs
       )
     end

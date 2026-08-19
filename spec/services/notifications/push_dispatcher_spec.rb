@@ -26,21 +26,24 @@ RSpec.describe Notifications::PushDispatcher do
 
   it "retorna zero e registra log quando o usuario nao tem subscription ativa" do
     allow(Rails.logger).to receive(:warn)
+    lead = create(:lead, admin_user: admin_user)
 
     result = described_class.deliver(
       admin_user_id: admin_user.id,
       title: "Novo lead",
       body: "Teste",
-      url: "/admin/leads/1/attend"
+      url: "/admin/leads/#{lead.id}/attend",
+      lead_id: lead.id
     )
 
     expect(result).to eq(0)
     expect(Rails.logger).to have_received(:warn).with(
       "[PushDispatcher] sem subscriptions ativas para admin_user_id=#{admin_user.id}"
-    )
+    ).at_least(:once)
     event = PushDeliveryEvent.last
     expect(event).to have_attributes(
       admin_user_id: admin_user.id,
+      lead_id: lead.id,
       event_type: "no_active_subscription"
     )
   end
