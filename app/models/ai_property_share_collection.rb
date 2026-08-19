@@ -15,6 +15,17 @@ class AiPropertyShareCollection < ApplicationRecord
   scope :active, -> { where("expires_at > ?", Time.current) }
   before_validation :set_defaults, on: :create
 
+  def self.extract_token(value)
+    value.to_s[%r{(?:https?://[^\s<>"']+)?/selecoes/([A-Za-z0-9_-]+)}, 1]
+  end
+
+  def self.preview_for_message_body(body, tenant:)
+    token = extract_token(body)
+    return if token.blank? || tenant.blank?
+
+    where(tenant: tenant).includes(:habitations, :admin_user).find_by(token: token)
+  end
+
   def record!(event_type, lead: nil, habitation: nil, admin_user: nil, metadata: {})
     audit_events.create!(tenant:, event_type:, lead:, habitation:, admin_user:, metadata: metadata.compact)
   end

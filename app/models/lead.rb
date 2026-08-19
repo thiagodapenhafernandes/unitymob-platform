@@ -74,6 +74,20 @@ class Lead < ApplicationRecord
     labels.sort_by { |label| [label.position, label.name] }
   end
 
+  def shared_property_ids
+    collection_ids = ai_property_share_collections
+      .joins(:items)
+      .distinct
+      .pluck("ai_property_share_items.habitation_id")
+
+    activity_ids = activities
+      .where(kind: "property_share")
+      .pluck(:metadata)
+      .flat_map { |metadata| Array(metadata&.dig("habitation_ids")) }
+
+    (collection_ids + activity_ids).map(&:to_i).reject(&:zero?).uniq
+  end
+
   after_create :record_audit_create
   after_update :record_audit_update
   after_destroy :record_audit_destroy

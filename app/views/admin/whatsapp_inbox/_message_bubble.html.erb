@@ -253,6 +253,9 @@
         <div class="wa-inbox-bubble__body wa-inbox-bubble__body--media"><%= message.body %></div>
       <% elsif !media_message && message.body.present? %>
         <div class="wa-inbox-bubble__body wa-inbox-bubble__body--text"><%= message.body %></div>
+        <% if (share_collection = AiPropertyShareCollection.preview_for_message_body(message.body, tenant: message.tenant)) %>
+          <%= render "admin/whatsapp_inbox/property_share_preview", collection: share_collection %>
+        <% end %>
       <% end %>
     </div>
 

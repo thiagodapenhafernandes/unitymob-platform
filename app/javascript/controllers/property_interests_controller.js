@@ -17,6 +17,8 @@ export default class extends Controller {
 
   connect() {
     this.busy = false
+    this.lastShareMessage = ""
+    this.lastShareUrl = ""
     this.updateShareButton()
   }
 
@@ -72,7 +74,6 @@ export default class extends Controller {
         return
       }
 
-      await this.copyText(data.message || data.url)
       if (typeof data.chips_html === "string" && this.hasListTarget) {
         this.listTarget.innerHTML = data.chips_html
       }
@@ -121,6 +122,22 @@ export default class extends Controller {
       this.setShareBusy(false)
       this.updateShareButton()
     }
+  }
+
+  async copyLink() {
+    const text = this.lastShareUrl || (this.hasShareLinkTarget ? this.shareLinkTarget.value : "")
+    if (!text) return
+
+    await this.copyText(text)
+  }
+
+  sendInternally() {
+    const body = this.lastShareMessage || this.lastShareUrl || (this.hasShareLinkTarget ? this.shareLinkTarget.value : "")
+    if (!body) return
+
+    window.dispatchEvent(new CustomEvent("wa-property-share:fill", {
+      detail: { body }
+    }))
   }
 
   clearSelect() {
@@ -185,6 +202,7 @@ export default class extends Controller {
 
     this.shareButtonTarget.disabled = active
     this.shareButtonTarget.setAttribute("aria-busy", active ? "true" : "false")
+    this.shareButtonTarget.classList.toggle("is-loading", active)
   }
 
   setSuggestBusy(active) {
@@ -195,8 +213,10 @@ export default class extends Controller {
   }
 
   showShareResult(data) {
+    this.lastShareUrl = data.url || ""
+    this.lastShareMessage = data.message || this.lastShareUrl
     if (this.hasShareResultTarget) this.shareResultTarget.hidden = false
-    if (this.hasShareLinkTarget) this.shareLinkTarget.value = data.url || ""
+    if (this.hasShareLinkTarget) this.shareLinkTarget.value = this.lastShareUrl
     if (this.hasWhatsappLinkTarget) {
       if (data.whatsapp_url) {
         this.whatsappLinkTarget.href = data.whatsapp_url

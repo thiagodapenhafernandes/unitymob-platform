@@ -744,6 +744,7 @@
               show_empty: false,
               share_url: share_properties_admin_lead_path(@lead),
               suggest_url: suggest_properties_admin_lead_path(@lead),
+              internal_send_enabled: @whatsapp_conversation.present? && can?(:manage, :whatsapp_inbox),
               shared_property_ids: @shared_interest_property_ids,
               share_expires_in_days: PropertySetting.instance(tenant: current_tenant).ai_property_search_share_expiration_days %>
         <% if @property_share_collections.present? %>

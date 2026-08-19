@@ -138,7 +138,29 @@ RSpec.describe "AI property share collections", type: :request do
         admin_user_id: current_owner.id,
         title: "Interesse em imóvel compartilhado",
         url: admin_lead_url(lead),
-        tag: "lead-#{lead.id}-#{current_owner.id}"
+        tag: "lead-#{lead.id}-property-#{first_property.id}-#{current_owner.id}"
+      )
+    )
+  end
+
+  it "notifica o dono atual mesmo quando o interesse ja existia no lead" do
+    current_owner = create(:admin_user, tenant: broker.tenant)
+    lead = create(:lead, tenant: broker.tenant, admin_user: current_owner, name: "Maria Lead", phone: "47999990000")
+    lead.property_interests.create!(tenant: broker.tenant, habitation: first_property)
+    collection = broker.tenant.ai_property_share_collections.create!(admin_user: broker, lead: lead).tap do |share|
+      share.items.create!(habitation: first_property)
+    end
+    allow(Notifications::PushDispatcher).to receive(:deliver)
+
+    post_interest(collection, habitation_id: first_property.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(collection.audit_events.where(event_type: "interest_repeated", lead: lead, admin_user: current_owner)).to exist
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(
+      hash_including(
+        admin_user_id: current_owner.id,
+        title: "Interesse em imóvel compartilhado",
+        tag: "lead-#{lead.id}-property-#{first_property.id}-#{current_owner.id}"
       )
     )
   end

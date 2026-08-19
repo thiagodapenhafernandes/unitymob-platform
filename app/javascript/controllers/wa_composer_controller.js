@@ -108,6 +108,20 @@ export default class extends Controller {
     this.bodyTarget.focus()
   }
 
+  fillExternalBody(event) {
+    const { body } = event.detail || {}
+    if (!body) return
+
+    if (this.hasTemplateTarget) this.templateTarget.value = ""
+    this.clearFile()
+    this.bodyTarget.disabled = false
+    this.bodyTarget.value = body
+    if (this.hasPresentationCardTarget) this.presentationCardTarget.value = ""
+    this.bodyChanged()
+    this.bodyTarget.focus()
+    this.bodyTarget.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
   submitOnEnter(event) {
     if (event.key !== "Enter" || event.shiftKey) return
     if (event.isComposing) return
@@ -761,8 +775,12 @@ export default class extends Controller {
     }
 
     if (body) {
+      const shareUrl = this.propertyShareUrl(body)
+      const sharePreview = shareUrl ? this.optimisticPropertySharePreview(shareUrl) : ""
+
       return `
         <div class="wa-inbox-bubble__body wa-inbox-bubble__body--text">${this.escapeHtml(body)}</div>
+        ${sharePreview}
       `
     }
 
@@ -785,6 +803,31 @@ export default class extends Controller {
       hour: "2-digit",
       minute: "2-digit"
     }).format(new Date())
+  }
+
+  propertyShareUrl(body) {
+    return String(body || "").match(/https?:\/\/[^\s<>"']+\/selecoes\/[A-Za-z0-9_-]+/)?.[0] || null
+  }
+
+  optimisticPropertySharePreview(url) {
+    let label = url
+
+    try {
+      const parsedUrl = new URL(url)
+      label = `${parsedUrl.host}${parsedUrl.pathname}`
+    } catch (_error) {}
+
+    return `
+      <a class="wa-link-preview wa-link-preview--property-share" href="${this.escapeHtml(url)}" target="_blank" rel="noopener">
+        <span class="wa-link-preview__icon"><i class="bi bi-buildings"></i></span>
+        <span class="wa-link-preview__body">
+          <span class="wa-link-preview__eyebrow">Seleção de imóveis</span>
+          <strong>Imóveis selecionados</strong>
+          <span>${this.escapeHtml(label)}</span>
+        </span>
+        <span class="wa-link-preview__action"><i class="bi bi-box-arrow-up-right"></i></span>
+      </a>
+    `
   }
 
   escapeHtml(value) {

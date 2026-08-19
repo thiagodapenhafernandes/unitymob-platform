@@ -86,6 +86,21 @@ RSpec.describe Lead, type: :model do
     end
   end
 
+  describe "#shared_property_ids" do
+    it "combina collections vinculadas e historico de compartilhamento do lead" do
+      lead = create(:lead)
+      collection_property = create(:habitation, tenant: lead.tenant)
+      activity_property = create(:habitation, tenant: lead.tenant)
+      broker = create(:admin_user, tenant: lead.tenant)
+      lead.ai_property_share_collections.create!(admin_user: broker).tap do |collection|
+        collection.items.create!(habitation: collection_property)
+      end
+      LeadActivity.log!(lead:, kind: "property_share", metadata: { habitation_ids: [activity_property.id] })
+
+      expect(lead.reload.shared_property_ids).to contain_exactly(collection_property.id, activity_property.id)
+    end
+  end
+
   describe "#closed_at" do
     it "preenche ao entrar em concluido e preserva em edicoes posteriores" do
       lead = create(:lead, status: "Novo", closed_at: nil)

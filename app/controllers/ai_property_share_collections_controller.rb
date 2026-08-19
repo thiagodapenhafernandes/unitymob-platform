@@ -32,7 +32,7 @@ class AiPropertyShareCollectionsController < ApplicationController
     event = interest.previously_new_record? ? "interest_created" : "interest_repeated"
     @collection.record!(event, lead:, habitation:, admin_user: responsible, metadata: request_metadata.merge(shared_by_admin_user_id: @collection.admin_user_id))
     LeadActivity.log!(lead:, kind: "property_interest", metadata: { habitation_id: habitation.id, share_collection_id: @collection.id, event: })
-    notify_current_owner!(lead, habitation) if event == "interest_created"
+    notify_current_owner!(lead, habitation)
 
     render json: { success: true, message: @setting.ai_property_search_interest_success_message, lead_id: lead.id }
   end
@@ -103,7 +103,7 @@ class AiPropertyShareCollectionsController < ApplicationController
       title: "Interesse em imóvel compartilhado",
       body: "#{lead.display_name.presence || 'Lead'} demonstrou interesse no imóvel #{habitation.codigo}",
       url: admin_lead_url(lead),
-      tag: "lead-#{lead.id}-#{recipient.id}",
+      tag: "lead-#{lead.id}-property-#{habitation.id}-#{recipient.id}",
       urgency: "high",
       ttl: 86_400,
       require_interaction: true

@@ -38,7 +38,7 @@ class PushDeliveryEvent < ApplicationRecord
   end
 
   def self.lead_id_from_tag(tag)
-    match = tag.to_s.match(/\Alead-(\d+)(?:-\d+)?\z/)
+    match = tag.to_s.match(/\Alead-(\d+)(?:-.+)?\z/)
     match && match[1].to_i
   end
 

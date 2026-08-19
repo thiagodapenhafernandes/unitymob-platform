@@ -993,6 +993,7 @@ RSpec.describe "Admin::Leads", type: :request do
     it "gera link de selecao vinculado ao lead e mensagem pronta para WhatsApp" do
       property = create(:habitation, tenant: admin.tenant, codigo: "SEL-001", status: "Venda", exibir_no_site_flag: false)
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Maria", phone: "47999990000")
+      admin.tenant.tenant_domains.create!(hostname: "app.conexaobc.com", primary_domain: true)
 
       post share_properties_admin_lead_path(lead),
            params: { habitation_ids: [property.id], expires_in_days: 14 },
@@ -1003,12 +1004,14 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(collection).to have_attributes(tenant_id: admin.tenant_id, admin_user_id: admin.id, lead_id: lead.id)
       expect(collection.expires_at).to be_within(5.seconds).of(14.days.from_now)
       expect(collection.habitations).to contain_exactly(property)
-      expect(response.parsed_body["url"]).to eq(ai_property_share_collection_url(collection.token))
+      expect(response.parsed_body["url"]).to eq("https://conexaobc.com#{ai_property_share_collection_path(collection.token)}")
+      expect(response.parsed_body["url"]).not_to include("app.conexaobc.com")
       expect(response.parsed_body["message"]).to include("Maria", "SEL-001", response.parsed_body["url"])
       expect(response.parsed_body["whatsapp_url"]).to include("https://wa.me/5547999990000?text=")
       expect(response.parsed_body["chips_html"]).to include("SEL-001", "Enviado")
       expect(lead.activities.where(kind: "property_share")).to exist
     end
+
   end
 
   describe "POST /admin/leads/:id/suggest_properties" do

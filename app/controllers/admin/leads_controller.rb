@@ -439,7 +439,7 @@ class Admin::LeadsController < Admin::BaseController
       lead: @lead,
       expires_at: lead_share_expires_at(setting)
     )
-    url = ai_property_share_collection_url(result.collection.token)
+    url = public_share_collection_url(result.collection)
     message = lead_property_share_message(result.habitations, url, setting)
     result.collection.update!(message:)
     ensure_shared_property_interests!(result.habitations)
@@ -604,8 +604,20 @@ class Admin::LeadsController < Admin::BaseController
     }
   end
 
+  def public_share_collection_url(collection)
+    base = public_tenant_base_url(collection.tenant)
+    "#{base}#{ai_property_share_collection_path(collection.token)}"
+  end
+
+  def public_tenant_base_url(tenant)
+    host = tenant.tenant_domains.active.primary_first.first&.hostname
+    host = host.to_s.delete_prefix("app.") if host.present?
+    return "https://#{host}" if host.present?
+
+    request.base_url.sub(%r{://app\.}, "://")
+  end
+
   def render_property_interest_chips(share: false)
-    shared_property_ids = @lead.ai_property_share_collections.includes(:habitations).flat_map { |collection| collection.habitations.map(&:id) }.uniq
     render_to_string(
       partial: "admin/whatsapp_inbox/thread_property_interest_chips",
       formats: [:html],
@@ -613,7 +625,7 @@ class Admin::LeadsController < Admin::BaseController
         lead: @lead,
         show_empty: false,
         share_url: (share_properties_admin_lead_path(@lead) if share),
-        shared_property_ids:
+        shared_property_ids: @lead.shared_property_ids
       }
     )
   end
@@ -1654,7 +1666,7 @@ class Admin::LeadsController < Admin::BaseController
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
-    @shared_interest_property_ids = @property_share_collections.flat_map { |collection| collection.habitations.map(&:id) }.uniq
+    @shared_interest_property_ids = @lead.shared_property_ids
     load_origin_options
     load_interest_intelligence
     load_lead_favorite_context

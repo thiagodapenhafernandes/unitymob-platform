@@ -43,6 +43,20 @@
     </div>
     <div class="lead-property-share-result" data-property-interests-target="shareResult" hidden>
       <input type="text" readonly data-property-interests-target="shareLink" aria-label="Link gerado para compartilhar imóveis">
+      <button type="button"
+              class="ax-btn ax-btn--sm"
+              data-action="property-interests#copyLink">
+        <i class="bi bi-copy"></i>
+        Copiar link
+      </button>
+      <% if local_assigns[:internal_send_enabled] %>
+        <button type="button"
+                class="ax-btn ax-btn--sm ax-btn--primary"
+                data-action="property-interests#sendInternally">
+          <i class="bi bi-send"></i>
+          Enviar no conversador
+        </button>
+      <% end %>
       <a class="ax-btn ax-btn--sm" href="#" target="_blank" rel="noopener" data-property-interests-target="whatsappLink" hidden>
         <i class="bi bi-whatsapp"></i>
         Abrir WhatsApp

@@ -1,0 +1,22 @@
+<%
+  habitations = collection.habitations.first(3)
+  expired = collection.expires_at.present? && collection.expires_at <= Time.current
+  public_host = collection.tenant.tenant_domains.active.primary_first.first&.hostname.to_s.delete_prefix("app.")
+  public_path = ai_property_share_collection_path(collection.token)
+  public_url = public_host.present? ? "https://#{public_host}#{public_path}" : public_path
+%>
+<a class="wa-link-preview wa-link-preview--property-share"
+   href="<%= public_url %>"
+   target="_blank"
+   rel="noopener"
+   data-turbo="false">
+  <span class="wa-link-preview__icon"><i class="bi bi-buildings"></i></span>
+  <span class="wa-link-preview__body">
+    <span class="wa-link-preview__eyebrow">Seleção de imóveis<%= " · expirada" if expired %></span>
+    <strong><%= pluralize(collection.habitations.size, "imóvel selecionado", "imóveis selecionados") %></strong>
+    <% if habitations.any? %>
+      <span><%= habitations.map { |habitation| [habitation.codigo, habitation.display_title.presence].compact_blank.join(" · ") }.join(" | ").truncate(150) %></span>
+    <% end %>
+  </span>
+  <span class="wa-link-preview__action"><i class="bi bi-box-arrow-up-right"></i></span>
+</a>
