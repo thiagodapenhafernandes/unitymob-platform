@@ -34,7 +34,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response).to redirect_to(admin_meta_integrations_path)
   end
 
-  it "usa webhook central nos placeholders quando o gateway esta configurado" do
+  it "mantem webhook proprio nos campos e exibe nota do webhook global quando configurado" do
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_PUBLIC_URL").and_return("https://webhooks.unitymob.com.br/webhooks/whatsapp")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
@@ -47,9 +47,12 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     callback = document.at_css('input[type="url"][name="whatsapp_business_integration[webhook_callback_url]"]')
     token = document.at_css('input[name="whatsapp_business_integration[webhook_verify_token]"]')
 
-    expect(callback["placeholder"]).to eq("https://webhooks.unitymob.com.br/webhooks/whatsapp")
-    expect(callback["value"]).to eq("https://webhooks.unitymob.com.br/webhooks/whatsapp")
-    expect(token["value"]).to eq("gateway-verify-token")
+    expect(callback["placeholder"]).to eq("http://localhost/webhooks/whatsapp")
+    expect(callback["value"]).to eq("http://localhost/webhooks/whatsapp")
+    expect(token["value"]).not_to eq("gateway-verify-token")
+    expect(response.body).to include("Webhook global Unitymob")
+    expect(response.body).to include("https://webhooks.unitymob.com.br/webhooks/whatsapp")
+    expect(response.body).to include("gateway-verify-token")
   end
 
   it "renderiza o prefixo semântico dos telefones do site" do

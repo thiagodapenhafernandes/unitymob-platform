@@ -221,6 +221,16 @@
                   <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary ax-btn--sm" %>
                 </div>
               <% end %>
+
+              <% if @global_webhook_callback_url.present? && @global_webhook_verify_token.present? %>
+                <%= ax_inline_notice(tone: :info, icon: "globe2", compact: true) do %>
+                  <strong>Webhook global Unitymob:</strong>
+                  para usar o app Meta central, configure a Callback URL
+                  <code><%= @global_webhook_callback_url %></code>
+                  e o Verify Token
+                  <code><%= @global_webhook_verify_token %></code>.
+                <% end %>
+              <% end %>
             </section>
 
             <% if !connected && @whatsapp_integration.last_error_message.present? %>
