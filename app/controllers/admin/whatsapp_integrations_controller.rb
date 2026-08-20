@@ -261,10 +261,12 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       return
     end
 
+    Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
     template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
+
     unless Whatsapp::LeadActivationTemplate.editable?(template)
       redirect_to admin_whatsapp_integration_path(anchor: "lead-activation-template"),
-                  alert: "Este template já está #{template.status.to_s.downcase} e não pode ser reenviado por aqui."
+                  notice: "Template #{Whatsapp::LeadActivationTemplate::TEMPLATE_NAME} já está #{template.status.to_s.downcase} na Meta."
       return
     end
 
@@ -480,7 +482,14 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
         number: result.dig(:data, "display_phone_number"),
         name: result.dig(:data, "verified_name"),
         quality: result.dig(:data, "quality_rating"),
-        code_verification_status: result.dig(:data, "code_verification_status")
+        code_verification_status: result.dig(:data, "code_verification_status"),
+        platform_type: result.dig(:data, "platform_type"),
+        name_status: result.dig(:data, "name_status"),
+        new_name_status: result.dig(:data, "new_name_status"),
+        account_mode: result.dig(:data, "account_mode"),
+        phone_status: result.dig(:data, "status"),
+        official_business_account: result.dig(:data, "official_business_account"),
+        throughput: result.dig(:data, "throughput")
       }
     end
   rescue StandardError

@@ -119,6 +119,42 @@ RSpec.describe Whatsapp::CloudClient do
     )
   end
 
+  it "consulta detalhes ampliados do telefone e faz fallback para campos basicos se a Meta rejeitar" do
+    integration = WhatsappBusinessIntegration.new(
+      access_token: "token-123",
+      phone_number_id: "phone-123"
+    )
+    error_response = instance_double(
+      HTTParty::Response,
+      body: { error: { message: "Unsupported field", code: 100 } }.to_json,
+      code: 400,
+      success?: false
+    )
+    success_response = instance_double(
+      HTTParty::Response,
+      body: { verified_name: "Conexão BC", quality_rating: "GREEN" }.to_json,
+      code: 200,
+      success?: true
+    )
+    allow(HTTParty).to receive(:get).and_return(error_response, success_response)
+
+    result = described_class.new(integration).phone_info
+
+    expect(result).to include(ok: true)
+    expect(result.dig(:data, "verified_name")).to eq("Conexão BC")
+    expect(HTTParty).to have_received(:get).twice
+    expect(HTTParty).to have_received(:get).with(
+      "https://graph.facebook.com/v24.0/phone-123",
+      query: hash_including(access_token: "token-123", fields: a_string_including("official_business_account", "throughput")),
+      timeout: 15
+    )
+    expect(HTTParty).to have_received(:get).with(
+      "https://graph.facebook.com/v24.0/phone-123",
+      query: hash_including(access_token: "token-123", fields: "verified_name,display_phone_number,quality_rating,code_verification_status,platform_type"),
+      timeout: 15
+    )
+  end
+
   it "rejeita registro quando o PIN nao tem seis digitos" do
     integration = WhatsappBusinessIntegration.new(
       access_token: "token-123",

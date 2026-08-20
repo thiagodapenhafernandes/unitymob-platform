@@ -91,6 +91,69 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(Whatsapp::TemplateSubmission).to have_received(:call)
   end
 
+  it "sincroniza antes de enviar o template de ativacao e nao reenvia quando ja esta aprovado na WABA atual" do
+    integration = current_whatsapp_integration!(waba_id: "waba-activation-current-approved")
+    admin.tenant.whatsapp_templates.create!(
+      name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+      waba_id: integration.waba_id,
+      language: "pt_BR",
+      category: "MARKETING",
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "image",
+      header_media_handle: "handle",
+      body: Whatsapp::LeadActivationTemplate::DEFAULT_BODY
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 1 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call)
+
+    post submit_lead_activation_template_admin_whatsapp_integration_path
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-activation-template"))
+    expect(Whatsapp::SyncTemplatesJob).to have_received(:perform_now).with(admin.tenant.id)
+    expect(Whatsapp::TemplateSubmission).not_to have_received(:call)
+  end
+
+  it "envia o template de ativacao na WABA atual reaproveitando imagem aprovada de WABA anterior" do
+    current_integration = current_whatsapp_integration!(
+      waba_id: "waba-activation-current",
+      phone_number_id: "phone-activation-current",
+      access_token: "token-activation-current"
+    )
+    previous_template = admin.tenant.whatsapp_templates.create!(
+      name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+      waba_id: "waba-activation-old",
+      language: "pt_BR",
+      category: "MARKETING",
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "image",
+      header_media_handle: "old-handle",
+      body: Whatsapp::LeadActivationTemplate::DEFAULT_BODY,
+      footer_text: "Atendimento"
+    )
+    previous_template.header_media_file.attach(
+      io: StringIO.new("fake-template-image"),
+      filename: "apresentacao.jpg",
+      content_type: "image/jpeg"
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 0 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      expect(template.waba_id).to eq(current_integration.waba_id)
+      expect(template.header_media_file).to be_attached
+      expect(template.header_media_file.blob).to eq(previous_template.header_media_file.blob)
+      template.update!(status: "PENDING", meta_id: "tpl-activation-current")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_activation_template_admin_whatsapp_integration_path
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-activation-template"))
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+    template = admin.tenant.whatsapp_templates.find_by!(name: "lead_activation_default", waba_id: current_integration.waba_id)
+    expect(template.status).to eq("PENDING")
+  end
+
   it "envia o template lead_alert para analise da Meta" do
     integration = current_whatsapp_integration!(
       waba_id: "waba-lead-alert-submit",
@@ -306,7 +369,13 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
           "display_phone_number" => "+55 47 9142-7176",
           "verified_name" => "Conexão BC",
           "quality_rating" => "UNKNOWN",
-          "code_verification_status" => "NOT_VERIFIED"
+          "code_verification_status" => "NOT_VERIFIED",
+          "platform_type" => "CLOUD_API",
+          "name_status" => "APPROVED",
+          "account_mode" => "LIVE",
+          "status" => "CONNECTED",
+          "official_business_account" => { "status" => "APPROVED" },
+          "throughput" => { "level" => "STANDARD" }
         }
       }
     )
@@ -320,6 +389,14 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(form).to be_present
     expect(form.at_css("input[name='pin'][maxlength='6']")).to be_present
     expect(form.text).to include("Registrar número")
+    expect(document.text).to include("Qualidade pendente")
+    expect(document.text).to include("Nome aprovado")
+    expect(document.text).to include("Conta comercial oficial")
+    expect(document.text).to include("Modo da conta")
+    expect(document.text).to include("Produção")
+    expect(document.text).to include("Throughput")
+    expect(document.text).to include("STANDARD")
+    expect(document.text).not_to include("UNKNOWN")
   end
 
   it "mostra numero registrado e oculta PIN quando a Meta confirma verificacao" do

@@ -9,6 +9,20 @@ module Whatsapp
   #   global do Admin do Sistema — envio de texto/template funciona igual.
   class CloudClient
     GRAPH_HOST = "https://graph.facebook.com".freeze
+    BASIC_PHONE_INFO_FIELDS = "verified_name,display_phone_number,quality_rating,code_verification_status,platform_type".freeze
+    EXTENDED_PHONE_INFO_FIELDS = [
+      "verified_name",
+      "display_phone_number",
+      "quality_rating",
+      "code_verification_status",
+      "platform_type",
+      "name_status",
+      "new_name_status",
+      "account_mode",
+      "status",
+      "official_business_account",
+      "throughput"
+    ].join(",").freeze
 
     def self.api_version
       ENV["WHATSAPP_GRAPH_API_VERSION"].presence || ENV["META_API_VERSION"].presence || "v24.0"
@@ -91,8 +105,10 @@ module Whatsapp
       return error_result("Integração não configurada") unless configured?
 
       url = "#{base}/#{@integration.phone_number_id}"
-      fields = "verified_name,display_phone_number,quality_rating,code_verification_status,platform_type"
-      parse(HTTParty.get(url, query: { access_token: token, fields: fields }, timeout: 15))
+      result = parse(HTTParty.get(url, query: { access_token: token, fields: EXTENDED_PHONE_INFO_FIELDS }, timeout: 15))
+      return result if result[:ok]
+
+      parse(HTTParty.get(url, query: { access_token: token, fields: BASIC_PHONE_INFO_FIELDS }, timeout: 15))
     rescue => e
       error_result(e.message)
     end
