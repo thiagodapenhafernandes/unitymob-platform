@@ -1125,6 +1125,14 @@ class Admin::LeadsController < Admin::BaseController
   def load_lead_whatsapp_context
     integration = WhatsappBusinessIntegration.current(current_tenant)
     @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
+    if whatsapp_conversation_bound_to_another_lead?(@whatsapp_conversation)
+      apply_lead_whatsapp_notice!(
+        "Já existe uma conversa WhatsApp para este telefone vinculada a outro lead. O atendimento não foi aberto automaticamente para evitar misturar históricos.",
+        detail: "Conversa ##{@whatsapp_conversation.id} vinculada ao lead ##{@whatsapp_conversation.lead_id}."
+      )
+      return
+    end
+
     if @whatsapp_conversation.blank? && auto_open_lead_whatsapp_conversation?(integration)
       @whatsapp_conversation = find_or_create_whatsapp_conversation_for!(@lead)
     end
@@ -1141,6 +1149,27 @@ class Admin::LeadsController < Admin::BaseController
     ) : nil
     @whatsapp_summary = snapshot ? snapshot.to_h.fetch(:thread_summary) : { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
     @whatsapp_thread_context_locals = snapshot ? snapshot.to_h : {}
+  rescue => e
+    Rails.logger.warn("[Admin::LeadsController#load_lead_whatsapp_context] lead_id=#{@lead&.id} tenant_id=#{current_tenant&.id} erro=#{e.class}: #{e.message}")
+    apply_lead_whatsapp_notice!(
+      "O bloco do WhatsApp não pôde ser carregado agora. O lead permanece disponível; revise pendências da integração ou da conversa.",
+      detail: e.message
+    )
+  end
+
+  def whatsapp_conversation_bound_to_another_lead?(conversation)
+    conversation&.lead_id.present? && conversation.lead_id != @lead.id
+  end
+
+  def apply_lead_whatsapp_notice!(message, detail: nil)
+    @whatsapp_conversation = nil
+    @lead_activation_template = nil
+    @whatsapp_templates = []
+    @whatsapp_messages = []
+    @whatsapp_summary = { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
+    @whatsapp_thread_context_locals = {}
+    @lead_whatsapp_notice = message
+    @lead_whatsapp_notice_detail = detail
   end
 
   def auto_open_lead_whatsapp_conversation?(integration)

@@ -923,6 +923,46 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("Falhou: Integração não configurada")
     end
 
+    it "mantem o detalhe do lead navegavel quando o bloco WhatsApp falha ao carregar" do
+      lead = create(:lead, status: "Novo", phone: "47999990031")
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-pendente", phone_number_id: "phone-pendente", access_token: "token-pendente")
+      allow_any_instance_of(Admin::LeadsController)
+        .to receive(:existing_whatsapp_conversation_for)
+        .and_raise(ActiveRecord::RecordInvalid.new(WhatsappConversation.new))
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("WhatsApp com pendência")
+      expect(response.body).to include("O bloco do WhatsApp não pôde ser carregado agora")
+      expect(response.body).to include(lead.display_name)
+    end
+
+    it "avisa quando o telefone do lead ja possui conversa vinculada a outro lead" do
+      lead_original = create(:lead, status: "Em Atendimento", phone: "47999990032")
+      lead_atual = create(:lead, status: "Novo", phone: "47999990032")
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-reuso", phone_number_id: "phone-reuso", access_token: "token-reuso")
+      WhatsappConversation.create!(
+        tenant: admin.tenant,
+        lead: lead_original,
+        contact_phone: "5547999990032",
+        contact_name: "Contato em outro lead",
+        status: "open"
+      )
+
+      get admin_lead_path(lead_atual)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("WhatsApp com pendência")
+      expect(response.body).to include("Já existe uma conversa WhatsApp para este telefone vinculada a outro lead")
+      expect(response.body).to include("Conversa #")
+      expect(response.body).to include("lead ##{lead_original.id}")
+      expect(response.body).to include(lead_atual.display_name)
+      expect(response.body).not_to include("Contato em outro lead")
+    end
+
     it "reutiliza o preview de áudio dentro do lead sem autoplay" do
       lead = create(:lead, status: "Novo", phone: "47999990029")
       conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990029", contact_name: "Lead Audio", status: "open", last_message_at: Time.current, last_message_preview: "[áudio]")

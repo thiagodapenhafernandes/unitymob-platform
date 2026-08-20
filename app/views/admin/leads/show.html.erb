@@ -950,6 +950,8 @@
                   thread_context_locals: @whatsapp_thread_context_locals,
                   messages: @whatsapp_messages.last(30),
                   return_to: request.fullpath,
+                  notice: @lead_whatsapp_notice,
+                  notice_detail: @lead_whatsapp_notice_detail,
                   panel_dom_id: "whatsapp_pwa_#{@lead.id}",
                   file_input_id: "lead-whatsapp-pwa-media-file-#{@lead.id}" %>
           </div>
@@ -1234,7 +1236,9 @@
             summary: @whatsapp_summary,
             thread_context_locals: @whatsapp_thread_context_locals,
             messages: @whatsapp_messages,
-            return_to: request.fullpath %>
+            return_to: request.fullpath,
+            notice: @lead_whatsapp_notice,
+            notice_detail: @lead_whatsapp_notice_detail %>
     <% end %>
 
     <%# Linha do tempo — colapsada; só marcos por padrão (WhatsApp tem toggle) %>
