@@ -165,73 +165,99 @@
         <% end %>
 
         <%= ax_operational_panel(
-              eyebrow: "Config WABA Unitymob: #{@embedded_signup_config_id}",
-              title: "Embedded Signup v4",
-              actions: ax_badge(@whatsapp_using_global ? "Global ativo" : (connected ? "Conectado" : "Aguardando conexão"), tone: @whatsapp_using_global ? :blue : (connected ? :green : :gray))
+              eyebrow: "WhatsApp Business API",
+              title: "Conexão WhatsApp",
+              actions: ax_badge(@whatsapp_using_global ? "Global ativo" : (connected ? "Conectado" : "Aguardando conexão"), tone: @whatsapp_using_global ? :blue : (connected ? :green : :gray), dot: connected || @whatsapp_using_global)
             ) do %>
           <div class="wa-panel-body">
             <% if connected %>
-              <div class="wa-connected">
-                <% [
-                     ["WABA ID", @whatsapp_integration.waba_id],
-                     ["Phone Number ID", @whatsapp_integration.phone_number_id],
-                     ["Business ID", @whatsapp_integration.business_id.presence || "Não informado"],
-                     ["Token", @whatsapp_integration.token_preview || "Salvo"],
-                     ["Conectado por", @whatsapp_integration.connected_by_admin_user&.name || "Sistema"],
-                     ["Data", (@whatsapp_integration.connected_at ? l(@whatsapp_integration.connected_at, format: :short) : "—")]
-                   ].each do |label, value| %>
-                  <div class="wa-connected__cell">
-                    <span><%= label %></span>
-                    <strong><%= value %></strong>
-                  </div>
-                <% end %>
-              </div>
+              <article class="wa-summary-row">
+                <div class="wa-summary-row__icon"><i class="bi bi-whatsapp"></i></div>
+                <div class="wa-summary-row__main">
+                  <strong>API conectada</strong>
+                  <span><%= @phone_info.to_h[:name].presence || @whatsapp_integration.connected_by_admin_user&.name || "Conta WhatsApp" %></span>
+                  <small><%= @phone_info.to_h[:number].presence || "Phone Number ID #{@whatsapp_integration.phone_number_id}" %></small>
+                </div>
+                <div class="wa-summary-row__meta">
+                  <%= ax_badge(@phone_info.to_h[:quality].presence || "Qualidade pendente", tone: ({ "GREEN" => :green, "YELLOW" => :amber, "RED" => :red }[@phone_info.to_h[:quality].to_s] || :gray)) %>
+                  <span><%= @whatsapp_integration.connected_at ? l(@whatsapp_integration.connected_at, format: :short) : "Conectado" %></span>
+                </div>
+              </article>
+            <% else %>
+              <%= ax_inline_notice(tone: :info, icon: "whatsapp", compact: true) do %>
+                Conecte a conta pela Meta ou preencha manualmente o número das notificações abaixo.
+              <% end %>
             <% end %>
 
-            <%# Webhook de mensagens (inbox) — agora editável %>
-            <section class="wa-webhook">
-              <header class="wa-webhook__head">
-                <div>
-                  <span class="ax-operational-panel__eyebrow">Inbox</span>
-                  <h3>Webhook de mensagens</h3>
-                </div>
-                <%= link_to "Abrir Atendimento", admin_whatsapp_conversations_path, class: "ax-btn ax-btn--sm" %>
-              </header>
-              <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber mensagens e retornos de aprovação. Campos a assinar: <code>messages</code> e <code>message_template_status_update</code>.</p>
+            <details class="wa-advanced-details" <%= "open" if @webhook_settings_errors.present? %>>
+              <summary class="wa-advanced-details__summary">
+                <span>Detalhes técnicos e webhook</span>
+                <i class="bi bi-chevron-down"></i>
+              </summary>
 
-              <% if @webhook_settings_errors.present? %>
-                <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-                  <strong>Revise os campos:</strong> <%= @webhook_settings_errors.to_sentence %>
-                <% end %>
+              <% if connected %>
+                <div class="wa-connected">
+                  <% [
+                       ["WABA ID", @whatsapp_integration.waba_id],
+                       ["Phone Number ID", @whatsapp_integration.phone_number_id],
+                       ["Business ID", @whatsapp_integration.business_id.presence || "Não informado"],
+                       ["Token", @whatsapp_integration.token_preview || "Salvo"],
+                       ["Conectado por", @whatsapp_integration.connected_by_admin_user&.name || "Sistema"],
+                       ["Data", (@whatsapp_integration.connected_at ? l(@whatsapp_integration.connected_at, format: :short) : "—")]
+                     ].each do |label, value| %>
+                    <div class="wa-connected__cell">
+                      <span><%= label %></span>
+                      <strong><%= value %></strong>
+                    </div>
+                  <% end %>
+                </div>
               <% end %>
 
-              <%= form_with model: @whatsapp_integration, url: admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
-                <div class="wa-webhook__grid">
-                  <div class="wa-field">
-                    <%= ax_text_field(form: f, method: :webhook_callback_url, label: "Callback URL", type: :url,
-                          tooltip: "Em produção, use o domínio público (HTTPS). Em branco, usa o padrão: #{@default_webhook_callback_url}",
-                          value: @webhook_callback_url, placeholder: @default_webhook_callback_url) %>
+              <%# Webhook de mensagens (inbox) — agora editável %>
+              <section class="wa-webhook">
+                <header class="wa-webhook__head">
+                  <div>
+                    <span class="ax-operational-panel__eyebrow">Inbox</span>
+                    <h3>Webhook de mensagens</h3>
                   </div>
-                  <div class="wa-field">
-                    <%= ax_text_field(form: f, method: :webhook_verify_token, label: "Verify Token",
-                          tooltip: "Cole este valor no painel da Meta ao assinar o webhook.", value: @webhook_verify_token) %>
-                  </div>
-                </div>
-                <div class="wa-webhook__actions">
-                  <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary ax-btn--sm" %>
-                </div>
-              <% end %>
+                  <%= link_to "Abrir Atendimento", admin_whatsapp_conversations_path, class: "ax-btn ax-btn--sm" %>
+                </header>
+                <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber mensagens e retornos de aprovação. Campos a assinar: <code>messages</code> e <code>message_template_status_update</code>.</p>
 
-              <% if @global_webhook_callback_url.present? && @global_webhook_verify_token.present? %>
-                <%= ax_inline_notice(tone: :info, icon: "globe2", compact: true) do %>
-                  <strong>Webhook global Unitymob:</strong>
-                  para usar o app Meta central, configure a Callback URL
-                  <code><%= @global_webhook_callback_url %></code>
-                  e o Verify Token
-                  <code><%= @global_webhook_verify_token %></code>.
+                <% if @webhook_settings_errors.present? %>
+                  <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                    <strong>Revise os campos:</strong> <%= @webhook_settings_errors.to_sentence %>
+                  <% end %>
                 <% end %>
-              <% end %>
-            </section>
+
+                <%= form_with model: @whatsapp_integration, url: admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
+                  <div class="wa-webhook__grid">
+                    <div class="wa-field">
+                      <%= ax_text_field(form: f, method: :webhook_callback_url, label: "Callback URL", type: :url,
+                            tooltip: "Em produção, use o domínio público (HTTPS). Em branco, usa o padrão: #{@default_webhook_callback_url}",
+                            value: @webhook_callback_url, placeholder: @default_webhook_callback_url) %>
+                    </div>
+                    <div class="wa-field">
+                      <%= ax_text_field(form: f, method: :webhook_verify_token, label: "Verify Token",
+                            tooltip: "Cole este valor no painel da Meta ao assinar o webhook.", value: @webhook_verify_token) %>
+                    </div>
+                  </div>
+                  <div class="wa-webhook__actions">
+                    <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+                  </div>
+                <% end %>
+
+                <% if @global_webhook_callback_url.present? && @global_webhook_verify_token.present? %>
+                  <%= ax_inline_notice(tone: :info, icon: "globe2", compact: true) do %>
+                    <strong>Webhook global Unitymob:</strong>
+                    para usar o app Meta central, configure a Callback URL
+                    <code><%= @global_webhook_callback_url %></code>
+                    e o Verify Token
+                    <code><%= @global_webhook_verify_token %></code>.
+                  <% end %>
+                <% end %>
+              </section>
+            </details>
 
             <% if !connected && @whatsapp_integration.last_error_message.present? %>
               <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
@@ -252,7 +278,7 @@
                       data-whatsapp-integration-target="signupButton"
                       data-action="whatsapp-integration#launchSignup"
                       <%= "disabled" unless can_launch_signup %>>
-                <i class="bi bi-whatsapp"></i> Conectar WhatsApp pela Meta
+                <i class="bi bi-whatsapp"></i> <%= connected ? "Reconectar WhatsApp pela Meta" : "Conectar WhatsApp pela Meta" %>
               </button>
               <% unless can_launch_signup %>
                 <span class="wa-hint">Revise os itens de configuração antes de conectar.</span>
@@ -301,38 +327,45 @@
                 <% end %>
               <% end %>
 
-              <%= form_with model: @whatsapp_integration, url: manual_connection_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
-                <div class="wa-field">
-                  <%= ax_text_field(form: f, method: :access_token, label: "Access Token (System User / permanente)", type: :password,
-                        tooltip: "Token usado pelas notificações do sistema e como credencial base para testar/enviar pelos números cadastrados abaixo. Salvo no backend, nunca exibido completo.",
-                        value: "",
-                        autocomplete: "off",
-                        placeholder: @whatsapp_integration.access_token.present? ? "Token salvo (#{@whatsapp_integration.token_preview}) — preencha para substituir" : "Cole o token da Cloud API") %>
-                </div>
+              <details class="wa-advanced-details" <%= "open" if @manual_connection_errors.present? %>>
+                <summary class="wa-advanced-details__summary">
+                  <span>Configuração avançada do número</span>
+                  <i class="bi bi-chevron-down"></i>
+                </summary>
 
-                <div class="wa-webhook__grid">
+                <%= form_with model: @whatsapp_integration, url: manual_connection_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
                   <div class="wa-field">
-                    <%= ax_text_field(form: f, method: :phone_number_id, label: "Phone Number ID das notificações",
-                          value: @whatsapp_integration.phone_number_id, placeholder: "Ex.: 649374078254590") %>
+                    <%= ax_text_field(form: f, method: :access_token, label: "Access Token (System User / permanente)", type: :password,
+                          tooltip: "Token usado pelas notificações do sistema e como credencial base para testar/enviar pelos números cadastrados abaixo. Salvo no backend, nunca exibido completo.",
+                          value: "",
+                          autocomplete: "off",
+                          placeholder: @whatsapp_integration.access_token.present? ? "Token salvo (#{@whatsapp_integration.token_preview}) — preencha para substituir" : "Cole o token da Cloud API") %>
                   </div>
-                  <div class="wa-field">
-                    <%= ax_text_field(form: f, method: :waba_id, label: "WABA das notificações",
-                          value: @whatsapp_integration.waba_id, placeholder: "Ex.: 616242481017427") %>
-                  </div>
-                  <div class="wa-field">
-                    <%= ax_text_field(form: f, method: :business_id, label: "Business ID (opcional)", value: @whatsapp_integration.business_id) %>
-                  </div>
-                  <div class="wa-field">
-                    <%= ax_text_field(form: f, method: :app_secret, label: "App Secret (opcional, p/ webhook)", type: :password,
-                          tooltip: "Valida a assinatura do webhook. Deixe em branco para manter o atual.", value: "", autocomplete: "off",
-                          placeholder: @whatsapp_integration.app_secret.present? ? "Salvo — preencha para substituir" : "Opcional") %>
-                  </div>
-                </div>
 
-                <div class="wa-webhook__actions">
-                  <%= f.submit "Salvar número das notificações", class: "ax-btn ax-btn--primary ax-btn--sm" %>
-                </div>
-              <% end %>
+                  <div class="wa-webhook__grid">
+                    <div class="wa-field">
+                      <%= ax_text_field(form: f, method: :phone_number_id, label: "Phone Number ID das notificações",
+                            value: @whatsapp_integration.phone_number_id, placeholder: "Ex.: 649374078254590") %>
+                    </div>
+                    <div class="wa-field">
+                      <%= ax_text_field(form: f, method: :waba_id, label: "WABA das notificações",
+                            value: @whatsapp_integration.waba_id, placeholder: "Ex.: 616242481017427") %>
+                    </div>
+                    <div class="wa-field">
+                      <%= ax_text_field(form: f, method: :business_id, label: "Business ID (opcional)", value: @whatsapp_integration.business_id) %>
+                    </div>
+                    <div class="wa-field">
+                      <%= ax_text_field(form: f, method: :app_secret, label: "App Secret (opcional, p/ webhook)", type: :password,
+                            tooltip: "Valida a assinatura do webhook. Deixe em branco para manter o atual.", value: "", autocomplete: "off",
+                            placeholder: @whatsapp_integration.app_secret.present? ? "Salvo — preencha para substituir" : "Opcional") %>
+                    </div>
+                  </div>
+
+                  <div class="wa-webhook__actions">
+                    <%= f.submit "Salvar número das notificações", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+                  </div>
+                <% end %>
+              </details>
 
               <% if @whatsapp_integration.messaging_ready? && @whatsapp_integration.phone_number_id.present? %>
                 <% phone_registered = @phone_info.to_h[:code_verification_status].to_s == "VERIFIED" %>
@@ -438,7 +471,7 @@
                 </div>
               </article>
 
-              <details class="wa-template-details" <%= "open" if activation_editable || @lead_activation_template_errors.present? %>>
+              <details class="wa-template-details" <%= "open" if @lead_activation_template_errors.present? %>>
                 <summary class="wa-template-details__summary">
                   <span>Editar rascunho, variáveis e prévia</span>
                   <i class="bi bi-chevron-down"></i>
@@ -877,6 +910,48 @@
   .wa-connected__cell { display: grid; gap: 2px; min-width: 0; }
   .wa-connected__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
   .wa-connected__cell strong { color: #1f2733; font-size: 13px; overflow-wrap: anywhere; }
+  .wa-summary-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--ax-border-soft, #e7ebf2);
+    border-radius: 8px;
+    background: #f8fafc;
+  }
+  .wa-summary-row__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #e6f6ec;
+    color: #0e9f6e;
+    font-size: 17px;
+  }
+  .wa-summary-row__main { display: grid; gap: 2px; min-width: 0; }
+  .wa-summary-row__main strong { color: #1f2733; font-size: 13.5px; line-height: 1.2; }
+  .wa-summary-row__main span { color: #4b5565; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
+  .wa-summary-row__main small { color: #8a93a3; font-size: 11px; overflow-wrap: anywhere; }
+  .wa-summary-row__meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; color: #8a93a3; font-size: 11px; font-weight: 700; }
+  .wa-advanced-details { display: grid; gap: 10px; }
+  .wa-advanced-details__summary {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 7px;
+    padding: 2px 0;
+    color: #365f8f;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+  }
+  .wa-advanced-details__summary::-webkit-details-marker { display: none; }
+  .wa-advanced-details__summary i { transition: transform .16s ease; }
+  .wa-advanced-details[open] .wa-advanced-details__summary i { transform: rotate(180deg); }
 
   .wa-webhook { border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
   .wa-webhook__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -1036,6 +1111,8 @@
   }
   @media (max-width: 820px) {
     .wa-lead-activation { grid-template-columns: minmax(0, 1fr); }
+    .wa-summary-row { grid-template-columns: 34px minmax(0, 1fr); align-items: start; }
+    .wa-summary-row__meta { grid-column: 2; justify-content: flex-start; }
     .wa-register-phone { grid-template-columns: minmax(0, 1fr); align-items: start; }
     .wa-register-phone__form { justify-content: flex-start; flex-wrap: wrap; }
     .wa-context-block__head { align-items: flex-start; flex-direction: column; }
