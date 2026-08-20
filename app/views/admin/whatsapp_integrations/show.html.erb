@@ -3,6 +3,47 @@
   active_tab = params[:tab].presence || "whatsapp"
   connected = @whatsapp_integration.connected?
   effective_connected = connected || @whatsapp_effective_ready
+  quality_label = ->(value) {
+    {
+      "GREEN" => "Boa qualidade",
+      "YELLOW" => "Qualidade em atenção",
+      "RED" => "Baixa qualidade",
+      "UNKNOWN" => "Qualidade pendente"
+    }.fetch(value.to_s.upcase, value.to_s.presence || "Qualidade pendente")
+  }
+  quality_tone = ->(value) {
+    {
+      "GREEN" => :green,
+      "YELLOW" => :amber,
+      "RED" => :red
+    }.fetch(value.to_s.upcase, :gray)
+  }
+  meta_status_label = ->(value) {
+    {
+      "APPROVED" => "Aprovado",
+      "DECLINED" => "Recusado",
+      "EXPIRED" => "Expirado",
+      "PENDING_REVIEW" => "Em análise",
+      "NONE" => "Sem solicitação",
+      "VERIFIED" => "Registrado",
+      "NOT_VERIFIED" => "Pendente",
+      "LIVE" => "Produção",
+      "SANDBOX" => "Sandbox",
+      "CONNECTED" => "Conectado",
+      "DISCONNECTED" => "Desconectado",
+      "FLAGGED" => "Sinalizado",
+      "RESTRICTED" => "Restrito"
+    }.fetch(value.to_s.upcase, value.to_s.presence || "Não informado")
+  }
+  official_account_label = ->(value) {
+    info = value.respond_to?(:to_h) ? value.to_h.with_indifferent_access : {}
+    status = info[:status].presence || value
+    meta_status_label.call(status)
+  }
+  throughput_label = ->(value) {
+    info = value.respond_to?(:to_h) ? value.to_h.with_indifferent_access : {}
+    info[:level].presence || info[:status].presence || value.to_s.presence || "Não informado"
+  }
 %>
 
 <% content_for :admin_contextbar_breadcrumb do %>
@@ -179,7 +220,9 @@
                   <small><%= @phone_info.to_h[:number].presence || "Phone Number ID #{@whatsapp_integration.phone_number_id}" %></small>
                 </div>
                 <div class="wa-summary-row__meta">
-                  <%= ax_badge(@phone_info.to_h[:quality].presence || "Qualidade pendente", tone: ({ "GREEN" => :green, "YELLOW" => :amber, "RED" => :red }[@phone_info.to_h[:quality].to_s] || :gray)) %>
+                  <%= ax_badge(quality_label.call(@phone_info.to_h[:quality]), tone: quality_tone.call(@phone_info.to_h[:quality])) %>
+                  <%= ax_badge(meta_status_label.call(@phone_info.to_h[:code_verification_status]), tone: @phone_info.to_h[:code_verification_status].to_s == "VERIFIED" ? :green : :gray) if @phone_info.to_h[:code_verification_status].present? %>
+                  <%= ax_badge("Conta oficial: #{official_account_label.call(@phone_info.to_h[:official_business_account])}", tone: official_account_label.call(@phone_info.to_h[:official_business_account]) == "Aprovado" ? :green : :gray) if @phone_info.to_h[:official_business_account].present? %>
                   <span><%= @whatsapp_integration.connected_at ? l(@whatsapp_integration.connected_at, format: :short) : "Conectado" %></span>
                 </div>
               </article>
@@ -202,6 +245,14 @@
                        ["Phone Number ID", @whatsapp_integration.phone_number_id],
                        ["Business ID", @whatsapp_integration.business_id.presence || "Não informado"],
                        ["Token", @whatsapp_integration.token_preview || "Salvo"],
+                       ["Nome aprovado", @phone_info.to_h[:name].presence || "Não informado"],
+                       ["Status do nome", meta_status_label.call(@phone_info.to_h[:name_status])],
+                       ["Novo status do nome", meta_status_label.call(@phone_info.to_h[:new_name_status])],
+                       ["Conta comercial oficial", official_account_label.call(@phone_info.to_h[:official_business_account])],
+                       ["Modo da conta", meta_status_label.call(@phone_info.to_h[:account_mode])],
+                       ["Status do telefone", meta_status_label.call(@phone_info.to_h[:phone_status])],
+                       ["Plataforma", @phone_info.to_h[:platform_type].presence || "Não informado"],
+                       ["Throughput", throughput_label.call(@phone_info.to_h[:throughput])],
                        ["Conectado por", @whatsapp_integration.connected_by_admin_user&.name || "Sistema"],
                        ["Data", (@whatsapp_integration.connected_at ? l(@whatsapp_integration.connected_at, format: :short) : "—")]
                      ].each do |label, value| %>
@@ -304,20 +355,54 @@
               </div>
 
               <% if @phone_info %>
-                <% quality_tone = { "GREEN" => :green, "YELLOW" => :amber, "RED" => :red }[@phone_info[:quality].to_s] || :gray %>
                 <div class="wa-phone-info">
                   <div class="wa-phone-info__cell">
                     <span>Número</span>
                     <strong><%= @phone_info[:number].presence || "—" %></strong>
                   </div>
                   <div class="wa-phone-info__cell">
-                    <span>Nome verificado</span>
+                    <span>Nome aprovado</span>
                     <strong><%= @phone_info[:name].presence || "—" %></strong>
                   </div>
                   <div class="wa-phone-info__cell">
-                    <span>Quality rating</span>
-                    <%= ax_badge(@phone_info[:quality].presence || "—", tone: quality_tone, dot: quality_tone != :gray) %>
+                    <span>Qualidade</span>
+                    <%= ax_badge(quality_label.call(@phone_info[:quality]), tone: quality_tone.call(@phone_info[:quality]), dot: quality_tone.call(@phone_info[:quality]) != :gray) %>
                   </div>
+                  <div class="wa-phone-info__cell">
+                    <span>Registro</span>
+                    <%= ax_badge(meta_status_label.call(@phone_info[:code_verification_status]), tone: @phone_info[:code_verification_status].to_s == "VERIFIED" ? :green : :gray, dot: @phone_info[:code_verification_status].to_s == "VERIFIED") %>
+                  </div>
+                  <% if @phone_info[:official_business_account].present? %>
+                    <div class="wa-phone-info__cell">
+                      <span>Conta comercial oficial</span>
+                      <% official_label = official_account_label.call(@phone_info[:official_business_account]) %>
+                      <%= ax_badge(official_label, tone: official_label == "Aprovado" ? :green : :gray, dot: official_label == "Aprovado") %>
+                    </div>
+                  <% end %>
+                  <% if @phone_info[:account_mode].present? %>
+                    <div class="wa-phone-info__cell">
+                      <span>Modo da conta</span>
+                      <strong><%= meta_status_label.call(@phone_info[:account_mode]) %></strong>
+                    </div>
+                  <% end %>
+                  <% if @phone_info[:phone_status].present? %>
+                    <div class="wa-phone-info__cell">
+                      <span>Status do telefone</span>
+                      <strong><%= meta_status_label.call(@phone_info[:phone_status]) %></strong>
+                    </div>
+                  <% end %>
+                  <% if @phone_info[:platform_type].present? %>
+                    <div class="wa-phone-info__cell">
+                      <span>Plataforma</span>
+                      <strong><%= @phone_info[:platform_type] %></strong>
+                    </div>
+                  <% end %>
+                  <% if @phone_info[:throughput].present? %>
+                    <div class="wa-phone-info__cell">
+                      <span>Throughput</span>
+                      <strong><%= throughput_label.call(@phone_info[:throughput]) %></strong>
+                    </div>
+                  <% end %>
                 </div>
               <% end %>
 

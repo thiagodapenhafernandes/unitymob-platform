@@ -51,5 +51,38 @@ RSpec.describe Whatsapp::LeadActivationTemplate do
         example: { header_handle: ["header-handle"] }
       )
     end
+
+    it "reaproveita a imagem aprovada anterior ao montar rascunho para a WABA conectada atual" do
+      tenant = Tenant.create!(name: "Conexão Atual", slug: "conexao-atual-#{SecureRandom.hex(3)}")
+      old_integration = WhatsappBusinessIntegration.current(tenant)
+      old_integration.update!(waba_id: "waba-antiga")
+      approved_template = tenant.whatsapp_templates.create!(
+        name: described_class::TEMPLATE_NAME,
+        language: described_class::LANGUAGE,
+        waba_id: old_integration.waba_id,
+        status: "APPROVED",
+        template_type: "text",
+        category: "MARKETING",
+        header_format: "image",
+        header_media_handle: "old-handle",
+        body: "Oi {{1}}, aqui é {{2}}",
+        footer_text: "Atendimento"
+      )
+      approved_template.header_media_file.attach(
+        io: StringIO.new("fake-image"),
+        filename: "apresentacao.jpg",
+        content_type: "image/jpeg"
+      )
+      current_integration = WhatsappBusinessIntegration.current(tenant)
+      current_integration.update!(waba_id: "waba-atual")
+
+      template = described_class.for(tenant: tenant, integration: current_integration)
+
+      expect(template).to be_new_record
+      expect(template.waba_id).to eq("waba-atual")
+      expect(template.header_media_file).to be_attached
+      expect(template.header_media_file.blob).to eq(approved_template.header_media_file.blob)
+      expect(template.body).to eq("Oi {{1}}, aqui é {{2}}")
+    end
   end
 end
