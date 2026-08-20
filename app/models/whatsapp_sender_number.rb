@@ -35,7 +35,7 @@ class WhatsappSenderNumber < ApplicationRecord
     tenant.whatsapp_sender_numbers.active.for_notifications.ordered.first
   end
 
-  def self.sync_from_current_integration!(tenant = Current.tenant, phone_info: {})
+  def self.sync_from_current_integration!(tenant = Current.tenant, phone_info: {}, use_for_notifications: false)
     raise ArgumentError, "Tenant obrigatório para sincronizar número de envio WhatsApp" if tenant.blank?
 
     integration = WhatsappBusinessIntegration.current(tenant)
@@ -59,7 +59,10 @@ class WhatsappSenderNumber < ApplicationRecord
       status: integration.messaging_ready? ? "connected" : "pending",
       active: true
     )
-    number.use_for_notifications = false if number.has_attribute?(:use_for_notifications) && number.new_record?
+    if number.has_attribute?(:use_for_notifications)
+      number.use_for_notifications = use_for_notifications if use_for_notifications
+      number.use_for_notifications = false if number.new_record? && !use_for_notifications
+    end
     number.save!
     number
   end
