@@ -14,7 +14,8 @@ module Gateway
           phone_number_id = metadata["phone_number_id"].to_s
 
           message_contexts(value, waba_id:, phone_number_id:) +
-            status_contexts(value, waba_id:, phone_number_id:)
+            status_contexts(value, waba_id:, phone_number_id:) +
+            template_status_contexts(change, value, waba_id:, phone_number_id:)
         end
       end
 
@@ -41,6 +42,19 @@ module Gateway
           phone_number_id:
         }
       end
+    end
+
+    def template_status_contexts(change, value, waba_id:, phone_number_id:)
+      return [] unless change["field"].to_s == "message_template_status_update"
+
+      [
+        {
+          external_id: value["message_template_id"].to_s,
+          event_type: "message_template_status_update",
+          waba_id:,
+          phone_number_id:
+        }
+      ]
     end
 
     def fallback_context(payload)

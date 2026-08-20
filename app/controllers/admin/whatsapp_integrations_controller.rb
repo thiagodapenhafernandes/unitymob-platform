@@ -3,6 +3,10 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
   DEFAULT_EMBEDDED_SIGNUP_CONFIG_ID = "1980983762681491".freeze
   META_LEADS_CONFIG_ID = "1330907151751153".freeze
+  WHATSAPP_SYSTEM_TEMPLATE_NAMES = [
+    Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+    Whatsapp::LeadAlertTemplate::TEMPLATE_NAME
+  ].freeze
 
   def show
     return redirect_to admin_meta_integrations_path if params[:tab] == "forms"
@@ -398,6 +402,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @global_webhook_callback_url = Whatsapp::WebhookGatewayClient.public_webhook_url
     @global_webhook_verify_token = Whatsapp::WebhookGatewayClient.verify_token
     @phone_info = whatsapp_phone_info
+    sync_pending_system_templates
     @whatsapp_sender_numbers = campaign_sender_numbers
     @current_integration_sender_number = current_integration_sender_number
     @new_whatsapp_sender_number = current_tenant.whatsapp_sender_numbers.new
@@ -422,6 +427,21 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       label = "#{template.name} · #{template.language.presence || 'pt_BR'} · #{template.variable_count} variáveis"
       [label, template.id, { data: { variable_references: template.variable_references.to_json } }]
     end
+  end
+
+  def sync_pending_system_templates
+    return unless @whatsapp_integration.messaging_ready? && @whatsapp_integration.waba_id.present?
+
+    pending = current_tenant.whatsapp_templates
+                            .where(waba_id: @whatsapp_integration.waba_id, name: WHATSAPP_SYSTEM_TEMPLATE_NAMES)
+                            .where(status: "PENDING")
+                            .exists?
+    return unless pending
+
+    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
+    Rails.logger.warn("[WhatsappIntegrations] sync de templates pendentes falhou: #{result[:error]}") unless result[:ok]
+  rescue => e
+    Rails.logger.warn("[WhatsappIntegrations] sync de templates pendentes falhou: #{e.class}: #{e.message}")
   end
 
   def campaign_sender_numbers

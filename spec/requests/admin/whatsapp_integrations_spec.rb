@@ -50,6 +50,53 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(document.at_css('input[type="tel"][name="whatsapp_sender_number[display_phone_number]"][data-controller="phone-input"]')).to be_present
   end
 
+  it "sincroniza templates oficiais pendentes ao abrir a tela" do
+    integration = current_whatsapp_integration!(waba_id: "waba-pending-refresh")
+    template = admin.tenant.whatsapp_templates.create!(
+      name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+      waba_id: integration.waba_id,
+      language: "pt_BR",
+      category: "MARKETING",
+      status: "PENDING",
+      template_type: "text",
+      header_format: "image",
+      header_media_handle: "handle",
+      body: Whatsapp::LeadActivationTemplate::DEFAULT_BODY
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id) do
+      template.update!(status: "APPROVED")
+      { ok: true, synced: 1 }
+    end
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    expect(Whatsapp::SyncTemplatesJob).to have_received(:perform_now).with(admin.tenant.id)
+    expect(response.body).to include("Aprovado")
+    expect(template.reload.status).to eq("APPROVED")
+  end
+
+  it "nao sincroniza templates oficiais no carregamento quando nao ha pendencia" do
+    integration = current_whatsapp_integration!(waba_id: "waba-approved-refresh")
+    admin.tenant.whatsapp_templates.create!(
+      name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+      waba_id: integration.waba_id,
+      language: "pt_BR",
+      category: "MARKETING",
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "image",
+      header_media_handle: "handle",
+      body: Whatsapp::LeadActivationTemplate::DEFAULT_BODY
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now)
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    expect(Whatsapp::SyncTemplatesJob).not_to have_received(:perform_now)
+  end
+
   it "salva rascunho do template de ativacao de lead sem enviar para a Meta" do
     integration = current_whatsapp_integration!(waba_id: "waba-activation")
 
