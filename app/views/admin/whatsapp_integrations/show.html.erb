@@ -334,6 +334,34 @@
                 </div>
               <% end %>
 
+              <% if @whatsapp_integration.messaging_ready? && @whatsapp_integration.phone_number_id.present? %>
+                <div class="wa-register-phone">
+                  <div>
+                    <strong>Registro do número na Meta</strong>
+                    <p>Use quando a Meta mostrar o telefone como pendente. Informe o PIN de 6 dígitos da verificação em duas etapas do número.</p>
+                  </div>
+                  <%= form_with url: register_phone_number_admin_whatsapp_integration_path,
+                                method: :post,
+                                local: true,
+                                class: "wa-register-phone__form" do %>
+                    <%= password_field_tag :pin,
+                          nil,
+                          class: "ax-control",
+                          inputmode: "numeric",
+                          pattern: "\\d{6}",
+                          maxlength: 6,
+                          autocomplete: "one-time-code",
+                          placeholder: "PIN 2FA",
+                          aria: { label: "PIN de seis dígitos do WhatsApp" } %>
+                    <%= button_tag type: :submit,
+                          class: "ax-btn ax-btn--sm ax-btn--primary",
+                          data: { turbo_confirm: "Registrar este Phone Number ID na Meta usando o PIN informado?" } do %>
+                      <i class="bi bi-check2-circle"></i> Registrar número
+                    <% end %>
+                  <% end %>
+                </div>
+              <% end %>
+
               <div class="wa-test">
                 <div class="wa-test__bar">
                   <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-integration#testConnection">
@@ -807,6 +835,20 @@
   .wa-phone-info__cell { display: grid; gap: 2px; min-width: 0; }
   .wa-phone-info__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
   .wa-phone-info__cell strong { color: #1f2733; font-size: 13.5px; }
+  .wa-register-phone {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px dashed #b8c7d9;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .wa-register-phone strong { display: block; color: #1f2733; font-size: 13px; font-weight: 800; }
+  .wa-register-phone p { margin: 2px 0 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
+  .wa-register-phone__form { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; }
+  .wa-register-phone__form .ax-control { width: 96px; text-align: center; }
 
   .wa-context-block { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
   .wa-context-block--primary { background: #f8fafc; }
@@ -909,6 +951,8 @@
   }
   @media (max-width: 820px) {
     .wa-lead-activation { grid-template-columns: minmax(0, 1fr); }
+    .wa-register-phone { grid-template-columns: minmax(0, 1fr); align-items: start; }
+    .wa-register-phone__form { justify-content: flex-start; flex-wrap: wrap; }
     .wa-context-block__head { align-items: flex-start; flex-direction: column; }
     .wa-context-actions { justify-content: flex-start; }
     .wa-number-section__head { align-items: flex-start; flex-direction: column; }
