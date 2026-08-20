@@ -59,7 +59,7 @@ export default class extends Controller {
       this.clearFile()
       this.bodyTarget.value = ""
       this.bodyTarget.disabled = true
-      this.bodyTarget.placeholder = "Modelos aprovados são enviados sem texto livre adicional"
+      this.bodyTarget.placeholder = this.selectedTemplateReadyLabel()
     } else {
       this.bodyTarget.disabled = false
       this.bodyTarget.placeholder = "Escreva uma mensagem..."
@@ -227,12 +227,13 @@ export default class extends Controller {
       this.bodyTarget.disabled = false
       this.bodyTarget.placeholder = "Escreva uma mensagem..."
     }
+    this.element.classList.toggle("is-template-selected", hasTemplate)
 
     if (this.hasModeLabelTarget) {
       this.modeLabelTarget.textContent = this.submitting
         ? "Enviando..."
         : hasTemplate
-          ? "Modelo aprovado"
+          ? this.selectedTemplateModeLabel()
           : hasFile
             ? `${this.fileKind(this.fileInputTarget.files[0])} com legenda`
             : "Mensagem livre"
@@ -254,6 +255,28 @@ export default class extends Controller {
       this.submitTarget.title = label
       this.submitTarget.setAttribute("aria-label", label)
     }
+  }
+
+  selectedTemplateReadyLabel() {
+    const templateName = this.hasTemplateTarget ? this.templateTarget.value : ""
+
+    if (templateName === "lead_activation_default") return "Apresentação pronta para envio"
+    if (templateName === "lead_followup") return "Retomada pronta para envio"
+    if (templateName === "lead_appointment_reminder") return "Lembrete de agenda pronto para envio"
+    if (templateName === "lead_task_reminder") return "Lembrete de tarefa pronto para envio"
+
+    return "Template pronto para envio"
+  }
+
+  selectedTemplateModeLabel() {
+    const templateName = this.hasTemplateTarget ? this.templateTarget.value : ""
+
+    if (templateName === "lead_activation_default") return "Apresentação pronta"
+    if (templateName === "lead_followup") return "Retomada pronta"
+    if (templateName === "lead_appointment_reminder") return "Lembrete pronto"
+    if (templateName === "lead_task_reminder") return "Tarefa pronta"
+
+    return "Template pronto"
   }
 
   // ===== Gravação de voz (estilo WhatsApp): grava, anexa e o corretor revisa =====

@@ -6767,7 +6767,8 @@ html[data-admin-theme="dark"] .ax-nav__impersonation-exit {
 }
 
 .wa-inbox-bubble--template-card {
-  max-width: min(70%, 520px);
+  width: min(336px, calc(100vw - 32px));
+  max-width: 100%;
 }
 
 .wa-inbox-bubble--template-card .wa-inbox-bubble__surface {
@@ -7911,7 +7912,8 @@ html[data-admin-theme="dark"] .ax-nav__impersonation-exit {
 }
 
 .wa-inbox-bubble--compact.wa-inbox-bubble--template-card {
-  max-width: min(76%, 520px);
+  width: min(336px, calc(100vw - 32px));
+  max-width: 100%;
 }
 
 .wa-inbox-bubble--compact.wa-inbox-bubble--template-card .wa-inbox-bubble__surface {
@@ -8173,6 +8175,25 @@ html[data-admin-theme="dark"] .ax-nav__impersonation-exit {
   background: #f8fafc;
   color: #98a2b3;
   cursor: not-allowed;
+}
+
+.wa-inbox-composer.is-template-selected .wa-inbox-composer__body {
+  border-color: #16a34a;
+  background: #ecfdf3;
+  color: #14532d;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, .18);
+  font-weight: 800;
+}
+
+.wa-inbox-composer.is-template-selected .wa-inbox-composer__body::placeholder {
+  color: #15803d;
+  opacity: 1;
+}
+
+.wa-inbox-composer.is-template-selected .wa-inbox-composer__submit {
+  background: #15803d;
+  border-color: #15803d;
+  box-shadow: 0 4px 12px rgba(21, 128, 61, .28);
 }
 
 .wa-inbox-composer__file-input {
