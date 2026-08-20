@@ -815,11 +815,12 @@ RSpec.describe "Admin::Leads", type: :request do
       allow_any_instance_of(Admin::LeadsController).to receive(:can?).with(:manage, :whatsapp_inbox).and_return(true)
     end
 
-    it "exibe ações de conversa individual no detalhe do lead" do
+    it "abre automaticamente a conversa individual no detalhe do lead quando o canal está pronto" do
       lead = create(:lead, status: "Novo", phone: "47999990000")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
-      integration.update!(status: "connected", waba_id: "waba-lead-activation", phone_number_id: "phone-lead-activation", access_token: "token-lead-activation")
-      template = WhatsappTemplate.create!(
+      integration.update!(status: "connected", waba_id: "waba-lead-activation", phone_number_id: "phone-lead-activation", access_token: "token-lead-activation", presentation_enabled: true)
+      PresentationCard.ensure_system_default_for(admin.tenant)
+      WhatsappTemplate.create!(
         tenant: admin.tenant,
         waba_id: integration.waba_id,
         name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
@@ -836,14 +837,41 @@ RSpec.describe "Admin::Leads", type: :request do
         ]
       )
 
-      get admin_lead_path(lead)
+      expect {
+        get admin_lead_path(lead)
+      }.to change(WhatsappConversation, :count).by(1)
+
+      conversation = WhatsappConversation.last
+
+      expect(response).to have_http_status(:ok)
+      expect(conversation.lead).to eq(lead)
+      expect(conversation.contact_phone).to eq("5547999990000")
+      expect(response.body).to include("Atendimento sem sair do lead")
+      expect(response.body).to include("Conversa aberta, sem histórico ainda")
+      expect(response.body).to include("Responder sem sair do lead")
+      expect(response.body).to include("Escreva uma mensagem...")
+      expect(response.body).to include("Apresentação")
+      expect(response.body).to include("Empresa · Apresentação oficial")
+      expect(response.body).to include("Empresa · Padrão")
+      expect(response.body).not_to include("Abra a thread individual")
+      expect(response.body).not_to include("lead-whatsapp-card__template-row")
+      expect(response.body).not_to include("Ativar WhatsApp")
+    end
+
+    it "mantém o modo de ativação quando o lead tem telefone mas o canal não está pronto" do
+      lead = create(:lead, status: "Novo", phone: "47999990000")
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "disconnected", waba_id: nil, phone_number_id: nil, access_token: nil)
+
+      expect {
+        get admin_lead_path(lead)
+      }.not_to change(WhatsappConversation, :count)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("WhatsApp individual")
-      expect(response.body).to match(/(Abrir|Continuar) conversa/)
-      expect(response.body).to satisfy { |body| body.include?("Ativar WhatsApp") || body.include?("Responder sem sair do lead") }
-      expect(response.body).to include("Template pronto")
-      expect(response.body).not_to include(template.name)
+      expect(response.body).to include("Abrir conversa")
+      expect(response.body).to include("Ativar WhatsApp")
+      expect(response.body).not_to include("Responder sem sair do lead")
     end
 
     it "mostra histórico recente quando o lead já possui thread ativa" do

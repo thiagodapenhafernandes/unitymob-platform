@@ -572,6 +572,66 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
     end
 
+    it "envia o template oficial de apresentação mesmo com apresentação obrigatória pendente" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(
+        status: "connected",
+        waba_id: "waba-official-presentation",
+        phone_number_id: "phone-official-presentation",
+        access_token: "token-official-presentation",
+        presentation_enabled: true,
+        require_presentation: true
+      )
+      lead = create(:lead, tenant: admin.tenant, phone: "5547999990054")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "MARKETING",
+        template_type: "text",
+        header_format: "image",
+        header_media_handle: "header-handle",
+        body: "Oi! Aqui é {{1}}, da {{2}}.",
+        components: [
+          { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["header-handle"] } },
+          { "type" => "BODY", "text" => "Oi! Aqui é {{1}}, da {{2}}." }
+        ]
+      )
+
+      expect {
+        post send_message_admin_whatsapp_conversation_path(conv), params: {
+          template_name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME
+        }
+      }.to change {
+        WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").count
+      }.by(1).and change {
+        lead.activities.where(kind: "presentation_sent").count
+      }.by(1)
+
+      msg = WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").order(:created_at).last
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
+      expect(msg.msg_type).to eq("template")
+      expect(msg.template_name).to eq(Whatsapp::LeadActivationTemplate::TEMPLATE_NAME)
+      expect(msg.body).to include(admin.name, admin.tenant.name)
+      expect(msg.template_components).to include(
+        "type" => "body",
+        "parameters" => [
+          { "type" => "text", "text" => admin.name },
+          { "type" => "text", "text" => admin.tenant.name }
+        ]
+      )
+      expect(Whatsapp::SendMessageJob).to have_received(:perform_later).with(msg.id, tenant_id: msg.tenant_id)
+      expect(lead.activities.where(kind: "presentation_sent").last.metadata).to include(
+        "template_name" => Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        "format" => "template"
+      )
+    end
+
     it "rejeita arquivo fora dos formatos aceitos pela Cloud API" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       conv = WhatsappConversation.create!(contact_phone: "5547999990031")
