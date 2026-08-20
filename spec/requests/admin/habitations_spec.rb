@@ -3124,6 +3124,58 @@ RSpec.describe "Admin::Habitations", type: :request do
     end
   end
 
+  it "renderiza filtros administrativos de modelo de publicação dos portais no catálogo" do
+    get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    fragment = Nokogiri::HTML.fragment(response.body)
+
+    {
+      "tipo_publicacao_imovelweb_2" => ["Simples", "Destaque", "Super Destaque"],
+      "destaque_chaves_na_mao" => ["Sim", "Não"],
+      "modelo_casa_mineira" => ["Simples", "Destaque", "Home Destaque"],
+      "tipo_publicacao_imovelweb" => ["Simples", "Destaque", "Super Destaque"]
+    }.each do |name, expected_options|
+      select = fragment.at_css("select[name='#{name}']")
+      expect(select).to be_present
+      expect(select.css("option").map(&:text)).to include(*expected_options)
+    end
+  end
+
+  it "filtra imóveis pelos modelos de publicação dos portais administrativos" do
+    matching = create(
+      :habitation,
+      codigo: "PORTAL-MODELO-MATCH",
+      tipo_publicacao_imovelweb_2: "Destaque",
+      destaque_chaves_na_mao: "sim",
+      modelo_casa_mineira: "home_destaque",
+      tipo_publicacao_imovelweb: "super_destaque"
+    )
+    create(
+      :habitation,
+      codigo: "PORTAL-MODELO-FORA",
+      tipo_publicacao_imovelweb_2: "simples",
+      destaque_chaves_na_mao: "nao",
+      modelo_casa_mineira: "simples",
+      tipo_publicacao_imovelweb: "destaque"
+    )
+
+    get admin_habitations_path, params: {
+      tipo_publicacao_imovelweb_2: "destaque",
+      destaque_chaves_na_mao: "sim",
+      modelo_casa_mineira: "home_destaque",
+      tipo_publicacao_imovelweb: "super_destaque"
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(matching.codigo)
+    expect(response.body).not_to include("PORTAL-MODELO-FORA")
+    expect(response.body).to include("Imovelweb 2: Destaque")
+    expect(response.body).to include("Destaque Chaves na Mão: Sim")
+    expect(response.body).to include("Casa Mineira: Home Destaque")
+    expect(response.body).to include("Imovelweb: Super Destaque")
+  end
+
   it "permite selecionar Todos para incluir inclusive imóveis suspensos" do
     suspended = create(:habitation, status: "Suspenso", motivo_suspensao: "Teste do filtro", codigo: "STATUS-TODOS-SUSPENSO")
 
