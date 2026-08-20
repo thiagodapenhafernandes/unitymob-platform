@@ -129,7 +129,7 @@ RSpec.describe "Portal feeds", type: :request do
     expect(response.body).to include("<?xml", "<ListingDataFeed")
   end
 
-  it "streams Casa Mineira with the OpenNavent XML structure only for that portal" do
+  it "streams Casa Mineira with the same OLX XML structure used by Imovelweb" do
     tenant = Tenant.create!(name: "Casa Mineira #{SecureRandom.hex(3)}", slug: "casa-mineira-#{SecureRandom.hex(4)}")
     integration = create_integration(portal: "casamineira", tenant: tenant)
     create(
@@ -146,10 +146,12 @@ RSpec.describe "Portal feeds", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.media_type).to eq("application/xml")
-    expect(response.body).to include("<OpenNavent>", "<dataModificacao>", "<Imoveis>", "<Imovel>")
-    expect(response.body).to include("<codigoAnuncio>", "<![CDATA[CM-123]]>")
-    expect(response.body).to include("<operacao>Venda</operacao>", "<moeda>BRL</moeda>")
+    expect(response.body).to include("<Carga>", "<Imoveis>", "<Imovel>")
+    expect(response.body).to include("<CodigoImovel>CM-123</CodigoImovel>")
+    expect(response.body).to include("<TipoImovel>Residencial</TipoImovel>", "<SubTipoImovel>Apartamento</SubTipoImovel>")
+    expect(response.body).to include("<PrecoVenda>9900000</PrecoVenda>")
     expect(response.body).not_to include("<ListingDataFeed")
+    expect(response.body).not_to include("<OpenNavent")
   end
 
   it "keeps Viva Real VRSync unchanged after the Casa Mineira serializer split" do
@@ -160,5 +162,6 @@ RSpec.describe "Portal feeds", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("<ListingDataFeed")
     expect(response.body).not_to include("<OpenNavent>")
+    expect(response.body).not_to include("<Carga>")
   end
 end

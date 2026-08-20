@@ -37,4 +37,19 @@ RSpec.describe Portal::OlxXmlSerializer do
     expect(xml).to include("<PrecoCondominio>400</PrecoCondominio>")
     expect(xml).not_to include("<ValorCondominio>")
   end
+
+  it "serializes Casa Mineira with the Imovelweb-compatible condominium tags" do
+    habitation = build(
+      :habitation,
+      codigo: "CM-OLX",
+      valor_condominio_cents: 400_00
+    )
+
+    xml = described_class.new(habitations: [habitation], integration: integration_for("casamineira")).to_xml
+
+    expect(xml).to include("<Carga>")
+    expect(xml).to include("<CodigoImovel>CM-OLX</CodigoImovel>")
+    expect(xml).to include("<PrecoCondominio>400</PrecoCondominio>")
+    expect(xml).to include("<ValorCondominio>400</ValorCondominio>")
+  end
 end

@@ -176,7 +176,7 @@ module Portal
     end
 
     def imovelweb_portal?
-      @integration.portal.to_s.in?(%w[imovelweb imovelweb_2])
+      @integration.portal.to_s.in?(%w[imovelweb imovelweb_2 casamineira])
     end
 
     def integer_or_zero(value)

@@ -7,7 +7,7 @@ class PortalIntegration < ApplicationRecord
     "imovelweb" => { title: "Imovelweb", feed_strategy: "olx_xml" },
     "imovelweb_2" => { title: "Imovelweb 2", feed_strategy: "olx_xml" },
     "chavesnamao" => { title: "Chaves na Mão", feed_strategy: "chaves_xml" },
-    "casamineira" => { title: "Casa Mineira", feed_strategy: "open_navent_xml" },
+    "casamineira" => { title: "Casa Mineira", feed_strategy: "olx_xml" },
     "lais_ai" => { title: "Lais Ai", feed_strategy: "vrsync_xml" },
     "netimoveis2" => { title: "Netimoveis 2", feed_strategy: "vrsync_xml" }
   }.freeze
@@ -69,7 +69,7 @@ class PortalIntegration < ApplicationRecord
     },
     "casamineira" => {
       docs_url: "https://www.casamineira.com.br/parcerias",
-      summary: "Feed XML no padrão OpenNavent/Open Classifieds.",
+      summary: "Feed XML no mesmo padrão OLX/Imovelweb. Tags em PT-BR.",
       setup_steps: [
         "Solicite acesso ao programa de parceiros Casa Mineira.",
         "Ative a integração e marque os imóveis com \"Publicar Casa Mineira\".",
