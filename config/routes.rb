@@ -391,6 +391,8 @@ Rails.application.routes.draw do
       delete :disconnect
       patch :phone_settings
       patch :manual_connection
+      patch :lead_activation_template
+      post :submit_lead_activation_template
       post :sync_notification_templates
       post :use_current_number_for_campaigns
       post :test_connection

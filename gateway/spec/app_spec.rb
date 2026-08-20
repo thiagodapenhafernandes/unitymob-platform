@@ -57,8 +57,41 @@ RSpec.describe Gateway::App do
     post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
 
     expect(last_response.status).to eq(200)
-    expect(WebhookEvent.last).to have_attributes(status: "forwarded", webhook_route_id: route.id)
+    expect(WebhookEvent.last).to have_attributes(status: "forwarded", webhook_route_id: route.id, raw_body: payload)
     expect(stub).to have_been_requested
+  end
+
+  it "keeps Meta response successful when the target delivery fails" do
+    route = WebhookRoute.create!(
+      client_key: "conexao",
+      tenant_name: "Conexao BC",
+      waba_id: "725008303233971",
+      phone_number_id: "692164393979141",
+      target_url: "https://app.conexaobc.com/webhooks/whatsapp",
+      forwarding_secret: "forward-secret"
+    )
+    payload = {
+      entry: [
+        {
+          id: "725008303233971",
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: "692164393979141" },
+                messages: [{ id: "wamid.message", text: { body: "Ola" } }]
+              }
+            }
+          ]
+        }
+      ]
+    }.to_json
+    stub_request(:post, route.target_url).to_timeout
+
+    post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+
+    expect(last_response.status).to eq(200)
+    expect(WebhookEvent.last).to have_attributes(status: "failed", webhook_route_id: route.id)
+    expect(WebhookEvent.last.next_retry_at).to be_present
   end
 
   it "stores unrouted events and still returns 200 to Meta" do

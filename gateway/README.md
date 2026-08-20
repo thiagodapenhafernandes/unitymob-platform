@@ -46,6 +46,30 @@ curl -i https://webhooks.unitymob.com.br/up
 ssh root@webhooks.unitymob.com.br 'docker ps --filter name=unitymob-whatsapp-gateway'
 ```
 
+## Retry de encaminhamentos falhos
+
+Quando o CRM de destino estiver temporariamente fora, o gateway mantém o evento
+persistido, marca `failed`, agenda `next_retry_at` com backoff e continua
+respondendo `200` para a Meta. Assim a Meta não entra em retry storm e o
+reprocessamento fica sob controle do gateway.
+
+Retry manual:
+
+```bash
+ssh root@webhooks.unitymob.com.br 'cd /opt/unitymob-whatsapp-gateway && docker compose exec -T whatsapp-gateway bundle exec rake webhooks:retry_failed'
+```
+
+Sugestão de agendamento no servidor:
+
+```cron
+* * * * * cd /opt/unitymob-whatsapp-gateway && docker compose exec -T whatsapp-gateway bundle exec rake webhooks:retry_failed >> log/retry_failed.log 2>&1
+```
+
+Variáveis opcionais:
+
+- `LIMIT`: quantidade máxima de eventos por execução, default `100`.
+- `MAX_ATTEMPTS`: máximo de tentativas por evento, default `10`.
+
 ## Variaveis
 
 - `DATABASE_URL`: banco PostgreSQL do gateway.

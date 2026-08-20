@@ -424,18 +424,30 @@ class Admin::LeadsController < Admin::BaseController
     check_permission!(:manage, :whatsapp_inbox)
     return_path = safe_return_path(params[:return_to])
 
-    template = current_tenant.whatsapp_templates.approved.find_by(id: params[:whatsapp_template_id])
-    return redirect_to(return_path || admin_lead_path(@lead), alert: "Selecione um template aprovado.") unless template
+    integration = WhatsappBusinessIntegration.current(current_tenant)
+    template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
+    unless template&.persisted? && template.approved?
+      return redirect_to(return_path || admin_lead_path(@lead), alert: "Configure e aprove o template de ativação de lead na integração WhatsApp.")
+    end
 
     conversation = find_or_create_whatsapp_conversation_for!(@lead)
+    variables = Whatsapp::LeadActivationTemplate.variable_values(lead: @lead, admin_user: current_admin_user)
     message = conversation.messages.create!(
       direction: "outbound",
       status: "pending",
       msg_type: "template",
       template_name: template.name,
-      body: template.body,
+      body: template.render_body(variables.values_at(*variables.keys.sort_by(&:to_i))),
       admin_user: current_admin_user
     )
+    attach_activation_template_header!(message)
+    components = activation_template_components(template, variables, message)
+    unless components.ok?
+      message.update!(status: "failed", error_message: components.error.to_s.truncate(250))
+      return redirect_to(return_path || admin_lead_path(@lead), alert: components.error)
+    end
+
+    message.update!(template_components: components.components)
     conversation.touch_last_message!(message)
     Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
     LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name })
@@ -1112,7 +1124,9 @@ class Admin::LeadsController < Admin::BaseController
 
   def load_lead_whatsapp_context
     @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
-    @whatsapp_templates = current_tenant.whatsapp_templates.approved.ordered.limit(50)
+    integration = WhatsappBusinessIntegration.current(current_tenant)
+    @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
+    @whatsapp_templates = [@lead_activation_template].select { |template| template.persisted? && template.approved? }
     # 100 e nao 12: com 12 o historico (videos/audios de dias atras) sumia do painel
     @whatsapp_messages = @whatsapp_conversation ? lead_whatsapp_panel_messages(@whatsapp_conversation) : []
     snapshot = @whatsapp_conversation ? Whatsapp::ThreadContextSnapshot.new(
@@ -1123,6 +1137,21 @@ class Admin::LeadsController < Admin::BaseController
     ) : nil
     @whatsapp_summary = snapshot ? snapshot.to_h.fetch(:thread_summary) : { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
     @whatsapp_thread_context_locals = snapshot ? snapshot.to_h : {}
+  end
+
+  def attach_activation_template_header!(message)
+    return unless current_admin_user&.avatar&.attached?
+
+    message.media_file.attach(current_admin_user.avatar.blob)
+  end
+
+  def activation_template_components(template, variables, message)
+    Whatsapp::TemplateMessageComponents.call(
+      template: template,
+      variables: variables,
+      client: Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(current_tenant)),
+      header_media_attachable: message.media_file.attached? ? message.media_file : nil
+    )
   end
 
   def lead_whatsapp_panel_messages(conversation)

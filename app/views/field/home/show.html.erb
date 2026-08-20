@@ -416,7 +416,7 @@
     <span class="field-kpi__hint"><%= @my_pending_review_captacoes %> em revisão</span>
   <% end %>
 
-  <%= link_to admin_habitations_path(ownership: "all", exibir_no_site: "1"), class: "field-kpi" do %>
+  <%= link_to admin_habitations_path(ownership: "mine", exibir_no_site: "1"), class: "field-kpi" do %>
     <span class="field-kpi__value text-info"><%= @my_published_habitations %></span>
     <span class="field-kpi__label"><i class="bi bi-building me-1"></i>Imóveis no site</span>
     <span class="field-kpi__hint"><%= @my_total_habitations %> no total</span>

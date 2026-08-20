@@ -52,7 +52,11 @@ module Whatsapp
 
         result =
           if message.msg_type == "template" && message.template_name.present?
-            client.send_template(to: recipient, name: message.template_name)
+            client.send_template(
+              to: recipient,
+              name: message.template_name,
+              components: message.template_components
+            )
           elsif message.media?
             send_media_message(client, recipient, message)
           else

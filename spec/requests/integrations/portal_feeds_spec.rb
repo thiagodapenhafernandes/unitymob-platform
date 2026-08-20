@@ -128,4 +128,37 @@ RSpec.describe "Portal feeds", type: :request do
     expect(response.media_type).to eq("application/xml")
     expect(response.body).to include("<?xml", "<ListingDataFeed")
   end
+
+  it "streams Casa Mineira with the OpenNavent XML structure only for that portal" do
+    tenant = Tenant.create!(name: "Casa Mineira #{SecureRandom.hex(3)}", slug: "casa-mineira-#{SecureRandom.hex(4)}")
+    integration = create_integration(portal: "casamineira", tenant: tenant)
+    create(
+      :habitation,
+      tenant: tenant,
+      codigo: "CM-123",
+      titulo_anuncio: "Apartamento no Centro",
+      descricao_web: "Imóvel pronto para publicação.",
+      categoria: "Apartamento",
+      publicar_casa_mineira: true
+    )
+
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.media_type).to eq("application/xml")
+    expect(response.body).to include("<OpenNavent>", "<dataModificacao>", "<Imoveis>", "<Imovel>")
+    expect(response.body).to include("<codigoAnuncio>", "<![CDATA[CM-123]]>")
+    expect(response.body).to include("<operacao>Venda</operacao>", "<moeda>BRL</moeda>")
+    expect(response.body).not_to include("<ListingDataFeed")
+  end
+
+  it "keeps Viva Real VRSync unchanged after the Casa Mineira serializer split" do
+    integration = create_integration(portal: "vivareal_vrsync")
+
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("<ListingDataFeed")
+    expect(response.body).not_to include("<OpenNavent>")
+  end
 end

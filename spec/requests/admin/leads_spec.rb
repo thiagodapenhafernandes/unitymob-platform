@@ -817,15 +817,33 @@ RSpec.describe "Admin::Leads", type: :request do
 
     it "exibe ações de conversa individual no detalhe do lead" do
       lead = create(:lead, status: "Novo", phone: "47999990000")
-      template = WhatsappTemplate.create!(tenant: admin.tenant, name: "lead_boas_vindas", language: "pt_BR", status: "APPROVED", body: "Olá")
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-lead-activation", phone_number_id: "phone-lead-activation", access_token: "token-lead-activation")
+      template = WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "MARKETING",
+        template_type: "text",
+        header_format: "image",
+        header_media_handle: "handle",
+        body: "Olá {{1}} {{2}}",
+        components: [
+          { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["handle"] } },
+          { "type" => "BODY", "text" => "Olá {{1}} {{2}}" }
+        ]
+      )
 
       get admin_lead_path(lead)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("WhatsApp individual")
       expect(response.body).to match(/(Abrir|Continuar) conversa/)
-      expect(response.body).to satisfy { |body| body.include?("Enviar template") || body.include?("Responder sem sair do lead") }
-      expect(response.body).to include(template.name)
+      expect(response.body).to satisfy { |body| body.include?("Ativar WhatsApp") || body.include?("Responder sem sair do lead") }
+      expect(response.body).to include("Template pronto")
+      expect(response.body).not_to include(template.name)
     end
 
     it "mostra histórico recente quando o lead já possui thread ativa" do
@@ -923,16 +941,35 @@ RSpec.describe "Admin::Leads", type: :request do
     it "ativa o lead com template aprovado e enfileira envio" do
       allow(Whatsapp::SendMessageJob).to receive(:dispatch)
       lead = create(:lead, status: "Novo", phone: "47999990002")
-      template = WhatsappTemplate.create!(tenant: admin.tenant, name: "lead_template", language: "pt_BR", status: "APPROVED", body: "Olá do template")
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-lead-activation", phone_number_id: "phone-lead-activation", access_token: "token-lead-activation")
+      template = WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "MARKETING",
+        template_type: "text",
+        header_format: "image",
+        header_media_handle: "handle",
+        body: "Oi! Aqui é {{1}}, da {{2}}.",
+        components: [
+          { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["handle"] } },
+          { "type" => "BODY", "text" => "Oi! Aqui é {{1}}, da {{2}}." }
+        ]
+      )
 
       expect {
-        post activate_whatsapp_template_admin_lead_path(lead), params: { whatsapp_template_id: template.id, return_to: admin_lead_path(lead) }
+        post activate_whatsapp_template_admin_lead_path(lead), params: { return_to: admin_lead_path(lead) }
       }.to change(WhatsappMessage, :count).by(1)
 
       message = WhatsappMessage.last
       expect(response).to redirect_to(admin_lead_path(lead))
-      expect(message.template_name).to eq("lead_template")
+      expect(message.template_name).to eq(Whatsapp::LeadActivationTemplate::TEMPLATE_NAME)
       expect(message.msg_type).to eq("template")
+      expect(message.body).to include(admin.name, admin.tenant.name)
+      expect(message.template_components).to be_present
       expect(Whatsapp::SendMessageJob).to have_received(:dispatch).with(message.id, tenant_id: message.tenant_id)
     end
 

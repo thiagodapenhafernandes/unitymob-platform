@@ -296,13 +296,30 @@
     </div>
 
     <% authorization_attachments = @captacao.respond_to?(:autorizacoes_venda) ? @captacao.autorizacoes_venda : @captacao.autorizacao_pdf %>
-    <% if authorization_attachments.attached? %>
+    <% available_authorization_attachments = if @captacao.respond_to?(:available_internal_document_attachments)
+         @captacao.available_internal_document_attachments(:autorizacoes_venda)
+       elsif authorization_attachments.respond_to?(:attached?) && authorization_attachments.attached?
+         authorization_attachments.respond_to?(:attachments) ? authorization_attachments.attachments : [authorization_attachments]
+       else
+         []
+       end %>
+    <% unavailable_authorization_attachments = @captacao.respond_to?(:unavailable_internal_document_attachments) ? @captacao.unavailable_internal_document_attachments(:autorizacoes_venda) : [] %>
+    <% if available_authorization_attachments.any? %>
       <div class="ax-card tw-mb-3">
         <div class="ax-card__body">
           <div class="capt-detail-section-title capt-detail-section-title--compact"><i class="bi bi-file-earmark-pdf"></i>Autorização</div>
-          <% first_authorization = authorization_attachments.respond_to?(:first) ? authorization_attachments.first : authorization_attachments %>
+          <% first_authorization = available_authorization_attachments.first %>
           <%= link_to rails_blob_path(first_authorization, disposition: "inline"), target: "_blank", class: "ax-btn ax-btn--ghost ax-btn--sm tw-w-full" do %>
             <i class="bi bi-download"></i>Ver autorização
+          <% end %>
+        </div>
+      </div>
+    <% elsif unavailable_authorization_attachments.any? %>
+      <div class="ax-card tw-mb-3">
+        <div class="ax-card__body">
+          <div class="capt-detail-section-title capt-detail-section-title--compact"><i class="bi bi-file-earmark-x"></i>Autorização</div>
+          <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill", compact: true) do %>
+            Arquivo indisponível. Solicite o reenvio da autorização.
           <% end %>
         </div>
       </div>

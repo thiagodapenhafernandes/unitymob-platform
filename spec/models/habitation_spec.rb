@@ -678,6 +678,37 @@ RSpec.describe Habitation, type: :model do
 
       expect(missing).not_to include("Situação", "Ocupação")
     end
+
+    it "accepts an authorization attachment when the storage object is available" do
+      habitation = create(:habitation, :broker_intake)
+      habitation.autorizacoes_venda.attach(
+        io: StringIO.new("autorizacao"),
+        filename: "autorizacao.pdf",
+        content_type: "application/pdf"
+      )
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[autorizacao])
+
+      expect(habitation).to have_available_authorization_attachment
+      expect(missing).not_to include("Anexo da autorização do proprietário")
+    end
+
+    it "does not accept an authorization attachment when the storage object is missing" do
+      habitation = create(:habitation, :broker_intake)
+      habitation.autorizacoes_venda.attach(
+        io: StringIO.new("autorizacao"),
+        filename: "autorizacao.pdf",
+        content_type: "application/pdf"
+      )
+      attachment = habitation.autorizacoes_venda.attachments.first
+      allow(attachment.blob.service).to receive(:exist?).with(attachment.blob.key).and_return(false)
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[autorizacao])
+
+      expect(habitation).not_to have_available_authorization_attachment
+      expect(habitation.unavailable_internal_document_attachments(:autorizacoes_venda)).to contain_exactly(attachment)
+      expect(missing).to include("Anexo da autorização do proprietário")
+    end
   end
 
   describe "#capture_price_reductions" do

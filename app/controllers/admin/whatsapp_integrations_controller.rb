@@ -45,6 +45,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       error_message = callback_error_message(event, session_info)
       integration.update!(
         status: event == "CANCEL" ? "canceled" : "failed",
+        access_token: nil,
+        token_expires_at: nil,
         last_event: event.presence || "ERROR",
         last_error_code: session_info["error_code"],
         last_error_message: error_message,
@@ -57,6 +59,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   rescue Facebook::WhatsappEmbeddedSignupService::Error => e
     current_whatsapp_integration.update!(
       status: "failed",
+      access_token: nil,
+      token_expires_at: nil,
       last_event: callback_params[:event].presence || "ERROR",
       last_error_message: e.message,
       signup_payload: safe_payload
@@ -192,6 +196,70 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
   end
 
+  def lead_activation_template
+    integration = current_whatsapp_integration
+    template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
+
+    unless Whatsapp::LeadActivationTemplate.editable?(template)
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-activation-template"),
+                  alert: "Este template já foi aprovado pela Meta e não pode mais ser editado."
+      return
+    end
+
+    template.assign_attributes(lead_activation_template_params)
+    template.assign_attributes(
+      name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+      language: Whatsapp::LeadActivationTemplate::LANGUAGE,
+      template_type: "text",
+      header_format: "image",
+      waba_id: integration.waba_id,
+      status: template.status.presence || "DRAFT",
+      buttons: [],
+      carousel_cards: [],
+      flow_config: {}
+    )
+
+    if template.save
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-activation-template"),
+                  notice: "Rascunho do template de ativação salvo."
+    else
+      load_page_state
+      @lead_activation_template = template
+      @lead_activation_template_errors = template.errors.full_messages
+      render :show, status: :unprocessable_content
+    end
+  end
+
+  def submit_lead_activation_template
+    integration = current_whatsapp_integration
+
+    unless integration.messaging_ready? && integration.waba_id.present?
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-activation-template"),
+                  alert: "Configure o número das notificações com Access Token, Phone Number ID e WABA antes de enviar o template."
+      return
+    end
+
+    template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
+    unless Whatsapp::LeadActivationTemplate.editable?(template)
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-activation-template"),
+                  alert: "Este template já está #{template.status.to_s.downcase} e não pode ser reenviado por aqui."
+      return
+    end
+
+    template.status = "PENDING"
+    result = Whatsapp::TemplateSubmission.call(template: template, client: Whatsapp::CloudClient.new(integration))
+
+    if result[:ok]
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-activation-template"),
+                  notice: "Template de ativação enviado para aprovação da Meta."
+    else
+      load_page_state
+      @lead_activation_template = template
+      @lead_activation_template_errors = template.errors.full_messages.presence || [result[:error]]
+      render :show, status: :unprocessable_content
+    end
+  end
+
   def use_current_number_for_campaigns
     integration = current_whatsapp_integration
 
@@ -269,6 +337,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @notification_template_purpose_options = NotificationTemplateSetting.purpose_options
     @notification_template_options = notification_template_options
     @notification_template_variable_sources = @new_notification_template_setting.variable_source_options
+    @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
   end
 
   def notification_template_options
@@ -402,6 +471,16 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       :sale_requires_lead_form,
       :rent_requires_lead_form,
       :sale_rent_requires_lead_form
+    )
+  end
+
+  def lead_activation_template_params
+    params.require(:whatsapp_template).permit(
+      :category,
+      :body,
+      :footer_text,
+      :allow_category_change,
+      :header_media_file
     )
   end
 

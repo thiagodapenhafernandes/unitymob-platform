@@ -356,6 +356,105 @@
               </div>
             </section>
 
+            <% activation_template = @lead_activation_template %>
+            <% activation_editable = Whatsapp::LeadActivationTemplate.editable?(activation_template) %>
+            <% activation_status = activation_template.status.to_s.presence || "DRAFT" %>
+            <% activation_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(activation_status.upcase, :gray) %>
+            <% activation_preview_values = ["Corretor", current_tenant.name.to_s.presence || "Conexão Imobiliária"] %>
+
+            <section id="lead-activation-template" class="wa-context-block">
+              <div class="wa-context-block__head">
+                <div>
+                  <span>Ativação de lead</span>
+                  <strong>Template padrão para iniciar WhatsApp</strong>
+                  <p>O corretor verá apenas o botão de ativação no lead. A mensagem aprovada pela Meta será enviada automaticamente.</p>
+                </div>
+                <%= ax_badge(activation_status, tone: activation_status_tone, dot: activation_status.upcase == "APPROVED") %>
+              </div>
+
+              <% if @lead_activation_template_errors.present? %>
+                <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                  <strong>Revise o template:</strong> <%= @lead_activation_template_errors.to_sentence %>
+                <% end %>
+              <% end %>
+
+              <% unless activation_editable %>
+                <%= ax_inline_notice(tone: :info, icon: "lock", compact: true) do %>
+                  Template enviado para a Meta. Depois de aprovado, ele fica travado nesta tela; para mudar o texto, crie um novo ciclo de aprovação.
+                <% end %>
+              <% end %>
+
+              <div class="wa-lead-activation">
+                <%= form_with model: activation_template,
+                              url: lead_activation_template_admin_whatsapp_integration_path,
+                              method: :patch,
+                              local: true,
+                              html: { class: "habitation-form-ui wa-form wa-lead-activation__form" } do |f| %>
+                  <%= f.hidden_field :allow_category_change, value: "1" %>
+                  <%= ax_select_field(form: f, method: :category, label: "Categoria Meta",
+                        choices: [["Marketing", "MARKETING"], ["Utility", "UTILITY"]],
+                        html_options: { disabled: !activation_editable }) %>
+                  <div class="wa-field">
+                    <%= ax_field_label(f, :body, text: "Texto do template",
+                          tooltip: "Use {{1}} para nome do corretor e {{2}} para nome da imobiliária. Alterações estruturais precisam de aprovação da Meta.") %>
+                    <%= f.text_area :body,
+                          rows: 5,
+                          class: "ax-control",
+                          disabled: !activation_editable,
+                          placeholder: Whatsapp::LeadActivationTemplate::DEFAULT_BODY %>
+                  </div>
+                  <%= ax_text_field(form: f, method: :footer_text, label: "Rodapé", value: activation_template.footer_text, disabled: !activation_editable) %>
+                  <%= ax_file_field(form: f, method: :header_media_file, label: "Imagem de exemplo/padrão",
+                        tooltip: "Obrigatória para aprovar template com imagem. No envio real, a foto do corretor logado pode substituir esta imagem.",
+                        accept: "image/png,image/jpeg",
+                        button_label: "Escolher imagem",
+                        class_name: "wa-lead-activation__upload") if activation_editable %>
+
+                  <div class="wa-variable-map">
+                    <div class="wa-variable-map__row">
+                      <span>{{1}}<small>Nome do corretor logado</small></span>
+                      <strong><%= current_admin_user&.name.presence || "Corretor" %></strong>
+                    </div>
+                    <div class="wa-variable-map__row">
+                      <span>{{2}}<small>Nome da imobiliária</small></span>
+                      <strong><%= current_tenant.name %></strong>
+                    </div>
+                  </div>
+
+                  <div class="wa-webhook__actions">
+                    <%= f.submit "Salvar rascunho", class: "ax-btn ax-btn--primary ax-btn--sm", disabled: !activation_editable %>
+                  </div>
+                <% end %>
+
+                <% if activation_template.persisted? && activation_editable %>
+                  <%= button_to submit_lead_activation_template_admin_whatsapp_integration_path,
+                                method: :post,
+                                class: "ax-btn ax-btn--sm",
+                                form: { data: { turbo_confirm: "Enviar este template para aprovação da Meta? Depois disso, edite apenas se a Meta rejeitar." } } do %>
+                    <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação</span>
+                  <% end %>
+                <% end %>
+
+                <div class="wa-lead-activation__preview" aria-label="Prévia do WhatsApp">
+                  <div class="wa-template-phone">
+                    <div class="wa-template-bubble">
+                      <% if activation_template.header_media_file.attached? %>
+                        <%= image_tag activation_template.header_media_file, class: "wa-template-bubble__image", alt: "Imagem do template" %>
+                      <% else %>
+                        <div class="wa-template-bubble__image wa-template-bubble__image--placeholder">
+                          <i class="bi bi-person-bounding-box"></i>
+                        </div>
+                      <% end %>
+                      <p><%= simple_format(activation_template.render_body(activation_preview_values), {}, wrapper_tag: "span") %></p>
+                      <% if activation_template.footer_text.present? %>
+                        <small><%= activation_template.footer_text %></small>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <% notification_template_actions = capture do %>
               <div class="wa-context-actions">
                 <%= button_to sync_notification_templates_admin_whatsapp_integration_path,
@@ -733,11 +832,55 @@
   .wa-variable-map { display: grid; gap: 8px; }
   .wa-variable-map__row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 8px; }
   .wa-variable-map__row > span { color: #344054; font-size: 12px; font-weight: 800; }
+  .wa-variable-map__row > strong { color: #1f2733; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
   .wa-variable-map__row small { display: block; margin-top: 2px; color: #8a93a3; font-size: 10.5px; font-weight: 650; line-height: 1.25; }
+
+  .wa-lead-activation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 14px; align-items: start; }
+  .wa-lead-activation__form { min-width: 0; }
+  .wa-lead-activation__preview { min-width: 0; }
+  .wa-template-phone {
+    padding: 12px;
+    border: 1px solid #202c33;
+    border-radius: 8px;
+    background: #111b21;
+    background-image:
+      radial-gradient(circle at 16px 16px, rgba(255,255,255,.05) 0 2px, transparent 2px),
+      radial-gradient(circle at 48px 44px, rgba(255,255,255,.04) 0 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  .wa-template-bubble {
+    width: 100%;
+    max-width: 318px;
+    margin: 0 auto;
+    padding: 6px 6px 8px;
+    border-radius: 7px;
+    background: #202c33;
+    color: #e9edef;
+    box-shadow: 0 2px 8px rgba(0,0,0,.28);
+  }
+  .wa-template-bubble__image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 6px;
+    background: #2a3942;
+  }
+  .wa-template-bubble__image--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8696a0;
+    font-size: 44px;
+  }
+  .wa-template-bubble p { margin: 8px 6px 0; font-size: 13px; line-height: 1.35; }
+  .wa-template-bubble span { display: inline; }
+  .wa-template-bubble small { display: block; margin: 6px 6px 0; color: #8696a0; font-size: 10.5px; text-align: right; }
   @media (max-width: 540px) {
     .wa-variable-map__row { grid-template-columns: minmax(0, 1fr); align-items: start; }
   }
   @media (max-width: 820px) {
+    .wa-lead-activation { grid-template-columns: minmax(0, 1fr); }
     .wa-context-block__head { align-items: flex-start; flex-direction: column; }
     .wa-context-actions { justify-content: flex-start; }
     .wa-number-section__head { align-items: flex-start; flex-direction: column; }

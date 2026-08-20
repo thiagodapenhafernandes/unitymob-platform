@@ -1,6 +1,14 @@
 <% photos_attachment = @captacao.respond_to?(:photos) ? @captacao.photos : @captacao.fotos %>
 <% ordered_photos = @captacao.respond_to?(:ordered_photos) ? @captacao.ordered_photos : photos_attachment %>
 <% authorization_attachments = @captacao.respond_to?(:autorizacoes_venda) ? @captacao.autorizacoes_venda : @captacao.autorizacao_pdf %>
+<% available_authorization_attachments = if @captacao.respond_to?(:available_internal_document_attachments)
+     @captacao.available_internal_document_attachments(:autorizacoes_venda)
+   elsif authorization_attachments.respond_to?(:attached?) && authorization_attachments.attached?
+     authorization_attachments.respond_to?(:attachments) ? authorization_attachments.attachments : [authorization_attachments]
+   else
+     []
+   end %>
+<% unavailable_authorization_attachments = @captacao.respond_to?(:unavailable_internal_document_attachments) ? @captacao.unavailable_internal_document_attachments(:autorizacoes_venda) : [] %>
 <% captacao_foto_ambientes = defined?(Habitation::FOTO_AMBIENTES) ? Habitation::FOTO_AMBIENTES : [] %>
 <% captacao_ambiente_editable = @captacao.respond_to?(:photo_ambiente) && captacao_foto_ambientes.any? && can?(:edit, :imoveis) %>
 <% photo_flow_options = Habitation::PHOTO_FLOW_CHOICES.map { |key, label| [label, key] } %>
@@ -165,12 +173,16 @@
           ) %>
       <span data-captacao-photos-target="authorizationStatus">Print, imagem ou PDF.</span>
     </div>
-    <% if field_invalid.call(:autorizacoes_venda) %><div class="invalid-feedback d-block">Anexe a autorização do proprietário.</div><% end %>
+    <% if field_invalid.call(:autorizacoes_venda) %><div class="invalid-feedback d-block">Anexe uma autorização válida do proprietário.</div><% end %>
   </div>
 
-  <% if authorization_attachments.attached? %>
+  <% if available_authorization_attachments.any? %>
     <%= ax_inline_notice(tone: :success, icon: "file-earmark-check-fill") do %>
       Autorização anexada.
+    <% end %>
+  <% elsif unavailable_authorization_attachments.any? %>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
+      A autorização anexada não está mais disponível no armazenamento. Anexe o arquivo novamente.
     <% end %>
   <% end %>
 

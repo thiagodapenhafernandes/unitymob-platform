@@ -1,4 +1,4 @@
-\restrict z0Wal85iiVngGjgGnjBQnTfautj7eGAhSqqeYGcVmOh8yotrNXOlgfFeoLVbcDV
+\restrict kTFa3GPqlNw2L3xTcPC8juyFBhWzuoES4fcrg1a6jp658TGnDSFSplVLKhos6N2
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -6876,7 +6876,8 @@ CREATE TABLE public.whatsapp_messages (
     agent_reaction character varying,
     pinned_at timestamp(6) without time zone,
     starred_at timestamp(6) without time zone,
-    hidden_at timestamp(6) without time zone
+    hidden_at timestamp(6) without time zone,
+    template_components jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -15497,6 +15498,14 @@ ALTER TABLE ONLY public.property_review_policies
 
 
 --
+-- Name: external_lead_integrations fk_rails_3c3de6e62d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_3c3de6e62d FOREIGN KEY (connected_by_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: automation_webhook_deliveries fk_rails_3e8969d1cd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15518,6 +15527,14 @@ ALTER TABLE ONLY public.home_settings
 
 ALTER TABLE ONLY public.account_memberships
     ADD CONSTRAINT fk_rails_3fbff27fad FOREIGN KEY (member_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: external_lead_integrations fk_rails_40450c5c31; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_40450c5c31 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
 
 
 --
@@ -15982,14 +15999,6 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 ALTER TABLE ONLY public.portal_integrations
     ADD CONSTRAINT fk_rails_70282156d0 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
--- Name: external_lead_integrations fk_rails_71a6693771; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_71a6693771 FOREIGN KEY (connected_by_admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -16593,14 +16602,6 @@ ALTER TABLE ONLY public.commercial_contract_events
 
 
 --
--- Name: external_lead_integrations fk_rails_ade9cba0cf; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_ade9cba0cf FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
 -- Name: public_navigation_events fk_rails_af97a57d80; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16726,14 +16727,6 @@ ALTER TABLE ONLY public.operational_user_events
 
 ALTER TABLE ONLY public.automation_workflows
     ADD CONSTRAINT fk_rails_bcad8004e0 FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
-
-
---
--- Name: external_lead_integrations fk_rails_bd21fb50d6; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_bd21fb50d6 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
 
 
 --
@@ -16897,6 +16890,14 @@ ALTER TABLE ONLY public.automation_execution_steps
 
 
 --
+-- Name: external_lead_integrations fk_rails_c5c23f1945; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_c5c23f1945 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: ai_property_share_audit_events fk_rails_c5d6831be9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16910,14 +16911,6 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 ALTER TABLE ONLY public.layout_settings
     ADD CONSTRAINT fk_rails_c760eaba29 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
--- Name: leads fk_rails_c8056365d4; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.leads
-    ADD CONSTRAINT fk_rails_c8056365d4 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id);
 
 
 --
@@ -17142,6 +17135,14 @@ ALTER TABLE ONLY public.whatsapp_messages
 
 ALTER TABLE ONLY public.habitation_broker_assignments
     ADD CONSTRAINT fk_rails_dc25c47a24 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: leads fk_rails_dfa6ee8ee1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_dfa6ee8ee1 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id);
 
 
 --
@@ -17452,11 +17453,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict z0Wal85iiVngGjgGnjBQnTfautj7eGAhSqqeYGcVmOh8yotrNXOlgfFeoLVbcDV
+\unrestrict kTFa3GPqlNw2L3xTcPC8juyFBhWzuoES4fcrg1a6jp658TGnDSFSplVLKhos6N2
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260819174500'),
 ('20260819041000'),
 ('20260818173000'),
 ('20260817140000'),

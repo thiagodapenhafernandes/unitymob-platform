@@ -701,6 +701,7 @@ class Habitation < ApplicationRecord
   # Documentos internos do imóvel (só admin/editor enxergam — não vão para o site público)
   # Após anexar, AttachmentOrganizerService move os blobs para
   # imoveis/{codigo}/fichas-cadastro/ e imoveis/{codigo}/autorizacoes/ no DO Spaces.
+  INTERNAL_DOCUMENT_ATTACHMENT_NAMES = %i[fichas_cadastro autorizacoes_venda].freeze
   has_many_attached :fichas_cadastro
   has_many_attached :autorizacoes_venda
 
@@ -709,6 +710,25 @@ class Habitation < ApplicationRecord
   def organize_document_attachments
     return unless fichas_cadastro.attached? || autorizacoes_venda.attached?
     Habitations::AttachmentOrganizerService.new(self).call
+  end
+
+  def available_internal_document_attachments(name)
+    return [] unless INTERNAL_DOCUMENT_ATTACHMENT_NAMES.include?(name.to_sym)
+
+    public_send(name).attachments.select { |attachment| internal_document_attachment_available?(attachment) }
+  end
+
+  def unavailable_internal_document_attachments(*names)
+    names = INTERNAL_DOCUMENT_ATTACHMENT_NAMES if names.blank?
+    names.flat_map do |name|
+      next [] unless INTERNAL_DOCUMENT_ATTACHMENT_NAMES.include?(name.to_sym)
+
+      public_send(name).attachments.reject { |attachment| internal_document_attachment_available?(attachment) }
+    end
+  end
+
+  def has_available_authorization_attachment?
+    available_internal_document_attachments(:autorizacoes_venda).any?
   end
 
   belongs_to :admin_user, optional: true, foreign_key: 'admin_user_id'
@@ -1526,7 +1546,7 @@ class Habitation < ApplicationRecord
     missing << "Fotos ou agenda com fotógrafo" if check.call("fotos") && photo_flow_choice == "upload" && !has_any_photo?
     missing << "Agenda com fotógrafo" if check.call("fotos") && photo_flow_choice == "schedule" && photo_session_requested_at.blank?
     missing << "Fotos ou agenda com fotógrafo" if check.call("fotos") && photo_flow_choice.blank? && !has_any_photo?
-    missing << "Anexo da autorização do proprietário" if check.call("autorizacao") && !autorizacoes_venda.attached?
+    missing << "Anexo da autorização do proprietário" if check.call("autorizacao") && !has_available_authorization_attachment?
     missing
   end
 
@@ -2407,6 +2427,18 @@ class Habitation < ApplicationRecord
   end
 
   private
+
+  def internal_document_attachment_available?(attachment)
+    blob = attachment.blob
+    blob.present? && blob.service.exist?(blob.key)
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[habitation_internal_document_check] habitation_id=#{id || 'new'} " \
+      "attachment_id=#{attachment&.id || 'unknown'} blob_id=#{blob&.id || 'unknown'} " \
+      "error=#{e.class}: #{e.message}"
+    )
+    false
+  end
 
   def validate_codigo_empreendimento?
     codigo_empreendimento.present? && (new_record? || will_save_change_to_codigo_empreendimento?)

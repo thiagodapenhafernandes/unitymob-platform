@@ -6,6 +6,7 @@ require "uri"
 module Gateway
   class EventForwarder
     TIMEOUT_SECONDS = 5
+    MAX_BACKOFF_SECONDS = 15 * 60
 
     def self.call(event:, raw_body:)
       new(event:, raw_body:).call
@@ -19,18 +20,19 @@ module Gateway
 
     def call
       event.increment!(:attempts)
+      event.update!(last_attempted_at: Time.now)
 
       response = perform_request
       if response.is_a?(Net::HTTPSuccess)
-        event.update!(status: "forwarded", forwarded_at: Time.now, last_error: nil)
+        event.update!(status: "forwarded", forwarded_at: Time.now, last_error: nil, next_retry_at: nil)
       else
-        event.update!(status: "failed", last_error: "HTTP #{response.code}: #{response.body.to_s[0, 500]}")
+        mark_failed!("HTTP #{response.code}: #{response.body.to_s[0, 500]}")
       end
 
       response
     rescue StandardError => error
-      event.update!(status: "failed", last_error: "#{error.class}: #{error.message}")
-      raise
+      mark_failed!("#{error.class}: #{error.message}")
+      nil
     end
 
     private
@@ -49,6 +51,18 @@ module Gateway
       Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https", open_timeout: TIMEOUT_SECONDS, read_timeout: TIMEOUT_SECONDS) do |http|
         http.request(request)
       end
+    end
+
+    def mark_failed!(message)
+      event.update!(
+        status: "failed",
+        last_error: message,
+        next_retry_at: Time.now + backoff_seconds
+      )
+    end
+
+    def backoff_seconds
+      [2**event.attempts, MAX_BACKOFF_SECONDS].min
     end
   end
 end

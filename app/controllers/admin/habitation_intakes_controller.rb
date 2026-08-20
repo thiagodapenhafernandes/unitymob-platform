@@ -892,7 +892,7 @@ module Admin
           missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
           missing << "Escolha um horário disponível para a fotografia." if photo_schedule_slot_unavailable?
         end
-        missing << "Anexe a autorização do proprietário." if intake_check_enabled?(:autorizacao) && !@habitation.autorizacoes_venda.attached?
+        missing << "Anexe uma autorização válida do proprietário." if intake_check_enabled?(:autorizacao) && !@habitation.has_available_authorization_attachment?
         missing
       when "visitas"
         missing = []
@@ -1015,7 +1015,7 @@ module Admin
         fields[:photos] = true if intake_check_enabled?(:fotos) && @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
         fields[:photo_session_requested_at] = true if intake_check_enabled?(:fotos) && @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
         fields[:photo_session_requested_at] = true if intake_check_enabled?(:fotos) && photo_schedule_slot_unavailable?
-        fields[:autorizacoes_venda] = true if intake_check_enabled?(:autorizacao) && !@habitation.autorizacoes_venda.attached?
+        fields[:autorizacoes_venda] = true if intake_check_enabled?(:autorizacao) && !@habitation.has_available_authorization_attachment?
       when "visitas"
         fields[:chaves_com] = true if intake_check_enabled?(:chaves) && @habitation.requires_intake_key_location? && @habitation.key_location.blank?
         fields[:dias_visitas] = true if !@habitation.skip_visitas? && !@habitation.intake_visit_days_present?

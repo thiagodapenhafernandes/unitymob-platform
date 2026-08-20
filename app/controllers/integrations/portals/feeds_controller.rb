@@ -90,6 +90,9 @@ module Integrations
 
       def render_feed(habitations)
         case @integration.feed_strategy
+        when "open_navent_xml"
+          serializer = Portal::OpenNaventXmlSerializer.new(habitations: habitations, integration: @integration)
+          stream_xml(serializer)
         when "olx_xml"
           serializer = Portal::OlxXmlSerializer.new(habitations: habitations, integration: @integration)
           stream_xml(serializer)

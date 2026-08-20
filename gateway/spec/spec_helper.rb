@@ -37,10 +37,13 @@ ActiveRecord::Schema.define do
       t.string :waba_id
       t.string :phone_number_id
       t.jsonb :payload, null: false, default: {}
+      t.text :raw_body
       t.string :status, null: false, default: "received"
       t.integer :attempts, null: false, default: 0
       t.text :last_error
       t.datetime :received_at, null: false
+      t.datetime :last_attempted_at
+      t.datetime :next_retry_at
       t.datetime :forwarded_at
       t.timestamps
     end

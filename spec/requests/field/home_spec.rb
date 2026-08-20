@@ -55,15 +55,21 @@ RSpec.describe "Field::Home", type: :request do
     expect(response.body).not_to include("Check-in ativo")
   end
 
-  it "direciona o atalho Imóveis para a aba Todos" do
+  it "direciona o KPI Imóveis no site para imóveis publicados do corretor e mantém o atalho Imóveis geral" do
     broker = create(:admin_user, :field_agent, name: "Luciana Indalécio")
+    create(:habitation, admin_user: broker, exibir_no_site_flag: true)
     sign_in broker
 
     get field_root_path, headers: mobile_headers
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Imóveis")
-    expect(response.body).to include(CGI.escapeHTML(admin_habitations_path(ownership: "all")))
+    document = Nokogiri::HTML(response.body)
+    links = document.css("a[href]").map { |link| [link.text.squish, link["href"]] }
+
+    expect(links).to include(
+      [a_string_including("Imóveis no site"), admin_habitations_path(ownership: "mine", exibir_no_site: "1")],
+      [a_string_including("Imóveis", "Portfólio geral"), admin_habitations_path(ownership: "all")]
+    )
   end
 
   it "mostra prioridades, dados do lead e ações de contato" do

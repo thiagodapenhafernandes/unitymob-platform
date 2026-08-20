@@ -436,6 +436,8 @@ class WhatsappTemplate < ApplicationRecord
   end
 
   def validate_template_submission
+    return if status.to_s.upcase == "DRAFT"
+
     case template_type
     when "text"
       validate_text_template_submission

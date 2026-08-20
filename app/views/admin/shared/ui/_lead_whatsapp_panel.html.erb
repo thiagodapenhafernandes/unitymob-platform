@@ -93,7 +93,7 @@
           <div>
             <div class="ax-stat-label">WhatsApp individual</div>
             <% if lead.whatsapp_recipient.present? %>
-              <div class="ax-page-subtitle">Abra a thread individual, envie mídia real ou ative o lead com um template aprovado.</div>
+              <div class="ax-page-subtitle">Abra a thread individual ou ative o WhatsApp com a mensagem padrão aprovada.</div>
             <% else %>
               <div class="ax-page-subtitle">Este lead ainda não tem telefone ou BSUID para abrir conversa no WhatsApp.</div>
             <% end %>
@@ -130,7 +130,7 @@
           </div>
           <div class="lead-whatsapp-card__summary-badges">
             <%= ax_badge(lead.business_scoped_user_id.present? ? "BSUID" : "Telefone", tone: :gray) if lead.whatsapp_recipient.present? %>
-            <%= ax_badge("#{templates.size} template#{'s' if templates.size != 1}", tone: :blue) if templates.any? %>
+            <%= ax_badge(templates.any? ? "Template pronto" : "Template pendente", tone: templates.any? ? :green : :amber) if lead.whatsapp_recipient.present? %>
             <%= ax_badge("Canal pronto", tone: :green) if lead.whatsapp_recipient.present? %>
           </div>
         </div>
@@ -140,27 +140,19 @@
             <% if return_to.present? %>
               <input type="hidden" name="return_to" value="<%= return_to %>">
             <% end %>
-            <select name="whatsapp_template_id"
-                    class="ax-select lead-whatsapp-card__template-select"
-                    <%= "disabled" unless lead.whatsapp_recipient.present? && templates.any? %>>
-              <option value="">Ativar com template aprovado</option>
-              <% templates.each do |template| %>
-                <option value="<%= template.id %>"><%= template.name %></option>
-              <% end %>
-            </select>
             <button type="submit"
-                    class="ax-btn ax-btn--sm ax-btn--primary"
+                    class="ax-btn ax-btn--primary"
                     <%= "disabled" unless lead.whatsapp_recipient.present? && templates.any? %>>
-              <i class="bi bi-send ax-ico"></i><span>Enviar template</span>
+              <i class="bi bi-send ax-ico"></i><span>Ativar WhatsApp</span>
             </button>
           <% end %>
 
           <% if templates.blank? %>
-            <span class="lead-whatsapp-card__hint">Nenhum template aprovado disponível para esta conta.</span>
+            <span class="lead-whatsapp-card__hint">Configure e aprove o template de ativação na integração WhatsApp.</span>
           <% elsif lead.whatsapp_recipient.blank? %>
             <span class="lead-whatsapp-card__hint">Cadastre telefone ou BSUID no lead para ativar o WhatsApp.</span>
           <% else %>
-            <span class="lead-whatsapp-card__hint">Abra a thread para enviar texto, imagem, vídeo, áudio e documento ou inicie o contato com um template aprovado.</span>
+            <span class="lead-whatsapp-card__hint">Será enviada a mensagem padrão de ativação com os dados do corretor.</span>
           <% end %>
         </div>
       <% end %>

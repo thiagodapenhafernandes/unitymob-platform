@@ -38,4 +38,16 @@ namespace :db do
   end
 end
 
+namespace :webhooks do
+  desc "Retry failed webhook forwards"
+  task :retry_failed do
+    result = Gateway::RetryFailedEvents.call(
+      limit: ENV.fetch("LIMIT", Gateway::RetryFailedEvents::DEFAULT_LIMIT),
+      max_attempts: ENV.fetch("MAX_ATTEMPTS", Gateway::RetryFailedEvents::DEFAULT_MAX_ATTEMPTS)
+    )
+
+    puts "retried=#{result.retried} forwarded=#{result.forwarded} failed=#{result.failed}"
+  end
+end
+
 task default: "db:migrate"

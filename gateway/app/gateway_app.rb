@@ -38,7 +38,7 @@ module Gateway
 
       payload = parse_json(raw_body)
       event_contexts = WhatsappPayload.extract_event_contexts(payload)
-      events = event_contexts.map { |context| persist_event(context, payload) }
+      events = event_contexts.map { |context| persist_event(context, payload, raw_body) }
 
       events.each { |event| forward_event(event, raw_body) }
 
@@ -127,7 +127,7 @@ module Gateway
       }
     end
 
-    def persist_event(context, payload)
+    def persist_event(context, payload, raw_body)
       route = RouteResolver.call(phone_number_id: context[:phone_number_id], waba_id: context[:waba_id])
 
       WebhookEvent.create!(
@@ -138,6 +138,7 @@ module Gateway
         waba_id: context[:waba_id],
         phone_number_id: context[:phone_number_id],
         payload: payload,
+        raw_body: raw_body,
         status: route ? "received" : "unrouted",
         received_at: Time.now
       )

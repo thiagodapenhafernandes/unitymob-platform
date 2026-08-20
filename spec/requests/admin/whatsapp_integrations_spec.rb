@@ -5,9 +5,29 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
 
   let(:admin) { create(:admin_user, :admin) }
 
+  around do |example|
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = false
+    example.run
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
   before do
     host! "localhost"
     sign_in admin
+  end
+
+  def current_whatsapp_integration!(attrs = {})
+    WhatsappBusinessIntegration.current(admin.tenant).tap do |integration|
+      integration.status ||= "connected"
+      integration.waba_id ||= "616242481017427"
+      integration.phone_number_id ||= "649374078254590"
+      integration.access_token ||= "EAATESTTOKEN123456"
+      integration.assign_attributes(attrs)
+      integration.connected_by_admin_user ||= admin
+      integration.save!
+    end
   end
 
   it "exibe a tela sem duplicar paginas/forms do Meta Leads" do
@@ -19,13 +39,76 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).not_to include("Páginas e Formulários")
     expect(response.body).to include("Telefones do Site")
     expect(response.body).to include("1980983762681491")
+    expect(response.body).to include("Template padrão para iniciar WhatsApp")
     expect(response.body).to include("Sincronizar templates")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")
-    expect(document.css(".ax-empty-state").map(&:text).join).to include("Nenhuma finalidade configurada", "Nenhum número cadastrado")
     expect(document.at_css('input[type="url"][name="whatsapp_business_integration[webhook_callback_url]"]')).to be_present
     expect(document.at_css('input[type="password"][name="whatsapp_business_integration[access_token]"]')).to be_present
     expect(document.at_css('input[type="tel"][name="whatsapp_sender_number[display_phone_number]"][data-controller="phone-input"]')).to be_present
+  end
+
+  it "salva rascunho do template de ativacao de lead sem enviar para a Meta" do
+    integration = current_whatsapp_integration!(waba_id: "waba-activation")
+
+    patch lead_activation_template_admin_whatsapp_integration_path, params: {
+      whatsapp_template: {
+        category: "MARKETING",
+        body: "Oi! Aqui é {{1}}, da {{2}}. Podemos conversar por aqui?",
+        footer_text: "Conexão BC",
+        allow_category_change: "1"
+      }
+    }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-activation-template"))
+    template = admin.tenant.whatsapp_templates.find_by!(name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME)
+    expect(template.waba_id).to eq(integration.waba_id)
+    expect(template.status).to eq("DRAFT")
+    expect(template.header_format).to eq("image")
+    expect(template.body).to include("{{1}}", "{{2}}")
+  end
+
+  it "envia o template de ativacao para aprovacao pela Meta" do
+    integration = current_whatsapp_integration!(
+      waba_id: "waba-activation-submit",
+      phone_number_id: "phone-activation-submit",
+      access_token: "token-activation-submit"
+    )
+    template = Whatsapp::LeadActivationTemplate.for(tenant: admin.tenant, integration: integration)
+    template.header_media_handle = "header-handle"
+    template.save!
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      template.update!(status: "PENDING", meta_id: "tpl-activation")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_activation_template_admin_whatsapp_integration_path
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-activation-template"))
+    expect(template.reload.status).to eq("PENDING")
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
+  it "bloqueia edicao do template de ativacao depois de aprovado" do
+    integration = current_whatsapp_integration!(waba_id: "waba-activation-approved")
+    template = admin.tenant.whatsapp_templates.create!(
+      name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+      waba_id: integration.waba_id,
+      language: "pt_BR",
+      category: "MARKETING",
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "image",
+      header_media_handle: "handle",
+      body: "Texto aprovado {{1}} {{2}}"
+    )
+
+    patch lead_activation_template_admin_whatsapp_integration_path, params: {
+      whatsapp_template: { body: "Texto alterado {{1}} {{2}}" }
+    }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-activation-template"))
+    expect(template.reload.body).to eq("Texto aprovado {{1}} {{2}}")
   end
 
   it "redireciona a antiga aba de forms para Meta Leads" do
@@ -68,8 +151,10 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "inclui metadados dos placeholders para mapear variaveis ao selecionar template de notificacao" do
+    integration = current_whatsapp_integration!(waba_id: "waba-auto-map")
     template = admin.tenant.whatsapp_templates.create!(
       name: "lead_distribution_auto_map",
+      waba_id: integration.waba_id,
       language: "pt_BR",
       category: "UTILITY",
       status: "APPROVED",
@@ -94,7 +179,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "oferece o numero integrado para campanhas quando ainda nao existe sender cadastrado" do
-    integration = create(:whatsapp_business_integration, tenant: admin.tenant)
+    integration = current_whatsapp_integration!
     client = instance_double(Whatsapp::CloudClient, phone_info: {
       ok: true,
       data: {
@@ -113,7 +198,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "disponibiliza o numero integrado na lista de campanhas" do
-    integration = create(:whatsapp_business_integration, tenant: admin.tenant)
+    integration = current_whatsapp_integration!
     client = instance_double(Whatsapp::CloudClient, phone_info: {
       ok: true,
       data: {
@@ -138,7 +223,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "reativa o sender do numero integrado quando ele ja existia desativado" do
-    integration = create(:whatsapp_business_integration, tenant: admin.tenant)
+    integration = current_whatsapp_integration!
     sender = create(
       :whatsapp_sender_number,
       tenant: admin.tenant,

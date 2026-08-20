@@ -2,14 +2,15 @@ module Whatsapp
   class TemplateMessageComponents
     Result = Struct.new(:ok?, :components, :error, keyword_init: true)
 
-    def self.call(template:, variables:, client: nil)
-      new(template, variables, client).call
+    def self.call(template:, variables:, client: nil, header_media_attachable: nil)
+      new(template, variables, client, header_media_attachable).call
     end
 
-    def initialize(template, variables, client = nil)
+    def initialize(template, variables, client = nil, header_media_attachable = nil)
       @template = template
       @variables = variables.to_h.transform_keys(&:to_s)
       @client = client
+      @header_media_attachable = header_media_attachable
     end
 
     def call
@@ -26,7 +27,7 @@ module Whatsapp
 
     private
 
-    attr_reader :template, :variables, :client
+    attr_reader :template, :variables, :client, :header_media_attachable
 
     def template_components
       @template_components ||= Array(template.components).map { |component| normalize_hash(component) }
@@ -173,11 +174,12 @@ module Whatsapp
       return @uploaded_header_media_reference if defined?(@uploaded_header_media_reference)
 
       @uploaded_header_media_reference = nil
-      return unless client && template.header_media_file.attached?
+      attachable = header_media_attachable.presence || template.header_media_file
+      return unless client && attachable&.attached?
 
-      blob = template.header_media_file.blob
+      blob = attachable.blob
       media_type = template.header_format.to_s.downcase
-      template.header_media_file.open do |file|
+      attachable.open do |file|
         upload = upload_header_media(file, blob, media_type)
         raise ArgumentError, upload[:error] unless upload[:ok]
 
