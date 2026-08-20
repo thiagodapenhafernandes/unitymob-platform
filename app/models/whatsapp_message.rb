@@ -84,4 +84,13 @@ class WhatsappMessage < ApplicationRecord
     else body.presence || "[#{msg_type}]"
     end
   end
+
+  def template_footer_text
+    return unless msg_type == "template" && template_name.present?
+
+    tenant.whatsapp_templates
+          .where(name: template_name)
+          .order(Arel.sql("CASE WHEN status = 'APPROVED' THEN 0 ELSE 1 END"), updated_at: :desc)
+          .pick(:footer_text)
+  end
 end

@@ -15,6 +15,7 @@
 <% media_meta << message.media_size_label if message.media_size_label.present? %>
 <% media_message = message.media? %>
 <% template_header_image = message.msg_type == "template" && message.media_file.attached? && message.media_file.blob.content_type.to_s.start_with?("image/") %>
+<% template_footer_text = template_header_image ? message.template_footer_text.to_s.presence : nil %>
 <% document_message = message.document? %>
 <% media_group = "wa-thread-media" %>
 <% viewer_id = "wa-message-viewer-#{message.id}" %>
@@ -32,6 +33,7 @@
 <% bubble_classes = ["wa-inbox-bubble", "wa-inbox-bubble--#{message.direction}"] %>
 <% bubble_classes << "wa-inbox-bubble--media" if media_message %>
 <% bubble_classes << "wa-inbox-bubble--document" if document_message %>
+<% bubble_classes << "wa-inbox-bubble--template-card" if template_header_image %>
 <% bubble_classes << "wa-inbox-bubble--continued" if grouped_with_previous %>
 <% bubble_classes << "wa-inbox-bubble--group-tail" if grouped_with_next %>
 <% bubble_classes << "wa-inbox-bubble--compact" if compact_mode %>
@@ -93,7 +95,7 @@
           <span class="wa-quote__snippet"><%= replied.preview.to_s.truncate(110) %></span>
         </button>
       <% end %>
-      <% if message.msg_type == "template" %>
+      <% if message.msg_type == "template" && !template_header_image %>
         <div class="wa-inbox-bubble__eyebrow"><i class="bi bi-file-text"></i> modelo <%= message.template_name %></div>
       <% end %>
 
@@ -262,7 +264,26 @@
         </div>
       <% end %>
 
-      <% if media_message && message.body.present? %>
+      <% if template_header_image && message.body.present? %>
+        <div class="wa-inbox-bubble__body wa-inbox-bubble__body--template"><%= message.body %></div>
+        <div class="wa-inbox-bubble__template-footer">
+          <% if template_footer_text.present? %>
+            <span><%= template_footer_text %></span>
+          <% end %>
+          <span class="wa-inbox-bubble__time <%= 'wa-inbox-bubble__time--muted' if grouped_with_next %>"
+                data-wa-message-status="<%= message.status %>">
+            <% if message.try(:pinned_at) %><i class="bi bi-pin-angle-fill wa-mark" title="Fixada"></i><% end %>
+            <% if message.try(:starred_at) %><i class="bi bi-star-fill wa-mark" title="Favorita"></i><% end %>
+            <%= message.created_at.strftime("%H:%M") %>
+            <% if message.outbound? && status_icon.present? %>
+              <i class="bi <%= status_icon %> <%= 'is-read' if message.status == 'read' %> <%= 'is-failed' if message.failed? %>"
+                 title="<%= status_label %>"
+                 aria-label="<%= status_label %>"
+                 data-wa-message-status-icon></i>
+            <% end %>
+          </span>
+        </div>
+      <% elsif media_message && message.body.present? %>
         <div class="wa-inbox-bubble__body wa-inbox-bubble__body--media"><%= message.body %></div>
       <% elsif !media_message && message.body.present? %>
         <div class="wa-inbox-bubble__body wa-inbox-bubble__body--text"><%= message.body %></div>
@@ -277,18 +298,20 @@
       <div class="wa-reactions"><%= reactions.uniq.join(" ") %></div>
     <% end %>
 
-    <div class="<%= bubble_meta_classes.join(' ') %>" data-wa-message-status="<%= message.status %>">
-      <div class="wa-inbox-bubble__time <%= 'wa-inbox-bubble__time--muted' if grouped_with_next %>">
-        <% if message.try(:pinned_at) %><i class="bi bi-pin-angle-fill wa-mark" title="Fixada"></i><% end %>
-        <% if message.try(:starred_at) %><i class="bi bi-star-fill wa-mark" title="Favorita"></i><% end %>
-        <%= message.created_at.strftime("%H:%M") %>
-        <% if message.outbound? && status_icon.present? %>
-          <i class="bi <%= status_icon %> <%= 'is-read' if message.status == 'read' %> <%= 'is-failed' if message.failed? %>"
-             title="<%= status_label %>"
-             aria-label="<%= status_label %>"
-             data-wa-message-status-icon></i>
-        <% end %>
+    <% unless template_header_image %>
+      <div class="<%= bubble_meta_classes.join(' ') %>" data-wa-message-status="<%= message.status %>">
+        <div class="wa-inbox-bubble__time <%= 'wa-inbox-bubble__time--muted' if grouped_with_next %>">
+          <% if message.try(:pinned_at) %><i class="bi bi-pin-angle-fill wa-mark" title="Fixada"></i><% end %>
+          <% if message.try(:starred_at) %><i class="bi bi-star-fill wa-mark" title="Favorita"></i><% end %>
+          <%= message.created_at.strftime("%H:%M") %>
+          <% if message.outbound? && status_icon.present? %>
+            <i class="bi <%= status_icon %> <%= 'is-read' if message.status == 'read' %> <%= 'is-failed' if message.failed? %>"
+               title="<%= status_label %>"
+               aria-label="<%= status_label %>"
+               data-wa-message-status-icon></i>
+          <% end %>
+        </div>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>

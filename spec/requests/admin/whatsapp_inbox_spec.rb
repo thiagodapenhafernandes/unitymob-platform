@@ -187,6 +187,41 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).to include("Baixar")
     end
 
+    it "renderiza template oficial com imagem no formato de cartão WhatsApp" do
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-template-card", phone_number_id: "phone-template-card", access_token: "token-template-card")
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "MARKETING",
+        template_type: "text",
+        footer_text: "Atendimento",
+        body: "Oi! Aqui é {{1}}, da {{2}}."
+      )
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: "5547999990074", contact_name: "Cliente Template")
+      message = conv.messages.create!(
+        tenant: admin.tenant,
+        direction: "outbound",
+        msg_type: "template",
+        template_name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        body: "Oi! Aqui é Thiago, da Conexão BC.",
+        status: "sent"
+      )
+      message.media_file.attach(io: StringIO.new("fake-image"), filename: "template.jpg", content_type: "image/jpeg")
+
+      get admin_whatsapp_conversation_path(conv)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("wa-inbox-bubble--template-card")
+      expect(response.body).to include("wa-inbox-bubble__body--template")
+      expect(response.body).to include("wa-inbox-bubble__template-footer")
+      expect(response.body).to include("Atendimento")
+      expect(response.body).not_to include("modelo lead_activation_default")
+    end
+
     it "renderiza documento com componente de anexo reutilizável" do
       conv = WhatsappConversation.create!(contact_phone: "5547999990013")
       message = conv.messages.create!(direction: "inbound", msg_type: "document", status: "delivered")
