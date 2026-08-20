@@ -51,6 +51,20 @@ RSpec.describe Portal::OpenNaventXmlSerializer do
     expect(xml).to include("<![CDATA[Sem Condominio]]>")
   end
 
+  it "marks condominium as absent when cents would serialize as zero reais" do
+    habitation = build(
+      :habitation,
+      codigo: "CM-CONDOMINIO-ZERADO",
+      valor_condominio_cents: 1
+    )
+
+    xml = described_class.new(habitations: [habitation], integration: integration_for).to_xml
+
+    expect(xml).to include("<valorCondominio>")
+    expect(xml).to include("<![CDATA[Sem Condominio]]>")
+    expect(xml).not_to include("<valorCondominio>0</valorCondominio>")
+  end
+
   it "keeps the condominium fee numeric when present" do
     habitation = build(
       :habitation,

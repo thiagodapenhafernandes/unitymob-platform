@@ -82,8 +82,9 @@ module Portal
       xml.suites habitation.suites_qtd.to_i
       xml.areaUtil integer_or_zero(habitation.area_privativa_m2)
       xml.areaTotal integer_or_zero(habitation.area_total_m2)
-      if habitation.valor_condominio_cents.to_i.positive?
-        xml.valorCondominio cents_to_units(habitation.valor_condominio_cents)
+      condominium_fee = cents_to_units(habitation.valor_condominio_cents)
+      if condominium_fee.positive?
+        xml.valorCondominio condominium_fee
       else
         xml.valorCondominio { xml.cdata!("Sem Condominio") }
       end
