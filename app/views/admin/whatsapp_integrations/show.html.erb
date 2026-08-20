@@ -410,48 +410,54 @@
                         button_label: "Escolher imagem",
                         class_name: "wa-lead-activation__upload") if activation_editable %>
 
-                  <div class="wa-variable-map">
-                    <div class="wa-variable-map__row">
-                      <span>{{1}}<small>Nome do corretor logado</small></span>
-                      <strong>Nome do corretor</strong>
-                    </div>
-                    <div class="wa-variable-map__row">
-                      <span>{{2}}<small>Nome da imobiliária</small></span>
-                      <strong>Nome da imobiliária</strong>
-                    </div>
-                  </div>
-
                   <div class="wa-webhook__actions">
                     <%= f.submit "Salvar rascunho", class: "ax-btn ax-btn--primary ax-btn--sm", disabled: !activation_editable %>
                   </div>
                 <% end %>
 
-                <% if activation_template.persisted? && activation_editable %>
-                  <%= button_to submit_lead_activation_template_admin_whatsapp_integration_path,
-                                method: :post,
-                                class: "ax-btn ax-btn--sm",
-                                form: { data: { turbo_confirm: "Enviar este template para aprovação da Meta? Depois disso, edite apenas se a Meta rejeitar." } } do %>
-                    <i class="bi bi-send ax-ico"></i><span>Enviar template de apresentação para aprovação da Meta</span>
+                <aside class="wa-lead-activation__side">
+                  <% if activation_template.persisted? && activation_editable %>
+                    <%= button_to submit_lead_activation_template_admin_whatsapp_integration_path,
+                                  method: :post,
+                                  class: "ax-btn ax-btn--sm wa-lead-activation__submit-meta",
+                                  form: { class: "wa-lead-activation__approval", data: { turbo_confirm: "Enviar este template para aprovação da Meta? Depois disso, edite apenas se a Meta rejeitar." } } do %>
+                      <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação da Meta</span>
+                    <% end %>
                   <% end %>
-                <% end %>
 
-                <div class="wa-lead-activation__preview" aria-label="Prévia do WhatsApp">
-                  <div class="wa-template-phone">
-                    <div class="wa-template-bubble">
-                      <% if activation_template.header_media_file.attached? %>
-                        <%= image_tag activation_template.header_media_file, class: "wa-template-bubble__image", alt: "Imagem do template" %>
-                      <% else %>
-                        <div class="wa-template-bubble__image wa-template-bubble__image--placeholder">
-                          <i class="bi bi-person-bounding-box"></i>
-                        </div>
-                      <% end %>
-                      <p><%= simple_format(activation_template.render_body(activation_preview_values), {}, wrapper_tag: "span") %></p>
-                      <% if activation_template.footer_text.present? %>
-                        <small><%= activation_template.footer_text %></small>
-                      <% end %>
+                  <div class="wa-lead-activation__reference">
+                    <span>Variáveis do template</span>
+                    <div class="wa-variable-map">
+                      <div class="wa-variable-map__row">
+                        <span>{{1}}<small>Nome do corretor logado</small></span>
+                        <strong>Nome do corretor</strong>
+                      </div>
+                      <div class="wa-variable-map__row">
+                        <span>{{2}}<small>Nome da imobiliária</small></span>
+                        <strong>Nome da imobiliária</strong>
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  <div class="wa-lead-activation__preview" aria-label="Prévia do WhatsApp">
+                    <span>Prévia do primeiro contato</span>
+                    <div class="wa-template-phone">
+                      <div class="wa-template-bubble">
+                        <% if activation_template.header_media_file.attached? %>
+                          <%= image_tag activation_template.header_media_file, class: "wa-template-bubble__image", alt: "Imagem do template" %>
+                        <% else %>
+                          <div class="wa-template-bubble__image wa-template-bubble__image--placeholder">
+                            <i class="bi bi-person-bounding-box"></i>
+                          </div>
+                        <% end %>
+                        <p><%= simple_format(activation_template.render_body(activation_preview_values), {}, wrapper_tag: "span") %></p>
+                        <% if activation_template.footer_text.present? %>
+                          <small><%= activation_template.footer_text %></small>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </aside>
               </div>
             </section>
 
@@ -835,11 +841,33 @@
   .wa-variable-map__row > strong { color: #1f2733; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
   .wa-variable-map__row small { display: block; margin-top: 2px; color: #8a93a3; font-size: 10.5px; font-weight: 650; line-height: 1.25; }
 
-  .wa-lead-activation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 14px; align-items: start; }
-  .wa-lead-activation__form { min-width: 0; }
+  .wa-lead-activation { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(300px, 420px); gap: 18px; align-items: start; }
+  .wa-lead-activation__form,
+  .wa-lead-activation__side,
   .wa-lead-activation__preview { min-width: 0; }
+  .wa-lead-activation__form { display: grid; gap: 12px; }
+  .wa-lead-activation__side { display: grid; gap: 12px; align-content: start; }
+  .wa-lead-activation__approval { margin: 0; }
+  .wa-lead-activation__submit-meta { width: 100%; justify-content: center; min-height: 38px; }
+  .wa-lead-activation__reference,
+  .wa-lead-activation__preview {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--ax-border-soft, #e7ebf2);
+    border-radius: 8px;
+    background: #f8fafc;
+  }
+  .wa-lead-activation__reference > span,
+  .wa-lead-activation__preview > span {
+    color: #7b8494;
+    font-size: 10.5px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
   .wa-template-phone {
-    padding: 12px;
+    padding: 10px;
     border: 1px solid #202c33;
     border-radius: 8px;
     background: #111b21;
@@ -850,7 +878,7 @@
   }
   .wa-template-bubble {
     width: 100%;
-    max-width: 318px;
+    max-width: 286px;
     margin: 0 auto;
     padding: 6px 6px 8px;
     border-radius: 7px;

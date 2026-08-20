@@ -38,6 +38,8 @@
   .wa-negotiation,
   .wa-phone-info,
   .wa-context-block,
+  .wa-lead-activation__reference,
+  .wa-lead-activation__preview,
   .wa-number-row,
   .wa-number-row__test
 ) {
@@ -50,6 +52,8 @@
   .wa-connected,
   .wa-phone-info,
   .wa-context-block--primary,
+  .wa-lead-activation__reference,
+  .wa-lead-activation__preview,
   .wa-number-row--empty,
   .wa-number-row__test
 ) {
@@ -79,6 +83,8 @@
   .wa-phone-info__cell span,
   .wa-context-block__head span,
   .wa-context-block__head p,
+  .wa-lead-activation__reference > span,
+  .wa-lead-activation__preview > span,
   .wa-number-section__head span,
   .wa-number-row__main span,
   .wa-number-row__main small,
