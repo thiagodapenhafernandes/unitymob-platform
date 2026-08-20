@@ -105,6 +105,52 @@ RSpec.describe Gateway::App do
     expect(WebhookEvent.last).to have_attributes(status: "unrouted", phone_number_id: "unknown-phone")
   end
 
+  it "routes WhatsApp template status updates by WABA id" do
+    route = WebhookRoute.create!(
+      client_key: "conexao",
+      tenant_name: "Conexao BC",
+      waba_id: "1054007410675269",
+      phone_number_id: "1266477183219172",
+      target_url: "https://app.conexaobc.com/webhooks/whatsapp",
+      forwarding_secret: "forward-secret"
+    )
+    payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "1054007410675269",
+          changes: [
+            {
+              field: "message_template_status_update",
+              value: {
+                event: "APPROVED",
+                reason: "NONE",
+                message_template_id: 1_777_522_833_434_571,
+                message_template_name: "lead_activation_default",
+                message_template_category: "MARKETING",
+                message_template_language: "pt_BR"
+              }
+            }
+          ]
+        }
+      ]
+    }.to_json
+    stub = stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+
+    post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+
+    expect(last_response.status).to eq(200)
+    expect(WebhookEvent.last).to have_attributes(
+      status: "forwarded",
+      webhook_route_id: route.id,
+      event_type: "message_template_status_update",
+      external_id: "1777522833434571",
+      waba_id: "1054007410675269",
+      phone_number_id: ""
+    )
+    expect(stub).to have_been_requested
+  end
+
   it "upserts internal routes with bearer token authentication" do
     payload = {
       client_key: "conexao",
