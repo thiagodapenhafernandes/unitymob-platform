@@ -9,7 +9,7 @@ RSpec.describe Whatsapp::LeadActivationTemplate do
 
       template = described_class.for(tenant: tenant, integration: integration)
 
-      expect(template.name).to eq("lead_activation_default_v3")
+      expect(template.name).to eq("lead_activation_default")
       expect(template.header_format).to eq("image")
       expect(template.footer_text).to eq("Atendimento")
       expect(template.footer_text).not_to include("Conexão")

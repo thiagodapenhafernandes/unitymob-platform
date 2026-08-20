@@ -1,6 +1,6 @@
 module Whatsapp
   class LeadActivationTemplate
-    TEMPLATE_NAME = "lead_activation_default_v3".freeze
+    TEMPLATE_NAME = "lead_activation_default".freeze
     LANGUAGE = "pt_BR".freeze
     DEFAULT_BODY = "Oi! 👋 Aqui é {{1}}, da {{2}}. A partir de agora eu cuido do seu atendimento — pode falar comigo por aqui. Como posso ajudar?".freeze
     LEGACY_FIXED_FOOTER = "Atendimento Conexão".freeze

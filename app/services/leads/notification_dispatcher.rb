@@ -278,7 +278,7 @@ module Leads
     end
 
     # Template aprovado para notificar o corretor de um novo lead (pt_BR).
-    WHATSAPP_LEAD_TEMPLATE = "lead_agent_v4".freeze
+    WHATSAPP_LEAD_TEMPLATE = "lead_alert".freeze
 
     # Notifica o corretor recém-atribuído via WhatsApp Business (Cloud API) usando
     # o template aprovado — funciona dentro e fora da janela de 24h. O TRANSPORTE
@@ -329,7 +329,7 @@ module Leads
     end
 
     # Parâmetros do corpo do template configurado para a finalidade.
-    # Sem configuração, mantém a ordem histórica do lead_agent_v4:
+    # Sem configuração, mantém a ordem do template padrão lead_alert:
     # {{1}} cliente · {{2}} origem · {{3}} nome · {{4}} telefone · {{5}} email · {{6}} outros dados.
     # Com "link seguro" ligado, telefone/email/dados viram links /s/token (só o nome
     # fica visível) e o clique vira o evento de atendimento (sistema intermediário).
