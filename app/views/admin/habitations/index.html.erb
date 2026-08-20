@@ -11,6 +11,7 @@
     amenities
     publicar_imovelweb_2 publicar_lais_ai
     publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
+    tipo_publicacao_imovelweb_2 destaque_chaves_na_mao modelo_casa_mineira tipo_publicacao_imovelweb
     empreendimento_codigo corretor_id proprietor_id permuta_vehicle permuta_property permuta_others permuta_min_value
     permuta_location permuta_min_dorms permuta_min_suites permuta_min_garagens regiao_foco
     captacao_inicio captacao_fim somente_com_imagens somente_sem_imagens somente_dwv
@@ -489,6 +490,10 @@
   active_filter_chips << "Corretor: #{@corretor_filter_labels.join(', ')}" if @corretor_filter_labels.any?
   active_filter_chips << "Pendente de revisão" if @intake_review == "pending"
   if show_administrative_filter_chips
+    portal_option_label = lambda do |choices, value|
+      choices.find { |_label, option_value| option_value.to_s == value.to_s }&.first || value
+    end
+
     active_filter_chips << "Somente com imagens" if params[:somente_com_imagens] == "1"
     active_filter_chips << "Somente sem imagens" if params[:somente_sem_imagens] == "1"
     active_filter_chips << "Somente imóveis do DWV" if params[:somente_dwv] == "1"
@@ -504,6 +509,22 @@
     active_filter_chips << "Portal: Casa Mineira" if params[:publicar_casa_mineira] == "1"
     active_filter_chips << "Portal: Imovelweb" if params[:publicar_imovelweb] == "1"
     active_filter_chips << "Portal: Viva Real VRSync" if params[:publicar_viva_real_vrsync] == "1"
+    if params[:tipo_publicacao_imovelweb_2].present?
+      imovelweb_2_label = portal_option_label.call(Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS, params[:tipo_publicacao_imovelweb_2])
+      active_filter_chips << "Imovelweb 2: #{imovelweb_2_label}"
+    end
+    if params[:destaque_chaves_na_mao].present?
+      chaves_na_mao_label = portal_option_label.call(Habitation::CHAVES_NA_MAO_DESTAQUE_OPTIONS, params[:destaque_chaves_na_mao])
+      active_filter_chips << "Destaque Chaves na Mão: #{chaves_na_mao_label}"
+    end
+    if params[:modelo_casa_mineira].present?
+      casa_mineira_label = portal_option_label.call(Habitation::CASA_MINEIRA_MODELO_OPTIONS, params[:modelo_casa_mineira])
+      active_filter_chips << "Casa Mineira: #{casa_mineira_label}"
+    end
+    if params[:tipo_publicacao_imovelweb].present?
+      imovelweb_label = portal_option_label.call(Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS, params[:tipo_publicacao_imovelweb])
+      active_filter_chips << "Imovelweb: #{imovelweb_label}"
+    end
     Array(params[:foto_classificacao]).reject(&:blank?).each do |fc|
       active_filter_chips << "Foto: #{fc}"
     end

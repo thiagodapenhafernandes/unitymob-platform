@@ -1216,6 +1216,7 @@ class Admin::HabitationsController < Admin::BaseController
         destaque_web festival exibir_no_site exibir_no_site_portal tem_placa exclusivo regiao_foco
         foto_classificacao publicar_imovelweb_2 publicar_lais_ai
         publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
+        tipo_publicacao_imovelweb_2 destaque_chaves_na_mao modelo_casa_mineira tipo_publicacao_imovelweb
         captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
       ]
     end
@@ -1421,6 +1422,10 @@ class Admin::HabitationsController < Admin::BaseController
     @publicar_casa_mineira = params[:publicar_casa_mineira]
     @publicar_imovelweb = params[:publicar_imovelweb]
     @publicar_viva_real_vrsync = params[:publicar_viva_real_vrsync]
+    @tipo_publicacao_imovelweb_2 = params[:tipo_publicacao_imovelweb_2]
+    @destaque_chaves_na_mao = params[:destaque_chaves_na_mao]
+    @modelo_casa_mineira = params[:modelo_casa_mineira]
+    @tipo_publicacao_imovelweb = params[:tipo_publicacao_imovelweb]
     @somente_com_imagens = params[:somente_com_imagens]
     @somente_sem_imagens = params[:somente_sem_imagens]
     @somente_dwv = params[:somente_dwv]
@@ -1460,6 +1465,10 @@ class Admin::HabitationsController < Admin::BaseController
       @publicar_casa_mineira = nil
       @publicar_imovelweb = nil
       @publicar_viva_real_vrsync = nil
+      @tipo_publicacao_imovelweb_2 = nil
+      @destaque_chaves_na_mao = nil
+      @modelo_casa_mineira = nil
+      @tipo_publicacao_imovelweb = nil
       @somente_com_imagens = nil
       @somente_sem_imagens = nil
       @somente_dwv = nil
@@ -1643,6 +1652,10 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_boolean_filter(scope, @publicar_casa_mineira, :publicar_casa_mineira)
     scope = apply_boolean_filter(scope, @publicar_imovelweb, :publicar_imovelweb)
     scope = apply_boolean_filter(scope, @publicar_viva_real_vrsync, :publicar_viva_real_vrsync)
+    scope = apply_text_option_filter(scope, @tipo_publicacao_imovelweb_2, :tipo_publicacao_imovelweb_2)
+    scope = apply_text_option_filter(scope, @destaque_chaves_na_mao, :destaque_chaves_na_mao)
+    scope = apply_text_option_filter(scope, @modelo_casa_mineira, :modelo_casa_mineira)
+    scope = apply_text_option_filter(scope, @tipo_publicacao_imovelweb, :tipo_publicacao_imovelweb)
 
     if @somente_com_imagens == "1" && @somente_sem_imagens != "1"
       scope = scope.with_photos
@@ -2413,6 +2426,15 @@ class Admin::HabitationsController < Admin::BaseController
     when '0' then scope.where("habitations.#{column} IS NOT TRUE")
     else scope
     end
+  end
+
+  def apply_text_option_filter(scope, raw_param, column_name)
+    value = raw_param.to_s.squish
+    return scope if value.blank?
+
+    physical_name = Habitation.physical_column_name(column_name)
+    column = ActiveRecord::Base.connection.quote_column_name(physical_name)
+    scope.where("LOWER(TRIM(habitations.#{column})) = ?", value.downcase)
   end
 
   def apply_status_filter(scope, raw_statuses)

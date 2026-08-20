@@ -14,7 +14,12 @@
   location_filter_keys = %w[cidade logradouro numero bairro_comercial]
   business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location rental_management permuta_vehicle permuta_property permuta_others]
   feature_filter_keys = %w[dorms_min dorms_max suites_min suites_max banheiros_min banheiros_max vagas_min vagas_max area_total_min area_total_max area_privativa_min area_privativa_max amenities]
-  administrative_filter_keys = %w[destaque_web festival exibir_no_site_portal tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim regiao_foco]
+  administrative_filter_keys = %w[
+    destaque_web festival exibir_no_site_portal tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv
+    foto_classificacao publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira
+    publicar_imovelweb publicar_viva_real_vrsync tipo_publicacao_imovelweb_2 destaque_chaves_na_mao
+    modelo_casa_mineira tipo_publicacao_imovelweb captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim regiao_foco
+  ]
   quick_filter_count = filter_active_count.call(%w[q]) + (params[:scope].present? ? 1 : 0)
   quick_filters = [
     { key: "destaque_web", label: "Destaque Web", icon: "star-fill" },
@@ -408,6 +413,38 @@
                 <%= ax_filter_check(name: field, checked: params[field] == "1", label:, id: "#{field}_filter") %>
               <% end %>
             </div>
+          </div>
+          <div>
+            <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                             method: :tipo_publicacao_imovelweb_2,
+                                             label: "Tipo Imovelweb 2",
+                                             choices: Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS,
+                                             select_options: { include_blank: "Todos", selected: params[:tipo_publicacao_imovelweb_2] },
+                                             placeholder: "Todos") %>
+          </div>
+          <div>
+            <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                             method: :destaque_chaves_na_mao,
+                                             label: "Destaque Chaves na Mão",
+                                             choices: Habitation::CHAVES_NA_MAO_DESTAQUE_OPTIONS,
+                                             select_options: { include_blank: "Todos", selected: params[:destaque_chaves_na_mao] },
+                                             placeholder: "Todos") %>
+          </div>
+          <div>
+            <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                             method: :modelo_casa_mineira,
+                                             label: "Modelo Casa Mineira",
+                                             choices: Habitation::CASA_MINEIRA_MODELO_OPTIONS,
+                                             select_options: { include_blank: "Todos", selected: params[:modelo_casa_mineira] },
+                                             placeholder: "Todos") %>
+          </div>
+          <div>
+            <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                             method: :tipo_publicacao_imovelweb,
+                                             label: "Tipo Imovelweb",
+                                             choices: Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS,
+                                             select_options: { include_blank: "Todos", selected: params[:tipo_publicacao_imovelweb] },
+                                             placeholder: "Todos") %>
           </div>
           <div>
             <%= ax_date_field(clearable: true, form: f, method: :captacao_inicio, label: "Cadastro de", value: params[:captacao_inicio]) %>
