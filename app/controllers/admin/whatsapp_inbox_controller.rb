@@ -158,10 +158,11 @@ class Admin::WhatsappInboxController < Admin::BaseController
       PresentationCard.available_for(current_admin_user).find_by(id: params[:presentation_card_id])
     end
     presentation_template = lead_activation_presentation_template(template_name)
+    conversation_template = lead_conversation_template(template_name)
 
     # Gate "exigir apresentação": bloqueia envio livre (texto, modelo ou mídia),
     # mas NUNCA o próprio envio de apresentação (card ou template oficial).
-    if presentation_card.nil? && presentation_template.nil? && presentation_pending?(@integration)
+    if presentation_card.nil? && presentation_template.nil? && conversation_template.nil? && presentation_pending?(@integration)
       return respond_send_message_error("Envie sua apresentação primeiro — escolha uma apresentação no painel ao lado.", return_path:)
     end
 
@@ -175,6 +176,11 @@ class Admin::WhatsappInboxController < Admin::BaseController
 
     if presentation_template
       message = build_presentation_template_message(presentation_template)
+      return respond_send_message_error(message.error, return_path:) unless message.ok?
+
+      message = message.record
+    elsif conversation_template
+      message = build_lead_conversation_template_message(conversation_template)
       return respond_send_message_error(message.error, return_path:) unless message.ok?
 
       message = message.record
@@ -413,6 +419,16 @@ class Admin::WhatsappInboxController < Admin::BaseController
     template
   end
 
+  def lead_conversation_template(template_name)
+    return if template_name.blank?
+    return unless Whatsapp::LeadConversationTemplates.find(template_name)
+
+    template = Whatsapp::LeadConversationTemplates.for(tenant: current_tenant, integration: @integration, name: template_name)
+    return unless template.persisted? && template.approved?
+
+    template
+  end
+
   def build_presentation_template_message(template)
     return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar a apresentação.") unless @conversation.lead
 
@@ -430,6 +446,28 @@ class Admin::WhatsappInboxController < Admin::BaseController
       variables: variables,
       client: Whatsapp::CloudClient.new(@integration),
       header_media_attachable: message.media_file.attached? ? message.media_file : nil
+    )
+    return PresentationTemplateMessage.new(ok?: false, error: components.error) unless components.ok?
+
+    message.template_components = components.components
+    PresentationTemplateMessage.new(ok?: true, record: message)
+  end
+
+  def build_lead_conversation_template_message(template)
+    return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar o template oficial.") unless @conversation.lead
+
+    variables = Whatsapp::LeadConversationTemplates.variable_values(name: template.name, conversation: @conversation, admin_user: current_admin_user)
+    values = variables.sort_by { |index, _value| index.to_i }.map(&:last)
+    message = build_outbound(
+      msg_type: "template",
+      template_name: template.name,
+      body: template.render_body(values)
+    )
+
+    components = Whatsapp::TemplateMessageComponents.call(
+      template: template,
+      variables: variables,
+      client: Whatsapp::CloudClient.new(@integration)
     )
     return PresentationTemplateMessage.new(ok?: false, error: components.error) unless components.ok?
 

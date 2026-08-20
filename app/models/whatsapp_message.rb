@@ -26,6 +26,9 @@ class WhatsappMessage < ApplicationRecord
   def audio? = msg_type == "audio"
   def video? = msg_type == "video"
   def attachment_present? = media_file.attached?
+  def service_window_closed_failure?
+    failed? && outbound? && Whatsapp::SendFailureClassifier.service_window_closed?(error_message: error_message)
+  end
 
   def presentation_avatar_attachment
     return unless image? && presentation_card_id.present?

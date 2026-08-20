@@ -229,7 +229,7 @@ module Whatsapp
       return if attrs.blank?
 
       attrs[:recipient_user_id] = status["recipient_user_id"] if status["recipient_user_id"].present?
-      attrs[:error_message] = status.dig("errors", 0, "title") if state == "failed"
+      attrs[:error_message] = Whatsapp::SendFailureClassifier.message_from_status_error(status.dig("errors", 0)) if state == "failed"
       message.update_columns(attrs.merge(updated_at: Time.current))
       Whatsapp::ThreadBroadcaster.message_updated(message)
 

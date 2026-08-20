@@ -42,6 +42,9 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("Template oficial para primeiro contato")
     expect(response.body).to include("lead_activation_default")
     expect(response.body).to include("lead_alert")
+    expect(response.body).to include("lead_followup")
+    expect(response.body).to include("lead_appointment_reminder")
+    expect(response.body).to include("lead_task_reminder")
     expect(response.body).to include("Sincronizar templates")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")
@@ -245,6 +248,58 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     post submit_lead_alert_template_admin_whatsapp_integration_path
 
     expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
+    expect(Whatsapp::TemplateSubmission).not_to have_received(:call)
+  end
+
+  it "envia template oficial de retomada para analise da Meta" do
+    integration = current_whatsapp_integration!(
+      waba_id: "waba-lead-followup-submit",
+      phone_number_id: "phone-lead-followup-submit",
+      access_token: "token-lead-followup-submit"
+    )
+    definition = Whatsapp::LeadConversationTemplates.find("lead_followup")
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 0 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      expect(template.name).to eq("lead_followup")
+      expect(template.category).to eq("MARKETING")
+      expect(template.header_format).to eq("none")
+      expect(template.footer_text).to be_nil
+      expect(template.body).to eq(definition.body)
+      expect(template.meta_create_payload[:components].pluck(:type)).to eq(["BODY"])
+      template.update!(status: "PENDING", meta_id: "tpl-lead-followup")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_conversation_template_admin_whatsapp_integration_path,
+         params: { template_name: "lead_followup" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-conversation-templates"))
+    template = admin.tenant.whatsapp_templates.find_by!(name: "lead_followup", waba_id: integration.waba_id)
+    expect(template.status).to eq("PENDING")
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
+  it "nao reenvia template oficial de conversa quando o sync ja encontra aprovado" do
+    integration = current_whatsapp_integration!(waba_id: "waba-lead-followup-approved")
+    definition = Whatsapp::LeadConversationTemplates.find("lead_followup")
+    admin.tenant.whatsapp_templates.create!(
+      name: definition.name,
+      waba_id: integration.waba_id,
+      language: "pt_BR",
+      category: definition.category,
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "none",
+      body: definition.body
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 1 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call)
+
+    post submit_lead_conversation_template_admin_whatsapp_integration_path,
+         params: { template_name: "lead_followup" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-conversation-templates"))
+    expect(Whatsapp::SyncTemplatesJob).to have_received(:perform_now).with(admin.tenant.id)
     expect(Whatsapp::TemplateSubmission).not_to have_received(:call)
   end
 

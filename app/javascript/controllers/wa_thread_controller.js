@@ -101,6 +101,14 @@ export default class extends Controller {
 
   // Ações das bolhas (responder/copiar/ir à citada): um listener só, delegado.
   handleListClick(event) {
+    const selectTemplateBtn = event.target.closest("[data-wa-select-template]")
+    if (selectTemplateBtn) {
+      window.dispatchEvent(new CustomEvent("wa-template:select", {
+        detail: { templateName: selectTemplateBtn.dataset.waSelectTemplate || "" }
+      }))
+      return
+    }
+
     // popovers de reação e menu
     const reactOpen = event.target.closest("[data-wa-react-open]")
     if (reactOpen) {

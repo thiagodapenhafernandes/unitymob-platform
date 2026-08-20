@@ -68,7 +68,7 @@ module Whatsapp
         elsif retryable_send_failure?(result)
           raise TransientSendError, result[:error].to_s.presence || "Falha transitória no envio WhatsApp"
         else
-          update_message_status!(message, status: "failed", error_message: result[:error].to_s.truncate(250))
+          update_message_status!(message, status: "failed", error_message: Whatsapp::SendFailureClassifier.message_from_result(result).truncate(250))
         end
       end
     end

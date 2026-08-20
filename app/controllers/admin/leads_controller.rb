@@ -1151,7 +1151,7 @@ class Admin::LeadsController < Admin::BaseController
     end
 
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
-    @whatsapp_templates = [@lead_activation_template].select { |template| template.persisted? && template.approved? }
+    @whatsapp_templates = approved_lead_whatsapp_templates(integration)
     # 100 e nao 12: com 12 o historico (videos/audios de dias atras) sumia do painel
     @whatsapp_messages = @whatsapp_conversation ? lead_whatsapp_panel_messages(@whatsapp_conversation) : []
     snapshot = @whatsapp_conversation ? Whatsapp::ThreadContextSnapshot.new(
@@ -1179,6 +1179,15 @@ class Admin::LeadsController < Admin::BaseController
     @whatsapp_thread_context_locals = {}
     @lead_whatsapp_notice = message
     @lead_whatsapp_notice_detail = detail
+  end
+
+  def approved_lead_whatsapp_templates(integration)
+    templates = [@lead_activation_template]
+    templates += Whatsapp::LeadConversationTemplates.names.map do |name|
+      Whatsapp::LeadConversationTemplates.for(tenant: current_tenant, integration:, name:)
+    end
+
+    templates.compact.select { |template| template.persisted? && template.approved? }
   end
 
   def auto_open_lead_whatsapp_conversation?(integration)

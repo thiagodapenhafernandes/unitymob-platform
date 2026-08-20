@@ -394,6 +394,7 @@ Rails.application.routes.draw do
       patch :lead_activation_template
       post :submit_lead_activation_template
       post :submit_lead_alert_template
+      post :submit_lead_conversation_template
       post :sync_notification_templates
       post :use_current_number_for_campaigns
       post :register_phone_number

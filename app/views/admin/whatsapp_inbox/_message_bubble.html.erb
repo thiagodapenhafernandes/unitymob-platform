@@ -39,6 +39,8 @@
 <% bubble_classes << "wa-inbox-bubble--compact" if compact_mode %>
 <% bubble_meta_classes = ["wa-inbox-bubble__meta"] %>
 <% bubble_meta_classes << "wa-inbox-bubble__meta--muted" if grouped_with_next %>
+<% service_window_closed_failure = message.service_window_closed_failure? %>
+<% service_window_template = Whatsapp::LeadWindowTemplateSelector.call(conversation: message.whatsapp_conversation, admin_user: message.admin_user) if service_window_closed_failure %>
 <% if starts_day %>
   <div class="wa-inbox-thread__day-separator">
     <span><%= day_label %></span>
@@ -311,6 +313,25 @@
                data-wa-message-status-icon></i>
           <% end %>
         </div>
+      </div>
+    <% end %>
+
+    <% if service_window_closed_failure %>
+      <div class="wa-inbox-bubble__failure-guide">
+        <div class="wa-inbox-bubble__failure-copy">
+          <strong>Janela de atendimento fechada</strong>
+          <span>Envie um template aprovado para iniciar ou retomar a conversa.</span>
+        </div>
+        <% if service_window_template&.template.present? %>
+          <button type="button"
+                  class="ax-btn ax-btn--sm ax-btn--primary wa-inbox-bubble__failure-action"
+                  data-wa-select-template="<%= service_window_template.template.name %>">
+            <i class="bi bi-send-fill ax-ico"></i>
+            <span><%= service_window_template.label %></span>
+          </button>
+        <% else %>
+          <span class="wa-inbox-bubble__failure-note">Nenhum template oficial aprovado nesta conta.</span>
+        <% end %>
       </div>
     <% end %>
   </div>
