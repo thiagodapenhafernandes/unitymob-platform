@@ -469,6 +469,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
     it "cria mensagem outbound, registra na timeline e enfileira envio" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      allow_any_instance_of(Whatsapp::CloudClient).to receive(:upload_message_media).and_return({ ok: true, media_id: "uploaded-template-media" })
       allow(Whatsapp::ThreadBroadcaster).to receive(:message_created)
       lead = create(:lead)
       conv = WhatsappConversation.create!(contact_phone: "5547999990003", lead: lead)
@@ -586,7 +587,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       )
       lead = create(:lead, tenant: admin.tenant, phone: "5547999990054")
       conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
-      WhatsappTemplate.create!(
+      template = WhatsappTemplate.create!(
         tenant: admin.tenant,
         waba_id: integration.waba_id,
         name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
@@ -602,6 +603,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
           { "type" => "BODY", "text" => "Oi! Aqui é {{1}}, da {{2}}." }
         ]
       )
+      template.header_media_file.attach(io: StringIO.new("fake-template-image"), filename: "template.jpg", content_type: "image/jpeg")
 
       expect {
         post send_message_admin_whatsapp_conversation_path(conv), params: {
@@ -617,7 +619,15 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
       expect(msg.msg_type).to eq("template")
       expect(msg.template_name).to eq(Whatsapp::LeadActivationTemplate::TEMPLATE_NAME)
+      expect(msg.media_file).to be_attached
+      expect(msg.media_file.blob).to eq(template.header_media_file.blob)
       expect(msg.body).to include(admin.name, admin.tenant.name)
+      expect(msg.template_components).to include(
+        "type" => "header",
+        "parameters" => [
+          { "type" => "image", "image" => { "id" => "uploaded-template-media" } }
+        ]
+      )
       expect(msg.template_components).to include(
         "type" => "body",
         "parameters" => [

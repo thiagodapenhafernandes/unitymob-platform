@@ -14,6 +14,7 @@
 <% media_meta << message.media_format_label if message.media_format_label.present? %>
 <% media_meta << message.media_size_label if message.media_size_label.present? %>
 <% media_message = message.media? %>
+<% template_header_image = message.msg_type == "template" && message.media_file.attached? && message.media_file.blob.content_type.to_s.start_with?("image/") %>
 <% document_message = message.document? %>
 <% media_group = "wa-thread-media" %>
 <% viewer_id = "wa-message-viewer-#{message.id}" %>
@@ -94,6 +95,12 @@
       <% end %>
       <% if message.msg_type == "template" %>
         <div class="wa-inbox-bubble__eyebrow"><i class="bi bi-file-text"></i> modelo <%= message.template_name %></div>
+      <% end %>
+
+      <% if template_header_image && media_url.present? %>
+        <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--image">
+          <img src="<%= media_url %>" alt="Imagem do template WhatsApp" class="wa-inbox-media wa-inbox-media--image">
+        </div>
       <% end %>
 
       <% if message.image? && media_url.present? %>

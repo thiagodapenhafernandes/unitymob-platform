@@ -9,7 +9,8 @@ RSpec.describe Whatsapp::LeadActivationTemplate do
 
       template = described_class.for(tenant: tenant, integration: integration)
 
-      expect(template.name).to eq("lead_activation_default_v2")
+      expect(template.name).to eq("lead_activation_default_v3")
+      expect(template.header_format).to eq("image")
       expect(template.footer_text).to eq("Atendimento")
       expect(template.footer_text).not_to include("Conexão")
       expect(template.footer_text).not_to include("Imobiliária Atlântico")
@@ -35,6 +36,20 @@ RSpec.describe Whatsapp::LeadActivationTemplate do
 
       expect(resolved.id).to eq(template.id)
       expect(resolved.footer_text).to eq("Atendimento")
+    end
+
+    it "monta payload de aprovacao com cabecalho de imagem" do
+      tenant = Tenant.create!(name: "Imagem Modelo", slug: "imagem-modelo-#{SecureRandom.hex(3)}")
+      integration = WhatsappBusinessIntegration.current(tenant)
+      integration.update!(waba_id: "waba-imagem-modelo")
+      template = described_class.for(tenant: tenant, integration: integration)
+      template.header_media_handle = "header-handle"
+
+      expect(template.meta_create_payload[:components]).to include(
+        type: "HEADER",
+        format: "IMAGE",
+        example: { header_handle: ["header-handle"] }
+      )
     end
   end
 end
