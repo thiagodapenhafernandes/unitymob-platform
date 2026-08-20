@@ -97,6 +97,26 @@ module Whatsapp
       error_result(e.message)
     end
 
+    def register_phone_number(pin:)
+      return error_result("Integração não configurada") unless configured?
+
+      normalized_pin = pin.to_s.gsub(/\D/, "")
+      return error_result("Informe um PIN de 6 dígitos para registrar o número.") unless normalized_pin.match?(/\A\d{6}\z/)
+
+      response = HTTParty.post(
+        "#{base}/#{@integration.phone_number_id}/register",
+        headers: auth_headers,
+        body: {
+          messaging_product: "whatsapp",
+          pin: normalized_pin
+        }.to_json,
+        timeout: 20
+      )
+      parse(response)
+    rescue => e
+      error_result(e.message)
+    end
+
     # Health check de recebimento: lista apps inscritos no webhook da WABA.
     def subscribed_apps
       return error_result("WABA ID não informado") if @integration.waba_id.blank?

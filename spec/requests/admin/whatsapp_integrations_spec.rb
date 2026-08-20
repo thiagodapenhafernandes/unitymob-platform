@@ -247,6 +247,65 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(sender.label).to eq("Principal antigo")
   end
 
+  it "exibe acao para registrar o numero quando a integracao esta pronta" do
+    current_whatsapp_integration!
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    form = document.at_css("form[action='#{register_phone_number_admin_whatsapp_integration_path}']")
+    expect(form).to be_present
+    expect(form.at_css("input[name='pin'][maxlength='6']")).to be_present
+    expect(form.text).to include("Registrar número")
+  end
+
+  it "registra o numero na Meta e sincroniza como remetente das notificacoes" do
+    integration = current_whatsapp_integration!(
+      phone_number_id: "phone-register",
+      waba_id: "waba-register"
+    )
+    client = instance_double(
+      Whatsapp::CloudClient,
+      register_phone_number: { ok: true, status: 200, data: { "success" => true } },
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "GREEN"
+        }
+      }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    post register_phone_number_admin_whatsapp_integration_path, params: { pin: "123456" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    expect(client).to have_received(:register_phone_number).with(pin: "123456")
+    sender = admin.tenant.whatsapp_sender_numbers.find_by!(phone_number_id: "phone-register")
+    expect(sender).to be_active
+    expect(sender).to be_use_for_notifications
+    expect(sender.waba_id).to eq("waba-register")
+    expect(sender.display_phone_number).to eq("5547991427176")
+  end
+
+  it "mostra erro quando a Meta recusa o registro do numero" do
+    integration = current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      register_phone_number: { ok: false, error: "(#133010) Account not registered" },
+      phone_info: { ok: false, error: "indisponível" }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    post register_phone_number_admin_whatsapp_integration_path, params: { pin: "123456" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    follow_redirect!
+    expect(response.body).to include("(#133010) Account not registered")
+  end
+
   it "exibe e salva telefones do site por tipo de negociacao" do
     get admin_whatsapp_integration_path(tab: "site_phones")
 

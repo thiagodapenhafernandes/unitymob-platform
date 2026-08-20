@@ -99,6 +99,36 @@ RSpec.describe Whatsapp::CloudClient do
       timeout: 15
     )
   end
+
+  it "registra o numero usando o PIN de seis digitos" do
+    integration = WhatsappBusinessIntegration.new(
+      access_token: "token-123",
+      phone_number_id: "phone-123"
+    )
+    response = instance_double(HTTParty::Response, body: { success: true }.to_json, code: 200, success?: true)
+    allow(HTTParty).to receive(:post).and_return(response)
+
+    result = described_class.new(integration).register_phone_number(pin: "123-456")
+
+    expect(result).to include(ok: true)
+    expect(HTTParty).to have_received(:post).with(
+      "https://graph.facebook.com/v24.0/phone-123/register",
+      headers: { "Authorization" => "Bearer token-123", "Content-Type" => "application/json" },
+      body: { messaging_product: "whatsapp", pin: "123456" }.to_json,
+      timeout: 20
+    )
+  end
+
+  it "rejeita registro quando o PIN nao tem seis digitos" do
+    integration = WhatsappBusinessIntegration.new(
+      access_token: "token-123",
+      phone_number_id: "phone-123"
+    )
+
+    result = described_class.new(integration).register_phone_number(pin: "123")
+
+    expect(result).to include(ok: false, error: "Informe um PIN de 6 dígitos para registrar o número.")
+  end
 end
 
 RSpec.describe Lead do

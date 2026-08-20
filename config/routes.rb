@@ -395,6 +395,7 @@ Rails.application.routes.draw do
       post :submit_lead_activation_template
       post :sync_notification_templates
       post :use_current_number_for_campaigns
+      post :register_phone_number
       post :test_connection
       post :send_test
       get :test_message_status

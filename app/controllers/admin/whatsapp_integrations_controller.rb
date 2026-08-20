@@ -143,6 +143,26 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     }
   end
 
+  def register_phone_number
+    integration = current_whatsapp_integration
+
+    unless integration.messaging_ready?
+      redirect_to admin_whatsapp_integration_path,
+                  alert: "Configure Access Token e Phone Number ID antes de registrar o número."
+      return
+    end
+
+    result = Whatsapp::CloudClient.new(integration).register_phone_number(pin: params[:pin])
+    if result[:ok]
+      refresh_current_whatsapp_connection!(integration)
+      redirect_to admin_whatsapp_integration_path,
+                  notice: "Número registrado na Meta. Teste a conexão para confirmar envio e recebimento."
+    else
+      redirect_to admin_whatsapp_integration_path,
+                  alert: result[:error].presence || "Não foi possível registrar o número na Meta."
+    end
+  end
+
   # Envia uma mensagem de texto de teste pelo número conectado.
   def send_test
     to = params[:to].to_s.strip
