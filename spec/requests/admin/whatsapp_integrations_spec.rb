@@ -39,7 +39,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).not_to include("Páginas e Formulários")
     expect(response.body).to include("Telefones do Site")
     expect(response.body).to include("1980983762681491")
-    expect(response.body).to include("Template padrão para iniciar WhatsApp")
+    expect(response.body).to include("Template oficial para primeiro contato")
     expect(response.body).to include("Sincronizar templates")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")

@@ -157,11 +157,12 @@ class Admin::WhatsappInboxController < Admin::BaseController
     presentation_card = if params[:presentation_card_id].present? && @integration&.presentation_enabled?
       PresentationCard.available_for(current_admin_user).find_by(id: params[:presentation_card_id])
     end
+    presentation_template = lead_activation_presentation_template(template_name)
 
     # Gate "exigir apresentação": bloqueia envio livre (texto, modelo ou mídia),
-    # mas NUNCA o próprio envio de apresentação (card presente).
-    if presentation_card.nil? && presentation_pending?(@integration)
-      return respond_send_message_error("Envie sua apresentação primeiro — escolha um cartão no painel ao lado.", return_path:)
+    # mas NUNCA o próprio envio de apresentação (card ou template oficial).
+    if presentation_card.nil? && presentation_template.nil? && presentation_pending?(@integration)
+      return respond_send_message_error("Envie sua apresentação primeiro — escolha uma apresentação no painel ao lado.", return_path:)
     end
 
     if template_name.present? && media_file.present?
@@ -172,7 +173,12 @@ class Admin::WhatsappInboxController < Admin::BaseController
       return respond_send_message_error("Modelos aprovados não aceitam texto livre nessa resposta.", return_path:)
     end
 
-    if template_name.present?
+    if presentation_template
+      message = build_presentation_template_message(presentation_template)
+      return respond_send_message_error(message.error, return_path:) unless message.ok?
+
+      message = message.record
+    elsif template_name.present?
       message = build_outbound(msg_type: "template", template_name: template_name, body: template_body(template_name))
     elsif media_file.present?
       media_validation = Whatsapp::MediaSupport.validation_for(media_file, allow_convertible: true)
@@ -214,6 +220,8 @@ class Admin::WhatsappInboxController < Admin::BaseController
     Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
     if presentation_card
       log_presentation_sent(presentation_card, message.msg_type == "image" ? "image" : "text")
+    elsif presentation_template
+      log_presentation_template_sent
     end
     LeadActivity.log!(lead: @conversation.lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name }) if @conversation.lead_id
     load_thread_messages
@@ -393,6 +401,49 @@ class Admin::WhatsappInboxController < Admin::BaseController
       Whatsapp::MediaSupport.validation_for(current_admin_user.avatar.blob)[:ok]
   end
 
+  PresentationTemplateMessage = Struct.new(:ok?, :record, :error, keyword_init: true)
+
+  def lead_activation_presentation_template(template_name)
+    return if template_name.blank?
+    return unless template_name == Whatsapp::LeadActivationTemplate::TEMPLATE_NAME
+
+    template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: @integration)
+    return unless template.persisted? && template.approved?
+
+    template
+  end
+
+  def build_presentation_template_message(template)
+    return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar a apresentação.") unless @conversation.lead
+
+    variables = Whatsapp::LeadActivationTemplate.variable_values(lead: @conversation.lead, admin_user: current_admin_user)
+    values = variables.sort_by { |index, _value| index.to_i }.map(&:last)
+    message = build_outbound(
+      msg_type: "template",
+      template_name: template.name,
+      body: template.render_body(values)
+    )
+    attach_presentation_template_header!(message)
+
+    components = Whatsapp::TemplateMessageComponents.call(
+      template: template,
+      variables: variables,
+      client: Whatsapp::CloudClient.new(@integration),
+      header_media_attachable: message.media_file.attached? ? message.media_file : nil
+    )
+    return PresentationTemplateMessage.new(ok?: false, error: components.error) unless components.ok?
+
+    message.template_components = components.components
+    PresentationTemplateMessage.new(ok?: true, record: message)
+  end
+
+  def attach_presentation_template_header!(message)
+    return unless current_admin_user&.avatar&.attached?
+    return unless Whatsapp::MediaSupport.validation_for(current_admin_user.avatar.blob)[:ok]
+
+    message.media_file.attach(current_admin_user.avatar.blob)
+  end
+
   # A trilha consultável é a própria WhatsappMessage (presentation_card_id +
   # admin_user + conversa + created_at), com ou sem lead. O LeadActivity entra
   # apenas como evento de timeline quando há lead vinculado.
@@ -403,6 +454,20 @@ class Admin::WhatsappInboxController < Admin::BaseController
       lead: @conversation.lead,
       kind: "presentation_sent",
       metadata: { admin_user_id: current_admin_user.id, card_id: card.id, format: format }
+    )
+  end
+
+  def log_presentation_template_sent
+    return unless @conversation.lead_id
+
+    LeadActivity.log!(
+      lead: @conversation.lead,
+      kind: "presentation_sent",
+      metadata: {
+        admin_user_id: current_admin_user.id,
+        template_name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        format: "template"
+      }
     )
   end
 

@@ -50,7 +50,7 @@ module Whatsapp
       record.body = DEFAULT_BODY if record.body.blank?
       record.footer_text = DEFAULT_FOOTER if record.footer_text.blank?
       record.allow_category_change = true if record.allow_category_change.nil?
-      record.example_values = ["Corretor", tenant.name.to_s.presence || "Conexão Imobiliária"] if record.example_values.blank?
+      record.example_values = ["Nome do corretor", "Nome da imobiliária"] if record.example_values.blank?
     end
   end
 end

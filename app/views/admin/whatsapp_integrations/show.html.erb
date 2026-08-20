@@ -360,14 +360,14 @@
             <% activation_editable = Whatsapp::LeadActivationTemplate.editable?(activation_template) %>
             <% activation_status = activation_template.status.to_s.presence || "DRAFT" %>
             <% activation_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(activation_status.upcase, :gray) %>
-            <% activation_preview_values = ["Corretor", current_tenant.name.to_s.presence || "Conexão Imobiliária"] %>
+            <% activation_preview_values = ["Nome do corretor", "Nome da imobiliária"] %>
 
             <section id="lead-activation-template" class="wa-context-block">
               <div class="wa-context-block__head">
                 <div>
-                  <span>Ativação de lead</span>
-                  <strong>Template padrão para iniciar WhatsApp</strong>
-                  <p>O corretor verá apenas o botão de ativação no lead. A mensagem aprovada pela Meta será enviada automaticamente.</p>
+                  <span>Apresentação do corretor</span>
+                  <strong>Template oficial para primeiro contato</strong>
+                  <p>Edite a mensagem padrão e envie para aprovação da Meta. Quando aprovado, ele aparece no menu Apresentação do lead para iniciar a conversa.</p>
                 </div>
                 <%= ax_badge(activation_status, tone: activation_status_tone, dot: activation_status.upcase == "APPROVED") %>
               </div>
@@ -380,7 +380,7 @@
 
               <% unless activation_editable %>
                 <%= ax_inline_notice(tone: :info, icon: "lock", compact: true) do %>
-                  Template enviado para a Meta. Depois de aprovado, ele fica travado nesta tela; para mudar o texto, crie um novo ciclo de aprovação.
+                  Template enviado para a Meta. Depois de aprovado, ele aparece como apresentação oficial no lead; para mudar o texto, crie um novo ciclo de aprovação.
                 <% end %>
               <% end %>
 
@@ -413,11 +413,11 @@
                   <div class="wa-variable-map">
                     <div class="wa-variable-map__row">
                       <span>{{1}}<small>Nome do corretor logado</small></span>
-                      <strong><%= current_admin_user&.name.presence || "Corretor" %></strong>
+                      <strong>Nome do corretor</strong>
                     </div>
                     <div class="wa-variable-map__row">
                       <span>{{2}}<small>Nome da imobiliária</small></span>
-                      <strong><%= current_tenant.name %></strong>
+                      <strong>Nome da imobiliária</strong>
                     </div>
                   </div>
 
@@ -431,7 +431,7 @@
                                 method: :post,
                                 class: "ax-btn ax-btn--sm",
                                 form: { data: { turbo_confirm: "Enviar este template para aprovação da Meta? Depois disso, edite apenas se a Meta rejeitar." } } do %>
-                    <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação</span>
+                    <i class="bi bi-send ax-ico"></i><span>Enviar template de apresentação para aprovação da Meta</span>
                   <% end %>
                 <% end %>
 
