@@ -393,6 +393,7 @@ Rails.application.routes.draw do
       patch :manual_connection
       patch :lead_activation_template
       post :submit_lead_activation_template
+      post :submit_lead_alert_template
       post :sync_notification_templates
       post :use_current_number_for_campaigns
       post :register_phone_number

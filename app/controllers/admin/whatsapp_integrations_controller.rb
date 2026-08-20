@@ -282,6 +282,55 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
   end
 
+  def submit_lead_alert_template
+    integration = current_whatsapp_integration
+
+    unless integration.messaging_ready? && integration.waba_id.present?
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-alert-template"),
+                  alert: "Configure o número das notificações com Access Token, Phone Number ID e WABA antes de enviar o template."
+      return
+    end
+
+    Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
+    template = Whatsapp::LeadAlertTemplate.for(tenant: current_tenant, integration: integration)
+
+    unless Whatsapp::LeadAlertTemplate.editable?(template)
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-alert-template"),
+                  notice: "Template lead_alert já está #{template.status.to_s.downcase} na Meta."
+      return
+    end
+
+    template.assign_attributes(
+      name: Whatsapp::LeadAlertTemplate::TEMPLATE_NAME,
+      language: Whatsapp::LeadAlertTemplate::LANGUAGE,
+      template_type: "text",
+      category: "UTILITY",
+      header_format: "none",
+      header_text: nil,
+      header_media_handle: nil,
+      footer_text: nil,
+      body: Whatsapp::LeadAlertTemplate::DEFAULT_BODY,
+      waba_id: integration.waba_id,
+      status: "PENDING",
+      buttons: [],
+      carousel_cards: [],
+      flow_config: {},
+      example_values: Whatsapp::LeadAlertTemplate::EXAMPLE_VALUES
+    )
+
+    result = Whatsapp::TemplateSubmission.call(template: template, client: Whatsapp::CloudClient.new(integration))
+
+    if result[:ok]
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-alert-template"),
+                  notice: "Template lead_alert enviado para análise da Meta."
+    else
+      load_page_state
+      @lead_alert_template = template
+      @lead_alert_template_errors = template.errors.full_messages.presence || [result[:error]]
+      render :show, status: :unprocessable_content
+    end
+  end
+
   def use_current_number_for_campaigns
     integration = current_whatsapp_integration
 
@@ -360,6 +409,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @notification_template_options = notification_template_options
     @notification_template_variable_sources = @new_notification_template_setting.variable_source_options
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
+    @lead_alert_template = Whatsapp::LeadAlertTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
   end
 
   def notification_template_options
@@ -429,7 +479,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       {
         number: result.dig(:data, "display_phone_number"),
         name: result.dig(:data, "verified_name"),
-        quality: result.dig(:data, "quality_rating")
+        quality: result.dig(:data, "quality_rating"),
+        code_verification_status: result.dig(:data, "code_verification_status")
       }
     end
   rescue StandardError

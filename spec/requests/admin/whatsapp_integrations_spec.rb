@@ -40,6 +40,8 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("Telefones do Site")
     expect(response.body).to include("1980983762681491")
     expect(response.body).to include("Template oficial para primeiro contato")
+    expect(response.body).to include("lead_activation_default")
+    expect(response.body).to include("lead_alert")
     expect(response.body).to include("Sincronizar templates")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")
@@ -87,6 +89,53 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-activation-template"))
     expect(template.reload.status).to eq("PENDING")
     expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
+  it "envia o template lead_alert para analise da Meta" do
+    integration = current_whatsapp_integration!(
+      waba_id: "waba-lead-alert-submit",
+      phone_number_id: "phone-lead-alert-submit",
+      access_token: "token-lead-alert-submit"
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 0 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      expect(template.name).to eq("lead_alert")
+      expect(template.category).to eq("UTILITY")
+      expect(template.header_format).to eq("none")
+      expect(template.footer_text).to be_nil
+      expect(template.body).to eq(Whatsapp::LeadAlertTemplate::DEFAULT_BODY)
+      expect(template.meta_create_payload[:components].pluck(:type)).to eq(["BODY"])
+      template.update!(status: "PENDING", meta_id: "tpl-lead-alert")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_alert_template_admin_whatsapp_integration_path
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
+    template = admin.tenant.whatsapp_templates.find_by!(name: "lead_alert", waba_id: integration.waba_id)
+    expect(template.status).to eq("PENDING")
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
+  it "nao reenvia lead_alert quando o sync ja encontra template aprovado" do
+    integration = current_whatsapp_integration!(waba_id: "waba-lead-alert-approved")
+    admin.tenant.whatsapp_templates.create!(
+      name: "lead_alert",
+      waba_id: integration.waba_id,
+      language: "pt_BR",
+      category: "UTILITY",
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "none",
+      body: Whatsapp::LeadAlertTemplate::DEFAULT_BODY
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 1 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call)
+
+    post submit_lead_alert_template_admin_whatsapp_integration_path
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
+    expect(Whatsapp::TemplateSubmission).not_to have_received(:call)
   end
 
   it "bloqueia edicao do template de ativacao depois de aprovado" do
@@ -248,7 +297,20 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "exibe acao para registrar o numero quando a integracao esta pronta" do
-    current_whatsapp_integration!
+    integration = current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "UNKNOWN",
+          "code_verification_status" => "NOT_VERIFIED"
+        }
+      }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
 
     get admin_whatsapp_integration_path
 
@@ -258,6 +320,32 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(form).to be_present
     expect(form.at_css("input[name='pin'][maxlength='6']")).to be_present
     expect(form.text).to include("Registrar número")
+  end
+
+  it "mostra numero registrado e oculta PIN quando a Meta confirma verificacao" do
+    integration = current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "GREEN",
+          "code_verification_status" => "VERIFIED"
+        }
+      }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(response.body).to include("Número registrado na Meta")
+    expect(response.body).to include("Registrado")
+    expect(document.at_css("form[action='#{register_phone_number_admin_whatsapp_integration_path}']")).to be_nil
+    expect(response.body).not_to include("739184")
   end
 
   it "registra o numero na Meta e sincroniza como remetente das notificacoes" do

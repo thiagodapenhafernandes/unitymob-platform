@@ -335,28 +335,38 @@
               <% end %>
 
               <% if @whatsapp_integration.messaging_ready? && @whatsapp_integration.phone_number_id.present? %>
-                <div class="wa-register-phone">
+                <% phone_registered = @phone_info.to_h[:code_verification_status].to_s == "VERIFIED" %>
+                <div class="wa-register-phone <%= 'wa-register-phone--ready' if phone_registered %>">
                   <div>
-                    <strong>Registro do número na Meta</strong>
-                    <p>Use quando a Meta mostrar o telefone como pendente. Informe o PIN de 6 dígitos da verificação em duas etapas do número.</p>
+                    <strong><%= phone_registered ? "Número registrado na Meta" : "Registro do número na Meta" %></strong>
+                    <% if phone_registered %>
+                      <p>Registro confirmado pela Cloud API. PIN 2FA definido e guardado fora do sistema; não exibimos segredo operacional nesta tela.</p>
+                    <% else %>
+                      <p>Use quando a Meta mostrar o telefone como pendente. Informe o PIN de 6 dígitos da verificação em duas etapas do número.</p>
+                    <% end %>
                   </div>
-                  <%= form_with url: register_phone_number_admin_whatsapp_integration_path,
-                                method: :post,
-                                local: true,
-                                class: "wa-register-phone__form" do %>
-                    <%= password_field_tag :pin,
-                          nil,
-                          class: "ax-control",
-                          inputmode: "numeric",
-                          pattern: "\\d{6}",
-                          maxlength: 6,
-                          autocomplete: "one-time-code",
-                          placeholder: "PIN 2FA",
-                          aria: { label: "PIN de seis dígitos do WhatsApp" } %>
-                    <%= button_tag type: :submit,
-                          class: "ax-btn ax-btn--sm ax-btn--primary",
-                          data: { turbo_confirm: "Registrar este Phone Number ID na Meta usando o PIN informado?" } do %>
-                      <i class="bi bi-check2-circle"></i> Registrar número
+
+                  <% if phone_registered %>
+                    <%= ax_badge("Registrado", tone: :green, dot: true) %>
+                  <% else %>
+                    <%= form_with url: register_phone_number_admin_whatsapp_integration_path,
+                                  method: :post,
+                                  local: true,
+                                  class: "wa-register-phone__form" do %>
+                      <%= password_field_tag :pin,
+                            nil,
+                            class: "ax-control",
+                            inputmode: "numeric",
+                            pattern: "\\d{6}",
+                            maxlength: 6,
+                            autocomplete: "one-time-code",
+                            placeholder: "PIN 2FA",
+                            aria: { label: "PIN de seis dígitos do WhatsApp" } %>
+                      <%= button_tag type: :submit,
+                            class: "ax-btn ax-btn--sm ax-btn--primary",
+                            data: { turbo_confirm: "Registrar este Phone Number ID na Meta usando o PIN informado?" } do %>
+                        <i class="bi bi-check2-circle"></i> Registrar número
+                      <% end %>
                     <% end %>
                   <% end %>
                 </div>
@@ -388,6 +398,7 @@
             <% activation_editable = Whatsapp::LeadActivationTemplate.editable?(activation_template) %>
             <% activation_status = activation_template.status.to_s.presence || "DRAFT" %>
             <% activation_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(activation_status.upcase, :gray) %>
+            <% activation_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(activation_status.upcase, activation_status) %>
             <% activation_preview_values = ["Nome do corretor", "Nome da imobiliária"] %>
 
             <section id="lead-activation-template" class="wa-context-block">
@@ -395,9 +406,8 @@
                 <div>
                   <span>Apresentação do corretor</span>
                   <strong>Template oficial para primeiro contato</strong>
-                  <p>Edite a mensagem padrão e envie para aprovação da Meta. Quando aprovado, ele aparece no menu Apresentação do lead para iniciar a conversa.</p>
+                  <p>Template oficial usado no menu Apresentação do lead para iniciar conversa.</p>
                 </div>
-                <%= ax_badge(activation_status, tone: activation_status_tone, dot: activation_status.upcase == "APPROVED") %>
               </div>
 
               <% if @lead_activation_template_errors.present? %>
@@ -406,88 +416,113 @@
                 <% end %>
               <% end %>
 
-              <% unless activation_editable %>
-                <%= ax_inline_notice(tone: :info, icon: "lock", compact: true) do %>
-                  Template enviado para a Meta. Depois de aprovado, ele aparece como apresentação oficial no lead; para mudar o texto, crie um novo ciclo de aprovação.
-                <% end %>
-              <% end %>
-
-              <div class="wa-lead-activation">
-                <%= form_with model: activation_template,
-                              url: lead_activation_template_admin_whatsapp_integration_path,
-                              method: :patch,
-                              local: true,
-                              html: { class: "habitation-form-ui wa-form wa-lead-activation__form" } do |f| %>
-                  <%= f.hidden_field :allow_category_change, value: "1" %>
-                  <%= ax_select_field(form: f, method: :category, label: "Categoria Meta",
-                        choices: [["Marketing", "MARKETING"], ["Utility", "UTILITY"]],
-                        html_options: { disabled: !activation_editable }) %>
-                  <div class="wa-field">
-                    <%= ax_field_label(f, :body, text: "Texto do template",
-                          tooltip: "Use {{1}} para nome do corretor e {{2}} para nome da imobiliária. Alterações estruturais precisam de aprovação da Meta.") %>
-                    <%= f.text_area :body,
-                          rows: 5,
-                          class: "ax-control",
-                          disabled: !activation_editable,
-                          placeholder: Whatsapp::LeadActivationTemplate::DEFAULT_BODY %>
-                  </div>
-                  <%= ax_text_field(form: f, method: :footer_text, label: "Rodapé", value: activation_template.footer_text, disabled: !activation_editable) %>
-                  <%= ax_file_field(form: f, method: :header_media_file, label: "Imagem de exemplo/padrão",
-                        tooltip: "Obrigatória para aprovar template com imagem. No envio real, a foto do corretor logado pode substituir esta imagem.",
-                        accept: "image/png,image/jpeg",
-                        button_label: "Escolher imagem",
-                        class_name: "wa-lead-activation__upload") if activation_editable %>
-
-                  <div class="wa-webhook__actions">
-                    <%= f.submit "Salvar rascunho", class: "ax-btn ax-btn--primary ax-btn--sm", disabled: !activation_editable %>
-                  </div>
-                <% end %>
-
-                <aside class="wa-lead-activation__side">
-                  <% if activation_template.persisted? && activation_editable %>
+              <article class="wa-number-row wa-template-submit-row">
+                <div class="wa-number-row__main">
+                  <strong>Enviar template para aprovação da Meta</strong>
+                  <span><%= Whatsapp::LeadActivationTemplate::TEMPLATE_NAME %> · Portuguese (BR)</span>
+                  <small>Mensagem oficial com foto do corretor e variáveis {{1}} nome do corretor, {{2}} nome da imobiliária.</small>
+                </div>
+                <div class="wa-number-row__badges">
+                  <%= ax_badge(activation_status_label, tone: activation_status_tone, dot: activation_status.upcase == "APPROVED") %>
+                </div>
+                <div class="wa-number-row__actions">
+                  <% if activation_editable %>
                     <%= button_to submit_lead_activation_template_admin_whatsapp_integration_path,
                                   method: :post,
-                                  class: "ax-btn ax-btn--sm wa-lead-activation__submit-meta",
+                                  class: "ax-btn ax-btn--sm ax-btn--primary",
+                                  data: { turbo_submits_with: "Enviando..." },
                                   form: { class: "wa-lead-activation__approval", data: { turbo_confirm: "Enviar este template para aprovação da Meta? Depois disso, edite apenas se a Meta rejeitar." } } do %>
-                      <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação da Meta</span>
+                      <i class="bi bi-send ax-ico"></i><span>Enviar</span>
                     <% end %>
                   <% end %>
+                </div>
+              </article>
 
-                  <div class="wa-lead-activation__reference">
-                    <span>Variáveis do template</span>
-                    <div class="wa-variable-map">
-                      <div class="wa-variable-map__row">
-                        <span>{{1}}<small>Nome do corretor logado</small></span>
-                        <strong>Nome do corretor</strong>
-                      </div>
-                      <div class="wa-variable-map__row">
-                        <span>{{2}}<small>Nome da imobiliária</small></span>
-                        <strong>Nome da imobiliária</strong>
+              <details class="wa-template-details" <%= "open" if activation_editable || @lead_activation_template_errors.present? %>>
+                <summary class="wa-template-details__summary">
+                  <span>Editar rascunho, variáveis e prévia</span>
+                  <i class="bi bi-chevron-down"></i>
+                </summary>
+
+                <% unless activation_editable %>
+                  <%= ax_inline_notice(tone: :info, icon: "lock", compact: true) do %>
+                    Template enviado para a Meta. Depois de aprovado, ele aparece como apresentação oficial no lead; para mudar o texto, crie um novo ciclo de aprovação.
+                  <% end %>
+                <% end %>
+
+                <div class="wa-lead-activation">
+                  <%= form_with model: activation_template,
+                                url: lead_activation_template_admin_whatsapp_integration_path,
+                                method: :patch,
+                                local: true,
+                                html: { class: "habitation-form-ui wa-form wa-lead-activation__form" } do |f| %>
+                    <%= f.hidden_field :allow_category_change, value: "1" %>
+                    <%= ax_select_field(form: f, method: :category, label: "Categoria Meta",
+                          choices: [["Marketing", "MARKETING"], ["Utility", "UTILITY"]],
+                          html_options: { disabled: !activation_editable }) %>
+                    <div class="wa-field">
+                      <%= ax_field_label(f, :body, text: "Texto do template",
+                            tooltip: "Use {{1}} para nome do corretor e {{2}} para nome da imobiliária. Alterações estruturais precisam de aprovação da Meta.") %>
+                      <%= f.text_area :body,
+                            rows: 5,
+                            class: "ax-control",
+                            disabled: !activation_editable,
+                            placeholder: Whatsapp::LeadActivationTemplate::DEFAULT_BODY %>
+                    </div>
+                    <%= ax_text_field(form: f, method: :footer_text, label: "Rodapé", value: activation_template.footer_text, disabled: !activation_editable) %>
+                    <%= ax_file_field(form: f, method: :header_media_file, label: "Imagem de exemplo/padrão",
+                          tooltip: "Obrigatória para aprovar template com imagem. No envio real, a foto do corretor logado pode substituir esta imagem.",
+                          accept: "image/png,image/jpeg",
+                          button_label: "Escolher imagem",
+                          class_name: "wa-lead-activation__upload") if activation_editable %>
+
+                    <div class="wa-webhook__actions">
+                      <%= f.submit "Salvar rascunho", class: "ax-btn ax-btn--primary ax-btn--sm", disabled: !activation_editable %>
+                    </div>
+                  <% end %>
+
+                  <aside class="wa-lead-activation__side">
+                    <div class="wa-lead-activation__reference">
+                      <span>Variáveis do template</span>
+                      <div class="wa-variable-map">
+                        <div class="wa-variable-map__row">
+                          <span>{{1}}<small>Nome do corretor logado</small></span>
+                          <strong>Nome do corretor</strong>
+                        </div>
+                        <div class="wa-variable-map__row">
+                          <span>{{2}}<small>Nome da imobiliária</small></span>
+                          <strong>Nome da imobiliária</strong>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div class="wa-lead-activation__preview" aria-label="Prévia do WhatsApp">
-                    <span>Prévia do primeiro contato</span>
-                    <div class="wa-template-phone">
-                      <div class="wa-template-bubble">
-                        <% if activation_template.header_media_file.attached? %>
-                          <%= image_tag activation_template.header_media_file, class: "wa-template-bubble__image", alt: "Imagem do template" %>
-                        <% else %>
-                          <div class="wa-template-bubble__image wa-template-bubble__image--placeholder">
-                            <i class="bi bi-person-bounding-box"></i>
-                          </div>
-                        <% end %>
-                        <p><%= simple_format(activation_template.render_body(activation_preview_values), {}, wrapper_tag: "span") %></p>
-                        <% if activation_template.footer_text.present? %>
-                          <small><%= activation_template.footer_text %></small>
-                        <% end %>
+                    <div class="wa-lead-activation__preview" aria-label="Prévia do WhatsApp">
+                      <span>Prévia do primeiro contato</span>
+                      <div class="wa-template-phone">
+                        <div class="wa-template-bubble">
+                          <% if activation_template.header_media_file.attached? %>
+                            <%= image_tag activation_template.header_media_file, class: "wa-template-bubble__image", alt: "Imagem do template" %>
+                          <% else %>
+                            <div class="wa-template-bubble__image wa-template-bubble__image--placeholder">
+                              <i class="bi bi-person-bounding-box"></i>
+                            </div>
+                          <% end %>
+                          <p><%= simple_format(activation_template.render_body(activation_preview_values), {}, wrapper_tag: "span") %></p>
+                          <% if activation_template.footer_text.present? %>
+                            <small><%= activation_template.footer_text %></small>
+                          <% end %>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </aside>
-              </div>
+                  </aside>
+                </div>
+              </details>
             </section>
+
+            <% lead_alert_template = @lead_alert_template %>
+            <% lead_alert_status = lead_alert_template.status.to_s.presence || "DRAFT" %>
+            <% lead_alert_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(lead_alert_status.upcase, :gray) %>
+            <% lead_alert_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(lead_alert_status.upcase, lead_alert_status) %>
 
             <% notification_template_actions = capture do %>
               <div class="wa-context-actions">
@@ -510,6 +545,34 @@
                 </div>
                 <%= notification_template_actions %>
               </div>
+
+              <% if @lead_alert_template_errors.present? %>
+                <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                  <strong>Revise o template lead_alert:</strong> <%= @lead_alert_template_errors.to_sentence %>
+                <% end %>
+              <% end %>
+
+              <article id="lead-alert-template" class="wa-number-row wa-template-submit-row">
+                <div class="wa-number-row__main">
+                  <strong>Enviar template para aprovação da Meta</strong>
+                  <span><%= Whatsapp::LeadAlertTemplate::TEMPLATE_NAME %> · Utility · Portuguese (BR)</span>
+                  <small>Confirmação automática enviada ao corretor quando entra um novo lead.</small>
+                </div>
+                <div class="wa-number-row__badges">
+                  <%= ax_badge(lead_alert_status_label, tone: lead_alert_status_tone, dot: lead_alert_status.upcase == "APPROVED") %>
+                </div>
+                <div class="wa-number-row__actions">
+                  <% if Whatsapp::LeadAlertTemplate.editable?(lead_alert_template) %>
+                    <%= button_to submit_lead_alert_template_admin_whatsapp_integration_path,
+                                  method: :post,
+                                  class: "ax-btn ax-btn--sm ax-btn--primary",
+                                  data: { turbo_submits_with: "Enviando..." },
+                                  form: { data: { turbo_confirm: "Enviar o template lead_alert para análise da Meta?" } } do %>
+                      <i class="bi bi-send ax-ico"></i><span>Enviar</span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </article>
 
               <p class="wa-hint">Para distribuição de leads, o mapa padrão usa: cliente, origem, nome, telefone/link, email/link e outros dados.</p>
 
@@ -845,6 +908,11 @@
     border-radius: 8px;
     background: #fff;
   }
+  .wa-register-phone--ready {
+    border-style: solid;
+    border-color: #b7e4c7;
+    background: #f0fdf4;
+  }
   .wa-register-phone strong { display: block; color: #1f2733; font-size: 13px; font-weight: 800; }
   .wa-register-phone p { margin: 2px 0 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
   .wa-register-phone__form { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; }
@@ -866,6 +934,7 @@
   .wa-number-section__head strong { color: #1f2733; font-size: 15px; line-height: 1.2; }
   .wa-number-list { display: grid; gap: 8px; }
   .wa-number-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
+  .wa-template-submit-row { background: #f8fafc; }
   .wa-number-row--empty { grid-template-columns: minmax(0, 1fr); background: #f8fafc; }
   .wa-number-row__main { display: grid; gap: 2px; min-width: 0; }
   .wa-number-row__main strong { color: #1f2733; font-size: 13.5px; overflow-wrap: anywhere; }
@@ -882,6 +951,22 @@
   .wa-variable-map__row > span { color: #344054; font-size: 12px; font-weight: 800; }
   .wa-variable-map__row > strong { color: #1f2733; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
   .wa-variable-map__row small { display: block; margin-top: 2px; color: #8a93a3; font-size: 10.5px; font-weight: 650; line-height: 1.25; }
+  .wa-template-details { display: grid; gap: 12px; }
+  .wa-template-details[open] { gap: 14px; }
+  .wa-template-details__summary {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 7px;
+    color: #365f8f;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+  }
+  .wa-template-details__summary::-webkit-details-marker { display: none; }
+  .wa-template-details__summary i { transition: transform .16s ease; }
+  .wa-template-details[open] .wa-template-details__summary i { transform: rotate(180deg); }
 
   .wa-lead-activation { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(300px, 420px); gap: 18px; align-items: start; }
   .wa-lead-activation__form,
