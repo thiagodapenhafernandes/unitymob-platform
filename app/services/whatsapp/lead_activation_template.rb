@@ -1,9 +1,10 @@
 module Whatsapp
   class LeadActivationTemplate
-    TEMPLATE_NAME = "lead_activation_default".freeze
+    TEMPLATE_NAME = "lead_activation_default_v2".freeze
     LANGUAGE = "pt_BR".freeze
     DEFAULT_BODY = "Oi! 👋 Aqui é {{1}}, da {{2}}. A partir de agora eu cuido do seu atendimento — pode falar comigo por aqui. Como posso ajudar?".freeze
-    DEFAULT_FOOTER = "Atendimento Conexão".freeze
+    LEGACY_FIXED_FOOTER = "Atendimento Conexão".freeze
+    DEFAULT_FOOTER = "Atendimento".freeze
     EDITABLE_STATUSES = ["", "DRAFT", "REJECTED"].freeze
 
     def self.for(tenant:, integration:)
@@ -19,6 +20,10 @@ module Whatsapp
         "1" => admin_user&.name.to_s.presence || "Corretor",
         "2" => lead.tenant&.name.to_s.presence || "imobiliária"
       }
+    end
+
+    def self.default_footer_for(tenant)
+      DEFAULT_FOOTER
     end
 
     def initialize(tenant:, integration:)
@@ -48,7 +53,9 @@ module Whatsapp
       record.status ||= "DRAFT"
       record.header_format ||= "image"
       record.body = DEFAULT_BODY if record.body.blank?
-      record.footer_text = DEFAULT_FOOTER if record.footer_text.blank?
+      if record.footer_text.blank? || (self.class.editable?(record) && record.footer_text == LEGACY_FIXED_FOOTER)
+        record.footer_text = self.class.default_footer_for(tenant)
+      end
       record.allow_category_change = true if record.allow_category_change.nil?
       record.example_values = ["Nome do corretor", "Nome da imobiliária"] if record.example_values.blank?
     end
