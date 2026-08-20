@@ -1038,6 +1038,7 @@ class Admin::LeadsController < Admin::BaseController
     raise ArgumentError, "Este lead não possui telefone ou BSUID para abrir conversa no WhatsApp." if recipient.blank?
 
     conversation = existing_whatsapp_conversation_for(lead)
+    conversation = bind_whatsapp_conversation_to_lead!(conversation, lead) if conversation
     conversation ||= if recipient.is_a?(Hash)
                        current_tenant.whatsapp_conversations.find_or_initialize_by(business_scoped_user_id: recipient[:user_id].to_s)
                      else
@@ -1050,6 +1051,23 @@ class Admin::LeadsController < Admin::BaseController
     conversation.lead ||= lead
     conversation.status ||= "open"
     conversation.save!
+    conversation
+  end
+
+  def bind_whatsapp_conversation_to_lead!(conversation, lead)
+    return conversation if conversation.blank?
+    return conversation if conversation.lead_id == lead.id
+
+    previous_lead_id = conversation.lead_id
+    conversation.lead = lead
+    conversation.contact_name = lead.display_name if lead.display_name.present?
+    conversation.status ||= "open"
+    conversation.save! if conversation.changed?
+    Rails.logger.info(
+      "[Admin::LeadsController#bind_whatsapp_conversation_to_lead] " \
+      "tenant_id=#{current_tenant.id} conversation_id=#{conversation.id} " \
+      "previous_lead_id=#{previous_lead_id} lead_id=#{lead.id}"
+    )
     conversation
   end
 
@@ -1125,16 +1143,11 @@ class Admin::LeadsController < Admin::BaseController
   def load_lead_whatsapp_context
     integration = WhatsappBusinessIntegration.current(current_tenant)
     @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
-    if whatsapp_conversation_bound_to_another_lead?(@whatsapp_conversation)
-      apply_lead_whatsapp_notice!(
-        "Já existe uma conversa WhatsApp para este telefone vinculada a outro lead. O atendimento não foi aberto automaticamente para evitar misturar históricos.",
-        detail: "Conversa ##{@whatsapp_conversation.id} vinculada ao lead ##{@whatsapp_conversation.lead_id}."
-      )
-      return
-    end
 
-    if @whatsapp_conversation.blank? && auto_open_lead_whatsapp_conversation?(integration)
-      @whatsapp_conversation = find_or_create_whatsapp_conversation_for!(@lead)
+    if auto_open_lead_whatsapp_conversation?(integration)
+      @whatsapp_conversation = @whatsapp_conversation.present? ?
+        bind_whatsapp_conversation_to_lead!(@whatsapp_conversation, @lead) :
+        find_or_create_whatsapp_conversation_for!(@lead)
     end
 
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
@@ -1155,10 +1168,6 @@ class Admin::LeadsController < Admin::BaseController
       "O bloco do WhatsApp não pôde ser carregado agora. O lead permanece disponível; revise pendências da integração ou da conversa.",
       detail: e.message
     )
-  end
-
-  def whatsapp_conversation_bound_to_another_lead?(conversation)
-    conversation&.lead_id.present? && conversation.lead_id != @lead.id
   end
 
   def apply_lead_whatsapp_notice!(message, detail: nil)

@@ -939,28 +939,53 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include(lead.display_name)
     end
 
-    it "avisa quando o telefone do lead ja possui conversa vinculada a outro lead" do
+    it "reassocia a conversa do telefone ao lead atual e preserva o histórico" do
       lead_original = create(:lead, status: "Em Atendimento", phone: "47999990032")
       lead_atual = create(:lead, status: "Novo", phone: "47999990032")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
-      integration.update!(status: "connected", waba_id: "waba-reuso", phone_number_id: "phone-reuso", access_token: "token-reuso")
-      WhatsappConversation.create!(
+      integration.update!(status: "connected", waba_id: "waba-reuso", phone_number_id: "phone-reuso", access_token: "token-reuso", presentation_enabled: true)
+      PresentationCard.ensure_system_default_for(admin.tenant)
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "MARKETING",
+        template_type: "text",
+        header_format: "image",
+        header_media_handle: "handle",
+        body: "Olá {{1}} {{2}}",
+        components: [
+          { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["handle"] } },
+          { "type" => "BODY", "text" => "Olá {{1}} {{2}}" }
+        ]
+      )
+      conversation = WhatsappConversation.create!(
         tenant: admin.tenant,
         lead: lead_original,
         contact_phone: "5547999990032",
         contact_name: "Contato em outro lead",
         status: "open"
       )
+      conversation.messages.create!(
+        tenant: admin.tenant,
+        direction: "inbound",
+        body: "Histórico antigo do WhatsApp",
+        status: "delivered"
+      )
 
       get admin_lead_path(lead_atual)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("WhatsApp com pendência")
-      expect(response.body).to include("Já existe uma conversa WhatsApp para este telefone vinculada a outro lead")
-      expect(response.body).to include("Conversa #")
-      expect(response.body).to include("lead ##{lead_original.id}")
-      expect(response.body).to include(lead_atual.display_name)
-      expect(response.body).not_to include("Contato em outro lead")
+      expect(conversation.reload.lead).to eq(lead_atual)
+      expect(conversation.contact_name).to eq(lead_atual.display_name)
+      expect(response.body).to include("Atendimento sem sair do lead")
+      expect(response.body).to include("Histórico antigo do WhatsApp")
+      expect(response.body).to include("Apresentação")
+      expect(response.body).to include("Empresa · Apresentação oficial")
+      expect(response.body).not_to include("WhatsApp com pendência")
+      expect(response.body).not_to include("vinculada a outro lead")
     end
 
     it "reutiliza o preview de áudio dentro do lead sem autoplay" do
