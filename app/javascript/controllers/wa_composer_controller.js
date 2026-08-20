@@ -122,6 +122,15 @@ export default class extends Controller {
     this.bodyTarget.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
+  selectTemplate(event) {
+    const { templateName } = event.detail || {}
+    if (!templateName || !this.hasTemplateTarget) return
+
+    this.templateTarget.value = templateName
+    this.templateChanged()
+    this.element.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }
+
   submitOnEnter(event) {
     if (event.key !== "Enter" || event.shiftKey) return
     if (event.isComposing) return

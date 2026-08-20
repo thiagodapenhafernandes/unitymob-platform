@@ -33,7 +33,7 @@
               class: form_class,
               data: {
                 controller: "wa-composer",
-                action: "submit->wa-composer#submit wa-presentation:fill@window->wa-composer#fillPresentation wa-property-share:fill@window->wa-composer#fillExternalBody wa:reply@window->wa-composer#setReply",
+                action: "submit->wa-composer#submit wa-presentation:fill@window->wa-composer#fillPresentation wa-property-share:fill@window->wa-composer#fillExternalBody wa-template:select@window->wa-composer#selectTemplate wa:reply@window->wa-composer#setReply",
                 turbo: false,
                 admin_navigation_ignore: true
               } do %>

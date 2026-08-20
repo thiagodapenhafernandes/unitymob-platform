@@ -77,6 +77,27 @@ RSpec.describe Whatsapp::SendMessageJob, type: :job do
       expect(Whatsapp::ThreadBroadcaster).to have_received(:message_updated).with(message)
     end
 
+    it "preserva código de reengajamento para a UI orientar envio de template" do
+      create(:whatsapp_business_integration, tenant: tenant)
+      conversation = WhatsappConversation.create!(tenant: tenant, contact_phone: "5547999990049", status: "open")
+      message = conversation.messages.create!(tenant: tenant, direction: "outbound", status: "pending", msg_type: "text", body: "Olá")
+      client = instance_double(Whatsapp::CloudClient)
+      allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+      allow(client).to receive(:send_text).and_return(
+        ok: false,
+        status: 400,
+        error: "Re-engagement message",
+        meta_error: { code: 131047 }
+      )
+      allow(Whatsapp::ThreadBroadcaster).to receive(:message_updated)
+
+      described_class.perform_now(message.id, tenant_id: tenant.id)
+
+      expect(message.reload.status).to eq("failed")
+      expect(message.error_message).to include("#131047")
+      expect(message).to be_service_window_closed_failure
+    end
+
     it "broadcasta failed quando a conversa não tem telefone nem BSUID" do
       create(:whatsapp_business_integration, tenant: tenant)
       conversation = WhatsappConversation.create!(tenant: tenant, contact_phone: "5547999990046", status: "open")

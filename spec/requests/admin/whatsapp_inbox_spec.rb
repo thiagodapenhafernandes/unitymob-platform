@@ -222,6 +222,82 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).not_to include("modelo lead_activation_default")
     end
 
+    it "orienta envio de template quando a Meta fecha a janela de atendimento" do
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-window", phone_number_id: "phone-window", access_token: "token-window")
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "MARKETING",
+        template_type: "text",
+        header_format: "none",
+        body: "Oi! Aqui é {{1}}, da {{2}}."
+      )
+      lead = create(:lead, tenant: admin.tenant)
+      conv = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990075", contact_name: "Cliente Janela")
+      conv.messages.create!(
+        tenant: admin.tenant,
+        direction: "outbound",
+        msg_type: "text",
+        body: "Mensagem livre fora da janela",
+        status: "failed",
+        error_message: "#131047 Re-engagement message"
+      )
+
+      get admin_whatsapp_conversation_path(conv)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Janela de atendimento fechada")
+      expect(response.body).to include("Envie um template aprovado")
+      expect(response.body).to include(%(data-wa-select-template="#{Whatsapp::LeadActivationTemplate::TEMPLATE_NAME}"))
+      expect(response.body).to include("Usar apresentação oficial")
+    end
+
+    it "sugere template de agenda aprovado quando a janela fecha e o lead tem compromisso" do
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(status: "connected", waba_id: "waba-window-agenda", phone_number_id: "phone-window-agenda", access_token: "token-window-agenda")
+      definition = Whatsapp::LeadConversationTemplates.find("lead_appointment_reminder")
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: definition.name,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: definition.category,
+        template_type: "text",
+        header_format: "none",
+        body: definition.body
+      )
+      lead = create(:lead, tenant: admin.tenant)
+      Appointment.create!(
+        tenant: admin.tenant,
+        lead: lead,
+        admin_user: admin,
+        title: "Visita ao apartamento",
+        kind: "visita",
+        starts_at: 1.day.from_now,
+        status: "agendado"
+      )
+      conv = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990076", contact_name: "Cliente Agenda")
+      conv.messages.create!(
+        tenant: admin.tenant,
+        direction: "outbound",
+        msg_type: "text",
+        body: "Mensagem livre fora da janela",
+        status: "failed",
+        error_message: "#131047 Re-engagement message"
+      )
+
+      get admin_whatsapp_conversation_path(conv)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(data-wa-select-template="lead_appointment_reminder"))
+      expect(response.body).to include("Usar lembrete de agenda")
+    end
+
     it "renderiza documento com componente de anexo reutilizável" do
       conv = WhatsappConversation.create!(contact_phone: "5547999990013")
       message = conv.messages.create!(direction: "inbound", msg_type: "document", status: "delivered")
@@ -611,6 +687,9 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
     it "envia o template oficial de apresentação mesmo com apresentação obrigatória pendente" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      client = instance_double(Whatsapp::CloudClient)
+      allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+      allow(client).to receive(:upload_message_media).and_return(ok: true, media_id: "uploaded-template-media")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
       integration.update!(
         status: "connected",
@@ -675,6 +754,60 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
         "template_name" => Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
         "format" => "template"
       )
+    end
+
+    it "envia template oficial de retomada com variaveis do lead" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      allow(Whatsapp::ThreadBroadcaster).to receive(:message_created)
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(
+        status: "connected",
+        waba_id: "waba-followup-send",
+        phone_number_id: "phone-followup-send",
+        access_token: "token-followup-send"
+      )
+      definition = Whatsapp::LeadConversationTemplates.find("lead_followup")
+      lead = create(:lead, tenant: admin.tenant, name: "Nome do Lead")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: "5547999990055", lead: lead)
+      WhatsappTemplate.create!(
+        tenant: admin.tenant,
+        waba_id: integration.waba_id,
+        name: definition.name,
+        language: "pt_BR",
+        status: "APPROVED",
+        category: definition.category,
+        template_type: "text",
+        header_format: "none",
+        body: definition.body,
+        components: [
+          { "type" => "BODY", "text" => definition.body }
+        ]
+      )
+
+      expect {
+        post send_message_admin_whatsapp_conversation_path(conv), params: {
+          template_name: "lead_followup"
+        }
+      }.to change {
+        WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").count
+      }.by(1)
+
+      msg = WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").order(:created_at).last
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
+      expect(msg.msg_type).to eq("template")
+      expect(msg.template_name).to eq("lead_followup")
+      expect(msg.body).to include("Nome do Lead", admin.name, admin.tenant.name, "sua busca por imóvel")
+      expect(msg.template_components).to include(
+        "type" => "body",
+        "parameters" => [
+          { "type" => "text", "text" => "Nome do Lead" },
+          { "type" => "text", "text" => admin.name },
+          { "type" => "text", "text" => admin.tenant.name },
+          { "type" => "text", "text" => "sua busca por imóvel" }
+        ]
+      )
+      expect(Whatsapp::SendMessageJob).to have_received(:perform_later).with(msg.id, tenant_id: msg.tenant_id)
     end
 
     it "rejeita arquivo fora dos formatos aceitos pela Cloud API" do

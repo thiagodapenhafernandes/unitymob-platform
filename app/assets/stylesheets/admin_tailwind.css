@@ -6579,6 +6579,41 @@ html[data-admin-theme="dark"] .ax-nav__impersonation-exit {
   opacity: 1;
 }
 
+.wa-inbox-bubble__failure-guide {
+  display: grid;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 9px;
+  border: 1px solid #f7b267;
+  border-radius: 10px;
+  background: #fff8eb;
+  color: #8a3b12;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: normal;
+  box-shadow: 0 6px 16px rgb(15 23 42 / .08);
+}
+
+.wa-inbox-bubble__failure-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.wa-inbox-bubble__failure-copy strong {
+  color: #7c2d12;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+
+.wa-inbox-bubble__failure-action {
+  justify-self: start;
+}
+
+.wa-inbox-bubble__failure-note {
+  color: #9a3412;
+  font-weight: 800;
+}
+
 .wa-inbox-bubble {
   display: inline-grid;
   gap: 2px;

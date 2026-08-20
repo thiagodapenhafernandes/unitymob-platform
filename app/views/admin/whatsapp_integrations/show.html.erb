@@ -692,6 +692,46 @@
                 </div>
               </article>
 
+              <div id="lead-conversation-templates" class="wa-template-stack">
+                <% if @lead_conversation_template_errors.present? %>
+                  <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                    <strong>Revise o template:</strong>
+                    <%= @lead_conversation_template_errors.values.flatten.to_sentence %>
+                  <% end %>
+                <% end %>
+
+                <% @lead_conversation_templates.each do |item| %>
+                  <% definition = item[:definition] %>
+                  <% template = item[:template] %>
+                  <% status = template.status.to_s.presence || "DRAFT" %>
+                  <% status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(status.upcase, :gray) %>
+                  <% status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(status.upcase, status) %>
+
+                  <article class="wa-number-row wa-template-submit-row">
+                    <div class="wa-number-row__main">
+                      <strong><%= definition.label %></strong>
+                      <span><%= definition.name %> · <%= definition.category.titleize %> · Portuguese (BR)</span>
+                      <small><%= definition.description %></small>
+                    </div>
+                    <div class="wa-number-row__badges">
+                      <%= ax_badge(status_label, tone: status_tone, dot: status.upcase == "APPROVED") %>
+                    </div>
+                    <div class="wa-number-row__actions">
+                      <% if Whatsapp::LeadConversationTemplates.editable?(template) %>
+                        <%= button_to submit_lead_conversation_template_admin_whatsapp_integration_path,
+                                      method: :post,
+                                      params: { template_name: definition.name },
+                                      class: "ax-btn ax-btn--sm ax-btn--primary",
+                                      data: { turbo_submits_with: "Enviando..." },
+                                      form: { data: { turbo_confirm: "Enviar o template #{definition.name} para análise da Meta?" } } do %>
+                          <i class="bi bi-send ax-ico"></i><span>Enviar</span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </article>
+                <% end %>
+              </div>
+
               <p class="wa-hint">Para distribuição de leads, o mapa padrão usa: cliente, origem, nome, telefone/link, email/link e outros dados.</p>
 
               <% if @notification_template_options.empty? %>
@@ -1093,6 +1133,7 @@
   .wa-number-section__head span { color: #7b8494; font-size: 10.5px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
   .wa-number-section__head strong { color: #1f2733; font-size: 15px; line-height: 1.2; }
   .wa-number-list { display: grid; gap: 8px; }
+  .wa-template-stack { display: grid; gap: 8px; margin-top: 10px; }
   .wa-number-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
   .wa-template-submit-row { background: #f8fafc; }
   .wa-number-row--empty { grid-template-columns: minmax(0, 1fr); background: #f8fafc; }

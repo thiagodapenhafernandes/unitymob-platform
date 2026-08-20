@@ -5,7 +5,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   META_LEADS_CONFIG_ID = "1330907151751153".freeze
   WHATSAPP_SYSTEM_TEMPLATE_NAMES = [
     Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
-    Whatsapp::LeadAlertTemplate::TEMPLATE_NAME
+    Whatsapp::LeadAlertTemplate::TEMPLATE_NAME,
+    *Whatsapp::LeadConversationTemplates.names
   ].freeze
 
   def show
@@ -337,6 +338,61 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
   end
 
+  def submit_lead_conversation_template
+    integration = current_whatsapp_integration
+    definition = Whatsapp::LeadConversationTemplates.find(params[:template_name])
+
+    unless definition
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-conversation-templates"),
+                  alert: "Template oficial não encontrado."
+      return
+    end
+
+    unless integration.messaging_ready? && integration.waba_id.present?
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-conversation-templates"),
+                  alert: "Configure o número das notificações com Access Token, Phone Number ID e WABA antes de enviar o template."
+      return
+    end
+
+    Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
+    template = Whatsapp::LeadConversationTemplates.for(tenant: current_tenant, integration: integration, name: definition.name)
+
+    unless Whatsapp::LeadConversationTemplates.editable?(template)
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-conversation-templates"),
+                  notice: "Template #{definition.name} já está #{template.status.to_s.downcase} na Meta."
+      return
+    end
+
+    template.assign_attributes(
+      name: definition.name,
+      language: Whatsapp::LeadConversationTemplates::LANGUAGE,
+      template_type: "text",
+      category: definition.category,
+      header_format: "none",
+      header_text: nil,
+      header_media_handle: nil,
+      footer_text: nil,
+      body: definition.body,
+      waba_id: integration.waba_id,
+      status: "PENDING",
+      buttons: [],
+      carousel_cards: [],
+      flow_config: {},
+      example_values: definition.example_values
+    )
+
+    result = Whatsapp::TemplateSubmission.call(template: template, client: Whatsapp::CloudClient.new(integration))
+
+    if result[:ok]
+      redirect_to admin_whatsapp_integration_path(anchor: "lead-conversation-templates"),
+                  notice: "Template #{definition.name} enviado para análise da Meta."
+    else
+      load_page_state
+      @lead_conversation_template_errors = { definition.name => template.errors.full_messages.presence || [result[:error]] }
+      render :show, status: :unprocessable_content
+    end
+  end
+
   def use_current_number_for_campaigns
     integration = current_whatsapp_integration
 
@@ -417,6 +473,12 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @notification_template_variable_sources = @new_notification_template_setting.variable_source_options
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
     @lead_alert_template = Whatsapp::LeadAlertTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
+    @lead_conversation_templates = Whatsapp::LeadConversationTemplates.all.map do |definition|
+      {
+        definition: definition,
+        template: Whatsapp::LeadConversationTemplates.for(tenant: current_tenant, integration: @whatsapp_integration, name: definition.name)
+      }
+    end
   end
 
   def notification_template_options
