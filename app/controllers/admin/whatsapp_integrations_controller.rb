@@ -429,7 +429,8 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       {
         number: result.dig(:data, "display_phone_number"),
         name: result.dig(:data, "verified_name"),
-        quality: result.dig(:data, "quality_rating")
+        quality: result.dig(:data, "quality_rating"),
+        code_verification_status: result.dig(:data, "code_verification_status")
       }
     end
   rescue StandardError

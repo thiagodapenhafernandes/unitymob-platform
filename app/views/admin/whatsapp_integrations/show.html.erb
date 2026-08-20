@@ -335,28 +335,38 @@
               <% end %>
 
               <% if @whatsapp_integration.messaging_ready? && @whatsapp_integration.phone_number_id.present? %>
-                <div class="wa-register-phone">
+                <% phone_registered = @phone_info.to_h[:code_verification_status].to_s == "VERIFIED" %>
+                <div class="wa-register-phone <%= 'wa-register-phone--ready' if phone_registered %>">
                   <div>
-                    <strong>Registro do número na Meta</strong>
-                    <p>Use quando a Meta mostrar o telefone como pendente. Informe o PIN de 6 dígitos da verificação em duas etapas do número.</p>
+                    <strong><%= phone_registered ? "Número registrado na Meta" : "Registro do número na Meta" %></strong>
+                    <% if phone_registered %>
+                      <p>Registro confirmado pela Cloud API. PIN 2FA definido e guardado fora do sistema; não exibimos segredo operacional nesta tela.</p>
+                    <% else %>
+                      <p>Use quando a Meta mostrar o telefone como pendente. Informe o PIN de 6 dígitos da verificação em duas etapas do número.</p>
+                    <% end %>
                   </div>
-                  <%= form_with url: register_phone_number_admin_whatsapp_integration_path,
-                                method: :post,
-                                local: true,
-                                class: "wa-register-phone__form" do %>
-                    <%= password_field_tag :pin,
-                          nil,
-                          class: "ax-control",
-                          inputmode: "numeric",
-                          pattern: "\\d{6}",
-                          maxlength: 6,
-                          autocomplete: "one-time-code",
-                          placeholder: "PIN 2FA",
-                          aria: { label: "PIN de seis dígitos do WhatsApp" } %>
-                    <%= button_tag type: :submit,
-                          class: "ax-btn ax-btn--sm ax-btn--primary",
-                          data: { turbo_confirm: "Registrar este Phone Number ID na Meta usando o PIN informado?" } do %>
-                      <i class="bi bi-check2-circle"></i> Registrar número
+
+                  <% if phone_registered %>
+                    <%= ax_badge("Registrado", tone: :green, dot: true) %>
+                  <% else %>
+                    <%= form_with url: register_phone_number_admin_whatsapp_integration_path,
+                                  method: :post,
+                                  local: true,
+                                  class: "wa-register-phone__form" do %>
+                      <%= password_field_tag :pin,
+                            nil,
+                            class: "ax-control",
+                            inputmode: "numeric",
+                            pattern: "\\d{6}",
+                            maxlength: 6,
+                            autocomplete: "one-time-code",
+                            placeholder: "PIN 2FA",
+                            aria: { label: "PIN de seis dígitos do WhatsApp" } %>
+                      <%= button_tag type: :submit,
+                            class: "ax-btn ax-btn--sm ax-btn--primary",
+                            data: { turbo_confirm: "Registrar este Phone Number ID na Meta usando o PIN informado?" } do %>
+                        <i class="bi bi-check2-circle"></i> Registrar número
+                      <% end %>
                     <% end %>
                   <% end %>
                 </div>
@@ -844,6 +854,11 @@
     border: 1px dashed #b8c7d9;
     border-radius: 8px;
     background: #fff;
+  }
+  .wa-register-phone--ready {
+    border-style: solid;
+    border-color: #b7e4c7;
+    background: #f0fdf4;
   }
   .wa-register-phone strong { display: block; color: #1f2733; font-size: 13px; font-weight: 800; }
   .wa-register-phone p { margin: 2px 0 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }

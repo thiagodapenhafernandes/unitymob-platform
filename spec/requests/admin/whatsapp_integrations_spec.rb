@@ -248,7 +248,20 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "exibe acao para registrar o numero quando a integracao esta pronta" do
-    current_whatsapp_integration!
+    integration = current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "UNKNOWN",
+          "code_verification_status" => "NOT_VERIFIED"
+        }
+      }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
 
     get admin_whatsapp_integration_path
 
@@ -258,6 +271,32 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(form).to be_present
     expect(form.at_css("input[name='pin'][maxlength='6']")).to be_present
     expect(form.text).to include("Registrar número")
+  end
+
+  it "mostra numero registrado e oculta PIN quando a Meta confirma verificacao" do
+    integration = current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "GREEN",
+          "code_verification_status" => "VERIFIED"
+        }
+      }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(response.body).to include("Número registrado na Meta")
+    expect(response.body).to include("Registrado")
+    expect(document.at_css("form[action='#{register_phone_number_admin_whatsapp_integration_path}']")).to be_nil
+    expect(response.body).not_to include("739184")
   end
 
   it "registra o numero na Meta e sincroniza como remetente das notificacoes" do
