@@ -1,6 +1,6 @@
 module Whatsapp
   class LeadActivationTemplate
-    TEMPLATE_NAME = "lead_activation_default_v2".freeze
+    TEMPLATE_NAME = "lead_activation_default_v3".freeze
     LANGUAGE = "pt_BR".freeze
     DEFAULT_BODY = "Oi! 👋 Aqui é {{1}}, da {{2}}. A partir de agora eu cuido do seu atendimento — pode falar comigo por aqui. Como posso ajudar?".freeze
     LEGACY_FIXED_FOOTER = "Atendimento Conexão".freeze
@@ -51,7 +51,7 @@ module Whatsapp
       record.template_type ||= "text"
       record.category ||= "MARKETING"
       record.status ||= "DRAFT"
-      record.header_format ||= "image"
+      record.header_format = "image" if self.class.editable?(record) && record.header_format.to_s.in?(["", "none"])
       record.body = DEFAULT_BODY if record.body.blank?
       if record.footer_text.blank? || (self.class.editable?(record) && record.footer_text == LEGACY_FIXED_FOOTER)
         record.footer_text = self.class.default_footer_for(tenant)

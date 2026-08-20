@@ -423,7 +423,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
       template_name: template.name,
       body: template.render_body(values)
     )
-    attach_presentation_template_header!(message)
+    attach_presentation_template_header!(message, template)
 
     components = Whatsapp::TemplateMessageComponents.call(
       template: template,
@@ -437,11 +437,17 @@ class Admin::WhatsappInboxController < Admin::BaseController
     PresentationTemplateMessage.new(ok?: true, record: message)
   end
 
-  def attach_presentation_template_header!(message)
-    return unless current_admin_user&.avatar&.attached?
-    return unless Whatsapp::MediaSupport.validation_for(current_admin_user.avatar.blob)[:ok]
+  def attach_presentation_template_header!(message, template)
+    attachable =
+      if current_admin_user&.avatar&.attached? &&
+         Whatsapp::MediaSupport.validation_for(current_admin_user.avatar.blob)[:ok]
+        current_admin_user.avatar
+      elsif template.header_format == "image" && template.header_media_file.attached?
+        template.header_media_file
+      end
+    return unless attachable
 
-    message.media_file.attach(current_admin_user.avatar.blob)
+    message.media_file.attach(attachable.blob)
   end
 
   # A trilha consultável é a própria WhatsappMessage (presentation_card_id +
