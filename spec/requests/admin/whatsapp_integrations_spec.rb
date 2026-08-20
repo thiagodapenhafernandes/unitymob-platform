@@ -273,11 +273,37 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "salva a conexao quando o embedded signup finaliza" do
+    integration = current_whatsapp_integration!(
+      waba_id: "old-waba",
+      phone_number_id: "old-phone",
+      business_id: "old-business"
+    )
+    stale_sender = create(
+      :whatsapp_sender_number,
+      tenant: admin.tenant,
+      whatsapp_business_integration: integration,
+      phone_number_id: "old-phone",
+      waba_id: "old-waba",
+      active: true,
+      use_for_notifications: true
+    )
+    Rails.cache.write("whatsapp_phone_info/#{integration.id}", { number: "+55 47 0000-0000" })
     service = instance_double(Facebook::WhatsappEmbeddedSignupService, exchange_code!: {
       "access_token" => "business-token",
       "expires_in" => 3600
     })
-    client = instance_double(Whatsapp::CloudClient, subscribe_app: { ok: true, status: 200, data: { "success" => true } })
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "GREEN"
+        }
+      },
+      subscribe_app: { ok: true, status: 200, data: { "success" => true } }
+    )
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
@@ -301,7 +327,15 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(integration).to be_connected
     expect(integration.access_token).to eq("business-token")
     expect(integration.connected_by_admin_user).to eq(admin)
-    expect(Whatsapp::CloudClient).to have_received(:new).with(integration)
+    expect(Whatsapp::CloudClient).to have_received(:new).with(integration).twice
+    expect(stale_sender.reload).not_to be_active
+    sender = admin.tenant.whatsapp_sender_numbers.find_by!(phone_number_id: "649374078254590")
+    expect(sender).to be_active
+    expect(sender).to be_use_for_notifications
+    expect(sender.waba_id).to eq("616242481017427")
+    expect(sender.display_phone_number).to eq("5547991427176")
+    expect(sender.quality_rating).to eq("GREEN")
+    expect(Rails.cache.read("whatsapp_phone_info/#{integration.id}")).to be_nil
     expect(client).to have_received(:subscribe_app)
     expect(gateway).to have_received(:register_route)
   end
@@ -311,7 +345,11 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
       "access_token" => "embedded-signup-token",
       "expires_in" => 3600
     })
-    client = instance_double(Whatsapp::CloudClient, subscribe_app: { ok: true, status: 200, data: { "success" => true } })
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: { ok: false, error: "indisponível" },
+      subscribe_app: { ok: true, status: 200, data: { "success" => true } }
+    )
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return("system-user-token")
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
@@ -339,11 +377,15 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
       "access_token" => "business-token",
       "expires_in" => 3600
     })
-    client = instance_double(Whatsapp::CloudClient, subscribe_app: {
-      ok: false,
-      error: "Missing permission",
-      meta_error: { code: 200 }
-    })
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: { ok: false, error: "indisponível" },
+      subscribe_app: {
+        ok: false,
+        error: "Missing permission",
+        meta_error: { code: 200 }
+      }
+    )
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
     allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)

@@ -34,6 +34,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
         connected_by_admin_user: current_admin_user,
         connected_at: Time.current
       )
+      refresh_current_whatsapp_connection!(integration)
       subscription = subscribe_current_whatsapp_app(integration)
       gateway = register_current_whatsapp_gateway_route(integration)
 
@@ -100,6 +101,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
 
     if integration.save
+      refresh_current_whatsapp_connection!(integration)
       subscription = subscribe_current_whatsapp_app(integration)
       gateway = register_current_whatsapp_gateway_route(integration)
       flash_type = whatsapp_connection_success?(subscription, gateway) ? :notice : :alert
@@ -373,6 +375,26 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   rescue => e
     Rails.logger.warn("[WhatsappIntegrations] não foi possível buscar dados do número integrado: #{e.class}: #{e.message}")
     {}
+  end
+
+  def refresh_current_whatsapp_connection!(integration)
+    Rails.cache.delete("whatsapp_phone_info/#{integration.id}")
+    deactivate_stale_current_whatsapp_senders!(integration)
+    WhatsappSenderNumber.sync_from_current_integration!(
+      current_tenant,
+      phone_info: fetch_phone_info_for_sender(integration),
+      use_for_notifications: true
+    )
+  end
+
+  def deactivate_stale_current_whatsapp_senders!(integration)
+    return unless integration.persisted? && integration.phone_number_id.present?
+
+    current_tenant
+      .whatsapp_sender_numbers
+      .where(whatsapp_business_integration_id: integration.id)
+      .where.not(phone_number_id: integration.phone_number_id)
+      .update_all(active: false, status: "disconnected", use_for_notifications: false, updated_at: Time.current)
   end
 
   # Snapshot do número (display, nome verificado, quality) vindo da Cloud API.
