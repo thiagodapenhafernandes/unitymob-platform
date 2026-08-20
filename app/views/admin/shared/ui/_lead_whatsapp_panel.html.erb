@@ -9,9 +9,24 @@
 <% media_file_input_id = local_assigns[:file_input_id].presence || "lead-whatsapp-media-file" %>
 <% channel_label = lead.business_scoped_user_id.present? ? "BSUID #{lead.business_scoped_user_id}" : (lead.display_phone.presence || "Canal não identificado") %>
 <% media_support_label = "Texto, imagem, vídeo, áudio e documento" %>
+<% whatsapp_notice = local_assigns[:notice].presence %>
+<% whatsapp_notice_detail = local_assigns[:notice_detail].presence %>
 
 <div id="<%= panel_dom_id %>" class="ax-card tw-mb-4 lead-whatsapp-card" data-lead-whatsapp-panel="true">
-  <% if conversation %>
+  <% if whatsapp_notice.present? %>
+    <div class="ax-card__body tw-grid tw-gap-3">
+      <div class="lead-whatsapp-card__notice" role="status">
+        <i class="bi bi-exclamation-triangle"></i>
+        <div>
+          <strong>WhatsApp com pendência</strong>
+          <p><%= whatsapp_notice %></p>
+          <% if whatsapp_notice_detail.present? %>
+            <small><%= whatsapp_notice_detail %></small>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% elsif conversation %>
     <%# Mesma anatomia da tela dedicada: header + thread + composer à esquerda,
         contexto (lead/imóvel/apresentação) na coluna de 300px à direita.
         Etiquetas e ações NÃO se repetem aqui (vivem em "Próxima ação"). %>
