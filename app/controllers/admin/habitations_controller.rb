@@ -1216,7 +1216,7 @@ class Admin::HabitationsController < Admin::BaseController
         destaque_web festival exibir_no_site exibir_no_site_portal tem_placa exclusivo regiao_foco
         foto_classificacao publicar_imovelweb_2 publicar_lais_ai
         publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
-        tipo_publicacao_imovelweb_2 destaque_chaves_na_mao modelo_casa_mineira tipo_publicacao_imovelweb
+        tipo_publicacao_imovelweb_2 destaque_chaves_na_mao modelo_casa_mineira tipo_publicacao_imovelweb tipo_publicacao_viva_real
         captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
       ]
     end
@@ -1426,6 +1426,7 @@ class Admin::HabitationsController < Admin::BaseController
     @destaque_chaves_na_mao = params[:destaque_chaves_na_mao]
     @modelo_casa_mineira = params[:modelo_casa_mineira]
     @tipo_publicacao_imovelweb = params[:tipo_publicacao_imovelweb]
+    @tipo_publicacao_viva_real = params[:tipo_publicacao_viva_real]
     @somente_com_imagens = params[:somente_com_imagens]
     @somente_sem_imagens = params[:somente_sem_imagens]
     @somente_dwv = params[:somente_dwv]
@@ -1469,6 +1470,7 @@ class Admin::HabitationsController < Admin::BaseController
       @destaque_chaves_na_mao = nil
       @modelo_casa_mineira = nil
       @tipo_publicacao_imovelweb = nil
+      @tipo_publicacao_viva_real = nil
       @somente_com_imagens = nil
       @somente_sem_imagens = nil
       @somente_dwv = nil
@@ -1656,6 +1658,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_text_option_filter(scope, @destaque_chaves_na_mao, :destaque_chaves_na_mao)
     scope = apply_text_option_filter(scope, @modelo_casa_mineira, :modelo_casa_mineira)
     scope = apply_text_option_filter(scope, @tipo_publicacao_imovelweb, :tipo_publicacao_imovelweb)
+    scope = apply_text_option_filter(scope, @tipo_publicacao_viva_real, :tipo_publicacao_viva_real)
 
     if @somente_com_imagens == "1" && @somente_sem_imagens != "1"
       scope = scope.with_photos

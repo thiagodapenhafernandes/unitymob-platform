@@ -11,7 +11,7 @@
     amenities
     publicar_imovelweb_2 publicar_lais_ai
     publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
-    tipo_publicacao_imovelweb_2 destaque_chaves_na_mao modelo_casa_mineira tipo_publicacao_imovelweb
+    tipo_publicacao_imovelweb_2 destaque_chaves_na_mao modelo_casa_mineira tipo_publicacao_imovelweb tipo_publicacao_viva_real
     empreendimento_codigo corretor_id proprietor_id permuta_vehicle permuta_property permuta_others permuta_min_value
     permuta_location permuta_min_dorms permuta_min_suites permuta_min_garagens regiao_foco
     captacao_inicio captacao_fim somente_com_imagens somente_sem_imagens somente_dwv
@@ -524,6 +524,10 @@
     if params[:tipo_publicacao_imovelweb].present?
       imovelweb_label = portal_option_label.call(Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS, params[:tipo_publicacao_imovelweb])
       active_filter_chips << "Imovelweb: #{imovelweb_label}"
+    end
+    if params[:tipo_publicacao_viva_real].present?
+      viva_real_label = portal_option_label.call(Habitation::VIVA_REAL_TIPO_PUBLICACAO_OPTIONS, params[:tipo_publicacao_viva_real])
+      active_filter_chips << "Viva Real VRSync: #{viva_real_label}"
     end
     Array(params[:foto_classificacao]).reject(&:blank?).each do |fc|
       active_filter_chips << "Foto: #{fc}"

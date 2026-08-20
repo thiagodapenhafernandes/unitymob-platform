@@ -3134,7 +3134,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       "tipo_publicacao_imovelweb_2" => ["Simples", "Destaque", "Super Destaque"],
       "destaque_chaves_na_mao" => ["Sim", "Não"],
       "modelo_casa_mineira" => ["Simples", "Destaque", "Home Destaque"],
-      "tipo_publicacao_imovelweb" => ["Simples", "Destaque", "Super Destaque"]
+      "tipo_publicacao_imovelweb" => ["Simples", "Destaque", "Super Destaque"],
+      "tipo_publicacao_viva_real" => ["Padrão", "Destaque", "Super Destaque", "Destaque Superior", "Destaque Exclusivo", "Destaque Triplo"]
     }.each do |name, expected_options|
       select = fragment.at_css("select[name='#{name}']")
       expect(select).to be_present
@@ -3149,7 +3150,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       tipo_publicacao_imovelweb_2: "Destaque",
       destaque_chaves_na_mao: "sim",
       modelo_casa_mineira: "home_destaque",
-      tipo_publicacao_imovelweb: "super_destaque"
+      tipo_publicacao_imovelweb: "super_destaque",
+      tipo_publicacao_viva_real: "destaque_superior"
     )
     create(
       :habitation,
@@ -3157,14 +3159,16 @@ RSpec.describe "Admin::Habitations", type: :request do
       tipo_publicacao_imovelweb_2: "simples",
       destaque_chaves_na_mao: "nao",
       modelo_casa_mineira: "simples",
-      tipo_publicacao_imovelweb: "destaque"
+      tipo_publicacao_imovelweb: "destaque",
+      tipo_publicacao_viva_real: "padrao"
     )
 
     get admin_habitations_path, params: {
       tipo_publicacao_imovelweb_2: "destaque",
       destaque_chaves_na_mao: "sim",
       modelo_casa_mineira: "home_destaque",
-      tipo_publicacao_imovelweb: "super_destaque"
+      tipo_publicacao_imovelweb: "super_destaque",
+      tipo_publicacao_viva_real: "destaque_superior"
     }
 
     expect(response).to have_http_status(:ok)
@@ -3174,6 +3178,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Destaque Chaves na Mão: Sim")
     expect(response.body).to include("Casa Mineira: Home Destaque")
     expect(response.body).to include("Imovelweb: Super Destaque")
+    expect(response.body).to include("Viva Real VRSync: Destaque Superior")
   end
 
   it "permite selecionar Todos para incluir inclusive imóveis suspensos" do
