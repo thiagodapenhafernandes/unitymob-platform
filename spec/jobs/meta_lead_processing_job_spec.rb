@@ -34,10 +34,34 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     }.to change { tenant.leads.count }.by(1)
 
     lead = tenant.leads.last
-    expect(lead.admin_user).to eq(admin)
+    expect(lead.admin_user).to be_nil
     expect(lead.name).to eq("Maria Meta")
     expect(lead.phone).to eq("5547999990000")
     expect(lead.product).to eq("Captação Meta Tenant")
     expect(lead.other_information["meta_page_id"]).to eq("page-meta-tenant")
+    expect(lead.other_information["meta_integration_user_id"]).to eq(admin.id)
+  end
+
+  it "extrai telefone de campos Meta com abreviacoes brasileiras" do
+    attributes = described_class.new.send(:extract_lead_attributes, {
+      "field_data" => [
+        { "name" => "full_name", "values" => ["Cliente Teste"] },
+        { "name" => "email", "values" => ["cliente@example.com"] },
+        { "name" => "confirme_seu_wpp!", "values" => ["21990872427"] }
+      ]
+    })
+
+    expect(attributes[:phone]).to eq("21990872427")
+  end
+
+  it "usa fallback por valor quando o campo de telefone vem com rotulo nao padronizado" do
+    attributes = described_class.new.send(:extract_lead_attributes, {
+      "field_data" => [
+        { "name" => "full_name", "values" => ["Cliente Teste"] },
+        { "name" => "contato_preferencial", "values" => ["+55 21 99087-2427"] }
+      ]
+    })
+
+    expect(attributes[:phone]).to eq("+55 21 99087-2427")
   end
 end
