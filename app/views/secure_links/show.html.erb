@@ -32,14 +32,15 @@
       <div class="row"><span class="k">Telefone</span><span class="v"><%= @lead.display_phone.presence || "—" %></span></div>
       <div class="row"><span class="k">E-mail</span><span class="v"><%= @lead.display_email.presence || "—" %></span></div>
       <div class="row"><span class="k">Origem</span><span class="v"><%= @lead.origin.presence || "—" %></span></div>
+      <% if @lead.business_label.present? %>
+        <div class="row"><span class="k">Tipo de negócio</span><span class="v"><%= @lead.business_label %></span></div>
+      <% end %>
       <% if @lead.product.present? %>
         <div class="row"><span class="k">Interesse</span><span class="v"><%= @lead.product %></span></div>
       <% end %>
 
       <div class="actions">
-        <% if @lead.direct_whatsapp_url.present? %>
-          <a class="btn btn--wa" href="<%= secure_link_path(@link.token, contact: "whatsapp") %>">Abrir WhatsApp do lead</a>
-        <% end %>
+        <a class="btn btn--wa" href="<%= secure_link_path(@link.token, contact: "attend") %>">Atender Lead</a>
         <% if @lead.display_email.present? %>
           <a class="btn btn--mail" href="<%= secure_link_path(@link.token, contact: "email") %>">Enviar e-mail</a>
         <% end %>

@@ -38,6 +38,8 @@ class SecureLinksController < ApplicationController
   end
 
   def link_no_longer_available?
+    return true if @secure_link_claim_failed
+
     issued_to = @link.issued_to_admin_user
     return false unless issued_to
     return false if @lead.admin_user_id.blank? && Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance)
@@ -77,6 +79,11 @@ class SecureLinksController < ApplicationController
 
   def handle_contact_click(contact)
     case contact.to_s
+    when "attend"
+      mark_attended!(via: attendance_destination_via)
+      return render_lost_turn if link_no_longer_available?
+
+      redirect_to_attendance_destination
     when "whatsapp"
       mark_attended!(via: "whatsapp")
       return render_lost_turn if link_no_longer_available?
@@ -96,6 +103,22 @@ class SecureLinksController < ApplicationController
     else
       render :show, layout: false
     end
+  end
+
+  def redirect_to_attendance_destination
+    if open_whatsapp_from_secure_card?
+      redirect_to @lead.direct_whatsapp_url, allow_other_host: true
+    else
+      redirect_to admin_lead_path(@lead)
+    end
+  end
+
+  def attendance_destination_via
+    open_whatsapp_from_secure_card? ? "whatsapp" : "system"
+  end
+
+  def open_whatsapp_from_secure_card?
+    PushSetting.instance.open_whatsapp_on_click? && @lead.direct_whatsapp_url.present?
   end
 
   # Push: quando configurado para "detalhes primeiro", o clique abre o card
@@ -124,13 +147,11 @@ class SecureLinksController < ApplicationController
 
   # O clique no contato é o "atendido": só efetiva se o lead ainda estiver
   # aguardando aceite (dentro do prazo do pocket), travando a redistribuição.
-  # No Shark Tank (lead sem dono), reivindica para o corretor do link — 1º ganha.
+  # No lead sem dono, reivindica para o corretor do link — 1º ganha.
   def mark_attended!(via:)
-    return unless Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance)
-
     if @lead.admin_user_id.nil?
       claimer = @link.issued_to_admin_user
-      if claimer && Lead.claim!(@lead.id, claimer.id)
+      if claimer && claim_unassigned_lead!(claimer)
         @lead.reload
         @lead.distribution_rule&.mark_agent_served!(claimer.id)
         @lead.activities.create(
@@ -139,8 +160,11 @@ class SecureLinksController < ApplicationController
         )
       else
         @lead.reload
+        @secure_link_claim_failed = claimer.present? && @lead.admin_user_id.blank?
       end
     else
+      return unless Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance)
+
       owner_id = @lead.admin_user_id
       accepted = false
       # Transição atômica: revalida dono+status sob with_lock (mesma linha que
@@ -161,6 +185,17 @@ class SecureLinksController < ApplicationController
       # Corrida perdida: @lead já foi recarregado pelo with_lock, então o
       # recheck link_no_longer_available? do caller renderiza lost_turn.
     end
+  end
+
+  def claim_unassigned_lead!(claimer)
+    claimable_statuses = [
+      Lead.status_value(:novo),
+      Lead.status_value(:em_atendimento),
+      Lead.status_value(:waiting_acceptance)
+    ].compact
+
+    Lead.where(id: @lead.id, admin_user_id: nil, status: claimable_statuses)
+        .update_all(admin_user_id: claimer.id, status: Lead.status_value(:em_atendimento), updated_at: Time.current) == 1
   end
 
   def noindex

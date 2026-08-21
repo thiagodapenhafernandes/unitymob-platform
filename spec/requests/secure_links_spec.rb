@@ -26,7 +26,7 @@ RSpec.describe "SecureLinks", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Lead recebido")
     expect(response.body).to include("Cliente Detalhe")
-    expect(response.body).to include("Abrir WhatsApp do lead")
+    expect(response.body).to include("Atender Lead")
     expect(lead.reload.status).to eq(Lead.status_value(:waiting_acceptance))
   end
 
@@ -39,23 +39,66 @@ RSpec.describe "SecureLinks", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Lead recebido")
     expect(response.body).to include("Cliente Detalhe")
-    expect(response.body).to include("Abrir WhatsApp do lead")
+    expect(response.body).to include("Atender Lead")
     expect(lead.reload.status).to eq(Lead.status_value(:waiting_acceptance))
   end
 
-  it "marca como atendido ao clicar no WhatsApp do card seguro de detalhes" do
+  it "mostra o tipo de negocio quando identificado no lead" do
+    lead = create(:lead, name: "Cliente Venda", phone: "11999999999", product: "Apartamento para venda", status: :waiting_acceptance, admin_user: corretor)
+    link = SecureLink.link_for(lead, :attend, expiry_days: 7, issued_to: corretor)
+
+    get secure_link_path(link.token), params: { details: "1" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Tipo de negócio")
+    expect(response.body).to include("Venda")
+  end
+
+  it "marca como atendido e abre WhatsApp quando o Atender Lead esta configurado para WhatsApp" do
+    PushSetting.instance.update!(lead_click_action: "whatsapp")
     lead = create(:lead, name: "Cliente WhatsApp", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
     link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
 
     get secure_link_path(link.token)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(secure_link_path(link.token, contact: "whatsapp"))
+    expect(response.body).to include(secure_link_path(link.token, contact: "attend"))
     expect(lead.reload.status).to eq(Lead.status_value(:waiting_acceptance))
 
-    get secure_link_path(link.token), params: { contact: "whatsapp" }
+    get secure_link_path(link.token), params: { contact: "attend" }
 
     expect(response).to redirect_to(lead.direct_whatsapp_url)
     expect(lead.reload.status).to eq(Lead.status_value(:em_atendimento))
+    expect(lead.activities.where(kind: "accepted").last.metadata).to include(
+      "via" => "whatsapp",
+      "secure_link" => true
+    )
+  end
+
+  it "marca como atendido e abre o lead no sistema quando configurado para detalhes primeiro" do
+    PushSetting.instance.update!(lead_click_action: "system")
+    lead = create(:lead, name: "Cliente Sistema", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
+    link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
+
+    get secure_link_path(link.token), params: { contact: "attend" }
+
+    expect(response).to redirect_to(admin_lead_path(lead))
+    expect(lead.reload.status).to eq(Lead.status_value(:em_atendimento))
+    expect(lead.activities.where(kind: "accepted").last.metadata).to include(
+      "via" => "system",
+      "secure_link" => true
+    )
+  end
+
+  it "atribui o corretor do link ao atender lead ativo sem responsavel" do
+    PushSetting.instance.update!(lead_click_action: "whatsapp")
+    lead = create(:lead, name: "Cliente Sem Dono", phone: "11999999999", status: :em_atendimento, admin_user: nil)
+    link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
+
+    get secure_link_path(link.token), params: { contact: "attend" }
+
+    expect(response).to redirect_to(lead.direct_whatsapp_url)
+    expect(lead.reload.admin_user_id).to eq(corretor.id)
+    expect(lead.status).to eq(Lead.status_value(:em_atendimento))
     expect(lead.activities.where(kind: "accepted").last.metadata).to include(
       "via" => "whatsapp",
       "secure_link" => true
@@ -103,7 +146,7 @@ RSpec.describe "SecureLinks", type: :request do
   it "recusa ack quando perde a corrida do Shark Tank durante o claim" do
     lead = create(:lead, name: "Cliente Corrida", phone: "11999999999", status: :waiting_acceptance, admin_user: nil)
     link = SecureLink.link_for(lead, :attend, expiry_days: 7, issued_to: corretor)
-    allow(Lead).to receive(:claim!).with(lead.id, corretor.id).and_wrap_original do
+    allow_any_instance_of(SecureLinksController).to receive(:claim_unassigned_lead!).and_wrap_original do |_method, _claimer|
       lead.update!(admin_user: outro_corretor, status: Lead.status_value(:em_atendimento))
       false
     end

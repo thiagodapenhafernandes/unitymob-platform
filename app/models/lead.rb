@@ -224,6 +224,33 @@ class Lead < ApplicationRecord
     self.class.normalize_tags_value(tags)
   end
 
+  def business_label
+    info = other_information.is_a?(Hash) ? other_information : {}
+    attribution = attribution_data.is_a?(Hash) ? attribution_data : {}
+    external_payload = info["external_lead_payload"].is_a?(Hash) ? info["external_lead_payload"] : {}
+    external_attributes = external_payload["attributes"].is_a?(Hash) ? external_payload["attributes"] : {}
+    product_data = attribution["product"].is_a?(Hash) ? attribution["product"] : external_attributes["product"].to_h
+
+    text = [
+      lead_type,
+      product,
+      notes,
+      status,
+      product_data["description"],
+      product_data["negotiation_name"],
+      product_data.dig("real_estate_detail", "negotiation_name"),
+      external_attributes["description"],
+      external_attributes.dig("funnel_status", "name"),
+      external_attributes.dig("lead_status", "name")
+    ].compact.join(" ").parameterize(separator: "_")
+
+    return "Captação" if text.match?(/captacao|captar|proprietario|proprietaria/)
+    return "Locação" if text.match?(/locacao|aluguel|alugar|rental|locar/)
+    return "Venda" if text.match?(/venda|comprar|compra|sale|vend/)
+
+    nil
+  end
+
   def self.origin_options(scope: all, tenant: Current.tenant)
     raise ArgumentError, "Tenant obrigatório para listar origens de leads" if tenant.blank?
 
