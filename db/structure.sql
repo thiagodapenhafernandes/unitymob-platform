@@ -1,4 +1,4 @@
-\restrict MhKtTrNidqbqY860MU2bUZGaF4i2UE1HLG5XjuLWpOuL70WGwYA7KIuxP7OtGSu
+\restrict STSApDykamk7g3gocqOHGK03NiTR7aoMmOCt7rAce2bsNsf2djqQiyUx7fjYYB3
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3561,7 +3561,8 @@ CREATE TABLE public.lead_activities (
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    source_category character varying DEFAULT 'human'::character varying NOT NULL
 );
 
 
@@ -6306,7 +6307,8 @@ CREATE TABLE public.tasks (
     priority character varying DEFAULT 'normal'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    source character varying DEFAULT 'manual'::character varying NOT NULL
 );
 
 
@@ -9797,6 +9799,13 @@ CREATE UNIQUE INDEX idx_hba_vista_batch_source_key ON public.habitation_broker_a
 
 
 --
+-- Name: idx_lead_activities_on_source_kind_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_activities_on_source_kind_created ON public.lead_activities USING btree (source_category, kind, created_at);
+
+
+--
 -- Name: idx_lead_activities_tenant_kind_lead_created; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10228,6 +10237,13 @@ CREATE UNIQUE INDEX idx_stage_transitions_on_unique_next ON public.lead_pipeline
 --
 
 CREATE INDEX idx_store_shifts_agent_day_active ON public.store_shifts USING btree (admin_user_id, day_of_week, active);
+
+
+--
+-- Name: idx_tasks_on_tenant_source_status_due_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tasks_on_tenant_source_status_due_at ON public.tasks USING btree (tenant_id, source, status, due_at);
 
 
 --
@@ -17803,11 +17819,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MhKtTrNidqbqY860MU2bUZGaF4i2UE1HLG5XjuLWpOuL70WGwYA7KIuxP7OtGSu
+\unrestrict STSApDykamk7g3gocqOHGK03NiTR7aoMmOCt7rAce2bsNsf2djqQiyUx7fjYYB3
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260821143000'),
 ('20260821133000'),
 ('20260821120000'),
 ('20260820121000'),

@@ -75,7 +75,8 @@ module ExternalLeadMigration
 
     def sync_rule_agents!(rule, admin_user_ids)
       selected_ids = integration.tenant.admin_users.active.where(id: admin_user_ids).select do |admin_user|
-        rule.eligible_distribution_agent?(admin_user)
+        admin_user.email.to_s.downcase != ExternalLeadIntegration::LEGACY_TRASH_LOCAL_EMAIL &&
+          rule.eligible_distribution_agent?(admin_user)
       end.map(&:id)
       existing = rule.distribution_rule_agents.index_by(&:admin_user_id)
 

@@ -63,7 +63,10 @@ class ExternalLeadIntegration < ApplicationRecord
     return mapped_user if mapped_user
 
     email = seller["email"].to_s.strip.downcase
-    return tenant.admin_users.active.find_by("lower(email) = ?", email) if email.present?
+    if email.present?
+      email_user = tenant.admin_users.active.find_by("lower(email) = ?", email)
+      return email_user if email_user
+    end
 
     phone = Phones::Normalizer.call(seller["phone"])
     if phone.present?

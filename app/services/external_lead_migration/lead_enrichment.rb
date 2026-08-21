@@ -126,6 +126,7 @@ module ExternalLeadMigration
         tenant: lead.tenant,
         created_by: integration.connected_by_admin_user,
         kind: task_kind(action),
+        source: "external_legacy",
         status: status,
         completed_at: status == "concluida" ? due_at : nil,
         priority: "normal",
