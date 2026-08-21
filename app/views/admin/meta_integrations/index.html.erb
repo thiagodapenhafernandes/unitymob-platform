@@ -24,14 +24,14 @@
                 ], " ")
               ) %>
 
-          <% if @global_meta_webhook_callback_url.present? && @global_meta_webhook_verify_token.present? %>
+          <% if @meta_webhook_callback_url.present? && @meta_webhook_verify_token.present? %>
             <%= ax_inline_notice(tone: :info, icon: "globe2", compact: true) do %>
-              <strong>Webhook global Unitymob:</strong>
+              <strong>Webhook Meta · <%= @meta_webhook_mode_label %>:</strong>
               configure a Callback URL
-              <code><%= @global_meta_webhook_callback_url %></code>
+              <code><%= @meta_webhook_callback_url %></code>
               e o Verify Token
-              <code><%= @global_meta_webhook_verify_token %></code>.
-              As páginas sincronizadas são registradas automaticamente no gateway para encaminhar os leads a este CRM.
+              <code><%= @meta_webhook_verify_token %></code>.
+              <%= @meta_webhook_mode_description %>
             <% end %>
           <% end %>
 

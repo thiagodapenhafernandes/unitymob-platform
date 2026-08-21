@@ -3,7 +3,7 @@ module Meta
     Result = Struct.new(:ok?, :skipped?, :status, :error, :data, keyword_init: true)
 
     def self.enabled?
-      gateway_url.present? && internal_token.present? && forwarding_secret.present? && target_url.present?
+      WebhookConfiguration.gateway? && gateway_url.present? && internal_token.present? && forwarding_secret.present? && target_url.present?
     end
 
     def self.gateway_url
@@ -39,6 +39,7 @@ module Meta
     end
 
     def register_route
+      return skipped("Webhook Meta configurado em modo app próprio; gateway não será registrado.") unless WebhookConfiguration.gateway?
       return skipped("Gateway de webhooks Meta não configurado.") unless self.class.enabled?
       return skipped("Página Meta ainda não possui Page ID.") unless page.page_id.present?
       return skipped("Endpoint de destino Meta não configurado.") unless target_url.present?

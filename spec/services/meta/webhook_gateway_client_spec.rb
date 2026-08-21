@@ -12,6 +12,7 @@ RSpec.describe Meta::WebhookGatewayClient do
   end
 
   it "nao registra rota quando o gateway nao esta configurado" do
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("gateway")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return(nil)
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN").and_return(nil)
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return(nil)
@@ -25,6 +26,7 @@ RSpec.describe Meta::WebhookGatewayClient do
   end
 
   it "registra a rota da pagina Meta no gateway central" do
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("gateway")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN").and_return("internal-token")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return("forward-secret")
@@ -57,6 +59,7 @@ RSpec.describe Meta::WebhookGatewayClient do
   end
 
   it "registra rota especifica de formulario quando informado" do
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("gateway")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN").and_return("internal-token")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return("forward-secret")
@@ -70,5 +73,14 @@ RSpec.describe Meta::WebhookGatewayClient do
       body = JSON.parse(options[:body]).with_indifferent_access
       expect(body).to include(page_id: "214973675033177", form_id: "form-456")
     end
+  end
+
+  it "nao registra rota quando o modo Meta e app proprio" do
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("direct")
+
+    result = described_class.new(page: page, tenant: tenant).register_route
+
+    expect(result).to be_skipped
+    expect(result.error).to include("modo app próprio")
   end
 end

@@ -14,6 +14,9 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
   it "renderiza a conta conectada com páginas no workspace compartilhado" do
     page
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("direct")
+    allow(ENV).to receive(:[]).with("META_LEADS_DIRECT_WEBHOOK_PUBLIC_URL").and_return("https://app.saluteimoveis.com.br/webhooks/meta")
 
     get admin_meta_integrations_path
 
@@ -21,6 +24,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response.body).to include("ax-operational-panel", "meta-integration-avatar--page")
     expect(response.body).to include("ax-record-item", "meta-integration-account", "ax-disclosure-card")
     expect(response.body).to include("Sincronizar Páginas", "Desconectar conta", page.name)
+    expect(response.body).to include("Webhook Meta · App próprio", "https://app.saluteimoveis.com.br/webhooks/meta")
     expect(response.body).to include("Webhook Ativo") if page.active?
     expect(Nokogiri::HTML(response.body).at_css(".meta-integration-workspace").to_html).not_to match(/\bstyle\s*=/i)
   end

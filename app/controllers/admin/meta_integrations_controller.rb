@@ -7,8 +7,11 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   def index
     # Show status and link to Facebook Login if not integrated
     @pages = @integration&.meta_facebook_pages || []
-    @global_meta_webhook_callback_url = Meta::WebhookGatewayClient.public_webhook_url
-    @global_meta_webhook_verify_token = Meta::WebhookGatewayClient.verify_token
+    @meta_webhook_mode = Meta::WebhookConfiguration.mode
+    @meta_webhook_mode_label = Meta::WebhookConfiguration.label
+    @meta_webhook_mode_description = Meta::WebhookConfiguration.description
+    @meta_webhook_callback_url = Meta::WebhookConfiguration.callback_url
+    @meta_webhook_verify_token = Meta::WebhookConfiguration.verify_token
   end
 
   def list_forms
