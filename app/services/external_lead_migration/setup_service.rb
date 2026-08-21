@@ -42,24 +42,8 @@ module ExternalLeadMigration
     def map_sellers(sellers)
       sellers.each_with_object({}) do |seller, acc|
         seller = seller.to_h
-        user = find_local_user(seller)
+        user = integration.local_user_for_seller(seller)
         acc[seller["id"].to_s] = user.id if seller["id"].present? && user
-      end
-    end
-
-    def find_local_user(seller)
-      email = seller["email"].to_s.strip.downcase
-      if email.present?
-        user = integration.tenant.admin_users.active.find_by("lower(email) = ?", email)
-        return user if user
-      end
-
-      phone = Phones::Normalizer.call(seller["phone"])
-      return nil if phone.blank?
-
-      integration.tenant.admin_users.active.detect do |admin_user|
-        Phones::Normalizer.call(admin_user.phone) == phone ||
-          (admin_user.respond_to?(:secondary_phone) && Phones::Normalizer.call(admin_user.secondary_phone) == phone)
       end
     end
 
