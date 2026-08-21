@@ -32,6 +32,7 @@ class MetaSyncJob < ApplicationJob
         category: page_data["category"],
         active: true
       )
+      register_meta_gateway_route(page, integration)
       synced_pages << page
       
       # Progress for pages (up to 50%)
@@ -64,6 +65,7 @@ class MetaSyncJob < ApplicationJob
             active: form_data["status"] == "ACTIVE",
             facebook_created_at: form_data["created_time"]
           )
+          register_meta_gateway_route(page, integration, form: form)
 
           # Auto-add to Distribution Rules if enabled — SÓ do tenant desta
           # integração (antes varria todos; com páginas duplicadas entre
@@ -117,6 +119,25 @@ class MetaSyncJob < ApplicationJob
       target: "meta_sync_status",
       partial: "admin/meta_integrations/sync_status",
       locals: { integration: integration }
+    )
+  end
+
+  def register_meta_gateway_route(page, integration, form: nil)
+    tenant = Tenant.find_by(id: integration.owner_tenant_id)
+    return unless tenant
+
+    result = Meta::WebhookGatewayClient.new(page: page, tenant: tenant, form: form).register_route
+    return if result.ok? || result.skipped?
+
+    Rails.logger.warn(
+      "[MetaSyncJob] Nao foi possivel registrar rota Meta no gateway " \
+      "page_id=#{page.page_id} form_id=#{form&.form_id} tenant_id=#{tenant.id} " \
+      "status=#{result.status} error=#{result.error}"
+    )
+  rescue => e
+    Rails.logger.warn(
+      "[MetaSyncJob] Erro ao registrar rota Meta no gateway " \
+      "page_id=#{page.page_id} form_id=#{form&.form_id} error=#{e.class}: #{e.message}"
     )
   end
 end

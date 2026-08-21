@@ -2,6 +2,7 @@
 
 require_relative "config/environment"
 require "active_record/tasks/database_tasks"
+require "time"
 
 ActiveRecord::Tasks::DatabaseTasks.database_configuration = Gateway::Database.configurations
 ActiveRecord::Tasks::DatabaseTasks.db_dir = File.expand_path("db", __dir__)
@@ -39,6 +40,35 @@ namespace :db do
 end
 
 namespace :webhooks do
+  desc "List recent webhook events. Filters: STATUS, PROVIDER, PAGE_ID, FORM_ID, PHONE_NUMBER_ID, LIMIT"
+  task :events do
+    limit = [[ENV.fetch("LIMIT", 50).to_i, 1].max, 200].min
+    scope = WebhookEvent.order(received_at: :desc, id: :desc)
+    scope = scope.where(provider: ENV["PROVIDER"].to_s) if ENV["PROVIDER"].to_s.strip != ""
+    scope = scope.where(status: ENV["STATUS"].to_s) if ENV["STATUS"].to_s.strip != ""
+    scope = scope.where(page_id: ENV["PAGE_ID"].to_s) if ENV["PAGE_ID"].to_s.strip != ""
+    scope = scope.where(form_id: ENV["FORM_ID"].to_s) if ENV["FORM_ID"].to_s.strip != ""
+    scope = scope.where(phone_number_id: ENV["PHONE_NUMBER_ID"].to_s) if ENV["PHONE_NUMBER_ID"].to_s.strip != ""
+
+    puts "id\tprovider\tstatus\ttype\texternal_id\tpage_id\tform_id\tphone_number_id\troute_id\tattempts\treceived_at\tlast_error"
+    scope.limit(limit).each do |event|
+      puts [
+        event.id,
+        event.provider,
+        event.status,
+        event.event_type,
+        event.external_id,
+        event.page_id,
+        event.form_id,
+        event.phone_number_id,
+        event.webhook_route_id,
+        event.attempts,
+        event.received_at&.iso8601,
+        event.last_error.to_s.gsub(/\s+/, " ")[0, 160]
+      ].join("\t")
+    end
+  end
+
   desc "Retry failed webhook forwards"
   task :retry_failed do
     result = Gateway::RetryFailedEvents.call(

@@ -20,7 +20,9 @@ ActiveRecord::Schema.define do
       t.string :client_key, null: false
       t.string :tenant_name
       t.string :waba_id
-      t.string :phone_number_id, null: false
+      t.string :phone_number_id
+      t.string :page_id
+      t.string :form_id
       t.string :target_url, null: false
       t.string :forwarding_secret, null: false
       t.boolean :active, null: false, default: true
@@ -36,6 +38,8 @@ ActiveRecord::Schema.define do
       t.string :event_type, null: false
       t.string :waba_id
       t.string :phone_number_id
+      t.string :page_id
+      t.string :form_id
       t.jsonb :payload, null: false, default: {}
       t.text :raw_body
       t.string :status, null: false, default: "received"

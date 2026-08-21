@@ -28,6 +28,14 @@ module Gateway
       params.fetch("hub.challenge")
     end
 
+    get "/webhooks/meta" do
+      halt 403, json(error: "invalid_verify_token") unless valid_verify_challenge?
+
+      content_type :text
+      status 200
+      params.fetch("hub.challenge")
+    end
+
     post "/webhooks/whatsapp" do
       raw_body = request.body.read
       signature = request.env["HTTP_X_HUB_SIGNATURE_256"].to_s
@@ -40,6 +48,29 @@ module Gateway
       event_contexts = WhatsappPayload.extract_event_contexts(payload)
       events = event_contexts.map { |context| persist_event(context, payload, raw_body) }
 
+      alert_unrouted_events(events)
+      events.each { |event| forward_event(event, raw_body) }
+
+      status 200
+      json(ok: true, events: events.map { |event| event_response(event) })
+    rescue JSON::ParserError
+      status 400
+      json(error: "invalid_json")
+    end
+
+    post "/webhooks/meta" do
+      raw_body = request.body.read
+      signature = request.env["HTTP_X_HUB_SIGNATURE_256"].to_s
+
+      unless MetaSignature.valid?(raw_body, signature, app_secret: meta_app_secret)
+        halt 401, json(error: "invalid_signature")
+      end
+
+      payload = parse_json(raw_body)
+      event_contexts = MetaLeadPayload.extract_event_contexts(payload)
+      events = event_contexts.map { |context| persist_meta_event(context, payload, raw_body) }
+
+      alert_unrouted_events(events)
       events.each { |event| forward_event(event, raw_body) }
 
       status 200
@@ -71,6 +102,29 @@ module Gateway
       json(error: "invalid_json")
     end
 
+    post "/internal/meta/routes" do
+      require_internal_token!
+
+      attributes = meta_route_attributes(parse_json(request.body.read))
+      route = WebhookRoute.find_or_initialize_by(
+        provider: attributes[:provider],
+        page_id: attributes[:page_id],
+        form_id: attributes[:form_id].presence
+      )
+      route.assign_attributes(attributes)
+      route.active = true if route.active.nil?
+      route.save!
+
+      status route.previously_new_record? ? 201 : 200
+      json(route: route_payload(route))
+    rescue ActiveRecord::RecordInvalid => error
+      status 422
+      json(error: "invalid_route", details: error.record.errors.full_messages)
+    rescue JSON::ParserError
+      status 400
+      json(error: "invalid_json")
+    end
+
     delete "/internal/whatsapp/routes/:phone_number_id" do
       require_internal_token!
 
@@ -79,6 +133,26 @@ module Gateway
 
       route.update!(active: false)
       json(route: route_payload(route))
+    end
+
+    delete "/internal/meta/routes/:page_id" do
+      require_internal_token!
+
+      route = WebhookRoute.find_by(provider: "meta", page_id: params.fetch("page_id"), form_id: [nil, ""])
+      halt 404, json(error: "route_not_found") unless route
+
+      route.update!(active: false)
+      json(route: route_payload(route))
+    end
+
+    get "/internal/webhook_events" do
+      require_internal_token!
+
+      events = filtered_events.limit(events_limit)
+      json(
+        events: events.map { |event| event_payload(event) },
+        count: events.size
+      )
     end
 
     error StandardError do
@@ -127,8 +201,21 @@ module Gateway
       }
     end
 
+    def meta_route_attributes(payload)
+      {
+        provider: "meta",
+        client_key: payload.fetch("client_key"),
+        tenant_name: payload["tenant_name"],
+        page_id: payload.fetch("page_id").to_s,
+        form_id: payload["form_id"].to_s.strip.empty? ? nil : payload["form_id"].to_s,
+        target_url: payload.fetch("target_url"),
+        forwarding_secret: payload.fetch("forwarding_secret"),
+        active: payload.fetch("active", true)
+      }
+    end
+
     def persist_event(context, payload, raw_body)
-      route = RouteResolver.call(phone_number_id: context[:phone_number_id], waba_id: context[:waba_id])
+      route = RouteResolver.whatsapp(phone_number_id: context[:phone_number_id], waba_id: context[:waba_id])
 
       WebhookEvent.create!(
         provider: "whatsapp",
@@ -144,10 +231,33 @@ module Gateway
       )
     end
 
+    def persist_meta_event(context, payload, raw_body)
+      route = RouteResolver.meta(page_id: context[:page_id], form_id: context[:form_id])
+
+      WebhookEvent.create!(
+        provider: "meta",
+        webhook_route: route,
+        external_id: context[:external_id],
+        event_type: context[:event_type],
+        page_id: context[:page_id],
+        form_id: context[:form_id],
+        payload: payload,
+        raw_body: raw_body,
+        status: route ? "received" : "unrouted",
+        received_at: Time.now
+      )
+    end
+
     def forward_event(event, raw_body)
       return unless event.webhook_route
 
       EventForwarder.call(event:, raw_body:)
+    end
+
+    def alert_unrouted_events(events)
+      events.select { |event| event.status == "unrouted" }.each do |event|
+        UnroutedEventAlerter.call(event)
+      end
     end
 
     def event_response(event)
@@ -166,8 +276,44 @@ module Gateway
         tenant_name: route.tenant_name,
         waba_id: route.waba_id,
         phone_number_id: route.phone_number_id,
+        page_id: route.page_id,
+        form_id: route.form_id,
         target_url: route.target_url,
         active: route.active
+      }
+    end
+
+    def filtered_events
+      scope = WebhookEvent.order(received_at: :desc, id: :desc)
+      scope = scope.where(provider: params["provider"].to_s) if params["provider"].to_s.strip != ""
+      scope = scope.where(status: params["status"].to_s) if params["status"].to_s.strip != ""
+      scope = scope.where(page_id: params["page_id"].to_s) if params["page_id"].to_s.strip != ""
+      scope = scope.where(form_id: params["form_id"].to_s) if params["form_id"].to_s.strip != ""
+      scope = scope.where(phone_number_id: params["phone_number_id"].to_s) if params["phone_number_id"].to_s.strip != ""
+      scope
+    end
+
+    def events_limit
+      [[params.fetch("limit", 50).to_i, 1].max, 200].min
+    end
+
+    def event_payload(event)
+      {
+        id: event.id,
+        provider: event.provider,
+        status: event.status,
+        event_type: event.event_type,
+        external_id: event.external_id,
+        route_id: event.webhook_route_id,
+        waba_id: event.waba_id,
+        phone_number_id: event.phone_number_id,
+        page_id: event.page_id,
+        form_id: event.form_id,
+        attempts: event.attempts,
+        last_error: event.last_error,
+        received_at: event.received_at&.iso8601,
+        forwarded_at: event.forwarded_at&.iso8601,
+        next_retry_at: event.next_retry_at&.iso8601
       }
     end
   end
