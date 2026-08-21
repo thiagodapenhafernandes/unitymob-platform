@@ -89,6 +89,7 @@ module Automation
         admin_user: assignee,
         title: action[:title].presence || "Follow-up automático",
         kind: "follow_up",
+        source: "automation",
         due_at: (action[:due_in_hours].presence || 24).to_i.hours.from_now,
         status: "pendente"
       )
@@ -288,6 +289,7 @@ module Automation
         admin_user: assignee,
         title: action[:title].presence || "Curar imóveis para #{ @lead.display_name }",
         kind: "follow_up",
+        source: "automation",
         due_at: (action[:due_in_hours].presence || 4).to_i.hours.from_now,
         status: "pendente",
         description: render_text(action[:notes].presence || interest_profile_text(profile))
@@ -343,6 +345,7 @@ module Automation
         admin_user: assignee,
         title: action[:title].presence || "Oportunidade de interesse para #{@lead.display_name}",
         kind: "follow_up",
+        source: "automation",
         due_at: (action[:due_in_hours].presence || 2).to_i.hours.from_now,
         status: "pendente",
         description: [summary["summary"], summary["broker_message"], matching_properties_text(matches)].compact_blank.join("\n\n")

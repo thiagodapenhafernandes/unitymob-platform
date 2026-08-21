@@ -10,6 +10,8 @@ class Task < ApplicationRecord
   }.freeze
   STATUSES = %w[pendente concluida cancelada].freeze
   PRIORITIES = { "baixa" => "Baixa", "normal" => "Normal", "alta" => "Alta" }.freeze
+  LEGACY_EXTERNAL_TITLE = "Ação agendada do legado".freeze
+  SOURCES = %w[manual external_legacy automation].freeze
 
   belongs_to :lead, optional: true
   belongs_to :admin_user # responsável
@@ -18,7 +20,10 @@ class Task < ApplicationRecord
   validates :title, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :kind, inclusion: { in: KINDS.keys }
+  validates :source, inclusion: { in: SOURCES }, if: -> { has_attribute?(:source) }
   validate :associations_belong_to_same_tenant
+
+  before_validation :assign_source, if: -> { has_attribute?(:source) }
 
   scope :pendentes, -> { where(status: "pendente") }
   scope :concluidas, -> { where(status: "concluida") }
@@ -26,12 +31,15 @@ class Task < ApplicationRecord
   scope :hoje, -> { pendentes.where(due_at: Time.current.beginning_of_day..Time.current.end_of_day) }
   scope :semana, -> { pendentes.where(due_at: Time.current.beginning_of_day..7.days.from_now.end_of_day) }
   scope :ordered, -> { order(Arel.sql("CASE WHEN status = 'pendente' THEN 0 ELSE 1 END, due_at ASC NULLS LAST, created_at DESC")) }
+  scope :external_legacy, -> { where(source: "external_legacy") }
+  scope :operational_current, -> { where.not(source: "external_legacy") }
 
   def pendente? = status == "pendente"
   def concluida? = status == "concluida"
   def atrasada? = pendente? && due_at.present? && due_at < Time.current
   def kind_label = KINDS[kind] || kind
   def priority_label = PRIORITIES[priority] || priority
+  def external_legacy? = source == "external_legacy" || title == LEGACY_EXTERNAL_TITLE || external_scheduled_activity_linked?
 
   def complete!(by: nil)
     update!(status: "concluida", completed_at: Time.current)
@@ -39,6 +47,17 @@ class Task < ApplicationRecord
   end
 
   private
+
+  def assign_source
+    self.source = "external_legacy" if source.blank? && title == LEGACY_EXTERNAL_TITLE
+    self.source ||= "manual"
+  end
+
+  def external_scheduled_activity_linked?
+    return false unless id && lead_id
+
+    lead.activities.where(kind: "external_scheduled_action").where("metadata @> ?", { task_id: id }.to_json).exists?
+  end
 
   def associations_belong_to_same_tenant
     {

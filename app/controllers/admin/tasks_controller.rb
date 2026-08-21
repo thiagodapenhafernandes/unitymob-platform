@@ -3,17 +3,19 @@ class Admin::TasksController < Admin::BaseController
   before_action -> { check_permission!(:manage, :comercial) }, only: [:create, :update, :complete, :destroy]
   before_action :set_task, only: [:update, :complete, :destroy]
 
-  FILTERS = %w[pendentes hoje atrasadas semana concluidas todas].freeze
+  FILTERS = %w[pendentes hoje atrasadas semana concluidas todas legado].freeze
 
   def index
     @filter = params[:filter].presence_in(FILTERS) || "pendentes"
-    base = task_scope
+    scoped_tasks = task_scope
+    base = @filter == "legado" ? scoped_tasks.external_legacy : scoped_tasks.operational_current
     @tasks = filtered(base, @filter).includes(:lead, :admin_user).ordered.limit(300)
     @counts = {
       pendentes: base.pendentes.count,
       hoje: base.hoje.count,
       atrasadas: base.atrasadas.count,
-      semana: base.semana.count
+      semana: base.semana.count,
+      legado: scoped_tasks.external_legacy.pendentes.count
     }
     @page_title = "Minhas Tarefas"
   end
@@ -61,6 +63,7 @@ class Admin::TasksController < Admin::BaseController
     when "semana" then base.semana
     when "concluidas" then base.concluidas
     when "todas" then base
+    when "legado" then base
     else base.pendentes
     end
   end

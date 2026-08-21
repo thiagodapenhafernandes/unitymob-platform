@@ -385,7 +385,7 @@ class Admin::DashboardController < Admin::BaseController
       paid_scope = period_scope.where(attribution_channel: Dashboard::LeadAcquisitionQuery::PAID_CHANNELS)
       paid_without_contact = paid_scope
         .where(status: active_lead_status_values_with_blank)
-        .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
+        .where.not(id: human_contact_activity_scope.select(:lead_id))
       channel_quality = @acquisition_channel_quality || []
       weak_paid_channel = channel_quality
         .select { |row| row[:key].to_s.in?(Dashboard::LeadAcquisitionQuery::PAID_CHANNELS) }
@@ -1514,7 +1514,7 @@ class Admin::DashboardController < Admin::BaseController
     @no_first_contact_scope ||= @lead_scope
       .where("leads.created_at >= ?", dashboard_window_start)
       .where(status: active_lead_status_values_with_blank)
-      .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
+      .where.not(id: human_contact_activity_scope.select(:lead_id))
   end
 
   def pending_whatsapp_reply_scope
@@ -1571,6 +1571,7 @@ class Admin::DashboardController < Admin::BaseController
     contacted = LeadActivity
       .joins(:lead)
       .merge(@lead_scope.where("leads.created_at >= ?", dashboard_window_start))
+      .human_operational
       .where(kind: CONTACT_ACTIVITY_KINDS)
       .group("leads.id", "leads.created_at")
       .minimum("lead_activities.created_at")
@@ -1584,6 +1585,10 @@ class Admin::DashboardController < Admin::BaseController
     return 0 if durations.empty?
 
     (durations.sum.to_f / durations.size).round
+  end
+
+  def human_contact_activity_scope
+    LeadActivity.human_operational.where(kind: CONTACT_ACTIVITY_KINDS)
   end
 
   def broker_performance_rows

@@ -26,6 +26,21 @@ RSpec.describe "Admin::Tasks", type: :request do
       expect(document.at_css('a.ax-btn[aria-current="page"]')).to be_present
       expect(document.at_css('button.ax-ico-btn[aria-label="Concluir tarefa Ligar para cliente"] i[aria-hidden="true"]')).to be_present
     end
+
+    it "separa tarefas legadas do C2S dos filtros operacionais atuais" do
+      Task.create!(title: "Ligar para cliente", admin_user: admin, status: "pendente", source: "manual")
+      Task.create!(title: Task::LEGACY_EXTERNAL_TITLE, admin_user: admin, status: "pendente", source: "external_legacy")
+
+      get admin_tasks_path(team: "0")
+
+      expect(response.body).to include("Ligar para cliente")
+      expect(response.body).not_to include(Task::LEGACY_EXTERNAL_TITLE)
+
+      get admin_tasks_path(filter: "legado", team: "0")
+
+      expect(response.body).to include(Task::LEGACY_EXTERNAL_TITLE, "Importada do C2S/legado")
+      expect(response.body).not_to include("Ligar para cliente")
+    end
   end
 
   describe "POST /admin/tasks" do

@@ -208,6 +208,7 @@ module Leads
         admin_user: assignee,
         title: action_config(automation, "task_title").presence || "Follow-up automático",
         kind: "follow_up",
+        source: "automation",
         due_at: (action_config(automation, "due_in_days").presence || 1).to_i.days.from_now,
         status: "pendente",
         description: action_config(automation, "note")
