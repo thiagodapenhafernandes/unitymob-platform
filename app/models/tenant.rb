@@ -61,7 +61,10 @@ class Tenant < ApplicationRecord
   has_one :external_lead_integration, dependent: :destroy
   has_many :lead_pipelines, dependent: :restrict_with_error
   has_many :lead_pipeline_stages, dependent: :restrict_with_error
+  has_many :lead_pipeline_stage_policies, dependent: :restrict_with_error
+  has_many :lead_pipeline_stage_transitions, dependent: :restrict_with_error
   has_many :lead_pipeline_stage_automations, dependent: :restrict_with_error
+  has_many :lead_pipeline_stage_automation_executions, dependent: :restrict_with_error
   has_many :manual_checkin_requests, dependent: :restrict_with_error
   has_many :proprietors, dependent: :restrict_with_error
   has_many :access_audit_logs, dependent: :restrict_with_error

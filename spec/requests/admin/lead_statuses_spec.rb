@@ -12,6 +12,54 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     sign_in admin
   end
 
+  it "exibe a documentacao didatica do modal de funil e etapas" do
+    get documentation_admin_lead_statuses_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Guia de funis e etapas")
+    expect(response.body).to include("Pesquisar nesta documentação")
+    expect(response.body).to include("Qualificação no card")
+    expect(response.body).to include("Fila de divergência")
+    expect(response.body).to include("data-controller=\"doc-search\"")
+    expect(Nokogiri::HTML(response.body).css("details.ax-documentation__section[open]")).to be_empty
+  end
+
+  it "exibe a auditoria das execuções de automações de etapa com filtros" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    stage = pipeline.stages.create!(tenant: admin.tenant, name: "Sem retorno")
+    automation = create(
+      :lead_pipeline_stage_automation,
+      tenant: admin.tenant,
+      lead_pipeline_stage: stage,
+      auto_advance_to_stage: nil,
+      action_type: "create_task"
+    )
+    lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name, name: "Lead Auditado")
+    create(
+      :lead_pipeline_stage_automation_execution,
+      tenant: admin.tenant,
+      lead_pipeline_stage_automation: automation,
+      lead: lead,
+      lead_pipeline_stage: stage,
+      action_type: "create_task",
+      status: "succeeded"
+    )
+    external_pipeline = LeadPipeline.ensure_default!(tenant: other_tenant)
+    external_stage = external_pipeline.stages.create!(tenant: other_tenant, name: "Externa")
+    external_automation = create(:lead_pipeline_stage_automation, tenant: other_tenant, lead_pipeline_stage: external_stage)
+    external_lead = create(:lead, tenant: other_tenant, lead_pipeline: external_pipeline, lead_pipeline_stage: external_stage, status: external_stage.name, name: "Lead Externo")
+    create(:lead_pipeline_stage_automation_execution, tenant: other_tenant, lead_pipeline_stage_automation: external_automation, lead: external_lead, lead_pipeline_stage: external_stage)
+
+    get automation_executions_admin_lead_statuses_path(action_type: "create_task", status: "succeeded", q: "Auditado")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Auditoria das automações")
+    expect(response.body).to include("Lead Auditado")
+    expect(response.body).to include("Criar tarefa")
+    expect(response.body).to include("Concluída")
+    expect(response.body).not_to include("Lead Externo")
+  end
+
   it "lista apenas etapas do funil e tenant atual" do
     pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
     pipeline.stages.create!(tenant: admin.tenant, name: "Em análise")
@@ -118,6 +166,117 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
       after_unit: "hours",
       auto_advance_to_stage_id: cross_pipeline_stage.id
     )
+  end
+
+  it "salva politica operacional, proximas etapas e acao final" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Triagem")
+    destination_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Atendimento")
+    archive_reason = admin.tenant.attribute_options.create!(
+      context: "lead",
+      category: "archive_reason",
+      name: "Sem potencial"
+    )
+
+    post bulk_update_admin_lead_statuses_path,
+         params: {
+           lead_pipeline_id: pipeline.id,
+           statuses: [
+             {
+               id: source_stage.id,
+               name: source_stage.name,
+               stage_type: "open",
+               color: "#8a63d2",
+               active: "1",
+               next_stage_ids: [destination_stage.id],
+               policy: {
+                 visible_to_roles: %w[broker manager],
+                 divergence_queue_enabled: "1",
+                 future_activity_limit_days: "7",
+                 qualification_enabled: "1",
+                 qualification_options: %w[qualified missing_data],
+                 allowed_archive_reason_ids: [archive_reason.id]
+               },
+               automations: [
+                 {
+                   active: "1",
+                   trigger: "stage_duration",
+                   after_amount: "3",
+                   after_unit: "days",
+                   action_type: "archive_lead",
+                   action_config: { archive_reason_id: archive_reason.id, note: "Sem retorno" }
+                 }
+               ]
+             }
+           ]
+         },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(source_stage.reload.next_stages).to contain_exactly(destination_stage)
+    expect(source_stage.color).to eq("#8a63d2")
+    expect(source_stage.policy).to have_attributes(
+      visible_to_roles: %w[broker manager],
+      divergence_queue_enabled: true,
+      future_activity_limit_days: 7,
+      qualification_enabled: true,
+      qualification_options: %w[qualified missing_data],
+      allowed_archive_reason_ids: [archive_reason.id]
+    )
+    expect(source_stage.automations.last).to have_attributes(
+      action_type: "archive_lead",
+      action_config: hash_including("archive_reason_id" => archive_reason.id.to_s, "note" => "Sem retorno")
+    )
+  end
+
+  it "bloqueia movimentacao fora das proximas etapas permitidas" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Triagem")
+    allowed_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Atendimento")
+    blocked_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Perdido manual", stage_type: "lost")
+    create(:lead_pipeline_stage_transition, lead_pipeline_stage: source_stage, tenant: admin.tenant, next_stage: allowed_stage)
+    lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name)
+
+    patch admin_lead_path(lead),
+          params: {
+            lead: {
+              lead_pipeline_id: pipeline.id,
+              lead_pipeline_stage_id: blocked_stage.id
+            }
+          },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(lead.reload.lead_pipeline_stage_id).to eq(source_stage.id)
+  end
+
+  it "bloqueia etapa de destino invisivel para o perfil do usuario" do
+    manager_profile = admin.tenant.profiles.find_or_create_by!(key: "gerente") do |profile|
+      profile.name = "Gerente"
+      profile.axis = "vertical"
+      profile.permissions = Profile.default_permissions_for("Gerente")
+    end
+    manager = create(:admin_user, email: "manager-#{SecureRandom.hex(6)}@salute.test", tenant: admin.tenant, profile: manager_profile)
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Triagem")
+    hidden_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Gestão")
+    create(:lead_pipeline_stage_policy, lead_pipeline_stage: hidden_stage, tenant: admin.tenant, visible_to_roles: %w[broker admin])
+    lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name, admin_user: manager)
+
+    sign_out admin
+    sign_in manager
+
+    patch admin_lead_path(lead),
+          params: {
+            lead: {
+              lead_pipeline_id: pipeline.id,
+              lead_pipeline_stage_id: hidden_stage.id
+            }
+          },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(lead.reload.lead_pipeline_stage_id).to eq(source_stage.id)
   end
 
   it "remove etapa transferindo leads para a primeira etapa restante do mesmo funil" do

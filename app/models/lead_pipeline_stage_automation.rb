@@ -15,21 +15,44 @@ class LeadPipelineStageAutomation < ApplicationRecord
     "days" => "dias"
   }.freeze
 
+  ACTION_TYPES = {
+    "move_stage" => "Mover para etapa",
+    "archive_lead" => "Arquivar lead",
+    "redistribute_lead" => "Redistribuir na fila",
+    "make_available_for_automation" => "Disponibilizar para automação",
+    "create_task" => "Criar tarefa",
+    "add_note" => "Registrar nota"
+  }.freeze
+
   belongs_to :lead_pipeline_stage
   belongs_to :auto_advance_to_stage,
              class_name: "LeadPipelineStage",
              optional: true
+  has_many :executions,
+           class_name: "LeadPipelineStageAutomationExecution",
+           dependent: :destroy,
+           inverse_of: :lead_pipeline_stage_automation
 
   validates :trigger, inclusion: { in: TRIGGERS.keys }
   validates :after_unit, inclusion: { in: UNITS.keys }
+  validates :action_type, inclusion: { in: ACTION_TYPES.keys }
   validates :after_amount, numericality: { only_integer: true, greater_than: 0 }
-  validates :auto_advance_to_stage, presence: true
+  validates :auto_advance_to_stage, presence: true, if: :move_stage?
   validate :records_must_belong_to_tenant
 
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(Arel.sql("position ASC NULLS LAST"), :id) }
 
+  before_validation :normalize_action_config
   before_validation :assign_position, on: :create
+
+  def move_stage?
+    action_type.to_s == "move_stage"
+  end
+
+  def action_label
+    ACTION_TYPES[action_type] || action_type.to_s.humanize
+  end
 
   def duration
     case after_unit
@@ -40,6 +63,11 @@ class LeadPipelineStageAutomation < ApplicationRecord
   end
 
   private
+
+  def normalize_action_config
+    self.action_type = "move_stage" if action_type.blank?
+    self.action_config = {} unless action_config.is_a?(Hash)
+  end
 
   def assign_position
     return if position.present? || lead_pipeline_stage.blank?

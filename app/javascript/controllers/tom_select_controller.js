@@ -10,7 +10,8 @@ export default class extends Controller {
     url: String,
     searchParam: String,
     minLength: Number,
-    optionDescriptions: Object
+    optionDescriptions: Object,
+    openOnInitialize: Boolean
   }
 
   connect() {
@@ -35,8 +36,8 @@ export default class extends Controller {
       this.initializeTomSelect()
 
       // When initialized from click/touch, open immediately so first interaction works.
-      if (event && event.type !== "focus") {
-        requestAnimationFrame(() => this.tomSelect?.open())
+      if (this.openOnInitializeValue || (event && event.type !== "focus")) {
+        this.scheduleOpenAvailableOptions()
       }
     }
     this.element.addEventListener("focus", this.deferredInitHandler, { once: true })
@@ -74,6 +75,7 @@ export default class extends Controller {
     if (this.tomSelect) return
     if (this.element.tomselect) {
       this.tomSelect = this.element.tomselect
+      this.bindOpenAvailableOptionsOnFocus()
       this.unbindDeferredInitialization()
       return
     }
@@ -103,6 +105,10 @@ export default class extends Controller {
         this.element.closest('.ts-wrapper')?.classList.remove('is-invalid')
       },
       ...this.optionsValue
+    }
+
+    if (this.openOnInitializeValue) {
+      config.shouldLoad = config.shouldLoad || (() => true)
     }
 
     this.applyOptionDescriptions(config)
@@ -145,6 +151,7 @@ export default class extends Controller {
 
     this.tomSelect = new TomSelect(this.element, config)
     this.bindDropdownViewportSync()
+    this.bindOpenAvailableOptionsOnFocus()
     if (!isMultiple) {
       this.tomSelect.wrapper.classList.add("ax-ts-single-search")
     }
@@ -183,6 +190,35 @@ export default class extends Controller {
         return `<div class="ax-select-item">${escape(data.text || "")}</div>`
       })
     }
+  }
+
+  bindOpenAvailableOptionsOnFocus() {
+    if (!this.openOnInitializeValue || !this.tomSelect) return
+
+    this.unbindOpenAvailableOptionsOnFocus()
+    this.openAvailableOptionsHandler = () => {
+      this.scheduleOpenAvailableOptions()
+    }
+
+    this.openAvailableOptionsTargets = [this.tomSelect.control, this.tomSelect.control_input].filter(Boolean)
+    this.openAvailableOptionsTargets.forEach((target) => {
+      target.addEventListener("focus", this.openAvailableOptionsHandler)
+      target.addEventListener("click", this.openAvailableOptionsHandler)
+    })
+  }
+
+  scheduleOpenAvailableOptions() {
+    clearTimeout(this.openAvailableOptionsTimeout)
+    this.openAvailableOptionsTimeout = setTimeout(() => this.openAvailableOptions(), 40)
+  }
+
+  openAvailableOptions() {
+    if (!this.tomSelect || this.tomSelect.isDisabled) return
+
+    this.tomSelect.setTextboxValue("")
+    this.tomSelect.refreshOptions(true)
+    this.tomSelect.open()
+    if (this.tomSelect.settings.dropdownParent === "body") this.tomSelect.positionDropdown()
   }
 
   // Com dropdownParent: body o dropdown é posicionado uma única vez ao abrir; se a
@@ -239,8 +275,21 @@ export default class extends Controller {
     }
   }
 
+  unbindOpenAvailableOptionsOnFocus() {
+    if (!this.openAvailableOptionsHandler || !this.openAvailableOptionsTargets) return
+
+    this.openAvailableOptionsTargets.forEach((target) => {
+      target.removeEventListener("focus", this.openAvailableOptionsHandler)
+      target.removeEventListener("click", this.openAvailableOptionsHandler)
+    })
+    clearTimeout(this.openAvailableOptionsTimeout)
+    this.openAvailableOptionsHandler = null
+    this.openAvailableOptionsTargets = null
+  }
+
   disconnect() {
     this.unbindDeferredInitialization()
+    this.unbindOpenAvailableOptionsOnFocus()
     this.unbindDropdownViewportSync()
     if (this.tomSelect && this.element.tomselect === this.tomSelect) {
       this.tomSelect.destroy()

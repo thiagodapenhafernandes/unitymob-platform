@@ -77,4 +77,168 @@ RSpec.describe Leads::PipelineStageAutoAdvanceService do
       described_class.call
     }.not_to change { lead.reload.lead_pipeline_stage_id }
   end
+
+  it "arquiva o lead quando a acao final e arquivar" do
+    archived_stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Arquivado", stage_type: "archived")
+    reason = tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Sem potencial")
+    create(:lead_pipeline_stage_policy, lead_pipeline_stage: source_stage, tenant: tenant, allowed_archive_reason_ids: [reason.id])
+    automation = create(
+      :lead_pipeline_stage_automation,
+      lead_pipeline_stage: source_stage,
+      tenant: tenant,
+      auto_advance_to_stage: nil,
+      action_type: "archive_lead",
+      action_config: { "archive_reason_id" => reason.id.to_s, "note" => "Sem retorno" }
+    )
+    lead = create(:lead, tenant: tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name)
+    create(
+      :lead_audit_log,
+      lead: lead,
+      tenant: tenant,
+      action: "status_changed",
+      source: "admin",
+      changeset: { status: { before: "Novo", after: source_stage.name } },
+      created_at: 3.days.ago
+    )
+
+    expect {
+      described_class.call
+    }.to change { lead.reload.lead_pipeline_stage_id }.from(source_stage.id).to(archived_stage.id)
+
+    expect(lead.archive_reason).to eq(reason)
+    expect(lead.archive_note).to eq("Sem retorno")
+    expect(lead.activities.where(kind: "archived").last.metadata["stage_automation_id"]).to eq(automation.id)
+  end
+
+  it "cria tarefa quando a acao final e criar tarefa" do
+    automation = create(
+      :lead_pipeline_stage_automation,
+      lead_pipeline_stage: source_stage,
+      tenant: tenant,
+      auto_advance_to_stage: nil,
+      action_type: "create_task",
+      action_config: { "task_title" => "Retomar contato", "due_in_days" => 2, "note" => "Lead parado" }
+    )
+    assignee = create(:admin_user, tenant: tenant)
+    lead = create(:lead, tenant: tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name, admin_user: assignee)
+    create(
+      :lead_audit_log,
+      lead: lead,
+      tenant: tenant,
+      action: "status_changed",
+      source: "admin",
+      changeset: { status: { before: "Novo", after: source_stage.name } },
+      created_at: 3.days.ago
+    )
+
+    expect {
+      described_class.call
+    }.to change { lead.tasks.count }.by(1)
+
+    task = lead.tasks.last
+    expect(task).to have_attributes(title: "Retomar contato", admin_user_id: assignee.id, status: "pendente")
+    expect(lead.activities.where(kind: "task_created")).to exist
+    execution = LeadPipelineStageAutomationExecution.find_by!(lead: lead, lead_pipeline_stage_automation: automation)
+    expect(execution).to have_attributes(status: "succeeded", action_type: "create_task", trigger: "stage_duration")
+    expect(execution.finished_at).to be_present
+  end
+
+  it "nao duplica tarefa quando o job roda novamente para a mesma entrada de etapa" do
+    create(
+      :lead_pipeline_stage_automation,
+      lead_pipeline_stage: source_stage,
+      tenant: tenant,
+      auto_advance_to_stage: nil,
+      action_type: "create_task",
+      action_config: { "task_title" => "Retomar contato", "due_in_days" => 2 }
+    )
+    assignee = create(:admin_user, tenant: tenant)
+    lead = create(:lead, tenant: tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name, admin_user: assignee)
+    create(
+      :lead_audit_log,
+      lead: lead,
+      tenant: tenant,
+      action: "status_changed",
+      source: "admin",
+      changeset: { status: { before: "Novo", after: source_stage.name } },
+      created_at: 3.days.ago
+    )
+
+    expect {
+      2.times { described_class.call }
+    }.to change { lead.tasks.count }.by(1)
+
+    expect(LeadPipelineStageAutomationExecution.where(lead: lead).count).to eq(1)
+  end
+
+  it "pula a acao quando ja existe execucao registrada para a mesma entrada de etapa" do
+    automation = create(
+      :lead_pipeline_stage_automation,
+      lead_pipeline_stage: source_stage,
+      tenant: tenant,
+      auto_advance_to_stage: nil,
+      action_type: "create_task",
+      action_config: { "task_title" => "Retomar contato" }
+    )
+    assignee = create(:admin_user, tenant: tenant)
+    lead = create(:lead, tenant: tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name, admin_user: assignee)
+    entered_at = 3.days.ago.change(usec: 0)
+    create(
+      :lead_audit_log,
+      lead: lead,
+      tenant: tenant,
+      action: "status_changed",
+      source: "admin",
+      changeset: { status: { before: "Novo", after: source_stage.name } },
+      created_at: entered_at
+    )
+    create(
+      :lead_pipeline_stage_automation_execution,
+      tenant: tenant,
+      lead_pipeline_stage_automation: automation,
+      lead: lead,
+      lead_pipeline_stage: source_stage,
+      status: "succeeded",
+      stage_entered_at: entered_at,
+      started_at: entered_at,
+      finished_at: entered_at
+    )
+
+    expect {
+      described_class.call
+    }.not_to change { lead.tasks.count }
+  end
+
+  it "registra falha da execucao sem interromper o processamento" do
+    automation = create(
+      :lead_pipeline_stage_automation,
+      lead_pipeline_stage: source_stage,
+      tenant: tenant,
+      auto_advance_to_stage: nil,
+      action_type: "redistribute_lead",
+      action_config: { "distribution_rule_id" => "999999" }
+    )
+    lead = create(:lead, tenant: tenant, lead_pipeline: pipeline, lead_pipeline_stage: source_stage, status: source_stage.name)
+    create(
+      :lead_audit_log,
+      lead: lead,
+      tenant: tenant,
+      action: "status_changed",
+      source: "admin",
+      changeset: { status: { before: "Novo", after: source_stage.name } },
+      created_at: 3.days.ago
+    )
+    allow_any_instance_of(described_class).to receive(:redistribute_lead!).and_raise(StandardError, "fila indisponível")
+
+    expect {
+      described_class.call
+    }.not_to raise_error
+
+    execution = LeadPipelineStageAutomationExecution.find_by!(lead: lead, lead_pipeline_stage_automation: automation)
+    expect(execution).to have_attributes(
+      status: "failed",
+      error_class: "StandardError",
+      error_message: "fila indisponível"
+    )
+  end
 end

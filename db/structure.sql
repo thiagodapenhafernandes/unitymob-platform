@@ -1,4 +1,4 @@
-\restrict kTFa3GPqlNw2L3xTcPC8juyFBhWzuoES4fcrg1a6jp658TGnDSFSplVLKhos6N2
+\restrict MhKtTrNidqbqY860MU2bUZGaF4i2UE1HLG5XjuLWpOuL70WGwYA7KIuxP7OtGSu
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3725,6 +3725,49 @@ ALTER SEQUENCE public.lead_labels_id_seq OWNED BY public.lead_labels.id;
 
 
 --
+-- Name: lead_pipeline_stage_automation_executions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_pipeline_stage_automation_executions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_pipeline_stage_automation_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    lead_pipeline_stage_id bigint NOT NULL,
+    action_type character varying NOT NULL,
+    trigger character varying NOT NULL,
+    status character varying DEFAULT 'started'::character varying NOT NULL,
+    stage_entered_at timestamp(6) without time zone NOT NULL,
+    started_at timestamp(6) without time zone NOT NULL,
+    finished_at timestamp(6) without time zone,
+    error_class character varying,
+    error_message text,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_pipeline_stage_automation_executions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_pipeline_stage_automation_executions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_pipeline_stage_automation_executions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_pipeline_stage_automation_executions_id_seq OWNED BY public.lead_pipeline_stage_automation_executions.id;
+
+
+--
 -- Name: lead_pipeline_stage_automations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3739,7 +3782,9 @@ CREATE TABLE public.lead_pipeline_stage_automations (
     active boolean DEFAULT true NOT NULL,
     "position" integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    action_type character varying DEFAULT 'move_stage'::character varying NOT NULL,
+    action_config jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -3760,6 +3805,79 @@ CREATE SEQUENCE public.lead_pipeline_stage_automations_id_seq
 --
 
 ALTER SEQUENCE public.lead_pipeline_stage_automations_id_seq OWNED BY public.lead_pipeline_stage_automations.id;
+
+
+--
+-- Name: lead_pipeline_stage_policies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_pipeline_stage_policies (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_pipeline_stage_id bigint NOT NULL,
+    visible_to_roles jsonb DEFAULT '[]'::jsonb NOT NULL,
+    divergence_queue_enabled boolean DEFAULT false NOT NULL,
+    future_activity_limit_days integer,
+    qualification_enabled boolean DEFAULT false NOT NULL,
+    qualification_options jsonb DEFAULT '[]'::jsonb NOT NULL,
+    allowed_archive_reason_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_pipeline_stage_policies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_pipeline_stage_policies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_pipeline_stage_policies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_pipeline_stage_policies_id_seq OWNED BY public.lead_pipeline_stage_policies.id;
+
+
+--
+-- Name: lead_pipeline_stage_transitions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_pipeline_stage_transitions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_pipeline_stage_id bigint NOT NULL,
+    next_stage_id bigint NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_pipeline_stage_transitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_pipeline_stage_transitions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_pipeline_stage_transitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_pipeline_stage_transitions_id_seq OWNED BY public.lead_pipeline_stage_transitions.id;
 
 
 --
@@ -3974,7 +4092,10 @@ CREATE TABLE public.leads (
     archived_at timestamp(6) without time zone,
     archived_by_admin_user_id bigint,
     parecer text,
-    closed_at timestamp(6) without time zone
+    closed_at timestamp(6) without time zone,
+    broker_qualification_status character varying,
+    manager_qualification_status character varying,
+    qualification_note text
 );
 
 
@@ -7500,10 +7621,31 @@ ALTER TABLE ONLY public.lead_labels ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: lead_pipeline_stage_automation_executions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions ALTER COLUMN id SET DEFAULT nextval('public.lead_pipeline_stage_automation_executions_id_seq'::regclass);
+
+
+--
 -- Name: lead_pipeline_stage_automations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.lead_pipeline_stage_automations ALTER COLUMN id SET DEFAULT nextval('public.lead_pipeline_stage_automations_id_seq'::regclass);
+
+
+--
+-- Name: lead_pipeline_stage_policies id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_policies ALTER COLUMN id SET DEFAULT nextval('public.lead_pipeline_stage_policies_id_seq'::regclass);
+
+
+--
+-- Name: lead_pipeline_stage_transitions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_transitions ALTER COLUMN id SET DEFAULT nextval('public.lead_pipeline_stage_transitions_id_seq'::regclass);
 
 
 --
@@ -8631,11 +8773,35 @@ ALTER TABLE ONLY public.lead_labels
 
 
 --
+-- Name: lead_pipeline_stage_automation_executions lead_pipeline_stage_automation_executions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
+    ADD CONSTRAINT lead_pipeline_stage_automation_executions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: lead_pipeline_stage_automations lead_pipeline_stage_automations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.lead_pipeline_stage_automations
     ADD CONSTRAINT lead_pipeline_stage_automations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_pipeline_stage_policies lead_pipeline_stage_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_policies
+    ADD CONSTRAINT lead_pipeline_stage_policies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_pipeline_stage_transitions lead_pipeline_stage_transitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_transitions
+    ADD CONSTRAINT lead_pipeline_stage_transitions_pkey PRIMARY KEY (id);
 
 
 --
@@ -9960,6 +10126,41 @@ CREATE UNIQUE INDEX idx_settings_tenant_key_unique ON public.settings USING btre
 
 
 --
+-- Name: idx_stage_automation_executions_on_automation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automation_executions_on_automation ON public.lead_pipeline_stage_automation_executions USING btree (lead_pipeline_stage_automation_id);
+
+
+--
+-- Name: idx_stage_automation_executions_on_lead; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automation_executions_on_lead ON public.lead_pipeline_stage_automation_executions USING btree (lead_id);
+
+
+--
+-- Name: idx_stage_automation_executions_on_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automation_executions_on_stage ON public.lead_pipeline_stage_automation_executions USING btree (lead_pipeline_stage_id);
+
+
+--
+-- Name: idx_stage_automation_executions_status_action; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automation_executions_status_action ON public.lead_pipeline_stage_automation_executions USING btree (tenant_id, status, action_type, created_at);
+
+
+--
+-- Name: idx_stage_automation_executions_unique_run; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_stage_automation_executions_unique_run ON public.lead_pipeline_stage_automation_executions USING btree (tenant_id, lead_pipeline_stage_automation_id, lead_id, stage_entered_at);
+
+
+--
 -- Name: idx_stage_automations_on_destination_stage; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9974,10 +10175,52 @@ CREATE INDEX idx_stage_automations_on_stage ON public.lead_pipeline_stage_automa
 
 
 --
+-- Name: idx_stage_automations_on_tenant_action_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_automations_on_tenant_action_type ON public.lead_pipeline_stage_automations USING btree (tenant_id, action_type);
+
+
+--
 -- Name: idx_stage_automations_on_tenant_stage_active; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_stage_automations_on_tenant_stage_active ON public.lead_pipeline_stage_automations USING btree (tenant_id, lead_pipeline_stage_id, active, "position");
+
+
+--
+-- Name: idx_stage_policies_on_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_policies_on_stage ON public.lead_pipeline_stage_policies USING btree (lead_pipeline_stage_id);
+
+
+--
+-- Name: idx_stage_policies_on_tenant_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_stage_policies_on_tenant_stage ON public.lead_pipeline_stage_policies USING btree (tenant_id, lead_pipeline_stage_id);
+
+
+--
+-- Name: idx_stage_transitions_on_next_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_transitions_on_next_stage ON public.lead_pipeline_stage_transitions USING btree (next_stage_id);
+
+
+--
+-- Name: idx_stage_transitions_on_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stage_transitions_on_stage ON public.lead_pipeline_stage_transitions USING btree (lead_pipeline_stage_id);
+
+
+--
+-- Name: idx_stage_transitions_on_unique_next; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_stage_transitions_on_unique_next ON public.lead_pipeline_stage_transitions USING btree (tenant_id, lead_pipeline_stage_id, next_stage_id);
 
 
 --
@@ -12550,10 +12793,31 @@ CREATE INDEX index_lead_labels_on_tenant_id ON public.lead_labels USING btree (t
 
 
 --
+-- Name: index_lead_pipeline_stage_automation_executions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_pipeline_stage_automation_executions_on_tenant_id ON public.lead_pipeline_stage_automation_executions USING btree (tenant_id);
+
+
+--
 -- Name: index_lead_pipeline_stage_automations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_lead_pipeline_stage_automations_on_tenant_id ON public.lead_pipeline_stage_automations USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_pipeline_stage_policies_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_pipeline_stage_policies_on_tenant_id ON public.lead_pipeline_stage_policies USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_pipeline_stage_transitions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_pipeline_stage_transitions_on_tenant_id ON public.lead_pipeline_stage_transitions USING btree (tenant_id);
 
 
 --
@@ -12760,6 +13024,13 @@ CREATE INDEX index_leads_on_tenant_and_attribution_channel ON public.leads USING
 
 
 --
+-- Name: index_leads_on_tenant_and_broker_qualification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_broker_qualification ON public.leads USING btree (tenant_id, broker_qualification_status);
+
+
+--
 -- Name: index_leads_on_tenant_and_client_email_lower; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12778,6 +13049,13 @@ CREATE INDEX index_leads_on_tenant_and_client_phone_digits ON public.leads USING
 --
 
 CREATE INDEX index_leads_on_tenant_and_email_lower ON public.leads USING btree (tenant_id, lower((COALESCE(email, ''::character varying))::text));
+
+
+--
+-- Name: index_leads_on_tenant_and_manager_qualification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_manager_qualification ON public.leads USING btree (tenant_id, manager_qualification_status);
 
 
 --
@@ -15162,6 +15440,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: lead_pipeline_stage_transitions fk_rails_1911639343; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_transitions
+    ADD CONSTRAINT fk_rails_1911639343 FOREIGN KEY (lead_pipeline_stage_id) REFERENCES public.lead_pipeline_stages(id);
+
+
+--
 -- Name: tenant_domains fk_rails_1987f42a92; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15546,6 +15832,14 @@ ALTER TABLE ONLY public.whatsapp_messages
 
 
 --
+-- Name: lead_pipeline_stage_policies fk_rails_40816472e0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_policies
+    ADD CONSTRAINT fk_rails_40816472e0 FOREIGN KEY (lead_pipeline_stage_id) REFERENCES public.lead_pipeline_stages(id);
+
+
+--
 -- Name: appointments fk_rails_42e3b238ee; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15647,6 +15941,14 @@ ALTER TABLE ONLY public.solid_queue_blocked_executions
 
 ALTER TABLE ONLY public.automation_workflows
     ADD CONSTRAINT fk_rails_4cf5f305c9 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_pipeline_stage_transitions fk_rails_4d060396f1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_transitions
+    ADD CONSTRAINT fk_rails_4d060396f1 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -15930,6 +16232,14 @@ ALTER TABLE ONLY public.operational_user_events
 
 
 --
+-- Name: lead_pipeline_stage_policies fk_rails_644c0dc450; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_policies
+    ADD CONSTRAINT fk_rails_644c0dc450 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_campaign_unsubscribes fk_rails_658c0aa041; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15999,6 +16309,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 ALTER TABLE ONLY public.portal_integrations
     ADD CONSTRAINT fk_rails_70282156d0 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_pipeline_stage_automation_executions fk_rails_70b31ebeab; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
+    ADD CONSTRAINT fk_rails_70b31ebeab FOREIGN KEY (lead_pipeline_stage_id) REFERENCES public.lead_pipeline_stages(id);
 
 
 --
@@ -16722,6 +17040,14 @@ ALTER TABLE ONLY public.operational_user_events
 
 
 --
+-- Name: lead_pipeline_stage_automation_executions fk_rails_bbe75b1acd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
+    ADD CONSTRAINT fk_rails_bbe75b1acd FOREIGN KEY (lead_pipeline_stage_automation_id) REFERENCES public.lead_pipeline_stage_automations(id);
+
+
+--
 -- Name: automation_workflows fk_rails_bcad8004e0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16943,6 +17269,14 @@ ALTER TABLE ONLY public.automation_executions
 
 ALTER TABLE ONLY public.store_shifts
     ADD CONSTRAINT fk_rails_c9e77c3011 FOREIGN KEY (store_id) REFERENCES public.stores(id);
+
+
+--
+-- Name: lead_pipeline_stage_transitions fk_rails_ca095b1bc0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_transitions
+    ADD CONSTRAINT fk_rails_ca095b1bc0 FOREIGN KEY (next_stage_id) REFERENCES public.lead_pipeline_stages(id);
 
 
 --
@@ -17178,6 +17512,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 
 --
+-- Name: lead_pipeline_stage_automation_executions fk_rails_e3364bdeee; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
+    ADD CONSTRAINT fk_rails_e3364bdeee FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_conversations fk_rails_e3fd91ed99; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17215,6 +17557,14 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 ALTER TABLE ONLY public.admin_users
     ADD CONSTRAINT fk_rails_e4ce59bd8f FOREIGN KEY (manager_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: lead_pipeline_stage_automation_executions fk_rails_e5d52158fb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
+    ADD CONSTRAINT fk_rails_e5d52158fb FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -17453,11 +17803,15 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict kTFa3GPqlNw2L3xTcPC8juyFBhWzuoES4fcrg1a6jp658TGnDSFSplVLKhos6N2
+\unrestrict MhKtTrNidqbqY860MU2bUZGaF4i2UE1HLG5XjuLWpOuL70WGwYA7KIuxP7OtGSu
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260821133000'),
+('20260821120000'),
+('20260820121000'),
+('20260820120000'),
 ('20260819174500'),
 ('20260819041000'),
 ('20260818173000'),

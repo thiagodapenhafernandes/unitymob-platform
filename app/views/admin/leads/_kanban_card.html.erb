@@ -5,6 +5,11 @@
   lead_return_base_path = local_assigns[:return_to_path].presence || request.fullpath
   lead_return_to_path = "#{lead_return_base_path}#lead_#{lead.id}"
   lead_details_path = admin_lead_path(lead, return_to: lead_return_to_path)
+  stage_policy = lead.lead_pipeline_stage&.policy
+  qualification_enabled = stage_policy&.qualification_enabled?
+  qualification_field = lead.qualification_field_for(current_admin_user)
+  qualification_status = lead.public_send(qualification_field)
+  qualification_options = Array(stage_policy&.qualification_options).presence || LeadPipelineStagePolicy::DEFAULT_QUALIFICATION_OPTIONS
 %>
 <article class="ax-board__card lead-kanban-card"
          id="lead_<%= lead.id %>"
@@ -50,6 +55,38 @@
   <% if card_labels.any? %>
     <div class="ax-board__card-section ax-board__card-section--labels">
       <%= render "admin/lead_labels/chips", lead: lead, labels: card_labels %>
+    </div>
+  <% end %>
+
+  <% if qualification_enabled %>
+    <div class="ax-board__card-section lead-kanban-card__qualification"
+         data-no-drag
+         data-lead-qualification-field="<%= qualification_field %>"
+         data-lead-qualification-divergent="<%= lead.qualification_divergent? %>">
+      <div class="lead-kanban-card__qualification-head">
+        <span>Qualificação</span>
+        <span class="lead-kanban-card__qualification-alert" data-lead-qualification-divergence <%= "hidden" unless lead.qualification_divergent? %>>
+          Divergente
+        </span>
+      </div>
+      <div class="lead-kanban-card__qualification-options">
+        <% qualification_options.each do |value| %>
+          <% label = LeadPipelineStagePolicy::QUALIFICATION_OPTIONS[value.to_s] %>
+          <% next if label.blank? %>
+          <button type="button"
+                  class="lead-kanban-card__qualification-btn <%= "is-selected" if qualification_status == value.to_s %>"
+                  data-action="lead-kanban#changeQualification"
+                  data-lead-qualification-value="<%= value %>">
+            <%= label %>
+          </button>
+        <% end %>
+      </div>
+      <input type="text"
+             class="lead-kanban-card__qualification-note"
+             value="<%= lead.qualification_note %>"
+             placeholder="Nota opcional"
+             aria-label="Nota da qualificação"
+             data-lead-qualification-note>
     </div>
   <% end %>
 

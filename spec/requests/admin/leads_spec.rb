@@ -22,6 +22,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("lead-kanban")
       expect(response.body).to include("ax-leads-mobile-shell")
       expect(response.body).to include("ax-leads-mobile-filter-button")
+      expect(response.body).to include("Divergência")
+      expect(response.body).to include("qualification_divergence")
       expect(response.body).to include("admin-push-banner")
       expect(response.body).to include("<details class=\"lead-filter-collapse\">")
       expect(response.body).not_to include("<details class=\"lead-filter-collapse\" open")
@@ -33,7 +35,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css('a.ax-nav__link[href="/admin/leads?view=list"]')).to be_present
       expect(document.at_css(".ax-nav__link--group").text).to include("Funil")
       expect(document.at_css("#leadPipelineCreateModal.ax-quick-modal--lg")).to be_present
-      expect(document.at_css("#leadStatusBoardModal.ax-quick-modal--lg")).to be_present
+      expect(document.at_css("#leadStatusBoardModal.ax-quick-modal--fullscreen")).to be_present
       expect(document.at_css("#leadStatusBoardModal").to_html).not_to include("Criar novo funil")
       create_modal_html = document.at_css("#leadPipelineCreateModal").to_html
       edit_modal_html = document.at_css("#leadStatusBoardModal").to_html
@@ -41,6 +43,13 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(create_modal_html).not_to include("Defaults")
       expect(edit_modal_html).not_to include("Defaults")
       expect(edit_modal_html).not_to include("Funil em edição")
+      expect(edit_modal_html).to include("Auditoria")
+      expect(edit_modal_html).to include("Guia do funil e etapas")
+      expect(edit_modal_html).to include("target=\"_blank\"")
+      expect(edit_modal_html).to include("data-ax-tooltip-option-texts-value")
+      expect(edit_modal_html).to include("O lead precisa estar naquela etapa")
+      expect(edit_modal_html).to include("kind: task_created")
+      expect(edit_modal_html).to include("Sem ação do responsável")
       expect(edit_modal_html).to include("Nome do funil", "Tipo de funil")
       expect(create_modal_html).to include("Nome da etapa", "Subtítulo", "Tipo da etapa")
       expect(create_modal_html).to include("Nome visível no funil", "Classificação interna usada")
@@ -123,6 +132,20 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("WhatsApp")
       expect(response.body).not_to include("<table")
       expect(response.body).to include("Cliente Lista")
+    end
+
+    it "lista as filas de distribuição ativas nas automações do modal de etapas" do
+      rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila Premium", distribution_mode: :rotary)
+      agent = create(:admin_user, tenant: admin.tenant, role: :editor)
+      create(:distribution_rule_agent, tenant: admin.tenant, distribution_rule: rule, admin_user: agent)
+
+      get admin_leads_path(view: "kanban")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Manter fila atual do lead")
+      expect(response.body).to include("Fila Premium")
+      expect(response.body).to include("Rodízio")
+      expect(response.body).to include("1 corretor")
     end
 
     it "renderiza a experiencia PWA com abas e favoritos nativos do corretor logado" do
@@ -688,6 +711,81 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(lead.reload.parecer).to be_nil
     end
 
+    it "renderiza a qualificação no card apenas quando a etapa permite" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      enabled_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
+      disabled_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Sem qualificação")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: enabled_stage, qualification_enabled: true, qualification_options: %w[qualified missing_data])
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: disabled_stage, qualification_enabled: false)
+      create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: enabled_stage, status: enabled_stage.name, name: "Lead Com Qualificação")
+      create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: disabled_stage, status: disabled_stage.name, name: "Lead Sem Qualificação")
+
+      get admin_leads_path(view: "kanban", lead_pipeline_id: pipeline.id)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      enabled_card = document.at_css("article.lead-kanban-card:contains('Lead Com Qualificação')")
+      disabled_card = document.at_css("article.lead-kanban-card:contains('Lead Sem Qualificação')")
+      expect(enabled_card.at_css(".lead-kanban-card__qualification")).to be_present
+      expect(enabled_card.text).to include("Qualificado", "Sem dados")
+      expect(enabled_card.text).not_to include("Desqualificado")
+      expect(disabled_card.at_css(".lead-kanban-card__qualification")).to be_nil
+    end
+
+    it "salva a qualificação do gestor/admin via json respeitando as opções da etapa" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage, qualification_enabled: true, qualification_options: %w[qualified missing_data])
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+
+      patch admin_lead_path(lead),
+            params: { lead: { manager_qualification_status: "qualified", qualification_note: "Perfil forte" } },
+            headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to include(
+        "qualification_status" => "qualified",
+        "qualification_label" => "Qualificado",
+        "qualification_divergent" => false
+      )
+      lead.reload
+      expect(lead.manager_qualification_status).to eq("qualified")
+      expect(lead.qualification_note).to eq("Perfil forte")
+    end
+
+    it "bloqueia qualificação fora das opções da etapa" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage, qualification_enabled: true, qualification_options: %w[qualified])
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+
+      patch admin_lead_path(lead),
+            params: { lead: { manager_qualification_status: "disqualified" } },
+            headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body)["error"]).to eq("Esta qualificação não está disponível para a etapa atual.")
+      expect(lead.reload.manager_qualification_status).to be_nil
+    end
+
+    it "filtra leads com divergência de qualificação quando a etapa permite fila" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      divergence_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Conferência")
+      plain_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Normal")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: divergence_stage, qualification_enabled: true, divergence_queue_enabled: true)
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: plain_stage, qualification_enabled: true, divergence_queue_enabled: false)
+      create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: divergence_stage, status: divergence_stage.name, name: "Lead Divergente", broker_qualification_status: "qualified", manager_qualification_status: "disqualified")
+      create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: divergence_stage, status: divergence_stage.name, name: "Lead Igual", broker_qualification_status: "qualified", manager_qualification_status: "qualified")
+      create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: plain_stage, status: plain_stage.name, name: "Lead Fora da Fila", broker_qualification_status: "qualified", manager_qualification_status: "disqualified")
+
+      get admin_leads_path(view: "kanban", lead_pipeline_id: pipeline.id, activity_filter: ["qualification_divergence"])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Divergente")
+      expect(response.body).not_to include("Lead Igual")
+      expect(response.body).not_to include("Lead Fora da Fila")
+    end
+
     it "permite que o corretor atualize status do proprio lead via json" do
       broker_profile = Tenant.default.profiles.find_by!(key: "agent")
       broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
@@ -804,6 +902,44 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css(".lead-property-summary")).to be_present
       expect(document.at_css(".lead-property-summary__media img.lead-property-image")).to be_present
       expect(document.at_css(".lead-property-summary__content")).to be_present
+    end
+  end
+
+  describe "POST /admin/leads/:id/archive" do
+    it "bloqueia motivo fora dos motivos permitidos da etapa" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
+      allowed_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Sem potencial")
+      blocked_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Preço alto")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage, allowed_archive_reason_ids: [allowed_reason.id])
+      lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+
+      post archive_admin_lead_path(lead),
+           params: { archive_reason_id: blocked_reason.id, archive_note: "Motivo fora da etapa" }
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(flash[:alert]).to eq("Este motivo não está disponível para a etapa atual.")
+      expect(lead.reload.archive_reason_id).to be_nil
+      expect(lead.archived_at).to be_nil
+    end
+  end
+
+  describe "POST /admin/leads/:id/schedule_activity" do
+    it "bloqueia agenda futura acima do limite da etapa" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Contato")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage, future_activity_limit_days: 2)
+      lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+
+      travel_to Time.zone.parse("2026-08-21 10:00:00") do
+        expect {
+          post schedule_activity_admin_lead_path(lead),
+               params: { activity_kind: "return", due_at: 4.days.from_now.iso8601, notes: "Retornar depois" }
+        }.not_to change(Task, :count)
+      end
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(flash[:alert]).to eq("Esta etapa permite agendar no máximo 2 dia(s) no futuro.")
     end
   end
 

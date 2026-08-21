@@ -34,7 +34,8 @@
   min-height: 40px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
-  background: #f8fafc;
+  border-top: 3px solid var(--ax-board-column-color, transparent);
+  background: color-mix(in srgb, var(--ax-board-column-color, #f8fafc) 7%, #f8fafc);
   border-radius: 12px 12px 0 0;
 }
 
@@ -205,6 +206,86 @@
 
 .ax-board__card-section--labels { padding-top: 2px; }
 .ax-board__card-section--muted { color: var(--ab-muted, #657386); }
+
+.lead-kanban-card__qualification {
+  display: grid;
+  gap: .45rem;
+}
+
+.lead-kanban-card__qualification.is-saving {
+  opacity: .68;
+  pointer-events: none;
+}
+
+.lead-kanban-card__qualification-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  color: var(--ab-ink, #202a37);
+  font-size: .76rem;
+  font-weight: 850;
+}
+
+.lead-kanban-card__qualification-alert {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 .45rem;
+  border: 1px solid #fedf89;
+  border-radius: 999px;
+  background: #fffaeb;
+  color: #b54708;
+  font-size: .68rem;
+  font-weight: 850;
+}
+
+.lead-kanban-card__qualification-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+
+.lead-kanban-card__qualification-btn {
+  min-height: 26px;
+  padding: 0 .5rem;
+  border: 1px solid var(--ab-line, #d8dee8);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ab-muted, #657386);
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.lead-kanban-card__qualification-btn:hover {
+  border-color: var(--admin-primary-ring, #b7c6da);
+  color: var(--admin-primary, #365f8f);
+}
+
+.lead-kanban-card__qualification-btn.is-selected {
+  border-color: var(--admin-primary, #365f8f);
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 10%, #fff);
+  color: var(--admin-primary, #365f8f);
+}
+
+.lead-kanban-card__qualification-note {
+  width: 100%;
+  min-height: 30px;
+  padding: .25rem .45rem;
+  border: 1px solid var(--ab-field-border, #cfd8e5);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ab-ink, #202a37);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.lead-kanban-card__qualification-note:focus {
+  border-color: var(--admin-primary, #365f8f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary, #365f8f) 15%, transparent);
+  outline: 0;
+}
 
 .ax-board__card-link {
   color: var(--admin-primary, #365f8f);

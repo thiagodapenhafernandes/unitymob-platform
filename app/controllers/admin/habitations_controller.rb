@@ -1177,12 +1177,18 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filter_status_options_for(scope)
+    return ["Todos"] + Habitation::PUBLIC_STATUSES if broker_catalog_user?
+
     statuses = Habitation::STATUS_OPTIONS +
       scope.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
            .distinct
            .pluck(:status)
 
     ["Todos"] + statuses.compact_blank.uniq.sort_by { |status| I18n.transliterate(status).downcase }
+  end
+
+  def permitted_habitation_filter_statuses
+    broker_catalog_user? ? Habitation::PUBLIC_STATUSES : nil
   end
 
   def selected_filter_proprietors
@@ -1362,6 +1368,7 @@ class Admin::HabitationsController < Admin::BaseController
     @codigo = params[:codigo].to_s.strip
     @q = params[:q]
     @statuses = Array(effective_habitations_filter_params["status"]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
+    @statuses &= permitted_habitation_filter_statuses if permitted_habitation_filter_statuses.present?
     @status = @statuses.first
     @categorias = filter_values(params[:categoria], except: "Todas")
     @categoria = @categorias.first

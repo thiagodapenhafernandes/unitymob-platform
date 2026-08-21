@@ -3,7 +3,9 @@
   eyebrow = local_assigns[:eyebrow]
   empty_text = local_assigns[:empty_text].presence || "Nada por aqui."
 %>
-<section class="<%= ["ax-board__column", local_assigns[:class_name]].compact_blank.join(" ") %>" aria-label="<%= title %>">
+<%= tag.section(class: ["ax-board__column", local_assigns[:class_name]].compact_blank.join(" "),
+                style: local_assigns[:style],
+                aria: { label: title }) do %>
   <div class="ax-board__col-head">
     <div class="ax-board__col-heading">
       <% if eyebrow.present? %>
@@ -23,4 +25,4 @@
     <%= body %>
     <div class="ax-board__empty"><%= empty_text %></div>
   <% end %>
-</section>
+<% end %>

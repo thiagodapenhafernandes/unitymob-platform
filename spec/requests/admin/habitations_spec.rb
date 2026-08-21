@@ -3083,7 +3083,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(clear_link["data-action"].to_s).not_to include("ax-aside#collapse")
   end
 
-  it "libera todos os status comerciais padronizados no filtro do catálogo para corretor" do
+  it "limita status comercial do filtro do catálogo para corretor" do
     agent = create(:admin_user, email: "agent-statuses-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)
     create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Status operacional personalizado", codigo: "STATUS-FILTER-#{SecureRandom.hex(6)}")
@@ -3093,15 +3093,30 @@ RSpec.describe "Admin::Habitations", type: :request do
     get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
-    expected_statuses = Habitation::STATUS_OPTIONS + ["Todos"]
+    expected_statuses = ["Todos"] + Habitation::PUBLIC_STATUSES
     expected_statuses.each do |status|
       expect(response.body).to include(status)
     end
+    (Habitation::STATUS_OPTIONS - Habitation::PUBLIC_STATUSES).each do |status|
+      expect(response.body).not_to include(status)
+    end
     expect(response.body).not_to include("Status operacional personalizado")
     status_options = Nokogiri::HTML.fragment(response.body).css("select[name='status[]'] option").map(&:text)
-    expect(status_options).to include(*expected_statuses)
-    expect(status_options.first).to eq("Todos")
-    expect(status_options.drop(1)).to eq(status_options.drop(1).sort_by { |status| I18n.transliterate(status).downcase })
+    expect(status_options).to eq(expected_statuses)
+  end
+
+  it "ignora status comercial interno forjado por corretor no filtro do catálogo" do
+    agent = create(:admin_user, email: "agent-forged-status-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    sale = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Venda", codigo: "STATUS-VENDA-#{SecureRandom.hex(6)}")
+    create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Pendente", codigo: "STATUS-PEND-#{SecureRandom.hex(6)}")
+    sign_out admin
+    sign_in agent
+
+    get admin_habitations_path(status: ["Pendente"], ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(sale.codigo)
   end
 
   it "renderiza filtros solicitados como multiselect no catálogo" do

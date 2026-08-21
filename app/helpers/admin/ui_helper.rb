@@ -196,7 +196,7 @@ module Admin::UiHelper
 
   # Coluna do board. `count_data`/`body_data` carregam os hooks do controller
   # (ex.: data-lead-kanban-count, data-lead-kanban-target, data-lead-kanban-status).
-  def ax_board_column(title:, eyebrow: nil, count: nil, count_data: {}, body_data: {}, empty_text: nil, class_name: nil, body: nil, &block)
+  def ax_board_column(title:, eyebrow: nil, count: nil, count_data: {}, body_data: {}, empty_text: nil, class_name: nil, style: nil, body: nil, &block)
     render(
       "admin/shared/ui/board_column",
       title:,
@@ -206,6 +206,7 @@ module Admin::UiHelper
       body_data:,
       empty_text:,
       class_name:,
+      style:,
       body: block_given? ? capture(&block) : body
     )
   end

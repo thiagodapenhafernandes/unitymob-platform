@@ -104,6 +104,50 @@ export default class extends Controller {
     this.updateLead(card, status, { moveCard: true })
   }
 
+  async changeQualification(event) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const button = event.currentTarget
+    const card = button.closest(".lead-kanban-card")
+    const section = button.closest("[data-lead-qualification-field]")
+    const field = section?.dataset.leadQualificationField
+    const updateUrl = card?.dataset.updateUrl
+    if (!card || !section || !field || !updateUrl) return
+
+    const previousButton = section.querySelector(".lead-kanban-card__qualification-btn.is-selected")
+    const value = previousButton === button ? "" : button.dataset.leadQualificationValue
+    const note = section.querySelector("[data-lead-qualification-note]")?.value || ""
+
+    section.classList.add("is-saving")
+
+    try {
+      const response = await fetch(updateUrl, {
+        method: "PATCH",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": this.csrfToken()
+        },
+        body: JSON.stringify({ lead: { [field]: value, qualification_note: note } })
+      })
+      const data = await this.parseResponse(response)
+
+      if (!response.ok) {
+        const error = new Error(data.message || data.error || "Não foi possível salvar a qualificação.")
+        error.payload = data
+        throw error
+      }
+
+      this.updateQualification(section, data.qualification_status, data.qualification_divergent)
+    } catch (error) {
+      this.notify(error.message || "Não foi possível salvar a qualificação.", "danger")
+      if (error.payload?.error === "lead_unavailable") this.reloadSoon()
+    } finally {
+      section.classList.remove("is-saving")
+    }
+  }
+
   beginDrag(card) {
     this.dragState = {
       card,
@@ -342,6 +386,16 @@ export default class extends Controller {
       badge.className = `badge bg-${badgeClass || "dark"}`
     }
     badge.textContent = status
+  }
+
+  updateQualification(section, status, divergent) {
+    section.querySelectorAll(".lead-kanban-card__qualification-btn").forEach((button) => {
+      button.classList.toggle("is-selected", button.dataset.leadQualificationValue === status)
+    })
+
+    const divergence = section.querySelector("[data-lead-qualification-divergence]")
+    if (divergence) divergence.hidden = !divergent
+    section.dataset.leadQualificationDivergent = divergent ? "true" : "false"
   }
 
   axToneFor(badgeClass) {
