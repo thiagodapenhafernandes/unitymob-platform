@@ -1,4 +1,4 @@
-\restrict STSApDykamk7g3gocqOHGK03NiTR7aoMmOCt7rAce2bsNsf2djqQiyUx7fjYYB3
+\restrict 98W19c9oqzeIiZtm6oOQszYfH8iHEfvnJbmPqGGFFqiVjMM3UzbRUpqGZoh4jB0
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -323,6 +323,18 @@ END; $$;
 
 
 --
+-- Name: raise_active_storage_blob_audit_immutable(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.raise_active_storage_blob_audit_immutable() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE EXCEPTION 'active_storage_blob_audit_logs is append-only';
+END; $$;
+
+
+--
 -- Name: raise_checkin_audit_immutable(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -573,6 +585,53 @@ CREATE SEQUENCE public.active_storage_attachments_id_seq
 --
 
 ALTER SEQUENCE public.active_storage_attachments_id_seq OWNED BY public.active_storage_attachments.id;
+
+
+--
+-- Name: active_storage_blob_audit_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.active_storage_blob_audit_logs (
+    id bigint NOT NULL,
+    tenant_id bigint,
+    admin_user_id bigint,
+    blob_id bigint,
+    attachment_id bigint,
+    record_type character varying,
+    record_id bigint,
+    attachment_name character varying,
+    action character varying NOT NULL,
+    source character varying NOT NULL,
+    key character varying,
+    filename character varying,
+    content_type character varying,
+    byte_size bigint,
+    checksum character varying,
+    service_name character varying,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    ip inet,
+    user_agent character varying,
+    created_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: active_storage_blob_audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.active_storage_blob_audit_logs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: active_storage_blob_audit_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.active_storage_blob_audit_logs_id_seq OWNED BY public.active_storage_blob_audit_logs.id;
 
 
 --
@@ -7154,6 +7213,13 @@ ALTER TABLE ONLY public.active_storage_attachments ALTER COLUMN id SET DEFAULT n
 
 
 --
+-- Name: active_storage_blob_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.active_storage_blob_audit_logs ALTER COLUMN id SET DEFAULT nextval('public.active_storage_blob_audit_logs_id_seq'::regclass);
+
+
+--
 -- Name: active_storage_blobs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8220,6 +8286,14 @@ ALTER TABLE ONLY public.action_text_rich_texts
 
 ALTER TABLE ONLY public.active_storage_attachments
     ADD CONSTRAINT active_storage_attachments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: active_storage_blob_audit_logs active_storage_blob_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.active_storage_blob_audit_logs
+    ADD CONSTRAINT active_storage_blob_audit_logs_pkey PRIMARY KEY (id);
 
 
 --
@@ -9533,6 +9607,20 @@ CREATE UNIQUE INDEX idx_ai_share_items_unique ON public.ai_property_share_items 
 
 
 --
+-- Name: idx_as_blob_audit_record; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_as_blob_audit_record ON public.active_storage_blob_audit_logs USING btree (record_type, record_id);
+
+
+--
+-- Name: idx_as_blob_audit_tenant_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_as_blob_audit_tenant_created_at ON public.active_storage_blob_audit_logs USING btree (tenant_id, created_at);
+
+
+--
 -- Name: idx_automation_events_lead_name_occurred_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10615,6 +10703,48 @@ CREATE INDEX index_active_storage_attachments_on_blob_id ON public.active_storag
 --
 
 CREATE UNIQUE INDEX index_active_storage_attachments_uniqueness ON public.active_storage_attachments USING btree (record_type, record_id, name, blob_id);
+
+
+--
+-- Name: index_active_storage_blob_audit_logs_on_action; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_active_storage_blob_audit_logs_on_action ON public.active_storage_blob_audit_logs USING btree (action);
+
+
+--
+-- Name: index_active_storage_blob_audit_logs_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_active_storage_blob_audit_logs_on_admin_user_id ON public.active_storage_blob_audit_logs USING btree (admin_user_id);
+
+
+--
+-- Name: index_active_storage_blob_audit_logs_on_attachment_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_active_storage_blob_audit_logs_on_attachment_id ON public.active_storage_blob_audit_logs USING btree (attachment_id);
+
+
+--
+-- Name: index_active_storage_blob_audit_logs_on_blob_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_active_storage_blob_audit_logs_on_blob_id ON public.active_storage_blob_audit_logs USING btree (blob_id);
+
+
+--
+-- Name: index_active_storage_blob_audit_logs_on_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_active_storage_blob_audit_logs_on_key ON public.active_storage_blob_audit_logs USING btree (key);
+
+
+--
+-- Name: index_active_storage_blob_audit_logs_on_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_active_storage_blob_audit_logs_on_source ON public.active_storage_blob_audit_logs USING btree (source);
 
 
 --
@@ -15168,6 +15298,13 @@ CREATE TRIGGER access_audit_logs_no_update BEFORE DELETE OR UPDATE ON public.acc
 
 
 --
+-- Name: active_storage_blob_audit_logs active_storage_blob_audit_logs_no_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER active_storage_blob_audit_logs_no_update BEFORE DELETE OR UPDATE ON public.active_storage_blob_audit_logs FOR EACH ROW EXECUTE FUNCTION public.raise_active_storage_blob_audit_immutable();
+
+
+--
 -- Name: checkin_audit_logs checkin_audit_logs_no_update; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -17819,11 +17956,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict STSApDykamk7g3gocqOHGK03NiTR7aoMmOCt7rAce2bsNsf2djqQiyUx7fjYYB3
+\unrestrict 98W19c9oqzeIiZtm6oOQszYfH8iHEfvnJbmPqGGFFqiVjMM3UzbRUpqGZoh4jB0
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260821172000'),
 ('20260821143000'),
 ('20260821133000'),
 ('20260821120000'),

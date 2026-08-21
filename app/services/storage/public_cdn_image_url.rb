@@ -3,7 +3,8 @@ require "uri"
 module Storage
   class PublicCdnImageUrl
     TRANSFORM_ENQUEUE_TTL = 15.minutes
-    VARIANT_EXISTENCE_TTL = 12.hours
+    VARIANT_MISSING_TTL = 5.minutes
+    VARIANT_CLEANUP_TTL = 5.minutes
     TRANSFORM_FAILURE_METADATA_KEY = "public_variant_failures".freeze
     SOURCE_URL_KEYS = [
       "url",
@@ -169,7 +170,6 @@ module Storage
       return if transform_failed?(blob)
 
       variant = blob.variant(**variant_transformations)
-      return representation_path(variant) if options.fetch(:force_variant, false)
       return representation_path(variant) if variant_processed?(variant) && variant_blob_exists?(variant)
 
       enqueue_variant_processing(blob)
@@ -202,20 +202,59 @@ module Storage
 
       cache_key = self.class.variant_existence_cache_key(variant.blob.id, variant_blob.id)
       cached = Rails.cache.read(cache_key)
-      return cached unless cached.nil?
+      return false if cached == false
 
       exists = variant_blob.service.exist?(variant_blob.key)
-      Rails.cache.write(cache_key, exists, expires_in: VARIANT_EXISTENCE_TTL)
-      exists
+      return true if exists
+
+      cleanup_missing_variant!(variant, variant_blob, cache_key: cache_key)
+      Rails.cache.write(cache_key, false, expires_in: VARIANT_MISSING_TTL)
+      false
     rescue StandardError => e
       if s3_private_existence_check?(e)
-        Rails.cache.write(cache_key, true, expires_in: VARIANT_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
         return true
       end
 
-      Rails.cache.write(cache_key, false, expires_in: VARIANT_EXISTENCE_TTL) if defined?(cache_key) && cache_key.present?
+      Rails.cache.write(cache_key, false, expires_in: VARIANT_MISSING_TTL) if defined?(cache_key) && cache_key.present?
       Rails.logger.warn("[public_cdn_image_url] variant missing blob_id=#{variant&.blob&.id} error=#{e.class}: #{e.message}")
       false
+    end
+
+    def cleanup_missing_variant!(variant, variant_blob, cache_key:)
+      cleanup_key = "storage/public_cdn_image_url/variant_missing/cleanup/#{variant.blob.id}/#{variant_blob.id}"
+      return unless Rails.cache.write(cleanup_key, "1", unless_exist: true, expires_in: VARIANT_CLEANUP_TTL)
+
+      variant_record = find_variant_record(variant)
+      Storage::BlobAuditRecorder.record!(
+        blob: variant_blob,
+        action: "missing_variant_cleaned",
+        source: "public_cdn_image_url",
+        attachment: variant_record&.image,
+        metadata: {
+          original_blob_id: variant.blob.id,
+          variant_record_id: variant_record&.id,
+          variation_digest: variant.variation.digest,
+          missing_key: variant_blob.key
+        }.compact
+      )
+
+      variant_record&.image&.delete
+      variant_record&.destroy
+      variant_blob.reload
+      variant_blob.destroy unless variant_blob.attachments.exists?
+      Rails.cache.delete(cache_key)
+    rescue StandardError => e
+      Rails.logger.warn("[public_cdn_image_url] variant cleanup failed original_blob_id=#{variant&.blob&.id} variant_blob_id=#{variant_blob&.id} error=#{e.class}: #{e.message}")
+      nil
+    end
+
+    def find_variant_record(variant)
+      return unless defined?(ActiveStorage::VariantRecord)
+
+      ActiveStorage::VariantRecord.find_by(
+        blob_id: variant.blob.id,
+        variation_digest: variant.variation.digest
+      )
     end
 
     def s3_private_existence_check?(error)

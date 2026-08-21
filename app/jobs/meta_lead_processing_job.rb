@@ -100,7 +100,7 @@ class MetaLeadProcessingJob < ApplicationJob
     field_data = lead_details["field_data"]
 
     email = extract_field(field_data, [ "email", "email_address" ])
-    phone = extract_field(field_data, [ "phone_number", "phone", "whatsapp", "tel" ])
+    phone = extract_phone(field_data)
     name  = extract_field(field_data, [ "full_name", "fullname", "name", "first_name" ])
 
     if name && !field_data.any? { |f| f["name"].to_s.downcase.include?("full") }
@@ -162,11 +162,39 @@ class MetaLeadProcessingJob < ApplicationJob
   def extract_field(field_data, keys)
     keys = Array(keys)
     field = field_data.find do |f|
-      field_name = f["name"].to_s.downcase
+      field_name = normalize_field_name(f["name"])
       keys.any? { |k| field_name.include?(k) }
     end
 
     field ? field["values"]&.first : nil
+  end
+
+  def extract_phone(field_data)
+    extract_field(field_data, [
+      "phone_number",
+      "phone",
+      "whatsapp",
+      "wpp",
+      "telefone",
+      "tel",
+      "celular",
+      "mobile"
+    ]).presence || extract_phone_from_values(field_data)
+  end
+
+  def extract_phone_from_values(field_data)
+    field_data.flat_map { |field| Array(field["values"]) }.find do |value|
+      phone_like_value?(value)
+    end
+  end
+
+  def phone_like_value?(value)
+    digits = value.to_s.gsub(/\D/, "")
+    digits.length.between?(10, 15)
+  end
+
+  def normalize_field_name(value)
+    I18n.transliterate(value.to_s).downcase
   end
 
   def map_to_custom_answers(field_data)

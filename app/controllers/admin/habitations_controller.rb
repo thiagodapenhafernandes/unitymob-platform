@@ -900,6 +900,16 @@ class Admin::HabitationsController < Admin::BaseController
 
     attachment_payload = Habitations::AuditChangeRecorder.attachment_payload(attachment)
     record_habitation_attachment_removed(@habitation, association: association, attachment_payload: attachment_payload)
+    Storage::BlobAuditRecorder.record!(
+      blob: attachment.blob,
+      action: "purge_requested",
+      source: "admin_habitation_purge_attachment",
+      attachment: attachment,
+      metadata: {
+        habitation_id: @habitation.id,
+        association: association
+      }
+    )
     attachment.purge_later
     anchor = association == "photos" ? "media" : "documents"
     notice = association == "photos" ? "Foto removida." : "Anexo removido."

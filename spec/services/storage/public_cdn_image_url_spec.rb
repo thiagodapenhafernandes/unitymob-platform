@@ -137,7 +137,7 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480], format: :webp)
   end
 
-  it "retorna rota de representação imediatamente quando force_variant está ativo" do
+  it "não retorna rota de representação quando force_variant está ativo sem variante processada" do
     blob = ActiveStorage::Blob.create_and_upload!(
       io: StringIO.new("image"),
       filename: "foto.jpg",
@@ -145,17 +145,20 @@ RSpec.describe Storage::PublicCdnImageUrl do
     )
     variant = instance_double(
       ActiveStorage::VariantWithRecord,
-      blob: instance_double(ActiveStorage::Blob, signed_id: "signed-blob"),
-      variation: instance_double(ActiveStorage::Variation, key: "signed-variation"),
-      filename: ActiveStorage::Filename.new("foto.webp")
+      blob: instance_double(ActiveStorage::Blob, signed_id: "signed-blob")
     )
 
     allow(blob).to receive(:variable?).and_return(true)
     allow(blob).to receive(:variant).with(resize_to_fill: [640, 480], format: :webp).and_return(variant)
-    allow(Rails.application.routes.url_helpers)
-      .to receive(:rails_blob_representation_proxy_path)
-      .with("signed-blob", "signed-variation", ActiveStorage::Filename.new("foto.webp"))
-      .and_return("/rails/active_storage/representations/proxy/signed/foto.webp")
+    allow(variant).to receive(:respond_to?).with(:processed?, true).and_return(false)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    allow(Rails.cache).to receive(:write).and_call_original
+    allow(Rails.cache).to receive(:write).with(
+      described_class.transform_cache_key(blob.id, resize_to_fill: [640, 480], format: :webp),
+      "1",
+      unless_exist: true,
+      expires_in: described_class::TRANSFORM_ENQUEUE_TTL
+    ).and_return(true)
     allow(Storage::TransformVariantJob).to receive(:perform_later)
 
     result = described_class.resolve(
@@ -166,8 +169,70 @@ RSpec.describe Storage::PublicCdnImageUrl do
       force_variant: true
     )
 
-    expect(result).to eq("/rails/active_storage/representations/proxy/signed/foto.webp")
-    expect(Storage::TransformVariantJob).not_to have_received(:perform_later)
+    expect(result).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480], format: :webp)
+  end
+
+  it "limpa variante registrada sem objeto no storage e usa a foto original como fallback" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image"),
+      filename: "foto.jpg",
+      content_type: "image/jpeg"
+    )
+    variant_blob = instance_double(
+      ActiveStorage::Blob,
+      id: 456,
+      key: "missing-variant-key",
+      service_name: blob.service_name,
+      service: instance_double(ActiveStorage::Service, exist?: false),
+      reload: true,
+      attachments: double("attachments", exists?: false),
+      destroy: true
+    )
+    image = instance_double(ActiveStorage::Attachment, blob: variant_blob, delete: true)
+    variation = instance_double(ActiveStorage::Variation, digest: "digest", key: "signed-variation")
+    variant = instance_double(
+      ActiveStorage::VariantWithRecord,
+      blob: blob,
+      image: image,
+      variation: variation,
+      filename: ActiveStorage::Filename.new("foto.webp")
+    )
+    variant_record = instance_double(ActiveStorage::VariantRecord, id: 789, image: image, destroy: true)
+
+    allow(blob).to receive(:variable?).and_return(true)
+    allow(blob).to receive(:variant).with(resize_to_fill: [640, 480], format: :webp).and_return(variant)
+    allow(variant).to receive(:respond_to?) do |method_name, *_args|
+      method_name.in?([:processed?, :image])
+    end
+    allow(variant).to receive(:send).with(:processed?).and_return(true)
+    allow(ActiveStorage::VariantRecord).to receive(:find_by).with(blob_id: blob.id, variation_digest: "digest").and_return(variant_record)
+    allow(Storage::BlobAuditRecorder).to receive(:record!)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    allow(Rails.cache).to receive(:read).and_return(nil)
+    allow(Rails.cache).to receive(:write).and_return(true)
+    allow(Rails.cache).to receive(:delete)
+    allow(Storage::TransformVariantJob).to receive(:perform_later)
+
+    result = described_class.resolve(blob, resize_to_fill: [640, 480], format: :webp)
+
+    expect(result).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    expect(Storage::BlobAuditRecorder).to have_received(:record!).with(
+      blob: variant_blob,
+      action: "missing_variant_cleaned",
+      source: "public_cdn_image_url",
+      attachment: image,
+      metadata: {
+        original_blob_id: blob.id,
+        variant_record_id: 789,
+        variation_digest: "digest",
+        missing_key: "missing-variant-key"
+      }
+    )
+    expect(image).to have_received(:delete)
+    expect(variant_record).to have_received(:destroy)
+    expect(variant_blob).to have_received(:destroy)
+    expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480], format: :webp)
   end
 
   it "não reenfileira variante temporariamente bloqueada por falha de integridade" do

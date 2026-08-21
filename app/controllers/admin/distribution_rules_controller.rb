@@ -55,8 +55,19 @@ class Admin::DistributionRulesController < Admin::BaseController
   end
 
   def destroy
-    @rule.destroy
-    redirect_to admin_distribution_rules_path, notice: "Regra excluída."
+    if current_tenant.leads.exists?(distribution_rule_id: @rule.id)
+      redirect_to admin_distribution_rules_path,
+        alert: "Esta regra já recebeu leads e não pode ser excluída. Desative a regra ou remova as fontes configuradas para preservar o histórico.",
+        status: :see_other
+      return
+    end
+
+    @rule.destroy!
+    redirect_to admin_distribution_rules_path, notice: "Regra excluída.", status: :see_other
+  rescue ActiveRecord::InvalidForeignKey
+    redirect_to admin_distribution_rules_path,
+      alert: "Esta regra possui histórico vinculado e não pode ser excluída. Desative a regra ou remova as fontes configuradas.",
+      status: :see_other
   end
 
   def toggle_active
