@@ -6,6 +6,9 @@ class ExternalLeadIntegration < ApplicationRecord
   SUPPORT_RULE_NAME = "Migração de leads - distribuição espelhada".freeze
   WEBHOOK_TAG = "external_lead_migration".freeze
   LEAD_ORIGIN = "Migração externa".freeze
+  LEGACY_TRASH_LOCAL_EMAIL = "lixeira@conexaobc.com.br".freeze
+  LEGACY_TRASH_SELLER_EMAILS = %w[lixeira_cbc2025@c2sglobal.com].freeze
+  LEGACY_TRASH_SELLER_NAMES = ["lixeira conexao bc"].freeze
 
   belongs_to :distribution_rule, optional: true
   belongs_to :connected_by_admin_user, class_name: "AdminUser", optional: true
@@ -63,17 +66,33 @@ class ExternalLeadIntegration < ApplicationRecord
     return tenant.admin_users.active.find_by("lower(email) = ?", email) if email.present?
 
     phone = Phones::Normalizer.call(seller["phone"])
-    return nil if phone.blank?
-
-    tenant.admin_users.active.detect do |admin_user|
-      Phones::Normalizer.call(admin_user.phone) == phone ||
-        (admin_user.respond_to?(:secondary_phone) && Phones::Normalizer.call(admin_user.secondary_phone) == phone)
+    if phone.present?
+      phone_user = tenant.admin_users.active.detect do |admin_user|
+        Phones::Normalizer.call(admin_user.phone) == phone ||
+          (admin_user.respond_to?(:secondary_phone) && Phones::Normalizer.call(admin_user.secondary_phone) == phone)
+      end
+      return phone_user if phone_user
     end
+
+    legacy_trash_user_for(seller)
   end
 
   private
 
   def ensure_webhook_token
     self.webhook_token = SecureRandom.urlsafe_base64(32) if webhook_token.blank?
+  end
+
+  def legacy_trash_user_for(seller)
+    return unless legacy_trash_seller?(seller)
+
+    tenant.admin_users.active.find_by("lower(email) = ?", LEGACY_TRASH_LOCAL_EMAIL)
+  end
+
+  def legacy_trash_seller?(seller)
+    email = seller["email"].to_s.strip.downcase
+    name = seller["name"].to_s.parameterize(separator: " ")
+
+    LEGACY_TRASH_SELLER_EMAILS.include?(email) || LEGACY_TRASH_SELLER_NAMES.include?(name)
   end
 end

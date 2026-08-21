@@ -125,6 +125,37 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.activities.where(kind: "external_message").count).to eq(1)
   end
 
+  it "preserva o corretor mapeado mesmo quando o lead externo esta descartado" do
+    discarded_payload = payload.deep_dup
+    discarded_payload["id"] = "lead-descartado-com-dono"
+    discarded_payload["attributes"]["customer"]["id"] = "customer-descartado-com-dono"
+    discarded_payload["attributes"]["lead_status"] = { "name" => "Descartado", "alias" => "archived" }
+    discarded_payload["attributes"]["funnel_status"] = { "name" => "Descartado" }
+
+    described_class.call(integration:, payload: discarded_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-descartado-com-dono")
+    expect(lead.status).to eq("Descartado")
+    expect(lead.admin_user).to eq(broker)
+  end
+
+  it "atribui leads do vendedor lixeira ao usuario local dedicado quando existir" do
+    trash_user = create(:admin_user, tenant:, email: ExternalLeadIntegration::LEGACY_TRASH_LOCAL_EMAIL, name: "Lixeira Conexão BC")
+    trash_payload = payload.deep_dup
+    trash_payload["id"] = "lead-lixeira-com-dono"
+    trash_payload["attributes"]["customer"]["id"] = "customer-lixeira-com-dono"
+    trash_payload["attributes"]["seller"] = {
+      "id" => "seller-trash",
+      "name" => "Lixeira Conexão BC",
+      "email" => "lixeira_cbc2025@c2sglobal.com"
+    }
+
+    described_class.call(integration:, payload: trash_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-lixeira-com-dono")
+    expect(lead.admin_user).to eq(trash_user)
+  end
+
   it "extrai o corpo da primeira mensagem quando o provedor envia a mensagem estruturada" do
     structured_payload = payload.deep_dup
     structured_payload["id"] = "lead-structured-first-message"

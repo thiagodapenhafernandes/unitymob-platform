@@ -5,6 +5,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
   let(:admin) { create(:admin_user, :admin, tenant:) }
   let(:broker) { create(:admin_user, tenant:, email: "seller@example.test", name: "Seller Local") }
   let(:owner) { create(:admin_user, :admin, tenant:, email: "owner-externo@example.test", name: "Owner Local") }
+  let(:trash_user) { create(:admin_user, tenant:, email: ExternalLeadIntegration::LEGACY_TRASH_LOCAL_EMAIL, name: "Lixeira Conexão BC") }
   let(:integration) { ExternalLeadIntegration.create!(tenant:, access_token: "token-externo", connected_by_admin_user: admin) }
   let(:client) do
     instance_double(
@@ -13,6 +14,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
       sellers: [
         { "id" => "seller-1", "name" => "Seller Externo", "email" => broker.email },
         { "id" => "seller-owner", "name" => "Owner Externo", "email" => owner.email },
+        { "id" => "seller-trash", "name" => "Lixeira Conexão BC", "email" => "lixeira_cbc2025@c2sglobal.com" },
         { "id" => "seller-2", "name" => "Sem Par", "email" => "sem-par@example.test" }
       ],
       tags: [{ "id" => "tag-1", "name" => "Praia" }]
@@ -21,6 +23,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
 
   before do
     Current.tenant = tenant
+    trash_user
     allow(ExternalLeadMigration::Client).to receive(:new).with(token: "token-externo").and_return(client)
   end
 
@@ -32,7 +35,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
 
     expect(integration).to be_connected
     expect(integration.company_name).to eq("Conta externa")
-    expect(integration.seller_mappings).to eq("seller-1" => broker.id, "seller-owner" => owner.id)
+    expect(integration.seller_mappings).to eq("seller-1" => broker.id, "seller-owner" => owner.id, "seller-trash" => trash_user.id)
     expect(rule).to have_attributes(
       tenant: tenant,
       name: ExternalLeadIntegration::SUPPORT_RULE_NAME,
