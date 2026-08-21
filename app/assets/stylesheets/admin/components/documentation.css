@@ -1,0 +1,231 @@
+.ax-documentation {
+  display: grid;
+  gap: 14px;
+  color: var(--ab-ink, #202a37);
+}
+
+.ax-documentation__intro {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--ab-line, #d8dee8);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ax-documentation__intro p {
+  max-width: 980px;
+  margin: 0;
+  color: var(--ab-muted, #657386);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ax-documentation__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ab-line, #d8dee8);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ax-documentation__toolbar .ax-search {
+  flex: 1 1 360px;
+}
+
+.ax-documentation__count {
+  min-height: 20px;
+  color: var(--ab-muted, #657386);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ax-documentation__layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.ax-documentation__index {
+  position: sticky;
+  top: 78px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--ab-line, #d8dee8);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ax-documentation__index-title {
+  margin: 0 0 4px;
+  color: var(--ab-muted, #657386);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ax-documentation__index a {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--ab-ink, #202a37);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.ax-documentation__index a:hover,
+.ax-documentation__index a:focus-visible {
+  background: var(--admin-primary-softer, #f3f7fb);
+  color: var(--admin-primary, #365f8f);
+  outline: 0;
+}
+
+.ax-documentation__sections {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ax-documentation__section {
+  overflow: clip;
+}
+
+.ax-documentation__section .ax-disclosure-card__summary {
+  min-height: 48px;
+  padding: 11px 14px;
+}
+
+.ax-documentation__summary-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ax-documentation__summary-main strong {
+  color: var(--ab-ink, #202a37);
+  font-size: 15px;
+}
+
+.ax-documentation__summary-main span {
+  color: var(--ab-muted, #657386);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ax-documentation__body {
+  display: grid;
+  gap: 12px;
+  color: var(--ab-ink, #202a37);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ax-documentation__body h3,
+.ax-documentation__body h4 {
+  margin: 0;
+  color: var(--ab-ink, #202a37);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.ax-documentation__body p,
+.ax-documentation__body ul,
+.ax-documentation__body ol {
+  margin: 0;
+}
+
+.ax-documentation__body ul,
+.ax-documentation__body ol {
+  padding-left: 18px;
+}
+
+.ax-documentation__body li + li {
+  margin-top: 4px;
+}
+
+.ax-documentation__callout {
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a5f;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ax-documentation__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ax-documentation__mini-card {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid var(--ab-line-soft, #e7ebf2);
+  border-radius: 8px;
+  background: var(--ab-panel, #fbfcfe);
+}
+
+.ax-documentation__mini-card strong {
+  color: var(--ab-ink, #202a37);
+  font-size: 13px;
+}
+
+.ax-documentation__mini-card span {
+  color: var(--ab-muted, #657386);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ax-documentation__empty {
+  padding: 14px;
+  border: 1px dashed var(--ab-line, #d8dee8);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ab-muted, #657386);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+[data-admin-theme="dark"] .ax-documentation__intro,
+[data-admin-theme="dark"] .ax-documentation__toolbar,
+[data-admin-theme="dark"] .ax-documentation__index,
+[data-admin-theme="dark"] .ax-documentation__empty {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .ax-documentation__mini-card {
+  border-color: var(--ax-dark-border-soft);
+  background: #141f32;
+}
+
+[data-admin-theme="dark"] .ax-documentation__callout {
+  border-color: #284d78;
+  background: #10243e;
+  color: #bfdbfe;
+}
+
+@media (max-width: 900px) {
+  .ax-documentation__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-documentation__index {
+    position: static;
+  }
+
+  .ax-documentation__grid {
+    grid-template-columns: 1fr;
+  }
+}

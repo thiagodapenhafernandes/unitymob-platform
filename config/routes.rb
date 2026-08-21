@@ -60,7 +60,11 @@ Rails.application.routes.draw do
       resources :leads, only: [:index], controller: "leads"
     end
     resources :lead_statuses, only: [:index] do
-      post :bulk_update, on: :collection
+      collection do
+        get :documentation
+        get :automation_executions
+        post :bulk_update
+      end
     end
     resources :proprietors do
       member do

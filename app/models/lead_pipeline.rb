@@ -8,6 +8,16 @@ class LeadPipeline < ApplicationRecord
     "custom" => "Personalizado"
   }.freeze
 
+  DEFAULT_STAGE_DEFINITIONS = [
+    { name: "Novo Lead", stage_type: "open", color: "#2f80a0" },
+    { name: "Em Atendimento", stage_type: "open", color: "#365f8f" },
+    { name: "Visita/Contato", stage_type: "open", color: "#8a63d2" },
+    { name: "Proposta", stage_type: "open", color: "#d97706" },
+    { name: "Ganho", stage_type: "won", color: "#08875d" },
+    { name: "Perdido", stage_type: "lost", color: "#e0402f" },
+    { name: "Arquivado", stage_type: "archived", color: "#667085" }
+  ].freeze
+
   belongs_to :tenant
   has_many :stages, class_name: "LeadPipelineStage", dependent: :destroy
   has_many :leads, dependent: :nullify
@@ -45,10 +55,20 @@ class LeadPipeline < ApplicationRecord
       default_for_rental: true,
       position: 0
     )
-    Lead::LEGACY_STATUSES.each_with_index do |name, index|
+    created_stages = DEFAULT_STAGE_DEFINITIONS.each_with_index.map do |definition, index|
       tenant.lead_pipeline_stages.create!(
         lead_pipeline: pipeline,
-        name: name,
+        name: definition.fetch(:name),
+        stage_type: definition.fetch(:stage_type),
+        color: definition.fetch(:color),
+        position: index
+      )
+    end
+    created_stages.each { |stage| stage.create_policy!(LeadPipelineStagePolicy.default_attributes.merge(tenant: tenant)) }
+    created_stages.each_cons(2).with_index do |(stage, next_stage), index|
+      tenant.lead_pipeline_stage_transitions.create!(
+        lead_pipeline_stage: stage,
+        next_stage: next_stage,
         position: index
       )
     end

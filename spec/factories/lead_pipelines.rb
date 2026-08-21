@@ -14,6 +14,7 @@ FactoryBot.define do
     tenant { lead_pipeline.tenant }
     sequence(:name) { |n| "Etapa #{n}" }
     stage_type { "open" }
+    color { "#365f8f" }
     active { true }
   end
 
@@ -24,6 +25,25 @@ FactoryBot.define do
     trigger { "stage_duration" }
     after_amount { 2 }
     after_unit { "days" }
+    action_type { "move_stage" }
+    action_config { {} }
     active { true }
+  end
+
+  factory :lead_pipeline_stage_policy do
+    association :lead_pipeline_stage
+    tenant { lead_pipeline_stage.tenant }
+    visible_to_roles { LeadPipelineStagePolicy::DEFAULT_VISIBLE_ROLES }
+    qualification_options { LeadPipelineStagePolicy::DEFAULT_QUALIFICATION_OPTIONS }
+    divergence_queue_enabled { false }
+    qualification_enabled { false }
+    allowed_archive_reason_ids { [] }
+    settings { {} }
+  end
+
+  factory :lead_pipeline_stage_transition do
+    association :lead_pipeline_stage
+    tenant { lead_pipeline_stage.tenant }
+    next_stage { association(:lead_pipeline_stage, tenant: tenant, lead_pipeline: lead_pipeline_stage.lead_pipeline) }
   end
 end

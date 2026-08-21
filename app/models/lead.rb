@@ -14,6 +14,7 @@ class Lead < ApplicationRecord
     "concluido" => "Concluido",
     "received" => "Novo"
   }.freeze
+  QUALIFICATION_STATUSES = LeadPipelineStagePolicy::QUALIFICATION_OPTIONS.freeze
 
   belongs_to :admin_user, optional: true
   belongs_to :shared_by_admin_user, class_name: "AdminUser", optional: true
@@ -25,6 +26,9 @@ class Lead < ApplicationRecord
   belongs_to :archived_by_admin_user, class_name: "AdminUser", optional: true
   has_many :lead_audit_logs
   has_many :activities, class_name: "LeadActivity", dependent: :destroy
+  has_many :stage_automation_executions,
+           class_name: "LeadPipelineStageAutomationExecution",
+           dependent: :destroy
   has_many :secure_links, dependent: :destroy
   has_many :ai_property_share_collections, dependent: :nullify
 
@@ -168,6 +172,10 @@ class Lead < ApplicationRecord
 
   validates :archive_reason_id, presence: { message: "é obrigatório para arquivar o lead" }, if: :archiving?
   validates :archive_note, presence: { message: "é obrigatória para arquivar o lead" }, if: :archiving?
+  validates :broker_qualification_status,
+            :manager_qualification_status,
+            inclusion: { in: QUALIFICATION_STATUSES.keys },
+            allow_blank: true
 
   attr_writer :skip_automatic_routing
 
@@ -249,6 +257,24 @@ class Lead < ApplicationRecord
     return "Venda" if text.match?(/venda|comprar|compra|sale|vend/)
 
     nil
+  end
+
+  def qualification_status_for(admin_user)
+    qualification_field_for(admin_user) == :broker_qualification_status ? broker_qualification_status : manager_qualification_status
+  end
+
+  def qualification_field_for(admin_user)
+    LeadPipelineStagePolicy.role_for(admin_user) == "broker" ? :broker_qualification_status : :manager_qualification_status
+  end
+
+  def qualification_label_for(admin_user)
+    QUALIFICATION_STATUSES[qualification_status_for(admin_user).to_s]
+  end
+
+  def qualification_divergent?
+    broker_qualification_status.present? &&
+      manager_qualification_status.present? &&
+      broker_qualification_status != manager_qualification_status
   end
 
   def self.origin_options(scope: all, tenant: Current.tenant)

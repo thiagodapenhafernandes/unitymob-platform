@@ -41,6 +41,7 @@
  *= require admin/components/table
  *= require admin/components/card
  *= require admin/components/disclosure_card
+ *= require admin/components/documentation
  *= require admin/components/drawer
  *= require admin/components/tooltip
  *= require admin/components/code_snippet

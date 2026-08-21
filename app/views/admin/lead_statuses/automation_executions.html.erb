@@ -1,0 +1,155 @@
+<% content_for :title, @page_title %>
+
+<% status_tones = { "started" => :blue, "succeeded" => :green, "failed" => :red } %>
+<% action_tones = {
+  "move_stage" => :blue,
+  "archive_lead" => :red,
+  "redistribute_lead" => :amber,
+  "make_available_for_automation" => :purple,
+  "create_task" => :green,
+  "add_note" => :gray
+} %>
+
+<%= ax_workspace_heading(
+      eyebrow: "Funil · Etapas",
+      icon: "clock-history",
+      title: "Auditoria das automações",
+      subtitle: "Acompanhe execuções, duplicidades evitadas e falhas das regras operacionais por etapa.",
+      pills: [
+        "#{@executions.total_entries} registro(s)",
+        "#{@status_counts.fetch('failed', 0)} falha(s)",
+        "#{@status_counts.fetch('succeeded', 0)} concluída(s)"
+      ],
+      actions: safe_join([
+        ax_button("Voltar para leads", admin_leads_path, size: :sm, icon: "arrow-left"),
+        ax_button("Guia", documentation_admin_lead_statuses_path, variant: :ghost, size: :sm, icon: "book", target: "_blank", rel: "noopener")
+      ])
+    ) %>
+
+<section class="ax-metric-grid ax-metric-grid--4 tw-mb-4">
+  <%= ax_metric_card(label: "Iniciadas", value: number_with_delimiter(@status_counts.fetch("started", 0))) %>
+  <%= ax_metric_card(label: "Concluídas", value: number_with_delimiter(@status_counts.fetch("succeeded", 0))) %>
+  <%= ax_metric_card(label: "Falhas", value: number_with_delimiter(@status_counts.fetch("failed", 0))) %>
+  <%= ax_metric_card(label: "Criar tarefa", value: number_with_delimiter(@action_counts.fetch("create_task", 0))) %>
+</section>
+
+<%= ax_filter_form(url: automation_executions_admin_lead_statuses_path,
+                   reset_path: automation_executions_admin_lead_statuses_path,
+                   submit_label: "Filtrar",
+                   class_name: "tw-mb-4") do |_form| %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-3">
+      <label class="ax-label" for="stage_automation_execution_q">Buscar lead</label>
+      <%= text_field_tag :q, @q, id: "stage_automation_execution_q", class: "ax-control", placeholder: "Nome, telefone, e-mail ou ID do lead" %>
+    </div>
+    <div class="ax-span-2">
+      <label class="ax-label" for="stage_automation_execution_status">Status</label>
+      <%= select_tag :status,
+                     options_for_select([["Todos", ""]] + LeadPipelineStageAutomationExecution::STATUSES.map { |value, label| [label, value] }, @status),
+                     id: "stage_automation_execution_status",
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-span-3">
+      <label class="ax-label" for="stage_automation_execution_action">Ação final</label>
+      <%= select_tag :action_type,
+                     options_for_select([["Todas", ""]] + LeadPipelineStageAutomation::ACTION_TYPES.map { |value, label| [label, value] }, @action_type),
+                     id: "stage_automation_execution_action",
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-span-4">
+      <label class="ax-label" for="stage_automation_execution_stage">Etapa</label>
+      <%= select_tag :lead_pipeline_stage_id,
+                     options_for_select([["Todas", ""]] + @stage_options, @stage_id),
+                     id: "stage_automation_execution_stage",
+                     class: "ax-control" %>
+    </div>
+  <% end %>
+<% end %>
+
+<section class="ax-panel">
+  <div class="ax-panel-header">
+    <div>
+      <h2 class="ax-panel-title">Execuções recentes</h2>
+      <p class="ax-panel-subtitle">Cada linha representa uma tentativa única de automação para o lead naquela entrada de etapa.</p>
+    </div>
+  </div>
+
+  <% if @executions.any? %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Quando</th>
+            <th>Lead</th>
+            <th>Etapa</th>
+            <th>Automação</th>
+            <th>Status</th>
+            <th>Resultado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @executions.each do |execution| %>
+            <% automation = execution.lead_pipeline_stage_automation %>
+            <% lead = execution.lead %>
+            <tr>
+              <td>
+                <strong><%= l(execution.started_at, format: :short) %></strong>
+                <div class="tw-text-xs tw-text-slate-500">
+                  Entrada: <%= l(execution.stage_entered_at, format: :short) %>
+                </div>
+              </td>
+              <td>
+                <% if lead.present? %>
+                  <%= link_to lead.display_name.presence || "Lead ##{lead.id}", admin_lead_path(lead), class: "tw-font-semibold tw-text-admin-primary hover:tw-underline" %>
+                  <div class="tw-text-xs tw-text-slate-500"><%= [lead.phone, lead.email].compact_blank.first || "Sem contato" %></div>
+                <% else %>
+                  <span class="tw-text-slate-500">Lead removido</span>
+                <% end %>
+              </td>
+              <td>
+                <strong><%= execution.lead_pipeline_stage&.name || "Etapa removida" %></strong>
+                <div class="tw-text-xs tw-text-slate-500"><%= LeadPipelineStageAutomation::TRIGGERS[execution.trigger] || execution.trigger %></div>
+              </td>
+              <td>
+                <%= ax_badge(LeadPipelineStageAutomation::ACTION_TYPES[execution.action_type] || execution.action_type, tone: action_tones.fetch(execution.action_type, :gray)) %>
+                <div class="tw-text-xs tw-text-slate-500 tw-mt-1">
+                  <% if automation&.auto_advance_to_stage %>
+                    Destino: <%= automation.auto_advance_to_stage.name %>
+                  <% else %>
+                    Regra #<%= automation&.id || execution.lead_pipeline_stage_automation_id %>
+                  <% end %>
+                </div>
+              </td>
+              <td>
+                <%= ax_badge(LeadPipelineStageAutomationExecution::STATUSES[execution.status] || execution.status, tone: status_tones.fetch(execution.status, :gray)) %>
+                <% if execution.finished_at.present? %>
+                  <div class="tw-text-xs tw-text-slate-500 tw-mt-1">Finalizada: <%= l(execution.finished_at, format: :short) %></div>
+                <% end %>
+              </td>
+              <td>
+                <% if execution.failed? %>
+                  <strong class="tw-text-red-700"><%= execution.error_class.presence || "Erro" %></strong>
+                  <div class="tw-text-xs tw-text-slate-600"><%= execution.error_message.presence || "Falha sem mensagem." %></div>
+                <% else %>
+                  <div class="tw-text-sm tw-text-slate-700">Execução registrada sem duplicar para a mesma entrada de etapa.</div>
+                  <% if execution.metadata.present? %>
+                    <div class="tw-text-xs tw-text-slate-500">Automação #<%= execution.metadata["stage_automation_id"] || execution.lead_pipeline_stage_automation_id %></div>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <%= ax_empty_state(
+          title: "Nenhuma execução encontrada",
+          description: "As automações de etapa ainda não rodaram ou os filtros atuais não retornaram registros.",
+          icon: "clock-history",
+          action: link_to("Limpar filtros", automation_executions_admin_lead_statuses_path, class: "ax-btn ax-btn--sm")
+        ) %>
+  <% end %>
+</section>
+
+<%= ax_pagination @executions %>

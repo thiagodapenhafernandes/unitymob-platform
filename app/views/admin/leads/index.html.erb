@@ -1442,7 +1442,9 @@
   lead_filter_labels << "Contato" if @contact_filter.present?
   lead_filter_labels << "Atenção operacional" if @attention_filter.present?
   lead_filter_labels << "Natureza" if @business_filters.present?
-  lead_filter_labels << "Atividade" if @activity_filters.present?
+  if @activity_filters.present?
+    lead_filter_labels << (@activity_filters.include?("qualification_divergence") ? "Divergência" : "Atividade")
+  end
   lead_filter_labels << "Canal de origem" if @channel_filters.present?
   lead_filter_labels << "Bot" if @bot_attended
   lead_filter_labels << "Preço" if @price_min.present? || @price_max.present?
@@ -1509,6 +1511,14 @@
         <%= link_to admin_leads_path(lead_quick_base_params.merge(property_filter: "general")),
                     class: "lead-filter-quick__chip" do %>
           <i class="bi bi-megaphone"></i><span>Contato geral</span>
+        <% end %>
+        <%= link_to admin_leads_path(lead_quick_base_params.merge(activity_filter: ["qualification_divergence"])),
+                    class: "lead-filter-quick__chip",
+                    data: {
+                      controller: "ax-tooltip",
+                      ax_tooltip_text_value: "Mostra leads em etapas com Fila divergência ativa quando corretor e gestor registraram qualificações diferentes."
+                    } do %>
+          <i class="bi bi-exclamation-diamond"></i><span>Divergência</span>
         <% end %>
       </div>
       <%= ax_field_grid do %>
@@ -1594,7 +1604,7 @@
   <% pwa_filter_form = capture do %>
     <% business_filter_options = [["Compra", "sale"], ["Aluguel", "rental"], ["Indefinido", "undefined"], ["Lançamento", "launch"], ["Captação", "capture"]] %>
     <% status_filter_options = [["Novo", "Novo"], ["Em negociação", "Em Atendimento"], ["Negócio fechado", "Concluido"], ["Arquivado", "Descartado"], ["Pendente", "Aguardando Aceite"]] %>
-    <% activity_filter_options = [["Primeiro contato", "first_contact"], ["Agendar atividade", "schedule_activity"], ["Retornar para o cliente", "return_customer"], ["Visita agendada", "scheduled_visit"]] %>
+    <% activity_filter_options = [["Primeiro contato", "first_contact"], ["Agendar atividade", "schedule_activity"], ["Retornar para o cliente", "return_customer"], ["Visita agendada", "scheduled_visit"], ["Divergência de qualificação", "qualification_divergence"]] %>
     <% channel_filter_options = [["Showroom", "showroom"], ["Telefone", "phone"], ["Rede Social", "social"], ["WhatsApp", "whatsapp"], ["Internet", "internet"]] %>
     <% pwa_price_filter_count = [@price_min, @price_max].count(&:present?) %>
     <% pwa_date_filter_count = [@start_date, @end_date, @closed_start_date, @closed_end_date].count(&:present?) %>
@@ -1916,6 +1926,7 @@
   <% if @view_mode == "kanban" %>
     <%= ax_board(class_name: "ax-leads-board", data: { controller: "lead-kanban" }) do %>
       <% @lead_statuses.each do |status| %>
+        <% stage_color = @lead_stage_color_by_status&.[](status) %>
         <%= ax_board_column(
               title: status,
               eyebrow: "Status do lead",
@@ -1923,6 +1934,7 @@
               count_data: { lead_kanban_count: status },
               body_data: { lead_kanban_target: "column", lead_kanban_status: status },
               class_name: "ax-leads-board__column",
+              style: (stage_color.present? ? "--ax-board-column-color: #{stage_color};" : nil),
               empty_text: "Sem leads aqui. Verifique outros status ou ajuste os filtros."
             ) do %>
           <% column_leads = @leads_by_status[status].to_a %>

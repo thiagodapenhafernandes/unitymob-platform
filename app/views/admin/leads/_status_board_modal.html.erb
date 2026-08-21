@@ -2,10 +2,28 @@
   selected_pipeline = @selected_pipeline || LeadPipeline.ensure_default!(tenant: current_tenant)
   selected_pipeline_stages = selected_pipeline.stages.ordered.to_a
   automation_stage_options = current_tenant.lead_pipeline_stages.includes(:lead_pipeline).ordered.to_a
+  archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered.to_a
+  distribution_rule_options = current_tenant.distribution_rules.active.includes(:distribution_rule_agents).order(:name).to_a
 
   modal_body = capture do %>
     <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
-      Cada funil tem suas próprias etapas. Renomear ou remover uma etapa ajusta automaticamente os leads deste funil.
+      <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
+        <span>Cada funil tem suas próprias etapas. Renomear ou remover uma etapa ajusta automaticamente os leads deste funil.</span>
+        <span class="tw-flex tw-flex-wrap tw-gap-2">
+          <%= ax_button("Auditoria",
+                        automation_executions_admin_lead_statuses_path,
+                        variant: :ghost,
+                        size: :sm,
+                        icon: "clock-history") %>
+          <%= ax_button("Guia do funil e etapas",
+                        documentation_admin_lead_statuses_path,
+                        variant: :ghost,
+                        size: :sm,
+                        icon: "box-arrow-up-right",
+                        target: "_blank",
+                        rel: "noopener") %>
+        </span>
+      </div>
     <% end %>
 
     <div class="tw-grid tw-gap-3">
@@ -40,8 +58,15 @@
                    name: stage.name,
                    description: stage.description,
                    stage_type: stage.stage_type,
+                   color: stage.display_color,
+                   position: stage.position,
+                   active: stage.active?,
+                   policy: stage.policy_or_default,
+                   transitions: stage.transitions.ordered,
                    automations: stage.automations.ordered,
-                   stage_options: automation_stage_options %>
+                   stage_options: automation_stage_options,
+                   archive_reason_options: archive_reason_options,
+                   distribution_rule_options: distribution_rule_options %>
       <% end %>
     </div>
 
@@ -57,8 +82,15 @@
                  name: "",
                  description: "",
                  stage_type: "open",
+                 color: LeadPipelineStage::DEFAULT_COLORS.first,
+                 position: selected_pipeline_stages.size,
+                 active: true,
+                 policy: nil,
+                 transitions: [],
                  automations: [],
-                 stage_options: automation_stage_options %>
+                 stage_options: automation_stage_options,
+                 archive_reason_options: archive_reason_options,
+                 distribution_rule_options: distribution_rule_options %>
     </template>
   <% end
 
@@ -79,6 +111,7 @@
       id: "leadStatusBoardModal",
       title: "Editar funil e etapas",
       size: :xl,
+      class_name: "ax-quick-modal--fullscreen lead-status-board-modal",
       body: modal_body,
       footer: modal_footer,
       data: {

@@ -241,7 +241,7 @@ class Admin::LeadsController < Admin::BaseController
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
-    @archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
+    @archive_reason_options = archive_reason_options_for(@lead)
     @funnel_statuses = Lead.status_options
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
@@ -342,16 +342,49 @@ class Admin::LeadsController < Admin::BaseController
 
   def update
     previous_status = @lead.status
-    if @lead.update(lead_params)
+    attributes = lead_params
+    unless allowed_stage_transition?(attributes)
+      @lead.errors.add(:lead_pipeline_stage, "não está disponível como próxima etapa")
+      return respond_to do |format|
+        format.html do
+          load_show_context
+          render :show, status: :unprocessable_entity
+        end
+        format.json { render json: { error: @lead.errors.full_messages.to_sentence }, status: :unprocessable_entity }
+      end
+    end
+
+    unless allowed_lead_qualification?(attributes)
+      @lead.errors.add(:base, "Esta qualificação não está disponível para a etapa atual.")
+      return respond_to do |format|
+        format.html do
+          load_show_context
+          render :show, status: :unprocessable_entity
+        end
+        format.json { render json: { error: @lead.errors.full_messages.to_sentence }, status: :unprocessable_entity }
+      end
+    end
+
+    if @lead.update(attributes)
       if @lead.saved_change_to_status?
         LeadActivity.log!(lead: @lead, kind: "status_change", metadata: { from: previous_status, to: @lead.status, by: current_admin_user&.name })
       end
+      log_qualification_change! if @lead.saved_change_to_broker_qualification_status? || @lead.saved_change_to_manager_qualification_status?
       if @lead.saved_change_to_admin_user_id? && @lead.admin_user_id.present?
         Leads::NotificationDispatcher.notify_reassignment(@lead, @lead.admin_user)
       end
       respond_to do |format|
         format.html { redirect_to admin_lead_path(@lead), notice: "Lead atualizado com sucesso." }
-        format.json { render json: { id: @lead.id, status: @lead.status, badge_class: Lead.status_badge_class(@lead.status) } }
+        format.json do
+          render json: {
+            id: @lead.id,
+            status: @lead.status,
+            badge_class: Lead.status_badge_class(@lead.status),
+            qualification_status: @lead.qualification_status_for(current_admin_user),
+            qualification_label: @lead.qualification_label_for(current_admin_user),
+            qualification_divergent: @lead.qualification_divergent?
+          }
+        end
       end
     else
       respond_to do |format|
@@ -540,6 +573,10 @@ class Admin::LeadsController < Admin::BaseController
     check_permission!(:manage, :comercial)
 
     reason = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").find_by(id: params[:archive_reason_id])
+    unless archive_reason_allowed?(reason)
+      return redirect_to admin_lead_path(@lead), alert: "Este motivo não está disponível para a etapa atual."
+    end
+
     @lead.archiving = true
     @lead.assign_attributes(
       status: Lead.status_value("Descartado", tenant: current_tenant),
@@ -605,6 +642,44 @@ class Admin::LeadsController < Admin::BaseController
     days = setting.ai_property_search_share_expiration_days if days <= 0
     days = days.clamp(1, 365)
     days.days.from_now
+  end
+
+  def archive_reason_allowed?(reason)
+    allowed_ids = Array(@lead.lead_pipeline_stage&.policy&.allowed_archive_reason_ids)
+    return true if allowed_ids.blank?
+
+    reason.present? && allowed_ids.include?(reason.id)
+  end
+
+  def archive_reason_options_for(lead)
+    scope = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
+    allowed_ids = Array(lead&.lead_pipeline_stage&.policy&.allowed_archive_reason_ids)
+    return scope if allowed_ids.blank?
+
+    scope.where(id: allowed_ids)
+  end
+
+  def future_activity_allowed?(value)
+    limit_days = @lead.lead_pipeline_stage&.policy&.future_activity_limit_days
+    return true if limit_days.blank? || value.blank?
+
+    due_at = parse_future_activity_time(value)
+    return true if due_at.blank?
+
+    due_at <= limit_days.days.from_now.end_of_day
+  end
+
+  def future_activity_limit_message
+    limit_days = @lead.lead_pipeline_stage&.policy&.future_activity_limit_days
+    return "A data informada não está disponível para a etapa atual." if limit_days.blank?
+
+    "Esta etapa permite agendar no máximo #{limit_days} dia(s) no futuro."
+  end
+
+  def parse_future_activity_time(value)
+    Time.zone.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def lead_property_share_message(habitations, url, setting)
@@ -830,7 +905,7 @@ class Admin::LeadsController < Admin::BaseController
   def apply_activity_filter(scope)
     return scope if @activity_filters.blank?
 
-    values = @activity_filters & %w[first_contact schedule_activity return_customer scheduled_visit]
+    values = @activity_filters & %w[first_contact schedule_activity return_customer scheduled_visit qualification_divergence]
     return scope if values.blank?
 
     clauses = values.filter_map do |value|
@@ -846,6 +921,14 @@ class Admin::LeadsController < Admin::BaseController
       when "scheduled_visit"
         appointments = Appointment.where(tenant_id: current_tenant.id, kind: "visita", status: "agendado").upcoming.select(:lead_id)
         "leads.id IN (#{appointments.to_sql}) OR leads.id IN (#{pwa_external_schedule_scope(scope, visits: true).select(:lead_id).to_sql})"
+      when "qualification_divergence"
+        divergence_stage_ids = LeadPipelineStagePolicy
+          .where(tenant_id: current_tenant.id, divergence_queue_enabled: true)
+          .select(:lead_pipeline_stage_id)
+        "leads.lead_pipeline_stage_id IN (#{divergence_stage_ids.to_sql}) " \
+          "AND NULLIF(leads.broker_qualification_status, '') IS NOT NULL " \
+          "AND NULLIF(leads.manager_qualification_status, '') IS NOT NULL " \
+          "AND leads.broker_qualification_status <> leads.manager_qualification_status"
       end
     end
 
@@ -1076,13 +1159,18 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def schedule_return_activity
+    due_at = params[:due_at].presence
+    unless future_activity_allowed?(due_at)
+      return redirect_to admin_lead_path(@lead), alert: future_activity_limit_message
+    end
+
     task = current_tenant.tasks.create(
       lead: @lead,
       admin_user: current_admin_user,
       created_by_id: current_admin_user.id,
       title: "Retornar para o cliente",
       kind: "follow_up",
-      due_at: params[:due_at].presence,
+      due_at: due_at,
       description: params[:notes]
     )
 
@@ -1095,13 +1183,18 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def schedule_visit_activity
+    starts_at = params[:starts_at].presence
+    unless future_activity_allowed?(starts_at)
+      return redirect_to admin_lead_path(@lead), alert: future_activity_limit_message
+    end
+
     appointment = current_tenant.appointments.new(
       lead: @lead,
       admin_user: current_admin_user,
       habitation_id: @lead.property_id,
       title: "Visita — #{@lead.display_name}",
       kind: "visita",
-      starts_at: params[:starts_at].presence,
+      starts_at: starts_at,
       ends_at: params[:ends_at].presence,
       location: params[:location],
       notes: params[:notes],
@@ -1427,14 +1520,55 @@ class Admin::LeadsController < Admin::BaseController
     permitted << :admin_user_id if can_transfer_lead?(@lead)
     # Parecer: nota interna visível/editável só pelo time administrativo.
     permitted << :parecer if current_admin_user&.admin?
+    if lead_stage_qualification_enabled?
+      permitted << @lead.qualification_field_for(current_admin_user)
+      permitted << :qualification_note
+    end
     attributes = params.require(:lead).permit(permitted)
 
     if attributes[:admin_user_id].present? && !valid_transfer_target?(attributes[:admin_user_id])
       attributes.delete(:admin_user_id)
     end
     normalize_pipeline_params!(attributes)
+    normalize_qualification_params!(attributes)
 
     attributes
+  end
+
+  def lead_stage_qualification_enabled?
+    @lead.lead_pipeline_stage&.policy&.qualification_enabled?
+  end
+
+  def normalize_qualification_params!(attributes)
+    qualification_key = @lead.qualification_field_for(current_admin_user).to_s
+    return unless attributes.key?(qualification_key)
+
+    attributes[qualification_key] = attributes[qualification_key].presence
+    attributes[:qualification_note] = attributes[:qualification_note].to_s.squish.presence if attributes.key?(:qualification_note)
+  end
+
+  def allowed_lead_qualification?(attributes)
+    qualification_key = @lead.qualification_field_for(current_admin_user).to_s
+    return true unless attributes.key?(qualification_key)
+
+    policy = @lead.lead_pipeline_stage&.policy
+    return false unless policy&.qualification_enabled?
+
+    value = attributes[qualification_key].presence
+    value.blank? || Array(policy.qualification_options).include?(value)
+  end
+
+  def log_qualification_change!
+    LeadActivity.log!(
+      lead: @lead,
+      kind: "qualification_updated",
+      metadata: {
+        broker_qualification_status: @lead.broker_qualification_status,
+        manager_qualification_status: @lead.manager_qualification_status,
+        divergent: @lead.qualification_divergent?,
+        by: current_admin_user&.name
+      }.compact
+    )
   end
 
   def load_lead_pipeline_context
@@ -1463,12 +1597,37 @@ class Admin::LeadsController < Admin::BaseController
     attributes[:status] = stage.name if stage
   end
 
+  def allowed_stage_transition?(attributes)
+    current_stage = @lead.lead_pipeline_stage
+    next_stage_id = attributes[:lead_pipeline_stage_id].presence
+    return true if current_stage.blank? || next_stage_id.blank? || current_stage.id.to_s == next_stage_id.to_s
+
+    next_stage = current_tenant.lead_pipeline_stages.find_by(id: next_stage_id)
+    return false if next_stage.present? && !next_stage.visible_to_admin_user?(current_admin_user)
+
+    transitions = current_stage.transitions
+    return true unless transitions.exists?
+
+    transitions.exists?(next_stage_id: next_stage_id)
+  end
+
   def load_origin_options
     option_scope = lead_scope_for_current_user.reorder(nil)
     @origin_options = Lead.origin_options(scope: option_scope, tenant: current_tenant)
     @tag_options = Lead.tag_options(scope: option_scope)
     @status_options = lead_status_options_for_selected_context
+    @lead_stage_color_by_status = lead_stage_color_map
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
+  end
+
+  def lead_stage_color_map
+    scope = if @selected_pipeline.present?
+      @selected_pipeline.stages.active.ordered
+    else
+      current_tenant.lead_pipeline_stages.active.ordered
+    end
+
+    visible_stages_for(scope).index_by(&:name).transform_values(&:display_color)
   end
 
   def load_pwa_leads_context(filtered_scope)
@@ -1688,12 +1847,25 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def lead_status_options_for_selected_context
-    return Lead.status_options(pipeline: @selected_pipeline, tenant: current_tenant) if @selected_pipeline.present?
+    if @selected_pipeline.present?
+      visible = visible_stages_for(@selected_pipeline.stages.active.ordered)
+      return visible.map(&:name) if visible.any?
 
-    pipeline_statuses = current_tenant.lead_pipeline_stages.active.ordered.pluck(:name)
+      return Lead.status_options(pipeline: @selected_pipeline, tenant: current_tenant)
+    end
+
+    pipeline_statuses = visible_stages_for(current_tenant.lead_pipeline_stages.active.ordered).map(&:name)
     existing_statuses = lead_scope_for_current_user.reorder(nil).distinct.pluck(:status).compact
     (pipeline_statuses + existing_statuses + Lead::LEGACY_STATUSES).compact_blank.uniq
   end
+
+  def visible_stages_for(scope)
+    stages = scope.respond_to?(:includes) ? scope.includes(:policy).to_a : Array(scope)
+    return stages if current_admin_user&.admin?
+
+    stages.select { |stage| stage.visible_to_admin_user?(current_admin_user) }
+  end
+  helper_method :visible_stages_for
 
   def actionable_lead_tasks(tasks)
     tasks.reject { |task| non_actionable_lead_task?(task) }
@@ -1775,7 +1947,7 @@ class Admin::LeadsController < Admin::BaseController
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
-    @archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
+    @archive_reason_options = archive_reason_options_for(@lead)
     @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)

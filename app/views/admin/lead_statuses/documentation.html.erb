@@ -1,0 +1,292 @@
+<%
+  sections = [
+    {
+      id: "visao-geral",
+      title: "Visão geral",
+      summary: "Como pensar o funil como blocos operacionais configuráveis.",
+      body: capture do %>
+        <p>O modal <strong>Editar funil e etapas</strong> organiza o atendimento comercial em etapas. Cada etapa representa um momento do lead e pode ter regras próprias de operação, visibilidade e automação.</p>
+        <p>A ideia principal é simples: o funil nasce pronto para uso, mas cada etapa pode ser ajustada para refletir a rotina real da imobiliária. Isso evita engessar o processo e, ao mesmo tempo, cria dados consistentes para gestão, relatórios e análises de IA.</p>
+        <div class="ax-documentation__callout">Use as regras avançadas somente quando elas ajudarem a operação. Uma etapa sem configuração avançada continua funcionando normalmente.</div>
+      <% end
+    },
+    {
+      id: "produtividade",
+      title: "Produtividade dos corretores",
+      summary: "Como as regras reduzem dúvida, retrabalho e leads parados.",
+      body: capture do %>
+        <p>As configurações de etapa ajudam o corretor porque transformam decisões recorrentes em regras claras. O corretor passa a ver somente as etapas relevantes, motivos permitidos e opções de qualificação que fazem sentido naquele momento do atendimento.</p>
+        <ul>
+          <li><strong>Menos dúvida:</strong> próximas etapas permitidas orientam para onde o lead deve ir.</li>
+          <li><strong>Menos retrabalho:</strong> motivos padronizados reduzem registros genéricos ou duplicados.</li>
+          <li><strong>Mais cadência:</strong> limites de agenda e automações ajudam a evitar leads esquecidos.</li>
+          <li><strong>Mais foco:</strong> visibilidade por perfil evita que o corretor opere etapas administrativas sem necessidade.</li>
+        </ul>
+        <p>O resultado esperado é um funil mais previsível, com atendimento mais rápido e dados mais confiáveis sobre o que realmente aconteceu com cada lead.</p>
+      <% end
+    },
+    {
+      id: "dados-ia",
+      title: "Dados, relatórios e IA",
+      summary: "Como as configurações melhoram leitura gerencial e inteligência operacional.",
+      body: capture do %>
+        <p>Quando as etapas são configuradas com critérios claros, o sistema passa a registrar padrões mais úteis: tempo parado, motivo de perda, divergência de qualificação, tarefas criadas, redistribuições e ações automáticas.</p>
+        <p>Esses dados ajudam relatórios e modelos de IA a responder perguntas como:</p>
+        <ul>
+          <li>Em quais etapas os leads mais travam?</li>
+          <li>Quais motivos de arquivamento aparecem com mais frequência?</li>
+          <li>Quais corretores qualificam leads de forma diferente da gestão?</li>
+          <li>Quais automações reduzem abandono ou aceleram retorno?</li>
+          <li>Quais origens geram leads que viram visita, proposta ou fechamento?</li>
+        </ul>
+        <div class="ax-documentation__callout">Quanto mais padronizado for o registro, melhor fica a capacidade da IA de entender comportamento de leads e corretores sem depender de leitura manual caso a caso.</div>
+      <% end
+    },
+    {
+      id: "geral",
+      title: "Geral",
+      summary: "Nome, subtítulo, tipo, cor e status da etapa.",
+      body: capture do %>
+        <div class="ax-documentation__grid">
+          <div class="ax-documentation__mini-card">
+            <strong>Nome da etapa</strong>
+            <span>É o nome exibido no Kanban, nos filtros e nos cards. Deve ser curto e operacional, como Novo, Em Atendimento, Proposta ou Arquivado.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Subtítulo</strong>
+            <span>Texto opcional para orientar a equipe. Use para explicar quando o lead deve entrar naquela etapa.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Tipo da etapa</strong>
+            <span>Classifica a etapa como aberta, ganha, perdida ou arquivada. Isso ajuda relatórios e regras de fechamento.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Cor da etapa</strong>
+            <span>Ajuda leitura visual no funil. Use cores diferentes para separar fases importantes sem criar poluição visual.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Ativa/Inativa</strong>
+            <span>Etapas inativas deixam de aparecer para operação, mas não apagam histórico de leads antigos.</span>
+          </div>
+        </div>
+      <% end
+    },
+    {
+      id: "proximas-etapas",
+      title: "Próximas etapas",
+      summary: "Controla para onde o lead pode avançar a partir de cada etapa.",
+      body: capture do %>
+        <p>O campo <strong>Próximas etapas</strong> define os destinos permitidos a partir da etapa atual. Ele funciona como uma orientação operacional e, quando configurado, impede transições fora do fluxo permitido.</p>
+        <p>Exemplo: em <strong>Novo</strong>, você pode permitir somente <strong>Em Atendimento</strong>, <strong>Represado</strong> ou <strong>Arquivado</strong>. Assim o corretor não pula direto para ganho ou proposta sem passar pelo atendimento.</p>
+        <h3>Quando deixar vazio</h3>
+        <p>Se o campo ficar vazio, a etapa não restringe o fluxo. Isso é útil para etapas amplas ou em implantação inicial, quando a operação ainda está sendo calibrada.</p>
+        <h3>Benefício para dados</h3>
+        <p>Transições controladas ajudam relatórios a identificar gargalos reais, porque reduzem movimentos errados ou atalhos que bagunçam o histórico.</p>
+      <% end
+    },
+    {
+      id: "motivos",
+      title: "Motivos permitidos",
+      summary: "Padroniza arquivamento e desqualificação por etapa.",
+      body: capture do %>
+        <p>O campo <strong>Motivos permitidos</strong> limita quais motivos podem ser usados para arquivar ou desqualificar um lead naquela etapa. Isso evita que a equipe escolha qualquer motivo em qualquer momento.</p>
+        <p>Exemplo: em uma etapa inicial, faz sentido permitir motivos como <strong>Contato inválido</strong>, <strong>Lead duplicado</strong> ou <strong>Não possui renda</strong>. Em uma etapa de proposta, motivos como <strong>Preço alto</strong> ou <strong>Proposta inviável</strong> podem fazer mais sentido.</p>
+        <h3>Quando deixar vazio</h3>
+        <p>Se ficar vazio, todos os motivos continuam disponíveis. Isso é útil quando a empresa ainda não quer restringir a operação.</p>
+        <h3>Benefício para relatórios</h3>
+        <p>Motivos bem configurados ajudam a responder por que leads são perdidos e se o problema está na origem, no produto, no atendimento, no preço ou na qualificação.</p>
+      <% end
+    },
+    {
+      id: "agenda",
+      title: "Agenda futura",
+      summary: "Limita quantos dias no futuro o corretor pode agendar uma ação.",
+      body: capture do %>
+        <p><strong>Agenda futura</strong> define o limite máximo de dias para criar retorno ou visita a partir da etapa atual. Em branco, não há limite.</p>
+        <p>Esse campo é útil para evitar que o corretor jogue leads muito para frente apenas para limpar a fila. Por exemplo, em uma etapa de primeiro atendimento, pode ser razoável limitar retornos a 3 ou 7 dias.</p>
+        <h3>Como isso ajuda a produtividade</h3>
+        <ul>
+          <li>Reduz leads esquecidos por muito tempo.</li>
+          <li>Melhora previsibilidade da agenda.</li>
+          <li>Ajuda gestores a identificar acúmulo de retornos futuros.</li>
+        </ul>
+      <% end
+    },
+    {
+      id: "qualificacao",
+      title: "Qualificação no card",
+      summary: "Permite classificar o lead diretamente no card do Kanban.",
+      body: capture do %>
+        <p>Quando <strong>Qualificação no card</strong> está ligada, o card do lead pode exibir opções rápidas de qualificação, como <strong>Qualificado</strong>, <strong>Desqualificado</strong> e <strong>Sem dados</strong>.</p>
+        <p>Use essa função em etapas onde a leitura do perfil do lead é importante. A equipe consegue marcar rapidamente se o lead parece bom, ruim ou ainda sem informação suficiente.</p>
+        <h3>Opções de qualificação</h3>
+        <ul>
+          <li><strong>Qualificado:</strong> há indícios de que o lead tem perfil e interesse compatíveis.</li>
+          <li><strong>Desqualificado:</strong> o lead não parece adequado para seguir no atendimento.</li>
+          <li><strong>Sem dados:</strong> ainda não há informação suficiente para decidir.</li>
+        </ul>
+        <h3>Por que isso importa para IA</h3>
+        <p>Com o tempo, a IA pode comparar qualificação, origem, comportamento, imóveis de interesse e resultado final. Isso ajuda a entender quais sinais costumam indicar bons leads e quais padrões apontam baixa chance de conversão.</p>
+      <% end
+    },
+    {
+      id: "automacoes",
+      title: "Automações",
+      summary: "Executa ações quando um lead atende uma condição por determinado tempo.",
+      body: capture do %>
+        <p>As automações da etapa seguem o formato: <strong>Quando</strong> + <strong>Tempo</strong> + <strong>Ação final</strong>. Elas servem para reduzir trabalho repetitivo e impedir que leads fiquem parados sem consequência.</p>
+        <h3>Gatilhos</h3>
+        <ul>
+          <li><strong>Tempo na etapa:</strong> conta quanto tempo o lead está parado naquela etapa.</li>
+          <li><strong>Inatividade geral:</strong> considera ausência de atualização relevante.</li>
+          <li><strong>Sem interação do cliente:</strong> útil quando o cliente não responde.</li>
+          <li><strong>Sem ação do responsável:</strong> identifica falta de movimentação do corretor.</li>
+          <li><strong>Sem avanço de etapa:</strong> detecta leads que não evoluem no fluxo.</li>
+        </ul>
+        <h3>Ações finais</h3>
+        <div class="ax-documentation__grid">
+          <div class="ax-documentation__mini-card">
+            <strong>Mover para etapa</strong>
+            <span>Comportamento tradicional. Move o lead para uma etapa configurada.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Arquivar lead</strong>
+            <span>Arquiva automaticamente com motivo configurado ou motivo padrão permitido pela etapa.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Redistribuir na fila</strong>
+            <span>Remove o responsável atual e permite nova distribuição conforme regra.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Disponibilizar para automação</strong>
+            <span>Deixa o lead sem responsável para ser capturado por rotinas automáticas ou operacionais.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Criar tarefa</strong>
+            <span>Gera uma tarefa para o lead, útil para retornos, cobrança de contato ou follow-up.</span>
+          </div>
+          <div class="ax-documentation__mini-card">
+            <strong>Registrar nota</strong>
+            <span>Adiciona histórico sem mudar etapa. Útil para auditoria e contexto operacional.</span>
+          </div>
+        </div>
+        <div class="ax-documentation__callout">Evite automações destrutivas sem validação. Comece com tarefa ou nota, observe os dados e só depois avance para arquivamento ou redistribuição automática.</div>
+      <% end
+    },
+    {
+      id: "visibilidade",
+      title: "Visibilidade por perfil",
+      summary: "Define quais perfis enxergam e usam cada etapa.",
+      body: capture do %>
+        <p>A visibilidade controla quem pode ver e usar a etapa: <strong>Corretor</strong>, <strong>Gestor</strong>, <strong>Administrativo</strong> e <strong>Administrador</strong>.</p>
+        <p>Isso ajuda a separar etapas operacionais de etapas internas. Uma etapa de auditoria, por exemplo, pode ser visível apenas para gestão e administração.</p>
+        <h3>Cuidados</h3>
+        <ul>
+          <li>Não esconda etapas essenciais dos corretores se eles precisam mover leads para elas.</li>
+          <li>Use etapas administrativas para revisão, divergência e auditoria.</li>
+          <li>Revise permissões após criar novos perfis de usuário.</li>
+        </ul>
+      <% end
+    },
+    {
+      id: "divergencia",
+      title: "Fila de divergência",
+      summary: "Identifica diferença entre leitura do corretor e da gestão.",
+      body: capture do %>
+        <p>Quando a <strong>Fila divergência</strong> está ligada, a etapa permite sinalizar divergência entre a qualificação do corretor e a qualificação do gestor ou administrador.</p>
+        <p>Exemplo: o corretor marca o lead como <strong>Qualificado</strong>, mas o gestor marca como <strong>Desqualificado</strong>. Esse lead pode entrar no filtro de divergência para revisão.</p>
+        <h3>Como isso melhora gestão</h3>
+        <ul>
+          <li>Mostra desalinhamento de critério entre equipe e gestão.</li>
+          <li>Ajuda a treinar corretores com base em casos reais.</li>
+          <li>Cria dados para IA entender padrões de julgamento humano.</li>
+        </ul>
+      <% end
+    },
+    {
+      id: "cores",
+      title: "Cores por etapa",
+      summary: "Organiza leitura visual do funil sem criar complexidade.",
+      body: capture do %>
+        <p>Cada etapa pode ter uma cor própria. A cor aparece como reforço visual no funil e ajuda a equipe a identificar rapidamente fases críticas.</p>
+        <p>Use cores com intenção: uma cor para entrada, outra para atendimento, outra para proposta, outra para conclusão ou arquivamento. Evite muitas cores parecidas, porque isso reduz a leitura em vez de melhorar.</p>
+      <% end
+    },
+    {
+      id: "boas-praticas",
+      title: "Boas práticas de configuração",
+      summary: "Como configurar sem engessar a operação.",
+      body: capture do %>
+        <ol>
+          <li>Comece com poucas etapas claras.</li>
+          <li>Configure próximas etapas apenas onde o fluxo precisa de controle.</li>
+          <li>Use motivos permitidos para melhorar relatórios de perda e descarte.</li>
+          <li>Ative qualificação no card nas etapas em que a equipe realmente avalia qualidade do lead.</li>
+          <li>Use automações primeiro para criar tarefa ou registrar nota; depois avance para ações mais fortes.</li>
+          <li>Revise os dados depois de uma ou duas semanas de uso antes de endurecer regras.</li>
+        </ol>
+        <p>A configuração ideal não é a mais complexa. É aquela que guia a equipe, reduz dúvida e produz dados confiáveis sem travar o atendimento.</p>
+      <% end
+    }
+  ]
+%>
+
+<%= ax_workspace_heading(
+      eyebrow: "Leads · Funil",
+      icon: "diagram-3",
+      title: "Guia de funis e etapas",
+      subtitle: "Documentação operacional para configurar etapas, automações, visibilidade e dados do atendimento.",
+      actions: ax_button("Voltar para Leads", admin_leads_path, variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<div class="ax-documentation" data-controller="doc-search">
+  <section class="ax-documentation__intro">
+    <p>Este guia explica as configurações do modal <strong>Editar funil e etapas</strong>. O objetivo é ajudar a equipe a configurar o funil sem engessar a operação, melhorando produtividade dos corretores, qualidade dos dados, relatórios gerenciais e análises futuras de IA.</p>
+    <p>As seções abaixo ficam fechadas por padrão. Use o índice para ir direto ao assunto ou pesquise por termos como automação, qualificação, arquivamento, divergência, corretor, gestor ou IA.</p>
+  </section>
+
+  <div class="ax-documentation__toolbar">
+    <input type="search"
+           class="ax-search ax-search--fluid"
+           placeholder="Pesquisar nesta documentação..."
+           aria-label="Pesquisar nesta documentação"
+           data-doc-search-target="input"
+           data-action="input->doc-search#search">
+    <button type="button" class="ax-btn ax-btn--sm" data-action="doc-search#clear">
+      <i class="bi bi-x-lg ax-ico"></i> Limpar
+    </button>
+    <span class="ax-documentation__count" data-doc-search-target="count"></span>
+  </div>
+
+  <div class="ax-documentation__layout">
+    <nav class="ax-documentation__index" aria-label="Índice da documentação">
+      <h2 class="ax-documentation__index-title">Índice</h2>
+      <% sections.each do |section| %>
+        <a href="#<%= section[:id] %>"><%= section[:title] %></a>
+      <% end %>
+    </nav>
+
+    <div class="ax-documentation__sections">
+      <% sections.each do |section| %>
+        <details id="<%= section[:id] %>"
+                 class="ax-disclosure-card ax-documentation__section"
+                 data-doc-search-target="item">
+          <summary class="ax-disclosure-card__summary">
+            <span class="ax-documentation__summary-main">
+              <strong><%= section[:title] %></strong>
+              <span><%= section[:summary] %></span>
+            </span>
+            <i class="bi bi-chevron-down ax-disclosure-card__chevron" aria-hidden="true"></i>
+          </summary>
+          <div class="ax-disclosure-card__body ax-documentation__body">
+            <%= section[:body] %>
+          </div>
+        </details>
+      <% end %>
+
+      <div class="ax-documentation__empty" data-doc-search-target="empty" hidden>
+        Nenhuma seção encontrada para esse termo.
+      </div>
+    </div>
+  </div>
+</div>

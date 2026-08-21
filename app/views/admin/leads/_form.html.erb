@@ -6,7 +6,7 @@
   selected_pipeline = lead.lead_pipeline || @selected_pipeline
   selected_stage = lead.lead_pipeline_stage || selected_pipeline&.default_stage
   stage_options = if selected_pipeline.present?
-                    selected_pipeline.stages.ordered.map { |stage| [stage.name, stage.name, { data: { stage_id: stage.id } }] }
+                    visible_stages_for(selected_pipeline.stages.active.ordered).map { |stage| [stage.name, stage.name, { data: { stage_id: stage.id } }] }
                   else
                     @status_options.map { |status| [status, status] }
                   end

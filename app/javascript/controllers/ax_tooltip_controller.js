@@ -3,7 +3,11 @@ import { Controller } from "@hotwired/stimulus"
 // Tooltip leve (substitui bootstrap.Tooltip).
 // Uso: <button data-controller="ax-tooltip" data-ax-tooltip-text-value="Editar">…</button>
 export default class extends Controller {
-  static values = { text: String, placement: { type: String, default: "top" } }
+  static values = {
+    text: String,
+    optionTexts: Object,
+    placement: { type: String, default: "top" }
+  }
 
   connect() {
     this.prepareHost()
@@ -11,11 +15,14 @@ export default class extends Controller {
     this.hide = this.hide.bind(this)
     this.position = this.position.bind(this)
     this.hideOnEscape = this.hideOnEscape.bind(this)
+    this.refreshText = this.refreshText.bind(this)
     this.element.addEventListener("mouseenter", this.show)
     this.element.addEventListener("mouseleave", this.hide)
     this.element.addEventListener("focus", this.show)
     this.element.addEventListener("blur", this.hide)
     this.element.addEventListener("keydown", this.hideOnEscape)
+    this.element.addEventListener("change", this.refreshText)
+    this.element.addEventListener("input", this.refreshText)
   }
 
   disconnect() {
@@ -24,6 +31,8 @@ export default class extends Controller {
     this.element.removeEventListener("focus", this.show)
     this.element.removeEventListener("blur", this.hide)
     this.element.removeEventListener("keydown", this.hideOnEscape)
+    this.element.removeEventListener("change", this.refreshText)
+    this.element.removeEventListener("input", this.refreshText)
     this.hide()
     if (this.addedTabIndex) this.element.removeAttribute("tabindex")
     if (this.nativeTitle) this.element.setAttribute("title", this.nativeTitle)
@@ -107,6 +116,14 @@ export default class extends Controller {
   }
 
   textValueChanged() {
+    this.refreshText()
+  }
+
+  optionTextsValueChanged() {
+    this.refreshText()
+  }
+
+  refreshText() {
     if (!this.tip) return
 
     if (!this.tooltipText) {
@@ -119,7 +136,16 @@ export default class extends Controller {
   }
 
   get tooltipText() {
+    const optionText = this.selectedOptionTooltipText
+    if (optionText) return optionText
+
     return (this.hasTextValue ? this.textValue : this.nativeTitle) || ""
+  }
+
+  get selectedOptionTooltipText() {
+    if (!this.hasOptionTextsValue || !(this.element instanceof HTMLSelectElement)) return ""
+
+    return this.optionTextsValue[this.element.value] || ""
   }
 
   uniqueId() {
