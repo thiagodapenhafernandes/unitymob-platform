@@ -32,7 +32,7 @@ export default class extends Controller {
     const propertyTitle = trigger.dataset.propertyTitle || ""
     const propertyCode = trigger.dataset.propertyCode || ""
     const message = trigger.dataset.whatsappMessage || `Olá, gostaria de mais informações sobre o imóvel ${propertyTitle} (Cód: ${propertyCode})`
-    const leadOrigin = trigger.dataset.leadOrigin || ""
+    const leadOrigin = trigger.dataset.leadOrigin || "Site"
     const shareToken = trigger.dataset.shareToken || this.shareTokenValue || ""
     const negotiationType = trigger.dataset.negotiationType || "sale"
     const forceLeadForm = trigger.dataset.requireLeadForm === "true"

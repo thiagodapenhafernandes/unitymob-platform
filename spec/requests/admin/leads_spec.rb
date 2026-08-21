@@ -1167,6 +1167,22 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(conversation.lead).to eq(lead)
     end
 
+    it "abre conversa existente por telefone sem reassociar de outro lead" do
+      lead_original = create(:lead, tenant: admin.tenant, status: "Novo", phone: "47999990022")
+      lead_atual = create(:lead, tenant: admin.tenant, status: "Novo", phone: "47999990022")
+      conversation = create(
+        :whatsapp_conversation,
+        tenant: admin.tenant,
+        lead: lead_original,
+        contact_phone: "5547999990022"
+      )
+
+      post open_whatsapp_conversation_admin_lead_path(lead_atual)
+
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, lead_id: lead_atual.id))
+      expect(conversation.reload.lead).to eq(lead_original)
+    end
+
     it "ativa o lead com template aprovado e enfileira envio" do
       allow(Whatsapp::SendMessageJob).to receive(:dispatch)
       lead = create(:lead, status: "Novo", phone: "47999990002")

@@ -1,4 +1,7 @@
 class LeadsController < ApplicationController
+  DIRECT_ORIGIN_LABEL = "Direto / origem desconhecida".freeze
+  SITE_ORIGIN_LABEL = "Site".freeze
+
   skip_before_action :verify_authenticity_token, only: [:create] # Para facilitar testes AJAX se necessário, mas idealmente usar CSRF
 
   def whatsapp_url
@@ -17,6 +20,7 @@ class LeadsController < ApplicationController
     @lead.source_url = source_page_url
     apply_share_attribution(@lead)
     Leads::Attribution.apply!(@lead, raw: attribution_params, request: request)
+    normalize_site_origin(@lead)
     
     if @lead.save
       InterestIntelligence::SessionLinker.call(
@@ -110,6 +114,26 @@ class LeadsController < ApplicationController
     lead.admin_user_id = share_link.admin_user_id
     lead.shared_by_admin_user_id = share_link.admin_user_id
     lead.origin = "Compartilhamento Corretor" if lead.origin.blank?
+  end
+
+  def normalize_site_origin(lead)
+    return unless lead.origin.blank? || lead.origin == DIRECT_ORIGIN_LABEL
+    return unless same_site_source_url?(lead.source_url)
+
+    lead.origin = SITE_ORIGIN_LABEL
+  end
+
+  def same_site_source_url?(url)
+    uri = URI.parse(url.to_s)
+    return false unless uri.is_a?(URI::HTTP) && uri.host.present?
+
+    normalized_host(uri.host) == normalized_host(request.host)
+  rescue URI::InvalidURIError
+    false
+  end
+
+  def normalized_host(host)
+    host.to_s.downcase.sub(/\Awww\./, "")
   end
 
 end
