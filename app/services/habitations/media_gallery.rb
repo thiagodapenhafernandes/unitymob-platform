@@ -38,7 +38,7 @@ module Habitations
 
     def development_media_sources
       @development_media_sources ||= if habitation.use_development_photos? && linked_development.present?
-        linked_development.own_public_image_sources.first(12)
+        linked_development.own_public_image_sources
       else
         []
       end

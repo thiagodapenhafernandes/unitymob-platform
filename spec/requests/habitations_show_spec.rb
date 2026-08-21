@@ -746,11 +746,11 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body.scan('data-require-lead-form="true"').size).to eq(6)
     end
 
-    it "mantém srcset nas fotos visíveis e não gera srcset antecipado para fotos escondidas" do
+    it "inclui todas as fotos no lightbox e mantém srcset apenas nas fotos visíveis" do
       habitation = create(:habitation, codigo: "MEDIA-BACKLOG", slug: "media-backlog")
       image = Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")
 
-      8.times do |index|
+      14.times do |index|
         habitation.photos.attach(
           io: StringIO.new(image),
           filename: "foto-#{index}.png",
@@ -773,9 +773,10 @@ RSpec.describe "Habitation details", type: :request do
       visible_gallery_links = html.css('.public-habitations-show__gallery-thumb[data-fancybox="property-gallery"]')
 
       expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Ver 14 fotos")
       expect(visible_gallery_links.size).to eq(4)
       expect(visible_gallery_links).to all(satisfy { |link| link["data-public-gallery-mobile-srcset"].present? })
-      expect(hidden_gallery_links.size).to eq(3)
+      expect(hidden_gallery_links.size).to eq(9)
       expect(hidden_gallery_links).to all(satisfy { |link| link["data-public-gallery-mobile-srcset"].blank? })
       expect(Storage::TransformVariantJob).to have_received(:perform_later).at_most(36).times
     end

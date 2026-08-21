@@ -28,6 +28,30 @@ RSpec.describe Habitations::MediaGallery do
       expect(gallery.development_media_sources.map { |source| source["url"] }).to eq(["https://cdn.saluteimoveis.com.br/empreendimento.jpg"])
       expect(gallery.media_gallery_count).to eq(2)
     end
+
+    it "não limita em 12 fotos herdadas do empreendimento" do
+      development_pictures = 14.times.map do |index|
+        { "url" => "https://cdn.saluteimoveis.com.br/empreendimento-#{index}.jpg" }
+      end
+      development = create(
+        :habitation,
+        codigo: "DEV-MEDIA-MANY-#{SecureRandom.hex(6)}",
+        tipo: "Empreendimento",
+        pictures: development_pictures
+      )
+      unit = create(
+        :habitation,
+        codigo: "UNIT-MEDIA-MANY-#{SecureRandom.hex(6)}",
+        codigo_empreendimento: development.codigo,
+        use_development_photos_flag: true,
+        pictures: []
+      )
+
+      sources = described_class.new(unit.reload).development_media_sources
+
+      expect(sources.size).to eq(14)
+      expect(sources.map { |source| source["url"] }).to eq(development_pictures.map { |source| source["url"] })
+    end
   end
 
   describe "#api_media_pictures" do

@@ -1,5 +1,5 @@
 <% images = @habitation.public_image_sources %>
-<% gallery_images = images.first(12) %>
+<% gallery_images = images %>
 <% image_url = ->(photo) { public_image_url(photo) } %>
 <% gallery_original_url = ->(photo) { image_url.call(photo) } %>
 <% title = @habitation.display_title %>
