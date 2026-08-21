@@ -1235,13 +1235,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def load_lead_whatsapp_context
     integration = WhatsappBusinessIntegration.current(current_tenant)
-    @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
-
-    if auto_open_lead_whatsapp_conversation?(integration)
-      @whatsapp_conversation = @whatsapp_conversation.present? ?
-        bind_whatsapp_conversation_to_lead!(@whatsapp_conversation, @lead) :
-        find_or_create_whatsapp_conversation_for!(@lead)
-    end
+    @whatsapp_conversation = current_tenant.whatsapp_conversations.find_by(lead: @lead)
 
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
     @whatsapp_templates = approved_lead_whatsapp_templates(integration)

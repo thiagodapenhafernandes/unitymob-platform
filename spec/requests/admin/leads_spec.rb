@@ -1075,7 +1075,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include(lead.display_name)
     end
 
-    it "reassocia a conversa do telefone ao lead atual e preserva o histórico" do
+    it "nao reassocia conversa de outro lead ao abrir o detalhe" do
       lead_original = create(:lead, status: "Em Atendimento", phone: "47999990032")
       lead_atual = create(:lead, status: "Novo", phone: "47999990032")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
@@ -1114,10 +1114,10 @@ RSpec.describe "Admin::Leads", type: :request do
       get admin_lead_path(lead_atual)
 
       expect(response).to have_http_status(:ok)
-      expect(conversation.reload.lead).to eq(lead_atual)
-      expect(conversation.contact_name).to eq(lead_atual.display_name)
+      expect(conversation.reload.lead).to eq(lead_original)
+      expect(conversation.contact_name).to eq("Contato em outro lead")
       expect(response.body).to include("Atendimento sem sair do lead")
-      expect(response.body).to include("Histórico antigo do WhatsApp")
+      expect(response.body).not_to include("Histórico antigo do WhatsApp")
       expect(response.body).to include("Apresentação")
       expect(response.body).to include("Empresa · Apresentação oficial")
       expect(response.body).not_to include("WhatsApp com pendência")
