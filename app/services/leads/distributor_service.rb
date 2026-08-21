@@ -282,9 +282,9 @@ module Leads
 
     def matches_business_type?(rule)
       return true if rule.ambos_business_type?
-      lead_content = "#{@lead.product} #{@lead.origin} #{@lead.other_information}".downcase
-      is_explicit_rental = lead_content.include?("aluguel") || lead_content.include?("locacao")
-      is_explicit_sale = lead_content.include?("venda") || lead_content.include?("comprar")
+      lead_content = normalized_business_type_content
+      is_explicit_rental = lead_content.match?(/\b(aluguel|alugar|locacao|locar|rent|rental)\b/)
+      is_explicit_sale = lead_content.match?(/\b(venda|vender|comprar|compra|sale)\b/)
 
       # Regra de negócio intencional: quando o lead não traz sinal explícito de
       # venda ou locação (ex.: muitos leads Meta), regras específicas continuam
@@ -296,6 +296,34 @@ module Leads
         return is_explicit_sale || !is_explicit_rental
       end
       false
+    end
+
+    def normalized_business_type_content
+      values = [
+        @lead.product,
+        @lead.origin,
+        @lead.source_url,
+        @lead.other_information,
+        habitation_business_type_signal
+      ]
+
+      I18n.transliterate(values.compact.join(" ").downcase)
+    end
+
+    def habitation_business_type_signal
+      habitation = @lead.property_id.present? ? tenant.habitations.find_by(id: @lead.property_id) : nil
+      return "" unless habitation&.respond_to?(:whatsapp_negotiation_type)
+
+      case habitation.whatsapp_negotiation_type
+      when "rent"
+        "locacao aluguel rent"
+      when "sale"
+        "venda comprar sale"
+      when "sale_rent"
+        "venda locacao sale rent"
+      else
+        ""
+      end
     end
 
     def inside_holding_hours?(rule)

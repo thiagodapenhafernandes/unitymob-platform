@@ -107,6 +107,47 @@ RSpec.describe "Leads", type: :request do
       expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
     end
 
+    it "classifica como Site quando o lead veio do proprio site sem origem explicita" do
+      host! "site.example"
+      habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+
+      post leads_path, params: {
+        lead: {
+          name: "Cliente Site",
+          phone: "(47) 99999-1111",
+          property_id: habitation.id,
+          lead_type: "whatsapp_modal",
+          whatsapp_message: "Tenho interesse",
+          business_type: "sale",
+          page_url: "https://site.example/imoveis/#{habitation.id}"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(Lead.order(:created_at).last.origin).to eq("Site")
+    end
+
+    it "preserva origem explicita mesmo quando o lead veio do proprio site" do
+      host! "site.example"
+      habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+
+      post leads_path, params: {
+        lead: {
+          name: "Cliente Compartilhamento",
+          phone: "(47) 99999-2222",
+          property_id: habitation.id,
+          lead_type: "whatsapp_modal",
+          origin: "Compartilhamento Corretor",
+          whatsapp_message: "Tenho interesse",
+          business_type: "sale",
+          page_url: "https://site.example/imoveis/#{habitation.id}"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(Lead.order(:created_at).last.origin).to eq("Compartilhamento Corretor")
+    end
+
     it "cria lead no tenant público e descarta property_id de outro tenant" do
       other_tenant = Tenant.create!(name: "Outro leads #{SecureRandom.hex(3)}", slug: "outro-leads-#{SecureRandom.hex(3)}")
       habitation = create(:habitation, tenant: other_tenant, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)

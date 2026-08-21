@@ -447,7 +447,10 @@ class Admin::LeadsController < Admin::BaseController
     check_permission!(:view, :whatsapp_inbox)
 
     conversation = find_or_create_whatsapp_conversation_for!(@lead)
-    destination = params[:workspace].to_s == "focus" ? admin_whatsapp_conversation_path(conversation, workspace: "focus") : admin_whatsapp_conversation_path(conversation)
+    route_options = {}
+    route_options[:workspace] = "focus" if params[:workspace].to_s == "focus"
+    route_options[:lead_id] = @lead.id if conversation.lead_id != @lead.id
+    destination = admin_whatsapp_conversation_path(conversation, route_options)
     redirect_to destination
   rescue ArgumentError => e
     redirect_to admin_lead_path(@lead), alert: e.message
@@ -1121,7 +1124,7 @@ class Admin::LeadsController < Admin::BaseController
     raise ArgumentError, "Este lead não possui telefone ou BSUID para abrir conversa no WhatsApp." if recipient.blank?
 
     conversation = existing_whatsapp_conversation_for(lead)
-    conversation = bind_whatsapp_conversation_to_lead!(conversation, lead) if conversation
+    conversation = bind_whatsapp_conversation_to_lead!(conversation, lead) if conversation&.lead_id.blank?
     conversation ||= if recipient.is_a?(Hash)
                        current_tenant.whatsapp_conversations.find_or_initialize_by(business_scoped_user_id: recipient[:user_id].to_s)
                      else
@@ -1235,13 +1238,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def load_lead_whatsapp_context
     integration = WhatsappBusinessIntegration.current(current_tenant)
-    @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
-
-    if auto_open_lead_whatsapp_conversation?(integration)
-      @whatsapp_conversation = @whatsapp_conversation.present? ?
-        bind_whatsapp_conversation_to_lead!(@whatsapp_conversation, @lead) :
-        find_or_create_whatsapp_conversation_for!(@lead)
-    end
+    @whatsapp_conversation = current_tenant.whatsapp_conversations.find_by(lead: @lead)
 
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
     @whatsapp_templates = approved_lead_whatsapp_templates(integration)

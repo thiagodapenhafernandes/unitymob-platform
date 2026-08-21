@@ -188,6 +188,55 @@ RSpec.describe Leads::DistributorService do
       expect(lead.reload.admin_user_id).to be_nil
       expect(lead.distribution_rule_id).to be_nil
     end
+
+    it "nao envia lead de URL de aluguel para regra de venda quando locacao esta inativa" do
+      create(:distribution_rule, business_type: :locacao, source_site: true, active: false)
+      venda_rule = create(:distribution_rule, business_type: :venda, source_site: true)
+      create(:distribution_rule_agent, distribution_rule: venda_rule, admin_user: agent_without_checkin)
+
+      lead = build_lead(
+        origin: "Direto / origem desconhecida",
+        source_url: "https://conexaobc.com/imoveis?transaction_type=aluguel"
+      )
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.admin_user_id).to be_nil
+      expect(lead.distribution_rule_id).to be_nil
+    end
+
+    it "distribui lead de URL de aluguel para regra de locacao quando ela esta ativa" do
+      venda_rule = create(:distribution_rule, business_type: :venda, source_site: true)
+      locacao_rule = create(:distribution_rule, business_type: :locacao, source_site: true)
+      create(:distribution_rule_agent, distribution_rule: venda_rule, admin_user: agent_without_checkin)
+      create(:distribution_rule_agent, distribution_rule: locacao_rule, admin_user: agent_with_checkin)
+
+      lead = build_lead(
+        origin: "Direto / origem desconhecida",
+        source_url: "https://conexaobc.com/imoveis?transaction_type=aluguel"
+      )
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.admin_user_id).to eq(agent_with_checkin.id)
+      expect(lead.distribution_rule_id).to eq(locacao_rule.id)
+    end
+
+    it "usa o imovel vinculado como sinal de locacao" do
+      venda_rule = create(:distribution_rule, business_type: :venda, source_site: true)
+      locacao_rule = create(:distribution_rule, business_type: :locacao, source_site: true)
+      create(:distribution_rule_agent, distribution_rule: venda_rule, admin_user: agent_without_checkin)
+      create(:distribution_rule_agent, distribution_rule: locacao_rule, admin_user: agent_with_checkin)
+      habitation = create(:habitation, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 3_500_00)
+
+      lead = build_lead(
+        origin: "site",
+        source_url: "https://conexaobc.com/imoveis/#{habitation.id}",
+        property_id: habitation.id
+      )
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.admin_user_id).to eq(agent_with_checkin.id)
+      expect(lead.distribution_rule_id).to eq(locacao_rule.id)
+    end
   end
 
   describe "require_active_checkin=true" do
