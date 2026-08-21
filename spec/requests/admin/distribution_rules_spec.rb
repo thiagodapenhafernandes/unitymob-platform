@@ -67,6 +67,32 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response.body).not_to include("Regra Externa")
   end
 
+  it "exclui regra sem leads vinculados" do
+    rule = create(:distribution_rule, tenant: admin.tenant, name: "Regra removível", source_site: true)
+
+    expect {
+      delete admin_distribution_rule_path(rule)
+    }.to change(DistributionRule, :count).by(-1)
+
+    expect(response).to redirect_to(admin_distribution_rules_path)
+    follow_redirect!
+    expect(response.body).to include("Regra excluída.")
+  end
+
+  it "bloqueia exclusao de regra com leads vinculados para preservar historico" do
+    rule = create(:distribution_rule, tenant: admin.tenant, name: "Regra com histórico", source_site: true)
+    create(:lead, tenant: admin.tenant, distribution_rule: rule, skip_automatic_routing: true)
+
+    expect {
+      delete admin_distribution_rule_path(rule)
+    }.not_to change(DistributionRule, :count)
+
+    expect(response).to redirect_to(admin_distribution_rules_path)
+    follow_redirect!
+    expect(response.body).to include("Esta regra já recebeu leads e não pode ser excluída.")
+    expect(rule.reload).to be_persisted
+  end
+
   it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
     manager = create(:admin_user, :admin, name: "Gestor Praia")
     create(:admin_user, name: "Corretor Cascata", manager: manager)
