@@ -137,6 +137,16 @@ module Habitations
       attachments.each do |attachment|
         attachment_payload = AuditChangeRecorder.attachment_payload(attachment)
         record_habitation_attachment_removed(association: "photos", attachment_payload: attachment_payload)
+        Storage::BlobAuditRecorder.record!(
+          blob: attachment.blob,
+          action: "purge_requested",
+          source: "habitation_media_updater",
+          attachment: attachment,
+          metadata: {
+            habitation_id: habitation.id,
+            association: "photos"
+          }
+        )
         attachment.purge_later
       end
 

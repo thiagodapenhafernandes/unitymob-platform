@@ -79,6 +79,14 @@ class HabitationPhotoWatermarkJob < ApplicationJob
   end
 
   def schedule_original_blob_purge(blob)
+    Storage::BlobAuditRecorder.record!(
+      blob: blob,
+      action: "purge_scheduled",
+      source: "habitation_photo_watermark_job",
+      metadata: {
+        delay_seconds: ORIGINAL_BLOB_PURGE_DELAY.to_i
+      }
+    )
     Storage::SafePurgeJob.set(wait: ORIGINAL_BLOB_PURGE_DELAY).perform_later(blob.id)
   end
 

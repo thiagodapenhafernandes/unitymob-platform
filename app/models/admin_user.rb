@@ -22,6 +22,7 @@ class AdminUser < ApplicationRecord
   has_many :habitation_share_links, dependent: :destroy
   has_one :inbound_webhook_token, dependent: :destroy
   has_many :habitation_audit_logs
+  has_many :active_storage_blob_audit_logs
   has_many :access_audit_logs
   has_many :operational_user_sessions, dependent: :restrict_with_error
   has_many :operational_user_events, dependent: :restrict_with_error
