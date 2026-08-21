@@ -295,30 +295,7 @@ module Admin::ComercialHelper
   end
 
   def lead_card_business_label(lead)
-    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
-    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
-    external_payload = info["external_lead_payload"].is_a?(Hash) ? info["external_lead_payload"] : {}
-    external_attributes = external_payload["attributes"].is_a?(Hash) ? external_payload["attributes"] : {}
-    product = attribution["product"].is_a?(Hash) ? attribution["product"] : external_attributes["product"].to_h
-
-    text = [
-      lead.lead_type,
-      lead.product,
-      lead.notes,
-      lead.status,
-      product["description"],
-      product["negotiation_name"],
-      product.dig("real_estate_detail", "negotiation_name"),
-      external_attributes["description"],
-      external_attributes.dig("funnel_status", "name"),
-      external_attributes.dig("lead_status", "name")
-    ].compact.join(" ").parameterize(separator: "_")
-
-    return "Captação" if text.match?(/captacao|captar|proprietario|proprietaria/)
-    return "Locação" if text.match?(/locacao|aluguel|alugar|rental|locar/)
-    return "Venda" if text.match?(/venda|comprar|compra|sale|vend/)
-
-    nil
+    lead.business_label
   end
 
   def lead_card_note_line(lead, conversion = nil)
