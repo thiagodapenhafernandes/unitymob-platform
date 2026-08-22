@@ -2040,7 +2040,10 @@
 
               <div class="lead-list-row__actions">
                 <% if whatsapp_inbox_attendance? && lead.whatsapp_recipient.present? %>
-                  <%= link_to admin_lead_path(lead, return_to: lead_return_to_path, anchor: "whatsapp"), class: "ax-btn ax-btn--sm lead-list-row__primary-action" do %>
+                  <%= button_to open_whatsapp_conversation_admin_lead_path(lead),
+                                method: :post,
+                                form: { class: "tw-contents" },
+                                class: "ax-btn ax-btn--sm lead-list-row__primary-action" do %>
                     <i class="bi bi-whatsapp ax-ico"></i><span>WhatsApp</span>
                   <% end %>
                 <% elsif lead.direct_whatsapp_url.present? %>
