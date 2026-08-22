@@ -1,0 +1,123 @@
+<%
+  preset_steps = [
+    {
+      key: "new",
+      name: "Novo Lead",
+      color: "#2f80a0",
+      role: "Entrada do atendimento",
+      config: "Aberta, visível para corretor, gestor e admin. Agenda até 2 dias, qualificação ativa e tarefa de primeiro atendimento preparada.",
+      next_steps: ["Em Atendimento"]
+    },
+    {
+      key: "service",
+      name: "Em Atendimento",
+      color: "#365f8f",
+      role: "Trabalho diário do corretor",
+      config: "Aberta, visível para corretor, gestor e admin. Agenda até 7 dias, qualificação ativa e tarefa se o cliente ficar sem interação.",
+      next_steps: ["Visita/Contato", "Proposta", "Perdido", "Arquivado"]
+    },
+    {
+      key: "visit",
+      name: "Visita/Contato",
+      color: "#8a63d2",
+      role: "Contato ou visita qualificada",
+      config: "Aberta, visível para corretor, gestor e admin. Agenda até 15 dias, qualificação ativa e tarefa se o lead não avançar.",
+      next_steps: ["Em Atendimento", "Proposta", "Perdido", "Arquivado"]
+    },
+    {
+      key: "proposal",
+      name: "Proposta",
+      color: "#d97706",
+      role: "Negociação em andamento",
+      config: "Aberta, visível para corretor, gestor e admin. Agenda até 10 dias, qualificação ativa e nota automática preparada para proposta inativa.",
+      next_steps: ["Em Atendimento", "Ganho", "Perdido", "Arquivado"]
+    },
+    {
+      key: "won",
+      name: "Ganho",
+      color: "#08875d",
+      role: "Negócio concluído",
+      config: "Ganha, visível para gestor e admin. Qualificação inativa e sem automação padrão.",
+      next_steps: ["Arquivado"]
+    },
+    {
+      key: "lost",
+      name: "Perdido",
+      color: "#e0402f",
+      role: "Lead perdido ou desqualificado",
+      config: "Perdida, visível para corretor, gestor e admin. Divergência ativa, qualificação ativa e arquivamento preparado após prazo.",
+      next_steps: ["Em Atendimento", "Arquivado"]
+    },
+    {
+      key: "archived",
+      name: "Arquivado",
+      color: "#667085",
+      role: "Encerramento operacional",
+      config: "Arquivada, visível para gestor, administrativo e admin. Qualificação inativa e sem automação padrão.",
+      next_steps: ["Em Atendimento"]
+    }
+  ]
+
+  preset_step_by_name = preset_steps.index_by { |step| step[:name] }
+%>
+
+<details class="lead-preset-flow">
+  <summary class="lead-preset-flow__summary">
+    <span class="lead-preset-flow__summary-main">
+      <i class="bi bi-diagram-3" aria-hidden="true"></i>
+      <span>Ver desenho do preset operacional</span>
+    </span>
+    <span class="lead-preset-flow__summary-meta">
+      7 etapas, transições controladas e automações preparadas
+      <i class="bi bi-chevron-down" aria-hidden="true"></i>
+    </span>
+  </summary>
+
+  <div class="lead-preset-flow__body">
+    <div class="lead-preset-flow__map" aria-label="Fluxo padrão do funil operacional">
+      <div class="lead-preset-flow__lane lead-preset-flow__lane--main">
+        <% preset_steps.first(5).each_with_index do |step, index| %>
+          <article class="lead-preset-flow__card lead-preset-flow__card--<%= step[:key] %>"
+                   style="--lead-preset-color: <%= step[:color] %>">
+            <span class="lead-preset-flow__dot" aria-hidden="true"></span>
+            <strong><%= step[:name] %></strong>
+            <em><%= step[:role] %></em>
+            <p><%= step[:config] %></p>
+          </article>
+          <% if index < 4 %>
+            <span class="lead-preset-flow__arrow" aria-hidden="true"></span>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="lead-preset-flow__lane lead-preset-flow__lane--support">
+        <% preset_steps.last(2).each_with_index do |step, index| %>
+          <article class="lead-preset-flow__card lead-preset-flow__card--<%= step[:key] %>"
+                   style="--lead-preset-color: <%= step[:color] %>">
+            <span class="lead-preset-flow__dot" aria-hidden="true"></span>
+            <strong><%= step[:name] %></strong>
+            <em><%= step[:role] %></em>
+            <p><%= step[:config] %></p>
+          </article>
+          <% if index.zero? %>
+            <span class="lead-preset-flow__arrow" aria-hidden="true"></span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="lead-preset-flow__transitions" aria-label="Próximas etapas permitidas no preset operacional">
+      <% preset_steps.each do |step| %>
+        <div class="lead-preset-flow__transition" style="--lead-preset-color: <%= step[:color] %>">
+          <strong><%= step[:name] %></strong>
+          <span>
+            <% step[:next_steps].each do |next_step_name| %>
+              <% next_step = preset_step_by_name[next_step_name] %>
+              <b style="--lead-preset-next-color: <%= next_step&.dig(:color) || "#667085" %>"><%= next_step_name %></b>
+            <% end %>
+          </span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</details>

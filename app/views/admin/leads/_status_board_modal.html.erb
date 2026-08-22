@@ -26,6 +26,8 @@
       </div>
     <% end %>
 
+    <%= render "admin/leads/operational_pipeline_preset_diagram" %>
+
     <div class="tw-grid tw-gap-3">
       <%= form_with model: [:admin, selected_pipeline], url: admin_lead_pipeline_path(selected_pipeline), method: :patch, local: true, class: "tw-grid tw-gap-2" do |f| %>
         <%= hidden_field_tag :view, @view_mode %>
