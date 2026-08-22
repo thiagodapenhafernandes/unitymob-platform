@@ -2253,6 +2253,10 @@ class Habitation < ApplicationRecord
     default_title
   end
 
+  def title
+    display_title
+  end
+
   # Description fallback for legacy/plain-text and rich text sources.
   def display_description
     rich_body = rich_text_descricao_web&.body
