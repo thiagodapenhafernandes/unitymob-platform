@@ -113,6 +113,12 @@ RSpec.describe Habitation, type: :model do
 
       expect(habitation.display_title).to eq("Apartamento à venda com 2 dormitórios no Centro")
     end
+
+    it "expõe title como compatibilidade para o título exibido" do
+      habitation = build(:habitation, titulo_anuncio: "Apartamento no Centro")
+
+      expect(habitation.title).to eq(habitation.display_title)
+    end
   end
 
   describe "#display_description" do
