@@ -59,6 +59,19 @@ RSpec.describe Leads::OperationalPipelineTemplate do
     ] }
   end
 
+  it "reaproveita etapas existentes com nomes equivalentes sem diferenciar maiusculas" do
+    pipeline = LeadPipeline.default_for(tenant: tenant)
+    existing_stage = pipeline.stages.find_by!(name: "Novo Lead")
+    existing_stage.update!(name: "Novo lead", color: "#111111")
+
+    expect {
+      described_class.apply!(tenant: tenant, pipeline: pipeline)
+    }.not_to raise_error
+
+    expect(pipeline.stages.where("LOWER(name) = ?", "novo lead").count).to eq(1)
+    expect(existing_stage.reload).to have_attributes(name: "Novo Lead", color: "#2f80a0", position: 0)
+  end
+
   it "valida com tempos curtos que um lead consegue passar por todas as etapas do template" do
     travel_to Time.zone.local(2026, 8, 22, 9, 0, 0)
     pipeline = described_class.apply!(

@@ -171,8 +171,13 @@ module Leads
 
     def ensure_stages!
       LeadPipeline::DEFAULT_STAGE_DEFINITIONS.each_with_index do |definition, index|
-        stage = pipeline.stages.find_or_initialize_by(tenant: tenant, name: definition.fetch(:name))
+        stage = LeadPipelineStage.matching_name(
+          tenant: tenant,
+          pipeline: pipeline,
+          name: definition.fetch(:name)
+        ) || pipeline.stages.build(tenant: tenant)
         stage.assign_attributes(
+          name: definition.fetch(:name),
           stage_type: definition.fetch(:stage_type),
           color: definition.fetch(:color),
           position: index,
