@@ -181,12 +181,14 @@
 }
 
 .lead-status-row__section-title .ax-field-label-wrap,
-.lead-status-row__automations-header .ax-field-label-wrap {
+.lead-status-row__automations-header .ax-field-label-wrap,
+.lead-status-row__automations-summary .ax-field-label-wrap {
   align-items: center;
 }
 
 .lead-status-row__section-title .ax-field-label,
-.lead-status-row__automations-header .ax-field-label {
+.lead-status-row__automations-header .ax-field-label,
+.lead-status-row__automations-summary .ax-field-label {
   color: inherit;
   font-size: inherit;
   letter-spacing: inherit;
@@ -195,6 +197,7 @@
 
 .lead-status-row__section-title .ax-field-label__info,
 .lead-status-row__automations-header .ax-field-label__info,
+.lead-status-row__automations-summary .ax-field-label__info,
 .lead-status-row__field-label + .ax-field-label__info {
   color: var(--lead-stage-muted);
 }
@@ -316,10 +319,72 @@ body.ax-app .lead-status-row__multiselect-wrapper.multi .ts-control > div.item {
 .lead-status-row__automations {
   display: grid;
   gap: .45rem;
-  padding: .6rem;
+  padding: 0;
   border: 1px solid var(--lead-stage-border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--lead-stage-surface-soft) 92%, var(--lead-stage-primary));
+  background: color-mix(in srgb, var(--lead-stage-surface) 96%, var(--lead-stage-primary));
+  overflow: hidden;
+}
+
+.lead-status-row__automations-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-width: 0;
+  padding: .6rem;
+  color: var(--lead-stage-muted);
+  font-size: .76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lead-status-row__automations-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lead-status-row__automations-summary::marker {
+  content: "";
+}
+
+.lead-status-row__automations-summary > span {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.lead-status-row__automations-summary small {
+  color: var(--lead-stage-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.lead-status-row__automations-summary .bi-chevron-down {
+  transition: transform .16s ease;
+}
+
+.lead-status-row__automations[open] .lead-status-row__automations-summary {
+  border-bottom: 1px solid var(--lead-stage-border);
+}
+
+.lead-status-row__automations[open] .lead-status-row__automations-summary .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+.lead-status-row__automations-body {
+  display: grid;
+  gap: .45rem;
+  padding: .6rem;
+}
+
+.lead-status-row__automations-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .lead-status-row__automations-header {

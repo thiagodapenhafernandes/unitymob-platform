@@ -17,6 +17,12 @@
   summary_parts << "#{selected_next_stage_ids.size} próxima(s) etapa(s)" if selected_next_stage_ids.any?
   first_archive_automation = automations.find { |automation| automation.respond_to?(:action_type) && automation.action_type == "archive_lead" && automation.active? }
   summary_parts << "Arquiva em #{first_archive_automation.after_amount} #{LeadPipelineStageAutomation::UNITS[first_archive_automation.after_unit]}" if first_archive_automation
+  active_automations_count = automations.count { |automation| automation.respond_to?(:active?) && automation.active? }
+  automation_summary = if automations.any?
+                         "#{active_automations_count} ativa(s) · #{automations.size} regra(s)"
+                       else
+                         "Nenhuma automação configurada"
+                       end
   distribution_mode_labels = {
     "rotary" => "Rodízio",
     "performance" => "Performance",
@@ -225,7 +231,7 @@
   <div class="lead-status-row__details" hidden>
     <div class="lead-status-row__section">
       <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Geral", tooltip: "Dados básicos da etapa exibidos no funil e nos cards de lead.") %>
+        <%= ax_field_label(nil, nil, text: "Identificação", tooltip: "Dados básicos da etapa exibidos no funil e nos cards de lead.") %>
       </div>
       <div class="lead-status-row__fields">
         <input type="text"
@@ -275,7 +281,36 @@
 
     <div class="lead-status-row__section">
       <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Operação", tooltip: "Regras que controlam como essa etapa pode ser usada no dia a dia.") %>
+        <%= ax_field_label(nil, nil, text: "Acesso", tooltip: "Define quem pode ver ou usar esta etapa antes de configurar o fluxo operacional.") %>
+      </div>
+      <div class="lead-status-row__visibility">
+        <% LeadPipelineStagePolicy::VISIBLE_ROLES.each do |value, label| %>
+          <label class="ax-toggle-chip"
+                 data-controller="ax-tooltip"
+                 data-ax-tooltip-text-value="Permite que este perfil visualize e use a etapa.">
+            <input type="checkbox"
+                   class="ax-toggle-chip__input"
+                   data-lead-status-policy-array-field="visible_to_roles"
+                   value="<%= value %>"
+                   <%= "checked" if visible_roles.include?(value) %>>
+            <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-eye"></i></span>
+            <span class="ax-toggle-chip__label"><%= label %></span>
+          </label>
+        <% end %>
+        <label class="lead-status-row__automation-toggle"
+               data-controller="ax-tooltip"
+               data-ax-tooltip-text-value="Permite sinalizar divergência entre a qualificação do gestor e do corretor nesta etapa.">
+          <input type="checkbox"
+                 data-lead-status-policy-field="divergence_queue_enabled"
+                 <%= "checked" if policy&.divergence_queue_enabled %>>
+          <span>Fila divergência</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="lead-status-row__section">
+      <div class="lead-status-row__section-title">
+        <%= ax_field_label(nil, nil, text: "Fluxo", tooltip: "Define para onde o lead pode seguir e quais motivos podem encerrar ou desqualificar o atendimento nesta etapa.") %>
       </div>
       <div class="lead-status-row__ops-grid">
         <div>
@@ -322,7 +357,14 @@
             <% end %>
           </select>
         </div>
+      </div>
+    </div>
 
+    <div class="lead-status-row__section">
+      <div class="lead-status-row__section-title">
+        <%= ax_field_label(nil, nil, text: "Atendimento", tooltip: "Configura o que o corretor pode registrar ou agendar enquanto o lead estiver nesta etapa.") %>
+      </div>
+      <div class="lead-status-row__ops-grid lead-status-row__ops-grid--attention">
         <div>
           <%= ax_field_label(nil, nil,
                              text: "Agenda futura",
@@ -367,58 +409,38 @@
       </div>
     </div>
 
-    <div class="lead-status-row__automations">
-      <div class="lead-status-row__automations-header">
-        <%= ax_field_label(nil, nil,
-                           text: "Automações",
-                           tooltip: "Regras executadas automaticamente quando o lead atende uma condição pelo tempo configurado.",
-                           class_name: "lead-status-row__automation-title") %>
-        <button type="button"
-                class="ax-btn ax-btn--sm"
-                data-action="lead-status-board#addAutomation">
-          <i class="bi bi-plus-lg"></i> Adicionar automação
-        </button>
-      </div>
+    <details class="lead-status-row__automations">
+      <summary class="lead-status-row__automations-summary">
+        <span>
+          <%= ax_field_label(nil, nil,
+                             text: "Automações",
+                             tooltip: "Regras executadas automaticamente quando o lead atende uma condição pelo tempo configurado.",
+                             class_name: "lead-status-row__automation-title") %>
+          <small><%= automation_summary %></small>
+        </span>
+        <i class="bi bi-chevron-down"></i>
+      </summary>
 
-      <div class="lead-status-row__automation-list">
-        <% automations.each do |automation| %>
-          <% automation_row.call(automation) %>
-        <% end %>
-      </div>
+      <div class="lead-status-row__automations-body">
+        <div class="lead-status-row__automations-actions">
+          <button type="button"
+                  class="ax-btn ax-btn--sm"
+                  data-action="lead-status-board#addAutomation">
+            <i class="bi bi-plus-lg"></i> Adicionar automação
+          </button>
+        </div>
 
-      <template class="lead-status-row__automation-template">
-        <% automation_row.call(nil, new_record: true) %>
-      </template>
-    </div>
+        <div class="lead-status-row__automation-list">
+          <% automations.each do |automation| %>
+            <% automation_row.call(automation) %>
+          <% end %>
+        </div>
 
-    <div class="lead-status-row__section">
-      <div class="lead-status-row__section-title">
-        <%= ax_field_label(nil, nil, text: "Visibilidade", tooltip: "Perfis que podem ver e usar esta etapa na operação.") %>
+        <template class="lead-status-row__automation-template">
+          <% automation_row.call(nil, new_record: true) %>
+        </template>
       </div>
-      <div class="lead-status-row__visibility">
-        <% LeadPipelineStagePolicy::VISIBLE_ROLES.each do |value, label| %>
-          <label class="ax-toggle-chip"
-                 data-controller="ax-tooltip"
-                 data-ax-tooltip-text-value="Permite que este perfil visualize e use a etapa.">
-            <input type="checkbox"
-                   class="ax-toggle-chip__input"
-                   data-lead-status-policy-array-field="visible_to_roles"
-                   value="<%= value %>"
-                   <%= "checked" if visible_roles.include?(value) %>>
-            <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-eye"></i></span>
-            <span class="ax-toggle-chip__label"><%= label %></span>
-          </label>
-        <% end %>
-        <label class="lead-status-row__automation-toggle"
-               data-controller="ax-tooltip"
-               data-ax-tooltip-text-value="Permite sinalizar divergência entre a qualificação do gestor e do corretor nesta etapa.">
-          <input type="checkbox"
-                 data-lead-status-policy-field="divergence_queue_enabled"
-                 <%= "checked" if policy&.divergence_queue_enabled %>>
-          <span>Fila divergência</span>
-        </label>
-      </div>
-    </div>
+    </details>
   </div>
   </div>
   <button type="button"

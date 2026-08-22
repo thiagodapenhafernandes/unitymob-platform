@@ -538,7 +538,10 @@
             </div>
             <div class="field-lead__actions">
               <% if whatsapp_inbox_attendance? && lead.whatsapp_recipient.present? %>
-                <%= link_to admin_lead_path(lead, anchor: "whatsapp", return_to: @field_all_leads_path), class: "field-contact-btn field-contact-btn--whatsapp" do %>
+                <%= button_to open_whatsapp_conversation_admin_lead_path(lead),
+                              method: :post,
+                              form: { class: "tw-contents" },
+                              class: "field-contact-btn field-contact-btn--whatsapp" do %>
                   <i class="bi bi-whatsapp"></i>WhatsApp
                 <% end %>
               <% elsif lead.direct_whatsapp_url.present? %>

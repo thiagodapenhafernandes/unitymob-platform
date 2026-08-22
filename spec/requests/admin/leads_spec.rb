@@ -120,16 +120,27 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "mantem a visualizacao em lista como alternativa" do
-      create(:lead, name: "Cliente Lista", phone: "11999999999", status: "Novo")
+      lead = create(:lead, name: "Cliente Lista", phone: "11999999999", status: "Novo")
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(
+        status: "connected",
+        waba_id: "waba-list",
+        phone_number_id: "phone-list",
+        access_token: "token-list",
+        inbox_attendance_enabled: true
+      )
 
       get admin_leads_path(view: "list")
 
       expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
       expect(response.body).to include("lead-list-workspace")
       expect(response.body).to include("Total filtrado")
       expect(response.body.index('class="ax-metric-grid lead-list-summary"')).to be < response.body.index('<details class="lead-filter-collapse">')
-      expect(Nokogiri::HTML(response.body).at_css(".ax-workspace-heading")).to be_nil
+      expect(document.at_css(".ax-workspace-heading")).to be_nil
       expect(response.body).to include("WhatsApp")
+      expect(document.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}'][method='post']")).to be_present
+      expect(document.at_css("a[href='#{admin_lead_path(lead, return_to: "#{admin_leads_path(view: "list")}#lead_#{lead.id}", anchor: "whatsapp")}']")).to be_nil
       expect(response.body).not_to include("<table")
       expect(response.body).to include("Cliente Lista")
     end
@@ -1274,6 +1285,31 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Lead já atendido")
       expect(lead.reload.admin_user_id).to eq(winner.id)
+    ensure
+      Lead.set_callback(:commit, :after, :route_lead)
+    end
+
+    it "abre a conversa interna ao atender quando o inbox WhatsApp esta habilitado" do
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(
+        status: "connected",
+        waba_id: "waba-attend",
+        phone_number_id: "phone-attend",
+        access_token: "token-attend",
+        inbox_attendance_enabled: true
+      )
+      PushSetting.instance.update!(lead_click_action: "system")
+      Lead.skip_callback(:commit, :after, :route_lead)
+      lead = create(:lead, tenant: admin.tenant, status: :waiting_acceptance, admin_user: admin, phone: "47999990031")
+
+      expect {
+        get attend_admin_lead_path(lead)
+      }.to change(WhatsappConversation, :count).by(1)
+
+      conversation = WhatsappConversation.last
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation))
+      expect(conversation.lead).to eq(lead)
+      expect(conversation.contact_phone).to eq("5547999990031")
     ensure
       Lead.set_callback(:commit, :after, :route_lead)
     end

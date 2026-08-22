@@ -1348,14 +1348,17 @@ class Admin::LeadsController < Admin::BaseController
       Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
   end
 
-  # Abre o destino conforme a config (WhatsApp do lead ou tela do lead).
+  # Abre o destino conforme a config (inbox interno, WhatsApp direto ou tela do lead).
   def open_attended_lead(lead)
     integration = WhatsappBusinessIntegration.current(current_tenant)
     inbox_attendance = integration.present? && integration.try(:inbox_attendance_enabled?) &&
       integration.messaging_ready? && can?(:view, :whatsapp_inbox)
 
     if inbox_attendance && lead.whatsapp_recipient.present?
-      redirect_to admin_lead_path(lead, anchor: "whatsapp")
+      conversation = find_or_create_whatsapp_conversation_for!(lead)
+      route_options = {}
+      route_options[:lead_id] = lead.id if conversation.lead_id != lead.id
+      redirect_to admin_whatsapp_conversation_path(conversation, route_options)
     elsif PushSetting.instance.open_whatsapp_on_click? && lead.direct_whatsapp_url.present?
       redirect_to lead.direct_whatsapp_url, allow_other_host: true
     else
