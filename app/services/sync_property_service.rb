@@ -33,7 +33,7 @@ class SyncPropertyService
     )
 
     Habitation.transaction do
-      habitation.assign_attributes(filtered_habitation_attrs(habitation_attrs, existing_record: existing_record))
+      habitation.assign_attributes(filtered_habitation_attrs(habitation_attrs, habitation: habitation, existing_record: existing_record))
       habitation.save!
 
       if sync_address_for?(existing_record: existing_record)
@@ -167,6 +167,7 @@ class SyncPropertyService
       valor_locacao_cents: valor_locacao_cents,
       valor_condominio_cents: parse_money(hb['ValorCondominio']),
       valor_iptu_cents: parse_money(hb['ValorIptu']),
+      descricao_web: clean_text(hb['DescricaoWeb']),
       caracteristica_unica: normalize_csv_list(hb['CaracteristicaUnica']),
       caracteristicas: extract_characteristics(hb),
       infra_estrutura: extract_infrastructure(hb),
@@ -273,14 +274,30 @@ class SyncPropertyService
       raise("Token Vista não configurado para este tenant.")
   end
 
-  def filtered_habitation_attrs(attrs, existing_record:)
+  def filtered_habitation_attrs(attrs, habitation: nil, existing_record:)
     filtered_attrs = attrs.dup
     filtered_attrs.delete(:exibir_no_site_flag) if existing_record
 
     return filtered_attrs unless existing_record
     return filtered_attrs unless preserve_manual_fields?
 
-    filtered_attrs.slice(*PRESERVED_MANUAL_MODE_FIELDS)
+    preserved_attrs = filtered_attrs.slice(*PRESERVED_MANUAL_MODE_FIELDS)
+    if habitation_description_blank?(habitation) && filtered_attrs[:descricao_web].present?
+      preserved_attrs[:descricao_web] = filtered_attrs[:descricao_web]
+    end
+
+    preserved_attrs
+  end
+
+  def habitation_description_blank?(habitation)
+    habitation.blank? || habitation.display_description_plain_text.blank?
+  end
+
+  def clean_text(raw)
+    text = raw.to_s
+    return nil if text.blank?
+
+    ActionView::Base.full_sanitizer.sanitize(text).squish.presence
   end
 
   def sync_address_for?(existing_record:)

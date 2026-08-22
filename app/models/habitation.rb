@@ -2255,12 +2255,17 @@ class Habitation < ApplicationRecord
 
   # Description fallback for legacy/plain-text and rich text sources.
   def display_description
-    rich_html = rich_text_descricao_web&.body&.to_s.presence
-    legacy_html = read_attribute(:descricao_web).to_s.presence
-    internal_text = descricao_interna.to_s.presence
-    development_text = descricao_empreendimento.to_s.presence
+    rich_body = rich_text_descricao_web&.body
+    rich_html = rich_body&.to_plain_text.to_s.squish.present? ? rich_body.to_s : nil
+    legacy_html = html_text_present?(read_attribute(:descricao_web)) ? read_attribute(:descricao_web).to_s : nil
+    internal_text = html_text_present?(descricao_interna) ? descricao_interna.to_s : nil
+    development_text = html_text_present?(descricao_empreendimento) ? descricao_empreendimento.to_s : nil
 
     rich_html || legacy_html || internal_text || development_text
+  end
+
+  def html_text_present?(value)
+    ActionController::Base.helpers.strip_tags(value.to_s).squish.present?
   end
 
   def property_features_for_display
