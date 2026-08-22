@@ -47,32 +47,7 @@ class LeadPipeline < ApplicationRecord
     existing = default_for(tenant:)
     return existing if existing
 
-    pipeline = tenant.lead_pipelines.create!(
-      name: "Principal",
-      kind: "mixed",
-      default_general: true,
-      default_for_sale: true,
-      default_for_rental: true,
-      position: 0
-    )
-    created_stages = DEFAULT_STAGE_DEFINITIONS.each_with_index.map do |definition, index|
-      tenant.lead_pipeline_stages.create!(
-        lead_pipeline: pipeline,
-        name: definition.fetch(:name),
-        stage_type: definition.fetch(:stage_type),
-        color: definition.fetch(:color),
-        position: index
-      )
-    end
-    created_stages.each { |stage| stage.create_policy!(LeadPipelineStagePolicy.default_attributes.merge(tenant: tenant)) }
-    created_stages.each_cons(2).with_index do |(stage, next_stage), index|
-      tenant.lead_pipeline_stage_transitions.create!(
-        lead_pipeline_stage: stage,
-        next_stage: next_stage,
-        position: index
-      )
-    end
-    pipeline
+    Leads::OperationalPipelineTemplate.apply!(tenant: tenant)
   end
 
   def default_stage
