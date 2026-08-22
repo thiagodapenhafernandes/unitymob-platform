@@ -183,7 +183,9 @@ module Leads
           position: index,
           active: true
         )
+        name_changed = stage.will_save_change_to_name?
         stage.save! if stage.new_record? || stage.changed?
+        stage.leads.update_all(status: stage.name, updated_at: Time.current) if name_changed && stage.persisted?
       end
     end
 

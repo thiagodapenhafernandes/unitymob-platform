@@ -119,11 +119,7 @@ class Admin::LeadsController < Admin::BaseController
 
     lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
 
-    @lead_statuses = if @status_filters.present?
-                        @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank
-                      else
-                        (lead_status_options_for_selected_context + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
-                      end
+    @lead_statuses = lead_statuses_for_kanban(lead_scope)
     @leads_by_status = @lead_statuses.index_with { |status| [] }
     # Primeiro lote por coluna DIRETO NO BANCO (janela por status): antes carregava a
     # base inteira de leads na memória a cada visita ao kanban.
@@ -136,13 +132,19 @@ class Admin::LeadsController < Admin::BaseController
                         .order(created_at: :desc)
                         .to_a
     @kanban_leads.each do |lead|
-      @leads_by_status[Lead.status_value(lead.status)] ||= []
-      @leads_by_status[Lead.status_value(lead.status)] << lead
+      status = Lead.status_value(lead.status)
+      next if @selected_pipeline.present? && !@leads_by_status.key?(status)
+
+      @leads_by_status[status] ||= []
+      @leads_by_status[status] << lead
     end
     # Contadores da coluna = total REAL (a coluna pode estar truncada no teto).
     @lead_counts_by_status = Hash.new(0)
     lead_scope.reorder(nil).group(:status).count.each do |status, count|
-      @lead_counts_by_status[Lead.status_value(status)] += count
+      status = Lead.status_value(status)
+      next if @selected_pipeline.present? && !@leads_by_status.key?(status)
+
+      @lead_counts_by_status[status] += count
     end
     @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
@@ -1857,6 +1859,14 @@ class Admin::LeadsController < Admin::BaseController
     pipeline_statuses = visible_stages_for(current_tenant.lead_pipeline_stages.active.ordered).map(&:name)
     existing_statuses = lead_scope_for_current_user.reorder(nil).distinct.pluck(:status).compact
     (pipeline_statuses + existing_statuses + Lead::LEGACY_STATUSES).compact_blank.uniq
+  end
+
+  def lead_statuses_for_kanban(lead_scope)
+    configured_statuses = lead_status_options_for_selected_context
+    return @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank if @status_filters.present?
+    return configured_statuses if @selected_pipeline.present?
+
+    (configured_statuses + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
   end
 
   def visible_stages_for(scope)

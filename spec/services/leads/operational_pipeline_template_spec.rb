@@ -63,6 +63,13 @@ RSpec.describe Leads::OperationalPipelineTemplate do
     pipeline = LeadPipeline.default_for(tenant: tenant)
     existing_stage = pipeline.stages.find_by!(name: "Novo Lead")
     existing_stage.update!(name: "Novo lead", color: "#111111")
+    lead = create(
+      :lead,
+      tenant: tenant,
+      lead_pipeline: pipeline,
+      lead_pipeline_stage: existing_stage,
+      status: "Novo lead"
+    )
 
     expect {
       described_class.apply!(tenant: tenant, pipeline: pipeline)
@@ -70,6 +77,7 @@ RSpec.describe Leads::OperationalPipelineTemplate do
 
     expect(pipeline.stages.where("LOWER(name) = ?", "novo lead").count).to eq(1)
     expect(existing_stage.reload).to have_attributes(name: "Novo Lead", color: "#2f80a0", position: 0)
+    expect(lead.reload.status).to eq("Novo Lead")
   end
 
   it "valida com tempos curtos que um lead consegue passar por todas as etapas do template" do
