@@ -37,9 +37,56 @@ RSpec.describe SyncPropertyService do
 
       expect(attrs).to include(exibir_no_site_flag: true)
     end
+
+    it "preenche descrição de imóvel existente quando ela ainda está vazia" do
+      habitation = build(:habitation, descricao_web: nil)
+      service = described_class.new("9001")
+
+      attrs = service.send(
+        :filtered_habitation_attrs,
+        {
+          descricao_web: "Descrição vinda da API",
+          titulo_anuncio: "Atualizado pela API"
+        },
+        habitation: habitation,
+        existing_record: true
+      )
+
+      expect(attrs).to include(descricao_web: "Descrição vinda da API")
+      expect(attrs).not_to have_key(:titulo_anuncio)
+    end
+
+    it "não sobrescreve descrição manual de imóvel existente no modo de preservação" do
+      habitation = build(:habitation, descricao_web: "Descrição manual")
+      service = described_class.new("9001")
+
+      attrs = service.send(
+        :filtered_habitation_attrs,
+        { descricao_web: "Descrição vinda da API" },
+        habitation: habitation,
+        existing_record: true
+      )
+
+      expect(attrs).not_to have_key(:descricao_web)
+    end
   end
 
   describe "status normalization" do
+    it "maps Vista web description into habitation attributes" do
+      service = described_class.new("SYNC-DESCRIPTION")
+      habitation_attrs, = service.send(
+        :map_vista_payload,
+        {
+          "Status" => "Venda",
+          "ValorVenda" => "900000",
+          "ValorLocacao" => "0",
+          "DescricaoWeb" => "<p>Descrição pública do imóvel.</p>"
+        }
+      )
+
+      expect(habitation_attrs[:descricao_web]).to eq("Descrição pública do imóvel.")
+    end
+
     it "normalizes Vista rental variations before building habitation attributes" do
       service = described_class.new("SYNC-RENT")
       habitation_attrs, = service.send(

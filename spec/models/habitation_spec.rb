@@ -115,6 +115,18 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "#display_description" do
+    it "ignora rich text vazio e usa o fallback de descrição disponível" do
+      habitation = build(
+        :habitation,
+        descricao_web: " ",
+        descricao_empreendimento: "Descrição do empreendimento para exibição pública"
+      )
+
+      expect(habitation.display_description).to eq("Descrição do empreendimento para exibição pública")
+    end
+  end
+
   describe "dados do proprietário" do
     it "prefere o cadastro vinculado aos campos legados do imóvel" do
       proprietor = create(
