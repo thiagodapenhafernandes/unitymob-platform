@@ -1,11 +1,13 @@
 <div class="integration-workspace tracking-workspace">
-  <%= ax_workspace_heading(eyebrow: "Integrações · Mensuração", icon: "bullseye", title: "Rastreamento", subtitle: "Gerencie as tags instaladas no site público sem permitir scripts livres.", pills: [@active_tab == "meta_pixel" ? "Meta Pixel" : "Google Tag Manager"], metrics: [{ value: TrackingIntegrationSetting.google_tag_manager_enabled? ? "Ativo" : "Inativo", label: "GTM" }, { value: TrackingIntegrationSetting.meta_pixel_enabled? ? "Ativo" : "Inativo", label: "Meta" }]) %>
+  <%= ax_workspace_heading(eyebrow: "Integrações · Mensuração", icon: "bullseye", title: "Rastreamento", subtitle: "Gerencie as tags instaladas no site público sem permitir scripts livres.", pills: [@active_tab == "meta_pixel" ? "Meta Pixel" : (@active_tab == "google_ads" ? "Google Ads" : (@active_tab == "other_tags" ? "Outros rastreadores" : "Google Tag Manager"))], metrics: [{ value: TrackingIntegrationSetting.google_tag_manager_enabled? ? "Ativo" : "Inativo", label: "GTM" }, { value: TrackingIntegrationSetting.meta_pixel_enabled? ? "Ativo" : "Inativo", label: "Meta" }, { value: TrackingIntegrationSetting.google_ads_enabled? ? "Ativo" : "Inativo", label: "Ads" }, { value: TrackingIntegrationSetting.rd_station_enabled? ? "Ativo" : "Inativo", label: "RD" }]) %>
 
   <%= ax_error_summary(@tracking_setting) %>
 
   <ul class="ax-form-tabs tracking-workspace__tabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#trackingTabsContent">
     <li><a class="ax-form-tabs__item <%= @active_tab == 'google_tag_manager' ? 'active' : '' %>" id="google-tag-manager-tab" href="#google-tag-manager" data-ax-tabs-target="tab" data-ax-tabs-target-param="#google-tag-manager" data-action="click->ax-tabs#select" role="tab" aria-controls="google-tag-manager" aria-selected="<%= @active_tab == 'google_tag_manager' %>"><i class="bi bi-google"></i>Google Tag Manager</a></li>
     <li><a class="ax-form-tabs__item <%= @active_tab == 'meta_pixel' ? 'active' : '' %>" id="meta-pixel-tab" href="#meta-pixel" data-ax-tabs-target="tab" data-ax-tabs-target-param="#meta-pixel" data-action="click->ax-tabs#select" role="tab" aria-controls="meta-pixel" aria-selected="<%= @active_tab == 'meta_pixel' %>"><i class="bi bi-meta"></i>Pixel da Meta</a></li>
+    <li><a class="ax-form-tabs__item <%= @active_tab == 'google_ads' ? 'active' : '' %>" id="google-ads-tab" href="#google-ads" data-ax-tabs-target="tab" data-ax-tabs-target-param="#google-ads" data-action="click->ax-tabs#select" role="tab" aria-controls="google-ads" aria-selected="<%= @active_tab == 'google_ads' %>"><i class="bi bi-megaphone"></i>Google Ads</a></li>
+    <li><a class="ax-form-tabs__item <%= @active_tab == 'other_tags' ? 'active' : '' %>" id="other-tags-tab" href="#other-tags" data-ax-tabs-target="tab" data-ax-tabs-target-param="#other-tags" data-action="click->ax-tabs#select" role="tab" aria-controls="other-tags" aria-selected="<%= @active_tab == 'other_tags' %>"><i class="bi bi-tags"></i>Outros rastreadores</a></li>
   </ul>
 
   <div class="tracking-tab-content" id="trackingTabsContent">
@@ -13,8 +15,7 @@
       <div class="tracking-workspace__layout">
         <%= ax_panel(title: "Google Tag Manager", subtitle: "Container carregado em todas as páginas públicas.", actions: ax_badge(TrackingIntegrationSetting.google_tag_manager_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.google_tag_manager_enabled? ? :green : :gray)) do %>
           <%= form_with url: admin_tracking_integration_path(tab: "google_tag_manager"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
-            <%= hidden_field_tag "tracking[meta_pixel_enabled]", @tracking_setting.meta_pixel_enabled? ? "true" : "false" %>
-            <%= hidden_field_tag "tracking[meta_pixel_id]", @tracking_setting.meta_pixel_id %>
+            <%= render "preserved_fields", setting: @tracking_setting, except: %i[google_tag_manager_enabled google_tag_manager_container_id] %>
             <%= ax_switch_field(form: f, method: :google_tag_manager_enabled, label: "Ativar no site público", checked: @tracking_setting.google_tag_manager_enabled?, checked_value: "true", unchecked_value: "false", input_html: { checked: @tracking_setting.google_tag_manager_enabled? }) %>
             <div><%= ax_field_label(f, :google_tag_manager_container_id, text: "ID do container", tooltip: "Informe somente o identificador no formato GTM-XXXXXXX.") %><%= f.text_field :google_tag_manager_container_id, class: "ax-control", value: @tracking_setting.google_tag_manager_container_id, placeholder: "GTM-XXXXXXX", autocomplete: "off" %></div>
             <%= f.submit "Salvar Google Tag Manager", class: "ax-btn ax-btn--primary" %>
@@ -27,11 +28,46 @@
       <div class="tracking-workspace__layout">
         <%= ax_panel(title: "Pixel da Meta", subtitle: "Pixel base com PageView automático no site público.", actions: ax_badge(TrackingIntegrationSetting.meta_pixel_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.meta_pixel_enabled? ? :green : :gray)) do %>
           <%= form_with url: admin_tracking_integration_path(tab: "meta_pixel"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
-            <%= hidden_field_tag "tracking[google_tag_manager_enabled]", @tracking_setting.google_tag_manager_enabled? ? "true" : "false" %>
-            <%= hidden_field_tag "tracking[google_tag_manager_container_id]", @tracking_setting.google_tag_manager_container_id %>
+            <%= render "preserved_fields", setting: @tracking_setting, except: %i[meta_pixel_enabled meta_pixel_id] %>
             <%= ax_switch_field(form: f, method: :meta_pixel_enabled, label: "Ativar no site público", checked: @tracking_setting.meta_pixel_enabled?, checked_value: "true", unchecked_value: "false", input_html: { checked: @tracking_setting.meta_pixel_enabled? }) %>
             <div><%= ax_field_label(f, :meta_pixel_id, text: "ID do Pixel", tooltip: "Informe somente o identificador numérico fornecido pela Meta.") %><%= f.text_field :meta_pixel_id, class: "ax-control", value: @tracking_setting.meta_pixel_id, placeholder: "123456789012345", inputmode: "numeric", autocomplete: "off" %></div>
             <%= f.submit "Salvar Pixel da Meta", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="tracking-tab-panel" id="google-ads" role="tabpanel" aria-labelledby="google-ads-tab" <%= "hidden" unless @active_tab == "google_ads" %>>
+      <div class="tracking-workspace__layout">
+        <%= ax_panel(title: "Google Ads", subtitle: "Tag global de conversão carregada no site público.", actions: ax_badge(TrackingIntegrationSetting.google_ads_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.google_ads_enabled? ? :green : :gray)) do %>
+          <%= form_with url: admin_tracking_integration_path(tab: "google_ads"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
+            <%= render "preserved_fields", setting: @tracking_setting, except: %i[google_ads_enabled google_ads_conversion_id] %>
+            <%= ax_switch_field(form: f, method: :google_ads_enabled, label: "Ativar no site público", checked: @tracking_setting.google_ads_enabled?, checked_value: "true", unchecked_value: "false", input_html: { checked: @tracking_setting.google_ads_enabled? }) %>
+            <div><%= ax_field_label(f, :google_ads_conversion_id, text: "ID de conversão", tooltip: "Informe somente o identificador no formato AW-000000000.") %><%= f.text_field :google_ads_conversion_id, class: "ax-control", value: @tracking_setting.google_ads_conversion_id, placeholder: "AW-000000000", autocomplete: "off" %></div>
+            <%= ax_inline_notice(tone: :neutral, icon: "info-circle", compact: true, announce: false) do %>
+              Use esta opção quando o Google Ads não estiver dentro do Google Tag Manager.
+            <% end %>
+            <%= f.submit "Salvar Google Ads", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="tracking-tab-panel" id="other-tags" role="tabpanel" aria-labelledby="other-tags-tab" <%= "hidden" unless @active_tab == "other_tags" %>>
+      <div class="tracking-workspace__layout">
+        <%= ax_panel(title: "Outros rastreadores", subtitle: "Verificação do Google e loader RD Station sem liberar scripts livres.", actions: ax_badge(TrackingIntegrationSetting.rd_station_enabled? ? "RD ativo" : "RD inativo", tone: TrackingIntegrationSetting.rd_station_enabled? ? :green : :gray)) do %>
+          <%= form_with url: admin_tracking_integration_path(tab: "other_tags"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
+            <%= render "preserved_fields", setting: @tracking_setting, except: %i[google_site_verification_token rd_station_enabled rd_station_loader_url] %>
+            <div>
+              <%= ax_field_label(f, :google_site_verification_token, text: "Google Search Console", tooltip: "Token usado na meta tag google-site-verification para validar propriedade do domínio.") %>
+              <%= f.text_field :google_site_verification_token, class: "ax-control", value: @tracking_setting.google_site_verification_token, placeholder: "Token de verificação", autocomplete: "off" %>
+            </div>
+            <%= ax_switch_field(form: f, method: :rd_station_enabled, label: "Ativar RD Station no site público", checked: @tracking_setting.rd_station_enabled?, checked_value: "true", unchecked_value: "false", input_html: { checked: @tracking_setting.rd_station_enabled? }) %>
+            <div>
+              <%= ax_field_label(f, :rd_station_loader_url, text: "URL do loader RD Station", tooltip: "Cole a URL oficial gerada pela RD Station em d335luupugsy2.cloudfront.net.") %>
+              <%= f.url_field :rd_station_loader_url, class: "ax-control", value: @tracking_setting.rd_station_loader_url, placeholder: "https://d335luupugsy2.cloudfront.net/js/loader-scripts/...-loader.js", autocomplete: "off" %>
+            </div>
+            <%= f.submit "Salvar outros rastreadores", class: "ax-btn ax-btn--primary" %>
           <% end %>
         <% end %>
       </div>

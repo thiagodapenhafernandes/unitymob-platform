@@ -26,11 +26,16 @@ class Admin::TrackingIntegrationsController < Admin::BaseController
       :google_tag_manager_enabled,
       :google_tag_manager_container_id,
       :meta_pixel_enabled,
-      :meta_pixel_id
+      :meta_pixel_id,
+      :google_ads_enabled,
+      :google_ads_conversion_id,
+      :google_site_verification_token,
+      :rd_station_enabled,
+      :rd_station_loader_url
     )
   end
 
   def active_tab
-    params[:tab].presence_in(%w[google_tag_manager meta_pixel]) || "google_tag_manager"
+    params[:tab].presence_in(%w[google_tag_manager meta_pixel google_ads other_tags]) || "google_tag_manager"
   end
 end

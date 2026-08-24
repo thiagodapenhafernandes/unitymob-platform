@@ -25,6 +25,7 @@ class Admin::BaseController < ApplicationController
   before_action :enforce_two_factor_setup!
   before_action :enforce_mirror_still_active!
   before_action :prevent_search_indexing
+  before_action :prevent_admin_page_cache
   around_action :measure_admin_page_render
   after_action :record_allowed_admin_access
   layout 'admin'
@@ -39,6 +40,12 @@ class Admin::BaseController < ApplicationController
 
   def prevent_search_indexing
     response.set_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
+  end
+
+  def prevent_admin_page_cache
+    response.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    response.set_header("Pragma", "no-cache")
+    response.set_header("Expires", "0")
   end
 
   def measure_admin_page_render
