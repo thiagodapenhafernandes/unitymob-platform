@@ -22,9 +22,14 @@
     <link rel="icon" type="image/png" sizes="512x512" href="<%= admin_icon_512_href %>">
     <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="turbo-cache-control" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= action_cable_meta_tag %>
+    <%= render 'layouts/pwa_service_worker' %>
     <%= render 'layouts/no_zoom' %>
     <%= render 'layouts/pwa_meta', theme_color: admin_theme[:header] %>
     <%
@@ -431,7 +436,6 @@
         sync();
       })();
     </script>
-    <%= render 'layouts/pwa_service_worker' %>
     <%= render 'layouts/admin_push_subscriptions' if current_admin_user %>
     <script>
       (function () {

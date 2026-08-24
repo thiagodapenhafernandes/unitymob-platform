@@ -1,11 +1,20 @@
 <% tracking_setting ||= TrackingIntegrationSetting.current %>
 <% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
 <% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
+<% google_ads_conversion_id = tracking_setting.normalized_google_ads_conversion_id %>
+<% google_site_verification_token = tracking_setting.normalized_google_site_verification_token %>
+<% rd_station_loader_url = tracking_setting.normalized_rd_station_loader_url %>
 <% tracking_requires_consent = !lgpd_consent_accepted? %>
 <% has_gtm = tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
 <% has_meta_pixel = tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
+<% has_google_ads = tracking_setting.google_ads_enabled? && google_ads_conversion_id.present? %>
+<% has_rd_station = tracking_setting.rd_station_enabled? && rd_station_loader_url.present? %>
 
-<% if has_gtm || has_meta_pixel %>
+<% if google_site_verification_token.present? %>
+  <meta name="google-site-verification" content="<%= google_site_verification_token %>">
+<% end %>
+
+<% if has_gtm || has_meta_pixel || has_google_ads || has_rd_station %>
   <script>
     (function(w,d){
       var COOKIE_KEY = "unitymob_lgpd_consent";
@@ -43,6 +52,14 @@
           loadScript("https://www.googletagmanager.com/gtm.js?id=<%= j gtm_container_id %>");
         <% end %>
 
+        <% if has_google_ads %>
+          w.dataLayer = w.dataLayer || [];
+          w.gtag = w.gtag || function(){ w.dataLayer.push(arguments); };
+          loadScript("https://www.googletagmanager.com/gtag/js?id=<%= j google_ads_conversion_id %>");
+          w.gtag("js", new Date());
+          w.gtag("config", "<%= j google_ads_conversion_id %>");
+        <% end %>
+
         <% if has_meta_pixel %>
           if (!w.fbq) {
             var fbq = w.fbq = function() {
@@ -57,6 +74,10 @@
           loadScript("https://connect.facebook.net/en_US/fbevents.js");
           w.fbq("init", "<%= j meta_pixel_id %>");
           w.fbq("track", "PageView");
+        <% end %>
+
+        <% if has_rd_station %>
+          loadScript("<%= j rd_station_loader_url %>");
         <% end %>
       }
 

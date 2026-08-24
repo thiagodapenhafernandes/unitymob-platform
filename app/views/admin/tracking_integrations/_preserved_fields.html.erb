@@ -1,0 +1,19 @@
+<%
+  except = Array(local_assigns.fetch(:except, [])).map(&:to_sym)
+  setting = local_assigns.fetch(:setting)
+  fields = {
+    google_tag_manager_enabled: setting.google_tag_manager_enabled? ? "true" : "false",
+    google_tag_manager_container_id: setting.google_tag_manager_container_id,
+    meta_pixel_enabled: setting.meta_pixel_enabled? ? "true" : "false",
+    meta_pixel_id: setting.meta_pixel_id,
+    google_ads_enabled: setting.google_ads_enabled? ? "true" : "false",
+    google_ads_conversion_id: setting.google_ads_conversion_id,
+    google_site_verification_token: setting.google_site_verification_token,
+    rd_station_enabled: setting.rd_station_enabled? ? "true" : "false",
+    rd_station_loader_url: setting.rd_station_loader_url
+  }
+%>
+
+<% fields.except(*except).each do |field, value| %>
+  <%= hidden_field_tag "tracking[#{field}]", value %>
+<% end %>
