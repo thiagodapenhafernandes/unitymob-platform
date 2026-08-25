@@ -42,6 +42,67 @@
         d.head.appendChild(script);
       }
 
+      function trackingPayload(eventName, payload) {
+        var data = payload || {};
+
+        return {
+          event: eventName,
+          event_category: data.event_category || "public_site",
+          event_label: data.event_label || data.label || "",
+          click_url: data.click_url || data.target_url || "",
+          page_url: data.page_url || w.location.href,
+          placement: data.placement || "",
+          component: data.component || "",
+          habitation_id: data.habitation_id || ""
+        };
+      }
+
+      function track(eventName, payload) {
+        if (!consentAccepted()) return false;
+
+        var data = trackingPayload(eventName, payload);
+        w.dataLayer = w.dataLayer || [];
+        w.dataLayer.push(data);
+
+        if (typeof w.fbq === "function") {
+          w.fbq("trackCustom", eventName, data);
+        }
+
+        return true;
+      }
+
+      function closestTrackedClick(target) {
+        return target && target.closest && target.closest(
+          "[data-tracking-event], [data-action*='lead-capture#open'], a[href*='wa.me/'], a[href*='api.whatsapp.com/send'], a[href^='whatsapp://send'], a[href='/contato'], a[href$='/contato']"
+        );
+      }
+
+      function eventNameForClick(target) {
+        if (target.dataset && target.dataset.trackingEvent) return target.dataset.trackingEvent;
+        if (target.matches("[data-action*='lead-capture#open'], a[href*='wa.me/'], a[href*='api.whatsapp.com/send'], a[href^='whatsapp://send']")) return "whatsapp_click";
+
+        var label = (target.textContent || target.getAttribute("aria-label") || target.getAttribute("title") || "").trim();
+        if (target.matches("a[href='/contato'], a[href$='/contato']") || /fale\s+conosco|contato/i.test(label)) return "contact_click";
+
+        return "";
+      }
+
+      function trackPublicClick(event) {
+        var target = closestTrackedClick(event.target);
+        if (!target) return;
+
+        var eventName = eventNameForClick(target);
+        if (!eventName) return;
+
+        track(eventName, {
+          event_label: target.dataset.trackingLabel || target.getAttribute("aria-label") || target.getAttribute("title") || target.textContent.trim(),
+          click_url: target.href || target.dataset.trackingUrl || "",
+          placement: target.dataset.trackingPlacement || "",
+          component: target.dataset.trackingComponent || "",
+          habitation_id: target.dataset.propertyId || target.dataset.habitationId || ""
+        });
+      }
+
       function loadTracking() {
         if (loaded || !consentAccepted()) return;
         loaded = true;
@@ -81,8 +142,9 @@
         <% end %>
       }
 
-      w.UnitymobTracking = { load: loadTracking };
+      w.UnitymobTracking = { load: loadTracking, track: track };
       loadTracking();
+      d.addEventListener("click", trackPublicClick, true);
       w.addEventListener("unitymob:lgpd-consent-accepted", loadTracking);
     })(window, document);
   </script>
