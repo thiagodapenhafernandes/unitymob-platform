@@ -31,6 +31,7 @@
     <%= stylesheet_link_tag "admin/components", media: "all" %>
     <%= stylesheet_link_tag "admin/captacao_wizard", media: "all" %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
+    <%= stylesheet_link_tag "pwa_bottom_nav", media: "all" %>
 
     <%# Fonte Inter self-hosted (antes Google Fonts) %>
     <%= stylesheet_link_tag "vendor/admin-fonts" %>
@@ -1432,7 +1433,7 @@
       }
     </style>
   </head>
-  <body>
+  <body class="ax-pwa-bottom-nav-body ax-pwa-bottom-nav-body--wizard">
     <nav class="admin-navbar d-none d-md-flex">
       <%
         wizard_site_name = @layout_setting&.site_name.presence || wizard_pwa_identity.brand_name
@@ -1463,6 +1464,7 @@
 
     <%= yield %>
     </div>
+    <%= render "admin/shared/pwa_bottom_nav" if current_admin_user %>
     <%= render 'layouts/pwa_service_worker' %>
   </body>
 </html>

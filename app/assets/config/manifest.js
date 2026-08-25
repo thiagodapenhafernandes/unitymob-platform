@@ -22,6 +22,7 @@
 //= link admin/habitations_catalog.css
 //= link admin/captacao_wizard.css
 //= link whatsapp_inbox_refresh.css
+//= link pwa_bottom_nav.css
 //= link public_habitations_index_refresh.css
 //= link public_habitations_show_refresh.css
 //= link public_development_show_refresh.css

@@ -1,7 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["body", "fileInput", "fileSummary", "fileName", "template", "modeLabel", "error", "submit", "presentationCard", "recordingBar", "recordTime", "recordPause", "recordPreview", "recordBars", "replyTo", "replyBar", "replyAuthor", "replySnippet"]
+  static targets = ["body", "fileInput", "fileSummary", "fileName", "template", "modeLabel", "error", "submit", "presentationCard", "recordingBar", "recordTime", "recordPause", "recordPreview", "recordBars", "replyTo", "replyBar", "replyAuthor", "replySnippet", "serviceWindowGate", "serviceWindowMessage", "serviceWindowAction"]
+  static values = {
+    conversationId: Number,
+    serviceWindowLocked: Boolean,
+    serviceWindowMessage: String,
+    serviceWindowTemplate: String
+  }
 
   connect() {
     this.submitting = false
@@ -25,6 +31,12 @@ export default class extends Controller {
   }
 
   fileChanged() {
+    if (this.serviceWindowLockedValue) {
+      this.clearFile()
+      this.showError(this.serviceWindowMessage)
+      return
+    }
+
     const file = this.fileInputTarget.files[0]
     if (!file) {
       this.hideSummary()
@@ -97,6 +109,11 @@ export default class extends Controller {
   // Preenche o composer com um cartão de apresentação (evento do
   // presentation-picker). NÃO envia: o corretor revisa e usa o Enviar normal.
   fillPresentation(event) {
+    if (this.serviceWindowLockedValue) {
+      this.showError(this.serviceWindowMessage)
+      return
+    }
+
     const { cardId, body } = event.detail || {}
     if (!body) return
 
@@ -109,6 +126,11 @@ export default class extends Controller {
   }
 
   fillExternalBody(event) {
+    if (this.serviceWindowLockedValue) {
+      this.showError(this.serviceWindowMessage)
+      return
+    }
+
     const { body } = event.detail || {}
     if (!body) return
 
@@ -129,6 +151,25 @@ export default class extends Controller {
     this.templateTarget.value = templateName
     this.templateChanged()
     this.element.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }
+
+  selectGateTemplate() {
+    if (!this.hasTemplateTarget || !this.serviceWindowTemplateValue) return
+
+    this.templateTarget.value = this.serviceWindowTemplateValue
+    this.templateChanged()
+  }
+
+  serviceWindowChanged(event) {
+    const detail = event.detail || {}
+    if (Number(detail.conversation_id) !== this.conversationIdValue) return
+
+    this.serviceWindowLockedValue = Boolean(detail.locked)
+    this.serviceWindowMessageValue = detail.message || ""
+    this.serviceWindowTemplateValue = detail.template_name || ""
+
+    if (!this.serviceWindowLockedValue) this.hideError()
+    this.refreshState()
   }
 
   submitOnEnter(event) {
@@ -160,6 +201,11 @@ export default class extends Controller {
     }
 
     const mode = this.hasSubmitTarget ? this.submitTarget.dataset.mode : "send"
+    if (this.serviceWindowLockedValue && !this.templateSelected) {
+      this.showError(this.serviceWindowMessage)
+      return
+    }
+
     if (mode === "mic") {
       this.startRecording()
       return
@@ -223,11 +269,13 @@ export default class extends Controller {
     const hasFile = this.fileInputTarget.files.length > 0
     const hasBody = this.bodyTarget.value.trim().length > 0
 
-    if (!hasTemplate && this.bodyTarget.disabled) {
+    if (!hasTemplate && this.bodyTarget.disabled && !this.serviceWindowLockedValue) {
       this.bodyTarget.disabled = false
       this.bodyTarget.placeholder = "Escreva uma mensagem..."
     }
     this.element.classList.toggle("is-template-selected", hasTemplate)
+    this.element.classList.toggle("is-service-window-locked", this.serviceWindowLockedValue)
+    this.syncServiceWindowGate()
 
     if (this.hasModeLabelTarget) {
       this.modeLabelTarget.textContent = this.submitting
@@ -236,14 +284,16 @@ export default class extends Controller {
           ? this.selectedTemplateModeLabel()
           : hasFile
             ? `${this.fileKind(this.fileInputTarget.files[0])} com legenda`
-            : "Mensagem livre"
+            : this.serviceWindowLockedValue
+              ? "Aguardando resposta"
+              : "Mensagem livre"
     }
 
     if (this.hasSubmitTarget) {
       const canSend = hasTemplate || hasFile || hasBody
       const mode = this.recording || canSend ? "send" : "mic"
       this.submitTarget.dataset.mode = mode
-      this.submitTarget.disabled = this.submitting
+      this.submitTarget.disabled = this.submitting || (this.serviceWindowLockedValue && !hasTemplate)
       this.submitTarget.classList.toggle("is-loading", this.submitting)
 
       const icon = this.submitTarget.querySelector("i")
@@ -255,6 +305,40 @@ export default class extends Controller {
       this.submitTarget.title = label
       this.submitTarget.setAttribute("aria-label", label)
     }
+  }
+
+  syncServiceWindowGate() {
+    const locked = this.serviceWindowLockedValue
+    const hasTemplate = this.templateSelected
+
+    if (this.hasServiceWindowGateTarget) {
+      this.serviceWindowGateTarget.classList.toggle("is-hidden", !locked)
+    }
+
+    if (this.hasServiceWindowMessageTarget) {
+      this.serviceWindowMessageTarget.textContent = this.serviceWindowMessage
+    }
+
+    this.bodyTarget.disabled = locked && !hasTemplate
+    if (locked && !hasTemplate) {
+      this.bodyTarget.value = ""
+      this.bodyTarget.placeholder = this.serviceWindowMessage || "Aguarde o cliente responder para liberar a conversa."
+      this.clearReply()
+    } else if (!hasTemplate && this.bodyTarget.placeholder !== "Escreva uma mensagem...") {
+      this.bodyTarget.placeholder = "Escreva uma mensagem..."
+    }
+
+    this.element.querySelectorAll(".wa-inbox-composer__tool").forEach((button) => {
+      button.disabled = locked
+    })
+  }
+
+  get serviceWindowMessage() {
+    return this.serviceWindowMessageValue || "Aguarde o cliente responder para liberar a conversa."
+  }
+
+  get templateSelected() {
+    return this.hasTemplateTarget && this.templateTarget.value.length > 0
   }
 
   selectedTemplateReadyLabel() {

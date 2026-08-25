@@ -47,6 +47,7 @@ module Whatsapp
           ActionCable.server.broadcast(
             stream_name(conversation, focus_mode: focus_mode),
             base_payload.merge(
+              composer_gate: composer_gate_payload(conversation),
               context_fragments: shared_fragments.merge(
                 crm_copy_html: crm_copy_html(snapshot, focus_mode: focus_mode)
               )
@@ -181,6 +182,18 @@ module Whatsapp
               thread_actions_summary: snapshot[:thread_actions_summary]
             }
           )
+        }
+      end
+
+      def composer_gate_payload(conversation)
+        gate = Whatsapp::ServiceWindowGuard.call(conversation:)
+
+        {
+          conversation_id: conversation.id,
+          locked: gate.locked?,
+          message: gate.message.to_s,
+          template_name: gate.template_name.to_s,
+          action_label: gate.action_label.to_s
         }
       end
 

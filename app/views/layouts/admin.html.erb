@@ -70,6 +70,7 @@
     <%= stylesheet_link_tag "habitations_form_refresh", media: "all" %>
     <%= stylesheet_link_tag "admin/components/media_modal", media: "all" %>
     <%= stylesheet_link_tag "whatsapp_inbox_refresh", media: "all" %>
+    <%= stylesheet_link_tag "pwa_bottom_nav", media: "all" %>
     <%# Toast compartilhado (mesma identidade em todo o sistema) %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
     <%# Tema white-label da plataforma interna, independente dos tokens do site público. %>
@@ -268,10 +269,11 @@
   <% distribution_rule_editor_workspace = controller_name == 'distribution_rules' && %w[new edit].include?(action_name) %>
   <% webhook_settings_workspace = controller_name == 'webhook_settings' && %w[index new edit].include?(action_name) %>
   <% scheduling_settings_workspace = controller_name == 'scheduling_integrations' && action_name == 'show' %>
+  <% captacoes_workspace = %w[captacoes habitation_intakes].include?(controller_name) %>
   <% whatsapp_workspace = controller_name == 'whatsapp_inbox' %>
   <% whatsapp_focus_workspace = whatsapp_workspace && params[:workspace].to_s == 'focus' %>
   <% admin_metrics = admin_page_render_metrics %>
-  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-form-workspace' if habitation_form_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %> <%= 'ax-scheduling-settings-workspace' if scheduling_settings_workspace %> <%= 'ax-whatsapp-workspace' if whatsapp_workspace %> <%= 'ax-whatsapp-focus-workspace' if whatsapp_focus_workspace %>"
+  <body class="ax-app admin-layout <%= 'ax-pwa-bottom-nav-body' if current_admin_user && current_tenant && !whatsapp_focus_workspace %> <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-form-workspace' if habitation_form_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-captacoes-workspace' if captacoes_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %> <%= 'ax-scheduling-settings-workspace' if scheduling_settings_workspace %> <%= 'ax-whatsapp-workspace' if whatsapp_workspace %> <%= 'ax-whatsapp-focus-workspace' if whatsapp_focus_workspace %>"
         data-controller="ax-drawer admin-navigation"
         data-admin-render-ms="<%= admin_metrics[:duration_ms] %>"
         data-admin-render-page="<%= admin_metrics[:page] %>">
@@ -423,6 +425,7 @@
     </div>
 
     <%= render "admin/habitations/media/modal_shell" %>
+    <%= render "admin/shared/pwa_bottom_nav" if current_admin_user && !whatsapp_focus_workspace %>
     
     <div id="admin-offline-banner" class="ax-admin-offline-banner" hidden>
       <i class="bi bi-wifi-off"></i> Sem conexão — suas ações podem não ser salvas até a internet voltar.
