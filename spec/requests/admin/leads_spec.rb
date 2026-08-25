@@ -25,11 +25,14 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Divergência")
       expect(response.body).to include("qualification_divergence")
       expect(response.body).to include("admin-push-banner")
-      expect(response.body).to include("<details class=\"lead-filter-collapse\">")
-      expect(response.body).not_to include("<details class=\"lead-filter-collapse\" open")
       expect(response.body).to include("Filtros do funil")
       document = Nokogiri::HTML(response.body)
       expect(document.css("section.ax-filter-form.ax-leads-filters").size).to eq(1)
+      filter_details = document.at_css("details.lead-filter-collapse")
+      expect(filter_details).to be_present
+      expect(filter_details["open"]).to be_nil
+      expect(filter_details["data-controller"]).to eq("persistent-details")
+      expect(filter_details["data-persistent-details-key-value"]).to eq("admin.leads.filterCollapse")
       expect(document.at_css('button[data-ax-modal-open="#leadPipelineCreateModal"]')).to be_present
       expect(document.at_css('button[data-ax-modal-open="#leadStatusBoardModal"]')).to be_present
       expect(document.at_css('a.ax-nav__link[href="/admin/leads?view=list"]')).to be_present
@@ -50,10 +53,10 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(edit_modal_html).to include("O lead precisa estar naquela etapa")
       expect(edit_modal_html).to include("kind: task_created")
       expect(edit_modal_html).to include("Sem ação do responsável")
-      expect(edit_modal_html).to include("Nome do funil", "Tipo de funil")
+      expect(edit_modal_html).to include("Nome do funil", "Tipo de negócio")
       expect(create_modal_html).to include("Nome da etapa", "Subtítulo", "Tipo da etapa")
       expect(create_modal_html).to include("Nome visível no funil", "Classificação interna usada")
-      expect(create_modal_html).to include("Define a operação do funil")
+      expect(create_modal_html).to include("Use Venda ou Locação")
       expect(document.at_css("details.lead-filter-collapse .ax-leads-filter-overlay")).to be_nil
       expect(document.at_css("details.lead-filter-collapse ~ .ax-leads-filter-overlay")).to be_present
       lead_card_url = document.at_css("article.lead-kanban-card[data-lead-url]")["data-lead-url"]
@@ -571,7 +574,11 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_present
       expect(pwa_detail.at_css("turbo-frame##{ActionView::RecordIdentifier.dom_id(lead, :pwa_interest_intelligence)}")).to be_present
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
-      expect(document.at_css(".lead-show-workspace .ax-workspace-heading")).to be_present
+      desktop_heading = document.at_css(".lead-show-workspace .ax-workspace-heading")
+      expect(desktop_heading).to be_present
+      expect(desktop_heading.text).to include("Transferir", "Favoritar", "Histórico")
+      expect(desktop_heading.at_css("button[data-action='ax-modal#open']")).to be_present
+      expect(desktop_heading.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
     end
   end
 

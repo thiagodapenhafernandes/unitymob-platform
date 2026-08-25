@@ -3,6 +3,8 @@ class Admin::LeadsController < Admin::BaseController
   KANBAN_COLUMN_PAGE_SIZE = 5
   # Lista PWA de leads: carrega em lotes por aba (scroll infinito).
   PWA_LEAD_LIST_PAGE_SIZE = 15
+  # Kanban PWA: mostra um recorte curto por etapa para manter a navegação leve.
+  PWA_LEAD_KANBAN_COLUMN_SIZE = 5
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
   CONTACT_ACTIVITY_KINDS = %w[
@@ -150,7 +152,7 @@ class Admin::LeadsController < Admin::BaseController
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
     load_pwa_leads_context(stats_scope)
-    property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a).filter_map(&:property_id).uniq
+    property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a + @pwa_kanban_leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @kanban_leads.first || @leads.first
     @page_title = "Gerenciar Leads"
@@ -1650,7 +1652,41 @@ class Admin::LeadsController < Admin::BaseController
                  .order(updated_at: :desc, created_at: :desc)
                  .limit(PWA_LEAD_LIST_PAGE_SIZE)
                  .to_a
-    load_pwa_lead_activity_context(@pwa_leads)
+    load_pwa_kanban_context(base_scope)
+    load_pwa_lead_activity_context((@pwa_leads + @pwa_kanban_leads).uniq)
+  end
+
+  def load_pwa_kanban_context(base_scope)
+    pwa_tab_scope = pwa_lead_scope_for_tab(base_scope, "all")
+    @pwa_kanban_statuses = lead_statuses_for_kanban(pwa_tab_scope)
+    @pwa_kanban_leads_by_status = @pwa_kanban_statuses.index_with { [] }
+    @pwa_kanban_counts_by_status = Hash.new(0)
+    @pwa_kanban_total_count = pwa_tab_scope.reorder(nil).count
+
+    pwa_tab_scope.reorder(nil).group(:status).count.each do |status, count|
+      status = Lead.status_value(status)
+      next if @selected_pipeline.present? && !@pwa_kanban_leads_by_status.key?(status)
+
+      @pwa_kanban_counts_by_status[status] += count
+    end
+    @pwa_kanban_statuses.each { |status| @pwa_kanban_counts_by_status[status] ||= 0 }
+
+    ranked = pwa_tab_scope.reorder(nil).select(
+      "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.updated_at DESC, leads.created_at DESC) AS pwa_kanban_rank"
+    )
+    @pwa_kanban_leads = Lead.from(ranked, :leads)
+                            .where("pwa_kanban_rank <= ?", PWA_LEAD_KANBAN_COLUMN_SIZE)
+                            .includes(:admin_user, lead_labelings: :lead_label)
+                            .order(updated_at: :desc, created_at: :desc)
+                            .to_a
+    @pwa_kanban_leads.each do |lead|
+      status = Lead.status_value(lead.status)
+      next if @selected_pipeline.present? && !@pwa_kanban_leads_by_status.key?(status)
+
+      @pwa_kanban_leads_by_status[status] ||= []
+      @pwa_kanban_leads_by_status[status] << lead
+    end
+    @pwa_kanban_column_size = PWA_LEAD_KANBAN_COLUMN_SIZE
   end
 
   def pwa_lead_scope_for_tab(base_scope, tab)

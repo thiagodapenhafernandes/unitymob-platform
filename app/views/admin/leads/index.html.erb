@@ -457,6 +457,8 @@
 
   @media (max-width: 767.98px) {
     body.ax-app .ax-navbar,
+    body.ax-app .ax-sidebar,
+    body.ax-app .ax-sidebar-shell,
     body.ax-app .ax-sidebar-contextbar,
     body.ax-app .ax-contextbar {
       display: none !important;
@@ -491,6 +493,10 @@
       margin: 0;
       padding: var(--lead-pwa-head-height) 8px calc(76px + env(safe-area-inset-bottom, 0px));
       background: var(--lead-pwa-bg);
+    }
+
+    .lead-pwa-screen--kanban {
+      --lead-pwa-head-height: calc(101px + env(safe-area-inset-top, 0px));
     }
 
     html[data-admin-theme="dark"] .lead-pwa-screen {
@@ -540,7 +546,7 @@
 
     .lead-pwa-topbar {
       display: grid;
-      grid-template-columns: 36px minmax(0, 1fr) 36px;
+      grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
       gap: 7px;
       align-items: center;
     }
@@ -602,7 +608,8 @@
       opacity: .72;
     }
 
-    .lead-pwa-filter {
+    .lead-pwa-filter,
+    .lead-pwa-view-toggle {
       position: relative;
       display: inline-grid;
       place-items: center;
@@ -614,6 +621,16 @@
       color: var(--lead-pwa-muted);
       font-size: 16px;
       box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .lead-pwa-view-toggle {
+      text-decoration: none;
+    }
+
+    .lead-pwa-view-toggle.is-active {
+      border-color: color-mix(in srgb, var(--lead-pwa-primary) 48%, var(--lead-pwa-line));
+      background: var(--lead-pwa-primary-soft);
+      color: var(--lead-pwa-primary);
     }
 
     .lead-pwa-filter__badge {
@@ -649,6 +666,10 @@
 
     .lead-pwa-tabs::-webkit-scrollbar { display: none; }
 
+    .lead-pwa-tabs--kanban {
+      grid-auto-columns: minmax(76px, 88px);
+    }
+
     .lead-pwa-tab {
       position: relative;
       display: grid;
@@ -657,6 +678,8 @@
       gap: 1px;
       min-height: 44px;
       padding: 2px 3px 5px;
+      border: 0;
+      background: transparent;
       color: var(--lead-pwa-muted);
       font-size: 10px;
       font-weight: 800;
@@ -665,10 +688,37 @@
       white-space: nowrap;
     }
 
+    .lead-pwa-tabs--kanban .lead-pwa-tab {
+      min-height: 52px;
+      padding-right: 2px;
+      padding-left: 2px;
+    }
+
+    .lead-pwa-tabs--kanban .lead-pwa-tab i {
+      color: var(--lead-pwa-stage-color, var(--lead-pwa-primary));
+    }
+
+    .lead-pwa-tabs--kanban .lead-pwa-tab.is-active {
+      color: color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 72%, var(--lead-pwa-ink));
+    }
+
+    .lead-pwa-tabs--kanban .lead-pwa-tab.is-active i {
+      border-radius: 999px;
+      background: var(--lead-pwa-stage-color, var(--lead-pwa-primary));
+      color: var(--lead-pwa-stage-color, var(--lead-pwa-primary));
+    }
+
     .lead-pwa-tab i {
       color: var(--lead-pwa-muted);
       font-size: 18px;
       line-height: 1;
+    }
+
+    .lead-pwa-tab small {
+      display: grid;
+      justify-items: center;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .lead-pwa-tab__label,
@@ -678,9 +728,26 @@
       line-height: 1.05;
     }
 
+    .lead-pwa-tabs--kanban .lead-pwa-tab__label {
+      display: -webkit-box;
+      overflow: hidden;
+      max-width: 72px;
+      min-height: 20px;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
     .lead-pwa-tab__label {
       font-size: 10px;
       font-weight: 850;
+    }
+
+    .lead-pwa-tabs--kanban .lead-pwa-tab__label {
+      font-size: 9px;
     }
 
     .lead-pwa-tab__count {
@@ -737,6 +804,145 @@
       font-size: 12px;
       font-weight: 800;
       box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .lead-pwa-kanban {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      padding-top: 10px;
+    }
+
+    .lead-pwa-kanban__summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 2px;
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .lead-pwa-kanban__summary strong {
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 15px;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-kanban__columns {
+      --lead-pwa-kanban-column-width: min(84vw, 340px);
+      display: flex;
+      gap: 9px;
+      overflow-x: auto;
+      margin: 0 -8px;
+      padding: 0 max(8px, calc((100vw - var(--lead-pwa-kanban-column-width)) / 2)) 8px;
+      scroll-padding-inline: max(8px, calc((100vw - var(--lead-pwa-kanban-column-width)) / 2));
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+    }
+
+    .lead-pwa-kanban__columns::-webkit-scrollbar {
+      display: none;
+    }
+
+    .lead-pwa-kanban-column {
+      display: grid;
+      align-content: start;
+      flex: 0 0 var(--lead-pwa-kanban-column-width);
+      gap: 8px;
+      min-width: 0;
+      min-height: 174px;
+      padding: 9px;
+      border: 1px solid color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-line)) 30%, var(--lead-pwa-line));
+      border-top-width: 4px;
+      border-radius: 12px;
+      background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 8%, var(--lead-pwa-surface)) 0%,
+        color-mix(in srgb, var(--lead-pwa-surface-soft) 76%, var(--lead-pwa-surface)) 42%
+      );
+      scroll-snap-align: center;
+    }
+
+    .lead-pwa-kanban-column__head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+    }
+
+    .lead-pwa-kanban-column.is-active {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 24%, transparent), 0 8px 18px rgba(15, 23, 42, .07);
+    }
+
+    .lead-pwa-kanban-column__head strong {
+      overflow: hidden;
+      color: color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-ink)) 32%, var(--lead-pwa-ink));
+      font-size: 13px;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-kanban-column__count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 12%, var(--lead-pwa-surface));
+      color: color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-muted)) 52%, var(--lead-pwa-muted));
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .lead-pwa-kanban-column__cards {
+      display: grid;
+      gap: 8px;
+    }
+
+    .lead-pwa-kanban .lead-pwa-card {
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, .045);
+    }
+
+    .lead-pwa-card--restored {
+      outline: 3px solid color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 42%, transparent);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 12%, transparent), 0 8px 20px rgba(15, 23, 42, .12);
+    }
+
+    .lead-pwa-kanban .lead-pwa-card__head {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .lead-pwa-kanban .lead-pwa-card__deal {
+      display: none;
+    }
+
+    .lead-pwa-kanban__more,
+    .lead-pwa-kanban__empty {
+      display: grid;
+      place-items: center;
+      min-height: 72px;
+      padding: 8px 10px;
+      border: 1px dashed var(--lead-pwa-line);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--lead-pwa-surface) 70%, transparent);
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      text-decoration: none;
     }
 
     .lead-pwa-card {
@@ -1586,13 +1792,13 @@
             <span class="lead-pwa-filter-panel__subtitle"><%= lead_active_filter_count %> filtro<%= lead_active_filter_count > 1 ? "s" : "" %> aplicado<%= lead_active_filter_count > 1 ? "s" : "" %></span>
           <% end %>
         </div>
-        <%= link_to admin_leads_path(view: "list", mobile_tab: @pwa_lead_tab), class: "lead-pwa-filter-panel__reset", aria: { label: "Limpar filtros" } do %>
+        <%= link_to admin_leads_path(view: @view_mode, mobile_tab: @pwa_lead_tab), class: "lead-pwa-filter-panel__reset", aria: { label: "Limpar filtros" } do %>
           <i class="bi bi-arrow-counterclockwise"></i>
         <% end %>
       </div>
 
       <%= form_with url: admin_leads_path, method: :get, local: true, class: "lead-pwa-filter-panel__form" do |f| %>
-        <%= f.hidden_field :view, value: "list" %>
+        <%= f.hidden_field :view, value: @view_mode %>
         <%= f.hidden_field :mobile_tab, value: @pwa_lead_tab %>
         <%= f.hidden_field :q, value: @q if @q.present? %>
         <%= f.hidden_field :lead_pipeline_id, value: @selected_pipeline&.id if @selected_pipeline.present? %>
@@ -1708,7 +1914,15 @@
 
 <div class="ax-leads-mobile-shell tw-flex tw-flex-col tw-gap-3"
      data-controller="lead-pwa-filter">
-  <section class="lead-pwa-screen" aria-label="Leads no PWA">
+  <section class="lead-pwa-screen <%= 'lead-pwa-screen--kanban' if @view_mode == 'kanban' %>"
+           aria-label="Leads no PWA"
+           data-controller="<%= 'lead-pwa-kanban' if @view_mode == 'kanban' %>">
+    <%
+      pwa_kanban_active = @view_mode == "kanban"
+      pwa_toggle_path = admin_leads_path(lead_query_params.merge(view: (pwa_kanban_active ? "list" : "kanban"), mobile_tab: (pwa_kanban_active ? @pwa_lead_tab : "all"), page: nil).compact)
+      pwa_toggle_icon = pwa_kanban_active ? "list-ul" : "kanban"
+      pwa_toggle_label = pwa_kanban_active ? "Ver em lista" : "Ver em Kanban"
+    %>
     <div class="lead-pwa-sticky-head">
       <div class="lead-pwa-topbar">
         <%= link_to admin_distribution_rules_path, class: "lead-pwa-queue", title: "Ver fila de distribuição" do %>
@@ -1718,7 +1932,7 @@
 
         <%= form_with url: admin_leads_path, method: :get, class: "lead-pwa-search", local: true do |f| %>
           <i class="bi bi-search" aria-hidden="true"></i>
-          <%= f.hidden_field :view, value: "list" %>
+          <%= f.hidden_field :view, value: @view_mode %>
           <%= f.hidden_field :mobile_tab, value: @pwa_lead_tab %>
           <%= f.search_field :q, value: @q, placeholder: "Busque por nome, telefone...", autocomplete: "off", aria: { label: "Buscar leads" } %>
         <% end %>
@@ -1735,68 +1949,149 @@
             <span class="lead-pwa-filter__badge"><%= lead_active_filter_count %></span>
           <% end %>
         </button>
+
+        <%= link_to pwa_toggle_path,
+                    class: "lead-pwa-view-toggle #{'is-active' if pwa_kanban_active}",
+                    aria: { label: pwa_toggle_label },
+                    title: pwa_toggle_label do %>
+          <i class="bi bi-<%= pwa_toggle_icon %>" aria-hidden="true"></i>
+        <% end %>
       </div>
 
-      <nav class="lead-pwa-tabs" aria-label="Abas de leads">
-        <%
-          pwa_tab_items = [
-            ["todo", "A fazer", "house-door"],
-            ["visits", "Visitas", "bullseye"],
-            ["future", "Futuras", "clock"],
-            ["favorites", "Favoritos", "star"],
-            ["all", "Todos", "archive"]
-          ]
-        %>
-        <% pwa_tab_items.each do |key, label, icon| %>
-          <% tab_path = admin_leads_path(lead_query_params.merge(view: "list", mobile_tab: key, page: nil).compact) %>
-          <%= link_to tab_path, class: "lead-pwa-tab #{'is-active' if @pwa_lead_tab == key}" do %>
-            <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
-            <small>
-              <span class="lead-pwa-tab__label"><%= label %></span>
-              <span class="lead-pwa-tab__count"><%= number_with_delimiter(@pwa_tab_counts.fetch(key, 0)) %></span>
-            </small>
+      <nav class="lead-pwa-tabs <%= 'lead-pwa-tabs--kanban' if pwa_kanban_active %>" aria-label="<%= pwa_kanban_active ? 'Etapas do funil' : 'Abas de leads' %>">
+        <% if pwa_kanban_active %>
+          <% @pwa_kanban_statuses.each do |status| %>
+            <%
+              status_anchor = "pwa-kanban-status-#{status.to_s.parameterize}"
+              status_color = @lead_stage_color_by_status&.[](status)
+              status_style = status_color.present? ? "--lead-pwa-stage-color: #{status_color};" : nil
+            %>
+            <button type="button"
+                    class="lead-pwa-tab"
+                    style="<%= status_style %>"
+                    data-action="lead-pwa-kanban#focusColumn"
+                    data-lead-pwa-kanban-column-id="<%= status_anchor %>">
+              <i class="bi bi-circle" aria-hidden="true"></i>
+              <small>
+                <span class="lead-pwa-tab__label"><%= status %></span>
+                <span class="lead-pwa-tab__count"><%= number_with_delimiter(@pwa_kanban_counts_by_status.fetch(status, 0)) %></span>
+              </small>
+            </button>
+          <% end %>
+        <% else %>
+          <%
+            pwa_tab_items = [
+              ["todo", "A fazer", "house-door"],
+              ["visits", "Visitas", "bullseye"],
+              ["future", "Futuras", "clock"],
+              ["favorites", "Favoritos", "star"],
+              ["all", "Todos", "archive"]
+            ]
+          %>
+          <% pwa_tab_items.each do |key, label, icon| %>
+            <% tab_path = admin_leads_path(lead_query_params.merge(view: @view_mode, mobile_tab: key, page: nil).compact) %>
+            <%= link_to tab_path, class: "lead-pwa-tab #{'is-active' if @pwa_lead_tab == key}" do %>
+              <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+              <small>
+                <span class="lead-pwa-tab__label"><%= label %></span>
+                <span class="lead-pwa-tab__count"><%= number_with_delimiter(@pwa_tab_counts.fetch(key, 0)) %></span>
+              </small>
+            <% end %>
           <% end %>
         <% end %>
       </nav>
     </div>
 
-    <div class="lead-pwa-list"
-         role="list"
-         data-controller="lead-pwa-infinite-scroll"
-         data-lead-pwa-infinite-scroll-url-value="<%= pwa_leads_page_admin_leads_path(lead_query_params.merge(mobile_tab: @pwa_lead_tab, page: nil).compact) %>">
-      <% if @pwa_leads.any? %>
-        <%= render partial: "admin/leads/pwa_lead_card", collection: @pwa_leads, as: :lead %>
-        <%
-          pwa_loaded_count = @pwa_leads.size
-          pwa_total_count = @pwa_tab_counts.fetch(@pwa_lead_tab, pwa_loaded_count)
-          pwa_has_more = pwa_loaded_count < pwa_total_count
-        %>
-        <%= tag.div(
-              class: "lead-pwa-list__loader",
-              hidden: !pwa_has_more,
-              data: {
-                lead_pwa_infinite_scroll_target: "loader",
-                offset: pwa_loaded_count,
-                has_more: pwa_has_more
-              }
-            ) do %>
-          <span class="lead-pwa-list__loader-pill">
-            <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
-            Carregando mais leads
-          </span>
-        <% end %>
-      <% else %>
-        <div class="lead-pwa-empty">
-          <% if @pwa_lead_tab == "favorites" %>
-            <strong>Nenhum favorito ainda</strong>
-            <span>Abra um lead e toque na estrela para manter ele nesta aba.</span>
-          <% else %>
-            <strong>Nenhum lead nesta aba</strong>
-            <span>Ajuste os filtros ou volte em Todos para ver sua carteira completa.</span>
-          <% end %>
+    <% if pwa_kanban_active %>
+      <div class="lead-pwa-kanban" aria-label="Kanban dos meus leads">
+        <div class="lead-pwa-kanban__summary">
+          <strong>Kanban dos leads</strong>
+          <span><%= number_with_delimiter(@pwa_kanban_total_count.to_i) %> no funil</span>
         </div>
-      <% end %>
-    </div>
+
+        <% if @pwa_kanban_statuses.any? %>
+          <div class="lead-pwa-kanban__columns"
+               role="list"
+               data-lead-pwa-kanban-target="columns"
+               data-action="scroll->lead-pwa-kanban#syncActiveFromScroll">
+            <% @pwa_kanban_statuses.each do |status| %>
+              <%
+                column_leads = @pwa_kanban_leads_by_status.fetch(status, [])
+                column_total = @pwa_kanban_counts_by_status.fetch(status, column_leads.size)
+                column_anchor = "pwa-kanban-status-#{status.to_s.parameterize}"
+                column_color = @lead_stage_color_by_status&.[](status)
+                column_style = column_color.present? ? "--lead-pwa-stage-color: #{column_color};" : nil
+              %>
+              <section id="<%= column_anchor %>"
+                       class="lead-pwa-kanban-column"
+                       style="<%= column_style %>"
+                       role="listitem"
+                       aria-label="Etapa <%= status %>">
+                <header class="lead-pwa-kanban-column__head">
+                  <strong><%= status %></strong>
+                  <span class="lead-pwa-kanban-column__count"><%= number_with_delimiter(column_total) %></span>
+                </header>
+                <div class="lead-pwa-kanban-column__cards" role="list">
+                  <% if column_leads.any? %>
+                    <%= render partial: "admin/leads/pwa_lead_card", collection: column_leads, as: :lead %>
+                    <% if column_total > column_leads.size %>
+                      <div class="lead-pwa-kanban__more">
+                        Mostrando <%= column_leads.size %> de <%= number_with_delimiter(column_total) %>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="lead-pwa-kanban__empty">Sem leads nesta etapa</div>
+                  <% end %>
+                </div>
+              </section>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="lead-pwa-empty">
+            <strong>Nenhum lead no Kanban</strong>
+            <span>Ajuste os filtros ou volte em Todos para ver sua carteira completa.</span>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="lead-pwa-list"
+           role="list"
+           data-controller="lead-pwa-infinite-scroll"
+           data-lead-pwa-infinite-scroll-url-value="<%= pwa_leads_page_admin_leads_path(lead_query_params.merge(view: "list", mobile_tab: @pwa_lead_tab, page: nil).compact) %>">
+        <% if @pwa_leads.any? %>
+          <%= render partial: "admin/leads/pwa_lead_card", collection: @pwa_leads, as: :lead %>
+          <%
+            pwa_loaded_count = @pwa_leads.size
+            pwa_total_count = @pwa_tab_counts.fetch(@pwa_lead_tab, pwa_loaded_count)
+            pwa_has_more = pwa_loaded_count < pwa_total_count
+          %>
+          <%= tag.div(
+                class: "lead-pwa-list__loader",
+                hidden: !pwa_has_more,
+                data: {
+                  lead_pwa_infinite_scroll_target: "loader",
+                  offset: pwa_loaded_count,
+                  has_more: pwa_has_more
+                }
+              ) do %>
+            <span class="lead-pwa-list__loader-pill">
+              <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+              Carregando mais leads
+            </span>
+          <% end %>
+        <% else %>
+          <div class="lead-pwa-empty">
+            <% if @pwa_lead_tab == "favorites" %>
+              <strong>Nenhum favorito ainda</strong>
+              <span>Abra um lead e toque na estrela para manter ele nesta aba.</span>
+            <% else %>
+              <strong>Nenhum lead nesta aba</strong>
+              <span>Ajuste os filtros ou volte em Todos para ver sua carteira completa.</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
 
     <%= link_to new_admin_lead_path, class: "lead-pwa-fab" do %>
       <i class="bi bi-plus" aria-hidden="true"></i>
@@ -1825,7 +2120,11 @@
     <%= lead_list_summary %>
   <% end %>
 
-  <details class="lead-filter-collapse"<%= " open" if lead_active_filter_count.positive? %>>
+  <details class="lead-filter-collapse"
+           data-controller="persistent-details"
+           data-persistent-details-key-value="admin.leads.filterCollapse"
+           data-action="toggle->persistent-details#save"
+           <%= "open" if lead_active_filter_count.positive? %>>
     <summary class="lead-filter-collapse__summary">
       <span class="lead-filter-collapse__summary-main">
         <i class="bi bi-funnel"></i>

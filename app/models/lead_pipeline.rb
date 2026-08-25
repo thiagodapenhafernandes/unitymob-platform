@@ -5,7 +5,7 @@ class LeadPipeline < ApplicationRecord
     "sale" => "Venda",
     "rental" => "Locação",
     "mixed" => "Venda e locação",
-    "custom" => "Personalizado"
+    "custom" => "Sem tipo específico"
   }.freeze
 
   DEFAULT_STAGE_DEFINITIONS = [

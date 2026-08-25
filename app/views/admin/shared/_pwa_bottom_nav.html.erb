@@ -13,6 +13,8 @@
   current_controller_name = controller_name.to_s
   current_path = request.path
   pwa_tenant_context = respond_to?(:current_tenant) && current_tenant.present?
+  pwa_leads_view_mode = current_admin_user&.leads_view_mode.to_s.presence_in(%w[kanban list]) || "list"
+  pwa_leads_mobile_tab = pwa_leads_view_mode == "kanban" ? "all" : "todo"
 
   pwa_nav_items = [
     {
@@ -25,7 +27,7 @@
     {
       label: "Leads",
       icon: "house-door",
-      path: admin_leads_path(view: "list", mobile_tab: "todo"),
+      path: admin_leads_path(view: pwa_leads_view_mode, mobile_tab: pwa_leads_mobile_tab),
       visible: can_access_pwa_nav.call(:view, :leads),
       active: current_controller_name == "leads"
     },
