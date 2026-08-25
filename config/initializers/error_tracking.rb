@@ -36,24 +36,43 @@ module ErrorTracking
   # Rails.application.config.filter_parameters) + tenant/usuário de Current.
   def request_context(env)
     request = ActionDispatch::Request.new(env)
+    filtered = parameter_filter.filter(request.filtered_parameters)
     {
-      # filtered_path (e não fullpath): a query string passa pela mesma lista
-      # do filter_parameters — sem isso, reset_password_token e afins iriam
-      # em texto plano pro banco e pra tela de erros.
-      path: request.filtered_path.to_s[0, 300],
+      # A query string passa por filter_parameters — sem isso,
+      # reset_password_token e afins iriam em texto plano pro banco e pra tela.
+      request_id: request.request_id,
+      path: filtered_path(request).to_s[0, 300],
       method: request.request_method,
-      params: filtered_params(request),
+      controller: filtered["controller"],
+      action: filtered["action"],
+      format: request.format&.ref,
+      params: filtered_params(filtered),
       admin_user_id: Current.admin_user&.id,
-      tenant_id: Current.tenant&.id
+      tenant_id: Current.tenant&.id,
+      ip: request.remote_ip,
+      user_agent: request.user_agent.to_s[0, 300],
+      referer: request.referer.to_s[0, 300]
     }.compact
   rescue StandardError
     {}
   end
 
-  def filtered_params(request)
-    request.filtered_parameters.except("controller", "action")
+  def filtered_params(filtered_parameters)
+    filtered_parameters.except("controller", "action")
   rescue StandardError
     {}
+  end
+
+  def filtered_path(request)
+    query = parameter_filter.filter(request.query_parameters)
+    query_string = Rack::Utils.build_nested_query(query)
+    query_string.present? ? "#{request.path}?#{query_string}" : request.path
+  rescue StandardError
+    request.filtered_path
+  end
+
+  def parameter_filter
+    @parameter_filter ||= ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
   end
 
   # Assinante do Rails.error (ActiveSupport::ErrorReporter). handled: true

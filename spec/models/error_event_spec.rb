@@ -90,4 +90,41 @@ RSpec.describe ErrorEvent, type: :model do
       }.not_to change(described_class, :count)
     end
   end
+
+  describe "ErrorTracking.request_context" do
+    it "inclui identificadores úteis da request e mantém parâmetros filtrados" do
+      Current.admin_user = Struct.new(:id).new(123)
+      Current.tenant = Struct.new(:id).new(72)
+
+      env = Rack::MockRequest.env_for(
+        "/admin/leads/6341?password=secret&view=list",
+        "REQUEST_METHOD" => "GET",
+        "REMOTE_ADDR" => "203.0.113.10",
+        "HTTP_USER_AGENT" => "RSpec Browser",
+        "HTTP_REFERER" => "https://app.conexaobc.com/admin/leads",
+        "action_dispatch.request_id" => "req-6341"
+      )
+      env["action_dispatch.request.path_parameters"] = {
+        "controller" => "admin/leads",
+        "action" => "show",
+        "id" => "6341"
+      }
+
+      context = ErrorTracking.request_context(env)
+
+      expect(context).to include(
+        request_id: "req-6341",
+        path: "/admin/leads/6341?password=%5BFILTERED%5D&view=list",
+        method: "GET",
+        controller: "admin/leads",
+        action: "show",
+        admin_user_id: 123,
+        tenant_id: 72,
+        user_agent: "RSpec Browser",
+        referer: "https://app.conexaobc.com/admin/leads"
+      )
+      expect(context[:params]).to include("id" => "6341", "view" => "list", "password" => "[FILTERED]")
+      expect(context[:params]).not_to include("controller", "action")
+    end
+  end
 end

@@ -28,6 +28,7 @@ class Admin::BaseController < ApplicationController
   before_action :enforce_mirror_still_active!
   before_action :prevent_search_indexing
   before_action :prevent_admin_page_cache
+  around_action :track_unhandled_admin_exception
   around_action :measure_admin_page_render
   after_action :record_allowed_admin_access
   layout 'admin'
@@ -52,6 +53,67 @@ class Admin::BaseController < ApplicationController
 
     reset_session
     redirect_to new_admin_user_session_path, alert: "Sua sessão expirou. Entre novamente para continuar."
+  end
+
+  def track_unhandled_admin_exception
+    yield
+  rescue StandardError => exception
+    Rails.logger.error(
+      "[admin_exception] request_id=#{request.request_id} " \
+      "page=#{controller_path}##{action_name} path=#{admin_filtered_path} " \
+      "admin_user_id=#{Current.admin_user&.id || current_admin_user&.id} " \
+      "tenant_id=#{Current.tenant&.id || current_tenant&.id} " \
+      "#{exception.class}: #{exception.message.to_s.truncate(300)}"
+    )
+
+    Rails.error.report(
+      exception,
+      handled: false,
+      severity: :error,
+      source: (defined?(ErrorTracking::ACTION_DISPATCH_SOURCE) ? ErrorTracking::ACTION_DISPATCH_SOURCE : "application.action_dispatch"),
+      context: admin_exception_context
+    )
+    raise
+  end
+
+  def admin_exception_context
+    {
+      request_id: request.request_id,
+      path: admin_filtered_path.to_s[0, 300],
+      method: request.request_method,
+      controller: controller_path,
+      action: action_name,
+      format: request.format&.ref,
+      params: admin_filtered_params,
+      admin_user_id: Current.admin_user&.id || current_admin_user&.id,
+      tenant_id: Current.tenant&.id || current_tenant&.id,
+      ip: request.remote_ip,
+      user_agent: request.user_agent.to_s[0, 300],
+      referer: request.referer.to_s[0, 300],
+      admin_controller: true
+    }.compact
+  rescue StandardError
+    {}
+  end
+
+  def admin_filtered_path
+    query = admin_parameter_filter.filter(request.query_parameters)
+    query_string = Rack::Utils.build_nested_query(query)
+    query_string.present? ? "#{request.path}?#{query_string}" : request.path
+  rescue StandardError
+    request.filtered_path
+  end
+
+  def admin_filtered_params
+    admin_parameter_filter
+      .filter(request.filtered_parameters)
+      .except("controller", "action")
+  rescue StandardError
+    {}
+  end
+
+  def admin_parameter_filter
+    @admin_parameter_filter ||= ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
   end
 
   def measure_admin_page_render
