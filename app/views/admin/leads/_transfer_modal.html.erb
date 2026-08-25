@@ -1,7 +1,12 @@
-<%# locals: lead, broker_options %>
+<%# locals: lead, broker_options, trigger_class, trigger_label %>
+<%
+  trigger_class = local_assigns[:trigger_class].presence || "lead-pwa-detail__icon-btn"
+  trigger_label = local_assigns[:trigger_label].presence
+%>
 <div data-controller="ax-modal" class="tw-inline-block">
-  <button type="button" class="lead-pwa-detail__icon-btn" data-action="ax-modal#open" title="Transferir lead" aria-label="Transferir lead">
+  <button type="button" class="<%= trigger_class %>" data-action="ax-modal#open" title="Transferir lead" aria-label="Transferir lead">
     <i class="bi bi-arrow-left-right"></i>
+    <% if trigger_label.present? %><span><%= trigger_label %></span><% end %>
   </button>
   <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-modal-panel" role="dialog" aria-modal="true">

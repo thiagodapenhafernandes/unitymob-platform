@@ -38,8 +38,8 @@
                               value: selected_pipeline.name) %>
           </div>
           <div class="ax-span-6">
-            <%= ax_select_field(form: f, method: :kind, label: "Tipo de funil",
-                                tooltip: "Define a operação do funil e qual fluxo será usado automaticamente para novos leads.",
+            <%= ax_select_field(form: f, method: :kind, label: "Tipo de negócio",
+                                tooltip: "Opcional. Use Venda ou Locação quando este funil deve ser o padrão para esse tipo de lead. Use Sem tipo específico quando ele for um funil livre.",
                                 choices: LeadPipeline::KINDS.map { |value, label| [label, value] },
                                 select_options: { selected: selected_pipeline.kind }) %>
           </div>

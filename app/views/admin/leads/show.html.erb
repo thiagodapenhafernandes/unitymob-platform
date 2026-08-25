@@ -1043,6 +1043,22 @@
     <%= link_to @return_to_path.presence || admin_leads_path, class: "ax-btn ax-btn--sm" do %>
       <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
     <% end %>
+    <% if can_transfer_lead?(@lead) %>
+      <%= render "admin/leads/transfer_modal",
+                 lead: @lead,
+                 broker_options: transfer_broker_options(@lead),
+                 trigger_class: "ax-btn ax-btn--sm",
+                 trigger_label: "Transferir" %>
+    <% end %>
+    <%= button_to toggle_favorite_admin_lead_path(@lead),
+                  method: :patch,
+                  form_class: "tw-inline-block tw-m-0",
+                  class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @lead_favorited}",
+                  title: (@lead_favorited ? "Remover dos favoritos" : "Adicionar aos favoritos"),
+                  aria: { label: (@lead_favorited ? "Remover dos favoritos" : "Adicionar aos favoritos") } do %>
+      <i class="bi bi-<%= @lead_favorited ? 'star-fill' : 'star' %> ax-ico"></i>
+      <span><%= @lead_favorited ? "Favorito" : "Favoritar" %></span>
+    <% end %>
     <button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#leadAuditHistoryModal">
       <i class="bi bi-clock-history ax-ico"></i><span>Histórico</span>
     </button>
