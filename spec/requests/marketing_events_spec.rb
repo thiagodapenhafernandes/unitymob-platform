@@ -33,6 +33,22 @@ RSpec.describe "Marketing events", type: :request do
     expect(response).to have_http_status(:accepted)
   end
 
+  it "records contact button tracking after LGPD consent" do
+    cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "accepted"
+
+    expect {
+      post marketing_events_path, params: {
+        event_type: "contact_click",
+        placement: "header",
+        label: "Fale Conosco",
+        page_url: "http://localhost/"
+      }
+    }.to change(SeoConversionEvent, :count).by(1)
+
+    expect(response).to have_http_status(:accepted)
+    expect(SeoConversionEvent.order(:created_at).last.event_type).to eq("contact_click")
+  end
+
   it "não vincula evento a imóvel de outro tenant" do
     other_tenant = Tenant.create!(name: "Outro marketing #{SecureRandom.hex(3)}", slug: "outro-marketing-#{SecureRandom.hex(3)}")
     habitation = create(:habitation, tenant: other_tenant)

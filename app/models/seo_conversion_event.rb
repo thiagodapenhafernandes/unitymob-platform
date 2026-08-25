@@ -7,6 +7,7 @@ class SeoConversionEvent < ApplicationRecord
     "footer_click" => "Clique no rodapé",
     "property_card_click" => "Clique em card de imóvel",
     "whatsapp_click" => "Clique no WhatsApp",
+    "contact_click" => "Clique em contato",
     "cta_click" => "Clique em CTA"
   }.freeze
 

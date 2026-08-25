@@ -28,7 +28,7 @@ class MarketingEventsController < ApplicationController
   end
 
   def click_event?(event_type)
-    %w[campaign_click footer_click property_card_click whatsapp_click cta_click share_click].include?(event_type.to_s)
+    %w[campaign_click footer_click property_card_click whatsapp_click contact_click cta_click share_click].include?(event_type.to_s)
   end
 
 end
