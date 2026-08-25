@@ -376,6 +376,7 @@ export default class extends Controller {
     if (message.status_cursor) this.statusCursorValue = message.status_cursor
     this.markServerActivity()
     this.syncContext(message)
+    this.syncServiceWindowGate(message)
     this.syncQueue(message)
     this.scrollBottom({ force: true })
   }
@@ -590,9 +591,17 @@ export default class extends Controller {
     if (payload.status_cursor) this.statusCursorValue = payload.status_cursor
     this.markServerActivity()
     this.syncContextFragments(payload)
+    this.syncServiceWindowGate(payload)
     this.syncQueue(payload)
     this.scrollBottom({ force: shouldStick })
     this.updateJumpButton()
+  }
+
+  syncServiceWindowGate(payload) {
+    const gate = payload?.composer_gate
+    if (!gate || Number(gate.conversation_id) !== this.conversationIdValue) return
+
+    window.dispatchEvent(new CustomEvent("wa-service-window:update", { detail: gate }))
   }
 
   replaceContextNode(targetName, html) {

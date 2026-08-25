@@ -667,7 +667,16 @@ Rails.application.routes.draw do
 
   # A resolução acontece nos controllers. O roteador não deve consultar banco
   # para cada URL desconhecida (especialmente sob tráfego de bots).
-  get "/:slug", to: "landing_pages#show", as: :public_landing_page
+  # Slugs públicos de primeiro nível não podem capturar áreas reservadas do app.
+  reserved_public_slugs = %w[
+    admin field api webhooks integrations rails assets packs cable jobs
+  ]
+  get "/:slug",
+      to: "landing_pages#show",
+      as: :public_landing_page,
+      constraints: lambda { |req|
+        reserved_public_slugs.exclude?(req.params[:slug].to_s.downcase)
+      }
 
   # Fallback público final: recupera URLs conhecidas do site antigo e devolve
   # 404 normal para bots/scanners, sem levantar RoutingError no Puma.

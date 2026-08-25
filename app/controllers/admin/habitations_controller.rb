@@ -145,6 +145,7 @@ class Admin::HabitationsController < Admin::BaseController
     @per_page = index_per_page
     @page_size_options = INDEX_PAGE_SIZE_OPTIONS
     filtered_scope = filtered_habitations_scope
+    load_pwa_habitation_nav_counts
     @habitations = filtered_scope
       .includes(:address, :admin_user, :proprietor, { empreendimento: { photos_attachments: :blob } }, { broker_assignments: :admin_user }, { photos_attachments: :blob })
       .order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
@@ -1702,6 +1703,48 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_broker_catalog_availability_filter(scope)
 
     scope
+  end
+
+  def load_pwa_habitation_nav_counts
+    all_scope = pwa_habitation_catalog_scope_for("all")
+    mine_scope = current_admin_user ? pwa_habitation_catalog_scope_for("mine") : current_tenant.habitations.none
+
+    @pwa_habitation_nav_counts = {
+      all: pwa_habitation_count(all_scope),
+      mine: pwa_habitation_count(mine_scope),
+      sale: pwa_habitation_count(pwa_habitation_sale_scope(all_scope)),
+      rent: pwa_habitation_count(pwa_habitation_rent_scope(all_scope)),
+      opportunity: pwa_habitation_count(apply_quick_scope_filter(all_scope, "oportunidade"))
+    }
+  end
+
+  def pwa_habitation_catalog_scope_for(ownership_scope)
+    previous_ownership_scope = @ownership_scope
+    @ownership_scope = ownership_scope
+    apply_broker_catalog_availability_filter(
+      catalog_visible_habitations_scope(current_tenant.habitations.left_outer_joins(:address))
+    )
+  ensure
+    @ownership_scope = previous_ownership_scope
+  end
+
+  def pwa_habitation_count(scope)
+    scope.distinct.count(:id)
+  end
+
+  def pwa_habitation_sale_scope(scope)
+    scope.where(
+      "COALESCE(habitations.valor_venda_cents, 0) > 0 OR unaccent(COALESCE(habitations.status, '')) ILIKE unaccent(?)",
+      "%venda%"
+    )
+  end
+
+  def pwa_habitation_rent_scope(scope)
+    scope.where(
+      "COALESCE(habitations.valor_locacao_cents, 0) > 0 OR unaccent(COALESCE(habitations.status, '')) ILIKE unaccent(?) OR unaccent(COALESCE(habitations.status, '')) ILIKE unaccent(?)",
+      "%aluguel%",
+      "%loca%"
+    )
   end
 
   def apply_broker_catalog_availability_filter(scope)

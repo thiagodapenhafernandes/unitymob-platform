@@ -1,0 +1,83 @@
+@media (max-width: 767.98px) {
+  body.ax-pwa-bottom-nav-body,
+  body:has(.ax-pwa-bottom-nav) {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.ax-pwa-bottom-nav-body--wizard .wizard-bottom-nav,
+  body:has(.ax-pwa-bottom-nav) .wizard-bottom-nav {
+    bottom: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.ax-pwa-bottom-nav-body--wizard,
+  body:has(.ax-pwa-bottom-nav):has(.wizard-bottom-nav) {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ax-pwa-bottom-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1050;
+    display: flex;
+    min-height: calc(62px + env(safe-area-inset-bottom, 0px));
+    padding: 6px max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
+    border-top: 1px solid var(--lead-pwa-line, var(--ab-line, #dfe5ed));
+    background: color-mix(in srgb, var(--lead-pwa-surface, var(--admin-surface, #fff)) 96%, transparent);
+    box-shadow: 0 -6px 18px rgba(15, 23, 42, .08);
+  }
+
+  .ax-pwa-bottom-nav__item {
+    display: grid;
+    flex: 1 1 0;
+    place-items: center;
+    gap: 1px;
+    min-width: 0;
+    color: var(--lead-pwa-muted, var(--ab-muted, #64748b));
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.1;
+    text-align: center;
+    text-decoration: none;
+    touch-action: manipulation;
+  }
+
+  .ax-pwa-bottom-nav__item i {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .ax-pwa-bottom-nav__item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ax-pwa-bottom-nav__item.is-active {
+    color: var(--lead-pwa-primary, var(--admin-primary, #365f8f));
+  }
+
+  body.ax-pwa-bottom-nav-body .field-ai-search-fab {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    z-index: 1060;
+  }
+
+  body.ax-pwa-bottom-nav-body.ax-habitations-workspace .habitations-middle-contextbar,
+  body.ax-pwa-bottom-nav-body.ax-captacoes-workspace > .ax-contextbar {
+    display: none;
+  }
+
+  html[data-admin-theme="dark"] .ax-pwa-bottom-nav,
+  html[data-field-theme="dark"] .ax-pwa-bottom-nav {
+    border-top-color: var(--ax-dark-border, #3b4d68);
+    background: color-mix(in srgb, var(--ax-dark-surface, #172238) 94%, transparent);
+  }
+}
+
+@media (min-width: 768px) {
+  .ax-pwa-bottom-nav {
+    display: none;
+  }
+}

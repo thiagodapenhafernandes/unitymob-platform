@@ -174,6 +174,10 @@ class Admin::WhatsappInboxController < Admin::BaseController
       return respond_send_message_error("Modelos aprovados não aceitam texto livre nessa resposta.", return_path:)
     end
 
+    if service_window_locked? && template_name.blank?
+      return respond_send_message_error(service_window_gate.message, return_path:)
+    end
+
     if presentation_template
       message = build_presentation_template_message(presentation_template)
       return respond_send_message_error(message.error, return_path:) unless message.ok?
@@ -240,7 +244,8 @@ class Admin::WhatsappInboxController < Admin::BaseController
           ok: true,
           status_cursor: thread_status_cursor,
           context_html: thread_context_html,
-          queue: serialize_conversation(@conversation)
+          queue: serialize_conversation(@conversation),
+          composer_gate: composer_gate_payload(@conversation)
         )
       end
     end
@@ -619,6 +624,26 @@ class Admin::WhatsappInboxController < Admin::BaseController
       current_thread_url: @focus_mode ? admin_whatsapp_conversation_path(@conversation, workspace: "focus") : admin_whatsapp_conversation_path(@conversation),
       thread_compact: true,
       composer_compact: true
+    }
+  end
+
+  def service_window_gate
+    @service_window_gate ||= Whatsapp::ServiceWindowGuard.call(conversation: @conversation)
+  end
+
+  def service_window_locked?
+    service_window_gate.locked?
+  end
+
+  def composer_gate_payload(conversation)
+    gate = Whatsapp::ServiceWindowGuard.call(conversation:)
+
+    {
+      conversation_id: conversation.id,
+      locked: gate.locked?,
+      message: gate.message.to_s,
+      template_name: gate.template_name.to_s,
+      action_label: gate.action_label.to_s
     }
   end
 

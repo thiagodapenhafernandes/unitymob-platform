@@ -756,6 +756,34 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       )
     end
 
+    it "bloqueia mensagem livre apos template de apresentacao aceito sem resposta do lead" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      lead = create(:lead, tenant: admin.tenant, name: "Antonio Olivo", phone: "5547999990056")
+      conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+      conv.messages.create!(
+        tenant: admin.tenant,
+        direction: "outbound",
+        msg_type: "template",
+        template_name: Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
+        status: "read",
+        wa_message_id: "wamid.presentation.accepted",
+        body: "Oi"
+      )
+
+      expect {
+        post send_message_admin_whatsapp_conversation_path(conv), params: {
+          body: "Separei um imovel para voce"
+        }
+      }.not_to change {
+        WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").count
+      }
+
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
+      expect(flash[:alert]).to eq("Agora aguarde Antonio Olivo responder para a conversa iniciar ou ser liberada.")
+      expect(Whatsapp::SendMessageJob).not_to have_received(:perform_later)
+    end
+
     it "envia template oficial de retomada com variaveis do lead" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)

@@ -738,43 +738,6 @@
       color: var(--ax-dark-danger-text, #f2a7b3);
     }
 
-    .lead-pwa-detail__bottom-nav {
-      position: fixed;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      z-index: 1050;
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      min-height: calc(62px + env(safe-area-inset-bottom, 0px));
-      padding: 6px 4px env(safe-area-inset-bottom, 0px);
-      border-top: 1px solid var(--lead-pwa-line);
-      background: color-mix(in srgb, var(--lead-pwa-surface) 96%, transparent);
-      box-shadow: 0 -6px 18px rgba(15, 23, 42, .08);
-    }
-
-    .lead-pwa-detail__bottom-nav a {
-      display: grid;
-      place-items: center;
-      gap: 2px;
-      color: var(--lead-pwa-muted);
-      font-size: 11px;
-      font-weight: 750;
-      text-decoration: none;
-    }
-
-    .lead-pwa-detail__bottom-nav a i {
-      font-size: 22px;
-      line-height: 1;
-    }
-
-    .lead-pwa-detail__bottom-nav a.is-active {
-      color: var(--lead-pwa-primary);
-    }
-
-    html[data-admin-theme="dark"] .lead-pwa-detail__bottom-nav {
-      background: color-mix(in srgb, var(--lead-pwa-surface) 94%, transparent);
-    }
   }
 </style>
 
@@ -1074,23 +1037,6 @@
     </section>
   <% end %>
 
-  <nav class="lead-pwa-detail__bottom-nav" aria-label="Navegação principal do PWA">
-    <%= link_to field_root_path do %>
-      <i class="bi bi-grid-1x2" aria-hidden="true"></i><span>Home</span>
-    <% end %>
-    <%= link_to admin_leads_path(view: "list", mobile_tab: "todo"), class: "is-active" do %>
-      <i class="bi bi-house-door" aria-hidden="true"></i><span>Leads</span>
-    <% end %>
-    <%= link_to admin_habitations_path do %>
-      <i class="bi bi-building" aria-hidden="true"></i><span>Imóveis</span>
-    <% end %>
-    <%= link_to admin_captacoes_path do %>
-      <i class="bi bi-inboxes" aria-hidden="true"></i><span>Captações</span>
-    <% end %>
-    <%= link_to admin_distribution_rules_path do %>
-      <i class="bi bi-list-ol" aria-hidden="true"></i><span>Fila</span>
-    <% end %>
-  </nav>
 </section>
 
 <% @lead_heading_actions = capture do %>
