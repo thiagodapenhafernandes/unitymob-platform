@@ -2,6 +2,8 @@ class Admin::BaseController < ApplicationController
   include Admin::ContextItems
   include UserActivityTrackable
 
+  rescue_from ActionController::InvalidAuthenticityToken, with: :handle_invalid_admin_session
+
   SENSITIVE_ACCESS_AUDIT_CONTROLLERS = %w[
     admin/access_security
     admin/two_factor_settings
@@ -32,12 +34,6 @@ class Admin::BaseController < ApplicationController
 
   private
   
-  def authenticate_admin_user!
-    unless current_admin_user
-      redirect_to new_admin_user_session_path, alert: 'Acesso negado. Por favor, faça login.'
-    end
-  end
-
   def prevent_search_indexing
     response.set_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
   end
@@ -46,6 +42,16 @@ class Admin::BaseController < ApplicationController
     response.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
     response.set_header("Pragma", "no-cache")
     response.set_header("Expires", "0")
+  end
+
+  def handle_invalid_admin_session
+    Rails.logger.info(
+      "[admin_session] invalid_authenticity_token path=#{request.fullpath} " \
+      "method=#{request.request_method} admin_user_id=#{Current.admin_user&.id}"
+    )
+
+    reset_session
+    redirect_to new_admin_user_session_path, alert: "Sua sessão expirou. Entre novamente para continuar."
   end
 
   def measure_admin_page_render
