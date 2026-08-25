@@ -1187,18 +1187,22 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filter_status_options_for(scope)
-    return ["Todos"] + Habitation::PUBLIC_STATUSES if broker_catalog_user?
+    return ["Todos"] + sorted_habitation_statuses(permitted_habitation_filter_statuses) if broker_catalog_user?
 
     statuses = Habitation::STATUS_OPTIONS +
       scope.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
            .distinct
            .pluck(:status)
 
-    ["Todos"] + statuses.compact_blank.uniq.sort_by { |status| I18n.transliterate(status).downcase }
+    ["Todos"] + sorted_habitation_statuses(statuses)
   end
 
   def permitted_habitation_filter_statuses
-    broker_catalog_user? ? Habitation::PUBLIC_STATUSES : nil
+    broker_catalog_user? ? Habitation::STATUS_OPTIONS : nil
+  end
+
+  def sorted_habitation_statuses(statuses)
+    Array(statuses).compact_blank.uniq.sort_by { |status| I18n.transliterate(status).downcase }
   end
 
   def selected_filter_proprietors
@@ -1378,7 +1382,9 @@ class Admin::HabitationsController < Admin::BaseController
     @codigo = params[:codigo].to_s.strip
     @q = params[:q]
     @statuses = Array(effective_habitations_filter_params["status"]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
-    @statuses &= permitted_habitation_filter_statuses if permitted_habitation_filter_statuses.present?
+    if permitted_habitation_filter_statuses.present?
+      @statuses &= (["Todos"] + permitted_habitation_filter_statuses)
+    end
     @status = @statuses.first
     @categorias = filter_values(params[:categoria], except: "Todas")
     @categoria = @categorias.first
@@ -1700,9 +1706,14 @@ class Admin::HabitationsController < Admin::BaseController
 
   def apply_broker_catalog_availability_filter(scope)
     return scope unless broker_catalog_user?
+    return scope if all_habitation_statuses_filter_requested?
     return scope if inactive_habitation_status_filter_requested?
 
     scope.commercially_publishable
+  end
+
+  def all_habitation_statuses_filter_requested?
+    @statuses.any? { |status| I18n.transliterate(status.to_s).downcase == "todos" }
   end
 
   def inactive_habitation_status_filter_requested?

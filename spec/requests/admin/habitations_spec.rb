@@ -3083,7 +3083,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(clear_link["data-action"].to_s).not_to include("ax-aside#collapse")
   end
 
-  it "limita status comercial do filtro do catálogo para corretor" do
+  it "exibe todos os status comerciais canônicos no filtro do catálogo para corretor" do
     agent = create(:admin_user, email: "agent-statuses-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)
     create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Status operacional personalizado", codigo: "STATUS-FILTER-#{SecureRandom.hex(6)}")
@@ -3093,30 +3093,58 @@ RSpec.describe "Admin::Habitations", type: :request do
     get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
-    expected_statuses = ["Todos"] + Habitation::PUBLIC_STATUSES
+    expected_statuses = ["Todos"] + Habitation::STATUS_OPTIONS.sort_by { |status| I18n.transliterate(status).downcase }
     expected_statuses.each do |status|
       expect(response.body).to include(status)
-    end
-    (Habitation::STATUS_OPTIONS - Habitation::PUBLIC_STATUSES).each do |status|
-      expect(response.body).not_to include(status)
     end
     expect(response.body).not_to include("Status operacional personalizado")
     status_options = Nokogiri::HTML.fragment(response.body).css("select[name='status[]'] option").map(&:text)
     expect(status_options).to eq(expected_statuses)
   end
 
-  it "ignora status comercial interno forjado por corretor no filtro do catálogo" do
-    agent = create(:admin_user, email: "agent-forged-status-#{SecureRandom.hex(6)}@salute.test")
+  it "permite corretor filtrar status comercial inativo canônico no catálogo" do
+    agent = create(:admin_user, email: "agent-inactive-status-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)
     sale = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Venda", codigo: "STATUS-VENDA-#{SecureRandom.hex(6)}")
-    create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Pendente", codigo: "STATUS-PEND-#{SecureRandom.hex(6)}")
+    pending = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Pendente", codigo: "STATUS-PEND-#{SecureRandom.hex(6)}")
     sign_out admin
     sign_in agent
 
     get admin_habitations_path(status: ["Pendente"], ownership: "all")
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).to include(pending.codigo)
+    expect(response.body).not_to include(sale.codigo)
+    expect(response.body).to include("Status: Pendente")
+  end
+
+  it "permite corretor selecionar Todos para incluir status comerciais inativos" do
+    agent = create(:admin_user, email: "agent-all-statuses-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    suspended = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Suspenso", motivo_suspensao: "Teste do filtro", codigo: "STATUS-ALL-SUSP-#{SecureRandom.hex(6)}")
+    sign_out admin
+    sign_in agent
+
+    get admin_habitations_path(status: ["Todos"], ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(suspended.codigo)
+    expect(response.body).not_to include("Status: Todos")
+  end
+
+  it "ignora status comercial personalizado forjado por corretor no filtro do catálogo" do
+    agent = create(:admin_user, email: "agent-forged-status-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    sale = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Venda", codigo: "STATUS-VENDA-#{SecureRandom.hex(6)}")
+    custom = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Vendido reservado personalizado", codigo: "STATUS-CUSTOM-#{SecureRandom.hex(6)}")
+    sign_out admin
+    sign_in agent
+
+    get admin_habitations_path(status: [custom.status], ownership: "all")
+
+    expect(response).to have_http_status(:ok)
     expect(response.body).to include(sale.codigo)
+    expect(response.body).not_to include(custom.codigo)
   end
 
   it "renderiza filtros solicitados como multiselect no catálogo" do
