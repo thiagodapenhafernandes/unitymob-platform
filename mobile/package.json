@@ -1,0 +1,18 @@
+{
+  "name": "unitymob-field-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App hibrido (Capacitor) que embrulha o PWA /field em WebView, com descoberta de servidor por conta.",
+  "scripts": {
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
+    "@capacitor/push-notifications": "^8.1.2"
+  }
+}

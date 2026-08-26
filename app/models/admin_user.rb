@@ -1,13 +1,19 @@
 class AdminUser < ApplicationRecord
   include PhoneNormalizable
+  include Devise::JWT::RevocationStrategies::JTIMatcher
 
   ADMIN_THEME_MODES = %w[light dark].freeze
   ADMIN_THEME_MODE_DEFAULT = "light".freeze
 
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
+  #
+  # :jwt_authenticatable é uma SEGUNDA estratégia Warden, usada só pela API
+  # mobile (Authorization: Bearer). O login por sessão/cookie do admin e do
+  # PWA continua em :database_authenticatable, sem nenhuma mudança.
   devise :database_authenticatable, :recoverable, :rememberable, :timeoutable,
-         :validatable, :omniauthable, omniauth_providers: [:facebook]
+         :validatable, :omniauthable, :jwt_authenticatable,
+         jwt_revocation_strategy: self, omniauth_providers: [:facebook]
 
   has_one_attached :avatar
 
@@ -93,6 +99,11 @@ class AdminUser < ApplicationRecord
   before_validation :assign_default_tenant
   before_validation :assign_default_vertical_profile
   before_destroy :ensure_not_last_active_tenant_owner
+
+  # Discovery do app híbrido: mantém o gateway central sabendo em qual
+  # servidor cada e-mail loga, sem cadastro manual (ver Mobile::AccountRouteRegistrar).
+  after_commit :sync_account_route_for_discovery, on: %i[create update]
+  after_commit :deactivate_account_route_for_discovery, on: :destroy
   
   # ===== Multi-conta (usuário espelho) =====
   # Espelho = linha comum de admin_users em OUTRA conta, linkada ao usuário
@@ -428,6 +439,26 @@ class AdminUser < ApplicationRecord
 
   def same_account_user?(other_user)
     tenant_id.present? && other_user.present? && other_user.tenant_id == tenant_id
+  end
+
+  # Admin do Sistema não pertence a um tenant/servidor específico, e espelho
+  # não é uma identidade de login própria — nenhum dos dois deve resolver
+  # discovery no gateway central.
+  def eligible_for_account_route_discovery?
+    !super_admin? && !mirror? && tenant.present?
+  end
+
+  def sync_account_route_for_discovery
+    return unless eligible_for_account_route_discovery?
+    return unless previously_new_record? || saved_change_to_email?
+
+    Mobile::SyncAccountRouteJob.perform_later(id)
+  end
+
+  def deactivate_account_route_for_discovery
+    return unless eligible_for_account_route_discovery?
+
+    Mobile::DeactivateAccountRouteJob.perform_later(email)
   end
 
   def clear_account_context_for_system_admin

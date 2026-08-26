@@ -38,7 +38,16 @@
     </style>
 
     <script>
-      if ("serviceWorker" in navigator) {
+      // App híbrido (Capacitor): nem service worker nem Web Push fazem sentido
+      // aqui (o WebView não entrega Web Push de forma confiável) — push nativo
+      // usa @capacitor/push-notifications (APNs/FCM), registrado abaixo.
+      function isNativeAppRequest() {
+        return /UnitymobFieldApp/.test(navigator.userAgent);
+      }
+
+      if (isNativeAppRequest()) {
+        registerNativePush();
+      } else if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
           navigator.serviceWorker.register("/field-service-worker.js", { scope: "/", updateViaCache: "none" })
             .then(function (reg) {
@@ -55,6 +64,43 @@
             })
             .catch(function (err) { console.warn("[field SW] registration failed:", err); });
         });
+      }
+
+      // Push nativo: pede permissão, registra no APNs/FCM via o bridge do
+      // Capacitor (injetado pelo app híbrido nesta mesma página remota) e
+      // manda o device token pro back-end assinar as notificações da conta.
+      async function registerNativePush() {
+        try {
+          const { PushNotifications } = window.Capacitor?.Plugins || {};
+          if (!PushNotifications) return;
+
+          let status = (await PushNotifications.checkPermissions()).receive;
+          if (status === "prompt" || status === "prompt-with-rationale") {
+            status = (await PushNotifications.requestPermissions()).receive;
+          }
+          if (status !== "granted") return;
+
+          await PushNotifications.register();
+
+          PushNotifications.addListener("registration", async function (token) {
+            try {
+              const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+              await fetch("/field/push_subscriptions/native", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+                body: JSON.stringify({ platform: window.Capacitor.getPlatform(), token: token.value })
+              });
+            } catch (err) {
+              console.warn("[native push] failed to register token:", err);
+            }
+          });
+
+          PushNotifications.addListener("registrationError", function (err) {
+            console.warn("[native push] registration error:", err);
+          });
+        } catch (err) {
+          console.warn("[native push] setup failed:", err);
+        }
       }
 
       function pushSupported() {
@@ -448,9 +494,17 @@
         const installBtn = document.getElementById("field-install-btn");
         const dismissBtn = document.getElementById("field-install-dismiss");
 
+        function isNativeApp() {
+          // App híbrido (Capacitor) já É o "instalado" — o UA vem com o sufixo
+          // configurado em mobile/capacitor.config.json (appendUserAgent).
+          // PWA via navegador não tem esse marcador e mantém o aviso normal.
+          return /UnitymobFieldApp/.test(navigator.userAgent);
+        }
+
         function isStandalone() {
           return window.matchMedia("(display-mode: standalone)").matches
-              || window.navigator.standalone === true;
+              || window.navigator.standalone === true
+              || isNativeApp();
         }
 
         function isIos() {

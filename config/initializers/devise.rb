@@ -290,6 +290,17 @@ Devise.setup do |config|
   #   manager.default_strategies(scope: :user).unshift :some_external_strategy
   # end
 
+  # ==> JWT (API mobile)
+  # A estratégia :jwt só entra em ação quando a requisição traz um header
+  # Authorization: Bearer <token> — sessão/cookie (admin e PWA web) não é
+  # afetada, pois nunca envia esse header. O token é emitido/revogado
+  # explicitamente em Api::V1::Field::SessionsController, sem depender do
+  # hook automático de dispatch/revocation do Devise.
+  config.jwt do |jwt|
+    jwt.secret = Rails.application.secret_key_base
+    jwt.expiration_time = 30.days.to_i
+  end
+
   # ==> Mountable engine configurations
   # When using Devise inside an engine, let's call it `MyEngine`, and this engine
   # is mountable, there are some extra configurations to be taken into account.

@@ -136,4 +136,20 @@ RSpec.describe "Field::PushSubscriptions", type: :request do
     )
     expect(event.metadata).to eq("reason" => "push")
   end
+
+  it "registra um device token nativo (app híbrido) sem exigir chaves de Web Push" do
+    post native_field_push_subscriptions_path, params: { platform: "ios", token: "apns-device-token-123" }, as: :json
+
+    expect(response).to have_http_status(:created)
+    subscription = PushSubscription.find_by!(admin_user: agent, endpoint: "apns-device-token-123")
+    expect(subscription).to have_attributes(platform: "ios", active: true, p256dh: nil, auth: nil)
+    expect(subscription).to be_valid
+  end
+
+  it "rejeita platform inválida no registro nativo" do
+    post native_field_push_subscriptions_path, params: { platform: "windows-phone", token: "abc" }, as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(PushSubscription.where(admin_user: agent)).to be_empty
+  end
 end

@@ -26,7 +26,7 @@ module Notifications
     # clique para registrar o "aceite", abrindo o `url` (ex.: WhatsApp do lead)
     # direto, sem passar por tela do sistema.
     def deliver(title:, body:, url:, icon:, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false, lead_id: nil, metadata: {})
-      unless push_setting.configured?
+      unless push_setting.enabled?
         Rails.logger.warn("[PushDispatcher] push indisponivel para admin_user_id=#{@admin_user_id}: configuracao incompleta ou desativada")
         record_delivery_event("push_unavailable", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id, metadata: metadata)
         return 0
@@ -53,56 +53,10 @@ module Notifications
       sent = 0
 
       subs.find_each do |sub|
-        begin
-          response = WebPush.payload_send(
-            message:       payload,
-            endpoint:      sub.endpoint,
-            p256dh:        sub.p256dh,
-            auth:          sub.auth,
-            vapid: {
-              subject:     vapid_subject(vapid[:subject]),
-              public_key:  vapid[:public_key],
-              private_key: vapid[:private_key]
-            },
-            ttl: ttl,
-            urgency: urgency
-          )
-          sent += 1
-          record_delivery_event(
-            "provider_accepted",
-            subscription: sub,
-            tag: tag,
-            urgency: urgency,
-            ttl: ttl,
-            lead_id: lead_id,
-            metadata: metadata,
-            provider_status: response&.code || "ok"
-          )
-          Rails.logger.info("[PushDispatcher] aceito pelo provedor admin_user_id=#{@admin_user_id} sub=#{sub.id} status=#{response&.code || 'ok'} urgency=#{urgency} ttl=#{ttl}")
-        rescue WebPush::InvalidSubscription, WebPush::ExpiredSubscription
-          record_delivery_event(
-            "invalid_subscription",
-            subscription: sub,
-            tag: tag,
-            urgency: urgency,
-            ttl: ttl,
-            lead_id: lead_id,
-            metadata: metadata
-          )
-          sub.update_column(:active, false)
-        rescue => e
-          record_delivery_event(
-            "provider_failed",
-            subscription: sub,
-            tag: tag,
-            urgency: urgency,
-            ttl: ttl,
-            lead_id: lead_id,
-            metadata: metadata,
-            error_class: e.class.name,
-            error_message: e.message
-          )
-          Rails.logger.warn("[PushDispatcher] falha para sub=#{sub.id}: #{e.class} #{e.message}")
+        if sub.native?
+          deliver_native(sub, title:, body:, url:, tag:, lead_id:, metadata:) && sent += 1
+        else
+          deliver_web(sub, payload:, vapid:, tag:, urgency:, ttl:, lead_id:, metadata:) && sent += 1
         end
       end
 
@@ -111,6 +65,67 @@ module Notifications
     end
 
     private
+
+    def deliver_web(sub, payload:, vapid:, tag:, urgency:, ttl:, lead_id:, metadata:)
+      unless push_setting.configured?
+        record_delivery_event("push_unavailable", subscription: sub, tag:, urgency:, ttl:, lead_id:, metadata:)
+        return false
+      end
+
+      response = WebPush.payload_send(
+        message:       payload,
+        endpoint:      sub.endpoint,
+        p256dh:        sub.p256dh,
+        auth:          sub.auth,
+        vapid: {
+          subject:     vapid_subject(vapid[:subject]),
+          public_key:  vapid[:public_key],
+          private_key: vapid[:private_key]
+        },
+        ttl: ttl,
+        urgency: urgency
+      )
+      record_delivery_event(
+        "provider_accepted", subscription: sub, tag:, urgency:, ttl:, lead_id:, metadata:,
+        provider_status: response&.code || "ok"
+      )
+      Rails.logger.info("[PushDispatcher] aceito pelo provedor admin_user_id=#{@admin_user_id} sub=#{sub.id} status=#{response&.code || 'ok'} urgency=#{urgency} ttl=#{ttl}")
+      true
+    rescue WebPush::InvalidSubscription, WebPush::ExpiredSubscription
+      record_delivery_event("invalid_subscription", subscription: sub, tag:, urgency:, ttl:, lead_id:, metadata:)
+      sub.update_column(:active, false)
+      false
+    rescue => e
+      record_delivery_event(
+        "provider_failed", subscription: sub, tag:, urgency:, ttl:, lead_id:, metadata:,
+        error_class: e.class.name, error_message: e.message
+      )
+      Rails.logger.warn("[PushDispatcher] falha para sub=#{sub.id}: #{e.class} #{e.message}")
+      false
+    end
+
+    # Push nativo (iOS/Android via Capacitor) — FCM HTTP v1. Pendente de
+    # credenciais reais (FCM_PROJECT_ID / FCM_SERVICE_ACCOUNT_JSON); sem elas,
+    # registra "provider_failed" com a mensagem "FCM não configurado" em vez
+    # de tentar enviar, para não mascarar o gap como falha de rede.
+    def deliver_native(sub, title:, body:, url:, tag:, lead_id:, metadata:)
+      result = Notifications::FcmSender.deliver(token: sub.endpoint, title: title, body: body, data: { url: url, tag: tag.to_s })
+
+      if result.success?
+        record_delivery_event("provider_accepted", subscription: sub, tag:, lead_id:, metadata:, provider_status: result.status)
+        Rails.logger.info("[PushDispatcher] FCM aceito admin_user_id=#{@admin_user_id} sub=#{sub.id} status=#{result.status}")
+        return true
+      end
+
+      record_delivery_event(
+        "provider_failed", subscription: sub, tag:, lead_id:, metadata:,
+        error_class: "FcmSender", error_message: result.body.to_s.truncate(500)
+      )
+      # Token inválido/desinstalado: FCM responde 404 (UNREGISTERED) ou 400.
+      sub.update_column(:active, false) if [400, 404].include?(result.status)
+      Rails.logger.warn("[PushDispatcher] FCM falhou sub=#{sub.id} status=#{result.status} body=#{result.body}")
+      false
+    end
 
     def push_setting
       @push_setting ||= PushSetting.instance

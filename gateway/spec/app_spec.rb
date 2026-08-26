@@ -295,6 +295,68 @@ RSpec.describe Gateway::App do
     expect(WebhookRoute.last).to have_attributes(provider: "meta", client_key: "conexao", page_id: "214973675033177", form_id: nil)
   end
 
+  it "upserts account routes with bearer token authentication" do
+    payload = {
+      email: "Corretor@ConexaoBC.com",
+      tenant_name: "Conexao BC",
+      target_url: "https://app.conexaobc.com"
+    }.to_json
+
+    post "/internal/account_routes", payload, "CONTENT_TYPE" => "application/json", "HTTP_AUTHORIZATION" => "Bearer internal-token"
+
+    expect(last_response.status).to eq(201)
+    expect(AccountRoute.last).to have_attributes(email: "corretor@conexaobc.com", target_url: "https://app.conexaobc.com")
+  end
+
+  it "rejects account route upserts without a valid internal token" do
+    payload = { email: "corretor@conexaobc.com", target_url: "https://app.conexaobc.com" }.to_json
+
+    post "/internal/account_routes", payload, "CONTENT_TYPE" => "application/json"
+
+    expect(last_response.status).to eq(401)
+  end
+
+  it "deactivates an account route through the internal endpoint" do
+    AccountRoute.create!(email: "corretor@conexaobc.com", target_url: "https://app.conexaobc.com")
+
+    delete "/internal/account_routes/corretor@conexaobc.com", nil, "HTTP_AUTHORIZATION" => "Bearer internal-token"
+
+    expect(last_response.status).to eq(200)
+    expect(AccountRoute.last).to have_attributes(active: false)
+  end
+
+  it "answers the CORS preflight for discovery/resolve" do
+    options "/discovery/resolve"
+
+    expect(last_response.status).to eq(204)
+    expect(last_response.headers["Access-Control-Allow-Origin"]).to eq("*")
+  end
+
+  it "resolves the tenant url for a known account by email" do
+    AccountRoute.create!(email: "corretor@conexaobc.com", target_url: "https://app.conexaobc.com")
+
+    post "/discovery/resolve", { email: "Corretor@ConexaoBC.com" }.to_json, "CONTENT_TYPE" => "application/json"
+
+    expect(last_response.status).to eq(200)
+    expect(JSON.parse(last_response.body)).to eq("tenant_url" => "https://app.conexaobc.com")
+    expect(last_response.headers["Access-Control-Allow-Origin"]).to eq("*")
+  end
+
+  it "returns 404 when the account cannot be resolved" do
+    post "/discovery/resolve", { email: "unknown@example.com" }.to_json, "CONTENT_TYPE" => "application/json"
+
+    expect(last_response.status).to eq(404)
+    expect(JSON.parse(last_response.body)).to eq("error" => "account_not_found")
+  end
+
+  it "does not resolve a deactivated account route" do
+    AccountRoute.create!(email: "corretor@conexaobc.com", target_url: "https://app.conexaobc.com", active: false)
+
+    post "/discovery/resolve", { email: "corretor@conexaobc.com" }.to_json, "CONTENT_TYPE" => "application/json"
+
+    expect(last_response.status).to eq(404)
+  end
+
   it "lists webhook events through the protected internal audit endpoint" do
     WebhookEvent.create!(
       provider: "meta",

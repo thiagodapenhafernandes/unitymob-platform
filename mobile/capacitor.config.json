@@ -1,0 +1,10 @@
+{
+  "appId": "br.com.unitymob.field",
+  "appName": "Unitymob",
+  "webDir": "www",
+  "appendUserAgent": "UnitymobFieldApp",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["*"]
+  }
+}

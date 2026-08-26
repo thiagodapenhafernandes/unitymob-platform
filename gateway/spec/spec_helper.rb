@@ -12,6 +12,7 @@ require_relative "../config/environment"
 connection = ActiveRecord::Base.connection
 connection.drop_table(:webhook_events, if_exists: true)
 connection.drop_table(:webhook_routes, if_exists: true)
+connection.drop_table(:account_routes, if_exists: true)
 
 ActiveRecord::Schema.define do
   suppress_messages do
@@ -51,6 +52,15 @@ ActiveRecord::Schema.define do
       t.datetime :forwarded_at
       t.timestamps
     end
+
+    create_table :account_routes do |t|
+      t.string :email, null: false
+      t.string :tenant_name
+      t.string :target_url, null: false
+      t.boolean :active, null: false, default: true
+      t.datetime :last_seen_at
+      t.timestamps
+    end
   end
 end
 
@@ -60,5 +70,6 @@ RSpec.configure do |config|
   config.before do
     WebhookEvent.delete_all
     WebhookRoute.delete_all
+    AccountRoute.delete_all
   end
 end
