@@ -8,6 +8,8 @@ class RobotsController < ApplicationController
   private
 
   def robots_content
+    base_url = public_tenant.public_base_url(fallback_base_url: request.base_url)
+
     <<~ROBOTS
       User-agent: *
       Disallow: /admin/
@@ -16,7 +18,7 @@ class RobotsController < ApplicationController
       Disallow: /imoveis?*page=
       Crawl-delay: 5
 
-      Sitemap: #{request.base_url}/sitemap.xml
+      Sitemap: #{base_url}/sitemap.xml
     ROBOTS
   end
 end

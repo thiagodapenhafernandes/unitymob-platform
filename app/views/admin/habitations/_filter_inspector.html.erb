@@ -11,7 +11,7 @@
   end
 
   data_filter_keys = %w[codigo empreendimento_codigo corretor_id status categoria min_price max_price]
-  location_filter_keys = %w[cidade logradouro numero bairro_comercial]
+  location_filter_keys = %w[cidade city logradouro numero bairro_comercial]
   business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location rental_management permuta_vehicle permuta_property permuta_others]
   feature_filter_keys = %w[dorms_min dorms_max suites_min suites_max banheiros_min banheiros_max vagas_min vagas_max area_total_min area_total_max area_privativa_min area_privativa_max amenities]
   administrative_filter_keys = %w[
@@ -249,7 +249,8 @@
                                            method: :cidade,
                                            label: "Cidade",
                                            choices: @filter_cities,
-                                           select_options: { include_blank: "Todas", selected: @cidade },
+                                           select_options: { selected: @cidades },
+                                           multiple: true,
                                            placeholder: "Todas") %>
         </div>
         <div>

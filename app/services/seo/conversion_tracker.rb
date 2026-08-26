@@ -44,7 +44,7 @@ module Seo
       return unless tenant
 
       @seo_setting ||= canonical_path_candidates.filter_map do |path|
-        tenant.seo_settings.find_by(canonical_path: path)
+        tenant.seo_settings.public_inventory.find_by(canonical_path: path)
       end.first
     end
 

@@ -97,6 +97,15 @@ RSpec.describe "AI property share collections", type: :request do
     expect(response.body).to include(preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id))
   end
 
+  it "não cria página SEO para link de seleção compartilhada" do
+    collection = create_collection
+    Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, "1", tenant: broker.tenant)
+
+    expect {
+      get ai_property_share_collection_path(collection.token)
+    }.not_to change { SeoSetting.count }
+  end
+
   it "pede identificação uma vez, cria lead e agrupa interesses posteriores" do
     collection = create_collection
 

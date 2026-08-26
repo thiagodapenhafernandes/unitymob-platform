@@ -3,6 +3,12 @@ require "uri"
 class SeoSetting < ApplicationRecord
   include TenantScoped
   AI_STATUSES = %w[pending generating generated failed skipped].freeze
+  SHARED_LINK_PATH_PREFIX = "/selecoes/".freeze
+  SHARE_TOKEN_PARAM = "share_token".freeze
+  SHARED_LINK_PAGE_TYPES = %w[
+    ai_property_share_collections_show
+    ai_property_share_collections_preview
+  ].freeze
   PAGE_TYPE_LABELS = {
     "property_show" => "Imóvel",
     "property_listing" => "Busca de imóveis",
@@ -30,6 +36,25 @@ class SeoSetting < ApplicationRecord
   validates :page_name, presence: true, uniqueness: { scope: :tenant_id }
   validates :canonical_key, presence: true, uniqueness: { scope: :tenant_id }
   validates :ai_status, inclusion: { in: AI_STATUSES }
+
+  scope :shared_link_pages, lambda {
+    where(
+      <<~SQL.squish,
+        COALESCE(canonical_path, '') LIKE :shared_path
+        OR COALESCE(canonical_url, '') LIKE :shared_url
+        OR COALESCE(canonical_path, '') LIKE :share_token
+        OR COALESCE(canonical_url, '') LIKE :share_token
+        OR COALESCE(canonical_key, '') LIKE :shared_key
+        OR page_type IN (:shared_page_types)
+      SQL
+      shared_path: "#{SHARED_LINK_PATH_PREFIX}%",
+      shared_url: "%#{SHARED_LINK_PATH_PREFIX}%",
+      share_token: "%#{SHARE_TOKEN_PARAM}=%",
+      shared_key: "ai_property_share_collections_%",
+      shared_page_types: SHARED_LINK_PAGE_TYPES
+    )
+  }
+  scope :public_inventory, -> { where.not(id: shared_link_pages.select(:id)) }
 
   before_validation :ensure_canonical_key
   before_validation :sanitize_urls

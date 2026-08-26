@@ -26,7 +26,8 @@ module Seo
     attr_reader :seo, :keywords, :text
 
     def seo_setting_suggestions
-      seo.tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
+      seo.tenant.seo_settings.public_inventory
+                .where(active: true, apply_to_public: true, robots_index: true)
                 .where.not(id: seo.id)
                 .order(access_count: :desc, seo_score: :desc)
                 .limit(40)

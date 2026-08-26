@@ -54,7 +54,7 @@ class Admin::MarketingCampaignsController < Admin::BaseController
   end
 
   def load_seo_settings
-    @seo_settings = current_tenant.seo_settings.order(access_count: :desc, page_name: :asc).limit(200)
+    @seo_settings = current_tenant.seo_settings.public_inventory.order(access_count: :desc, page_name: :asc).limit(200)
   end
 
   def seed_from_seo_setting

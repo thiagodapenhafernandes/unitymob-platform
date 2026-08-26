@@ -29,7 +29,7 @@ RSpec.describe Tenant, type: :model do
       default_for_sale: true,
       default_for_rental: true
     )
-    expect(pipeline.stages.order(:position).pluck(:name)).to include("Novo", "Em Atendimento")
+    expect(pipeline.stages.order(:position).pluck(:name)).to include("Novo Lead", "Em Atendimento")
   end
 
   it "resolve tenant publico por slug ativo e preserva default como fallback" do
@@ -37,6 +37,19 @@ RSpec.describe Tenant, type: :model do
 
     expect(described_class.public_for(slug: tenant.slug)).to eq(tenant)
     expect(described_class.public_for(slug: "inexistente")).to eq(described_class.default)
+  end
+
+  it "monta a URL base pública removendo o subdomínio app do domínio principal" do
+    tenant = described_class.create!(name: "Conta Sitemap #{SecureRandom.hex(3)}", slug: "conta-sitemap-#{SecureRandom.hex(3)}")
+    tenant.tenant_domains.create!(hostname: "app.conexaobc.com", primary_domain: true)
+
+    expect(tenant.public_base_url(fallback_base_url: "https://app.conexaobc.com")).to eq("https://conexaobc.com")
+  end
+
+  it "usa o host da requisição sanitizado quando não há domínio público configurado" do
+    tenant = described_class.create!(name: "Conta Fallback #{SecureRandom.hex(3)}", slug: "conta-fallback-#{SecureRandom.hex(3)}")
+
+    expect(tenant.public_base_url(fallback_base_url: "https://app.tenant.test")).to eq("https://tenant.test")
   end
 
   it "resolve o tema publico implicitamente pela identidade da conta" do

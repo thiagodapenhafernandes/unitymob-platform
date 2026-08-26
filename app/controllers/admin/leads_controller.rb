@@ -731,11 +731,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def public_tenant_base_url(tenant)
-    host = tenant.tenant_domains.active.primary_first.first&.hostname
-    host = host.to_s.delete_prefix("app.") if host.present?
-    return "https://#{host}" if host.present?
-
-    request.base_url.sub(%r{://app\.}, "://")
+    tenant.public_base_url(fallback_base_url: request.base_url)
   end
 
   def render_property_interest_chips(share: false)

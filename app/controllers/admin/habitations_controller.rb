@@ -1322,7 +1322,7 @@ class Admin::HabitationsController < Admin::BaseController
   def habitations_filter_session_keys
     @habitations_filter_session_keys ||= (
       %w[
-        q status categoria scope ownership intake_review visualizacao sort direction per_page
+        q status categoria category cidade city scope ownership intake_review visualizacao sort direction per_page
       ] + extra_filter_keys
     ).uniq
   end
@@ -1442,12 +1442,13 @@ class Admin::HabitationsController < Admin::BaseController
       @statuses &= (["Todos"] + permitted_habitation_filter_statuses)
     end
     @status = @statuses.first
-    @categorias = filter_values(params[:categoria], except: "Todas")
+    @categorias = filter_values([params[:categoria], params[:category]], except: "Todas")
     @categoria = @categorias.first
     @logradouro = params[:logradouro].to_s.strip.presence
     @numero = params[:numero].to_s.strip.presence
     @cep = nil
-    @cidade = params[:cidade].to_s.strip.presence
+    @cidades = filter_values([params[:cidade], params[:city]], except: "Todas")
+    @cidade = @cidades.first
     @bairros = []
     @bairro = @bairros.first
     @bairros_comerciais = filter_values(params[:bairro_comercial], except: "Todos")
@@ -1602,7 +1603,11 @@ class Admin::HabitationsController < Admin::BaseController
                 scope.where("#{cep_value_sql} ILIKE ?", "%#{@cep}%")
               end
     end
-    scope = scope.where("unaccent(COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))) = unaccent(?)", @cidade) if @cidade.present?
+    if @cidades.any?
+      city_sql = "unaccent(COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), '')))"
+      city_conditions = @cidades.map { "#{city_sql} = unaccent(?)" }.join(" OR ")
+      scope = scope.where(city_conditions, *@cidades)
+    end
     if @bairros.any?
       neighborhood_sql = "unaccent(COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), '')))"
       neighborhood_conditions = @bairros.map { "#{neighborhood_sql} ILIKE unaccent(?)" }.join(" OR ")

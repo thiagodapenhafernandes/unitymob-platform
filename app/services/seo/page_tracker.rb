@@ -58,6 +58,7 @@ module Seo
         @controller.request.format.html? &&
         !admin_request? &&
         !internal_path? &&
+        !shared_link_request? &&
         !AccessControl::TrackerExclusion.excluded?(@controller.request)
     end
 
@@ -70,6 +71,14 @@ module Seo
       path.start_with?("/rails/", "/assets/", "/packs/", "/cable")
     end
 
+    def shared_link_request?
+      path = @controller.request.path.to_s
+      query = @controller.request.query_parameters
+
+      path.start_with?(SeoSetting::SHARED_LINK_PATH_PREFIX) ||
+        query.key?(SeoSetting::SHARE_TOKEN_PARAM)
+    end
+
     def attributes_for(identity, created)
       {
         page_name: identity[:page_name],
@@ -77,7 +86,7 @@ module Seo
         controller_name: @controller.controller_name,
         action_name: @controller.action_name,
         canonical_path: identity[:canonical_path],
-        canonical_url: "#{@controller.request.base_url}#{identity[:canonical_path]}",
+        canonical_url: "#{public_base_url}#{identity[:canonical_path]}",
         normalized_params: identity[:normalized_params],
         robots_index: identity[:robots_index],
         robots_follow: identity[:robots_follow],
@@ -136,6 +145,10 @@ module Seo
 
     def consent_accepted?
       @controller.respond_to?(:lgpd_consent_accepted?) && @controller.lgpd_consent_accepted?
+    end
+
+    def public_base_url
+      page_tenant.public_base_url(fallback_base_url: @controller.request.base_url)
     end
   end
 end

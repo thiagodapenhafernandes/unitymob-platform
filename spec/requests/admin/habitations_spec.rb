@@ -3215,6 +3215,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       corretor_id[]
       status[]
       categoria[]
+      cidade[]
       bairro_comercial[]
       situacao[]
     ].each do |name|

@@ -534,6 +534,7 @@
   selected_status_chips = selected_status_filter_values
   active_filter_chips << "Status: #{selected_status_chips.join(', ')}" if selected_status_chips.any?
   active_filter_chips << "Categoria: #{@categorias.join(', ')}" if @categorias.any?
+  active_filter_chips << "Cidade: #{@cidades.join(', ')}" if @cidades.any?
   active_filter_chips << "Bairro comercial: #{@bairros_comerciais.join(', ')}" if @bairros_comerciais.any?
   active_filter_chips << "Situação: #{@situacoes.join(', ')}" if @situacoes.any?
   active_filter_chips << "Preço reduzido: Sim" if params[:promotion_status] == "with_promo"
