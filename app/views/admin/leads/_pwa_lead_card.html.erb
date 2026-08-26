@@ -35,11 +35,20 @@
                 else
                   l(lead.updated_at, format: "%d/%m/%Y %H:%M")
                 end
+  pwa_kanban_card = local_assigns[:pwa_kanban_card]
+  card_classes = "lead-pwa-card #{'lead-pwa-card--attention' if attention}"
+  card_data = {
+    lead_pwa_kanban_target: ("card" if pwa_kanban_card),
+    lead_id: lead.id,
+    lead_name: display_name,
+    lead_phone: lead.display_phone,
+    lead_status: lead.status.presence || Lead.default_status,
+    lead_url: admin_lead_path(lead, return_to: lead_return_to_path),
+    update_url: admin_lead_path(lead),
+    whatsapp_url: open_whatsapp_conversation_admin_lead_path(lead, workspace: "focus")
+  }.compact
 %>
-<%= link_to admin_lead_path(lead, return_to: lead_return_to_path),
-            id: "lead_#{lead.id}",
-            class: "lead-pwa-card #{'lead-pwa-card--attention' if attention}",
-            role: "listitem" do %>
+<% card_inner = capture do %>
   <div class="lead-pwa-card__head">
     <strong class="lead-pwa-card__name"><%= display_name %></strong>
     <% if business_label.present? %>
@@ -69,4 +78,30 @@
     <span><%= footer_label %> - <%= footer_time %></span>
     <strong><%= lead.admin_user&.name.presence || "Sem corretor" %></strong>
   </div>
+<% end %>
+
+<% if pwa_kanban_card %>
+  <article id="lead_<%= lead.id %>"
+           class="<%= card_classes %>"
+           role="listitem"
+           tabindex="0"
+           data-action="contextmenu->lead-pwa-kanban#blockNativeMenu dblclick->lead-pwa-kanban#openQuickSheet pointerdown->lead-pwa-kanban#prepareCardGesture pointermove->lead-pwa-kanban#moveCardGesture pointerup->lead-pwa-kanban#finishCardGesture pointercancel->lead-pwa-kanban#cancelCardGesture keydown.enter->lead-pwa-kanban#openSelectedCard keydown.space->lead-pwa-kanban#openQuickSheet"
+           data-lead-pwa-kanban-target="card"
+           data-lead-id="<%= lead.id %>"
+           data-lead-name="<%= display_name %>"
+           data-lead-phone="<%= lead.display_phone %>"
+           data-lead-status="<%= lead.status.presence || Lead.default_status %>"
+           data-lead-url="<%= admin_lead_path(lead, return_to: lead_return_to_path) %>"
+           data-update-url="<%= admin_lead_path(lead) %>"
+           data-whatsapp-url="<%= open_whatsapp_conversation_admin_lead_path(lead, workspace: "focus") %>">
+    <%= card_inner %>
+  </article>
+<% else %>
+  <%= link_to admin_lead_path(lead, return_to: lead_return_to_path),
+              id: "lead_#{lead.id}",
+              class: card_classes,
+              role: "listitem",
+              data: card_data.except(:lead_pwa_kanban_target) do %>
+    <%= card_inner %>
+  <% end %>
 <% end %>

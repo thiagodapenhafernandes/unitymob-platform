@@ -108,14 +108,27 @@
       <span>meus</span>
     <% end %>
 
-    <%= form_with url: admin_habitations_path, method: :get, local: true, class: "habitations-pwa-search" do %>
+    <%= form_with url: admin_habitations_path,
+                  method: :get,
+                  local: true,
+                  class: "habitations-pwa-search",
+                  data: { controller: "pwa-habitation-search", pwa_habitation_search_delay_value: 650 } do %>
       <% pwa_habitation_search_params.each do |param_key, param_value| %>
         <% Array(param_value).reject(&:blank?).each do |hidden_value| %>
           <%= hidden_field_tag(param_value.is_a?(Array) ? "#{param_key}[]" : param_key, hidden_value) %>
         <% end %>
       <% end %>
       <i class="bi bi-search" aria-hidden="true"></i>
-      <%= text_field_tag :q, @q, placeholder: "Busque por código, imóvel, bairro...", autocomplete: "off", inputmode: "search", aria: { label: "Buscar imóveis" } %>
+      <%= text_field_tag :q,
+                         @q,
+                         placeholder: "Busque por código, imóvel, bairro...",
+                         autocomplete: "off",
+                         inputmode: "search",
+                         aria: { label: "Buscar imóveis" },
+                         data: {
+                           pwa_habitation_search_target: "input",
+                           action: "input->pwa-habitation-search#schedule keydown->pwa-habitation-search#submitOnEnter"
+                         } %>
     <% end %>
 
     <button type="button"

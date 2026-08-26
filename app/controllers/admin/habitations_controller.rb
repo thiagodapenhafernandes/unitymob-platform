@@ -146,9 +146,14 @@ class Admin::HabitationsController < Admin::BaseController
     @page_size_options = INDEX_PAGE_SIZE_OPTIONS
     filtered_scope = filtered_habitations_scope
     load_pwa_habitation_nav_counts
+    order_clauses = []
+    search_relevance_order = habitation_search_relevance_order_sql(@q)
+    order_clauses << Arel.sql("#{search_relevance_order} ASC") if search_relevance_order.present?
+    order_clauses << Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST")
+
     @habitations = filtered_scope
       .includes(:address, :admin_user, :proprietor, { empreendimento: { photos_attachments: :blob } }, { broker_assignments: :admin_user }, { photos_attachments: :blob })
-      .order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
+      .order(*order_clauses)
 
     @habitations = @habitations.paginate(page: params[:page], per_page: @per_page)
     @filtered_count = @habitations.total_entries
@@ -984,6 +989,56 @@ class Admin::HabitationsController < Admin::BaseController
     sort_options.fetch(params[:sort].presence, sort_options["codigo"])[:default_direction]
   end
   helper_method :sort_column, :sort_direction
+
+  def habitation_search_relevance_order_sql(query)
+    sanitized = query.to_s.squish
+    return if sanitized.blank?
+
+    exact = ActiveRecord::Base.connection.quote(sanitized)
+    prefix = ActiveRecord::Base.connection.quote("#{ActiveRecord::Base.sanitize_sql_like(sanitized)}%")
+    phrase = ActiveRecord::Base.connection.quote("%#{ActiveRecord::Base.sanitize_sql_like(sanitized)}%")
+    linked_development_exact_match = <<~SQL.squish
+      EXISTS (
+        SELECT 1
+        FROM habitations developments
+        WHERE developments.codigo = habitations.codigo_empreendimento
+          AND developments.tenant_id = habitations.tenant_id
+          AND LOWER(unaccent(COALESCE(developments.nome_empreendimento, ''))) = LOWER(unaccent(#{exact}))
+      )
+    SQL
+    linked_development_prefix_match = <<~SQL.squish
+      EXISTS (
+        SELECT 1
+        FROM habitations developments
+        WHERE developments.codigo = habitations.codigo_empreendimento
+          AND developments.tenant_id = habitations.tenant_id
+          AND unaccent(COALESCE(developments.nome_empreendimento, '')) ILIKE unaccent(#{prefix})
+      )
+    SQL
+    linked_development_phrase_match = <<~SQL.squish
+      EXISTS (
+        SELECT 1
+        FROM habitations developments
+        WHERE developments.codigo = habitations.codigo_empreendimento
+          AND developments.tenant_id = habitations.tenant_id
+          AND unaccent(COALESCE(developments.nome_empreendimento, '')) ILIKE unaccent(#{phrase})
+      )
+    SQL
+
+    <<~SQL.squish
+      CASE
+        WHEN habitations.codigo = #{exact} OR habitations.codigo_dwv = #{exact} THEN 0
+        WHEN LOWER(unaccent(COALESCE(habitations.nome_empreendimento, ''))) = LOWER(unaccent(#{exact})) THEN 1
+        WHEN #{linked_development_exact_match} THEN 1
+        WHEN unaccent(COALESCE(habitations.nome_empreendimento, '')) ILIKE unaccent(#{prefix}) THEN 2
+        WHEN #{linked_development_prefix_match} THEN 2
+        WHEN unaccent(COALESCE(habitations.nome_empreendimento, '')) ILIKE unaccent(#{phrase}) THEN 3
+        WHEN #{linked_development_phrase_match} THEN 3
+        WHEN unaccent(COALESCE(habitations.titulo_anuncio, '')) ILIKE unaccent(#{phrase}) THEN 4
+        ELSE 9
+      END
+    SQL
+  end
 
   def sort_options
     SORT_OPTIONS
