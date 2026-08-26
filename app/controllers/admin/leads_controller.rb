@@ -109,7 +109,10 @@ class Admin::LeadsController < Admin::BaseController
     assign_lead_filter_state
     @view_mode = resolve_view_mode
 
-    lead_scope = filtered_lead_scope_for_current_user
+    filtered_scope = filtered_lead_scope_for_current_user
+    @desktop_lead_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
+    @desktop_tab_counts = lead_tab_counts_for(filtered_scope)
+    lead_scope = lead_scope_for_tab(filtered_scope, @desktop_lead_tab)
 
     stats_scope = lead_scope.reorder(nil)
     @total_leads = stats_scope.count
@@ -151,7 +154,7 @@ class Admin::LeadsController < Admin::BaseController
     @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
-    load_pwa_leads_context(stats_scope)
+    load_pwa_leads_context(filtered_scope.reorder(nil))
     property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a + @pwa_kanban_leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @kanban_leads.first || @leads.first
@@ -163,7 +166,8 @@ class Admin::LeadsController < Admin::BaseController
 
     status = Lead.status_value(params[:status], tenant: current_tenant)
     offset = [params[:offset].to_i, 0].max
-    lead_scope = filtered_lead_scope_for_current_user.where(leads: { status: status })
+    desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
+    lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status })
     total = lead_scope.reorder(nil).count
     leads = lead_scope
             .includes(:admin_user, lead_labelings: :lead_label)
@@ -766,6 +770,7 @@ class Admin::LeadsController < Admin::BaseController
     @status = params[:status]
     @status_filters = Array(params[:status]).map(&:to_s).reject(&:blank?)
     @pipeline_id = @selected_pipeline&.id
+    @lead_pipeline_stage_id = params[:lead_pipeline_stage_id].to_s
     @origin = params[:origin]
     @attribution_channel = params[:attribution_channel]
     @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
@@ -785,6 +790,7 @@ class Admin::LeadsController < Admin::BaseController
     @end_date = params[:end_date]
     @closed_start_date = params[:closed_start_date]
     @closed_end_date = params[:closed_end_date]
+    @archive_reason_id = params[:archive_reason_id].to_s
     @parsed_start_date = nil
     @parsed_end_date = nil
     @parsed_closed_start_date = nil
@@ -805,6 +811,7 @@ class Admin::LeadsController < Admin::BaseController
 
     scope = scope.where(leads: { lead_pipeline_id: @selected_pipeline.id }) if @selected_pipeline.present?
     scope = apply_status_filter(scope)
+    scope = apply_pipeline_stage_filter(scope)
     scope = scope.by_origin(@origin)
     scope = apply_attribution_channel_filter(scope)
     scope = scope.with_any_tags(@tags)
@@ -817,6 +824,7 @@ class Admin::LeadsController < Admin::BaseController
     scope = apply_channel_filter(scope)
     scope = apply_bot_filter(scope)
     scope = apply_price_filter(scope)
+    scope = apply_archive_reason_filter(scope)
     scope = apply_closed_at_filter(scope)
     apply_created_at_filter(scope)
   end
@@ -849,6 +857,16 @@ class Admin::LeadsController < Admin::BaseController
     return scope.none unless permitted_admin_user_ids_for_leads.include?(@broker_id.to_i)
 
     scope.where(leads: { admin_user_id: @broker_id })
+  end
+
+  def apply_pipeline_stage_filter(scope)
+    return scope if @lead_pipeline_stage_id.blank?
+
+    stage_id = @lead_pipeline_stage_id.to_i
+    visible_stage_ids = visible_stages_for(current_tenant.lead_pipeline_stages.active.where(id: stage_id)).map(&:id)
+    return scope.none unless visible_stage_ids.include?(stage_id)
+
+    scope.where(leads: { lead_pipeline_stage_id: stage_id })
   end
 
   def apply_property_filter(scope)
@@ -976,6 +994,20 @@ class Admin::LeadsController < Admin::BaseController
     scope = scope.where("#{LEAD_PRICE_SQL} >= :min", min: min) if min.present?
     scope = scope.where("#{LEAD_PRICE_SQL} <= :max", max: max) if max.present?
     scope
+  end
+
+  def apply_archive_reason_filter(scope)
+    return scope if @archive_reason_id.blank?
+
+    reason_id = @archive_reason_id.to_i
+    reason_exists = current_tenant.attribute_options
+                                  .for_context("lead")
+                                  .for_category("archive_reason")
+                                  .where(id: reason_id)
+                                  .exists?
+    return scope.none unless reason_exists
+
+    scope.where(leads: { archive_reason_id: reason_id })
   end
 
   def apply_attention_filter(scope)
@@ -1637,6 +1669,21 @@ class Admin::LeadsController < Admin::BaseController
     @status_options = lead_status_options_for_selected_context
     @lead_stage_color_by_status = lead_stage_color_map
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
+    @lead_pipeline_stage_options = lead_pipeline_stage_options_for_filter
+    @lead_archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered.pluck(:name, :id)
+  end
+
+  def lead_pipeline_stage_options_for_filter
+    scope = if @selected_pipeline.present?
+      @selected_pipeline.stages.active.ordered.includes(:lead_pipeline)
+    else
+      current_tenant.lead_pipeline_stages.active.ordered.includes(:lead_pipeline)
+    end
+
+    visible_stages_for(scope).map do |stage|
+      label = @selected_pipeline.present? ? stage.name : [stage.lead_pipeline&.name, stage.name].compact_blank.join(" · ")
+      [label, stage.id]
+    end
   end
 
   def lead_stage_color_map
@@ -1705,6 +1752,20 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def pwa_lead_scope_for_tab(base_scope, tab)
+    lead_scope_for_tab(base_scope, tab)
+  end
+
+  def lead_tab_counts_for(base_scope)
+    {
+      "todo" => lead_scope_for_tab(base_scope, "todo").reorder(nil).count,
+      "visits" => lead_scope_for_tab(base_scope, "visits").reorder(nil).count,
+      "future" => lead_scope_for_tab(base_scope, "future").reorder(nil).count,
+      "favorites" => lead_scope_for_tab(base_scope, "favorites").reorder(nil).count,
+      "all" => lead_scope_for_tab(base_scope, "all").reorder(nil).count
+    }
+  end
+
+  def lead_scope_for_tab(base_scope, tab)
     case tab
     when "todo"
       pwa_actionable_leads(base_scope)

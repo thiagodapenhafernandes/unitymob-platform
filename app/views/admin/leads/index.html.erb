@@ -21,11 +21,6 @@
     gap: 10px;
   }
 
-  .lead-list-summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-  }
-
   .lead-list {
     display: grid;
     overflow: hidden;
@@ -241,8 +236,9 @@
     line-height: 1;
   }
 
-  .lead-filter-collapse {
+  .lead-desktop-header {
     display: grid;
+    gap: 12px;
     overflow: hidden;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 10px;
@@ -250,62 +246,304 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
   }
 
-  .lead-filter-collapse__summary {
-    display: flex;
+  .lead-desktop-header__bar {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) auto;
+    gap: 10px;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 44px;
-    padding: 0 12px;
-    cursor: pointer;
-    list-style: none;
+    padding: 12px 14px 4px;
+  }
+
+  .lead-desktop-search {
+    position: relative;
+    min-width: 0;
+  }
+
+  .lead-desktop-search i {
+    position: absolute;
+    top: 50%;
+    left: 13px;
+    color: #7b8797;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .lead-desktop-search input {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 14px 0 38px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    background: #fff;
     color: var(--ab-ink, #202a37);
-    font-weight: 900;
+    font-size: 14px;
+    font-weight: 750;
+    outline: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
   }
 
-  .lead-filter-collapse__summary::-webkit-details-marker {
-    display: none;
+  .lead-desktop-search input:focus {
+    border-color: var(--admin-primary, #365f8f);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary, #365f8f) 16%, transparent);
   }
 
-  .lead-filter-collapse__summary-main,
-  .lead-filter-collapse__summary-meta {
+  .lead-desktop-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+  }
+
+  .lead-desktop-view-toggle {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+
+  .lead-desktop-view-toggle__item,
+  .lead-desktop-header__button {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-width: 0;
+    justify-content: center;
+    gap: 7px;
+    min-height: 42px;
+    padding: 0 13px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ab-ink, #202a37);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
   }
 
-  .lead-filter-collapse__summary-main span {
+  .lead-desktop-view-toggle__item {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .lead-desktop-view-toggle__item.is-active,
+  .lead-desktop-header__button.is-primary {
+    background: var(--admin-primary, #365f8f);
+    color: #fff;
+  }
+
+  .lead-desktop-header__button:hover,
+  .lead-desktop-view-toggle__item:hover {
+    color: var(--admin-primary, #365f8f);
+    text-decoration: none;
+  }
+
+  .lead-desktop-view-toggle__item.is-active:hover,
+  .lead-desktop-header__button.is-primary:hover {
+    color: #fff;
+  }
+
+  .lead-desktop-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(96px, 1fr));
+    border-top: 1px solid var(--ab-line-soft, #e7ebf2);
+  }
+
+  .lead-desktop-tab {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 4px;
     min-width: 0;
+    padding: 13px 8px 11px;
+    color: var(--ab-muted, #657386);
+    font-size: 13px;
+    font-weight: 850;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .lead-desktop-tab::after {
+    position: absolute;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    height: 3px;
+    border-radius: 999px 999px 0 0;
+    background: transparent;
+    content: "";
+  }
+
+  .lead-desktop-tab i {
+    color: currentColor;
+    font-size: 23px;
+    line-height: 1;
+  }
+
+  .lead-desktop-tab strong,
+  .lead-desktop-tab span {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .lead-filter-collapse__summary-meta {
-    flex: 0 0 auto;
+  .lead-desktop-tab small {
+    color: currentColor;
+    font-size: 12px;
+    font-weight: 850;
+    opacity: .88;
+  }
+
+  .lead-desktop-tab.is-active,
+  .lead-desktop-tab:hover {
+    color: var(--admin-primary, #365f8f);
+    text-decoration: none;
+  }
+
+  .lead-desktop-tab.is-active::after {
+    background: var(--admin-primary, #365f8f);
+  }
+
+  .lead-desktop-filter-modal .ax-quick-modal__panel {
+    max-width: min(1040px, calc(100vw - 44px));
+    max-height: min(86vh, 820px);
+    overflow: hidden;
+  }
+
+  .lead-desktop-filter-modal .ax-quick-modal__body {
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .lead-desktop-filter-modal .ax-leads-filters {
+    display: flex;
+    flex-direction: column;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .lead-desktop-filter-modal .ax-filter-form__fields {
+    display: block;
+  }
+
+  .lead-desktop-filter-modal .ax-filter-form__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--ab-line-soft, #e7ebf2);
+    background: color-mix(in srgb, #fff 92%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  .lead-desktop-filter-modal .ax-filter-form__actions .ax-btn {
+    min-width: 92px;
+  }
+
+  .lead-filter-form-body {
+    display: grid;
+    gap: 18px;
+    padding: 20px 24px 8px;
+  }
+
+  .lead-filter-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .lead-filter-quick__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ab-ink, #202a37);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  }
+
+  .lead-filter-quick__chip:hover {
+    border-color: var(--admin-primary, #365f8f);
+    color: var(--admin-primary, #365f8f);
+    text-decoration: none;
+  }
+
+  .lead-filter-form-section {
+    display: grid;
+    gap: 10px;
+  }
+
+  .lead-filter-form-section__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ab-ink, #202a37);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+
+  .lead-filter-form-section__title::after {
+    flex: 1 1 auto;
+    height: 1px;
+    background: var(--ab-line-soft, #e7ebf2);
+    content: "";
+  }
+
+  .lead-desktop-filter-modal .ax-field-grid {
+    row-gap: 12px;
+  }
+
+  .lead-desktop-filter-modal .ax-field__label {
     color: var(--ab-muted, #657386);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 850;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
-  .lead-filter-collapse__chevron {
-    transition: transform .16s ease;
+  .lead-desktop-filter-modal .ax-control,
+  .lead-desktop-filter-modal input:not([type="checkbox"]):not([type="radio"]),
+  .lead-desktop-filter-modal select,
+  .lead-desktop-filter-modal textarea {
+    min-height: 40px;
+    border-radius: 8px;
+    font-size: 14px;
   }
 
-  .lead-filter-collapse[open] .lead-filter-collapse__chevron {
-    transform: rotate(180deg);
+  .lead-filter-active {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 2px;
   }
 
-  .lead-filter-collapse__content {
-    display: none;
-    border-top: 0;
-    background: #fff;
-    padding: 10px;
-  }
-
-  .lead-filter-collapse[open] .lead-filter-collapse__content {
-    display: block;
+  .lead-filter-active__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--admin-primary-soft, #edf4ff);
+    color: var(--admin-primary, #365f8f);
+    font-size: 12px;
+    font-weight: 850;
   }
 
   .ax-leads-filter-overlay .ax-leads-filters {
@@ -404,7 +642,37 @@
   }
 
   @media (max-width: 991.98px) {
-    .lead-list-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lead-desktop-header__bar {
+      grid-template-columns: 1fr;
+    }
+
+    .lead-desktop-header__actions {
+      justify-content: flex-start;
+    }
+
+    .lead-desktop-tabs {
+      overflow-x: auto;
+      grid-template-columns: repeat(5, minmax(132px, 1fr));
+    }
+
+    .lead-desktop-filter-modal .ax-quick-modal__panel {
+      max-width: calc(100vw - 24px);
+      max-height: calc(100vh - 24px);
+    }
+
+    .lead-filter-form-body {
+      padding: 16px;
+    }
+
+    .lead-desktop-filter-modal .ax-span-3,
+    .lead-desktop-filter-modal .ax-span-4,
+    .lead-desktop-filter-modal .ax-span-6 {
+      grid-column: span 6;
+    }
+
+    .lead-desktop-filter-modal .ax-filter-form__actions {
+      padding: 12px 16px;
+    }
 
     .lead-desktop-filter-panel {
       display: none !important;
@@ -512,7 +780,7 @@
     }
 
     .ax-leads-mobile-shell > .ax-workspace-heading,
-    .ax-leads-mobile-shell > .lead-list-summary,
+    .ax-leads-mobile-shell > .lead-desktop-header,
     .ax-leads-mobile-shell > .ax-leads-mobile-filter-button,
     .ax-leads-mobile-shell > .ax-leads-board,
     .ax-leads-mobile-shell > .lead-list-workspace,
@@ -1433,19 +1701,6 @@
       overflow: hidden;
     }
 
-    .lead-filter-collapse {
-      display: contents;
-      overflow: visible;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-    }
-
-    .lead-filter-collapse__summary {
-      display: none;
-    }
-
     .lead-pwa-filter-overlay {
       display: block !important;
       position: fixed;
@@ -1835,6 +2090,7 @@
   lead_filter_labels << "Funil" if params[:lead_pipeline_id].present?
   lead_filter_labels << "Busca" if @q.present?
   lead_filter_labels << "Status" if @status_filters.present?
+  lead_filter_labels << "Etapa de funil" if @lead_pipeline_stage_id.present?
   lead_filter_labels << "Origem" if @origin.present?
   lead_filter_labels << "Canal" if @attribution_channel.present?
   lead_filter_labels << "Tags" if @tags.present?
@@ -1849,148 +2105,202 @@
   lead_filter_labels << "Canal de origem" if @channel_filters.present?
   lead_filter_labels << "Bot" if @bot_attended
   lead_filter_labels << "Preço" if @price_min.present? || @price_max.present?
+  lead_filter_labels << "Motivo de arquivamento" if @archive_reason_id.present?
   lead_filter_labels << "Período" if @start_date.present? || @end_date.present? || @closed_start_date.present? || @closed_end_date.present?
   lead_active_filter_count = lead_filter_labels.size
   leads_heading_pills << "#{lead_active_filter_count} filtro(s)" if lead_active_filter_count.positive?
 
   leads_can_manage_statuses = defined?(can?) && can?(:manage, :catalogos)
   lead_quick_base_params = lead_query_params.except("page", :page)
+  lead_desktop_tab_items = [
+    ["todo", "A fazer", "house-door"],
+    ["visits", "Visitas", "bullseye"],
+    ["future", "Futuras", "clock"],
+    ["favorites", "Favoritos", "star"],
+    ["all", "Todos", "archive"]
+  ]
+  business_filter_options = [["Compra", "sale"], ["Aluguel", "rental"], ["Indefinido", "undefined"], ["Lançamento", "launch"], ["Captação", "capture"]]
+  status_filter_options = Array(@status_options).filter_map do |option|
+    label, value = option.is_a?(Array) ? option : [option, option]
+    next if label.blank? || value.blank?
 
-  leads_heading_actions = capture do %>
-    <% if leads_can_manage_statuses %>
-      <button type="button"
-              class="ax-workspace-heading__tool"
-              data-ax-modal-open="#leadPipelineCreateModal"
-              title="Criar novo funil">
-        <i class="bi bi-diagram-3"></i> Novo funil
-      </button>
-      <button type="button"
-              class="ax-workspace-heading__tool"
-              data-ax-modal-open="#leadStatusBoardModal"
-              title="Editar funil e etapas">
-        <i class="bi bi-gear"></i> Etapas
-      </button>
-    <% end %>
-    <div class="ax-view-toggle" aria-label="Alternar visualização">
-      <%= link_to admin_leads_path(kanban_params),
-                  class: "ax-view-toggle__item #{'is-active' if @view_mode == 'kanban'}",
-                  title: "Visualizar em kanban" do %>
-        <i class="bi bi-kanban"></i><span>Kanban</span>
-      <% end %>
-      <%= link_to admin_leads_path(list_params),
-                  class: "ax-view-toggle__item #{'is-active' if @view_mode == 'list'}",
-                  title: "Visualizar em lista" do %>
-        <i class="bi bi-list-ul"></i><span>Lista</span>
-      <% end %>
-    </div>
-  <% end %>
+    [label.to_s, value.to_s]
+  end
+  situation_filter_options = [["Precisa de ação", "requires_action"], ["Parado", "stalled"], ["Sem corretor", "unassigned"], ["Em espera", "holding"], ["Sem primeiro contato", "no_first_contact"], ["SLA atrasado", "sla_overdue"], ["Com oportunidade", "with_opportunity"]]
+  activity_filter_options = [["Primeiro contato", "first_contact"], ["Agendar atividade", "schedule_activity"], ["Retornar para o cliente", "return_customer"], ["Visita agendada", "scheduled_visit"], ["Divergência de qualificação", "qualification_divergence"]]
+  channel_filter_options = [["Showroom", "showroom"], ["Telefone", "phone"], ["Rede Social", "social"], ["WhatsApp", "whatsapp"], ["Internet", "internet"]]
+  desktop_search_hidden_params = lead_query_params.except("q", :q, "page", :page)
+%>
 
-  <% leads_filter_form = capture do %>
+<% leads_filter_form = capture do %>
     <%= ax_filter_form(url: admin_leads_path,
-                       reset_path: admin_leads_path(view: @view_mode),
+                       reset_path: admin_leads_path(view: @view_mode, lead_tab: @desktop_lead_tab),
                        submit_label: "Filtrar",
                        class_name: "ax-leads-filters") do |f| %>
       <%= f.hidden_field :view, value: @view_mode %>
+      <%= f.hidden_field :lead_tab, value: @desktop_lead_tab %>
       <div class="lead-filter-form-body">
-      <div class="lead-filter-quick" aria-label="Atalhos de filtro">
-        <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: Date.current.iso8601, end_date: Date.current.iso8601)),
-                    class: "lead-filter-quick__chip" do %>
-          <i class="bi bi-calendar-day"></i><span>Hoje</span>
-        <% end %>
-        <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: 7.days.ago.to_date.iso8601, end_date: Date.current.iso8601)),
-                    class: "lead-filter-quick__chip" do %>
-          <i class="bi bi-calendar-week"></i><span>7 dias</span>
-        <% end %>
-        <%= link_to admin_leads_path(lead_quick_base_params.merge(broker_id: "unassigned")),
-                    class: "lead-filter-quick__chip" do %>
-          <i class="bi bi-person-x"></i><span>Sem corretor</span>
-        <% end %>
-        <%= link_to admin_leads_path(lead_quick_base_params.merge(contact_filter: "with_phone")),
-                    class: "lead-filter-quick__chip" do %>
-          <i class="bi bi-telephone"></i><span>Com telefone</span>
-        <% end %>
-        <%= link_to admin_leads_path(lead_quick_base_params.merge(property_filter: "general")),
-                    class: "lead-filter-quick__chip" do %>
-          <i class="bi bi-megaphone"></i><span>Contato geral</span>
-        <% end %>
-        <%= link_to admin_leads_path(lead_quick_base_params.merge(activity_filter: ["qualification_divergence"])),
-                    class: "lead-filter-quick__chip",
-                    data: {
-                      controller: "ax-tooltip",
-                      ax_tooltip_text_value: "Mostra leads em etapas com Fila divergência ativa quando corretor e gestor registraram qualificações diferentes."
-                    } do %>
-          <i class="bi bi-exclamation-diamond"></i><span>Divergência</span>
-        <% end %>
-      </div>
-      <%= ax_field_grid do %>
-        <%= f.hidden_field :attention_filter, value: @attention_filter if @attention_filter.present? %>
-        <%= f.hidden_field :attribution_channel, value: @attribution_channel if @attribution_channel.present? %>
-        <div class="ax-span-3">
-          <%= ax_select_field(form: f, method: :lead_pipeline_id, label: "Funil",
-                              choices: @pipeline_options,
-                              select_options: { include_blank: "Todos os funis", selected: @selected_pipeline&.id }) %>
+        <div class="lead-filter-quick" aria-label="Atalhos de filtro">
+          <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: Date.current.iso8601, end_date: Date.current.iso8601)),
+                      class: "lead-filter-quick__chip" do %>
+            <i class="bi bi-calendar-day"></i><span>Hoje</span>
+          <% end %>
+          <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: 7.days.ago.to_date.iso8601, end_date: Date.current.iso8601)),
+                      class: "lead-filter-quick__chip" do %>
+            <i class="bi bi-calendar-week"></i><span>7 dias</span>
+          <% end %>
+          <%= link_to admin_leads_path(lead_quick_base_params.merge(broker_id: "unassigned")),
+                      class: "lead-filter-quick__chip" do %>
+            <i class="bi bi-person-x"></i><span>Sem corretor</span>
+          <% end %>
+          <%= link_to admin_leads_path(lead_quick_base_params.merge(contact_filter: "with_phone")),
+                      class: "lead-filter-quick__chip" do %>
+            <i class="bi bi-telephone"></i><span>Com telefone</span>
+          <% end %>
+          <%= link_to admin_leads_path(lead_quick_base_params.merge(property_filter: "general")),
+                      class: "lead-filter-quick__chip" do %>
+            <i class="bi bi-megaphone"></i><span>Contato geral</span>
+          <% end %>
+          <%= link_to admin_leads_path(lead_quick_base_params.merge(activity_filter: ["qualification_divergence"])),
+                      class: "lead-filter-quick__chip",
+                      data: {
+                        controller: "ax-tooltip",
+                        ax_tooltip_text_value: "Mostra leads em etapas com Fila divergência ativa quando corretor e gestor registraram qualificações diferentes."
+                      } do %>
+            <i class="bi bi-exclamation-diamond"></i><span>Divergência</span>
+          <% end %>
         </div>
-        <div class="ax-span-3">
-          <%= ax_select_field(form: f, method: :status, label: "Etapa",
-                              choices: @status_options,
-                              select_options: { include_blank: "Todas as etapas", selected: @status_filters.first }) %>
+
+        <div class="lead-filter-form-section">
+          <div class="lead-filter-form-section__title">Atendimento</div>
+          <%= ax_field_grid do %>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :broker_id, label: "Usuário",
+                                  choices: [["Sem corretor", "unassigned"]] + @broker_options,
+                                  select_options: { include_blank: "Todos os usuários", selected: @broker_id }) %>
+            </div>
+            <div class="ax-span-3">
+              <span class="ax-field__label">Tipo de negociação</span>
+              <%= select_tag "business_filter[]",
+                             options_for_select(business_filter_options, @business_filters.first),
+                             include_blank: "Todos os tipos",
+                             class: "ax-control" %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :status, label: "Status",
+                                  choices: status_filter_options,
+                                  select_options: { include_blank: "Todos os status", selected: @status_filters.first }) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :attention_filter, label: "Situação",
+                                  choices: situation_filter_options,
+                                  select_options: { include_blank: "Todas as situações", selected: @attention_filter }) %>
+            </div>
+            <div class="ax-span-3">
+              <span class="ax-field__label">Canal</span>
+              <%= select_tag "channel_filter[]",
+                             options_for_select(channel_filter_options, @channel_filters.first),
+                             include_blank: "Todos os canais",
+                             class: "ax-control" %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :origin, label: "Fonte",
+                                  choices: @origin_options,
+                                  select_options: { include_blank: "Todas as fontes", selected: @origin }) %>
+            </div>
+            <div class="ax-span-3">
+              <span class="ax-field__label">Atividade</span>
+              <%= select_tag "activity_filter[]",
+                             options_for_select(activity_filter_options, @activity_filters.first),
+                             include_blank: "Todas as atividades",
+                             class: "ax-control" %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :archive_reason_id, label: "Motivo de arquivamento",
+                                  choices: @lead_archive_reason_options,
+                                  select_options: { include_blank: "Todos os motivos", selected: @archive_reason_id }) %>
+            </div>
+            <% if team_available?(:leads) %>
+              <div class="ax-span-6">
+                <span class="ax-field__label">Abrangência</span>
+                <%= ax_team_toggle(:leads) %>
+              </div>
+            <% end %>
+          <% end %>
         </div>
-        <div class="ax-span-6">
-          <%= ax_text_field(form: f, method: :q, label: "Buscar",
-                            value: params[:q],
-                            placeholder: "Nome, e-mail, telefone, origem ou produto...") %>
+
+        <div class="lead-filter-form-section">
+          <div class="lead-filter-form-section__title">Funil e busca</div>
+          <%= ax_field_grid do %>
+            <div class="ax-span-4">
+              <%= ax_select_field(form: f, method: :lead_pipeline_id, label: "Funil",
+                                  choices: @pipeline_options,
+                                  select_options: { include_blank: "Todos os funis", selected: @selected_pipeline&.id }) %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_select_field(form: f, method: :lead_pipeline_stage_id, label: "Etapa de funil",
+                                  choices: @lead_pipeline_stage_options,
+                                  select_options: { include_blank: "Todas as etapas", selected: @lead_pipeline_stage_id }) %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_text_field(form: f, method: :q, label: "Buscar",
+                                value: params[:q],
+                                placeholder: "Nome, e-mail, telefone, origem ou produto...") %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_autocomplete_select_field(
+                    form: f,
+                    method: :tags,
+                    label: "Tags",
+                    choices: @tag_options.map { |tag| [tag, tag] },
+                    select_options: { selected: @tags },
+                    multiple: true,
+                    tags: true,
+                    create: true,
+                    placeholder: "Filtrar por uma ou mais tags..."
+                  ) %>
+            </div>
+          <% end %>
         </div>
-        <div class="ax-span-3">
-          <%= ax_select_field(form: f, method: :origin, label: "Origem",
-                              choices: @origin_options,
-                              select_options: { include_blank: "Todas as origens", selected: @origin }) %>
+
+        <div class="lead-filter-form-section">
+          <div class="lead-filter-form-section__title">Imóvel, contato e período</div>
+          <%= ax_field_grid do %>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :property_filter, label: "Vínculo com imóvel",
+                                  choices: [["Com imóvel vinculado", "with_property"], ["Contato geral", "general"], ["Imóvel indisponível", "unavailable_property"]],
+                                  select_options: { include_blank: "Todos", selected: @property_filter }) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_text_field(form: f, method: :property_q, label: "Imóvel",
+                                value: @property_q,
+                                placeholder: "Código, título ou empreendimento...") %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_select_field(form: f, method: :contact_filter, label: "Contato",
+                                  choices: [["Com telefone", "with_phone"], ["Com e-mail", "with_email"], ["Sem telefone/e-mail", "missing_contact"]],
+                                  select_options: { include_blank: "Todos", selected: @contact_filter }) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_date_field(form: f, method: :start_date, label: "Entrada de", value: @start_date) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_date_field(form: f, method: :end_date, label: "Entrada até", value: @end_date) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_text_field(form: f, method: :price_min, label: "Preço mínimo", value: @price_min, inputmode: "decimal", placeholder: "R$ mínimo") %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_text_field(form: f, method: :price_max, label: "Preço máximo", value: @price_max, inputmode: "decimal", placeholder: "R$ máximo") %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_date_field(form: f, method: :closed_start_date, label: "Fechado de", value: @closed_start_date) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_date_field(form: f, method: :closed_end_date, label: "Fechado até", value: @closed_end_date) %>
+            </div>
+          <% end %>
         </div>
-        <div class="ax-span-6">
-          <%= ax_autocomplete_select_field(
-                form: f,
-                method: :tags,
-                label: "Tags",
-                choices: @tag_options.map { |tag| [tag, tag] },
-                select_options: { selected: @tags },
-                multiple: true,
-                tags: true,
-                create: true,
-                placeholder: "Filtrar por uma ou mais tags..."
-              ) %>
-        </div>
-        <div class="ax-span-3">
-          <%= ax_select_field(form: f, method: :broker_id, label: "Corretor",
-                              choices: [["Sem corretor", "unassigned"]] + @broker_options,
-                              select_options: { include_blank: "Todos os corretores", selected: @broker_id }) %>
-        </div>
-        <div class="ax-span-3">
-          <%= ax_select_field(form: f, method: :property_filter, label: "Vínculo com imóvel",
-                              choices: [["Com imóvel vinculado", "with_property"], ["Contato geral", "general"], ["Imóvel indisponível", "unavailable_property"]],
-                              select_options: { include_blank: "Todos", selected: @property_filter }) %>
-        </div>
-        <div class="ax-span-3">
-          <%= ax_text_field(form: f, method: :property_q, label: "Imóvel",
-                            value: @property_q,
-                            placeholder: "Código, título ou empreendimento...") %>
-        </div>
-        <div class="ax-span-3">
-          <%= ax_select_field(form: f, method: :contact_filter, label: "Contato",
-                              choices: [["Com telefone", "with_phone"], ["Com e-mail", "with_email"], ["Sem telefone/e-mail", "missing_contact"]],
-                              select_options: { include_blank: "Todos", selected: @contact_filter }) %>
-        </div>
-        <div class="ax-span-3">
-          <%= ax_date_field(form: f, method: :start_date, label: "Entrada de", value: @start_date) %>
-        </div>
-        <div class="ax-span-3">
-          <%= ax_date_field(form: f, method: :end_date, label: "Entrada até", value: @end_date) %>
-        </div>
-        <% if team_available?(:leads) %>
-          <div class="ax-span-6">
-            <span class="ax-field__label">Abrangência</span>
-            <%= ax_team_toggle(:leads) %>
-          </div>
-        <% end %>
-      <% end %>
       <% if lead_active_filter_count.positive? %>
         <div class="lead-filter-active" aria-label="Filtros ativos">
           <% lead_filter_labels.each do |label| %>
@@ -2003,10 +2313,6 @@
   <% end %>
 
   <% pwa_filter_form = capture do %>
-    <% business_filter_options = [["Compra", "sale"], ["Aluguel", "rental"], ["Indefinido", "undefined"], ["Lançamento", "launch"], ["Captação", "capture"]] %>
-    <% status_filter_options = [["Novo", "Novo"], ["Em negociação", "Em Atendimento"], ["Negócio fechado", "Concluido"], ["Arquivado", "Descartado"], ["Pendente", "Aguardando Aceite"]] %>
-    <% activity_filter_options = [["Primeiro contato", "first_contact"], ["Agendar atividade", "schedule_activity"], ["Retornar para o cliente", "return_customer"], ["Visita agendada", "scheduled_visit"], ["Divergência de qualificação", "qualification_divergence"]] %>
-    <% channel_filter_options = [["Showroom", "showroom"], ["Telefone", "phone"], ["Rede Social", "social"], ["WhatsApp", "whatsapp"], ["Internet", "internet"]] %>
     <% pwa_price_filter_count = [@price_min, @price_max].count(&:present?) %>
     <% pwa_date_filter_count = [@start_date, @end_date, @closed_start_date, @closed_end_date].count(&:present?) %>
     <% pwa_origin_filter_count = @channel_filters.size + (@origin.present? ? 1 : 0) %>
@@ -2136,13 +2442,74 @@
     </section>
   <% end %>
 
-  <% lead_list_summary = capture do %>
-    <div class="ax-metric-grid lead-list-summary" aria-label="Resumo dos leads filtrados">
-      <%= ax_metric_card(label: "Total filtrado", value: number_with_delimiter(@total_leads.to_i)) %>
-      <%= ax_metric_card(label: "Novos", value: number_with_delimiter(@new_leads.to_i), badge: ax_badge("Entrada", tone: :amber)) %>
-      <%= ax_metric_card(label: "Em atendimento", value: number_with_delimiter(@in_service_leads.to_i)) %>
-      <%= ax_metric_card(label: "Sem corretor", value: number_with_delimiter(@unassigned_leads.to_i), badge: ax_badge("Atenção", tone: :red)) %>
-    </div>
+  <% lead_desktop_header = capture do %>
+    <section class="lead-desktop-header" aria-label="Navegação e filtros de leads">
+      <div class="lead-desktop-header__bar">
+        <%= form_with url: admin_leads_path, method: :get, local: true, class: "lead-desktop-search" do |f| %>
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <% desktop_search_hidden_params.each do |key, value| %>
+            <% Array(value).each do |item| %>
+              <%= hidden_field_tag(value.is_a?(Array) ? "#{key}[]" : key, item) %>
+            <% end %>
+          <% end %>
+          <%= f.search_field :q,
+                             value: @q,
+                             placeholder: "Buscar por produto, nome, telefone, e-mail...",
+                             autocomplete: "off",
+                             aria: { label: "Buscar leads" } %>
+        <% end %>
+
+        <div class="lead-desktop-header__actions">
+          <% if leads_can_manage_statuses %>
+            <button type="button"
+                    class="lead-desktop-header__button"
+                    data-ax-modal-open="#leadPipelineCreateModal"
+                    title="Criar novo funil">
+              <i class="bi bi-diagram-3"></i><span>Novo funil</span>
+            </button>
+            <button type="button"
+                    class="lead-desktop-header__button"
+                    data-ax-modal-open="#leadStatusBoardModal"
+                    title="Editar funil e etapas">
+              <i class="bi bi-gear"></i><span>Etapas</span>
+            </button>
+          <% end %>
+          <div class="lead-desktop-view-toggle" aria-label="Alternar visualização">
+            <%= link_to(admin_leads_path(kanban_params.merge(lead_tab: @desktop_lead_tab)),
+                        class: "lead-desktop-view-toggle__item #{'is-active' if @view_mode == 'kanban'}",
+                        title: "Visualizar em kanban") do %>
+              <i class="bi bi-kanban"></i><span>Kanban</span>
+            <% end %>
+            <%= link_to(admin_leads_path(list_params.merge(lead_tab: @desktop_lead_tab)),
+                        class: "lead-desktop-view-toggle__item #{'is-active' if @view_mode == 'list'}",
+                        title: "Visualizar em lista") do %>
+              <i class="bi bi-list-ul"></i><span>Lista</span>
+            <% end %>
+          </div>
+          <button type="button"
+                  class="lead-desktop-header__button is-primary"
+                  data-ax-modal-open="#leadDesktopFilterModal"
+                  aria-label="Abrir filtros detalhados">
+            <i class="bi bi-funnel"></i>
+            <span>Filtros</span>
+            <% if lead_active_filter_count.positive? %>
+              <strong><%= lead_active_filter_count %></strong>
+            <% end %>
+          </button>
+        </div>
+      </div>
+
+      <nav class="lead-desktop-tabs" aria-label="Abas de leads">
+        <% lead_desktop_tab_items.each do |key, label, icon| %>
+          <% tab_path = admin_leads_path(lead_query_params.merge(view: @view_mode, lead_tab: key, page: nil).compact) %>
+          <%= link_to(tab_path, class: "lead-desktop-tab #{'is-active' if @desktop_lead_tab == key}") do %>
+            <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+            <strong><%= label %></strong>
+            <small><%= number_with_delimiter(@desktop_tab_counts.fetch(key, 0)) %></small>
+          <% end %>
+        <% end %>
+      </nav>
+    </section>
   <% end %>
 
 <div class="ax-leads-mobile-shell tw-flex tw-flex-col tw-gap-3"
@@ -2434,51 +2801,16 @@
 
   </section>
 
-  <% if @view_mode == "kanban" %>
-    <%= ax_workspace_heading(
-          eyebrow: "Funil de leads",
-          icon: "megaphone",
-          title: "Leads",
-          pills: leads_heading_pills,
-          subtitle: "Acompanhe o funil por status ou use a listagem tradicional.",
-          metrics: [
-            { value: number_with_delimiter(@total_leads.to_i), label: "no filtro" },
-            { value: number_with_delimiter(@new_leads.to_i), label: "novos" },
-            { value: number_with_delimiter(@unassigned_leads.to_i), label: "sem corretor" }
-          ],
-          actions: leads_heading_actions
-        ) %>
-  <% end %>
+  <%= lead_desktop_header %>
 
-  <% if @view_mode == "list" && @leads.any? %>
-    <%= lead_list_summary %>
-  <% end %>
-
-  <details class="lead-filter-collapse"
-           data-controller="persistent-details"
-           data-persistent-details-key-value="admin.leads.filterCollapse"
-           data-action="toggle->persistent-details#save"
-           <%= "open" if lead_active_filter_count.positive? %>>
-    <summary class="lead-filter-collapse__summary">
-      <span class="lead-filter-collapse__summary-main">
-        <i class="bi bi-funnel"></i>
-        <span>Filtros do funil</span>
-        <% if lead_active_filter_count.positive? %>
-          <%= ax_badge("#{lead_active_filter_count} ativo(s)", tone: :blue) %>
-        <% end %>
-      </span>
-      <span class="lead-filter-collapse__summary-meta">
-        <span>Buscar e refinar leads</span>
-        <i class="bi bi-chevron-down lead-filter-collapse__chevron"></i>
-      </span>
-    </summary>
-
-    <div class="lead-filter-collapse__content">
-      <div class="lead-desktop-filter-panel">
-        <%= leads_filter_form %>
-      </div>
+  <%= ax_quick_modal(id: "leadDesktopFilterModal",
+                     title: "Filtros",
+                     size: :lg,
+                     class_name: "lead-desktop-filter-modal") do %>
+    <div class="lead-desktop-filter-panel">
+      <%= leads_filter_form %>
     </div>
-  </details>
+  <% end %>
 
   <div class="ax-leads-filter-overlay lead-pwa-filter-overlay"
        aria-label="Minha visualização dos leads"
@@ -2529,6 +2861,7 @@
             has_more = loaded_count < total_count
             loader_params = lead_query_params.merge(
               view: "kanban",
+              lead_tab: @desktop_lead_tab,
               status: status,
               offset: loaded_count,
               return_to: request.fullpath,

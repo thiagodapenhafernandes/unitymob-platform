@@ -21,6 +21,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("lead-kanban")
       expect(response.body).to include("ax-leads-mobile-shell")
+      expect(response.body).to include("lead-desktop-header")
       expect(response.body).to include("ax-leads-mobile-filter-button")
       expect(response.body).to include("Divergência")
       expect(response.body).to include("qualification_divergence")
@@ -28,11 +29,16 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Filtros do funil")
       document = Nokogiri::HTML(response.body)
       expect(document.css("section.ax-filter-form.ax-leads-filters").size).to eq(1)
-      filter_details = document.at_css("details.lead-filter-collapse")
-      expect(filter_details).to be_present
-      expect(filter_details["open"]).to be_nil
-      expect(filter_details["data-controller"]).to eq("persistent-details")
-      expect(filter_details["data-persistent-details-key-value"]).to eq("admin.leads.filterCollapse")
+      expect(document.at_css("details.lead-filter-collapse")).to be_nil
+      desktop_header = document.at_css(".lead-desktop-header")
+      expect(desktop_header).to be_present
+      expect(desktop_header.to_html).to include("A fazer", "Visitas", "Futuras", "Favoritos", "Todos")
+      expect(document.at_css('button[data-ax-modal-open="#leadDesktopFilterModal"]')).to be_present
+      filter_modal = document.at_css("#leadDesktopFilterModal")
+      expect(filter_modal).to be_present
+      expect(filter_modal.to_html).to include("Tipo de negociação", "Status", "Situação", "Canal", "Fonte", "Atividade")
+      expect(filter_modal.to_html).to include("Motivos de arquivamento", "Etapa de funil")
+      expect(filter_modal.to_html).not_to include("Vetra")
       expect(document.at_css('button[data-ax-modal-open="#leadPipelineCreateModal"]')).to be_present
       expect(document.at_css('button[data-ax-modal-open="#leadStatusBoardModal"]')).to be_present
       expect(document.at_css('a.ax-nav__link[href="/admin/leads?view=list"]')).to be_present
@@ -57,8 +63,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(create_modal_html).to include("Nome da etapa", "Subtítulo", "Tipo da etapa")
       expect(create_modal_html).to include("Nome visível no funil", "Classificação interna usada")
       expect(create_modal_html).to include("Use Venda ou Locação")
-      expect(document.at_css("details.lead-filter-collapse .ax-leads-filter-overlay")).to be_nil
-      expect(document.at_css("details.lead-filter-collapse ~ .ax-leads-filter-overlay")).to be_present
+      expect(document.at_css(".lead-pwa-filter-overlay")).to be_present
       lead_card_url = document.at_css("article.lead-kanban-card[data-lead-url]")["data-lead-url"]
       expect(lead_card_url).to start_with(admin_lead_path(Lead.find_by!(name: "Cliente Kanban")))
       expect(response.body).to include("Cliente Kanban")
@@ -138,8 +143,9 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
       expect(response.body).to include("lead-list-workspace")
-      expect(response.body).to include("Total filtrado")
-      expect(response.body.index('class="ax-metric-grid lead-list-summary"')).to be < response.body.index('<details class="lead-filter-collapse">')
+      expect(response.body).to include("lead-desktop-header")
+      expect(response.body).not_to include("Total filtrado")
+      expect(document.at_css("#leadDesktopFilterModal")).to be_present
       expect(document.at_css(".ax-workspace-heading")).to be_nil
       expect(response.body).to include("WhatsApp")
       expect(document.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}'][method='post']")).to be_present
