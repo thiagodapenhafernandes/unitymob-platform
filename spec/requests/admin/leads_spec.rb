@@ -680,10 +680,38 @@ RSpec.describe "Admin::Leads", type: :request do
       get admin_lead_path(lead)
       expect(response.body).to include("Transferir lead")
 
-      patch admin_lead_path(lead), params: { lead: { admin_user_id: other_broker.id } }
+      patch admin_lead_path(lead),
+            params: { lead: { admin_user_id: other_broker.id } },
+            headers: { "ACCEPT" => Mime[:turbo_stream].to_s }
 
       expect(response).to redirect_to(admin_lead_path(lead))
       expect(lead.reload.admin_user_id).to eq(other_broker.id)
+    end
+
+    it "transfere o corretor sem tentar voltar o lead para a etapa padrao do funil" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      default_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Novo", position: 0)
+      current_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Em Atendimento", position: 1)
+      next_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Proposta", position: 2)
+      create(:lead_pipeline_stage_transition, tenant: admin.tenant, lead_pipeline_stage: current_stage, next_stage: next_stage)
+      other_broker = create(:admin_user, tenant: admin.tenant, email: "broker-stage-transfer-#{SecureRandom.hex(4)}@salute.test")
+      lead = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        lead_pipeline: pipeline,
+        lead_pipeline_stage: current_stage,
+        status: current_stage.name
+      )
+
+      patch admin_lead_path(lead), params: { lead: { admin_user_id: other_broker.id } }
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      lead.reload
+      expect(lead.admin_user_id).to eq(other_broker.id)
+      expect(lead.lead_pipeline_stage_id).to eq(current_stage.id)
+      expect(lead.status).to eq("Em Atendimento")
+      expect(default_stage.reload.leads).to be_empty
     end
 
     it "permite que um corretor com escopo own transfira o PROPRIO lead" do
