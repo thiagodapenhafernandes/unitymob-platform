@@ -3,7 +3,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
   before_action :load_integration
 
   def show
-    @webhook_url = @integration.persisted? ? webhooks_external_lead_url(@integration.webhook_token) : nil
+    @webhook_url = @integration.persisted? ? external_lead_webhook_url : nil
     @lead_pipeline_stages = current_tenant.lead_pipeline_stages.includes(:lead_pipeline).ordered
     @recent_external_leads = if @integration.persisted?
       current_tenant.leads
@@ -53,7 +53,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
   def subscribe
     ensure_token!
     ensure_connected!
-    hook_url = webhooks_external_lead_url(@integration.webhook_token)
+    hook_url = external_lead_webhook_url
     ExternalLeadMigration::WebhookSubscriptionService.subscribe!(integration: @integration, hook_url:)
     redirect_to admin_external_lead_integration_path, notice: "Webhooks externos assinados para criação, atualização e fechamento."
   rescue => e
@@ -113,7 +113,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
   def sync_webhook_listening!(requested)
     if requested
       ensure_connected!
-      hook_url = webhooks_external_lead_url(@integration.webhook_token)
+      hook_url = external_lead_webhook_url
       if @integration.webhook_subscription_active?(hook_url)
         return "Escuta de novos leads já estava ativa."
       end
@@ -124,6 +124,19 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       ExternalLeadMigration::WebhookSubscriptionService.unsubscribe!(integration: @integration, deactivate: false)
       "Escuta de novos leads desativada."
     end
+  end
+
+  def external_lead_webhook_url
+    host = canonical_webhook_host
+    return webhooks_external_lead_url(@integration.webhook_token) if host.blank?
+
+    webhooks_external_lead_url(@integration.webhook_token, host:, protocol: "https")
+  end
+
+  def canonical_webhook_host
+    domains = current_tenant.tenant_domains.active.primary_first.pluck(:hostname)
+    domains.find { |hostname| hostname.to_s.start_with?("app.") }.presence ||
+      domains.first.presence
   end
 
   def ensure_token!

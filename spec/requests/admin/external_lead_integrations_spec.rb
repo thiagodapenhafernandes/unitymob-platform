@@ -53,6 +53,17 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(response.body).to include(ExternalLeadIntegration::SUPPORT_RULE_NAME)
   end
 
+  it "exibe o webhook com o dominio canônico de app do tenant" do
+    admin.tenant.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
+    admin.tenant.tenant_domains.create!(hostname: "app.conexaobc.com")
+    integration = create(:external_lead_integration, tenant: admin.tenant)
+
+    get admin_external_lead_integration_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("https://app.conexaobc.com/webhooks/external_leads/#{integration.webhook_token}")
+  end
+
   it "salva token e executa setup da integração" do
     service = instance_double(ExternalLeadMigration::SetupService, call: true)
     allow(ExternalLeadMigration::SetupService).to receive(:call) do |integration:|
@@ -81,6 +92,8 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
   end
 
   it "habilita escuta de novos leads ao salvar com checkbox marcado" do
+    admin.tenant.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
+    admin.tenant.tenant_domains.create!(hostname: "app.conexaobc.com")
     allow(ExternalLeadMigration::SetupService).to receive(:call) do |integration:|
       integration.update!(
         enabled: true,
@@ -112,7 +125,7 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(integration.subscribed_at).to be_present
     expect(ExternalLeadMigration::WebhookSubscriptionService).to have_received(:subscribe!).with(
       integration:,
-      hook_url: a_string_matching(%r{/webhooks/external_leads/#{integration.webhook_token}\z})
+      hook_url: "https://app.conexaobc.com/webhooks/external_leads/#{integration.webhook_token}"
     )
   end
 
