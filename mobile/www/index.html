@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>Unitymob</title>
+  <style>
+    :root {
+      --login-primary: #365f8f;
+      --login-primary-dark: #213957;
+      --login-ink: #111827;
+      --login-muted: #667085;
+      --login-border: #cfd8e6;
+      --login-panel: rgba(246, 248, 252, .96);
+      --login-field: #fff;
+      --login-ring: rgba(54, 95, 143, .16);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      min-height: 100%;
+      margin: 0;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 32px 16px;
+      background: linear-gradient(135deg, #243a65, #5a67b2);
+      color: var(--login-ink);
+      font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .login-container { width: 100%; max-width: 420px; display: grid; gap: 18px; }
+    .login-card {
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .62);
+      border-radius: 28px;
+      background: var(--login-panel);
+      box-shadow: 0 26px 72px rgba(17, 24, 39, .38), inset 0 1px 0 rgba(255, 255, 255, .84);
+    }
+    .login-card :where(h1, h2, p) { margin: 0; }
+    .login-header {
+      padding: 34px 30px 26px;
+      border-bottom: 1px solid rgba(31, 39, 51, .08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, .08));
+      text-align: center;
+    }
+    .logo-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 58px; height: 58px; margin: 0 auto 16px;
+      border-radius: 18px; background: #fff; color: var(--login-primary);
+      box-shadow: 0 16px 34px rgba(31, 39, 51, .13);
+    }
+    .logo-icon svg { width: 26px; height: 26px; }
+    .login-header h1 { color: var(--login-ink); font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
+    .login-header p {
+      margin-top: 8px; color: #697586; font-size: 12px; font-weight: 750;
+      letter-spacing: .16em; text-transform: uppercase;
+    }
+    .login-body { padding: 30px; }
+    .login-title { margin-bottom: 20px; font-size: 25px; font-weight: 800; letter-spacing: -.03em; }
+    .login-form { display: grid; gap: 16px; }
+    .login-field { display: grid; gap: 7px; }
+    .login-label { color: #344054; font-size: 13px; font-weight: 750; }
+    .login-control {
+      display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center;
+      min-height: 46px; overflow: hidden; border: 1px solid var(--login-border);
+      border-radius: 12px; background: var(--login-field);
+      box-shadow: inset 0 1px 0 rgba(15, 23, 42, .03);
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .login-control:focus-within {
+      border-color: var(--login-primary);
+      box-shadow: 0 0 0 4px var(--login-ring), inset 0 1px 0 rgba(15, 23, 42, .03);
+    }
+    .login-control--password { grid-template-columns: 42px minmax(0, 1fr) 46px; }
+    .login-control > svg {
+      justify-self: center; color: #71809a; width: 17px; height: 17px;
+      border-right: 1px solid #e3e8f1; padding: 0 12px; box-sizing: content-box; height: 100%;
+    }
+    .login-input {
+      width: 100%; min-width: 0; height: 44px; padding: 0 13px; border: 0; outline: 0;
+      background: transparent; color: var(--login-ink); font: inherit; font-size: 15px; font-weight: 560;
+    }
+    .login-input::placeholder { color: #98a2b3; font-weight: 500; }
+    .login-reveal {
+      display: flex; align-items: center; justify-content: center; height: 100%;
+      border: 0; border-left: 1px solid #e3e8f1; background: transparent; color: #71809a;
+      cursor: pointer; padding: 0;
+    }
+    .login-reveal svg { width: 17px; height: 17px; }
+    .login-actions { margin-top: 4px; }
+    .login-submit {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; min-height: 48px; border: 0; border-radius: 13px;
+      background: #111827; color: #fff; cursor: pointer; font-size: 15px; font-weight: 800;
+      letter-spacing: -.01em; box-shadow: 0 12px 22px rgba(17, 24, 39, .16);
+    }
+    .login-submit:disabled { cursor: wait; opacity: .72; }
+    .login-submit svg { width: 16px; height: 16px; }
+    .login-alert {
+      display: none; align-items: flex-start; gap: 10px; margin-bottom: 16px;
+      padding: 12px 14px; border-radius: 12px; background: #fef2f2; color: #b42318;
+      font-size: 13.5px; font-weight: 600; line-height: 1.4;
+    }
+    .login-alert.is-visible { display: flex; }
+    .login-alert svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+    .login-footer { margin: 0; color: rgba(255, 255, 255, .82); font-size: 12px; font-weight: 650; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo-icon">
+          <img src="unitymob-mark.svg" alt="Unitymob" width="34" height="34" />
+        </div>
+        <h1>Unitymob</h1>
+        <p>Acesso Restrito</p>
+      </div>
+      <div class="login-body">
+        <h2 class="login-title">Entrar no painel</h2>
+        <div class="login-alert" id="error">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+          <span id="error-text"></span>
+        </div>
+        <form id="login-form" class="login-form">
+          <div class="login-field">
+            <label class="login-label" for="email">E-mail</label>
+            <div class="login-control">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/></svg>
+              <input class="login-input" id="email" type="email" placeholder="nome@suaempresa.com.br" autocapitalize="off" autocorrect="off" autocomplete="username" inputmode="email" autofocus required />
+            </div>
+          </div>
+          <div class="login-field">
+            <label class="login-label" for="password">Senha</label>
+            <div class="login-control login-control--password">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8m4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647.646.647.793-.793-1-1H7.163a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5m0 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+              <input class="login-input" id="password" type="password" placeholder="Digite sua senha" autocomplete="current-password" required />
+              <button type="button" class="login-reveal" id="reveal" aria-label="Mostrar senha" aria-pressed="false">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="login-actions">
+            <button type="submit" class="login-submit" id="submit-button">
+              <span id="submit-label">Entrar</span>
+              <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <p class="login-footer">&copy; 2026 Unitymob - Todos os direitos reservados.</p>
+  </div>
+  <!-- SPIKE LOCAL: aponta pro gateway rodando em localhost. Remover antes de build para staging/produção. -->
+  <script>window.UNITYMOB_DISCOVERY_URL = "http://192.168.0.42:4001/discovery/resolve";</script>
+  <script src="app.js"></script>
+</body>
+</html>

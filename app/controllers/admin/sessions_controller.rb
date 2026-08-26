@@ -130,6 +130,11 @@ class Admin::SessionsController < Devise::SessionsController
   end
   
   def after_sign_out_path_for(resource_or_scope)
+    # App híbrido: some para a tela local de e-mail/senha (não a página web
+    # de login) — Capacitor serve o webDir embutido em capacitor://localhost
+    # (iOS) ou https://localhost (Android, config androidScheme: "https").
+    return native_sign_out_redirect_url if native_app_request?
+
     new_admin_user_session_path
   end
 
@@ -151,6 +156,14 @@ class Admin::SessionsController < Devise::SessionsController
       metadata: { trusted_device_id: access_result&.device&.id, trusted_device_status: access_result&.device&.status }.compact
     )
     redirect_to after_sign_in_path_for(resource)
+  end
+
+  def native_sign_out_redirect_url
+    base = request.user_agent.to_s.match?(/Android/i) ? "https://localhost/index.html" : "capacitor://localhost/index.html"
+    # ?logged_out=1: sinaliza pro app que é saída explícita, não abertura
+    # normal — sem isso ele tentaria voltar sozinho pro /field com a URL do
+    # servidor que ainda está guardada localmente (ver mobile/www/app.js).
+    "#{base}?logged_out=1"
   end
 
   # Pendência de TOTP expira em 5 minutos; sem pendência válida, volta ao login.

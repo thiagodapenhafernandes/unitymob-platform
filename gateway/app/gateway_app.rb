@@ -145,6 +145,57 @@ module Gateway
       json(route: route_payload(route))
     end
 
+    post "/internal/account_routes" do
+      require_internal_token!
+
+      attributes = account_route_attributes(parse_json(request.body.read))
+      route = AccountRoute.find_or_initialize_by(email: attributes[:email])
+      route.assign_attributes(attributes)
+      route.active = true if route.active.nil?
+      route.save!
+
+      status route.previously_new_record? ? 201 : 200
+      json(account_route: account_route_payload(route))
+    rescue ActiveRecord::RecordInvalid => error
+      status 422
+      json(error: "invalid_account_route", details: error.record.errors.full_messages)
+    rescue JSON::ParserError
+      status 400
+      json(error: "invalid_json")
+    end
+
+    delete "/internal/account_routes/:email" do
+      require_internal_token!
+
+      route = AccountRoute.find_by(email: params.fetch("email").to_s.strip.downcase)
+      halt 404, json(error: "account_route_not_found") unless route
+
+      route.update!(active: false)
+      json(account_route: account_route_payload(route))
+    end
+
+    # Único endpoint público chamado via fetch() de dentro do app mobile (outra
+    # origem: capacitor://localhost / http://localhost), por isso precisa de
+    # CORS — os demais endpoints são servidor-a-servidor (webhooks, /internal)
+    # e não passam por navegador, então não precisam disso.
+    options "/discovery/resolve" do
+      allow_discovery_cors!
+      status 204
+      ""
+    end
+
+    post "/discovery/resolve" do
+      allow_discovery_cors!
+      payload = parse_json(request.body.read)
+      route = AccountResolver.call(email: payload["email"])
+      halt 404, json(error: "account_not_found") unless route
+
+      json(tenant_url: route.target_url)
+    rescue JSON::ParserError
+      status 400
+      json(error: "invalid_json")
+    end
+
     get "/internal/webhook_events" do
       require_internal_token!
 
@@ -180,6 +231,12 @@ module Gateway
       ENV.fetch("META_APP_SECRET", ENV.fetch("FACEBOOK_APP_SECRET", ""))
     end
 
+    def allow_discovery_cors!
+      response.headers["Access-Control-Allow-Origin"] = "*"
+      response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+      response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    end
+
     def require_internal_token!
       token = ENV.fetch("INTERNAL_API_TOKEN", "")
       authorization = request.env["HTTP_AUTHORIZATION"].to_s
@@ -198,6 +255,25 @@ module Gateway
         target_url: payload.fetch("target_url"),
         forwarding_secret: payload.fetch("forwarding_secret"),
         active: payload.fetch("active", true)
+      }
+    end
+
+    def account_route_attributes(payload)
+      {
+        email: payload.fetch("email").to_s.strip.downcase,
+        tenant_name: payload["tenant_name"],
+        target_url: payload.fetch("target_url"),
+        active: payload.fetch("active", true)
+      }
+    end
+
+    def account_route_payload(route)
+      {
+        id: route.id,
+        email: route.email,
+        tenant_name: route.tenant_name,
+        target_url: route.target_url,
+        active: route.active
       }
     end
 

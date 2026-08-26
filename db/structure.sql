@@ -1,4 +1,4 @@
-\restrict 98W19c9oqzeIiZtm6oOQszYfH8iHEfvnJbmPqGGFFqiVjMM3UzbRUpqGZoh4jB0
+\restrict fuoHJh2pm2Dsd749fiMutiqajJsTyTHrYAjooxLn3G4gNW2XJ903h0zJIowECCE
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -810,6 +810,7 @@ CREATE TABLE public.admin_users (
     primary_admin_user_id bigint,
     contact_email character varying,
     admin_theme_mode character varying DEFAULT 'light'::character varying NOT NULL,
+    jti character varying NOT NULL,
     CONSTRAINT admin_users_system_admin_outside_tenant CHECK (((super_admin = false) OR ((tenant_id IS NULL) AND (profile_id IS NULL) AND (horizontal_profile_id IS NULL) AND (manager_id IS NULL)))),
     CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL))),
     CONSTRAINT chk_admin_users_mirror_not_super_admin CHECK (((primary_admin_user_id IS NULL) OR (super_admin = false)))
@@ -5374,8 +5375,8 @@ CREATE TABLE public.push_subscriptions (
     id bigint NOT NULL,
     admin_user_id bigint NOT NULL,
     endpoint character varying NOT NULL,
-    p256dh character varying NOT NULL,
-    auth character varying NOT NULL,
+    p256dh character varying,
+    auth character varying,
     platform character varying,
     user_agent character varying,
     last_seen_at timestamp(6) without time zone,
@@ -10815,6 +10816,13 @@ CREATE INDEX index_admin_users_on_horizontal_profile_id ON public.admin_users US
 --
 
 CREATE UNIQUE INDEX index_admin_users_on_id_and_tenant_id ON public.admin_users USING btree (id, tenant_id);
+
+
+--
+-- Name: index_admin_users_on_jti; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_admin_users_on_jti ON public.admin_users USING btree (jti);
 
 
 --
@@ -17956,11 +17964,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 98W19c9oqzeIiZtm6oOQszYfH8iHEfvnJbmPqGGFFqiVjMM3UzbRUpqGZoh4jB0
+\unrestrict fuoHJh2pm2Dsd749fiMutiqajJsTyTHrYAjooxLn3G4gNW2XJ903h0zJIowECCE
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260826170000'),
+('20260826160000'),
 ('20260821172000'),
 ('20260821143000'),
 ('20260821133000'),

@@ -90,6 +90,10 @@ end
 
 gem "devise", "~> 4.9"
 
+# Autenticação por token (Bearer/JWT) para a API mobile, mantida como segunda
+# estratégia Warden ao lado da sessão/cookie usada pelo admin e pelo PWA web.
+gem "devise-jwt", "~> 0.11"
+
 # 2FA TOTP (Google Authenticator): rotp gera/valida códigos, rqrcode desenha o QR
 gem "rotp", "~> 6.3"
 gem "rqrcode", "~> 2.2"
