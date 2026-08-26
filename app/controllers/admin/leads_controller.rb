@@ -354,6 +354,10 @@ class Admin::LeadsController < Admin::BaseController
           load_show_context
           render :show, status: :unprocessable_entity
         end
+        format.turbo_stream do
+          load_show_context
+          render :show, status: :unprocessable_entity
+        end
         format.json { render json: { error: @lead.errors.full_messages.to_sentence }, status: :unprocessable_entity }
       end
     end
@@ -362,6 +366,10 @@ class Admin::LeadsController < Admin::BaseController
       @lead.errors.add(:base, "Esta qualificação não está disponível para a etapa atual.")
       return respond_to do |format|
         format.html do
+          load_show_context
+          render :show, status: :unprocessable_entity
+        end
+        format.turbo_stream do
           load_show_context
           render :show, status: :unprocessable_entity
         end
@@ -379,6 +387,7 @@ class Admin::LeadsController < Admin::BaseController
       end
       respond_to do |format|
         format.html { redirect_to admin_lead_path(@lead), notice: "Lead atualizado com sucesso." }
+        format.turbo_stream { redirect_to admin_lead_path(@lead), notice: "Lead atualizado com sucesso." }
         format.json do
           render json: {
             id: @lead.id,
@@ -393,6 +402,10 @@ class Admin::LeadsController < Admin::BaseController
     else
       respond_to do |format|
         format.html do
+          load_show_context
+          render :show, status: :unprocessable_entity
+        end
+        format.turbo_stream do
           load_show_context
           render :show, status: :unprocessable_entity
         end
@@ -1587,6 +1600,12 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def normalize_pipeline_params!(attributes)
+    pipeline_change_requested = action_name.in?(%w[new create]) ||
+                                attributes[:lead_pipeline_id].present? ||
+                                attributes[:lead_pipeline_stage_id].present? ||
+                                attributes[:status].present?
+    return unless pipeline_change_requested
+
     pipeline = current_tenant.lead_pipelines.find_by(id: attributes[:lead_pipeline_id].presence) || @selected_pipeline
     stage = pipeline&.stages&.find_by(id: attributes[:lead_pipeline_stage_id].presence)
     stage ||= LeadPipelineStage.matching_name(tenant: current_tenant, pipeline: pipeline, name: attributes[:status]) if attributes[:status].present?
