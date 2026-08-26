@@ -180,6 +180,24 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(other).to be_persisted
     end
 
+    it "renderiza cards do Kanban PWA com gestos e acoes rapidas" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Arrastavel PWA", phone: "11999999999", status: "Novo")
+
+      get admin_leads_path(view: "kanban")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      column = document.at_css(".lead-pwa-kanban-column[data-lead-status='Novo']")
+      card = document.at_css("article#lead_#{lead.id}.lead-pwa-card[data-lead-pwa-kanban-target='card']")
+
+      expect(column).to be_present
+      expect(card).to be_present
+      expect(card["data-action"]).to include("prepareCardGesture", "moveCardGesture", "openQuickSheet")
+      expect(card["data-update-url"]).to eq(admin_lead_path(lead))
+      expect(card["data-whatsapp-url"]).to eq(open_whatsapp_conversation_admin_lead_path(lead, workspace: "focus"))
+      expect(document.at_css(".lead-pwa-kanban-sheet[data-lead-pwa-kanban-target='sheet']")).to be_present
+    end
+
     it "reconcilia as abas PWA com agendamentos C2S ja importados" do
       travel_to Time.zone.local(2026, 8, 15, 10, 0, 0) do
         future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Futuro C2S", phone: "11999999991", status: "Em Atendimento")

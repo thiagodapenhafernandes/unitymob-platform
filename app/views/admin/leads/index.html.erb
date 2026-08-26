@@ -913,6 +913,39 @@
     .lead-pwa-kanban .lead-pwa-card {
       border-radius: 10px;
       box-shadow: 0 2px 8px rgba(15, 23, 42, .045);
+      cursor: grab;
+      touch-action: pan-y;
+      transform-origin: 50% 50%;
+      transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-user-drag: none;
+      -webkit-user-select: none;
+    }
+
+    html.lead-pwa-card-dragging,
+    html.lead-pwa-card-dragging body {
+      overscroll-behavior: none;
+    }
+
+    html.lead-pwa-card-dragging .lead-pwa-kanban__columns,
+    html.lead-pwa-card-dragging .lead-pwa-kanban .lead-pwa-card {
+      touch-action: none;
+    }
+
+    .lead-pwa-kanban .lead-pwa-card.is-pressing {
+      transform: scale(.992) rotate(-.35deg);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--lead-pwa-primary) 18%, transparent), 0 8px 22px rgba(15, 23, 42, .12);
+    }
+
+    .lead-pwa-kanban .lead-pwa-card.is-drag-ready {
+      transform: rotate(-2.2deg) scale(1.018);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 28%, transparent), 0 18px 34px rgba(15, 23, 42, .22);
+    }
+
+    .lead-pwa-kanban .lead-pwa-card.is-dragging {
+      opacity: .62;
+      cursor: grabbing;
     }
 
     .lead-pwa-card--restored {
@@ -943,6 +976,206 @@
       font-weight: 800;
       text-align: center;
       text-decoration: none;
+    }
+
+    .lead-pwa-drag-ghost {
+      position: fixed;
+      z-index: 4300;
+      width: min(76vw, 310px);
+      pointer-events: none;
+      transform: translate(-50%, -50%) rotate(-2.2deg) scale(1.02);
+      opacity: .96;
+      box-shadow: 0 18px 42px rgba(15, 23, 42, .26);
+    }
+
+    .lead-pwa-kanban-column.is-drop-target {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--lead-pwa-stage-color, var(--lead-pwa-primary)) 34%, transparent), 0 12px 26px rgba(15, 23, 42, .10);
+    }
+
+    .lead-pwa-kanban-sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 4200;
+      display: grid;
+      align-items: end;
+      background: rgba(15, 23, 42, .34);
+      opacity: 1;
+      transition: opacity .18s ease;
+    }
+
+    .lead-pwa-kanban-sheet[hidden] {
+      display: none;
+    }
+
+    .lead-pwa-kanban-sheet__panel {
+      display: grid;
+      gap: 14px;
+      max-height: min(82vh, 780px);
+      padding: 10px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+      border-radius: 24px 24px 0 0;
+      background: color-mix(in srgb, var(--lead-pwa-surface) 96%, #fff);
+      box-shadow: 0 -18px 42px rgba(15, 23, 42, .24);
+      overflow-y: auto;
+    }
+
+    .lead-pwa-kanban-sheet__handle {
+      justify-self: center;
+      width: 42px;
+      height: 5px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--lead-pwa-muted) 36%, transparent);
+    }
+
+    .lead-pwa-kanban-sheet__head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 42px;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .lead-pwa-kanban-sheet__head strong {
+      display: block;
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 19px;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-kanban-sheet__head span {
+      display: block;
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .lead-pwa-kanban-sheet__close {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 14px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-ink);
+    }
+
+    .lead-pwa-kanban-sheet__actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .lead-pwa-kanban-sheet__action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 14px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-ink);
+      font-size: 13px;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .lead-pwa-kanban-sheet__action--primary {
+      border-color: color-mix(in srgb, var(--lead-pwa-primary) 54%, var(--lead-pwa-line));
+      background: var(--lead-pwa-primary);
+      color: #fff;
+    }
+
+    .lead-pwa-kanban-sheet__section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .lead-pwa-kanban-sheet__section-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
+    .lead-pwa-kanban-sheet__quick-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .lead-pwa-kanban-sheet__form {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--lead-pwa-surface-soft) 58%, var(--lead-pwa-surface));
+    }
+
+    .lead-pwa-kanban-sheet__form--inline {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .lead-pwa-kanban-sheet__form label {
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .lead-pwa-kanban-sheet__form input,
+    .lead-pwa-kanban-sheet__form select,
+    .lead-pwa-kanban-sheet__form textarea {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 12px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-ink);
+      font: inherit;
+      font-size: 13px;
+      padding: 8px 10px;
+    }
+
+    .lead-pwa-kanban-sheet__form textarea {
+      min-height: 68px;
+      resize: vertical;
+    }
+
+    .lead-pwa-kanban-sheet__submit {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 38px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--lead-pwa-primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .lead-pwa-kanban-sheet__submit--icon {
+      width: 42px;
+      padding: 0;
+    }
+
+    @media (max-width: 380px) {
+      .lead-pwa-kanban-sheet__quick-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .lead-pwa-card {
@@ -2026,6 +2259,7 @@
                        class="lead-pwa-kanban-column"
                        style="<%= column_style %>"
                        role="listitem"
+                       data-lead-status="<%= status %>"
                        aria-label="Etapa <%= status %>">
                 <header class="lead-pwa-kanban-column__head">
                   <strong><%= status %></strong>
@@ -2033,7 +2267,7 @@
                 </header>
                 <div class="lead-pwa-kanban-column__cards" role="list">
                   <% if column_leads.any? %>
-                    <%= render partial: "admin/leads/pwa_lead_card", collection: column_leads, as: :lead %>
+                    <%= render partial: "admin/leads/pwa_lead_card", collection: column_leads, as: :lead, locals: { pwa_kanban_card: true } %>
                     <% if column_total > column_leads.size %>
                       <div class="lead-pwa-kanban__more">
                         Mostrando <%= column_leads.size %> de <%= number_with_delimiter(column_total) %>
@@ -2045,6 +2279,106 @@
                 </div>
               </section>
             <% end %>
+          </div>
+
+          <div class="lead-pwa-kanban-sheet"
+               hidden
+               data-lead-pwa-kanban-target="sheet"
+               data-action="click->lead-pwa-kanban#closeSheetFromBackdrop">
+            <div class="lead-pwa-kanban-sheet__panel" role="dialog" aria-modal="true" aria-label="Ações rápidas do lead">
+              <div class="lead-pwa-kanban-sheet__handle" aria-hidden="true"></div>
+              <header class="lead-pwa-kanban-sheet__head">
+                <div>
+                  <strong data-lead-pwa-kanban-target="sheetName">Lead</strong>
+                  <span data-lead-pwa-kanban-target="sheetMeta">Ações rápidas</span>
+                </div>
+                <button type="button" class="lead-pwa-kanban-sheet__close" data-action="lead-pwa-kanban#closeSheet" aria-label="Fechar">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </header>
+
+              <div class="lead-pwa-kanban-sheet__section">
+                <div class="lead-pwa-kanban-sheet__section-title">
+                  <i class="bi bi-lightning-charge"></i><span>Ações rápidas</span>
+                </div>
+                <div class="lead-pwa-kanban-sheet__actions">
+                  <a href="#" class="lead-pwa-kanban-sheet__action" data-lead-pwa-kanban-target="sheetOpenLink">
+                    <i class="bi bi-box-arrow-up-right"></i><span>Abrir lead</span>
+                  </a>
+                  <% if can?(:view, :whatsapp_inbox) %>
+                    <form method="post" class="tw-contents" data-lead-pwa-kanban-target="sheetWhatsappForm" data-action="submit->lead-pwa-kanban#openConversation">
+                      <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                      <button type="submit" class="lead-pwa-kanban-sheet__action lead-pwa-kanban-sheet__action--primary w-100">
+                        <i class="bi bi-whatsapp"></i><span>Conversar</span>
+                      </button>
+                    </form>
+                  <% end %>
+                </div>
+              </div>
+
+              <div class="lead-pwa-kanban-sheet__section">
+                <div class="lead-pwa-kanban-sheet__section-title">
+                  <i class="bi bi-kanban"></i><span>Etapa do funil</span>
+                </div>
+                <form method="post" class="lead-pwa-kanban-sheet__form lead-pwa-kanban-sheet__form--inline" data-lead-pwa-kanban-target="sheetStatusForm">
+                  <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                  <input type="hidden" name="_method" value="patch">
+                  <select id="lead_pwa_quick_status" name="lead[status]" aria-label="Mudar etapa" data-lead-pwa-kanban-target="sheetStatusSelect">
+                    <% @pwa_kanban_statuses.each do |status| %>
+                      <option value="<%= status %>"><%= status %></option>
+                    <% end %>
+                  </select>
+                  <button type="submit" class="lead-pwa-kanban-sheet__submit lead-pwa-kanban-sheet__submit--icon" aria-label="Salvar etapa">
+                    <i class="bi bi-check-lg"></i>
+                  </button>
+                </form>
+              </div>
+
+              <% if can?(:manage, :comercial) %>
+                <div class="lead-pwa-kanban-sheet__section">
+                  <div class="lead-pwa-kanban-sheet__section-title">
+                    <i class="bi bi-calendar-check"></i><span>Próximas ações</span>
+                  </div>
+                  <div class="lead-pwa-kanban-sheet__quick-grid">
+                    <form method="post" action="<%= admin_tasks_path %>" class="lead-pwa-kanban-sheet__form">
+                      <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                      <input type="hidden" name="task[lead_id]" data-lead-pwa-kanban-target="sheetTaskLeadId">
+                      <label for="lead_pwa_quick_task_title">Tarefa</label>
+                      <input id="lead_pwa_quick_task_title" name="task[title]" required placeholder="Ex.: ligar">
+                      <input type="datetime-local" name="task[due_at]">
+                      <button type="submit" class="lead-pwa-kanban-sheet__submit">
+                        <i class="bi bi-plus-lg"></i><span>Criar</span>
+                      </button>
+                    </form>
+
+                    <form method="post" class="lead-pwa-kanban-sheet__form" data-lead-pwa-kanban-target="sheetScheduleForm">
+                      <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                      <input type="hidden" name="activity_kind" value="return">
+                      <label for="lead_pwa_quick_schedule_at">Retorno</label>
+                      <input id="lead_pwa_quick_schedule_at" type="datetime-local" name="due_at" required>
+                      <textarea name="notes" rows="2" placeholder="Observação"></textarea>
+                      <button type="submit" class="lead-pwa-kanban-sheet__submit">
+                        <i class="bi bi-calendar-plus"></i><span>Agendar</span>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              <% end %>
+
+              <div class="lead-pwa-kanban-sheet__section">
+                <div class="lead-pwa-kanban-sheet__section-title">
+                  <i class="bi bi-pencil-square"></i><span>Anotação</span>
+                </div>
+                <form method="post" class="lead-pwa-kanban-sheet__form" data-lead-pwa-kanban-target="sheetNoteForm">
+                  <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                  <input type="hidden" name="contact_kind" value="nota">
+                  <textarea id="lead_pwa_quick_note" name="body" rows="3" required aria-label="Anotação rápida" placeholder="Resumo da conversa, combinado ou próxima ação"></textarea>
+                  <button type="submit" class="lead-pwa-kanban-sheet__submit">
+                    <i class="bi bi-check2-circle"></i><span>Salvar anotação</span>
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         <% else %>
           <div class="lead-pwa-empty">

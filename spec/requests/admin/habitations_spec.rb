@@ -3061,6 +3061,63 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(">Inspector<")
   end
 
+  it "envia a busca do catálogo PWA automaticamente com debounce" do
+    get admin_habitations_path(ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    form = document.at_css("form.habitations-pwa-search")
+    input = form.at_css("input[name='q']")
+
+    expect(form["data-controller"]).to include("pwa-habitation-search")
+    expect(form["data-pwa-habitation-search-delay-value"]).to eq("650")
+    expect(input["data-pwa-habitation-search-target"]).to eq("input")
+    expect(input["data-action"]).to include("input->pwa-habitation-search#schedule")
+    expect(input["data-action"]).to include("keydown->pwa-habitation-search#submitOnEnter")
+  end
+
+  it "prioriza empreendimento correspondente antes de imóveis que só citam o termo na descrição" do
+    code_suffix = SecureRandom.hex(6)
+    search_term = "Rooftop #{code_suffix}"
+    exact_development = create(
+      :habitation,
+      codigo: "DEV-ROOF-#{code_suffix}",
+      tipo: "Empreendimento",
+      status: "Venda",
+      categoria: "Empreendimento",
+      nome_empreendimento: search_term
+    )
+    exact_unit = create(
+      :habitation,
+      codigo: "UNIT-ROOF-#{code_suffix}",
+      status: "Venda",
+      categoria: "Apartamento",
+      nome_empreendimento: search_term,
+      codigo_empreendimento: exact_development.codigo,
+      titulo_anuncio: "Apartamento no #{search_term}"
+    )
+    generic_match = create(
+      :habitation,
+      codigo: "GENERIC-ROOF-#{code_suffix}",
+      status: "Venda",
+      categoria: "Apartamento",
+      nome_empreendimento: "Outro prédio",
+      titulo_anuncio: "Apartamento #{search_term}",
+      descricao_web: "Condomínio com área de lazer e #{search_term} panorâmico."
+    )
+
+    get admin_habitations_path(ownership: "all", status: "Venda", q: search_term)
+
+    expect(response).to have_http_status(:ok)
+    cards = Nokogiri::HTML(response.body).css(".ax-property-card").map(&:text).map(&:squish)
+    exact_index = cards.index { |text| text.include?(exact_unit.codigo) }
+    generic_index = cards.index { |text| text.include?(generic_match.codigo) }
+
+    expect(cards.join(" ")).to include(exact_unit.codigo)
+    expect(cards.join(" ")).to include(generic_match.codigo)
+    expect(exact_index).to be < generic_index
+  end
+
   it "renderiza filtros rápidos dentro do inspector de filtros do catálogo" do
     get filter_inspector_admin_habitations_path(scope: "frente_mar"), headers: turbo_frame_headers
 
