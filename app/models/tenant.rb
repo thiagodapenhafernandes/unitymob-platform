@@ -137,6 +137,17 @@ class Tenant < ApplicationRecord
     PUBLIC_SITE_THEMES.fetch(public_site_theme_key)[:stylesheet]
   end
 
+  def public_base_url(fallback_base_url: nil)
+    host = tenant_domains.active.primary_first.first&.hostname.presence
+    host = host.to_s.delete_prefix("app.") if host.present?
+    return "https://#{host}" if host.present?
+
+    fallback = fallback_base_url.to_s.strip.delete_suffix("/")
+    return if fallback.blank?
+
+    fallback.sub(%r{\A(https?://)app\.}i, "\\1")
+  end
+
   def self.public_for(slug: nil)
     requested_slug = slug.to_s.strip.presence || ENV["PUBLIC_TENANT_SLUG"].to_s.strip.presence
     active.find_by(slug: requested_slug) || default

@@ -44,7 +44,8 @@ module Seo
     end
 
     def seo_setting_entries
-      @tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
+      @tenant.seo_settings.public_inventory
+                .where(active: true, apply_to_public: true, robots_index: true)
                 .where.not(canonical_url: [nil, ""])
                 .order(access_count: :desc, updated_at: :desc)
                 .filter_map do |seo|

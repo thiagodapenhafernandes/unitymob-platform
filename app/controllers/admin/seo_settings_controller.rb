@@ -4,7 +4,8 @@ class Admin::SeoSettingsController < Admin::BaseController
   before_action :load_editor_helpers, only: [:edit]
 
   def index
-    @seo_settings = current_tenant.seo_settings
+    seo_inventory = current_tenant.seo_settings.public_inventory
+    @seo_settings = seo_inventory
                     .order(last_accessed_at: :desc, access_count: :desc, page_name: :asc)
                     .paginate(page: params[:page], per_page: 20)
     @seo_strategy_prompt = Ai::SeoContentService.instructions(tenant: current_tenant)
@@ -14,10 +15,10 @@ class Admin::SeoSettingsController < Admin::BaseController
     @seo_discovery_status = Seo::DiscoveryService.status(tenant: current_tenant)
     @seo_discovery_enabled = Seo::DiscoveryService.enabled?(tenant: current_tenant)
     @stats = {
-      total: current_tenant.seo_settings.count,
-      active: current_tenant.seo_settings.where(active: true).count,
-      public: current_tenant.seo_settings.where(apply_to_public: true).count,
-      generated: current_tenant.seo_settings.where(ai_status: "generated").count
+      total: seo_inventory.count,
+      active: seo_inventory.where(active: true).count,
+      public: seo_inventory.where(apply_to_public: true).count,
+      generated: seo_inventory.where(ai_status: "generated").count
     }
   end
 
@@ -102,7 +103,7 @@ class Admin::SeoSettingsController < Admin::BaseController
   private
 
   def set_seo_setting
-    @seo_setting = current_tenant.seo_settings.find(params[:id])
+    @seo_setting = current_tenant.seo_settings.public_inventory.find(params[:id])
   end
 
   def load_editor_helpers

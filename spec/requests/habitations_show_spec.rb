@@ -134,6 +134,16 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).to include(%(property="og:title" content="OG-IMG - ))
     end
 
+    it "não cria inventário SEO ao abrir imóvel por link compartilhado" do
+      habitation = create(:habitation, codigo: "SEO-SHARE", slug: "apartamento-seo-share")
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: create(:admin_user, tenant: habitation.tenant))
+      Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, "1", tenant: habitation.tenant)
+
+      expect {
+        get habitation_path(habitation, share_token: share_link.token)
+      }.not_to change { SeoSetting.count }
+    end
+
     it "does not expose a Vista-compatible external URL in social sharing metadata" do
       source = "https://cdn.vistahost.com.br//saluteim20174/vista.imobi/fotos/123/first-property.jpg"
       habitation = create(

@@ -46,6 +46,7 @@ module Footer
       return [] if tenant.blank?
 
       tenant.seo_settings
+        .public_inventory
         .where(active: true, apply_to_public: true, robots_index: true)
         .where("access_count > 0")
         .where(page_type: public_listing_page_types)

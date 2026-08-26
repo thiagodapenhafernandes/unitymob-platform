@@ -43,8 +43,12 @@ module Seo
 
     private
 
+    def inventory_scope
+      tenant.seo_settings.public_inventory
+    end
+
     def public_scope
-      tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
+      inventory_scope.where(active: true, apply_to_public: true, robots_index: true)
     end
 
     def period_range
@@ -59,17 +63,17 @@ module Seo
     end
 
     def page_visits_scope
-      scope = SeoPageVisit.where(seo_setting_id: tenant.seo_settings.select(:id))
+      scope = SeoPageVisit.where(seo_setting_id: inventory_scope.select(:id))
       period_range ? scope.where(visited_on: period_range) : scope
     end
 
     def conversions_scope
-      scope = SeoConversionEvent.where(seo_setting_id: tenant.seo_settings.select(:id))
+      scope = SeoConversionEvent.where(seo_setting_id: inventory_scope.select(:id))
       period_range ? scope.where(occurred_at: period_range.begin.beginning_of_day..Time.current) : scope
     end
 
     def summary
-      scope = tenant.seo_settings
+      scope = inventory_scope
       {
         total_pages: scope.count,
         public_pages: public_scope.count,
@@ -111,14 +115,14 @@ module Seo
 
     def score_buckets
       {
-        strong: tenant.seo_settings.where("seo_score >= 80").count,
-        attention: tenant.seo_settings.where(seo_score: 60...80).count,
-        weak: tenant.seo_settings.where("seo_score < 60").count
+        strong: inventory_scope.where("seo_score >= 80").count,
+        attention: inventory_scope.where(seo_score: 60...80).count,
+        weak: inventory_scope.where("seo_score < 60").count
       }
     end
 
     def page_type_counts
-      tenant.seo_settings.group(:page_type).count.sort_by { |_type, count| -count }.first(8)
+      inventory_scope.group(:page_type).count.sort_by { |_type, count| -count }.first(8)
     end
 
     def top_pages

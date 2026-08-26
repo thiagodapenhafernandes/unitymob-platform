@@ -228,6 +228,46 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     )
   end
 
+  it "aceita múltiplas cidades no filtro de localização do catálogo" do
+    bc = create_catalog_property(codigo: high_catalog_code(9), titulo_anuncio: "Filtro cidade Balneário", address: { cidade: "Balneário Camboriú" })
+    itapema = create_catalog_property(codigo: high_catalog_code(9), titulo_anuncio: "Filtro cidade Itapema", address: { cidade: "Itapema" })
+    outside = create_catalog_property(codigo: high_catalog_code(8), titulo_anuncio: "Filtro cidade fora", address: { cidade: "Joinville" })
+
+    get admin_habitations_path(cidade: ["Balneário Camboriú", "Itapema"])
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(bc.titulo_anuncio)
+    expect(response.body).to include(itapema.titulo_anuncio)
+    expect(response.body).not_to include(outside.titulo_anuncio)
+    expect(response.body).to include("Cidade: Balneário Camboriú, Itapema")
+  end
+
+  it "aceita aliases do componente mobile para múltiplas categorias e cidades" do
+    apartment = create_catalog_property(codigo: high_catalog_code(9), titulo_anuncio: "Alias apartamento BC", categoria: "Apartamento", address: { cidade: "Balneário Camboriú" })
+    house = create_catalog_property(codigo: high_catalog_code(9), titulo_anuncio: "Alias casa Itapema", categoria: "Casa", address: { cidade: "Itapema" })
+    outside = create_catalog_property(codigo: high_catalog_code(8), titulo_anuncio: "Alias terreno Joinville", categoria: "Terreno", address: { cidade: "Joinville" })
+
+    get admin_habitations_path(category: %w[Apartamento Casa], city: ["Balneário Camboriú", "Itapema"])
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(apartment.titulo_anuncio)
+    expect(response.body).to include(house.titulo_anuncio)
+    expect(response.body).not_to include(outside.titulo_anuncio)
+  end
+
+  it "filtra Vista Mar somente por imóveis com vista configurada" do
+    sea_view = create_catalog_property(codigo: high_catalog_code(9), titulo_anuncio: "Filtro vista mar correto", caracteristicas: ["Vista Mar"])
+    flag_view = create_catalog_property(codigo: high_catalog_code(9), titulo_anuncio: "Filtro vista mar flag", vista_frente_mar_flag: true)
+    unrelated = create_catalog_property(codigo: high_catalog_code(8), titulo_anuncio: "Filtro sem vista mar", descricao_web: "Apartamento a poucos metros do mar")
+
+    get admin_habitations_path(amenities: ["Vista Mar"])
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(sea_view.titulo_anuncio)
+    expect(response.body).to include(flag_view.titulo_anuncio)
+    expect(response.body).not_to include(unrelated.titulo_anuncio)
+  end
+
   it "não usa corretor_nome legado para casar o filtro explícito por corretor" do
     broker = create(:admin_user, name: "Corretora Amanda")
     matching_title = "Filtro corretor vínculo real #{SecureRandom.hex(6)}"

@@ -30,7 +30,7 @@ RSpec.describe "Admin habitation filter inspector", type: :request do
     expect(response.body).to include('data-turbo-frame="_top"')
     expect(response.body).to include('name="codigo"')
     expect(response.body).to include('name="q"')
-    expect(response.body).to include('name="cidade"')
+    expect(response.body).to include('name="cidade[]"')
     expect(response.body).to include('name="logradouro"')
     expect(response.body).to include('name="numero"')
     expect(response.body).to include('name="bairro_comercial[]"')

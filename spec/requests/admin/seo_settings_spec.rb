@@ -37,6 +37,20 @@ RSpec.describe "Admin::SeoSettings", type: :request do
   end
 
   it "renderiza o inventário SEO com componentes operacionais" do
+    SeoSetting.create!(
+      page_name: "ai_property_share_collections_show:seo-settings-hidden",
+      canonical_key: "ai_property_share_collections_show:seo-settings-hidden",
+      page_type: "ai_property_share_collections_show",
+      meta_title: "Seleção compartilhada",
+      meta_description: "Link privado de compartilhamento",
+      canonical_path: "/selecoes/token-seo-settings-hidden",
+      access_count: 99,
+      seo_score: 91,
+      active: true,
+      apply_to_public: true,
+      robots_index: true
+    )
+
     get admin_seo_settings_path
 
     expect(response).to have_http_status(:ok)
@@ -45,6 +59,8 @@ RSpec.describe "Admin::SeoSettings", type: :request do
     expect(response.body).to include("ax-metric-card")
     expect(response.body).to include("Páginas monitoradas")
     expect(response.body).to include("Busca de imóveis")
+    expect(response.body).not_to include("Seleção compartilhada")
+    expect(response.body).not_to include("/selecoes/token-seo-settings-hidden")
     expect(response.body).to include("Estratégia IA")
     expect(response.body).not_to include("Seo settings")
     strategy_modal = Nokogiri::HTML(response.body).at_css("#seoStrategyModal")
@@ -53,6 +69,24 @@ RSpec.describe "Admin::SeoSettings", type: :request do
     progress_bars = Nokogiri::HTML(response.body).css(".ax-metric-card progress.ax-progress__bar")
     expect(progress_bars).not_to be_empty
     expect(progress_bars).to all(satisfy { |bar| bar["max"] == "100" && bar["style"].nil? })
+  end
+
+  it "não permite editar registro antigo de link compartilhado por URL direta" do
+    shared_setting = SeoSetting.create!(
+      page_name: "ai_property_share_collections_show:seo-settings-direct",
+      canonical_key: "ai_property_share_collections_show:seo-settings-direct",
+      page_type: "ai_property_share_collections_show",
+      meta_title: "Seleção direta",
+      meta_description: "Link privado de compartilhamento",
+      canonical_path: "/selecoes/token-seo-settings-direct",
+      active: true,
+      apply_to_public: true,
+      robots_index: true
+    )
+
+    get edit_admin_seo_setting_path(shared_setting)
+
+    expect(response).to have_http_status(:not_found)
   end
 
   it "renderiza a edição com painéis operacionais e toggles compartilhados" do
@@ -77,6 +111,9 @@ RSpec.describe "Admin::SeoSettings", type: :request do
   end
 
   it "atualiza metadados e flags pelo formulário compartilhado" do
+    get edit_admin_seo_setting_path(seo_setting)
+    csrf = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
+
     patch admin_seo_setting_path(seo_setting), params: {
       seo_setting: {
         meta_title: "Título SEO atualizado",
@@ -85,7 +122,7 @@ RSpec.describe "Admin::SeoSettings", type: :request do
         robots_index: "1",
         robots_follow: "0"
       }
-    }
+    }, headers: { "X-CSRF-Token" => csrf }
 
     expect(response).to redirect_to(edit_admin_seo_setting_path(seo_setting))
     seo_setting.reload
