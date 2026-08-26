@@ -3061,19 +3061,19 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(">Inspector<")
   end
 
-  it "envia a busca do catálogo PWA automaticamente com debounce" do
+  it "mantém a busca do catálogo PWA por ação explícita" do
     get admin_habitations_path(ownership: "all")
 
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
     form = document.at_css("form.habitations-pwa-search")
     input = form.at_css("input[name='q']")
+    submit = form.at_css("button.habitations-pwa-search__submit")
 
-    expect(form["data-controller"]).to include("pwa-habitation-search")
-    expect(form["data-pwa-habitation-search-delay-value"]).to eq("650")
-    expect(input["data-pwa-habitation-search-target"]).to eq("input")
-    expect(input["data-action"]).to include("input->pwa-habitation-search#schedule")
-    expect(input["data-action"]).to include("keydown->pwa-habitation-search#submitOnEnter")
+    expect(form["data-controller"].to_s).not_to include("pwa-habitation-search")
+    expect(input["data-action"].to_s).not_to include("input->")
+    expect(submit["type"]).to eq("submit")
+    expect(submit["aria-label"]).to eq("Buscar imóveis")
   end
 
   it "prioriza empreendimento correspondente antes de imóveis que só citam o termo na descrição" do
