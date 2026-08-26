@@ -2,15 +2,15 @@ module ExternalLeadMigration
   class IncrementalSyncJob < ApplicationJob
     queue_as :sync
 
-    retry_on ExternalLeadMigration::Client::Error, wait: :polynomially_longer, attempts: 5
+    retry_on ExternalLeadMigration::Client::Error, Net::OpenTimeout, Net::ReadTimeout, Timeout::Error, wait: :polynomially_longer, attempts: 5
 
     PER_PAGE = 50
 
-    def perform(integration_id)
+    def perform(integration_id, cursor_override = nil)
       integration = ExternalLeadIntegration.find(integration_id)
       return unless integration.connected?
 
-      cursor = (integration.last_cursor_at || integration.last_backfill_at || 1.day.ago).utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+      cursor = cursor_for(integration, cursor_override)
       client = ExternalLeadMigration::Client.new(token: integration.access_token)
       page = 1
       max_seen = nil
@@ -43,7 +43,8 @@ module ExternalLeadMigration
         last_incremental_sync_at: Time.current,
         last_cursor_at: max_seen || Time.current,
         sync_status: "completed",
-        sync_message: "Sincronização incremental externa concluída."
+        sync_message: "Sincronização incremental externa concluída.",
+        last_error_message: nil
       )
     rescue => e
       integration&.update(
@@ -52,6 +53,19 @@ module ExternalLeadMigration
         last_error_message: "#{e.class}: #{e.message}"
       )
       raise
+    end
+
+    private
+
+    def cursor_for(integration, cursor_override)
+      source =
+        if cursor_override.present?
+          Time.zone.parse(cursor_override.to_s)
+        else
+          integration.last_cursor_at || integration.last_backfill_at || 1.day.ago
+        end
+
+      source.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
     end
   end
 end
