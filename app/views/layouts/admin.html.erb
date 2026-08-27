@@ -401,15 +401,7 @@
       </aside>
     <% end %>
 
-    <% unless whatsapp_focus_workspace %>
-      <!-- Pull-to-refresh indicator -->
-      <div id="admin-ptr" class="admin-ptr">
-        <div class="admin-ptr-pill">
-          <i id="admin-ptr-icon" class="bi bi-arrow-down"></i>
-          <span id="admin-ptr-label">Arraste para atualizar</span>
-        </div>
-      </div>
-    <% end %>
+    <%= render "layouts/pull_to_refresh" unless whatsapp_focus_workspace %>
 
     <!-- Content -->
     <main class="ax-main">
@@ -449,93 +441,5 @@
     </script>
     <%= render 'layouts/admin_push_subscriptions' if current_admin_user %>
     <%= render 'layouts/native_push' if current_admin_user %>
-    <script>
-      (function () {
-        const PULL_THRESHOLD = 70;
-        const MAX_PULL = 140;
-        const indicator = document.getElementById("admin-ptr");
-        const icon = document.getElementById("admin-ptr-icon");
-        const label = document.getElementById("admin-ptr-label");
-        if (!indicator || !window.matchMedia("(max-width: 767.98px)").matches) return;
-
-        let startY = 0;
-        let startX = 0;
-        let pulling = false;
-        let refreshArmed = false;
-        let refreshing = false;
-
-        function atTop() {
-          return (window.scrollY || window.pageYOffset || 0) <= 0;
-        }
-
-        function reset() {
-          indicator.style.transform = "translate(-50%, -80px)";
-          icon.className = "bi bi-arrow-down";
-          icon.style.transform = "rotate(0deg)";
-          icon.style.animation = "";
-          label.textContent = "Arraste para atualizar";
-          refreshArmed = false;
-        }
-
-        document.addEventListener("touchstart", function (event) {
-          if (refreshing || !atTop() || event.touches.length !== 1) {
-            pulling = false;
-            return;
-          }
-
-          startY = event.touches[0].clientY;
-          startX = event.touches[0].clientX;
-          pulling = true;
-        }, { passive: true });
-
-        document.addEventListener("touchmove", function (event) {
-          if (!pulling || refreshing) return;
-
-          const touch = event.touches[0];
-          const dy = touch.clientY - startY;
-          const dx = Math.abs(touch.clientX - startX);
-
-          if (dx > Math.abs(dy)) {
-            pulling = false;
-            reset();
-            return;
-          }
-
-          if (dy <= 0 || !atTop()) {
-            reset();
-            return;
-          }
-
-          const pulled = Math.min(dy, MAX_PULL);
-          indicator.style.transform = `translate(-50%, ${pulled - 80}px)`;
-
-          if (pulled >= PULL_THRESHOLD && !refreshArmed) {
-            refreshArmed = true;
-            icon.style.transform = "rotate(180deg)";
-            label.textContent = "Solte para atualizar";
-          } else if (pulled < PULL_THRESHOLD && refreshArmed) {
-            refreshArmed = false;
-            icon.style.transform = "rotate(0deg)";
-            label.textContent = "Arraste para atualizar";
-          }
-        }, { passive: true });
-
-        document.addEventListener("touchend", function () {
-          if (!pulling) return;
-          pulling = false;
-
-          if (refreshArmed) {
-            refreshing = true;
-            icon.className = "bi bi-arrow-repeat";
-            icon.style.animation = "admin-ptr-spin .8s linear infinite";
-            label.textContent = "Atualizando...";
-            indicator.style.transform = "translate(-50%, 10px)";
-            setTimeout(function () { window.location.reload(); }, 300);
-          } else {
-            reset();
-          }
-        }, { passive: true });
-      })();
-    </script>
   </body>
 </html>

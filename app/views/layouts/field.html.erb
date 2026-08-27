@@ -345,28 +345,6 @@
         backdrop-filter: blur(4px);
       }
       .field-install-android-manual { display: none; }
-      .field-ptr {
-        position: fixed;
-        top: env(safe-area-inset-top, 0px);
-        left: 50%;
-        z-index: 1030;
-        transform: translate(-50%, -80px);
-        transition: transform .2s ease;
-        pointer-events: none;
-      }
-      .field-ptr__pill {
-        display: flex;
-        align-items: center;
-        gap: .5rem;
-        padding: .5rem 1rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 999px;
-        background: #fff;
-        color: #0f172a;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
-        font-size: .85rem;
-      }
-      .field-ptr__icon { transition: transform .2s; }
       .field-install-card {
         position: absolute;
         top: 50%; left: 50%;
@@ -421,13 +399,7 @@
       }
     </style>
 
-    <!-- Pull-to-refresh indicator -->
-    <div id="field-ptr" class="field-ptr">
-      <div class="field-ptr__pill">
-        <i id="field-ptr-icon" class="bi bi-arrow-down field-ptr__icon"></i>
-        <span id="field-ptr-label">Arraste para atualizar</span>
-      </div>
-    </div>
+    <%= render "layouts/pull_to_refresh" %>
 
     <main class="field-layout">
       <%= yield %>
@@ -556,84 +528,6 @@
         toggleOffline();
       })();
 
-      // Pull-to-refresh — arrastar pra baixo no topo recarrega a página
-      (function () {
-        const PULL_THRESHOLD = 70;      // px até marcar como "pode soltar"
-        const MAX_PULL = 140;            // limite visual
-        const indicator = document.getElementById("field-ptr");
-        const icon      = document.getElementById("field-ptr-icon");
-        const label     = document.getElementById("field-ptr-label");
-        if (!indicator) return;
-
-        let startY = 0;
-        let pulling = false;
-        let refreshArmed = false;
-        let refreshing = false;
-
-        function atTop() {
-          return (window.scrollY || window.pageYOffset || 0) <= 0;
-        }
-
-        function show(y) {
-          // y em pixels de translate (começa de -80)
-          indicator.style.transform = `translate(-50%, ${y - 80}px)`;
-        }
-
-        function reset() {
-          indicator.style.transform = "translate(-50%, -80px)";
-          icon.style.transform = "rotate(0deg)";
-          label.textContent = "Arraste para atualizar";
-          refreshArmed = false;
-        }
-
-        document.addEventListener("touchstart", (e) => {
-          if (refreshing) return;
-          if (!atTop()) { pulling = false; return; }
-          startY = e.touches[0].clientY;
-          pulling = true;
-        }, { passive: true });
-
-        document.addEventListener("touchmove", (e) => {
-          if (!pulling || refreshing) return;
-          const dy = e.touches[0].clientY - startY;
-          if (dy <= 0) { reset(); return; }
-          if (!atTop()) { pulling = false; reset(); return; }
-
-          const pulled = Math.min(dy, MAX_PULL);
-          show(pulled);
-
-          if (pulled >= PULL_THRESHOLD && !refreshArmed) {
-            refreshArmed = true;
-            icon.style.transform = "rotate(180deg)";
-            label.textContent = "Solte para atualizar";
-          } else if (pulled < PULL_THRESHOLD && refreshArmed) {
-            refreshArmed = false;
-            icon.style.transform = "rotate(0deg)";
-            label.textContent = "Arraste para atualizar";
-          }
-        }, { passive: true });
-
-        document.addEventListener("touchend", () => {
-          if (!pulling) return;
-          pulling = false;
-
-          if (refreshArmed) {
-            refreshing = true;
-            label.textContent = "Atualizando…";
-            icon.className = "bi bi-arrow-repeat";
-            icon.style.animation = "field-ptr-spin .8s linear infinite";
-            // fixa o indicador visível
-            indicator.style.transform = "translate(-50%, 10px)";
-            setTimeout(() => window.location.reload(), 300);
-          } else {
-            reset();
-          }
-        }, { passive: true });
-      })();
     </script>
-
-    <style>
-      @keyframes field-ptr-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
-    </style>
   </body>
 </html>

@@ -113,3 +113,62 @@
     }
   });
 })();
+
+// Alternância rápida dev local / produção — só pra teste interno, sem UI
+// visível. 5 toques no logo em até 3s trocam a URL de discovery salva no
+// localStorage (ver <script> no <head> de index.html que lê essa chave) e
+// recarregam a página. Sem precisar editar código nem reconstruir o app
+// pra alternar de ambiente — só troca a chave e recarrega.
+(function () {
+  const ENV_KEY = "unitymob_env_override";
+  const LOCAL_DISCOVERY_URL = "http://192.168.0.42:4001/discovery/resolve";
+  const TAP_COUNT = 5;
+  const TAP_WINDOW_MS = 3000;
+
+  const logo = document.querySelector(".logo-icon");
+  if (!logo) return;
+
+  function showBadge(text) {
+    let badge = document.getElementById("env-switch-badge");
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.id = "env-switch-badge";
+      badge.style.cssText =
+        "position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);left:50%;" +
+        "transform:translateX(-50%);z-index:9999;padding:8px 16px;border-radius:999px;" +
+        "background:#111827;color:#fff;font-size:13px;font-weight:700;" +
+        "box-shadow:0 8px 20px rgba(0,0,0,.3);transition:opacity .25s ease;pointer-events:none;";
+      document.body.appendChild(badge);
+    }
+    badge.textContent = text;
+    badge.style.opacity = "1";
+    window.clearTimeout(badge._hideTimer);
+    badge._hideTimer = window.setTimeout(() => { badge.style.opacity = "0"; }, 2200);
+  }
+
+  let taps = 0;
+  let tapTimer = null;
+
+  logo.addEventListener("click", () => {
+    taps += 1;
+    window.clearTimeout(tapTimer);
+    tapTimer = window.setTimeout(() => { taps = 0; }, TAP_WINDOW_MS);
+
+    if (taps < TAP_COUNT) return;
+    taps = 0;
+
+    const isLocal = localStorage.getItem(ENV_KEY) === "local";
+    if (isLocal) {
+      localStorage.removeItem(ENV_KEY);
+      showBadge("Ambiente: Produção");
+    } else {
+      localStorage.setItem(ENV_KEY, "local");
+      showBadge("Ambiente: Local");
+    }
+    window.setTimeout(() => window.location.reload(), 700);
+  });
+
+  if (localStorage.getItem(ENV_KEY) === "local") {
+    showBadge(`Ambiente: Local (${LOCAL_DISCOVERY_URL})`);
+  }
+})();

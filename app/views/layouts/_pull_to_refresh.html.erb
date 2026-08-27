@@ -1,0 +1,165 @@
+<%# Indicador de pull-to-refresh compartilhado entre admin.html.erb e
+    field.html.erb (e por isso automaticamente igual no app nativo e no
+    PWA — os dois carregam essas mesmas páginas). Corrige dois bugs visuais
+    que existiam nas duas cópias antigas (admin-ptr / field-ptr):
+    1) a posição de repouso usava um deslocamento fixo (-80px) que não dava
+       conta do safe-area-inset-top grande dos iPhones com Dynamic Island —
+       o indicador ficava permanentemente visível, espiando por baixo do
+       notch/status bar.
+    2) a posição ao soltar pra atualizar também era um número fixo (10px),
+       menor que a altura da navbar fixa do admin (48px) — o indicador
+       ficava escondido atrás do header bem na hora que devia aparecer.
+    Visual também mudou de "pílula com texto" pra um círculo com ícone, mais
+    parecido com o refresh nativo do iOS. %>
+<div id="ax-ptr" class="ax-ptr" aria-hidden="true">
+  <i id="ax-ptr-icon" class="bi bi-arrow-down ax-ptr__icon"></i>
+</div>
+
+<style>
+  .ax-ptr {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    left: 50%;
+    z-index: 2000;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .16);
+    transition: transform .2s ease;
+    pointer-events: none;
+  }
+
+  [data-admin-theme="dark"] .ax-ptr,
+  [data-field-theme="dark"] .ax-ptr {
+    background: var(--ax-dark-surface-raised, #18243a);
+  }
+
+  .ax-ptr__icon {
+    /* Ícone de fonte (Bootstrap Icons), não SVG — width/height não afetam o
+       glifo, só font-size. Uma caixa width/height que não bate com o
+       tamanho real renderizado descentraliza visualmente o ícone dentro do
+       círculo, mesmo com place-items: center no pai. */
+    font-size: 16px;
+    line-height: 1;
+    color: #365f8f;
+    transition: transform .2s;
+  }
+
+  [data-admin-theme="dark"] .ax-ptr__icon,
+  [data-field-theme="dark"] .ax-ptr__icon {
+    color: var(--ax-dark-text, #edf3fb);
+  }
+
+  @keyframes ax-ptr-spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+<script>
+  (function () {
+    if (!window.matchMedia("(max-width: 767.98px)").matches) return;
+
+    const PULL_THRESHOLD = 70;
+    const MAX_PULL = 150;
+    // Margem de segurança além da altura real do indicador — garante que
+    // ele fique de fato fora da tela em repouso, em qualquer aparelho
+    // (em vez de um número mágico fixo que não escala com o safe-area).
+    const HIDE_MARGIN = 16;
+
+    const indicator = document.getElementById("ax-ptr");
+    const icon = document.getElementById("ax-ptr-icon");
+    if (!indicator) return;
+
+    let hiddenY = -(indicator.offsetHeight + HIDE_MARGIN);
+    let pulling = false;
+    let startY = 0;
+    let startX = 0;
+    let refreshArmed = false;
+    let refreshing = false;
+
+    function atTop() {
+      return (window.scrollY || window.pageYOffset || 0) <= 0;
+    }
+
+    function setY(y) {
+      indicator.style.transform = `translate(-50%, ${y}px)`;
+    }
+
+    function reset() {
+      setY(hiddenY);
+      icon.style.transform = "rotate(0deg)";
+      icon.style.animation = "";
+      icon.className = "bi bi-arrow-down ax-ptr__icon";
+      refreshArmed = false;
+    }
+
+    reset();
+
+    // offsetHeight pode vir 0 antes do primeiro layout completo — recalcula
+    // assim que a página termina de carregar, com o tamanho real disponível.
+    window.addEventListener("load", function () {
+      hiddenY = -(indicator.offsetHeight + HIDE_MARGIN);
+      if (!pulling && !refreshing) reset();
+    });
+
+    document.addEventListener("touchstart", function (event) {
+      if (refreshing || !atTop() || event.touches.length !== 1) {
+        pulling = false;
+        return;
+      }
+      startY = event.touches[0].clientY;
+      startX = event.touches[0].clientX;
+      pulling = true;
+    }, { passive: true });
+
+    document.addEventListener("touchmove", function (event) {
+      if (!pulling || refreshing) return;
+
+      const touch = event.touches[0];
+      const dy = touch.clientY - startY;
+      const dx = Math.abs(touch.clientX - startX);
+
+      if (dx > Math.abs(dy)) {
+        pulling = false;
+        reset();
+        return;
+      }
+
+      if (dy <= 0 || !atTop()) {
+        reset();
+        return;
+      }
+
+      const pulled = Math.min(dy, MAX_PULL);
+      setY(hiddenY + pulled);
+
+      if (pulled >= PULL_THRESHOLD && !refreshArmed) {
+        refreshArmed = true;
+        icon.style.transform = "rotate(180deg)";
+      } else if (pulled < PULL_THRESHOLD && refreshArmed) {
+        refreshArmed = false;
+        icon.style.transform = "rotate(0deg)";
+      }
+    }, { passive: true });
+
+    document.addEventListener("touchend", function () {
+      if (!pulling) return;
+      pulling = false;
+
+      if (refreshArmed) {
+        refreshing = true;
+        icon.className = "bi bi-arrow-repeat ax-ptr__icon";
+        icon.style.animation = "ax-ptr-spin .8s linear infinite";
+        // Mesma posição do puxão máximo: já comprovadamente visível e fora
+        // de qualquer header fixo, sem precisar de outro número mágico.
+        setY(hiddenY + MAX_PULL);
+        setTimeout(function () { window.location.reload(); }, 300);
+      } else {
+        reset();
+      }
+    }, { passive: true });
+  })();
+</script>

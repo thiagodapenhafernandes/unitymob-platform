@@ -6,6 +6,11 @@ export default class extends Controller {
   // Só mostra o overlay se a navegação passar deste tempo (evita flash em
   // navegação rápida servida do cache do Turbo).
   static SHOW_DELAY_MS = 150
+  // Uma vez visível, fica pelo menos esse tempo — sem isso, navegações que
+  // demoram só um pouco mais que o SHOW_DELAY_MS (bem comuns aqui) faziam o
+  // overlay aparecer e sumir quase junto, um "pisca" na página de origem
+  // antes de ir pra página escolhida.
+  static MIN_VISIBLE_MS = 260
   // Failsafe: se turbo:load/render nunca chegar (visit cancelado/erro/lento),
   // esconde o overlay sozinho em vez de deixá-lo preso até o reload.
   static FAILSAFE_MS = 10000
@@ -58,6 +63,7 @@ export default class extends Controller {
     document.removeEventListener("turbo:fetch-request-error", this.boundNavError)
     document.removeEventListener("turbo:frame-missing", this.boundNavError)
     window.removeEventListener("pageshow", this.boundPageShow)
+    window.clearTimeout(this.minVisibleTimer)
     if (!document.documentElement.classList.contains("ax-admin-is-loading")) {
       this.hideNow()
     }
@@ -132,6 +138,11 @@ export default class extends Controller {
     this.overlayTarget.hidden = false
     this.overlayTarget.classList.add("is-visible")
     document.documentElement.classList.add("ax-admin-is-loading")
+    // Guardado no elemento (turbo-permanent, sobrevive à troca de instância
+    // do controller a cada navegação) e não na instância — é o que permite
+    // ao hideNow() do controller da PÁGINA NOVA saber há quanto tempo o
+    // overlay está visível desde que foi mostrado pela página ANTERIOR.
+    this.overlayTarget.dataset.shownAt = String(performance.now())
 
     window.clearTimeout(this.failsafeTimer)
     this.failsafeTimer = window.setTimeout(() => this.hideNow(), this.constructor.FAILSAFE_MS)
@@ -139,12 +150,26 @@ export default class extends Controller {
 
   hideNow() {
     window.clearTimeout(this.showTimer)
-    window.clearTimeout(this.failsafeTimer)
     this.showTimer = null
-    this.failsafeTimer = null
     this.pageRendered = false
 
+    if (this.hasOverlayTarget && !this.overlayTarget.hidden) {
+      const shownAt = Number(this.overlayTarget.dataset.shownAt || 0)
+      const elapsed = shownAt ? performance.now() - shownAt : Infinity
+      const remaining = this.constructor.MIN_VISIBLE_MS - elapsed
+
+      if (remaining > 0) {
+        window.clearTimeout(this.minVisibleTimer)
+        this.minVisibleTimer = window.setTimeout(() => this.hideNow(), remaining)
+        return
+      }
+    }
+
+    window.clearTimeout(this.failsafeTimer)
+    this.failsafeTimer = null
+
     if (this.hasOverlayTarget) {
+      delete this.overlayTarget.dataset.shownAt
       this.overlayTarget.classList.remove("is-visible")
       this.overlayTarget.classList.remove("has-rendered")
       this.overlayTarget.hidden = true

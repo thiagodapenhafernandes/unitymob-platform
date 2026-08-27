@@ -367,45 +367,6 @@ html[data-admin-theme="dark"] .admin-navbar-brand-mark {
   padding: 0;
 }
 
-.admin-ptr {
-  position: fixed;
-  top: env(safe-area-inset-top, 0px);
-  left: 50%;
-  transform: translate(-50%, -80px);
-  z-index: 1030;
-  transition: transform .2s ease;
-  pointer-events: none;
-}
-
-.admin-ptr-pill {
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 999px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
-  color: #0f172a;
-  display: flex;
-  font-size: .85rem;
-  gap: .5rem;
-  padding: .5rem 1rem;
-}
-
-[data-admin-theme="dark"] .admin-ptr-pill {
-  background: var(--ax-dark-surface-raised, #18243a);
-  border-color: var(--ax-dark-border, #33445f);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .28);
-  color: var(--ax-dark-text, #edf3fb);
-}
-
-#admin-ptr-icon {
-  transition: transform .2s;
-}
-
-@keyframes admin-ptr-spin {
-  from { transform: rotate(0); }
-  to { transform: rotate(360deg); }
-}
-
 .admin-container {
   display: flex;
   margin-top: var(--admin-navbar-height);

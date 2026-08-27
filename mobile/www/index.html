@@ -184,6 +184,17 @@
     </div>
     <p class="login-footer">&copy; 2026 Unitymob - Todos os direitos reservados.</p>
   </div>
+  <!-- Alternância rápida dev/produção: 5 toques no logo (ver app.js) trocam
+       a URL de discovery salva no localStorage, sem precisar editar código
+       nem reconstruir o app pra testar cada ambiente. Fica em produção sem
+       problema — some sozinho, sem UI visível, até alguém tocar o logo 5x. -->
+  <script>
+    (function () {
+      if (localStorage.getItem("unitymob_env_override") === "local") {
+        window.UNITYMOB_DISCOVERY_URL = "http://192.168.0.42:4001/discovery/resolve";
+      }
+    })();
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -38,7 +38,6 @@ body {
 .field-panel,
 .field-action-card,
 .field-install-card,
-.field-ptr__pill,
 .field-layout .card {
   border-color: var(--field-border) !important;
   background: var(--field-surface) !important;
