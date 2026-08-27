@@ -13,6 +13,19 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     end
   end
 
+  def upsert_review_policy!(setting, attributes)
+    policy = PropertyReviewPolicy.find_or_initialize_by(
+      tenant: attributes.fetch(:tenant),
+      registration_type: attributes.fetch(:registration_type),
+      category: attributes.fetch(:category),
+      modality: attributes.fetch(:modality)
+    )
+    policy.property_setting = setting
+    policy.assign_attributes(attributes.except(:tenant, :registration_type, :category, :modality))
+    policy.save!
+    policy
+  end
+
   def default_administrative_profiles
     internal_management_profile = Tenant.default.profiles.vertical.find_or_create_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME) do |profile|
       profile.position = Profile::INTERNAL_MANAGEMENT_PROFILE_POSITION
@@ -642,6 +655,27 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.infra_estrutura).to include("Elevador")
     expect(intake.distancia_praia).to eq("350")
     expect(intake.observacoes_visitas).to include("Distância da praia: 350 m")
+
+    intake.update_column(:intake_step, "negociacao")
+    get edit_admin_captacao_path(intake, step: "negociacao")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Condições de negociação")
+    expect(response.body).to include("proprietário aceita proposta")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "negociacao",
+      direction: "forward",
+      captacao: {
+        valor_venda: "1200000",
+        condicoes_negociacao: "Cliente aceitou proposta X"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "visitas"))
+    intake.reload
+    expect(intake.condicoes_negociacao).to eq("Cliente aceitou proposta X")
+
     intake.update_column(:intake_step, "visitas")
 
     patch admin_captacao_path(intake), params: {
@@ -678,6 +712,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     end
     expect(response.body).to include("Onde estão as chaves?")
     expect(response.body).to include("Nome do zelador")
+    expect(response.body).to include("Informações internas do imóvel")
+    expect(response.body).to include("apartamento de frente, lateral ou fundos")
     expect(response.body).to include('data-conditional-reveal-values="portaria"')
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('select[name="habitation[chaves_com]"][data-conditional-reveal-target="trigger"]')).to be_present
@@ -774,10 +810,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
   it "não bloqueia etapa de características quando a política específica não exige área nem características" do
     setting = PropertySetting.instance
-    create(
-      :property_review_policy,
+    upsert_review_policy!(
+      setting,
       tenant: admin.tenant,
-      property_setting: setting,
       registration_type: "terrenos",
       category: "Terreno",
       modality: "venda",
@@ -810,10 +845,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
   it "bloqueia etapa de características quando a política específica exige área" do
     setting = PropertySetting.instance
-    create(
-      :property_review_policy,
+    upsert_review_policy!(
+      setting,
       tenant: admin.tenant,
-      property_setting: setting,
       registration_type: "terrenos",
       category: "Terreno",
       modality: "venda",
@@ -1480,6 +1514,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       current_step: "fotos",
       direction: "forward",
       habitation: {
+        photo_flow_choice: "upload",
         photos: [uploaded_photo],
         autorizacoes_venda: [authorization]
       }
@@ -1517,6 +1552,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       current_step: "fotos",
       direction: "forward",
       habitation: {
+        photo_flow_choice: "upload",
         photos: [uploaded_photo],
         autorizacoes_venda: [authorization]
       }
@@ -1980,10 +2016,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
   it "aplica regra específica de revisão por tipo categoria e modalidade na aprovação real" do
     setting = PropertySetting.instance
-    create(
-      :property_review_policy,
+    upsert_review_policy!(
+      setting,
       tenant: admin.tenant,
-      property_setting: setting,
       registration_type: "terrenos",
       category: "Terreno",
       modality: "venda",

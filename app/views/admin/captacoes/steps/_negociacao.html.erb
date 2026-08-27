@@ -74,6 +74,10 @@
   </div>
 <% end %>
 
+<%= ax_text_field(form: f, method: :condicoes_negociacao, label: "Condições de negociação", type: :textarea,
+      field_class: "wizard-field-group", rows: 3,
+      placeholder: "Ex.: proprietário aceita proposta, aceita prazo, aceita retirar móveis, condições especiais ou pontos combinados.") %>
+
 <hr class="my-3">
 <h6 class="tw-font-bold tw-mb-2 tw-text-ink-muted tw-text-sm text-uppercase">Taxas e despesas</h6>
 

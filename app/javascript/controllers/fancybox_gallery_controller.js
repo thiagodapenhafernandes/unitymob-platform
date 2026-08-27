@@ -101,7 +101,14 @@ export default class extends Controller {
       loadingCard?.classList.remove("is-loading")
       console.error("Failed to open image gallery", error)
       this.debug("open:fallback", { error: error.message, href: galleryTrigger.href })
-      if (galleryTrigger.matches("a[data-fancybox]") && galleryTrigger.href) window.open(galleryTrigger.href, "_blank", "noopener")
+      this.galleryItems().then((items) => {
+        if (items.length === 0) return
+
+        const startIndex = Math.max(items.findIndex((item) => item.src === galleryTrigger.href), 0)
+        this.showFallbackGallery(items, startIndex)
+      }).catch((galleryError) => {
+        this.debug("open:fallback-gallery-error", { error: galleryError.message })
+      })
     })
   }
 
@@ -124,8 +131,11 @@ export default class extends Controller {
   isNestedInteractiveControl(target, trigger) {
     if (!target || target === trigger) return false
 
+    const interactiveControl = target.closest("button, input, select, textarea, label")
+    if (interactiveControl && interactiveControl === trigger) return false
+
     return Boolean(
-      target.closest("button, input, select, textarea, label")
+      interactiveControl
     )
   }
 
@@ -154,12 +164,14 @@ export default class extends Controller {
   }
 
   galleryItems() {
-    if (!this.hasSourceUrlValue) return Promise.resolve(this.galleryLinks().map((item) => this.galleryItem(item)))
+    const sourceUrl = this.remoteGallerySourceUrl()
+
+    if (!sourceUrl) return Promise.resolve(this.galleryLinks().map((item) => this.galleryItem(item)))
     if (this.remoteGalleryItems) return Promise.resolve(this.remoteGalleryItems)
     if (this.galleryRequest) return this.galleryRequest
 
     this.element.classList.add("is-loading")
-    this.galleryRequest = fetch(this.sourceUrlValue, {
+    this.galleryRequest = fetch(sourceUrl, {
       headers: { Accept: "application/json" },
       credentials: "same-origin"
     }).then((response) => {
@@ -179,6 +191,21 @@ export default class extends Controller {
     })
 
     return this.galleryRequest
+  }
+
+  remoteGallerySourceUrl() {
+    if (!this.hasSourceUrlValue) return null
+
+    const rawSourceUrl = String(this.sourceUrlValue || "").trim()
+    if (!rawSourceUrl) return null
+
+    const sourceUrl = new URL(rawSourceUrl, window.location.href)
+    const currentUrl = new URL(window.location.href)
+
+    if (sourceUrl.pathname === currentUrl.pathname && sourceUrl.search === currentUrl.search) return null
+    if (!sourceUrl.pathname.endsWith("/gallery")) return null
+
+    return sourceUrl.href
   }
 
   galleryItem(item) {
@@ -266,6 +293,87 @@ export default class extends Controller {
     document.querySelectorAll("audio, video").forEach((media) => {
       if (typeof media.pause === "function") media.pause()
     })
+  }
+
+  showFallbackGallery(items, startIndex = 0) {
+    const galleryItems = Array.from(items || []).filter((item) => item.src)
+    if (galleryItems.length === 0) return
+
+    let currentIndex = Math.min(Math.max(startIndex, 0), galleryItems.length - 1)
+    const overlay = document.createElement("div")
+    overlay.className = "ax-fancybox-fallback"
+    overlay.setAttribute("role", "dialog")
+    overlay.setAttribute("aria-modal", "true")
+
+    const frame = document.createElement("div")
+    frame.className = "ax-fancybox-fallback__frame"
+
+    const closeButton = document.createElement("button")
+    closeButton.type = "button"
+    closeButton.className = "ax-fancybox-fallback__close"
+    closeButton.setAttribute("aria-label", "Fechar galeria")
+    closeButton.innerHTML = "&times;"
+
+    const image = document.createElement("img")
+    image.className = "ax-fancybox-fallback__image"
+    image.alt = galleryItems[currentIndex].caption || "Foto do imóvel"
+
+    const counter = document.createElement("div")
+    counter.className = "ax-fancybox-fallback__counter"
+
+    const previousButton = document.createElement("button")
+    previousButton.type = "button"
+    previousButton.className = "ax-fancybox-fallback__nav ax-fancybox-fallback__nav--prev"
+    previousButton.setAttribute("aria-label", "Foto anterior")
+    previousButton.innerHTML = "&#8249;"
+
+    const nextButton = document.createElement("button")
+    nextButton.type = "button"
+    nextButton.className = "ax-fancybox-fallback__nav ax-fancybox-fallback__nav--next"
+    nextButton.setAttribute("aria-label", "Próxima foto")
+    nextButton.innerHTML = "&#8250;"
+
+    const render = () => {
+      const item = galleryItems[currentIndex]
+      image.src = item.src
+      image.alt = item.caption || "Foto do imóvel"
+      counter.textContent = `${currentIndex + 1} / ${galleryItems.length}`
+      previousButton.hidden = galleryItems.length < 2
+      nextButton.hidden = galleryItems.length < 2
+    }
+
+    const close = () => {
+      document.removeEventListener("keydown", onKeydown)
+      overlay.remove()
+      document.documentElement.classList.remove("ax-fancybox-fallback-open")
+    }
+    const showPrevious = () => {
+      currentIndex = (currentIndex - 1 + galleryItems.length) % galleryItems.length
+      render()
+    }
+    const showNext = () => {
+      currentIndex = (currentIndex + 1) % galleryItems.length
+      render()
+    }
+    const onKeydown = (event) => {
+      if (event.key === "Escape") close()
+      if (event.key === "ArrowLeft") showPrevious()
+      if (event.key === "ArrowRight") showNext()
+    }
+
+    closeButton.addEventListener("click", close)
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close()
+    })
+    previousButton.addEventListener("click", showPrevious)
+    nextButton.addEventListener("click", showNext)
+    document.addEventListener("keydown", onKeydown)
+
+    frame.append(closeButton, image, counter, previousButton, nextButton)
+    overlay.appendChild(frame)
+    document.body.appendChild(overlay)
+    document.documentElement.classList.add("ax-fancybox-fallback-open")
+    render()
   }
 
   suspendTopLayerDialog(trigger) {

@@ -1572,9 +1572,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-card-#{habitation.id}"]))
     gallery_container = html.at_css(%([data-fancybox-gallery-source-url-value="#{gallery_admin_habitation_path(habitation)}"]))
+    visible_gallery_trigger = html.at_css("#habitation_#{habitation.id} .ax-property-card__media-link[data-gallery-open]")
     photo_badge = html.at_css("#habitation_#{habitation.id} .ax-photo-count-badge")
     expect(gallery_links.size).to eq(6)
     expect(gallery_container).to be_present
+    expect(visible_gallery_trigger).to be_present
+    expect(visible_gallery_trigger.name).to eq("button")
+    expect(html.at_css("#habitation_#{habitation.id} .ax-property-card__media-link[href]")).to be_nil
     expect(photo_badge.text.squish).to eq("9 fotos")
     expect(photo_badge.text).not_to include("6 de")
 
@@ -1584,6 +1588,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-row-#{habitation.id}"]))
     expect(gallery_links.size).to eq(6)
+    table_gallery_trigger = html.at_css(".ax-property-table__thumb-link[data-gallery-open]")
+    expect(table_gallery_trigger).to be_present
+    expect(table_gallery_trigger.name).to eq("button")
+    expect(html.at_css(".ax-property-table__thumb-link[href]")).to be_nil
 
     get gallery_admin_habitation_path(habitation), as: :json
 
@@ -1652,6 +1660,11 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(CGI.escapeHTML("#{admin_habitation_path(other_property.id)}?return_to=/admin/habitations&ownership=all&q=#{other_property.codigo}&back_anchor=habitation_#{other_property.id}"))
     expect(response.body).not_to include(%(data-clickable-card-url-value="#{CGI.escapeHTML(habitation_path(other_property))}"))
 
+    get gallery_admin_habitation_path(other_property), as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body).to include("items")
+
     get admin_habitation_path(other_property, return_to: admin_habitations_path(ownership: "all", q: other_property.codigo))
 
     expect(response).to have_http_status(:ok)
@@ -1681,6 +1694,29 @@ RSpec.describe "Admin::Habitations", type: :request do
       titulo_anuncio: "Imóvel de todos para consulta"
     )
     expect(other_property.valor_venda_cents).not_to eq(123_000_00)
+  end
+
+  it "bloqueia galeria de imóvel fora do catálogo comercial para corretor" do
+    broker_profile = default_agent_profile
+    vera = create(:admin_user, profile: broker_profile, name: "Vera Corretora")
+    other_broker = create(:admin_user, profile: broker_profile, name: "Outro Corretor")
+    inactive_property = create(
+      :habitation,
+      admin_user: other_broker,
+      codigo: "INATIVO-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel inativo de outro corretor",
+      corretor_nome: other_broker.name
+    )
+    inactive_property.update_column(:status, "Suspenso")
+
+    sign_out admin
+    sign_in vera
+
+    get gallery_admin_habitation_path(inactive_property), as: :json
+
+    expect(response).to redirect_to(admin_habitations_path)
+    follow_redirect!
+    expect(response.body).to include("Você não tem acesso a este imóvel.")
   end
 
   it "abre imóvel próprio na aba Todos em visualização interna, não em edição" do
@@ -3019,15 +3055,38 @@ RSpec.describe "Admin::Habitations", type: :request do
   it "renderiza controles compactos do catálogo para mobile sem remover o bloco desktop" do
     create(:habitation, codigo: "MOBILE-CATALOG-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel para controles mobile")
 
-    get admin_habitations_path(ownership: "all", min_price: "1400000")
+    get admin_habitations_path(ownership: "all", min_price: "1400000", sort: "valor_venda_cents", direction: "asc")
 
     expect(response).to have_http_status(:ok)
 
     document = Nokogiri::HTML(response.body)
     mobile_summary = document.at_css(".habitations-mobile-catalog-summary")
     mobile_sort = document.at_css(".habitations-mobile-sort-controls")
+    pwa_header = document.at_css(".habitations-pwa-header")
+    pwa_sort = document.at_css(".habitations-pwa-sort")
     desktop_heading = document.at_css(".habitations-workspace-heading")
 
+    expect(pwa_header).to be_present
+    expect(pwa_sort).to be_present
+    expect(pwa_sort.text).to include("Ordenar por")
+    expect(pwa_sort.text).to include("Última atividade")
+    expect(pwa_sort.text).to include("Código mais recente")
+    expect(pwa_sort.text).to include("Categoria")
+    expect(pwa_sort.text).to include("Endereço")
+    expect(pwa_sort.text).to include("Endereço número")
+    expect(pwa_sort.text).to include("Endereço complemento")
+    expect(pwa_sort.text).to include("Dormitório")
+    expect(pwa_sort.text).to include("Valor venda")
+    expect(pwa_sort.text).to include("Valor aluguel")
+    expect(pwa_sort.text).to include("Bairro comercial")
+    expect(pwa_sort.text).to include("Empreendimento")
+    expect(pwa_sort.text).to include("Valor M2 aluguel")
+    expect(pwa_sort.text).to include("Valor M2 venda")
+    expect(pwa_sort.text).to include("Valor total aluguel")
+    active_value_sort_link = pwa_sort.css("a").find { |link| link.text.include?("Valor venda") }
+    expect(active_value_sort_link["href"]).to include("sort=valor_venda_cents")
+    expect(active_value_sort_link["href"]).to include("direction=desc")
+    expect(pwa_sort.at_css("[data-action*='ax-dropdown#toggle']")).to be_present
     expect(mobile_summary.text).to include("total")
     expect(mobile_summary.text).to include("filtrados")
     expect(mobile_summary.text.index("total")).to be < mobile_summary.text.index("filtrados")

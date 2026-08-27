@@ -170,6 +170,7 @@ module Admin
     def assign_captacao_style_attributes
       attributes = captacao_style_params
       photo_uploads = extract_intake_photo_uploads!(attributes)
+      @intake_document_uploads = extract_intake_document_uploads!(attributes)
       @habitation.assign_attributes(attributes)
       photo_uploads
     end
@@ -205,16 +206,25 @@ module Admin
       Array(attributes.delete("photos")).reject { |photo| Habitations::MediaUpdater.blank_upload?(photo) }
     end
 
+    def extract_intake_document_uploads!(attributes)
+      %w[fichas_cadastro autorizacoes_venda].each_with_object({}) do |key, uploads_by_name|
+        uploads = Array(attributes.delete(key)).reject { |upload| Habitations::MediaUpdater.blank_upload?(upload) }
+        uploads_by_name[key.to_sym] = uploads if uploads.any?
+      end
+    end
+
     def save_intake_with_photos(photo_uploads)
       saved = false
       Habitation.transaction do
         saved = @habitation.save
         raise ActiveRecord::Rollback unless saved
 
+        habitation_media_updater.attach_new_documents(@intake_document_uploads || {})
         habitation_media_updater.attach_new_photos(
           photo_uploads,
           apply_watermark: @property_setting&.watermark_configured?
         )
+        @habitation.reload if photo_uploads.present? || @intake_document_uploads.present?
       end
 
       saved

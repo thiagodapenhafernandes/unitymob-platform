@@ -1731,7 +1731,15 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   position: absolute;
   inset: 0;
   display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
   color: inherit;
+  cursor: pointer;
+  font: inherit;
   text-decoration: none;
 }
 
@@ -1742,6 +1750,88 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   place-items: center;
   color: #94a3b8;
   font-size: 30px;
+}
+
+.ax-fancybox-fallback-open {
+  overflow: hidden;
+}
+
+.ax-fancybox-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, .92);
+}
+
+.ax-fancybox-fallback__frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.ax-fancybox-fallback__image {
+  display: block;
+  max-width: 100%;
+  max-height: 84dvh;
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+}
+
+.ax-fancybox-fallback__close,
+.ax-fancybox-fallback__nav {
+  position: absolute;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .72);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .24);
+}
+
+.ax-fancybox-fallback__close {
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  width: 46px;
+  height: 46px;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.ax-fancybox-fallback__nav {
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translateY(-50%);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.ax-fancybox-fallback__nav--prev {
+  left: max(12px, env(safe-area-inset-left));
+}
+
+.ax-fancybox-fallback__nav--next {
+  right: max(12px, env(safe-area-inset-right));
+}
+
+.ax-fancybox-fallback__counter {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, .72);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .ax-property-card__media.is-image-missing::before,

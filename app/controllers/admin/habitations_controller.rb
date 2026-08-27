@@ -929,7 +929,7 @@ class Admin::HabitationsController < Admin::BaseController
     identifier = params[:id] || params[:habitation_id]
     return if identifier.blank?
     habitation = resolve_admin_habitation_param(identifier)
-    unless habitation && property_accessible?(habitation)
+    unless habitation && property_viewable?(habitation)
       redirect_to admin_habitations_path, alert: "Você não tem acesso a este imóvel."
     end
   end
@@ -2191,6 +2191,23 @@ class Admin::HabitationsController < Admin::BaseController
     return false unless current_admin_user&.can_view_team?(:imoveis)
 
     property_owned_by_team?(habitation)
+  end
+
+  def property_viewable?(habitation)
+    return true if property_accessible?(habitation)
+
+    broker_catalog_user? && property_catalog_viewable?(habitation)
+  end
+
+  def property_catalog_viewable?(habitation)
+    return false unless habitation
+    return false if habitation.broker_intake? && !habitation.intake_status.in?(Habitation::CATALOG_VISIBLE_INTAKE_STATUSES)
+
+    current_tenant
+      .habitations
+      .where(id: habitation.id)
+      .commercially_publishable
+      .exists?
   end
 
   def property_owned_by_team?(habitation)

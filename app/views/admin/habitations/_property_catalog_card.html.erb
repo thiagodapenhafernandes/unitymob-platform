@@ -64,14 +64,10 @@
        data-controller="fancybox-gallery"
        data-fancybox-gallery-source-url-value="<%= gallery_admin_habitation_path(imovel) %>">
     <% if image_url.present? %>
-      <%= link_to image_url,
-                  class: "ax-property-card__media-link",
-                  data: {
-                    controller: "stop-propagation",
-                    action: "click->stop-propagation#stop",
-                    fancybox: "admin-property-card-#{imovel.id}",
-                    caption: display_title
-                  } do %>
+      <button type="button"
+              class="ax-property-card__media-link"
+              data-gallery-open
+              aria-label="Abrir galeria de fotos do imóvel <%= imovel.codigo %>">
         <%= image_tag image_url,
                       alt: display_title,
                       loading: "lazy",
@@ -81,7 +77,16 @@
                         image_fallback_container_selector_value: ".ax-property-card__media",
                         image_fallback_fallback_urls_value: fallback_image_urls
                       } %>
-      <% end %>
+      </button>
+      <%= link_to display_title,
+                  image_url,
+                  class: "visually-hidden",
+                  data: {
+                    fancybox: "admin-property-card-#{imovel.id}",
+                    caption: display_title
+                  },
+                  tabindex: "-1",
+                  aria: { hidden: "true" } %>
       <% fallback_image_urls.each_with_index do |gallery_image_url, gallery_index| %>
         <%= link_to "#{display_title} - Foto #{gallery_index + 2}",
                     gallery_image_url,

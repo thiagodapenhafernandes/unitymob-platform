@@ -98,6 +98,8 @@
     { key: "opportunity", label: "Oportunidades", icon: "star", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "all", scope: "oportunidade")), count: pwa_habitation_nav_counts[:opportunity].to_i },
     { key: "all", label: "Todos", icon: "archive", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "all")), count: pwa_habitation_nav_counts[:all].to_i }
   ]
+  pwa_habitation_sort_options = sort_options
+  pwa_habitation_sort_active = pwa_habitation_sort_options.key?(current_sort_key)
 %>
 <section class="habitations-pwa-header" aria-label="Navegação do catálogo no PWA">
   <div class="habitations-pwa-topbar">
@@ -127,6 +129,39 @@
                          inputmode: "search",
                          aria: { label: "Buscar imóveis" } %>
     <% end %>
+
+    <div class="dropdown habitations-pwa-sort" data-controller="ax-dropdown">
+      <button type="button"
+              class="habitations-pwa-sort__button"
+              data-ax-dropdown-target="trigger"
+              data-action="click->ax-dropdown#toggle"
+              aria-expanded="false"
+              aria-label="Ordenar imóveis">
+        <i class="bi bi-sort-down" aria-hidden="true"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end ax-menu--end habitations-command-menu habitations-pwa-sort__menu"
+          data-ax-dropdown-target="menu"
+          hidden>
+        <li class="habitations-command-menu__header">
+          <span>Ordenar por</span>
+          <small><%= pwa_habitation_sort_active ? sort_direction : "desc" %></small>
+        </li>
+        <% pwa_habitation_sort_options.each do |sort_key, sort_config| %>
+          <% active_sort = current_sort_key == sort_key %>
+          <% next_sort_direction = active_sort ? (sort_direction == "asc" ? "desc" : "asc") : sort_config[:default_direction] %>
+          <li>
+            <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: sort_key, direction: next_sort_direction)),
+                        class: "habitations-command-menu__item #{active_sort ? 'is-active' : ''}" do %>
+              <span class="habitations-command-menu__item-icon <%= active_sort ? '' : 'is-empty' %>">
+                <% if active_sort %><i class="bi bi-check2"></i><% end %>
+              </span>
+              <span class="habitations-command-menu__item-label"><%= sort_config[:label] %></span>
+              <span class="habitations-command-menu__item-status"><%= active_sort ? "Atual" : "" %></span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
 
     <button type="button"
             class="habitations-pwa-filter"
