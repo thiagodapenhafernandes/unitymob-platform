@@ -1,0 +1,70 @@
+<%# Push nativo (Capacitor): registra o token FCM e o listener de toque na
+    notificação. Compartilhado entre field.html.erb e admin.html.erb — o app
+    pode estar em qualquer tela (não só /field) quando a notificação chega. %>
+<script>
+  function isNativeAppRequest() {
+    return /UnitymobFieldApp/.test(navigator.userAgent);
+  }
+
+  // Push nativo: pede permissão, pega o token do FCM via o SDK do
+  // Firebase (plugin @capacitor-firebase/messaging — troca o token bruto
+  // da APNs por um token de registro do FCM, que é o formato que o
+  // back-end usa pra enviar) e manda pro back-end assinar as notificações
+  // da conta.
+  async function registerNativePush() {
+    try {
+      // Reforço extra: mesmo no "load", o plugin nativo pode levar mais
+      // alguns instantes pra se registrar no bridge — tenta por até ~3s
+      // antes de desistir, em vez de sair no primeiro "ainda não existe".
+      let FirebaseMessaging = window.Capacitor?.Plugins?.FirebaseMessaging;
+      for (let attempt = 0; !FirebaseMessaging && attempt < 10; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        FirebaseMessaging = window.Capacitor?.Plugins?.FirebaseMessaging;
+      }
+      if (!FirebaseMessaging) return;
+
+      // Toque na notificação: mesma lógica do notificationclick do
+      // service worker (public/field-service-worker.js) — o back-end já
+      // decide em Leads::NotificationDispatcher se url é o WhatsApp do
+      // lead ou a tela de detalhes (conforme "Ao tocar na notificação"
+      // em /admin/lead_setting), o app só executa o que veio no payload.
+      // Precisa estar registrado aqui (e não só em field.html.erb) porque
+      // o toque pode chegar com o app parado numa tela /admin/*.
+      FirebaseMessaging.addListener("notificationActionPerformed", function (event) {
+        const data = event.notification?.data || {};
+        if (data.accept_url) {
+          fetch(data.accept_url, { credentials: "include" }).catch(function (err) {
+            console.warn("[native push] beacon de aceite falhou:", err);
+          });
+        }
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      });
+
+      let status = (await FirebaseMessaging.checkPermissions()).receive;
+      if (status === "prompt" || status === "prompt-with-rationale") {
+        status = (await FirebaseMessaging.requestPermissions()).receive;
+      }
+      if (status !== "granted") return;
+
+      const { token } = await FirebaseMessaging.getToken();
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      await fetch("/field/push_subscriptions/native", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        body: JSON.stringify({ platform: window.Capacitor.getPlatform(), token: token })
+      });
+    } catch (err) {
+      console.warn("[native push] setup failed:", err);
+    }
+  }
+
+  if (isNativeAppRequest()) {
+    // O bridge nativo do Capacitor registra os plugins de forma
+    // assíncrona — chamar isso cedo demais (antes do "load") faz
+    // window.Capacitor.Plugins.FirebaseMessaging ainda não existir,
+    // e a função sai sem erro nenhum (silenciosamente).
+    window.addEventListener("load", registerNativePush);
+  }
+</script>

@@ -1449,7 +1449,9 @@
         <span class="admin-navbar-user-name">
           <i class="bi bi-person-circle"></i> <%= current_admin_user&.name.to_s.split.first || current_admin_user&.email %>
         </span>
-        <%= link_to destroy_admin_user_session_path, data: { turbo_method: :delete }, class: "btn btn-sm btn-outline-danger admin-navbar-logout" do %>
+        <%= button_to destroy_admin_user_session_path, method: :delete,
+              class: "btn btn-sm btn-outline-danger admin-navbar-logout",
+              form: { data: { turbo: false } } do %>
           <i class="bi bi-box-arrow-right"></i><span class="ms-1">Sair</span>
         <% end %>
       </div>

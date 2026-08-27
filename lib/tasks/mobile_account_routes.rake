@@ -4,7 +4,7 @@ namespace :mobile do
     registrar = Mobile::AccountRouteRegistrar.new
 
     unless registrar.configured?
-      puts "[mobile:backfill_account_routes] GATEWAY_URL/GATEWAY_INTERNAL_TOKEN/PUBLIC_APP_URL não configurados neste servidor — nada a fazer."
+      puts "[mobile:backfill_account_routes] PUBLIC_APP_URL não configurado (ou nenhum gateway disponível via GATEWAY_URL/WHATSAPP_WEBHOOK_GATEWAY_URL) neste servidor — nada a fazer."
       next
     end
 

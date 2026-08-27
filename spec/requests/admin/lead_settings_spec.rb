@@ -37,8 +37,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
   end
 
   it "salva o destino operacional do clique no push pela tela de leads" do
-    LeadSetting.instance
-    PushSetting.instance.update!(lead_click_action: "whatsapp")
+    LeadSetting.instance.update!(push_lead_click_action: "whatsapp")
 
     patch admin_lead_setting_path, params: {
       lead_setting: {
@@ -69,12 +68,12 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     setting = LeadSetting.instance(tenant: admin.tenant).reload
     expect(setting.first_contact_sla_hours_value).to eq(6)
     expect(setting.stage_automation_sweep_interval_minutes_value).to eq(10)
-    expect(PushSetting.instance.reload.lead_click_action_value).to eq("system")
+    expect(LeadSetting.instance(tenant: admin.tenant).reload.push_lead_click_action_value).to eq("system")
   end
 
   it "salva apenas a configuracao de leads do tenant autenticado" do
     other_tenant = Tenant.create!(name: "Conta leads externa #{SecureRandom.hex(3)}", slug: "leads-externa-#{SecureRandom.hex(4)}")
-    other_setting = LeadSetting.create!(tenant: other_tenant, stickiness_enabled: true)
+    other_setting = LeadSetting.create!(tenant: other_tenant, stickiness_enabled: true, push_lead_click_action: "whatsapp")
 
     patch admin_lead_setting_path, params: {
       lead_setting: {
@@ -94,6 +93,10 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     expect(response).to redirect_to(edit_admin_lead_setting_path)
     expect(other_setting.reload).to be_stickiness_enabled
     expect(LeadSetting.instance(tenant: admin.tenant)).not_to be_stickiness_enabled
+    # Regressão do bug: "Ao tocar na notificação" morava numa tabela global
+    # (PushSetting) e vazava entre contas — agora é uma coluna por tenant.
+    expect(other_setting.reload.push_lead_click_action_value).to eq("whatsapp")
+    expect(LeadSetting.instance(tenant: admin.tenant).push_lead_click_action_value).to eq("system")
   end
 
   it "bloqueia acesso direto sem permissao de gerenciar distribuicao" do

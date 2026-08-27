@@ -118,7 +118,7 @@ class SecureLinksController < ApplicationController
   end
 
   def open_whatsapp_from_secure_card?
-    PushSetting.instance.open_whatsapp_on_click? && @lead.direct_whatsapp_url.present?
+    LeadSetting.instance(tenant: @lead.tenant).open_whatsapp_on_click? && @lead.direct_whatsapp_url.present?
   end
 
   # Push: quando configurado para "detalhes primeiro", o clique abre o card

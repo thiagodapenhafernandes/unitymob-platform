@@ -3,7 +3,8 @@ class LeadSetting < ApplicationRecord
   MATCHES   = %w[phone phone_or_email phone_and_email].freeze
   OWNERS    = %w[attended any_assignment].freeze
   FALLBACKS = %w[active_in_rule active_any].freeze
-  PUSH_CLICK_ACTIONS = PushSetting::LEAD_CLICK_ACTIONS.freeze
+  # Destino do clique na notificação de novo lead (dentro do prazo do pocket).
+  PUSH_CLICK_ACTIONS = %w[system whatsapp].freeze
   DEFAULT_FIRST_CONTACT_SLA_HOURS = 4
   DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 15
   MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 5
@@ -78,17 +79,11 @@ class LeadSetting < ApplicationRecord
       stage_automation_last_swept_at <= stage_automation_sweep_interval_minutes_value.minutes.ago(now)
   end
 
-  # Configuração operacional do push, persistida em PushSetting para manter as
-  # credenciais VAPID e o comportamento do clique em uma única tabela técnica.
-  def push_lead_click_action
-    return @push_lead_click_action if instance_variable_defined?(:@push_lead_click_action)
-
-    PushSetting.instance.lead_click_action_value
-  rescue ActiveRecord::StatementInvalid
-    "system"
+  def push_lead_click_action_value
+    push_lead_click_action.presence_in(PUSH_CLICK_ACTIONS) || "system"
   end
 
-  def push_lead_click_action=(value)
-    @push_lead_click_action = value.to_s
+  def open_whatsapp_on_click?
+    push_lead_click_action_value == "whatsapp"
   end
 end

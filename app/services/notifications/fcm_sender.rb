@@ -41,7 +41,12 @@ module Notifications
           message: {
             token: token,
             notification: { title: title, body: body }.compact,
-            data: data.transform_values(&:to_s)
+            data: data.transform_values(&:to_s),
+            # FCM não ativa som/alerta no iOS só por ter "notification" — sem
+            # isso a notificação chega "silenciosa" (sem tocar som nem acender
+            # a tela quando o app está em segundo plano).
+            apns: { payload: { aps: { sound: "default", badge: 1 } } },
+            android: { priority: "high", notification: { sound: "default" } }
           }.compact
         }.to_json
       end

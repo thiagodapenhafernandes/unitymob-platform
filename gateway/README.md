@@ -12,6 +12,7 @@ Subapp isolado para receber o webhook global do app Meta da Unitymob e rotear ev
 - Encaminhar o payload bruto para o destino do cliente com assinatura interna.
 - Registrar eventos sem rota como `unrouted` e emitir alerta operacional opcional.
 - Manter o CRM fora do papel de webhook global da Meta.
+- Endpoint publico de descoberta de conta do app hibrido mobile (Capacitor): `https://webhooks.unitymob.com.br/discovery/resolve` — dado um e-mail, devolve a URL do servidor fisico do cliente dono daquela conta.
 
 ## Setup local
 
@@ -98,12 +99,41 @@ O gateway aceita:
 
 Quando chega um lead com `page_id` e `form_id`, o gateway tenta primeiro a rota específica do formulário. Se não encontrar, usa a rota geral da página.
 
+## Descoberta de conta (app hibrido mobile)
+
+O mesmo gateway/token do webhook do WhatsApp serve pra achar automaticamente o
+servidor certo de cada corretor quando ele loga no app mobile (Capacitor) —
+sem cadastro manual por usuario. Cada servidor de cliente sincroniza sozinho
+(`app/services/mobile/account_route_registrar.rb` no CRM principal, disparado
+por `after_commit` no `AdminUser`) sempre que um usuario e criado/editado.
+
+**Onboarding de cliente novo**: alem das variaveis `WHATSAPP_WEBHOOK_GATEWAY_*`
+que ja fazem parte do runbook padrao, so falta UMA variavel nova no `.env` de
+producao do cliente:
+
+```
+PUBLIC_APP_URL=https://<dominio publico do cliente>
+```
+
+`GATEWAY_URL`/`GATEWAY_INTERNAL_TOKEN` nao precisam ser configurados — o
+registrar cai automaticamente em `WHATSAPP_WEBHOOK_GATEWAY_URL`/
+`WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN` (mesmo servico, mesmo
+`INTERNAL_API_TOKEN`). So defina `GATEWAY_URL`/`GATEWAY_INTERNAL_TOKEN`
+explicitamente se algum cliente precisar apontar pra um gateway diferente.
+
+Depois de configurar `PUBLIC_APP_URL` e reiniciar o servico do cliente, rode
+uma vez (retroativo — os proximos cadastros ja sincronizam sozinhos):
+
+```bash
+RAILS_ENV=production bundle exec rake mobile:backfill_account_routes
+```
+
 ## Variaveis
 
 - `DATABASE_URL`: banco PostgreSQL do gateway.
 - `META_WEBHOOK_VERIFY_TOKEN`: token usado no GET de verificacao da Meta para WhatsApp e Lead Ads.
 - `META_APP_SECRET`: app secret usado para validar assinatura do webhook.
-- `INTERNAL_API_TOKEN`: bearer token para criar/atualizar rotas internas.
+- `INTERNAL_API_TOKEN`: bearer token para criar/atualizar rotas internas (webhook routes E account routes de discovery).
 - `GATEWAY_UNROUTED_ALERT_WEBHOOK_URL`: endpoint opcional para receber alertas JSON quando um evento chegar sem rota.
 
 ## Rotas
@@ -118,6 +148,9 @@ Quando chega um lead com `page_id` e `form_id`, o gateway tenta primeiro a rota 
 - `POST /internal/meta/routes`
 - `DELETE /internal/meta/routes/:page_id`
 - `GET /internal/webhook_events`
+- `POST /discovery/resolve` — publico, sem auth (rate-limit apenas); `{ email }` -> `{ tenant_url }`.
+- `POST /internal/account_routes` — cadastra/atualiza a rota de um e-mail (usado pelo `AccountRouteRegistrar`).
+- `DELETE /internal/account_routes/:email` — desativa a rota (ex.: usuario desativado/removido).
 
 ## Encaminhamento
 

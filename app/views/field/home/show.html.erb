@@ -325,7 +325,11 @@
           aria: { checked: field_dark_theme.to_s, label: "Alternar tema escuro" } do %>
       <i class="bi <%= field_dark_theme ? 'bi-sun' : 'bi-moon-stars' %>"></i>
     <% end %>
-    <%= button_to destroy_admin_user_session_path, method: :delete, class: "field-logout", title: "Sair" do %>
+    <%# data: { turbo: false } — mesmo motivo do menu do admin: o logout
+        redireciona pra capacitor://localhost no app nativo, e o fetch do
+        Turbo não consegue seguir redirect pra um esquema não-http. %>
+    <%= button_to destroy_admin_user_session_path, method: :delete, class: "field-logout", title: "Sair",
+          form: { data: { turbo: false } } do %>
       <i class="bi bi-box-arrow-right"></i>
     <% end %>
   </div>

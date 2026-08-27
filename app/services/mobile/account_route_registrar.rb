@@ -8,10 +8,16 @@ module Mobile
   # usuário. Cada servidor físico (um por cliente) roda essa sincronização
   # apontando pro seu próprio GATEWAY_URL/PUBLIC_APP_URL.
   #
+  # GATEWAY_URL/GATEWAY_INTERNAL_TOKEN caem por padrão nas mesmas variáveis já
+  # usadas pelo webhook do WhatsApp (WHATSAPP_WEBHOOK_GATEWAY_*) — é o MESMO
+  # serviço gateway/ e o MESMO INTERNAL_API_TOKEN, então todo cliente que já
+  # tem o webhook configurado não precisa duplicar nada. Só falta mesmo a
+  # variável nova, específica deste servidor:
+  #
   # ENV esperadas (ausentes = no-op, não quebra o app):
-  #   GATEWAY_URL            — base do serviço gateway/ (ex.: https://webhooks.unitymob.com.br)
-  #   GATEWAY_INTERNAL_TOKEN — mesmo INTERNAL_API_TOKEN configurado no gateway
   #   PUBLIC_APP_URL         — URL pública deste servidor (ex.: https://app.conexaobc.com)
+  #   GATEWAY_URL            — (opcional) sobrepõe WHATSAPP_WEBHOOK_GATEWAY_URL
+  #   GATEWAY_INTERNAL_TOKEN — (opcional) sobrepõe WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN
   class AccountRouteRegistrar
     def self.sync!(admin_user)
       new.sync!(admin_user)
@@ -60,11 +66,11 @@ module Mobile
     private
 
     def gateway_url
-      ENV["GATEWAY_URL"]
+      ENV["GATEWAY_URL"].presence || ENV["WHATSAPP_WEBHOOK_GATEWAY_URL"]
     end
 
     def token
-      ENV["GATEWAY_INTERNAL_TOKEN"]
+      ENV["GATEWAY_INTERNAL_TOKEN"].presence || ENV["WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN"]
     end
 
     def public_app_url

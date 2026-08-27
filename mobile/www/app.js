@@ -15,25 +15,12 @@
 // diretório): staging/produção apontam pro gateway real; local aponta pro
 // gateway rodando em localhost para o spike técnico.
 (function () {
+  // A checagem de sessão persistente (unitymob_tenant_url) já rodou antes
+  // desta página ser desenhada — ver <script> no <head> de index.html. Se
+  // chegamos até aqui é porque não havia sessão salva (ou veio de um logout
+  // explícito), então o que resta é só a lógica do formulário de login.
   const DISCOVERY_URL = window.UNITYMOB_DISCOVERY_URL || "https://webhooks.unitymob.com.br/discovery/resolve";
   const STORAGE_KEY = "unitymob_tenant_url";
-
-  // Sessão persistente (remember_me de 6 meses, igual ao PWA web): se já
-  // sabemos o servidor da última conta, pula esta tela e vai direto pro
-  // /field — o cookie do WebView decide se ainda está logado. Só volta a
-  // pedir e-mail/senha se o cookie expirou/foi revogado (a própria página
-  // real de login aparece nesse caso) ou depois de um logout explícito
-  // (que deve limpar esta chave — ver README deste diretório).
-  const loggedOut = new URLSearchParams(window.location.search).get("logged_out") === "1";
-  if (loggedOut) {
-    localStorage.removeItem(STORAGE_KEY);
-  } else {
-    const savedTenantUrl = localStorage.getItem(STORAGE_KEY);
-    if (savedTenantUrl) {
-      window.location.href = savedTenantUrl.replace(/\/$/, "") + "/field";
-      return;
-    }
-  }
 
   const form = document.getElementById("login-form");
   const emailInput = document.getElementById("email");
@@ -41,6 +28,24 @@
   const errorEl = document.getElementById("error");
   const errorTextEl = document.getElementById("error-text");
   const submitButton = document.getElementById("submit-button");
+  const submitLabel = document.getElementById("submit-label");
+  const revealButton = document.getElementById("reveal");
+
+  // Botão de mostrar/ocultar senha (existia na tela mas sem nenhum
+  // comportamento ligado a ele).
+  const EYE_ICON = revealButton.innerHTML;
+  const EYE_SLASH_ICON = '<svg viewBox="0 0 16 16" fill="currentColor">' +
+    '<path d="M10.79 12.912l-1.614-1.615a3.5 3.5 0 0 1-4.474-4.474l-2.06-2.06C.938 6.278 0 8 0 8s3 5.5 8 5.5a7 7 0 0 0 2.79-.588M5.21 3.088A7 7 0 0 1 8 2.5c5 0 8 5.5 8 5.5s-.939 1.721-2.641 3.238l-2.062-2.062a3.5 3.5 0 0 0-4.474-4.474z"/>' +
+    '<path d="M5.525 7.646a2.5 2.5 0 0 0 2.829 2.829zm4.95.708-2.829-2.83a2.5 2.5 0 0 1 2.829 2.829zm3.171 6-12-12 .708-.708 12 12z"/>' +
+    "</svg>";
+
+  revealButton.addEventListener("click", () => {
+    const revealed = passwordInput.type === "text";
+    passwordInput.type = revealed ? "password" : "text";
+    revealButton.setAttribute("aria-pressed", String(!revealed));
+    revealButton.setAttribute("aria-label", revealed ? "Mostrar senha" : "Ocultar senha");
+    revealButton.innerHTML = revealed ? EYE_ICON : EYE_SLASH_ICON;
+  });
 
   function showError(message) {
     errorTextEl.textContent = message;
@@ -50,6 +55,12 @@
   function hideError() {
     errorEl.classList.remove("is-visible");
     errorTextEl.textContent = "";
+  }
+
+  function setLoading(isLoading) {
+    submitButton.disabled = isLoading;
+    submitButton.classList.toggle("is-loading", isLoading);
+    submitLabel.textContent = isLoading ? "Entrando..." : "Entrar";
   }
 
   function submitBridgeLogin(tenantUrl, email, password) {
@@ -76,8 +87,7 @@
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     hideError();
-    submitButton.disabled = true;
-    submitButton.textContent = "Entrando...";
+    setLoading(true);
 
     try {
       const response = await fetch(DISCOVERY_URL, {
@@ -88,8 +98,7 @@
 
       if (!response.ok) {
         showError("Não encontramos uma conta para esse e-mail.");
-        submitButton.disabled = false;
-        submitButton.textContent = "Entrar";
+        setLoading(false);
         return;
       }
 
@@ -100,8 +109,7 @@
       // fallback para a tela real de login com o erro do Devise).
     } catch (error) {
       showError("Falha de conexão. Verifique sua internet e tente novamente.");
-      submitButton.disabled = false;
-      submitButton.textContent = "Entrar";
+      setLoading(false);
     }
   });
 })();

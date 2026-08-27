@@ -13,7 +13,8 @@
       Você está logado como <strong><%= current_admin_user.notification_email %></strong>, mas o convite é para
       <strong><%= @membership.invited_email %></strong>. Entre com a conta convidada para aceitar.
     </p>
-    <%= button_to "Sair e trocar de conta", destroy_admin_user_session_path, method: :delete, class: "login-submit" %>
+    <%= button_to "Sair e trocar de conta", destroy_admin_user_session_path, method: :delete, class: "login-submit",
+          form: { data: { turbo: false } } %>
   <% else %>
     <%= button_to membership_invitation_path(params[:token]), method: :patch, class: "login-submit" do %>
       <span>Aceitar convite</span>

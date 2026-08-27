@@ -5,11 +5,19 @@ RSpec.describe Mobile::AccountRouteRegistrar do
     old_gateway_url = ENV["GATEWAY_URL"]
     old_token = ENV["GATEWAY_INTERNAL_TOKEN"]
     old_public_url = ENV["PUBLIC_APP_URL"]
+    old_whatsapp_gateway_url = ENV["WHATSAPP_WEBHOOK_GATEWAY_URL"]
+    old_whatsapp_token = ENV["WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN"]
+    ENV["GATEWAY_URL"] = nil
+    ENV["GATEWAY_INTERNAL_TOKEN"] = nil
+    ENV["WHATSAPP_WEBHOOK_GATEWAY_URL"] = nil
+    ENV["WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN"] = nil
     example.run
   ensure
     ENV["GATEWAY_URL"] = old_gateway_url
     ENV["GATEWAY_INTERNAL_TOKEN"] = old_token
     ENV["PUBLIC_APP_URL"] = old_public_url
+    ENV["WHATSAPP_WEBHOOK_GATEWAY_URL"] = old_whatsapp_gateway_url
+    ENV["WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN"] = old_whatsapp_token
   end
 
   describe "#configured?" do
@@ -27,6 +35,35 @@ RSpec.describe Mobile::AccountRouteRegistrar do
       ENV["PUBLIC_APP_URL"] = "https://app.example.com"
 
       expect(described_class.new).to be_configured
+    end
+
+    it "falls back to the WhatsApp webhook gateway env vars (same gateway/, same token)" do
+      ENV["WHATSAPP_WEBHOOK_GATEWAY_URL"] = "https://webhooks.unitymob.com.br"
+      ENV["WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN"] = "shared-token"
+      ENV["PUBLIC_APP_URL"] = "https://app.example.com"
+
+      expect(described_class.new).to be_configured
+    end
+
+    it "prefers GATEWAY_URL/GATEWAY_INTERNAL_TOKEN over the WhatsApp fallback when both are set" do
+      ENV["GATEWAY_URL"] = "https://override.example.com"
+      ENV["GATEWAY_INTERNAL_TOKEN"] = "override-token"
+      ENV["WHATSAPP_WEBHOOK_GATEWAY_URL"] = "https://webhooks.unitymob.com.br"
+      ENV["WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN"] = "shared-token"
+      ENV["PUBLIC_APP_URL"] = "https://app.example.com"
+      admin_user = create(:admin_user, email: "corretor-#{SecureRandom.hex(4)}@salute.test")
+
+      stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+        stub.post("/internal/account_routes") do |env|
+          expect(env.request_headers["Authorization"]).to eq("Bearer override-token")
+          [201, {}, "{}"]
+        end
+      end
+      allow_any_instance_of(described_class).to receive(:connection).and_return(Faraday.new { |b| b.adapter(:test, stubs) })
+
+      described_class.new.sync!(admin_user)
+
+      stubs.verify_stubbed_calls
     end
   end
 

@@ -148,7 +148,7 @@ module Leads
     def deliver_push
       links = Leads::ContactLinks.new(@lead, @corretor)
       secure = links.secure?(:push)
-      click_action = PushSetting.instance.lead_click_action_value
+      click_action = LeadSetting.instance(tenant: @lead.tenant).push_lead_click_action_value
 
       # Endpoint que marca o lead como atendido no prazo (mesmo motor do link seguro).
       attend_url = secure ? links.url(:attend) : admin_attend_url

@@ -135,7 +135,7 @@ module Admin
       end
 
       def push_setting_params
-        params.require(:push_setting).permit(:enabled, :subject_email, :lead_click_action)
+        params.require(:push_setting).permit(:enabled, :subject_email)
       end
     end
   end

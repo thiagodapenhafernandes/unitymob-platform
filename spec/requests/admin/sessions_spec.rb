@@ -38,7 +38,12 @@ RSpec.describe "Admin sessions", type: :request do
   end
 
   it "redirects a native app logout to the app's local bootstrap screen" do
-    host! "localhost"
+    # Host real de tenant (não "localhost") — de propósito: o redirect vai pra
+    # capacitor://localhost, um host DIFERENTE do request. Testar com
+    # host! "localhost" mascarava esse cenário (os dois "localhost" batiam por
+    # coincidência) e não pegava o ActionController::Redirecting::
+    # UnsafeRedirectError que acontecia de verdade em produção.
+    host! "unitymob.com.br"
     admin = create(:admin_user, :admin)
     sign_in_as(admin)
 
@@ -48,7 +53,7 @@ RSpec.describe "Admin sessions", type: :request do
   end
 
   it "redirects a native Android app logout to the https localhost bootstrap screen" do
-    host! "localhost"
+    host! "unitymob.com.br"
     admin = create(:admin_user, :admin)
     sign_in_as(admin)
 

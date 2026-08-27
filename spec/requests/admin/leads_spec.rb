@@ -1309,7 +1309,7 @@ RSpec.describe "Admin::Leads", type: :request do
       integration = WhatsappBusinessIntegration.current(broker.tenant)
       integration.save! unless integration.persisted?
       integration.update!(status: "disconnected", waba_id: nil, phone_number_id: nil, access_token: nil, inbox_attendance_enabled: false)
-      PushSetting.instance.update!(lead_click_action: "system")
+      LeadSetting.instance(tenant: broker.tenant).update!(push_lead_click_action: "system")
       Lead.skip_callback(:commit, :after, :route_lead)
       lead = create(:lead, status: :waiting_acceptance, admin_user: nil, distribution_rule: rule)
 
@@ -1357,7 +1357,7 @@ RSpec.describe "Admin::Leads", type: :request do
         access_token: "token-attend",
         inbox_attendance_enabled: true
       )
-      PushSetting.instance.update!(lead_click_action: "system")
+      LeadSetting.instance(tenant: admin.tenant).update!(push_lead_click_action: "system")
       Lead.skip_callback(:commit, :after, :route_lead)
       lead = create(:lead, tenant: admin.tenant, status: :waiting_acceptance, admin_user: admin, phone: "47999990031")
 

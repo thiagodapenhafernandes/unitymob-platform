@@ -1,4 +1,4 @@
-\restrict fuoHJh2pm2Dsd749fiMutiqajJsTyTHrYAjooxLn3G4gNW2XJ903h0zJIowECCE
+\restrict 3AduaBwdaep3Itjg8beqE6AkO0zIgwcNFIAOaZ8vDzHpmBudGeumVqmz0IPUzen
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -4078,7 +4078,8 @@ CREATE TABLE public.lead_settings (
     tenant_id bigint NOT NULL,
     first_contact_sla_hours integer DEFAULT 4 NOT NULL,
     stage_automation_sweep_interval_minutes integer DEFAULT 15 NOT NULL,
-    stage_automation_last_swept_at timestamp(6) without time zone
+    stage_automation_last_swept_at timestamp(6) without time zone,
+    push_lead_click_action character varying DEFAULT 'system'::character varying NOT NULL
 );
 
 
@@ -5343,8 +5344,7 @@ CREATE TABLE public.push_settings (
     vapid_private_key text,
     subject_email character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    lead_click_action character varying DEFAULT 'whatsapp'::character varying NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -17964,11 +17964,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict fuoHJh2pm2Dsd749fiMutiqajJsTyTHrYAjooxLn3G4gNW2XJ903h0zJIowECCE
+\unrestrict 3AduaBwdaep3Itjg8beqE6AkO0zIgwcNFIAOaZ8vDzHpmBudGeumVqmz0IPUzen
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260827100100'),
+('20260827100000'),
 ('20260826170000'),
 ('20260826160000'),
 ('20260821172000'),

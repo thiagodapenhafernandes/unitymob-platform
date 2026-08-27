@@ -3,22 +3,9 @@ class PushSetting < ApplicationRecord
 
   encrypts :vapid_private_key
 
-  # Destino do clique na notificação de novo lead (dentro do prazo do pocket).
-  LEAD_CLICK_ACTIONS = %w[system whatsapp].freeze
-
-  validates :lead_click_action, inclusion: { in: LEAD_CLICK_ACTIONS }, allow_blank: true
-
   # Singleton.
   def self.instance
     first_or_create!
-  end
-
-  def lead_click_action_value
-    lead_click_action.presence_in(LEAD_CLICK_ACTIONS) || "system"
-  end
-
-  def open_whatsapp_on_click?
-    lead_click_action_value == "whatsapp"
   end
 
   # Chaves efetivas: usa as personalizadas (salvas aqui); se vazias, cai para as

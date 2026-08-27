@@ -54,7 +54,7 @@ module Notifications
 
       subs.find_each do |sub|
         if sub.native?
-          deliver_native(sub, title:, body:, url:, tag:, lead_id:, metadata:) && sent += 1
+          deliver_native(sub, title:, body:, url:, accept_url:, tag:, lead_id:, metadata:) && sent += 1
         else
           deliver_web(sub, payload:, vapid:, tag:, urgency:, ttl:, lead_id:, metadata:) && sent += 1
         end
@@ -108,8 +108,11 @@ module Notifications
     # credenciais reais (FCM_PROJECT_ID / FCM_SERVICE_ACCOUNT_JSON); sem elas,
     # registra "provider_failed" com a mensagem "FCM não configurado" em vez
     # de tentar enviar, para não mascarar o gap como falha de rede.
-    def deliver_native(sub, title:, body:, url:, tag:, lead_id:, metadata:)
-      result = Notifications::FcmSender.deliver(token: sub.endpoint, title: title, body: body, data: { url: url, tag: tag.to_s })
+    def deliver_native(sub, title:, body:, url:, accept_url:, tag:, lead_id:, metadata:)
+      result = Notifications::FcmSender.deliver(
+        token: sub.endpoint, title: title, body: body,
+        data: { url: url, accept_url: accept_url.to_s, tag: tag.to_s }
+      )
 
       if result.success?
         record_delivery_event("provider_accepted", subscription: sub, tag:, lead_id:, metadata:, provider_status: result.status)
@@ -121,8 +124,11 @@ module Notifications
         "provider_failed", subscription: sub, tag:, lead_id:, metadata:,
         error_class: "FcmSender", error_message: result.body.to_s.truncate(500)
       )
-      # Token inválido/desinstalado: FCM responde 404 (UNREGISTERED) ou 400.
-      sub.update_column(:active, false) if [400, 404].include?(result.status)
+      # Só desativa em 404 (UNREGISTERED — token comprovadamente não existe
+      # mais). Um 400 pode ser token malformado OU só um payload errado nosso
+      # (ex.: bug de formato) — desativar em qualquer 400 já apagou um token
+      # bom por causa de um erro nosso, não do token. Fica mais conservador.
+      sub.update_column(:active, false) if result.status == 404
       Rails.logger.warn("[PushDispatcher] FCM falhou sub=#{sub.id} status=#{result.status} body=#{result.body}")
       false
     end

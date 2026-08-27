@@ -1404,7 +1404,7 @@ class Admin::LeadsController < Admin::BaseController
       route_options = {}
       route_options[:lead_id] = lead.id if conversation.lead_id != lead.id
       redirect_to admin_whatsapp_conversation_path(conversation, route_options)
-    elsif PushSetting.instance.open_whatsapp_on_click? && lead.direct_whatsapp_url.present?
+    elsif LeadSetting.instance(tenant: lead.tenant).open_whatsapp_on_click? && lead.direct_whatsapp_url.present?
       redirect_to lead.direct_whatsapp_url, allow_other_host: true
     else
       redirect_to admin_lead_path(lead)

@@ -55,7 +55,7 @@ RSpec.describe "SecureLinks", type: :request do
   end
 
   it "marca como atendido e abre WhatsApp quando o Atender Lead esta configurado para WhatsApp" do
-    PushSetting.instance.update!(lead_click_action: "whatsapp")
+    LeadSetting.instance(tenant: corretor.tenant).update!(push_lead_click_action: "whatsapp")
     lead = create(:lead, name: "Cliente WhatsApp", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
     link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
 
@@ -75,7 +75,7 @@ RSpec.describe "SecureLinks", type: :request do
   end
 
   it "marca como atendido e abre o lead no sistema quando configurado para detalhes primeiro" do
-    PushSetting.instance.update!(lead_click_action: "system")
+    LeadSetting.instance(tenant: corretor.tenant).update!(push_lead_click_action: "system")
     lead = create(:lead, name: "Cliente Sistema", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
     link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
 
@@ -90,7 +90,7 @@ RSpec.describe "SecureLinks", type: :request do
   end
 
   it "atribui o corretor do link ao atender lead ativo sem responsavel" do
-    PushSetting.instance.update!(lead_click_action: "whatsapp")
+    LeadSetting.instance(tenant: corretor.tenant).update!(push_lead_click_action: "whatsapp")
     lead = create(:lead, name: "Cliente Sem Dono", phone: "11999999999", status: :em_atendimento, admin_user: nil)
     link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
 

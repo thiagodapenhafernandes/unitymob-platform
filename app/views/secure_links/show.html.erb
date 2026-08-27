@@ -20,6 +20,10 @@
     .btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:13px 16px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; border:1px solid var(--line); color:var(--ink); }
     .btn--wa { background:#22c55e; color:#04210f; border-color:#22c55e; }
     .btn--mail { background:var(--p); color:#fff; border-color:var(--p); }
+    .btn.is-loading { opacity:.65; pointer-events:none; }
+    .btn__spinner { display:none; width:16px; height:16px; border:2px solid rgba(0,0,0,.25); border-top-color:currentColor; border-radius:50%; animation:secure-link-spin .7s linear infinite; }
+    .btn.is-loading .btn__spinner { display:inline-block; }
+    @keyframes secure-link-spin { to { transform:rotate(360deg); } }
     .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:14px; }
   </style>
 </head>
@@ -40,13 +44,23 @@
       <% end %>
 
       <div class="actions">
-        <a class="btn btn--wa" href="<%= secure_link_path(@link.token, contact: "attend") %>">Atender Lead</a>
+        <a class="btn btn--wa" href="<%= secure_link_path(@link.token, contact: "attend") %>"><span class="btn__label">Atender Lead</span><span class="btn__spinner" aria-hidden="true"></span></a>
         <% if @lead.display_email.present? %>
-          <a class="btn btn--mail" href="<%= secure_link_path(@link.token, contact: "email") %>">Enviar e-mail</a>
+          <a class="btn btn--mail" href="<%= secure_link_path(@link.token, contact: "email") %>"><span class="btn__label">Enviar e-mail</span><span class="btn__spinner" aria-hidden="true"></span></a>
         <% end %>
       </div>
     </div>
     <p class="foot">Acesso seguro — link exclusivo deste lead.</p>
   </div>
+  <script>
+    // Os botões navegam a página inteira (link real, sem JS) — o único
+    // feedback que falta é indicar que o toque foi registrado enquanto o
+    // servidor processa o atendimento do lead.
+    document.querySelectorAll(".actions .btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".actions .btn").forEach(function (b) { b.classList.add("is-loading"); });
+      });
+    });
+  </script>
 </body>
 </html>

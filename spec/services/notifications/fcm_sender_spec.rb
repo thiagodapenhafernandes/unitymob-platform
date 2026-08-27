@@ -50,6 +50,7 @@ RSpec.describe Notifications::FcmSender do
           body = JSON.parse(env.body)
           expect(body.dig("message", "token")).to eq("device-token")
           expect(body.dig("message", "notification")).to eq("title" => "Novo lead", "body" => "Corretor, atenda rápido")
+          expect(body.dig("message", "apns", "payload", "aps", "sound")).to eq("default")
           [200, { "Content-Type" => "application/json" }, "{}"]
         end
       end

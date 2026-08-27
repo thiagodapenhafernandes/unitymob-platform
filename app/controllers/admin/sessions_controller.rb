@@ -158,6 +158,21 @@ class Admin::SessionsController < Devise::SessionsController
     redirect_to after_sign_in_path_for(resource)
   end
 
+  # O Devise::SessionsController#destroy original chama isto sem
+  # allow_other_host, e o Rails 7 bloqueia por segurança qualquer redirect pra
+  # um host/esquema diferente do request atual — exatamente o caso do app
+  # nativo (capacitor://localhost, https://localhost no Android). O destino
+  # aqui nunca vem de parâmetro de usuário (é sempre after_sign_out_path_for,
+  # decidido só por código nosso), então liberar outro host é seguro.
+  def respond_to_on_destroy
+    respond_to do |format|
+      format.all { head :no_content }
+      format.any(*navigational_formats) do
+        redirect_to after_sign_out_path_for(resource_name), status: Devise.responder.redirect_status, allow_other_host: true
+      end
+    end
+  end
+
   def native_sign_out_redirect_url
     base = request.user_agent.to_s.match?(/Android/i) ? "https://localhost/index.html" : "capacitor://localhost/index.html"
     # ?logged_out=1: sinaliza pro app que é saída explícita, não abertura

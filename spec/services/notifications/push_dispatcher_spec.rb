@@ -155,6 +155,24 @@ RSpec.describe Notifications::PushDispatcher do
     expect(subscription.reload.active).to be(true)
   end
 
+  it "encaminha o accept_url pro payload nativo, pro app tratar o toque na notificação igual ao service worker" do
+    subscription = PushSubscription.create!(admin_user: admin_user, endpoint: "fcm-device-token-xyz", platform: "android", active: true)
+    fcm_result = Notifications::FcmSender::Result.new(success?: true, status: 200, body: "{}")
+    allow(Notifications::FcmSender).to receive(:deliver).and_return(fcm_result)
+
+    described_class.deliver(
+      admin_user_id: admin_user.id,
+      title: "Novo lead",
+      body: "Teste",
+      url: "https://wa.me/5511999999999",
+      accept_url: "https://app.example.com/leads/1/attend?ack=1"
+    )
+
+    expect(Notifications::FcmSender).to have_received(:deliver).with(
+      hash_including(data: hash_including(url: "https://wa.me/5511999999999", accept_url: "https://app.example.com/leads/1/attend?ack=1"))
+    )
+  end
+
   it "desativa o device token nativo quando o FCM responde que ele nao existe mais" do
     subscription = PushSubscription.create!(admin_user: admin_user, endpoint: "stale-token", platform: "android", active: true)
     fcm_result = Notifications::FcmSender::Result.new(success?: false, status: 404, body: "UNREGISTERED")

@@ -25,6 +25,19 @@ const lockControl = (control) => {
   control.classList.add("is-submitting")
   control.style.pointerEvents = "none"
 
+  const labelTarget = control.querySelector("[data-submit-guard-label], span")
+  const iconEl = !labelTarget ? control.querySelector("svg, i") : null
+
+  // Botão só com ícone (sem texto ao lado, ex.: sair, alternar tema): sem
+  // isso, o spinner é inserido do lado do ícone existente e os dois brigam
+  // pelo espaço apertado do botão. Escondendo o ícone (visibility, sem tirar
+  // do fluxo/tamanho do botão), o spinner ocupa o lugar dele — ver a regra
+  // ::after em application.scss que centraliza o spinner nesse caso.
+  if (iconEl) {
+    iconEl.dataset.submitGuardHidden = "true"
+    iconEl.style.visibility = "hidden"
+  }
+
   const busyLabel = control.dataset.submitGuardLabel || control.dataset.turboSubmitsWith
   if (!busyLabel) return
 
@@ -34,11 +47,10 @@ const lockControl = (control) => {
     return
   }
 
-  const labelTarget = control.querySelector("[data-submit-guard-label], span")
   if (labelTarget) {
     labelTarget.dataset.submitGuardOriginalText = labelTarget.textContent
     labelTarget.textContent = busyLabel
-  } else if (!control.querySelector("svg, i")) {
+  } else if (!iconEl) {
     control.dataset.submitGuardOriginalText = control.textContent
     control.textContent = busyLabel
   }
@@ -53,6 +65,12 @@ const unlockControl = (control) => {
   control.classList.remove("is-submitting")
   control.style.pointerEvents = control.dataset.submitGuardOriginalPointerEvents || ""
   delete control.dataset.submitGuardOriginalPointerEvents
+
+  const hiddenIcon = control.querySelector('[data-submit-guard-hidden="true"]')
+  if (hiddenIcon) {
+    hiddenIcon.style.visibility = ""
+    delete hiddenIcon.dataset.submitGuardHidden
+  }
 
   if (control instanceof HTMLInputElement && control.dataset.submitGuardOriginalValue !== undefined) {
     control.value = control.dataset.submitGuardOriginalValue

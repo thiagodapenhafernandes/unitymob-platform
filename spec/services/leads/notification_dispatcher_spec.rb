@@ -26,7 +26,7 @@ RSpec.describe Leads::NotificationDispatcher do
   end
 
   it "abre o card seguro do lead quando o destino do push e detalhes primeiro" do
-    PushSetting.instance.update!(lead_click_action: "system")
+    LeadSetting.instance.update!(push_lead_click_action: "system")
 
     described_class.deliver(lead)
 
@@ -56,7 +56,7 @@ RSpec.describe Leads::NotificationDispatcher do
       valor_locacao_cents: 16_000_00
     )
     lead.update!(property_id: property.id, origin: "Google Ads")
-    PushSetting.instance.update!(lead_click_action: "system")
+    LeadSetting.instance.update!(push_lead_click_action: "system")
 
     described_class.deliver(lead)
 
@@ -70,7 +70,7 @@ RSpec.describe Leads::NotificationDispatcher do
 
   it "usa o produto como interesse quando o lead não tem imóvel vinculado" do
     lead.update!(product: "apartamento em Balneário Camboriú até R$ 800 mil", origin: "Direto / origem desconhecida")
-    PushSetting.instance.update!(lead_click_action: "system")
+    LeadSetting.instance.update!(push_lead_click_action: "system")
 
     described_class.deliver(lead)
 
@@ -82,7 +82,7 @@ RSpec.describe Leads::NotificationDispatcher do
   end
 
   it "abre WhatsApp direto e envia accept_url quando configurado para WhatsApp" do
-    PushSetting.instance.update!(lead_click_action: "whatsapp")
+    LeadSetting.instance.update!(push_lead_click_action: "whatsapp")
 
     described_class.deliver(lead)
 
@@ -105,7 +105,7 @@ RSpec.describe Leads::NotificationDispatcher do
       distribution_rule: shark_rule
     )
     LeadSetting.instance.update!(notify_on_shark_tank: true)
-    PushSetting.instance.update!(lead_click_action: "whatsapp")
+    LeadSetting.instance.update!(push_lead_click_action: "whatsapp")
 
     candidate = create(:distribution_rule_agent, distribution_rule: shark_rule, admin_user: corretor)
 

@@ -4,6 +4,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>Unitymob</title>
+  <script>
+    // Roda ANTES do resto da página ser desenhada: se já existe sessão salva
+    // (login anterior), navega direto pro servidor da conta sem chegar a
+    // pintar a tela de login na tela — evita o "pisca" da tela de login
+    // toda vez que o app abre ou uma notificação é tocada.
+    (function () {
+      var STORAGE_KEY = "unitymob_tenant_url";
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("logged_out") === "1") {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        return;
+      }
+      var savedTenantUrl;
+      try { savedTenantUrl = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+      if (savedTenantUrl) {
+        window.location.replace(savedTenantUrl.replace(/\/$/, "") + "/field");
+      }
+    })();
+  </script>
   <style>
     :root {
       --login-primary: #365f8f;
@@ -98,6 +117,17 @@
     }
     .login-submit:disabled { cursor: wait; opacity: .72; }
     .login-submit svg { width: 16px; height: 16px; }
+    .login-submit__spinner {
+      display: none;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255, 255, 255, .35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: unitymob-spin .7s linear infinite;
+    }
+    .login-submit.is-loading .login-submit__spinner { display: inline-block; }
+    .login-submit.is-loading .login-submit__arrow { display: none; }
+    @keyframes unitymob-spin { to { transform: rotate(360deg); } }
     .login-alert {
       display: none; align-items: flex-start; gap: 10px; margin-bottom: 16px;
       padding: 12px 14px; border-radius: 12px; background: #fef2f2; color: #b42318;
@@ -145,7 +175,8 @@
           <div class="login-actions">
             <button type="submit" class="login-submit" id="submit-button">
               <span id="submit-label">Entrar</span>
-              <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+              <span class="login-submit__spinner" aria-hidden="true"></span>
+              <svg class="login-submit__arrow" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
             </button>
           </div>
         </form>

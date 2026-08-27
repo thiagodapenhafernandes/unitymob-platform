@@ -226,6 +226,11 @@ self.addEventListener("push", (event) => {
     renotify: Boolean(data.tag),
     requireInteraction: Boolean(data.require_interaction || data.requireInteraction),
     timestamp: data.timestamp || Date.now(),
+    // Web Push não tem "som customizado" como o APNs — silent:false (padrão,
+    // mas explícito aqui) deixa o SO tocar o som normal de notificação;
+    // vibrate reforça o alerta em Android.
+    silent: false,
+    vibrate: [200, 100, 200],
     data:  {
       url: data.url || "/field",
       accept_url: data.accept_url || data.acceptUrl,

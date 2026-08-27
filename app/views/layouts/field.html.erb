@@ -37,17 +37,14 @@
       :root { --field-primary: <%= field_primary_color %>; }
     </style>
 
+    <%= render 'layouts/native_push' %>
+
     <script>
       // App híbrido (Capacitor): nem service worker nem Web Push fazem sentido
       // aqui (o WebView não entrega Web Push de forma confiável) — push nativo
-      // usa @capacitor/push-notifications (APNs/FCM), registrado abaixo.
-      function isNativeAppRequest() {
-        return /UnitymobFieldApp/.test(navigator.userAgent);
-      }
-
-      if (isNativeAppRequest()) {
-        registerNativePush();
-      } else if ("serviceWorker" in navigator) {
+      // é tratado em layouts/_native_push (compartilhado com admin.html.erb,
+      // já que o toque na notificação pode chegar com o app numa tela admin).
+      if (!isNativeAppRequest() && "serviceWorker" in navigator) {
         window.addEventListener("load", function () {
           navigator.serviceWorker.register("/field-service-worker.js", { scope: "/", updateViaCache: "none" })
             .then(function (reg) {
@@ -64,43 +61,6 @@
             })
             .catch(function (err) { console.warn("[field SW] registration failed:", err); });
         });
-      }
-
-      // Push nativo: pede permissão, registra no APNs/FCM via o bridge do
-      // Capacitor (injetado pelo app híbrido nesta mesma página remota) e
-      // manda o device token pro back-end assinar as notificações da conta.
-      async function registerNativePush() {
-        try {
-          const { PushNotifications } = window.Capacitor?.Plugins || {};
-          if (!PushNotifications) return;
-
-          let status = (await PushNotifications.checkPermissions()).receive;
-          if (status === "prompt" || status === "prompt-with-rationale") {
-            status = (await PushNotifications.requestPermissions()).receive;
-          }
-          if (status !== "granted") return;
-
-          await PushNotifications.register();
-
-          PushNotifications.addListener("registration", async function (token) {
-            try {
-              const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-              await fetch("/field/push_subscriptions/native", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-                body: JSON.stringify({ platform: window.Capacitor.getPlatform(), token: token.value })
-              });
-            } catch (err) {
-              console.warn("[native push] failed to register token:", err);
-            }
-          });
-
-          PushNotifications.addListener("registrationError", function (err) {
-            console.warn("[native push] registration error:", err);
-          });
-        } catch (err) {
-          console.warn("[native push] setup failed:", err);
-        }
       }
 
       function pushSupported() {

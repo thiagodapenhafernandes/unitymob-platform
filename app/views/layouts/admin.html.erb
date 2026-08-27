@@ -354,7 +354,15 @@
               <i class="bi bi-shield-lock"></i><span>Verificação em duas etapas</span>
             <% end %>
             <div class="ax-menu__sep"></div>
-            <%= link_to destroy_admin_user_session_path, data: { turbo_method: :delete }, class: "ax-menu__item ax-menu__item--danger" do %>
+            <%# data: { turbo: false } força uma submissão de formulário de
+                verdade (sem fetch do Turbo). Necessário pro app nativo: o
+                logout redireciona pra capacitor://localhost, e o fetch do
+                Turbo não consegue seguir redirect pra um esquema não-http —
+                a navegação simplesmente travava (só um refresh manual saía
+                da tela), mesmo com a sessão já encerrada no servidor. %>
+            <%= button_to destroy_admin_user_session_path, method: :delete,
+                  class: "ax-menu__item ax-menu__item--danger",
+                  form: { class: "tw-block tw-w-full", data: { turbo: false } } do %>
               <i class="bi bi-box-arrow-right"></i><span>Sair</span>
             <% end %>
           </div>
@@ -440,6 +448,7 @@
       })();
     </script>
     <%= render 'layouts/admin_push_subscriptions' if current_admin_user %>
+    <%= render 'layouts/native_push' if current_admin_user %>
     <script>
       (function () {
         const PULL_THRESHOLD = 70;
