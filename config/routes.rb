@@ -14,6 +14,12 @@ Rails.application.routes.draw do
     post "admin/two_factor", to: "admin/sessions#verify_two_factor"
   end
 
+  # Ponte de login do app híbrido (Mobile::SessionsController) — mesma tela
+  # única de e-mail+senha resolve servidor e autentica num só POST.
+  devise_scope :admin_user do
+    post "mobile/sign_in", to: "mobile/sessions#create"
+  end
+
   resources :navigation_events, only: [:create], controller: "public_navigation_events"
   
   # Admin Panel
@@ -501,6 +507,7 @@ Rails.application.routes.draw do
       collection do
         get :vapid_key
         post :received
+        post :native
       end
     end
   end
@@ -511,8 +518,14 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      namespace :field do
-        # (preenchido nas fases 3+)
+      namespace :field, defaults: { format: :json } do
+        # API mobile (app híbrido) autenticada por Bearer/JWT — não usa
+        # sessão/cookie, e não afeta as rotas de /admin ou /field (PWA web).
+        # format: :json fixo — não depende do header Accept do cliente para
+        # decidir entre redirect (navegacional) e 401 (API) em falha de auth.
+        post "sessions", to: "sessions#create"
+        delete "sessions", to: "sessions#destroy"
+        get "me", to: "me#show"
       end
     end
   end

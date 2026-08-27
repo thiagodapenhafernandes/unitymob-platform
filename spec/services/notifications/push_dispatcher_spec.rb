@@ -126,4 +126,43 @@ RSpec.describe Notifications::PushDispatcher do
     )
     expect(event.endpoint_sha256).to be_present
   end
+
+  it "envia push nativo (iOS/Android) via FCM em vez de Web Push, sem exigir VAPID por sub" do
+    lead = create(:lead, admin_user: admin_user)
+    subscription = PushSubscription.create!(
+      admin_user: admin_user,
+      endpoint: "fcm-device-token-abc",
+      platform: "ios",
+      active: true
+    )
+    fcm_result = Notifications::FcmSender::Result.new(success?: true, status: 200, body: "{}")
+    allow(Notifications::FcmSender).to receive(:deliver).and_return(fcm_result)
+    allow(WebPush).to receive(:payload_send)
+
+    result = described_class.deliver(
+      admin_user_id: admin_user.id,
+      title: "Novo lead",
+      body: "Teste",
+      url: "/admin/leads/#{lead.id}/attend",
+      lead_id: lead.id
+    )
+
+    expect(result).to eq(1)
+    expect(Notifications::FcmSender).to have_received(:deliver).with(
+      token: "fcm-device-token-abc", title: "Novo lead", body: "Teste", data: hash_including(url: "/admin/leads/#{lead.id}/attend")
+    )
+    expect(WebPush).not_to have_received(:payload_send)
+    expect(subscription.reload.active).to be(true)
+  end
+
+  it "desativa o device token nativo quando o FCM responde que ele nao existe mais" do
+    subscription = PushSubscription.create!(admin_user: admin_user, endpoint: "stale-token", platform: "android", active: true)
+    fcm_result = Notifications::FcmSender::Result.new(success?: false, status: 404, body: "UNREGISTERED")
+    allow(Notifications::FcmSender).to receive(:deliver).and_return(fcm_result)
+
+    result = described_class.deliver(admin_user_id: admin_user.id, title: "Novo lead", body: "Teste", url: "/field")
+
+    expect(result).to eq(0)
+    expect(subscription.reload.active).to be(false)
+  end
 end
