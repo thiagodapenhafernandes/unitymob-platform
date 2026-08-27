@@ -18097,7 +18097,9 @@ html[data-admin-theme="dark"] .wizard-review-title-icon {
 
   .captacoes-mobile-list {
     display: grid;
+    align-items: flex-start;
     gap: 8px;
+    padding-top: 12px;
   }
 
   .captacao-mobile-card {

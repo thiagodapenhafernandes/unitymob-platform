@@ -1,7 +1,7 @@
 <%# Captações — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <% modalidade_map = { "venda" => ["blue", "Venda"], "locacao_anual" => ["amber", "Locação"], "ambos" => ["green", "Ambos"], "locacao_diaria" => ["blue", "Temporada"] } %>
 <% dashboard = @captacoes_dashboard || {} %>
-<% filters_active = params[:property_kind].present? || params[:status].present? || params[:corretor_id].present? %>
+<% filters_active = params[:property_kind].present? || params[:status].present? || params[:corretor_id].present? || @q.present? %>
 <% default_status_label = can_filter_intakes_by_broker? ? "Todos" : "Minhas pendências" %>
 <% status_filter_options = [
   (can_filter_intakes_by_broker? ? ["Todos", "all"] : ["Minhas pendências", ""]),
@@ -21,6 +21,23 @@
   ["Internas", dashboard[:internal].to_i, "neutral"],
   ["Publicadas no site", dashboard[:published].to_i, "green"],
   ["Devolvidas", dashboard[:returned_to_broker].to_i, "red"]
+] %>
+<% pending_count = dashboard[:draft].to_i + dashboard[:submitted_for_admin_review].to_i + dashboard[:admin_approved].to_i %>
+<% pwa_base_params = request.query_parameters.except("page", "status") %>
+<% pwa_search_params = request.query_parameters.except("q", "page") %>
+<% pwa_active_status = params[:status].presence || (can_filter_intakes_by_broker? ? "all" : "") %>
+<% pwa_status_tabs = [
+  {
+    key: can_filter_intakes_by_broker? ? "all" : "",
+    label: can_filter_intakes_by_broker? ? "Todas" : "Pendências",
+    icon: "collection",
+    path: admin_captacoes_path(pwa_base_params.merge(status: can_filter_intakes_by_broker? ? "all" : "")),
+    count: can_filter_intakes_by_broker? ? dashboard[:total].to_i : pending_count
+  },
+  { key: "draft", label: "Rascunhos", icon: "file-earmark-text", path: admin_captacoes_path(pwa_base_params.merge(status: "draft")), count: dashboard[:draft].to_i },
+  { key: "submitted_for_admin_review", label: "Revisão", icon: "clipboard-check", path: admin_captacoes_path(pwa_base_params.merge(status: "submitted_for_admin_review")), count: dashboard[:submitted_for_admin_review].to_i },
+  { key: "admin_approved", label: "Para site", icon: "send", path: admin_captacoes_path(pwa_base_params.merge(status: "admin_approved")), count: dashboard[:admin_approved].to_i },
+  { key: "published", label: "Publicadas", icon: "globe2", path: admin_captacoes_path(pwa_base_params.merge(status: "published")), count: dashboard[:published].to_i }
 ] %>
 <% intake_status_badge_tones = {
   "draft" => "amber",
@@ -43,7 +60,59 @@
   <% end %>
 <% end %>
 
-<div class="captacoes-workspace">
+<div class="captacoes-workspace" data-controller="lead-pwa-filter">
+  <section class="captacoes-pwa-header" aria-label="Navegação de captações no PWA">
+    <div class="captacoes-pwa-topbar">
+      <%= link_to admin_captacoes_path(pwa_base_params.merge(status: can_filter_intakes_by_broker? ? "all" : "")),
+                  class: "captacoes-pwa-queue",
+                  aria: { label: "Ver captações" } do %>
+        <strong><%= number_with_delimiter(can_filter_intakes_by_broker? ? dashboard[:total].to_i : pending_count) %></strong>
+        <span><%= can_filter_intakes_by_broker? ? "total" : "pend." %></span>
+      <% end %>
+
+      <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-pwa-search" do %>
+        <% pwa_search_params.each do |param_key, param_value| %>
+          <% Array(param_value).reject(&:blank?).each do |hidden_value| %>
+            <%= hidden_field_tag(param_value.is_a?(Array) ? "#{param_key}[]" : param_key, hidden_value) %>
+          <% end %>
+        <% end %>
+        <button type="submit" class="captacoes-pwa-search__submit" aria-label="Buscar captações">
+          <i class="bi bi-search" aria-hidden="true"></i>
+        </button>
+        <%= search_field_tag :q,
+                             @q,
+                             placeholder: "Busque por código, imóvel, bairro...",
+                             autocomplete: "off",
+                             inputmode: "search",
+                             aria: { label: "Buscar captações" } %>
+      <% end %>
+
+      <button type="button"
+              class="captacoes-pwa-filter"
+              data-lead-pwa-filter-target="trigger"
+              data-action="lead-pwa-filter#open"
+              aria-expanded="false"
+              aria-label="Abrir filtros">
+        <i class="bi bi-funnel" aria-hidden="true"></i>
+        <% if filters_active %>
+          <span class="captacoes-pwa-filter__badge">•</span>
+        <% end %>
+      </button>
+    </div>
+
+    <nav class="captacoes-pwa-tabs" aria-label="Filtros rápidos de captações">
+      <% pwa_status_tabs.each do |tab| %>
+        <%= link_to tab[:path],
+                    class: "captacoes-pwa-tab #{'is-active' if pwa_active_status == tab[:key]}",
+                    aria: ({ current: "page" } if pwa_active_status == tab[:key]) do %>
+          <i class="bi bi-<%= tab[:icon] %>" aria-hidden="true"></i>
+          <span class="captacoes-pwa-tab__label"><%= tab[:label] %></span>
+          <span class="captacoes-pwa-tab__count"><%= number_with_delimiter(tab[:count]) %></span>
+        <% end %>
+      <% end %>
+    </nav>
+  </section>
+
   <%= ax_workspace_heading(
         title: "Captações",
         eyebrow: "Operação",
@@ -98,7 +167,7 @@
     </div>
   </section>
 
-  <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-filter-panel" do %>
+  <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-filter-panel captacoes-filter-panel--desktop", id: "captacoes-filter-panel" do %>
     <%= hidden_field_tag :team, params[:team] if params[:team].present? %>
     <div class="captacoes-filter-panel__header">
       <div>
@@ -131,6 +200,63 @@
       </div>
     </div>
   <% end %>
+
+  <div class="captacoes-pwa-filter-overlay"
+       aria-label="Filtros de captações"
+       data-lead-pwa-filter-target="panel"
+       data-action="keydown@window->lead-pwa-filter#closeOnEscape"
+       hidden>
+    <section class="captacoes-pwa-filter-panel" aria-label="Refinar captações">
+      <div class="captacoes-pwa-filter-panel__head">
+        <button type="button"
+                class="captacoes-pwa-filter-panel__close"
+                data-action="lead-pwa-filter#close"
+                aria-expanded="false"
+                aria-label="Voltar">
+          <i class="bi bi-chevron-left" aria-hidden="true"></i>
+        </button>
+        <div class="captacoes-pwa-filter-panel__heading">
+          <strong class="captacoes-pwa-filter-panel__title">Refinar captações</strong>
+          <% if filters_active %>
+            <span class="captacoes-pwa-filter-panel__subtitle">Filtros aplicados</span>
+          <% end %>
+        </div>
+        <%= link_to admin_captacoes_path(team: params[:team]), class: "captacoes-pwa-filter-panel__reset", aria: { label: "Limpar filtros" } do %>
+          <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+        <% end %>
+      </div>
+
+      <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-pwa-filter-panel__form" do %>
+        <%= hidden_field_tag :team, params[:team] if params[:team].present? %>
+        <div class="captacoes-pwa-filter-grid">
+          <div class="captacoes-filter-field">
+            <label class="ax-label" for="pwa_property_kind">Tipo de cadastro</label>
+            <%= select_tag :property_kind, options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]), class: "ax-select", id: "pwa_property_kind" %>
+          </div>
+          <div class="captacoes-filter-field">
+            <label class="ax-label" for="pwa_status">Status da captação</label>
+            <%= select_tag :status, options_for_select(status_filter_options, selected_status_filter), class: "ax-select", id: "pwa_status" %>
+          </div>
+          <% if can_filter_intakes_by_broker? %>
+            <div class="captacoes-filter-field">
+              <label class="ax-label" for="pwa_corretor_id">Captador responsável</label>
+              <%= select_tag :corretor_id,
+                             options_from_collection_for_select(@captacao_brokers, :id, :name, params[:corretor_id]),
+                             include_blank: "Todos captadores",
+                             class: "ax-select",
+                             id: "pwa_corretor_id" %>
+            </div>
+          <% end %>
+        </div>
+        <div class="captacoes-pwa-filter-actions">
+          <button type="submit">
+            <i class="bi bi-funnel" aria-hidden="true"></i>
+            <span>Aplicar filtros</span>
+          </button>
+        </div>
+      <% end %>
+    </section>
+  </div>
 
   <div class="captacoes-table-wrap ax-table-wrap">
     <table class="ax-table">
@@ -234,11 +360,10 @@
       </article>
     <% end %>
     <% if @captacoes.empty? %>
-      <%= ax_empty_state(
-            title: "Nenhuma captação encontrada",
-            description: "Você ainda não tem captações.",
-            action: link_to("Criar primeira", new_admin_captacao_path, class: "ax-btn ax-btn--primary")
-          ) %>
+      <div class="captacoes-pwa-empty">
+        <strong>Nenhuma captação nesta aba</strong>
+        <span>Ajuste os filtros ou volte em Todas para ver sua carteira completa.</span>
+      </div>
     <% end %>
   </div>
 
@@ -246,5 +371,10 @@
     <div class="captacoes-pagination">
       <%= ax_pagination @captacoes, params: request.query_parameters %>
     </div>
+  <% end %>
+
+  <%= link_to new_admin_captacao_path, class: "ax-pwa-action-fab captacoes-pwa-fab", aria: { label: "Nova captação" } do %>
+    <i class="bi bi-plus" aria-hidden="true"></i>
+    <span>Nova captação</span>
   <% end %>
 </div>
