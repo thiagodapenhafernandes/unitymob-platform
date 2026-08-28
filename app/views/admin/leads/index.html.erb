@@ -248,10 +248,44 @@
 
   .lead-desktop-header__bar {
     display: grid;
-    grid-template-columns: minmax(280px, 1fr) auto;
+    grid-template-columns: auto minmax(280px, 1fr) auto;
     gap: 10px;
     align-items: center;
     padding: 12px 14px 4px;
+  }
+
+  .lead-desktop-queue {
+    display: inline-grid;
+    place-items: center;
+    min-width: 74px;
+    min-height: 42px;
+    padding: 4px 10px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ab-muted, #657386);
+    line-height: 1;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .lead-desktop-queue strong {
+    color: var(--admin-primary, #365f8f);
+    font-size: 15px;
+    font-weight: 850;
+  }
+
+  .lead-desktop-queue span {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .lead-desktop-queue:hover {
+    border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 42%, var(--ab-line, #d8dee8));
+    color: var(--admin-primary, #365f8f);
+    text-decoration: none;
   }
 
   .lead-desktop-search {
@@ -2146,6 +2180,7 @@
     ["favorites", "Favoritos", "star"],
     ["all", "Todos", "archive"]
   ]
+  lead_queue_path = distribution_queue_admin_leads_path
   business_filter_options = [["Compra", "sale"], ["Aluguel", "rental"], ["Indefinido", "undefined"], ["Lançamento", "launch"], ["Captação", "capture"]]
   status_filter_options = Array(@status_options).filter_map do |option|
     label, value = option.is_a?(Array) ? option : [option, option]
@@ -2472,6 +2507,11 @@
   <% lead_desktop_header = capture do %>
     <section class="lead-desktop-header" aria-label="Navegação e filtros de leads">
       <div class="lead-desktop-header__bar">
+        <%= link_to lead_queue_path, class: "lead-desktop-queue", title: "Ver minhas filas de distribuição" do %>
+          <strong><%= @pwa_queue_position.present? ? "#{@pwa_queue_position}º" : "-" %></strong>
+          <span>na fila</span>
+        <% end %>
+
         <%= form_with url: admin_leads_path, method: :get, local: true, class: "lead-desktop-search" do |f| %>
           <i class="bi bi-search" aria-hidden="true"></i>
           <% desktop_search_hidden_params.each do |key, value| %>
@@ -2550,15 +2590,10 @@
       pwa_toggle_icon = pwa_kanban_active ? "list-ul" : "kanban"
       pwa_toggle_label = pwa_kanban_active ? "Ver em lista" : "Ver em Kanban"
       hide_pwa_kanban_toggle = !pwa_kanban_active
-      pwa_queue_link_path = if defined?(can?) && (can?(:view, :distribution_rules) || can?(:manage, :distribution_rules))
-        admin_distribution_rules_path
-      else
-        admin_leads_path(view: "list", mobile_tab: "todo")
-      end
     %>
     <div class="lead-pwa-sticky-head">
       <div class="lead-pwa-topbar <%= 'lead-pwa-topbar--no-view-toggle' if hide_pwa_kanban_toggle %> <%= 'lead-pwa-topbar--has-clear' if lead_active_filter_count.positive? %>">
-        <%= link_to pwa_queue_link_path, class: "lead-pwa-queue", title: "Ver fila de distribuição" do %>
+        <%= link_to lead_queue_path, class: "lead-pwa-queue", title: "Ver minhas filas de distribuição" do %>
           <strong><%= @pwa_queue_position.present? ? "#{@pwa_queue_position}º" : "-" %></strong>
           <span>na fila</span>
         <% end %>

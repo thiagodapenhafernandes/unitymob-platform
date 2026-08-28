@@ -460,9 +460,12 @@ RSpec.describe "Admin::Leads", type: :request do
       end
     end
 
-    it "exibe a fila do corretor no rodape PWA com a posicao atual" do
+    it "exibe a posicao da fila no header e remove a fila do rodape PWA" do
+      broker = create(:admin_user, tenant: admin.tenant, name: "Gabriela Machado")
       rule = create(:distribution_rule, tenant: admin.tenant, active: true)
-      create(:distribution_rule_agent, distribution_rule: rule, admin_user: admin, position: 2)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker, position: 2)
+      sign_out admin
+      sign_in broker
 
       get admin_leads_path(view: "list")
 
@@ -470,7 +473,36 @@ RSpec.describe "Admin::Leads", type: :request do
       document = Nokogiri::HTML(response.body)
       bottom_nav = document.at_css(".ax-pwa-bottom-nav")
       expect(bottom_nav).to be_present
-      expect(bottom_nav.text).to include("Fila", "2º")
+      expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
+      expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
+      expect(document.at_css(".lead-pwa-queue").text).to include("2º", "na fila")
+      expect(bottom_nav.text).not_to include("Fila")
+    end
+
+    it "lista apenas filas de distribuicao em que o usuario logado participa" do
+      current_user = create(:admin_user, tenant: admin.tenant, name: "Gabriela Machado")
+      teammate = create(:admin_user, tenant: admin.tenant, name: "Maria Elisabete")
+      outside_user = create(:admin_user, tenant: admin.tenant, name: "Levi Ribeiro")
+      included_rule = create(:distribution_rule, tenant: admin.tenant, name: "Leads gerais", active: true, distribution_mode: :rotary)
+      other_rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila sem o logado", active: true, distribution_mode: :rotary)
+
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 1)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: current_user, position: 2)
+      create(:distribution_rule_agent, distribution_rule: other_rule, admin_user: outside_user, position: 1)
+      sign_out admin
+      sign_in current_user
+
+      get distribution_queue_admin_leads_path
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      card = document.at_css(".lead-queue-card")
+      current_agent = document.at_css(".lead-queue-agent.is-current")
+
+      expect(document.at_css(".lead-queue-command").text).to include("Minhas filas")
+      expect(card.text).to include("Leads gerais", "2º de 2", "Maria Elisabete")
+      expect(current_agent.text).to include(current_user.name, "Você", "2º")
+      expect(document.text).not_to include("Fila sem o logado", "Levi Ribeiro")
     end
 
     it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do

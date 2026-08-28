@@ -15,12 +15,6 @@
   pwa_tenant_context = respond_to?(:current_tenant) && current_tenant.present?
   pwa_leads_view_mode = current_admin_user&.leads_view_mode.to_s.presence_in(%w[kanban list]) || "list"
   pwa_leads_mobile_tab = pwa_leads_view_mode == "kanban" ? "all" : "todo"
-  pwa_queue_position = pwa_current_queue_position
-  pwa_queue_path = if can_access_pwa_nav.call(:view, :distribution_rules) || can_access_pwa_nav.call(:manage, :distribution_rules)
-    admin_distribution_rules_path
-  else
-    admin_leads_path(view: "list", mobile_tab: "todo")
-  end
 
   pwa_nav_items = [
     {
@@ -50,14 +44,6 @@
       path: admin_captacoes_path,
       visible: can_access_pwa_nav.call(:view, :captacoes),
       active: %w[habitation_intakes captacoes].include?(current_controller_name) && current_path.start_with?(admin_captacoes_path)
-    },
-    {
-      label: "Fila",
-      icon: "list-ol",
-      path: pwa_queue_path,
-      badge: (pwa_queue_position.present? ? "#{pwa_queue_position}º" : nil),
-      visible: can_access_pwa_nav.call(:view, :leads),
-      active: current_controller_name == "distribution_rules"
     }
   ].select { |item| pwa_tenant_context && item[:visible] }
 %>
@@ -68,12 +54,7 @@
       <%= link_to item[:path],
                   class: "ax-pwa-bottom-nav__item #{'is-active' if item[:active]}",
                   aria: ({ current: "page" } if item[:active]) do %>
-        <span class="ax-pwa-bottom-nav__icon-wrap">
-          <i class="bi bi-<%= item[:icon] %>" aria-hidden="true"></i>
-          <% if item[:badge].present? %>
-            <strong class="ax-pwa-bottom-nav__badge"><%= item[:badge] %></strong>
-          <% end %>
-        </span>
+        <i class="bi bi-<%= item[:icon] %>" aria-hidden="true"></i>
         <span><%= item[:label] %></span>
       <% end %>
     <% end %>
