@@ -461,9 +461,25 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "exibe a posicao da fila no header e remove a fila do rodape PWA" do
-      broker = create(:admin_user, tenant: admin.tenant, name: "Gabriela Machado")
-      rule = create(:distribution_rule, tenant: admin.tenant, active: true)
-      create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker, position: 2)
+      broker_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Corretor fila #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 8_900,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      broker = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Gabriela Machado")
+      internal_rule = create(
+        :distribution_rule,
+        tenant: admin.tenant,
+        name: ExternalLeadIntegration::SUPPORT_RULE_NAME,
+        active: true,
+        source_webhook: true,
+        webhook_tags: [ExternalLeadIntegration::WEBHOOK_TAG]
+      )
+      operational_rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas", active: true)
+      create(:distribution_rule_agent, distribution_rule: internal_rule, admin_user: broker, position: 1)
+      create(:distribution_rule_agent, distribution_rule: operational_rule, admin_user: broker, position: 6)
       sign_out admin
       sign_in broker
 
@@ -475,20 +491,39 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(bottom_nav).to be_present
       expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
-      expect(document.at_css(".lead-pwa-queue").text).to include("2º", "na fila")
+      expect(document.at_css(".lead-pwa-queue").text).to include("6º", "na fila")
       expect(bottom_nav.text).not_to include("Fila")
     end
 
     it "lista apenas filas de distribuicao em que o usuario logado participa" do
-      current_user = create(:admin_user, tenant: admin.tenant, name: "Gabriela Machado")
-      teammate = create(:admin_user, tenant: admin.tenant, name: "Maria Elisabete")
-      outside_user = create(:admin_user, tenant: admin.tenant, name: "Levi Ribeiro")
-      included_rule = create(:distribution_rule, tenant: admin.tenant, name: "Leads gerais", active: true, distribution_mode: :rotary)
+      broker_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Corretor fila #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 8_901,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Gabriela Machado")
+      teammate = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Maria Elisabete")
+      outside_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Levi Ribeiro")
+      internal_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Sistema Interno")
+      included_rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas", active: true, distribution_mode: :rotary)
       other_rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila sem o logado", active: true, distribution_mode: :rotary)
+      internal_rule = create(
+        :distribution_rule,
+        tenant: admin.tenant,
+        name: ExternalLeadIntegration::SUPPORT_RULE_NAME,
+        active: true,
+        distribution_mode: :rotary,
+        source_webhook: true,
+        webhook_tags: [ExternalLeadIntegration::WEBHOOK_TAG]
+      )
 
       create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 1)
       create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: current_user, position: 2)
       create(:distribution_rule_agent, distribution_rule: other_rule, admin_user: outside_user, position: 1)
+      create(:distribution_rule_agent, distribution_rule: internal_rule, admin_user: current_user, position: 1)
+      create(:distribution_rule_agent, distribution_rule: internal_rule, admin_user: internal_user, position: 2)
       sign_out admin
       sign_in current_user
 
@@ -500,9 +535,10 @@ RSpec.describe "Admin::Leads", type: :request do
       current_agent = document.at_css(".lead-queue-agent.is-current")
 
       expect(document.at_css(".lead-queue-command").text).to include("Minhas filas")
-      expect(card.text).to include("Leads gerais", "2º de 2", "Maria Elisabete")
+      expect(document.at_css(".lead-queue-mobile-top").text).to include("Minhas filas", "1 fila operacional", "2º")
+      expect(card.text).to include("Equipe vendas", "2º de 2", "Maria Elisabete")
       expect(current_agent.text).to include(current_user.name, "Você", "2º")
-      expect(document.text).not_to include("Fila sem o logado", "Levi Ribeiro")
+      expect(document.text).not_to include("Fila sem o logado", "Levi Ribeiro", ExternalLeadIntegration::SUPPORT_RULE_NAME, "Sistema Interno")
     end
 
     it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do

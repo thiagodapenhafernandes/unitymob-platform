@@ -22,6 +22,10 @@
     gap: 12px;
   }
 
+  .lead-queue-mobile-top {
+    display: none;
+  }
+
   .lead-queue-command {
     display: flex;
     align-items: center;
@@ -250,6 +254,12 @@
   }
 
   @media (max-width: 767.98px) {
+    body.ax-app .ax-navbar,
+    body.ax-app .ax-sidebar-contextbar,
+    body.ax-app .ax-contextbar {
+      display: none !important;
+    }
+
     body.ax-pwa-bottom-nav-body > .ax-main {
       min-height: 100dvh !important;
       margin: 0 !important;
@@ -259,14 +269,80 @@
 
     .lead-queue-page {
       min-height: 100dvh;
-      padding: calc(8px + env(safe-area-inset-top, 0px)) 10px calc(78px + env(safe-area-inset-bottom, 0px));
+      padding: calc(72px + env(safe-area-inset-top, 0px)) 10px calc(78px + env(safe-area-inset-bottom, 0px));
       background: var(--queue-bg);
     }
 
-    .lead-queue-command {
-      position: sticky;
+    .lead-queue-mobile-top {
+      position: fixed;
       top: 0;
-      z-index: 3;
+      right: 0;
+      left: 0;
+      z-index: 40;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
+      gap: 8px;
+      align-items: center;
+      min-height: calc(60px + env(safe-area-inset-top, 0px));
+      padding: max(8px, env(safe-area-inset-top, 0px)) 10px 8px;
+      border-bottom: 1px solid var(--queue-line);
+      background: color-mix(in srgb, var(--queue-bg) 90%, #fff);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+      backdrop-filter: blur(14px);
+    }
+
+    .lead-queue-mobile-top__button,
+    .lead-queue-mobile-top__position {
+      display: inline-grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--queue-line);
+      border-radius: 12px;
+      background: var(--queue-surface);
+      color: var(--queue-ink);
+      text-decoration: none;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    }
+
+    .lead-queue-mobile-top__button {
+      font-size: 20px;
+    }
+
+    .lead-queue-mobile-top__position {
+      color: var(--queue-primary);
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .lead-queue-mobile-top__title {
+      min-width: 0;
+      text-align: center;
+    }
+
+    .lead-queue-mobile-top__title strong {
+      display: block;
+      overflow: hidden;
+      color: var(--queue-ink);
+      font-size: 17px;
+      font-weight: 950;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-queue-mobile-top__title span {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--queue-muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-queue-command {
       padding: 12px;
       border-radius: 14px;
     }
@@ -301,6 +377,19 @@
 </style>
 
 <div class="lead-queue-page">
+  <header class="lead-queue-mobile-top" aria-label="Navegação da tela de filas">
+    <%= link_to @return_to_path, class: "lead-queue-mobile-top__button", aria: { label: "Voltar para leads" } do %>
+      <i class="bi bi-arrow-left"></i>
+    <% end %>
+    <div class="lead-queue-mobile-top__title">
+      <strong>Minhas filas</strong>
+      <span><%= @queue_rules.size %> fila<%= "s" if @queue_rules.size != 1 %> operacional<%= "is" if @queue_rules.size != 1 %></span>
+    </div>
+    <span class="lead-queue-mobile-top__position" aria-label="Melhor posição atual">
+      <%= @best_queue_position.present? ? "#{@best_queue_position}º" : "--" %>
+    </span>
+  </header>
+
   <header class="lead-queue-command">
     <div class="lead-queue-command__copy">
       <span>Distribuição de leads</span>
