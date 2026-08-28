@@ -226,4 +226,62 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
       starts_at: Time.zone.parse("2026-08-21T15:30:00.000-03:00")
     )
   end
+
+  it "nao atribui agenda C2S ao usuario conector quando o vendedor externo esta sem mapeamento" do
+    connector = create(:admin_user, tenant:, email: "conector-c2s@example.test")
+    unmapped_integration = create(
+      :external_lead_integration,
+      tenant:,
+      connected_by_admin_user: connector,
+      seller_mappings: {}
+    )
+    unmapped_payload = payload.deep_dup
+    unmapped_payload["id"] = "lead-c2s-unmapped-seller"
+    unmapped_payload["attributes"]["customer"]["id"] = "customer-c2s-unmapped-seller"
+    unmapped_payload["attributes"]["seller"] = {
+      "id" => "seller-sem-par",
+      "name" => "Vendedor sem par",
+      "email" => "sem-par-c2s@example.test"
+    }
+
+    described_class.call(integration: unmapped_integration, payload: unmapped_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-c2s-unmapped-seller")
+    activity = lead.activities.find_by!(kind: "external_scheduled_action")
+
+    expect(lead.admin_user).to be_nil
+    expect(lead.tasks).to be_empty
+    expect(activity.metadata).to include(
+      "unassigned" => true,
+      "unassigned_reason" => "external_seller_unmapped"
+    )
+  end
+
+  it "usa a distribuicao local para agenda de novo lead C2S sem vendedor mapeado" do
+    connector = create(:admin_user, tenant:, email: "conector-webhook-c2s@example.test")
+    create(:distribution_rule_agent, tenant:, distribution_rule: rule, admin_user: broker)
+    unmapped_integration = create(
+      :external_lead_integration,
+      tenant:,
+      distribution_rule: rule,
+      connected_by_admin_user: connector,
+      seller_mappings: {}
+    )
+    webhook_payload = payload.deep_dup
+    webhook_payload["id"] = "lead-c2s-webhook-unmapped-seller"
+    webhook_payload["attributes"]["customer"]["id"] = "customer-c2s-webhook-unmapped-seller"
+    webhook_payload["attributes"]["seller"] = {
+      "id" => "seller-webhook-sem-par",
+      "name" => "Vendedor webhook sem par",
+      "email" => "webhook-sem-par-c2s@example.test"
+    }
+
+    described_class.call(integration: unmapped_integration, payload: webhook_payload, historical: false)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-c2s-webhook-unmapped-seller")
+    task = lead.tasks.find_by!(title: "Retorno comercial")
+
+    expect(lead.admin_user).to eq(broker)
+    expect(task.admin_user).to eq(broker)
+  end
 end

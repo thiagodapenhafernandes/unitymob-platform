@@ -30,9 +30,29 @@ class Task < ApplicationRecord
   scope :atrasadas, -> { pendentes.where.not(due_at: nil).where("due_at < ?", Time.current) }
   scope :hoje, -> { pendentes.where(due_at: Time.current.beginning_of_day..Time.current.end_of_day) }
   scope :semana, -> { pendentes.where(due_at: Time.current.beginning_of_day..7.days.from_now.end_of_day) }
-  scope :ordered, -> { order(Arel.sql("CASE WHEN status = 'pendente' THEN 0 ELSE 1 END, due_at ASC NULLS LAST, created_at DESC")) }
+  scope :ordered, -> { order(Arel.sql("CASE WHEN tasks.status = 'pendente' THEN 0 ELSE 1 END, tasks.due_at ASC NULLS LAST, tasks.created_at DESC")) }
   scope :external_legacy, -> { where(source: "external_legacy") }
-  scope :operational_current, -> { where.not(source: "external_legacy") }
+  scope :operational_current, -> {
+    left_outer_joins(lead: :lead_pipeline_stage)
+      .where(
+        <<~SQL.squish,
+          tasks.source IS NULL
+          OR tasks.source <> :legacy_source
+          OR (
+            tasks.source = :legacy_source
+            AND leads.id IS NOT NULL
+            AND leads.status NOT IN (:non_operational_statuses)
+            AND (
+              lead_pipeline_stages.id IS NULL
+              OR lead_pipeline_stages.stage_type = :open_stage
+            )
+          )
+        SQL
+        legacy_source: "external_legacy",
+        non_operational_statuses: Lead.non_operational_status_values,
+        open_stage: "open"
+      )
+  }
 
   def pendente? = status == "pendente"
   def concluida? = status == "concluida"

@@ -1,17 +1,41 @@
 module ExternalLeadMigration
   class ScheduledActionReconciler
     SOURCE = LeadMapper::PROVIDER_KEY
-    Result = Struct.new(:scanned, :tasks_updated, :tasks_created, :appointments_updated, :appointments_created, :tasks_cancelled, :skipped, keyword_init: true)
+    Result = Struct.new(
+      :scanned,
+      :tasks_updated,
+      :tasks_created,
+      :tasks_reassigned,
+      :appointments_updated,
+      :appointments_created,
+      :appointments_reassigned,
+      :tasks_cancelled,
+      :skipped,
+      :skipped_non_operational,
+      keyword_init: true
+    )
 
-    def self.call(tenant: nil, integration: nil, execute: false)
-      new(tenant:, integration:, execute:).call
+    def self.call(tenant: nil, integration: nil, execute: false, operational_only: false)
+      new(tenant:, integration:, execute:, operational_only:).call
     end
 
-    def initialize(tenant: nil, integration: nil, execute: false)
+    def initialize(tenant: nil, integration: nil, execute: false, operational_only: false)
       @tenant = integration&.tenant || tenant
       @integration = integration
       @execute = execute
-      @result = Result.new(scanned: 0, tasks_updated: 0, tasks_created: 0, appointments_updated: 0, appointments_created: 0, tasks_cancelled: 0, skipped: 0)
+      @operational_only = operational_only
+      @result = Result.new(
+        scanned: 0,
+        tasks_updated: 0,
+        tasks_created: 0,
+        tasks_reassigned: 0,
+        appointments_updated: 0,
+        appointments_created: 0,
+        appointments_reassigned: 0,
+        tasks_cancelled: 0,
+        skipped: 0,
+        skipped_non_operational: 0
+      )
     end
 
     def call
@@ -25,7 +49,7 @@ module ExternalLeadMigration
 
     private
 
-    attr_reader :tenant, :integration, :execute, :result
+    attr_reader :tenant, :integration, :execute, :operational_only, :result
 
     def scheduled_activities
       scope = LeadActivity
@@ -40,6 +64,8 @@ module ExternalLeadMigration
 
     def reconcile_activity(activity)
       lead = activity.lead
+      return skip_non_operational! if operational_only && !operational_lead?(lead)
+
       action = scheduled_action_from(activity)
       return skip! if lead.blank? || action[:due_at].blank? || action[:admin_user].blank?
 
@@ -49,6 +75,7 @@ module ExternalLeadMigration
     def reconcile_task(activity, lead, action)
       task = task_for(activity, lead, action)
       task_new = task.new_record?
+      previous_admin_user_id = task.admin_user_id
 
       if execute
         task.assign_attributes(
@@ -67,12 +94,14 @@ module ExternalLeadMigration
         task.save!
       end
 
+      result.tasks_reassigned += 1 if previous_admin_user_id.present? && previous_admin_user_id != action[:admin_user].id
       task_new ? result.tasks_created += 1 : result.tasks_updated += 1
     end
 
     def reconcile_appointment(activity, lead, action)
       appointment = appointment_for(activity, lead, action)
       appointment_new = appointment.new_record?
+      previous_admin_user_id = appointment.admin_user_id
 
       if execute
         appointment.assign_attributes(
@@ -90,6 +119,7 @@ module ExternalLeadMigration
         cancel_legacy_task!(activity, lead) if legacy_task_for(activity, lead).present?
       end
 
+      result.appointments_reassigned += 1 if previous_admin_user_id.present? && previous_admin_user_id != action[:admin_user].id
       appointment_new ? result.appointments_created += 1 : result.appointments_updated += 1
     end
 
@@ -167,9 +197,28 @@ module ExternalLeadMigration
     end
 
     def responsible_user(lead, raw)
-      lead&.admin_user ||
-        AdminUser.find_by(id: raw["seller_id"]) ||
-        integration&.connected_by_admin_user
+      lead&.admin_user || mapped_seller_user(raw)
+    end
+
+    def operational_lead?(lead)
+      return false if lead.blank?
+      return false if Lead.non_operational_status_values(tenant: lead.tenant).include?(lead.status)
+      return false if lead.lead_pipeline_stage&.stage_type.in?(%w[won lost archived])
+
+      true
+    end
+
+    def mapped_seller_user(raw)
+      return if integration.blank?
+
+      seller = {
+        "id" => raw["seller_id"].presence || raw.dig("seller", "id"),
+        "email" => raw["seller_email"].presence || raw.dig("seller", "email"),
+        "phone" => raw["seller_phone"].presence || raw.dig("seller", "phone"),
+        "name" => raw["seller_name"].presence || raw.dig("seller", "name")
+      }.compact
+
+      integration.local_user_for_seller(seller)
     end
 
     def task_kind(text)
@@ -210,6 +259,10 @@ module ExternalLeadMigration
 
     def skip!
       result.skipped += 1
+    end
+
+    def skip_non_operational!
+      result.skipped_non_operational += 1
     end
   end
 end
