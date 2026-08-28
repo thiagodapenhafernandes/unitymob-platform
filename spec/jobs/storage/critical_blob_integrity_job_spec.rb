@@ -11,7 +11,10 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
 
     allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
     allow(Storage::ProtectedBlobPolicy).to receive(:critical_attachment_scope).and_return(ActiveStorage::Attachment.where(id: attachment.id))
-    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name).and_return(service)
+    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name) do
+      expect(Current.tenant).to eq(tenant)
+      service
+    end
     allow(service).to receive(:exist?).with(blob.key).and_return(false)
     allow(Storage::BlobAuditRecorder).to receive(:record!)
     allow(ErrorEvent).to receive(:record!)
