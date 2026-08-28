@@ -53,6 +53,10 @@ module Images
           tempfile: output
         )
       end
+    rescue ActiveStorage::FileNotFoundError
+      raise if raise_errors
+
+      Result.new(attachable: upload)
     rescue StandardError => error
       message = "Falha ao aplicar marca d'água em #{upload_filename}: #{error.class} - #{error.message}"
       Rails.logger.warn("[WatermarkProcessor] #{message}")

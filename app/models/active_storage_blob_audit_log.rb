@@ -4,7 +4,12 @@ class ActiveStorageBlobAuditLog < ApplicationRecord
     purge_started
     purge_missing_deleted
     purge_scheduled
+    purge_blocked_attached_blob
+    purge_blocked_protected_blob
+    critical_blob_missing
+    critical_blob_check_failed
     missing_variant_cleaned
+    watermark_source_missing
   ].freeze
 
   validates :action, presence: true, inclusion: { in: ACTIONS }
