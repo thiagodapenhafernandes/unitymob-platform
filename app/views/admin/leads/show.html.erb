@@ -7,6 +7,93 @@
 <style>
   .lead-pwa-detail { display: none; }
 
+  .lead-detail-task-stack {
+    display: grid;
+    gap: 8px;
+  }
+
+  .lead-detail-task-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--ax-border-soft, #d8dee8);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .lead-detail-task-row--next {
+    border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 34%, var(--ax-border-soft, #d8dee8));
+    background: color-mix(in srgb, var(--admin-primary, #365f8f) 6%, #fff);
+  }
+
+  .lead-detail-task-row--alert {
+    border-color: #fecdd3;
+    background: #fff1f2;
+  }
+
+  .lead-detail-task-row__body {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .lead-detail-task-row__body strong,
+  .lead-detail-task-row__body span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-detail-task-row__body strong {
+    color: var(--admin-ink, #1f2733);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.25;
+  }
+
+  .lead-detail-task-row__body span {
+    color: #667085;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .lead-detail-task-row--alert .lead-detail-task-row__body strong,
+  .lead-detail-task-row--alert .lead-detail-task-row__body span {
+    color: #9f1239;
+  }
+
+  html[data-admin-theme="dark"] .lead-detail-task-row {
+    border-color: var(--ax-dark-border-soft);
+    background: var(--ax-dark-surface);
+  }
+
+  html[data-admin-theme="dark"] .lead-detail-task-row--next {
+    border-color: var(--ax-dark-border);
+    background: var(--ax-dark-surface-raised);
+  }
+
+  html[data-admin-theme="dark"] .lead-detail-task-row--alert {
+    border-color: var(--ax-dark-danger-border);
+    background: var(--ax-dark-danger-surface);
+  }
+
+  html[data-admin-theme="dark"] .lead-detail-task-row__body strong {
+    color: var(--ax-dark-text);
+  }
+
+  html[data-admin-theme="dark"] .lead-detail-task-row__body span {
+    color: var(--ax-dark-text-muted);
+  }
+
+  html[data-admin-theme="dark"] .lead-detail-task-row--alert .lead-detail-task-row__body strong,
+  html[data-admin-theme="dark"] .lead-detail-task-row--alert .lead-detail-task-row__body span {
+    color: var(--ax-dark-danger-text);
+  }
+
   @media (max-width: 767.98px) {
     body.ax-app .ax-navbar,
     body.ax-app .ax-sidebar-contextbar,
@@ -915,6 +1002,142 @@
       overflow: hidden;
     }
 
+    .lead-pwa-task-card {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--lead-pwa-primary) 34%, var(--lead-pwa-line));
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--lead-pwa-primary) 8%, var(--lead-pwa-surface));
+    }
+
+    .lead-pwa-task-card--alert {
+      border-color: #fecdd3;
+      background: #fff1f2;
+    }
+
+    .lead-pwa-task-card__main {
+      display: grid;
+      min-width: 0;
+      gap: 4px;
+    }
+
+    .lead-pwa-task-card__main strong {
+      color: var(--lead-pwa-ink);
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .lead-pwa-task-card__main span {
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .lead-pwa-task-card--alert .lead-pwa-task-card__main strong,
+    .lead-pwa-task-card--alert .lead-pwa-task-card__main span {
+      color: #9f1239;
+    }
+
+    .lead-pwa-task-card__actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .lead-pwa-task-card__actions form {
+      min-width: 0;
+    }
+
+    .lead-pwa-task-card__form {
+      display: block;
+      width: 100%;
+    }
+
+    .lead-pwa-task-card__actions > :only-child {
+      grid-column: 1 / -1;
+    }
+
+    .lead-pwa-task-card__actions > .tw-inline-block {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .lead-pwa-task-card__btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      min-height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 10px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-ink);
+      font-size: 12px;
+      font-weight: 850;
+      text-decoration: none;
+    }
+
+    .lead-pwa-task-card__btn--done {
+      border-color: #86efac;
+      background: color-mix(in srgb, #22c55e 14%, var(--lead-pwa-surface));
+      color: #047857;
+    }
+
+    .lead-pwa-task-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .lead-pwa-task-list__title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
+    .lead-pwa-task-item {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 12px;
+      background: var(--lead-pwa-surface);
+    }
+
+    .lead-pwa-task-item__body {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+
+    .lead-pwa-task-item__body strong {
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 13px;
+      font-weight: 850;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-task-item__body span {
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
     .lead-pwa-detail__record--alert {
       margin: 0;
       padding: 7px 12px !important;
@@ -1003,6 +1226,38 @@
       color: var(--ax-dark-danger-text, #f2a7b3);
     }
 
+    html[data-admin-theme="dark"] .lead-pwa-task-card {
+      border-color: var(--ax-dark-border);
+      background: var(--ax-dark-surface-raised);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-task-card--alert {
+      border-color: var(--ax-dark-danger-border, #8d4450);
+      background: var(--ax-dark-danger-surface, #35222a);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-task-card--alert .lead-pwa-task-card__main strong,
+    html[data-admin-theme="dark"] .lead-pwa-task-card--alert .lead-pwa-task-card__main span {
+      color: var(--ax-dark-danger-text, #f2a7b3);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-task-card__btn {
+      border-color: var(--ax-dark-border-soft);
+      background: var(--ax-dark-surface);
+      color: var(--ax-dark-text);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-task-card__btn--done {
+      border-color: var(--ax-dark-success-border, #3f7a5c);
+      background: var(--ax-dark-success-surface, #1d3327);
+      color: var(--ax-dark-success-text, #86e0ae);
+    }
+
+    html[data-admin-theme="dark"] .lead-pwa-task-item {
+      border-color: var(--ax-dark-border-soft);
+      background: var(--ax-dark-surface);
+    }
+
   }
 </style>
 
@@ -1015,8 +1270,6 @@
   detail_conversion = lead_conversion_summary(@lead)
   detail_phone = @lead.display_phone.to_s.gsub(/[^0-9+]/, "")
   detail_whatsapp_url = @lead.direct_whatsapp_url
-  detail_last_whatsapp_message = @whatsapp_messages.last
-  detail_last_whatsapp_text = detail_last_whatsapp_message&.body.to_s.squish.presence
   detail_interest_intelligence_locals = if @interest_simulation
     {
       lead: @lead,
@@ -1113,11 +1366,62 @@
   <% show_pwa_next_actions_panel = @next_task.present? || can?(:manage, :comercial) %>
   <% if show_pwa_next_actions_panel %>
     <section class="lead-pwa-detail__panel">
+      <div class="lead-pwa-detail__section-title">
+        <span>Ações do lead</span>
+        <small><%= open_tasks.size %> tarefa<%= "s" if open_tasks.size != 1 %></small>
+      </div>
+
       <% if @next_task %>
         <% next_badge = task_badge(@next_task) %>
-        <div class="lead-pwa-detail__record<%= " lead-pwa-detail__record--alert" if next_badge[:color] == "red" %>">
-          <strong><%= @next_task.title %> - <%= next_badge[:label] %></strong>
-          <span><%= l(@next_task.due_at, format: "%d/%m/%Y às %H:%M") if @next_task.due_at.present? %></span>
+        <div class="lead-pwa-task-card<%= " lead-pwa-task-card--alert" if next_badge[:color] == "red" %>">
+          <div class="lead-pwa-task-card__main">
+            <strong><%= @next_task.title %></strong>
+            <span>
+              <%= next_badge[:label] %>
+              <% if @next_task.due_at.present? %>
+                · <%= l(@next_task.due_at, format: "%d/%m/%Y às %H:%M") %>
+              <% end %>
+            </span>
+          </div>
+          <% if can?(:manage, :comercial) && @next_task.pendente? %>
+            <div class="lead-pwa-task-card__actions">
+              <%= button_to complete_admin_task_path(@next_task), method: :patch, form_class: "lead-pwa-task-card__form", class: "lead-pwa-task-card__btn lead-pwa-task-card__btn--done" do %>
+                <i class="bi bi-check2-circle" aria-hidden="true"></i><span>Concluir</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="lead-pwa-detail__record">
+          <strong>Nenhuma tarefa pendente.</strong>
+          <span>Defina o próximo passo deste lead.</span>
+        </div>
+      <% end %>
+
+      <% pending_tasks_for_pwa = open_tasks.reject { |task| @next_task && task.id == @next_task.id }.first(3) %>
+      <% if pending_tasks_for_pwa.any? %>
+        <div class="lead-pwa-task-list">
+          <div class="lead-pwa-task-list__title">
+            <span>Outras tarefas</span>
+            <small><%= pending_tasks_for_pwa.size %></small>
+          </div>
+          <% pending_tasks_for_pwa.each do |task| %>
+            <% badge = task_badge(task) %>
+            <div class="lead-pwa-task-item">
+              <% if can?(:manage, :comercial) && task.pendente? %>
+                <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
+                  <i class="bi bi-circle" aria-hidden="true"></i>
+                <% end %>
+              <% else %>
+                <span></span>
+              <% end %>
+              <span class="lead-pwa-task-item__body">
+                <strong><%= task.title %></strong>
+                <span><%= task.due_at.present? ? l(task.due_at, format: "%d/%m/%Y às %H:%M") : task.kind_label %></span>
+              </span>
+              <span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span>
+            </div>
+          <% end %>
         </div>
       <% end %>
 
@@ -1137,58 +1441,6 @@
           <%= render "admin/leads/archive_modal", lead: @lead, archive_reason_options: @archive_reason_options %>
         </div>
       <% end %>
-    </section>
-  <% end %>
-
-  <% if can?(:view, :whatsapp_inbox) %>
-    <section class="lead-pwa-detail__panel" data-controller="lead-pwa-chat">
-      <div class="lead-pwa-detail__section-title">
-        <span>Conversa</span>
-        <small><%= @whatsapp_conversation ? "interna" : "WhatsApp" %></small>
-      </div>
-      <button type="button"
-              class="lead-pwa-conversation-card"
-              data-action="lead-pwa-chat#open"
-              aria-label="Abrir conversa em tela cheia">
-        <span class="lead-pwa-conversation-card__icon"><i class="bi bi-whatsapp"></i></span>
-        <span>
-          <strong><%= @whatsapp_conversation&.display_name || "WhatsApp individual" %></strong>
-          <span><%= detail_last_whatsapp_text || (@lead.whatsapp_recipient.present? ? "Toque para conversar sem sair do lead." : "Sem canal disponível para este lead.") %></span>
-        </span>
-        <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i>
-      </button>
-      <dialog class="lead-pwa-chat-dialog"
-              data-lead-pwa-chat-target="dialog"
-              data-action="click->lead-pwa-chat#backdropClose">
-        <div class="lead-pwa-chat-dialog__shell">
-          <div class="lead-pwa-chat-dialog__top">
-            <button type="button"
-                    class="lead-pwa-detail__icon-btn"
-                    data-action="lead-pwa-chat#close"
-                    aria-label="Fechar conversa">
-              <i class="bi bi-arrow-left"></i>
-            </button>
-            <span>
-              <strong><%= @whatsapp_conversation&.display_name || @lead.display_name %></strong>
-              <span>Conversa do lead</span>
-            </span>
-          </div>
-          <div class="lead-pwa-chat-dialog__body">
-            <%= render "admin/shared/ui/lead_whatsapp_panel",
-                  lead: @lead,
-                  conversation: @whatsapp_conversation,
-                  templates: @whatsapp_templates,
-                  summary: @whatsapp_summary,
-                  thread_context_locals: @whatsapp_thread_context_locals,
-                  messages: @whatsapp_messages.last(30),
-                  return_to: request.fullpath,
-                  notice: @lead_whatsapp_notice,
-                  notice_detail: @lead_whatsapp_notice_detail,
-                  panel_dom_id: "whatsapp_pwa_#{@lead.id}",
-                  file_input_id: "lead-whatsapp-pwa-media-file-#{@lead.id}" %>
-          </div>
-        </div>
-      </dialog>
     </section>
   <% end %>
 
@@ -1508,19 +1760,6 @@
       </div>
     </div>
 
-    <% if can?(:view, :whatsapp_inbox) %>
-      <%= render "admin/shared/ui/lead_whatsapp_panel",
-            lead: @lead,
-            conversation: @whatsapp_conversation,
-            templates: @whatsapp_templates,
-            summary: @whatsapp_summary,
-            thread_context_locals: @whatsapp_thread_context_locals,
-            messages: @whatsapp_messages,
-            return_to: request.fullpath,
-            notice: @lead_whatsapp_notice,
-            notice_detail: @lead_whatsapp_notice_detail %>
-    <% end %>
-
     <%# Linha do tempo — colapsada; só marcos por padrão (WhatsApp tem toggle) %>
     <%= ax_collapsible_card(
           title: "Linha do tempo",
@@ -1691,15 +1930,37 @@
 
         <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
           <span class="ax-stat-label">Tarefas</span>
-          <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
+          <span class="tw-inline-flex tw-items-center tw-gap-1">
+            <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
+            <% if can?(:manage, :comercial) %>
+              <%= render "admin/tasks/form_modal", modal_id: "newTaskLeadTasks", lead: @lead, trigger_label: "Nova tarefa", trigger_class: "ax-btn ax-btn--sm" %>
+            <% end %>
+          </span>
         </div>
-        <div class="tw-grid tw-gap-2">
+        <div class="lead-detail-task-stack">
           <% if open_tasks.any? %>
             <% open_tasks.first(6).each do |t| %>
               <% b = task_badge(t) %>
-              <div class="tw-flex tw-items-center tw-gap-2">
-                <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir" do %><i class="bi bi-circle"></i><% end %>
-                <span class="tw-flex-1 tw-truncate"><%= t.title %></span>
+              <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if @next_task && t.id == @next_task.id %><%= " lead-detail-task-row--alert" if b[:color] == "red" %>">
+                <% if can?(:manage, :comercial) && t.pendente? %>
+                  <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{t.title}" } do %>
+                    <i class="bi bi-circle" aria-hidden="true"></i>
+                  <% end %>
+                <% else %>
+                  <span></span>
+                <% end %>
+                <span class="lead-detail-task-row__body">
+                  <strong><%= t.title %></strong>
+                  <span>
+                    <%= t.kind_label %>
+                    <% if t.due_at.present? %>
+                      · <%= l(t.due_at, format: :short) %>
+                    <% end %>
+                    <% if t.external_legacy? %>
+                      · C2S
+                    <% end %>
+                  </span>
+                </span>
                 <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
               </div>
             <% end %>

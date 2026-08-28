@@ -583,6 +583,7 @@ RSpec.describe "Admin::Leads", type: :request do
     it "renderiza o detalhe PWA preservando a tela completa do desktop" do
       property = create(:habitation, tenant: admin.tenant, codigo: "PWA-001")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Detalhe PWA", phone: "11999999999", status: "Em Atendimento", notes: "Preferência por vista mar.")
+      Task.create!(tenant: admin.tenant, lead: lead, admin_user: admin, title: "Retornar para o cliente", due_at: 1.hour.ago, status: "pendente")
       LeadActivity.log!(lead: lead, kind: "note", metadata: { body: "Cliente pediu retorno no fim da tarde.", by: "Corretor" })
       lead.property_interests.create!(tenant: admin.tenant, habitation: property)
       lead.ai_property_share_collections.create!(admin_user: admin).tap do |collection|
@@ -595,9 +596,12 @@ RSpec.describe "Admin::Leads", type: :request do
       document = Nokogiri::HTML(response.body)
       pwa_detail = document.at_css(".lead-pwa-detail")
       expect(pwa_detail).to be_present
-      expect(pwa_detail.text).to include("Lead Detalhe PWA", "Conversa", "Imóveis de interesse", "PWA-001", "Links gerados", "Inteligência de Interesse")
+      expect(pwa_detail.text).to include("Lead Detalhe PWA", "Ações do lead", "Retornar para o cliente", "Imóveis de interesse", "PWA-001", "Links gerados", "Inteligência de Interesse")
       expect(pwa_detail.text).to include("Anotações", "Adicionar anotação", "Cliente pediu retorno no fim da tarde.", "Corretor")
-      expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_present
+      expect(pwa_detail.text).not_to include("Conversa")
+      expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_nil
+      expect(document.at_css(".lead-whatsapp-card")).to be_nil
+      expect(pwa_detail.at_css(".lead-pwa-task-card")).to be_present
       expect(pwa_detail.at_css("turbo-frame##{ActionView::RecordIdentifier.dom_id(lead, :pwa_interest_intelligence)}")).to be_present
       expect(pwa_detail.at_css("form[action='#{log_contact_admin_lead_path(lead)}']")).to be_present
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present

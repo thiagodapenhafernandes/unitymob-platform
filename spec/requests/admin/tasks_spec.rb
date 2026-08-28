@@ -18,8 +18,10 @@ RSpec.describe "Admin::Tasks", type: :request do
       get admin_tasks_path(team: "0")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Minhas Tarefas", "Ligar para cliente", "ax-dismissible-hint", 'data-dismissible-key-value="tasks"')
+      expect(response.body).to include("Minhas Tarefas", "Ligar para cliente", "ax-dismissible-hint", 'data-dismissible-key-value="tasks"', "task-form-modal")
       document = Nokogiri::HTML(response.body)
+      expect(document.at_css("#newTaskTop.task-form-modal.ax-quick-modal")).to be_present
+      expect(document.at_css('button[data-ax-modal-open="#newTaskTop"]')).to be_present
       filter_links = document.css('a.ax-btn[href*="filter="]')
       expect(filter_links).not_to be_empty
       expect(filter_links).to all(satisfy { |link| URI.parse(link["href"]).query.include?("team=0") })
