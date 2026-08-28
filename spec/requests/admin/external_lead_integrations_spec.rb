@@ -157,9 +157,69 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     }
 
     expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(ExternalLeadMigration::SetupService).not_to have_received(:call)
     expect(integration.reload).to be_connected
     expect(integration.webhook_listening_enabled?).to be(false)
     expect(integration.subscribed_at).to be_nil
     expect(ExternalLeadMigration::WebhookSubscriptionService).to have_received(:unsubscribe!).with(integration:, deactivate: false)
+  end
+
+  it "desabilita escuta localmente mesmo quando o cancelamento externo falha" do
+    integration = create(
+      :external_lead_integration,
+      tenant: admin.tenant,
+      enabled: true,
+      status: "connected",
+      webhook_listening_enabled: true,
+      subscribed_at: 1.hour.ago,
+      webhook_url: "https://example.test/webhooks/external_leads/token"
+    )
+    allow(ExternalLeadMigration::SetupService).to receive(:call)
+    allow(ExternalLeadMigration::WebhookSubscriptionService).to receive(:unsubscribe!).and_raise("HTTP 422")
+
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: {
+        enabled: "1",
+        webhook_listening_enabled: "0"
+      }
+    }
+
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(ExternalLeadMigration::SetupService).not_to have_received(:call)
+    expect(integration.reload).to be_connected
+    expect(integration.webhook_listening_enabled?).to be(false)
+    expect(integration.subscribed_at).to be_nil
+    expect(integration.webhook_url).to be_nil
+    expect(integration.last_error_message).to eq("HTTP 422")
+  end
+
+  it "inativa integração localmente sem validar a conta externa" do
+    integration = create(
+      :external_lead_integration,
+      tenant: admin.tenant,
+      enabled: true,
+      status: "connected",
+      webhook_listening_enabled: true,
+      subscribed_at: 1.hour.ago,
+      webhook_url: "https://example.test/webhooks/external_leads/token"
+    )
+    allow(ExternalLeadMigration::SetupService).to receive(:call)
+    allow(ExternalLeadMigration::WebhookSubscriptionService).to receive(:unsubscribe!).and_raise("HTTP 422")
+
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: {
+        enabled: "0",
+        webhook_listening_enabled: "0"
+      }
+    }
+
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(ExternalLeadMigration::SetupService).not_to have_received(:call)
+    expect(integration.reload.enabled?).to be(false)
+    expect(integration.status).to eq("inactive")
+    expect(integration.webhook_listening_enabled?).to be(false)
+    expect(integration.subscribed_at).to be_nil
+    expect(integration.webhook_url).to be_nil
+    expect(integration.last_error_message).to eq("HTTP 422")
   end
 end
