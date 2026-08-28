@@ -424,6 +424,53 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(panel.at_css("input[name='channel_filter[]'][value='whatsapp']")).to be_present
       expect(panel.at_css("input[name='price_min']")).to be_present
       expect(panel.at_css("input[name='closed_start_date']")).to be_present
+      expect(document.at_css(".lead-pwa-clear-filter")).to be_nil
+    end
+
+    it "mantem contadores originais nas abas PWA e mostra filtro aplicado apenas na aba ativa" do
+      travel_to Time.zone.local(2026, 8, 15, 10, 0, 0) do
+        raquel = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Raquel Futura", phone: "11999999991", status: "Em Atendimento")
+        outro = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Outro Futuro", phone: "11999999992", status: "Em Atendimento")
+        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead sem busca", phone: "11999999993", status: "Novo")
+
+        [raquel, outro].each_with_index do |lead, index|
+          create(
+            :task,
+            tenant: admin.tenant,
+            lead: lead,
+            admin_user: admin,
+            title: "Retornar futuro #{index}",
+            due_at: Time.zone.local(2026, 8, 20 + index, 9, 0, 0),
+            status: "pendente",
+            kind: "follow_up"
+          )
+        end
+
+        get admin_leads_path(view: "list", mobile_tab: "future", q: "raquel")
+
+        expect(response).to have_http_status(:ok)
+        document = Nokogiri::HTML(response.body)
+        tabs_by_label = document.css(".lead-pwa-tab").index_by { |tab| tab.at_css(".lead-pwa-tab__label")&.text&.strip }
+
+        expect(tabs_by_label.fetch("Futuras").text).to include("1/2")
+        expect(tabs_by_label.fetch("A fazer").text).to include("1")
+        expect(tabs_by_label.fetch("Todos").text).to include("3")
+        expect(document.at_css(".lead-pwa-clear-filter")).to be_present
+        expect(document.at_css(".lead-pwa-clear-filter")["href"]).to eq(admin_leads_path(view: "list", mobile_tab: "future"))
+      end
+    end
+
+    it "exibe a fila do corretor no rodape PWA com a posicao atual" do
+      rule = create(:distribution_rule, tenant: admin.tenant, active: true)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: admin, position: 2)
+
+      get admin_leads_path(view: "list")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      bottom_nav = document.at_css(".ax-pwa-bottom-nav")
+      expect(bottom_nav).to be_present
+      expect(bottom_nav.text).to include("Fila", "2º")
     end
 
     it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do

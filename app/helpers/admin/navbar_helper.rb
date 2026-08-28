@@ -210,6 +210,19 @@ module Admin::NavbarHelper
     0
   end
 
+  def pwa_current_queue_position
+    return @pwa_queue_position if defined?(@pwa_queue_position)
+    return nil unless current_admin_user && current_tenant
+
+    DistributionRuleAgent
+      .joins(:distribution_rule)
+      .where(admin_user_id: current_admin_user.id, distribution_rules: { tenant_id: current_tenant.id, active: true })
+      .order(Arel.sql("distribution_rule_agents.position ASC, distribution_rule_agents.id ASC"))
+      .pick("distribution_rule_agents.position")
+  rescue StandardError
+    nil
+  end
+
   private
 
   def admin_dashboard_contextbar_actions
