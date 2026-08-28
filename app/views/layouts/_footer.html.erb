@@ -1,8 +1,12 @@
 <footer class="bg-gradient-to-br from-blue-three to-blue-one text-white">
   <% public_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant) %>
   <% public_contact_setting = @contact_setting || ContactSetting.instance(tenant: public_tenant) %>
-  <% footer_whatsapp_value = @footer_setting.whatsapp.presence || public_contact_setting.whatsapp_primary.presence %>
-  <% footer_email_value = @footer_setting.email.presence || public_contact_setting.email_primary.presence %>
+  <% footer_setting = @footer_setting || FooterSetting.instance(tenant: public_tenant) %>
+  <% footer_links = Array(@footer_links).presence || footer_setting.footer_links.to_a.presence || Footer::QuickLinksService.call %>
+  <% footer_stores = Array(@footer_stores).presence || public_tenant.stores.active.order(:id).to_a.presence || footer_setting.footer_stores.to_a %>
+  <% footer_social_links = Array(@footer_social_links).presence || footer_setting.footer_social_links.where(enabled: true).to_a.presence || public_contact_setting.footer_social_links %>
+  <% footer_whatsapp_value = footer_setting.whatsapp.presence || public_contact_setting.whatsapp_primary.presence %>
+  <% footer_email_value = footer_setting.email.presence || public_contact_setting.email_primary.presence %>
   <% footer_phone_value = public_contact_setting.phone.presence %>
   <% footer_secondary_whatsapp_value = public_contact_setting.whatsapp_secondary.presence %>
   <% footer_whatsapp = Phones::Normalizer.call(footer_whatsapp_value) %>
@@ -28,16 +32,16 @@
           </div>
         <% end %>
         <p class="text-white/80 mb-4">
-          <%= @footer_setting.about_text %>
+          <%= footer_setting.about_text %>
         </p>
       </div>
       
       <!-- Quick Links -->
       <div>
-        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.links_title %></h3>
+        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= footer_setting.links_title %></h3>
         <ul class="space-y-2">
-          <% if @footer_links.any? %>
-            <% @footer_links.each do |link| %>
+          <% if footer_links.any? %>
+            <% footer_links.each do |link| %>
               <li>
                 <%= link_to link.label,
                             link.url,
@@ -62,9 +66,9 @@
       
       <!-- Store Information -->
       <div>
-        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.stores_title %></h3>
-        <% if @footer_stores.any? %>
-          <% @footer_stores.each do |store| %>
+        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= footer_setting.stores_title %></h3>
+        <% if footer_stores.any? %>
+          <% footer_stores.each do |store| %>
             <div class="mb-6 last:mb-0">
               <h4 class="font-bold text-white mb-1"><%= store.name %></h4>
               <ul class="space-y-1 text-sm text-white/80">
@@ -97,7 +101,7 @@
       
       <!-- Contact & Social -->
       <div>
-        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.contact_title %></h3>
+        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= footer_setting.contact_title %></h3>
         <ul class="space-y-3 text-white/80 mb-6 font-medium">
           <% if footer_whatsapp_value.present? %>
             <li class="flex items-center">
@@ -146,10 +150,10 @@
         </ul>
         
         <!-- Social Media -->
-        <% if @footer_social_links.any? %>
-          <h4 class="font-bold text-white mb-3"><%= @footer_setting.social_title %></h4>
+        <% if footer_social_links.any? %>
+          <h4 class="font-bold text-white mb-3"><%= footer_setting.social_title %></h4>
           <div class="flex flex-wrap gap-2">
-            <% @footer_social_links.each do |social| %>
+            <% footer_social_links.each do |social| %>
               <a href="<%= social.url %>" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-white/10 hover:bg-golden-one hover:text-blue-three flex items-center justify-center transition-all" title="<%= social.platform %>" aria-label="Acessar <%= social.platform %> da #{public_identity.name}">
                 <i class="bi <%= social.icon_class %>" aria-hidden="true"></i>
               </a>
@@ -164,7 +168,7 @@
     <div class="border-t border-white/20 pt-6 mt-8">
       <div class="flex flex-col md:flex-row justify-between items-center gap-4">
         <p class="text-white/70 text-sm">
-          <%= @footer_setting.copyright_text.presence || "© #{Date.current.year} #{public_identity.name}. Todos os direitos reservados." %>
+          <%= footer_setting.copyright_text.presence || "© #{Date.current.year} #{public_identity.name}. Todos os direitos reservados." %>
         </p>
         <div class="flex gap-4 text-sm font-medium">
           <%= link_to "Política de Privacidade", privacy_policy_path, class: "text-white/70 hover:text-white transition-colors" %>
