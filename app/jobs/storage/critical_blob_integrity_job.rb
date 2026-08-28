@@ -16,13 +16,15 @@ module Storage
         blob = attachment.blob
         next if blob.blank?
 
-        checked += 1
-        if blob_exists?(blob)
-          next
-        end
+        with_tenant_context(attachment, blob) do
+          checked += 1
+          if blob_exists?(blob)
+            next
+          end
 
-        missing += 1
-        record_missing_blob(attachment, blob)
+          missing += 1
+          record_missing_blob(attachment, blob)
+        end
       rescue StandardError => error
         failed += 1
         record_check_failure(attachment, error)
@@ -36,6 +38,21 @@ module Storage
 
     def blob_exists?(blob)
       Storage::ActiveStorageRegistry.fetch!(blob.service_name).exist?(blob.key)
+    end
+
+    def with_tenant_context(attachment, blob, &block)
+      tenant = tenant_for(attachment, blob)
+      return yield if tenant.blank?
+
+      Current.set(tenant: tenant, &block)
+    end
+
+    def tenant_for(attachment, blob)
+      record = attachment&.record
+      return record.tenant if record.respond_to?(:tenant) && record.tenant.present?
+
+      tenant_id = tenant_id_for(record, blob)
+      Tenant.find_by(id: tenant_id) if tenant_id.present?
     end
 
     def record_missing_blob(attachment, blob)
