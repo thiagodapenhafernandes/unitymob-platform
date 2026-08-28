@@ -163,9 +163,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def distribution_queue
-    @queue_rules = current_tenant
-      .distribution_rules
-      .active
+    @queue_rules = operational_distribution_rules
       .joins(:distribution_rule_agents)
       .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
       .order(:name)
@@ -177,7 +175,7 @@ class Admin::LeadsController < Admin::BaseController
       .order(:position, :id)
       .group_by(&:distribution_rule_id)
     @queue_positions_by_rule_id = @queue_agents_by_rule_id.transform_values do |agents|
-      agents.index { |agent| agent.admin_user_id == current_admin_user.id }.then { |index| index ? index + 1 : nil }
+      agents.find { |agent| agent.admin_user_id == current_admin_user.id }&.position
     end
     @best_queue_position = @queue_positions_by_rule_id.values.compact.min
     @return_to_path = admin_leads_path(view: current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "list")
@@ -1983,9 +1981,22 @@ class Admin::LeadsController < Admin::BaseController
 
     DistributionRuleAgent
       .joins(:distribution_rule)
-      .where(admin_user_id: current_admin_user.id, distribution_rules: { tenant_id: current_tenant.id, active: true })
+      .merge(operational_distribution_rules)
+      .where(admin_user_id: current_admin_user.id)
       .order(Arel.sql("distribution_rule_agents.position ASC, distribution_rule_agents.id ASC"))
       .pick("distribution_rule_agents.position")
+  end
+
+  def operational_distribution_rules
+    scope = current_tenant.distribution_rules.active
+    return scope unless defined?(ExternalLeadIntegration)
+
+    scope
+      .where.not(name: ExternalLeadIntegration::SUPPORT_RULE_NAME)
+      .where(
+        "NOT (COALESCE(distribution_rules.webhook_tags, '[]'::jsonb) ? :internal_webhook_tag)",
+        internal_webhook_tag: ExternalLeadIntegration::WEBHOOK_TAG
+      )
   end
 
   def lead_status_options_for_selected_context

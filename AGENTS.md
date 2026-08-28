@@ -28,3 +28,9 @@
 - Todo padrão visual ou comportamental com potencial de reutilização deve ser criado ou ajustado na camada compartilhada (`ax-*`, `app/views/admin/shared/ui`, `Admin::UiHelper`, componentes CSS e controllers `ax_*`) já na primeira ocorrência. Não aguarde uma segunda tela e não deixe cópia local como etapa intermediária.
 - CSS ou markup específico de página só é aceitável para composição ou geometria comprovadamente exclusiva, deve estar namespaced e não pode duplicar estado, aparência ou comportamento de primitive compartilhada.
 - Se um segundo consumidor surgir, promova o padrão para a camada compartilhada na mesma mudança e remova as versões locais.
+
+## Navegação mobile em telas específicas
+
+- No mobile/PWA/app nativo, sempre que o usuário entrar em uma tela específica que não seja uma listagem principal, use o header compacto de detalhe: ação de voltar à esquerda, título/contexto centralizado no meio e uma ação, estado ou indicador relevante à direita.
+- Esse header deve respeitar `safe-area` do iPhone e substituir visualmente o cabeçalho administrativo padrão no mobile, evitando sobreposição com status bar, navbar, breadcrumb ou contextbar.
+- Listagens principais podem manter seus headers próprios de busca/filtro/tabs; telas de detalhe, formulário, acompanhamento, fila, agenda, proposta ou qualquer drill-down operacional devem seguir o padrão compacto.
