@@ -20,17 +20,24 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
   def update
     attrs = external_lead_params.to_h
     token = attrs.delete("access_token").to_s.strip
+    enabled_requested = extract_enabled_request(attrs)
     webhook_listening_requested = extract_webhook_listening_request!(attrs)
 
     @integration.assign_attributes(attrs)
     @integration.access_token = token if token.present?
     @integration.connected_by_admin_user = current_admin_user if token.present?
-    raise "Token da API externa obrigatório para habilitar a escuta de novos leads." if webhook_listening_requested && @integration.access_token.blank?
+    raise "Token da API externa obrigatório para habilitar a escuta de novos leads." if enabled_requested && webhook_listening_requested && @integration.access_token.blank?
+
+    unless enabled_requested
+      notice = deactivate_integration_locally!
+      redirect_to admin_external_lead_integration_path, notice: notice
+      return
+    end
 
     @integration.save!
 
     if @integration.access_token.present?
-      ExternalLeadMigration::SetupService.call(integration: @integration)
+      ExternalLeadMigration::SetupService.call(integration: @integration) if should_validate_external_connection?(token:, webhook_listening_requested:)
       webhook_notice = sync_webhook_listening!(webhook_listening_requested)
       redirect_to admin_external_lead_integration_path, notice: ["Integração de leads salva e validada.", webhook_notice].compact.join(" ")
     else
@@ -104,6 +111,12 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
     params.require(:external_lead_integration).permit(:enabled, :access_token, :webhook_listening_enabled)
   end
 
+  def extract_enabled_request(attrs)
+    return @integration.enabled? unless attrs.key?("enabled")
+
+    ActiveModel::Type::Boolean.new.cast(attrs["enabled"])
+  end
+
   def extract_webhook_listening_request!(attrs)
     return @integration.webhook_listening_enabled? unless attrs.key?("webhook_listening_enabled")
 
@@ -121,8 +134,56 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       ExternalLeadMigration::WebhookSubscriptionService.subscribe!(integration: @integration, hook_url:)
       "Escuta de novos leads habilitada."
     elsif @integration.subscribed_at.present? || @integration.webhook_url.present? || @integration.webhook_listening_enabled?
+      unsubscribe_webhook_best_effort
+    end
+  end
+
+  def should_validate_external_connection?(token:, webhook_listening_requested:)
+    token.present? || webhook_listening_requested
+  end
+
+  def unsubscribe_webhook_best_effort
+    @integration.update!(
+      webhook_listening_enabled: false,
+      webhook_url: nil,
+      subscribed_at: nil,
+      unsubscribed_at: Time.current,
+      sync_message: "Escuta de novos leads desativada localmente.",
+      last_error_message: nil
+    )
+
+    begin
       ExternalLeadMigration::WebhookSubscriptionService.unsubscribe!(integration: @integration, deactivate: false)
       "Escuta de novos leads desativada."
+    rescue => e
+      @integration.update(last_error_message: e.message)
+      "Escuta de novos leads desativada localmente. Houve falha ao cancelar o webhook externo: #{e.message}"
+    end
+  end
+
+  def deactivate_integration_locally!
+    had_external_subscription = @integration.subscribed_at.present? || @integration.webhook_url.present? || @integration.webhook_listening_enabled?
+    @integration.assign_attributes(
+      enabled: false,
+      status: "inactive",
+      webhook_listening_enabled: false,
+      webhook_url: nil,
+      subscribed_at: nil,
+      unsubscribed_at: Time.current,
+      deactivated_at: Time.current,
+      sync_message: "Integração externa inativada localmente.",
+      last_error_message: nil
+    )
+    @integration.save!
+
+    return "Integração de leads inativada." unless had_external_subscription && @integration.access_token.present?
+
+    begin
+      ExternalLeadMigration::WebhookSubscriptionService.unsubscribe!(integration: @integration, deactivate: false)
+      "Integração de leads inativada e escuta externa cancelada."
+    rescue => e
+      @integration.update(last_error_message: e.message)
+      "Integração de leads inativada localmente. Houve falha ao cancelar o webhook externo: #{e.message}"
     end
   end
 
