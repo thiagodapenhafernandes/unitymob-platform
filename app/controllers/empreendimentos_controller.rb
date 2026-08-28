@@ -1,5 +1,9 @@
 class EmpreendimentosController < ApplicationController
+  MAX_PUBLIC_DEVELOPMENT_PAGE = ENV.fetch("PUBLIC_DEVELOPMENT_MAX_PAGE", 50).to_i
+
   def index
+    return if reject_invalid_public_development_page!
+
     @page_name = 'empreendimentos'
     @strategic_landing = Seo::StrategicLanding.development(params[:seo_slug])
     
@@ -14,7 +18,7 @@ class EmpreendimentosController < ApplicationController
     end
 
     # Pagination
-    @empreendimentos = @empreendimentos.paginate(page: params[:page], per_page: 20)
+    @empreendimentos = @empreendimentos.paginate(page: requested_public_development_page, per_page: 20)
     PublicSite::CardPhotoPreloader.new(@empreendimentos.to_a, limit: 1).call
 
     # Calculate unit counts for the current page to avoid N+1 on the whole table
@@ -50,6 +54,28 @@ class EmpreendimentosController < ApplicationController
   end
 
   private
+
+  def requested_public_development_page
+    raw_page = params[:page].presence
+    return 1 if raw_page.blank?
+
+    raw_page = raw_page.to_s
+    return nil unless raw_page.match?(/\A\d+\z/)
+
+    raw_page.to_i
+  end
+
+  def reject_invalid_public_development_page!
+    page = requested_public_development_page
+    return false if page.present? && page.between?(1, MAX_PUBLIC_DEVELOPMENT_PAGE)
+
+    Rails.logger.info(
+      "[PublicDevelopmentPageGuard] rejected invalid page=#{params[:page].inspect} " \
+      "ip=#{request.remote_ip} path=#{request.fullpath}"
+    )
+    render plain: "Not Found", status: :not_found
+    true
+  end
 
   def apply_strategic_landing_scope(scope)
     return scope if @strategic_landing.blank?

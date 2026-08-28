@@ -1,4 +1,5 @@
-<% tracking_setting ||= TrackingIntegrationSetting.current %>
+<% tracking_setting ||= (TrackingIntegrationSetting.current if Current.tenant.present?) %>
+<% if tracking_setting.present? %>
 <% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
 <% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
 <% google_ads_conversion_id = tracking_setting.normalized_google_ads_conversion_id %>
@@ -148,4 +149,5 @@
       w.addEventListener("unitymob:lgpd-consent-accepted", loadTracking);
     })(window, document);
   </script>
+<% end %>
 <% end %>

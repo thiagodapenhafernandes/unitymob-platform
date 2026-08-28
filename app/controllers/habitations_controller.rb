@@ -547,7 +547,13 @@ class HabitationsController < ApplicationController
   def apply_price_range_params(permitted)
     return if permitted[:price_range].blank?
 
-    min_price, max_price = permitted[:price_range].to_s.split("-", 2)
+    price_range = permitted[:price_range].to_s.strip
+    unless price_range.match?(/\A\d{1,12}(?:-\d{1,12})?\z/)
+      permitted[:price_range] = nil
+      return
+    end
+
+    min_price, max_price = price_range.split("-", 2)
     permitted[:min_price] = min_price if min_price.present? && min_price.to_i.positive?
     permitted[:max_price] = max_price if max_price.present? && max_price.to_i.positive?
     permitted[:target_price] = nil
@@ -578,6 +584,10 @@ class HabitationsController < ApplicationController
       end
 
       [stripped]
+    when ActionController::Parameters
+      normalize_filter_values(value.to_unsafe_h)
+    when Hash
+      value.sort_by { |key, _| key.to_s }.flat_map { |_, item| normalize_filter_values(item) }.reject(&:blank?).uniq
     else
       Array(value).reject(&:blank?)
     end
@@ -869,11 +879,11 @@ class HabitationsController < ApplicationController
   end
 
   def selected_categories
-    Array(params[:category]).reject(&:blank?)
+    normalize_filter_values(params[:category])
   end
 
   def selected_locations
-    Array(params[:city]).reject(&:blank?).map { |value| value.to_s.force_encoding('UTF-8').scrub }
+    normalize_filter_values(params[:city]).map { |value| value.to_s.force_encoding('UTF-8').scrub }
   end
 
   def category_label(default: "Imóveis")

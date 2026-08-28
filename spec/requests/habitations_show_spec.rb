@@ -1341,6 +1341,31 @@ RSpec.describe "Habitation details", type: :request do
       expect(codes).not_to include("9302")
     end
 
+    it "accepts indexed category params from crawlers without breaking seo metadata" do
+      matching = create(:habitation, codigo: "9303", categoria: "Casa em Condomínio", valor_venda_cents: 1_500_000_00)
+
+      get habitations_path(transaction_type: "venda", category: { "0" => "Casa em Condomínio" }, format: :json)
+
+      expect(response).to have_http_status(:ok)
+      codes = JSON.parse(response.body).map { |item| item.fetch("codigo") }
+      expect(codes).to include(matching.codigo)
+    end
+
+    it "ignores malformed price ranges before building the public query" do
+      matching = create(:habitation, codigo: "9304", categoria: "Diferenciado", valor_venda_cents: 2_500_000_00)
+
+      get habitations_path(
+        category: "Diferenciado",
+        city: "Balneário Camboriú",
+        price_range: "2000000-3000000%' AND EXTRACTVALUE(4130,CONCAT(0x7e,1,0x7e))-- -",
+        format: :json
+      )
+
+      expect(response).to have_http_status(:ok)
+      codes = JSON.parse(response.body).map { |item| item.fetch("codigo") }
+      expect(codes).to include(matching.codigo)
+    end
+
     it "rejects invalid public listing pages before rendering the listing" do
       get habitations_path(page: "crawler", format: :json)
 

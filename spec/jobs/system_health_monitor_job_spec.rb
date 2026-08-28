@@ -48,4 +48,43 @@ RSpec.describe SystemHealthMonitorJob, type: :job do
 
     expect { described_class.perform_now }.to have_enqueued_mail(SystemHealthAlertMailer, :degraded)
   end
+
+  it "inclui contexto operacional e erros reais no e-mail de saúde" do
+    error = ErrorEvent.create!(
+      fingerprint: SecureRandom.hex(16),
+      exception_class: "RuntimeError",
+      message: "Falha ao carregar catálogo",
+      backtrace: "app/controllers/admin/habitations_controller.rb:10",
+      source: "request",
+      severity: "error",
+      tenant_id: tenant.id,
+      context: { request_id: "req-123", method: "GET", path: "/admin/habitations" },
+      occurrences_count: 4,
+      first_seen_at: 10.minutes.ago,
+      last_seen_at: 2.minutes.ago
+    )
+    allow(System::HealthAssessment).to receive(:call).and_return(
+      status: "critical", findings: [{ code: "application_errors", severity: "critical", message: "557 erros funcionais abertos" }]
+    )
+    allow(Rails.cache).to receive(:write).and_return(true)
+    allow(Notifications::PushDispatcher).to receive(:deliver)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("SYSTEM_HEALTH_ALERT_EMAIL").and_return("operacao@example.com")
+    allow(ENV).to receive(:[]).with("APP_HOST").and_return("https://saluteimoveis.com.br")
+
+    expect do
+      described_class.perform_now
+    end.to have_enqueued_mail(SystemHealthAlertMailer, :degraded).with(
+      params: hash_including(
+        recipients: ["operacao@example.com"],
+        diagnostic: hash_including(
+          environment: "test",
+          app_host: "https://saluteimoveis.com.br",
+          platform_errors: hash_including(application_open: 0),
+          top_error_events: include(hash_including(id: error.id, exception_class: "RuntimeError", request_id: "req-123"))
+        )
+      ),
+      args: []
+    )
+  end
 end

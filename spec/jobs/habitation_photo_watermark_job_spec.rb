@@ -96,4 +96,46 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
     expect(attachment.reload.blob_id).to eq(original_blob.id)
     expect(Storage::PublicPropertyPhoto).not_to have_received(:publish_blob!)
   end
+
+  it "descarta sem falhar quando o arquivo original não existe mais no storage" do
+    suffix = SecureRandom.hex(3)
+    tenant = Tenant.create!(name: "Tenant watermark missing #{suffix}", slug: "tenant-watermark-missing-#{suffix}")
+    habitation = create(:habitation, tenant: tenant)
+    setting = PropertySetting.create!(tenant: tenant, watermark_position: "center")
+    setting.watermark_image.attach(
+      io: StringIO.new("watermark"),
+      filename: "watermark.png",
+      content_type: "image/png"
+    )
+    habitation.photos.attach(
+      io: StringIO.new("original-photo"),
+      filename: "photo.jpg",
+      content_type: "image/jpeg"
+    )
+    attachment = habitation.photos.attachments.last
+    original_blob = attachment.blob
+
+    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+    allow_any_instance_of(ActiveStorage::Blob).to receive(:open).and_raise(ActiveStorage::FileNotFoundError)
+    allow(Storage::BlobAuditRecorder).to receive(:record!)
+    allow(Images::WatermarkProcessor).to receive(:call)
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!)
+
+    expect do
+      described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
+    end.not_to raise_error
+
+    expect(Storage::BlobAuditRecorder).to have_received(:record!).with(
+      blob: original_blob,
+      attachment: attachment,
+      action: "watermark_source_missing",
+      source: "habitation_photo_watermark_job",
+      metadata: {
+        error: "ActiveStorage::FileNotFoundError"
+      }
+    )
+    expect(Images::WatermarkProcessor).not_to have_received(:call)
+    expect(Storage::PublicPropertyPhoto).not_to have_received(:publish_blob!)
+    expect(attachment.reload.blob_id).to eq(original_blob.id)
+  end
 end

@@ -144,6 +144,35 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).not_to include("wa-inbox-panel--list")
     end
 
+    it "abre conversa pelo contexto de lead acessivel mesmo fora da fila do inbox" do
+      profile = admin.tenant.profiles.create!(
+        name: "Inbox proprio com leads gerais",
+        axis: "vertical",
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile: profile)
+      other_broker = create(:admin_user, tenant: admin.tenant)
+      lead = create(:lead, tenant: admin.tenant, admin_user: other_broker, phone: "5547999990066")
+      conv = WhatsappConversation.create!(
+        tenant: admin.tenant,
+        lead: lead,
+        assigned_admin_user: other_broker,
+        contact_phone: lead.phone,
+        contact_name: "Cliente Lead"
+      )
+      conv.messages.create!(direction: "inbound", body: "Mensagem via lead", status: "delivered")
+
+      sign_in user
+      get admin_whatsapp_conversation_path(conv, lead_id: lead.id, workspace: "focus"), headers: { "Turbo-Frame" => "wa-thread" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('turbo-frame id="wa-thread"')
+      expect(response.body).to include("Mensagem via lead")
+    end
+
     it "renderiza composer compacto no workspace dedicado" do
       conv = WhatsappConversation.create!(contact_phone: "5547999990077")
       conv.messages.create!(direction: "outbound", body: "Mensagem compacta", status: "sent")

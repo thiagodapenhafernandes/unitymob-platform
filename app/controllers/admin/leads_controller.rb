@@ -243,6 +243,7 @@ class Admin::LeadsController < Admin::BaseController
 
     # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
     @timeline = @lead.activities.recent.limit(60)
+    @note_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
     @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
@@ -344,8 +345,16 @@ class Admin::LeadsController < Admin::BaseController
   def log_contact
     kind = params[:contact_kind].presence || "note"
     body = params[:body].to_s.strip
-    LeadActivity.log!(lead: @lead, kind: "note", metadata: { contact_kind: kind, body: body, by: current_admin_user&.name }.compact)
-    redirect_to admin_lead_path(@lead), notice: "Contato registrado."
+    if body.blank?
+      return redirect_back fallback_location: admin_lead_path(@lead), alert: "Escreva a anotação antes de salvar."
+    end
+
+    LeadActivity.log!(
+      lead: @lead,
+      kind: "note",
+      metadata: { contact_kind: kind, body: body, by: current_admin_user&.name, admin_user_id: current_admin_user&.id }.compact
+    )
+    redirect_back fallback_location: admin_lead_path(@lead), notice: "Anotação registrada."
   end
 
   def update
@@ -2063,6 +2072,7 @@ class Admin::LeadsController < Admin::BaseController
     @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
     @timeline = @lead.activities.recent.limit(60)
+    @note_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
     @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||

@@ -22,8 +22,15 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Usado no check-in do corretor (field/geolocation_controller.js): só
+	     enquanto o app está em uso, pra confirmar a loja mais próxima —
+	     nenhum rastreamento em segundo plano. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O Unitymob usa sua localização para confirmar seu check-in na loja mais próxima enquanto você usa o app.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

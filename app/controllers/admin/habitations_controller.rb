@@ -163,6 +163,11 @@ class Admin::HabitationsController < Admin::BaseController
     @default_export_fields = %w[codigo categoria logradouro numero complemento dormitorios_qtd valor_venda valor_locacao]
     @recent_exports = current_admin_user.habitation_exports.recent.limit(5)
     record_catalog_user_activity
+
+    respond_to do |format|
+      format.html
+      format.json { render json: { error: "O catálogo administrativo não possui resposta JSON para esta rota." }, status: :not_acceptable }
+    end
   end
 
   def filter_inspector

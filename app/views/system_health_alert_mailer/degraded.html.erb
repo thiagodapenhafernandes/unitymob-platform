@@ -1,0 +1,88 @@
+<h2>[UNITYMOB] Saúde da plataforma: <%= @status %></h2>
+
+<h3>Origem do alerta</h3>
+<p>
+  <strong>Ambiente:</strong> <%= @diagnostic[:environment].presence || Rails.env %><br>
+  <strong>Domínio/app:</strong> <%= @app_host.presence || "não informado" %><br>
+  <strong>Servidor:</strong> <%= @diagnostic[:server_hostname].presence || "não informado" %><br>
+  <strong>Rails root:</strong> <%= @diagnostic[:rails_root].presence || "não informado" %><br>
+  <strong>Coleta:</strong> <%= @diagnostic[:collected_at].presence || "não informado" %><br>
+  <strong>Release:</strong> <%= @release[:identifier].presence || "não informado" %><%= " (rev #{@release[:revision]})" if @release[:revision].present? %><br>
+  <strong>Schema:</strong> <%= @release[:schema_version].presence || "não informado" %><br>
+  <strong>Migrations pendentes:</strong> <%= @release[:migrations_pending] ? "sim" : "não" %>
+</p>
+
+<h3>Motivos do alerta</h3>
+<ul>
+  <% @findings.each do |finding| %>
+    <li>
+      <strong>[<%= finding[:severity] || finding["severity"] %>]</strong>
+      <%= finding[:message] || finding["message"] %>
+      <small>(código: <%= finding[:code] || finding["code"] || "sem código" %>)</small>
+    </li>
+  <% end %>
+</ul>
+
+<h3>Snapshot técnico</h3>
+<table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse;border-color:#d1d5db;font-size:13px;">
+  <tbody>
+    <tr><th align="left">HTTP</th><td><%= @runtime[:http_status].presence || "sem status" %><%= " em #{@runtime[:http_ms]} ms" if @runtime[:http_ms].present? %></td></tr>
+    <tr><th align="left">Puma</th><td><%= @runtime[:puma].presence || "sem estado" %><%= " | memória #{@runtime[:puma_memory_mb]} MB" if @runtime[:puma_memory_mb].present? %></td></tr>
+    <tr><th align="left">Solid Queue</th><td><%= @runtime[:solid_queue].presence || "sem estado" %></td></tr>
+    <tr><th align="left">Nginx</th><td><%= @runtime[:nginx].presence || "sem estado" %></td></tr>
+    <tr><th align="left">Banco</th><td><%= @runtime[:database].presence || "sem estado" %></td></tr>
+    <tr><th align="left">Cache</th><td><%= @runtime[:cache].presence || "sem estado" %></td></tr>
+    <tr><th align="left">Memória disponível</th><td><%= @runtime[:memory_available_percent].presence || "sem amostra" %>%</td></tr>
+    <tr><th align="left">Disco</th><td><%= @runtime[:disk_percent].presence || "sem amostra" %>%</td></tr>
+    <tr><th align="left">Swap</th><td><%= @runtime[:swap_used_mb].presence || "sem amostra" %> MB</td></tr>
+    <tr><th align="left">Load</th><td><%= [@runtime[:load_1], @runtime[:load_5]].compact_blank.join(" / ").presence || "sem amostra" %></td></tr>
+  </tbody>
+</table>
+
+<h3>Resumo dos erros rastreados</h3>
+<p>
+  <strong>Erros funcionais abertos:</strong> <%= @platform_errors[:application_open].to_i %><br>
+  <strong>Erros sem tenant:</strong> <%= @platform_errors[:unassigned_open].to_i %><br>
+  <strong>Tenants afetados:</strong> <%= @platform_errors[:affected_tenants].to_i %>
+</p>
+
+<h3>Erros reais recentes</h3>
+<% if @top_error_events.any? %>
+  <% @top_error_events.each do |event| %>
+    <p style="margin-bottom:14px;">
+      <strong>#<%= event[:id] || event["id"] %> <%= event[:exception_class] || event["exception_class"] %></strong><br>
+      <%= event[:message] || event["message"] %><br>
+      <span style="color:#4b5563;font-size:13px;">
+        Origem: <%= event[:source] || event["source"] || "—" %> ·
+        Severidade: <%= event[:severity] || event["severity"] || "—" %> ·
+        Tenant: <%= event[:tenant_id] || event["tenant_id"] || "—" %> ·
+        Ocorrências: <%= event[:occurrences_count] || event["occurrences_count"] || 0 %><br>
+        Última vez: <%= event[:last_seen_at] || event["last_seen_at"] || "—" %> ·
+        Request ID: <%= event[:request_id] || event["request_id"] || "—" %><br>
+        Rota/job: <%= [event[:method] || event["method"], event[:path] || event["path"]].compact_blank.join(" ").presence || [event[:controller] || event["controller"], event[:action] || event["action"]].compact_blank.join("#").presence || "—" %><br>
+        Detalhes: <%= event[:details_url] || event["details_url"] %>
+      </span>
+    </p>
+  <% end %>
+<% else %>
+  <p>Nenhum ErrorEvent de aplicação aberto foi encontrado no momento da coleta. A causa pode estar nos checks de infraestrutura acima ou em integrações degradadas.</p>
+<% end %>
+
+<h3>Tenants com atenção</h3>
+<% if @degraded_tenants.any? %>
+  <ul>
+    <% @degraded_tenants.each do |tenant| %>
+      <li>
+        <%= tenant[:name] || tenant["name"] || "Tenant sem nome" %>
+        (#<%= tenant[:id] || tenant["id"] %>):
+        status=<%= tenant[:status] || tenant["status"] %>,
+        erros=<%= tenant[:open_errors] || tenant["open_errors"] || 0 %>,
+        integrações=<%= tenant[:integration_failures] || tenant["integration_failures"] || 0 %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p>Nenhum tenant específico com atenção no snapshot.</p>
+<% end %>
+
+<p><strong>Painel:</strong> <%= @health_url %></p>

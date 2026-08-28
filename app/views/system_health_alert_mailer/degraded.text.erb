@@ -1,7 +1,57 @@
-Saúde da plataforma: <%= @status %>
+[UNITYMOB] Saúde da plataforma: <%= @status %>
 
+Origem do alerta
+- Ambiente: <%= @diagnostic[:environment].presence || Rails.env %>
+- Domínio/app: <%= @app_host.presence || "não informado" %>
+- Servidor: <%= @diagnostic[:server_hostname].presence || "não informado" %>
+- Rails root: <%= @diagnostic[:rails_root].presence || "não informado" %>
+- Coleta: <%= @diagnostic[:collected_at].presence || "não informado" %>
+- Release: <%= @release[:identifier].presence || "não informado" %><%= " (rev #{@release[:revision]})" if @release[:revision].present? %>
+- Schema: <%= @release[:schema_version].presence || "não informado" %>
+- Migrations pendentes: <%= @release[:migrations_pending] ? "sim" : "não" %>
+
+Motivos do alerta
 <% @findings.each do |finding| %>
-- [<%= finding[:severity] || finding["severity"] %>] <%= finding[:message] || finding["message"] %>
+- [<%= finding[:severity] || finding["severity"] %>] <%= finding[:message] || finding["message"] %> (código: <%= finding[:code] || finding["code"] || "sem código" %>)
 <% end %>
 
-Consulte o painel do Admin do Sistema em /admin/system/health.
+Snapshot técnico
+- HTTP: <%= @runtime[:http_status].presence || "sem status" %><%= " em #{@runtime[:http_ms]} ms" if @runtime[:http_ms].present? %>
+- Puma: <%= @runtime[:puma].presence || "sem estado" %><%= " | memória #{@runtime[:puma_memory_mb]} MB" if @runtime[:puma_memory_mb].present? %>
+- Solid Queue: <%= @runtime[:solid_queue].presence || "sem estado" %>
+- Nginx: <%= @runtime[:nginx].presence || "sem estado" %>
+- Banco: <%= @runtime[:database].presence || "sem estado" %>
+- Cache: <%= @runtime[:cache].presence || "sem estado" %>
+- Memória disponível: <%= @runtime[:memory_available_percent].presence || "sem amostra" %>%
+- Disco: <%= @runtime[:disk_percent].presence || "sem amostra" %>%
+- Swap: <%= @runtime[:swap_used_mb].presence || "sem amostra" %> MB
+- Load: <%= [@runtime[:load_1], @runtime[:load_5]].compact_blank.join(" / ").presence || "sem amostra" %>
+
+Resumo dos erros rastreados
+- Erros funcionais abertos: <%= @platform_errors[:application_open].to_i %>
+- Erros sem tenant: <%= @platform_errors[:unassigned_open].to_i %>
+- Tenants afetados: <%= @platform_errors[:affected_tenants].to_i %>
+
+Erros reais recentes
+<% if @top_error_events.any? %>
+<% @top_error_events.each do |event| %>
+- #<%= event[:id] || event["id"] %> <%= event[:exception_class] || event["exception_class"] %>: <%= event[:message] || event["message"] %>
+  Origem: <%= event[:source] || event["source"] || "—" %> | Severidade: <%= event[:severity] || event["severity"] || "—" %> | Tenant: <%= event[:tenant_id] || event["tenant_id"] || "—" %> | Ocorrências: <%= event[:occurrences_count] || event["occurrences_count"] || 0 %>
+  Última vez: <%= event[:last_seen_at] || event["last_seen_at"] || "—" %> | Request ID: <%= event[:request_id] || event["request_id"] || "—" %>
+  Rota/job: <%= [event[:method] || event["method"], event[:path] || event["path"]].compact_blank.join(" ").presence || [event[:controller] || event["controller"], event[:action] || event["action"]].compact_blank.join("#").presence || "—" %>
+  Detalhes: <%= event[:details_url] || event["details_url"] %>
+<% end %>
+<% else %>
+- Nenhum ErrorEvent de aplicação aberto foi encontrado no momento da coleta. A causa pode estar nos checks de infraestrutura acima ou em integrações degradadas.
+<% end %>
+
+Tenants com atenção
+<% if @degraded_tenants.any? %>
+<% @degraded_tenants.each do |tenant| %>
+- <%= tenant[:name] || tenant["name"] || "Tenant sem nome" %> (#<%= tenant[:id] || tenant["id"] %>): status=<%= tenant[:status] || tenant["status"] %>, erros=<%= tenant[:open_errors] || tenant["open_errors"] || 0 %>, integrações=<%= tenant[:integration_failures] || tenant["integration_failures"] || 0 %>
+<% end %>
+<% else %>
+- Nenhum tenant específico com atenção no snapshot.
+<% end %>
+
+Painel: <%= @health_url %>
