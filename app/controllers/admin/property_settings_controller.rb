@@ -25,7 +25,7 @@ module Admin
 
     def update
       previous_layer_enabled = @property_setting.broker_capture_layer_enabled?
-      @property_setting.watermark_image.purge if remove_watermark_image?
+      purge_watermark_image_if_requested
       @property_setting.assign_attributes(property_setting_params)
       return_to_review_workflow = params[:return_to].to_s == review_workflow_admin_property_setting_path
 
@@ -317,6 +317,24 @@ module Admin
 
     def remove_watermark_image?
       ActiveModel::Type::Boolean.new.cast(params.dig(:property_setting, :remove_watermark_image))
+    end
+
+    def purge_watermark_image_if_requested
+      return unless remove_watermark_image?
+      return unless @property_setting.watermark_image.attached?
+
+      attachment = @property_setting.watermark_image.attachment
+      Storage::BlobAuditRecorder.record!(
+        blob: attachment.blob,
+        attachment: attachment,
+        action: "purge_requested",
+        source: "admin_property_settings_remove_watermark_image",
+        metadata: {
+          tenant_id: current_tenant&.id,
+          property_setting_id: @property_setting.id
+        }.compact
+      )
+      @property_setting.watermark_image.purge
     end
 
     def set_broker_capture_fallback_users
