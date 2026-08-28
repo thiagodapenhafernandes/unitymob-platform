@@ -10,6 +10,8 @@ class EmailSetting < ApplicationRecord
   belongs_to :tenant, optional: true if column_names.include?("tenant_id")
 
   AUTHENTICATIONS = %w[plain login cram_md5].freeze
+  SMTP_OPEN_TIMEOUT = 10
+  SMTP_READ_TIMEOUT = 30
 
   validates :smtp_port,
             numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 65_535 },
@@ -102,7 +104,9 @@ class EmailSetting < ApplicationRecord
       user_name:            smtp_user_name,
       password:             smtp_password,
       authentication:       smtp_authentication.presence || "plain",
-      enable_starttls_auto: smtp_enable_starttls_auto
+      enable_starttls_auto: smtp_enable_starttls_auto,
+      open_timeout:         SMTP_OPEN_TIMEOUT,
+      read_timeout:         SMTP_READ_TIMEOUT
     }.compact
   end
 end

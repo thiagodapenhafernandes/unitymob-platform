@@ -1,4 +1,6 @@
 class ApplicationMailer < ActionMailer::Base
+  self.delivery_job = ResilientMailDeliveryJob
+
   default from: "from@example.com"
   layout "mailer"
 
