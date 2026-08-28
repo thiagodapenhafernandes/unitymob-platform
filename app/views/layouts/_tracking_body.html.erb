@@ -1,4 +1,5 @@
-<% tracking_setting ||= TrackingIntegrationSetting.current %>
+<% tracking_setting ||= (TrackingIntegrationSetting.current if Current.tenant.present?) %>
+<% if tracking_setting.present? %>
 <% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
 <% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
 
@@ -19,4 +20,5 @@
          src="https://www.facebook.com/tr?id=<%= meta_pixel_id %>&ev=PageView&noscript=1"
          alt="">
   </noscript>
+<% end %>
 <% end %>
