@@ -79,6 +79,33 @@
     line-height: 1;
   }
 
+  .ax-pwa-bottom-nav__icon-wrap {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    min-width: 28px;
+    min-height: 24px;
+  }
+
+  .ax-pwa-bottom-nav__badge {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    display: inline-grid;
+    min-width: 18px;
+    height: 18px;
+    place-items: center;
+    padding: 0 4px;
+    border: 2px solid var(--lead-pwa-surface, #fff);
+    border-radius: 999px;
+    background: var(--lead-pwa-primary, var(--admin-primary, #365f8f));
+    color: #fff;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, .12);
+  }
+
   .ax-pwa-bottom-nav__item span {
     max-width: 100%;
     overflow: hidden;

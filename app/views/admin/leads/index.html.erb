@@ -830,6 +830,14 @@
       grid-template-columns: 36px minmax(0, 1fr) 36px;
     }
 
+    .lead-pwa-topbar--has-clear {
+      grid-template-columns: 36px minmax(0, 1fr) 36px 36px 36px;
+    }
+
+    .lead-pwa-topbar--no-view-toggle.lead-pwa-topbar--has-clear {
+      grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
+    }
+
     .lead-pwa-queue {
       display: grid;
       place-items: center;
@@ -888,6 +896,7 @@
     }
 
     .lead-pwa-filter,
+    .lead-pwa-clear-filter,
     .lead-pwa-view-toggle {
       position: relative;
       display: inline-grid;
@@ -900,6 +909,13 @@
       color: var(--lead-pwa-muted);
       font-size: 16px;
       box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .lead-pwa-clear-filter {
+      border-color: color-mix(in srgb, #ef4444 36%, var(--lead-pwa-line));
+      background: color-mix(in srgb, #ef4444 8%, var(--lead-pwa-surface));
+      color: #dc2626;
+      text-decoration: none;
     }
 
     .lead-pwa-view-toggle {
@@ -2534,10 +2550,15 @@
       pwa_toggle_icon = pwa_kanban_active ? "list-ul" : "kanban"
       pwa_toggle_label = pwa_kanban_active ? "Ver em lista" : "Ver em Kanban"
       hide_pwa_kanban_toggle = !pwa_kanban_active
+      pwa_queue_link_path = if defined?(can?) && (can?(:view, :distribution_rules) || can?(:manage, :distribution_rules))
+        admin_distribution_rules_path
+      else
+        admin_leads_path(view: "list", mobile_tab: "todo")
+      end
     %>
     <div class="lead-pwa-sticky-head">
-      <div class="lead-pwa-topbar <%= 'lead-pwa-topbar--no-view-toggle' if hide_pwa_kanban_toggle %>">
-        <%= link_to admin_distribution_rules_path, class: "lead-pwa-queue", title: "Ver fila de distribuição" do %>
+      <div class="lead-pwa-topbar <%= 'lead-pwa-topbar--no-view-toggle' if hide_pwa_kanban_toggle %> <%= 'lead-pwa-topbar--has-clear' if lead_active_filter_count.positive? %>">
+        <%= link_to pwa_queue_link_path, class: "lead-pwa-queue", title: "Ver fila de distribuição" do %>
           <strong><%= @pwa_queue_position.present? ? "#{@pwa_queue_position}º" : "-" %></strong>
           <span>na fila</span>
         <% end %>
@@ -2561,6 +2582,15 @@
             <span class="lead-pwa-filter__badge"><%= lead_active_filter_count %></span>
           <% end %>
         </button>
+
+        <% if lead_active_filter_count.positive? %>
+          <%= link_to admin_leads_path(view: @view_mode, mobile_tab: @pwa_lead_tab),
+                      class: "lead-pwa-clear-filter",
+                      aria: { label: "Limpar filtros" },
+                      title: "Limpar filtros" do %>
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+          <% end %>
+        <% end %>
 
         <% unless hide_pwa_kanban_toggle %>
           <%= link_to pwa_toggle_path,
@@ -2604,11 +2634,20 @@
           %>
           <% pwa_tab_items.each do |key, label, icon| %>
             <% tab_path = admin_leads_path(lead_query_params.merge(view: @view_mode, mobile_tab: key, page: nil).compact) %>
+            <%
+              filtered_count = @pwa_tab_counts.fetch(key, 0)
+              original_count = @pwa_tab_original_counts&.fetch(key, filtered_count) || filtered_count
+              count_label = if lead_active_filter_count.positive? && @pwa_lead_tab == key && filtered_count != original_count
+                "#{number_with_delimiter(filtered_count)}/#{number_with_delimiter(original_count)}"
+              else
+                number_with_delimiter(original_count)
+              end
+            %>
             <%= link_to tab_path, class: "lead-pwa-tab #{'is-active' if @pwa_lead_tab == key}" do %>
               <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
               <small>
                 <span class="lead-pwa-tab__label"><%= label %></span>
-                <span class="lead-pwa-tab__count"><%= number_with_delimiter(@pwa_tab_counts.fetch(key, 0)) %></span>
+                <span class="lead-pwa-tab__count"><%= count_label %></span>
               </small>
             <% end %>
           <% end %>
