@@ -20,6 +20,7 @@
     --queue-primary: var(--admin-primary, #365f8f);
     display: grid;
     gap: 12px;
+    overflow-anchor: none;
   }
 
   .lead-queue-mobile-top {
@@ -450,3 +451,29 @@
     </div>
   <% end %>
 </div>
+
+<script>
+  (() => {
+    const resetQueueScroll = () => {
+      if (!document.querySelector(".lead-queue-page")) return;
+
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = "manual";
+      }
+
+      const scrollTop = () => {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        document.scrollingElement?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+        document.querySelector(".ax-main")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+      };
+
+      scrollTop();
+      window.requestAnimationFrame(scrollTop);
+      window.setTimeout(scrollTop, 120);
+    };
+
+    resetQueueScroll();
+    window.addEventListener("pageshow", resetQueueScroll, { once: true });
+    document.addEventListener("turbo:load", resetQueueScroll, { once: true });
+  })();
+</script>
