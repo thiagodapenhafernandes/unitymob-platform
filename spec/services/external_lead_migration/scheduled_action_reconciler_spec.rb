@@ -90,6 +90,81 @@ RSpec.describe ExternalLeadMigration::ScheduledActionReconciler do
     )
   end
 
+  it "nao usa o usuario conector como fallback para agenda sem corretor mapeado" do
+    connector = create(:admin_user, tenant:, email: "connector-c2s-reconcile@example.test")
+    integration = create(:external_lead_integration, tenant:, connected_by_admin_user: connector, seller_mappings: {})
+    lead = create(:lead, tenant:, admin_user: nil, status: "Em Atendimento")
+    create_external_schedule_activity(
+      lead: lead,
+      task_id: nil,
+      external_key: "unmapped-return",
+      date: "2026-08-20T09:00:00.000-03:00",
+      name: "Retornar para o cliente",
+      alias_name: "feedback_customer"
+    )
+
+    result = described_class.call(integration: integration, execute: true)
+
+    expect(result).to have_attributes(scanned: 1, skipped: 1, tasks_created: 0)
+    expect(lead.tasks).to be_empty
+  end
+
+  it "reatribui tarefa C2S existente para o responsavel atual do lead" do
+    wrong_user = create(:admin_user, tenant:, email: "wrong-c2s-reconcile@example.test")
+    lead = create(:lead, tenant:, admin_user: broker, status: "Em Atendimento")
+    task = create(
+      :task,
+      tenant:,
+      lead: lead,
+      admin_user: wrong_user,
+      title: "Ação agendada do legado",
+      due_at: Time.zone.parse("2026-08-15T13:43:30-03:00")
+    )
+    create_external_schedule_activity(
+      lead: lead,
+      task_id: task.id,
+      external_key: "wrong-owner-return",
+      date: "2026-08-20T09:00:00.000-03:00",
+      name: "Retornar para o cliente",
+      alias_name: "feedback_customer"
+    )
+
+    result = described_class.call(tenant: tenant, execute: true, operational_only: true)
+
+    expect(result).to have_attributes(scanned: 1, tasks_updated: 1, tasks_reassigned: 1)
+    expect(task.reload.admin_user).to eq(broker)
+  end
+
+  it "pula lead nao operacional quando o backfill roda em modo operacional" do
+    pipeline = LeadPipeline.ensure_default!(tenant: tenant)
+    closed_stage = tenant.lead_pipeline_stages.find_or_create_by!(lead_pipeline: pipeline, name: "Descartado") do |stage|
+      stage.stage_type = "lost"
+    end
+    closed_stage.update!(stage_type: "lost") unless closed_stage.stage_type == "lost"
+    lead = create(:lead, tenant:, admin_user: broker, lead_pipeline: pipeline, lead_pipeline_stage: closed_stage, status: closed_stage.name)
+    task = create(
+      :task,
+      tenant:,
+      lead: lead,
+      admin_user: broker,
+      title: "Ação agendada do legado",
+      due_at: Time.zone.parse("2026-08-15T13:43:30-03:00")
+    )
+    create_external_schedule_activity(
+      lead: lead,
+      task_id: task.id,
+      external_key: "closed-return",
+      date: "2026-08-20T09:00:00.000-03:00",
+      name: "Retornar para o cliente",
+      alias_name: "feedback_customer"
+    )
+
+    result = described_class.call(tenant: tenant, execute: true, operational_only: true)
+
+    expect(result).to have_attributes(scanned: 1, tasks_updated: 0, skipped_non_operational: 1)
+    expect(task.reload.due_at).to eq(Time.zone.parse("2026-08-15T13:43:30-03:00"))
+  end
+
   def create_external_schedule_activity(lead:, task_id:, external_key:, date:, name:, alias_name:)
     LeadActivity.log!(
       lead: lead,

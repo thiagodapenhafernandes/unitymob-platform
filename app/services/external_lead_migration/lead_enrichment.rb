@@ -99,11 +99,14 @@ module ExternalLeadMigration
     end
 
     def sync_scheduled_actions!
-      return if responsible_user.blank?
-
       mapper.scheduled_actions.each_with_index do |action, index|
         due_at = action_due_at(action)
         next if due_at.blank?
+
+        if responsible_user.blank?
+          log_unassigned_scheduled_action!(action, due_at, index)
+          next
+        end
 
         if appointment_action?(action)
           sync_appointment!(action, due_at)
@@ -134,7 +137,7 @@ module ExternalLeadMigration
       )
       task.save!
 
-      log_once!(
+      log_or_update_once!(
         kind: "external_scheduled_action",
         key: action["id"].presence || "scheduled:#{mapper.external_lead_id}:#{index}",
         metadata: { task_id: task.id, title: task.title, due_at: due_at.iso8601, raw: action }.compact
@@ -165,6 +168,20 @@ module ExternalLeadMigration
       )
     end
 
+    def log_unassigned_scheduled_action!(action, due_at, index)
+      log_or_update_once!(
+        kind: "external_scheduled_action",
+        key: action["id"].presence || "scheduled:#{mapper.external_lead_id}:#{index}",
+        metadata: {
+          title: action_title(action),
+          due_at: due_at.iso8601,
+          raw: action,
+          unassigned: true,
+          unassigned_reason: "external_seller_unmapped"
+        }.compact
+      )
+    end
+
     def log_once!(kind:, key:, metadata:)
       lookup = { source: SOURCE, external_key: key.to_s }
       return if lead.activities.where(kind: kind).where("metadata @> ?", lookup.to_json).exists?
@@ -176,8 +193,25 @@ module ExternalLeadMigration
       )
     end
 
+    def log_or_update_once!(kind:, key:, metadata:)
+      lookup = { source: SOURCE, external_key: key.to_s }
+      activity = lead.activities.where(kind: kind).where("metadata @> ?", lookup.to_json).first
+      if activity
+        updated_metadata = activity.metadata.to_h.merge(metadata || {})
+        updated_metadata = updated_metadata.merge("unassigned" => false).except("unassigned_reason") if metadata.to_h[:task_id].present? || metadata.to_h[:appointment_id].present?
+        activity.update!(metadata: updated_metadata)
+        return activity
+      end
+
+      LeadActivity.log!(
+        lead: lead,
+        kind: kind,
+        metadata: lookup.merge(metadata || {})
+      )
+    end
+
     def responsible_user
-      @responsible_user ||= lead.admin_user || integration.connected_by_admin_user
+      @responsible_user ||= lead.admin_user || integration.local_user_for_seller(mapper.seller)
     end
 
     def action_title(action)

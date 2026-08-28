@@ -4,6 +4,19 @@ class Lead < ApplicationRecord
 
   DEFAULT_STATUS = "Novo".freeze
   LEGACY_STATUSES = ["Novo", "Em Atendimento", "Aguardando Aceite", "Represado", "Descartado", "Concluido"].freeze
+  NON_OPERATIONAL_STATUS_FALLBACKS = [
+    "Descartado",
+    "Concluido",
+    "Finalizado",
+    "Negócio fechado",
+    "Negocio fechado",
+    "Vendido",
+    "Locado",
+    "Ganho",
+    "Perdido",
+    "Sem interesse",
+    "Arquivado"
+  ].freeze
   STATUS_ALIASES = {
     "novo" => "Novo",
     "em_atendimento" => "Em Atendimento",
@@ -370,6 +383,17 @@ class Lead < ApplicationRecord
     return default_status(tenant: tenant) if raw.blank?
 
     STATUS_ALIASES[raw] || STATUS_ALIASES[raw.downcase] || raw
+  end
+
+  def self.non_operational_status_values(tenant: Current.tenant)
+    pipeline_statuses = tenant&.lead_pipeline_stages&.where(stage_type: %w[won lost archived])&.pluck(:name)
+
+    (NON_OPERATIONAL_STATUS_FALLBACKS + Array(pipeline_statuses))
+      .map { |status| status_value(status, tenant:) }
+      .compact_blank
+      .uniq
+  rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError
+    NON_OPERATIONAL_STATUS_FALLBACKS
   end
 
   def self.default_status(tenant: Current.tenant, pipeline: nil)

@@ -26,6 +26,7 @@ module ExternalLeadMigration
         lead.skip_automatic_routing = historical
         lead.assign_attributes(attrs)
         lead.save!
+        lead.reload if should_use_local_assignment_for_enrichment?(lead:, attrs:)
         LeadEnrichment.call(lead:, integration:, mapper:, historical:)
 
         LeadActivity.log!(
@@ -53,6 +54,10 @@ module ExternalLeadMigration
 
     def find_existing(mapper)
       integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id)
+    end
+
+    def should_use_local_assignment_for_enrichment?(lead:, attrs:)
+      !historical && attrs[:admin_user].blank? && lead.admin_user_id.blank?
     end
   end
 end

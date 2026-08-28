@@ -46,4 +46,27 @@ RSpec.describe Task, type: :model do
     expect(task).not_to be_valid
     expect(task.errors[:lead]).to include("deve pertencer à mesma conta da tarefa")
   end
+
+  describe ".operational_current" do
+    it "inclui tarefa C2S pendente quando o lead ainda esta ativo operacionalmente" do
+      tenant, profile = create_tenant_with_profile("Conta Tarefa C2S Ativa")
+      owner = create(:admin_user, tenant: tenant, profile: profile)
+      lead = create(:lead, tenant: tenant, admin_user: owner, status: "Em Atendimento")
+      task = create(:task, tenant: tenant, lead: lead, admin_user: owner, source: "external_legacy")
+
+      expect(described_class.operational_current).to include(task)
+    end
+
+    it "mantem fora da agenda operacional tarefa C2S de lead nao operacional" do
+      tenant, profile = create_tenant_with_profile("Conta Tarefa C2S Fechada")
+      owner = create(:admin_user, tenant: tenant, profile: profile)
+      pipeline = LeadPipeline.ensure_default!(tenant: tenant)
+      closed_stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Descartado", stage_type: "lost")
+      lead = create(:lead, tenant: tenant, admin_user: owner, lead_pipeline: pipeline, lead_pipeline_stage: closed_stage, status: closed_stage.name)
+      task = create(:task, tenant: tenant, lead: lead, admin_user: owner, source: "external_legacy")
+
+      expect(described_class.operational_current).not_to include(task)
+      expect(described_class.external_legacy).to include(task)
+    end
+  end
 end

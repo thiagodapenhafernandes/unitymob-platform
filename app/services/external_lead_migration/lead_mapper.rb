@@ -78,6 +78,10 @@ module ExternalLeadMigration
       end
     end
 
+    def seller
+      hash_at("seller")
+    end
+
     def label_names
       Array.wrap(@attributes["tags"])
         .filter_map { |item| item.is_a?(Hash) ? item["name"].presence || item["tag_name"] : item }
