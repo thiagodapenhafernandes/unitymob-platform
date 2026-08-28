@@ -162,6 +162,28 @@ class Admin::LeadsController < Admin::BaseController
     @page_title = "Gerenciar Leads"
   end
 
+  def distribution_queue
+    @queue_rules = current_tenant
+      .distribution_rules
+      .active
+      .joins(:distribution_rule_agents)
+      .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
+      .order(:name)
+      .distinct
+
+    @queue_agents_by_rule_id = DistributionRuleAgent
+      .where(tenant_id: current_tenant.id, distribution_rule_id: @queue_rules.map(&:id))
+      .includes(:admin_user)
+      .order(:position, :id)
+      .group_by(&:distribution_rule_id)
+    @queue_positions_by_rule_id = @queue_agents_by_rule_id.transform_values do |agents|
+      agents.index { |agent| agent.admin_user_id == current_admin_user.id }.then { |index| index ? index + 1 : nil }
+    end
+    @best_queue_position = @queue_positions_by_rule_id.values.compact.min
+    @return_to_path = admin_leads_path(view: current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "list")
+    @page_title = "Minhas filas"
+  end
+
   def kanban_column
     assign_lead_filter_state
 

@@ -1,0 +1,363 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Leads", @return_to_path %>
+  <i class="bi bi-chevron-right" aria-hidden="true"></i>
+  <strong>Minhas filas</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to @return_to_path, class: "ax-btn ax-btn--sm" do %>
+    <i class="bi bi-arrow-left ax-ico" aria-hidden="true"></i><span>Voltar</span>
+  <% end %>
+<% end %>
+
+<style>
+  .lead-queue-page {
+    --queue-bg: var(--admin-workspace-bg, #eef3f9);
+    --queue-surface: var(--admin-surface, #fff);
+    --queue-ink: var(--admin-ink, #202a37);
+    --queue-muted: var(--ab-muted, #64748b);
+    --queue-line: var(--ab-line, #d8dee8);
+    --queue-primary: var(--admin-primary, #365f8f);
+    display: grid;
+    gap: 12px;
+  }
+
+  .lead-queue-command {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--queue-line);
+    border-radius: 10px;
+    background: var(--queue-surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .lead-queue-command__copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .lead-queue-command__copy span {
+    color: var(--queue-muted);
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .lead-queue-command__copy h1 {
+    margin: 0;
+    color: var(--queue-ink);
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+
+  .lead-queue-command__copy p {
+    margin: 0;
+    color: var(--queue-muted);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  .lead-queue-command__position {
+    display: inline-grid;
+    place-items: center;
+    min-width: 72px;
+    min-height: 50px;
+    padding: 5px 10px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--queue-primary) 10%, #fff);
+    color: var(--queue-primary);
+    text-align: center;
+  }
+
+  .lead-queue-command__position strong {
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .lead-queue-command__position span {
+    margin-top: 3px;
+    color: var(--queue-muted);
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .lead-queue-stack {
+    display: grid;
+    gap: 12px;
+  }
+
+  .lead-queue-card {
+    overflow: hidden;
+    border: 1px solid var(--queue-line);
+    border-radius: 10px;
+    background: var(--queue-surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .lead-queue-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--queue-line);
+    background: #f8fafc;
+  }
+
+  .lead-queue-card__title {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .lead-queue-card__title strong {
+    color: var(--queue-ink);
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
+  .lead-queue-card__title span,
+  .lead-queue-card__position {
+    color: var(--queue-muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .lead-queue-card__position {
+    flex: 0 0 auto;
+    color: var(--queue-primary);
+    text-align: right;
+  }
+
+  .lead-queue-list {
+    display: grid;
+  }
+
+  .lead-queue-agent {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--queue-line);
+  }
+
+  .lead-queue-agent:last-child {
+    border-bottom: 0;
+  }
+
+  .lead-queue-agent.is-current {
+    margin: 8px;
+    border: 1px solid color-mix(in srgb, var(--queue-primary) 38%, var(--queue-line));
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--queue-primary) 9%, #fff);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--queue-primary) 12%, transparent);
+  }
+
+  .lead-queue-agent__position {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: var(--queue-muted);
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .lead-queue-agent.is-current .lead-queue-agent__position {
+    background: var(--queue-primary);
+    color: #fff;
+  }
+
+  .lead-queue-agent__copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .lead-queue-agent__copy strong,
+  .lead-queue-agent__copy span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-queue-agent__copy strong {
+    color: var(--queue-ink);
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .lead-queue-agent__copy span {
+    color: var(--queue-muted);
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  .lead-queue-agent__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: #ecfdf3;
+    color: #027a48;
+    font-size: 11px;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .lead-queue-agent__status.is-muted {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  .lead-queue-empty {
+    padding: 22px;
+    border: 1px solid var(--queue-line);
+    border-radius: 10px;
+    background: var(--queue-surface);
+    text-align: center;
+  }
+
+  .lead-queue-empty strong {
+    display: block;
+    color: var(--queue-ink);
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  .lead-queue-empty p {
+    margin: 6px auto 0;
+    max-width: 460px;
+    color: var(--queue-muted);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  @media (max-width: 767.98px) {
+    body.ax-pwa-bottom-nav-body > .ax-main {
+      min-height: 100dvh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: var(--queue-bg) !important;
+    }
+
+    .lead-queue-page {
+      min-height: 100dvh;
+      padding: calc(8px + env(safe-area-inset-top, 0px)) 10px calc(78px + env(safe-area-inset-bottom, 0px));
+      background: var(--queue-bg);
+    }
+
+    .lead-queue-command {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding: 12px;
+      border-radius: 14px;
+    }
+
+    .lead-queue-command__copy h1 {
+      font-size: 20px;
+    }
+
+    .lead-queue-card {
+      border-radius: 14px;
+    }
+
+    .lead-queue-card__head {
+      padding: 13px;
+    }
+
+    .lead-queue-card__position {
+      max-width: 94px;
+      font-size: 11px;
+    }
+
+    .lead-queue-agent {
+      grid-template-columns: 38px minmax(0, 1fr);
+      padding: 11px 13px;
+    }
+
+    .lead-queue-agent__status {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+</style>
+
+<div class="lead-queue-page">
+  <header class="lead-queue-command">
+    <div class="lead-queue-command__copy">
+      <span>Distribuição de leads</span>
+      <h1>Minhas filas</h1>
+      <p><%= current_admin_user.name %> participa de <%= @queue_rules.size %> fila<%= "s" if @queue_rules.size != 1 %>.</p>
+    </div>
+
+    <div class="lead-queue-command__position" aria-label="Melhor posição atual">
+      <strong><%= @best_queue_position.present? ? "#{@best_queue_position}º" : "--" %></strong>
+      <span>melhor posição</span>
+    </div>
+  </header>
+
+  <% if @queue_rules.any? %>
+    <div class="lead-queue-stack">
+      <% @queue_rules.each do |rule| %>
+        <%
+          agents = @queue_agents_by_rule_id.fetch(rule.id, [])
+          current_position = @queue_positions_by_rule_id[rule.id]
+        %>
+        <section class="lead-queue-card" aria-labelledby="lead-queue-rule-<%= rule.id %>">
+          <header class="lead-queue-card__head">
+            <div class="lead-queue-card__title">
+              <strong id="lead-queue-rule-<%= rule.id %>"><%= rule.name %></strong>
+              <span><%= distribution_rule_mode_label(rule) %> · <%= rule.active? ? "ativa" : "inativa" %></span>
+            </div>
+            <div class="lead-queue-card__position">
+              Sua posição: <%= current_position.present? ? "#{current_position}º de #{agents.size}" : "--" %>
+            </div>
+          </header>
+
+          <div class="lead-queue-list">
+            <% agents.each do |agent| %>
+              <%
+                user = agent.admin_user
+                current_agent = agent.admin_user_id == current_admin_user.id
+              %>
+              <article class="lead-queue-agent <%= 'is-current' if current_agent %>">
+                <span class="lead-queue-agent__position"><%= agent.position.present? ? "#{agent.position}º" : "--" %></span>
+                <div class="lead-queue-agent__copy">
+                  <strong><%= user&.name.presence || "Corretor sem nome" %></strong>
+                  <span><%= current_agent ? "Você" : user&.email %></span>
+                </div>
+                <span class="lead-queue-agent__status <%= 'is-muted' unless user&.active? %>">
+                  <i class="bi bi-circle-fill" aria-hidden="true"></i>
+                  <%= user&.active? ? "Ativo" : "Inativo" %>
+                </span>
+              </article>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="lead-queue-empty">
+      <strong>Você não participa de nenhuma fila ativa.</strong>
+      <p>Quando seu usuário for incluído em uma regra de distribuição ativa, ela aparecerá aqui automaticamente.</p>
+    </div>
+  <% end %>
+</div>
