@@ -582,7 +582,8 @@ RSpec.describe "Admin::Leads", type: :request do
   describe "GET /admin/leads/:id" do
     it "renderiza o detalhe PWA preservando a tela completa do desktop" do
       property = create(:habitation, tenant: admin.tenant, codigo: "PWA-001")
-      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Detalhe PWA", phone: "11999999999", status: "Em Atendimento")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Detalhe PWA", phone: "11999999999", status: "Em Atendimento", notes: "Preferência por vista mar.")
+      LeadActivity.log!(lead: lead, kind: "note", metadata: { body: "Cliente pediu retorno no fim da tarde.", by: "Corretor" })
       lead.property_interests.create!(tenant: admin.tenant, habitation: property)
       lead.ai_property_share_collections.create!(admin_user: admin).tap do |collection|
         collection.items.create!(habitation: property)
@@ -595,14 +596,49 @@ RSpec.describe "Admin::Leads", type: :request do
       pwa_detail = document.at_css(".lead-pwa-detail")
       expect(pwa_detail).to be_present
       expect(pwa_detail.text).to include("Lead Detalhe PWA", "Conversa", "Imóveis de interesse", "PWA-001", "Links gerados", "Inteligência de Interesse")
+      expect(pwa_detail.text).to include("Anotações", "Adicionar anotação", "Cliente pediu retorno no fim da tarde.", "Corretor")
       expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_present
       expect(pwa_detail.at_css("turbo-frame##{ActionView::RecordIdentifier.dom_id(lead, :pwa_interest_intelligence)}")).to be_present
+      expect(pwa_detail.at_css("form[action='#{log_contact_admin_lead_path(lead)}']")).to be_present
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
       desktop_heading = document.at_css(".lead-show-workspace .ax-workspace-heading")
       expect(desktop_heading).to be_present
       expect(desktop_heading.text).to include("Transferir", "Favoritar", "Histórico")
       expect(desktop_heading.at_css("button[data-action='ax-modal#open']")).to be_present
       expect(desktop_heading.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
+    end
+  end
+
+  describe "POST /admin/leads/:id/log_contact" do
+    before do
+      allow_any_instance_of(Admin::LeadsController).to receive(:verified_request?).and_return(true)
+    end
+
+    it "registra anotacao do corretor na timeline do lead" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
+
+      expect {
+        post log_contact_admin_lead_path(lead), params: { contact_kind: "nota", body: "Cliente pediu simulação para amanhã." }
+      }.to change { lead.activities.where(kind: "note").count }.by(1)
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      note = lead.activities.where(kind: "note").last
+      expect(note.metadata).to include(
+        "contact_kind" => "nota",
+        "body" => "Cliente pediu simulação para amanhã.",
+        "by" => admin.name,
+        "admin_user_id" => admin.id
+      )
+    end
+
+    it "nao cria anotacao vazia" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
+
+      expect {
+        post log_contact_admin_lead_path(lead), params: { contact_kind: "nota", body: "  " }
+      }.not_to change { lead.activities.where(kind: "note").count }
+
+      expect(response).to redirect_to(admin_lead_path(lead))
     end
   end
 

@@ -341,7 +341,12 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def set_conversation
-    @conversation = conversation_scope.find(params[:id])
+    @conversation = conversation_scope.find_by(id: params[:id])
+    return if @conversation
+
+    return set_conversation_from_accessible_lead_context if action_name == "show"
+
+    raise ActiveRecord::RecordNotFound
   end
 
   def set_conversation_for_send_message
@@ -351,6 +356,14 @@ class Admin::WhatsappInboxController < Admin::BaseController
     candidate = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, lead: { lead_labelings: :lead_label }).find(params[:id])
     @lead_context_for_send = accessible_lead_for_conversation_send(candidate)
     raise ActiveRecord::RecordNotFound unless @lead_context_for_send
+
+    @conversation = candidate
+  end
+
+  def set_conversation_from_accessible_lead_context
+    candidate = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, lead: { lead_labelings: :lead_label }).find_by(id: params[:id])
+    @lead_context_for_thread = accessible_lead_for_conversation(candidate)
+    raise ActiveRecord::RecordNotFound unless @lead_context_for_thread
 
     @conversation = candidate
   end
@@ -369,6 +382,11 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def accessible_lead_for_conversation_send(conversation)
+    accessible_lead_for_conversation(conversation)
+  end
+
+  def accessible_lead_for_conversation(conversation)
+    return nil unless conversation
     return nil unless can?(:view, :leads)
 
     lead_ids = [conversation.lead_id, params[:lead_id]].compact_blank.map(&:to_i).uniq

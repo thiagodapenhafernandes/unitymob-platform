@@ -56,6 +56,15 @@ a.ax-btn.ax-btn--primary:focus,
 a.ax-btn.ax-btn--primary:focus-visible { color: var(--admin-primary-fg); text-decoration: none; }
 
 .ax-btn.ax-btn--primary .ax-ico { color: inherit; }
+.ax-btn.ax-btn--primary:disabled,
+.ax-btn.ax-btn--primary[disabled],
+.ax-btn.ax-btn--primary.is-disabled,
+a.ax-btn.ax-btn--primary[aria-disabled="true"] {
+  border-color: #d8dee8;
+  background: #f5f7fa;
+  color: #98a2b3;
+  box-shadow: none;
+}
 .ax-btn--ghost { border-color: transparent; background: transparent; color: #475467; box-shadow: none; }
 .ax-btn--ghost:hover { border-color: transparent; background: var(--ax-control-hover); color: #202a37; box-shadow: none; }
 .ax-btn--danger { border-color: #fda4af; background: #fff; color: #be123c; }

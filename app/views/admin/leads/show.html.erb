@@ -301,6 +301,187 @@
       font-weight: 500;
     }
 
+    .lead-pwa-detail__notes-panel {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 10px;
+    }
+
+    .lead-pwa-detail__notes-head {
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .lead-pwa-detail__notes-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .lead-pwa-detail__notes-title i {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--lead-pwa-primary) 12%, var(--lead-pwa-surface));
+      color: var(--lead-pwa-primary);
+      font-size: 14px;
+    }
+
+    .lead-pwa-detail__notes-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--lead-pwa-surface-soft);
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .lead-pwa-detail__note-composer {
+      justify-self: end;
+      margin: 0;
+    }
+
+    .lead-pwa-detail__note-composer[open] {
+      grid-column: 1 / -1;
+    }
+
+    .lead-pwa-detail__note-form {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 10px;
+      background: var(--lead-pwa-surface-soft);
+    }
+
+    .lead-pwa-detail__note-form textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .lead-pwa-detail__note-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid var(--lead-pwa-line);
+      border-radius: 999px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-primary);
+      font-size: 12px;
+      font-weight: 850;
+      list-style: none;
+    }
+
+    .lead-pwa-detail__note-toggle::-webkit-details-marker {
+      display: none;
+    }
+
+    .lead-pwa-detail__notes-timeline {
+      display: grid;
+      grid-column: 1 / -1;
+      gap: 0;
+      margin-top: 2px;
+    }
+
+    .lead-pwa-detail__notes-empty {
+      grid-column: 1 / -1;
+    }
+
+    .lead-pwa-detail__note-item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .lead-pwa-detail__note-line {
+      display: grid;
+      justify-items: center;
+      position: relative;
+      min-height: 100%;
+    }
+
+    .lead-pwa-detail__note-dot {
+      display: inline-grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid color-mix(in srgb, var(--lead-pwa-primary) 18%, var(--lead-pwa-line));
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--lead-pwa-primary) 10%, var(--lead-pwa-surface));
+      color: var(--lead-pwa-primary);
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .lead-pwa-detail__note-rail {
+      position: absolute;
+      top: 30px;
+      bottom: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      background: var(--lead-pwa-line-soft);
+    }
+
+    .lead-pwa-detail__note-card {
+      min-width: 0;
+      padding: 1px 0 15px;
+    }
+
+    .lead-pwa-detail__note-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .lead-pwa-detail__note-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--lead-pwa-surface-soft);
+      white-space: nowrap;
+      font-weight: 400;
+    }
+
+    .lead-pwa-detail__note-body {
+      margin-top: 6px;
+      padding: 9px 10px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--lead-pwa-surface) 88%, var(--lead-pwa-surface-soft));
+      color: var(--lead-pwa-ink);
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.36;
+    }
+
+    .lead-pwa-detail__note-body p {
+      margin: 0 0 6px;
+    }
+
+    .lead-pwa-detail__note-body p:last-child {
+      margin-bottom: 0;
+    }
+
     .lead-pwa-detail__parecer-form {
       display: grid;
       gap: 8px;
@@ -499,13 +680,64 @@
 
     .lead-pwa-mobile-interests {
       display: grid;
-      gap: 8px;
+      gap: 10px;
       min-width: 0;
+      padding-top: 10px;
+      border-top: 1px solid var(--lead-pwa-line-soft);
+    }
+
+    .lead-pwa-origin-panel {
+      gap: 10px;
+    }
+
+    .lead-pwa-origin-state {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--lead-pwa-surface-soft) 68%, var(--lead-pwa-surface));
+      color: var(--lead-pwa-muted);
+    }
+
+    .lead-pwa-origin-state i {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--lead-pwa-surface);
+      color: var(--lead-pwa-primary);
+      font-size: 15px;
+    }
+
+    .lead-pwa-origin-state strong,
+    .lead-pwa-origin-state span {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-origin-state strong {
+      color: var(--lead-pwa-ink);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .lead-pwa-origin-state span {
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 750;
     }
 
     .lead-pwa-detail .wa-inbox-thread__interests {
       display: grid;
-      gap: 8px;
+      gap: 9px;
       min-width: 0;
       width: 100%;
     }
@@ -523,20 +755,30 @@
       align-items: stretch;
       width: 100%;
       max-width: none;
-      min-height: 38px;
+      min-height: 42px;
       height: auto;
+      border-radius: 10px;
+      background: var(--lead-pwa-surface);
+      box-shadow: 0 1px 0 rgba(15, 23, 42, .03);
     }
 
     .lead-pwa-detail .wa-inbox-thread__interest-chips .lead-property-share-check {
       display: grid;
       place-items: center;
       margin: 0;
-      padding: 0 8px;
+      padding: 0 10px;
+    }
+
+    .lead-pwa-detail .wa-inbox-thread__interest-chips .lead-property-share-check input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
     }
 
     .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin__link {
       width: 100%;
-      padding-right: 8px;
+      min-width: 0;
+      padding: 0 8px 0 4px;
     }
 
     .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin__link span {
@@ -554,23 +796,34 @@
     }
 
     .lead-pwa-detail .wa-inbox-thread__interest-chips .ax-context-pin__remove {
-      width: 32px;
+      width: 38px;
       height: 100%;
-      min-height: 36px;
+      min-height: 40px;
+      border-left: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 0 10px 10px 0;
     }
 
     .lead-pwa-detail .lead-property-share-actions,
     .lead-pwa-detail .lead-property-share-result {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 7px;
+      gap: 8px;
+      min-width: 0;
     }
 
     .lead-pwa-detail .lead-property-share-actions__expiry {
       display: grid;
-      grid-template-columns: auto minmax(72px, 96px) auto;
-      gap: 7px;
+      grid-template-columns: minmax(0, 1fr) minmax(74px, 96px) auto;
+      gap: 8px;
       align-items: center;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--lead-pwa-surface-soft) 62%, var(--lead-pwa-surface));
+      color: var(--lead-pwa-muted);
+      font-size: 12px;
+      font-weight: 850;
     }
 
     .lead-pwa-detail .lead-property-share-actions__expiry input,
@@ -579,12 +832,20 @@
       min-height: 38px;
     }
 
+    .lead-pwa-detail .lead-property-share-actions .ax-btn,
+    .lead-pwa-detail .lead-property-share-result .ax-btn {
+      min-height: 38px;
+      justify-content: center;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
     .lead-pwa-detail .lead-property-share-result[hidden] {
       display: none;
     }
 
     .lead-pwa-detail .wa-inbox-thread__interests-select {
-      min-height: 38px;
+      min-height: 40px;
     }
 
     .lead-pwa-share-history {
@@ -678,8 +939,13 @@
 
     .lead-pwa-next-actions {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
+    }
+
+    .lead-pwa-next-actions > .tw-inline-block {
+      width: 100%;
+      min-width: 0;
     }
 
     .lead-pwa-next-actions__btn {
@@ -701,7 +967,6 @@
       text-decoration: none;
       cursor: pointer;
       width: 100%;
-      max-width: 83.5px;      
     }
 
     .lead-pwa-next-actions__btn i {
@@ -845,31 +1110,35 @@
     </div>
   </section>
 
-  <section class="lead-pwa-detail__panel">
-    <% if @next_task %>
-      <% next_badge = task_badge(@next_task) %>
-      <div class="lead-pwa-detail__record<%= " lead-pwa-detail__record--alert" if next_badge[:color] == "red" %>">
-        <strong><%= @next_task.title %> - <%= next_badge[:label] %></strong>
-        <span><%= l(@next_task.due_at, format: "%d/%m/%Y às %H:%M") if @next_task.due_at.present? %></span>
-      </div>
-    <% end %>
+  <% show_pwa_next_actions_panel = @next_task.present? || can?(:manage, :comercial) %>
+  <% if show_pwa_next_actions_panel %>
+    <section class="lead-pwa-detail__panel">
+      <% if @next_task %>
+        <% next_badge = task_badge(@next_task) %>
+        <div class="lead-pwa-detail__record<%= " lead-pwa-detail__record--alert" if next_badge[:color] == "red" %>">
+          <strong><%= @next_task.title %> - <%= next_badge[:label] %></strong>
+          <span><%= l(@next_task.due_at, format: "%d/%m/%Y às %H:%M") if @next_task.due_at.present? %></span>
+        </div>
+      <% end %>
 
-    <% if can?(:manage, :comercial) %>
-      <div class="lead-pwa-next-actions">
-        <%= render "admin/leads/schedule_activity_modal", lead: @lead %>
-        <%= link_to new_admin_lead_proposal_path(@lead), class: "lead-pwa-next-actions__btn" do %>
-          <i class="bi bi-file-earmark-text"></i><span>Proposta</span>
-        <% end %>
-        <%= form_with url: close_deal_admin_lead_path(@lead), method: :post, id: "lead_close_deal_#{@lead.id}", class: "tw-hidden" do %><% end %>
-        <%= ax_confirm_submit(form_id: "lead_close_deal_#{@lead.id}", message: "Marcar este lead como negócio fechado?", confirm_label: "Fechar negócio") do %>
-          <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--success" data-action="click->ax-confirm-submit#request">
-            <i class="bi bi-check-circle"></i><span>Fechado</span>
-          </button>
-        <% end %>
-        <%= render "admin/leads/archive_modal", lead: @lead, archive_reason_options: @archive_reason_options %>
-      </div>
-    <% end %>
-  </section>
+      <% if can?(:manage, :comercial) %>
+        <div class="lead-pwa-next-actions">
+          <%= render "admin/tasks/form_modal", modal_id: "newTaskLeadPwa", lead: @lead, trigger_label: "Tarefa", trigger_class: "lead-pwa-next-actions__btn" %>
+          <%= render "admin/leads/schedule_activity_modal", lead: @lead %>
+          <%= link_to new_admin_lead_proposal_path(@lead), class: "lead-pwa-next-actions__btn" do %>
+            <i class="bi bi-file-earmark-text"></i><span>Proposta</span>
+          <% end %>
+          <%= form_with url: close_deal_admin_lead_path(@lead), method: :post, id: "lead_close_deal_#{@lead.id}", class: "tw-hidden" do %><% end %>
+          <%= ax_confirm_submit(form_id: "lead_close_deal_#{@lead.id}", message: "Marcar este lead como negócio fechado?", confirm_label: "Fechar negócio") do %>
+            <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--success" data-action="click->ax-confirm-submit#request">
+              <i class="bi bi-check-circle"></i><span>Fechado</span>
+            </button>
+          <% end %>
+          <%= render "admin/leads/archive_modal", lead: @lead, archive_reason_options: @archive_reason_options %>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
 
   <% if can?(:view, :whatsapp_inbox) %>
     <section class="lead-pwa-detail__panel" data-controller="lead-pwa-chat">
@@ -923,7 +1192,7 @@
     </section>
   <% end %>
 
-  <section class="lead-pwa-detail__panel">
+  <section class="lead-pwa-detail__panel lead-pwa-origin-panel">
     <div class="lead-pwa-detail__section-title">
       <span>Imóvel de origem</span>
       <small><%= @property ? @property.codigo : "geral" %></small>
@@ -934,9 +1203,21 @@
         <span><%= [@property.bairro, @property.cidade].compact_blank.join(", ") %></span>
       </div>
     <% elsif @lead.property_id.present? %>
-      <p class="lead-pwa-detail__empty">Imóvel referenciado, mas indisponível no catálogo atual.</p>
+      <div class="lead-pwa-origin-state">
+        <i class="bi bi-house-slash"></i>
+        <span>
+          <strong>Imóvel indisponível</strong>
+          <span>Referência fora do catálogo atual.</span>
+        </span>
+      </div>
     <% else %>
-      <p class="lead-pwa-detail__empty">Lead sem imóvel específico.</p>
+      <div class="lead-pwa-origin-state">
+        <i class="bi bi-house-add"></i>
+        <span>
+          <strong>Lead sem imóvel específico.</strong>
+          <span>Use os interesses abaixo para montar a seleção.</span>
+        </span>
+      </div>
     <% end %>
 
     <div class="lead-pwa-detail__subsection lead-pwa-mobile-interests">
@@ -1016,12 +1297,49 @@
     <% end %>
   </section>
 
-  <section class="lead-pwa-detail__panel">
-    <div class="lead-pwa-detail__section-title">
-      <span>Observações</span>
-      <small>interno</small>
+  <section class="lead-pwa-detail__panel lead-pwa-detail__notes-panel">
+    <div class="lead-pwa-detail__section-title lead-pwa-detail__notes-head">
+      <span class="lead-pwa-detail__notes-title">
+        <i class="bi bi-journal-text"></i>
+        <span>Anotações</span>
+      </span>
+      <span class="lead-pwa-detail__notes-count"><%= @note_activities.size %></span>
     </div>
-    <p class="lead-pwa-detail__notes"><%= @lead.notes.to_s.squish.presence || "Sem observações internas." %></p>
+    <details class="lead-pwa-detail__note-composer">
+      <summary class="lead-pwa-detail__note-toggle">
+        <i class="bi bi-plus-lg"></i><span>Adicionar anotação</span>
+      </summary>
+      <%= form_with url: log_contact_admin_lead_path(@lead), method: :post, local: true, class: "lead-pwa-detail__note-form" do %>
+        <input type="hidden" name="contact_kind" value="nota">
+        <textarea name="body" rows="3" class="ax-control" required placeholder="Resumo da conversa, combinado ou próxima ação"></textarea>
+        <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Salvar anotação</button>
+      <% end %>
+    </details>
+
+    <% if @note_activities.any? %>
+      <div class="lead-pwa-detail__notes-timeline">
+        <% @note_activities.each_with_index do |note, index| %>
+          <% body = note.meta("body").to_s.strip.presence %>
+          <% author = note.meta("by").to_s.strip.presence || "Registro interno" %>
+          <div class="lead-pwa-detail__note-item">
+            <div class="lead-pwa-detail__note-line">
+              <span class="lead-pwa-detail__note-dot"><i class="bi bi-pencil-square"></i></span>
+              <% unless index == @note_activities.size - 1 %><span class="lead-pwa-detail__note-rail"></span><% end %>
+            </div>
+            <article class="lead-pwa-detail__note-card">
+              <div class="lead-pwa-detail__note-meta">
+                <span><i class="bi bi-clock"></i><%= l(note.created_at, format: "%d/%m/%Y %H:%M") %></span>
+              </div>
+              <div class="lead-pwa-detail__note-body">
+                <%= simple_format(body || "Anotação sem conteúdo registrado.") %>
+              </div>
+            </article>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="lead-pwa-detail__empty lead-pwa-detail__notes-empty">Nenhuma anotação registrada.</p>
+    <% end %>
   </section>
 
   <% if current_admin_user&.admin? %>

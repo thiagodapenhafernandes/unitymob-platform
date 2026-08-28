@@ -3,7 +3,8 @@
   <head>
     <% login_layout_setting = @layout_setting || LayoutSetting.instance %>
     <% login_pwa_tenant = login_layout_setting&.tenant || public_tenant %>
-    <% login_site_name = login_layout_setting&.site_name.presence || login_pwa_tenant&.name.presence || "Unitymob" %>
+    <% login_native_app = request.user_agent.to_s.match?(DeviceRequest::NATIVE_APP_USER_AGENT) %>
+    <% login_site_name = login_native_app ? "Unitymob" : (login_layout_setting&.site_name.presence || login_pwa_tenant&.name.presence || "Unitymob") %>
     <% login_admin_area_name = login_layout_setting.respond_to?(:admin_area_label) ? login_layout_setting.admin_area_label : "Plataforma" %>
     <% login_theme = login_layout_setting.effective_admin_theme(mode: AdminUser::ADMIN_THEME_MODE_DEFAULT) %>
     <% login_icon_href = "/pwa-icon-192?tenant=#{login_pwa_tenant.slug}&v=#{login_layout_setting&.updated_at.to_i}" %>

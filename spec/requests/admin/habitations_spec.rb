@@ -31,6 +31,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     sign_in admin
   end
 
+  it "responde JSON invalido do catalogo com erro controlado" do
+    get admin_habitations_path(format: :json)
+
+    expect(response).to have_http_status(:not_acceptable)
+    expect(JSON.parse(response.body)).to include("error" => "O catálogo administrativo não possui resposta JSON para esta rota.")
+  end
+
   it "exibe de/para no resumo do imóvel quando o preço de venda foi reduzido" do
     habitation = create(
       :habitation,

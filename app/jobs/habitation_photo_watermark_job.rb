@@ -47,8 +47,24 @@ class HabitationPhotoWatermarkJob < ApplicationJob
     Storage::PublicPropertyPhoto.publish_blob!(new_blob, raise_errors: true)
     attachment.update!(blob: new_blob)
     schedule_original_blob_purge(blob) unless blob.attachments.exists?
+  rescue ActiveStorage::FileNotFoundError => error
+    record_missing_source_blob(attachment, blob, error)
+    Rails.logger.info("[habitation_photo_watermark] arquivo original ausente; marca d'agua descartada blob_id=#{blob&.id} attachment_id=#{attachment.id}")
+    nil
   ensure
     result&.tempfile&.close!
+  end
+
+  def record_missing_source_blob(attachment, blob, error)
+    Storage::BlobAuditRecorder.record!(
+      blob: blob,
+      attachment: attachment,
+      action: "watermark_source_missing",
+      source: "habitation_photo_watermark_job",
+      metadata: {
+        error: error.class.name
+      }
+    )
   end
 
   def create_watermarked_blob(original_blob, attachable)
