@@ -49,10 +49,37 @@ module Storage
 
     def tenant_for(attachment, blob)
       record = attachment&.record
-      return record.tenant if record.respond_to?(:tenant) && record.tenant.present?
+      tenant = tenant_from_record(record)
+      return tenant if tenant.present?
 
       tenant_id = tenant_id_for(record, blob)
       Tenant.find_by(id: tenant_id) if tenant_id.present?
+    end
+
+    def tenant_from_record(record)
+      return if record.blank?
+      return record.tenant if record.respond_to?(:tenant) && record.tenant.present?
+      return Tenant.find_by(id: record.tenant_id) if record.respond_to?(:tenant_id) && record.tenant_id.present?
+
+      tenant_owner_for(record)&.then do |owner|
+        return owner.tenant if owner.respond_to?(:tenant) && owner.tenant.present?
+        return Tenant.find_by(id: owner.tenant_id) if owner.respond_to?(:tenant_id) && owner.tenant_id.present?
+      end
+    rescue StandardError
+      nil
+    end
+
+    def tenant_owner_for(record)
+      %i[home_setting property_setting layout_setting seo_setting].each do |association|
+        next unless record.respond_to?(association)
+
+        owner = record.public_send(association)
+        return owner if owner.present?
+      rescue StandardError
+        next
+      end
+
+      nil
     end
 
     def record_missing_blob(attachment, blob)
@@ -116,6 +143,8 @@ module Storage
     end
 
     def tenant_id_for(record, blob)
+      tenant = tenant_from_record(record)
+      return tenant.id if tenant.present?
       return record.tenant_id if record&.respond_to?(:tenant_id)
 
       blob&.metadata.to_h["tenant_id"].presence

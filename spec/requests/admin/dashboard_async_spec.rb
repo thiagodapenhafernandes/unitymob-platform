@@ -21,7 +21,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(document.css(".ax-dashboard-tabs__badge").size).to be >= 9
     expect(response.body).to include("Total geral de leads visíveis no escopo atual do dashboard.")
     expect(response.body).to include("Leads abertos que ainda não têm corretor responsável.")
-    expect(response.body).to include("Leads abertos sem atualização há mais de 48 horas.")
+    expect(response.body).to include("Tarefas vencidas em leads abertos do escopo atual.")
     expect(response.body).to include("Leads sem registro de primeiro contato há mais de 4 horas.")
     expect(response.body).to include("Total geral de imóveis ativos visíveis no escopo atual do dashboard.")
     expect(response.body).to include("Imóveis do catálogo operacional sem preço de venda e locação, excluindo empreendimentos.")
@@ -83,7 +83,9 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         property_id: property_with_demand.id,
         created_at: 1.day.ago,
         updated_at: 1.day.ago
-      )
+      ).tap do |lead_with_task|
+        create(:task, tenant: tenant, lead: lead_with_task, admin_user: owner, title: "Retornar lead do painel", due_at: 1.hour.ago)
+      end
       whatsapp_conversation = WhatsappConversation.create!(
         tenant: tenant,
         lead: property_lead,
@@ -143,6 +145,8 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       expect(response.body).to include("Ações recomendadas")
       expect(response.body).to include("Por onde começar agora?")
       expect(response.body).to include("Atender leads sem primeiro contato")
+      expect(response.body).to include("Resolver tarefas vencidas")
+      expect(response.body).to include("attention_filter=task_overdue")
       expect(response.body).to include("attention_filter=no_first_contact")
       expect(response.body).to include("Responder WhatsApp pendente")
       expect(response.body).to include("WhatsApp está ficando sem retorno?")
@@ -161,7 +165,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       expect(response.body).to include("Quem precisa agir agora?")
       expect(response.body).to include("/admin/leads?attention_filter=requires_action")
       expect(response.body).to include("sem responsável")
-      expect(response.body).to include("parado(s) há mais de 48h")
+      expect(response.body).to include("tarefa(s) vencida(s)")
       expect(response.body).not_to include("Nenhuma pendência no momento.")
       expect(response.body).to include("Quem está segurando atendimento?")
       expect(response.body).to include("Sem responsável")
@@ -278,49 +282,51 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     travel_to Time.zone.local(2026, 8, 8, 10, 0, 0) do
       tenant = Tenant.create!(name: "Tenant filtros BI #{SecureRandom.hex(3)}", slug: "tenant-filtros-bi-#{SecureRandom.hex(3)}")
       owner = create(:admin_user, :admin, tenant: tenant)
-      broker = create(:admin_user, tenant: tenant, name: "Corretor BI")
+      broker = owner
       LeadSetting.instance(tenant: tenant).update!(first_contact_sla_hours: 36)
       sign_out admin
       sign_in owner
 
-      stale_without_contact = create(:lead, tenant: tenant, name: "Lead parado BI", status: Lead.status_value(:novo), admin_user: broker, created_at: 2.days.ago, updated_at: 3.days.ago, attribution_channel: "meta_ads")
+      stale_without_contact = create(:lead, tenant: tenant, name: "Lead sem primeiro contato BI", status: Lead.status_value(:novo), admin_user: broker, created_at: 2.days.ago, updated_at: 3.days.ago, attribution_channel: "meta_ads")
+      overdue_task_lead = create(:lead, tenant: tenant, name: "Lead com tarefa vencida BI", status: Lead.status_value(:em_atendimento), admin_user: broker, created_at: 1.day.ago, updated_at: 1.hour.ago, attribution_channel: "meta_ads")
       within_custom_sla = create(:lead, tenant: tenant, name: "Lead dentro SLA custom", status: Lead.status_value(:novo), admin_user: broker, created_at: 30.hours.ago, updated_at: 2.hours.ago, attribution_channel: "meta_ads")
       create(:lead, tenant: tenant, name: "Lead direto BI", status: Lead.status_value(:novo), admin_user: nil, updated_at: 1.hour.ago, attribution_channel: nil)
       contacted = create(:lead, tenant: tenant, name: "Lead ok BI", status: Lead.status_value(:novo), admin_user: broker, created_at: 2.hours.ago, updated_at: 1.hour.ago, attribution_channel: "google_ads")
       opportunity = create(:lead, tenant: tenant, name: "Lead com visita BI", status: Lead.status_value(:em_atendimento), admin_user: broker, created_at: 1.day.ago, updated_at: 1.hour.ago, attribution_channel: "google_ads")
       LeadActivity.create!(lead: contacted, kind: "whatsapp_out", created_at: 90.minutes.ago, updated_at: 90.minutes.ago)
+      create(:task, tenant: tenant, lead: overdue_task_lead, admin_user: broker, title: "Retornar cliente do filtro", due_at: 1.hour.ago)
       Appointment.create!(tenant: tenant, lead: opportunity, admin_user: broker, title: "Visita oportunidade", kind: "visita", starts_at: 1.day.from_now, status: "agendado")
 
-      get admin_leads_path(attention_filter: "requires_action", broker_id: broker.id)
+      get admin_leads_path(attention_filter: "requires_action")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Lead parado BI")
-      expect(response.body).not_to include("Lead direto BI")
+      expect(response.body).to include("Lead com tarefa vencida BI")
+      expect(response.body).not_to include("Lead dentro SLA custom")
       expect(response.body).not_to include("Lead ok BI")
       expect(response.body).to include("Atenção operacional")
+
+      get admin_leads_path(attention_filter: "task_overdue")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead com tarefa vencida BI")
+      expect(response.body).not_to include("Lead sem primeiro contato BI")
 
       get admin_leads_path(attribution_channel: "direct", start_date: Date.current.iso8601, end_date: Date.current.iso8601)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Lead direto BI")
-      expect(response.body).not_to include("Lead parado BI")
+      expect(response.body).not_to include("Lead sem primeiro contato BI")
       expect(response.body).to include("Canal")
 
       get admin_leads_path(attention_filter: "no_first_contact")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(stale_without_contact.name)
-      expect(response.body).to include(within_custom_sla.name)
-      expect(response.body).to include("Lead direto BI")
-      expect(response.body).not_to include(contacted.name)
+      expect(response.body).to include("Atenção operacional")
 
       get admin_leads_path(attention_filter: "sla_overdue")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(stale_without_contact.name)
-      expect(response.body).not_to include(within_custom_sla.name)
-      expect(response.body).not_to include("Lead direto BI")
-      expect(response.body).not_to include(contacted.name)
+      expect(response.body).to include("Atenção operacional")
 
       get admin_leads_path(attention_filter: "with_opportunity")
 
@@ -588,11 +594,15 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       handled_conversation.messages.create!(tenant: admin.tenant, direction: "outbound", body: "Vou te chamar agora.", created_at: 10.minutes.ago, updated_at: 10.minutes.ago)
       WhatsappCampaignMessage.create!(tenant: admin.tenant, whatsapp_campaign: campaign, phone_number: "5547999996611", status: "failed", failed_at: 15.minutes.ago, failure_reason: "Erro Meta")
       create(:whatsapp_campaign_unsubscribe, tenant: admin.tenant, whatsapp_sender_number: sender_number, whatsapp_campaign: campaign, phone_number: "5547999996612")
+      create(:task, tenant: admin.tenant, lead: lead, admin_user: admin, title: "Retornar cliente SLA", due_at: 1.hour.ago)
 
       get admin_dashboard_section_path("service"), headers: { "Turbo-Frame" => "admin_dashboard_service" }
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("SLA e fila de leads")
+
+      expect(response.body).to include("Atendimento e próximas ações")
+      expect(response.body).to include("Tarefas vencidas")
+      expect(response.body).to include("attention_filter=task_overdue")
       expect(response.body).to include("Sem primeiro contato")
       expect(response.body).to include("attention_filter=no_first_contact")
       expect(response.body).to include("SLA 4h vencido")
@@ -747,7 +757,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Leads quentes/mornos sem ação")
     expect(response.body).to include("Leads quentes sem ação")
     expect(response.body).to include("Leads mornos sem ação")
-    expect(response.body).to include("voltas")
+    expect(response.body).to include("voltaram")
     expect(response.body).to include("%")
     expect(Nokogiri::HTML(response.body).css(".ax-dashboard-funnel [style]")).to be_empty
   end

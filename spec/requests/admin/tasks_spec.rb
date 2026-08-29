@@ -29,7 +29,7 @@ RSpec.describe "Admin::Tasks", type: :request do
       expect(document.at_css('button.ax-ico-btn[aria-label="Concluir tarefa Ligar para cliente"] i[aria-hidden="true"]')).to be_present
     end
 
-    it "inclui tarefas C2S acionaveis nos filtros operacionais e mantem auditoria do legado" do
+    it "inclui tarefas importadas acionaveis nos filtros operacionais e mantem auditoria da migracao" do
       active_lead = create(:lead, admin_user: admin, status: "Em Atendimento")
       pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
       closed_stage = admin.tenant.lead_pipeline_stages.find_or_create_by!(lead_pipeline: pipeline, name: "Descartado") do |stage|
@@ -38,18 +38,20 @@ RSpec.describe "Admin::Tasks", type: :request do
       closed_stage.update!(stage_type: "lost") unless closed_stage.stage_type == "lost"
       closed_lead = create(:lead, admin_user: admin, lead_pipeline: pipeline, lead_pipeline_stage: closed_stage, status: closed_stage.name)
       Task.create!(title: "Ligar para cliente", admin_user: admin, status: "pendente", source: "manual")
-      Task.create!(title: "Retorno C2S ativo", admin_user: admin, lead: active_lead, status: "pendente", source: "external_legacy")
-      Task.create!(title: "Retorno C2S descartado", admin_user: admin, lead: closed_lead, status: "pendente", source: "external_legacy")
+      Task.create!(title: "Retorno importado ativo", admin_user: admin, lead: active_lead, status: "pendente", source: "external_legacy")
+      Task.create!(title: "Retorno importado descartado", admin_user: admin, lead: closed_lead, status: "pendente", source: "external_legacy")
 
       get admin_tasks_path(team: "0")
 
-      expect(response.body).to include("Ligar para cliente", "Retorno C2S ativo", "Importada do C2S/legado")
-      expect(response.body).not_to include("Retorno C2S descartado")
+      expect(response.body).to include("Ligar para cliente", "Retorno importado ativo", "Importada da migração externa")
+      expect(response.body).not_to include("Retorno importado descartado")
+      expect(response.body).not_to include("C2S")
 
       get admin_tasks_path(filter: "legado", team: "0")
 
-      expect(response.body).to include("Retorno C2S ativo", "Retorno C2S descartado", "Importada do C2S/legado")
+      expect(response.body).to include("Retorno importado ativo", "Retorno importado descartado", "Importada da migração externa")
       expect(response.body).not_to include("Ligar para cliente")
+      expect(response.body).not_to include("C2S")
     end
   end
 

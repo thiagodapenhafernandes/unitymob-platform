@@ -22,7 +22,7 @@
        ["semana", "Próx. 7 dias", @counts[:semana], "amber"],
        ["concluidas", "Concluídas", nil, "green"],
        ["todas", "Todas", nil, "gray"],
-       ["legado", "Legado C2S", @counts[:legado], "amber"]
+       ["legado", "Migração externa", @counts[:legado], "amber"]
      ].each do |key, label, count, color| %>
     <%= link_to admin_tasks_path(filter: key, team: params[:team]),
           class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @filter == key}",
@@ -64,7 +64,7 @@
             <td>
               <div class="ax-strong"><%= task.title %></div>
               <% if task.external_legacy? %>
-                <div class="tw-mt-1"><span class="ax-badge ax-badge--amber">Importada do C2S/legado</span></div>
+                <div class="tw-mt-1"><span class="ax-badge ax-badge--amber">Importada da migração externa</span></div>
               <% end %>
               <% if task.description.present? %><div class="ax-page-subtitle ax-table__text--truncate"><%= task.description %></div><% end %>
             </td>

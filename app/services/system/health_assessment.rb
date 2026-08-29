@@ -43,7 +43,13 @@ module System
       findings = []
       errors = platform.fetch(:errors, {})
       error_count = errors[:application_open].to_i
-      findings << finding("application_errors", error_count >= thresholds[:application_errors_critical] ? "critical" : "warning", "#{error_count} erros funcionais abertos") if error_count >= thresholds[:application_errors_warning]
+      hard_error_count = errors.fetch(:application_error_open, error_count).to_i
+      warning_count = errors.fetch(:application_warning_open, 0).to_i
+      if error_count >= thresholds[:application_errors_warning]
+        severity = hard_error_count >= thresholds[:application_errors_critical] ? "critical" : "warning"
+        message = application_errors_message(error_count, hard_error_count, warning_count)
+        findings << finding("application_errors", severity, message)
+      end
       findings << finding("unassigned_errors", "warning", "#{errors[:unassigned_open]} erros funcionais sem tenant") if errors[:unassigned_open].to_i.positive?
       findings << finding("migrations_pending", "critical", "Existem migrations pendentes") if platform.dig(:release, :migrations_pending)
 
@@ -53,6 +59,13 @@ module System
         findings << finding("integration_failures", severity, "#{failures} integrações degradadas")
       end
       findings
+    end
+
+    def application_errors_message(total_count, hard_error_count, warning_count)
+      return "#{total_count} erros funcionais abertos" if warning_count.zero? || hard_error_count == total_count
+      return "#{warning_count} avisos funcionais abertos" if hard_error_count.zero?
+
+      "#{hard_error_count} erros e #{warning_count} avisos funcionais abertos"
     end
 
     def runtime_findings

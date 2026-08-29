@@ -204,11 +204,11 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css(".lead-pwa-kanban-sheet[data-lead-pwa-kanban-target='sheet']")).to be_present
     end
 
-    it "reconcilia as abas PWA com agendamentos C2S ja importados" do
+    it "reconcilia as abas PWA com agendamentos ja importados" do
       travel_to Time.zone.local(2026, 8, 15, 10, 0, 0) do
-        future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Futuro C2S", phone: "11999999991", status: "Em Atendimento")
-        due = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Hoje C2S", phone: "11999999992", status: "Em Atendimento")
-        visit = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Visita C2S", phone: "11999999993", status: "Em Atendimento")
+        future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Futuro Importado", phone: "11999999991", status: "Em Atendimento")
+        due = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno Hoje Importado", phone: "11999999992", status: "Em Atendimento")
+        visit = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Visita Importada", phone: "11999999993", status: "Em Atendimento")
 
         create(
           :lead,
@@ -286,22 +286,24 @@ RSpec.describe "Admin::Leads", type: :request do
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
         expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "1")
-        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Retorno Futuro C2S", "Retornar para o cliente - 20/08/2026 09:00")
-        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Retorno Hoje C2S", "Visita C2S")
+        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Retorno Futuro Importado", "Retornar para o cliente - 20/08/2026 09:00")
+        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Retorno Hoje Importado", "Visita Importada")
 
         get admin_leads_path(view: "list", mobile_tab: "visits")
 
         document = Nokogiri::HTML(response.body)
         expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Visitas", "1")
-        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Visita C2S", "Visita marcada - 17/08/2026 15:30")
+        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Visita Importada", "Visita marcada - 17/08/2026 15:30")
 
         get admin_leads_path(view: "list", mobile_tab: "todo")
 
         document = Nokogiri::HTML(response.body)
         card_text = document.css(".lead-pwa-card").map(&:text).join
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "2")
-        expect(card_text).to include("Retorno Hoje C2S", "Lead Novo Sem Agenda")
-        expect(card_text).not_to include("Retorno Futuro C2S", "Visita C2S")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "1")
+        expect(card_text).to include("Retorno Hoje Importado")
+        expect(card_text).not_to include("Lead Novo Sem Agenda")
+        expect(card_text).not_to include("Retorno Futuro Importado", "Visita Importada")
+        expect(card_text).not_to include("C2S")
       end
     end
 
@@ -489,6 +491,7 @@ RSpec.describe "Admin::Leads", type: :request do
       document = Nokogiri::HTML(response.body)
       bottom_nav = document.at_css(".ax-pwa-bottom-nav")
       expect(bottom_nav).to be_present
+      expect(bottom_nav.css(".ax-pwa-bottom-nav__item[data-admin-navigation-ignore]")).to be_empty
       expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-pwa-queue").text).to include("6º", "na fila")

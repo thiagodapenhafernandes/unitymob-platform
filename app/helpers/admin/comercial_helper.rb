@@ -127,7 +127,7 @@ module Admin::ComercialHelper
       when :organic_social then "Criado por acesso social (#{channel_label})"
       when :referral then "Criado por uma referência externa (#{channel_label})"
       when :direct then "Acesso direto ou origem não identificada"
-      when :external_migration then "Criado pela integração C2S (#{channel_label})"
+      when :external_migration then "Criado pela migração externa (#{channel_label})"
       when :webhook  then "Criado via #{channel_label}#{" · recebido por #{received_by}" if received_by}"
       when :share    then "Criado pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
       when :portal   then "Criado por um portal imobiliário (#{channel_label})"
@@ -260,7 +260,7 @@ module Admin::ComercialHelper
       info.dig("external_lead_payload", "attributes", "channel", "alias")
     ]
 
-    candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence || "Integração C2S"
+    candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence || "Integração externa"
   end
 
   def useful_external_origin?(value)
@@ -284,7 +284,7 @@ module Admin::ComercialHelper
 
     lead_type_label =
       if external_lead_migration_lead?(lead, info, attribution)
-        conversion[:channel_label].presence || "Integração C2S"
+        conversion[:channel_label].presence || "Integração externa"
       elsif lead.lead_type.to_s.casecmp?("webhook")
         conversion[:channel_label].presence || "Integração externa"
       else

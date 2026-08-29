@@ -47,4 +47,39 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
       )
     )
   end
+
+  it "mantém contexto de tenant para slides da home que herdam tenant pela configuração" do
+    tenant = Tenant.create!(name: "Tenant home #{SecureRandom.hex(3)}", slug: "tenant-home-#{SecureRandom.hex(3)}")
+    setting = HomeSetting.instance(tenant: tenant)
+    slide = setting.hero_slides.build(position: 1, active: true)
+    slide.image.attach(io: StringIO.new("slide"), filename: "slide.jpg", content_type: "image/jpeg")
+    slide.save!
+    attachment = slide.image.attachment
+    blob = attachment.blob
+    service = instance_double(ActiveStorage::Service)
+
+    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+    allow(Storage::ProtectedBlobPolicy).to receive(:critical_attachment_scope).and_return(ActiveStorage::Attachment.where(id: attachment.id))
+    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name) do
+      expect(Current.tenant).to eq(tenant)
+      service
+    end
+    allow(service).to receive(:exist?).with(blob.key).and_return(false)
+    allow(Storage::BlobAuditRecorder).to receive(:record!)
+    allow(ErrorEvent).to receive(:record!)
+
+    described_class.perform_now
+
+    expect(ErrorEvent).to have_received(:record!).with(
+      an_instance_of(described_class::MissingCriticalBlob),
+      source: "job",
+      severity: "error",
+      context: hash_including(
+        tenant_id: tenant.id,
+        record_type: "HomeHeroSlide",
+        record_id: slide.id,
+        report_source: "storage.critical_blob_integrity"
+      )
+    )
+  end
 end
