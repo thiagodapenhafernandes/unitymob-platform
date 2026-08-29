@@ -18,7 +18,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     allow(Notifications::PushDispatcher).to receive(:deliver).and_return(1)
   end
 
-  it "envia push para retorno vencido do corretor responsavel" do
+  it "envia push para tarefa vencida do corretor responsavel" do
     task = create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 5.minutes.ago)
 
     described_class.perform_now
@@ -26,14 +26,33 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(
       admin_user_id: broker.id,
       title: "Retornar para o cliente",
-      body: "Está na hora de retornar para o cliente -> Gilson",
+      body: "Está na hora da tarefa: Gilson",
       url: "/admin/leads/#{lead.id}",
       tag: "task-return-#{task.id}",
       urgency: "high",
       ttl: 3600,
       require_interaction: true,
       lead_id: lead.id,
-      metadata: { task_id: task.id, source: "task_due_reminder" }
+      metadata: { task_id: task.id, source: "task_due_reminder", phase: "due" }
+    )
+  end
+
+  it "envia push antes da tarefa vencer" do
+    task = create(:task, tenant: tenant, lead: lead, admin_user: broker, kind: "ligacao", title: "Ligar para confirmar visita", due_at: 20.minutes.from_now)
+
+    described_class.perform_now
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(
+      admin_user_id: broker.id,
+      title: "Em breve: Ligar para confirmar visita",
+      body: "Tarefa agendada para 19/08/2026 às 09:50: Gilson",
+      url: "/admin/leads/#{lead.id}",
+      tag: "task-upcoming-#{task.id}",
+      urgency: "high",
+      ttl: 3600,
+      require_interaction: true,
+      lead_id: lead.id,
+      metadata: { task_id: task.id, source: "task_due_reminder", phase: "upcoming" }
     )
   end
 
@@ -69,15 +88,28 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     expect(Notifications::PushDispatcher).not_to have_received(:deliver)
   end
 
-  it "ignora tarefas futuras, concluidas, sem lead e de outro tipo" do
-    create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 5.minutes.from_now)
+  it "ignora tarefas muito futuras e concluidas" do
+    create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 31.minutes.from_now)
     create(:task, tenant: tenant, lead: lead, admin_user: broker, status: "concluida", due_at: 5.minutes.ago)
-    create(:task, tenant: tenant, lead: nil, admin_user: broker, due_at: 5.minutes.ago)
-    create(:task, tenant: tenant, lead: lead, admin_user: broker, kind: "ligacao", due_at: 5.minutes.ago)
 
     described_class.perform_now
 
     expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+  end
+
+  it "notifica tarefa sem lead usando a tela de tarefas" do
+    task = create(:task, tenant: tenant, lead: nil, admin_user: broker, title: "Cobrar documento", due_at: 5.minutes.ago)
+
+    described_class.perform_now
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(
+      admin_user_id: broker.id,
+      body: "Está na hora da tarefa: Cobrar documento",
+      url: "/admin/tasks",
+      tag: "task-return-#{task.id}",
+      lead_id: nil,
+      metadata: { task_id: task.id, source: "task_due_reminder", phase: "due" }
+    ))
   end
 
   it "ignora responsavel inativo" do
