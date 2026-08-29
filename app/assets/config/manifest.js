@@ -17,6 +17,7 @@
 //= link admin/theme_tokens.css
 //= link admin_tailwind.css
 //= link admin/components.css
+//= link admin/components/loading.css
 //= link habitations_form_refresh.css
 //= link admin/components/media_modal.css
 //= link admin/habitations_catalog.css

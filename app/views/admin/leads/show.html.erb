@@ -1956,9 +1956,6 @@
                     <% if t.due_at.present? %>
                       · <%= l(t.due_at, format: :short) %>
                     <% end %>
-                    <% if t.external_legacy? %>
-                      · C2S
-                    <% end %>
                   </span>
                 </span>
                 <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>

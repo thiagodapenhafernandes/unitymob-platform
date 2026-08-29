@@ -1044,6 +1044,10 @@ class Admin::LeadsController < Admin::BaseController
     case @attention_filter.to_s
     when "requires_action"
       scope.where(status: active_lead_status_values_with_blank).where(attention_leads_sql)
+    when "task_overdue"
+      scope.where(status: active_lead_status_values_with_blank).where(id: operational_task_scope.atrasadas.select(:lead_id))
+    when "task_due_today"
+      scope.where(status: active_lead_status_values_with_blank).where(id: operational_task_scope.hoje.select(:lead_id))
     when "stalled"
       scope.where(status: active_lead_status_values_with_blank).where("leads.updated_at < ?", 2.days.ago)
     when "unassigned"
@@ -1140,10 +1144,37 @@ class Admin::LeadsController < Admin::BaseController
 
   def attention_leads_sql
     ActiveRecord::Base.sanitize_sql_array([
-      "leads.status = ? OR leads.admin_user_id IS NULL OR leads.updated_at < ?",
+      <<~SQL.squish,
+        leads.status = ?
+        OR leads.admin_user_id IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM tasks attention_tasks
+          WHERE attention_tasks.tenant_id = leads.tenant_id
+            AND attention_tasks.lead_id = leads.id
+            AND attention_tasks.status = 'pendente'
+            AND attention_tasks.due_at IS NOT NULL
+            AND attention_tasks.due_at < ?
+        )
+        OR (
+          leads.created_at < ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM lead_activities contact_activities
+            WHERE contact_activities.lead_id = leads.id
+              AND contact_activities.kind IN (?)
+          )
+        )
+      SQL
       Lead.status_value(:represado),
-      2.days.ago
+      Time.current,
+      first_contact_sla_hours.hours.ago,
+      CONTACT_ACTIVITY_KINDS
     ])
+  end
+
+  def operational_task_scope
+    current_tenant.tasks.operational_current
   end
 
   def parse_filter_date(value)

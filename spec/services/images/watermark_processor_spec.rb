@@ -31,7 +31,7 @@ RSpec.describe Images::WatermarkProcessor do
   end
 
   it "preserves storage missing errors when configured to surface failures" do
-    watermark_attachment = instance_double(ActiveStorage::Attached::One)
+    watermark_attachment = double("watermark attachment")
     setting = instance_double(
       PropertySetting,
       watermark_configured?: true,

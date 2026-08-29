@@ -37,4 +37,21 @@ RSpec.describe System::HealthAssessment do
 
     expect(described_class.call(runtime: healthy_runtime, platform: platform)[:status]).to eq("healthy")
   end
+
+  it "não classifica volume de avisos funcionais como crítico sem erro aberto suficiente" do
+    platform = healthy_platform.deep_merge(
+      errors: {
+        application_open: 20,
+        application_error_open: 0,
+        application_warning_open: 20,
+        unassigned_open: 0
+      }
+    )
+
+    result = described_class.call(runtime: healthy_runtime, platform: platform)
+    finding = result[:findings].find { |item| item[:code] == "application_errors" }
+
+    expect(result[:status]).to eq("warning")
+    expect(finding).to include(severity: "warning", message: "20 avisos funcionais abertos")
+  end
 end

@@ -119,14 +119,18 @@ class ErrorEvent < ApplicationRecord
 
     def register_occurrence(event, now:, payload:, severity:)
       reopened = event.resolved_at.present?
-      update_counters(event.id, occurrences_count: 1)
-      where(id: event.id).update_all(
+      tenant_id = payload["tenant_id"].presence || Current.tenant&.id
+      attributes = {
         last_seen_at: now,
         context: payload,
         severity: severity,
         resolved_at: nil, # reincidência reabre o evento
         updated_at: now
-      )
+      }
+      attributes[:tenant_id] = tenant_id if event.tenant_id.blank? && tenant_id.present?
+
+      update_counters(event.id, occurrences_count: 1)
+      where(id: event.id).update_all(attributes)
       notify(event, reopened: true) if reopened
       event
     end

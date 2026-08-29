@@ -90,20 +90,36 @@ module System
     end
 
     def error_summary
-      return { application_open: 0, traffic_noise_open: 0, unassigned_open: 0, affected_tenants: 0 } unless ErrorEvent.storage_ready?
+      return empty_error_summary unless ErrorEvent.storage_ready?
 
       unresolved = open_errors
       noise = unresolved.where(exception_class: TRAFFIC_NOISE_EXCEPTIONS)
       application = unresolved.where.not(exception_class: TRAFFIC_NOISE_EXCEPTIONS)
+      application_errors = application.where(severity: "error")
+      application_warnings = application.where(severity: "warning")
       {
         application_open: application.count,
+        application_error_open: application_errors.count,
+        application_warning_open: application_warnings.count,
         traffic_noise_open: noise.count,
         traffic_noise_occurrences: noise.sum(:occurrences_count),
         unassigned_open: application.where(tenant_id: nil).count,
         affected_tenants: application.where.not(tenant_id: nil).distinct.count(:tenant_id)
       }
     rescue StandardError
-      { application_open: 0, traffic_noise_open: 0, unassigned_open: 0, affected_tenants: 0 }
+      empty_error_summary
+    end
+
+    def empty_error_summary
+      {
+        application_open: 0,
+        application_error_open: 0,
+        application_warning_open: 0,
+        traffic_noise_open: 0,
+        traffic_noise_occurrences: 0,
+        unassigned_open: 0,
+        affected_tenants: 0
+      }
     end
 
     def open_errors

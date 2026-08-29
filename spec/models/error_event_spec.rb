@@ -72,6 +72,23 @@ RSpec.describe ErrorEvent, type: :model do
       expect(event.reload).not_to be_resolved
     end
 
+    it "preenche tenant em evento agrupado que nasceu sem tenant quando a nova ocorrência traz contexto" do
+      tenant = Tenant.create!(name: "Tenant erro #{SecureRandom.hex(3)}", slug: "tenant-erro-#{SecureRandom.hex(3)}")
+      exception = build_exception("falha agrupada")
+      event = nil
+
+      Current.set(tenant: nil) do
+        event = described_class.record!(exception, source: "job")
+      end
+
+      expect(event.tenant_id).to be_nil
+
+      described_class.record!(exception, source: "job", context: { tenant_id: tenant.id })
+
+      expect(event.reload.tenant_id).to eq(tenant.id)
+      expect(event.context).to include("tenant_id" => tenant.id)
+    end
+
     it "nunca levanta exceção quando a persistência falha" do
       allow(described_class).to receive(:find_by).and_raise(StandardError, "banco fora do ar")
 

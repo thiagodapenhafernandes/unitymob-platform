@@ -71,7 +71,7 @@ class Admin::DashboardController < Admin::BaseController
   # visível depende do usuário). As seções (charts/funnel/...) seguem ao vivo.
   def load_overview_slice
     metrics = Rails.cache.fetch(
-      ["dashboard-overview-v5", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      ["dashboard-overview-v6", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
       expires_in: OVERVIEW_CACHE_EXPIRATION
     ) { compute_overview_metrics }
     metrics.each { |name, value| instance_variable_set("@#{name}", value) }
@@ -110,6 +110,10 @@ class Admin::DashboardController < Admin::BaseController
     active_lead_statuses_with_blank = active_lead_status_values_with_blank
     @unassigned_open_leads = @lead_scope.where(admin_user_id: nil, status: active_lead_statuses_with_blank).count
     @stalled_open_leads = @lead_scope.where(status: active_lead_statuses_with_blank).where("leads.updated_at < ?", 2.days.ago).count
+    @lead_open_tasks = dashboard_task_scope.pendentes.count
+    @lead_overdue_tasks = dashboard_task_scope.atrasadas.count
+    @lead_tasks_due_today = dashboard_task_scope.hoje.count
+    @lead_tasks_week = dashboard_task_scope.semana.count
     @attention_open_leads = @lead_scope
       .where(status: active_lead_statuses_with_blank)
       .where(attention_leads_sql)
@@ -136,6 +140,7 @@ class Admin::DashboardController < Admin::BaseController
        active_checkins_count today_checkins_count suspicious_checkins pending_manual_requests
        leads_total new_leads leads_today leads_last_7_days holding_leads
        current_period_leads previous_period_leads unassigned_open_leads stalled_open_leads attention_open_leads
+       lead_open_tasks lead_overdue_tasks lead_tasks_due_today lead_tasks_week
        no_first_contact_leads sla_overdue_leads avg_first_contact_minutes pending_whatsapp_conversations avg_whatsapp_response_minutes
        distribution_rules_total distribution_rules_active rules_with_checkin
        sync_errors_count today_captacoes today_new_habitations drafts_count
@@ -341,6 +346,12 @@ class Admin::DashboardController < Admin::BaseController
     owner_ids = visible_owner_ids(:leads)
     scope = owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
     @dashboard_broker_id ? scope.where(admin_user_id: @dashboard_broker_id) : scope
+  end
+
+  def dashboard_task_scope
+    current_tenant.tasks
+      .operational_current
+      .where(lead_id: @lead_scope.where(status: active_lead_status_values_with_blank).select(:id))
   end
 
   def scoped_dashboard_captacoes
@@ -636,10 +647,10 @@ class Admin::DashboardController < Admin::BaseController
           title: "Leads abertos que ainda não têm corretor responsável."
         },
         {
-          label: "Parados",
-          value: @stalled_open_leads,
-          tone: @stalled_open_leads.to_i.positive? ? "amber" : "green",
-          title: "Leads abertos sem atualização há mais de 48 horas."
+          label: "Tarefas",
+          value: @lead_overdue_tasks,
+          tone: @lead_overdue_tasks.to_i.positive? ? "red" : "green",
+          title: "Tarefas vencidas em leads abertos do escopo atual."
         },
         {
           label: "SLA",
@@ -716,6 +727,24 @@ class Admin::DashboardController < Admin::BaseController
   def build_recommended_actions
     actions = []
     actions << recommended_action(
+      title: "Resolver tarefas vencidas",
+      detail: "#{@lead_overdue_tasks} tarefa(s) pendente(s) passaram do prazo.",
+      value: @lead_overdue_tasks,
+      tone: "red",
+      icon: "alarm",
+      path: admin_leads_path(attention_filter: "task_overdue")
+    ) if @lead_overdue_tasks.to_i.positive?
+
+    actions << recommended_action(
+      title: "Executar tarefas de hoje",
+      detail: "#{@lead_tasks_due_today} tarefa(s) vencem hoje em leads ativos.",
+      value: @lead_tasks_due_today,
+      tone: "amber",
+      icon: "calendar-check",
+      path: admin_leads_path(attention_filter: "task_due_today")
+    ) if @lead_tasks_due_today.to_i.positive?
+
+    actions << recommended_action(
       title: "Atender leads sem primeiro contato",
       detail: "#{@sla_overdue_leads} já passaram de #{first_contact_sla_hours}h sem registro de atendimento.",
       value: @no_first_contact_leads,
@@ -734,13 +763,13 @@ class Admin::DashboardController < Admin::BaseController
     ) if @pending_whatsapp_conversations.to_i.positive?
 
     actions << recommended_action(
-      title: "Reatribuir ou cobrar leads parados",
-      detail: "#{@unassigned_open_leads} sem responsável e #{@stalled_open_leads} sem atualização há 48h.",
-      value: @attention_open_leads,
+      title: "Organizar leads sem dono",
+      detail: "#{@unassigned_open_leads} lead(s) abertos ainda não têm corretor responsável.",
+      value: @unassigned_open_leads,
       tone: "red",
       icon: "person-exclamation",
       path: admin_leads_path(attention_filter: "requires_action")
-    ) if @attention_open_leads.to_i.positive?
+    ) if @unassigned_open_leads.to_i.positive?
 
     catalog_quality_metrics
       .select { |metric| metric[:value].to_i.positive? }
@@ -831,7 +860,7 @@ class Admin::DashboardController < Admin::BaseController
     rows = broker_attention_rows
     {
       question: "Quem está segurando atendimento?",
-      answer: rows.any? ? "Corretores ou fila sem dono com maior volume parado." : "Nenhum corretor com lead aberto em atenção.",
+      answer: rows.any? ? "Responsáveis com maior volume de ações pendentes." : "Nenhum corretor com lead aberto em atenção.",
       tone: rows.any? ? "red" : "green",
       icon: "person-lines-fill",
       path: admin_leads_path,
@@ -842,6 +871,20 @@ class Admin::DashboardController < Admin::BaseController
 
   def service_level_investigation
     rows = [
+      {
+        label: "Tarefas vencidas",
+        value: @lead_overdue_tasks,
+        detail: "Tarefas pendentes passaram do prazo dentro dos leads",
+        tone: @lead_overdue_tasks.to_i.positive? ? "red" : "green",
+        path: admin_leads_path(attention_filter: "task_overdue")
+      },
+      {
+        label: "Tarefas de hoje",
+        value: @lead_tasks_due_today,
+        detail: "Tarefas que vencem hoje dentro dos leads",
+        tone: @lead_tasks_due_today.to_i.positive? ? "amber" : "green",
+        path: admin_leads_path(attention_filter: "task_due_today")
+      },
       {
         label: "Sem primeiro contato",
         value: @no_first_contact_leads,
@@ -996,6 +1039,20 @@ class Admin::DashboardController < Admin::BaseController
   def service_sla_rows
     [
       {
+        label: "Tarefas vencidas",
+        value: @lead_overdue_tasks,
+        detail: "Tarefas pendentes passaram do prazo dentro dos leads",
+        tone: @lead_overdue_tasks.to_i.positive? ? "red" : "green",
+        path: admin_leads_path(attention_filter: "task_overdue")
+      },
+      {
+        label: "Tarefas de hoje",
+        value: @lead_tasks_due_today,
+        detail: "Tarefas que vencem hoje dentro dos leads",
+        tone: @lead_tasks_due_today.to_i.positive? ? "amber" : "green",
+        path: admin_leads_path(attention_filter: "task_due_today")
+      },
+      {
         label: "Sem primeiro contato",
         value: @no_first_contact_leads,
         detail: "Leads sem registro de atendimento no histórico",
@@ -1015,13 +1072,6 @@ class Admin::DashboardController < Admin::BaseController
         detail: "Leads abertos sem corretor responsável",
         tone: @unassigned_open_leads.to_i.positive? ? "red" : "green",
         path: admin_leads_path(broker_id: "unassigned", attention_filter: "requires_action")
-      },
-      {
-        label: "Parados há 48h",
-        value: @stalled_open_leads,
-        detail: "Leads abertos sem atualização recente",
-        tone: @stalled_open_leads.to_i.positive? ? "amber" : "green",
-        path: admin_leads_path(attention_filter: "stalled")
       }
     ]
   end
@@ -1135,7 +1185,7 @@ class Admin::DashboardController < Admin::BaseController
       {
         label: admin_user_id ? names[admin_user_id].presence || "Corretor" : "Sem responsável",
         value: count,
-        detail: admin_user_id ? "leads exigem ação" : "atribuir responsável",
+        detail: admin_user_id ? "ações pendentes em leads" : "atribuir responsável",
         tone: admin_user_id ? "amber" : "red",
         path: admin_user_id ? admin_leads_path(broker_id: admin_user_id, attention_filter: "requires_action") : admin_leads_path(broker_id: "unassigned", attention_filter: "requires_action")
       }
@@ -1272,7 +1322,8 @@ class Admin::DashboardController < Admin::BaseController
       details = []
       details << "#{@holding_leads} represado(s)" if @holding_leads.to_i.positive?
       details << "#{@unassigned_open_leads} sem responsável" if @unassigned_open_leads.to_i.positive?
-      details << "#{@stalled_open_leads} parado(s) há mais de 48h" if @stalled_open_leads.to_i.positive?
+      details << "#{@lead_overdue_tasks} tarefa(s) vencida(s)" if @lead_overdue_tasks.to_i.positive?
+      details << "#{@sla_overdue_leads} SLA vencido" if @sla_overdue_leads.to_i.positive?
       {
         question: "Quem precisa agir agora?",
         answer: details.to_sentence,
@@ -1504,9 +1555,32 @@ class Admin::DashboardController < Admin::BaseController
 
   def attention_leads_sql
     ActiveRecord::Base.sanitize_sql_array([
-      "leads.status = ? OR leads.admin_user_id IS NULL OR leads.updated_at < ?",
+      <<~SQL.squish,
+        leads.status = ?
+        OR leads.admin_user_id IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM tasks attention_tasks
+          WHERE attention_tasks.tenant_id = leads.tenant_id
+            AND attention_tasks.lead_id = leads.id
+            AND attention_tasks.status = 'pendente'
+            AND attention_tasks.due_at IS NOT NULL
+            AND attention_tasks.due_at < ?
+        )
+        OR (
+          leads.created_at < ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM lead_activities contact_activities
+            WHERE contact_activities.lead_id = leads.id
+              AND contact_activities.kind IN (?)
+          )
+        )
+      SQL
       Lead.status_value(:represado),
-      2.days.ago
+      Time.current,
+      first_contact_sla_hours.hours.ago,
+      CONTACT_ACTIVITY_KINDS
     ])
   end
 

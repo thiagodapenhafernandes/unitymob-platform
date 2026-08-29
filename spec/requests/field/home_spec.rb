@@ -29,6 +29,20 @@ RSpec.describe "Field::Home", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
+  it "mantém o preloader global disponível para navegação pelo footer do PWA" do
+    broker = create(:admin_user, :field_agent)
+    sign_in broker
+
+    get field_root_path, headers: mobile_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('data-controller="admin-navigation"')
+    expect(response.body).to include('data-admin-navigation-target="overlay"')
+    expect(response.body).to include("ax-admin-preloader")
+    expect(response.body).to include("ax-pwa-bottom-nav")
+    expect(response.body).to include("admin/components/loading")
+  end
+
   it "oculta o botão de check-in para usuário bloqueado pontualmente" do
     broker = create(:admin_user, name: "Thiago Dev")
     Setting.set("field_checkin_enabled", "true", tenant: broker.tenant)

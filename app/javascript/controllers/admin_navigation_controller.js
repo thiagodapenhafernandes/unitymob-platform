@@ -71,6 +71,13 @@ export default class extends Controller {
 
   handleClick(event) {
     const link = event.target.closest("a[href]")
+    if (link && this.isPrimaryMobileNavigationLink(link)) {
+      if (this.shouldShowForPrimaryMobileNavigationLink(link, event)) {
+        this.showSoon(link.dataset.adminNavigationLabel || "Carregando página...")
+      }
+      return
+    }
+
     if (!link || !this.shouldShowForLink(link, event)) return
 
     this.showSoon(link.dataset.adminNavigationLabel || "Carregando página...")
@@ -85,7 +92,7 @@ export default class extends Controller {
 
   handleTurboBeforeVisit(event) {
     const targetUrl = event.detail?.url
-    if (!targetUrl || !this.isAdminUrl(targetUrl)) return
+    if (!targetUrl || !this.isWorkspaceUrl(targetUrl)) return
 
     this.showSoon("Carregando página...")
   }
@@ -240,6 +247,26 @@ export default class extends Controller {
     return this.isAdminUrl(url.href)
   }
 
+  isPrimaryMobileNavigationLink(link) {
+    return Boolean(link.closest(".ax-pwa-bottom-nav"))
+  }
+
+  shouldShowForPrimaryMobileNavigationLink(link, event) {
+    if (event.defaultPrevented) return false
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false
+    if (link.dataset.turbo === "false") return false
+    if (link.target && link.target !== "_self") return false
+
+    const href = link.getAttribute("href")
+    if (!href || href === "#") return false
+
+    const url = new URL(href, window.location.href)
+    if (url.origin !== window.location.origin) return false
+    if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash === window.location.hash) return false
+
+    return true
+  }
+
   isUiOnlyLink(link) {
     const action = link.dataset.action || ""
     const uiOnlyAction = /#(toggle|open|close|backdropClose|dismiss|select|remove|add)\b/.test(action)
@@ -267,5 +294,10 @@ export default class extends Controller {
   isAdminUrl(urlValue) {
     const url = new URL(urlValue, window.location.href)
     return url.origin === window.location.origin && url.pathname.startsWith("/admin")
+  }
+
+  isWorkspaceUrl(urlValue) {
+    const url = new URL(urlValue, window.location.href)
+    return url.origin === window.location.origin && (url.pathname.startsWith("/admin") || url.pathname.startsWith("/field"))
   }
 }

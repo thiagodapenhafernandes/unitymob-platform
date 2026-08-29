@@ -29,6 +29,7 @@
     <%= stylesheet_link_tag "vendor/bootstrap-icons" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "admin/components/loading", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "field_theme", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "pwa_bottom_nav", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
@@ -241,7 +242,8 @@
       }
     </style>
   </head>
-  <body class="ax-pwa-bottom-nav-body">
+  <body class="ax-pwa-bottom-nav-body"
+        data-controller="admin-navigation">
     <%= render 'shared/flash_messages', toast: true if flash.any? %>
 
     <div id="field-offline-banner" class="field-offline-banner">
@@ -404,6 +406,21 @@
     <main class="field-layout">
       <%= yield %>
     </main>
+
+    <div id="adminNavigationPreloader"
+         class="ax-admin-preloader"
+         data-admin-navigation-target="overlay"
+         data-turbo-permanent
+         hidden
+         aria-live="polite"
+         aria-busy="true">
+      <div class="ax-admin-preloader__panel" role="status">
+        <span class="ax-admin-preloader__spinner" aria-hidden="true"></span>
+        <strong data-admin-navigation-target="title">Carregando página...</strong>
+        <span data-admin-navigation-target="detail">Preparando workspace administrativo</span>
+      </div>
+    </div>
+
     <%= render "admin/shared/pwa_bottom_nav" if current_admin_user %>
 
     <% field_ai_setting = current_admin_user && current_tenant ? PropertySetting.instance(tenant: current_tenant) : nil %>
