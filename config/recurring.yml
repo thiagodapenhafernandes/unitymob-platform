@@ -91,6 +91,10 @@ production:
     class: Tasks::DueReminderJob
     queue: default
     schedule: every minute
+  appointment_due_reminder:
+    class: Appointments::DueReminderJob
+    queue: default
+    schedule: every minute
   automation_tick:
     class: Automation::TickJob
     queue: default
