@@ -1,15 +1,16 @@
-<%# locals: lead, archive_reason_options %>
+<%# locals: lead, archive_reason_options, modal_id (optional) %>
+<% modal_id = local_assigns[:modal_id].presence || "archiveLead#{lead.id}" %>
 <div data-controller="ax-modal" class="tw-inline-block">
   <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--danger" data-action="ax-modal#open">
     <i class="bi bi-archive"></i><span>Arquivar</span>
   </button>
-  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+  <div id="<%= modal_id %>" class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-modal-panel" role="dialog" aria-modal="true">
       <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
         <strong><i class="bi bi-archive ax-ico tw-text-primary"></i> Arquivar lead</strong>
         <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
       </div>
-      <%= form_with url: archive_admin_lead_path(lead), method: :post, data: { controller: "archive-reason" } do |f| %>
+      <%= form_with url: archive_admin_lead_path(lead), method: :post, local: true, data: { controller: "archive-reason", turbo: false } do |f| %>
         <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
           <div class="tw-flex tw-items-end tw-gap-2">
             <div class="tw-flex-1">
@@ -19,11 +20,11 @@
                     label: "Motivo do arquivamento",
                     choices: archive_reason_options.map { |option| [option.name, option.id] },
                     select_options: { include_blank: true },
-                    html_options: { id: "lead_archive_reason_select", required: true, data: { action: "change->archive-reason#reveal" } },
+                    html_options: { id: "#{modal_id}_reason_select", required: true, data: { action: "change->archive-reason#reveal" } },
                     placeholder: "Buscar motivo..."
                   ) %>
             </div>
-            <% if can?(:manage, :catalogos) %>
+            <% if tenant_owner? %>
               <button type="button"
                       class="ax-ico-btn"
                       title="Gerenciar motivos de arquivamento"
@@ -34,14 +35,14 @@
                       data-attribute-manager-modal-id-value="attributeManagerModalLead"
                       data-action="click->attribute-manager#open"
                       data-title="Gerenciar motivos de arquivamento"
-                      data-select-id="lead_archive_reason_select">
+                      data-select-id="<%= "#{modal_id}_reason_select" %>">
                 <i class="bi bi-gear"></i>
               </button>
             <% end %>
           </div>
           <div data-archive-reason-target="justification" hidden>
-            <label class="ax-label" for="lead_archive_note">Justificativa</label>
-            <%= text_area_tag "archive_note", nil, id: "lead_archive_note", class: "ax-control", rows: 3, placeholder: "Detalhe o motivo do arquivamento...", disabled: true %>
+            <label class="ax-label" for="<%= "#{modal_id}_note" %>">Justificativa</label>
+            <%= text_area_tag "archive_note", nil, id: "#{modal_id}_note", class: "ax-control", rows: 3, placeholder: "Detalhe o motivo do arquivamento...", disabled: true %>
           </div>
         </div>
         <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">

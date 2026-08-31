@@ -26,6 +26,8 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     expect(response.body).to include("SLA de primeiro contato")
     expect(response.body).to include("lead_setting[first_contact_sla_hours]")
     expect(response.body).to include("lead_setting[stage_automation_sweep_interval_minutes]")
+    expect(response.body).to include("lead_setting[lead_whatsapp_conversation_enabled]")
+    expect(response.body).to include("Mostrar conversa WhatsApp dentro do lead")
     expect(response.body).to include("Aceita apenas valores entre 5 e 1440 minutos")
     expect(response.body).to include("Detalhes do lead primeiro")
     expect(response.body).to include("WhatsApp do lead direto")
@@ -48,6 +50,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
         stickiness_window_days: "",
         first_contact_sla_hours: "6",
         stage_automation_sweep_interval_minutes: "10",
+        lead_whatsapp_conversation_enabled: "0",
         secure_links_enabled: "1",
         secure_link_expiry_days: "7",
         secure_link_whatsapp: "1",
@@ -68,6 +71,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     setting = LeadSetting.instance(tenant: admin.tenant).reload
     expect(setting.first_contact_sla_hours_value).to eq(6)
     expect(setting.stage_automation_sweep_interval_minutes_value).to eq(10)
+    expect(setting).not_to be_lead_whatsapp_conversation_enabled
     expect(LeadSetting.instance(tenant: admin.tenant).reload.push_lead_click_action_value).to eq("system")
   end
 

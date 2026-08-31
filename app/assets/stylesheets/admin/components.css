@@ -22,6 +22,7 @@
  *= require admin/components/status_list
  *= require admin/components/quick_modal
  *= require admin/components/task_form_modal
+ *= require admin/components/proposal_form_modal
  *= require admin/components/clearable_control
  *= require admin/components/color_field
  *= require admin/components/board

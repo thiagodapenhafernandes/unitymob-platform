@@ -3,14 +3,19 @@ module Whatsapp
     Result = Struct.new(:template, :label, :reason, keyword_init: true)
 
     class << self
-      def call(conversation:, admin_user: nil)
-        new(conversation:, admin_user:).call
+      def call(conversation:, admin_user: nil, lead: nil)
+        new(conversation:, admin_user:, lead:).call
+      end
+
+      def useful_templates(conversation:, admin_user: nil, lead: nil)
+        new(conversation:, admin_user:, lead:).useful_templates
       end
     end
 
-    def initialize(conversation:, admin_user: nil)
+    def initialize(conversation:, admin_user: nil, lead: nil)
       @conversation = conversation
       @admin_user = admin_user
+      @lead = lead
     end
 
     def call
@@ -19,12 +24,18 @@ module Whatsapp
       appointment_template || task_template || followup_template || activation_template || Result.new
     end
 
+    def useful_templates
+      return [] unless conversation&.tenant
+
+      [appointment_template, task_template, followup_template, activation_template].compact.map(&:template)
+    end
+
     private
 
     attr_reader :conversation, :admin_user
 
     def lead
-      conversation.lead
+      @lead || conversation.lead
     end
 
     def integration

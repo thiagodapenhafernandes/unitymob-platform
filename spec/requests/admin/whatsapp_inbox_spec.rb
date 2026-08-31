@@ -606,6 +606,15 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
   end
 
   describe "POST send_message" do
+    before do
+      WhatsappBusinessIntegration.current(admin.tenant).update!(
+        status: "connected",
+        waba_id: "waba-send",
+        phone_number_id: "phone-send",
+        access_token: "token-send"
+      )
+    end
+
     it "cria mensagem outbound, registra na timeline e enfileira envio" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
@@ -613,6 +622,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       allow(Whatsapp::ThreadBroadcaster).to receive(:message_created)
       lead = create(:lead)
       conv = WhatsappConversation.create!(contact_phone: "5547999990003", lead: lead)
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       expect {
         post send_message_admin_whatsapp_conversation_path(conv), params: { body: "Olá, posso ajudar?" }
@@ -630,11 +640,34 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(lead.activities.where(kind: "whatsapp_out").count).to eq(1)
     end
 
+    it "bloqueia envio sem integracao configurada antes de criar mensagem falhada" do
+      allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      WhatsappBusinessIntegration.current(admin.tenant).update!(
+        status: "canceled",
+        waba_id: nil,
+        phone_number_id: nil,
+        access_token: nil
+      )
+      conv = WhatsappConversation.create!(contact_phone: "5547999990060")
+
+      expect {
+        post send_message_admin_whatsapp_conversation_path(conv), params: { body: "Olá" }
+      }.not_to change {
+        WhatsappMessage.unscoped.where(whatsapp_conversation_id: conv.id, direction: "outbound").count
+      }
+
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conv))
+      expect(flash[:alert]).to eq("Integração WhatsApp não configurada para envio nesta conta.")
+      expect(Whatsapp::SendMessageJob).not_to have_received(:perform_later)
+    end
+
     it "respeita return_to para continuar no detalhe do lead" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
       lead = create(:lead)
       conv = WhatsappConversation.create!(contact_phone: "5547999990023", lead: lead)
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       post send_message_admin_whatsapp_conversation_path(conv), params: {
         body: "Mensagem no lead",
@@ -648,6 +681,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
       conv = WhatsappConversation.create!(contact_phone: "5547999990029")
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       post send_message_admin_whatsapp_conversation_path(conv), params: {
         body: "Mensagem no foco",
@@ -661,6 +695,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
       conv = WhatsappConversation.create!(contact_phone: "5547999990007")
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       expect {
         post send_message_admin_whatsapp_conversation_path(conv), params: {
@@ -680,11 +715,10 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
     it "envia cartão de apresentação com foto como imagem no desktop" do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
-      create(:whatsapp_business_integration,
-             tenant: admin.tenant,
-             connected_by_admin_user: admin,
-             presentation_enabled: true,
-             allow_photo_presentation: true)
+      WhatsappBusinessIntegration.current(admin.tenant).update!(
+        presentation_enabled: true,
+        allow_photo_presentation: true
+      )
       admin.avatar.attach(io: StringIO.new("fake-avatar"), filename: "corretor.jpg", content_type: "image/jpeg")
       card = PresentationCard.create!(
         tenant: admin.tenant,
@@ -695,6 +729,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
         active: true
       )
       conv = WhatsappConversation.create!(contact_phone: "5547999990053")
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       expect {
         post send_message_admin_whatsapp_conversation_path(conv), params: {
@@ -888,6 +923,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       allow_any_instance_of(Admin::WhatsappInboxController).to receive(:verified_request?).and_return(true)
       allow(Whatsapp::SendMessageJob).to receive(:perform_later)
       conv = WhatsappConversation.create!(contact_phone: "5547999990040")
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       post send_message_admin_whatsapp_conversation_path(conv),
            params: { body: "Mensagem assíncrona" },
@@ -918,6 +954,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       lead_owner = create(:admin_user, tenant: admin.tenant)
       lead = create(:lead, tenant: admin.tenant, admin_user: lead_owner, phone: "5547999990042")
       conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone, lead: lead)
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       sign_in user
 
@@ -949,6 +986,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       user = create(:admin_user, tenant: admin.tenant, profile: profile)
       lead = create(:lead, tenant: admin.tenant, phone: "5547999990043")
       conv = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: lead.phone)
+      conv.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Oi", status: "delivered")
 
       sign_in user
 

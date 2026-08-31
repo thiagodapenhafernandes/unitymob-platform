@@ -1,0 +1,116 @@
+<%# locals: lead, open_tasks, next_task, new_proposal, proposal_habitations, archive_reason_options, close_deal_form_id %>
+<% next_task = local_assigns[:next_task] %>
+<% open_tasks = Array(local_assigns[:open_tasks]) %>
+<% appointments = Array(local_assigns[:appointments]) %>
+<% proposals = Array(local_assigns[:proposals]) %>
+<% labels_count = local_assigns.fetch(:labels_count, 0).to_i %>
+<% namespace = local_assigns[:namespace].presence || "Hub#{lead.id}" %>
+<% anchor_prefix = local_assigns[:anchor_prefix].presence || "lead-pwa" %>
+<% show_tasks = local_assigns.fetch(:show_tasks, true) %>
+<% close_deal_form_id = local_assigns[:close_deal_form_id].presence || "lead_close_deal_#{lead.id}" %>
+
+<% if show_tasks && next_task %>
+  <% next_badge = task_badge(next_task) %>
+  <div class="lead-pwa-task-card<%= " lead-pwa-task-card--alert" if next_badge[:color] == "red" %>">
+    <div class="lead-pwa-task-card__main">
+      <strong><%= next_task.title %></strong>
+      <span>
+        <%= next_badge[:label] %>
+        <% if next_task.due_at.present? %>
+          · <%= l(next_task.due_at, format: "%d/%m/%Y às %H:%M") %>
+        <% end %>
+      </span>
+    </div>
+    <% if can?(:manage, :comercial) && next_task.pendente? %>
+      <div class="lead-pwa-task-card__actions">
+        <%= button_to complete_admin_task_path(next_task), method: :patch, form_class: "lead-pwa-task-card__form", class: "lead-pwa-task-card__btn lead-pwa-task-card__btn--done" do %>
+          <i class="bi bi-check2-circle" aria-hidden="true"></i><span>Concluir</span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% elsif show_tasks %>
+  <div class="lead-pwa-detail__record">
+    <strong>Nenhuma tarefa pendente.</strong>
+    <span>Defina o próximo passo deste lead.</span>
+  </div>
+<% end %>
+
+<% pending_tasks = open_tasks.reject { |task| next_task && task.id == next_task.id }.first(3) %>
+<% if show_tasks && pending_tasks.any? %>
+  <div class="lead-pwa-task-list">
+    <div class="lead-pwa-task-list__title">
+      <span>Outras tarefas</span>
+      <small><%= pending_tasks.size %></small>
+    </div>
+    <% pending_tasks.each do |task| %>
+      <% badge = task_badge(task) %>
+      <div class="lead-pwa-task-item">
+        <% if can?(:manage, :comercial) && task.pendente? %>
+          <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
+            <i class="bi bi-circle" aria-hidden="true"></i>
+          <% end %>
+        <% else %>
+          <span></span>
+        <% end %>
+        <span class="lead-pwa-task-item__body">
+          <strong><%= task.title %></strong>
+          <span><%= task.due_at.present? ? l(task.due_at, format: "%d/%m/%Y às %H:%M") : task.kind_label %></span>
+        </span>
+        <span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if can?(:manage, :comercial) %>
+  <div class="lead-pwa-next-actions" data-controller="lead-section-nav">
+    <% if appointments.any? %>
+      <%= link_to "##{anchor_prefix}-agenda", class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary", data: { turbo: false, action: "lead-section-nav#go" } do %>
+        <i class="bi bi-calendar-plus" aria-hidden="true"></i><span>Agenda</span><small><%= appointments.size %></small>
+      <% end %>
+    <% else %>
+      <%= render "admin/leads/schedule_activity_modal", lead: lead, modal_id: "scheduleActivity#{namespace}", trigger_label: "Agenda", trigger_class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary", trigger_badge: appointments.size %>
+    <% end %>
+
+    <% if open_tasks.any? %>
+      <%= link_to "##{anchor_prefix}-tarefas", class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--warning", data: { turbo: false, action: "lead-section-nav#go" } do %>
+        <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Tarefa</span><small><%= open_tasks.size %></small>
+      <% end %>
+    <% else %>
+      <%= render "admin/tasks/form_modal", modal_id: "newTaskLead#{namespace}", lead: lead, trigger_label: "Tarefa", trigger_class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--warning", trigger_badge: open_tasks.size %>
+    <% end %>
+
+    <% if labels_count.positive? %>
+      <%= link_to "##{anchor_prefix}-etiquetas", class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--info", data: { turbo: false, action: "lead-section-nav#go" } do %>
+        <i class="bi bi-tags" aria-hidden="true"></i><span>Etiquetas</span><small><%= labels_count %></small>
+      <% end %>
+    <% else %>
+      <%= render "admin/lead_labels/button", lead: lead, trigger_label: "Etiquetas", trigger_class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--info", trigger_icon: "tags", trigger_badge: labels_count %>
+    <% end %>
+
+    <% if proposals.any? %>
+      <%= link_to "##{anchor_prefix}-propostas", class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--neutral", data: { turbo: false, action: "lead-section-nav#go" } do %>
+        <i class="bi bi-file-earmark-text" aria-hidden="true"></i><span>Proposta</span><small><%= proposals.size %></small>
+      <% end %>
+    <% else %>
+      <%= render "admin/proposals/form_modal",
+            modal_id: "newProposalLead#{namespace}",
+            proposal: local_assigns.fetch(:new_proposal),
+            lead: lead,
+            habitations: local_assigns.fetch(:proposal_habitations),
+            trigger_label: "Proposta",
+            trigger_class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--neutral",
+            trigger_icon: "file-earmark-text",
+            trigger_badge: proposals.size %>
+    <% end %>
+
+    <%= form_with url: close_deal_admin_lead_path(lead), method: :post, id: close_deal_form_id, class: "tw-hidden", data: { turbo: false } do %><% end %>
+    <%= ax_confirm_submit(form_id: close_deal_form_id, message: "Marcar este lead como negócio fechado?", confirm_label: "Fechar negócio") do %>
+      <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--success" data-action="click->ax-confirm-submit#request">
+        <i class="bi bi-check-circle"></i><span>Fechado</span>
+      </button>
+    <% end %>
+    <%= render "admin/leads/archive_modal", lead: lead, archive_reason_options: local_assigns.fetch(:archive_reason_options), modal_id: "archiveLead#{namespace}" %>
+  </div>
+<% end %>

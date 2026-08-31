@@ -1,18 +1,32 @@
-<%# locals: modal_id (string), lead (optional), trigger_label (optional), trigger_class (optional) %>
+<%# locals: modal_id (string), lead (optional), task (optional), trigger_label (optional), trigger_class (optional), trigger_icon (optional), trigger_title (optional) %>
 <%
   task_lead = local_assigns[:lead]
+  task_record = local_assigns[:task] || Task.new
   task_modal_id = local_assigns[:modal_id].presence || "newTask#{SecureRandom.hex(6)}"
   task_modal_title = safe_join([
     tag.i(class: "bi bi-check2-square ax-quick-modal__title-icon", aria: { hidden: true }),
-    "Nova tarefa"
+    task_record.persisted? ? "Editar tarefa" : "Nova tarefa"
   ], " ")
+  trigger_label = local_assigns.key?(:trigger_label) ? local_assigns[:trigger_label] : "Nova tarefa"
+  trigger_badge = local_assigns[:trigger_badge]
+  trigger_icon = local_assigns.fetch(:trigger_icon, task_record.persisted? ? "pencil" : "plus-lg")
+  trigger_title = local_assigns[:trigger_title].presence || (task_record.persisted? ? "Editar tarefa" : "Nova tarefa")
+  form_url = task_record.persisted? ? admin_task_path(task_record) : admin_tasks_path
+  form_method = task_record.persisted? ? :patch : :post
+  submit_label = task_record.persisted? ? "Atualizar tarefa" : "Criar tarefa"
 %>
 <div class="tw-inline-block">
-  <button type="button" class="<%= local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm ax-btn--primary") %>" data-ax-modal-open="#<%= task_modal_id %>">
-    <i class="bi bi-plus-lg ax-ico"></i><span><%= local_assigns.fetch(:trigger_label, "Nova tarefa") %></span>
+  <button type="button"
+          class="<%= local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm ax-btn--primary") %>"
+          data-ax-modal-open="#<%= task_modal_id %>"
+          title="<%= trigger_title %>"
+          aria-label="<%= trigger_title %>">
+    <i class="bi bi-<%= trigger_icon %> ax-ico" aria-hidden="true"></i>
+    <% if trigger_label.present? %><span><%= trigger_label %></span><% end %>
+    <% if trigger_badge.present? %><small><%= trigger_badge %></small><% end %>
   </button>
   <%= ax_quick_modal(id: task_modal_id, title: task_modal_title, size: :sm, class_name: "task-form-modal") do %>
-    <%= form_with url: admin_tasks_path, method: :post, class: "task-form-modal__form" do %>
+    <%= form_with url: form_url, method: form_method, local: true, class: "task-form-modal__form" do %>
       <% if task_lead %>
         <%= hidden_field_tag "task[lead_id]", task_lead.id %>
         <div class="task-form-modal__lead">
@@ -23,35 +37,35 @@
 
       <div class="task-form-modal__field task-form-modal__field--full">
         <label class="ax-label" for="<%= "#{task_modal_id}_task_title" %>">Título</label>
-        <%= text_field_tag "task[title]", nil, id: "#{task_modal_id}_task_title", class: "ax-control", required: true, placeholder: "Ex.: Ligar para confirmar visita" %>
+        <%= text_field_tag "task[title]", task_record.title, id: "#{task_modal_id}_task_title", class: "ax-control", required: true, placeholder: "Ex.: Ligar para confirmar visita" %>
       </div>
 
       <div class="task-form-modal__grid">
         <div class="task-form-modal__field">
           <label class="ax-label" for="<%= "#{task_modal_id}_task_kind" %>">Tipo</label>
-          <%= select_tag "task[kind]", options_for_select(Task::KINDS.map { |k, v| [v, k] }, "follow_up"), id: "#{task_modal_id}_task_kind", class: "ax-control" %>
+          <%= select_tag "task[kind]", options_for_select(Task::KINDS.map { |k, v| [v, k] }, task_record.kind.presence || "follow_up"), id: "#{task_modal_id}_task_kind", class: "ax-control" %>
         </div>
         <div class="task-form-modal__field">
           <label class="ax-label" for="<%= "#{task_modal_id}_task_priority" %>">Prioridade</label>
-          <%= select_tag "task[priority]", options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, "normal"), id: "#{task_modal_id}_task_priority", class: "ax-control" %>
+          <%= select_tag "task[priority]", options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, task_record.priority.presence || "normal"), id: "#{task_modal_id}_task_priority", class: "ax-control" %>
         </div>
       </div>
 
       <div class="task-form-modal__field task-form-modal__field--full">
         <label class="ax-label" for="<%= "#{task_modal_id}_task_due_at" %>">Prazo</label>
-        <input type="datetime-local" name="task[due_at]" id="<%= "#{task_modal_id}_task_due_at" %>" class="ax-control">
+        <input type="datetime-local" name="task[due_at]" id="<%= "#{task_modal_id}_task_due_at" %>" class="ax-control" value="<%= task_record.due_at&.strftime("%Y-%m-%dT%H:%M") %>">
       </div>
 
       <div class="task-form-modal__field task-form-modal__field--full">
         <label class="ax-label" for="<%= "#{task_modal_id}_task_description" %>">Descrição</label>
-        <%= text_area_tag "task[description]", nil, id: "#{task_modal_id}_task_description", class: "ax-control", rows: 3 %>
+        <%= text_area_tag "task[description]", task_record.description, id: "#{task_modal_id}_task_description", class: "ax-control", rows: 3 %>
       </div>
 
       <div class="task-form-modal__actions">
         <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
         <button type="submit" class="ax-btn ax-btn--primary">
           <i class="bi bi-check2 ax-ico" aria-hidden="true"></i>
-          <span>Criar tarefa</span>
+          <span><%= submit_label %></span>
         </button>
       </div>
     <% end %>

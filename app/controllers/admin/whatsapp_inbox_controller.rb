@@ -146,6 +146,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
     template_name = params[:template_name].to_s.strip
     media_file = params[:media_file]
     return_path = safe_return_path(params[:return_to])
+    @lead_context_for_send ||= accessible_lead_for_conversation_send(@conversation) if params[:lead_id].present?
 
     if @lead_context_for_send && @conversation.lead_id.blank?
       @conversation.update!(lead: @lead_context_for_send)
@@ -174,6 +175,20 @@ class Admin::WhatsappInboxController < Admin::BaseController
       return respond_send_message_error("Modelos aprovados não aceitam texto livre nessa resposta.", return_path:)
     end
 
+    media_validation = nil
+    if media_file.present?
+      media_validation = Whatsapp::MediaSupport.validation_for(media_file, allow_convertible: true)
+      return respond_send_message_error(media_validation[:error], return_path:) unless media_validation[:ok]
+    end
+
+    if template_name.blank? && media_file.blank? && body.blank?
+      return respond_send_message_error("Escreva uma mensagem ou envie um arquivo.", return_path:)
+    end
+
+    unless @integration&.messaging_ready?
+      return respond_send_message_error("Integração WhatsApp não configurada para envio nesta conta.", return_path:)
+    end
+
     if service_window_locked? && template_name.blank?
       return respond_send_message_error(service_window_gate.message, return_path:)
     end
@@ -191,9 +206,6 @@ class Admin::WhatsappInboxController < Admin::BaseController
     elsif template_name.present?
       message = build_outbound(msg_type: "template", template_name: template_name, body: template_body(template_name))
     elsif media_file.present?
-      media_validation = Whatsapp::MediaSupport.validation_for(media_file, allow_convertible: true)
-      return respond_send_message_error(media_validation[:error], return_path:) unless media_validation[:ok]
-
       message = build_outbound(msg_type: media_validation[:type], body: body, media_url: nil)
     elsif body.present?
       # Apresentação com foto: texto vira legenda do avatar (uma única mensagem).
@@ -203,8 +215,6 @@ class Admin::WhatsappInboxController < Admin::BaseController
       else
         message = build_outbound(msg_type: "text", body: body)
       end
-    else
-      return respond_send_message_error("Escreva uma mensagem ou envie um arquivo.", return_path:)
     end
 
     # Responder (citação): amarra a mensagem citada; a Meta renderiza o quote
@@ -233,7 +243,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
     elsif presentation_template
       log_presentation_template_sent
     end
-    LeadActivity.log!(lead: @conversation.lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name }) if @conversation.lead_id
+    LeadActivity.log!(lead: whatsapp_message_lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name }) if whatsapp_message_lead
     load_thread_messages
     load_thread_context
 
@@ -453,9 +463,10 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def build_presentation_template_message(template)
-    return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar a apresentação.") unless @conversation.lead
+    lead = whatsapp_message_lead
+    return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar a apresentação.") unless lead
 
-    variables = Whatsapp::LeadActivationTemplate.variable_values(lead: @conversation.lead, admin_user: current_admin_user)
+    variables = Whatsapp::LeadActivationTemplate.variable_values(lead: lead, admin_user: current_admin_user)
     values = variables.sort_by { |index, _value| index.to_i }.map(&:last)
     message = build_outbound(
       msg_type: "template",
@@ -477,9 +488,9 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def build_lead_conversation_template_message(template)
-    return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar o template oficial.") unless @conversation.lead
+    return PresentationTemplateMessage.new(ok?: false, error: "Conversa sem lead vinculado para montar o template oficial.") unless whatsapp_message_lead
 
-    variables = Whatsapp::LeadConversationTemplates.variable_values(name: template.name, conversation: @conversation, admin_user: current_admin_user)
+    variables = Whatsapp::LeadConversationTemplates.variable_values(name: template.name, conversation: @conversation, admin_user: current_admin_user, lead: whatsapp_message_lead)
     values = variables.sort_by { |index, _value| index.to_i }.map(&:last)
     message = build_outbound(
       msg_type: "template",
@@ -515,20 +526,20 @@ class Admin::WhatsappInboxController < Admin::BaseController
   # admin_user + conversa + created_at), com ou sem lead. O LeadActivity entra
   # apenas como evento de timeline quando há lead vinculado.
   def log_presentation_sent(card, format)
-    return unless @conversation.lead_id
+    return unless whatsapp_message_lead
 
     LeadActivity.log!(
-      lead: @conversation.lead,
+      lead: whatsapp_message_lead,
       kind: "presentation_sent",
       metadata: { admin_user_id: current_admin_user.id, card_id: card.id, format: format }
     )
   end
 
   def log_presentation_template_sent
-    return unless @conversation.lead_id
+    return unless whatsapp_message_lead
 
     LeadActivity.log!(
-      lead: @conversation.lead,
+      lead: whatsapp_message_lead,
       kind: "presentation_sent",
       metadata: {
         admin_user_id: current_admin_user.id,
@@ -536,6 +547,10 @@ class Admin::WhatsappInboxController < Admin::BaseController
         format: "template"
       }
     )
+  end
+
+  def whatsapp_message_lead
+    @lead_context_for_send || @conversation.lead
   end
 
   def template_body(name)
@@ -646,7 +661,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def service_window_gate
-    @service_window_gate ||= Whatsapp::ServiceWindowGuard.call(conversation: @conversation)
+    @service_window_gate ||= Whatsapp::ServiceWindowGuard.call(conversation: @conversation, admin_user: current_admin_user, lead: @lead_context_for_send)
   end
 
   def service_window_locked?
@@ -654,7 +669,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def composer_gate_payload(conversation)
-    gate = Whatsapp::ServiceWindowGuard.call(conversation:)
+    gate = Whatsapp::ServiceWindowGuard.call(conversation:, admin_user: current_admin_user, lead: @lead_context_for_send)
 
     {
       conversation_id: conversation.id,

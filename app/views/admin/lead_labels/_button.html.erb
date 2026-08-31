@@ -1,12 +1,14 @@
 <%#
   Gatilho + modal do gerenciador de etiquetas de um lead.
-  locals: lead (obrigatório), trigger_label, trigger_class, icon_only
+  locals: lead (obrigatório), trigger_label, trigger_class, trigger_icon, icon_only
 %>
 <%
   lead = local_assigns.fetch(:lead)
   trigger_label = local_assigns.fetch(:trigger_label, "Etiquetas")
   trigger_class = local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm")
+  trigger_icon = local_assigns.fetch(:trigger_icon, "tags")
   icon_only = local_assigns.fetch(:icon_only, false)
+  trigger_badge = local_assigns[:trigger_badge]
 %>
 <div class="tw-inline-block"
      data-controller="lead-labels ax-modal"
@@ -16,7 +18,8 @@
           class="<%= trigger_class %>"
           data-action="lead-labels#open ax-modal#open"
           <%= icon_only ? "aria-label=\"Etiquetas\" title=\"Etiquetas\"".html_safe : "" %>>
-    <i class="bi bi-tags ax-ico"></i><% unless icon_only %><span><%= trigger_label %></span><% end %>
+    <i class="bi bi-<%= trigger_icon %> ax-ico"></i><% unless icon_only %><span><%= trigger_label %></span><% end %>
+    <% if trigger_badge.present? %><small><%= trigger_badge %></small><% end %>
   </button>
 
   <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">

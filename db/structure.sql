@@ -1,4 +1,4 @@
-\restrict J8JgyHTEWWWZNRPnh2CtUIkkPFkVy5bBLyg3FUYVmJLqVgnYkkLaPbZW54QigVY
+\restrict C6znPzEB166WXcC4OF7a8cvMOQaK93BmJSWXpK1HJ5bRdlp8cou4gEFitGPYzXu
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -4079,7 +4079,8 @@ CREATE TABLE public.lead_settings (
     first_contact_sla_hours integer DEFAULT 4 NOT NULL,
     stage_automation_sweep_interval_minutes integer DEFAULT 15 NOT NULL,
     stage_automation_last_swept_at timestamp(6) without time zone,
-    push_lead_click_action character varying DEFAULT 'system'::character varying NOT NULL
+    push_lead_click_action character varying DEFAULT 'system'::character varying NOT NULL,
+    lead_whatsapp_conversation_enabled boolean DEFAULT true NOT NULL
 );
 
 
@@ -4977,8 +4978,8 @@ CREATE TABLE public.proposals (
     admin_user_id bigint NOT NULL,
     public_token character varying NOT NULL,
     title character varying,
-    valor_cents integer DEFAULT 0 NOT NULL,
-    entrada_cents integer DEFAULT 0 NOT NULL,
+    valor_cents bigint DEFAULT 0 NOT NULL,
+    entrada_cents bigint DEFAULT 0 NOT NULL,
     condicoes text,
     extra jsonb DEFAULT '{}'::jsonb NOT NULL,
     validade date,
@@ -7007,7 +7008,8 @@ CREATE TABLE public.whatsapp_conversations (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     business_scoped_user_id character varying,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    free_entry_point_expires_at timestamp(6) without time zone
 );
 
 
@@ -17964,11 +17966,14 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict J8JgyHTEWWWZNRPnh2CtUIkkPFkVy5bBLyg3FUYVmJLqVgnYkkLaPbZW54QigVY
+\unrestrict C6znPzEB166WXcC4OF7a8cvMOQaK93BmJSWXpK1HJ5bRdlp8cou4gEFitGPYzXu
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260830192000'),
+('20260830191000'),
+('20260830190000'),
 ('20260827143000'),
 ('20260827100100'),
 ('20260827100000'),

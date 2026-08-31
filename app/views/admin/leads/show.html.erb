@@ -12,6 +12,250 @@
     gap: 8px;
   }
 
+  .lead-action-hub {
+    --lead-pwa-surface: var(--admin-surface, #fff);
+    --lead-pwa-surface-soft: var(--admin-surface-header, #eef2f7);
+    --lead-pwa-ink: var(--admin-ink, #0f172a);
+    --lead-pwa-muted: var(--ab-muted, #64748b);
+    --lead-pwa-line: var(--ab-line, #dfe5ed);
+    --lead-pwa-line-soft: var(--ab-line-soft, #e5eaf1);
+    --lead-pwa-primary: var(--admin-primary, #2478e8);
+    display: grid;
+    gap: 10px;
+  }
+
+  .lead-permanent-delete-card__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .lead-permanent-delete-card__body p {
+    margin: 0;
+  }
+
+  .lead-permanent-delete-card__confirm {
+    justify-self: end;
+  }
+
+  .lead-permanent-delete-card__confirm.is-confirming {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-self: stretch;
+    gap: 10px;
+  }
+
+  .lead-permanent-delete-card__confirm.is-confirming .ax-confirm-submit__panel {
+    grid-column: 2;
+    margin-top: 0;
+  }
+
+  @media (max-width: 640px) {
+    .lead-permanent-delete-card__body,
+    .lead-permanent-delete-card__confirm.is-confirming {
+      grid-template-columns: 1fr;
+    }
+
+    .lead-permanent-delete-card__confirm,
+    .lead-permanent-delete-card__confirm.is-confirming,
+    .lead-permanent-delete-card__confirm .ax-btn {
+      width: 100%;
+    }
+
+    .lead-permanent-delete-card__confirm.is-confirming .ax-confirm-submit__panel {
+      grid-column: 1;
+    }
+  }
+
+  .lead-action-hub .lead-pwa-next-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions > .tw-inline-block {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 100%;
+    min-height: 44px;
+    padding: 6px 4px;
+    border: 1px solid var(--lead-pwa-line);
+    border-radius: 10px;
+    background: var(--lead-pwa-surface);
+    color: var(--lead-pwa-ink);
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn i {
+    font-size: 15px;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn--primary {
+    border-color: var(--lead-pwa-primary);
+    background: color-mix(in srgb, var(--lead-pwa-primary) 12%, var(--lead-pwa-surface));
+    color: var(--lead-pwa-primary);
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn--success {
+    border-color: #86efac;
+    background: color-mix(in srgb, #22c55e 14%, var(--lead-pwa-surface));
+    color: #047857;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn--warning {
+    border-color: #fde68a;
+    background: color-mix(in srgb, #f59e0b 12%, var(--lead-pwa-surface));
+    color: #b45309;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn--info {
+    border-color: #bae6fd;
+    background: color-mix(in srgb, #0ea5e9 12%, var(--lead-pwa-surface));
+    color: #0369a1;
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn--neutral {
+    border-color: var(--lead-pwa-line);
+    background: var(--lead-pwa-surface-soft);
+    color: var(--lead-pwa-ink);
+  }
+
+  .lead-action-hub .lead-pwa-next-actions__btn--danger {
+    border-color: #fecdd3;
+    background: color-mix(in srgb, #f43f5e 10%, var(--lead-pwa-surface));
+    color: #9f1239;
+  }
+
+  .lead-operational-section {
+    display: grid;
+    gap: 10px;
+  }
+
+  .lead-operational-section--agenda {
+    border-color: color-mix(in srgb, var(--admin-primary, #2478e8) 42%, var(--lead-pwa-line, #dfe5ed));
+  }
+
+  .lead-operational-section--agenda .lead-operational-section__title {
+    color: var(--admin-primary, #2478e8);
+  }
+
+  .lead-operational-section--tasks {
+    border-color: #fde68a;
+  }
+
+  .lead-operational-section--tasks .lead-operational-section__title {
+    color: #b45309;
+  }
+
+  .lead-operational-section--labels {
+    border-color: #bae6fd;
+  }
+
+  .lead-operational-section--labels .lead-operational-section__title {
+    color: #0369a1;
+  }
+
+  .lead-operational-section--proposals {
+    border-color: var(--lead-pwa-line, #dfe5ed);
+  }
+
+  .lead-operational-section--proposals .lead-operational-section__title {
+    color: var(--lead-pwa-ink, #0f172a);
+  }
+
+  .lead-operational-section--pulse {
+    animation: lead-operational-section-pulse 1200ms ease-out;
+  }
+
+  @keyframes lead-operational-section-pulse {
+    0%, 100% { box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
+    18%, 65% {
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--admin-primary, #2478e8) 18%, transparent),
+        0 12px 28px rgba(37, 99, 235, .18);
+    }
+  }
+
+  .lead-operational-section__header,
+  .lead-operational-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lead-operational-section__header {
+    min-height: 34px;
+  }
+
+  .lead-operational-section__title {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 8px;
+    color: var(--admin-ink, #1f2733);
+    font-size: 12px;
+    font-weight: 850;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .lead-operational-section__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .lead-operational-row {
+    padding: 8px;
+    border: 1px solid var(--ax-border-soft, #d8dee8);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .lead-operational-row__body {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .lead-operational-row__body strong,
+  .lead-operational-row__body span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-operational-row__body strong {
+    color: var(--admin-ink, #1f2733);
+    font-size: 13px;
+    font-weight: 850;
+    line-height: 1.25;
+  }
+
+  .lead-operational-row__body span {
+    color: #667085;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
   .lead-detail-task-row {
     display: grid;
     grid-template-columns: 30px minmax(0, 1fr) auto;
@@ -69,6 +313,20 @@
   html[data-admin-theme="dark"] .lead-detail-task-row {
     border-color: var(--ax-dark-border-soft);
     background: var(--ax-dark-surface);
+  }
+
+  html[data-admin-theme="dark"] .lead-operational-row {
+    border-color: var(--ax-dark-border-soft);
+    background: var(--ax-dark-surface);
+  }
+
+  html[data-admin-theme="dark"] .lead-operational-section__title,
+  html[data-admin-theme="dark"] .lead-operational-row__body strong {
+    color: var(--ax-dark-text);
+  }
+
+  html[data-admin-theme="dark"] .lead-operational-row__body span {
+    color: var(--ax-dark-text-muted);
   }
 
   html[data-admin-theme="dark"] .lead-detail-task-row--next {
@@ -232,6 +490,7 @@
       background: var(--lead-pwa-surface);
       padding: 10px;
       box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+      margin-bottom: 6px;
     }
 
     .lead-pwa-detail__hero-head {
@@ -1138,6 +1397,54 @@
       font-weight: 700;
     }
 
+    .lead-pwa-proposal-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .lead-pwa-proposal-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--lead-pwa-line-soft);
+      border-radius: 14px;
+      background: var(--lead-pwa-surface);
+    }
+
+    .lead-pwa-proposal-item__body {
+      display: grid;
+      min-width: 0;
+      gap: 4px;
+    }
+
+    .lead-pwa-proposal-item__body strong {
+      overflow: hidden;
+      color: var(--lead-pwa-ink);
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lead-pwa-proposal-item__meta {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      color: var(--lead-pwa-muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .lead-pwa-proposal-item__actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .lead-pwa-detail__record--alert {
       margin: 0;
       padding: 7px 12px !important;
@@ -1173,7 +1480,7 @@
 
     .lead-pwa-next-actions__btn {
       display: inline-flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
       justify-content: center;
       gap: 3px;
@@ -1196,6 +1503,20 @@
       font-size: 15px;
     }
 
+    .lead-pwa-next-actions__btn small {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: color-mix(in srgb, currentColor 12%, transparent);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
     .lead-pwa-next-actions__btn--primary {
       border-color: var(--lead-pwa-primary);
       background: color-mix(in srgb, var(--lead-pwa-primary) 12%, var(--lead-pwa-surface));
@@ -1206,6 +1527,24 @@
       border-color: #86efac;
       background: color-mix(in srgb, #22c55e 14%, var(--lead-pwa-surface));
       color: #047857;
+    }
+
+    .lead-pwa-next-actions__btn--warning {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: #b45309;
+    }
+
+    .lead-pwa-next-actions__btn--info {
+      border-color: #bae6fd;
+      background: #f0f9ff;
+      color: #0369a1;
+    }
+
+    .lead-pwa-next-actions__btn--neutral {
+      border-color: var(--lead-pwa-line);
+      background: var(--lead-pwa-surface-soft);
+      color: var(--lead-pwa-ink);
     }
 
     .lead-pwa-next-actions__btn--danger {
@@ -1363,86 +1702,7 @@
     </div>
   </section>
 
-  <% show_pwa_next_actions_panel = @next_task.present? || can?(:manage, :comercial) %>
-  <% if show_pwa_next_actions_panel %>
-    <section class="lead-pwa-detail__panel">
-      <div class="lead-pwa-detail__section-title">
-        <span>Ações do lead</span>
-        <small><%= open_tasks.size %> tarefa<%= "s" if open_tasks.size != 1 %></small>
-      </div>
-
-      <% if @next_task %>
-        <% next_badge = task_badge(@next_task) %>
-        <div class="lead-pwa-task-card<%= " lead-pwa-task-card--alert" if next_badge[:color] == "red" %>">
-          <div class="lead-pwa-task-card__main">
-            <strong><%= @next_task.title %></strong>
-            <span>
-              <%= next_badge[:label] %>
-              <% if @next_task.due_at.present? %>
-                · <%= l(@next_task.due_at, format: "%d/%m/%Y às %H:%M") %>
-              <% end %>
-            </span>
-          </div>
-          <% if can?(:manage, :comercial) && @next_task.pendente? %>
-            <div class="lead-pwa-task-card__actions">
-              <%= button_to complete_admin_task_path(@next_task), method: :patch, form_class: "lead-pwa-task-card__form", class: "lead-pwa-task-card__btn lead-pwa-task-card__btn--done" do %>
-                <i class="bi bi-check2-circle" aria-hidden="true"></i><span>Concluir</span>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="lead-pwa-detail__record">
-          <strong>Nenhuma tarefa pendente.</strong>
-          <span>Defina o próximo passo deste lead.</span>
-        </div>
-      <% end %>
-
-      <% pending_tasks_for_pwa = open_tasks.reject { |task| @next_task && task.id == @next_task.id }.first(3) %>
-      <% if pending_tasks_for_pwa.any? %>
-        <div class="lead-pwa-task-list">
-          <div class="lead-pwa-task-list__title">
-            <span>Outras tarefas</span>
-            <small><%= pending_tasks_for_pwa.size %></small>
-          </div>
-          <% pending_tasks_for_pwa.each do |task| %>
-            <% badge = task_badge(task) %>
-            <div class="lead-pwa-task-item">
-              <% if can?(:manage, :comercial) && task.pendente? %>
-                <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
-                  <i class="bi bi-circle" aria-hidden="true"></i>
-                <% end %>
-              <% else %>
-                <span></span>
-              <% end %>
-              <span class="lead-pwa-task-item__body">
-                <strong><%= task.title %></strong>
-                <span><%= task.due_at.present? ? l(task.due_at, format: "%d/%m/%Y às %H:%M") : task.kind_label %></span>
-              </span>
-              <span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
-
-      <% if can?(:manage, :comercial) %>
-        <div class="lead-pwa-next-actions">
-          <%= render "admin/tasks/form_modal", modal_id: "newTaskLeadPwa", lead: @lead, trigger_label: "Tarefa", trigger_class: "lead-pwa-next-actions__btn" %>
-          <%= render "admin/leads/schedule_activity_modal", lead: @lead %>
-          <%= link_to new_admin_lead_proposal_path(@lead), class: "lead-pwa-next-actions__btn" do %>
-            <i class="bi bi-file-earmark-text"></i><span>Proposta</span>
-          <% end %>
-          <%= form_with url: close_deal_admin_lead_path(@lead), method: :post, id: "lead_close_deal_#{@lead.id}", class: "tw-hidden" do %><% end %>
-          <%= ax_confirm_submit(form_id: "lead_close_deal_#{@lead.id}", message: "Marcar este lead como negócio fechado?", confirm_label: "Fechar negócio") do %>
-            <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--success" data-action="click->ax-confirm-submit#request">
-              <i class="bi bi-check-circle"></i><span>Fechado</span>
-            </button>
-          <% end %>
-          <%= render "admin/leads/archive_modal", lead: @lead, archive_reason_options: @archive_reason_options %>
-        </div>
-      <% end %>
-    </section>
-  <% end %>
+  <%= render "admin/leads/pwa_operational_panel", lead: @lead %>
 
   <section class="lead-pwa-detail__panel lead-pwa-origin-panel">
     <div class="lead-pwa-detail__section-title">
@@ -1532,65 +1792,45 @@
     <% end %>
   </section>
 
-  <section class="lead-pwa-detail__panel">
-    <div class="lead-pwa-detail__section-title">
-      <span>Visitas futuras</span>
-      <small><%= @appointments.size %></small>
-    </div>
-    <% if @appointments.any? %>
-      <% @appointments.first(4).each do |appointment| %>
-        <div class="lead-pwa-detail__record">
-          <strong><%= appointment.title %></strong>
-          <span><%= l(appointment.starts_at, format: "%d/%m/%Y %H:%M") %></span>
-        </div>
-      <% end %>
-    <% else %>
-      <p class="lead-pwa-detail__empty">Nada agendado.</p>
-    <% end %>
-  </section>
-
   <section class="lead-pwa-detail__panel lead-pwa-detail__notes-panel">
     <div class="lead-pwa-detail__section-title lead-pwa-detail__notes-head">
       <span class="lead-pwa-detail__notes-title">
         <i class="bi bi-journal-text"></i>
-        <span>Anotações</span>
+        <span>Histórico de contatos</span>
       </span>
-      <span class="lead-pwa-detail__notes-count"><%= @note_activities.size %></span>
+      <span class="lead-pwa-detail__notes-count"><%= @contact_history_activities.size %></span>
     </div>
-    <details class="lead-pwa-detail__note-composer">
-      <summary class="lead-pwa-detail__note-toggle">
-        <i class="bi bi-plus-lg"></i><span>Adicionar anotação</span>
-      </summary>
-      <%= form_with url: log_contact_admin_lead_path(@lead), method: :post, local: true, class: "lead-pwa-detail__note-form" do %>
-        <input type="hidden" name="contact_kind" value="nota">
-        <textarea name="body" rows="3" class="ax-control" required placeholder="Resumo da conversa, combinado ou próxima ação"></textarea>
-        <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Salvar anotação</button>
-      <% end %>
-    </details>
+    <%= render "admin/leads/log_contact_modal",
+          lead: @lead,
+          modal_id: "leadLogContactHistoryPwa#{@lead.id}",
+          trigger_label: "Registrar contato",
+          trigger_class: "lead-pwa-detail__note-toggle",
+          trigger_icon: "plus-lg",
+          trigger_title: "Registrar contato" %>
 
-    <% if @note_activities.any? %>
+    <% if @contact_history_activities.any? %>
       <div class="lead-pwa-detail__notes-timeline">
-        <% @note_activities.each_with_index do |note, index| %>
+        <% @contact_history_activities.each_with_index do |note, index| %>
           <% body = note.meta("body").to_s.strip.presence %>
-          <% author = note.meta("by").to_s.strip.presence || "Registro interno" %>
           <div class="lead-pwa-detail__note-item">
             <div class="lead-pwa-detail__note-line">
               <span class="lead-pwa-detail__note-dot"><i class="bi bi-pencil-square"></i></span>
-              <% unless index == @note_activities.size - 1 %><span class="lead-pwa-detail__note-rail"></span><% end %>
+              <% unless index == @contact_history_activities.size - 1 %><span class="lead-pwa-detail__note-rail"></span><% end %>
             </div>
             <article class="lead-pwa-detail__note-card">
               <div class="lead-pwa-detail__note-meta">
                 <span><i class="bi bi-clock"></i><%= l(note.created_at, format: "%d/%m/%Y %H:%M") %></span>
+                <span><%= lead_contact_kind_label(note) %></span>
               </div>
               <div class="lead-pwa-detail__note-body">
-                <%= simple_format(body || "Anotação sem conteúdo registrado.") %>
+                <%= simple_format(body || "Contato sem descrição registrada.") %>
               </div>
             </article>
           </div>
         <% end %>
       </div>
     <% else %>
-      <p class="lead-pwa-detail__empty lead-pwa-detail__notes-empty">Nenhuma anotação registrada.</p>
+      <p class="lead-pwa-detail__empty lead-pwa-detail__notes-empty">Nenhum contato registrado.</p>
     <% end %>
   </section>
 
@@ -1760,12 +2000,54 @@
       </div>
     </div>
 
-    <%# Linha do tempo — colapsada; só marcos por padrão (WhatsApp tem toggle) %>
+    <% if @lead_whatsapp_panel_enabled && can?(:view, :whatsapp_inbox) %>
+      <%= render "admin/shared/ui/lead_whatsapp_panel",
+            lead: @lead,
+            conversation: @whatsapp_conversation,
+            templates: @whatsapp_templates,
+            summary: @whatsapp_summary,
+            thread_context_locals: @whatsapp_thread_context_locals,
+            messages: @whatsapp_messages,
+            return_to: request.fullpath,
+            notice: @lead_whatsapp_notice,
+            notice_detail: @lead_whatsapp_notice_detail %>
+    <% end %>
+
+    <% if can_destroy_lead? %>
+      <% delete_form_id = "delete_lead_permanently_#{@lead.id}" %>
+      <section class="ax-card tw-mb-3 lead-permanent-delete-card">
+        <header class="ax-card__header">
+          <h2 class="ax-card__title">
+            <i class="bi bi-trash3 ax-ico"></i>
+            Remover permanentemente
+          </h2>
+        </header>
+        <div class="ax-card__body lead-permanent-delete-card__body">
+          <p class="tw-m-0 tw-text-sm tw-font-semibold tw-text-slate-500">
+            Ação restrita ao admin da conta. Remove este lead definitivamente.
+          </p>
+          <%= form_with url: admin_lead_path(@lead), method: :delete,
+                        id: delete_form_id, class: "tw-hidden", data: { turbo: false } do %><% end %>
+          <%= ax_confirm_submit(
+                form_id: delete_form_id,
+                message: "Remover permanentemente este lead? Esta ação não pode ser desfeita.",
+                confirm_label: "Remover permanentemente",
+                class_name: "lead-permanent-delete-card__confirm"
+              ) do %>
+            <button type="button" class="ax-btn ax-btn--sm ax-btn--danger" data-action="click->ax-confirm-submit#request">
+              <i class="bi bi-trash3 ax-ico"></i><span>Remover lead</span>
+            </button>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <%# Linha do tempo aberta por padrão para manter o histórico visível no lead. %>
     <%= ax_collapsible_card(
           title: "Linha do tempo",
           icon: "activity",
           badge: "#{timeline_milestones.size} atividade#{'s' if timeline_milestones.size != 1}",
-          collapsed: true,
+          collapsed: false,
           collapse_id: "leadTimelineSection",
           class_name: "lead-timeline-card"
         ) do %>
@@ -1807,7 +2089,7 @@
 
   <%# ===== Coluna direita ===== %>
   <div>
-    <%# ===== Card único: atendimento & contexto (seções com divisor) ===== %>
+    <%# ===== Blocos ax-card: próxima ação, corretor e inteligência ===== %>
     <%
       interest_enabled = @interest_settings&.enabled?
       interest_badge = if !interest_enabled
@@ -1816,35 +2098,245 @@
         "Carregando"
       end
     %>
-    <div class="ax-card lead-next-action-card">
+    <%# ===== Bloco: Operação do lead ===== %>
+    <div class="ax-card lead-next-action-card tw-mb-4">
       <div class="ax-card__header">
-        <span class="ax-card__title"><i class="bi bi-flag-fill ax-ico"></i> Próxima ação</span>
+        <span class="ax-card__title"><i class="bi bi-flag-fill ax-ico"></i> Ações do lead</span>
       </div>
       <div class="ax-card__body">
-        <% if @next_task %>
-          <div class="ax-strong"><%= @next_task.title %>
-            <% b = task_badge(@next_task) %><span class="ax-badge ax-badge--<%= b[:color] %> tw-ml-1"><%= b[:label] %></span>
-          </div>
-        <% else %>
-          <div class="ax-page-subtitle">Nenhuma tarefa pendente. Defina o próximo passo →</div>
-        <% end %>
-        <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-mt-2">
-          <%= render "admin/lead_labels/chips", lead: @lead, labels: @lead.labels_for(current_admin_user) %>
-          <%= render "admin/lead_labels/button", lead: @lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
-          <%= render "admin/leads/log_contact_modal", lead: @lead %>
-          <% if can?(:manage, :comercial) %>
-            <%= render "admin/tasks/form_modal", modal_id: "newTaskLead", lead: @lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
-            <%= render "admin/appointments/form_modal", lead: @lead, trigger_label: "Agendar visita", trigger_class: "ax-btn ax-btn--sm" %>
-            <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-              <i class="bi bi-file-earmark-text ax-ico"></i><span>Nova proposta</span>
-            <% end %>
-          <% end %>
+        <div class="lead-action-hub">
+          <%= render "admin/leads/action_hub",
+                namespace: "Desktop#{@lead.id}",
+                anchor_prefix: "lead-desktop",
+                lead: @lead,
+                open_tasks: open_tasks,
+                appointments: @appointments,
+                proposals: @proposals,
+                labels_count: @lead.labels_for(current_admin_user).size,
+                next_task: @next_task,
+                new_proposal: @new_proposal,
+                proposal_habitations: @proposal_habitations,
+                archive_reason_options: @archive_reason_options,
+                show_tasks: false,
+                close_deal_form_id: "lead_close_deal_desktop_#{@lead.id}" %>
         </div>
-
 
         <div class="lead-view-divider"></div>
 
-        <div class="ax-stat-label tw-mb-2">Corretor & observações</div>
+        <section id="lead-desktop-agenda" class="lead-operational-section lead-operational-section--agenda">
+          <div class="lead-operational-section__header">
+            <span class="lead-operational-section__title"><i class="bi bi-calendar-event ax-ico"></i> Agenda</span>
+            <span class="lead-operational-section__actions">
+              <span class="ax-badge ax-badge--gray"><%= @appointments.size %></span>
+              <% if can?(:manage, :comercial) %>
+                <%= render "admin/leads/schedule_activity_modal",
+                      lead: @lead,
+                      modal_id: "scheduleActivitySection#{@lead.id}",
+                      trigger_label: nil,
+                      trigger_class: "ax-ico-btn",
+                      trigger_icon: "plus-lg",
+                      trigger_title: "Agendar atividade" %>
+              <% end %>
+            </span>
+          </div>
+          <div class="tw-grid tw-gap-2">
+            <% if @appointments.any? %>
+              <% @appointments.first(6).each do |a| %>
+                <div class="lead-operational-row">
+                  <span class="lead-operational-row__body">
+                    <strong><%= a.title %></strong>
+                    <span><%= a.kind_label %> · <%= l(a.starts_at, format: :short) %><%= " · #{a.location}" if a.location.present? %></span>
+                  </span>
+                  <% if can?(:manage, :comercial) %>
+                    <%= render "admin/appointments/form_modal",
+                          appointment: a,
+                          lead: @lead,
+                          modal_id: "editAppointmentLead#{a.id}",
+                          trigger_label: nil,
+                          trigger_class: "ax-ico-btn",
+                          trigger_icon: "pencil",
+                          trigger_title: "Editar agenda" %>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="ax-page-subtitle tw-m-0">Nada agendado.</p>
+            <% end %>
+          </div>
+        </section>
+
+        <div class="lead-view-divider"></div>
+
+        <section id="lead-desktop-tarefas" class="lead-operational-section lead-operational-section--tasks">
+          <div class="lead-operational-section__header">
+            <span class="lead-operational-section__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span>
+            <span class="lead-operational-section__actions">
+              <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
+              <% if can?(:manage, :comercial) %>
+                <%= render "admin/tasks/form_modal",
+                      modal_id: "newTaskLeadSection#{@lead.id}",
+                      lead: @lead,
+                      trigger_label: nil,
+                      trigger_class: "ax-ico-btn",
+                      trigger_title: "Nova tarefa" %>
+              <% end %>
+            </span>
+          </div>
+          <div class="lead-detail-task-stack">
+            <% if open_tasks.any? %>
+              <% open_tasks.first(6).each do |t| %>
+                <% b = task_badge(t) %>
+                <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if @next_task && t.id == @next_task.id %><%= " lead-detail-task-row--alert" if b[:color] == "red" %>">
+                  <% if can?(:manage, :comercial) && t.pendente? %>
+                    <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{t.title}" } do %>
+                      <i class="bi bi-circle" aria-hidden="true"></i>
+                    <% end %>
+                  <% else %>
+                    <span></span>
+                  <% end %>
+                  <span class="lead-detail-task-row__body">
+                    <strong><%= t.title %></strong>
+                    <span>
+                      <%= t.kind_label %>
+                      <% if t.due_at.present? %>
+                        · <%= l(t.due_at, format: :short) %>
+                      <% end %>
+                    </span>
+                  </span>
+                  <span class="tw-inline-flex tw-items-center tw-gap-1">
+                    <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
+                    <% if can?(:manage, :comercial) %>
+                      <%= render "admin/tasks/form_modal",
+                            modal_id: "editTaskLead#{t.id}",
+                            lead: @lead,
+                            task: t,
+                            trigger_label: nil,
+                            trigger_class: "ax-ico-btn",
+                            trigger_title: "Editar tarefa" %>
+                    <% end %>
+                  </span>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="ax-page-subtitle tw-m-0">Nenhuma tarefa pendente.</p>
+            <% end %>
+          </div>
+        </section>
+
+        <div class="lead-view-divider"></div>
+
+        <section id="lead-desktop-etiquetas" class="lead-operational-section lead-operational-section--labels">
+          <div class="lead-operational-section__header">
+            <span class="lead-operational-section__title"><i class="bi bi-tags ax-ico"></i> Etiquetas</span>
+            <span class="lead-operational-section__actions">
+              <% lead_labels = @lead.labels_for(current_admin_user) %>
+              <span class="ax-badge ax-badge--gray"><%= lead_labels.size %></span>
+              <%= render "admin/lead_labels/button", lead: @lead, trigger_label: nil, trigger_class: "ax-ico-btn", trigger_icon: "plus-lg", icon_only: true %>
+            </span>
+          </div>
+          <% if lead_labels.any? %>
+            <%= render "admin/lead_labels/chips", lead: @lead, labels: lead_labels %>
+          <% else %>
+            <p class="ax-page-subtitle tw-m-0">Nenhuma etiqueta aplicada.</p>
+          <% end %>
+        </section>
+
+        <div class="lead-view-divider"></div>
+
+        <section id="lead-desktop-propostas" class="lead-operational-section lead-operational-section--proposals">
+          <div class="lead-operational-section__header">
+            <span class="lead-operational-section__title"><i class="bi bi-file-earmark-text ax-ico"></i> Propostas</span>
+            <span class="lead-operational-section__actions">
+              <span class="ax-badge ax-badge--gray"><%= @proposals.size %></span>
+              <% if can?(:manage, :comercial) %>
+                <%= render "admin/proposals/form_modal",
+                      modal_id: "newProposalLeadSection#{@lead.id}",
+                      proposal: @new_proposal,
+                      lead: @lead,
+                      habitations: @proposal_habitations,
+                      trigger_label: nil,
+                      trigger_class: "ax-ico-btn",
+                      trigger_icon: "plus-lg",
+                      trigger_title: "Nova proposta" %>
+              <% end %>
+            </span>
+          </div>
+          <div class="tw-grid tw-gap-2">
+            <% if @proposals.any? %>
+              <% @proposals.each do |p| %>
+                <div class="lead-proposal-item">
+                  <div class="tw-min-w-0">
+                    <div class="ax-strong tw-truncate">R$ <%= number_with_precision(p.valor, precision: 2, delimiter: ".", separator: ",") %></div>
+                    <div><span class="ax-badge ax-badge--<%= proposal_badge_color(p) %>"><%= p.status_label %></span></div>
+                  </div>
+                  <div class="tw-flex tw-gap-1">
+                    <% if can?(:manage, :comercial) %>
+                      <%= render "admin/proposals/form_modal",
+                            modal_id: "editProposal#{p.id}",
+                            proposal: p,
+                            lead: @lead,
+                            habitations: @proposal_habitations,
+                            trigger_label: nil,
+                            trigger_class: "ax-ico-btn",
+                            trigger_icon: "pencil",
+                            trigger_title: "Editar proposta" %>
+                    <% end %>
+                    <%= link_to public_proposal_path(p.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
+                    <%= link_to pdf_admin_proposal_path(p), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
+                    <% if can?(:manage, :comercial) && p.status == "rascunho" %>
+                      <%= button_to send_proposal_admin_proposal_path(p), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Marcar enviada" do %><i class="bi bi-send"></i><% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="ax-page-subtitle tw-m-0">Nenhuma proposta.</p>
+            <% end %>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <div class="ax-card lead-next-action-card tw-mb-4">
+      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+        <span class="ax-card__title"><i class="bi bi-journal-text ax-ico"></i> Histórico de contatos</span>
+        <span class="ax-badge ax-badge--gray"><%= @contact_history_activities.size %></span>
+      </div>
+      <div class="ax-card__body">
+        <div class="tw-mb-3">
+          <%= render "admin/leads/log_contact_modal",
+                lead: @lead,
+                modal_id: "leadLogContactHistoryDesktop#{@lead.id}",
+                trigger_label: "Registrar contato",
+                trigger_class: "ax-btn ax-btn--sm",
+                trigger_icon: "plus-lg",
+                trigger_title: "Registrar contato" %>
+        </div>
+        <% if @contact_history_activities.any? %>
+          <div class="tw-grid tw-gap-2">
+            <% @contact_history_activities.first(6).each do |note| %>
+              <% body = note.meta("body").to_s.strip.presence %>
+              <div class="lead-operational-row">
+                <span class="lead-operational-row__body">
+                  <strong><%= lead_contact_kind_label(note) %> · <%= l(note.created_at, format: :short) %></strong>
+                  <span><%= truncate(body || "Contato sem descrição registrada.", length: 120) %></span>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="ax-page-subtitle tw-m-0">Nenhum contato registrado.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <%# ===== Bloco: Corretor & observações ===== %>
+    <div class="ax-card lead-next-action-card tw-mb-4">
+      <div class="ax-card__header">
+        <span class="ax-card__title"><i class="bi bi-person-badge ax-ico"></i> Corretor</span>
+      </div>
+      <div class="ax-card__body">
         <%= form_with(model: [:admin, @lead], local: true) do |f| %>
           <div class="mb-3">
             <%= f.label :notes, "Observações internas", class: "ax-label" %>
@@ -1868,13 +2360,16 @@
             </div>
           </div>
         <% end %>
+      </div>
+    </div>
 
-        <div class="lead-view-divider"></div>
-
-        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-          <span class="ax-stat-label">Inteligência de Interesse</span>
-          <span class="ax-badge ax-badge--gray"><%= interest_badge %></span>
-        </div>
+    <%# ===== Bloco: Inteligência de Interesse + Imóveis compatíveis ===== %>
+    <div class="ax-card lead-next-action-card">
+      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+        <span class="ax-card__title"><i class="bi bi-graph-up-arrow ax-ico"></i> Inteligência de Interesse</span>
+        <span class="ax-badge ax-badge--gray"><%= interest_badge %></span>
+      </div>
+      <div class="ax-card__body">
         <% if detail_interest_intelligence_locals %>
           <%= render "admin/leads/interest_intelligence", **detail_interest_intelligence_locals %>
         <% else %>
@@ -1892,145 +2387,6 @@
             </div>
           <% end %>
         <% end %>
-
-        <div class="lead-view-divider"></div>
-
-        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-          <span class="ax-stat-label">Propostas</span>
-          <span class="tw-inline-flex tw-items-center tw-gap-1">
-            <span class="ax-badge ax-badge--gray"><%= @proposals.size %></span>
-            <% if can?(:manage, :comercial) %>
-              <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-ico-btn", title: "Nova proposta" do %><i class="bi bi-plus-lg"></i><% end %>
-            <% end %>
-          </span>
-        </div>
-        <div class="tw-grid tw-gap-2">
-          <% if @proposals.any? %>
-            <% @proposals.each do |p| %>
-              <div class="lead-proposal-item">
-                <div class="tw-min-w-0">
-                  <div class="ax-strong tw-truncate">R$ <%= number_with_precision(p.valor, precision: 2, delimiter: ".", separator: ",") %></div>
-                  <div><span class="ax-badge ax-badge--<%= proposal_badge_color(p) %>"><%= p.status_label %></span></div>
-                </div>
-                <div class="tw-flex tw-gap-1">
-                  <%= link_to public_proposal_path(p.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
-                  <%= link_to pdf_admin_proposal_path(p), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
-                  <% if can?(:manage, :comercial) && p.status == "rascunho" %>
-                    <%= button_to send_proposal_admin_proposal_path(p), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Marcar enviada" do %><i class="bi bi-send"></i><% end %>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="ax-page-subtitle tw-m-0">Nenhuma proposta. <%= link_to "Criar a primeira", new_admin_lead_proposal_path(@lead), class: "tw-text-primary" if can?(:manage, :comercial) %></p>
-          <% end %>
-        </div>
-
-        <div class="lead-view-divider"></div>
-
-        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-          <span class="ax-stat-label">Tarefas</span>
-          <span class="tw-inline-flex tw-items-center tw-gap-1">
-            <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
-            <% if can?(:manage, :comercial) %>
-              <%= render "admin/tasks/form_modal", modal_id: "newTaskLeadTasks", lead: @lead, trigger_label: "Nova tarefa", trigger_class: "ax-btn ax-btn--sm" %>
-            <% end %>
-          </span>
-        </div>
-        <div class="lead-detail-task-stack">
-          <% if open_tasks.any? %>
-            <% open_tasks.first(6).each do |t| %>
-              <% b = task_badge(t) %>
-              <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if @next_task && t.id == @next_task.id %><%= " lead-detail-task-row--alert" if b[:color] == "red" %>">
-                <% if can?(:manage, :comercial) && t.pendente? %>
-                  <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{t.title}" } do %>
-                    <i class="bi bi-circle" aria-hidden="true"></i>
-                  <% end %>
-                <% else %>
-                  <span></span>
-                <% end %>
-                <span class="lead-detail-task-row__body">
-                  <strong><%= t.title %></strong>
-                  <span>
-                    <%= t.kind_label %>
-                    <% if t.due_at.present? %>
-                      · <%= l(t.due_at, format: :short) %>
-                    <% end %>
-                  </span>
-                </span>
-                <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="ax-page-subtitle tw-m-0">Nenhuma tarefa pendente.</p>
-          <% end %>
-        </div>
-
-        <div class="lead-view-divider"></div>
-
-        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-          <span class="ax-stat-label">Próximos compromissos</span>
-          <span class="ax-badge ax-badge--gray"><%= @appointments.size %></span>
-        </div>
-        <div class="tw-grid tw-gap-2">
-          <% if @appointments.any? %>
-            <% @appointments.first(6).each do |a| %>
-              <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
-                <span class="tw-truncate"><%= a.title %></span>
-                <span class="ax-page-subtitle tw-whitespace-nowrap"><%= a.starts_at.strftime("%d/%m %H:%M") %></span>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="ax-page-subtitle tw-m-0">Nada agendado.</p>
-          <% end %>
-        </div>
-
-        <div class="lead-view-divider"></div>
-
-        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-          <span class="ax-stat-label">Provas do push</span>
-          <span class="ax-badge ax-badge--gray"><%= @push_delivery_events.size %> tentativa<%= 's' if @push_delivery_events.size != 1 %></span>
-        </div>
-        <div class="tw-grid tw-gap-2">
-          <% if @push_delivery_events.any? %>
-            <% @push_delivery_events.each do |event| %>
-              <div class="tw-flex tw-items-start tw-justify-between tw-gap-3">
-                <div class="tw-min-w-0">
-                  <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
-                    <span class="ax-badge ax-badge--<%= push_delivery_event_tone(event.event_type) %>">
-                      <%= push_delivery_event_label(event.event_type) %>
-                    </span>
-                    <span class="ax-page-subtitle"><%= l(event.created_at, format: :short) %></span>
-                  </div>
-                  <div class="tw-mt-1 tw-text-sm tw-text-slate-600 tw-truncate">
-                    <%= push_delivery_event_device(event) %>
-                    <% if event.endpoint_host.present? %>
-                      · <%= event.endpoint_host %>
-                    <% end %>
-                    <% if event.push_subscription_id.present? %>
-                      · sub #<%= event.push_subscription_id %>
-                    <% end %>
-                  </div>
-                  <% if event.error_message.present? %>
-                    <div class="tw-mt-1 tw-text-xs tw-text-red-600 tw-truncate">
-                      <%= [event.error_class, event.error_message].compact.join(": ") %>
-                    </div>
-                  <% end %>
-                </div>
-                <div class="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1 tw-text-xs tw-text-slate-500">
-                  <% if event.provider_status.present? %>
-                    <span>HTTP <%= event.provider_status %></span>
-                  <% end %>
-                  <% if event.urgency.present? || event.ttl.present? %>
-                    <span><%= [event.urgency.presence, ("TTL #{event.ttl}" if event.ttl.present?)].compact.join(" · ") %></span>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="ax-page-subtitle tw-m-0">Nenhuma tentativa de push registrada para este lead ainda.</p>
-          <% end %>
-        </div>
       </div>
     </div>
   </div>

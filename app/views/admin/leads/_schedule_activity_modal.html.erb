@@ -1,15 +1,27 @@
-<%# locals: lead %>
+<%# locals: lead, modal_id (optional), trigger_label (optional), trigger_class (optional), trigger_icon (optional), trigger_title (optional) %>
+<% modal_id = local_assigns[:modal_id].presence || "scheduleActivity#{lead.id}" %>
+<% trigger_label = local_assigns.key?(:trigger_label) ? local_assigns[:trigger_label] : "Agendar" %>
+<% trigger_class = local_assigns.fetch(:trigger_class, "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary") %>
+<% trigger_icon = local_assigns.fetch(:trigger_icon, "calendar-plus") %>
+<% trigger_title = local_assigns[:trigger_title].presence || "Agendar atividade" %>
+<% trigger_badge = local_assigns[:trigger_badge] %>
 <div data-controller="ax-modal" class="tw-inline-block">
-  <button type="button" class="lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary" data-action="ax-modal#open">
-    <i class="bi bi-calendar-plus"></i><span>Agendar</span>
+  <button type="button"
+          class="<%= trigger_class %>"
+          data-action="ax-modal#open"
+          title="<%= trigger_title %>"
+          aria-label="<%= trigger_title %>">
+    <i class="bi bi-<%= trigger_icon %>" aria-hidden="true"></i>
+    <% if trigger_label.present? %><span><%= trigger_label %></span><% end %>
+    <% if trigger_badge.present? %><small><%= trigger_badge %></small><% end %>
   </button>
-  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+  <div id="<%= modal_id %>" class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-modal-panel" role="dialog" aria-modal="true">
       <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
         <strong><i class="bi bi-calendar-event ax-ico tw-text-primary"></i> Agendar atividade</strong>
         <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
       </div>
-      <%= form_with url: schedule_activity_admin_lead_path(lead), method: :post, data: { controller: "schedule-activity" } do |f| %>
+      <%= form_with url: schedule_activity_admin_lead_path(lead), method: :post, local: true, data: { controller: "schedule-activity" } do |f| %>
         <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
           <%= ax_radio_group(
                 form: f,
@@ -20,46 +32,46 @@
               ) %>
 
           <div data-schedule-activity-target="returnField">
-            <label class="ax-label" for="schedule_due_at">Data e horário</label>
-            <input type="datetime-local" name="due_at" id="schedule_due_at" class="ax-control">
+            <label class="ax-label" for="<%= "#{modal_id}_due_at" %>">Data e horário</label>
+            <input type="datetime-local" name="due_at" id="<%= "#{modal_id}_due_at" %>" class="ax-control">
           </div>
 
           <div data-schedule-activity-target="visitField" class="tw-grid tw-gap-3">
             <%= ax_field_grid do %>
               <div class="ax-span-6">
-                <label class="ax-label" for="schedule_starts_at">Início</label>
-                <input type="datetime-local" name="starts_at" id="schedule_starts_at" class="ax-control">
+                <label class="ax-label" for="<%= "#{modal_id}_starts_at" %>">Início</label>
+                <input type="datetime-local" name="starts_at" id="<%= "#{modal_id}_starts_at" %>" class="ax-control">
               </div>
               <div class="ax-span-6">
-                <label class="ax-label" for="schedule_ends_at">Fim</label>
-                <input type="datetime-local" name="ends_at" id="schedule_ends_at" class="ax-control">
+                <label class="ax-label" for="<%= "#{modal_id}_ends_at" %>">Fim</label>
+                <input type="datetime-local" name="ends_at" id="<%= "#{modal_id}_ends_at" %>" class="ax-control">
               </div>
             <% end %>
             <div>
-              <label class="ax-label" for="schedule_location">Local</label>
-              <%= text_field_tag :location, nil, id: "schedule_location", class: "ax-control", placeholder: "Endereço do imóvel / link da reunião" %>
+              <label class="ax-label" for="<%= "#{modal_id}_location" %>">Local</label>
+              <%= text_field_tag :location, nil, id: "#{modal_id}_location", class: "ax-control", placeholder: "Endereço do imóvel / link da reunião" %>
             </div>
             <div>
-              <label class="ax-label" for="schedule_properties_count">Quantos imóveis esse cliente visitará?</label>
-              <input type="number" min="1" name="properties_to_visit_count" id="schedule_properties_count" class="ax-control" value="1">
+              <label class="ax-label" for="<%= "#{modal_id}_properties_count" %>">Quantos imóveis esse cliente visitará?</label>
+              <input type="number" min="1" name="properties_to_visit_count" id="<%= "#{modal_id}_properties_count" %>" class="ax-control" value="1">
             </div>
             <label class="ax-check">
-              <%= check_box_tag "invite_via_email", "1", false, id: "schedule_invite_email", data: { action: "change->schedule-activity#toggleEmailRecipients" } %>
+              <%= check_box_tag "invite_via_email", "1", false, id: "#{modal_id}_invite_email", data: { action: "change->schedule-activity#toggleEmailRecipients" } %>
               <span>Enviar convite por e-mail (opcional)</span>
             </label>
             <div data-schedule-activity-target="emailRecipients" hidden>
-              <label class="ax-label" for="schedule_invite_email_recipients">Destinatários</label>
-              <%= text_field_tag "invite_email_recipients", [lead.email, lead.client_email].compact_blank.uniq.join(", "), id: "schedule_invite_email_recipients", class: "ax-control", placeholder: "email@exemplo.com, outro@exemplo.com", disabled: true %>
+              <label class="ax-label" for="<%= "#{modal_id}_invite_email_recipients" %>">Destinatários</label>
+              <%= text_field_tag "invite_email_recipients", [lead.email, lead.client_email].compact_blank.uniq.join(", "), id: "#{modal_id}_invite_email_recipients", class: "ax-control", placeholder: "email@exemplo.com, outro@exemplo.com", disabled: true %>
             </div>
             <label class="ax-check">
-              <%= check_box_tag "invite_via_whatsapp", "1", false, id: "schedule_invite_whatsapp" %>
+              <%= check_box_tag "invite_via_whatsapp", "1", false, id: "#{modal_id}_invite_whatsapp" %>
               <span>Enviar convite por WhatsApp</span>
             </label>
           </div>
 
           <div>
-            <label class="ax-label" for="schedule_notes">Informações adicionais</label>
-            <%= text_area_tag "notes", nil, id: "schedule_notes", class: "ax-control", rows: 2, placeholder: "Escreva do que deseja se lembrar" %>
+            <label class="ax-label" for="<%= "#{modal_id}_notes" %>">Informações adicionais</label>
+            <%= text_area_tag "notes", nil, id: "#{modal_id}_notes", class: "ax-control", rows: 2, placeholder: "Escreva do que deseja se lembrar" %>
           </div>
         </div>
         <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">

@@ -82,9 +82,9 @@ module Whatsapp
         record.example_values = definition.example_values if record.example_values.blank?
       end
 
-      def variable_values(name:, conversation:, admin_user:)
+      def variable_values(name:, conversation:, admin_user:, lead: nil)
         definition = find(name)
-        lead = conversation&.lead
+        lead ||= conversation&.lead
         values = base_values(lead, admin_user)
 
         case definition&.purpose

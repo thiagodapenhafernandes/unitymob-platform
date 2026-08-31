@@ -1,0 +1,50 @@
+<%# locals: proposal, lead, habitations, modal_id (optional), trigger_label (optional), trigger_class (optional), trigger_icon (optional), trigger_title (optional) %>
+<%
+  modal_proposal = local_assigns.fetch(:proposal)
+  modal_lead = local_assigns.fetch(:lead)
+  proposal_modal_id = local_assigns[:modal_id].presence ||
+    (modal_proposal.persisted? ? "editProposal#{modal_proposal.id}" : "newProposalLead#{modal_lead.id}")
+  proposal_modal_title = safe_join([
+    tag.i(class: "bi bi-file-earmark-text ax-quick-modal__title-icon", aria: { hidden: true }),
+    modal_proposal.persisted? ? "Editar proposta" : "Nova proposta"
+  ], " ")
+  trigger_label = local_assigns[:trigger_label]
+  trigger_icon = local_assigns.fetch(:trigger_icon, modal_proposal.persisted? ? "pencil" : "file-earmark-text")
+  trigger_title = local_assigns[:trigger_title].presence || (modal_proposal.persisted? ? "Editar proposta" : "Nova proposta")
+  trigger_class = local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm ax-btn--primary")
+  trigger_badge = local_assigns[:trigger_badge]
+  form_url = modal_proposal.persisted? ? admin_proposal_path(modal_proposal) : admin_lead_proposals_path(modal_lead)
+  form_method = modal_proposal.persisted? ? :patch : :post
+  submit_label = modal_proposal.persisted? ? "Atualizar proposta" : "Criar proposta"
+%>
+
+<div class="tw-inline-block">
+  <button type="button"
+          class="<%= trigger_class %>"
+          data-ax-modal-open="#<%= proposal_modal_id %>"
+          title="<%= trigger_title %>"
+          aria-label="<%= trigger_title %>">
+    <i class="bi bi-<%= trigger_icon %> ax-ico" aria-hidden="true"></i>
+    <% if trigger_label.present? %>
+      <span><%= trigger_label %></span>
+    <% end %>
+    <% if trigger_badge.present? %><small><%= trigger_badge %></small><% end %>
+  </button>
+
+  <%= ax_quick_modal(id: proposal_modal_id, title: proposal_modal_title, size: :md, class_name: "proposal-form-modal") do %>
+    <div class="proposal-form-modal__lead">
+      <span class="proposal-form-modal__lead-label">Lead</span>
+      <strong><%= modal_lead.name.presence || "Sem nome" %></strong>
+    </div>
+
+    <%= render "admin/proposals/form",
+          proposal: modal_proposal,
+          lead: modal_lead,
+          url: form_url,
+          method: form_method,
+          habitations: local_assigns.fetch(:habitations),
+          namespace: proposal_modal_id,
+          embedded: true,
+          submit_label: submit_label %>
+  <% end %>
+</div>

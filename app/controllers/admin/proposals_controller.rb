@@ -21,10 +21,16 @@ class Admin::ProposalsController < Admin::BaseController
 
     if @proposal.save
       LeadActivity.log!(lead: @lead, kind: "proposal_created", metadata: { proposal_id: @proposal.id })
-      redirect_to admin_lead_path(@lead), notice: "Proposta criada. Envie o link ao cliente."
+      respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), notice: "Proposta criada. Envie o link ao cliente." }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, notice: "Proposta criada. Envie o link ao cliente.") }
+      end
     else
       @habitations = habitation_options
-      render :new, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_entity }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: @proposal.errors.full_messages.to_sentence, status: :unprocessable_entity) }
+      end
     end
   end
 
@@ -36,17 +42,27 @@ class Admin::ProposalsController < Admin::BaseController
 
   def update
     if @proposal.update(proposal_params)
-      redirect_to admin_lead_path(@proposal.lead), notice: "Proposta atualizada."
+      LeadActivity.log!(lead: @proposal.lead, kind: "proposal_updated", metadata: { proposal_id: @proposal.id, title: @proposal.title, by: current_admin_user&.name })
+      respond_to do |format|
+        format.html { redirect_to admin_lead_path(@proposal.lead), notice: "Proposta atualizada." }
+        format.turbo_stream { render_lead_operational_turbo_stream(@proposal.lead, notice: "Proposta atualizada.") }
+      end
     else
       @lead = @proposal.lead
       @habitations = habitation_options
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :edit, status: :unprocessable_entity }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: @proposal.errors.full_messages.to_sentence, status: :unprocessable_entity) }
+      end
     end
   end
 
   def send_proposal
     @proposal.mark_sent!
-    redirect_to admin_lead_path(@proposal.lead), notice: "Proposta marcada como enviada. Link: #{public_proposal_url(@proposal.public_token)}"
+    respond_to do |format|
+      format.html { redirect_to admin_lead_path(@proposal.lead), notice: "Proposta marcada como enviada. Link: #{public_proposal_url(@proposal.public_token)}" }
+      format.turbo_stream { render_lead_operational_turbo_stream(@proposal.lead, notice: "Proposta marcada como enviada.") }
+    end
   end
 
   def pdf

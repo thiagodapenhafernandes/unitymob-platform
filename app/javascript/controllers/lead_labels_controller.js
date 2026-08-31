@@ -94,6 +94,10 @@ export default class extends Controller {
         .querySelectorAll(`[data-lead-labels-chips="${this.leadIdValue}"]`)
         .forEach((strip) => { strip.outerHTML = data.chips_html })
     }
+    if (typeof data.pwa_operational_panel_html === "string") {
+      const panel = document.getElementById(`pwa_operational_panel_lead_${this.leadIdValue}`)
+      if (panel) panel.outerHTML = data.pwa_operational_panel_html
+    }
     this.hydrateCustomColors(document)
   }
 

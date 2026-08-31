@@ -3343,7 +3343,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "compoe as configuracoes de leads sem CSS embutido e preserva os paineis condicionais" do
     expect(lead_settings_view).not_to match(/<style|\bstyle\s*=/i)
     expect(lead_settings_view).to include("ax_workspace_heading(", "ax_error_summary(@lead_setting)")
-    expect(lead_settings_view.scan(/ax_operational_panel\(/).size).to eq(6)
+    expect(lead_settings_view.scan(/ax_operational_panel\(/).size).to eq(8)
     expect(lead_settings_view.scan(/class=\"section-toggle-container/).size).to eq(2)
     expect(lead_settings_view.scan(/ax-field-group-stack/).size).to eq(2)
     expect(field_group_stylesheet).to match(/\.ax-field-group-stack\s*\{[^}]*border-left:\s*2px solid var\(--admin-primary/m)
@@ -3352,7 +3352,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       'data-lead-settings-target="stickinessSection"',
       'data-lead-settings-target="secureSection"',
       "change->lead-settings#toggleStickiness",
-      "change->lead-settings#toggleSecure"
+      "change->lead-settings#toggleSecure",
+      "lead_whatsapp_conversation_enabled"
     )
   end
 

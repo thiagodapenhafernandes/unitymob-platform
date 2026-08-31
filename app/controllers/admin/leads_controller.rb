@@ -7,6 +7,14 @@ class Admin::LeadsController < Admin::BaseController
   PWA_LEAD_KANBAN_COLUMN_SIZE = 5
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
+  CONTACT_KIND_LABELS = {
+    "ligacao" => "Ligação",
+    "whatsapp" => "WhatsApp",
+    "email" => "E-mail",
+    "visita" => "Visita",
+    "nota" => "Anotação interna",
+    "note" => "Anotação interna"
+  }.freeze
   CONTACT_ACTIVITY_KINDS = %w[
     accepted note whatsapp_out appointment_created appointment_done
     proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
@@ -99,7 +107,7 @@ class Admin::LeadsController < Admin::BaseController
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
-  helper_method :can_destroy_lead?, :can_assign_lead_owner?
+  helper_method :can_destroy_lead?, :can_assign_lead_owner?, :lead_contact_kind_label
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
@@ -264,13 +272,14 @@ class Admin::LeadsController < Admin::BaseController
 
     # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
     @timeline = @lead.activities.recent.limit(60)
-    @note_activities = @lead.activities.where(kind: "note").recent.limit(40)
+    @contact_history_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
     @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
+    load_proposal_modal_context
     @archive_reason_options = archive_reason_options_for(@lead)
     @funnel_statuses = Lead.status_options
     load_lead_whatsapp_context
@@ -367,7 +376,7 @@ class Admin::LeadsController < Admin::BaseController
     kind = params[:contact_kind].presence || "note"
     body = params[:body].to_s.strip
     if body.blank?
-      return redirect_back fallback_location: admin_lead_path(@lead), alert: "Escreva a anotação antes de salvar."
+      return redirect_back fallback_location: admin_lead_path(@lead), alert: "Descreva o contato antes de salvar."
     end
 
     LeadActivity.log!(
@@ -375,7 +384,7 @@ class Admin::LeadsController < Admin::BaseController
       kind: "note",
       metadata: { contact_kind: kind, body: body, by: current_admin_user&.name, admin_user_id: current_admin_user&.id }.compact
     )
-    redirect_back fallback_location: admin_lead_path(@lead), notice: "Anotação registrada."
+    redirect_back fallback_location: admin_lead_path(@lead), notice: "Contato registrado."
   end
 
   def update
@@ -673,7 +682,10 @@ class Admin::LeadsController < Admin::BaseController
     when "visit"
       schedule_visit_activity
     else
-      redirect_to admin_lead_path(@lead), alert: "Selecione o tipo de atividade."
+      respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), alert: "Selecione o tipo de atividade." }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: "Selecione o tipo de atividade.", status: :unprocessable_entity) }
+      end
     end
   end
 
@@ -1063,8 +1075,8 @@ class Admin::LeadsController < Admin::BaseController
         .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
     when "with_opportunity"
       scope.where(
-        "leads.status = :closed OR leads.id IN (:appointment_ids) OR leads.id IN (:proposal_ids)",
-        closed: Lead.status_value(:concluido),
+        "leads.status IN (:closed) OR leads.id IN (:appointment_ids) OR leads.id IN (:proposal_ids)",
+        closed: closed_lead_status_values,
         appointment_ids: Appointment.where(kind: "visita").select(:lead_id),
         proposal_ids: Proposal.where.not(status: "rascunho").select(:lead_id)
       )
@@ -1092,7 +1104,7 @@ class Admin::LeadsController < Admin::BaseController
   def apply_closed_at_filter(scope)
     return scope if parsed_closed_start_date.blank? && parsed_closed_end_date.blank?
 
-    scope = scope.where(status: Lead.status_value(:concluido))
+    scope = scope.where(status: closed_lead_status_values)
     scope = scope.where("leads.closed_at >= ?", parsed_closed_start_date.beginning_of_day) if parsed_closed_start_date.present?
     scope = scope.where("leads.closed_at <= ?", parsed_closed_end_date.end_of_day) if parsed_closed_end_date.present?
     scope
@@ -1135,7 +1147,22 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def active_lead_status_values
-    Lead::LEGACY_STATUSES - [Lead.status_value(:descartado), Lead.status_value(:concluido)]
+    pipeline_open_statuses = current_tenant.lead_pipeline_stages.active.where(stage_type: "open").pluck(:name)
+    legacy_open_statuses = Lead::LEGACY_STATUSES - [Lead.status_value(:descartado), Lead.status_value(:concluido)]
+
+    (pipeline_open_statuses + legacy_open_statuses).compact_blank.uniq
+  end
+
+  def pwa_priority_lead_status_values
+    default_statuses = current_tenant.lead_pipelines.active.includes(:stages).filter_map { |pipeline| pipeline.default_stage&.name }
+
+    (default_statuses + [Lead.status_value(:novo), Lead.status_value(:waiting_acceptance), Lead.status_value(:represado)]).compact_blank.uniq
+  end
+
+  def closed_lead_status_values
+    pipeline_won_statuses = current_tenant.lead_pipeline_stages.active.where(stage_type: "won").pluck(:name)
+
+    ([Lead.status_value(:concluido)] + pipeline_won_statuses).compact_blank.uniq
   end
 
   def active_lead_status_values_with_blank
@@ -1214,35 +1241,37 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def existing_whatsapp_conversation_for(lead)
-    current_tenant.whatsapp_conversations.find_by(lead: lead) ||
-      begin
-        recipient = lead.whatsapp_recipient
-        if recipient.is_a?(Hash)
-          current_tenant.whatsapp_conversations.find_by(business_scoped_user_id: recipient[:user_id].to_s)
-        elsif recipient.present?
-          current_tenant.whatsapp_conversations.find_by(contact_phone: normalize_whatsapp_phone(recipient))
-        end
-      end
+    scope = current_tenant.whatsapp_conversations
+    bsuid = lead.business_scoped_user_id.presence
+    phone = normalize_whatsapp_phone(lead.display_phone) if lead.display_phone.present?
+
+    scope.find_by(lead: lead) ||
+      (scope.find_by(business_scoped_user_id: bsuid) if bsuid.present?) ||
+      (scope.find_by(contact_phone: phone) if phone.present?)
   end
 
   def find_or_create_whatsapp_conversation_for!(lead)
     recipient = lead.whatsapp_recipient
     raise ArgumentError, "Este lead não possui telefone ou BSUID para abrir conversa no WhatsApp." if recipient.blank?
 
+    bsuid = lead.business_scoped_user_id.presence
+    phone = normalize_whatsapp_phone(lead.display_phone) if lead.display_phone.present?
     conversation = existing_whatsapp_conversation_for(lead)
     conversation = bind_whatsapp_conversation_to_lead!(conversation, lead) if conversation&.lead_id.blank?
-    conversation ||= if recipient.is_a?(Hash)
-                       current_tenant.whatsapp_conversations.find_or_initialize_by(business_scoped_user_id: recipient[:user_id].to_s)
+    conversation ||= if bsuid.present?
+                       current_tenant.whatsapp_conversations.find_or_initialize_by(business_scoped_user_id: bsuid)
                      else
-                       current_tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: normalize_whatsapp_phone(recipient))
+                       current_tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: phone)
                      end
 
-    conversation.contact_phone ||= normalize_whatsapp_phone(recipient) unless recipient.is_a?(Hash)
-    conversation.business_scoped_user_id ||= recipient[:user_id].to_s if recipient.is_a?(Hash)
-    conversation.contact_name ||= lead.display_name
-    conversation.lead ||= lead
-    conversation.status ||= "open"
-    conversation.save!
+    if conversation.lead_id.blank? || conversation.lead_id == lead.id
+      conversation.contact_phone ||= phone if phone.present?
+      conversation.business_scoped_user_id ||= bsuid if bsuid.present?
+      conversation.contact_name ||= lead.display_name
+      conversation.lead ||= lead
+      conversation.status ||= "open"
+      conversation.save!
+    end
     conversation
   end
 
@@ -1270,7 +1299,10 @@ class Admin::LeadsController < Admin::BaseController
   def schedule_return_activity
     due_at = params[:due_at].presence
     unless future_activity_allowed?(due_at)
-      return redirect_to admin_lead_path(@lead), alert: future_activity_limit_message
+      return respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), alert: future_activity_limit_message }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: future_activity_limit_message, status: :unprocessable_entity) }
+      end
     end
 
     task = current_tenant.tasks.create(
@@ -1285,16 +1317,25 @@ class Admin::LeadsController < Admin::BaseController
 
     if task.persisted?
       LeadActivity.log!(lead: @lead, kind: "activity_scheduled", metadata: { activity_kind: "return", due_at: task.due_at, by: current_admin_user&.name })
-      redirect_to admin_lead_path(@lead), notice: "Retorno agendado."
+      respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), notice: "Retorno agendado." }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, notice: "Retorno agendado.") }
+      end
     else
-      redirect_to admin_lead_path(@lead), alert: task.errors.full_messages.to_sentence
+      respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), alert: task.errors.full_messages.to_sentence }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: task.errors.full_messages.to_sentence, status: :unprocessable_entity) }
+      end
     end
   end
 
   def schedule_visit_activity
     starts_at = params[:starts_at].presence
     unless future_activity_allowed?(starts_at)
-      return redirect_to admin_lead_path(@lead), alert: future_activity_limit_message
+      return respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), alert: future_activity_limit_message }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: future_activity_limit_message, status: :unprocessable_entity) }
+      end
     end
 
     appointment = current_tenant.appointments.new(
@@ -1308,18 +1349,24 @@ class Admin::LeadsController < Admin::BaseController
       location: params[:location],
       notes: params[:notes],
       properties_to_visit_count: params[:properties_to_visit_count].presence,
-      invite_via_email: ActiveModel::Type::Boolean.new.cast(params[:invite_via_email]),
-      invite_via_whatsapp: ActiveModel::Type::Boolean.new.cast(params[:invite_via_whatsapp]),
+      invite_via_email: params[:invite_via_email].present?,
+      invite_via_whatsapp: params[:invite_via_whatsapp].present?,
       invite_email_recipients: params[:invite_email_recipients]
     )
 
     unless appointment.save
-      return redirect_to admin_lead_path(@lead), alert: appointment.errors.full_messages.to_sentence
+      return respond_to do |format|
+        format.html { redirect_to admin_lead_path(@lead), alert: appointment.errors.full_messages.to_sentence }
+        format.turbo_stream { render_lead_operational_turbo_stream(@lead, alert: appointment.errors.full_messages.to_sentence, status: :unprocessable_entity) }
+      end
     end
 
     send_visit_invites(appointment)
     LeadActivity.log!(lead: @lead, kind: "activity_scheduled", metadata: { activity_kind: "visit", starts_at: appointment.starts_at, by: current_admin_user&.name })
-    redirect_to admin_lead_path(@lead), notice: "Visita agendada."
+    respond_to do |format|
+      format.html { redirect_to admin_lead_path(@lead), notice: "Visita agendada." }
+      format.turbo_stream { render_lead_operational_turbo_stream(@lead, notice: "Visita agendada.") }
+    end
   end
 
   def send_visit_invites(appointment)
@@ -1343,13 +1390,25 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def load_lead_whatsapp_context
+    @lead_whatsapp_panel_enabled = LeadSetting.instance(tenant: current_tenant).lead_whatsapp_conversation_enabled?
+    return apply_lead_whatsapp_disabled! unless @lead_whatsapp_panel_enabled
+
     integration = WhatsappBusinessIntegration.current(current_tenant)
-    @whatsapp_conversation = current_tenant.whatsapp_conversations.find_by(lead: @lead)
 
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: integration)
     @whatsapp_templates = approved_lead_whatsapp_templates(integration)
+    @whatsapp_conversation =
+      if auto_open_lead_whatsapp_conversation?(integration)
+        find_or_create_whatsapp_conversation_for!(@lead)
+      else
+        current_tenant.whatsapp_conversations.find_by(lead: @lead)
+      end
     # 100 e nao 12: com 12 o historico (videos/audios de dias atras) sumia do painel
-    @whatsapp_messages = @whatsapp_conversation ? lead_whatsapp_panel_messages(@whatsapp_conversation) : []
+    @whatsapp_messages = if @whatsapp_conversation && @whatsapp_conversation.lead_id == @lead.id
+                            lead_whatsapp_panel_messages(@whatsapp_conversation)
+                          else
+                            []
+                          end
     snapshot = @whatsapp_conversation ? Whatsapp::ThreadContextSnapshot.new(
       conversation: @whatsapp_conversation,
       messages: @whatsapp_messages,
@@ -1357,7 +1416,7 @@ class Admin::LeadsController < Admin::BaseController
       tenant: current_tenant
     ) : nil
     @whatsapp_summary = snapshot ? snapshot.to_h.fetch(:thread_summary) : { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
-    @whatsapp_thread_context_locals = snapshot ? snapshot.to_h : {}
+    @whatsapp_thread_context_locals = snapshot ? lead_whatsapp_thread_context(snapshot) : {}
   rescue => e
     Rails.logger.warn("[Admin::LeadsController#load_lead_whatsapp_context] lead_id=#{@lead&.id} tenant_id=#{current_tenant&.id} erro=#{e.class}: #{e.message}")
     apply_lead_whatsapp_notice!(
@@ -1367,6 +1426,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def apply_lead_whatsapp_notice!(message, detail: nil)
+    @lead_whatsapp_panel_enabled = true if @lead_whatsapp_panel_enabled.nil?
     @whatsapp_conversation = nil
     @lead_activation_template = nil
     @whatsapp_templates = []
@@ -1375,6 +1435,17 @@ class Admin::LeadsController < Admin::BaseController
     @whatsapp_thread_context_locals = {}
     @lead_whatsapp_notice = message
     @lead_whatsapp_notice_detail = detail
+  end
+
+  def apply_lead_whatsapp_disabled!
+    @whatsapp_conversation = nil
+    @lead_activation_template = nil
+    @whatsapp_templates = []
+    @whatsapp_messages = []
+    @whatsapp_summary = { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
+    @whatsapp_thread_context_locals = {}
+    @lead_whatsapp_notice = nil
+    @lead_whatsapp_notice_detail = nil
   end
 
   def approved_lead_whatsapp_templates(integration)
@@ -1386,10 +1457,9 @@ class Admin::LeadsController < Admin::BaseController
     templates.compact.select { |template| template.persisted? && template.approved? }
   end
 
-  def auto_open_lead_whatsapp_conversation?(integration)
+  def auto_open_lead_whatsapp_conversation?(_integration)
     can?(:view, :whatsapp_inbox) &&
-      @lead.whatsapp_recipient.present? &&
-      integration.messaging_ready?
+      @lead.whatsapp_recipient.present?
   end
 
   def attach_activation_template_header!(message)
@@ -1418,6 +1488,27 @@ class Admin::LeadsController < Admin::BaseController
     messages.reject do |message|
       stale_whatsapp_setup_failure?(message, latest_accepted_outbound_at)
     end
+  end
+
+  def lead_whatsapp_thread_context(snapshot)
+    context = snapshot.to_h
+    return context if context[:thread_lead]&.id == @lead.id
+
+    context.merge(
+      thread_lead: @lead,
+      thread_property: current_tenant.habitations.find_by(id: @lead.property_id),
+      thread_next_task: lead_whatsapp_next_task,
+      thread_actions_summary: {
+        tasks: @lead.tasks.where(status: "pendente").count,
+        appointments: @lead.appointments.count,
+        proposals: @lead.proposals.count
+      }
+    )
+  end
+
+  def lead_whatsapp_next_task
+    tasks = @lead.tasks.includes(:admin_user).ordered.limit(20).to_a
+    tasks.select(&:pendente?).find { |task| task.due_at.present? } || tasks.find(&:pendente?)
   end
 
   def whatsapp_message_accepted_by_meta?(message)
@@ -1497,11 +1588,8 @@ class Admin::LeadsController < Admin::BaseController
     lead.admin_user_id.present? && lead.admin_user_id == current_admin_user&.id
   end
 
-  # Só a permissão da ação: o recorte por registro já vem do
-  # authorize_lead_access! (before_action do destroy), que garante que o lead
-  # está no escopo acessível do usuário.
   def can_destroy_lead?
-    tenant_owner? || can?(:delete, :leads)
+    tenant_owner?
   end
 
   def authorize_lead_access!
@@ -1617,6 +1705,10 @@ class Admin::LeadsController < Admin::BaseController
     return false unless current_admin_user&.scope_for(:leads) == "own" && @lead&.admin_user_id == current_admin_user.id
 
     current_tenant.admin_users.active.where(id: admin_user_id).exists?
+  end
+
+  def lead_contact_kind_label(activity)
+    CONTACT_KIND_LABELS[activity.meta("contact_kind").to_s] || "Anotação interna"
   end
 
   def lead_params
@@ -1843,7 +1935,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(
         "leads.id IN (:due_task_ids) OR (leads.status IN (:priority_statuses) AND leads.id NOT IN (:scheduled_later_ids))",
         due_task_ids: pwa_due_task_lead_ids(base_scope),
-        priority_statuses: [Lead.status_value(:novo), Lead.status_value(:waiting_acceptance), Lead.status_value(:represado)],
+        priority_statuses: pwa_priority_lead_status_values,
         scheduled_later_ids: pwa_later_scheduled_lead_ids(base_scope)
       )
   end
@@ -2133,13 +2225,14 @@ class Admin::LeadsController < Admin::BaseController
     @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
     @timeline = @lead.activities.recent.limit(60)
-    @note_activities = @lead.activities.where(kind: "note").recent.limit(40)
+    @contact_history_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
     @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
                  @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
+    load_proposal_modal_context
     @archive_reason_options = archive_reason_options_for(@lead)
     @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
@@ -2158,6 +2251,17 @@ class Admin::LeadsController < Admin::BaseController
       .includes(:admin_user, :push_subscription)
       .order(created_at: :desc)
       .limit(20)
+  end
+
+  def load_proposal_modal_context
+    return unless can?(:manage, :comercial)
+
+    @proposal_habitations = current_tenant.habitations.order(updated_at: :desc).limit(500)
+    @new_proposal = @lead.proposals.new(
+      habitation_id: @lead.property_id,
+      admin_user: current_admin_user,
+      validade: 7.days.from_now.to_date
+    )
   end
 
   def load_interest_intelligence

@@ -15,10 +15,13 @@ module Admin::ComercialHelper
     "comment"            => { icon: "bi-chat-left-text",   color: "gray",  label: "Comentário" },
     "note"               => { icon: "bi-pencil-square",    color: "gray",  label: "Contato registrado" },
     "task_created"       => { icon: "bi-check2-square",    color: "amber", label: "Tarefa criada" },
+    "task_updated"       => { icon: "bi-pencil-square",    color: "amber", label: "Tarefa atualizada" },
     "task_completed"     => { icon: "bi-check-circle-fill",color: "green", label: "Tarefa concluída" },
     "appointment_created"=> { icon: "bi-calendar-plus",    color: "blue",  label: "Compromisso agendado" },
+    "appointment_updated"=> { icon: "bi-pencil-square",    color: "blue",  label: "Compromisso atualizado" },
     "appointment_done"   => { icon: "bi-calendar-check",   color: "green", label: "Compromisso realizado" },
     "proposal_created"   => { icon: "bi-file-earmark-text",color: "gray",  label: "Proposta criada" },
+    "proposal_updated"   => { icon: "bi-pencil-square",    color: "gray",  label: "Proposta atualizada" },
     "proposal_sent"      => { icon: "bi-send",             color: "blue",  label: "Proposta enviada" },
     "proposal_viewed"    => { icon: "bi-eye",              color: "amber", label: "Proposta visualizada" },
     "proposal_aceita"    => { icon: "bi-hand-thumbs-up",   color: "green", label: "Proposta aceita" },
@@ -344,7 +347,9 @@ module Admin::ComercialHelper
     meta = activity.metadata.is_a?(Hash) ? activity.metadata : {}
     case activity.kind
     when "note"        then meta["body"].presence
-    when "task_created", "task_completed", "appointment_created", "appointment_done" then meta["title"].presence
+    when "task_created", "task_updated", "task_completed",
+         "appointment_created", "appointment_updated", "appointment_done",
+         "proposal_created", "proposal_updated" then meta["title"].presence
     when "status_change" then [meta["from"], meta["to"]].compact.join(" → ").presence
     when "distributed", "assigned_directly"
       who = meta["admin_user_name"].presence || activity.lead&.admin_user&.name

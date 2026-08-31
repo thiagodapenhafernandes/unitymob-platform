@@ -59,6 +59,25 @@ RSpec.describe Whatsapp::InboundProcessor do
     expect(conv.reload.business_scoped_user_id).to eq("US.B")
   end
 
+  it "guarda janela de 72h quando o inbound vem de ponto de entrada da Meta" do
+    timestamp = 1.hour.ago.to_i
+
+    described_class.call(payload(
+      contacts: [{ "wa_id" => "5521988887778", "profile" => { "name" => "Entrada" } }],
+      messages: [{
+        "id" => "wamid.referral",
+        "from" => "5521988887778",
+        "timestamp" => timestamp.to_s,
+        "type" => "text",
+        "text" => { "body" => "oi" },
+        "referral" => { "source_type" => "ad", "source_id" => "123" }
+      }]
+    ))
+
+    conv = WhatsappConversation.find_by(contact_phone: "5521988887778")
+    expect(conv.free_entry_point_expires_at.to_i).to eq((Time.zone.at(timestamp) + 72.hours).to_i)
+  end
+
   it "re-vincula conversa/lead quando o BSUID muda (webhook user_id_update)" do
     conv = WhatsappConversation.create!(tenant: integration.tenant, business_scoped_user_id: "US.OLD", status: "open")
 
@@ -168,8 +187,11 @@ RSpec.describe Whatsapp::CloudClient do
 end
 
 RSpec.describe Lead do
-  it "#whatsapp_recipient usa telefone, e cai no BSUID quando não há telefone" do
-    with_phone = build(:lead, phone: "5521999990000")
+  it "#whatsapp_recipient usa BSUID antes do telefone" do
+    with_bsuid_and_phone = build(:lead, phone: "5521999990000", business_scoped_user_id: "US.PRIMARY")
+    expect(with_bsuid_and_phone.whatsapp_recipient).to eq({ user_id: "US.PRIMARY" })
+
+    with_phone = build(:lead, phone: "5521999990000", business_scoped_user_id: nil)
     expect(with_phone.whatsapp_recipient).to eq("5521999990000")
 
     only_bsuid = build(:lead, phone: nil, business_scoped_user_id: "US.Q")
