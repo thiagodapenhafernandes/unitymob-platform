@@ -1270,6 +1270,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css(".lead-property-summary")).to be_present
       expect(document.at_css(".lead-property-summary__media img.lead-property-image")).to be_present
       expect(document.at_css(".lead-property-summary__content")).to be_present
+      expect(document.at_css(".lead-property-summary__facts")).to be_present
+      expect(document.text).to include(property.preco_principal, "Código", property.codigo)
     end
   end
 
