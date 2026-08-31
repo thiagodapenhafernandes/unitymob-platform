@@ -277,4 +277,17 @@ RSpec.describe Profile, "governança vertical/horizontal", type: :model do
     expect(resources.fetch("data_export_audit")).to include(scopeable: true)
     expect(resources.fetch("access_security")).to include(scopeable: true)
   end
+
+  it "expoe relatorios de leads como permissao configuravel" do
+    resource = described_class::RESOURCES.index_by { |item| item.fetch(:key) }.fetch("lead_reports")
+
+    expect(resource).to include(
+      label: "Relatórios de leads",
+      actions: %w[view],
+      scopeable: false
+    )
+    expect(described_class.default_permissions_for("Gerente").dig("lead_reports", "view")).to eq(true)
+    expect(described_class.default_permissions_for("Administrativo").dig("lead_reports", "view")).to eq(true)
+    expect(described_class.default_permissions_for("Corretor")).not_to have_key("lead_reports")
+  end
 end

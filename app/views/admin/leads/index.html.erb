@@ -2177,12 +2177,13 @@
   lead_filter_labels << "Bot" if @bot_attended
   lead_filter_labels << "Preço" if @price_min.present? || @price_max.present?
   lead_filter_labels << "Motivo de arquivamento" if @archive_reason_id.present?
-  lead_filter_labels << "Captações no relatório" if @include_captacoes
+  leads_can_manage_statuses = defined?(can?) && can?(:manage, :catalogos)
+  leads_can_export_report = defined?(can?) && can?(:view, :lead_reports)
+  lead_filter_labels << "Captações no relatório" if leads_can_export_report && @include_captacoes
   lead_filter_labels << "Período" if @start_date.present? || @end_date.present? || @closed_start_date.present? || @closed_end_date.present?
   lead_active_filter_count = lead_filter_labels.size
   leads_heading_pills << "#{lead_active_filter_count} filtro(s)" if lead_active_filter_count.positive?
 
-  leads_can_manage_statuses = defined?(can?) && can?(:manage, :catalogos)
   lead_quick_base_params = lead_query_params.except("page", :page)
   lead_desktop_tab_items = [
     ["todo", "A fazer", "house-door"],
@@ -2374,14 +2375,16 @@
               <%= ax_date_field(form: f, method: :closed_start_date, label: "Fechado de", value: @closed_start_date) %>
               <%= ax_date_field(form: f, method: :closed_end_date, label: "Fechado até", value: @closed_end_date) %>
             </div>
-            <div class="ax-span-6">
-              <%= ax_field_label(nil, nil, text: "Relatório") %>
-              <label class="ax-toggle-chip">
-                <%= check_box_tag "include_captacoes", "1", @include_captacoes, class: "ax-toggle-chip__input" %>
-                <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-house-add"></i></span>
-                <span class="ax-toggle-chip__label">Incluir captações</span>
-              </label>
-            </div>
+            <% if leads_can_export_report %>
+              <div class="ax-span-6">
+                <%= ax_field_label(nil, nil, text: "Relatório") %>
+                <label class="ax-toggle-chip">
+                  <%= check_box_tag "include_captacoes", "1", @include_captacoes, class: "ax-toggle-chip__input" %>
+                  <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-house-add"></i></span>
+                  <span class="ax-toggle-chip__label">Incluir captações</span>
+                </label>
+              </div>
+            <% end %>
           <% end %>
         </div>
       <% if lead_active_filter_count.positive? %>
@@ -2513,8 +2516,10 @@
           </div>
         <% end %>
 
-        <%= ax_filter_section(title: "Relatório", count: (@include_captacoes ? 1 : 0), open: false) do %>
-          <%= ax_filter_check(name: "include_captacoes", value: "1", checked: @include_captacoes, label: "Incluir captações no CSV", id: "pwa_include_captacoes") %>
+        <% if leads_can_export_report %>
+          <%= ax_filter_section(title: "Relatório", count: (@include_captacoes ? 1 : 0), open: false) do %>
+            <%= ax_filter_check(name: "include_captacoes", value: "1", checked: @include_captacoes, label: "Incluir captações no relatório", id: "pwa_include_captacoes") %>
+          <% end %>
         <% end %>
 
         <div class="lead-pwa-filter-actions">
@@ -2588,10 +2593,12 @@
               <strong><%= lead_active_filter_count %></strong>
             <% end %>
           </button>
-          <%= link_to report_admin_leads_path(lead_query_params.merge(include_captacoes: (@include_captacoes ? "1" : nil), format: :xlsx).compact),
-                      class: "lead-desktop-header__button",
-                      title: "Exportar relatório de leads em Excel" do %>
-            <i class="bi bi-filetype-xlsx"></i><span>Relatório</span>
+          <% if leads_can_export_report %>
+            <%= link_to report_admin_leads_path(lead_query_params.merge(include_captacoes: (@include_captacoes ? "1" : nil), format: :xlsx).compact),
+                        class: "lead-desktop-header__button",
+                        title: "Exportar relatório de leads em Excel" do %>
+              <i class="bi bi-filetype-xlsx"></i><span>Relatório</span>
+            <% end %>
           <% end %>
         </div>
       </div>

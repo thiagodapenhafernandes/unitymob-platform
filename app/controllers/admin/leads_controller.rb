@@ -123,6 +123,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   before_action -> { check_permission!(:view, :leads) }
+  before_action -> { check_permission!(:view, :lead_reports) }, only: [:report]
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
   # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
