@@ -27,7 +27,7 @@ export default class extends Controller {
     this.boundRender = this.handleTurboRender.bind(this)
     this.boundLoad = this.handlePageReady.bind(this)
     this.boundSubmitEnd = this.handleTurboSubmitEnd.bind(this)
-    this.boundBeforeCache = this.hideNow.bind(this)
+    this.boundBeforeCache = this.handleTurboBeforeCache.bind(this)
     this.boundPageShow = this.handlePageReady.bind(this)
     this.boundNavError = this.hideNow.bind(this)
 
@@ -124,6 +124,45 @@ export default class extends Controller {
     this.handlePageReady()
   }
 
+  handleTurboBeforeCache() {
+    const overlayWasVisible = this.hasOverlayTarget && !this.overlayTarget.hidden
+    const htmlWasLoading = document.documentElement.classList.contains("ax-admin-is-loading")
+
+    if (!overlayWasVisible && !htmlWasLoading) return
+
+    const cacheToken = String(performance.now())
+    const overlayClasses = overlayWasVisible ? Array.from(this.overlayTarget.classList) : []
+    const shownAt = overlayWasVisible ? this.overlayTarget.dataset.shownAt : null
+
+    document.documentElement.dataset.adminNavigationCacheToken = cacheToken
+    document.documentElement.classList.remove("ax-admin-is-loading")
+
+    if (overlayWasVisible) {
+      this.overlayTarget.hidden = true
+      this.overlayTarget.classList.remove("is-visible", "has-rendered")
+      delete this.overlayTarget.dataset.shownAt
+    }
+
+    // turbo:before-cache roda ainda na página antiga. Limpamos o snapshot, mas
+    // restauramos antes do próximo paint para o corretor não ver a página velha
+    // sem preloader enquanto o Turbo termina a troca real da tela.
+    window.queueMicrotask(() => {
+      if (document.documentElement.dataset.adminNavigationCacheToken !== cacheToken) return
+
+      delete document.documentElement.dataset.adminNavigationCacheToken
+
+      if (htmlWasLoading) {
+        document.documentElement.classList.add("ax-admin-is-loading")
+      }
+
+      if (overlayWasVisible && this.hasOverlayTarget) {
+        this.overlayTarget.hidden = false
+        this.overlayTarget.className = overlayClasses.join(" ")
+        if (shownAt) this.overlayTarget.dataset.shownAt = shownAt
+      }
+    })
+  }
+
   handlePageReady() {
     this.hideNow()
     this.updateMetrics()
@@ -159,6 +198,7 @@ export default class extends Controller {
     window.clearTimeout(this.showTimer)
     this.showTimer = null
     this.pageRendered = false
+    delete document.documentElement.dataset.adminNavigationCacheToken
 
     if (this.hasOverlayTarget && !this.overlayTarget.hidden) {
       const shownAt = Number(this.overlayTarget.dataset.shownAt || 0)
