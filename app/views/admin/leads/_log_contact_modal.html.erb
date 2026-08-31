@@ -7,7 +7,7 @@
 <% trigger_title = local_assigns[:trigger_title].presence || "Registrar contato" %>
 
 <% lead_log_contact_body = capture do %>
-  <%= form_with url: log_contact_admin_lead_path(lead), method: :post, id: form_id, local: true, data: { turbo: false } do %>
+  <%= form_with url: log_contact_admin_lead_path(lead), method: :post, id: form_id, local: true, data: { turbo: false, controller: "lead-contact-form" } do %>
     <div class="tw-grid tw-gap-3">
       <div>
         <%= ax_field_label(nil, nil, text: "Tipo de contato") %>
@@ -19,7 +19,22 @@
                 ["Visita", "visita"],
                 ["Nota interna", "nota"]
               ], "ligacao"),
-              class: "ax-select" %>
+              class: "ax-select",
+              data: { lead_contact_form_target: "kind", action: "lead-contact-form#sync" } %>
+      </div>
+      <div data-lead-contact-form-target="resultField">
+        <%= ax_field_label(nil, nil, text: "Resultado") %>
+        <%= select_tag "contact_result",
+              options_for_select([
+                ["Não respondeu", "nao_respondeu"],
+                ["Falou com cliente", "falou_com_cliente"],
+                ["Retornar depois", "retornar_depois"],
+                ["Sem interesse", "sem_interesse"]
+              ]),
+              include_blank: "Selecione o resultado...",
+              class: "ax-select",
+              required: true,
+              data: { lead_contact_form_target: "result" } %>
       </div>
       <div>
         <%= ax_field_label(nil, nil, text: "O que aconteceu?") %>

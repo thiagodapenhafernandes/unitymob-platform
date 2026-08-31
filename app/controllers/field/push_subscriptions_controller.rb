@@ -110,7 +110,6 @@ module Field
 
     def delete_stale_device_subscriptions!(record)
       return unless record.persisted?
-      return if record.apple_web_push? && params[:old_endpoint].blank?
 
       PushSubscription
         .where(admin_user: current_admin_user, platform: record.platform, user_agent: record.user_agent)

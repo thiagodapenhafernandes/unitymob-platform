@@ -1,3 +1,7 @@
+require "csv"
+require "cgi"
+require "zlib"
+
 class Admin::LeadsController < Admin::BaseController
   # Kanban carrega em pequenos lotes por coluna para manter a tela responsiva.
   KANBAN_COLUMN_PAGE_SIZE = 5
@@ -15,10 +19,27 @@ class Admin::LeadsController < Admin::BaseController
     "nota" => "Anotação interna",
     "note" => "Anotação interna"
   }.freeze
+  CONTACT_RESULT_LABELS = {
+    "nao_respondeu" => "Não respondeu",
+    "falou_com_cliente" => "Falou com cliente",
+    "retornar_depois" => "Retornar depois",
+    "sem_interesse" => "Sem interesse"
+  }.freeze
   CONTACT_ACTIVITY_KINDS = %w[
     accepted note whatsapp_out appointment_created appointment_done
     proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
   ].freeze
+  REPORT_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".freeze
+  REPORT_XLSX_HEADERS = [
+    "Nome do cliente",
+    "Email do cliente",
+    "Telefone formatado",
+    "Canal/Fonte",
+    "Usuário responsável atual",
+    "Lead atendido pelo bolsão?",
+    "Título do imóvel"
+  ].freeze
+  REPORT_XLSX_COLUMN_WIDTHS = [22.55, 20, 17.89, 12, 18, 11, 30].freeze
   EXTERNAL_SCHEDULE_KIND = "external_scheduled_action".freeze
   EXTERNAL_SCHEDULE_DATE_SQL = <<~SQL.squish.freeze
     NULLIF(COALESCE(
@@ -107,11 +128,11 @@ class Admin::LeadsController < Admin::BaseController
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
-  helper_method :can_destroy_lead?, :can_assign_lead_owner?, :lead_contact_kind_label
+  helper_method :can_destroy_lead?, :can_assign_lead_owner?, :lead_contact_kind_label, :lead_contact_result_label, :lead_unsuccessful_attempt_count
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
-  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
-  before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :new, :create, :show, :update]
+  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
+  before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
   def index
     assign_lead_filter_state
@@ -188,6 +209,24 @@ class Admin::LeadsController < Admin::BaseController
     @best_queue_position = @queue_positions_by_rule_id.values.compact.min
     @return_to_path = admin_leads_path(view: current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "list")
     @page_title = "Minhas filas"
+  end
+
+  def report
+    assign_lead_filter_state
+    scope = filtered_lead_scope_for_current_user.includes(:admin_user, :archive_reason, :lead_pipeline_stage).order(created_at: :asc)
+    include_captacoes = params[:include_captacoes].to_s == "1"
+    timestamp = Time.current.strftime("%Y%m%d_%H%M%S")
+
+    if params[:format].to_s == "xlsx"
+      send_data commercial_report_xlsx(scope, include_captacoes:),
+                filename: "relatorio_leads_#{timestamp}.xlsx",
+                type: REPORT_XLSX_MIME,
+                disposition: "attachment"
+    else
+      send_data commercial_report_csv(scope, include_captacoes:),
+                filename: "relatorio_leads_#{timestamp}.csv",
+                type: "text/csv; charset=utf-8"
+    end
   end
 
   def kanban_column
@@ -373,16 +412,21 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def log_contact
-    kind = params[:contact_kind].presence || "note"
+    kind = params[:contact_kind].presence_in(CONTACT_KIND_LABELS.keys) || "nota"
+    result = params[:contact_result].presence_in(CONTACT_RESULT_LABELS.keys)
     body = params[:body].to_s.strip
     if body.blank?
       return redirect_back fallback_location: admin_lead_path(@lead), alert: "Descreva o contato antes de salvar."
     end
+    if LeadActivity::CONTACT_ATTEMPT_KINDS.include?(kind) && result.blank?
+      return redirect_back fallback_location: admin_lead_path(@lead), alert: "Informe o resultado da tentativa de contato."
+    end
+    result = nil unless LeadActivity::CONTACT_ATTEMPT_KINDS.include?(kind)
 
     LeadActivity.log!(
       lead: @lead,
       kind: "note",
-      metadata: { contact_kind: kind, body: body, by: current_admin_user&.name, admin_user_id: current_admin_user&.id }.compact
+      metadata: { contact_kind: kind, contact_result: result, body: body, by: current_admin_user&.name, admin_user_id: current_admin_user&.id }.compact
     )
     redirect_back fallback_location: admin_lead_path(@lead), notice: "Contato registrado."
   end
@@ -833,6 +877,7 @@ class Admin::LeadsController < Admin::BaseController
     @closed_start_date = params[:closed_start_date]
     @closed_end_date = params[:closed_end_date]
     @archive_reason_id = params[:archive_reason_id].to_s
+    @include_captacoes = params[:include_captacoes].to_s == "1"
     @parsed_start_date = nil
     @parsed_end_date = nil
     @parsed_closed_start_date = nil
@@ -987,7 +1032,7 @@ class Admin::LeadsController < Admin::BaseController
     clauses = values.filter_map do |value|
       case value
       when "first_contact"
-        "leads.id NOT IN (#{LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id).to_sql})"
+        "leads.id NOT IN (#{LeadActivity.contact_attempts.select(:lead_id).to_sql})"
       when "schedule_activity"
         "leads.id IN (#{Task.where(tenant_id: current_tenant.id).pendentes.select(:lead_id).to_sql}) OR leads.id IN (#{pwa_external_schedule_scope(scope, visits: false).select(:lead_id).to_sql})"
       when "return_customer"
@@ -1068,11 +1113,11 @@ class Admin::LeadsController < Admin::BaseController
       scope.holding
     when "no_first_contact"
       scope.where(status: active_lead_status_values_with_blank)
-        .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
+        .where.not(id: LeadActivity.contact_attempts.select(:lead_id))
     when "sla_overdue"
       scope.where(status: active_lead_status_values_with_blank)
         .where("leads.created_at < ?", first_contact_sla_hours.hours.ago)
-        .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS).select(:lead_id))
+        .where.not(id: LeadActivity.contact_attempts.select(:lead_id))
     when "with_opportunity"
       scope.where(
         "leads.status IN (:closed) OR leads.id IN (:appointment_ids) OR leads.id IN (:proposal_ids)",
@@ -1080,9 +1125,533 @@ class Admin::LeadsController < Admin::BaseController
         appointment_ids: Appointment.where(kind: "visita").select(:lead_id),
         proposal_ids: Proposal.where.not(status: "rascunho").select(:lead_id)
       )
+    when "unsuccessful_attempts"
+      scope.where(id: LeadActivity.unsuccessful_contact_attempts.select(:lead_id))
+    when "eligible_redistribution"
+      scope.where(id: eligible_automation_lead_ids(action_type: "redistribute_lead"))
+    when "second_attempt"
+      scope.joins(:lead_pipeline_stage).where("lead_pipeline_stages.name ILIKE ?", "%segunda%")
+    when "archived_unsuccessful"
+      reason_ids = current_tenant.attribute_options
+                                 .for_context("lead")
+                                 .for_category("archive_reason")
+                                 .where("name ILIKE ? OR name ILIKE ?", "%não respondeu%", "%contatar%")
+                                 .select(:id)
+      scope.where(archive_reason_id: reason_ids)
     else
       scope
     end
+  end
+
+  def eligible_automation_lead_ids(action_type:)
+    stage_ids = current_tenant.lead_pipeline_stage_automations
+                              .active
+                              .where(action_type: action_type)
+                              .where("COALESCE((action_config ->> 'unsuccessful_attempt_limit')::integer, 0) > 0")
+                              .select(:lead_pipeline_stage_id)
+    current_tenant.leads.where(lead_pipeline_stage_id: stage_ids)
+                  .joins(:activities)
+                  .merge(LeadActivity.unsuccessful_contact_attempts)
+                  .group("leads.id")
+                  .having("COUNT(lead_activities.id) >= COALESCE((SELECT MIN((lpsa.action_config ->> 'unsuccessful_attempt_limit')::integer) FROM lead_pipeline_stage_automations lpsa WHERE lpsa.lead_pipeline_stage_id = leads.lead_pipeline_stage_id AND lpsa.active = TRUE AND lpsa.action_type = ? AND COALESCE((lpsa.action_config ->> 'unsuccessful_attempt_limit')::integer, 0) > 0), 999999)", action_type)
+                  .select(:id)
+  end
+
+  def commercial_report_csv(scope, include_captacoes:)
+    leads = scope.reorder(nil).includes(:admin_user).to_a
+    property_ids = leads.map(&:property_id).compact.uniq
+    properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
+
+    CSV.generate(headers: false, col_sep: ";") do |csv|
+      csv << [commercial_report_title(scope)]
+      csv << []
+
+      leads.sort_by { |lead| [commercial_report_user_label(lead), lead.created_at || Time.zone.at(0), lead.id] }
+           .group_by { |lead| commercial_report_user_label(lead) }
+           .each do |user_label, user_leads|
+        csv << ["USUÁRIO: #{user_label}", nil, nil, nil, nil, nil, "Total de leads", user_leads.size]
+        csv << commercial_report_headers
+
+        user_leads.each do |lead|
+          property = properties_by_id[lead.property_id]
+          last_attempt = lead.activities.unsuccessful_contact_attempts.recent.first
+          csv << [
+            "Lead",
+            report_datetime(lead.created_at),
+            lead.display_name,
+            lead.display_phone,
+            lead.display_email,
+            commercial_report_source_label(lead),
+            lead.admin_user&.name || "Sem corretor",
+            lead.lead_pipeline_stage&.name || lead.status,
+            lead_unsuccessful_attempt_count(lead),
+            report_datetime(last_attempt&.created_at),
+            commercial_report_archive_reason(lead),
+            property&.display_title || lead.product,
+            report_property_city(property, lead:)
+          ]
+        end
+        csv << []
+      end
+
+      append_captacoes_to_report(csv) if include_captacoes
+    end
+  end
+
+  def commercial_report_xlsx(scope, include_captacoes:)
+    leads = scope.reorder(nil).includes(:admin_user, :distribution_rule).to_a
+    property_ids = leads.map(&:property_id).compact.uniq
+    properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
+    rows = commercial_report_xlsx_rows(scope, leads, properties_by_id)
+
+    if include_captacoes
+      rows << commercial_report_xlsx_blank_row
+      rows << commercial_report_xlsx_blank_row
+      rows << commercial_report_xlsx_section_title("CAPTAÇÕES")
+      rows << commercial_report_xlsx_header_row
+      captacao_report_scope.reorder(:id).find_each(batch_size: 500) do |captacao|
+        rows << {
+          style: :body,
+          cells: [
+            captacao.proprietario.presence || captacao.proprietor&.name,
+            captacao.proprietario_email.presence || captacao.proprietor&.email,
+            captacao.proprietario_celular.presence || captacao.proprietor&.phone_primary,
+            "Captação",
+            captacao.admin_user&.name || captacao.corretor_nome || "Sem corretor",
+            "Não",
+            captacao.display_title
+          ]
+        }
+      end
+    end
+
+    build_xlsx_package(
+      "[Content_Types].xml" => xlsx_content_types_xml,
+      "_rels/.rels" => xlsx_root_relationships_xml,
+      "docProps/app.xml" => xlsx_app_properties_xml,
+      "docProps/core.xml" => xlsx_core_properties_xml,
+      "xl/workbook.xml" => xlsx_workbook_xml,
+      "xl/_rels/workbook.xml.rels" => xlsx_workbook_relationships_xml,
+      "xl/styles.xml" => xlsx_styles_xml,
+      "xl/worksheets/sheet1.xml" => xlsx_sheet_xml(rows)
+    )
+  end
+
+  def commercial_report_xlsx_rows(scope, leads, properties_by_id)
+    rows = [
+      commercial_report_xlsx_blank_row,
+      { style: :title, height: 30, cells: [commercial_report_title(scope), nil, nil, nil, nil, nil, nil] },
+      { style: :title, height: 30, cells: Array.new(REPORT_XLSX_HEADERS.size) },
+      commercial_report_xlsx_blank_row
+    ]
+
+    grouped_leads = leads
+      .sort_by { |lead| [commercial_report_user_label(lead), lead.created_at || Time.zone.at(0), lead.id] }
+      .group_by { |lead| commercial_report_user_label(lead) }
+
+    grouped_leads.each_value do |user_leads|
+      rows << commercial_report_xlsx_header_row
+      user_leads.each do |lead|
+        property = properties_by_id[lead.property_id]
+        rows << { style: :body, cells: commercial_report_xlsx_lead_row(lead, property) }
+      end
+      rows << commercial_report_xlsx_blank_row
+      rows << commercial_report_xlsx_blank_row
+    end
+
+    rows
+  end
+
+  def commercial_report_xlsx_header_row
+    { style: :header, height: 57.6, cells: REPORT_XLSX_HEADERS }
+  end
+
+  def commercial_report_xlsx_section_title(title)
+    { style: :header, height: 28.8, cells: [title, nil, nil, nil, nil, nil, nil] }
+  end
+
+  def commercial_report_xlsx_blank_row
+    { style: :default, cells: Array.new(REPORT_XLSX_HEADERS.size) }
+  end
+
+  def commercial_report_xlsx_lead_row(lead, property)
+    [
+      lead.display_name,
+      lead.display_email,
+      lead.display_phone,
+      commercial_report_source_label(lead),
+      lead.admin_user&.name || "Sem corretor",
+      commercial_report_pool_attendance_label(lead),
+      property&.display_title || lead.product
+    ]
+  end
+
+  def commercial_report_pool_attendance_label(lead)
+    values = [
+      lead.attribution_data.is_a?(Hash) ? lead.attribution_data["from_hierarchy_company"] : nil,
+      lead.other_information.is_a?(Hash) ? lead.other_information.dig("attributes", "from_hierarchy_company") : nil,
+      lead.other_information.is_a?(Hash) ? lead.other_information.dig("external_lead_payload", "attributes", "from_hierarchy_company") : nil,
+      lead.distribution_rule&.shark_tank?,
+      Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
+    ]
+
+    ActiveModel::Type::Boolean.new.cast(values.find { |value| !value.nil? }) ? "Sim" : "Não"
+  end
+
+  def xlsx_sheet_xml(rows)
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+        <dimension ref="A1:G#{rows.size}"/>
+        <sheetViews><sheetView workbookViewId="0"/></sheetViews>
+        <sheetFormatPr defaultRowHeight="15"/>
+        <cols>
+          #{REPORT_XLSX_COLUMN_WIDTHS.each_with_index.map { |width, index| %(<col min="#{index + 1}" max="#{index + 1}" width="#{width}" customWidth="1"/>) }.join}
+        </cols>
+        <sheetData>
+          #{rows.each_with_index.map { |row, index| xlsx_row_xml(index + 1, row) }.join}
+        </sheetData>
+        <mergeCells count="1"><mergeCell ref="A2:G3"/></mergeCells>
+        <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
+      </worksheet>
+    XML
+  end
+
+  def xlsx_row_xml(row_index, row)
+    style_id = xlsx_style_id(row[:style])
+    height = row[:height].present? ? %( ht="#{row[:height]}" customHeight="1") : ""
+    cells = row.fetch(:cells).each_with_index.map do |value, column_index|
+      xlsx_cell_xml(row_index, column_index + 1, value, style_id)
+    end.join
+
+    %(<row r="#{row_index}"#{height}>#{cells}</row>)
+  end
+
+  def xlsx_cell_xml(row_index, column_index, value, style_id)
+    reference = "#{xlsx_column_name(column_index)}#{row_index}"
+    return %(<c r="#{reference}" s="#{style_id}"/>) if value.blank?
+
+    %(<c r="#{reference}" s="#{style_id}" t="inlineStr"><is><t>#{CGI.escapeHTML(value.to_s)}</t></is></c>)
+  end
+
+  def xlsx_column_name(index)
+    name = +""
+    while index.positive?
+      index -= 1
+      name.prepend((65 + (index % 26)).chr)
+      index /= 26
+    end
+    name
+  end
+
+  def xlsx_style_id(style)
+    { default: 0, title: 1, header: 2, body: 3 }.fetch(style || :default)
+  end
+
+  def xlsx_content_types_xml
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+        <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+        <Default Extension="xml" ContentType="application/xml"/>
+        <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+        <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+        <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+        <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+        <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+      </Types>
+    XML
+  end
+
+  def xlsx_root_relationships_xml
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+        <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+        <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+        <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+      </Relationships>
+    XML
+  end
+
+  def xlsx_workbook_xml
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+        <sheets><sheet name="Relatório" sheetId="1" r:id="rId1"/></sheets>
+      </workbook>
+    XML
+  end
+
+  def xlsx_workbook_relationships_xml
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+        <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+        <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+      </Relationships>
+    XML
+  end
+
+  def xlsx_app_properties_xml
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+        <Application>Unitymob</Application>
+      </Properties>
+    XML
+  end
+
+  def xlsx_core_properties_xml
+    generated_at = CGI.escapeHTML(Time.current.utc.iso8601)
+
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <dc:creator>Unitymob</dc:creator>
+        <cp:lastModifiedBy>Unitymob</cp:lastModifiedBy>
+        <dcterms:created xsi:type="dcterms:W3CDTF">#{generated_at}</dcterms:created>
+        <dcterms:modified xsi:type="dcterms:W3CDTF">#{generated_at}</dcterms:modified>
+      </cp:coreProperties>
+    XML
+  end
+
+  def xlsx_styles_xml
+    <<~XML
+      <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+        <fonts count="3">
+          <font><sz val="11"/><name val="Arial"/></font>
+          <font><b/><sz val="16"/><name val="Arial"/></font>
+          <font><b/><sz val="11"/><name val="Arial"/></font>
+        </fonts>
+        <fills count="3">
+          <fill><patternFill patternType="none"/></fill>
+          <fill><patternFill patternType="gray125"/></fill>
+          <fill><patternFill patternType="solid"><fgColor rgb="FFF5F5F6"/><bgColor indexed="64"/></patternFill></fill>
+        </fills>
+        <borders count="3">
+          <border><left/><right/><top/><bottom/><diagonal/></border>
+          <border><left style="medium"/><right style="medium"/><top style="medium"/><bottom style="medium"/><diagonal/></border>
+          <border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/><diagonal/></border>
+        </borders>
+        <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+        <cellXfs count="4">
+          <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+          <xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+          <xf numFmtId="0" fontId="2" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="bottom" wrapText="1"/></xf>
+          <xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1"/>
+        </cellXfs>
+        <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+        <dxfs count="0"/>
+        <tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>
+      </styleSheet>
+    XML
+  end
+
+  def build_xlsx_package(entries)
+    offset = 0
+    central_directory = +"".b
+    file_data = +"".b
+    mod_time, mod_date = xlsx_zip_timestamp
+
+    entries.each do |path, content|
+      name = path.b
+      body = content.to_s.b
+      crc = Zlib.crc32(body)
+      local_header = [0x04034b50, 20, 0, 0, mod_time, mod_date, crc, body.bytesize, body.bytesize, name.bytesize, 0].pack("VvvvvvVVVvv")
+      central_header = [0x02014b50, 20, 20, 0, 0, mod_time, mod_date, crc, body.bytesize, body.bytesize, name.bytesize, 0, 0, 0, 0, 0, offset].pack("VvvvvvvVVVvvvvvVV")
+
+      file_data << local_header << name << body
+      central_directory << central_header << name
+      offset = file_data.bytesize
+    end
+
+    end_record = [0x06054b50, 0, 0, entries.size, entries.size, central_directory.bytesize, file_data.bytesize, 0].pack("VvvvvVVv")
+    file_data << central_directory << end_record
+  end
+
+  def xlsx_zip_timestamp
+    now = Time.current
+    [
+      (now.hour << 11) | (now.min << 5) | (now.sec / 2),
+      ((now.year - 1980) << 9) | (now.month << 5) | now.day
+    ]
+  end
+
+  def commercial_report_headers
+    [
+      "Tipo",
+      "Data de entrada",
+      "Cliente",
+      "Telefone",
+      "E-mail",
+      "Canal/Fonte",
+      "Corretor atual",
+      "Etapa",
+      "Tentativas sem resposta",
+      "Última tentativa",
+      "Motivo de arquivamento",
+      "Imóvel/Captação",
+      "Cidade"
+    ]
+  end
+
+  def commercial_report_title(scope)
+    start_date = parsed_start_date || scope.reorder(nil).minimum(:created_at)&.to_date
+    end_date = parsed_end_date || scope.reorder(nil).maximum(:created_at)&.to_date
+    return "RELATÓRIO LEADS" if start_date.blank? && end_date.blank?
+
+    dates = [start_date, end_date].compact.map { |date| I18n.l(date, format: "%d/%m/%Y") }
+    "RELATÓRIO LEADS #{dates.join(" A ")}"
+  end
+
+  def commercial_report_user_label(lead)
+    lead.admin_user&.name.presence || "Sem corretor"
+  end
+
+  def append_captacoes_to_report(csv)
+    csv << []
+    csv << ["CAPTAÇÕES"]
+    csv << commercial_report_headers
+    captacao_report_scope.reorder(:id).find_each(batch_size: 500) do |captacao|
+      csv << commercial_report_captacao_row(captacao)
+    end
+  end
+
+  def commercial_report_captacao_row(captacao)
+    [
+      "Captação",
+      report_datetime(captacao.created_at),
+      captacao.proprietario.presence || captacao.proprietor&.name,
+      captacao.proprietario_celular.presence || captacao.proprietor&.phone_primary,
+      captacao.proprietario_email.presence || captacao.proprietor&.email,
+      "Captação",
+      captacao.admin_user&.name || captacao.corretor_nome || "Sem corretor",
+      captacao.intake_status_label,
+      nil,
+      nil,
+      nil,
+      captacao.display_title,
+      captacao.cidade
+    ]
+  end
+
+  def captacao_report_scope
+    scope = current_tenant.habitations.broker_intakes.includes(:admin_user, :address, :proprietor).order(created_at: :asc)
+    scope = scope.where("habitations.created_at >= ?", parsed_start_date.beginning_of_day) if parsed_start_date.present?
+    scope = scope.where("habitations.created_at <= ?", parsed_end_date.end_of_day) if parsed_end_date.present?
+    if @broker_id.present? && @broker_id != "unassigned" && permitted_admin_user_ids_for_leads.include?(@broker_id.to_i)
+      scope = scope.where(admin_user_id: @broker_id)
+    end
+    scope
+  end
+
+  def report_datetime(value)
+    value.present? ? I18n.l(value.in_time_zone, format: "%d/%m/%Y %H:%M") : nil
+  end
+
+  def commercial_report_source_label(lead)
+    summary = helpers.lead_conversion_summary(lead)
+    [summary[:origin], summary[:channel_label]].compact_blank.uniq.join(" / ").presence ||
+      [lead.origin, lead.attribution_channel].compact_blank.uniq.join(" / ")
+  end
+
+  def commercial_report_archive_reason(lead)
+    native_reason = lead.archive_reason&.name.presence || lead.archive_note.presence
+    return native_reason if native_reason.present?
+
+    external_reason = external_archive_reason_for(lead)
+    return external_reason if external_reason.present?
+
+    external_lead_without_archive_reason?(lead) ? "Sem motivo migrado" : nil
+  end
+
+  def external_archive_reason_for(lead)
+    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+    attrs = info.dig("external_lead_payload", "attributes").is_a?(Hash) ? info.dig("external_lead_payload", "attributes") : {}
+    legacy_attrs = info["attributes"].is_a?(Hash) ? info["attributes"] : {}
+    c2s_attrs = info.dig("c2s_payload", "attributes").is_a?(Hash) ? info.dig("c2s_payload", "attributes") : {}
+
+    candidates = [
+      attribution.dig("lost_reasons", "name"),
+      attribution.dig("lost_reasons", "reason"),
+      attribution.dig("archive_details", "archive_reason"),
+      attribution.dig("archive_details", "reason"),
+      attribution.dig("archive_details", "archive_notes"),
+      attrs.dig("lost_reasons", "name"),
+      attrs.dig("lost_reasons", "reason"),
+      attrs.dig("archive_details", "archive_reason"),
+      attrs.dig("archive_details", "reason"),
+      attrs.dig("archive_details", "archive_notes"),
+      legacy_attrs.dig("lost_reasons", "name"),
+      legacy_attrs.dig("lost_reasons", "reason"),
+      legacy_attrs.dig("archive_details", "archive_reason"),
+      legacy_attrs.dig("archive_details", "reason"),
+      legacy_attrs.dig("archive_details", "archive_notes"),
+      c2s_attrs.dig("lost_reasons", "name"),
+      c2s_attrs.dig("lost_reasons", "reason"),
+      c2s_attrs.dig("archive_details", "archive_reason"),
+      c2s_attrs.dig("archive_details", "reason"),
+      c2s_attrs.dig("archive_details", "archive_notes")
+    ]
+
+    candidates.flat_map { |value| archive_reason_values(value) }.find(&:present?)
+  end
+
+  def archive_reason_values(value)
+    case value
+    when Array
+      value.flat_map { |item| archive_reason_values(item) }
+    when Hash
+      %w[name reason title label description archive_reason archive_notes].filter_map { |key| normalize_external_archive_reason(value[key]) }
+    else
+      [normalize_external_archive_reason(value)]
+    end
+  end
+
+  def normalize_external_archive_reason(value)
+    text = value.to_s.squish
+    return if text.blank?
+
+    {
+      "inactive" => "Inativo",
+      "not_answered" => "Cliente não respondeu",
+      "no_answer" => "Cliente não respondeu",
+      "without_success" => "Sem sucesso de atendimento",
+      "lost" => "Perdido",
+      "archived" => "Arquivado"
+    }[text.parameterize(separator: "_")] || text
+  end
+
+  def external_lead_without_archive_reason?(lead)
+    return false unless lead.status.to_s.match?(/descart|arquiv|perdid/i)
+
+    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+    info["source"].to_s.in?(%w[c2s external_lead_migration]) ||
+      attribution["provider"].to_s == ExternalLeadMigration::LeadMapper::PROVIDER_KEY ||
+      lead.origin.to_s.match?(/c2s|migra/i)
+  end
+
+  def report_property_city(property, lead: nil)
+    property_city = property.try(:cidade).presence || property.try(:city).presence || property&.address&.city
+    return property_city if property_city.present?
+    return if lead.blank?
+
+    external_product_for_report(lead)["city"].presence
+  end
+
+  def external_product_for_report(lead)
+    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+    product = attribution["product"]
+    product = info["external_lead_product"] if !product.is_a?(Hash)
+    product = info.dig("external_lead_payload", "attributes", "product") if !product.is_a?(Hash)
+    product = info.dig("attributes", "product") if !product.is_a?(Hash)
+    product = info.dig("c2s_payload", "attributes", "product") if !product.is_a?(Hash)
+    product.is_a?(Hash) ? product : {}
   end
 
   def first_contact_sla_hours
@@ -1709,6 +2278,28 @@ class Admin::LeadsController < Admin::BaseController
 
   def lead_contact_kind_label(activity)
     CONTACT_KIND_LABELS[activity.meta("contact_kind").to_s] || "Anotação interna"
+  end
+
+  def lead_contact_result_label(activity)
+    CONTACT_RESULT_LABELS[activity.meta("contact_result").to_s]
+  end
+
+  def lead_unsuccessful_attempt_count(lead)
+    return 0 unless lead
+
+    since = lead_stage_entered_at(lead) || lead.created_at
+    last_customer_at = lead.activities.where(kind: Leads::PipelineStageAutoAdvanceService::CUSTOMER_ACTIVITY_KINDS)
+                           .where("created_at >= ?", since)
+                           .maximum(:created_at) || since
+    lead.activities.unsuccessful_contact_attempts.where("created_at >= ?", last_customer_at).count
+  end
+
+  def lead_stage_entered_at(lead)
+    lead.lead_audit_logs
+      .where(action: "status_changed")
+      .order(created_at: :desc)
+      .limit(1)
+      .pick(:created_at) || lead.created_at
   end
 
   def lead_params

@@ -237,6 +237,10 @@ module Admin::ComercialHelper
       attribution.dig("lead_source", "alias"),
       info.dig("external_lead_payload", "attributes", "lead_source", "name"),
       info.dig("external_lead_payload", "attributes", "lead_source", "alias"),
+      info.dig("attributes", "lead_source", "name"),
+      info.dig("attributes", "lead_source", "alias"),
+      info.dig("c2s_payload", "attributes", "lead_source", "name"),
+      info.dig("c2s_payload", "attributes", "lead_source", "alias"),
       attribution.dig("channel", "name"),
       attribution.dig("channel", "alias")
     ]
@@ -249,10 +253,12 @@ module Admin::ComercialHelper
       info["source"],
       attribution["provider"],
       Array(info["webhook_tags"]).first
-    ].compact.map(&:to_s)
+    ].compact.map { |item| item.to_s.parameterize(separator: "_") }
 
     provider_keys.include?(ExternalLeadMigration::LeadMapper::PROVIDER_KEY) ||
-      lead.origin.to_s == ExternalLeadIntegration::LEAD_ORIGIN
+      provider_keys.include?("c2s") ||
+      lead.origin.to_s == ExternalLeadIntegration::LEAD_ORIGIN ||
+      lead.origin.to_s.casecmp("C2S").zero?
   end
 
   def external_lead_migration_channel_label(_lead, info, attribution)
@@ -260,7 +266,11 @@ module Admin::ComercialHelper
       attribution.dig("channel", "name"),
       attribution.dig("channel", "alias"),
       info.dig("external_lead_payload", "attributes", "channel", "name"),
-      info.dig("external_lead_payload", "attributes", "channel", "alias")
+      info.dig("external_lead_payload", "attributes", "channel", "alias"),
+      info.dig("attributes", "channel", "name"),
+      info.dig("attributes", "channel", "alias"),
+      info.dig("c2s_payload", "attributes", "channel", "name"),
+      info.dig("c2s_payload", "attributes", "channel", "alias")
     ]
 
     candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence || "Integração externa"
@@ -274,6 +284,7 @@ module Admin::ComercialHelper
     ignored = [
       ExternalLeadIntegration::LEAD_ORIGIN,
       ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+      "c2s",
       "webhook"
     ].map { |item| item.to_s.parameterize(separator: "_") }
 

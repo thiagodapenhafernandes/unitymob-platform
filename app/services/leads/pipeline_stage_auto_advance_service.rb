@@ -9,6 +9,7 @@ module Leads
       proposal_created proposal_sent whatsapp_out status_change
     ].freeze
     GENERAL_ACTIVITY_KINDS = (CUSTOMER_ACTIVITY_KINDS + TEAM_ACTIVITY_KINDS).uniq.freeze
+    CONTACT_ATTEMPT_KINDS = LeadActivity::CONTACT_ATTEMPT_KINDS
 
     def self.call(limit: BATCH_LIMIT, tenant: nil)
       new(limit: limit, tenant: tenant).call
@@ -55,7 +56,7 @@ module Leads
     def due?(lead, automation, cutoff, since)
       return false if since.blank?
 
-      case automation.trigger
+      time_due = case automation.trigger
       when "general_inactivity"
         last_activity_at(lead, since, GENERAL_ACTIVITY_KINDS).to_i <= cutoff.to_i
       when "customer_inactivity"
@@ -65,6 +66,7 @@ module Leads
       else
         since <= cutoff
       end
+      time_due || unsuccessful_attempts_due?(lead, automation, since)
     end
 
     def stage_entered_at(lead)
@@ -80,6 +82,22 @@ module Leads
         .where(kind: kinds)
         .where("created_at >= ?", fallback)
         .maximum(:created_at) || fallback
+    end
+
+    def unsuccessful_attempts_due?(lead, automation, since)
+      return false unless automation.unsuccessful_attempt_limit?
+
+      attempt_count_since_last_customer_activity(lead, since) >= automation.unsuccessful_attempt_limit
+    end
+
+    def attempt_count_since_last_customer_activity(lead, since)
+      start_at = last_activity_at(lead, since, CUSTOMER_ACTIVITY_KINDS)
+      lead.activities
+        .where(kind: "note")
+        .where("created_at >= ?", start_at)
+        .where("metadata ->> 'contact_kind' IN (?)", CONTACT_ATTEMPT_KINDS)
+        .where("metadata ->> 'contact_result' = ?", "nao_respondeu")
+        .count
     end
 
     def execute_once!(lead, automation:, from_stage:, stage_entered_at:)
@@ -185,13 +203,32 @@ module Leads
     end
 
     def redistribute_lead!(lead, automation:)
+      previous_admin_user_id = lead.admin_user_id
+      previous_status = lead.status
       rule = distribution_rule_for(lead, automation)
       if rule
         Leads::DistributorService.distribute_to(lead, rule)
       else
         lead.update!(admin_user_id: nil, status: Lead.status_value(:waiting_acceptance, tenant: lead.tenant))
       end
-      LeadActivity.log!(lead: lead, kind: "automation_redistribution", metadata: automation_metadata(automation).merge(distribution_rule_id: rule&.id))
+      if automation.auto_advance_to_stage.present?
+        lead.update!(
+          lead_pipeline: automation.auto_advance_to_stage.lead_pipeline,
+          lead_pipeline_stage: automation.auto_advance_to_stage,
+          status: automation.auto_advance_to_stage.name
+        )
+      end
+      LeadActivity.log!(
+        lead: lead,
+        kind: "automation_redistribution",
+        metadata: automation_metadata(automation).merge(
+          distribution_rule_id: rule&.id,
+          previous_admin_user_id: previous_admin_user_id,
+          new_admin_user_id: lead.reload.admin_user_id,
+          from_status: previous_status,
+          to_status: lead.status
+        )
+      )
     end
 
     def make_available_for_automation!(lead, automation:)
@@ -236,9 +273,15 @@ module Leads
     end
 
     def archive_reason_for(lead, automation, policy)
-      reason_id = action_config(automation, "archive_reason_id").presence ||
-        Array(policy&.allowed_archive_reason_ids).first
-      lead.tenant.attribute_options.for_context("lead").for_category("archive_reason").find_by(id: reason_id)
+      reasons = lead.tenant.attribute_options.for_context("lead").for_category("archive_reason")
+      allowed_ids = Array(policy&.allowed_archive_reason_ids).filter_map { |id| id.to_s.presence }
+      configured_id = action_config(automation, "archive_reason_id").presence
+      configured = reasons.find_by(id: configured_id) if configured_id.present?
+      preferred = reasons.where(id: allowed_ids).find_by("name ILIKE ?", "Cliente não respondeu") if allowed_ids.any?
+
+      configured ||
+        preferred ||
+        reasons.find_by(id: allowed_ids.first)
     end
 
     def archived_stage_for(lead)

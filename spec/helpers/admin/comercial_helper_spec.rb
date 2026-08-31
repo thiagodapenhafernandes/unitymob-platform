@@ -74,6 +74,26 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
 
       expect(helper.lead_card_interest_line(lead)).to eq("Landing Page - [3937] Form Varekai")
     end
+
+    it "usa origem e canal do payload legado C2S" do
+      lead = build_stubbed(
+        :lead,
+        origin: "C2S",
+        lead_type: "webhook",
+        other_information: {
+          "source" => "c2s",
+          "attributes" => {
+            "lead_source" => { "name" => "Instagram Leads" },
+            "channel" => { "name" => "Internet" }
+          }
+        }
+      )
+
+      summary = helper.lead_conversion_summary(lead)
+
+      expect(summary[:origin]).to eq("Instagram Leads")
+      expect(summary[:channel_label]).to eq("Internet")
+    end
   end
 
   describe "#lead_card_business_label" do

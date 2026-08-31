@@ -62,11 +62,25 @@ class LeadPipelineStageAutomation < ApplicationRecord
     end
   end
 
+  def unsuccessful_attempt_limit
+    action_config.to_h["unsuccessful_attempt_limit"].to_i
+  end
+
+  def unsuccessful_attempt_limit?
+    unsuccessful_attempt_limit.positive?
+  end
+
   private
 
   def normalize_action_config
     self.action_type = "move_stage" if action_type.blank?
     self.action_config = {} unless action_config.is_a?(Hash)
+    limit = action_config["unsuccessful_attempt_limit"].to_i
+    self.action_config = if limit.positive?
+                           action_config.merge("unsuccessful_attempt_limit" => limit)
+                         else
+                           action_config.except("unsuccessful_attempt_limit")
+                         end
   end
 
   def assign_position
