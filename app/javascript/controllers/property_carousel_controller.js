@@ -1,6 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-
-let swiperBundlePromise = null
+import { loadSwiper } from "controllers/swiper_loader"
 
 export default class extends Controller {
   connect() {
@@ -38,7 +37,7 @@ export default class extends Controller {
     this.initializing = true
 
     try {
-      const Swiper = await this.loadSwiper()
+      const Swiper = await loadSwiper()
       if (!this.element.isConnected || this.swiper) return
 
       // Buscar elementos dentro do wrapper específico deste carousel
@@ -111,25 +110,6 @@ export default class extends Controller {
     } finally {
       this.initializing = false
     }
-  }
-
-  loadSwiper() {
-    if (!swiperBundlePromise) {
-      this.loadStylesheet()
-      swiperBundlePromise = import("swiper/bundle").then((module) => module.default)
-    }
-
-    return swiperBundlePromise
-  }
-
-  loadStylesheet() {
-    if (document.querySelector("link[data-swiper-css]")) return
-
-    const link = document.createElement("link")
-    link.rel = "stylesheet"
-    link.href = "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
-    link.dataset.swiperCss = "true"
-    document.head.appendChild(link)
   }
 
   disconnect() {

@@ -1,4 +1,4 @@
-<%# Banners — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<%# Banners — listagem compacta (.ax-*). %>
 <div class="public-site-workspace">
 <%= ax_workspace_heading(eyebrow: "Site público · Conteúdo", icon: "image", title: "Banners", subtitle: "Gerencie mídia, posição e publicação dos banners.", metrics: [{ value: (@banners.total_entries rescue @banners.count), label: "banners" }], actions: ax_button("Novo banner", new_admin_banner_path, variant: :primary, size: :sm, icon: "plus-lg")) %>
 

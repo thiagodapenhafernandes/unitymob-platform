@@ -1933,6 +1933,16 @@
       <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-house ax-ico"></i> Imóvel de interesse</span></div>
       <div class="ax-card__body">
         <% if @property %>
+          <%
+            property_facts = [
+              ["cash-coin", "Preço", @property.preco_principal],
+              ["rulers", "Área", @property.card_area_text],
+              ["door-open", "Dorm.", @property.card_dormitorios_text],
+              ["badge-wc", "Suítes", @property.card_suites_text],
+              ["car-front", "Vagas", @property.card_vagas_text],
+              ["hash", "Código", @property.codigo]
+            ].select { |_icon, _label, value| value.present? }
+          %>
           <div class="lead-property-summary">
             <% property_image_url = catalog_property_image_urls(@property, limit: 1).first %>
             <% if property_image_url.present? %>
@@ -1944,13 +1954,33 @@
               </div>
             <% end %>
             <div class="lead-property-summary__content">
-              <div>
+              <div class="lead-property-summary__main">
                 <div class="ax-strong"><%= @property.display_title %></div>
                 <div class="ax-page-subtitle"><%= @property.bairro %>, <%= @property.cidade %></div>
+                <div class="lead-property-summary__meta">
+                  <% [@property.categoria, @property.status].compact_blank.each do |item| %>
+                    <span><%= item %></span>
+                  <% end %>
+                </div>
+                <% if property_facts.any? %>
+                  <div class="lead-property-summary__facts">
+                    <% property_facts.each do |icon, label, value| %>
+                      <span>
+                        <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+                        <small><%= label %></small>
+                        <strong><%= value %></strong>
+                      </span>
+                    <% end %>
+                  </div>
+                <% end %>
               </div>
               <div class="lead-property-summary__actions">
-                <%= link_to "Gerenciar imóvel", admin_habitation_path_with_query(admin_habitation_path(@property.id), admin_habitation_flat_return_params(request.fullpath)), class: "ax-btn ax-btn--sm" %>
-                <%= link_to "Ver no site", habitation_path(@property), target: "_blank", class: "ax-btn ax-btn--sm" %>
+                <%= link_to admin_habitation_path_with_query(admin_habitation_path(@property.id), admin_habitation_flat_return_params(request.fullpath)), class: "ax-btn ax-btn--sm" do %>
+                  <i class="bi bi-pencil-square ax-ico" aria-hidden="true"></i><span>Gerenciar</span>
+                <% end %>
+                <%= link_to habitation_path(@property), target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
+                  <i class="bi bi-box-arrow-up-right ax-ico" aria-hidden="true"></i><span>Ver no site</span>
+                <% end %>
               </div>
             </div>
           </div>
