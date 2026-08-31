@@ -1,9 +1,13 @@
-<%# locals: lead %>
-<% modal_id = "leadLogContactModal" %>
-<% form_id = "leadLogContactForm" %>
+<%# locals: lead, modal_id (optional), trigger_label (optional), trigger_class (optional), trigger_icon (optional), trigger_title (optional) %>
+<% modal_id = local_assigns[:modal_id].presence || "leadLogContactModal" %>
+<% form_id = "#{modal_id}Form" %>
+<% trigger_label = local_assigns.key?(:trigger_label) ? local_assigns[:trigger_label] : "Registrar contato" %>
+<% trigger_class = local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm") %>
+<% trigger_icon = local_assigns.fetch(:trigger_icon, "pencil-square") %>
+<% trigger_title = local_assigns[:trigger_title].presence || "Registrar contato" %>
 
 <% lead_log_contact_body = capture do %>
-  <%= form_with url: log_contact_admin_lead_path(lead), method: :post, id: form_id, local: true do %>
+  <%= form_with url: log_contact_admin_lead_path(lead), method: :post, id: form_id, local: true, data: { turbo: false } do %>
     <div class="tw-grid tw-gap-3">
       <div>
         <%= ax_field_label(nil, nil, text: "Tipo de contato") %>
@@ -31,8 +35,13 @@
   <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary" form="<%= form_id %>">Registrar</button>
 <% end %>
 
-<button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#<%= modal_id %>">
-  <i class="bi bi-pencil-square ax-ico"></i><span>Registrar contato</span>
+<button type="button"
+        class="<%= trigger_class %>"
+        data-ax-modal-open="#<%= modal_id %>"
+        title="<%= trigger_title %>"
+        aria-label="<%= trigger_title %>">
+  <i class="bi bi-<%= trigger_icon %> ax-ico" aria-hidden="true"></i>
+  <% if trigger_label.present? %><span><%= trigger_label %></span><% end %>
 </button>
 
 <%= ax_quick_modal(

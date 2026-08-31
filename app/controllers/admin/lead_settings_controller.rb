@@ -38,6 +38,7 @@ module Admin
         :stickiness_window_days,
         :first_contact_sla_hours,
         :stage_automation_sweep_interval_minutes,
+        :lead_whatsapp_conversation_enabled,
         :secure_links_enabled,
         :secure_link_expiry_days,
         :secure_link_whatsapp,

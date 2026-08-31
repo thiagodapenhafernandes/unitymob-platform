@@ -68,6 +68,17 @@ RSpec.describe "Admin::Tasks", type: :request do
       expect(Task.last.created_by_id).to eq(admin.id)
     end
 
+    it "atualiza o painel operacional do lead via Turbo Stream" do
+      lead = create(:lead)
+
+      post admin_tasks_path,
+           params: { task: { title: "Enviar proposta", kind: "follow_up", lead_id: lead.id } },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include("pwa_operational_panel_lead_#{lead.id}", "Enviar proposta")
+    end
+
     it "não permite atribuir tarefa para usuário fora da subárvore do gestor" do
       tenant = Tenant.create!(name: "Tenant tarefas #{SecureRandom.hex(3)}", slug: "tenant-tarefas-#{SecureRandom.hex(3)}")
       owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
@@ -99,6 +110,20 @@ RSpec.describe "Admin::Tasks", type: :request do
       expect(response).to have_http_status(:redirect)
       expect(Task.last.admin_user_id).to eq(manager.id)
       expect(Task.last.admin_user_id).not_to eq(peer.id)
+    end
+  end
+
+  describe "PATCH /admin/tasks/:id" do
+    it "atualiza tarefa e registra historico no lead" do
+      lead = create(:lead)
+      task = Task.create!(title: "Follow-up", admin_user: admin, lead: lead, status: "pendente")
+
+      expect {
+        patch admin_task_path(task), params: { task: { title: "Follow-up revisado" } }
+      }.to change { lead.activities.where(kind: "task_updated").count }.by(1)
+
+      expect(response).to have_http_status(:redirect)
+      expect(task.reload.title).to eq("Follow-up revisado")
     end
   end
 

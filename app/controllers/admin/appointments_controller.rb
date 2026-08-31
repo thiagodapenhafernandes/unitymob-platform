@@ -29,21 +29,42 @@ class Admin::AppointmentsController < Admin::BaseController
 
     if @appointment.save
       LeadActivity.log!(lead: @appointment.lead, kind: "appointment_created", metadata: appointment_meta) if @appointment.lead_id
-      redirect_back fallback_location: admin_appointments_path, notice: "Compromisso agendado."
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_appointments_path, notice: "Compromisso agendado." }
+        format.turbo_stream do
+          @appointment.lead ? render_lead_operational_turbo_stream(@appointment.lead, notice: "Compromisso agendado.") : redirect_back(fallback_location: admin_appointments_path, notice: "Compromisso agendado.")
+        end
+      end
     else
-      redirect_back fallback_location: admin_appointments_path, alert: @appointment.errors.full_messages.to_sentence
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_appointments_path, alert: @appointment.errors.full_messages.to_sentence }
+        format.turbo_stream do
+          @appointment.lead ? render_lead_operational_turbo_stream(@appointment.lead, alert: @appointment.errors.full_messages.to_sentence, status: :unprocessable_entity) : redirect_back(fallback_location: admin_appointments_path, alert: @appointment.errors.full_messages.to_sentence)
+        end
+      end
     end
   end
 
   def update
     was_done = @appointment.realizado?
     if @appointment.update(appointment_params)
+      LeadActivity.log!(lead: @appointment.lead, kind: "appointment_updated", metadata: appointment_meta.merge(by: current_admin_user&.name)) if @appointment.lead_id
       if !was_done && @appointment.realizado? && @appointment.lead_id
         LeadActivity.log!(lead: @appointment.lead, kind: "appointment_done", metadata: appointment_meta)
       end
-      redirect_back fallback_location: admin_appointments_path, notice: "Compromisso atualizado."
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_appointments_path, notice: "Compromisso atualizado." }
+        format.turbo_stream do
+          @appointment.lead ? render_lead_operational_turbo_stream(@appointment.lead, notice: "Compromisso atualizado.") : redirect_back(fallback_location: admin_appointments_path, notice: "Compromisso atualizado.")
+        end
+      end
     else
-      redirect_back fallback_location: admin_appointments_path, alert: @appointment.errors.full_messages.to_sentence
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_appointments_path, alert: @appointment.errors.full_messages.to_sentence }
+        format.turbo_stream do
+          @appointment.lead ? render_lead_operational_turbo_stream(@appointment.lead, alert: @appointment.errors.full_messages.to_sentence, status: :unprocessable_entity) : redirect_back(fallback_location: admin_appointments_path, alert: @appointment.errors.full_messages.to_sentence)
+        end
+      end
     end
   end
 

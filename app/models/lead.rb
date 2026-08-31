@@ -219,11 +219,11 @@ class Lead < ApplicationRecord
     WhatsappBusinessIntegration.current(tenant).whatsapp_url_for(habitation: property, message: message.presence || fallback_message)
   end
 
-  # Destinatário para a Cloud API: telefone se houver, senão BSUID.
+  # Destinatário para a Cloud API: BSUID primeiro; telefone fica como fallback.
   # (O link wa.me só existe com telefone; por BSUID, mensageia-se via API.)
   def whatsapp_recipient
-    return display_phone if display_phone.present?
     return { user_id: business_scoped_user_id } if business_scoped_user_id.present?
+    return display_phone if display_phone.present?
 
     nil
   end
@@ -470,6 +470,10 @@ class Lead < ApplicationRecord
       self.lead_pipeline_stage = matched_stage if matched_stage
     end
 
+    if status.present? && lead_pipeline_stage.present? && status.to_s != lead_pipeline_stage.name.to_s
+      self.lead_pipeline_stage = nil
+    end
+
     if lead_pipeline_stage.present?
       self.lead_pipeline = lead_pipeline_stage.lead_pipeline
       self.status = lead_pipeline_stage.name
@@ -489,11 +493,18 @@ class Lead < ApplicationRecord
   end
 
   def sync_closed_at
-    if self.class.status_value(status) == self.class.status_value(:concluido)
+    if closed_status?
       self.closed_at ||= Time.current
     elsif will_save_change_to_status?
       self.closed_at = nil
     end
+  end
+
+  def closed_status?
+    return true if self.class.status_value(status) == self.class.status_value(:concluido)
+    return true if lead_pipeline_stage&.stage_type == "won"
+
+    tenant&.lead_pipeline_stages&.active&.where(name: status, stage_type: "won")&.exists? || false
   end
 
   def associated_records_must_belong_to_tenant

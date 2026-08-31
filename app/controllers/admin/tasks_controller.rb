@@ -27,17 +27,38 @@ class Admin::TasksController < Admin::BaseController
 
     if @task.save
       LeadActivity.log!(lead: @task.lead, kind: "task_created", metadata: { task_id: @task.id, title: @task.title, due_at: @task.due_at }) if @task.lead_id
-      redirect_back fallback_location: admin_tasks_path, notice: "Tarefa criada."
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_tasks_path, notice: "Tarefa criada." }
+        format.turbo_stream do
+          @task.lead ? render_lead_operational_turbo_stream(@task.lead, notice: "Tarefa criada.") : redirect_back(fallback_location: admin_tasks_path, notice: "Tarefa criada.")
+        end
+      end
     else
-      redirect_back fallback_location: admin_tasks_path, alert: @task.errors.full_messages.to_sentence
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_tasks_path, alert: @task.errors.full_messages.to_sentence }
+        format.turbo_stream do
+          @task.lead ? render_lead_operational_turbo_stream(@task.lead, alert: @task.errors.full_messages.to_sentence, status: :unprocessable_entity) : redirect_back(fallback_location: admin_tasks_path, alert: @task.errors.full_messages.to_sentence)
+        end
+      end
     end
   end
 
   def update
     if @task.update(task_params)
-      redirect_back fallback_location: admin_tasks_path, notice: "Tarefa atualizada."
+      LeadActivity.log!(lead: @task.lead, kind: "task_updated", metadata: { task_id: @task.id, title: @task.title, due_at: @task.due_at, by: current_admin_user&.name }) if @task.lead_id
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_tasks_path, notice: "Tarefa atualizada." }
+        format.turbo_stream do
+          @task.lead ? render_lead_operational_turbo_stream(@task.lead, notice: "Tarefa atualizada.") : redirect_back(fallback_location: admin_tasks_path, notice: "Tarefa atualizada.")
+        end
+      end
     else
-      redirect_back fallback_location: admin_tasks_path, alert: @task.errors.full_messages.to_sentence
+      respond_to do |format|
+        format.html { redirect_back fallback_location: admin_tasks_path, alert: @task.errors.full_messages.to_sentence }
+        format.turbo_stream do
+          @task.lead ? render_lead_operational_turbo_stream(@task.lead, alert: @task.errors.full_messages.to_sentence, status: :unprocessable_entity) : redirect_back(fallback_location: admin_tasks_path, alert: @task.errors.full_messages.to_sentence)
+        end
+      end
     end
   end
 
@@ -45,6 +66,9 @@ class Admin::TasksController < Admin::BaseController
     @task.complete!(by: current_admin_user)
     respond_to do |format|
       format.html { redirect_back fallback_location: admin_tasks_path, notice: "Tarefa concluída." }
+      format.turbo_stream do
+        @task.lead ? render_lead_operational_turbo_stream(@task.lead, notice: "Tarefa concluída.") : redirect_back(fallback_location: admin_tasks_path, notice: "Tarefa concluída.")
+      end
       format.json { render json: { id: @task.id, status: @task.status } }
     end
   end

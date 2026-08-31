@@ -37,7 +37,7 @@ RSpec.describe "Admin::Leads", type: :request do
       filter_modal = document.at_css("#leadDesktopFilterModal")
       expect(filter_modal).to be_present
       expect(filter_modal.to_html).to include("Tipo de negociação", "Status", "Situação", "Canal", "Fonte", "Atividade")
-      expect(filter_modal.to_html).to include("Motivos de arquivamento", "Etapa de funil")
+      expect(filter_modal.to_html).to include("Motivo de arquivamento", "Etapa de funil")
       expect(filter_modal.to_html).not_to include("Vetra")
       expect(document.at_css('button[data-ax-modal-open="#leadPipelineCreateModal"]')).to be_present
       expect(document.at_css('button[data-ax-modal-open="#leadStatusBoardModal"]')).to be_present
@@ -64,7 +64,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(create_modal_html).to include("Nome visível no funil", "Classificação interna usada")
       expect(create_modal_html).to include("Use Venda ou Locação")
       expect(document.at_css(".lead-pwa-filter-overlay")).to be_present
-      lead_card_url = document.at_css("article.lead-kanban-card[data-lead-url]")["data-lead-url"]
+      lead_card_url = document.css("article.lead-kanban-card[data-lead-url]").find { |card| card.text.include?("Cliente Kanban") }["data-lead-url"]
       expect(lead_card_url).to start_with(admin_lead_path(Lead.find_by!(name: "Cliente Kanban")))
       expect(response.body).to include("Cliente Kanban")
       expect(response.body).to include("Em Atendimento")
@@ -73,13 +73,14 @@ RSpec.describe "Admin::Leads", type: :request do
 
     it "renderiza apenas o primeiro lote de 5 leads por coluna no kanban" do
       base_time = Time.zone.parse("2026-08-06 12:00:00")
+      default_status = Lead.default_status(tenant: admin.tenant)
       6.times do |index|
         create(
           :lead,
           tenant: admin.tenant,
           name: "Lead Novo #{index}",
           phone: "1199999999#{index}",
-          status: "Novo",
+          status: default_status,
           created_at: base_time - index.minutes
         )
       end
@@ -88,7 +89,7 @@ RSpec.describe "Admin::Leads", type: :request do
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      column = document.at_css('[data-lead-kanban-status="Novo"]')
+      column = document.at_css(%([data-lead-kanban-status="#{default_status}"]))
       expect(column.css(".lead-kanban-card").size).to eq(5)
       expect(column.to_html).to include("Lead Novo 0", "Lead Novo 4")
       expect(column.to_html).not_to include("Lead Novo 5")
@@ -97,22 +98,23 @@ RSpec.describe "Admin::Leads", type: :request do
 
     it "carrega o proximo lote de uma coluna do kanban respeitando filtros" do
       base_time = Time.zone.parse("2026-08-06 12:00:00")
+      default_status = Lead.default_status(tenant: admin.tenant)
       6.times do |index|
         create(
           :lead,
           tenant: admin.tenant,
           name: "Lead Incremental #{index}",
           phone: "1188888888#{index}",
-          status: "Novo",
+          status: default_status,
           origin: "webhook",
           created_at: base_time - index.minutes
         )
       end
-      create(:lead, tenant: admin.tenant, name: "Lead de Portal", status: "Novo", origin: "portal")
+      create(:lead, tenant: admin.tenant, name: "Lead de Portal", status: default_status, origin: "portal")
 
       get kanban_column_admin_leads_path(
         view: "kanban",
-        status: "Novo",
+        status: default_status,
         origin: "webhook",
         offset: 5,
         return_to: admin_leads_path(view: "kanban", origin: "webhook")
@@ -299,9 +301,8 @@ RSpec.describe "Admin::Leads", type: :request do
 
         document = Nokogiri::HTML(response.body)
         card_text = document.css(".lead-pwa-card").map(&:text).join
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "1")
-        expect(card_text).to include("Retorno Hoje Importado")
-        expect(card_text).not_to include("Lead Novo Sem Agenda")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "2")
+        expect(card_text).to include("Retorno Hoje Importado", "Lead Novo Sem Agenda")
         expect(card_text).not_to include("Retorno Futuro Importado", "Visita Importada")
         expect(card_text).not_to include("C2S")
       end
@@ -433,7 +434,7 @@ RSpec.describe "Admin::Leads", type: :request do
       travel_to Time.zone.local(2026, 8, 15, 10, 0, 0) do
         raquel = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Raquel Futura", phone: "11999999991", status: "Em Atendimento")
         outro = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Outro Futuro", phone: "11999999992", status: "Em Atendimento")
-        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead sem busca", phone: "11999999993", status: "Novo")
+        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead sem busca", phone: "11999999993", status: Lead.default_status(tenant: admin.tenant))
 
         [raquel, outro].each_with_index do |lead, index|
           create(
@@ -601,13 +602,14 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "filtra negócio fechado pela data real de fechamento e não pela última edição" do
+      closed_status = admin.tenant.lead_pipeline_stages.active.where(stage_type: "won").ordered.first&.name || Lead.status_value(:concluido)
       closed_in_period = create(
         :lead,
         tenant: admin.tenant,
         admin_user: admin,
         name: "Fechado no período",
         phone: "11999999990",
-        status: "Concluido",
+        status: closed_status,
         closed_at: Time.zone.local(2026, 8, 15, 10, 0, 0),
         updated_at: Time.zone.local(2026, 8, 17, 10, 0, 0)
       )
@@ -617,7 +619,7 @@ RSpec.describe "Admin::Leads", type: :request do
         admin_user: admin,
         name: "Fechado antes editado depois",
         phone: "11999999991",
-        status: "Concluido",
+        status: closed_status,
         closed_at: Time.zone.local(2026, 8, 10, 10, 0, 0),
         updated_at: Time.zone.local(2026, 8, 15, 10, 0, 0)
       )
@@ -731,11 +733,13 @@ RSpec.describe "Admin::Leads", type: :request do
       pwa_detail = document.at_css(".lead-pwa-detail")
       expect(pwa_detail).to be_present
       expect(pwa_detail.text).to include("Lead Detalhe PWA", "Ações do lead", "Retornar para o cliente", "Imóveis de interesse", "PWA-001", "Links gerados", "Inteligência de Interesse")
-      expect(pwa_detail.text).to include("Anotações", "Adicionar anotação", "Cliente pediu retorno no fim da tarde.", "Corretor")
+      expect(pwa_detail.text).to include("Histórico de contatos", "Registrar contato", "Anotação interna", "Cliente pediu retorno no fim da tarde.", "Etiquetas", "Contato")
+      expect(pwa_detail.text).not_to include("Adicionar anotação")
       expect(pwa_detail.text).not_to include("Conversa")
       expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_nil
-      expect(document.at_css(".lead-whatsapp-card")).to be_nil
-      expect(pwa_detail.at_css(".lead-pwa-task-card")).to be_present
+      expect(pwa_detail.at_css(".lead-whatsapp-card")).to be_nil
+      expect(document.at_css(".lead-show-workspace .lead-whatsapp-card")).to be_present
+      expect(pwa_detail.at_css("#lead-pwa-tarefas .lead-detail-task-row")).to be_present
       expect(pwa_detail.at_css("turbo-frame##{ActionView::RecordIdentifier.dom_id(lead, :pwa_interest_intelligence)}")).to be_present
       expect(pwa_detail.at_css("form[action='#{log_contact_admin_lead_path(lead)}']")).to be_present
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
@@ -744,6 +748,125 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(desktop_heading.text).to include("Transferir", "Favoritar", "Histórico")
       expect(desktop_heading.at_css("button[data-action='ax-modal#open']")).to be_present
       expect(desktop_heading.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
+      expect(document.at_css("form[action='#{admin_lead_path(lead)}'][method='post'] input[name='_method'][value='delete']")).to be_present
+      expect(document.at_css("#leadTimelineSection:not([hidden])")).to be_present
+    end
+
+    it "organiza agenda tarefas etiquetas e propostas em secoes operacionais do lead" do
+      property = create(:habitation, tenant: admin.tenant, codigo: "PROP-001")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Operacional", phone: "11999990000", status: "Em Atendimento", property_id: property.id)
+      create(:appointment, tenant: admin.tenant, lead:, admin_user: admin, title: "Visita marcada", starts_at: 1.day.from_now, location: "Imóvel")
+      create(:task, tenant: admin.tenant, lead:, admin_user: admin, title: "Ligar para cliente", due_at: 2.hours.from_now)
+      label = create(:lead_label, tenant: admin.tenant, admin_user: admin, name: "Urgente")
+      lead.lead_labelings.create!(tenant: admin.tenant, lead_label: label)
+      Proposal.create!(lead:, admin_user: admin, status: "rascunho", title: "Proposta inicial", validade: 5.days.from_now.to_date, valor_cents: 850_000_00)
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      operation_card = document.at_css(".lead-show-workspace .lead-next-action-card")
+      notes_card = document.css(".lead-show-workspace .lead-next-action-card").find { |card| card.text.include?("Histórico de contatos") }
+
+      expect(operation_card).to be_present
+      expect(operation_card.text).to include("Ações do lead", "Tarefa", "Agendar", "Proposta")
+      expect(operation_card.to_html).not_to include("Registrar contato")
+      expect(operation_card.css(".lead-operational-section__title").map(&:text).join(" ")).to include("Agenda", "Tarefas", "Etiquetas", "Propostas")
+      expect(operation_card.to_html).to include("Visita marcada", "Ligar para cliente", "Urgente", "R$ 850.000,00")
+      agenda_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Agenda") }
+      tasks_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Tarefas") }
+      labels_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Etiquetas") }
+      proposals_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Propostas") }
+      expect(agenda_section.to_html).to include("bi-plus-lg")
+      expect(tasks_section.to_html).to include("bi-plus-lg")
+      expect(labels_section.to_html).to include("bi-plus-lg")
+      expect(proposals_section.to_html).to include("bi-plus-lg")
+      reactive_form_actions = [
+        admin_tasks_path,
+        schedule_activity_admin_lead_path(lead),
+        admin_lead_proposals_path(lead)
+      ]
+      reactive_form_actions.each do |action|
+        expect(operation_card.css("form[action='#{action}'][data-turbo='false']")).to be_empty
+      end
+      expect(operation_card.at_css('a[href="#lead-desktop-agenda"]')).to be_present
+      expect(operation_card.at_css('a[href="#lead-desktop-tarefas"]')).to be_present
+      expect(operation_card.at_css('a[href="#lead-desktop-etiquetas"]')).to be_present
+      expect(operation_card.at_css('a[href="#lead-desktop-propostas"]')).to be_present
+      expect(operation_card.css('button[aria-label="Nova proposta"]').size).to be >= 1
+      expect(operation_card.css("#newProposalLeadSidebar")).to be_empty
+      expect(operation_card.to_html).not_to include("newProposalLeadAction")
+      expect(operation_card.to_html).not_to include("Criar a primeira")
+      expect(notes_card).to be_present
+    end
+
+    it "agenda atividade e atualiza o painel operacional via Turbo Stream" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
+
+      post schedule_activity_admin_lead_path(lead),
+           params: {
+             activity_kind: "visit",
+             starts_at: 1.day.from_now.strftime("%Y-%m-%dT%H:%M"),
+             ends_at: 1.day.from_now.advance(hours: 1).strftime("%Y-%m-%dT%H:%M")
+           },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+      expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+      expect(response.body).to include("pwa_operational_panel_lead_#{lead.id}", "Visita")
+    end
+
+    it "nao mostra remocao permanente para usuario que nao e admin da conta" do
+      broker_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Corretor #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 8_950,
+        permissions: { "leads" => { "view" => true, "delete" => true, "scope" => "all" } }
+      )
+      broker = create(:admin_user, tenant: admin.tenant, profile: broker_profile, role: :editor)
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, name: "Lead sem exclusao", status: "Em Atendimento")
+      sign_out admin
+      sign_in broker
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Remover permanentemente")
+      expect(response.body).not_to include("Remover lead")
+    end
+  end
+
+  describe "DELETE /admin/leads/:id" do
+    it "permite remocao permanente apenas para admin da conta" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead removivel")
+
+      expect {
+        delete admin_lead_path(lead)
+      }.to change(Lead, :count).by(-1)
+
+      expect(response).to redirect_to(admin_leads_path)
+      expect(flash[:notice]).to eq("Lead excluído com sucesso.")
+    end
+
+    it "bloqueia remocao permanente para usuario operacional" do
+      broker_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Operacao #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 8_951,
+        permissions: { "leads" => { "view" => true, "delete" => true, "scope" => "all" } }
+      )
+      broker = create(:admin_user, tenant: admin.tenant, profile: broker_profile, role: :editor)
+      lead = create(:lead, tenant: admin.tenant, admin_user: broker, name: "Lead protegido")
+      sign_out admin
+      sign_in broker
+
+      expect {
+        delete admin_lead_path(lead)
+      }.not_to change(Lead, :count)
+
+      expect(response).to redirect_to(admin_leads_path)
+      expect(flash[:alert]).to eq("Você não tem permissão para excluir leads.")
     end
   end
 
@@ -782,8 +905,9 @@ RSpec.describe "Admin::Leads", type: :request do
 
   describe "GET /admin/leads/pwa_leads_page" do
     it "pagina a lista PWA em lotes de 15 por aba" do
+      default_status = Lead.default_status(tenant: admin.tenant)
       22.times do |i|
-        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Todo #{i}", phone: "1199999#{format('%04d', i)}", status: "Novo")
+        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Todo #{i}", phone: "1199999#{format('%04d', i)}", status: default_status)
       end
 
       get admin_leads_path(view: "list", mobile_tab: "todo")
@@ -1150,11 +1274,37 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "POST /admin/leads/:id/archive" do
+    it "mostra gerenciamento de motivos de arquivamento somente para admin da conta" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Sem potencial")
+
+      get admin_lead_path(lead)
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css('[data-attribute-manager-category-value="archive_reason"]')).to be_present
+
+      manager_profile = admin.tenant.profiles.create!(
+        name: "Gestor sem arquivo #{SecureRandom.hex(3)}",
+        axis: Profile::AXES[:vertical],
+        position: 20,
+        active: true,
+        permissions: {
+          "leads" => { "view" => true, "edit" => true, "scope" => "all" },
+          "catalogos" => { "manage" => true }
+        }
+      )
+      manager = create(:admin_user, tenant: admin.tenant, profile: manager_profile, email: "lead-archive-manager-#{SecureRandom.hex(6)}@salute.test")
+      sign_in manager
+
+      get admin_lead_path(lead)
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css('[data-attribute-manager-category-value="archive_reason"]')).to be_nil
+    end
+
     it "bloqueia motivo fora dos motivos permitidos da etapa" do
       pipeline = create(:lead_pipeline, tenant: admin.tenant)
       stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
-      allowed_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Sem potencial")
-      blocked_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Preço alto")
+      allowed_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Sem potencial #{SecureRandom.hex(4)}")
+      blocked_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Motivo bloqueado #{SecureRandom.hex(4)}")
       create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage, allowed_archive_reason_ids: [allowed_reason.id])
       lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
 
@@ -1169,6 +1319,25 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "POST /admin/leads/:id/schedule_activity" do
+    it "agenda visita sem convite quando checkboxes não são enviados" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+
+      expect {
+        post schedule_activity_admin_lead_path(lead),
+             params: {
+               activity_kind: "visit",
+               starts_at: 1.day.from_now.iso8601,
+               ends_at: 1.day.from_now.advance(hours: 1).iso8601,
+               notes: "Visita sem convite"
+             }
+      }.to change(Appointment, :count).by(1)
+
+      appointment = Appointment.last
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(appointment.invite_via_email).to eq(false)
+      expect(appointment.invite_via_whatsapp).to eq(false)
+    end
+
     it "bloqueia agenda futura acima do limite da etapa" do
       pipeline = create(:lead_pipeline, tenant: admin.tenant)
       stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Contato")
@@ -1230,6 +1399,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Conversa aberta, sem histórico ainda")
       expect(response.body).to include("Responder sem sair do lead")
       expect(response.body).to include("Escreva uma mensagem...")
+      expect(response.body).to include("bi-lightning-charge")
+      expect(response.body).to include("Templates aprovados")
       expect(response.body).to include("Apresentação")
       expect(response.body).to include("Empresa · Apresentação oficial")
       expect(response.body).to include("Empresa · Padrão")
@@ -1238,20 +1409,34 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("Ativar WhatsApp")
     end
 
-    it "mantém o modo de ativação quando o lead tem telefone mas o canal não está pronto" do
+    it "abre a thread local quando o lead tem telefone mesmo se o canal não está pronto" do
       lead = create(:lead, status: "Novo", phone: "47999990000")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
       integration.update!(status: "disconnected", waba_id: nil, phone_number_id: nil, access_token: nil)
 
       expect {
         get admin_lead_path(lead)
+      }.to change(WhatsappConversation, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Atendimento sem sair do lead")
+      expect(response.body).to include("Conversa aberta, sem histórico ainda")
+      expect(response.body).to include("Responder sem sair do lead")
+      expect(response.body).not_to include("Abra a thread individual")
+    end
+
+    it "nao carrega a conversa dentro do lead quando a conta desativa essa area" do
+      LeadSetting.instance(tenant: admin.tenant).update!(lead_whatsapp_conversation_enabled: false)
+      lead = create(:lead, status: "Novo", phone: "47999990001")
+
+      expect {
+        get admin_lead_path(lead)
       }.not_to change(WhatsappConversation, :count)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("WhatsApp individual")
-      expect(response.body).to include("Abrir conversa")
-      expect(response.body).to include("Ativar WhatsApp")
-      expect(response.body).not_to include("Responder sem sair do lead")
+      expect(response.body).to include(lead.display_name)
+      expect(response.body).not_to include('data-lead-whatsapp-panel="true"')
+      expect(response.body).not_to include("Atendimento sem sair do lead")
     end
 
     it "mostra histórico recente quando o lead já possui thread ativa" do
@@ -1401,6 +1586,20 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(conversation.contact_phone).to eq("5547999990001")
     end
 
+    it "prioriza BSUID ao abrir conversa quando o lead tambem tem telefone" do
+      lead = create(:lead, status: "Novo", phone: "47999990004", business_scoped_user_id: "US.LEAD.4")
+
+      expect {
+        post open_whatsapp_conversation_admin_lead_path(lead)
+      }.to change(WhatsappConversation, :count).by(1)
+
+      conversation = WhatsappConversation.last
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation))
+      expect(conversation.lead).to eq(lead)
+      expect(conversation.business_scoped_user_id).to eq("US.LEAD.4")
+      expect(conversation.contact_phone).to eq("5547999990004")
+    end
+
     it "abre a thread individual do lead em modo foco quando solicitado" do
       lead = create(:lead, status: "Novo", phone: "47999990021")
 
@@ -1414,8 +1613,7 @@ RSpec.describe "Admin::Leads", type: :request do
     it "abre conversa existente por telefone sem reassociar de outro lead" do
       lead_original = create(:lead, tenant: admin.tenant, status: "Novo", phone: "47999990022")
       lead_atual = create(:lead, tenant: admin.tenant, status: "Novo", phone: "47999990022")
-      conversation = create(
-        :whatsapp_conversation,
+      conversation = WhatsappConversation.create!(
         tenant: admin.tenant,
         lead: lead_original,
         contact_phone: "5547999990022"

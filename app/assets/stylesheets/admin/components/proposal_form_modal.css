@@ -1,0 +1,139 @@
+/* Lead-scoped proposal modal used by desktop and PWA actions. */
+.proposal-form-modal .ax-quick-modal__panel {
+  width: min(640px, calc(100vw - 28px));
+  max-height: min(760px, calc(100dvh - 28px));
+  border-radius: 8px;
+}
+
+.proposal-form-modal .ax-quick-modal__header {
+  min-height: 52px;
+  padding-inline: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef3f8 100%);
+}
+
+.proposal-form-modal .ax-quick-modal__title {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.proposal-form-modal .ax-quick-modal__title-icon {
+  font-size: 16px;
+}
+
+.proposal-form-modal .ax-quick-modal__body {
+  padding: 16px;
+}
+
+.proposal-form-modal__lead {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--ax-border-soft, #d8dee8);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--admin-ink, #1f2733);
+}
+
+.proposal-form-modal__lead-label {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.proposal-form-modal__lead strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proposal-form--embedded {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.proposal-form-modal__fields {
+  min-width: 0;
+}
+
+.proposal-form-modal .ax-field-grid {
+  gap: 10px;
+}
+
+.proposal-form-modal .ax-label {
+  margin: 0;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.proposal-form-modal :where(.ax-control, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.proposal-form-modal textarea.ax-control {
+  min-height: 104px;
+}
+
+.proposal-form-modal__footer {
+  margin: 4px -16px -16px;
+  padding: 12px 16px;
+}
+
+@media (max-width: 620px) {
+  .proposal-form-modal {
+    align-items: flex-start;
+    padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+  }
+
+  .proposal-form-modal .ax-quick-modal__panel {
+    width: 100%;
+    max-height: calc(100dvh - 28px);
+  }
+
+  .proposal-form-modal .ax-quick-modal__header {
+    min-height: 48px;
+    padding-inline: 14px;
+  }
+
+  .proposal-form-modal .ax-quick-modal__body {
+    padding: 14px;
+  }
+
+  .proposal-form-modal__footer {
+    margin: 2px -14px -14px;
+    padding: 12px 14px;
+  }
+
+  .proposal-form-modal__footer .ax-btn {
+    flex: 1 1 132px;
+  }
+}
+
+[data-admin-theme="dark"] .proposal-form-modal .ax-quick-modal__header {
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .proposal-form-modal__lead {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .proposal-form-modal__lead-label,
+[data-admin-theme="dark"] .proposal-form-modal .ax-label {
+  color: var(--ax-dark-text-muted);
+}

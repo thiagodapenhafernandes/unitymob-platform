@@ -21,7 +21,10 @@ RSpec.describe "Admin::LeadLabels", type: :request do
       body = JSON.parse(response.body)
       expect(body["manager_html"]).to include("Aplicar ao lead")
       expect(body["manager_html"]).to include("Quente")
+      expect(body["manager_html"]).not_to include('value="blue"')
+      expect(body["manager_html"]).not_to include("Azul")
       expect(body).to have_key("chips_html")
+      expect(body).not_to have_key("pwa_operational_panel_html")
     end
 
     it "renderiza cor personalizada como dado seguro no gerenciador e nos chips" do
@@ -50,6 +53,11 @@ RSpec.describe "Admin::LeadLabels", type: :request do
 
     it "rejeita cor inválida" do
       post admin_lead_lead_labels_path(lead), params: { lead_label: { name: "X", color: "rosa" } }
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "não permite criar etiqueta azul pelo catálogo" do
+      post admin_lead_lead_labels_path(lead), params: { lead_label: { name: "Azul antiga", color: "blue" } }
       expect(response).to have_http_status(:unprocessable_entity)
     end
   end
@@ -82,6 +90,7 @@ RSpec.describe "Admin::LeadLabels", type: :request do
 
       body = JSON.parse(response.body)
       expect(body["chips_html"]).to include("Quente")
+      expect(body["pwa_operational_panel_html"]).to include("pwa_operational_panel_lead_#{lead.id}")
 
       expect {
         post toggle_admin_lead_lead_label_path(lead, label)

@@ -1,6 +1,8 @@
 module Admin
   class AttributeOptionsController < Admin::BaseController
     before_action -> { check_permission!(:manage, :catalogos) }
+    before_action :require_tenant_owner_for_archive_reason!, only: [:index, :create]
+    before_action :require_tenant_owner_for_existing_archive_reason!, only: [:update, :destroy]
     before_action :require_tenant_owner_for_address_catalog!, only: [:index, :create]
     before_action :require_tenant_owner_for_existing_address_catalog!, only: [:update, :destroy]
     before_action :set_attribute_option, only: [:update]
@@ -119,6 +121,26 @@ module Admin
       deny_address_catalog_access
     end
 
+    def require_tenant_owner_for_archive_reason!
+      return unless archive_reason_catalog?(params[:context] || params.dig(:attribute_option, :context),
+                                            params[:category] || params.dig(:attribute_option, :category))
+      return if current_admin_user&.tenant_owner?
+
+      deny_archive_reason_catalog_access
+    end
+
+    def require_tenant_owner_for_existing_archive_reason!
+      option = current_tenant.attribute_options.find_by(id: params[:id])
+      return unless option && archive_reason_catalog?(option.context, option.category)
+      return if current_admin_user&.tenant_owner?
+
+      deny_archive_reason_catalog_access
+    end
+
+    def archive_reason_catalog?(context, category)
+      context.to_s == "lead" && category.to_s == "archive_reason"
+    end
+
     def habitation_address_catalog_category?(category)
       address_catalog_action_key(category).present?
     end
@@ -143,6 +165,13 @@ module Admin
     def deny_address_catalog_access
       respond_to do |format|
         format.html { redirect_to admin_attribute_options_path, alert: "Apenas o dono da conta pode gerenciar opções de endereço." }
+        format.json { render json: { error: "forbidden" }, status: :forbidden }
+      end
+    end
+
+    def deny_archive_reason_catalog_access
+      respond_to do |format|
+        format.html { redirect_to admin_attribute_options_path, alert: "Apenas o admin da conta pode gerenciar motivos de arquivamento." }
         format.json { render json: { error: "forbidden" }, status: :forbidden }
       end
     end

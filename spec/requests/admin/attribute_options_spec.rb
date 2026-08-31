@@ -170,6 +170,39 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
     expect(admin.tenant.attribute_options.where(category: "city", name: "Cidade bloqueada")).to be_empty
   end
 
+  it "bloqueia gerenciamento de motivos de arquivamento para usuário que não é admin da conta" do
+    manager_profile = admin.tenant.profiles.create!(
+      name: "Gestor arquivamento #{SecureRandom.hex(3)}",
+      axis: Profile::AXES[:vertical],
+      position: 20,
+      active: true,
+      permissions: { "catalogos" => { "manage" => true } }
+    )
+    manager = create(:admin_user, tenant: admin.tenant, profile: manager_profile, email: "archive-reason-manager-#{SecureRandom.hex(6)}@salute.test")
+    option = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Sem fit")
+    sign_in manager
+    @csrf_token = nil
+
+    get admin_attribute_options_path(format: :json), params: { context: "lead", category: "archive_reason" }, headers: json_headers
+    expect(response).to have_http_status(:forbidden)
+
+    post admin_attribute_options_path(format: :json), params: {
+      **csrf_params_from_response,
+      attribute_option: { context: "lead", category: "archive_reason", name: "Novo motivo" }
+    }, headers: json_headers
+    expect(response).to have_http_status(:forbidden)
+
+    patch admin_attribute_option_path(option, format: :json), params: {
+      **csrf_params_from_response,
+      attribute_option: { context: "lead", category: "archive_reason", name: "Editado" }
+    }, headers: json_headers
+    expect(response).to have_http_status(:forbidden)
+
+    delete admin_attribute_option_path(option, format: :json), params: csrf_params_from_response, headers: json_headers
+    expect(response).to have_http_status(:forbidden)
+    expect(option.reload.name).to eq("Sem fit")
+  end
+
   def csrf_params_from_response
     token = csrf_token_from_catalog
     token.present? ? { authenticity_token: token } : {}

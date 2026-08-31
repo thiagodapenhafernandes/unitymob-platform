@@ -12,20 +12,26 @@
   form_classes << local_assigns[:class_name]
   form_class = form_classes.compact.join(" ")
   supported_media_summary = "JPG/PNG ate 5 MB · MP4/3GP e audio ate 16 MB · documentos ate 100 MB"
-  # ⚡ Respostas rápidas: cartões de apresentação (se habilitado).
+  # Respostas rápidas: templates aprovados sempre; cartões só quando apresentação estiver habilitada.
   quick_integration = WhatsappBusinessIntegration.current(current_tenant)
   quick_cards = if quick_integration&.presentation_enabled? && can?(:manage, :whatsapp_inbox)
     PresentationCard.available_for(current_admin_user)
   else
     PresentationCard.none
   end
-  official_presentation_template = if quick_integration&.presentation_enabled? && can?(:manage, :whatsapp_inbox)
+  official_presentation_template = if can?(:manage, :whatsapp_inbox)
     template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: quick_integration)
     template if template.persisted? && template.approved?
   end
   templates = (templates + [official_presentation_template]).compact.index_by(&:name).values
-  presentation_tools_available = official_presentation_template.present? || quick_cards.any?
-  service_window_gate = Whatsapp::ServiceWindowGuard.call(conversation: conversation)
+  quick_reply_templates = if lead_context.present?
+    Whatsapp::LeadWindowTemplateSelector.useful_templates(conversation: conversation, admin_user: current_admin_user, lead: lead_context)
+  else
+    [official_presentation_template].compact
+  end
+  quick_reply_templates = quick_reply_templates.select(&:approved?).index_by(&:name).values
+  presentation_tools_available = quick_reply_templates.any? || quick_cards.any?
+  service_window_gate = Whatsapp::ServiceWindowGuard.call(conversation: conversation, admin_user: current_admin_user, lead: lead_context)
   service_window_locked = service_window_gate.locked?
   service_window_template_available = templates.any? { |template| template.name == service_window_gate.template_name }
 %>
@@ -139,7 +145,7 @@
         <div class="wa-emoji-popover" hidden data-emoji-picker-target="popover"></div>
       </div>
 
-      <%# ⚡ respostas rápidas: apresentação %>
+      <%# Respostas rápidas: templates aprovados e cartões de apresentação %>
       <% if presentation_tools_available %>
         <div data-controller="quick-replies" class="tw-inline-block">
           <button type="button"
@@ -150,16 +156,19 @@
             <i class="bi bi-lightning-charge"></i>
           </button>
           <div class="wa-composer-popover wa-composer-popover--menu" hidden data-quick-replies-target="popover">
-            <div class="wa-composer-popover__caption">Apresentação</div>
-            <% if official_presentation_template.present? %>
+            <% if quick_reply_templates.any? %>
+              <div class="wa-composer-popover__caption">Templates aprovados</div>
+            <% end %>
+            <% quick_reply_templates.each do |template| %>
               <button type="button"
                       data-action="quick-replies#useTemplate"
-                      data-template-name="<%= official_presentation_template.name %>">
+                      data-template-name="<%= template.name %>">
                 <i class="bi bi-patch-check wa-composer-popover__icon wa-composer-popover__icon--presentation"></i>
-                <span>Empresa · Apresentação oficial</span>
+                <span><%= template.name == Whatsapp::LeadActivationTemplate::TEMPLATE_NAME ? "Empresa · Apresentação oficial" : template.name %></span>
               </button>
             <% end %>
             <% if quick_cards.any? %>
+              <div class="wa-composer-popover__caption">Apresentação</div>
               <% quick_cards.each do |card| %>
                 <button type="button"
                         data-action="quick-replies#useCard"

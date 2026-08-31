@@ -3,6 +3,6 @@ FactoryBot.define do
     tenant { Current.tenant || Tenant.default }
     admin_user
     sequence(:name) { |n| "Etiqueta #{n}" }
-    color { "blue" }
+    color { "cyan" }
   end
 end

@@ -8,6 +8,8 @@ class Proposal < ApplicationRecord
     "recusada" => "Recusada",
     "expirada" => "Expirada"
   }.freeze
+  MONEY_FORMAT = /\A(?:R\$\s*)?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:[,.]\d{1,2})?\z/.freeze
+  MAX_MONEY_CENTS = 999_999_999_999
 
   belongs_to :lead
   belongs_to :habitation, optional: true
@@ -15,6 +17,13 @@ class Proposal < ApplicationRecord
 
   validates :public_token, presence: true, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
+  validates :valor_cents, :entrada_cents,
+            numericality: {
+              only_integer: true,
+              greater_than_or_equal_to: 0,
+              less_than_or_equal_to: MAX_MONEY_CENTS
+            }
+  validate :money_inputs_are_valid
 
   before_validation :ensure_token, on: :create
 
@@ -24,11 +33,11 @@ class Proposal < ApplicationRecord
   def entrada = entrada_cents.to_i / 100.0
 
   def valor=(value)
-    self.valor_cents = parse_money(value)
+    self.valor_cents = parse_money(value, :valor)
   end
 
   def entrada=(value)
-    self.entrada_cents = parse_money(value)
+    self.entrada_cents = parse_money(value, :entrada)
   end
 
   def status_label = STATUS_LABELS[status] || status
@@ -68,14 +77,37 @@ class Proposal < ApplicationRecord
 
   private
 
-  def parse_money(value)
+  def parse_money(value, attribute)
+    money_parse_errors.delete(attribute)
     return 0 if value.blank?
-    digits = value.to_s.gsub(/[^\d,\.]/, "")
+
+    text = value.to_s.strip
+    unless text.match?(MONEY_FORMAT)
+      money_parse_errors[attribute] = "informe um valor válido"
+      return 0
+    end
+
+    digits = text.delete_prefix("R$").strip
     # Trata formato BR (1.234,56) e simples
     if digits.include?(",")
       digits = digits.delete(".").tr(",", ".")
     end
-    (digits.to_f * 100).round
+
+    cents = (BigDecimal(digits) * 100).round.to_i
+    if cents > MAX_MONEY_CENTS
+      money_parse_errors[attribute] = "excede o limite permitido"
+      return 0
+    end
+
+    cents
+  end
+
+  def money_inputs_are_valid
+    money_parse_errors.each { |attribute, message| errors.add(attribute, message) }
+  end
+
+  def money_parse_errors
+    @money_parse_errors ||= {}
   end
 
   def ensure_token

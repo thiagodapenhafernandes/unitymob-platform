@@ -1,8 +1,16 @@
-<%# locals: proposal, lead, url, method, habitations %>
-<%= form_with model: proposal, url: url, method: local_assigns.fetch(:method, :post), scope: :proposal do |f| %>
+<%# locals: proposal, lead, url, method, habitations, embedded, submit_label %>
+<% embedded = local_assigns[:embedded] == true %>
+<% submit_label = local_assigns[:submit_label].presence || "Salvar proposta" %>
+<%= form_with model: proposal,
+              url: url,
+              method: local_assigns.fetch(:method, :post),
+              scope: :proposal,
+              namespace: local_assigns[:namespace],
+              local: true,
+              class: class_names("proposal-form", "proposal-form--embedded": embedded) do |f| %>
   <%= ax_error_summary(proposal, title: "Revise os dados da proposta") %>
 
-  <%= ax_operational_panel(eyebrow: "Condições comerciais", title: "Dados da proposta") do %>
+  <% fields = capture do %>
     <%= ax_field_grid do %>
       <div class="ax-field ax-span-12">
         <label class="ax-label">Imóvel</label>
@@ -49,5 +57,19 @@
     <% end %>
   <% end %>
 
-  <%= ax_form_actions(cancel_path: admin_lead_path(lead), submit_label: "Salvar proposta", form: f) %>
+  <% if embedded %>
+    <div class="proposal-form-modal__fields">
+      <%= fields %>
+    </div>
+    <div class="ax-quick-modal__footer proposal-form-modal__footer">
+      <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+      <%= f.submit submit_label, class: "ax-btn ax-btn--primary" %>
+    </div>
+  <% else %>
+    <%= ax_operational_panel(eyebrow: "Condições comerciais", title: "Dados da proposta") do %>
+      <%= fields %>
+    <% end %>
+
+    <%= ax_form_actions(cancel_path: admin_lead_path(lead), submit_label: submit_label, form: f) %>
+  <% end %>
 <% end %>

@@ -91,6 +91,7 @@ module Whatsapp
       name = contact[:name]
 
       conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name)
+      extend_free_entry_point_window(conversation, msg)
       type = msg["type"].to_s
 
       # Reação do cliente: marca a mensagem alvo (não cria bolha nova)
@@ -214,6 +215,20 @@ module Whatsapp
       return nil if event.blank? || event == "NONE" || event == "PENDING"
 
       "Status retornado pela Meta: #{event}"
+    end
+
+    def extend_free_entry_point_window(conversation, msg)
+      return unless msg["referral"].is_a?(Hash)
+
+      expires_at = message_time(msg) + 72.hours
+      return if conversation.free_entry_point_expires_at.present? && conversation.free_entry_point_expires_at >= expires_at
+
+      conversation.update_column(:free_entry_point_expires_at, expires_at)
+    end
+
+    def message_time(msg)
+      timestamp = msg["timestamp"].presence
+      timestamp ? Time.zone.at(timestamp.to_i) : Time.current
     end
 
     def handle_status(status)

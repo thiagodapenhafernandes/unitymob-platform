@@ -75,6 +75,18 @@ RSpec.describe "Admin::Appointments", type: :request do
   end
 
   describe "PATCH /admin/appointments/:id" do
+    it "atualiza compromisso e registra historico no lead" do
+      lead = create(:lead)
+      appt = Appointment.create!(title: "Visita", admin_user: admin, lead: lead, starts_at: 1.day.from_now, status: "agendado")
+
+      expect {
+        patch admin_appointment_path(appt), params: { appointment: { title: "Visita revisada" } }
+      }.to change { lead.activities.where(kind: "appointment_updated").count }.by(1)
+
+      expect(response).to have_http_status(:redirect)
+      expect(appt.reload.title).to eq("Visita revisada")
+    end
+
     it "marca como realizado e loga na timeline" do
       lead = create(:lead)
       appt = Appointment.create!(title: "Visita", admin_user: admin, lead: lead, starts_at: 1.hour.ago, status: "agendado")

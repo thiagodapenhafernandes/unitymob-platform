@@ -73,13 +73,8 @@
              class="ax-input ax-input--sm" maxlength="40" required
              autocomplete="off" aria-label="Nome da nova etiqueta">
       <div class="lead-labels__colors" role="radiogroup" aria-label="Cor">
-        <% LeadLabel::COLORS.each_with_index do |c, i| %>
-          <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= Admin::UiHelper::LEAD_LABEL_COLOR_NAMES[c] %>">
-            <input type="radio" name="lead_label[color]" value="<%= c %>" <%= "checked" if i.zero? %>>
-          </label>
-        <% end %>
         <label class="lead-labels__color lead-labels__color--custom" title="Cor personalizada">
-          <input type="radio" name="lead_label[color]" value="#7c3aed">
+          <input type="radio" name="lead_label[color]" value="#7c3aed" checked>
           <input type="color" value="#7c3aed"
                  data-action="input->lead-labels#pickCustomColor"
                  aria-label="Cor personalizada">

@@ -124,6 +124,14 @@
               Nas duas opções, o toque no push conta como aceite no prazo e trava a rotação do pocket.
               Use detalhes quando o corretor precisa ver telefone, e-mail, origem e interesse antes de chamar o cliente.
             </p>
+
+            <div class="ax-option-stack tw-mt-3">
+              <%= ax_toggle_chip(f, :lead_whatsapp_conversation_enabled,
+                    label: raw("<i class='bi bi-chat-dots'></i> Mostrar conversa WhatsApp dentro do lead")) %>
+            </div>
+            <p class="ax-field__hint tw-mt-2">
+              Quando desligado, o lead não abre nem exibe a conversa embutida. O inbox dedicado continua disponível para quem tem permissão.
+            </p>
           </div>
         <% end %>
 
@@ -175,6 +183,7 @@
           <% lead_status_rows.concat([
             { label: "SLA 1º contato", value: ax_badge("#{@lead_setting.first_contact_sla_hours_value}h", tone: :blue) },
             { label: "Automação de etapas", value: ax_badge("a cada #{@lead_setting.stage_automation_sweep_interval_minutes_value} min", tone: :blue) },
+            { label: "Conversa no lead", value: ax_badge(@lead_setting.lead_whatsapp_conversation_enabled? ? "Ligada" : "Desligada", tone: @lead_setting.lead_whatsapp_conversation_enabled? ? :green : :gray, dot: true) },
             { label: "Link seguro", value: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) },
             { label: "Clique no push", value: ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) }
           ]) %>

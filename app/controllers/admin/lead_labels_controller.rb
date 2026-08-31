@@ -13,7 +13,7 @@ class Admin::LeadLabelsController < Admin::BaseController
   def create
     label = current_admin_user.lead_labels.new(label_params.merge(tenant: current_tenant))
     if label.save
-      render json: state_payload
+      render json: state_payload(include_operational_panel: true)
     else
       render json: { error: label.errors.full_messages.to_sentence }, status: :unprocessable_entity
     end
@@ -21,7 +21,7 @@ class Admin::LeadLabelsController < Admin::BaseController
 
   def update
     if @label.update(label_params)
-      render json: state_payload
+      render json: state_payload(include_operational_panel: true)
     else
       render json: { error: @label.errors.full_messages.to_sentence }, status: :unprocessable_entity
     end
@@ -29,7 +29,7 @@ class Admin::LeadLabelsController < Admin::BaseController
 
   def destroy
     @label.destroy
-    render json: state_payload
+    render json: state_payload(include_operational_panel: true)
   end
 
   # Marca/desmarca a etiqueta no lead atual.
@@ -40,7 +40,7 @@ class Admin::LeadLabelsController < Admin::BaseController
     else
       @lead.lead_labelings.create!(lead_label: @label, tenant: current_tenant)
     end
-    render json: state_payload
+    render json: state_payload(include_operational_panel: true)
   end
 
   private
@@ -80,8 +80,8 @@ class Admin::LeadLabelsController < Admin::BaseController
     @lead.labels_for(current_admin_user).pluck(:id)
   end
 
-  def state_payload
-    {
+  def state_payload(include_operational_panel: false)
+    payload = {
       manager_html: render_to_string(
         partial: "admin/lead_labels/manager",
         formats: [:html],
@@ -93,5 +93,15 @@ class Admin::LeadLabelsController < Admin::BaseController
         locals: { lead: @lead, labels: @lead.labels_for(current_admin_user) }
       )
     }
+
+    if include_operational_panel
+      payload[:pwa_operational_panel_html] = render_to_string(
+        partial: "admin/leads/pwa_operational_panel",
+        formats: [:html],
+        locals: { lead: @lead }
+      )
+    end
+
+    payload
   end
 end

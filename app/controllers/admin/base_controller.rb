@@ -45,6 +45,20 @@ class Admin::BaseController < ApplicationController
     response.set_header("Expires", "0")
   end
 
+  def render_lead_operational_turbo_stream(lead, notice: nil, alert: nil, status: :ok)
+    flash.now[:notice] = notice if notice.present?
+    flash.now[:alert] = alert if alert.present?
+
+    render(
+      turbo_stream: turbo_stream.replace(
+        view_context.dom_id(lead, :pwa_operational_panel),
+        partial: "admin/leads/pwa_operational_panel",
+        locals: { lead: lead }
+      ),
+      status: status
+    )
+  end
+
   def handle_invalid_admin_session
     Rails.logger.info(
       "[admin_session] invalid_authenticity_token path=#{request.fullpath} " \

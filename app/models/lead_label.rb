@@ -4,7 +4,7 @@ class LeadLabel < ApplicationRecord
   # Tons do design system disponíveis (ax-badge--*). São as cores oferecidas
   # no seletor do catálogo de etiquetas. Além delas, aceita-se cor livre em
   # hexadecimal (#rrggbb) escolhida no color picker do gerenciador.
-  COLORS = %w[red amber green blue cyan purple gray].freeze
+  COLORS = %w[red amber green cyan purple gray].freeze
   HEX_COLOR = /\A#\h{6}\z/
 
   # Catálogo padrão semeado no primeiro uso de cada corretor. Reflete o

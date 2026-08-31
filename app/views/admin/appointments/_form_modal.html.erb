@@ -1,46 +1,66 @@
-<%# locals: lead (optional), trigger_label (optional), trigger_class (optional) %>
+<%# locals: lead (optional), appointment (optional), modal_id (optional), trigger_label (optional), trigger_class (optional), trigger_icon (optional), trigger_title (optional) %>
+<%
+  appointment_record = local_assigns[:appointment] || Appointment.new
+  appointment_modal_id = local_assigns[:modal_id].presence || (appointment_record.persisted? ? "editAppointment#{appointment_record.id}" : "newAppointment#{SecureRandom.hex(6)}")
+  trigger_label = local_assigns.key?(:trigger_label) ? local_assigns[:trigger_label] : "Agendar"
+  trigger_icon = local_assigns.fetch(:trigger_icon, appointment_record.persisted? ? "pencil" : "calendar-plus")
+  trigger_title = local_assigns[:trigger_title].presence || (appointment_record.persisted? ? "Editar agenda" : "Agendar")
+  form_url = appointment_record.persisted? ? admin_appointment_path(appointment_record) : admin_appointments_path
+  form_method = appointment_record.persisted? ? :patch : :post
+%>
 <div data-controller="ax-modal" class="tw-inline-block">
-  <button type="button" class="<%= local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm") %>" data-action="ax-modal#open">
-    <i class="bi bi-calendar-plus ax-ico"></i><span><%= local_assigns.fetch(:trigger_label, "Agendar") %></span>
+  <button type="button"
+          class="<%= local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm") %>"
+          data-action="ax-modal#open"
+          title="<%= trigger_title %>"
+          aria-label="<%= trigger_title %>">
+    <i class="bi bi-<%= trigger_icon %> ax-ico" aria-hidden="true"></i>
+    <% if trigger_label.present? %><span><%= trigger_label %></span><% end %>
   </button>
-  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+  <div id="<%= appointment_modal_id %>" class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-modal-panel" role="dialog" aria-modal="true">
       <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
-        <strong><i class="bi bi-calendar-event ax-ico tw-text-primary"></i> Agendar compromisso</strong>
+        <strong><i class="bi bi-calendar-event ax-ico tw-text-primary"></i> <%= appointment_record.persisted? ? "Editar compromisso" : "Agendar compromisso" %></strong>
         <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
       </div>
-      <%= form_with url: admin_appointments_path, method: :post do %>
+      <%= form_with url: form_url, method: form_method, local: true do %>
         <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
           <% if local_assigns[:lead] %>
             <%= hidden_field_tag "appointment[lead_id]", lead.id %>
             <% if lead.property_id.present? %><%= hidden_field_tag "appointment[habitation_id]", lead.property_id %><% end %>
           <% end %>
           <div>
-            <label class="ax-label" for="appointment_title">Título</label>
-            <%= text_field_tag "appointment[title]", (local_assigns[:lead] ? "Visita — #{lead.display_name}" : nil), id: "appointment_title", class: "ax-input", required: true, placeholder: "Visita ao imóvel" %>
+            <label class="ax-label" for="<%= "#{appointment_modal_id}_title" %>">Título</label>
+            <%= text_field_tag "appointment[title]", appointment_record.title.presence || (local_assigns[:lead] ? "Visita — #{lead.display_name}" : nil), id: "#{appointment_modal_id}_title", class: "ax-input", required: true, placeholder: "Visita ao imóvel" %>
           </div>
           <div class="tw-grid tw-grid-cols-2 tw-gap-3">
             <div>
-              <label class="ax-label" for="appointment_kind">Tipo</label>
-              <%= select_tag "appointment[kind]", options_for_select(Appointment::KINDS.map { |k, v| [v, k] }, "visita"), id: "appointment_kind", class: "ax-select" %>
+              <label class="ax-label" for="<%= "#{appointment_modal_id}_kind" %>">Tipo</label>
+              <%= select_tag "appointment[kind]", options_for_select(Appointment::KINDS.map { |k, v| [v, k] }, appointment_record.kind.presence || "visita"), id: "#{appointment_modal_id}_kind", class: "ax-select" %>
             </div>
             <div>
-              <label class="ax-label" for="appointment_starts_at">Início</label>
-              <input type="datetime-local" name="appointment[starts_at]" id="appointment_starts_at" class="ax-input" required>
+              <label class="ax-label" for="<%= "#{appointment_modal_id}_starts_at" %>">Início</label>
+              <input type="datetime-local" name="appointment[starts_at]" id="<%= "#{appointment_modal_id}_starts_at" %>" class="ax-input" value="<%= appointment_record.starts_at&.strftime("%Y-%m-%dT%H:%M") %>" required>
             </div>
           </div>
+          <% if appointment_record.persisted? %>
+            <div>
+              <label class="ax-label" for="<%= "#{appointment_modal_id}_status" %>">Status</label>
+              <%= select_tag "appointment[status]", options_for_select(Appointment::STATUSES.map { |status| [status.humanize, status] }, appointment_record.status), id: "#{appointment_modal_id}_status", class: "ax-select" %>
+            </div>
+          <% end %>
           <div>
-            <label class="ax-label" for="appointment_location">Local</label>
-            <%= text_field_tag "appointment[location]", nil, id: "appointment_location", class: "ax-input", placeholder: "Endereço do imóvel / link da reunião" %>
+            <label class="ax-label" for="<%= "#{appointment_modal_id}_location" %>">Local</label>
+            <%= text_field_tag "appointment[location]", appointment_record.location, id: "#{appointment_modal_id}_location", class: "ax-input", placeholder: "Endereço do imóvel / link da reunião" %>
           </div>
           <div>
-            <label class="ax-label" for="appointment_notes">Observações</label>
-            <%= text_area_tag "appointment[notes]", nil, id: "appointment_notes", class: "ax-textarea", rows: 2 %>
+            <label class="ax-label" for="<%= "#{appointment_modal_id}_notes" %>">Observações</label>
+            <%= text_area_tag "appointment[notes]", appointment_record.notes, id: "#{appointment_modal_id}_notes", class: "ax-textarea", rows: 2 %>
           </div>
         </div>
         <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
           <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
-          <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Agendar</button>
+          <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary"><%= appointment_record.persisted? ? "Atualizar" : "Agendar" %></button>
         </div>
       <% end %>
     </div>
