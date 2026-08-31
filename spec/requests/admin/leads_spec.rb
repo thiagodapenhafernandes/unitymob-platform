@@ -383,7 +383,43 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Imóvel")
       expect(response.body).to include("Contato")
       expect(response.body).to include("Período")
+      document = Nokogiri::HTML(response.body)
+      filter_modal = document.at_css("#leadDesktopFilterModal")
+      expect(filter_modal.text).to include("Período do lead", "Entrada de", "Entrada até", "Fechado de", "Fechado até")
+      expect(filter_modal.css(".lead-filter-date-pair").size).to eq(2)
       expect(response.body).not_to include("Lead Fora do Filtro")
+    end
+
+    it "filtra leads por tentativa sem sucesso e elegibilidade de redistribuicao" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant, name: "Atendimento comercial")
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Primeiro atendimento")
+      next_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Segunda tentativa")
+      create(
+        :lead_pipeline_stage_automation,
+        tenant: admin.tenant,
+        lead_pipeline_stage: stage,
+        auto_advance_to_stage: next_stage,
+        action_type: "redistribute_lead",
+        action_config: { "unsuccessful_attempt_limit" => 1 }
+      )
+      matching = create(:lead, tenant: admin.tenant, admin_user: admin, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name, name: "Lead Sem Resposta")
+      other = create(:lead, tenant: admin.tenant, admin_user: admin, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name, name: "Lead Respondido")
+      LeadActivity.create!(tenant: admin.tenant, lead: matching, kind: "note", metadata: { contact_kind: "whatsapp", contact_result: "nao_respondeu" })
+      LeadActivity.create!(tenant: admin.tenant, lead: other, kind: "note", metadata: { contact_kind: "nota", body: "Anotação interna" })
+
+      get admin_leads_path(view: "list", attention_filter: "unsuccessful_attempts")
+
+      expect(response).to have_http_status(:ok)
+      list_text = Nokogiri::HTML(response.body).at_css(".lead-list").text
+      expect(list_text).to include("Lead Sem Resposta")
+      expect(list_text).not_to include("Lead Respondido")
+
+      get admin_leads_path(view: "list", attention_filter: "eligible_redistribution")
+
+      expect(response).to have_http_status(:ok)
+      list_text = Nokogiri::HTML(response.body).at_css(".lead-list").text
+      expect(list_text).to include("Lead Sem Resposta")
+      expect(list_text).not_to include("Lead Respondido")
     end
 
     it "filtra por tags em lista e kanban" do
@@ -890,6 +926,34 @@ RSpec.describe "Admin::Leads", type: :request do
         "by" => admin.name,
         "admin_user_id" => admin.id
       )
+      expect(note.metadata).not_to have_key("contact_result")
+    end
+
+    it "registra resultado operacional da tentativa de contato" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
+
+      post log_contact_admin_lead_path(lead),
+           params: { contact_kind: "whatsapp", contact_result: "nao_respondeu", body: "Chamou no WhatsApp e não respondeu." }
+
+      note = lead.activities.where(kind: "note").last
+      expect(note.metadata).to include(
+        "contact_kind" => "whatsapp",
+        "contact_result" => "nao_respondeu",
+        "body" => "Chamou no WhatsApp e não respondeu."
+      )
+      expect(LeadActivity.unsuccessful_contact_attempts.where(id: note.id)).to exist
+    end
+
+    it "exige resultado para tentativa operacional" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
+
+      expect {
+        post log_contact_admin_lead_path(lead),
+             params: { contact_kind: "whatsapp", body: "Enviei mensagem sem retorno." }
+      }.not_to change { lead.activities.where(kind: "note").count }
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(flash[:alert]).to eq("Informe o resultado da tentativa de contato.")
     end
 
     it "nao cria anotacao vazia" do
@@ -900,6 +964,133 @@ RSpec.describe "Admin::Leads", type: :request do
       }.not_to change { lead.activities.where(kind: "note").count }
 
       expect(response).to redirect_to(admin_lead_path(lead))
+    end
+  end
+
+  describe "GET /admin/leads/report" do
+    it "exporta leads filtrados e inclui captacoes quando solicitado" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Cliente Relatorio", status: "Em Atendimento")
+      LeadActivity.create!(
+        tenant: admin.tenant,
+        lead: lead,
+        kind: "note",
+        metadata: {
+          contact_kind: "whatsapp",
+          contact_result: "nao_respondeu",
+          body: "Tentativa sem resposta"
+        }
+      )
+      create(
+        :habitation,
+        :broker_intake,
+        tenant: admin.tenant,
+        admin_user: admin,
+        proprietario: "Proprietario Captacao"
+      )
+
+      get report_admin_leads_path(
+        format: :csv,
+        attention_filter: "unsuccessful_attempts",
+        include_captacoes: "1"
+      )
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("text/csv")
+      csv = CSV.parse(response.body, col_sep: ";")
+      expect(csv.first.first).to match(/\ARELATÓRIO LEADS \d{2}\/\d{2}\/\d{4} A \d{2}\/\d{2}\/\d{4}\z/)
+      expect(csv.flatten).to include("USUÁRIO: #{admin.name}", "Cliente Relatorio", "1", "CAPTAÇÕES", "Proprietario Captacao")
+    end
+
+    it "usa a fonte comercial e dados de arquivamento da migracao externa" do
+      lead = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Lead C2S Report",
+        status: "Descartado",
+        origin: "C2S",
+        product: "Apartamento importado",
+        attribution_data: {
+          "provider" => ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+          "lead_source" => { "name" => "Instagram Leads" },
+          "channel" => { "name" => "Internet" },
+          "archive_details" => { "archive_notes" => "Cliente não respondeu" },
+          "product" => { "city" => "Balneário Camboriú" }
+        },
+        other_information: {
+          "source" => ExternalLeadMigration::LeadMapper::PROVIDER_KEY
+        }
+      )
+
+      get report_admin_leads_path(format: :csv, q: lead.name)
+
+      rows = CSV.parse(response.body, col_sep: ";")
+      row = rows.find { |csv_row| csv_row[2] == "Lead C2S Report" }
+      expect(row[5]).to eq("Instagram Leads / Internet")
+      expect(row[10]).to eq("Cliente não respondeu")
+      expect(row[12]).to eq("Balneário Camboriú")
+    end
+
+    it "marca legado C2S descartado sem motivo importado no relatorio" do
+      lead = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Lead C2S Legado Sem Motivo",
+        status: "Descartado",
+        origin: "C2S",
+        other_information: { "source" => "c2s" }
+      )
+
+      get report_admin_leads_path(format: :csv, q: lead.name)
+
+      rows = CSV.parse(response.body, col_sep: ";")
+      row = rows.find { |csv_row| csv_row[2] == "Lead C2S Legado Sem Motivo" }
+      expect(row[10]).to eq("Sem motivo migrado")
+    end
+
+    it "exporta fonte, motivo e cidade do payload legado C2S" do
+      lead = create(
+        :lead,
+        tenant: admin.tenant,
+        admin_user: admin,
+        name: "Lead C2S Legado Completo",
+        status: "Descartado",
+        origin: "C2S",
+        other_information: {
+          "source" => "c2s",
+          "attributes" => {
+            "lead_source" => { "name" => "TikTok" },
+            "channel" => { "name" => "WhatsApp" },
+            "lost_reasons" => { "name" => "inactive" },
+            "product" => { "city" => "Itajaí" }
+          }
+        }
+      )
+
+      get report_admin_leads_path(format: :csv, q: lead.name)
+
+      rows = CSV.parse(response.body, col_sep: ";")
+      row = rows.find { |csv_row| csv_row[2] == "Lead C2S Legado Completo" }
+      expect(row[5]).to eq("TikTok / WhatsApp")
+      expect(row[10]).to eq("Inativo")
+      expect(row[12]).to eq("Itajaí")
+    end
+
+    it "exporta uma planilha Excel com layout do relatorio comercial" do
+      create(:lead, tenant: admin.tenant, admin_user: admin, name: "Cliente Excel", phone: "47999998888", email: "excel@example.com", status: "Em Atendimento")
+
+      get report_admin_leads_path(format: :xlsx)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      expect(response.body.b).to start_with("PK".b)
+      body = response.body.dup.force_encoding(Encoding::UTF_8)
+      expect(body).to include("xl/worksheets/sheet1.xml")
+      expect(body).to include("A2:G3")
+      expect(body).to include("RELATÓRIO LEADS")
+      expect(body).to include("Nome do cliente")
+      expect(body).to include("Cliente Excel")
     end
   end
 

@@ -211,11 +211,15 @@ module Admin
 
     def automation_action_config(raw_config, action_type)
       config = raw_config.respond_to?(:to_h) ? raw_config.to_h.with_indifferent_access : {}
-      case action_type
+      base = {
+        unsuccessful_attempt_limit: config[:unsuccessful_attempt_limit].to_i.positive? ? config[:unsuccessful_attempt_limit].to_i : nil
+      }.compact
+
+      base.merge(case action_type
       when "archive_lead"
         { archive_reason_id: config[:archive_reason_id].to_s.presence, note: config[:note].to_s.strip.presence }.compact
       when "redistribute_lead"
-        { distribution_rule_id: config[:distribution_rule_id].to_s.presence }.compact
+        { distribution_rule_id: config[:distribution_rule_id].to_s.presence, note: config[:note].to_s.strip.presence }.compact
       when "create_task"
         {
           task_title: config[:task_title].to_s.strip.presence,
@@ -226,7 +230,7 @@ module Admin
         { note: config[:note].to_s.strip.presence }.compact
       else
         {}
-      end
+      end)
     end
 
     def automation_rows(raw_rows)

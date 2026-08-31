@@ -71,7 +71,7 @@ RSpec.describe "Field::PushSubscriptions", type: :request do
     expect(PushSubscription.active.where(admin_user: agent).pluck(:endpoint)).to contain_exactly("https://fcm.googleapis.com/fcm/send/current")
   end
 
-  it "preserva subscriptions Apple anteriores quando o Safari nao informa old_endpoint" do
+  it "desativa subscriptions Apple anteriores do mesmo usuario e dispositivo" do
     request_user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15"
     stale_subscription = PushSubscription.create!(
       admin_user: agent,
@@ -94,11 +94,8 @@ RSpec.describe "Field::PushSubscriptions", type: :request do
     }, headers: { "HTTP_USER_AGENT" => request_user_agent }, as: :json
 
     expect(response).to have_http_status(:created)
-    expect(PushSubscription.exists?(stale_subscription.id)).to be(true)
-    expect(PushSubscription.where(admin_user: agent).pluck(:endpoint)).to contain_exactly(
-      "https://web.push.apple.com/stale",
-      "https://web.push.apple.com/current"
-    )
+    expect(stale_subscription.reload.active).to be(false)
+    expect(PushSubscription.active.where(admin_user: agent).pluck(:endpoint)).to contain_exactly("https://web.push.apple.com/current")
   end
 
   it "registra quando o service worker recebe o push no device" do

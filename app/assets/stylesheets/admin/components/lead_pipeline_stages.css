@@ -625,9 +625,14 @@ body.ax-app .lead-status-row__multiselect-wrapper.multi .ts-control > div.item {
   order: 4;
 }
 
+.lead-status-row__automation-rule > [data-lead-status-automation-config-field="unsuccessful_attempt_limit"] {
+  grid-column: span 2;
+  order: 5;
+}
+
 .lead-status-row__automation-rule > [data-lead-status-automation-field="action_type"] {
   grid-column: span 3;
-  order: 5;
+  order: 6;
 }
 
 .lead-status-row__automation-rule > [data-action-config-panel],
@@ -708,6 +713,7 @@ body.ax-app .lead-status-row__multiselect-wrapper.multi .ts-control > div.item {
   .lead-status-row__automation-rule > .lead-status-row__automation-toggle,
   .lead-status-row__automation-rule > [data-lead-status-automation-field="after_amount"],
   .lead-status-row__automation-rule > [data-lead-status-automation-field="after_unit"],
+  .lead-status-row__automation-rule > [data-lead-status-automation-config-field="unsuccessful_attempt_limit"],
   .lead-status-row__automation-rule > .lead-status-row__automation-remove {
     grid-column: span 3;
   }

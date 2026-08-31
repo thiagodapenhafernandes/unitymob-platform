@@ -19,6 +19,13 @@
         <span>Ações do lead</span>
         <small><%= open_tasks.size %> tarefa<%= "s" if open_tasks.size != 1 %></small>
       </div>
+      <div class="lead-operational-row lead-operational-row--compact">
+        <span class="lead-operational-row__body">
+          <strong>Tentativas sem resposta</strong>
+          <span>Desde a última resposta nesta etapa</span>
+        </span>
+        <span class="ax-badge ax-badge--amber"><%= lead_unsuccessful_attempt_count(lead) %></span>
+      </div>
       <%= render "admin/leads/action_hub",
             namespace: "Pwa#{lead.id}",
             lead: lead,

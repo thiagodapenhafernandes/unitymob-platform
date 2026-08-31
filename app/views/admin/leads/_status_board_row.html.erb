@@ -16,7 +16,12 @@
   summary_parts << "Visível para #{visible_roles.filter_map { |role| LeadPipelineStagePolicy::VISIBLE_ROLES[role] }.to_sentence}" if visible_roles.any?
   summary_parts << "#{selected_next_stage_ids.size} próxima(s) etapa(s)" if selected_next_stage_ids.any?
   first_archive_automation = automations.find { |automation| automation.respond_to?(:action_type) && automation.action_type == "archive_lead" && automation.active? }
-  summary_parts << "Arquiva em #{first_archive_automation.after_amount} #{LeadPipelineStageAutomation::UNITS[first_archive_automation.after_unit]}" if first_archive_automation
+  if first_archive_automation
+    attempt_limit = first_archive_automation.action_config.to_h["unsuccessful_attempt_limit"].to_i
+    archive_summary = "Arquiva em #{first_archive_automation.after_amount} #{LeadPipelineStageAutomation::UNITS[first_archive_automation.after_unit]}"
+    archive_summary += " ou #{attempt_limit} tentativa(s)" if attempt_limit.positive?
+    summary_parts << archive_summary
+  end
   active_automations_count = automations.count { |automation| automation.respond_to?(:active?) && automation.active? }
   automation_summary = if automations.any?
                          "#{active_automations_count} ativa(s) · #{automations.size} regra(s)"
@@ -63,6 +68,7 @@
     destination_id = automation.respond_to?(:auto_advance_to_stage_id) ? automation.auto_advance_to_stage_id : nil
     action_type = automation.respond_to?(:action_type) ? automation.action_type : "move_stage"
     action_config = automation.respond_to?(:action_config) ? automation.action_config.to_h : {}
+    unsuccessful_attempt_limit = action_config["unsuccessful_attempt_limit"].presence
     active = automation.respond_to?(:active?) ? automation.active? : true
     row_attrs = new_record ? "data-new-record=\"true\"" : "data-automation-id=\"#{automation_id}\""
 %>
@@ -121,6 +127,17 @@
           </option>
         <% end %>
       </select>
+
+      <input type="number"
+             min="1"
+             step="1"
+             class="ax-control ax-control--sm"
+             data-lead-status-automation-config-field="unsuccessful_attempt_limit"
+             data-controller="ax-tooltip"
+             data-ax-tooltip-text-value="Executa a mesma ação quando o lead atingir esta quantidade de tentativas sem resposta na etapa atual. Em branco, usa só o tempo."
+             value="<%= unsuccessful_attempt_limit %>"
+             placeholder="Tentativas"
+             aria-label="Limite de tentativas sem sucesso">
 
       <select class="ax-control ax-control--sm"
               data-lead-status-automation-field="action_type"
@@ -414,7 +431,7 @@
         <span>
           <%= ax_field_label(nil, nil,
                              text: "Automações",
-                             tooltip: "Regras executadas automaticamente quando o lead atende uma condição pelo tempo configurado.",
+                             tooltip: "Regras executadas automaticamente quando o lead atende uma condição pelo tempo configurado ou pela quantidade de tentativas sem resposta.",
                              class_name: "lead-status-row__automation-title") %>
           <small><%= automation_summary %></small>
         </span>

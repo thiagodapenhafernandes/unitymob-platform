@@ -1821,6 +1821,9 @@
               <div class="lead-pwa-detail__note-meta">
                 <span><i class="bi bi-clock"></i><%= l(note.created_at, format: "%d/%m/%Y %H:%M") %></span>
                 <span><%= lead_contact_kind_label(note) %></span>
+                <% if lead_contact_result_label(note).present? %>
+                  <span><%= lead_contact_result_label(note) %></span>
+                <% end %>
               </div>
               <div class="lead-pwa-detail__note-body">
                 <%= simple_format(body || "Contato sem descrição registrada.") %>
@@ -2134,6 +2137,13 @@
         <span class="ax-card__title"><i class="bi bi-flag-fill ax-ico"></i> Ações do lead</span>
       </div>
       <div class="ax-card__body">
+        <div class="lead-operational-row tw-mb-3">
+          <span class="lead-operational-row__body">
+            <strong>Tentativas sem resposta</strong>
+            <span>Conta contatos operacionais desde a última resposta do cliente nesta etapa.</span>
+          </span>
+          <span class="ax-badge ax-badge--amber"><%= lead_unsuccessful_attempt_count(@lead) %></span>
+        </div>
         <div class="lead-action-hub">
           <%= render "admin/leads/action_hub",
                 namespace: "Desktop#{@lead.id}",
@@ -2350,6 +2360,9 @@
               <div class="lead-operational-row">
                 <span class="lead-operational-row__body">
                   <strong><%= lead_contact_kind_label(note) %> · <%= l(note.created_at, format: :short) %></strong>
+                  <% if lead_contact_result_label(note).present? %>
+                    <small><%= lead_contact_result_label(note) %></small>
+                  <% end %>
                   <span><%= truncate(body || "Contato sem descrição registrada.", length: 120) %></span>
                 </span>
               </div>

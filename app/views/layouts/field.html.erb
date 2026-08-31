@@ -73,10 +73,27 @@
         return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
       }
 
+      const FIELD_PUSH_ENABLED_KEY = "fieldPushSubscribedAt";
+      const FIELD_PUSH_DISMISSED_KEY = "fieldPushDismissedAt";
+      const FIELD_PUSH_PROMPT_TTL = 7 * 24 * 60 * 60 * 1000;
+      const FIELD_PUSH_DISMISS_TTL = 24 * 60 * 60 * 1000;
+
+      function recentLocalTimestamp(key, ttl) {
+        const value = Number(localStorage.getItem(key) || 0);
+        return value > 0 && Date.now() - value < ttl;
+      }
+
+      function rememberPushEnabled() {
+        localStorage.setItem(FIELD_PUSH_ENABLED_KEY, String(Date.now()));
+        localStorage.removeItem(FIELD_PUSH_DISMISSED_KEY);
+      }
+
       // Mostra um banner com botão "Ativar notificações" quando a permissão ainda
       // não foi decidida. O clique no botão é o gesto exigido pelo iOS.
       function maybePromptForPush() {
         if (!pushSupported() || Notification.permission !== "default") return;
+        if (recentLocalTimestamp(FIELD_PUSH_ENABLED_KEY, FIELD_PUSH_PROMPT_TTL)) return;
+        if (recentLocalTimestamp(FIELD_PUSH_DISMISSED_KEY, FIELD_PUSH_DISMISS_TTL)) return;
         if (document.getElementById("field-push-banner")) return;
 
         const banner = document.createElement("div");
@@ -89,7 +106,10 @@
         document.body.appendChild(banner);
 
         document.getElementById("field-push-enable").addEventListener("click", enablePush);
-        document.getElementById("field-push-dismiss").addEventListener("click", function () { banner.remove(); });
+        document.getElementById("field-push-dismiss").addEventListener("click", function () {
+          localStorage.setItem(FIELD_PUSH_DISMISSED_KEY, String(Date.now()));
+          banner.remove();
+        });
       }
 
       // Pede permissão a partir do toque do usuário e assina (fluxo válido no iOS).
@@ -97,8 +117,6 @@
         if (!pushSupported()) return;
         try {
           const permission = await Notification.requestPermission();
-          const banner = document.getElementById("field-push-banner");
-          if (banner) banner.remove();
           if (permission !== "granted") {
             if (permission === "denied") {
               alert("Notificações bloqueadas. Ative em Ajustes do iPhone › Notificações para este app.");
@@ -106,7 +124,12 @@
             return;
           }
           const reg = window.__fieldSWReg || await navigator.serviceWorker.ready;
-          await subscribeToPush(reg);
+          if (await subscribeToPush(reg)) {
+            rememberPushEnabled();
+            document.getElementById("field-push-banner")?.remove();
+          } else {
+            alert("Não foi possível salvar as notificações agora. Tente novamente com internet ativa.");
+          }
         } catch (e) {
           console.warn("[push] enable failed:", e);
         }
@@ -114,16 +137,16 @@
 
       // Assina o push (reutiliza a subscription existente). Só age com permissão concedida.
       async function subscribeToPush(registration) {
-        if (!pushSupported() || Notification.permission !== "granted") return;
+        if (!pushSupported() || Notification.permission !== "granted") return false;
 
         try {
           // Busca a VAPID public key do servidor
           const keyResp = await fetch("/field/push_subscriptions/vapid_key", { credentials: "same-origin" });
-          if (!keyResp.ok) return;
+          if (!keyResp.ok) return false;
           const { public_key } = await keyResp.json();
           if (!public_key) {
             console.warn("[push] VAPID public key ausente no servidor (reinicie a app com VAPID_PUBLIC_KEY).");
-            return;
+            return false;
           }
 
           let existing = await registration.pushManager.getSubscription();
@@ -146,7 +169,7 @@
           } catch (_e) { /* sem suporte: renovação segue pelos outros gatilhos */ }
 
           const csrfToken = document.querySelector("[name=csrf-token]")?.content;
-          await fetch("/field/push_subscriptions", {
+          const saveResp = await fetch("/field/push_subscriptions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -156,8 +179,15 @@
             credentials: "same-origin",
             body: JSON.stringify({ subscription: sub.toJSON(), old_endpoint: oldEndpoint })
           });
+          if (saveResp.ok) {
+            rememberPushEnabled();
+            return true;
+          }
+          console.warn("[push] backend recusou subscription:", saveResp.status);
+          return false;
         } catch (e) {
           console.warn("[push] subscribe failed:", e);
+          return false;
         }
       }
 

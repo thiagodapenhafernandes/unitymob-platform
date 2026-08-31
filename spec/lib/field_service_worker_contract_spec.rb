@@ -15,6 +15,16 @@ RSpec.describe "field service worker contract" do
     expect(pwa_service_worker_partial).to include("navigator.serviceWorker.register(workerPath, { scope: '/', updateViaCache: 'none' })")
   end
 
+  it "mantém o banner de push sincronizado com inscrição salva no backend" do
+    field_layout = File.read(Rails.root.join("app/views/layouts/field.html.erb"))
+
+    expect(field_layout).to include('const FIELD_PUSH_ENABLED_KEY = "fieldPushSubscribedAt"')
+    expect(field_layout).to include('const saveResp = await fetch("/field/push_subscriptions"')
+    expect(field_layout).to include("if (saveResp.ok) {")
+    expect(field_layout).to include("rememberPushEnabled();")
+    expect(field_layout).to include("localStorage.setItem(FIELD_PUSH_DISMISSED_KEY")
+  end
+
   it "normaliza o destino do clique antes de abrir a janela" do
     expect(worker_source).to include('const CACHE_VERSION = "v13"')
     expect(worker_source).to include("function notificationTargetUrl(raw)")

@@ -18,6 +18,8 @@ class LeadActivity < ApplicationRecord
     automation_redistribution
     automation_available
   ].freeze
+  CONTACT_ATTEMPT_KINDS = %w[ligacao whatsapp email visita].freeze
+  UNSUCCESSFUL_CONTACT_RESULTS = %w[nao_respondeu sem_interesse].freeze
   SOURCE_CATEGORIES = %w[human external_sync automation].freeze
 
   belongs_to :lead
@@ -40,6 +42,13 @@ class LeadActivity < ApplicationRecord
   scope :without_external_sync, -> { where.not(source_category: "external_sync") }
   scope :automation, -> { where(source_category: "automation") }
   scope :human_operational, -> { where(source_category: "human") }
+  scope :contact_attempts, -> {
+    where(kind: "note")
+      .where("lead_activities.metadata ->> 'contact_kind' IN (?)", CONTACT_ATTEMPT_KINDS)
+  }
+  scope :unsuccessful_contact_attempts, -> {
+    contact_attempts.where("lead_activities.metadata ->> 'contact_result' IN (?)", UNSUCCESSFUL_CONTACT_RESULTS)
+  }
 
   # Registra um evento na timeline do lead. Nunca quebra o fluxo principal.
   def self.log!(lead:, kind:, metadata: {})

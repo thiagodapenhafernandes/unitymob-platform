@@ -111,7 +111,7 @@ export default class extends Controller {
     const actionType = rule.querySelector('[data-lead-status-automation-field="action_type"]')?.value || "move_stage"
     rule.querySelectorAll("[data-action-config-panel]").forEach((panel) => {
       const panelType = panel.dataset.actionConfigPanel
-      panel.hidden = panelType !== actionType
+      panel.hidden = !(panelType === actionType || (panelType === "move_stage" && actionType === "redistribute_lead"))
     })
   }
 

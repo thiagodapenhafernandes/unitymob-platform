@@ -229,6 +229,43 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     )
   end
 
+  it "salva limite de tentativas sem sucesso na automacao da etapa" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Atendimento")
+    destination_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Segunda tentativa")
+
+    post bulk_update_admin_lead_statuses_path,
+         params: {
+           lead_pipeline_id: pipeline.id,
+           statuses: [
+             {
+               id: source_stage.id,
+               name: source_stage.name,
+               stage_type: "open",
+               automations: [
+                 {
+                   active: "1",
+                   trigger: "customer_inactivity",
+                   after_amount: "7",
+                   after_unit: "days",
+                   auto_advance_to_stage_id: destination_stage.id,
+                   action_type: "redistribute_lead",
+                   action_config: { unsuccessful_attempt_limit: "10", note: "Sem sucesso no primeiro atendimento" }
+                 }
+               ]
+             }
+           ]
+         },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(source_stage.reload.automations.last).to have_attributes(
+      action_type: "redistribute_lead",
+      auto_advance_to_stage_id: destination_stage.id,
+      action_config: hash_including("unsuccessful_attempt_limit" => 10, "note" => "Sem sucesso no primeiro atendimento")
+    )
+  end
+
   it "bloqueia movimentacao fora das proximas etapas permitidas" do
     pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
     source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Triagem")
