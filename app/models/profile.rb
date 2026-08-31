@@ -59,6 +59,7 @@ class Profile < ApplicationRecord
     # Imóveis e Leads: `manage` desmembrado em create/edit/delete (Fase 2).
     { key: "imoveis",            label: "Imóveis",                icon: "bi-houses",           actions: %w[view media create edit delete], scopeable: true, description: "Catálogo de imóveis, mídia e uploads" },
     { key: "leads",              label: "Leads",                  icon: "bi-megaphone",        actions: %w[view create edit delete], scopeable: true,  description: "Atendimento e gestão de leads" },
+    { key: "lead_reports",       label: "Relatórios de leads",    icon: "bi-filetype-xlsx",    actions: %w[view],              scopeable: false, description: "Gerar relatórios e exportações da carteira de leads" },
     { key: "comercial",          label: "Comercial",              icon: "bi-briefcase",        actions: %w[view manage],       scopeable: true,  description: "Tarefas, agenda e propostas comerciais" },
     { key: "whatsapp_inbox",     label: "Atendimento WhatsApp",   icon: "bi-whatsapp",         actions: %w[view manage],       scopeable: true,  description: "Central de atendimento (inbox) do WhatsApp" },
     { key: "whatsapp_campaigns", label: "Disparos WhatsApp",      icon: "bi-send",             actions: %w[view manage],       scopeable: true,  description: "Campanhas e disparos em massa pelo WhatsApp" },
@@ -128,6 +129,7 @@ class Profile < ApplicationRecord
       "dashboard" => { "view" => true },
       "imoveis" => { "view" => true, "media" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "all" },
       "leads" => { "view" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "all" },
+      "lead_reports" => { "view" => true },
       "comercial" => { "view" => true, "manage" => true, "scope" => "all" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "all" },
       "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "all" },
@@ -142,6 +144,7 @@ class Profile < ApplicationRecord
       "dashboard" => { "view" => true },
       "imoveis" => { "view" => true, "media" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "team" },
       "leads" => { "view" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "team" },
+      "lead_reports" => { "view" => true },
       "comercial" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "team" },

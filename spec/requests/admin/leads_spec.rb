@@ -71,6 +71,47 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("data-lead-kanban-drag-handle")
     end
 
+    it "nao exibe o botao de relatorio sem permissao de relatorios de leads" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil sem relatorio #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_100,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "sem-relatorio-#{SecureRandom.hex(6)}@salute.test")
+      sign_in user
+
+      get admin_leads_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(response).to have_http_status(:ok)
+      expect(document.css('a[href*="/admin/leads/report"]').size).to eq(0)
+      expect(document.css('input[name="include_captacoes"]').size).to eq(0)
+    end
+
+    it "exibe o botao de relatorio com permissao de relatorios de leads" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil com relatorio #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_101,
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "lead_reports" => { "view" => true }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "com-relatorio-#{SecureRandom.hex(6)}@salute.test")
+      sign_in user
+
+      get admin_leads_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(response).to have_http_status(:ok)
+      expect(document.at_css('a[href*="/admin/leads/report"]')).to be_present
+      expect(document.at_css('input[name="include_captacoes"]')).to be_present
+    end
+
     it "renderiza apenas o primeiro lote de 5 leads por coluna no kanban" do
       base_time = Time.zone.parse("2026-08-06 12:00:00")
       default_status = Lead.default_status(tenant: admin.tenant)
@@ -968,6 +1009,22 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/report" do
+    it "bloqueia exportacao sem permissao de relatorios de leads" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil report bloqueado #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_102,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "report-bloqueado-#{SecureRandom.hex(6)}@salute.test")
+      sign_in user
+
+      get report_admin_leads_path(format: :xlsx)
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
     it "exporta leads filtrados e inclui captacoes quando solicitado" do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Cliente Relatorio", status: "Em Atendimento")
       LeadActivity.create!(

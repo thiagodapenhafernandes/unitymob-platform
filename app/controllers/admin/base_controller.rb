@@ -307,6 +307,7 @@ class Admin::BaseController < ApplicationController
       respond_to do |format|
         format.html { redirect_to admin_root_path, alert: "Você não tem permissão para acessar esta área." }
         format.json { render json: { error: "forbidden" }, status: :forbidden }
+        format.any { head :forbidden }
       end
     end
   end
