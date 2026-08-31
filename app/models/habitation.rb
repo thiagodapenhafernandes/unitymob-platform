@@ -2306,7 +2306,7 @@ class Habitation < ApplicationRecord
   def default_title
     parts = []
     parts << categoria if categoria.present?
-    parts << "#{dormitorios_qtd} dormitórios" if dormitorios_qtd > 0
+    parts << "#{dormitorios_qtd} dormitórios" if dormitorios_qtd.to_i.positive?
     parts << "em #{bairro}" if bairro.present?
     parts << cidade if cidade.present?
     parts.join(' ')

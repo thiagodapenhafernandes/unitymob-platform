@@ -877,6 +877,17 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(notes_card).to be_present
     end
 
+    it "renderiza o detalhe quando ha imovel recente sem titulo e sem dormitorios" do
+      create(:habitation, tenant: admin.tenant, titulo_anuncio: nil, dormitorios_qtd: nil, categoria: "Apartamento", bairro: "Centro", codigo: "SEM-TITULO")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead com seletor de proposta", status: "Em Atendimento")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead com seletor de proposta")
+      expect(response.body).to include("SEM-TITULO")
+    end
+
     it "agenda atividade e atualiza o painel operacional via Turbo Stream" do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
 
@@ -1384,6 +1395,20 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(lead.reload.manager_qualification_status).to be_nil
     end
 
+    it "renderiza erro de atualização via Turbo sem exigir template turbo_stream" do
+      pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Triagem")
+      create(:lead_pipeline_stage_policy, tenant: admin.tenant, lead_pipeline_stage: stage, qualification_enabled: true, qualification_options: %w[qualified])
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+
+      patch admin_lead_path(lead),
+            params: { lead: { manager_qualification_status: "disqualified" } },
+            headers: { "ACCEPT" => Mime[:turbo_stream].to_s }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include(lead.name)
+    end
+
     it "filtra leads com divergência de qualificação quando a etapa permite fila" do
       pipeline = create(:lead_pipeline, tenant: admin.tenant)
       divergence_stage = create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: "Conferência")
@@ -1831,7 +1856,7 @@ RSpec.describe "Admin::Leads", type: :request do
       }.to change(WhatsappConversation, :count).by(1)
 
       conversation = WhatsappConversation.last
-      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation))
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, lead_id: lead.id))
       expect(conversation.lead).to eq(lead)
       expect(conversation.contact_phone).to eq("5547999990001")
     end
@@ -1844,7 +1869,7 @@ RSpec.describe "Admin::Leads", type: :request do
       }.to change(WhatsappConversation, :count).by(1)
 
       conversation = WhatsappConversation.last
-      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation))
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, lead_id: lead.id))
       expect(conversation.lead).to eq(lead)
       expect(conversation.business_scoped_user_id).to eq("US.LEAD.4")
       expect(conversation.contact_phone).to eq("5547999990004")
@@ -1856,7 +1881,7 @@ RSpec.describe "Admin::Leads", type: :request do
       post open_whatsapp_conversation_admin_lead_path(lead), params: { workspace: "focus" }
 
       conversation = WhatsappConversation.last
-      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, workspace: "focus"))
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, lead_id: lead.id, workspace: "focus"))
       expect(conversation.lead).to eq(lead)
     end
 
@@ -1988,7 +2013,7 @@ RSpec.describe "Admin::Leads", type: :request do
       }.to change(WhatsappConversation, :count).by(1)
 
       conversation = WhatsappConversation.last
-      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation))
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, lead_id: lead.id))
       expect(conversation.lead).to eq(lead)
       expect(conversation.contact_phone).to eq("5547999990031")
     ensure

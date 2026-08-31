@@ -38,6 +38,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(JSON.parse(response.body)).to include("error" => "O catálogo administrativo não possui resposta JSON para esta rota.")
   end
 
+  it "responde Accept JSON do catalogo com erro controlado" do
+    get admin_habitations_path, headers: { "Accept" => "application/json" }
+
+    expect(response).to have_http_status(:not_acceptable)
+    expect(JSON.parse(response.body)).to include("error" => "O catálogo administrativo não possui resposta JSON para esta rota.")
+  end
+
   it "exibe de/para no resumo do imóvel quando o preço de venda foi reduzido" do
     habitation = create(
       :habitation,
@@ -3259,7 +3266,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     agent = create(:admin_user, email: "agent-forged-status-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)
     sale = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Venda", codigo: "STATUS-VENDA-#{SecureRandom.hex(6)}")
-    custom = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Vendido reservado personalizado", codigo: "STATUS-CUSTOM-#{SecureRandom.hex(6)}")
+    custom = build(:habitation, tenant: agent.tenant, admin_user: agent, status: "Vendido reservado personalizado", codigo: "STATUS-CUSTOM-#{SecureRandom.hex(6)}")
+    custom.save!(validate: false)
     sign_out admin
     sign_in agent
 
