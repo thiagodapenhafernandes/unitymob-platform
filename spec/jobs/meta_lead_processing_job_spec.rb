@@ -54,6 +54,19 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(attributes[:phone]).to eq("21990872427")
   end
 
+  it "ignora campo de whatsapp com texto livre e usa phone_number oficial" do
+    attributes = described_class.new.send(:extract_lead_attributes, {
+      "field_data" => [
+        { "name" => "confirme_seu_whatsapp;", "values" => ["Jesus Cristo"] },
+        { "name" => "full_name", "values" => ["Vinicius_Lima"] },
+        { "name" => "phone_number", "values" => ["+554791456154"] },
+        { "name" => "email", "values" => ["viniciuslimaalz9@gmail.com"] }
+      ]
+    })
+
+    expect(attributes[:phone]).to eq("+554791456154")
+  end
+
   it "usa fallback por valor quando o campo de telefone vem com rotulo nao padronizado" do
     attributes = described_class.new.send(:extract_lead_attributes, {
       "field_data" => [

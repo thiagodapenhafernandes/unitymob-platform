@@ -170,7 +170,7 @@ class MetaLeadProcessingJob < ApplicationJob
   end
 
   def extract_phone(field_data)
-    extract_field(field_data, [
+    phone_keys = [
       "phone_number",
       "phone",
       "whatsapp",
@@ -179,7 +179,17 @@ class MetaLeadProcessingJob < ApplicationJob
       "tel",
       "celular",
       "mobile"
-    ]).presence || extract_phone_from_values(field_data)
+    ]
+
+    field_data.each do |field|
+      field_name = normalize_field_name(field["name"])
+      next unless phone_keys.any? { |key| field_name.include?(key) }
+
+      phone = Array(field["values"]).find { |value| phone_like_value?(value) }
+      return phone if phone.present?
+    end
+
+    extract_phone_from_values(field_data)
   end
 
   def extract_phone_from_values(field_data)
