@@ -7,6 +7,7 @@
   appointments = lead.appointments.upcoming.limit(20)
   proposals = lead.proposals.ordered.limit(20)
   lead_labels = lead.labels_for(current_admin_user)
+  contact_history_activities = lead.activities.where(kind: "note").recent.limit(40)
   proposal_habitations = can?(:manage, :comercial) ? current_tenant.habitations.order(updated_at: :desc).limit(500) : []
   new_proposal = lead.proposals.new(habitation_id: lead.property_id, admin_user: current_admin_user, validade: 7.days.from_now.to_date)
   archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered
@@ -42,161 +43,25 @@
     </section>
   <% end %>
 
-  <section id="lead-pwa-agenda" class="lead-pwa-detail__panel lead-operational-section lead-operational-section--agenda">
-    <div class="lead-operational-section__header">
-      <span class="lead-operational-section__title"><i class="bi bi-calendar-event ax-ico"></i> Agenda</span>
-      <span class="lead-operational-section__actions">
-        <span class="ax-badge ax-badge--gray"><%= appointments.size %></span>
-        <% if can?(:manage, :comercial) %>
-          <%= render "admin/leads/schedule_activity_modal",
-                lead: lead,
-                modal_id: "scheduleActivityPwaSection#{lead.id}",
-                trigger_label: nil,
-                trigger_class: "ax-ico-btn",
-                trigger_icon: "plus-lg",
-                trigger_title: "Agendar atividade" %>
-        <% end %>
-      </span>
-    </div>
-    <% if appointments.any? %>
-      <% appointments.first(6).each do |appointment| %>
-        <div class="lead-operational-row">
-          <span class="lead-operational-row__body">
-            <strong><%= appointment.title %></strong>
-            <span><%= appointment.kind_label %> · <%= l(appointment.starts_at, format: :short) %></span>
-          </span>
-          <% if can?(:manage, :comercial) %>
-            <%= render "admin/appointments/form_modal",
-                  appointment: appointment,
-                  lead: lead,
-                  modal_id: "editAppointmentPwa#{appointment.id}",
-                  trigger_label: nil,
-                  trigger_class: "ax-ico-btn",
-                  trigger_icon: "pencil",
-                  trigger_title: "Editar agenda" %>
-          <% end %>
-        </div>
-      <% end %>
-    <% else %>
-      <p class="lead-pwa-detail__empty">Nada agendado.</p>
-    <% end %>
-  </section>
-
-  <section id="lead-pwa-tarefas" class="lead-pwa-detail__panel lead-operational-section lead-operational-section--tasks">
-    <div class="lead-operational-section__header">
-      <span class="lead-operational-section__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span>
-      <span class="lead-operational-section__actions">
-        <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
-        <% if can?(:manage, :comercial) %>
-          <%= render "admin/tasks/form_modal",
-                modal_id: "newTaskLeadPwaSection#{lead.id}",
-                lead: lead,
-                trigger_label: nil,
-                trigger_class: "ax-ico-btn",
-                trigger_title: "Nova tarefa" %>
-        <% end %>
-      </span>
-    </div>
-    <div class="lead-detail-task-stack">
-      <% if open_tasks.any? %>
-        <% open_tasks.first(6).each do |task| %>
-          <% badge = task_badge(task) %>
-          <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if next_task && task.id == next_task.id %><%= " lead-detail-task-row--alert" if badge[:color] == "red" %>">
-            <% if can?(:manage, :comercial) && task.pendente? %>
-              <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
-                <i class="bi bi-circle" aria-hidden="true"></i>
-              <% end %>
-            <% else %>
-              <span></span>
-            <% end %>
-            <span class="lead-detail-task-row__body">
-              <strong><%= task.title %></strong>
-              <span><%= task.kind_label %><%= " · #{l(task.due_at, format: :short)}" if task.due_at.present? %></span>
-            </span>
-            <span class="tw-inline-flex tw-items-center tw-gap-1">
-              <span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span>
-              <% if can?(:manage, :comercial) %>
-                <%= render "admin/tasks/form_modal",
-                      modal_id: "editTaskPwa#{task.id}",
-                      lead: lead,
-                      task: task,
-                      trigger_label: nil,
-                      trigger_class: "ax-ico-btn",
-                      trigger_title: "Editar tarefa" %>
-              <% end %>
-            </span>
-          </div>
-        <% end %>
-      <% else %>
-        <p class="lead-pwa-detail__empty">Nenhuma tarefa pendente.</p>
-      <% end %>
-    </div>
-  </section>
-
-  <section id="lead-pwa-etiquetas" class="lead-pwa-detail__panel lead-operational-section lead-operational-section--labels">
-    <div class="lead-operational-section__header">
-      <span class="lead-operational-section__title"><i class="bi bi-tags ax-ico"></i> Etiquetas</span>
-      <span class="lead-operational-section__actions">
-        <span class="ax-badge ax-badge--gray"><%= lead_labels.size %></span>
-        <%= render "admin/lead_labels/button", lead: lead, trigger_label: nil, trigger_class: "ax-ico-btn", trigger_icon: "plus-lg", icon_only: true %>
-      </span>
-    </div>
-    <% if lead_labels.any? %>
-      <%= render "admin/lead_labels/chips", lead: lead, labels: lead_labels %>
-    <% else %>
-      <p class="lead-pwa-detail__empty">Nenhuma etiqueta aplicada.</p>
-    <% end %>
-  </section>
-
-  <section id="lead-pwa-propostas" class="lead-pwa-detail__panel lead-operational-section lead-operational-section--proposals">
-    <div class="lead-operational-section__header">
-      <span class="lead-operational-section__title"><i class="bi bi-file-earmark-text ax-ico"></i> Propostas</span>
-      <span class="lead-operational-section__actions">
-        <span class="ax-badge ax-badge--gray"><%= proposals.size %></span>
-        <% if can?(:manage, :comercial) %>
-          <%= render "admin/proposals/form_modal",
-                modal_id: "newProposalPwaSection#{lead.id}",
-                proposal: new_proposal,
-                lead: lead,
-                habitations: proposal_habitations,
-                trigger_label: nil,
-                trigger_class: "ax-ico-btn",
-                trigger_icon: "plus-lg",
-                trigger_title: "Nova proposta" %>
-        <% end %>
-      </span>
-    </div>
-    <div class="lead-pwa-proposal-list">
-      <% if proposals.any? %>
-        <% proposals.each do |proposal| %>
-          <div class="lead-pwa-proposal-item">
-            <span class="lead-pwa-proposal-item__body">
-              <strong>R$ <%= number_with_precision(proposal.valor, precision: 2, delimiter: ".", separator: ",") %></strong>
-              <span class="lead-pwa-proposal-item__meta">
-                <span class="ax-badge ax-badge--<%= proposal_badge_color(proposal) %>"><%= proposal.status_label %></span>
-                <% if proposal.validade.present? %><span>Validade <%= l(proposal.validade, format: "%d/%m/%Y") %></span><% end %>
-              </span>
-            </span>
-            <div class="lead-pwa-proposal-item__actions">
-              <% if can?(:manage, :comercial) %>
-                <%= render "admin/proposals/form_modal",
-                      modal_id: "editProposalPwa#{proposal.id}",
-                      proposal: proposal,
-                      lead: lead,
-                      habitations: proposal_habitations,
-                      trigger_label: nil,
-                      trigger_class: "ax-ico-btn",
-                      trigger_icon: "pencil",
-                      trigger_title: "Editar proposta" %>
-              <% end %>
-              <%= link_to public_proposal_path(proposal.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
-              <%= link_to pdf_admin_proposal_path(proposal), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
-            </div>
-          </div>
-        <% end %>
-      <% else %>
-        <p class="lead-pwa-detail__empty">Nenhuma proposta.</p>
-      <% end %>
-    </div>
-  </section>
+  <%= render "admin/leads/operational_sections",
+        lead: lead,
+        anchor_prefix: "lead-pwa",
+        namespace: "PwaSection#{lead.id}",
+        section_class: "lead-pwa-detail__panel",
+        empty_class: "lead-pwa-detail__empty",
+        schedule_modal_id: "scheduleActivityPwaSection#{lead.id}",
+        edit_appointment_modal_prefix: "editAppointmentPwa",
+        new_task_modal_id: "newTaskLeadPwaSection#{lead.id}",
+        edit_task_modal_prefix: "editTaskPwa",
+        new_proposal_modal_id: "newProposalPwaSection#{lead.id}",
+        edit_proposal_modal_prefix: "editProposalPwa",
+        open_tasks: open_tasks,
+        next_task: next_task,
+        appointments: appointments,
+        proposals: proposals,
+        lead_labels: lead_labels,
+        contact_history_activities: contact_history_activities,
+        contact_history_modal_id: "leadLogContactHistoryPwaSection#{lead.id}",
+        new_proposal: new_proposal,
+        proposal_habitations: proposal_habitations %>
 <% end %>

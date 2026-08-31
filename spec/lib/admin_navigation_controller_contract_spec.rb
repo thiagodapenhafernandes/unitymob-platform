@@ -10,4 +10,13 @@ RSpec.describe "Admin navigation controller contract" do
     expect(before_cache_handler).to include("window.queueMicrotask")
     expect(before_cache_handler).not_to include("this.hideNow()")
   end
+
+  it "keeps the preloader bound to real Turbo render events instead of timing guesses" do
+    expect(controller_source).to include('document.addEventListener("turbo:before-render", this.boundBeforeRender)')
+    expect(controller_source).to include("handleTurboLoad()")
+    expect(controller_source).to include("if (this.isTurboPreview()) return")
+    expect(controller_source).to include("this.afterNextPaint(() => this.handlePageReady())")
+    expect(controller_source).not_to include("SHOW_DELAY_MS")
+    expect(controller_source).not_to include("MIN_VISIBLE_MS")
+  end
 end
