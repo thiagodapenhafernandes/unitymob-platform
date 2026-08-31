@@ -444,7 +444,7 @@ class Admin::LeadsController < Admin::BaseController
         end
         format.turbo_stream do
           load_show_context
-          render :show, status: :unprocessable_entity
+          render :show, formats: [:html], status: :unprocessable_entity
         end
         format.json { render json: { error: @lead.errors.full_messages.to_sentence }, status: :unprocessable_entity }
       end
@@ -459,7 +459,7 @@ class Admin::LeadsController < Admin::BaseController
         end
         format.turbo_stream do
           load_show_context
-          render :show, status: :unprocessable_entity
+          render :show, formats: [:html], status: :unprocessable_entity
         end
         format.json { render json: { error: @lead.errors.full_messages.to_sentence }, status: :unprocessable_entity }
       end
@@ -495,7 +495,7 @@ class Admin::LeadsController < Admin::BaseController
         end
         format.turbo_stream do
           load_show_context
-          render :show, status: :unprocessable_entity
+          render :show, formats: [:html], status: :unprocessable_entity
         end
         format.json { render json: { errors: @lead.errors.full_messages }, status: :unprocessable_entity }
       end
@@ -552,9 +552,8 @@ class Admin::LeadsController < Admin::BaseController
     check_permission!(:view, :whatsapp_inbox)
 
     conversation = find_or_create_whatsapp_conversation_for!(@lead)
-    route_options = {}
+    route_options = { lead_id: @lead.id }
     route_options[:workspace] = "focus" if params[:workspace].to_s == "focus"
-    route_options[:lead_id] = @lead.id if conversation.lead_id != @lead.id
     destination = admin_whatsapp_conversation_path(conversation, route_options)
     redirect_to destination
   rescue ArgumentError => e
@@ -2123,8 +2122,7 @@ class Admin::LeadsController < Admin::BaseController
 
     if inbox_attendance && lead.whatsapp_recipient.present?
       conversation = find_or_create_whatsapp_conversation_for!(lead)
-      route_options = {}
-      route_options[:lead_id] = lead.id if conversation.lead_id != lead.id
+      route_options = { lead_id: lead.id }
       redirect_to admin_whatsapp_conversation_path(conversation, route_options)
     elsif LeadSetting.instance(tenant: lead.tenant).open_whatsapp_on_click? && lead.direct_whatsapp_url.present?
       redirect_to lead.direct_whatsapp_url, allow_other_host: true

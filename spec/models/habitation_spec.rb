@@ -119,6 +119,12 @@ RSpec.describe Habitation, type: :model do
 
       expect(habitation.title).to eq(habitation.display_title)
     end
+
+    it "monta titulo padrao quando a quantidade de dormitorios esta vazia" do
+      habitation = build(:habitation, titulo_anuncio: nil, categoria: "Apartamento", dormitorios_qtd: nil, bairro: "Centro", cidade: "Balneário Camboriú")
+
+      expect(habitation.display_title).to eq("Apartamento em Centro Balneário Camboriú")
+    end
   end
 
   describe "#display_description" do

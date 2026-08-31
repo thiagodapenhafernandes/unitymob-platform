@@ -167,6 +167,7 @@ class Admin::HabitationsController < Admin::BaseController
     respond_to do |format|
       format.html
       format.json { render json: { error: "O catálogo administrativo não possui resposta JSON para esta rota." }, status: :not_acceptable }
+      format.any { head :not_acceptable }
     end
   end
 
