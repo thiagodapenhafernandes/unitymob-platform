@@ -203,6 +203,21 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(names).to include(proprietor.name)
   end
 
+  it "prioriza busca por telefone quando consulta com DDI tambem casa emails placeholder" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    existing = create(:proprietor, tenant: admin.tenant, name: "Gabriel", phone_primary: "55 (47) 98826-3418", city: "Balneário")
+    create_list(:proprietor, 13, tenant: admin.tenant, email: "5541999320202@naotememail.com")
+
+    get quick_search_admin_proprietors_path,
+        params: { q: "55 (47) 98826-3418" },
+        headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    payload = JSON.parse(response.body).fetch("proprietors")
+    expect(payload.map { |row| row["id"] }).to contain_exactly(existing.id)
+  end
+
   it "bloqueia busca rápida para usuário sem gerenciar captações" do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
       profile.update!(

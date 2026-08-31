@@ -175,7 +175,7 @@ module Admin
           matches =
             if digits.present?
               phone_matches = quick_search_phone_scope(scope, query)
-              text_matches.or(phone_matches)
+              digits.length >= 8 ? phone_matches : text_matches.or(phone_matches)
             else
               text_matches
             end
