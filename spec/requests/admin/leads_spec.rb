@@ -809,16 +809,17 @@ RSpec.describe "Admin::Leads", type: :request do
       document = Nokogiri::HTML(response.body)
       pwa_detail = document.at_css(".lead-pwa-detail")
       expect(pwa_detail).to be_present
-      expect(pwa_detail.text).to include("Lead Detalhe PWA", "Ações do lead", "Retornar para o cliente", "Imóveis de interesse", "PWA-001", "Links gerados", "Inteligência de Interesse")
+      expect(pwa_detail.text).to include("Lead Detalhe PWA", "Ações do lead", "Retornar para o cliente", "Imóveis de interesse", "PWA-001", "Links gerados")
       expect(pwa_detail.text).to include("Histórico de contatos", "Registrar contato", "Anotação interna", "Cliente pediu retorno no fim da tarde.", "Etiquetas", "Contato")
+      expect(pwa_detail.text).not_to include("Inteligência de Interesse")
       expect(pwa_detail.text).not_to include("Adicionar anotação")
       expect(pwa_detail.text).not_to include("Conversa")
       expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_nil
       expect(pwa_detail.at_css(".lead-whatsapp-card")).to be_nil
       expect(document.at_css(".lead-show-workspace .lead-whatsapp-card")).to be_present
       expect(pwa_detail.at_css("#lead-pwa-tarefas .lead-detail-task-row")).to be_present
-      expect(pwa_detail.at_css("turbo-frame##{ActionView::RecordIdentifier.dom_id(lead, :pwa_interest_intelligence)}")).to be_present
       expect(pwa_detail.at_css("form[action='#{log_contact_admin_lead_path(lead)}']")).to be_present
+      expect(pwa_detail.text.index("Histórico de contatos")).to be < pwa_detail.text.index("Propostas")
       expect(document.at_css("form[action='#{toggle_favorite_admin_lead_path(lead)}']")).to be_present
       desktop_heading = document.at_css(".lead-show-workspace .ax-workspace-heading")
       expect(desktop_heading).to be_present
@@ -843,13 +844,15 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
       operation_card = document.at_css(".lead-show-workspace .lead-next-action-card")
-      notes_card = document.css(".lead-show-workspace .lead-next-action-card").find { |card| card.text.include?("Histórico de contatos") }
+      action_hub = operation_card&.at_css(".lead-action-hub")
 
       expect(operation_card).to be_present
+      expect(action_hub).to be_present
       expect(operation_card.text).to include("Ações do lead", "Tarefa", "Agendar", "Proposta")
-      expect(operation_card.to_html).not_to include("Registrar contato")
-      expect(operation_card.css(".lead-operational-section__title").map(&:text).join(" ")).to include("Agenda", "Tarefas", "Etiquetas", "Propostas")
+      expect(action_hub.text).not_to include("Contato")
+      expect(operation_card.css(".lead-operational-section__title").map(&:text).join(" ")).to include("Agenda", "Tarefas", "Etiquetas", "Histórico de contatos", "Propostas")
       expect(operation_card.to_html).to include("Visita marcada", "Ligar para cliente", "Urgente", "R$ 850.000,00")
+      expect(operation_card.text.index("Histórico de contatos")).to be < operation_card.text.index("Propostas")
       agenda_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Agenda") }
       tasks_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Tarefas") }
       labels_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Etiquetas") }
@@ -874,7 +877,6 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(operation_card.css("#newProposalLeadSidebar")).to be_empty
       expect(operation_card.to_html).not_to include("newProposalLeadAction")
       expect(operation_card.to_html).not_to include("Criar a primeira")
-      expect(notes_card).to be_present
     end
 
     it "renderiza o detalhe quando ha imovel recente sem titulo e sem dormitorios" do
@@ -2047,7 +2049,7 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/:id" do
-    it "carrega inteligencia de interesse via frame lazy e preserva status de compartilhamento dos imoveis" do
+    it "preserva status de compartilhamento dos imoveis sem renderizar inteligencia no detalhe" do
       property = create(:habitation, tenant: admin.tenant, codigo: "SENT-001")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin)
       lead.property_interests.create!(tenant: admin.tenant, habitation: property)
@@ -2062,8 +2064,9 @@ RSpec.describe "Admin::Leads", type: :request do
       get admin_lead_path(lead)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("SENT-001", "Interessado", "Carregando sinais")
-      expect(response.body).to include(interest_intelligence_admin_lead_path(lead))
+      expect(response.body).to include("SENT-001", "Interessado")
+      expect(response.body).not_to include("Carregando sinais")
+      expect(response.body).not_to include(interest_intelligence_admin_lead_path(lead))
     end
 
     it "renderiza a inteligencia de interesse no endpoint lazy" do

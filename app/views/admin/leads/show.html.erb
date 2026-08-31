@@ -1609,19 +1609,6 @@
   detail_conversion = lead_conversion_summary(@lead)
   detail_phone = @lead.display_phone.to_s.gsub(/[^0-9+]/, "")
   detail_whatsapp_url = @lead.direct_whatsapp_url
-  detail_interest_intelligence_locals = if @interest_simulation
-    {
-      lead: @lead,
-      profile: @interest_profile,
-      profile_incomplete: @interest_profile_incomplete,
-      matches: @interest_matches,
-      navigation_events: @interest_navigation_events,
-      property_interests: @interest_property_interests,
-      settings: @interest_settings,
-      simulation: true,
-      embedded: true
-    }
-  end
 %>
 
 <section class="lead-pwa-detail" aria-label="Detalhe do lead no PWA">
@@ -1767,73 +1754,6 @@
           <% end %>
         <% end %>
       </div>
-    <% end %>
-  </section>
-
-  <section class="lead-pwa-detail__panel lead-pwa-interest-intelligence">
-    <div class="lead-pwa-detail__section-title">
-      <span>Inteligência de Interesse</span>
-      <small>lazy</small>
-    </div>
-    <% if detail_interest_intelligence_locals %>
-      <%= render "admin/leads/interest_intelligence", **detail_interest_intelligence_locals %>
-    <% else %>
-      <%= turbo_frame_tag dom_id(@lead, :pwa_interest_intelligence),
-            src: interest_intelligence_admin_lead_path(@lead),
-            loading: "lazy" do %>
-        <div class="lead-interest-empty">
-          <i class="bi bi-stars"></i>
-          <div>
-            <strong>Carregando sinais</strong>
-            <p>A inteligência será calculada sem travar a abertura do lead.</p>
-          </div>
-        </div>
-      <% end %>
-    <% end %>
-  </section>
-
-  <section class="lead-pwa-detail__panel lead-pwa-detail__notes-panel">
-    <div class="lead-pwa-detail__section-title lead-pwa-detail__notes-head">
-      <span class="lead-pwa-detail__notes-title">
-        <i class="bi bi-journal-text"></i>
-        <span>Histórico de contatos</span>
-      </span>
-      <span class="lead-pwa-detail__notes-count"><%= @contact_history_activities.size %></span>
-    </div>
-    <%= render "admin/leads/log_contact_modal",
-          lead: @lead,
-          modal_id: "leadLogContactHistoryPwa#{@lead.id}",
-          trigger_label: "Registrar contato",
-          trigger_class: "lead-pwa-detail__note-toggle",
-          trigger_icon: "plus-lg",
-          trigger_title: "Registrar contato" %>
-
-    <% if @contact_history_activities.any? %>
-      <div class="lead-pwa-detail__notes-timeline">
-        <% @contact_history_activities.each_with_index do |note, index| %>
-          <% body = note.meta("body").to_s.strip.presence %>
-          <div class="lead-pwa-detail__note-item">
-            <div class="lead-pwa-detail__note-line">
-              <span class="lead-pwa-detail__note-dot"><i class="bi bi-pencil-square"></i></span>
-              <% unless index == @contact_history_activities.size - 1 %><span class="lead-pwa-detail__note-rail"></span><% end %>
-            </div>
-            <article class="lead-pwa-detail__note-card">
-              <div class="lead-pwa-detail__note-meta">
-                <span><i class="bi bi-clock"></i><%= l(note.created_at, format: "%d/%m/%Y %H:%M") %></span>
-                <span><%= lead_contact_kind_label(note) %></span>
-                <% if lead_contact_result_label(note).present? %>
-                  <span><%= lead_contact_result_label(note) %></span>
-                <% end %>
-              </div>
-              <div class="lead-pwa-detail__note-body">
-                <%= simple_format(body || "Contato sem descrição registrada.") %>
-              </div>
-            </article>
-          </div>
-        <% end %>
-      </div>
-    <% else %>
-      <p class="lead-pwa-detail__empty lead-pwa-detail__notes-empty">Nenhum contato registrado.</p>
     <% end %>
   </section>
 
@@ -2122,15 +2042,6 @@
 
   <%# ===== Coluna direita ===== %>
   <div>
-    <%# ===== Blocos ax-card: próxima ação, corretor e inteligência ===== %>
-    <%
-      interest_enabled = @interest_settings&.enabled?
-      interest_badge = if !interest_enabled
-        "Desativada"
-      else
-        "Carregando"
-      end
-    %>
     <%# ===== Bloco: Operação do lead ===== %>
     <div class="ax-card lead-next-action-card tw-mb-4">
       <div class="ax-card__header">
@@ -2161,216 +2072,27 @@
                 close_deal_form_id: "lead_close_deal_desktop_#{@lead.id}" %>
         </div>
 
-        <div class="lead-view-divider"></div>
+        <%= render "admin/leads/operational_sections",
+              lead: @lead,
+              anchor_prefix: "lead-desktop",
+              namespace: "DesktopSection#{@lead.id}",
+              divider_class: "lead-view-divider",
+              schedule_modal_id: "scheduleActivitySection#{@lead.id}",
+              edit_appointment_modal_prefix: "editAppointmentLead",
+              new_task_modal_id: "newTaskLeadSection#{@lead.id}",
+              edit_task_modal_prefix: "editTaskLead",
+              new_proposal_modal_id: "newProposalLeadSection#{@lead.id}",
+              edit_proposal_modal_prefix: "editProposal",
+              open_tasks: open_tasks,
+              next_task: @next_task,
+              appointments: @appointments,
+              proposals: @proposals,
+              lead_labels: @lead.labels_for(current_admin_user),
+              contact_history_activities: @contact_history_activities,
+              contact_history_modal_id: "leadLogContactHistoryDesktopSection#{@lead.id}",
+              new_proposal: @new_proposal,
+              proposal_habitations: @proposal_habitations %>
 
-        <section id="lead-desktop-agenda" class="lead-operational-section lead-operational-section--agenda">
-          <div class="lead-operational-section__header">
-            <span class="lead-operational-section__title"><i class="bi bi-calendar-event ax-ico"></i> Agenda</span>
-            <span class="lead-operational-section__actions">
-              <span class="ax-badge ax-badge--gray"><%= @appointments.size %></span>
-              <% if can?(:manage, :comercial) %>
-                <%= render "admin/leads/schedule_activity_modal",
-                      lead: @lead,
-                      modal_id: "scheduleActivitySection#{@lead.id}",
-                      trigger_label: nil,
-                      trigger_class: "ax-ico-btn",
-                      trigger_icon: "plus-lg",
-                      trigger_title: "Agendar atividade" %>
-              <% end %>
-            </span>
-          </div>
-          <div class="tw-grid tw-gap-2">
-            <% if @appointments.any? %>
-              <% @appointments.first(6).each do |a| %>
-                <div class="lead-operational-row">
-                  <span class="lead-operational-row__body">
-                    <strong><%= a.title %></strong>
-                    <span><%= a.kind_label %> · <%= l(a.starts_at, format: :short) %><%= " · #{a.location}" if a.location.present? %></span>
-                  </span>
-                  <% if can?(:manage, :comercial) %>
-                    <%= render "admin/appointments/form_modal",
-                          appointment: a,
-                          lead: @lead,
-                          modal_id: "editAppointmentLead#{a.id}",
-                          trigger_label: nil,
-                          trigger_class: "ax-ico-btn",
-                          trigger_icon: "pencil",
-                          trigger_title: "Editar agenda" %>
-                  <% end %>
-                </div>
-              <% end %>
-            <% else %>
-              <p class="ax-page-subtitle tw-m-0">Nada agendado.</p>
-            <% end %>
-          </div>
-        </section>
-
-        <div class="lead-view-divider"></div>
-
-        <section id="lead-desktop-tarefas" class="lead-operational-section lead-operational-section--tasks">
-          <div class="lead-operational-section__header">
-            <span class="lead-operational-section__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span>
-            <span class="lead-operational-section__actions">
-              <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
-              <% if can?(:manage, :comercial) %>
-                <%= render "admin/tasks/form_modal",
-                      modal_id: "newTaskLeadSection#{@lead.id}",
-                      lead: @lead,
-                      trigger_label: nil,
-                      trigger_class: "ax-ico-btn",
-                      trigger_title: "Nova tarefa" %>
-              <% end %>
-            </span>
-          </div>
-          <div class="lead-detail-task-stack">
-            <% if open_tasks.any? %>
-              <% open_tasks.first(6).each do |t| %>
-                <% b = task_badge(t) %>
-                <div class="lead-detail-task-row<%= " lead-detail-task-row--next" if @next_task && t.id == @next_task.id %><%= " lead-detail-task-row--alert" if b[:color] == "red" %>">
-                  <% if can?(:manage, :comercial) && t.pendente? %>
-                    <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{t.title}" } do %>
-                      <i class="bi bi-circle" aria-hidden="true"></i>
-                    <% end %>
-                  <% else %>
-                    <span></span>
-                  <% end %>
-                  <span class="lead-detail-task-row__body">
-                    <strong><%= t.title %></strong>
-                    <span>
-                      <%= t.kind_label %>
-                      <% if t.due_at.present? %>
-                        · <%= l(t.due_at, format: :short) %>
-                      <% end %>
-                    </span>
-                  </span>
-                  <span class="tw-inline-flex tw-items-center tw-gap-1">
-                    <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
-                    <% if can?(:manage, :comercial) %>
-                      <%= render "admin/tasks/form_modal",
-                            modal_id: "editTaskLead#{t.id}",
-                            lead: @lead,
-                            task: t,
-                            trigger_label: nil,
-                            trigger_class: "ax-ico-btn",
-                            trigger_title: "Editar tarefa" %>
-                    <% end %>
-                  </span>
-                </div>
-              <% end %>
-            <% else %>
-              <p class="ax-page-subtitle tw-m-0">Nenhuma tarefa pendente.</p>
-            <% end %>
-          </div>
-        </section>
-
-        <div class="lead-view-divider"></div>
-
-        <section id="lead-desktop-etiquetas" class="lead-operational-section lead-operational-section--labels">
-          <div class="lead-operational-section__header">
-            <span class="lead-operational-section__title"><i class="bi bi-tags ax-ico"></i> Etiquetas</span>
-            <span class="lead-operational-section__actions">
-              <% lead_labels = @lead.labels_for(current_admin_user) %>
-              <span class="ax-badge ax-badge--gray"><%= lead_labels.size %></span>
-              <%= render "admin/lead_labels/button", lead: @lead, trigger_label: nil, trigger_class: "ax-ico-btn", trigger_icon: "plus-lg", icon_only: true %>
-            </span>
-          </div>
-          <% if lead_labels.any? %>
-            <%= render "admin/lead_labels/chips", lead: @lead, labels: lead_labels %>
-          <% else %>
-            <p class="ax-page-subtitle tw-m-0">Nenhuma etiqueta aplicada.</p>
-          <% end %>
-        </section>
-
-        <div class="lead-view-divider"></div>
-
-        <section id="lead-desktop-propostas" class="lead-operational-section lead-operational-section--proposals">
-          <div class="lead-operational-section__header">
-            <span class="lead-operational-section__title"><i class="bi bi-file-earmark-text ax-ico"></i> Propostas</span>
-            <span class="lead-operational-section__actions">
-              <span class="ax-badge ax-badge--gray"><%= @proposals.size %></span>
-              <% if can?(:manage, :comercial) %>
-                <%= render "admin/proposals/form_modal",
-                      modal_id: "newProposalLeadSection#{@lead.id}",
-                      proposal: @new_proposal,
-                      lead: @lead,
-                      habitations: @proposal_habitations,
-                      trigger_label: nil,
-                      trigger_class: "ax-ico-btn",
-                      trigger_icon: "plus-lg",
-                      trigger_title: "Nova proposta" %>
-              <% end %>
-            </span>
-          </div>
-          <div class="tw-grid tw-gap-2">
-            <% if @proposals.any? %>
-              <% @proposals.each do |p| %>
-                <div class="lead-proposal-item">
-                  <div class="tw-min-w-0">
-                    <div class="ax-strong tw-truncate">R$ <%= number_with_precision(p.valor, precision: 2, delimiter: ".", separator: ",") %></div>
-                    <div><span class="ax-badge ax-badge--<%= proposal_badge_color(p) %>"><%= p.status_label %></span></div>
-                  </div>
-                  <div class="tw-flex tw-gap-1">
-                    <% if can?(:manage, :comercial) %>
-                      <%= render "admin/proposals/form_modal",
-                            modal_id: "editProposal#{p.id}",
-                            proposal: p,
-                            lead: @lead,
-                            habitations: @proposal_habitations,
-                            trigger_label: nil,
-                            trigger_class: "ax-ico-btn",
-                            trigger_icon: "pencil",
-                            trigger_title: "Editar proposta" %>
-                    <% end %>
-                    <%= link_to public_proposal_path(p.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
-                    <%= link_to pdf_admin_proposal_path(p), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
-                    <% if can?(:manage, :comercial) && p.status == "rascunho" %>
-                      <%= button_to send_proposal_admin_proposal_path(p), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Marcar enviada" do %><i class="bi bi-send"></i><% end %>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-            <% else %>
-              <p class="ax-page-subtitle tw-m-0">Nenhuma proposta.</p>
-            <% end %>
-          </div>
-        </section>
-
-      </div>
-    </div>
-
-    <div class="ax-card lead-next-action-card tw-mb-4">
-      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
-        <span class="ax-card__title"><i class="bi bi-journal-text ax-ico"></i> Histórico de contatos</span>
-        <span class="ax-badge ax-badge--gray"><%= @contact_history_activities.size %></span>
-      </div>
-      <div class="ax-card__body">
-        <div class="tw-mb-3">
-          <%= render "admin/leads/log_contact_modal",
-                lead: @lead,
-                modal_id: "leadLogContactHistoryDesktop#{@lead.id}",
-                trigger_label: "Registrar contato",
-                trigger_class: "ax-btn ax-btn--sm",
-                trigger_icon: "plus-lg",
-                trigger_title: "Registrar contato" %>
-        </div>
-        <% if @contact_history_activities.any? %>
-          <div class="tw-grid tw-gap-2">
-            <% @contact_history_activities.first(6).each do |note| %>
-              <% body = note.meta("body").to_s.strip.presence %>
-              <div class="lead-operational-row">
-                <span class="lead-operational-row__body">
-                  <strong><%= lead_contact_kind_label(note) %> · <%= l(note.created_at, format: :short) %></strong>
-                  <% if lead_contact_result_label(note).present? %>
-                    <small><%= lead_contact_result_label(note) %></small>
-                  <% end %>
-                  <span><%= truncate(body || "Contato sem descrição registrada.", length: 120) %></span>
-                </span>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <p class="ax-page-subtitle tw-m-0">Nenhum contato registrado.</p>
-        <% end %>
       </div>
     </div>
 
@@ -2406,32 +2128,6 @@
       </div>
     </div>
 
-    <%# ===== Bloco: Inteligência de Interesse + Imóveis compatíveis ===== %>
-    <div class="ax-card lead-next-action-card">
-      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
-        <span class="ax-card__title"><i class="bi bi-graph-up-arrow ax-ico"></i> Inteligência de Interesse</span>
-        <span class="ax-badge ax-badge--gray"><%= interest_badge %></span>
-      </div>
-      <div class="ax-card__body">
-        <% if detail_interest_intelligence_locals %>
-          <%= render "admin/leads/interest_intelligence", **detail_interest_intelligence_locals %>
-        <% else %>
-          <%= turbo_frame_tag dom_id(@lead, :interest_intelligence),
-                src: interest_intelligence_admin_lead_path(@lead),
-                loading: "lazy" do %>
-            <div class="lead-interest-card">
-              <div class="lead-interest-empty">
-                <i class="bi bi-hourglass-split"></i>
-                <div>
-                  <strong>Carregando sinais</strong>
-                  <p>A tela do lead já pode ser usada enquanto a inteligência calcula em segundo plano.</p>
-                </div>
-              </div>
-            </div>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
   </div>
 </div>
 

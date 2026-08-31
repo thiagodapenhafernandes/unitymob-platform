@@ -3,14 +3,6 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["overlay", "title", "detail"]
 
-  // Só mostra o overlay se a navegação passar deste tempo (evita flash em
-  // navegação rápida servida do cache do Turbo).
-  static SHOW_DELAY_MS = 150
-  // Uma vez visível, fica pelo menos esse tempo — sem isso, navegações que
-  // demoram só um pouco mais que o SHOW_DELAY_MS (bem comuns aqui) faziam o
-  // overlay aparecer e sumir quase junto, um "pisca" na página de origem
-  // antes de ir pra página escolhida.
-  static MIN_VISIBLE_MS = 260
   // Failsafe: se turbo:load/render nunca chegar (visit cancelado/erro/lento),
   // esconde o overlay sozinho em vez de deixá-lo preso até o reload.
   static FAILSAFE_MS = 10000
@@ -23,9 +15,10 @@ export default class extends Controller {
     this.boundClick = this.handleClick.bind(this)
     this.boundSubmit = this.handleSubmit.bind(this)
     this.boundBeforeVisit = this.handleTurboBeforeVisit.bind(this)
+    this.boundBeforeRender = this.handleTurboBeforeRender.bind(this)
     this.boundBeforeFrameRender = this.handleTurboBeforeFrameRender.bind(this)
     this.boundRender = this.handleTurboRender.bind(this)
-    this.boundLoad = this.handlePageReady.bind(this)
+    this.boundLoad = this.handleTurboLoad.bind(this)
     this.boundSubmitEnd = this.handleTurboSubmitEnd.bind(this)
     this.boundBeforeCache = this.handleTurboBeforeCache.bind(this)
     this.boundPageShow = this.handlePageReady.bind(this)
@@ -34,6 +27,7 @@ export default class extends Controller {
     document.addEventListener("click", this.boundClick, true)
     document.addEventListener("submit", this.boundSubmit, true)
     document.addEventListener("turbo:before-visit", this.boundBeforeVisit)
+    document.addEventListener("turbo:before-render", this.boundBeforeRender)
     document.addEventListener("turbo:before-frame-render", this.boundBeforeFrameRender)
     document.addEventListener("turbo:load", this.boundLoad)
     document.addEventListener("turbo:render", this.boundRender)
@@ -55,6 +49,7 @@ export default class extends Controller {
     document.removeEventListener("click", this.boundClick, true)
     document.removeEventListener("submit", this.boundSubmit, true)
     document.removeEventListener("turbo:before-visit", this.boundBeforeVisit)
+    document.removeEventListener("turbo:before-render", this.boundBeforeRender)
     document.removeEventListener("turbo:before-frame-render", this.boundBeforeFrameRender)
     document.removeEventListener("turbo:load", this.boundLoad)
     document.removeEventListener("turbo:render", this.boundRender)
@@ -63,7 +58,6 @@ export default class extends Controller {
     document.removeEventListener("turbo:fetch-request-error", this.boundNavError)
     document.removeEventListener("turbo:frame-missing", this.boundNavError)
     window.removeEventListener("pageshow", this.boundPageShow)
-    window.clearTimeout(this.minVisibleTimer)
     if (!document.documentElement.classList.contains("ax-admin-is-loading")) {
       this.hideNow()
     }
@@ -73,28 +67,36 @@ export default class extends Controller {
     const link = event.target.closest("a[href]")
     if (link && this.isPrimaryMobileNavigationLink(link)) {
       if (this.shouldShowForPrimaryMobileNavigationLink(link, event)) {
-        this.showSoon(link.dataset.adminNavigationLabel || "Carregando página...")
+        this.show(link.dataset.adminNavigationLabel || "Carregando página...")
       }
       return
     }
 
     if (!link || !this.shouldShowForLink(link, event)) return
 
-    this.showSoon(link.dataset.adminNavigationLabel || "Carregando página...")
+    this.show(link.dataset.adminNavigationLabel || "Carregando página...")
   }
 
   handleSubmit(event) {
     const form = event.target
     if (!(form instanceof HTMLFormElement) || !this.shouldShowForForm(form)) return
 
-    this.showSoon(form.dataset.adminNavigationLabel || "Processando...")
+    this.show(form.dataset.adminNavigationLabel || "Processando...")
   }
 
   handleTurboBeforeVisit(event) {
     const targetUrl = event.detail?.url
     if (!targetUrl || !this.isWorkspaceUrl(targetUrl)) return
 
-    this.showSoon("Carregando página...")
+    this.show("Carregando página...")
+  }
+
+  handleTurboBeforeRender() {
+    if (!document.documentElement.classList.contains("ax-admin-is-loading")) return
+
+    if (this.hasDetailTarget) {
+      this.detailTarget.textContent = "Finalizando interface"
+    }
   }
 
   handleTurboBeforeFrameRender(event) {
@@ -112,10 +114,16 @@ export default class extends Controller {
   }
 
   handleTurboRender() {
-    if (document.documentElement.hasAttribute("data-turbo-preview")) return
+    if (this.isTurboPreview()) return
 
     this.markRendered()
-    window.requestAnimationFrame(() => this.handlePageReady())
+    this.afterNextPaint(() => this.handlePageReady())
+  }
+
+  handleTurboLoad() {
+    if (this.isTurboPreview()) return
+
+    this.handlePageReady()
   }
 
   handleTurboSubmitEnd() {
@@ -168,14 +176,10 @@ export default class extends Controller {
     this.updateMetrics()
   }
 
-  showSoon(message) {
+  show(message) {
     window.clearTimeout(this.showTimer)
     this.navigationStartedAt = performance.now()
     this.pageRendered = false
-    this.showTimer = window.setTimeout(() => this.show(message), this.constructor.SHOW_DELAY_MS)
-  }
-
-  show(message) {
     if (!this.hasOverlayTarget) return
 
     if (this.hasTitleTarget) this.titleTarget.textContent = message
@@ -199,18 +203,6 @@ export default class extends Controller {
     this.showTimer = null
     this.pageRendered = false
     delete document.documentElement.dataset.adminNavigationCacheToken
-
-    if (this.hasOverlayTarget && !this.overlayTarget.hidden) {
-      const shownAt = Number(this.overlayTarget.dataset.shownAt || 0)
-      const elapsed = shownAt ? performance.now() - shownAt : Infinity
-      const remaining = this.constructor.MIN_VISIBLE_MS - elapsed
-
-      if (remaining > 0) {
-        window.clearTimeout(this.minVisibleTimer)
-        this.minVisibleTimer = window.setTimeout(() => this.hideNow(), remaining)
-        return
-      }
-    }
 
     window.clearTimeout(this.failsafeTimer)
     this.failsafeTimer = null
@@ -256,6 +248,14 @@ export default class extends Controller {
         }
       }))
     }
+  }
+
+  afterNextPaint(callback) {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(callback))
+  }
+
+  isTurboPreview() {
+    return document.documentElement.hasAttribute("data-turbo-preview")
   }
 
   clientNavigationDuration() {
