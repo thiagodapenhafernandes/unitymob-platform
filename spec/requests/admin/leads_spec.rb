@@ -952,6 +952,126 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("SEM-TITULO")
     end
 
+    it "resume entregas de notificacao push e aceite do corretor na linha do tempo do usuario comum" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Notificado", phone: "11999990001", status: "Em Atendimento")
+      subscription = PushSubscription.create!(
+        admin_user: admin,
+        endpoint: "https://web.push.apple.com/Q/#{SecureRandom.hex(12)}",
+        p256dh: "p256dh-test",
+        auth: "auth-test",
+        platform: "web",
+        user_agent: "Mobile Safari"
+      )
+
+      PushDeliveryEvent.record!(
+        event_type: "provider_accepted",
+        admin_user_id: admin.id,
+        push_subscription: subscription,
+        lead_id: lead.id,
+        tag: "lead-#{lead.id}-#{admin.id}",
+        endpoint: subscription.endpoint,
+        provider_status: "201",
+        metadata: { channel: "push", notification_context: "distribution", admin_user_name: admin.name }
+      )
+      PushDeliveryEvent.record!(
+        event_type: "device_received",
+        admin_user_id: admin.id,
+        push_subscription: subscription,
+        lead_id: lead.id,
+        tag: "lead-#{lead.id}-#{admin.id}",
+        endpoint: subscription.endpoint,
+        metadata: { channel: "push" }
+      )
+      LeadActivity.log!(
+        lead: lead,
+        kind: "notification_sent",
+        metadata: { channel: "push", admin_user_name: admin.name }
+      )
+      LeadActivity.log!(
+        lead: lead,
+        kind: "accepted",
+        metadata: { by: admin.name, via: "push", secure_link: true }
+      )
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      timeline = document.at_css("#leadTimelineSection")
+
+      expect(timeline.text).to include("Aviso enviado ao corretor")
+      expect(timeline.text).to include("Notificação recebida no aparelho")
+      expect(timeline.text).to include("pelo app instalado pelo Safari")
+      expect(timeline.text).to include("Lead atendido")
+      expect(timeline.text).to include("canal notificação do aplicativo")
+      expect(timeline.text).not_to include("Envio da notificação confirmado")
+      expect(timeline.text).not_to include("confirmação 201")
+    end
+
+    it "mostra detalhes de envio quando o admin esta acessando como o corretor" do
+      impersonator = build_stubbed(:admin_user, name: "Admin do Sistema")
+      allow_any_instance_of(Admin::LeadsController).to receive(:impersonating_admin_user?).and_return(true)
+      allow_any_instance_of(Admin::LeadsController).to receive(:impersonation_admin_user).and_return(impersonator)
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Auditoria", phone: "11999990002", status: "Em Atendimento")
+      subscription = PushSubscription.create!(
+        admin_user: admin,
+        endpoint: "https://web.push.apple.com/Q/#{SecureRandom.hex(12)}",
+        p256dh: "p256dh-test",
+        auth: "auth-test",
+        platform: "web",
+        user_agent: "Mobile Safari"
+      )
+
+      PushDeliveryEvent.record!(
+        event_type: "provider_accepted",
+        admin_user_id: admin.id,
+        push_subscription: subscription,
+        lead_id: lead.id,
+        tag: "lead-#{lead.id}-#{admin.id}",
+        endpoint: subscription.endpoint,
+        provider_status: "201",
+        metadata: { channel: "push", notification_context: "distribution", admin_user_name: admin.name }
+      )
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      timeline = Nokogiri::HTML(response.body).at_css("#leadTimelineSection")
+
+      expect(timeline.text).to include("Envio da notificação confirmado")
+      expect(timeline.text).to include("Para #{admin.name}")
+      expect(timeline.text).to include("pelo app instalado pelo Safari")
+      expect(timeline.text).to include("confirmação 201")
+    end
+
+    it "mostra redistribuicao de forma resumida para o usuario comum" do
+      first_broker = create(:admin_user, tenant: admin.tenant, name: "Primeiro Corretor")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Redistribuido", phone: "11999990003", status: "Em Atendimento")
+
+      LeadActivity.create!(
+        lead: lead,
+        kind: "distributed",
+        metadata: { admin_user_name: first_broker.name, rule_name: "Equipe vendas" },
+        created_at: 15.minutes.ago,
+        updated_at: 15.minutes.ago
+      )
+      LeadActivity.create!(
+        lead: lead,
+        kind: "distributed",
+        metadata: { admin_user_name: admin.name, rule_name: "Equipe vendas" },
+        created_at: 5.minutes.ago,
+        updated_at: 5.minutes.ago
+      )
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      timeline = Nokogiri::HTML(response.body).at_css("#leadTimelineSection")
+
+      expect(timeline.text).to include("Lead enviado para corretor")
+      expect(timeline.text).to include("Lead redistribuído")
+    end
+
     it "agenda atividade e atualiza o painel operacional via Turbo Stream" do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: "Em Atendimento")
 

@@ -312,7 +312,8 @@ class Admin::LeadsController < Admin::BaseController
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
 
     # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
-    @timeline = @lead.activities.recent.limit(60)
+    @push_delivery_events = push_delivery_events_for(@lead)
+    @timeline = lead_timeline_events_for(@lead, @push_delivery_events)
     @contact_history_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
@@ -324,7 +325,6 @@ class Admin::LeadsController < Admin::BaseController
     @archive_reason_options = archive_reason_options_for(@lead)
     @funnel_statuses = Lead.status_options
     load_lead_whatsapp_context
-    @push_delivery_events = push_delivery_events_for(@lead)
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
     @shared_interest_property_ids = @lead.shared_property_ids
     @shared_interest_property_statuses = @lead.shared_property_statuses
@@ -2865,7 +2865,8 @@ class Admin::LeadsController < Admin::BaseController
     @page_title = "Lead: #{@lead.name}"
     @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
-    @timeline = @lead.activities.recent.limit(60)
+    @push_delivery_events = push_delivery_events_for(@lead)
+    @timeline = lead_timeline_events_for(@lead, @push_delivery_events)
     @contact_history_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
@@ -2877,7 +2878,6 @@ class Admin::LeadsController < Admin::BaseController
     @archive_reason_options = archive_reason_options_for(@lead)
     @funnel_statuses = Lead.status_options(pipeline: @lead.lead_pipeline || @selected_pipeline, tenant: current_tenant)
     load_lead_whatsapp_context
-    @push_delivery_events = push_delivery_events_for(@lead)
     @property_share_collections = @lead.ai_property_share_collections.includes(:admin_user, :habitations).order(created_at: :desc).limit(12)
     @shared_interest_property_ids = @lead.shared_property_ids
     @shared_interest_property_statuses = @lead.shared_property_statuses
@@ -2892,6 +2892,13 @@ class Admin::LeadsController < Admin::BaseController
       .includes(:admin_user, :push_subscription)
       .order(created_at: :desc)
       .limit(20)
+  end
+
+  def lead_timeline_events_for(lead, push_delivery_events)
+    (lead.activities.recent.limit(60).to_a + push_delivery_events.to_a)
+      .sort_by(&:created_at)
+      .reverse
+      .first(80)
   end
 
   def load_proposal_modal_context

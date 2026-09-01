@@ -182,7 +182,16 @@ module Leads
         tag: "lead-#{@lead.id}-#{@corretor.id}",
         urgency: "high",
         ttl: 900,
-        require_interaction: true
+        require_interaction: true,
+        lead_id: @lead.id,
+        metadata: {
+          channel: "push",
+          notification_context: shark_tank_push? ? "shark_tank" : "distribution",
+          rule_id: @rule&.id,
+          rule_name: @rule&.name,
+          admin_user_id: @corretor.id,
+          admin_user_name: @corretor.name
+        }
       )
       if sent.to_i.zero?
         log_notification(:push, :skipped, reason: "no_active_subscription")

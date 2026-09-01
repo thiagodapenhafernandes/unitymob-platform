@@ -1836,14 +1836,17 @@
 
 <%
   # Timeline: mensagens cruas de WhatsApp ficam fora do padrão (já vivem no
+  timeline_detailed = respond_to?(:impersonating_admin_user?) && impersonating_admin_user?
   # painel de conversa acima); aqui entram só os marcos.
   wa_timeline_kinds = %w[whatsapp_in whatsapp_out]
   timeline_milestones = @timeline.reject do |act|
-    wa_timeline_kinds.include?(act.kind.to_s) ||
+    activity_kind = act.respond_to?(:kind) ? act.kind.to_s : nil
+    wa_timeline_kinds.include?(activity_kind) ||
       # "Lead atribuído" (automação) é espelho do "Distribuído" — não duplicar
-      (act.kind.to_s == "automation_event" && act.metadata.to_h["event"].to_s == "lead_assigned")
+      (activity_kind == "automation_event" && act.metadata.to_h["event"].to_s == "lead_assigned")
   end
-  timeline_wa_events = @timeline.select { |act| wa_timeline_kinds.include?(act.kind.to_s) }
+  timeline_milestones = timeline_milestones.select { |act| lead_timeline_event_visible?(act, detailed: timeline_detailed) }
+  timeline_wa_events = @timeline.select { |act| act.respond_to?(:kind) && wa_timeline_kinds.include?(act.kind.to_s) }
   timeline_visible = timeline_milestones.first(15)
   timeline_rest = timeline_milestones.drop(15)
 %>
@@ -2005,12 +2008,12 @@
           class_name: "lead-timeline-card"
         ) do %>
       <% if timeline_milestones.any? %>
-        <%= render "admin/leads/timeline_entries", entries: timeline_visible %>
+        <%= render "admin/leads/timeline_entries", entries: timeline_visible, detailed: timeline_detailed %>
 
         <% if timeline_rest.any? %>
           <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
             <div hidden data-ax-disclosure-target="content">
-              <%= render "admin/leads/timeline_entries", entries: timeline_rest %>
+              <%= render "admin/leads/timeline_entries", entries: timeline_rest, detailed: timeline_detailed %>
             </div>
             <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
                     data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
@@ -2033,7 +2036,7 @@
             <i class="bi bi-whatsapp ax-ico"></i><span>Mostrar mensagens do WhatsApp (<%= timeline_wa_events.size %>)</span>
           </button>
           <div hidden data-ax-disclosure-target="content" class="tw-mt-3">
-            <%= render "admin/leads/timeline_entries", entries: timeline_wa_events %>
+            <%= render "admin/leads/timeline_entries", entries: timeline_wa_events, detailed: timeline_detailed %>
           </div>
         </div>
       <% end %>
