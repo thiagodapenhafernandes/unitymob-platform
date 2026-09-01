@@ -423,12 +423,40 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Corretor")
       expect(response.body).to include("Imóvel")
       expect(response.body).to include("Contato")
-      expect(response.body).to include("Período")
+      expect(response.body).to include("Entrada: #{I18n.l(3.days.ago.to_date)} a #{I18n.l(Date.current)}")
       document = Nokogiri::HTML(response.body)
       filter_modal = document.at_css("#leadDesktopFilterModal")
       expect(filter_modal.text).to include("Período do lead", "Entrada de", "Entrada até", "Fechado de", "Fechado até")
       expect(filter_modal.css(".lead-filter-date-pair").size).to eq(2)
+      expect(filter_modal.at_css('input[name="start_date"]')["value"]).to eq(3.days.ago.to_date.iso8601)
+      expect(filter_modal.at_css('input[name="end_date"]')["value"]).to eq(Date.current.iso8601)
       expect(response.body).not_to include("Lead Fora do Filtro")
+    end
+
+    it "nao inclui leads anteriores ao campo entrada de" do
+      broker = create(:admin_user, tenant: admin.tenant, email: "broker-range-#{SecureRandom.hex(8)}@salute.test")
+      inside = create(:lead, tenant: admin.tenant, name: "Lead Dentro do Periodo", phone: "11999999999")
+      inside.update_columns(admin_user_id: broker.id, created_at: Time.zone.parse("2026-08-24 09:00"), updated_at: Time.zone.parse("2026-08-24 09:00"))
+      outside = create(:lead, tenant: admin.tenant, name: "Lead Dia Vinte", phone: "11888888888")
+      outside.update_columns(admin_user_id: broker.id, created_at: Time.zone.parse("2026-08-20 10:00"), updated_at: Time.zone.parse("2026-08-20 10:00"))
+
+      get admin_leads_path(
+        view: "list",
+        lead_tab: "all",
+        broker_id: broker.id,
+        start_date: "2026-08-24",
+        end_date: "2026-08-31"
+      )
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(inside.name)
+      expect(response.body).not_to include(outside.name)
+      expect(response.body).to include("Entrada: 24/08/2026 a 31/08/2026")
+
+      document = Nokogiri::HTML(response.body)
+      filter_modal = document.at_css("#leadDesktopFilterModal")
+      expect(filter_modal.at_css('input[name="start_date"]')["value"]).to eq("2026-08-24")
+      expect(filter_modal.at_css('input[name="end_date"]')["value"]).to eq("2026-08-31")
     end
 
     it "filtra leads por tentativa sem sucesso e elegibilidade de redistribuicao" do

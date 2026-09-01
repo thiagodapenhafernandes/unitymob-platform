@@ -9,7 +9,7 @@ RSpec.describe Whatsapp::LeadConversationTemplates do
 
       templates = described_class.names.map { |name| described_class.for(tenant: tenant, integration: integration, name: name) }
 
-      expect(templates.map(&:name)).to eq(["lead_followup", "lead_appointment_reminder", "lead_task_reminder"])
+      expect(templates.map(&:name)).to eq(["lead_followup", "lead_appointment_reminder", "lead_task_reminder_utility"])
       expect(templates.map(&:language).uniq).to eq(["pt_BR"])
       expect(templates.map(&:header_format).uniq).to eq(["none"])
       expect(templates.flat_map(&:clean_buttons)).to be_empty
@@ -44,13 +44,14 @@ RSpec.describe Whatsapp::LeadConversationTemplates do
       admin = create(:admin_user, tenant: tenant, name: "Karla")
       lead = create(:lead, tenant: tenant, name: "Maria")
       conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990101")
+      starts_at = 2.days.from_now.change(hour: 15, min: 30, sec: 0)
       Appointment.create!(
         tenant: tenant,
         lead: lead,
         admin_user: admin,
         title: "Visita ao apartamento",
         kind: "visita",
-        starts_at: Time.zone.local(2026, 8, 22, 15, 30),
+        starts_at: starts_at,
         status: "agendado"
       )
 
@@ -60,7 +61,7 @@ RSpec.describe Whatsapp::LeadConversationTemplates do
         "1" => "Maria",
         "2" => "Karla",
         "3" => "Agenda Imóveis",
-        "4" => "22/08 às 15:30",
+        "4" => I18n.l(starts_at, format: "%d/%m às %H:%M"),
         "5" => "Visita - Visita ao apartamento"
       )
     end
@@ -72,7 +73,7 @@ RSpec.describe Whatsapp::LeadConversationTemplates do
       conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990102")
       create(:task, tenant: tenant, lead: lead, admin_user: admin, title: "retornar com proposta")
 
-      values = described_class.variable_values(name: "lead_task_reminder", conversation: conversation, admin_user: admin)
+      values = described_class.variable_values(name: "lead_task_reminder_utility", conversation: conversation, admin_user: admin)
 
       expect(values).to include(
         "1" => "João",

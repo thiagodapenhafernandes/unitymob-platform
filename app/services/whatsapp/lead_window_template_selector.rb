@@ -51,7 +51,7 @@ module Whatsapp
     def task_template
       return unless lead && Whatsapp::LeadConversationTemplates.task_for(lead)
 
-      approved_conversation_template("lead_task_reminder", "Usar lembrete de tarefa", "Há uma tarefa pendente vinculada ao lead.")
+      approved_conversation_template("lead_task_reminder_utility", "Usar lembrete de tarefa", "Há uma tarefa pendente vinculada ao lead.")
     end
 
     def followup_template

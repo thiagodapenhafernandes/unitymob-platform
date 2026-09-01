@@ -26,12 +26,12 @@ module Whatsapp
         example_values: ["Maria", "Thiago", "Conexão Imobiliária", "20/08 às 15:00", "visita ao imóvel"]
       ),
       Definition.new(
-        name: "lead_task_reminder",
+        name: "lead_task_reminder_utility",
         label: "Lembrete de tarefa",
-        description: "Retomada baseada em tarefa ou retorno combinado no lead.",
+        description: "Lembrete operacional baseado em tarefa pendente no lead.",
         category: "UTILITY",
         purpose: :task,
-        body: "Oi, {{1}}! Aqui é {{2}}, da {{3}}. Estou retomando o atendimento conforme combinado: {{4}}. Quando puder, me responda por aqui.",
+        body: "Oi, {{1}}. Aqui é {{2}}, da {{3}}. Atividade registrada: {{4}}. Para concluir ou reagendar, responda esta mensagem.",
         example_values: ["Maria", "Thiago", "Conexão Imobiliária", "enviar os documentos da proposta"]
       )
     ].freeze

@@ -44,7 +44,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("lead_alert")
     expect(response.body).to include("lead_followup")
     expect(response.body).to include("lead_appointment_reminder")
-    expect(response.body).to include("lead_task_reminder")
+    expect(response.body).to include("lead_task_reminder_utility")
     expect(response.body).to include("Sincronizar templates")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")
