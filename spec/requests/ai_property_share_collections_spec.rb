@@ -77,13 +77,42 @@ RSpec.describe "AI property share collections", type: :request do
     expect(response.body).to include("shared-property-preview__hero-link", 'data-fancybox="shared-property-preview')
     expect(response.body).to include("shared-property-preview__photo-count", "2 fotos")
     expect(response.body).to include("Abrir galeria de fotos", "data-gallery-open")
-    expect(response.body).to include("shared-property-preview__gallery-hidden-link")
-    expect(response.body).to include(%(href="#{Storage::PublicPropertyPhoto.public_base_url}/spec/property-2.jpg"))
+    document = Nokogiri::HTML.fragment(response.body)
+    gallery_href = document.at_css(".shared-property-preview__gallery-hidden-link")["href"]
+    expect(gallery_href).to end_with("/spec/property-2.jpg")
     expect(response.body).not_to include("/rails/active_storage/representations")
     expect(response.body).to include("shared-property-preview__description")
     expect(response.body).to include("<p>Empreendimento Piscina infantil")
     expect(response.body).to include("<p>Unidade Living Lavabo</p>")
     expect(response.body).not_to include("-&gt;", "<script>")
+  end
+
+  it "não expõe rua, número ou complemento no preview público da seleção" do
+    collection = create_collection
+    first_property.update!(
+      endereco: "Rua 2550",
+      numero: "600",
+      complemento: "702",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+    first_property.address.update!(
+      logradouro: "Rua 2550",
+      numero: "600",
+      complemento: "702",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    get preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id)
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML.fragment(response.body)
+    location = document.at_css(".shared-property-preview__hero-body p").text.squish
+    expect(location).to eq("Centro - Balneário Camboriú - SC")
+    expect(location).not_to include("Rua 2550", "600", "702")
   end
 
   it "mantém a seleção pública para imóvel comercial mesmo quando ele não está publicado no site" do
