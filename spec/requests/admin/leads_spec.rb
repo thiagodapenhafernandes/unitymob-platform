@@ -584,6 +584,32 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(bottom_nav.text).not_to include("Fila")
     end
 
+    it "mostra no header a posicao real do usuario dentro da fila operacional" do
+      broker_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Corretor fila #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 8_905,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      first_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Tayana Agne")
+      second_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Fábio Luís Avallone")
+      current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Renata Santos Cardoso")
+      rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas", active: true)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_agent, position: 97)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: second_agent, position: 98)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: current_user, position: 99)
+      sign_out admin
+      sign_in current_user
+
+      get admin_leads_path(view: "list")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".lead-desktop-queue").text).to include("3º", "na fila")
+      expect(document.at_css(".lead-pwa-queue").text).to include("3º", "na fila")
+    end
+
     it "lista apenas filas de distribuicao em que o usuario logado participa" do
       broker_profile = Profile.create!(
         tenant: admin.tenant,
