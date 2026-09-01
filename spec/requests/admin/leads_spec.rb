@@ -537,6 +537,14 @@ RSpec.describe "Admin::Leads", type: :request do
         expect(tabs_by_label.fetch("Todos").text).to include("3")
         expect(document.at_css(".lead-pwa-clear-filter")).to be_present
         expect(document.at_css(".lead-pwa-clear-filter")["href"]).to eq(admin_leads_path(view: "list", mobile_tab: "future"))
+
+        get admin_leads_path(view: "list", mobile_tab: "future", q: "Rraquel")
+
+        expect(response).to have_http_status(:ok)
+        document = Nokogiri::HTML(response.body)
+        tabs_by_label = document.css(".lead-pwa-tab").index_by { |tab| tab.at_css(".lead-pwa-tab__label")&.text&.strip }
+        expect(tabs_by_label.fetch("Futuras").text).to include("1/2")
+        expect(response.body).to include("Raquel Futura")
       end
     end
 
@@ -572,7 +580,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(bottom_nav.css(".ax-pwa-bottom-nav__item[data-admin-navigation-ignore]")).to be_empty
       expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
-      expect(document.at_css(".lead-pwa-queue").text).to include("6º", "na fila")
+      expect(document.at_css(".lead-pwa-queue").text).to include("1º", "na fila")
       expect(bottom_nav.text).not_to include("Fila")
     end
 
@@ -606,14 +614,14 @@ RSpec.describe "Admin::Leads", type: :request do
         webhook_tags: [ExternalLeadIntegration::WEBHOOK_TAG]
       )
 
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 1)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: second_agent, position: 2)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: third_agent, position: 3)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: fourth_agent, position: 4)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: fifth_agent, position: 5)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: current_user, position: 6)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: seventh_agent, position: 7)
-      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: eighth_agent, position: 8)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 97)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: second_agent, position: 98)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: third_agent, position: 99)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: fourth_agent, position: 100)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: fifth_agent, position: 101)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: current_user, position: 102)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: seventh_agent, position: 103)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: eighth_agent, position: 104)
       create(:distribution_rule_agent, distribution_rule: other_rule, admin_user: outside_user, position: 1)
       create(:distribution_rule_agent, distribution_rule: internal_rule, admin_user: current_user, position: 1)
       create(:distribution_rule_agent, distribution_rule: internal_rule, admin_user: internal_user, position: 2)
