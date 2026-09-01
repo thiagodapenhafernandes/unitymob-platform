@@ -39,6 +39,15 @@ RSpec.describe Leads::NotificationDispatcher do
       expect(args[:ttl]).to eq(900)
       expect(args[:require_interaction]).to be(true)
       expect(args[:tag]).to eq("lead-#{lead.id}-#{corretor.id}")
+      expect(args[:lead_id]).to eq(lead.id)
+      expect(args[:metadata]).to include(
+        channel: "push",
+        notification_context: "distribution",
+        rule_id: rule.id,
+        rule_name: rule.name,
+        admin_user_id: corretor.id,
+        admin_user_name: corretor.name
+      )
       expect(args[:body]).to eq("Contato novo aguardando atendimento")
       expect(args[:body]).not_to include("Origem")
       expect(args[:body]).not_to include("webhook")

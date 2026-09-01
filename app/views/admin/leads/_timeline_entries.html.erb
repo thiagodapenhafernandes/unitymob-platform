@@ -1,7 +1,8 @@
-<%# Entradas da linha do tempo do lead. locals: entries (coleção de LeadActivity) %>
+<%# Entradas da linha do tempo do lead. locals: entries, detailed (boolean) %>
 <div class="tw-grid tw-gap-0">
+  <% detailed = local_assigns.fetch(:detailed, true) %>
   <% entries.each_with_index do |act, i| %>
-    <% e = timeline_entry(act) %>
+    <% e = timeline_entry(act, detailed: detailed) %>
     <div class="tw-flex tw-gap-3">
       <div class="tw-flex tw-flex-col tw-items-center">
         <span class="lead-timeline-marker"><i class="bi <%= e[:icon] %>"></i></span>

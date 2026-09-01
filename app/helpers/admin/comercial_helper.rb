@@ -36,15 +36,46 @@ module Admin::ComercialHelper
     "interest_reprocessed" => { icon: "bi-stars",          color: "blue",  label: "Interesse reprocessado" }
   }.freeze
 
-  def timeline_entry(activity)
+  SUMMARY_TIMELINE_KINDS = %w[
+    received
+    distributed
+    pocket_expired
+    accepted
+    rejected
+    status_change
+    notification_sent
+    notification_failed
+    notification_skipped
+  ].freeze
+
+  SUMMARY_PUSH_EVENT_TYPES = %w[
+    device_received
+    provider_failed
+    invalid_subscription
+    no_active_subscription
+    push_unavailable
+  ].freeze
+
+  def timeline_entry(activity, detailed: true)
+    return push_delivery_timeline_entry(activity, detailed: detailed) if activity.is_a?(PushDeliveryEvent)
+
     base = TIMELINE_MAP[activity.kind] || { icon: "bi-dot", color: "gray", label: activity.kind.to_s.humanize }
+    base = base.merge(label: timeline_summary_label(activity)) unless detailed
     # "Lead recebido" ganha canal de conversão dinâmico (retroativo: lê o lead).
     if activity.kind.to_s == "received" && activity.lead
       conv = lead_conversion_summary(activity.lead)
-      base = base.merge(icon: conv[:icon], color: conv[:color], label: conv[:label])
+      label = detailed ? conv[:label] : "Lead chegou"
+      base = base.merge(icon: conv[:icon], color: conv[:color], label: label)
     end
-    detail = timeline_detail(activity)
+    detail = timeline_detail(activity, detailed: detailed)
     base.merge(detail: detail, at: activity.created_at)
+  end
+
+  def lead_timeline_event_visible?(activity, detailed: true)
+    return true if detailed
+    return SUMMARY_PUSH_EVENT_TYPES.include?(activity.event_type.to_s) if activity.is_a?(PushDeliveryEvent)
+
+    SUMMARY_TIMELINE_KINDS.include?(activity.kind.to_s)
   end
 
   # Resumo de conversão do lead — canal + origem + detalhes, derivado de
@@ -354,7 +385,7 @@ module Admin::ComercialHelper
     text
   end
 
-  def timeline_detail(activity)
+  def timeline_detail(activity, detailed: true)
     meta = activity.metadata.is_a?(Hash) ? activity.metadata : {}
     case activity.kind
     when "note"        then meta["body"].presence
@@ -365,7 +396,13 @@ module Admin::ComercialHelper
     when "distributed", "assigned_directly"
       who = meta["admin_user_name"].presence || activity.lead&.admin_user&.name
       rule = meta["rule_name"].presence
+      return [("Para #{who}" if who), ("pela fila #{rule}" if rule)].compact.join(" · ").presence unless detailed
+
       [("Para #{who}" if who), ("via regra #{rule}" if rule)].compact.join(" · ").presence
+    when "accepted"
+      accepted_by = meta["by"].presence || activity.lead&.admin_user&.name
+      via = notification_attendance_channel_label(meta["via"])
+      [("Por #{accepted_by}" if accepted_by), ("canal #{via}" if via)].compact.join(" · ").presence
     when "automation_event"
       automation_event_detail(activity, meta)
     when "notification_sent", "notification_failed", "notification_skipped"
@@ -377,16 +414,120 @@ module Admin::ComercialHelper
 
   def notification_activity_detail(meta)
     channel = {
-      "push" => "Push",
+      "push" => "Notificação do aplicativo",
       "whatsapp" => "WhatsApp",
       "email" => "E-mail",
       "webhook" => "Webhook"
     }[meta["channel"].to_s] || meta["channel"].to_s.presence || "Canal"
 
     status_detail = meta["error"].presence || meta["reason"].presence
-    transport = meta["transport"].present? ? "via #{meta['transport']}" : nil
-    target = meta["target"].present? ? "para #{meta['target']}" : nil
+    transport = notification_transport_label(meta["transport"])
+    target_name = meta["admin_user_name"].presence
+    target = target_name.present? ? "para #{target_name}" : nil
     [channel, transport, target, status_detail].compact.join(" · ")
+  end
+
+  def push_delivery_timeline_entry(event, detailed: true)
+    {
+      icon: push_delivery_timeline_icon(event.event_type),
+      color: push_delivery_event_tone(event.event_type),
+      label: push_delivery_timeline_label(event.event_type, detailed: detailed),
+      detail: push_delivery_timeline_detail(event, detailed: detailed),
+      at: event.created_at
+    }
+  end
+
+  def push_delivery_timeline_label(event_type, detailed: true)
+    return push_delivery_summary_label(event_type) unless detailed
+
+    {
+      "provider_accepted" => "Envio da notificação confirmado",
+      "device_received" => "Notificação recebida no aparelho",
+      "provider_failed" => "Notificação não enviada",
+      "invalid_subscription" => "Notificação precisa ser reativada",
+      "no_active_subscription" => "Corretor sem notificação ativada",
+      "push_unavailable" => "Notificação desativada"
+    }[event_type.to_s] || push_delivery_event_label(event_type)
+  end
+
+  def push_delivery_summary_label(event_type)
+    {
+      "device_received" => "Notificação recebida no aparelho",
+      "provider_failed" => "Notificação não enviada",
+      "invalid_subscription" => "Notificação precisa ser reativada",
+      "no_active_subscription" => "Corretor sem notificação ativada",
+      "push_unavailable" => "Notificação desativada"
+    }[event_type.to_s] || "Atualização da notificação"
+  end
+
+  def push_delivery_timeline_icon(event_type)
+    {
+      "provider_accepted" => "bi-send-check",
+      "device_received" => "bi-phone-vibrate",
+      "provider_failed" => "bi-exclamation-triangle",
+      "invalid_subscription" => "bi-phone-x",
+      "no_active_subscription" => "bi-bell-slash",
+      "push_unavailable" => "bi-slash-circle"
+    }[event_type.to_s] || "bi-bell"
+  end
+
+  def push_delivery_timeline_detail(event, detailed: true)
+    meta = event.metadata.is_a?(Hash) ? event.metadata : {}
+    target = event.admin_user&.name.presence || meta["admin_user_name"].presence || event.admin_user&.email
+    channel = push_delivery_channel_label(event)
+    error = event.error_message.present? ? "Motivo: #{event.error_message}" : nil
+    if detailed
+      status = event.provider_status.present? ? "confirmação #{event.provider_status}" : nil
+      return [("Para #{target}" if target), channel, status, error].compact.join(" · ").presence
+    end
+
+    [("Para #{target}" if target), channel, error].compact.join(" · ").presence
+  end
+
+  def timeline_summary_label(activity)
+    return "Lead redistribuído" if activity.kind.to_s == "distributed" && redistributed_timeline_activity?(activity)
+
+    {
+      "distributed" => "Lead enviado para corretor",
+      "pocket_expired" => "Corretor não atendeu no prazo",
+      "accepted" => "Lead atendido",
+      "rejected" => "Lead recusado",
+      "status_change" => "Situação do lead atualizada",
+      "notification_sent" => "Aviso enviado ao corretor",
+      "notification_failed" => "Aviso não enviado",
+      "notification_skipped" => "Aviso não enviado"
+    }[activity.kind.to_s] || TIMELINE_MAP.dig(activity.kind, :label) || activity.kind.to_s.humanize
+  end
+
+  def redistributed_timeline_activity?(activity)
+    return false unless activity.respond_to?(:lead) && activity.lead
+
+    activity.lead.activities.where(kind: "distributed").where("created_at < ?", activity.created_at).exists?
+  end
+
+  def push_delivery_channel_label(event)
+    platform = event.push_subscription&.platform.to_s
+    return "pelo app no iPhone" if platform == "ios"
+    return "pelo app no Android" if platform == "android"
+    return "pelo app instalado pelo Safari" if event.endpoint_host.to_s.include?("web.push.apple.com")
+
+    "pelo app instalado no navegador"
+  end
+
+  def notification_attendance_channel_label(value)
+    {
+      "push" => "notificação do aplicativo",
+      "whatsapp" => "WhatsApp",
+      "email" => "e-mail",
+      "system" => "sistema"
+    }[value.to_s]
+  end
+
+  def notification_transport_label(value)
+    {
+      "tenant" => "pela conta",
+      "global" => "pelo envio padrão"
+    }[value.to_s]
   end
 
   # Detalhe do "Evento observado": para mudança de etapa, mostra a etapa alvo
