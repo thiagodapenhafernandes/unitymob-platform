@@ -42,6 +42,40 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.other_information["meta_integration_user_id"]).to eq(admin.id)
   end
 
+  it "adiciona formulario novo em regra Meta com auto-add antes de criar o lead" do
+    tenant = Tenant.create!(name: "Conta Meta Auto #{SecureRandom.hex(3)}", slug: "conta-meta-auto-#{SecureRandom.hex(3)}")
+    admin = create(:admin_user, :admin, tenant: tenant)
+    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token")
+    create(:meta_facebook_page, user_meta_integration: integration, page_id: "page-auto", access_token: "page-token")
+    rule = create(
+      :distribution_rule,
+      tenant: tenant,
+      source_meta: true,
+      source_site: false,
+      auto_add_forms: true,
+      meta_page_ids: ["page-auto"],
+      meta_forms: []
+    )
+    service = instance_double(
+      Facebook::MetaService,
+      get_lead_details: {
+        "id" => "lead-meta-auto",
+        "field_data" => [
+          { "name" => "full_name", "values" => ["Maria Meta"] },
+          { "name" => "email", "values" => ["maria@example.com"] },
+          { "name" => "phone_number", "values" => ["5547999990000"] }
+        ]
+      }
+    )
+
+    allow(Facebook::MetaService).to receive(:new).with("page-token").and_return(service)
+
+    described_class.perform_now("lead-meta-auto", "page-auto", "form-new-auto")
+
+    expect(rule.reload.meta_forms).to include("form-new-auto")
+    expect(tenant.leads.last.distribution_rule_id).to be_nil
+  end
+
   it "extrai telefone de campos Meta com abreviacoes brasileiras" do
     attributes = described_class.new.send(:extract_lead_attributes, {
       "field_data" => [

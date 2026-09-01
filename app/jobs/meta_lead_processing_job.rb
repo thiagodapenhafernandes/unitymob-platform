@@ -121,6 +121,8 @@ class MetaLeadProcessingJob < ApplicationJob
     product_name = form_record&.name || "Meta Lead (#{form_id})"
 
     Current.set(tenant: tenant) do
+      auto_add_form_to_distribution_rules(tenant, page_id, form_id)
+
       # Idempotência por conta: retries do webhook e fan-out não duplicam.
       if tenant.leads.where("other_information->>'meta_leadgen_id' = ?", lead_id.to_s).exists?
         Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já existe no tenant #{tenant_id} — ignorado."
@@ -156,6 +158,19 @@ class MetaLeadProcessingJob < ApplicationJob
         # after_create_commit (route_lead) disparou pela metade.
         Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já criado concorrentemente no tenant #{tenant_id} — ignorado."
       end
+    end
+  end
+
+  def auto_add_form_to_distribution_rules(tenant, page_id, form_id)
+    return if page_id.blank? || form_id.blank?
+
+    tenant.distribution_rules.where(auto_add_forms: true, source_meta: true).find_each do |rule|
+      next unless Array(rule.meta_page_ids).map(&:to_s).include?(page_id.to_s)
+
+      current_forms = Array(rule.meta_forms).map(&:to_s)
+      next if current_forms.include?(form_id.to_s)
+
+      rule.update!(meta_forms: current_forms + [form_id.to_s])
     end
   end
 
