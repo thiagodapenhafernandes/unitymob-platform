@@ -142,7 +142,7 @@ export default class extends Controller {
       this.resetFields(this.createFormTarget)
       this.finishSelection()
     }, (payload) => {
-      this.redirectDuplicateToSearch(payload, this.createPhoneTarget)
+      return this.confirmDuplicateOwnerCreate(payload)
     })
   }
 
@@ -255,26 +255,28 @@ export default class extends Controller {
     `
   }
 
-  async submitForm(form, url, method, onSuccess, onConflict = null) {
+  async submitForm(form, url, method, onSuccess, onConflict = null, extraData = {}) {
     this.clearError()
     if (this.quickSaving) return false
     this.quickSaving = true
 
     try {
+      const formData = this.formDataFrom(form)
+      Object.entries(extraData).forEach(([key, value]) => formData.append(key, value))
       const response = await fetch(url, {
         method,
         headers: {
           Accept: "application/json",
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || ""
         },
-        body: this.formDataFrom(form)
+        body: formData
       })
       const payload = await response.json()
       if (!response.ok) {
         if (response.status === 409 && payload.proprietor && onConflict) {
           this.showError(this.errorMessage(payload))
-          onConflict(payload)
-          return false
+          this.quickSaving = false
+          return await onConflict(payload)
         }
 
         throw new Error(this.errorMessage(payload))
@@ -559,10 +561,10 @@ export default class extends Controller {
   }
 
   validateQuickFields(prefix) {
-    const missing = this.firstMissingQuickField(prefix)
-    if (missing) {
-      this.showError(this.requireEmailValue ? "Informe nome, telefone, e-mail e cidade." : "Informe nome, telefone e cidade.")
-      missing.focus()
+    const missingFields = this.missingQuickFields(prefix)
+    if (missingFields.length) {
+      this.showError(this.missingQuickFieldsMessage(missingFields))
+      missingFields[0].focus()
       return false
     }
 
@@ -579,11 +581,36 @@ export default class extends Controller {
   }
 
   firstMissingQuickField(prefix) {
+    return this.missingQuickFields(prefix)[0]
+  }
+
+  missingQuickFields(prefix) {
     const fields = prefix === "edit"
       ? [this.editNameTarget, this.editPhoneTarget, this.editCityTarget, ...(this.requireEmailValue ? [this.editEmailTarget] : [])]
       : [this.createNameTarget, this.createPhoneTarget, this.createCityTarget, ...(this.requireEmailValue ? [this.createEmailTarget] : [])]
 
-    return fields.find((field) => !this.hasText(field.value))
+    return fields.filter((field) => !this.hasText(field.value))
+  }
+
+  missingQuickFieldsMessage(fields) {
+    const labels = fields.map((field) => this.quickFieldLabel(field))
+    return `Informe ${this.joinFieldLabels(labels)}.`
+  }
+
+  quickFieldLabel(field) {
+    if ([this.createNameTarget, this.editNameTarget].includes(field)) return "o nome"
+    if ([this.createPhoneTarget, this.editPhoneTarget].includes(field)) return "o telefone"
+    if ([this.createEmailTarget, this.editEmailTarget].includes(field)) return "o e-mail"
+    if ([this.createCityTarget, this.editCityTarget].includes(field)) return "a cidade"
+
+    return "os dados obrigatórios"
+  }
+
+  joinFieldLabels(labels) {
+    if (labels.length <= 1) return labels[0]
+    if (labels.length === 2) return labels.join(" e ")
+
+    return `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}`
   }
 
   focusQuickField(prefix, panel) {
@@ -667,6 +694,20 @@ export default class extends Controller {
       const message = this.errorMessage(payload)
       this.fetchResults().finally(() => this.showError(message))
     }
+  }
+
+  async confirmDuplicateOwnerCreate(payload) {
+    const confirmed = window.confirm(`${this.errorMessage(payload)}\n\nCadastrar um novo titular mesmo assim?`)
+    if (!confirmed) {
+      this.redirectDuplicateToSearch(payload, this.createPhoneTarget)
+      return false
+    }
+
+    return this.submitForm(this.createFormTarget, this.createUrlValue, "POST", (createdPayload) => {
+      this.applyProprietor(createdPayload)
+      this.resetFields(this.createFormTarget)
+      this.finishSelection()
+    }, null, { allow_duplicate_phone: "1" })
   }
 
   searchablePhoneValue(payload, phoneField) {

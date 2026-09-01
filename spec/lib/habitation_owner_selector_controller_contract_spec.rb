@@ -50,4 +50,19 @@ RSpec.describe "habitation owner selector controller" do
     expect(submit_method).to include("this.requestWizardSubmit(event.submitter)")
     expect(source).to include('submitter?.name === "direction" && submitter.value === "back"')
   end
+
+  it "permite confirmar novo titular mesmo quando existe telefone cadastrado" do
+    expect(source).to include("confirmDuplicateOwnerCreate(payload)")
+    expect(source).to include("Cadastrar um novo titular mesmo assim?")
+    expect(source).to include('allow_duplicate_phone: "1"')
+    expect(source).to include("return await onConflict(payload)")
+  end
+
+  it "mostra no erro somente os campos obrigatórios que estão faltando" do
+    expect(source).to include("this.missingQuickFields(prefix)")
+    expect(source).to include("this.missingQuickFieldsMessage(missingFields)")
+    expect(source).to include('return "o e-mail"')
+    expect(source).not_to include("Informe nome, telefone, e-mail e cidade.")
+    expect(source).not_to include("Informe nome, telefone e cidade.")
+  end
 end

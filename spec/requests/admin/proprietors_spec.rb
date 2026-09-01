@@ -298,6 +298,40 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(existing.reload).to have_attributes(name: "Dono Existente", city: "Itajaí")
   end
 
+  it "permite criação rápida de novo titular com telefone repetido quando confirmado explicitamente" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    existing = create(:proprietor, tenant: admin.tenant, name: "Titular Antigo", phone_primary: "(47) 99999-3333", city: "Itajaí")
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: {
+             allow_duplicate_phone: "1",
+             proprietor: {
+               name: "Novo Titular",
+               phone_primary: "55 (47) 99999-3333",
+               email: "novo-titular@example.com",
+               city: "Camboriú"
+             }
+           },
+           headers: { "ACCEPT" => "application/json" }
+    }.to change(Proprietor, :count).by(1)
+
+    expect(response).to have_http_status(:created)
+    payload = JSON.parse(response.body)
+    created = Proprietor.order(:id).last
+    expect(created.id).not_to eq(existing.id)
+    expect(created).to have_attributes(
+      tenant: admin.tenant,
+      name: "Novo Titular",
+      phone_primary: "5547999993333",
+      email: "novo-titular@example.com",
+      city: "Camboriú"
+    )
+    expect(payload).to include("id" => created.id, "name" => "Novo Titular")
+    expect(existing.reload).to have_attributes(name: "Titular Antigo", city: "Itajaí")
+  end
+
   it "valida quantidade de dígitos no telefone da criação rápida" do
     admin = create(:admin_user, :admin)
     sign_in admin

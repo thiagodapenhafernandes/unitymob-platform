@@ -202,7 +202,7 @@ module Admin
 
       phone = permitted[:phone_primary].presence
       phone_digits = Proprietor.normalized_phone(phone)
-      if phone_digits.present?
+      if phone_digits.present? && !allow_duplicate_phone?
         @proprietor = current_tenant.proprietors.with_normalized_phone(phone_digits).order(:id).first
         if @proprietor.present?
           render json: {
@@ -317,6 +317,10 @@ module Admin
       attributes = permitted.slice(:email, :city)
       attributes[:phone_primary] = permitted[:phone_primary] if permitted[:phone_primary].present? && quick_proprietor_phone_blank?(@proprietor)
       attributes
+    end
+
+    def allow_duplicate_phone?
+      ActiveModel::Type::Boolean.new.cast(params[:allow_duplicate_phone])
     end
 
     def quick_property_owner_permission?
