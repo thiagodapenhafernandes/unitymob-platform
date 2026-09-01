@@ -10,14 +10,7 @@
     (habitation.vagas_qtd.to_i.positive? ? "#{habitation.vagas_qtd} vagas" : nil),
     (habitation.public_area_m2.present? ? "#{number_with_precision(habitation.public_area_m2, precision: 1, strip_insignificant_zeros: true)} m²" : nil)
   ].compact
-  address = [
-    habitation.endereco,
-    habitation.numero,
-    habitation.complemento,
-    habitation.public_neighborhood,
-    habitation.cidade,
-    habitation.uf
-  ].compact_blank.join(" · ")
+  address = public_property_area_label(habitation)
 %>
 
 <article class="shared-property-preview">
