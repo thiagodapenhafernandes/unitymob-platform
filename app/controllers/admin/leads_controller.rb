@@ -2712,10 +2712,16 @@ class Admin::LeadsController < Admin::BaseController
   def current_user_distribution_queue_position
     return nil if current_admin_user.blank?
 
-    current_user_distribution_queue_rules
-      .includes(:distribution_rule_agents)
+    rules = current_user_distribution_queue_rules.to_a
+    agents_by_rule_id = DistributionRuleAgent
+      .where(tenant_id: current_tenant.id, distribution_rule_id: rules.map(&:id))
+      .order(:position, :id)
+      .to_a
+      .group_by(&:distribution_rule_id)
+
+    rules
       .map do |rule|
-        agents = rule.distribution_rule_agents.sort_by { |agent| [agent.position.to_i, agent.id.to_i] }
+        agents = agents_by_rule_id[rule.id] || []
         display_queue_position_for_agents(agents, current_admin_user.id)
       end
       .compact
