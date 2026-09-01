@@ -77,6 +77,9 @@ class Admin::LeadsController < Admin::BaseController
       leads.attribution_data::text
     ))
   SQL
+  LEAD_SEARCH_COLUMNS = %w[
+    name email phone client_name client_email client_phone origin product
+  ].freeze
   LEAD_PRICE_SQL = <<~SQL.squish.freeze
     COALESCE(
       NULLIF(habitations.valor_venda_cents, 0) / 100.0,
@@ -205,8 +208,9 @@ class Admin::LeadsController < Admin::BaseController
       .order(:position, :id)
       .group_by(&:distribution_rule_id)
     @queue_positions_by_rule_id = @queue_agents_by_rule_id.transform_values do |agents|
-      agents.find { |agent| agent.admin_user_id == current_admin_user.id }&.position
+      display_queue_position_for_agents(agents, current_admin_user.id)
     end
+    @queue_agent_positions_by_id = display_queue_positions_by_agent_id(@queue_agents_by_rule_id.values.flatten)
     @best_queue_position = @queue_positions_by_rule_id.values.compact.min
     @return_to_path = admin_leads_path(view: current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "list")
     @page_title = "Minhas filas"
@@ -888,13 +892,7 @@ class Admin::LeadsController < Admin::BaseController
   def filtered_lead_scope_for_current_user
     scope = lead_scope_for_current_user
 
-    if @q.present?
-      term = "%#{ActiveRecord::Base.sanitize_sql_like(@q.to_s.strip)}%"
-      scope = scope.where(
-        "leads.name ILIKE :q OR leads.email ILIKE :q OR leads.phone ILIKE :q OR leads.client_name ILIKE :q OR leads.client_email ILIKE :q OR leads.client_phone ILIKE :q OR leads.origin ILIKE :q OR leads.product ILIKE :q",
-        q: term
-      )
-    end
+    scope = apply_lead_search_filter(scope)
 
     scope = scope.where(leads: { lead_pipeline_id: @selected_pipeline.id }) if @selected_pipeline.present?
     scope = apply_status_filter(scope)
@@ -914,6 +912,31 @@ class Admin::LeadsController < Admin::BaseController
     scope = apply_archive_reason_filter(scope)
     scope = apply_closed_at_filter(scope)
     apply_created_at_filter(scope)
+  end
+
+  def apply_lead_search_filter(scope)
+    terms = lead_search_terms(@q)
+    return scope if terms.blank?
+
+    query = terms.each_with_index.map do |_term, index|
+      LEAD_SEARCH_COLUMNS.map { |column| "leads.#{column} ILIKE :q#{index}" }.join(" OR ")
+    end.map { |clause| "(#{clause})" }.join(" OR ")
+    bind_values = terms.each_with_index.to_h do |term, index|
+      [:"q#{index}", "%#{ActiveRecord::Base.sanitize_sql_like(term)}%"]
+    end
+
+    scope.where(query, bind_values)
+  end
+
+  def lead_search_terms(value)
+    query = value.to_s.strip
+    return [] if query.blank?
+
+    terms = [query]
+    compact_query = query.gsub(/[[:space:][:punct:]]+/, "")
+    terms << compact_query if compact_query.length >= 2 && compact_query != query
+    terms << compact_query[1..] if compact_query.length >= 4 && compact_query.match?(/\A[[:alpha:]]+\z/)
+    terms.compact_blank.uniq
   end
 
   def apply_status_filter(scope)
@@ -2692,12 +2715,31 @@ class Admin::LeadsController < Admin::BaseController
   def current_user_distribution_queue_position
     return nil if current_admin_user.blank?
 
-    DistributionRuleAgent
-      .joins(:distribution_rule)
-      .merge(operational_distribution_rules)
-      .where(admin_user_id: current_admin_user.id)
-      .order(Arel.sql("distribution_rule_agents.position ASC, distribution_rule_agents.id ASC"))
-      .pick("distribution_rule_agents.position")
+    operational_distribution_rules
+      .joins(:distribution_rule_agents)
+      .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
+      .distinct
+      .includes(:distribution_rule_agents)
+      .map do |rule|
+        agents = rule.distribution_rule_agents.sort_by { |agent| [agent.position.to_i, agent.id.to_i] }
+        display_queue_position_for_agents(agents, current_admin_user.id)
+      end
+      .compact
+      .min
+  end
+
+  def display_queue_position_for_agents(agents, admin_user_id)
+    index = agents.find_index { |agent| agent.admin_user_id == admin_user_id }
+    index.present? ? index + 1 : nil
+  end
+
+  def display_queue_positions_by_agent_id(agents)
+    agents
+      .group_by(&:distribution_rule_id)
+      .flat_map do |_rule_id, rule_agents|
+        rule_agents.each_with_index.map { |agent, index| [agent.id, index + 1] }
+      end
+      .to_h
   end
 
   def operational_distribution_rules

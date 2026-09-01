@@ -427,9 +427,10 @@
               <%
                 user = agent.admin_user
                 current_agent = agent.admin_user_id == current_admin_user.id
+                display_position = @queue_agent_positions_by_id[agent.id]
               %>
               <article class="lead-queue-agent <%= 'is-current' if current_agent %>">
-                <span class="lead-queue-agent__position"><%= agent.position.present? ? "#{agent.position}º" : "--" %></span>
+                <span class="lead-queue-agent__position"><%= display_position.present? ? "#{display_position}º" : "--" %></span>
                 <div class="lead-queue-agent__copy">
                   <strong><%= user&.name.presence || "Corretor sem nome" %></strong>
                   <span><%= current_agent ? "Você" : user&.email %></span>
