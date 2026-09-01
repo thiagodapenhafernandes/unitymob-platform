@@ -11,7 +11,7 @@ class Admin::DistributionRulesController < Admin::BaseController
   end
 
   def show
-    @agents_queue = @rule.distribution_rule_agents.includes(:admin_user).order(position: :asc)
+    @agents_queue = @rule.distribution_rule_agents.includes(:admin_user).order(position: :asc, id: :asc)
 
     rule_leads = current_tenant.leads.where(distribution_rule_id: @rule.id)
     @leads_total = rule_leads.count

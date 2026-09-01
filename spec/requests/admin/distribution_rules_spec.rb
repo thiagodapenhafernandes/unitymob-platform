@@ -415,9 +415,10 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   end
 
   it "permite reordenar a fila pela tela de detalhe" do
-    first_receiver = create(:admin_user, :admin)
-    second_receiver = create(:admin_user, :admin)
-    rule = create(:distribution_rule)
+    profile = admin.tenant.profiles.find_by!(key: "agent")
+    first_receiver = create(:admin_user, tenant: admin.tenant, profile: profile)
+    second_receiver = create(:admin_user, tenant: admin.tenant, profile: profile)
+    rule = create(:distribution_rule, tenant: admin.tenant)
     first_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_receiver, position: 1)
     second_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: second_receiver, position: 2)
 
@@ -427,6 +428,23 @@ RSpec.describe "Admin::DistributionRules", type: :request do
 
     expect(response).to redirect_to(admin_distribution_rule_path(rule))
     expect(rule.reload.distribution_rule_agents.order(:position).pluck(:id)).to eq([second_agent.id, first_agent.id])
+  end
+
+  it "mostra posicao visual da fila no detalhe da regra" do
+    profile = admin.tenant.profiles.find_by!(key: "agent")
+    first_receiver = create(:admin_user, tenant: admin.tenant, profile: profile, name: "Tayana Agne")
+    second_receiver = create(:admin_user, tenant: admin.tenant, profile: profile, name: "Fábio Luís Avallone")
+    rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas")
+    create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_receiver, position: 97)
+    create(:distribution_rule_agent, distribution_rule: rule, admin_user: second_receiver, position: 98)
+
+    get admin_distribution_rule_path(rule)
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    positions = doc.css(".distribution-rule-show__queue-pos").map { |position| position.text.squish }
+    expect(positions).to eq(%w[1 2])
+    expect(doc.at_css(".distribution-rule-show__queue").text).not_to include("97", "98")
   end
 
   it "mostra as configuracoes principais da regra no detalhe" do

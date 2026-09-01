@@ -142,11 +142,11 @@
           <% if @agents_queue.any? %>
             <%= form_with url: reorder_agents_admin_distribution_rule_path(@rule), method: :patch do %>
               <div class="distribution-rule-show__queue" data-controller="sortable" data-sortable-handle-value=".drag-handle">
-                <% @agents_queue.each do |dra| %>
+                <% @agents_queue.each_with_index do |dra, index| %>
                   <div class="ax-record-item distribution-rule-show__queue-item">
                     <span class="drag-handle distribution-rule-show__queue-handle" title="Arrastar para reordenar" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
                     <%= hidden_field_tag "agent_ids[]", dra.id %>
-                    <span class="distribution-rule-show__queue-pos position-display"><%= dra.position %></span>
+                    <span class="distribution-rule-show__queue-pos position-display"><%= index + 1 %></span>
                     <div class="ax-record-item__copy distribution-rule-show__queue-main">
                       <div class="distribution-rule-show__queue-name">
                         <strong><%= dra.admin_user&.name %></strong>

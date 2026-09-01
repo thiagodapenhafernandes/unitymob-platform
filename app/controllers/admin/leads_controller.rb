@@ -196,11 +196,8 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def distribution_queue
-    @queue_rules = operational_distribution_rules
-      .joins(:distribution_rule_agents)
-      .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
+    @queue_rules = current_user_distribution_queue_rules
       .order(:name)
-      .distinct
 
     @queue_agents_by_rule_id = DistributionRuleAgent
       .where(tenant_id: current_tenant.id, distribution_rule_id: @queue_rules.map(&:id))
@@ -2715,10 +2712,7 @@ class Admin::LeadsController < Admin::BaseController
   def current_user_distribution_queue_position
     return nil if current_admin_user.blank?
 
-    operational_distribution_rules
-      .joins(:distribution_rule_agents)
-      .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
-      .distinct
+    current_user_distribution_queue_rules
       .includes(:distribution_rule_agents)
       .map do |rule|
         agents = rule.distribution_rule_agents.sort_by { |agent| [agent.position.to_i, agent.id.to_i] }
@@ -2740,6 +2734,15 @@ class Admin::LeadsController < Admin::BaseController
         rule_agents.each_with_index.map { |agent, index| [agent.id, index + 1] }
       end
       .to_h
+  end
+
+  def current_user_distribution_queue_rules
+    return current_tenant.distribution_rules.none if current_admin_user.blank?
+
+    operational_distribution_rules
+      .joins(:distribution_rule_agents)
+      .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
+      .distinct
   end
 
   def operational_distribution_rules
