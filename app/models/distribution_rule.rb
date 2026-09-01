@@ -262,13 +262,25 @@ class DistributionRule < ApplicationRecord
     return unless served
 
     max_pos = distribution_rule_agents.where(tenant_id: tenant_id).maximum(:position) || 0
-    served.update(position: max_pos + 1, last_lead_received_at: Time.current)
+    served.update!(position: max_pos + 1, last_lead_received_at: Time.current)
+    normalize_queue_positions!
   end
 
   def mark_agent_served!(admin_user_id)
     distribution_rule_agents
       .where(tenant_id: tenant_id, admin_user_id: admin_user_id)
       .update_all(last_lead_received_at: Time.current, updated_at: Time.current)
+  end
+
+  def normalize_queue_positions!
+    timestamp = Time.current
+    distribution_rule_agents
+      .where(tenant_id: tenant_id)
+      .order(:position, :id)
+      .pluck(:id)
+      .each_with_index do |agent_id, index|
+        distribution_rule_agents.where(id: agent_id).update_all(position: index + 1, updated_at: timestamp)
+      end
   end
 
   DAYS = %w[mon tue wed thu fri sat sun]
