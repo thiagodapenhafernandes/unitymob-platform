@@ -2180,7 +2180,30 @@
   leads_can_manage_statuses = defined?(can?) && can?(:manage, :catalogos)
   leads_can_export_report = defined?(can?) && can?(:view, :lead_reports)
   lead_filter_labels << "Captações no relatório" if leads_can_export_report && @include_captacoes
-  lead_filter_labels << "Período" if @start_date.present? || @end_date.present? || @closed_start_date.present? || @closed_end_date.present?
+  format_lead_filter_date = ->(value) do
+    next if value.blank?
+
+    begin
+      l(Date.iso8601(value.to_s))
+    rescue ArgumentError
+      value.to_s
+    end
+  end
+  lead_filter_period_label = ->(label, start_value, end_value) do
+    formatted_start = format_lead_filter_date.call(start_value)
+    formatted_end = format_lead_filter_date.call(end_value)
+
+    if formatted_start.present? && formatted_end.present?
+      "#{label}: #{formatted_start} a #{formatted_end}"
+    elsif formatted_start.present?
+      "#{label}: desde #{formatted_start}"
+    elsif formatted_end.present?
+      "#{label}: até #{formatted_end}"
+    end
+  end
+  lead_filter_labels << lead_filter_period_label.call("Entrada", @start_date, @end_date)
+  lead_filter_labels << lead_filter_period_label.call("Fechado", @closed_start_date, @closed_end_date)
+  lead_filter_labels.compact!
   lead_active_filter_count = lead_filter_labels.size
   leads_heading_pills << "#{lead_active_filter_count} filtro(s)" if lead_active_filter_count.positive?
 

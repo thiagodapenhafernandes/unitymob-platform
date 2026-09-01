@@ -347,7 +347,7 @@ export default class extends Controller {
     if (templateName === "lead_activation_default") return "Apresentação pronta para envio"
     if (templateName === "lead_followup") return "Retomada pronta para envio"
     if (templateName === "lead_appointment_reminder") return "Lembrete de agenda pronto para envio"
-    if (templateName === "lead_task_reminder") return "Lembrete de tarefa pronto para envio"
+    if (templateName === "lead_task_reminder_utility") return "Lembrete de tarefa pronto para envio"
 
     return "Template pronto para envio"
   }
@@ -358,7 +358,7 @@ export default class extends Controller {
     if (templateName === "lead_activation_default") return "Apresentação pronta"
     if (templateName === "lead_followup") return "Retomada pronta"
     if (templateName === "lead_appointment_reminder") return "Lembrete pronto"
-    if (templateName === "lead_task_reminder") return "Tarefa pronta"
+    if (templateName === "lead_task_reminder_utility") return "Tarefa pronta"
 
     return "Template pronto"
   }
