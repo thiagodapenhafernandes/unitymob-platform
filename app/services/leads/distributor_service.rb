@@ -327,25 +327,7 @@ module Leads
     end
 
     def inside_holding_hours?(rule)
-      return false unless rule.represamento_active?
-      schedule = rule.represamento_schedule
-      return false if schedule.blank?
-
-      now = Time.zone.now
-      current_day_key = DistributionRule::DAYS[(now.wday + 6) % 7]
-      day_config = schedule[current_day_key]
-      return false unless day_config && day_config["active"] == "true"
-
-      start_time = Time.zone.parse("#{now.to_date} #{day_config["start"]}")
-      end_time = Time.zone.parse("#{now.to_date} #{day_config["end"]}")
-
-      if start_time <= end_time
-         now < start_time || now > end_time
-      else
-         now > end_time && now < start_time
-      end
-    rescue
-      false
+      rule.outside_represamento_hours?
     end
   end
 end

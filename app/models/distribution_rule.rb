@@ -280,6 +280,28 @@ class DistributionRule < ApplicationRecord
     end
   end
 
+  def outside_represamento_hours?(time = Time.zone.now)
+    return false unless represamento_active?
+
+    schedule = represamento_schedule
+    return false if schedule.blank?
+
+    current_day_key = DAYS[(time.wday + 6) % 7]
+    day_config = schedule[current_day_key]
+    return false unless day_config && day_config["active"] == "true"
+
+    start_time = Time.zone.parse("#{time.to_date} #{day_config["start"]}")
+    end_time = Time.zone.parse("#{time.to_date} #{day_config["end"]}")
+
+    if start_time <= end_time
+      time < start_time || time > end_time
+    else
+      time > end_time && time < start_time
+    end
+  rescue
+    false
+  end
+
   private
 
   def set_defaults

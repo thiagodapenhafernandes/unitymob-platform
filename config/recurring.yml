@@ -87,6 +87,10 @@ production:
     class: Leads::PocketSweepJob
     queue: default
     schedule: every minute
+  lead_holding_release:
+    class: Leads::HoldingReleaseJob
+    queue: default
+    schedule: every minute
   task_due_reminder:
     class: Tasks::DueReminderJob
     queue: default
