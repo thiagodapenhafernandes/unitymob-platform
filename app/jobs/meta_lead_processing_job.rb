@@ -117,7 +117,7 @@ class MetaLeadProcessingJob < ApplicationJob
 
     reference_page = ordered_candidates(tenant_pages).first
     integration = reference_page.user_meta_integration
-    form_record = integration&.meta_lead_forms&.find_by(form_id: form_id.to_s)
+    form_record = ensure_meta_form_record(reference_page, form_id)
     product_name = form_record&.name || "Meta Lead (#{form_id})"
 
     Current.set(tenant: tenant) do
@@ -151,6 +151,9 @@ class MetaLeadProcessingJob < ApplicationJob
             "processed_at" => Time.current
           })
         )
+      rescue ActiveRecord::RecordInvalid => e
+        record_failed_lead_creation(e, tenant:, lead_id:, page_id:, form_id:, lead_details:, attributes:)
+        raise
       rescue ActiveRecord::RecordNotUnique
         # Corrida entre jobs concorrentes do mesmo leadgen_id: outro processo
         # criou primeiro (índice único parcial em tenant_id + meta_leadgen_id).
@@ -174,6 +177,48 @@ class MetaLeadProcessingJob < ApplicationJob
     end
   end
 
+  def ensure_meta_form_record(page, form_id)
+    return nil if page.blank? || form_id.blank?
+
+    form_id = form_id.to_s
+    existing = MetaLeadForm.find_by(form_id: form_id)
+    return existing if existing
+
+    page.meta_lead_forms.create!(
+      form_id: form_id,
+      name: "Meta Lead (#{form_id})",
+      active: true
+    )
+  rescue ActiveRecord::RecordNotUnique
+    MetaLeadForm.find_by(form_id: form_id)
+  rescue => e
+    Rails.logger.warn(
+      "[MetaLeadProcessingJob] Nao foi possivel cadastrar form Meta " \
+      "page_id=#{page&.page_id} form_id=#{form_id}: #{e.class}: #{e.message}"
+    )
+    nil
+  end
+
+  def record_failed_lead_creation(exception, tenant:, lead_id:, page_id:, form_id:, lead_details:, attributes:)
+    return unless defined?(ErrorEvent)
+
+    ErrorEvent.record!(
+      exception,
+      source: "job",
+      severity: "warning",
+      context: {
+        source: "meta_lead_processing",
+        tenant_id: tenant.id,
+        meta_leadgen_id: lead_id.to_s,
+        meta_page_id: page_id.to_s,
+        meta_form_id: form_id.to_s,
+        extracted_fields: attributes.except(:field_data),
+        field_data: lead_details["field_data"],
+        lead_details: lead_details
+      }
+    )
+  end
+
   def extract_field(field_data, keys)
     keys = Array(keys)
     field = field_data.find do |f|
@@ -181,7 +226,7 @@ class MetaLeadProcessingJob < ApplicationJob
       keys.any? { |k| field_name.include?(k) }
     end
 
-    field ? field["values"]&.first : nil
+    field ? field_values(field).first : nil
   end
 
   def extract_phone(field_data)
@@ -200,7 +245,7 @@ class MetaLeadProcessingJob < ApplicationJob
       field_name = normalize_field_name(field["name"])
       next unless phone_keys.any? { |key| field_name.include?(key) }
 
-      phone = Array(field["values"]).find { |value| phone_like_value?(value) }
+      phone = field_values(field).find { |value| phone_like_value?(value, allow_local: true) }
       return phone if phone.present?
     end
 
@@ -208,25 +253,35 @@ class MetaLeadProcessingJob < ApplicationJob
   end
 
   def extract_phone_from_values(field_data)
-    field_data.flat_map { |field| Array(field["values"]) }.find do |value|
+    field_data.flat_map { |field| field_values(field) }.find do |value|
       phone_like_value?(value)
     end
   end
 
-  def phone_like_value?(value)
+  def phone_like_value?(value, allow_local: false)
     digits = value.to_s.gsub(/\D/, "")
-    digits.length.between?(10, 15)
+    min_length = allow_local ? 8 : 10
+    digits.length.between?(min_length, 15)
   end
 
   def normalize_field_name(value)
     I18n.transliterate(value.to_s).downcase
   end
 
+  def field_values(field)
+    Array(
+      field["values"].presence ||
+      field[:values].presence ||
+      field["value"].presence ||
+      field[:value].presence
+    ).map(&:to_s)
+  end
+
   def map_to_custom_answers(field_data)
     field_data.map do |f|
       {
         "key" => f["name"],
-        "answer" => f["values"]&.first
+        "answer" => field_values(f).first
       }
     end
   end
