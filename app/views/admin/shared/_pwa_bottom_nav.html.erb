@@ -29,14 +29,14 @@
       icon: "house-door",
       path: admin_leads_path(view: pwa_leads_view_mode, mobile_tab: pwa_leads_mobile_tab),
       visible: can_access_pwa_nav.call(:view, :leads),
-      active: current_controller_name == "leads" && action_name != "distribution_queue"
+      active: current_controller_name == "leads" && action_name != "lead_pool"
     },
     {
       label: "Bolsão",
       icon: "people",
-      path: distribution_queue_admin_leads_path,
+      path: lead_pool_admin_leads_path,
       visible: can_access_pwa_nav.call(:view, :leads),
-      active: current_controller_name == "leads" && action_name == "distribution_queue"
+      active: current_controller_name == "leads" && action_name == "lead_pool"
     },
     {
       label: "Imóveis",

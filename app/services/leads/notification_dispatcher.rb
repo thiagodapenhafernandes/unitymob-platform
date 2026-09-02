@@ -259,7 +259,7 @@ module Leads
 
     def pool_queue_url
       host = ENV["APP_HOST"].to_s.delete_suffix("/")
-      path = "/admin/leads/distribution_queue?lead_id=#{@lead.id}"
+      path = "/admin/leads/lead_pool?lead_id=#{@lead.id}"
       host.present? ? "#{host}#{path}" : path
     end
 
