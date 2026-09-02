@@ -345,9 +345,21 @@ module Admin::ComercialHelper
 
   def lead_card_note_line(lead, conversion = nil)
     conversion ||= lead_conversion_summary(lead)
-    raw = lead.notes.to_s.squish.presence || conversion[:origin].presence || conversion[:channel_label]
+    note = lead.notes.to_s.squish.presence
+    note = nil if lead_card_payload_text?(note)
+    raw = note || conversion[:origin].presence || conversion[:channel_label]
 
     humanize_external_lead_text(raw)
+  end
+
+  def lead_card_payload_text?(value)
+    text = value.to_s.squish
+    return false unless text.start_with?("{") && text.end_with?("}")
+
+    technical_keys = %w[id sender_id receiver_id message_id lead_id created_at updated_at payload raw_payload]
+    technical_keys.any? do |key|
+      text.match?(/["']?#{Regexp.escape(key)}["']?\s*(=>|:)/)
+    end
   end
 
   def humanize_external_lead_text(value)
