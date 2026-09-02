@@ -132,7 +132,8 @@ module ExternalLeadMigration
         @attributes["status"].presence ||
         @payload["hook_action"].to_s.delete_prefix("on_")
 
-      ExternalLeadMigration::FunnelSync::STATUS_ALIASES[status.to_s.parameterize(separator: "_")] || status.presence || Lead.default_status(tenant:)
+      mapped = ExternalLeadMigration::FunnelSync::STATUS_ALIASES[status.to_s.parameterize(separator: "_")]
+      Lead.status_value(mapped.presence || status.presence, tenant: tenant)
     end
 
     def notes

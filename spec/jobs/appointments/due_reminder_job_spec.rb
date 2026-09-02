@@ -18,7 +18,7 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
     allow(Notifications::PushDispatcher).to receive(:deliver).and_return(1)
   end
 
-  it "envia push antes do compromisso iniciar" do
+  it "envia push trinta minutos antes do compromisso iniciar" do
     appointment = create(:appointment, tenant: tenant, lead: lead, admin_user: broker, title: "Visita no Centro", starts_at: 20.minutes.from_now)
 
     described_class.perform_now
@@ -26,14 +26,14 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(
       admin_user_id: broker.id,
       title: "Em breve: Visita no Centro",
-      body: "Compromisso agendado para 19/08/2026 às 09:50: Marina",
+      body: "Faltam 30 minutos para o compromisso: Marina. Horário: 19/08/2026 às 09:50.",
       url: "/admin/leads/#{lead.id}",
-      tag: "appointment-upcoming-#{appointment.id}",
+      tag: "appointment-30_minutes_before-#{appointment.id}",
       urgency: "high",
       ttl: 3600,
       require_interaction: true,
       lead_id: lead.id,
-      metadata: { appointment_id: appointment.id, source: "appointment_due_reminder", phase: "upcoming" }
+      metadata: { appointment_id: appointment.id, source: "appointment_due_reminder", phase: "30_minutes_before" }
     )
   end
 
@@ -73,7 +73,7 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
       admin_user: broker,
       lead: lead,
       event_type: "provider_accepted",
-      tag: "appointment-upcoming-#{appointment.id}",
+      tag: "appointment-15_minutes_before-#{appointment.id}",
       metadata: { appointment_id: appointment.id }
     )
 
@@ -83,12 +83,48 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
   end
 
   it "ignora compromisso muito futuro, cancelado e responsavel inativo" do
-    create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 31.minutes.from_now)
+    create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 61.minutes.from_now)
     create(:appointment, tenant: tenant, lead: lead, admin_user: broker, status: "cancelado", starts_at: 5.minutes.ago)
     broker.update!(active: false)
     create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 5.minutes.ago)
 
     described_class.perform_now
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+  end
+
+  it "repete compromisso vencido de duas em duas horas durante horario comercial" do
+    appointment = create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 3.hours.ago)
+    PushDeliveryEvent.create!(
+      admin_user: broker,
+      lead: lead,
+      event_type: "provider_accepted",
+      tag: "appointment-due-#{appointment.id}",
+      metadata: { appointment_id: appointment.id }
+    )
+
+    described_class.perform_now
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(
+      admin_user_id: broker.id,
+      body: "Esse compromisso está vencido: Marina. Marque como realizado ou cancele quando resolver.",
+      tag: "appointment-overdue-#{appointment.id}-#{Time.current.to_i / 2.hours.to_i}",
+      metadata: { appointment_id: appointment.id, source: "appointment_due_reminder", phase: "overdue" }
+    ))
+  end
+
+  it "nao repete compromisso vencido fora do horario comercial" do
+    now = Time.zone.local(2026, 8, 19, 20, 0)
+    appointment = create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: now - 3.hours)
+    PushDeliveryEvent.create!(
+      admin_user: broker,
+      lead: lead,
+      event_type: "provider_accepted",
+      tag: "appointment-due-#{appointment.id}",
+      metadata: { appointment_id: appointment.id }
+    )
+
+    described_class.perform_now(now: now)
 
     expect(Notifications::PushDispatcher).not_to have_received(:deliver)
   end

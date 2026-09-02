@@ -18,15 +18,14 @@ class Lead < ApplicationRecord
     "Arquivado"
   ].freeze
   STATUS_ALIASES = {
-    "novo" => "Novo",
     "em_atendimento" => "Em Atendimento",
     "waiting_acceptance" => "Aguardando Aceite",
     "aguardando_aceite" => "Aguardando Aceite",
     "represado" => "Represado",
     "descartado" => "Descartado",
     "concluido" => "Concluido",
-    "received" => "Novo"
   }.freeze
+  INITIAL_STATUS_KEYS = %w[new novo received].freeze
   QUALIFICATION_STATUSES = LeadPipelineStagePolicy::QUALIFICATION_OPTIONS.freeze
 
   belongs_to :admin_user, optional: true
@@ -382,7 +381,10 @@ class Lead < ApplicationRecord
     raw = value.to_s.strip
     return default_status(tenant: tenant) if raw.blank?
 
-    STATUS_ALIASES[raw] || STATUS_ALIASES[raw.downcase] || raw
+    key = raw.downcase
+    return default_status(tenant: tenant) if INITIAL_STATUS_KEYS.include?(key)
+
+    STATUS_ALIASES[raw] || STATUS_ALIASES[key] || raw
   end
 
   def self.non_operational_status_values(tenant: Current.tenant)
@@ -427,7 +429,7 @@ class Lead < ApplicationRecord
 
   def self.status_badge_class(status)
     case status_value(status)
-    when "Novo" then "info"
+    when "Novo", "Novo Lead" then "info"
     when "Em Atendimento" then "primary"
     when "Aguardando Aceite" then "warning"
     when "Represado" then "secondary"
@@ -456,7 +458,7 @@ class Lead < ApplicationRecord
   end
 
   def normalize_status
-    self.status = self.class.status_value(status)
+    self.status = self.class.status_value(status, tenant: tenant || Current.tenant)
   end
 
   def sync_pipeline_stage
@@ -501,7 +503,7 @@ class Lead < ApplicationRecord
   end
 
   def closed_status?
-    return true if self.class.status_value(status) == self.class.status_value(:concluido)
+    return true if self.class.status_value(status, tenant: tenant) == self.class.status_value(:concluido, tenant: tenant)
     return true if lead_pipeline_stage&.stage_type == "won"
 
     tenant&.lead_pipeline_stages&.active&.where(name: status, stage_type: "won")&.exists? || false

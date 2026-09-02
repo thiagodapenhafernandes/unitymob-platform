@@ -143,6 +143,7 @@
             <%= form_with url: reorder_agents_admin_distribution_rule_path(@rule), method: :patch do %>
               <div class="distribution-rule-show__queue" data-controller="sortable" data-sortable-handle-value=".drag-handle">
                 <% @agents_queue.each_with_index do |dra, index| %>
+                  <% lost_leads = @lost_distribution_leads_by_agent[dra.admin_user_id] || [] %>
                   <div class="ax-record-item distribution-rule-show__queue-item">
                     <span class="drag-handle distribution-rule-show__queue-handle" title="Arrastar para reordenar" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
                     <%= hidden_field_tag "agent_ids[]", dra.id %>
@@ -156,7 +157,17 @@
                     </div>
                     <div class="distribution-rule-show__queue-meta">
                       <span>Leads recebidos</span>
-                      <strong><%= number_with_delimiter(@leads_per_agent[dra.admin_user_id] || 0) %></strong>
+                      <% received_count = @leads_per_agent[dra.admin_user_id] || 0 %>
+                      <% if lost_leads.any? %>
+                        <button type="button"
+                                class="distribution-rule-show__queue-count"
+                                data-ax-modal-open="#lostDistributionLeads<%= dra.id %>"
+                                aria-label="Ver leads recebidos que saíram">
+                          <%= number_with_delimiter(received_count) %>
+                        </button>
+                      <% else %>
+                        <strong><%= number_with_delimiter(received_count) %></strong>
+                      <% end %>
                     </div>
                     <div class="distribution-rule-show__queue-meta">
                       <span>Último lead</span>
@@ -164,6 +175,33 @@
                     </div>
                     <% if @rule.performance? %><%= ax_badge("Peso #{dra.weight}", tone: :blue) %><% end %>
                   </div>
+                  <% if lost_leads.any? %>
+                    <%= ax_quick_modal(id: "lostDistributionLeads#{dra.id}", title: "Leads recebidos que saíram", size: :lg) do %>
+                      <div class="ax-table-wrap">
+                        <table class="ax-table">
+                          <thead>
+                            <tr>
+                              <th>Lead</th>
+                              <th>Recebido em</th>
+                              <th>Situação</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <% lost_leads.each do |item| %>
+                              <% lead = item[:lead] %>
+                              <tr>
+                                <td>
+                                  <%= link_to "##{lead.id} · #{lead.name.presence || 'Sem nome'}", admin_lead_path(lead), class: "ax-link" %>
+                                </td>
+                                <td><%= l(item[:received_at].in_time_zone, format: :short) %></td>
+                                <td><%= lead.status.to_s.humanize %></td>
+                              </tr>
+                            <% end %>
+                          </tbody>
+                        </table>
+                      </div>
+                    <% end %>
+                  <% end %>
                 <% end %>
               </div>
               <div class="ax-form-actions">

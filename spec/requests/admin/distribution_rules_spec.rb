@@ -447,6 +447,48 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(doc.at_css(".distribution-rule-show__queue").text).not_to include("97", "98")
   end
 
+  it "conta leads recebidos pela distribuicao e lista somente os que sairam" do
+    profile = admin.tenant.profiles.find_by!(key: "agent")
+    receiver = create(:admin_user, tenant: admin.tenant, profile: profile, name: "Corretor Recebeu")
+    current_owner = create(:admin_user, tenant: admin.tenant, profile: profile, name: "Corretor Atual")
+    rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas")
+    create(:distribution_rule_agent, distribution_rule: rule, admin_user: receiver, position: 1)
+
+    kept = create(:lead, tenant: admin.tenant, distribution_rule: rule, admin_user: receiver, name: "Lead Mantido", skip_automatic_routing: true)
+    moved = create(:lead, tenant: admin.tenant, distribution_rule: rule, admin_user: current_owner, name: "Lead Repassado", skip_automatic_routing: true)
+    not_received = create(:lead, tenant: admin.tenant, distribution_rule: rule, admin_user: receiver, name: "Lead Atual Apenas", skip_automatic_routing: true)
+
+    [kept, moved].each do |lead|
+      LeadActivity.create!(
+        lead: lead,
+        kind: "distributed",
+        metadata: { admin_user_id: receiver.id, admin_user_name: receiver.name, rule_id: rule.id, rule_name: rule.name },
+        created_at: 1.hour.ago,
+        updated_at: 1.hour.ago
+      )
+    end
+    LeadActivity.create!(
+      lead: not_received,
+      kind: "distributed",
+      metadata: { admin_user_id: current_owner.id, admin_user_name: current_owner.name, rule_id: rule.id, rule_name: rule.name },
+      created_at: 1.hour.ago,
+      updated_at: 1.hour.ago
+    )
+
+    get admin_distribution_rule_path(rule)
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    row = doc.css(".distribution-rule-show__queue-item").find { |item| item.text.include?(receiver.name) }
+    modal = doc.at_css("#lostDistributionLeads#{DistributionRuleAgent.find_by!(distribution_rule: rule, admin_user: receiver).id}")
+
+    expect(row.at_css(".distribution-rule-show__queue-count").text.squish).to eq("2")
+    expect(modal.text).to include("Lead Repassado")
+    expect(modal.text).not_to include("Lead Mantido")
+    expect(modal.text).not_to include("Lead Atual Apenas")
+    expect(modal.text).not_to include(current_owner.name)
+  end
+
   it "mostra as configuracoes principais da regra no detalhe" do
     meta_page = create(:meta_facebook_page, name: "Salute Imóveis", page_id: "page-1")
     meta_form = create(:meta_lead_form, meta_facebook_page: meta_page, name: "Captação Praia Brava", form_id: "form-1")

@@ -137,6 +137,22 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(column.at_css('.lead-kanban-loader[data-lead-kanban-offset="5"][data-lead-kanban-has-more="true"]')).to be_present
     end
 
+    it "agrupa leads legados Novo na coluna inicial Novo Lead" do
+      lead = create(:lead, tenant: admin.tenant, name: "Lead Legado Novo", phone: "11999999990")
+      lead.update_columns(status: "Novo", lead_pipeline_stage_id: nil, updated_at: Time.current)
+
+      get admin_leads_path(view: "kanban")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      initial_column = document.at_css(%([data-lead-kanban-status="#{Lead.default_status(tenant: admin.tenant)}"]))
+      legacy_column = document.at_css(%([data-lead-kanban-status="Novo"]))
+
+      expect(initial_column).to be_present
+      expect(initial_column.text).to include("Lead Legado Novo")
+      expect(legacy_column).to be_nil
+    end
+
     it "carrega o proximo lote de uma coluna do kanban respeitando filtros" do
       base_time = Time.zone.parse("2026-08-06 12:00:00")
       default_status = Lead.default_status(tenant: admin.tenant)
@@ -197,6 +213,31 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Cliente Lista")
     end
 
+    it "oculta descartados da lista padrao e mostra quando filtrado ou no kanban" do
+      active = create(:lead, tenant: admin.tenant, name: "Lead Ativo Lista", phone: "11999999999", status: "Novo")
+      discarded = create(:lead, tenant: admin.tenant, name: "Lead Descartado Lista", phone: "11888888888", status: "Descartado")
+
+      get admin_leads_path(view: "list", lead_tab: "all")
+
+      expect(response).to have_http_status(:ok)
+      list_text = Nokogiri::HTML(response.body).at_css(".lead-list").text
+      expect(list_text).to include(active.name)
+      expect(list_text).not_to include(discarded.name)
+
+      get admin_leads_path(view: "list", lead_tab: "all", status: "Descartado")
+
+      expect(response).to have_http_status(:ok)
+      list_text = Nokogiri::HTML(response.body).at_css(".lead-list").text
+      expect(list_text).to include(discarded.name)
+
+      get admin_leads_path(view: "kanban", lead_tab: "all")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      discarded_column = document.at_css(%([data-lead-kanban-status="#{Lead.status_value('Descartado')}"]))
+      expect(discarded_column.text).to include(discarded.name)
+    end
+
     it "lista as filas de distribuição ativas nas automações do modal de etapas" do
       rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila Premium", distribution_mode: :rotary)
       agent = create(:admin_user, tenant: admin.tenant, role: :editor)
@@ -236,7 +277,7 @@ RSpec.describe "Admin::Leads", type: :request do
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      column = document.at_css(".lead-pwa-kanban-column[data-lead-status='Novo']")
+      column = document.at_css(%(.lead-pwa-kanban-column[data-lead-status="#{Lead.default_status(tenant: admin.tenant)}"]))
       card = document.at_css("article#lead_#{lead.id}.lead-pwa-card[data-lead-pwa-kanban-target='card']")
 
       expect(column).to be_present
@@ -328,9 +369,13 @@ RSpec.describe "Admin::Leads", type: :request do
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "1")
-        expect(document.css(".lead-pwa-card").map(&:text).join).to include("Retorno Futuro Importado", "Retornar para o cliente - 20/08/2026 09:00")
-        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Retorno Hoje Importado", "Visita Importada")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "3")
+        expect(document.css(".lead-pwa-card").map(&:text).join).to include(
+          "Retorno Futuro Importado",
+          "Retornar para o cliente - 20/08/2026 09:00",
+          "Retorno Hoje Importado",
+          "Visita Importada"
+        )
 
         get admin_leads_path(view: "list", mobile_tab: "visits")
 
@@ -342,9 +387,9 @@ RSpec.describe "Admin::Leads", type: :request do
 
         document = Nokogiri::HTML(response.body)
         card_text = document.css(".lead-pwa-card").map(&:text).join
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "2")
-        expect(card_text).to include("Retorno Hoje Importado", "Lead Novo Sem Agenda")
-        expect(card_text).not_to include("Retorno Futuro Importado", "Visita Importada")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "1")
+        expect(card_text).to include("Lead Novo Sem Agenda")
+        expect(card_text).not_to include("Retorno Futuro Importado", "Retorno Hoje Importado", "Visita Importada")
         expect(card_text).not_to include("C2S")
       end
     end

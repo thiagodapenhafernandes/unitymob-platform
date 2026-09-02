@@ -15,10 +15,9 @@ class Admin::DistributionRulesController < Admin::BaseController
 
     rule_leads = current_tenant.leads.where(distribution_rule_id: @rule.id)
     @leads_total = rule_leads.count
-    @leads_distributed = rule_leads.where.not(admin_user_id: nil).count
     @leads_today = rule_leads.where(created_at: Time.current.all_day).count
     @last_lead_at = rule_leads.maximum(:created_at)
-    @leads_per_agent = rule_leads.where.not(admin_user_id: nil).group(:admin_user_id).count
+    @leads_per_agent, @lost_distribution_leads_by_agent, @leads_distributed = distribution_activity_stats(rule_leads)
 
     # Próximo corretor da fila (só faz sentido no modo rotativo).
     @next_agent_user_id = @rule.rotary? ? @rule.next_available_agent(@agents_queue)&.admin_user_id : nil
@@ -109,6 +108,46 @@ class Admin::DistributionRulesController < Admin::BaseController
           last_lead_at: last_lead_at&.in_time_zone
         }
       end
+  end
+
+  def distribution_activity_stats(rule_leads)
+    rows = LeadActivity
+      .joins(:lead)
+      .where(leads: { id: rule_leads.select(:id), tenant_id: current_tenant.id })
+      .where(kind: "distributed")
+      .where("lead_activities.metadata ->> 'rule_id' IS NULL OR lead_activities.metadata ->> 'rule_id' = ?", @rule.id.to_s)
+      .where("lead_activities.metadata ->> 'admin_user_id' IS NOT NULL")
+      .order("lead_activities.created_at ASC")
+      .pluck(
+        Arel.sql("lead_activities.metadata ->> 'admin_user_id'"),
+        "lead_activities.lead_id",
+        "lead_activities.created_at"
+      )
+
+    received_at_by_agent_and_lead = {}
+    rows.each do |admin_user_id, lead_id, received_at|
+      admin_user_id = admin_user_id.to_i
+      next if admin_user_id.zero?
+
+      received_at_by_agent_and_lead[[admin_user_id, lead_id]] ||= received_at
+    end
+
+    leads_by_id = current_tenant.leads.where(id: received_at_by_agent_and_lead.keys.map(&:second).uniq).index_by(&:id)
+    leads_per_agent = Hash.new(0)
+    lost_by_agent = Hash.new { |hash, key| hash[key] = [] }
+
+    received_at_by_agent_and_lead.each do |(admin_user_id, lead_id), received_at|
+      lead = leads_by_id[lead_id]
+      next unless lead
+
+      leads_per_agent[admin_user_id] += 1
+      next if lead.admin_user_id == admin_user_id
+
+      lost_by_agent[admin_user_id] << { lead: lead, received_at: received_at }
+    end
+
+    lost_by_agent.transform_values! { |items| items.sort_by { |item| item[:received_at] }.reverse }
+    [leads_per_agent, lost_by_agent, received_at_by_agent_and_lead.keys.map(&:second).uniq.size]
   end
 
   def set_rule
