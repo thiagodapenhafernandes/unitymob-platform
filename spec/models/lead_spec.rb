@@ -73,6 +73,25 @@ RSpec.describe Lead, type: :model do
       expect(lead.reload.status).to eq("Novo Lead")
       expect(lead.lead_pipeline_stage).to eq(pipeline.default_stage)
     end
+
+    it "nao mantem lead represado quando ja existe corretor responsavel" do
+      broker = create(:admin_user)
+      lead = build(:lead, tenant: broker.tenant, admin_user: broker, status: :represado)
+      lead.skip_automatic_routing = true
+
+      lead.save!
+
+      expect(lead.reload.status).to eq("Em Atendimento")
+    end
+
+    it "permite represar lead quando ainda nao existe corretor responsavel" do
+      lead = build(:lead, admin_user: nil, status: :represado)
+      lead.skip_automatic_routing = true
+
+      lead.save!
+
+      expect(lead.reload.status).to eq("Represado")
+    end
   end
 
   describe ".tag_options" do

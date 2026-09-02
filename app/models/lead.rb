@@ -135,6 +135,7 @@ class Lead < ApplicationRecord
   after_update_commit :dispatch_automation_stage_changed, unless: :skip_automatic_routing?
 
   before_validation :normalize_status
+  before_validation :normalize_held_status_with_owner
   before_validation :sync_pipeline_stage
   before_validation :normalize_tags
   before_save :sync_closed_at
@@ -459,6 +460,13 @@ class Lead < ApplicationRecord
 
   def normalize_status
     self.status = self.class.status_value(status, tenant: tenant || Current.tenant)
+  end
+
+  def normalize_held_status_with_owner
+    return if admin_user_id.blank?
+    return unless self.class.status_value(status, tenant: tenant || Current.tenant) == self.class.status_value(:represado, tenant: tenant || Current.tenant)
+
+    self.status = self.class.status_value(:em_atendimento, tenant: tenant || Current.tenant)
   end
 
   def sync_pipeline_stage

@@ -9,6 +9,7 @@ class Admin::LeadsController < Admin::BaseController
   PWA_LEAD_LIST_PAGE_SIZE = 15
   # Kanban PWA: mostra um recorte curto por etapa para manter a navegação leve.
   PWA_LEAD_KANBAN_COLUMN_SIZE = 5
+  HIDDEN_KANBAN_STATUSES = ["Aguardando Aceite", "Represado", "Concluido"].freeze
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
   CONTACT_KIND_LABELS = {
@@ -1069,7 +1070,7 @@ class Admin::LeadsController < Admin::BaseController
         returning_external = pwa_external_schedule_scope(scope, visits: false).where("#{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%retornar%' OR #{EXTERNAL_SCHEDULE_TEXT_SQL} LIKE '%feedback_customer%'").select(:lead_id)
         "leads.id IN (#{returning_tasks.to_sql}) OR leads.id IN (#{returning_external.to_sql})"
       when "scheduled_visit"
-        appointments = Appointment.where(tenant_id: current_tenant.id, kind: "visita", status: "agendado").upcoming.select(:lead_id)
+        appointments = Appointment.where(tenant_id: current_tenant.id, kind: "visita", status: "agendado").select(:lead_id)
         "leads.id IN (#{appointments.to_sql}) OR leads.id IN (#{pwa_external_schedule_scope(scope, visits: true).select(:lead_id).to_sql})"
       when "qualification_divergence"
         divergence_stage_ids = LeadPipelineStagePolicy
@@ -2563,13 +2564,13 @@ class Admin::LeadsController < Admin::BaseController
   def pwa_future_visit_lead_ids(base_scope)
     appointment_ids = Appointment
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id, kind: "visita", status: "agendado")
-      .upcoming
       .select(:lead_id)
 
     base_scope
+      .where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values)
       .where("leads.id IN (:appointment_ids) OR leads.id IN (:external_visit_ids)",
              appointment_ids: appointment_ids,
-             external_visit_ids: pwa_external_schedule_lead_ids(base_scope, visits: true, timing: :upcoming))
+             external_visit_ids: pwa_external_schedule_lead_ids(base_scope, visits: true, timing: :scheduled))
       .select(:id)
   end
 
@@ -2577,7 +2578,7 @@ class Admin::LeadsController < Admin::BaseController
     task_ids = Task
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
-      .where("due_at IS NULL OR tasks.lead_id NOT IN (:scheduled_lead_ids)", scheduled_lead_ids: pwa_scheduled_leads(base_scope).select(:id))
+      .where("due_at IS NULL OR tasks.lead_id NOT IN (:scheduled_lead_ids)", scheduled_lead_ids: pwa_later_scheduled_lead_ids(base_scope))
       .select(:lead_id)
 
     base_scope
@@ -2586,7 +2587,13 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def pwa_later_scheduled_lead_ids(base_scope)
-    pwa_scheduled_leads(base_scope).select(:id)
+    base_scope
+      .where(
+        "leads.id IN (:future_ids) OR leads.id IN (:visit_ids)",
+        future_ids: pwa_scheduled_leads(base_scope).select(:id),
+        visit_ids: pwa_future_visit_lead_ids(base_scope)
+      )
+      .select(:id)
   end
 
   def pwa_scheduled_leads(base_scope)
@@ -2595,18 +2602,13 @@ class Admin::LeadsController < Admin::BaseController
       .pendentes
       .where.not(due_at: nil)
       .select(:lead_id)
-    appointment_ids = Appointment
-      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id, status: "agendado")
-      .select(:lead_id)
 
     base_scope
       .where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values)
       .where(
-        "leads.id IN (:task_ids) OR leads.id IN (:appointment_ids) OR leads.id IN (:external_task_ids) OR leads.id IN (:external_visit_ids)",
+        "leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
         task_ids: task_ids,
-        appointment_ids: appointment_ids,
-        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :scheduled),
-        external_visit_ids: pwa_external_schedule_lead_ids(base_scope, visits: true, timing: :scheduled)
+        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :scheduled)
       )
   end
 
@@ -2648,7 +2650,7 @@ class Admin::LeadsController < Admin::BaseController
                                   .group_by(&:lead_id)
     @pwa_next_visits_by_lead_id = Appointment
                                    .where(tenant_id: current_tenant.id, lead_id: lead_ids, admin_user_id: current_admin_user&.id, kind: "visita", status: "agendado")
-                                   .upcoming
+                                   .ordered
                                    .to_a
                                    .group_by(&:lead_id)
     pwa_external_schedule_records_for(lead_ids).each do |action|
@@ -2790,13 +2792,10 @@ class Admin::LeadsController < Admin::BaseController
 
   def lead_statuses_for_kanban(lead_scope)
     configured_statuses = lead_status_options_for_selected_context
-    return @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank if @status_filters.present?
-    return configured_statuses if @selected_pipeline.present?
+    return visible_kanban_statuses(@status_filters) if @status_filters.present?
+    return visible_kanban_statuses(configured_statuses) if @selected_pipeline.present?
 
-    (configured_statuses + lead_scope.reorder(nil).distinct.pluck(:status).compact)
-      .map { |status| Lead.status_value(status, tenant: current_tenant) }
-      .compact_blank
-      .uniq
+    visible_kanban_statuses(configured_statuses + lead_scope.reorder(nil).distinct.pluck(:status).compact)
   end
 
   def status_filter_values_for(status)
@@ -2804,6 +2803,18 @@ class Admin::LeadsController < Admin::BaseController
     values = [canonical]
     values << Lead::DEFAULT_STATUS if canonical == Lead.default_status(tenant: current_tenant) && Lead::DEFAULT_STATUS != canonical
     values.uniq
+  end
+
+  def visible_kanban_statuses(statuses)
+    statuses
+      .map { |status| Lead.status_value(status, tenant: current_tenant) }
+      .compact_blank
+      .uniq
+      .excluding(*hidden_kanban_status_values)
+  end
+
+  def hidden_kanban_status_values
+    HIDDEN_KANBAN_STATUSES.map { |status| Lead.status_value(status, tenant: current_tenant) }.uniq
   end
 
   def visible_stages_for(scope)
