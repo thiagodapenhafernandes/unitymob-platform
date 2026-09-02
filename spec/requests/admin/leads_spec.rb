@@ -716,8 +716,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(bottom_nav.css(".ax-pwa-bottom-nav__item[data-admin-navigation-ignore]")).to be_empty
       expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
-      expect(document.at_css(".lead-pwa-queue").text).to include("Bolsão")
-      expect(bottom_nav.text).not_to include("Fila")
+      expect(document.at_css(".lead-pwa-queue").text).to include("na fila")
+      expect(bottom_nav.text).to include("Bolsão")
     end
 
     it "mostra no header a posicao real do usuario dentro da fila operacional" do
@@ -730,11 +730,13 @@ RSpec.describe "Admin::Leads", type: :request do
       )
       first_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Tayana Agne")
       second_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Fábio Luís Avallone")
-      current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Renata Santos Cardoso")
+      third_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Renata Santos Cardoso")
+      current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Lidia da Cruz Tonet")
       rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas", active: true)
-      create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_agent, position: 97)
-      create(:distribution_rule_agent, distribution_rule: rule, admin_user: second_agent, position: 98)
-      create(:distribution_rule_agent, distribution_rule: rule, admin_user: current_user, position: 99)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_agent, position: 1)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: second_agent, position: 2)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: third_agent, position: 3)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: current_user, position: 4)
       sign_out admin
       sign_in current_user
 
@@ -742,8 +744,8 @@ RSpec.describe "Admin::Leads", type: :request do
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      expect(document.at_css(".lead-desktop-queue").text).to include("Bolsão")
-      expect(document.at_css(".lead-pwa-queue").text).to include("Bolsão")
+      expect(document.at_css(".lead-desktop-queue").text).to include("4º", "na fila")
+      expect(document.at_css(".lead-pwa-queue").text).to include("4º", "na fila")
     end
 
     it "lista apenas filas de distribuicao em que o usuario logado participa" do
@@ -798,8 +800,8 @@ RSpec.describe "Admin::Leads", type: :request do
       agents = card.css(".lead-queue-agent")
       current_agent = document.at_css(".lead-queue-agent.is-current")
 
-      expect(document.at_css(".lead-queue-command").text).to include("Bolsão")
-      expect(document.at_css(".lead-queue-mobile-top").text).to include("Bolsão", "0 leads no bolsão", "0")
+      expect(document.at_css(".lead-queue-command").text).to include("Minhas filas")
+      expect(document.at_css(".lead-queue-mobile-top").text).to include("Minhas filas", "6º")
       expect(card.text).to include("Equipe vendas", "6º de 8", "Maria Elisabete")
       expect(agents.size).to eq(8)
       expect(agents.map { |agent| agent.at_css(".lead-queue-agent__position").text.strip }).to eq(%w[1º 2º 3º 4º 5º 6º 7º 8º])
@@ -824,19 +826,19 @@ RSpec.describe "Admin::Leads", type: :request do
       create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: current_user, position: 1)
       create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 2)
       create(:distribution_rule_agent, distribution_rule: outside_rule, admin_user: outside_user, position: 1)
-      visible_lead = create(:lead, tenant: admin.tenant, name: "Cliente visivel", status: :waiting_acceptance, admin_user: nil, distribution_rule: included_rule)
-      hidden_lead = create(:lead, tenant: admin.tenant, name: "Cliente oculto", status: :waiting_acceptance, admin_user: nil, distribution_rule: outside_rule)
-      assigned_lead = create(:lead, tenant: admin.tenant, name: "Cliente com dono", status: :waiting_acceptance, admin_user: teammate, distribution_rule: included_rule)
+      visible_lead = create(:lead, tenant: admin.tenant, name: "Cliente visivel", status: :waiting_acceptance, admin_user: nil, distribution_rule: included_rule, skip_automatic_routing: true)
+      hidden_lead = create(:lead, tenant: admin.tenant, name: "Cliente oculto", status: :waiting_acceptance, admin_user: nil, distribution_rule: outside_rule, skip_automatic_routing: true)
+      assigned_lead = create(:lead, tenant: admin.tenant, name: "Cliente com dono", status: :waiting_acceptance, admin_user: teammate, distribution_rule: included_rule, skip_automatic_routing: true)
       sign_out admin
       sign_in current_user
 
-      get distribution_queue_admin_leads_path(lead_id: visible_lead.id)
+      get lead_pool_admin_leads_path(lead_id: visible_lead.id)
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
       expect(document.text).to include("Bolsao Vendas", "Cliente visivel", "Atender")
       expect(document.at_css("#lead-#{visible_lead.id}.is-focused")).to be_present
-      expect(document.text).not_to include("Cliente oculto", hidden_lead.name, assigned_lead.name)
+      expect(document.text).not_to include("Bolsao Locacao", hidden_lead.name, assigned_lead.name)
     end
 
     it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do

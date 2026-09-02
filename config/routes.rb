@@ -250,6 +250,7 @@ Rails.application.routes.draw do
       get :kanban_column, on: :collection
       get :pwa_leads_page, on: :collection
       get :distribution_queue, on: :collection
+      get :lead_pool, on: :collection
       get :report, on: :collection
       get :attend, on: :member
       patch :toggle_favorite, on: :member

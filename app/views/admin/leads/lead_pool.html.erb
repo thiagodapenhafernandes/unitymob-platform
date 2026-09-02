@@ -1,7 +1,7 @@
 <% content_for :admin_contextbar_breadcrumb do %>
   <%= link_to "Leads", @return_to_path %>
   <i class="bi bi-chevron-right" aria-hidden="true"></i>
-  <strong>Minhas filas</strong>
+  <strong>Bolsão</strong>
 <% end %>
 
 <% content_for :admin_contextbar_actions do %>
@@ -226,6 +226,53 @@
     white-space: nowrap;
   }
 
+  .lead-queue-pool {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .lead-queue-pool__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--queue-line);
+    border-radius: 9px;
+    background: #fff;
+  }
+
+  .lead-queue-pool__item.is-focused {
+    border-color: color-mix(in srgb, var(--queue-primary) 50%, var(--queue-line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--queue-primary) 12%, transparent);
+  }
+
+  .lead-queue-pool__copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .lead-queue-pool__copy strong,
+  .lead-queue-pool__copy span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-queue-pool__copy strong {
+    color: var(--queue-ink);
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .lead-queue-pool__copy span {
+    color: var(--queue-muted);
+    font-size: 12px;
+    font-weight: 750;
+  }
+
   .lead-queue-agent__status.is-muted {
     background: #f1f5f9;
     color: #64748b;
@@ -370,6 +417,10 @@
       padding: 11px 13px;
     }
 
+    .lead-queue-pool__item {
+      grid-template-columns: 1fr;
+    }
+
     .lead-queue-agent__status {
       grid-column: 2;
       justify-self: start;
@@ -383,24 +434,24 @@
       <i class="bi bi-arrow-left"></i>
     <% end %>
     <div class="lead-queue-mobile-top__title">
-      <strong>Minhas filas</strong>
-      <span><%= @queue_rules.size %> fila<%= "s" if @queue_rules.size != 1 %> operacional<%= "is" if @queue_rules.size != 1 %></span>
+      <strong>Bolsão</strong>
+      <span><%= @pool_leads.size %> lead<%= "s" if @pool_leads.size != 1 %> no bolsão</span>
     </div>
-    <span class="lead-queue-mobile-top__position" aria-label="Melhor posição atual">
-      <%= @best_queue_position.present? ? "#{@best_queue_position}º" : "--" %>
+    <span class="lead-queue-mobile-top__position" aria-label="Leads abertos no bolsão">
+      <%= @pool_leads.size %>
     </span>
   </header>
 
   <header class="lead-queue-command">
     <div class="lead-queue-command__copy">
       <span>Distribuição de leads</span>
-      <h1>Minhas filas</h1>
-      <p><%= current_admin_user.name %> participa de <%= @queue_rules.size %> fila<%= "s" if @queue_rules.size != 1 %>.</p>
+      <h1>Bolsão</h1>
+      <p><%= current_admin_user.name %> participa de <%= @queue_rules.size %> fila<%= "s" if @queue_rules.size != 1 %> e vê somente os bolsões dessas regras.</p>
     </div>
 
-    <div class="lead-queue-command__position" aria-label="Melhor posição atual">
-      <strong><%= @best_queue_position.present? ? "#{@best_queue_position}º" : "--" %></strong>
-      <span>melhor posição</span>
+    <div class="lead-queue-command__position" aria-label="Leads abertos no bolsão">
+      <strong><%= @pool_leads.size %></strong>
+      <span>lead<%= "s" if @pool_leads.size != 1 %> aberto<%= "s" if @pool_leads.size != 1 %></span>
     </div>
   </header>
 
@@ -410,17 +461,40 @@
         <%
           agents = @queue_agents_by_rule_id.fetch(rule.id, [])
           current_position = @queue_positions_by_rule_id[rule.id]
+          pool_leads = @pool_leads_by_rule_id.fetch(rule.id, [])
         %>
         <section class="lead-queue-card" aria-labelledby="lead-queue-rule-<%= rule.id %>">
           <header class="lead-queue-card__head">
             <div class="lead-queue-card__title">
               <strong id="lead-queue-rule-<%= rule.id %>"><%= rule.name %></strong>
-              <span><%= distribution_rule_mode_label(rule) %> · <%= rule.active? ? "ativa" : "inativa" %></span>
+              <span><%= distribution_rule_mode_label(rule) %> · <%= pool_leads.size %> lead<%= "s" if pool_leads.size != 1 %> disponível<%= "is" if pool_leads.size != 1 %></span>
             </div>
             <div class="lead-queue-card__position">
               Sua posição: <%= current_position.present? ? "#{current_position}º de #{agents.size}" : "--" %>
             </div>
           </header>
+
+          <div class="lead-queue-pool">
+            <% if pool_leads.any? %>
+              <% pool_leads.each do |lead| %>
+                <article class="lead-queue-pool__item <%= 'is-focused' if lead.id == @focused_pool_lead_id %>" id="lead-<%= lead.id %>">
+                  <div class="lead-queue-pool__copy">
+                    <strong><%= lead.display_name %></strong>
+                    <span><%= [lead.origin.presence, lead.product.presence].compact.join(" · ").presence || "Lead aguardando atendimento" %></span>
+                    <span>Recebido <%= time_ago_in_words(lead.created_at) %> atrás</span>
+                  </div>
+                  <%= link_to attend_admin_lead_path(lead), class: "ax-btn ax-btn--primary ax-btn--sm", data: { turbo: false } do %>
+                    <i class="bi bi-hand-index-thumb ax-ico" aria-hidden="true"></i><span>Atender</span>
+                  <% end %>
+                </article>
+              <% end %>
+            <% else %>
+              <div class="lead-queue-empty">
+                <strong>Nenhum lead disponível neste bolsão.</strong>
+                <p>Quando um lead de Shark Tank ou aceite com prazo expirado cair nesta regra, ele aparecerá aqui.</p>
+              </div>
+            <% end %>
+          </div>
 
           <div class="lead-queue-list">
             <% agents.each do |agent| %>
