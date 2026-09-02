@@ -9896,6 +9896,16 @@ html.ax-distribution-rule-aside-collapsed-preload body.ax-app .distribution-rule
   font-size: 12px;
 }
 
+.distribution-rule-show__queue-count {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-primary, #365f8f);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
 .distribution-rule-show__table {
   margin-top: 8px;
 }

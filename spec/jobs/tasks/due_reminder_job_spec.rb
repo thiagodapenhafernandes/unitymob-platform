@@ -37,7 +37,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     )
   end
 
-  it "envia push antes da tarefa vencer" do
+  it "envia push trinta minutos antes da tarefa vencer" do
     task = create(:task, tenant: tenant, lead: lead, admin_user: broker, kind: "ligacao", title: "Ligar para confirmar visita", due_at: 20.minutes.from_now)
 
     described_class.perform_now
@@ -45,14 +45,14 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(
       admin_user_id: broker.id,
       title: "Em breve: Ligar para confirmar visita",
-      body: "Tarefa agendada para 19/08/2026 às 09:50: Gilson",
+      body: "Faltam 30 minutos para a tarefa: Gilson. Horário: 19/08/2026 às 09:50.",
       url: "/admin/leads/#{lead.id}",
-      tag: "task-upcoming-#{task.id}",
+      tag: "task-30_minutes_before-#{task.id}",
       urgency: "high",
       ttl: 3600,
       require_interaction: true,
       lead_id: lead.id,
-      metadata: { task_id: task.id, source: "task_due_reminder", phase: "upcoming" }
+      metadata: { task_id: task.id, source: "task_due_reminder", phase: "30_minutes_before" }
     )
   end
 
@@ -89,7 +89,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
   end
 
   it "ignora tarefas muito futuras e concluidas" do
-    create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 31.minutes.from_now)
+    create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 61.minutes.from_now)
     create(:task, tenant: tenant, lead: lead, admin_user: broker, status: "concluida", due_at: 5.minutes.ago)
 
     described_class.perform_now
@@ -117,6 +117,42 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 5.minutes.ago)
 
     described_class.perform_now
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+  end
+
+  it "repete tarefa vencida de duas em duas horas durante horario comercial" do
+    task = create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 3.hours.ago)
+    PushDeliveryEvent.create!(
+      admin_user: broker,
+      lead: lead,
+      event_type: "provider_accepted",
+      tag: "task-return-#{task.id}",
+      metadata: { task_id: task.id }
+    )
+
+    described_class.perform_now
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(
+      admin_user_id: broker.id,
+      body: "Essa tarefa está vencida: Gilson. Conclua ou cancele quando resolver.",
+      tag: "task-overdue-#{task.id}-#{Time.current.to_i / 2.hours.to_i}",
+      metadata: { task_id: task.id, source: "task_due_reminder", phase: "overdue" }
+    ))
+  end
+
+  it "nao repete tarefa vencida fora do horario comercial" do
+    now = Time.zone.local(2026, 8, 19, 20, 0)
+    task = create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: now - 3.hours)
+    PushDeliveryEvent.create!(
+      admin_user: broker,
+      lead: lead,
+      event_type: "provider_accepted",
+      tag: "task-return-#{task.id}",
+      metadata: { task_id: task.id }
+    )
+
+    described_class.perform_now(now: now)
 
     expect(Notifications::PushDispatcher).not_to have_received(:deliver)
   end

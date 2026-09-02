@@ -50,7 +50,7 @@ module Admin
       rows = params.permit(
         :lead_pipeline_id,
         statuses: [
-          :id, :name, :description, :stage_type, :color, :active, :_destroy,
+          :id, :name, :description, :stage_type, :color, :active, :replacement_stage_id, :_destroy,
           automations: [
             :id, :trigger, :after_amount, :after_unit, :auto_advance_to_stage_id, :action_type, :active, :_destroy,
             action_config: {}
@@ -66,6 +66,10 @@ module Admin
       ).fetch(:statuses, [])
 
       LeadPipelineStage.transaction do
+        @destroy_stage_ids = rows.filter_map do |row|
+          row[:id].presence if ActiveModel::Type::Boolean.new.cast(row[:_destroy])
+        end
+
         rows.each_with_index do |row, index|
           apply_row(row, index)
         end
@@ -76,6 +80,8 @@ module Admin
     rescue ActiveRecord::RecordInvalid => e
       message = e.record&.errors&.full_messages&.to_sentence
       render json: { ok: false, error: message.presence || e.message }, status: :unprocessable_entity
+    rescue ArgumentError => e
+      render json: { ok: false, error: e.message }, status: :unprocessable_entity
     end
 
     private
@@ -111,12 +117,7 @@ module Admin
         return if stage.nil?
 
         if destroy
-          fallback_stage = selected_pipeline.stages.where.not(id: stage.id).ordered.first
-          current_tenant.leads.where(lead_pipeline_stage_id: stage.id).update_all(
-            lead_pipeline_stage_id: fallback_stage&.id,
-            status: fallback_stage&.name || Lead.default_status(tenant: current_tenant, pipeline: selected_pipeline),
-            updated_at: Time.current
-          )
+          transfer_leads_before_destroy!(stage, row[:replacement_stage_id])
           stage.destroy!
         else
           stage.update!(name: name, description: description, stage_type: stage_type, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
@@ -138,6 +139,24 @@ module Admin
         sync_transitions!(stage, row[:next_stage_ids])
         sync_automations!(stage, row[:automations])
       end
+    end
+
+    def transfer_leads_before_destroy!(stage, replacement_stage_id)
+      lead_scope = current_tenant.leads.where(lead_pipeline_stage_id: stage.id)
+      return unless lead_scope.exists?
+
+      replacement_stage = selected_pipeline.stages
+        .where.not(id: [stage.id, *@destroy_stage_ids].compact_blank)
+        .find_by(id: replacement_stage_id.presence)
+      if replacement_stage.blank?
+        raise ArgumentError, "Escolha para qual etapa enviar os leads antes de remover \"#{stage.name}\"."
+      end
+
+      lead_scope.update_all(
+        lead_pipeline_stage_id: replacement_stage.id,
+        status: replacement_stage.name,
+        updated_at: Time.current
+      )
     end
 
     def sync_policy!(stage, raw_policy)

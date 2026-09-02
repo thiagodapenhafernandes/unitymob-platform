@@ -35,8 +35,18 @@ export default class extends Controller {
     if (!row) return
 
     if (row.dataset.id) {
-      row.dataset.destroy = "true"
-      row.hidden = true
+      const destroying = row.dataset.destroy === "true"
+      row.dataset.destroy = destroying ? "false" : "true"
+      row.classList.toggle("is-destroying", !destroying)
+      row.querySelector("[data-lead-status-destroy-panel]")?.toggleAttribute("hidden", destroying)
+      row.querySelector("[data-lead-status-destroy-field='replacement_stage_id']")?.toggleAttribute("disabled", destroying)
+      if (destroying) {
+        const replacementField = row.querySelector("[data-lead-status-destroy-field='replacement_stage_id']")
+        if (replacementField) replacementField.value = ""
+      } else {
+        this.openRow(row)
+        row.querySelector("[data-lead-status-destroy-field='replacement_stage_id']")?.focus()
+      }
     } else {
       row.remove()
     }
@@ -130,6 +140,7 @@ export default class extends Controller {
         policy: this.policyFor(row),
         next_stage_ids: this.selectedValues(row, '[data-lead-status-transition-field="next_stage_id"]'),
         automations: this.automationsFor(row),
+        replacement_stage_id: row.querySelector('[data-lead-status-destroy-field="replacement_stage_id"]')?.value || "",
         _destroy: row.dataset.destroy === "true"
       }))
       .filter((status) => status.id || status.name || status._destroy)
@@ -141,6 +152,10 @@ export default class extends Controller {
     }
     if (active.some((status) => !status.name)) {
       this.showError("Todos os status precisam de um nome.")
+      return
+    }
+    if (statuses.some((status) => status._destroy && status.id && !status.replacement_stage_id)) {
+      this.showError("Escolha para qual etapa enviar os leads das etapas removidas.")
       return
     }
     const activeAutomations = active.flatMap((status) => status.automations.filter((automation) => !automation._destroy && automation.active))

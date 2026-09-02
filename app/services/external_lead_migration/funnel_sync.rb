@@ -1,8 +1,6 @@
 module ExternalLeadMigration
   class FunnelSync
     STATUS_ALIASES = {
-      "new" => "Novo",
-      "novo" => "Novo",
       "pending" => "Aguardando Aceite",
       "under_negotiation" => "Em Atendimento",
       "em_negociacao" => "Em Atendimento",
@@ -33,7 +31,10 @@ module ExternalLeadMigration
         attrs.dig("lead_status", "name").presence ||
         attrs["status"].presence
       alias_name = attrs.dig("lead_status", "alias").presence || attrs["status"].presence
-      name = normalize_status_name(candidate.presence || alias_name.presence || fallback)
+      raw_name = candidate.presence || alias_name.presence || fallback
+      return Lead.default_status(tenant:, pipeline:) if initial_status?(raw_name)
+
+      name = normalize_status_name(raw_name)
       return Lead.default_status(tenant:) if name.blank?
 
       ensure_stage!(pipeline: pipeline || LeadPipeline.default_for(tenant:), name: name).name
@@ -96,6 +97,10 @@ module ExternalLeadMigration
       return nil if raw.blank?
 
       STATUS_ALIASES[raw.parameterize(separator: "_")] || AttributeOption.sanitize_name(raw)
+    end
+
+    def initial_status?(value)
+      value.to_s.parameterize(separator: "_").in?(Lead::INITIAL_STATUS_KEYS)
     end
   end
 end

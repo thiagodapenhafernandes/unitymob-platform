@@ -49,6 +49,32 @@ RSpec.describe Lead, type: :model do
     end
   end
 
+  describe ".status_value" do
+    it "usa a primeira etapa do funil como status inicial" do
+      tenant = Tenant.create!(name: "Tenant funil #{SecureRandom.hex(3)}", slug: "tenant-funil-#{SecureRandom.hex(3)}")
+      pipeline = LeadPipeline.ensure_default!(tenant: tenant)
+
+      expect(described_class.status_value("Novo", tenant: tenant)).to eq("Novo Lead")
+      expect(described_class.status_value(:novo, tenant: tenant)).to eq("Novo Lead")
+      expect(described_class.status_value("received", tenant: tenant)).to eq("Novo Lead")
+      expect(described_class.default_status(tenant: tenant)).to eq(pipeline.default_stage.name)
+    end
+  end
+
+  describe "#status" do
+    it "salva o status legado Novo na etapa inicial do funil" do
+      tenant = Tenant.create!(name: "Tenant status #{SecureRandom.hex(3)}", slug: "tenant-status-#{SecureRandom.hex(3)}")
+      pipeline = LeadPipeline.ensure_default!(tenant: tenant)
+      lead = build(:lead, tenant: tenant, lead_pipeline: pipeline, lead_pipeline_stage: nil, status: "Novo")
+      lead.skip_automatic_routing = true
+
+      lead.save!
+
+      expect(lead.reload.status).to eq("Novo Lead")
+      expect(lead.lead_pipeline_stage).to eq(pipeline.default_stage)
+    end
+  end
+
   describe ".tag_options" do
     it "respeita o scope informado para tags gravadas" do
       tenant = Tenant.create!(name: "Lead tags #{SecureRandom.hex(3)}", slug: "lead-tags-#{SecureRandom.hex(3)}")

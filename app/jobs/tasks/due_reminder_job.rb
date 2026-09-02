@@ -3,7 +3,14 @@ module Tasks
     queue_as :default
 
     BATCH_LIMIT = 200
-    UPCOMING_LEAD_TIME = 30.minutes
+    UPCOMING_LEAD_TIME = 1.hour
+    UPCOMING_PHASES = {
+      "15_minutes_before" => 15.minutes,
+      "30_minutes_before" => 30.minutes,
+      "1_hour_before" => 1.hour
+    }.freeze
+    OVERDUE_REPEAT_INTERVAL = 2.hours
+    BUSINESS_HOURS = 8...18
     RETRY_ATTEMPT_AFTER = 30.minutes
     SENT_EVENT_TYPES = %w[provider_accepted device_received].freeze
 
@@ -34,10 +41,61 @@ module Tasks
             .limit(BATCH_LIMIT)
     end
 
+    def reminder_phase(task, now)
+      return "due" if task.due_at <= now
+
+      UPCOMING_PHASES.each do |phase, lead_time|
+        return phase if task.due_at <= now + lead_time
+      end
+
+      nil
+    end
+
+    def reminder_sent?(task, phase, now = Time.current)
+      PushDeliveryEvent.where(tag: reminder_tag(task, phase, now), event_type: SENT_EVENT_TYPES).exists?
+    end
+
+    def recent_attempt?(task, phase, now)
+      PushDeliveryEvent.where(tag: reminder_tag(task, phase, now))
+                       .where("created_at >= ?", now - RETRY_ATTEMPT_AFTER)
+                       .exists?
+    end
+
+    def reminder_tag(task, phase, now = Time.current)
+      return "task-return-#{task.id}" if phase == "due"
+      return "task-overdue-#{task.id}-#{overdue_bucket(now)}" if phase == "overdue"
+
+      "task-#{phase}-#{task.id}"
+    end
+
+    def reminder_title(task, phase)
+      prefix = phase.start_with?("1_hour", "30_minutes", "15_minutes") ? "Em breve: " : ""
+      "#{prefix}#{task.title.presence || task.kind_label}"
+    end
+
+    def reminder_body(task, lead, phase)
+      subject = lead&.display_name.presence || task.title.presence || "tarefa"
+      time = I18n.l(task.due_at, format: "%d/%m/%Y às %H:%M")
+
+      case phase
+      when "1_hour_before"
+        "Falta 1 hora para a tarefa: #{subject}. Horário: #{time}."
+      when "30_minutes_before"
+        "Faltam 30 minutos para a tarefa: #{subject}. Horário: #{time}."
+      when "15_minutes_before"
+        "Faltam 15 minutos para a tarefa: #{subject}. Horário: #{time}."
+      when "overdue"
+        "Essa tarefa está vencida: #{subject}. Conclua ou cancele quando resolver."
+      else
+        "Está na hora da tarefa: #{subject}"
+      end
+    end
+
     def deliver_reminder(task, now)
       phase = reminder_phase(task, now)
+      phase = overdue_phase(task, now) if phase == "due" && (reminder_sent?(task, "due", now) || task.due_at <= now - OVERDUE_REPEAT_INTERVAL)
       return if phase.blank?
-      return if reminder_sent?(task, phase)
+      return if reminder_sent?(task, phase, now)
       return if recent_attempt?(task, phase, now)
 
       lead = task.lead
@@ -50,7 +108,7 @@ module Tasks
         title: reminder_title(task, phase),
         body: reminder_body(task, lead, phase),
         url: reminder_url(task),
-        tag: reminder_tag(task, phase),
+        tag: reminder_tag(task, phase, now),
         urgency: "high",
         ttl: 3600,
         require_interaction: true,
@@ -59,43 +117,19 @@ module Tasks
       )
     end
 
-    def reminder_phase(task, now)
-      return "due" if task.due_at <= now
-      return "upcoming" if task.due_at <= now + UPCOMING_LEAD_TIME
+    def overdue_phase(task, now)
+      return nil if task.due_at > now - OVERDUE_REPEAT_INTERVAL
+      return nil unless business_hours?(now)
 
-      nil
+      "overdue"
     end
 
-    def reminder_sent?(task, phase)
-      PushDeliveryEvent.where(tag: reminder_tag(task, phase), event_type: SENT_EVENT_TYPES).exists?
+    def business_hours?(time)
+      BUSINESS_HOURS.cover?(time.in_time_zone.hour)
     end
 
-    def recent_attempt?(task, phase, now)
-      PushDeliveryEvent.where(tag: reminder_tag(task, phase))
-                       .where("created_at >= ?", now - RETRY_ATTEMPT_AFTER)
-                       .exists?
-    end
-
-    def reminder_tag(task, phase)
-      return "task-return-#{task.id}" if phase == "due"
-
-      "task-upcoming-#{task.id}"
-    end
-
-    def reminder_title(task, phase)
-      prefix = phase == "upcoming" ? "Em breve: " : ""
-      "#{prefix}#{task.title.presence || task.kind_label}"
-    end
-
-    def reminder_body(task, lead, phase)
-      subject = lead&.display_name.presence || task.title.presence || "tarefa"
-      time = I18n.l(task.due_at, format: "%d/%m/%Y às %H:%M")
-
-      if phase == "upcoming"
-        "Tarefa agendada para #{time}: #{subject}"
-      else
-        "Está na hora da tarefa: #{subject}"
-      end
+    def overdue_bucket(time)
+      (time.to_i / OVERDUE_REPEAT_INTERVAL.to_i)
     end
 
     def reminder_url(task)

@@ -316,10 +316,9 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     expect(lead.reload.lead_pipeline_stage_id).to eq(source_stage.id)
   end
 
-  it "remove etapa transferindo leads para a primeira etapa restante do mesmo funil" do
+  it "bloqueia remocao de etapa com leads sem informar etapa de destino" do
     pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
     stage = pipeline.stages.create!(tenant: admin.tenant, name: "Descartar depois", position: 99)
-    fallback_stage = pipeline.stages.where.not(id: stage.id).ordered.first
     lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
 
     post bulk_update_admin_lead_statuses_path,
@@ -331,8 +330,30 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
          },
          headers: { "ACCEPT" => "application/json" }
 
+    expect(response).to have_http_status(:unprocessable_entity)
+    payload = JSON.parse(response.body)
+    expect(payload["error"]).to include("Escolha para qual etapa enviar os leads")
+    expect(stage.reload).to be_present
+    expect(lead.reload).to have_attributes(lead_pipeline_stage_id: stage.id, status: stage.name)
+  end
+
+  it "remove etapa transferindo leads para a etapa escolhida" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    stage = pipeline.stages.create!(tenant: admin.tenant, name: "Descartar depois", position: 99)
+    replacement_stage = pipeline.stages.where.not(id: stage.id).ordered.first
+    lead = create(:lead, tenant: admin.tenant, lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name)
+
+    post bulk_update_admin_lead_statuses_path,
+         params: {
+           lead_pipeline_id: pipeline.id,
+           statuses: [
+             { id: stage.id, name: stage.name, replacement_stage_id: replacement_stage.id, _destroy: "1" }
+           ]
+         },
+         headers: { "ACCEPT" => "application/json" }
+
     expect(response).to have_http_status(:ok)
     expect(pipeline.stages.find_by(id: stage.id)).to be_nil
-    expect(lead.reload).to have_attributes(lead_pipeline_stage_id: fallback_stage.id, status: fallback_stage.name)
+    expect(lead.reload).to have_attributes(lead_pipeline_stage_id: replacement_stage.id, status: replacement_stage.name)
   end
 end

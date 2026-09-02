@@ -145,18 +145,21 @@ class Admin::LeadsController < Admin::BaseController
     unfiltered_scope = lead_scope_for_current_user
     filtered_scope = filtered_lead_scope_for_current_user
     @desktop_lead_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
-    @desktop_tab_counts = lead_tab_counts_for(filtered_scope)
+    list_filtered_scope = hide_discarded_from_list_scope(filtered_scope)
+    @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope)
     lead_scope = lead_scope_for_tab(filtered_scope, @desktop_lead_tab)
+    list_scope = lead_scope_for_tab(list_filtered_scope, @desktop_lead_tab)
 
-    stats_scope = lead_scope.reorder(nil)
+    stats_scope = list_scope.reorder(nil)
     @total_leads = stats_scope.count
-    @new_leads = stats_scope.where(status: Lead.status_value("Novo")).count
-    @in_service_leads = stats_scope.where(status: Lead.status_value("Em Atendimento")).count
+    @new_leads = stats_scope.where(status: status_filter_values_for(Lead.status_value(:novo, tenant: current_tenant))).count
+    @in_service_leads = stats_scope.where(status: Lead.status_value("Em Atendimento", tenant: current_tenant)).count
     @unassigned_leads = stats_scope.where(admin_user_id: nil).count
     @status_counts = stats_scope.group(:status).count
     @origin_counts = lead_scope_for_current_user.reorder(nil).where.not(origin: [nil, ""]).group(:origin).count
 
     lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
+    list_scope = list_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
 
     @lead_statuses = lead_statuses_for_kanban(lead_scope)
     @leads_by_status = @lead_statuses.index_with { |status| [] }
@@ -171,7 +174,7 @@ class Admin::LeadsController < Admin::BaseController
                         .order(created_at: :desc)
                         .to_a
     @kanban_leads.each do |lead|
-      status = Lead.status_value(lead.status)
+      status = Lead.status_value(lead.status, tenant: current_tenant)
       next if @selected_pipeline.present? && !@leads_by_status.key?(status)
 
       @leads_by_status[status] ||= []
@@ -180,14 +183,14 @@ class Admin::LeadsController < Admin::BaseController
     # Contadores da coluna = total REAL (a coluna pode estar truncada no teto).
     @lead_counts_by_status = Hash.new(0)
     lead_scope.reorder(nil).group(:status).count.each do |status, count|
-      status = Lead.status_value(status)
+      status = Lead.status_value(status, tenant: current_tenant)
       next if @selected_pipeline.present? && !@leads_by_status.key?(status)
 
       @lead_counts_by_status[status] += count
     end
     @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
-    @leads = lead_scope.paginate(page: params[:page], per_page: 20)
+    @leads = list_scope.paginate(page: params[:page], per_page: 20)
     load_pwa_leads_context(filtered_scope.reorder(nil), unfiltered_scope: unfiltered_scope.reorder(nil))
     property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a + @pwa_kanban_leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
@@ -237,7 +240,7 @@ class Admin::LeadsController < Admin::BaseController
     status = Lead.status_value(params[:status], tenant: current_tenant)
     offset = [params[:offset].to_i, 0].max
     desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
-    lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status })
+    lead_scope = lead_scope_for_tab(filtered_lead_scope_for_current_user, desktop_tab).where(leads: { status: status_filter_values_for(status) })
     total = lead_scope.reorder(nil).count
     leads = lead_scope
             .includes(:admin_user, lead_labelings: :lead_label)
@@ -277,7 +280,7 @@ class Admin::LeadsController < Admin::BaseController
 
     tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
     offset = [params[:offset].to_i, 0].max
-    base_scope = filtered_lead_scope_for_current_user.where(admin_user_id: current_admin_user&.id)
+    base_scope = hide_discarded_from_list_scope(filtered_lead_scope_for_current_user.where(admin_user_id: current_admin_user&.id))
     lead_scope = pwa_lead_scope_for_tab(base_scope, tab)
     total = lead_scope.reorder(nil).count
     leads = lead_scope
@@ -939,8 +942,14 @@ class Admin::LeadsController < Admin::BaseController
   def apply_status_filter(scope)
     return scope if @status_filters.blank?
 
-    values = @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank
+    values = @status_filters.flat_map { |status| status_filter_values_for(status) }.compact_blank.uniq
     values.present? ? scope.where(leads: { status: values }) : scope
+  end
+
+  def hide_discarded_from_list_scope(scope)
+    return scope if @status_filters.present? || @archive_reason_id.present?
+
+    scope.where.not(leads: { status: Lead.status_value(:descartado, tenant: current_tenant) })
   end
 
   def kanban_status_tone
@@ -2464,11 +2473,12 @@ class Admin::LeadsController < Admin::BaseController
     @pwa_queue_position = current_user_distribution_queue_position
 
     base_scope = filtered_scope.where(admin_user_id: current_admin_user&.id)
+    list_base_scope = hide_discarded_from_list_scope(base_scope)
     original_scope = (unfiltered_scope || filtered_scope).where(admin_user_id: current_admin_user&.id)
-    @pwa_tab_counts = lead_tab_counts_for(base_scope)
-    @pwa_tab_original_counts = lead_tab_counts_for(original_scope)
+    @pwa_tab_counts = lead_tab_counts_for(list_base_scope)
+    @pwa_tab_original_counts = lead_tab_counts_for(hide_discarded_from_list_scope(original_scope))
 
-    @pwa_leads = pwa_lead_scope_for_tab(base_scope, @pwa_lead_tab)
+    @pwa_leads = pwa_lead_scope_for_tab(list_base_scope, @pwa_lead_tab)
                  .includes(:admin_user, lead_labelings: :lead_label)
                  .order(updated_at: :desc, created_at: :desc)
                  .limit(PWA_LEAD_LIST_PAGE_SIZE)
@@ -2485,7 +2495,7 @@ class Admin::LeadsController < Admin::BaseController
     @pwa_kanban_total_count = pwa_tab_scope.reorder(nil).count
 
     pwa_tab_scope.reorder(nil).group(:status).count.each do |status, count|
-      status = Lead.status_value(status)
+      status = Lead.status_value(status, tenant: current_tenant)
       next if @selected_pipeline.present? && !@pwa_kanban_leads_by_status.key?(status)
 
       @pwa_kanban_counts_by_status[status] += count
@@ -2501,7 +2511,7 @@ class Admin::LeadsController < Admin::BaseController
                             .order(updated_at: :desc, created_at: :desc)
                             .to_a
     @pwa_kanban_leads.each do |lead|
-      status = Lead.status_value(lead.status)
+      status = Lead.status_value(lead.status, tenant: current_tenant)
       next if @selected_pipeline.present? && !@pwa_kanban_leads_by_status.key?(status)
 
       @pwa_kanban_leads_by_status[status] ||= []
@@ -2531,7 +2541,7 @@ class Admin::LeadsController < Admin::BaseController
     when "visits"
       base_scope.where(id: pwa_future_visit_lead_ids(base_scope))
     when "future"
-      base_scope.where(id: pwa_future_task_lead_ids(base_scope))
+      pwa_scheduled_leads(base_scope)
     when "favorites"
       base_scope.joins(:lead_favorites).where(lead_favorites: { admin_user_id: current_admin_user&.id })
     else
@@ -2563,64 +2573,60 @@ class Admin::LeadsController < Admin::BaseController
       .select(:id)
   end
 
-  def pwa_future_task_lead_ids(base_scope)
-    task_ids = Task
-      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
-      .pendentes
-      .where("due_at > ?", Time.current.end_of_day)
-      .select(:lead_id)
-
-    base_scope
-      .where("leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
-             task_ids: task_ids,
-             external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :future))
-      .select(:id)
-  end
-
   def pwa_due_task_lead_ids(base_scope)
     task_ids = Task
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
-      .where("due_at IS NULL OR due_at <= ?", Time.current.end_of_day)
-      .where.not(id: pwa_external_future_task_ids(base_scope))
+      .where("due_at IS NULL OR tasks.lead_id NOT IN (:scheduled_lead_ids)", scheduled_lead_ids: pwa_scheduled_leads(base_scope).select(:id))
       .select(:lead_id)
 
     base_scope
-      .where("leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
-             task_ids: task_ids,
-             external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :due))
+      .where(id: task_ids)
       .select(:id)
   end
 
   def pwa_later_scheduled_lead_ids(base_scope)
+    pwa_scheduled_leads(base_scope).select(:id)
+  end
+
+  def pwa_scheduled_leads(base_scope)
+    task_ids = Task
+      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
+      .pendentes
+      .where.not(due_at: nil)
+      .select(:lead_id)
+    appointment_ids = Appointment
+      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id, status: "agendado")
+      .select(:lead_id)
+
     base_scope
-      .where("leads.id IN (:future_task_ids) OR leads.id IN (:future_visit_ids)",
-             future_task_ids: pwa_future_task_lead_ids(base_scope),
-             future_visit_ids: pwa_future_visit_lead_ids(base_scope))
-      .select(:id)
+      .where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values)
+      .where(
+        "leads.id IN (:task_ids) OR leads.id IN (:appointment_ids) OR leads.id IN (:external_task_ids) OR leads.id IN (:external_visit_ids)",
+        task_ids: task_ids,
+        appointment_ids: appointment_ids,
+        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :scheduled),
+        external_visit_ids: pwa_external_schedule_lead_ids(base_scope, visits: true, timing: :scheduled)
+      )
+  end
+
+  def pwa_future_excluded_status_values
+    pipeline_statuses = current_tenant.lead_pipeline_stages.active.where(stage_type: %w[lost archived]).pluck(:name)
+    (pipeline_statuses + [Lead.status_value(:descartado), "Descartado", "Perdido", "Arquivado"]).compact_blank.uniq
   end
 
   def pwa_external_schedule_lead_ids(base_scope, visits:, timing:)
     scope = pwa_external_schedule_scope(base_scope, visits: visits)
     scope =
       case timing
-      when :future
-        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
-      when :due
-        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} <= ?", Time.current.end_of_day)
       when :upcoming
         scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} >= ?", Time.current.beginning_of_day)
+      when :scheduled
+        scope
       else
         scope
-      end
+    end
     scope.select(:lead_id)
-  end
-
-  def pwa_external_future_task_ids(base_scope)
-    pwa_external_schedule_scope(base_scope, visits: false)
-      .where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
-      .where("NULLIF(lead_activities.metadata ->> 'task_id', '') ~ '^[0-9]+$'")
-      .select(Arel.sql("CAST(NULLIF(lead_activities.metadata ->> 'task_id', '') AS bigint)"))
   end
 
   def pwa_external_schedule_scope(base_scope, visits:)
@@ -2766,14 +2772,20 @@ class Admin::LeadsController < Admin::BaseController
   def lead_status_options_for_selected_context
     if @selected_pipeline.present?
       visible = visible_stages_for(@selected_pipeline.stages.active.ordered)
-      return visible.map(&:name) if visible.any?
+      return visible.map { |stage| Lead.status_value(stage.name, tenant: current_tenant) }.compact_blank.uniq if visible.any?
 
       return Lead.status_options(pipeline: @selected_pipeline, tenant: current_tenant)
+        .map { |status| Lead.status_value(status, tenant: current_tenant) }
+        .compact_blank
+        .uniq
     end
 
     pipeline_statuses = visible_stages_for(current_tenant.lead_pipeline_stages.active.ordered).map(&:name)
     existing_statuses = lead_scope_for_current_user.reorder(nil).distinct.pluck(:status).compact
-    (pipeline_statuses + existing_statuses + Lead::LEGACY_STATUSES).compact_blank.uniq
+    (pipeline_statuses + existing_statuses + Lead::LEGACY_STATUSES)
+      .map { |status| Lead.status_value(status, tenant: current_tenant) }
+      .compact_blank
+      .uniq
   end
 
   def lead_statuses_for_kanban(lead_scope)
@@ -2781,7 +2793,17 @@ class Admin::LeadsController < Admin::BaseController
     return @status_filters.map { |status| Lead.status_value(status, tenant: current_tenant) }.compact_blank if @status_filters.present?
     return configured_statuses if @selected_pipeline.present?
 
-    (configured_statuses + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
+    (configured_statuses + lead_scope.reorder(nil).distinct.pluck(:status).compact)
+      .map { |status| Lead.status_value(status, tenant: current_tenant) }
+      .compact_blank
+      .uniq
+  end
+
+  def status_filter_values_for(status)
+    canonical = Lead.status_value(status, tenant: current_tenant)
+    values = [canonical]
+    values << Lead::DEFAULT_STATUS if canonical == Lead.default_status(tenant: current_tenant) && Lead::DEFAULT_STATUS != canonical
+    values.uniq
   end
 
   def visible_stages_for(scope)

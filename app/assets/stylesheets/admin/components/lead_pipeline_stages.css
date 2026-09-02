@@ -341,6 +341,11 @@
   box-shadow: 0 0 0 3px var(--lead-stage-primary-ring);
 }
 
+.lead-status-row.is-destroying .lead-status-row__summary {
+  border-color: color-mix(in srgb, var(--admin-danger, #b42318) 55%, var(--lead-stage-border-strong));
+  background: color-mix(in srgb, #fff 92%, var(--admin-danger, #b42318));
+}
+
 .lead-status-row.is-open .lead-status-row__summary-badges .bi-chevron-down {
   transform: rotate(180deg);
 }
@@ -357,6 +362,11 @@
   border: 1px solid var(--lead-stage-border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--lead-stage-surface) 96%, var(--lead-stage-primary));
+}
+
+.lead-status-row__destroy-panel {
+  border-color: color-mix(in srgb, var(--admin-danger, #b42318) 42%, var(--lead-stage-border));
+  background: color-mix(in srgb, #fff 94%, var(--admin-danger, #b42318));
 }
 
 .lead-status-row__section-title {

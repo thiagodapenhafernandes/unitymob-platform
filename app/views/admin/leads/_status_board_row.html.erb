@@ -1,6 +1,7 @@
 <%
   stage_id = local_assigns[:id].presence
   stage_options = Array(local_assigns[:stage_options])
+  replacement_stage_source = Array(local_assigns[:replacement_stage_options].presence || stage_options)
   archive_reason_options = Array(local_assigns[:archive_reason_options])
   distribution_rule_options = Array(local_assigns[:distribution_rule_options])
   automations = Array(local_assigns[:automations])
@@ -12,6 +13,7 @@
   qualification_options = Array(policy&.qualification_options.presence || LeadPipelineStagePolicy::DEFAULT_QUALIFICATION_OPTIONS)
   allowed_archive_reason_ids = Array(policy&.allowed_archive_reason_ids).map(&:to_s)
   selected_next_stage_ids = transitions.map(&:next_stage_id).map(&:to_s)
+  replacement_stage_options = replacement_stage_source.select { |stage| stage_id.blank? || stage.id.to_s != stage_id.to_s }
   summary_parts = []
   summary_parts << "Visível para #{visible_roles.filter_map { |role| LeadPipelineStagePolicy::VISIBLE_ROLES[role] }.to_sentence}" if visible_roles.any?
   summary_parts << "#{selected_next_stage_ids.size} próxima(s) etapa(s)" if selected_next_stage_ids.any?
@@ -295,6 +297,33 @@
         </label>
       </div>
     </div>
+
+    <% if stage_id.present? %>
+      <div class="lead-status-row__section lead-status-row__destroy-panel" data-lead-status-destroy-panel hidden>
+        <div class="lead-status-row__section-title">
+          <%= ax_field_label(nil, nil,
+                             text: "Remover etapa",
+                             tooltip: "Antes de remover, escolha para qual etapa os leads atuais serão enviados.") %>
+        </div>
+        <div class="lead-status-row__ops-grid">
+          <div>
+            <%= ax_field_label(nil, nil,
+                               text: "Enviar leads para",
+                               tooltip: "Todos os leads que estiverem nesta etapa serão movidos para a etapa escolhida.",
+                               class_name: "ax-label lead-status-row__field-label") %>
+            <select class="ax-control ax-control--sm"
+                    data-lead-status-destroy-field="replacement_stage_id"
+                    disabled
+                    aria-label="Etapa de destino dos leads">
+              <option value="">Escolha uma etapa</option>
+              <% replacement_stage_options.each do |stage| %>
+                <option value="<%= stage.id %>"><%= stage.name %></option>
+              <% end %>
+            </select>
+          </div>
+        </div>
+      </div>
+    <% end %>
 
     <div class="lead-status-row__section">
       <div class="lead-status-row__section-title">

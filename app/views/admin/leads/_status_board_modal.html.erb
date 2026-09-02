@@ -67,6 +67,7 @@
                    transitions: stage.transitions.ordered,
                    automations: stage.automations.ordered,
                    stage_options: automation_stage_options,
+                   replacement_stage_options: selected_pipeline_stages,
                    archive_reason_options: archive_reason_options,
                    distribution_rule_options: distribution_rule_options %>
       <% end %>
@@ -91,6 +92,7 @@
                  transitions: [],
                  automations: [],
                  stage_options: automation_stage_options,
+                 replacement_stage_options: selected_pipeline_stages,
                  archive_reason_options: archive_reason_options,
                  distribution_rule_options: distribution_rule_options %>
     </template>
