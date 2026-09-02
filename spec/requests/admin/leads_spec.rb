@@ -390,6 +390,14 @@ RSpec.describe "Admin::Leads", type: :request do
             }
           }
         )
+        create(
+          :appointment,
+          tenant: admin.tenant,
+          lead: visit,
+          admin_user: admin,
+          title: "Visita presencial",
+          starts_at: Time.zone.local(2026, 8, 18, 10, 0, 0)
+        )
 
         get admin_leads_path(view: "list", mobile_tab: "future")
 
