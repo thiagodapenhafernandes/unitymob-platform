@@ -97,6 +97,7 @@ module Admin
         @habitation.assign_attributes(published_restricted_params)
       else
         new_photo_uploads = assign_captacao_style_attributes
+        apply_linked_development_intake_features!(current_step)
       end
       touch_manual_habitation_update!(@habitation)
 
@@ -191,6 +192,41 @@ module Admin
       end
 
       proprietor.update(attrs) if attrs.any?
+    end
+
+    def apply_linked_development_intake_features!(current_step)
+      return unless current_step == "endereco"
+      return if @habitation.codigo_empreendimento.blank?
+
+      development = current_tenant.habitations.empreendimentos.find_by(codigo: @habitation.codigo_empreendimento)
+      return if development.blank?
+
+      merge_development_feature_list!(:caracteristicas, development.caracteristicas, category: "feature")
+      merge_development_feature_list!(:infra_estrutura, development.infra_estrutura, category: "infrastructure")
+    end
+
+    def merge_development_feature_list!(attribute, source, category:)
+      incoming = normalized_intake_feature_list(source, category: category)
+      return if incoming.empty?
+
+      current = normalized_intake_feature_list(@habitation.public_send(attribute), category: category)
+      merged = (current + incoming).uniq
+      @habitation.public_send("#{attribute}=", merged) if merged != current
+    end
+
+    def normalized_intake_feature_list(source, category:)
+      values = case source
+               when Hash
+                 source.filter_map { |key, value| truthy_intake_feature_value?(value) ? key : value.presence }
+               else
+                 Array(source)
+               end
+
+      AttributeOptions::HabitationFeatureNormalizer.normalize_list(values, category: category)
+    end
+
+    def truthy_intake_feature_value?(value)
+      value == true || value.to_s == "true" || value.to_s == "1"
     end
 
     def linked_proprietor_without_phone?(proprietor)
