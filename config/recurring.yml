@@ -62,6 +62,10 @@ production:
     class: ExternalLeadMigration::SyncEnabledIntegrationsJob
     queue: sync
     schedule: every 5 minutes
+  meta_forms_sync:
+    class: MetaSyncEnabledIntegrationsJob
+    queue: sync
+    schedule: every 15 minutes
   seo_discovery:
     class: SeoDiscoveryJob
     queue: sync

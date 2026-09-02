@@ -42,9 +42,10 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.other_information["meta_integration_user_id"]).to eq(admin.id)
   end
 
-  it "adiciona formulario novo em regra Meta com auto-add antes de criar o lead" do
+  it "adiciona formulario desconhecido em regra Meta e deixa o lead elegivel para distribuicao" do
     tenant = Tenant.create!(name: "Conta Meta Auto #{SecureRandom.hex(3)}", slug: "conta-meta-auto-#{SecureRandom.hex(3)}")
     admin = create(:admin_user, :admin, tenant: tenant)
+    broker = create(:admin_user, :field_agent, tenant: tenant)
     integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token")
     create(:meta_facebook_page, user_meta_integration: integration, page_id: "page-auto", access_token: "page-token")
     rule = create(
@@ -56,6 +57,7 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
       meta_page_ids: ["page-auto"],
       meta_forms: []
     )
+    create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker)
     service = instance_double(
       Facebook::MetaService,
       get_lead_details: {
@@ -73,7 +75,11 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     described_class.perform_now("lead-meta-auto", "page-auto", "form-new-auto")
 
     expect(rule.reload.meta_forms).to include("form-new-auto")
-    expect(tenant.leads.last.distribution_rule_id).to be_nil
+    lead = tenant.leads.last
+    Current.set(tenant: tenant) { Leads::DistributorService.find_and_distribute(lead) }
+    expect(lead.reload.distribution_rule_id).to eq(rule.id)
+    expect(lead.admin_user_id).to eq(broker.id)
+    expect(MetaLeadForm.find_by(form_id: "form-new-auto")).to be_present
   end
 
   it "extrai telefone de campos Meta com abreviacoes brasileiras" do
@@ -110,5 +116,56 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     })
 
     expect(attributes[:phone]).to eq("+55 21 99087-2427")
+  end
+
+  it "aceita numero local quando o campo indica telefone" do
+    attributes = described_class.new.send(:extract_lead_attributes, {
+      "field_data" => [
+        { "name" => "full_name", "values" => ["Cliente Teste"] },
+        { "name" => "telefone_para_contato", "values" => ["990872427"] }
+      ]
+    })
+
+    expect(attributes[:phone]).to eq("990872427")
+  end
+
+  it "registra payload bruto quando o lead da Meta nao pode ser salvo" do
+    tenant = Tenant.create!(name: "Conta Meta Falha #{SecureRandom.hex(3)}", slug: "conta-meta-falha-#{SecureRandom.hex(3)}")
+    admin = create(:admin_user, :admin, tenant: tenant)
+    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token")
+    create(:meta_facebook_page, user_meta_integration: integration, page_id: "page-fail", access_token: "page-token")
+    service = instance_double(
+      Facebook::MetaService,
+      get_lead_details: {
+        "id" => "lead-meta-sem-phone",
+        "field_data" => [
+          { "name" => "full_name", "values" => ["Cliente Sem Telefone"] },
+          { "name" => "email", "values" => ["cliente@example.com"] }
+        ]
+      }
+    )
+
+    allow(Facebook::MetaService).to receive(:new).with("page-token").and_return(service)
+    allow(ErrorEvent).to receive(:record!)
+
+    expect {
+      described_class.perform_now("lead-meta-sem-phone", "page-fail", "form-fail")
+    }.not_to change { tenant.leads.count }
+
+    expect(ErrorEvent).to have_received(:record!).with(
+      instance_of(ActiveRecord::RecordInvalid),
+      hash_including(
+        source: "job",
+        severity: "warning",
+        context: hash_including(
+          source: "meta_lead_processing",
+          tenant_id: tenant.id,
+          meta_leadgen_id: "lead-meta-sem-phone",
+          meta_page_id: "page-fail",
+          meta_form_id: "form-fail",
+          field_data: array_including(hash_including("name" => "email"))
+        )
+      )
+    )
   end
 end
