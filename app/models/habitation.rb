@@ -559,16 +559,22 @@ class Habitation < ApplicationRecord
   TOPOGRAFIA_OPTIONS = ["Plano", "Aclive", "Declive", "Irregular"].freeze
   FOTO_CLASSIFICACAO = ["Profissionais", "Boas", "Aceitáveis", "Não tem fotos"].freeze
   # Ambientes das fotos do imóvel (armazenados em blob.metadata["ambiente"]).
-  # A ordem também é a ordem de exibição no select do modal de configuração.
-  FOTO_AMBIENTES = [
+  FOTO_QUARTO_AMBIENTES = (1..5).map { |number| "#{number} #{number == 1 ? 'Quarto' : 'Quartos'}" }.freeze
+  FOTO_BANHEIRO_AMBIENTES = (1..5).map { |number| "#{number} #{number == 1 ? 'Banheiro' : 'Banheiros'}" }.freeze
+  FOTO_AMBIENTE_SELECT_OPTIONS = [
     "Fachada", "Sala de estar", "Sala de jantar", "Sacada", "Cozinha",
-    "Lavanderia", "Lavabo", "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
+    "Lavanderia", "Lavabo", *FOTO_QUARTO_AMBIENTES, *FOTO_BANHEIRO_AMBIENTES,
+    "Área externa", "Garagem", "Planta"
   ].freeze
-  # Ordem canônica de organização das fotos por ambiente. Quartos/Banheiros são
-  # intercalados (Quarto1, Banheiro1, Quarto2, ...) por organize_photos_by_ambiente!.
+  FOTO_LEGACY_AMBIENTES = ["Quartos", "Banheiros"].freeze
+  FOTO_AMBIENTES = (FOTO_AMBIENTE_SELECT_OPTIONS + FOTO_LEGACY_AMBIENTES).freeze
+  # Ordem canônica de organização das fotos por ambiente.
   FOTO_AMBIENTE_ORDER = [
     "Fachada", "Sala de estar", "Sala de jantar", "Sacada", "Cozinha",
-    "Lavanderia", "Lavabo", "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
+    "Lavanderia", "Lavabo",
+    "1 Quarto", "1 Banheiro", "2 Quartos", "2 Banheiros", "3 Quartos", "3 Banheiros",
+    "4 Quartos", "4 Banheiros", "5 Quartos", "5 Banheiros",
+    "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
   ].freeze
   KEY_LOCATION_OPTIONS = ["Imobiliária", "Corretor(a)", "Proprietário", "Zelador", "Portaria", "Inquilino", "Construtora", "Outro"].freeze
   CAPTACAO_KEY_LOCATION_OPTIONS = {

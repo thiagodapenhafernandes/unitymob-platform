@@ -12,12 +12,12 @@ class Admin::HabitationMediaController < Admin::BaseController
   before_action :set_habitation
   before_action :scope_habitation_by_permission
   before_action :load_property_setting
-  before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo ambiente organize share download]
+  before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo destroy_selected ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:abrir_organizador_midia") }, only: %i[show modal]
-  before_action -> { authorize_profile_field!("photos") }, only: %i[upload reorder visibility destroy_photo ambiente organize share download]
+  before_action -> { authorize_profile_field!("photos") }, only: %i[upload reorder visibility destroy_photo destroy_selected ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:gerenciar_ordem_fotos") }, only: :reorder
   before_action -> { authorize_profile_action!("acao:alterar_visibilidade_fotos") }, only: :visibility
-  before_action -> { authorize_profile_action!("acao:remover_foto") }, only: :destroy_photo
+  before_action -> { authorize_profile_action!("acao:remover_foto") }, only: %i[destroy_photo destroy_selected]
   before_action -> { authorize_profile_action!("acao:configurar_ambiente_foto") }, only: :ambiente
   before_action -> { authorize_profile_action!("acao:organizar_fotos") }, only: :organize
   before_action -> { authorize_profile_action!("acao:enviar_fotos") }, only: :share
@@ -26,7 +26,6 @@ class Admin::HabitationMediaController < Admin::BaseController
     @page_title = "Mídia do Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
     @media_tools_can_edit = can_manage_media_tools?
-    @media_tools_ambientes = Habitation::FOTO_AMBIENTES
   end
 
   def modal
@@ -159,6 +158,40 @@ class Admin::HabitationMediaController < Admin::BaseController
       media_update.record_habitation_updated(before_snapshot: before_snapshot)
       media_update.apply_saved_photo_removals([photo_id]) if photo_id.present?
       respond_with_media_success("Foto removida.")
+    else
+      respond_with_media_validation_error
+    end
+  end
+
+  def destroy_selected
+    before_snapshot = Habitations::AuditChangeRecorder.snapshot_for(@habitation)
+    @habitation.skip_auto_audit = true
+    media_update = habitation_media_updater
+
+    photo_ids = share_photo_ids_param
+    picture_indices = share_picture_indices_param
+
+    if photo_ids.blank? && picture_indices.blank?
+      respond_with_media_error("Selecione ao menos uma foto para excluir.")
+      return
+    end
+
+    valid_photo_ids = @habitation.photos.attachments.where(id: photo_ids).ids
+    valid_picture_indices = valid_picture_indices_for_removal(picture_indices)
+
+    if valid_photo_ids.blank? && valid_picture_indices.blank?
+      respond_with_media_error("Nenhuma das fotos selecionadas está disponível para excluir.")
+      return
+    end
+
+    media_update.apply_picture_removals_to_memory(valid_picture_indices)
+    media_update.touch_manual_habitation_update!(force: true)
+
+    if @habitation.save
+      media_update.record_habitation_updated(before_snapshot: before_snapshot)
+      record_external_picture_removal_audit(before_snapshot, valid_picture_indices)
+      media_update.apply_saved_photo_removals(valid_photo_ids)
+      respond_with_media_success(bulk_destroy_message(valid_photo_ids.size + valid_picture_indices.size))
     else
       respond_with_media_validation_error
     end
@@ -366,6 +399,79 @@ class Admin::HabitationMediaController < Admin::BaseController
 
       Storage::PublicCdnImageUrl.resolve(picture).presence
     end.uniq
+  end
+
+  def valid_picture_indices_for_removal(indices)
+    return [] if indices.blank?
+
+    indexed_pictures = Habitations::MediaGallery.new(@habitation)
+      .api_media_pictures
+      .map { |_picture, original_index, _url| original_index.to_i }
+
+    indices.map(&:to_i).uniq & indexed_pictures
+  end
+
+  def record_external_picture_removal_audit(before_snapshot, removed_indices)
+    return if removed_indices.blank?
+
+    before_pictures = Array(before_snapshot.dig("attributes", "pictures"))
+    after_pictures = Array(@habitation.pictures)
+
+    HabitationAuditLog.create!(
+      habitation: @habitation,
+      admin_user: current_admin_user,
+      action: "attachments_changed",
+      source: @habitation.broker_intake? ? "captacao" : "admin",
+      changed_fields: ["photos_attachments"],
+      changeset: {
+        "photos_attachments" => {
+          before: audit_picture_payloads(before_pictures),
+          after: audit_picture_payloads(after_pictures)
+        }
+      },
+      metadata: {
+        association: "pictures",
+        removed_picture_indices: removed_indices
+      },
+      ip: request&.remote_ip || Current.request_ip,
+      user_agent: (request&.user_agent || Current.request_user_agent).to_s.first(255)
+    )
+  end
+
+  def audit_picture_payloads(pictures)
+    Array(pictures).map.with_index do |picture, index|
+      url = audit_picture_url(picture)
+      filename = if url.present?
+        File.basename(URI.parse(url).path.presence || "foto-externa-#{index + 1}.jpg")
+      else
+        "foto-externa-#{index + 1}.jpg"
+      end
+
+      {
+        "id" => index,
+        "filename" => filename
+      }
+    rescue URI::InvalidURIError
+      {
+        "id" => index,
+        "filename" => "foto-externa-#{index + 1}.jpg"
+      }
+    end
+  end
+
+  def audit_picture_url(picture)
+    return picture.to_s.presence unless picture.respond_to?(:[])
+
+    picture["url"].presence ||
+      picture[:url].presence ||
+      picture["src"].presence ||
+      picture[:src].presence ||
+      picture["link"].presence ||
+      picture[:link].presence
+  end
+
+  def bulk_destroy_message(total)
+    total == 1 ? "1 foto excluída." : "#{total} fotos excluídas."
   end
 
   def selected_download_entries(photo_ids:, picture_indices:, development_indices: [])

@@ -62,6 +62,7 @@ module Admin
     def standalone_options(names_with_development)
       scope
         .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
+        .where("NULLIF(TRIM(codigo_empreendimento), '') IS NULL")
         .where.not(tipo: "Empreendimento")
         .pluck(:nome_empreendimento)
         .reject { |name| names_with_development.include?(normalized_text(name)) }
