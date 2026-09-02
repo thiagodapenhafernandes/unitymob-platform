@@ -26,6 +26,7 @@ RSpec.describe "Field::PropertySearches", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Busca inteligente", "field-property-search")
     expect(response.body).to include("Falar busca", "Descartar gravação", "Pausar gravação", "Enviar áudio")
+    expect(response.body).to include('class="field-ai-search__mic" hidden data-action="field-property-search#startRecording"')
     expect(response.body).to include("Transcrevendo, entendendo os filtros e procurando imóveis disponíveis")
   end
 
@@ -390,6 +391,20 @@ RSpec.describe "Field::PropertySearches", type: :request do
 
     expect(response).to have_http_status(:unprocessable_entity)
     expect(response.parsed_body.fetch("error")).to include("voz desativada")
+  end
+
+  it "responde com erro específico quando a transcrição do áudio vem vazia" do
+    setting.update!(voice_property_search_enabled: true)
+    allow_any_instance_of(Ai::PropertySearch::Transcriber).to receive(:call).and_return("")
+    file = Tempfile.new(["busca", ".webm"])
+    file.write("audio")
+    file.rewind
+    audio = Rack::Test::UploadedFile.new(file.path, "audio/webm", original_filename: "busca.webm")
+
+    post field_property_search_path(format: :json), params: { audio:, audio_duration_seconds: 2 }, headers: json_headers
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body.fetch("error")).to eq("Não consegui entender o áudio. Grave uma descrição do imóvel e tente novamente.")
   end
 
   it "nega perfis removidos da configuração" do

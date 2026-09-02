@@ -188,7 +188,10 @@ module Field
         raise ArgumentError, "Não foi possível validar a duração do áudio." unless duration
         raise ArgumentError, "O áudio ultrapassa o limite de #{max_duration} segundos." if duration > max_duration
 
-        Ai::PropertySearch::Transcriber.new(setting: @setting, audio: params[:audio]).call
+        transcription = Ai::PropertySearch::Transcriber.new(setting: @setting, audio: params[:audio]).call.to_s.strip
+        raise ArgumentError, "Não consegui entender o áudio. Grave uma descrição do imóvel e tente novamente." if transcription.blank?
+
+        transcription
       else
         params[:query].to_s.strip.first(2_000)
       end

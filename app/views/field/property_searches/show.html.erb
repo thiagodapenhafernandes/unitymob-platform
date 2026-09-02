@@ -24,7 +24,7 @@
     <div class="field-ai-search__actions">
       <button type="button" class="field-ai-search__mic" hidden data-action="field-property-search#newSearch" data-field-property-search-target="newSearch"><i class="bi bi-plus-circle"></i><span>Nova busca</span></button>
       <% if @setting.voice_property_search_enabled? %>
-        <button type="button" class="field-ai-search__mic" data-action="field-property-search#startRecording" data-field-property-search-target="micButton" aria-label="Gravar busca por voz">
+        <button type="button" class="field-ai-search__mic" hidden data-action="field-property-search#startRecording" data-field-property-search-target="micButton" aria-label="Gravar busca por voz">
           <i class="bi bi-mic-fill"></i><span>Falar busca</span>
         </button>
       <% end %>

@@ -12,6 +12,7 @@ export default class extends Controller {
     this.selectedIds = new Set()
     this.previewCloseHandler = () => document.documentElement.classList.remove("field-preview-open")
     if (this.hasPreviewDialogTarget) this.previewDialogTarget.addEventListener("close", this.previewCloseHandler)
+    this.configureAudioRecording()
     if (this.autoStartValue && this.hasMicButtonTarget) this.scheduleAutoStartRecording()
   }
 
@@ -26,12 +27,15 @@ export default class extends Controller {
 
   async startRecording() {
     if (this.recording || this.loading) return
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return this.showError("Gravação de áudio não é suportada neste aparelho.")
+    if (!this.audioRecordingSupported()) {
+      this.configureAudioRecording()
+      return this.showError("Gravação de áudio não é suportada neste aparelho.")
+    }
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       this.rememberMicrophonePermission("granted")
-      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((type) => MediaRecorder.isTypeSupported(type))
+      const mimeType = this.supportedAudioMimeType()
       this.recorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined)
       this.chunks = []
       this.discardNext = false
@@ -63,6 +67,7 @@ export default class extends Controller {
   }
 
   async canAutoStartRecording() {
+    if (!this.audioRecordingSupported()) return false
     if (this.microphonePermissionState === "granted") return true
 
     const state = await this.browserMicrophonePermissionState()
@@ -88,6 +93,23 @@ export default class extends Controller {
 
   rememberMicrophonePermission(state) {
     try { window.localStorage?.setItem(this.microphonePermissionKey, state) } catch (_) {}
+  }
+
+  configureAudioRecording() {
+    if (!this.hasMicButtonTarget) return
+
+    this.micButtonTarget.hidden = !this.audioRecordingSupported()
+  }
+
+  audioRecordingSupported() {
+    return Boolean(navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined" && this.supportedAudioMimeType() !== undefined)
+  }
+
+  supportedAudioMimeType() {
+    if (typeof MediaRecorder === "undefined") return undefined
+    if (typeof MediaRecorder.isTypeSupported !== "function") return ""
+
+    return ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((type) => MediaRecorder.isTypeSupported(type)) || ""
   }
 
   get microphonePermissionState() {
@@ -221,7 +243,7 @@ export default class extends Controller {
   }
 
   handleResponse(payload) {
-    this.transcription = payload.transcription || this.queryTarget.value
+    this.transcription = this.cleanTranscription(payload.transcription || this.queryTarget.value)
     this.queryTarget.value = this.transcription
     if (payload.status === "clarification_required") {
       if (payload.development_options?.length) return this.renderDevelopmentOptions(payload)
@@ -284,6 +306,13 @@ export default class extends Controller {
     const corrections = payload.location_corrections || []
     if (!corrections.length) return ""
     return corrections.map((correction) => `Entendi «${correction.from}» como «${correction.to}».`).join(" ")
+  }
+
+  cleanTranscription(value) {
+    const text = String(value || "").trim()
+    if (/^(contexto?|context):\s*#+\s*Vocabulário:/i.test(text)) return ""
+    if (/^Vocabulário:/i.test(text)) return ""
+    return text
   }
 
   resultsHeading(content) {
