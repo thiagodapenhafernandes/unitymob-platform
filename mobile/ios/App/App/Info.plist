@@ -31,6 +31,8 @@
 	     nenhum rastreamento em segundo plano. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>O Unitymob usa sua localização para confirmar seu check-in na loja mais próxima enquanto você usa o app.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O Unitymob usa o microfone para gravar buscas por voz quando o recurso está disponível no aparelho.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
