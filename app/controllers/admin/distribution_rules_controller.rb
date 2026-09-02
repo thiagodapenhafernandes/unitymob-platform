@@ -307,6 +307,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       :source_meta, :source_webhook, :source_portal, :source_site,
       :distribution_mode,
       :pocket_active, :pocket_time,
+      :pocket_to_shark_tank, :pool_renotify_mode, :pool_renotify_minutes,
       :represamento_active, :auto_add_forms,
       :min_price, :max_price,
       :notify_whatsapp, :notify_email, :notify_webhook, :notify_push,
@@ -359,6 +360,16 @@ class Admin::DistributionRulesController < Admin::BaseController
       end
       unless DistributionRule.pocket_requires_secure_push?
         perms[:pocket_active] = "0"
+        perms[:pocket_to_shark_tank] = "0"
+      end
+      unless DistributionRule.column_names.include?("pocket_to_shark_tank")
+        perms.delete(:pocket_to_shark_tank)
+      end
+      unless DistributionRule.column_names.include?("pool_renotify_mode")
+        perms.delete(:pool_renotify_mode)
+      end
+      unless DistributionRule.column_names.include?("pool_renotify_minutes")
+        perms.delete(:pool_renotify_minutes)
       end
     end
   end

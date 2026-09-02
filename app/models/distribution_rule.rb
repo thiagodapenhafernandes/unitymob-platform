@@ -16,6 +16,8 @@ class DistributionRule < ApplicationRecord
     "fora_horario" => "fora_horario",
     "fora_hora" => "fora_horario"
   }.freeze
+  POOL_RENOTIFY_MODES = %w[never interval].freeze
+  DEFAULT_POOL_RENOTIFY_MINUTES = 30
 
   after_initialize :set_defaults
   before_validation :ensure_auto_update_trigger_value, if: :has_auto_update_trigger_column?
@@ -34,6 +36,10 @@ class DistributionRule < ApplicationRecord
   validates :max_price, numericality: { greater_than_or_equal_to: 0, allow_nil: true }
   validate :max_price_greater_than_min_price
   validates :pocket_time, numericality: { greater_than: 0 }, if: :pocket_active?
+  validates :pool_renotify_mode, inclusion: { in: POOL_RENOTIFY_MODES }, if: :has_pool_renotify_columns?
+  validates :pool_renotify_minutes,
+            numericality: { only_integer: true, greater_than: 0 },
+            if: :pool_renotify_interval?
   validate :validate_auto_update_triggers, if: :has_auto_update_trigger_column?
 
   scope :active, -> { where(active: true) }
@@ -107,6 +113,22 @@ class DistributionRule < ApplicationRecord
 
   def pocket_operational?
     pocket_active? && pocket_time.to_i.positive? && self.class.pocket_requires_secure_push?
+  end
+
+  def pocket_to_pool?
+    has_attribute?(:pocket_to_shark_tank) && pocket_to_shark_tank?
+  end
+
+  def pool_mode?
+    shark_tank? || pocket_to_pool?
+  end
+
+  def pool_renotify_interval?
+    has_attribute?(:pool_renotify_mode) && pool_renotify_mode == "interval"
+  end
+
+  def pool_renotify_minutes_value
+    pool_renotify_minutes.presence || DEFAULT_POOL_RENOTIFY_MINUTES
   end
 
   def next_available_agent(candidates = nil)
@@ -322,6 +344,12 @@ class DistributionRule < ApplicationRecord
     self.notify_webhook_urls ||= []
     ensure_full_schedule
     self.auto_update_trigger = ["sorteio"] if has_auto_update_trigger_column? && read_attribute(:auto_update_trigger).blank?
+    self.pool_renotify_mode = "never" if has_attribute?(:pool_renotify_mode) && read_attribute(:pool_renotify_mode).blank?
+    self.pool_renotify_minutes = DEFAULT_POOL_RENOTIFY_MINUTES if has_attribute?(:pool_renotify_minutes) && read_attribute(:pool_renotify_minutes).blank?
+  end
+
+  def has_pool_renotify_columns?
+    has_attribute?(:pool_renotify_mode)
   end
 
   def shift_ok?(check_in)

@@ -1649,7 +1649,7 @@ class Habitation < ApplicationRecord
   def public_image_sources
     own_sources = own_public_image_sources
     return own_sources if empreendimento? || codigo_empreendimento.blank?
-    return own_sources if own_sources.present? || !use_development_photos?
+    return own_sources unless use_development_photos?
 
     (own_sources + linked_development_public_image_sources).uniq do |source|
       public_image_source_key(source)

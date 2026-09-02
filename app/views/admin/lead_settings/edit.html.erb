@@ -38,7 +38,7 @@
                         ["Só quem atendeu de fato (aceitou / em atendimento)", "attended"],
                         ["Qualquer corretor a quem já foi atribuído", "any_assignment"]
                       ]) %>
-                <p class="ax-field__hint">"Atendeu de fato" ignora leads que foram só atribuídos e expiraram no pocket sem atendimento.</p>
+                <p class="ax-field__hint">"Atendeu de fato" ignora leads que foram só atribuídos e expiraram no aceite com prazo sem atendimento.</p>
               <% end %>
 
               <%= ax_field_group(title: "Se o corretor anterior não estiver disponível", token: "Elegibilidade") do %>
@@ -68,7 +68,7 @@
             <div class="ax-option-stack tw-mb-3">
               <%= ax_toggle_chip(f, :notify_on_distribution, label: raw("<i class='bi bi-diagram-3'></i> Lead novo distribuído (rotativo/performance)")) %>
               <%= ax_toggle_chip(f, :notify_on_sticky, label: raw("<i class='bi bi-person-check'></i> Lead fidelizado (volta pro mesmo corretor)")) %>
-              <%= ax_toggle_chip(f, :notify_on_redistribution, label: raw("<i class='bi bi-arrow-repeat'></i> Reenvio após pocket expirar (novo corretor)")) %>
+              <%= ax_toggle_chip(f, :notify_on_redistribution, label: raw("<i class='bi bi-arrow-repeat'></i> Reenvio após aceite com prazo expirar (novo corretor)")) %>
               <%= ax_toggle_chip(f, :notify_on_shark_tank, label: raw("<i class='bi bi-lightning'></i> Shark Tank: avisar todos (1º que aceitar vira dono)")) %>
             </div>
 
@@ -76,7 +76,7 @@
             <div class="ax-option-stack">
               <%= ax_toggle_chip(f, :notify_on_direct_assignment, label: raw("<i class='bi bi-person-plus'></i> Lead que já chega com corretor (share link / atribuição na criação)")) %>
               <%= ax_toggle_chip(f, :notify_on_reassignment, label: raw("<i class='bi bi-arrow-left-right'></i> Reatribuição manual pelo admin")) %>
-              <%= ax_toggle_chip(f, :notify_on_lost_turn, label: raw("<i class='bi bi-hourglass-bottom'></i> Avisar quem perdeu a vez (pocket expirou)")) %>
+              <%= ax_toggle_chip(f, :notify_on_lost_turn, label: raw("<i class='bi bi-hourglass-bottom'></i> Avisar quem perdeu a vez (aceite com prazo expirou)")) %>
             </div>
 
             <p class="ax-field__hint tw-mt-2">Lembre: push é por aparelho — cada corretor precisa ativar no <code>/field</code> dele.</p>
@@ -121,7 +121,7 @@
                     ["WhatsApp do lead direto", "whatsapp"]
                   ]) %>
             <p class="ax-field__hint tw-mt-2">
-              Nas duas opções, o toque no push conta como aceite no prazo e trava a rotação do pocket.
+              Nas duas opções, o toque no push conta como aceite no prazo e trava a rotação do aceite com prazo.
               Use detalhes quando o corretor precisa ver telefone, e-mail, origem e interesse antes de chamar o cliente.
             </p>
 

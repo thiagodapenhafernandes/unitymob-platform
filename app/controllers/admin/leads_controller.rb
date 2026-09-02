@@ -213,8 +213,20 @@ class Admin::LeadsController < Admin::BaseController
     end
     @queue_agent_positions_by_id = display_queue_positions_by_agent_id(@queue_agents_by_rule_id.values.flatten)
     @best_queue_position = @queue_positions_by_rule_id.values.compact.min
+    queue_rule_ids = @queue_rules.map(&:id)
+    @focused_pool_lead_id = params[:lead_id].presence&.to_i
+    pool_scope = current_tenant.leads
+      .where(distribution_rule_id: queue_rule_ids, admin_user_id: nil, status: Lead.status_value(:waiting_acceptance))
+      .includes(:distribution_rule)
+
+    @pool_leads = if @focused_pool_lead_id.present?
+      pool_scope.order(Arel.sql("CASE WHEN leads.id = #{@focused_pool_lead_id.to_i} THEN 0 ELSE 1 END, leads.created_at ASC"))
+    else
+      pool_scope.order(created_at: :asc)
+    end
+    @pool_leads_by_rule_id = @pool_leads.group_by(&:distribution_rule_id)
     @return_to_path = admin_leads_path(view: current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "list")
-    @page_title = "Minhas filas"
+    @page_title = "Bolsão"
   end
 
   def report
@@ -359,7 +371,13 @@ class Admin::LeadsController < Admin::BaseController
 
     # Shark Tank: lead sem dono em "Aguardando Aceite" — corrida pra reivindicar.
     if @lead.admin_user_id.nil? && shark_tank_open?(@lead)
-      claimed = Lead.claim!(@lead.id, current_admin_user&.id)
+      claimable_rule_ids = current_user_distribution_queue_rules.where(id: @lead.distribution_rule_id).pluck(:id)
+      unless claimable_rule_ids.any?
+        @attend_reason = :taken
+        return render :attend_expired, status: :ok
+      end
+
+      claimed = Lead.claim_for_rules!(@lead.id, current_admin_user&.id, claimable_rule_ids)
       @lead.reload
       if claimed
         @lead.distribution_rule&.mark_agent_served!(current_admin_user.id)
@@ -2760,10 +2778,19 @@ class Admin::LeadsController < Admin::BaseController
   def current_user_distribution_queue_rules
     return current_tenant.distribution_rules.none if current_admin_user.blank?
 
-    operational_distribution_rules
+    scope = operational_distribution_rules
       .joins(:distribution_rule_agents)
       .where(distribution_rule_agents: { admin_user_id: current_admin_user.id })
       .distinct
+
+    if DistributionRule.column_names.include?("pocket_to_shark_tank")
+      scope.where(
+        "distribution_rules.distribution_mode = :shark_tank OR distribution_rules.pocket_to_shark_tank = TRUE",
+        shark_tank: DistributionRule.distribution_modes.fetch("shark_tank")
+      )
+    else
+      scope.where(distribution_mode: DistributionRule.distribution_modes.fetch("shark_tank"))
+    end
   end
 
   def operational_distribution_rules
