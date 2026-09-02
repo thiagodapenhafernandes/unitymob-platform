@@ -145,5 +145,16 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
         "Nome completo: Sara franca Telefone: 5541996607000 Mensagem: Quero atendimento"
       )
     end
+
+    it "nao exibe payload tecnico serializado no card do lead" do
+      lead = build_stubbed(
+        :lead,
+        notes: '{"id"=>"4e42462f78f54164142a48ca83e2b75f", "sender_id"=>"7c123"}',
+        origin: "Facebook",
+        lead_type: "WhatsApp"
+      )
+
+      expect(helper.lead_card_note_line(lead)).to eq("Facebook")
+    end
   end
 end
