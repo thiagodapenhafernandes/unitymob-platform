@@ -2789,7 +2789,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def setup_single_habitation_sheet_report(scope)
-    habitation = scope.to_a.last
+    habitation = capture_sheet_report? ? Habitation.new(admin_user: current_admin_user) : scope.to_a.last
     records = [habitation].compact
 
     @habitations = records
@@ -2806,6 +2806,10 @@ class Admin::HabitationsController < Admin::BaseController
 
   def single_habitation_sheet_report?
     %w[visit_sheet capture_sheet_commercial capture_sheet_residential capture_sheet_land].include?(@report_type)
+  end
+
+  def capture_sheet_report?
+    %w[capture_sheet_commercial capture_sheet_residential capture_sheet_land].include?(@report_type)
   end
 
   def habitation_params
