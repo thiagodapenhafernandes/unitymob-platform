@@ -47,6 +47,13 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("photo-upload")
     expect(response.body).to include("draggable-item")
     expect(response.body).to include("media-photo-drag-handle")
+    expect(response.body).to include("ax-media-ambiente-select")
+    expect(response.body).to include("1 Quarto")
+    expect(response.body).to include("5 Banheiros")
+    expect(response.body).not_to include("Configurar ambiente")
+    Habitation::FOTO_CLASSIFICACAO.each do |classification|
+      expect(response.body).to include(%(value="#{classification}"))
+    end
     expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
     expect(response.body).to include("ax-media-modal__footer-feedback")
     expect(response.body).to include("data-photo-upload-feedback")
@@ -73,6 +80,38 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body.bytes.first(2).pack("C*")).to eq("PK")
     expect(response.body).to include("um.jpg")
     expect(response.body).to include("dois.jpg")
+  end
+
+  it "remove fotos selecionadas em lote e registra auditoria" do
+    habitation = create_media_habitation(
+      imovel_dwv: "Sim",
+      pictures: [
+        { "url" => "https://cdn.saluteimoveis.com.br/externa-um.jpg" },
+        { "url" => "https://cdn.saluteimoveis.com.br/externa-dois.jpg" }
+      ]
+    )
+    habitation.photos.attach(io: StringIO.new("foto um"), filename: "um.jpg", content_type: "image/jpeg")
+    habitation.photos.attach(io: StringIO.new("foto dois"), filename: "dois.jpg", content_type: "image/jpeg")
+    attachments = habitation.photos.attachments.order(:id).to_a
+
+    expect {
+      delete destroy_selected_admin_habitation_media_path(habitation, format: :json), params: {
+        habitation: {
+          photo_ids: [attachments.first.id],
+          picture_indices: ["1"]
+        }
+      }
+    }.to change(HabitationAuditLog, :count).by(2)
+
+    expect(response).to have_http_status(:ok)
+    payload = JSON.parse(response.body)
+    habitation.reload
+
+    expect(habitation.photos.attachments.map(&:id)).to contain_exactly(attachments.second.id)
+    expect(habitation.pictures).to eq([{ "url" => "https://cdn.saluteimoveis.com.br/externa-um.jpg" }])
+    expect(payload["gallery_html"]).not_to include(%(data-id="#{attachments.first.id}"))
+    expect(payload["gallery_html"]).to include(%(data-id="#{attachments.second.id}"))
+    expect(HabitationAuditLog.where(habitation: habitation, action: "attachments_changed").count).to eq(2)
   end
 
   it "baixa fotos herdadas do empreendimento no mesmo fluxo de zip" do
@@ -307,7 +346,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(visibility_button.at_css("span")).to be_nil
   end
 
-  it "renderiza ação de ambiente para imagem externa da API no modal" do
+  it "renderiza seleção de ambiente para imagem externa da API no modal" do
     # Imagens de DWV ficam na URL própria do DWV (não baixamos para o nosso
     # Spaces), então usam URL externa e não passam pelo resolver de CDN.
     habitation = create_media_habitation(
@@ -323,7 +362,8 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("api-picture-item")
     expect(response.body).to include("data-media-tools-picture-index-param=\"0\"")
-    expect(response.body).to include("Configurar ambiente")
+    expect(response.body).to include("ax-media-ambiente-select")
+    expect(response.body).to include("5 Banheiros")
   end
 
   it "exibe fotos do empreendimento vinculado no modal da unidade" do
@@ -367,7 +407,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(habitation.photos.attachments.map(&:id)).to contain_exactly(attachments.second.id)
   end
 
-  it "salva ambiente e posição manual da foto por JSON" do
+  it "salva ambiente da foto por JSON" do
     habitation = create_media_habitation
     habitation.photos.attach(io: StringIO.new("foto quarto"), filename: "quarto.jpg", content_type: "image/jpeg")
     attachment = habitation.photos.attachments.first
@@ -375,8 +415,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     patch ambiente_admin_habitation_media_path(habitation, format: :json), params: {
       habitation: {
         photo_id: attachment.id,
-        ambiente: "Quartos",
-        ambiente_position: "2"
+        ambiente: "2 Quartos"
       }
     }
 
@@ -384,9 +423,9 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     metadata = attachment.blob.reload.metadata
     payload = JSON.parse(response.body)
 
-    expect(metadata["ambiente"]).to eq("Quartos")
-    expect(metadata["ambiente_position"]).to eq(2)
-    expect(payload["gallery_html"]).to include("Quarto 1")
+    expect(metadata["ambiente"]).to eq("2 Quartos")
+    expect(metadata).not_to have_key("ambiente_position")
+    expect(payload["gallery_html"]).to include("2 Quartos")
   end
 
   context "quando o usuário é corretor" do

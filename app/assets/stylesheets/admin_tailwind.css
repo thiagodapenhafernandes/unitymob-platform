@@ -12877,6 +12877,7 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .habitation-form-ui .ax-media-toolbar__title {
@@ -13730,6 +13731,7 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 }
 
 .habitation-form-ui .ax-media-tile__footer-slot {
+  gap: 3px;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -13988,6 +13990,36 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.habitation-form-ui .ax-media-bulk-select {
+  min-height: 34px;
+  max-width: 180px;
+  padding: 6px 30px 6px 10px;
+  border: 1px solid var(--ax-border, #cbd5e1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ax-ink, #1f2937);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.habitation-form-ui .ax-media-ambiente-select {
+  min-width: 0;
+  width: clamp(88px, 9vw, 132px);
+  height: 26px;
+  padding: 0 22px 0 7px;
+  border: 1px solid #d5dfeb;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .94);
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  pointer-events: auto;
+}
+
+.habitation-form-ui .ax-media-ambiente-select:disabled {
+  opacity: .7;
 }
 
 /* Modal de ambiente (renderizado 1x no manager) */

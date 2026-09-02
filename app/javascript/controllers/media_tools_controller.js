@@ -9,26 +9,23 @@ import { Controller } from "@hotwired/stimulus"
 // retornado pelo backend e delega ao photo-upload a reinicialização do arraste
 // (refreshMediaDragAndDrop), preservando o previewContainer alvo intacto.
 export default class extends Controller {
-  static targets = ["modal", "ambienteSelect", "ambientePositionInput", "ambienteSaveButton", "shareResult", "selectionSummary"]
+  static targets = ["modal", "shareResult", "selectionSummary"]
 
   static values = {
     ambienteUrl: String,
     organizeUrl: String,
     shareUrl: String,
     downloadUrl: String,
-    ambientes: Array,
+    destroySelectedUrl: String,
     canEdit: Boolean
   }
 
   connect() {
-    this.activePhotoId = null
-    this.activePictureIndex = null
     this.selectedPhotoIds = new Set()
     this.selectedPictureIndices = new Set()
     this.selectedDevelopmentIndices = new Set()
     this.selectedDownloadUrls = new Map()
     this.selectedLabels = new Map()
-    this.populateAmbienteOptions()
     this.updateSelectionSummary()
   }
 
@@ -42,58 +39,24 @@ export default class extends Controller {
 
   // --- Ambiente por foto -----------------------------------------------------
 
-  openSettings(event) {
-    if (!this.canEditValue) return
+  async saveAmbienteInline(event) {
+    event?.preventDefault?.()
+    if (!this.canEditValue || !this.hasAmbienteUrlValue) return
 
+    const select = event.currentTarget
     const photoId = event.params?.photoId
     const pictureIndex = event.params?.pictureIndex
     const hasPhotoId = photoId !== undefined && photoId !== null && photoId !== ""
     const hasPictureIndex = pictureIndex !== undefined && pictureIndex !== null && pictureIndex !== ""
-    if (!hasPhotoId && !hasPictureIndex) return
+    if (!select || (!hasPhotoId && !hasPictureIndex)) return
 
-    this.activePhotoId = hasPhotoId ? String(photoId) : null
-    this.activePictureIndex = hasPictureIndex ? String(pictureIndex) : null
-    const current = event.params?.ambiente ?? ""
-    const currentPosition = event.params?.ambientePosition ?? ""
-
-    if (this.hasAmbienteSelectTarget) {
-      this.ambienteSelectTarget.value = current
-    }
-    if (this.hasAmbientePositionInputTarget) {
-      this.ambientePositionInputTarget.value = currentPosition
-    }
-
-    // Modo ambiente: esconde um resultado de compartilhamento que tenha ficado.
-    if (this.hasShareResultTarget) {
-      this.shareResultTarget.hidden = true
-      this.shareResultTarget.innerHTML = ""
-    }
-
-    this.resetAmbienteSaveButton()
-    this.showModal()
-  }
-
-  closeSettings(event) {
-    event?.preventDefault?.()
-    this.resetAmbienteSaveButton()
-    this.hideModal()
-    this.activePhotoId = null
-    this.activePictureIndex = null
-  }
-
-  async saveAmbiente(event) {
-    event?.preventDefault?.()
-    if (!this.canEditValue || !this.hasAmbienteUrlValue || (this.activePhotoId === null && this.activePictureIndex === null)) return
-
-    const ambiente = this.hasAmbienteSelectTarget ? this.ambienteSelectTarget.value : ""
-    const ambientePosition = this.hasAmbientePositionInputTarget ? this.ambientePositionInputTarget.value : ""
-    const mediaPayload = { ambiente, ambiente_position: ambientePosition }
-    if (this.activePhotoId !== null) {
-      mediaPayload.photo_id = this.activePhotoId
+    const mediaPayload = { ambiente: select.value }
+    if (hasPhotoId) {
+      mediaPayload.photo_id = photoId
     } else {
-      mediaPayload.picture_index = this.activePictureIndex
+      mediaPayload.picture_index = pictureIndex
     }
-    this.setBusy(event?.currentTarget, true)
+    this.setBusy(select, true)
 
     try {
       const payload = await this.requestJson(this.ambienteUrlValue, {
@@ -101,14 +64,11 @@ export default class extends Controller {
         json: { habitation: mediaPayload }
       })
       this.replaceGallery(payload)
-      this.resetAmbienteSaveButton()
-      this.hideModal()
-      this.activePhotoId = null
-      this.activePictureIndex = null
+      this.toast("Ambiente atualizado.", "success")
     } catch (error) {
       this.reportError(error)
     } finally {
-      this.setBusy(event?.currentTarget, false)
+      this.setBusy(select, false)
     }
   }
 
@@ -176,6 +136,71 @@ export default class extends Controller {
     }
 
     this.downloadUrlsDirectly()
+  }
+
+  selectAll(event) {
+    event?.preventDefault?.()
+
+    this.selectionInputs().forEach((input) => {
+      if (input.disabled || input.checked) return
+
+      input.click()
+    })
+  }
+
+  async runBulkAction(event) {
+    const select = event?.currentTarget
+    const action = select?.value || ""
+    if (!action) return
+
+    select.value = ""
+
+    if (action === "download") {
+      this.downloadSelected(event)
+      return
+    }
+
+    if (action === "delete") {
+      await this.destroySelected(event)
+    }
+  }
+
+  async destroySelected(event) {
+    event?.preventDefault?.()
+    if (!this.canEditValue || !this.hasDestroySelectedUrlValue) return
+
+    const photoIds = Array.from(this.selectedPhotoIds)
+    const pictureIndices = Array.from(this.selectedPictureIndices)
+    const developmentCount = this.selectedDevelopmentIndices.size
+    const totalDeletable = photoIds.length + pictureIndices.length
+
+    if (totalDeletable === 0) {
+      const suffix = developmentCount > 0 ? " Fotos do empreendimento só podem ser baixadas." : ""
+      this.toast(`Selecione ao menos uma foto do imóvel para excluir.${suffix}`, "warning")
+      return
+    }
+
+    const message = `Excluir ${totalDeletable} foto${totalDeletable === 1 ? "" : "s"} selecionada${totalDeletable === 1 ? "" : "s"}? Essa ação não pode ser desfeita.`
+    if (!window.confirm(message)) return
+
+    this.setBusy(event?.currentTarget, true)
+
+    try {
+      const payload = await this.requestJson(this.destroySelectedUrlValue, {
+        method: "DELETE",
+        json: { habitation: { photo_ids: photoIds, picture_indices: pictureIndices } }
+      })
+      this.selectedPhotoIds.clear()
+      this.selectedPictureIndices.clear()
+      this.selectedDownloadUrls.clear()
+      this.selectedLabels.clear()
+      this.replaceGallery(payload)
+      this.toast(payload.message || "Fotos excluídas.", "success")
+    } catch (error) {
+      this.reportError(error)
+    } finally {
+      this.setBusy(event?.currentTarget, false)
+    }
   }
 
   async openShare(event) {
@@ -347,37 +372,12 @@ export default class extends Controller {
     this.modalTarget.setAttribute("aria-hidden", "false")
   }
 
-  hideModal() {
+  hideModal(event) {
+    event?.preventDefault?.()
     if (!this.hasModalTarget) return
     this.modalTarget.hidden = true
     this.modalTarget.classList.remove("is-open")
     this.modalTarget.setAttribute("aria-hidden", "true")
-  }
-
-  populateAmbienteOptions() {
-    if (!this.hasAmbienteSelectTarget) return
-    // A view normalmente já emite as <option>. Só preenchemos se o select vier
-    // vazio (defensivo), preservando a opção "sem ambiente" (valor vazio).
-    if (this.ambienteSelectTarget.options.length > 1) return
-
-    const ambientes = Array.isArray(this.ambientesValue) ? this.ambientesValue : []
-    if (ambientes.length === 0) return
-
-    const fragment = document.createDocumentFragment()
-    const blank = document.createElement("option")
-    blank.value = ""
-    blank.textContent = "Não informado"
-    fragment.appendChild(blank)
-
-    ambientes.forEach((ambiente) => {
-      const option = document.createElement("option")
-      option.value = ambiente
-      option.textContent = ambiente
-      fragment.appendChild(option)
-    })
-
-    this.ambienteSelectTarget.innerHTML = ""
-    this.ambienteSelectTarget.appendChild(fragment)
   }
 
   // --- Resultado do share ----------------------------------------------------
@@ -517,6 +517,10 @@ export default class extends Controller {
     return this.selectedPictureIndices
   }
 
+  selectionInputs() {
+    return Array.from(this.element.querySelectorAll('[data-action*="media-tools#toggleSelect"]'))
+  }
+
   selectionFallbackLabel(kind, id) {
     if (kind === "development") return `Foto do empreendimento ${Number(id) + 1}`
     if (kind === "picture") return `Foto externa ${Number(id) + 1}`
@@ -555,12 +559,6 @@ export default class extends Controller {
     if (!button) return
     button.disabled = isBusy
     button.classList.toggle("is-loading", isBusy)
-  }
-
-  resetAmbienteSaveButton() {
-    if (!this.hasAmbienteSaveButtonTarget) return
-
-    this.setBusy(this.ambienteSaveButtonTarget, false)
   }
 
   reportError(error) {

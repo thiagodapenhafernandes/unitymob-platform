@@ -2516,11 +2516,28 @@ RSpec.describe "Admin::Habitations", type: :request do
       nome_empreendimento: "Outro Prédio",
       titulo_anuncio: "Outro imóvel"
     )
+    linked_development = create(
+      :habitation,
+      codigo: "DEV-LINKED-#{SecureRandom.hex(6)}",
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      nome_empreendimento: "Empreendimento Vinculado",
+      titulo_anuncio: "Empreendimento vinculado"
+    )
+    linked_property = create(
+      :habitation,
+      codigo: "PREDIO-LINKED-#{SecureRandom.hex(6)}",
+      tipo: "Unitário",
+      codigo_empreendimento: linked_development.codigo,
+      nome_empreendimento: "Prédio Vinculado Manual",
+      titulo_anuncio: "Unidade vinculada com nome manual"
+    )
 
     get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Residencial Sem Cadastro")
+    expect(response.body).not_to include("Prédio Vinculado Manual")
 
     get admin_habitations_path(empreendimento_codigo: "name:Residencial Sem Cadastro")
 
@@ -2528,6 +2545,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(standalone_unit.titulo_anuncio)
     expect(response.body).to include(standalone_unit_same_name.titulo_anuncio)
     expect(response.body).not_to include(other_property.titulo_anuncio)
+    expect(response.body).not_to include(linked_property.titulo_anuncio)
 
     get admin_habitations_path(empreendimento_codigo: "Residencial Sem Cadastro")
 

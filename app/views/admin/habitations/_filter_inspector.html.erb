@@ -396,7 +396,7 @@
           <div class="ax-span-2">
             <%= ax_field_label(nil, nil, text: "Publicado com fotos") %>
             <div class="ax-filter-checks">
-              <% ["Profissionais", "Boas", "Aceitáveis", "Não tem fotos"].each do |opcao| %>
+              <% Habitation::FOTO_CLASSIFICACAO.each do |opcao| %>
                 <%= ax_filter_check(name: "foto_classificacao[]", value: opcao, checked: selected_foto_classificacoes.include?(opcao), label: opcao, id: "foto_classificacao_#{opcao.parameterize}") %>
               <% end %>
             </div>

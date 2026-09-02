@@ -39,11 +39,21 @@ RSpec.describe Admin::HabitationDevelopmentFilterOptions do
         codigo_empreendimento: nil,
         nome_empreendimento: "residencial sem pai"
       )
+      create(
+        :habitation,
+        tenant: tenant,
+        codigo: "UNIT-LINKED-1",
+        tipo: "Unitário",
+        categoria: "Apartamento",
+        codigo_empreendimento: "DEV-VERMONT",
+        nome_empreendimento: "Nome Manual Vinculado"
+      )
 
       options = described_class.call(tenant.habitations)
 
       expect(options).to include(["Vermont", "dev:DEV-VERMONT"])
       expect(options).to include(["Residencial Sem Pai", "name:Residencial Sem Pai"])
+      expect(options).not_to include(["Nome Manual Vinculado", "name:Nome Manual Vinculado"])
       expect(options.count { |label, _value| I18n.transliterate(label).downcase == "vermont" }).to eq(1)
       expect(options.count { |label, _value| I18n.transliterate(label).downcase == "residencial sem pai" }).to eq(1)
     end

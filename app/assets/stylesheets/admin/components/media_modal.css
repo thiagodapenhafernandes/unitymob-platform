@@ -69,6 +69,18 @@
   color: var(--ax-dark-text-soft);
 }
 
+[data-admin-theme="dark"] .ax-media-bulk-select {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-media-ambiente-select {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+
 [data-admin-theme="dark"] .ax-media-popover__body {
   border-color: var(--ax-dark-border);
   background: var(--ax-dark-surface-raised);

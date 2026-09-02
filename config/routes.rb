@@ -238,6 +238,7 @@ Rails.application.routes.draw do
         post :organize
         post :share
         post :download
+        delete :destroy_selected
         delete :destroy_photo
       end
       post :generate_ai_preview, on: :member

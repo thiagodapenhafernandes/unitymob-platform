@@ -19,8 +19,24 @@
     <% photo_fallback_urls = public_image_fallback_urls(photo_source) %>
     <% next if photo_public_url.blank? %>
     <% photo_ambiente = habitation.respond_to?(:photo_ambiente) ? habitation.photo_ambiente(photo) : nil %>
-    <% photo_ambiente_position = habitation.respond_to?(:photo_ambiente_position) ? habitation.photo_ambiente_position(photo) : nil %>
     <% photo_ambiente_label = habitation.respond_to?(:photo_ambiente_label) ? habitation.photo_ambiente_label(photo) : nil %>
+    <% ambiente_select = capture do %>
+      <% if can_edit_media %>
+        <select class="ax-media-ambiente-select"
+                title="Ambiente da foto"
+                aria-label="Ambiente da foto"
+                data-action="change->media-tools#saveAmbienteInline"
+                data-media-tools-photo-id-param="<%= photo.id %>"
+                <%= "disabled" unless media_action_allowed.call("acao:configurar_ambiente_foto") %>>
+          <option value="">Ambiente</option>
+          <% Habitation::FOTO_AMBIENTE_SELECT_OPTIONS.each do |ambiente| %>
+            <option value="<%= ambiente %>" <%= "selected" if photo_ambiente == ambiente %>><%= ambiente %></option>
+          <% end %>
+        </select>
+      <% elsif photo_ambiente_label.present? %>
+        <span class="ax-media-tag ax-media-tag--info" title="Ambiente da foto"><%= photo_ambiente_label %></span>
+      <% end %>
+    <% end %>
     <% site_toggle = capture do %>
       <button type="button"
               class="media-photo-site-toggle ax-media-action <%= photo_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
@@ -57,19 +73,6 @@
         <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" <%= "disabled" unless media_action_allowed.call("acao:gerenciar_ordem_fotos") %>>
           <i class="bi bi-grip-vertical"></i>
         </button>
-        <% if can_edit_media %>
-          <button type="button"
-                  class="media-photo-action-button ax-media-action ax-media-action--neutral"
-                  title="Configurar ambiente"
-                  aria-label="Configurar ambiente"
-                  data-action="media-tools#openSettings"
-                  <%= "disabled" unless media_action_allowed.call("acao:configurar_ambiente_foto") %>
-                  data-media-tools-photo-id-param="<%= photo.id %>"
-                  data-media-tools-ambiente-param="<%= photo_ambiente %>"
-                  data-media-tools-ambiente-position-param="<%= photo_ambiente_position %>">
-            <i class="bi bi-gear"></i>
-          </button>
-        <% end %>
         <button type="button"
                 class="media-photo-action-button ax-media-action ax-media-action--danger"
                 title="Remover foto"
@@ -82,7 +85,7 @@
     <% end %>
     <% select_control = capture do %>
       <% if can_edit_media %>
-        <label class="ax-media-select-check" title="Selecionar foto para envio">
+        <label class="ax-media-select-check" title="Selecionar foto">
           <input type="checkbox"
 	                 data-action="media-tools#toggleSelect"
 	                 data-media-tools-photo-id-param="<%= photo.id %>"
@@ -90,11 +93,6 @@
 	                 data-media-tools-download-url-param="<%= photo_public_url %>">
           <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
         </label>
-      <% end %>
-    <% end %>
-    <% ambiente_badge = capture do %>
-      <% if photo_ambiente_label.present? %>
-        <span class="ax-media-tag ax-media-tag--info" data-media-tools-ambiente-badge title="Ambiente da foto"><%= photo_ambiente_label %></span>
       <% end %>
     <% end %>
     <%= ax_media_tile(
@@ -107,8 +105,8 @@
           data: { id: photo.id },
           hidden_from_site: photo_hidden_from_site,
           top_right: select_control,
-          center: ambiente_badge.presence,
-          bottom_left: featured_control,
+          center: nil,
+          bottom_left: safe_join([featured_control, ambiente_select]),
           bottom_right: photo_actions
         ) %>
   <% end %>
@@ -121,8 +119,24 @@
     <% picture_public_url = public_image_url(pic).presence || pic_url %>
     <% next if picture_public_url.blank? %>
     <% picture_ambiente = habitation.respond_to?(:picture_ambiente) ? habitation.picture_ambiente(pic) : nil %>
-    <% picture_ambiente_position = habitation.respond_to?(:picture_ambiente_position) ? habitation.picture_ambiente_position(pic) : nil %>
     <% picture_ambiente_label = habitation.respond_to?(:picture_ambiente_label) ? habitation.picture_ambiente_label(pic, index: original_index) : nil %>
+    <% ambiente_select = capture do %>
+      <% if can_edit_media %>
+        <select class="ax-media-ambiente-select"
+                title="Ambiente da foto"
+                aria-label="Ambiente da foto"
+                data-action="change->media-tools#saveAmbienteInline"
+                data-media-tools-picture-index-param="<%= original_index %>"
+                <%= "disabled" unless media_action_allowed.call("acao:configurar_ambiente_foto") %>>
+          <option value="">Ambiente</option>
+          <% Habitation::FOTO_AMBIENTE_SELECT_OPTIONS.each do |ambiente| %>
+            <option value="<%= ambiente %>" <%= "selected" if picture_ambiente == ambiente %>><%= ambiente %></option>
+          <% end %>
+        </select>
+      <% elsif picture_ambiente_label.present? %>
+        <span class="ax-media-tag ax-media-tag--info" title="Ambiente da foto"><%= picture_ambiente_label %></span>
+      <% end %>
+    <% end %>
     <% site_toggle = capture do %>
       <button type="button"
               class="media-photo-site-toggle ax-media-action <%= picture_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
@@ -159,19 +173,6 @@
         <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" <%= "disabled" unless media_action_allowed.call("acao:gerenciar_ordem_fotos") %>>
           <i class="bi bi-grip-vertical"></i>
         </button>
-        <% if can_edit_media %>
-          <button type="button"
-                  class="media-photo-action-button ax-media-action ax-media-action--neutral"
-                  title="Configurar ambiente"
-                  aria-label="Configurar ambiente"
-                  data-action="media-tools#openSettings"
-                  <%= "disabled" unless media_action_allowed.call("acao:configurar_ambiente_foto") %>
-                  data-media-tools-picture-index-param="<%= original_index %>"
-                  data-media-tools-ambiente-param="<%= picture_ambiente %>"
-                  data-media-tools-ambiente-position-param="<%= picture_ambiente_position %>">
-            <i class="bi bi-gear"></i>
-          </button>
-        <% end %>
         <button type="button"
                 class="media-photo-action-button ax-media-action ax-media-action--danger"
                 title="Remover foto"
@@ -182,14 +183,9 @@
         </button>
       </span>
     <% end %>
-    <% ambiente_badge = capture do %>
-      <% if picture_ambiente_label.present? %>
-        <span class="ax-media-tag ax-media-tag--info" data-media-tools-ambiente-badge title="Ambiente da foto"><%= picture_ambiente_label %></span>
-      <% end %>
-    <% end %>
     <% select_control = capture do %>
       <% if can_edit_media %>
-        <label class="ax-media-select-check" title="Selecionar foto para envio">
+        <label class="ax-media-select-check" title="Selecionar foto">
           <input type="checkbox"
 	                 data-action="media-tools#toggleSelect"
 	                 data-media-tools-picture-index-param="<%= original_index %>"
@@ -208,8 +204,8 @@
           data: { api_index: original_index },
           hidden_from_site: picture_hidden_from_site,
           top_right: select_control,
-          center: ambiente_badge.presence,
-          bottom_left: featured_control,
+          center: nil,
+          bottom_left: safe_join([featured_control, ambiente_select]),
           bottom_right: picture_actions
         ) %>
   <% end %>
