@@ -1240,6 +1240,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       nome_empreendimento: "Império do Sol",
       descricao_web: "<p>Descrição pública do empreendimento.</p>",
       descricao_empreendimento: "Descrição do empreendimento para unidades.",
+      caracteristicas: ["Vista mar", "Mobiliado"],
+      infra_estrutura: ["Piscina", "Academia"],
       data_entrega: Date.new(2027, 6, 15),
       perfil_construcao: "Em construção"
     )
@@ -1262,6 +1264,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       intake_step: "endereco",
       nome_empreendimento: nil,
       codigo_empreendimento: nil,
+      caracteristicas: ["Sacada"],
+      infra_estrutura: ["Salão de festas"],
       use_development_photos_flag: false
     )
 
@@ -1282,6 +1286,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.nome_empreendimento).to eq("Império do Sol")
     expect(intake.complemento).to eq("1203")
     expect(intake.use_development_photos_flag).to eq(true)
+    expect(intake.caracteristicas_imovel).to include("Sacada", "Vista mar", "Mobiliado")
+    expect(intake.caracteristicas_predio).to include("Salão de festas", "Piscina", "Academia")
     expect(intake.data_entrega).to eq(Date.new(2027, 6, 15))
     expect(intake.perfil_construcao).to eq("Em construção")
     expect(intake.descricao_empreendimento).to eq("Descrição do empreendimento para unidades.")

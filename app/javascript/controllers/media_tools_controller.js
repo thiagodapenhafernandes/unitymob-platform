@@ -27,6 +27,7 @@ export default class extends Controller {
     this.selectedDownloadUrls = new Map()
     this.selectedLabels = new Map()
     this.updateSelectionSummary()
+    this.syncSelectAllButtons()
   }
 
   disconnect() {
@@ -117,6 +118,7 @@ export default class extends Controller {
 
     this.reflectSelectionState(id, checked, kind)
     this.updateSelectionSummary()
+    this.syncSelectAllButtons()
   }
 
   downloadSelected(event) {
@@ -141,11 +143,15 @@ export default class extends Controller {
   selectAll(event) {
     event?.preventDefault?.()
 
-    this.selectionInputs().forEach((input) => {
-      if (input.disabled || input.checked) return
+    const inputs = this.selectionInputs().filter((input) => !input.disabled)
+    const shouldSelect = inputs.some((input) => !input.checked)
 
+    inputs.forEach((input) => {
+      if (input.checked === shouldSelect) return
       input.click()
     })
+
+    this.syncSelectAllButtons()
   }
 
   async runBulkAction(event) {
@@ -260,6 +266,7 @@ export default class extends Controller {
     // checkboxes que sobreviveram (mesmos photo_ids).
     this.prunAndReflectSelection()
     this.updateSelectionSummary()
+    this.syncSelectAllButtons()
   }
 
   photoUploadController() {
@@ -361,6 +368,26 @@ export default class extends Controller {
     this.selectionSummaryTarget.textContent = labels.length === 1 ? first : `${first} +${labels.length - 1}`
     this.selectionSummaryTarget.title = labels.join("\n")
     this.selectionSummaryTarget.setAttribute("aria-label", `${labels.length} foto${labels.length === 1 ? "" : "s"} selecionada${labels.length === 1 ? "" : "s"}: ${labels.join(", ")}`)
+  }
+
+  syncSelectAllButtons() {
+    const inputs = this.selectionInputs().filter((input) => !input.disabled)
+    const allSelected = inputs.length > 0 && inputs.every((input) => input.checked)
+
+    this.element.querySelectorAll('[data-action*="media-tools#selectAll"]').forEach((button) => {
+      const icon = button.querySelector("i")
+      const label = button.querySelector("span")
+      const text = allSelected ? "Limpar seleção" : "Selecionar todas"
+
+      if (icon) {
+        icon.classList.toggle("bi-check2-square", !allSelected)
+        icon.classList.toggle("bi-x-square", allSelected)
+      }
+      if (label) label.textContent = text
+
+      button.title = allSelected ? "Desmarcar todas as fotos" : "Selecionar todas as fotos"
+      button.setAttribute("aria-label", text)
+    })
   }
 
   // --- Modal -----------------------------------------------------------------
