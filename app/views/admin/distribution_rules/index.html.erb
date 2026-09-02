@@ -38,7 +38,7 @@
 <% if @holding_leads_count.to_i.positive? %>
   <div class="distribution-rules-index__notice">
     <%= ax_inline_notice(tone: :warning, icon: "pause-circle-fill") do %>
-      <strong>Leads represados:</strong> <%= @holding_leads_count %> aguardando distribuição no bolsão.
+      <strong>Leads represados:</strong> <%= @holding_leads_count %> aguardando distribuição fora do horário.
       <%= link_to "Ver leads", admin_leads_path(status: Lead.status_value(:represado)), class: "ax-dashboard-panel__link distribution-rules-index__notice-link" %>
     <% end %>
   </div>
@@ -67,7 +67,8 @@
             <div class="ax-strong"><%= rule.name %></div>
             <div class="tw-flex tw-gap-1 tw-mt-1">
               <% if rule.pocket_active? %><span class="ax-badge ax-badge--amber"><i class="bi bi-hourglass-split" aria-hidden="true"></i> <%= rule.pocket_time %>m</span><% end %>
-              <% if rule.represamento_active? %><span class="ax-badge ax-badge--blue"><i class="bi bi-moon-stars" aria-hidden="true"></i> Bolsão</span><% end %>
+              <% if rule.pocket_to_pool? %><span class="ax-badge ax-badge--blue"><i class="bi bi-people" aria-hidden="true"></i> Bolsão</span><% end %>
+              <% if rule.represamento_active? %><span class="ax-badge ax-badge--blue"><i class="bi bi-moon-stars" aria-hidden="true"></i> Represamento</span><% end %>
             </div>
           </td>
           <td><span class="ax-badge ax-badge--gray tw-uppercase tw-font-mono"><%= rule.business_type %></span></td>

@@ -716,7 +716,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(bottom_nav.css(".ax-pwa-bottom-nav__item[data-admin-navigation-ignore]")).to be_empty
       expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
-      expect(document.at_css(".lead-pwa-queue").text).to include("1º", "na fila")
+      expect(document.at_css(".lead-pwa-queue").text).to include("Bolsão")
       expect(bottom_nav.text).not_to include("Fila")
     end
 
@@ -742,8 +742,8 @@ RSpec.describe "Admin::Leads", type: :request do
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      expect(document.at_css(".lead-desktop-queue").text).to include("3º", "na fila")
-      expect(document.at_css(".lead-pwa-queue").text).to include("3º", "na fila")
+      expect(document.at_css(".lead-desktop-queue").text).to include("Bolsão")
+      expect(document.at_css(".lead-pwa-queue").text).to include("Bolsão")
     end
 
     it "lista apenas filas de distribuicao em que o usuario logado participa" do
@@ -764,7 +764,7 @@ RSpec.describe "Admin::Leads", type: :request do
       eighth_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Karla Luiza Barcelos Guimarães")
       outside_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Corretor fora da fila")
       internal_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Sistema Interno")
-      included_rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas", active: true, distribution_mode: :rotary)
+      included_rule = create(:distribution_rule, tenant: admin.tenant, name: "Equipe vendas", active: true, distribution_mode: :shark_tank)
       other_rule = create(:distribution_rule, tenant: admin.tenant, name: "Fila sem o logado", active: true, distribution_mode: :rotary)
       internal_rule = create(
         :distribution_rule,
@@ -798,14 +798,45 @@ RSpec.describe "Admin::Leads", type: :request do
       agents = card.css(".lead-queue-agent")
       current_agent = document.at_css(".lead-queue-agent.is-current")
 
-      expect(document.at_css(".lead-queue-command").text).to include("Minhas filas")
-      expect(document.at_css(".lead-queue-mobile-top").text).to include("Minhas filas", "1 fila operacional", "6º")
+      expect(document.at_css(".lead-queue-command").text).to include("Bolsão")
+      expect(document.at_css(".lead-queue-mobile-top").text).to include("Bolsão", "0 leads no bolsão", "0")
       expect(card.text).to include("Equipe vendas", "6º de 8", "Maria Elisabete")
       expect(agents.size).to eq(8)
       expect(agents.map { |agent| agent.at_css(".lead-queue-agent__position").text.strip }).to eq(%w[1º 2º 3º 4º 5º 6º 7º 8º])
       expect(agents.first.text).to include("Maria Elisabete", "1º")
       expect(current_agent.text).to include(current_user.name, "Você", "6º")
       expect(document.text).not_to include("Fila sem o logado", "Corretor fora da fila", ExternalLeadIntegration::SUPPORT_RULE_NAME, "Sistema Interno")
+    end
+
+    it "lista no Bolsao apenas leads sem dono das regras em que o usuario participa" do
+      broker_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Corretor bolsao #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 8_902,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Gabriela Machado")
+      teammate = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Renata Santos")
+      outside_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Fora da regra")
+      included_rule = create(:distribution_rule, tenant: admin.tenant, name: "Bolsao Vendas", active: true, distribution_mode: :shark_tank)
+      outside_rule = create(:distribution_rule, tenant: admin.tenant, name: "Bolsao Locacao", active: true, distribution_mode: :shark_tank)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: current_user, position: 1)
+      create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 2)
+      create(:distribution_rule_agent, distribution_rule: outside_rule, admin_user: outside_user, position: 1)
+      visible_lead = create(:lead, tenant: admin.tenant, name: "Cliente visivel", status: :waiting_acceptance, admin_user: nil, distribution_rule: included_rule)
+      hidden_lead = create(:lead, tenant: admin.tenant, name: "Cliente oculto", status: :waiting_acceptance, admin_user: nil, distribution_rule: outside_rule)
+      assigned_lead = create(:lead, tenant: admin.tenant, name: "Cliente com dono", status: :waiting_acceptance, admin_user: teammate, distribution_rule: included_rule)
+      sign_out admin
+      sign_in current_user
+
+      get distribution_queue_admin_leads_path(lead_id: visible_lead.id)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.text).to include("Bolsao Vendas", "Cliente visivel", "Atender")
+      expect(document.at_css("#lead-#{visible_lead.id}.is-focused")).to be_present
+      expect(document.text).not_to include("Cliente oculto", hidden_lead.name, assigned_lead.name)
     end
 
     it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do
@@ -2283,6 +2314,28 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Lead já atendido")
       expect(lead.reload.admin_user_id).to eq(winner.id)
+    ensure
+      Lead.set_callback(:commit, :after, :route_lead)
+    end
+
+    it "bloqueia reivindicacao de Bolsao para corretor fora da regra" do
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+      inside = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-inside-#{SecureRandom.hex(4)}@salute.test")
+      outside = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-outside-#{SecureRandom.hex(4)}@salute.test")
+      rule = create(:distribution_rule, distribution_mode: :shark_tank)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: inside)
+      Lead.skip_callback(:commit, :after, :route_lead)
+      lead = create(:lead, status: :waiting_acceptance, admin_user: nil, distribution_rule: rule)
+
+      sign_out admin
+      sign_in outside
+
+      get attend_admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead já atendido")
+      expect(lead.reload.admin_user_id).to be_nil
     ensure
       Lead.set_callback(:commit, :after, :route_lead)
     end

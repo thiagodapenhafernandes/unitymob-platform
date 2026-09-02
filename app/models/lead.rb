@@ -52,6 +52,14 @@ class Lead < ApplicationRecord
     where(id: lead_id, admin_user_id: nil, status: status_value(:waiting_acceptance))
       .update_all(admin_user_id: corretor_id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
   end
+
+  def self.claim_for_rules!(lead_id, corretor_id, distribution_rule_ids)
+    rule_ids = Array(distribution_rule_ids).compact
+    return false if corretor_id.blank? || rule_ids.blank?
+
+    where(id: lead_id, admin_user_id: nil, status: status_value(:waiting_acceptance), distribution_rule_id: rule_ids)
+      .update_all(admin_user_id: corretor_id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
+  end
   has_many :public_navigation_sessions, dependent: :nullify
   has_many :public_navigation_events, dependent: :nullify
   has_many :client_property_interests, foreign_key: :lead_id, dependent: :nullify

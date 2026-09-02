@@ -1,4 +1,4 @@
-\restrict dXsHKjWVjtuZ0fRYd9dIdH8YtjzWfR6zaJHVPkcJPDFOVM2f71HQFHluINcZP8S
+\restrict qqNbY1cDLsP9qBknqd9Jz84dhLgl54Z7lfJeTVMx2S5ozhoKjnhNrwinMabxUCA
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2334,7 +2334,10 @@ CREATE TABLE public.distribution_rules (
     hierarchy_manager_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     auto_update_agents_enabled boolean DEFAULT false NOT NULL,
     auto_update_trigger character varying[] DEFAULT '{sorteio}'::character varying[] NOT NULL,
-    auto_update_shuffle_agents boolean DEFAULT false NOT NULL
+    auto_update_shuffle_agents boolean DEFAULT false NOT NULL,
+    pocket_to_shark_tank boolean DEFAULT false NOT NULL,
+    pool_renotify_mode character varying DEFAULT 'never'::character varying NOT NULL,
+    pool_renotify_minutes integer DEFAULT 30 NOT NULL
 );
 
 
@@ -17966,11 +17969,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dXsHKjWVjtuZ0fRYd9dIdH8YtjzWfR6zaJHVPkcJPDFOVM2f71HQFHluINcZP8S
+\unrestrict qqNbY1cDLsP9qBknqd9Jz84dhLgl54Z7lfJeTVMx2S5ozhoKjnhNrwinMabxUCA
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260902130000'),
 ('20260902123000'),
 ('20260902120000'),
 ('20260830192000'),

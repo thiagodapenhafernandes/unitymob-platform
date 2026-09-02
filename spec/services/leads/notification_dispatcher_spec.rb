@@ -124,8 +124,8 @@ RSpec.describe Leads::NotificationDispatcher do
       expect(args[:admin_user_id]).to eq(corretor.id)
       expect(args[:title]).to eq("Lead disponível: Lead Corrida")
       expect(args[:body]).to eq("Pegar esse lead para atender")
-      expect(args[:url]).to include("/s/")
-      expect(args[:url]).to include("details=1")
+      expect(args[:url]).to include("/admin/leads/distribution_queue")
+      expect(args[:url]).to include("lead_id=#{shark_lead.id}")
       expect(args[:url]).not_to include("wa.me")
       expect(args[:accept_url]).to be_nil
     end

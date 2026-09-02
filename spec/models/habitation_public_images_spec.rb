@@ -138,6 +138,30 @@ RSpec.describe Habitation, type: :model do
       expect(unit.public_image_sources.map { |source| source["url"] }).to eq(["https://cdn.saluteimoveis.com.br/empreendimento.jpg"])
       expect(unit.has_any_photo?).to be(true)
     end
+
+    it "soma fotos próprias e fotos do empreendimento vinculado quando a unidade optou por usar fotos do empreendimento" do
+      development = create(
+        :habitation,
+        codigo: unique_code("EMP-IMG-3"),
+        tipo: "Empreendimento",
+        address_attributes: address_attributes("Empreendimento 3"),
+        pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/lazer.jpg" }]
+      )
+      unit = create(
+        :habitation,
+        codigo: unique_code("UNIT-IMG-3"),
+        codigo_empreendimento: development.codigo,
+        address_attributes: address_attributes("Unidade 3"),
+        pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/unidade.jpg" }],
+        use_development_photos_flag: true
+      )
+
+      expect(unit.public_image_sources.map { |source| source["url"] }).to eq([
+        "https://cdn.saluteimoveis.com.br/unidade.jpg",
+        "https://cdn.saluteimoveis.com.br/lazer.jpg"
+      ])
+      expect(unit.has_any_photo?).to be(true)
+    end
   end
 
   def address_attributes(logradouro)

@@ -31,9 +31,9 @@
       <div class="ax-panel-body">
         <div class="ax-option-stack distribution-rule-modes">
           <% [
-              [:rotary, "arrow-repeat", "Rotativo", "Fila sequencial", "Entrega para um corretor por vez, seguindo a ordem da fila. Depois que recebe um lead, o corretor vai para o fim da fila."],
+              [:rotary, "arrow-repeat", "Rotativo", "Fila sequencial", "Entrega para um corretor por vez, seguindo a ordem da fila. Com aceite com prazo, se o corretor não atender no tempo definido, o lead pode ser repassado ou enviado ao Bolsão da regra."],
               [:performance, "graph-up", "Performance", "Baseado em peso", "Escolhe um corretor por sorteio ponderado. Corretores com peso maior têm mais chance de receber o lead, sem seguir uma fila fixa."],
-              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar", "Notifica todos os corretores elegíveis da regra. O primeiro que aceitar assume o lead; os demais veem que perderam a vez."]
+              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar", "Coloca o lead no Bolsão da regra e notifica todos os corretores elegíveis. O primeiro que clicar em Atender assume; os demais não conseguem mais aceitar."]
             ].each do |mode, icon, label, sub, tooltip| %>
             <%= f.radio_button :distribution_mode, mode, class: "ax-option-card__input", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
             <%= f.label "mode_#{mode}", class: "ax-option-card distribution-rule-mode", for: "mode_#{mode}" do %>
@@ -168,12 +168,12 @@
       </div>
     <% end %>
 
-    <%# Horários e Bolsão %>
-    <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
+    <%# Horários e aceite %>
+    <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e aceite") do %>
       <div class="ax-panel-body">
         <% secure_push_ready = DistributionRule.pocket_requires_secure_push? %>
         <%= ax_toggle_chip(f, :represamento_active,
-              label: "Ativar bolsão (represamento fora do horário)",
+              label: "Ativar represamento fora do horário",
               id: "checkRepresamento",
               input_data: { action: "change->distribution-rule#toggleRepresamento" }) %>
 
@@ -201,23 +201,50 @@
         </div>
 
         <%= ax_toggle_chip(f, :pocket_active,
-              label: "Ativar tempo limite (Pocket)",
+              label: "Ativar aceite com prazo",
               disabled: !secure_push_ready,
               id: "checkPocket",
               input_data: { action: "change->distribution-rule#togglePocket" }) %>
         <% unless secure_push_ready %>
           <%= hidden_field_tag "distribution_rule[pocket_active]", "0" %>
           <%= ax_inline_notice(tone: :warning, icon: "shield-lock") do %>
-            Para usar Pocket, habilite o <strong>link seguro no canal Push</strong>. O clique precisa passar pelo sistema para aceitar o lead, travar a vez do corretor e mostrar “lead já atendido” nas notificações antigas.
+            Para usar aceite com prazo, habilite o <strong>link seguro no canal Push</strong>. O clique precisa passar pelo sistema para aceitar o lead, travar a vez do corretor e mostrar “lead já atendido” nas notificações antigas.
             <%= link_to "Configurar agora", edit_admin_lead_setting_path, class: "tw-font-semibold tw-text-primary" %>
           <% end %>
         <% end %>
-        <div class="section-toggle-container<%= ' tw-hidden' unless secure_push_ready && f.object.pocket_active? %>" data-distribution-rule-target="pocketSection">
+        <div class="section-toggle-container distribution-rule-acceptance<%= ' tw-hidden' unless secure_push_ready && f.object.pocket_active? %>" data-distribution-rule-target="pocketSection">
           <div class="ax-field">
             <%= ax_input_group(suffix: "minutos") do %>
               <%= f.number_field :pocket_time, class: "ax-control", placeholder: "30" %>
             <% end %>
             <p class="ax-field__hint">Tempo que o corretor tem para aceitar o lead antes de ser repassado.</p>
+          </div>
+
+          <div class="ax-option-stack distribution-rule-pool-choice">
+            <%= ax_toggle_chip(f, :pocket_to_shark_tank,
+                  label: raw("<i class='bi bi-people'></i> Ao expirar, enviar para o Bolsão"),
+                  input_data: { action: "change->distribution-rule#togglePoolRenotify" }) %>
+          </div>
+          <p class="ax-field__hint distribution-rule-pool-choice__hint">Com esta opção, o rodízio tenta um corretor primeiro; se ele não atender no prazo, todos os corretores ativos da regra veem o lead no Bolsão.</p>
+        </div>
+
+        <div class="section-toggle-container distribution-rule-pool-renotify<%= ' tw-hidden' unless f.object.pool_mode? %>" data-distribution-rule-target="poolRenotifySection">
+          <%= ax_radio_group(form: f, method: :pool_renotify_mode,
+                label: "Se ninguém atender no Bolsão:",
+                choices: [
+                  ["Fica no Bolsão indefinidamente", "never"],
+                  ["Disparar nova notificação depois de X tempo", "interval"]
+                ],
+                input_data: { action: "change->distribution-rule#togglePoolRenotify" }) %>
+          <div class="ax-field distribution-rule-pool-renotify__interval<%= ' tw-hidden' unless f.object.pool_renotify_interval? %>" data-distribution-rule-target="poolRenotifyIntervalField">
+            <%= ax_input_group(suffix: "minutos") do %>
+              <%= f.number_field :pool_renotify_minutes,
+                    class: "ax-control",
+                    min: 1,
+                    placeholder: DistributionRule::DEFAULT_POOL_RENOTIFY_MINUTES,
+                    data: { action: "input->distribution-rule#togglePoolRenotify change->distribution-rule#togglePoolRenotify" } %>
+            <% end %>
+            <p class="ax-field__hint">Usado apenas quando a opção de nova notificação estiver selecionada.</p>
           </div>
         </div>
       </div>

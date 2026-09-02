@@ -788,7 +788,41 @@ RSpec.describe "Habitation details", type: :request do
       expect(visible_gallery_links).to all(satisfy { |link| link["data-public-gallery-mobile-srcset"].present? })
       expect(hidden_gallery_links.size).to eq(9)
       expect(hidden_gallery_links).to all(satisfy { |link| link["data-public-gallery-mobile-srcset"].blank? })
-      expect(Storage::TransformVariantJob).to have_received(:perform_later).at_most(36).times
+      expect(Storage::TransformVariantJob).to have_received(:perform_later).at_most(40).times
+    end
+
+    it "inclui fotos do empreendimento vinculado no contador e lightbox público da unidade" do
+      development = create(
+        :habitation,
+        codigo: "DEV-PUBLIC-MEDIA",
+        tipo: "Empreendimento",
+        pictures: [
+          { "url" => public_photo_url("lazer-1.jpg") },
+          { "url" => public_photo_url("lazer-2.jpg") }
+        ]
+      )
+      habitation = create(
+        :habitation,
+        codigo: "UNIT-PUBLIC-MEDIA",
+        slug: "unit-public-media",
+        codigo_empreendimento: development.codigo,
+        use_development_photos_flag: true,
+        pictures: [
+          { "url" => public_photo_url("unidade-1.jpg") },
+          { "url" => public_photo_url("unidade-2.jpg") },
+          { "url" => public_photo_url("unidade-3.jpg") }
+        ]
+      )
+
+      get habitation_path(habitation)
+
+      html = Nokogiri::HTML(response.body)
+      gallery_links = html.css('[data-fancybox="property-gallery"]')
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Ver 5 fotos")
+      gallery_filenames = gallery_links.map { |link| File.basename(URI.parse(link["href"]).path) }
+      expect(gallery_filenames).to include("lazer-1.jpg", "lazer-2.jpg")
     end
 
     it "expõe a página pública de favoritos" do

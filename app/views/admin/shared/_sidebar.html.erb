@@ -118,8 +118,13 @@
     <%# 4. Leads %>
     <% if can_access.call(:view, :leads) %>
       <li>
-        <%= link_to admin_leads_path(view: "list"), class: "ax-nav__link #{'active' if controller_name == 'leads' && params[:lead_pipeline_id].blank?}" do %>
+        <%= link_to admin_leads_path(view: "list"), class: "ax-nav__link #{'active' if controller_name == 'leads' && action_name != 'distribution_queue' && params[:lead_pipeline_id].blank?}" do %>
           <i class="bi bi-person-badge"></i><span>Leads</span>
+        <% end %>
+      </li>
+      <li>
+        <%= link_to distribution_queue_admin_leads_path, class: "ax-nav__link #{'active' if controller_name == 'leads' && action_name == 'distribution_queue'}" do %>
+          <i class="bi bi-people"></i><span>Bolsão</span>
         <% end %>
       </li>
 

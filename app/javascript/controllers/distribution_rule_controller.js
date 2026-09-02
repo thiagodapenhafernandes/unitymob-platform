@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["represamentoSection", "pocketSection", "metaSection", "webhookSection", "notifyWebhookSection",
+  static targets = ["represamentoSection", "pocketSection", "poolRenotifySection", "poolRenotifyIntervalField",
+                    "metaSection", "webhookSection", "notifyWebhookSection",
                     "notifyWebhookSelect", "notifyWebhookError",
                     "channelModal", "channelModalName", "channelModalInstructions", "channelModalLink",
                     "checkinStoreSelect", "storeContextSection"]
@@ -9,6 +10,7 @@ export default class extends Controller {
   connect() {
     this.toggleRepresamento()
     this.togglePocket()
+    this.togglePoolRenotify()
     this.toggleMeta()
     this.toggleMeta()
     this.toggleWebhook()
@@ -35,6 +37,21 @@ export default class extends Controller {
     const checkbox = event ? event.target : this.findCheckbox('#checkPocket')
     if (this.hasPocketSectionTarget && checkbox) {
       this.setVisible(this.pocketSectionTarget, checkbox.checked)
+    }
+    this.togglePoolRenotify()
+  }
+
+  togglePoolRenotify() {
+    const poolCheckbox = this.findCheckbox('[name="distribution_rule[pocket_to_shark_tank]"]')
+    const selectedMode = this.element.querySelector('input[name="distribution_rule[distribution_mode]"]:checked')?.value || 'rotary'
+    const poolEnabled = selectedMode === 'shark_tank' || Boolean(poolCheckbox?.checked)
+    if (this.hasPoolRenotifySectionTarget) {
+      this.setVisible(this.poolRenotifySectionTarget, poolEnabled)
+    }
+
+    const intervalSelected = this.element.querySelector('input[name="distribution_rule[pool_renotify_mode]"][value="interval"]')?.checked
+    if (this.hasPoolRenotifyIntervalFieldTarget) {
+      this.setVisible(this.poolRenotifyIntervalFieldTarget, poolEnabled && intervalSelected)
     }
   }
 
@@ -122,6 +139,7 @@ export default class extends Controller {
 
     performanceFields.forEach(el => this.setVisible(el, selectedMode === 'performance'))
     rotaryFields.forEach(el => this.setVisible(el, selectedMode === 'rotary'))
+    this.togglePoolRenotify()
   }
 
   toggleStoreContext() {

@@ -15,6 +15,7 @@ module Leads
       return :not_found unless @lead
 
       previous_corretor = nil
+      pool_ready = false
       result = nil
 
       @lead.with_lock do
@@ -25,7 +26,8 @@ module Leads
           previous_corretor = @lead.admin_user
           previous_admin_user_id = previous_corretor&.id
 
-          @lead.update!(status: Lead.default_status, admin_user_id: nil)
+          pool_ready = @lead.distribution_rule&.pocket_to_pool?
+          @lead.update!(status: pool_ready ? Lead.status_value(:waiting_acceptance) : Lead.default_status, admin_user_id: nil)
           @lead.activities.create!(
             kind: "pocket_expired",
             metadata: {
@@ -36,6 +38,19 @@ module Leads
               expired_at: @now.iso8601
             }.compact
           )
+          if pool_ready
+            @lead.activities.create!(
+              kind: "pocket_pool_ready",
+              metadata: {
+                rule_id: @lead.distribution_rule_id,
+                rule_name: @lead.distribution_rule&.name,
+                previous_admin_user_id: previous_admin_user_id,
+                previous_admin_user_name: previous_corretor&.name,
+                source: @source,
+                available_at: @now.iso8601
+              }.compact
+            )
+          end
 
           result = :expired
         end
@@ -44,6 +59,8 @@ module Leads
       return result unless result == :expired
 
       Leads::NotificationDispatcher.notify_lost_turn(@lead.reload, previous_corretor)
+      return notify_pool! if pool_ready
+
       Leads::RoutingService.new(@lead.reload).route!
 
       result
@@ -83,6 +100,16 @@ module Leads
            .limit(10)
            .detect { |activity| activity.meta("admin_user_id").to_i == @lead.admin_user_id.to_i }
            &.created_at
+    end
+
+    def notify_pool!
+      lead = @lead.reload
+      rule = lead.distribution_rule
+      return :pool_ready unless rule
+
+      Leads::NotificationDispatcher.notify_pool(lead, rule, candidates: rule.candidates_filtered_by_checkin, context: "pocket_pool")
+      Leads::PoolRenotifyJob.set(wait: rule.pool_renotify_minutes_value.minutes).perform_later(lead.id, tenant_id: lead.tenant_id) if rule.pool_renotify_interval?
+      :pool_ready
     end
   end
 end

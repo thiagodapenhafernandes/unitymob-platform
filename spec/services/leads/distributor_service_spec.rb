@@ -1,6 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe Leads::DistributorService do
+  include ActiveJob::TestHelper
   include ActiveSupport::Testing::TimeHelpers
 
   let(:store) { create(:store) }
@@ -376,6 +377,20 @@ RSpec.describe Leads::DistributorService do
       expect(lead.status).to eq(Lead.status_value(:represado))
       expect(lead.distribution_rule_id).to eq(rule.id)
       expect(Leads::NotificationDispatcher).not_to have_received(:notify_shark_tank)
+    end
+
+    it "agenda renotificacao quando a regra de Shark Tank usa intervalo" do
+      rule = create(:distribution_rule, distribution_mode: :shark_tank, pool_renotify_mode: "interval", pool_renotify_minutes: 9)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
+      allow(Leads::NotificationDispatcher).to receive(:notify_shark_tank)
+
+      clear_enqueued_jobs
+      lead = build_lead
+      described_class.find_and_distribute(lead)
+
+      expect(enqueued_jobs.any? { |job| job[:job] == Leads::PoolRenotifyJob }).to be(true)
+    ensure
+      clear_enqueued_jobs
     end
   end
 

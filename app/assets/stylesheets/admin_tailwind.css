@@ -9452,6 +9452,51 @@ body.ax-distribution-rule-editor-workspace .ax-sidebar-contextbar {
   margin: 12px;
 }
 
+.distribution-rule-acceptance {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.distribution-rule-pool-choice {
+  margin-top: 4px;
+}
+
+.distribution-rule-pool-choice__hint {
+  margin-top: -6px;
+}
+
+.distribution-rule-pool-renotify {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ax-line, #e6e8eb);
+}
+
+.distribution-rule-pool-renotify .ax-radio-group {
+  gap: 8px;
+}
+
+.distribution-rule-pool-renotify .ax-radio-group__options {
+  display: grid;
+  gap: 10px;
+}
+
+.distribution-rule-pool-renotify .ax-radio-group__item {
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.distribution-rule-pool-renotify__interval {
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--ax-line, #d8dee8);
+}
+
 /* Resumo da regra (card ao vivo no aside) — reusa .ax-badge nos chips. */
 .distribution-rule-summary-card {
   border: 1px solid var(--ax-line, #e6e8eb);

@@ -255,20 +255,20 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(rule.distribution_rule_agents.pluck(:admin_user_id)).to eq([receiver.id])
   end
 
-  it "bloqueia Pocket no formulario quando o link seguro do Push nao esta habilitado" do
+  it "bloqueia aceite com prazo no formulario quando o link seguro do Push nao esta habilitado" do
     LeadSetting.instance.update!(secure_links_enabled: false, secure_link_push: true)
 
     get new_admin_distribution_rule_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Para usar Pocket, habilite o")
+    expect(response.body).to include("Para usar aceite com prazo, habilite o")
     expect(response.body).to include(edit_admin_lead_setting_path)
     doc = Nokogiri::HTML(response.body)
     pocket_input = doc.at_css("input#checkPocket")
     expect(pocket_input["disabled"]).to eq("disabled")
   end
 
-  it "forca Pocket desligado ao salvar regra sem link seguro do Push" do
+  it "forca aceite com prazo desligado ao salvar regra sem link seguro do Push" do
     LeadSetting.instance.update!(secure_links_enabled: false, secure_link_push: true)
 
     post admin_distribution_rules_path, params: {
@@ -290,7 +290,7 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(DistributionRule.last.pocket_active).to be(false)
   end
 
-  it "permite Pocket quando link seguro do Push esta habilitado" do
+  it "permite aceite com prazo quando link seguro do Push esta habilitado" do
     LeadSetting.instance.update!(secure_links_enabled: true, secure_link_push: true)
 
     post admin_distribution_rules_path, params: {

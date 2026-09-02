@@ -2560,9 +2560,9 @@
   <% lead_desktop_header = capture do %>
     <section class="lead-desktop-header" aria-label="Navegação e filtros de leads">
       <div class="lead-desktop-header__bar">
-        <%= link_to lead_queue_path, class: "lead-desktop-queue", title: "Ver minhas filas de distribuição" do %>
-          <strong><%= @pwa_queue_position.present? ? "#{@pwa_queue_position}º" : "-" %></strong>
-          <span>na fila</span>
+        <%= link_to lead_queue_path, class: "lead-desktop-queue", title: "Ver Bolsão de leads" do %>
+          <strong><i class="bi bi-people" aria-hidden="true"></i></strong>
+          <span>Bolsão</span>
         <% end %>
 
         <%= form_with url: admin_leads_path, method: :get, local: true, class: "lead-desktop-search" do |f| %>
@@ -2656,9 +2656,9 @@
     %>
     <div class="lead-pwa-sticky-head">
       <div class="lead-pwa-topbar <%= 'lead-pwa-topbar--no-view-toggle' if hide_pwa_kanban_toggle %> <%= 'lead-pwa-topbar--has-clear' if lead_active_filter_count.positive? %>">
-        <%= link_to lead_queue_path, class: "lead-pwa-queue", title: "Ver minhas filas de distribuição" do %>
-          <strong><%= @pwa_queue_position.present? ? "#{@pwa_queue_position}º" : "-" %></strong>
-          <span>na fila</span>
+        <%= link_to lead_queue_path, class: "lead-pwa-queue", title: "Ver Bolsão de leads" do %>
+          <strong><i class="bi bi-people" aria-hidden="true"></i></strong>
+          <span>Bolsão</span>
         <% end %>
 
         <%= form_with url: admin_leads_path, method: :get, class: "lead-pwa-search", local: true do |f| %>

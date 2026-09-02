@@ -44,6 +44,7 @@ module Leads
         @lead.activities.create(kind: "shark_tank_ready", metadata: { rule_id: rule.id, rule_name: rule.name })
         # Notifica TODOS os corretores da regra; o 1º que aceitar vira dono.
         Leads::NotificationDispatcher.notify_shark_tank(@lead.reload, rule, candidates: candidates)
+        Leads::PoolRenotifyJob.set(wait: rule.pool_renotify_minutes_value.minutes).perform_later(@lead.id, tenant_id: @lead.tenant_id) if rule.pool_renotify_interval?
         return rule
       end
 

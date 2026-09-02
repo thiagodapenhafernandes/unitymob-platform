@@ -11,14 +11,22 @@ module Leads
 
     # Shark Tank: notifica TODOS os corretores da regra (o 1º que aceitar vira dono).
     def self.notify_shark_tank(lead, rule, candidates: nil)
-      return unless LeadSetting.instance.notify_on_shark_tank?
+      return unless LeadSetting.instance(tenant: lead.tenant).notify_on_shark_tank?
+      return unless rule
+
+      notify_pool(lead, rule, candidates: candidates, context: "shark_tank")
+    end
+
+    def self.notify_pool(lead, rule, candidates: nil, context: "pool")
+      return unless LeadSetting.instance(tenant: lead.tenant).notify_on_shark_tank?
       return unless rule
 
       dispatcher = new(lead)
-      scope = candidates || rule.distribution_rule_agents
-      scope.includes(:admin_user).each do |dra|
+      scope = rule.eligible_distribution_rule_agents(candidates || rule.distribution_rule_agents)
+      agents = scope.respond_to?(:includes) ? scope.includes(:admin_user) : scope
+      agents.each do |dra|
         agent = dra.admin_user
-        dispatcher.deliver_to_agent(agent, shark_tank: true) if agent
+        dispatcher.deliver_to_agent(agent, pool: true, notification_context: context) if agent
       end
     end
 
@@ -84,14 +92,17 @@ module Leads
 
     # Envia a notificação da regra para um corretor específico (usado no Shark Tank,
     # que notifica todos os corretores elegíveis da regra).
-    def deliver_to_agent(agent, shark_tank: false)
+    def deliver_to_agent(agent, shark_tank: false, pool: false, notification_context: nil)
       return unless @rule && agent
 
       @corretor = agent
-      @shark_tank = shark_tank
+      @pool_notification = pool || shark_tank
+      @notification_context = notification_context
       deliver_channels
     ensure
       @shark_tank = false
+      @pool_notification = false
+      @notification_context = nil
     end
 
     private
@@ -155,10 +166,10 @@ module Leads
 
       # Padrão "WhatsApp": o clique abre a conversa do lead direto e o service worker
       # avisa o sistema do aceite em background (beacon) — sem tela intermediária.
-      whatsapp = @lead.direct_whatsapp_url if click_action == "whatsapp" && !shark_tank_push?
+      whatsapp = @lead.direct_whatsapp_url if click_action == "whatsapp" && !pool_push?
 
-      if shark_tank_push?
-        url = "#{links.url(:attend)}?details=1"
+      if pool_push?
+        url = pool_queue_url
         accept_url = nil
       elsif whatsapp.present?
         url = whatsapp
@@ -186,7 +197,7 @@ module Leads
         lead_id: @lead.id,
         metadata: {
           channel: "push",
-          notification_context: shark_tank_push? ? "shark_tank" : "distribution",
+          notification_context: notification_context_value,
           rule_id: @rule&.id,
           rule_name: @rule&.name,
           admin_user_id: @corretor.id,
@@ -213,7 +224,7 @@ module Leads
       parts << @lead.display_phone if !secure && @lead.display_phone.present?
       parts << context if context.present?
 
-      if shark_tank_push?
+      if pool_push?
         parts << "Pegar esse lead para atender"
         return parts.join(" · ")
       end
@@ -227,17 +238,29 @@ module Leads
     end
 
     def push_title
-      return "Lead disponível: #{@lead.display_name}" if shark_tank_push?
+      return "Lead disponível: #{@lead.display_name}" if pool_push?
 
       "Novo lead: #{@lead.display_name}"
     end
 
-    def shark_tank_push?
-      @shark_tank == true || (
+    def pool_push?
+      @pool_notification == true || (
         @lead.admin_user_id.blank? &&
         Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance) &&
-        @rule&.shark_tank?
+        @rule&.pool_mode?
       )
+    end
+
+    def notification_context_value
+      return @notification_context if @notification_context.present?
+
+      pool_push? ? "pool" : "distribution"
+    end
+
+    def pool_queue_url
+      host = ENV["APP_HOST"].to_s.delete_suffix("/")
+      path = "/admin/leads/distribution_queue?lead_id=#{@lead.id}"
+      host.present? ? "#{host}#{path}" : path
     end
 
     def push_context
@@ -374,10 +397,16 @@ module Leads
       when "lead_origin"
         @lead.origin
       when "lead_phone_or_link"
+        return pool_queue_url if pool_push?
+
         links.secure?(:whatsapp) ? links.url(:phone) : @lead.display_phone
       when "lead_email_or_link"
+        return pool_queue_url if pool_push?
+
         links.secure?(:whatsapp) ? links.url(:email) : @lead.display_email
       when "lead_other_or_link"
+        return pool_queue_url if pool_push?
+
         links.secure?(:whatsapp) ? links.url(:view) : (@lead.product.presence || @lead.origin)
       when "broker_name"
         @corretor.name
@@ -433,6 +462,7 @@ module Leads
           channel: channel.to_s,
           rule_id: @rule&.id,
           rule_name: @rule&.name,
+          notification_context: notification_context_value,
           admin_user_id: @corretor&.id,
           admin_user_name: @corretor&.name
         }.merge(metadata.compact)

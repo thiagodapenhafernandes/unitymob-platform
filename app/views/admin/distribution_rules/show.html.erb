@@ -215,11 +215,11 @@
       <% end %>
 
       <div class="distribution-rule-show__grid distribution-rule-show__grid--half">
-        <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
+        <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e aceite") do %>
           <div class="distribution-rule-show__body">
             <dl class="distribution-rule-show__state">
               <div class="distribution-rule-show__state-row">
-                <dt>Bolsão fora do horário</dt>
+                <dt>Represamento fora do horário</dt>
                 <dd><%= ax_badge(@rule.represamento_active? ? "Ativo" : "Desligado", tone: @rule.represamento_active? ? :amber : :gray) %></dd>
               </div>
             </dl>
@@ -240,9 +240,21 @@
               <p class="distribution-rule-show__muted">Leads não ficam represados por horário nesta regra.</p>
             <% end %>
             <div class="distribution-rule-show__state-row distribution-rule-show__state-row--separated">
-              <dt>Tempo limite para aceite</dt>
+              <dt>Aceite com prazo</dt>
               <dd><%= ax_badge(@rule.pocket_active? ? "#{@rule.pocket_time} min" : "Desligado", tone: @rule.pocket_active? ? :blue : :gray) %></dd>
             </div>
+            <% if @rule.pocket_active? %>
+              <div class="distribution-rule-show__state-row">
+                <dt>Ao expirar o aceite</dt>
+                <dd><%= ax_badge(@rule.pocket_to_pool? ? "Envia para o Bolsão" : "Redistribui", tone: @rule.pocket_to_pool? ? :blue : :gray) %></dd>
+              </div>
+              <% if @rule.pocket_to_pool? %>
+                <div class="distribution-rule-show__state-row">
+                  <dt>Sem atendimento no Bolsão</dt>
+                  <dd><%= ax_badge(@rule.pool_renotify_interval? ? "Renotifica a cada #{@rule.pool_renotify_minutes_value} min" : "Fica indefinidamente", tone: :blue) %></dd>
+                </div>
+              <% end %>
+            <% end %>
           </div>
         <% end %>
 
