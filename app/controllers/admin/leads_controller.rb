@@ -2658,7 +2658,7 @@ class Admin::LeadsController < Admin::BaseController
       target[action.lead_id] ||= []
       target[action.lead_id].reject! { |item| action.task_id.present? && item.respond_to?(:id) && item.id == action.task_id.to_i }
       target[action.lead_id] << action
-      target[action.lead_id].sort_by! { |item| item.due_at || Time.zone.at(0) }
+      target[action.lead_id].sort_by! { |item| pwa_schedule_sort_time(item) || Time.zone.at(0) }
     end
     @pwa_favorite_lead_ids = current_admin_user
                              .lead_favorites
@@ -2705,6 +2705,13 @@ class Admin::LeadsController < Admin::BaseController
     ].compact.join(" ").parameterize(separator: "_")
     kind = (text.include?("visita") || text.include?("scheduled_visit") || text.include?("reuniao")) ? "visita" : "follow_up"
     PwaExternalSchedule.new(lead_id: lead_id, title: title, kind: kind, due_at: due_at, task_id: metadata["task_id"])
+  end
+
+  def pwa_schedule_sort_time(item)
+    return item.due_at if item.respond_to?(:due_at)
+    return item.starts_at if item.respond_to?(:starts_at)
+
+    nil
   end
 
   def parse_pwa_external_schedule_time(value)
