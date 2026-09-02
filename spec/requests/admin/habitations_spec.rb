@@ -3591,18 +3591,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(selected_habitation.codigo)
   end
 
-  it "gera ficha de captação comercial única respeitando apenas filtros da listagem" do
-    selected_habitation = create(
-      :habitation,
-      codigo: "CAP-RES-#{SecureRandom.hex(4)}",
-      categoria: "Apartamento",
-      titulo_anuncio: "Residencial selecionado fora da ficha comercial"
-    )
-    filtered_habitation = create(
+  it "gera ficha de captação comercial em branco sem atrelar a um imóvel" do
+    habitation = create(
       :habitation,
       codigo: "CAP-FILTER-#{SecureRandom.hex(4)}",
       categoria: "Apartamento",
       titulo_anuncio: "Imóvel filtrado para ficha de captação",
+      endereco: "Rua Comercial Preenchida",
       salas_qtd: 2,
       banheiros_qtd: 1,
       valor_venda_cents: 950_000_00
@@ -3610,31 +3605,27 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     get print_admin_habitations_path(
       report_type: "capture_sheet_commercial",
-      selected_ids: selected_habitation.id.to_s,
-      codigo: filtered_habitation.codigo,
+      selected_ids: habitation.id.to_s,
+      codigo: habitation.codigo,
       full_print: "1"
     )
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Ficha de captação")
     expect(response.body).to include("Comercial")
-    expect(response.body).to include(filtered_habitation.codigo)
     expect(response.body).to include("Dados do proprietário do imóvel")
-    expect(response.body).not_to include(selected_habitation.codigo)
+    expect(response.body).not_to include(habitation.codigo)
+    expect(response.body).not_to include("Rua Comercial Preenchida")
+    expect(response.body).not_to include("R$ 950.000,00")
   end
 
-  it "gera ficha de captação residencial única respeitando filtros da listagem" do
-    selected_habitation = create(
-      :habitation,
-      codigo: "CAP-COM-#{SecureRandom.hex(4)}",
-      categoria: "Sala Comercial",
-      titulo_anuncio: "Comercial selecionado fora da ficha residencial"
-    )
-    filtered_habitation = create(
+  it "gera ficha de captação residencial em branco sem atrelar a um imóvel" do
+    habitation = create(
       :habitation,
       codigo: "CAP-RES-#{SecureRandom.hex(4)}",
       categoria: "Apartamento",
       titulo_anuncio: "Residencial filtrado para ficha de captação",
+      endereco: "Rua Residencial Preenchida",
       dormitorios_qtd: 3,
       suites_qtd: 1,
       banheiros_qtd: 2,
@@ -3644,32 +3635,28 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     get print_admin_habitations_path(
       report_type: "capture_sheet_residential",
-      selected_ids: selected_habitation.id.to_s,
-      codigo: filtered_habitation.codigo,
+      selected_ids: habitation.id.to_s,
+      codigo: habitation.codigo,
       full_print: "1"
     )
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Ficha de captação")
     expect(response.body).to include("Residencial")
-    expect(response.body).to include(filtered_habitation.codigo)
     expect(response.body).to include("Características do imóvel")
     expect(response.body).to include("Infraestrutura")
-    expect(response.body).not_to include(selected_habitation.codigo)
+    expect(response.body).not_to include(habitation.codigo)
+    expect(response.body).not_to include("Rua Residencial Preenchida")
+    expect(response.body).not_to include("R$ 1.350.000,00")
   end
 
-  it "gera ficha de captação de terrenos única respeitando filtros da listagem" do
-    selected_habitation = create(
-      :habitation,
-      codigo: "CAP-APT-#{SecureRandom.hex(4)}",
-      categoria: "Apartamento",
-      titulo_anuncio: "Apartamento selecionado fora da ficha de terreno"
-    )
-    filtered_habitation = create(
+  it "gera ficha de captação de terrenos em branco sem atrelar a um imóvel" do
+    habitation = create(
       :habitation,
       codigo: "CAP-LAND-#{SecureRandom.hex(4)}",
       categoria: "Terreno",
       titulo_anuncio: "Terreno filtrado para ficha de captação",
+      endereco: "Rua Terreno Preenchida",
       lote: "12",
       quadra: "B",
       area_total_m2: 450,
@@ -3683,18 +3670,20 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     get print_admin_habitations_path(
       report_type: "capture_sheet_land",
-      selected_ids: selected_habitation.id.to_s,
-      codigo: filtered_habitation.codigo,
+      selected_ids: habitation.id.to_s,
+      codigo: habitation.codigo,
       full_print: "1"
     )
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Ficha de captação")
     expect(response.body).to include("Terreno")
-    expect(response.body).to include(filtered_habitation.codigo)
     expect(response.body).to include("Lote")
     expect(response.body).to include("Infraestrutura")
-    expect(response.body).not_to include(selected_habitation.codigo)
+    expect(response.body).not_to include(habitation.codigo)
+    expect(response.body).not_to include("Rua Terreno Preenchida")
+    expect(response.body).not_to include("15 x 30")
+    expect(response.body).not_to include("R$ 720.000,00")
   end
 
   it "salva o imóvel completo e libera a captação para o corretor publicar" do
