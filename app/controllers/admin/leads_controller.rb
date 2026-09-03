@@ -145,10 +145,12 @@ class Admin::LeadsController < Admin::BaseController
 
     unfiltered_scope = lead_scope_for_current_user
     filtered_scope = filtered_lead_scope_for_current_user
+    common_scope = hide_waiting_acceptance_from_common_scope(filtered_scope)
+    common_unfiltered_scope = hide_waiting_acceptance_from_common_scope(unfiltered_scope)
     @desktop_lead_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
-    list_filtered_scope = hide_discarded_from_list_scope(filtered_scope)
+    list_filtered_scope = hide_discarded_from_list_scope(common_scope)
     @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope)
-    lead_scope = lead_scope_for_tab(filtered_scope, @desktop_lead_tab)
+    lead_scope = lead_scope_for_tab(common_scope, @desktop_lead_tab)
     list_scope = lead_scope_for_tab(list_filtered_scope, @desktop_lead_tab)
 
     stats_scope = list_scope.reorder(nil)
@@ -192,7 +194,7 @@ class Admin::LeadsController < Admin::BaseController
     @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
     @leads = list_scope.paginate(page: params[:page], per_page: 20)
-    load_pwa_leads_context(filtered_scope.reorder(nil), unfiltered_scope: unfiltered_scope.reorder(nil))
+    load_pwa_leads_context(common_scope.reorder(nil), unfiltered_scope: common_unfiltered_scope.reorder(nil))
     property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a + @pwa_kanban_leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @kanban_leads.first || @leads.first
@@ -221,20 +223,17 @@ class Admin::LeadsController < Admin::BaseController
     @queue_rules = current_user_lead_pool_rules
       .order(:name)
 
-    @queue_agents_by_rule_id = DistributionRuleAgent
-      .where(tenant_id: current_tenant.id, distribution_rule_id: @queue_rules.map(&:id))
-      .includes(:admin_user)
-      .order(:position, :id)
-      .group_by(&:distribution_rule_id)
-    @queue_positions_by_rule_id = @queue_agents_by_rule_id.transform_values do |agents|
-      display_queue_position_for_agents(agents, current_admin_user.id)
-    end
-    @queue_agent_positions_by_id = display_queue_positions_by_agent_id(@queue_agents_by_rule_id.values.flatten)
-    @best_queue_position = @queue_positions_by_rule_id.values.compact.min
     queue_rule_ids = @queue_rules.map(&:id)
     @focused_pool_lead_id = params[:lead_id].presence&.to_i
+    pool_activity_exists_sql = "lead_activities.lead_id = leads.id AND lead_activities.kind = ?"
+    pool_activity_exists_args = ["pocket_pool_ready"]
+    if LeadActivity.column_names.include?("tenant_id")
+      pool_activity_exists_sql += " AND lead_activities.tenant_id = ?"
+      pool_activity_exists_args << current_tenant.id
+    end
     pool_scope = current_tenant.leads
       .where(distribution_rule_id: queue_rule_ids, admin_user_id: nil, status: Lead.status_value(:waiting_acceptance))
+      .where(["EXISTS (SELECT 1 FROM lead_activities WHERE #{pool_activity_exists_sql})", *pool_activity_exists_args])
       .includes(:distribution_rule)
 
     @pool_leads = if @focused_pool_lead_id.present?
@@ -242,7 +241,16 @@ class Admin::LeadsController < Admin::BaseController
     else
       pool_scope.order(created_at: :asc)
     end
-    @pool_leads_by_rule_id = @pool_leads.group_by(&:distribution_rule_id)
+    pool_lead_ids = @pool_leads.map(&:id)
+    pool_activities_scope = LeadActivity.where(lead_id: pool_lead_ids, kind: %w[pocket_expired pocket_pool_ready])
+    pool_activities_scope = pool_activities_scope.where(tenant_id: current_tenant.id) if LeadActivity.column_names.include?("tenant_id")
+    pool_activities = pool_activities_scope.order(created_at: :desc)
+    @latest_pool_activity_by_lead_id = pool_activities
+      .select { |activity| activity.kind == "pocket_pool_ready" }
+      .each_with_object({}) { |activity, index| index[activity.lead_id] ||= activity }
+    @latest_pocket_expired_activity_by_lead_id = pool_activities
+      .select { |activity| activity.kind == "pocket_expired" }
+      .each_with_object({}) { |activity, index| index[activity.lead_id] ||= activity }
     @return_to_path = admin_leads_path(view: current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "list")
     @page_title = "Bolsão"
   end
@@ -987,6 +995,10 @@ class Admin::LeadsController < Admin::BaseController
     return scope if @status_filters.present? || @archive_reason_id.present?
 
     scope.where.not(leads: { status: Lead.status_value(:descartado, tenant: current_tenant) })
+  end
+
+  def hide_waiting_acceptance_from_common_scope(scope)
+    scope.where("leads.status IS NULL OR leads.status <> ?", Lead.status_value(:waiting_acceptance, tenant: current_tenant))
   end
 
   def kanban_status_tone

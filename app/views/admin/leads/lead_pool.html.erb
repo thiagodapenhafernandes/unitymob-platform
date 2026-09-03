@@ -11,213 +11,142 @@
 <% end %>
 
 <style>
-  .lead-queue-page {
-    --queue-bg: var(--admin-workspace-bg, #eef3f9);
-    --queue-surface: var(--admin-surface, #fff);
-    --queue-ink: var(--admin-ink, #202a37);
-    --queue-muted: var(--ab-muted, #64748b);
-    --queue-line: var(--ab-line, #d8dee8);
-    --queue-primary: var(--admin-primary, #365f8f);
+  .lead-pool-page {
+    --pool-bg: var(--admin-workspace-bg, #eef3f9);
+    --pool-surface: var(--admin-surface, #fff);
+    --pool-ink: var(--admin-ink, #202a37);
+    --pool-muted: var(--ab-muted, #64748b);
+    --pool-line: var(--ab-line, #d8dee8);
+    --pool-primary: var(--admin-primary, #365f8f);
     display: grid;
     gap: 12px;
     overflow-anchor: none;
   }
 
-  .lead-queue-mobile-top {
+  .lead-pool-mobile-top {
     display: none;
   }
 
-  .lead-queue-command {
+  .lead-pool-command,
+  .lead-pool-empty,
+  .lead-pool-list {
+    border: 1px solid var(--pool-line);
+    border-radius: 10px;
+    background: var(--pool-surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .lead-pool-command {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    border: 1px solid var(--queue-line);
-    border-radius: 10px;
-    background: var(--queue-surface);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
   }
 
-  .lead-queue-command__copy {
+  .lead-pool-command__copy {
     display: grid;
     gap: 3px;
     min-width: 0;
   }
 
-  .lead-queue-command__copy span {
-    color: var(--queue-muted);
+  .lead-pool-command__copy span {
+    color: var(--pool-muted);
     font-size: 11px;
     font-weight: 850;
     letter-spacing: .04em;
     text-transform: uppercase;
   }
 
-  .lead-queue-command__copy h1 {
+  .lead-pool-command__copy h1 {
     margin: 0;
-    color: var(--queue-ink);
+    color: var(--pool-ink);
     font-size: 22px;
     font-weight: 900;
     letter-spacing: 0;
   }
 
-  .lead-queue-command__copy p {
+  .lead-pool-command__copy p {
     margin: 0;
-    color: var(--queue-muted);
+    color: var(--pool-muted);
     font-size: 13px;
     font-weight: 750;
   }
 
-  .lead-queue-command__position {
+  .lead-pool-command__count {
     display: inline-grid;
     place-items: center;
     min-width: 72px;
     min-height: 50px;
     padding: 5px 10px;
     border-radius: 10px;
-    background: color-mix(in srgb, var(--queue-primary) 10%, #fff);
-    color: var(--queue-primary);
+    background: color-mix(in srgb, var(--pool-primary) 10%, #fff);
+    color: var(--pool-primary);
     text-align: center;
   }
 
-  .lead-queue-command__position strong {
+  .lead-pool-command__count strong {
     font-size: 18px;
     font-weight: 900;
     line-height: 1;
   }
 
-  .lead-queue-command__position span {
+  .lead-pool-command__count span {
     margin-top: 3px;
-    color: var(--queue-muted);
+    color: var(--pool-muted);
     font-size: 10px;
     font-weight: 850;
   }
 
-  .lead-queue-stack {
+  .lead-pool-list {
     display: grid;
-    gap: 12px;
-  }
-
-  .lead-queue-card {
     overflow: hidden;
-    border: 1px solid var(--queue-line);
-    border-radius: 10px;
-    background: var(--queue-surface);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
   }
 
-  .lead-queue-card__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--queue-line);
-    background: #f8fafc;
-  }
-
-  .lead-queue-card__title {
+  .lead-pool-item {
     display: grid;
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--pool-line);
+  }
+
+  .lead-pool-item:last-child {
+    border-bottom: 0;
+  }
+
+  .lead-pool-item.is-focused {
+    background: color-mix(in srgb, var(--pool-primary) 8%, #fff);
+    box-shadow: inset 3px 0 0 var(--pool-primary);
+  }
+
+  .lead-pool-item__copy {
+    display: grid;
+    gap: 5px;
     min-width: 0;
   }
 
-  .lead-queue-card__title strong {
-    color: var(--queue-ink);
-    font-size: 16px;
+  .lead-pool-item__title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .lead-pool-item__title strong {
+    color: var(--pool-ink);
+    font-size: 15px;
     font-weight: 900;
     line-height: 1.2;
   }
 
-  .lead-queue-card__title span,
-  .lead-queue-card__position {
-    color: var(--queue-muted);
-    font-size: 12px;
-    font-weight: 800;
-  }
-
-  .lead-queue-card__position {
-    flex: 0 0 auto;
-    color: var(--queue-primary);
-    text-align: right;
-  }
-
-  .lead-queue-list {
-    display: grid;
-  }
-
-  .lead-queue-agent {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--queue-line);
-  }
-
-  .lead-queue-agent:last-child {
-    border-bottom: 0;
-  }
-
-  .lead-queue-agent.is-current {
-    margin: 8px;
-    border: 1px solid color-mix(in srgb, var(--queue-primary) 38%, var(--queue-line));
-    border-radius: 9px;
-    background: color-mix(in srgb, var(--queue-primary) 9%, #fff);
-    box-shadow: 0 10px 22px color-mix(in srgb, var(--queue-primary) 12%, transparent);
-  }
-
-  .lead-queue-agent__position {
-    display: inline-grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    background: #eef2f7;
-    color: var(--queue-muted);
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .lead-queue-agent.is-current .lead-queue-agent__position {
-    background: var(--queue-primary);
-    color: #fff;
-  }
-
-  .lead-queue-agent__copy {
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-  }
-
-  .lead-queue-agent__copy strong,
-  .lead-queue-agent__copy span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .lead-queue-agent__copy strong {
-    color: var(--queue-ink);
-    font-size: 14px;
-    font-weight: 900;
-  }
-
-  .lead-queue-agent__copy span {
-    color: var(--queue-muted);
-    font-size: 12px;
-    font-weight: 750;
-  }
-
-  .lead-queue-agent__status {
+  .lead-pool-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    justify-content: center;
-    min-height: 26px;
-    padding: 0 9px;
+    min-height: 22px;
+    padding: 0 8px;
     border-radius: 999px;
     background: #ecfdf3;
     color: #027a48;
@@ -226,77 +155,36 @@
     white-space: nowrap;
   }
 
-  .lead-queue-pool {
-    display: grid;
-    gap: 10px;
-    padding: 12px;
-  }
-
-  .lead-queue-pool__item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: center;
-    padding: 12px;
-    border: 1px solid var(--queue-line);
-    border-radius: 9px;
-    background: #fff;
-  }
-
-  .lead-queue-pool__item.is-focused {
-    border-color: color-mix(in srgb, var(--queue-primary) 50%, var(--queue-line));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--queue-primary) 12%, transparent);
-  }
-
-  .lead-queue-pool__copy {
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .lead-queue-pool__copy strong,
-  .lead-queue-pool__copy span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .lead-queue-pool__copy strong {
-    color: var(--queue-ink);
-    font-size: 14px;
-    font-weight: 900;
-  }
-
-  .lead-queue-pool__copy span {
-    color: var(--queue-muted);
+  .lead-pool-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    color: var(--pool-muted);
     font-size: 12px;
     font-weight: 750;
   }
 
-  .lead-queue-agent__status.is-muted {
-    background: #f1f5f9;
-    color: #64748b;
+  .lead-pool-item__meta span {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
-  .lead-queue-empty {
-    padding: 22px;
-    border: 1px solid var(--queue-line);
-    border-radius: 10px;
-    background: var(--queue-surface);
+  .lead-pool-empty {
+    padding: 28px 18px;
     text-align: center;
   }
 
-  .lead-queue-empty strong {
+  .lead-pool-empty strong {
     display: block;
-    color: var(--queue-ink);
+    color: var(--pool-ink);
     font-size: 16px;
     font-weight: 900;
   }
 
-  .lead-queue-empty p {
+  .lead-pool-empty p {
     margin: 6px auto 0;
     max-width: 460px;
-    color: var(--queue-muted);
+    color: var(--pool-muted);
     font-size: 13px;
     font-weight: 750;
   }
@@ -312,16 +200,16 @@
       min-height: 100dvh !important;
       margin: 0 !important;
       padding: 0 !important;
-      background: var(--queue-bg) !important;
+      background: var(--pool-bg) !important;
     }
 
-    .lead-queue-page {
+    .lead-pool-page {
       min-height: 100dvh;
       padding: calc(72px + env(safe-area-inset-top, 0px)) 10px calc(78px + env(safe-area-inset-bottom, 0px));
-      background: var(--queue-bg);
+      background: var(--pool-bg);
     }
 
-    .lead-queue-mobile-top {
+    .lead-pool-mobile-top {
       position: fixed;
       top: 0;
       right: 0;
@@ -333,45 +221,45 @@
       align-items: center;
       min-height: calc(60px + env(safe-area-inset-top, 0px));
       padding: max(8px, env(safe-area-inset-top, 0px)) 10px 8px;
-      border-bottom: 1px solid var(--queue-line);
-      background: color-mix(in srgb, var(--queue-bg) 90%, #fff);
+      border-bottom: 1px solid var(--pool-line);
+      background: color-mix(in srgb, var(--pool-bg) 90%, #fff);
       box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
       backdrop-filter: blur(14px);
     }
 
-    .lead-queue-mobile-top__button,
-    .lead-queue-mobile-top__position {
+    .lead-pool-mobile-top__button,
+    .lead-pool-mobile-top__count {
       display: inline-grid;
       place-items: center;
       width: 42px;
       height: 42px;
-      border: 1px solid var(--queue-line);
+      border: 1px solid var(--pool-line);
       border-radius: 12px;
-      background: var(--queue-surface);
-      color: var(--queue-ink);
+      background: var(--pool-surface);
+      color: var(--pool-ink);
       text-decoration: none;
       box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
     }
 
-    .lead-queue-mobile-top__button {
+    .lead-pool-mobile-top__button {
       font-size: 20px;
     }
 
-    .lead-queue-mobile-top__position {
-      color: var(--queue-primary);
+    .lead-pool-mobile-top__count {
+      color: var(--pool-primary);
       font-size: 13px;
       font-weight: 950;
     }
 
-    .lead-queue-mobile-top__title {
+    .lead-pool-mobile-top__title {
       min-width: 0;
       text-align: center;
     }
 
-    .lead-queue-mobile-top__title strong {
+    .lead-pool-mobile-top__title strong {
       display: block;
       overflow: hidden;
-      color: var(--queue-ink);
+      color: var(--pool-ink);
       font-size: 17px;
       font-weight: 950;
       line-height: 1.15;
@@ -379,158 +267,113 @@
       white-space: nowrap;
     }
 
-    .lead-queue-mobile-top__title span {
+    .lead-pool-mobile-top__title span {
       display: block;
       margin-top: 2px;
       overflow: hidden;
-      color: var(--queue-muted);
+      color: var(--pool-muted);
       font-size: 12px;
       font-weight: 800;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .lead-queue-command {
-      padding: 12px;
+    .lead-pool-command,
+    .lead-pool-empty,
+    .lead-pool-list {
       border-radius: 14px;
     }
 
-    .lead-queue-command__copy h1 {
+    .lead-pool-command {
+      padding: 12px;
+    }
+
+    .lead-pool-command__copy h1 {
       font-size: 20px;
     }
 
-    .lead-queue-card {
-      border-radius: 14px;
-    }
-
-    .lead-queue-card__head {
+    .lead-pool-item {
+      grid-template-columns: 1fr;
       padding: 13px;
     }
 
-    .lead-queue-card__position {
-      max-width: 94px;
-      font-size: 11px;
-    }
-
-    .lead-queue-agent {
-      grid-template-columns: 38px minmax(0, 1fr);
-      padding: 11px 13px;
-    }
-
-    .lead-queue-pool__item {
-      grid-template-columns: 1fr;
-    }
-
-    .lead-queue-agent__status {
-      grid-column: 2;
-      justify-self: start;
+    .lead-pool-item .ax-btn {
+      justify-self: stretch;
     }
   }
 </style>
 
-<div class="lead-queue-page">
-  <header class="lead-queue-mobile-top" aria-label="Navegação da tela de filas">
-    <%= link_to @return_to_path, class: "lead-queue-mobile-top__button", aria: { label: "Voltar para leads" } do %>
+<div class="lead-pool-page">
+  <header class="lead-pool-mobile-top" aria-label="Navegação do bolsão">
+    <%= link_to @return_to_path, class: "lead-pool-mobile-top__button", aria: { label: "Voltar para leads" } do %>
       <i class="bi bi-arrow-left"></i>
     <% end %>
-    <div class="lead-queue-mobile-top__title">
+    <div class="lead-pool-mobile-top__title">
       <strong>Bolsão</strong>
-      <span><%= @pool_leads.size %> lead<%= "s" if @pool_leads.size != 1 %> no bolsão</span>
+      <span><%= @pool_leads.size %> lead<%= "s" if @pool_leads.size != 1 %> <%= @pool_leads.size == 1 ? "disponível" : "disponíveis" %></span>
     </div>
-    <span class="lead-queue-mobile-top__position" aria-label="Leads abertos no bolsão">
+    <span class="lead-pool-mobile-top__count" aria-label="Leads disponíveis no bolsão">
       <%= @pool_leads.size %>
     </span>
   </header>
 
-  <header class="lead-queue-command">
-    <div class="lead-queue-command__copy">
+  <header class="lead-pool-command">
+    <div class="lead-pool-command__copy">
       <span>Distribuição de leads</span>
       <h1>Bolsão</h1>
-      <p><%= current_admin_user.name %> participa de <%= @queue_rules.size %> fila<%= "s" if @queue_rules.size != 1 %> e vê somente os bolsões dessas regras.</p>
+      <p>Leads que não foram atendidos no prazo e estão disponíveis para atendimento.</p>
     </div>
 
-    <div class="lead-queue-command__position" aria-label="Leads abertos no bolsão">
+    <div class="lead-pool-command__count" aria-label="Leads disponíveis no bolsão">
       <strong><%= @pool_leads.size %></strong>
-      <span>lead<%= "s" if @pool_leads.size != 1 %> aberto<%= "s" if @pool_leads.size != 1 %></span>
+      <span>lead<%= "s" if @pool_leads.size != 1 %></span>
     </div>
   </header>
 
-  <% if @queue_rules.any? %>
-    <div class="lead-queue-stack">
-      <% @queue_rules.each do |rule| %>
+  <% if @pool_leads.any? %>
+    <section class="lead-pool-list" aria-label="Leads disponíveis no bolsão">
+      <% @pool_leads.each do |lead| %>
         <%
-          agents = @queue_agents_by_rule_id.fetch(rule.id, [])
-          current_position = @queue_positions_by_rule_id[rule.id]
-          pool_leads = @pool_leads_by_rule_id.fetch(rule.id, [])
+          pool_activity = @latest_pool_activity_by_lead_id[lead.id]
+          expired_activity = @latest_pocket_expired_activity_by_lead_id[lead.id]
+          previous_broker = expired_activity&.meta("previous_admin_user_name").presence || pool_activity&.meta("previous_admin_user_name").presence
+          available_at = pool_activity&.created_at || lead.created_at
+          source_label = [lead.origin.presence, lead.product.presence].compact.join(" · ").presence
         %>
-        <section class="lead-queue-card" aria-labelledby="lead-queue-rule-<%= rule.id %>">
-          <header class="lead-queue-card__head">
-            <div class="lead-queue-card__title">
-              <strong id="lead-queue-rule-<%= rule.id %>"><%= rule.name %></strong>
-              <span><%= distribution_rule_mode_label(rule) %> · <%= pool_leads.size %> lead<%= "s" if pool_leads.size != 1 %> disponível<%= "is" if pool_leads.size != 1 %></span>
+        <article class="lead-pool-item <%= 'is-focused' if lead.id == @focused_pool_lead_id %>" id="lead-<%= lead.id %>">
+          <div class="lead-pool-item__copy">
+            <div class="lead-pool-item__title">
+              <strong><%= lead.display_name %></strong>
+              <span class="lead-pool-badge">Disponível</span>
             </div>
-            <div class="lead-queue-card__position">
-              Sua posição: <%= current_position.present? ? "#{current_position}º de #{agents.size}" : "--" %>
-            </div>
-          </header>
-
-          <div class="lead-queue-pool">
-            <% if pool_leads.any? %>
-              <% pool_leads.each do |lead| %>
-                <article class="lead-queue-pool__item <%= 'is-focused' if lead.id == @focused_pool_lead_id %>" id="lead-<%= lead.id %>">
-                  <div class="lead-queue-pool__copy">
-                    <strong><%= lead.display_name %></strong>
-                    <span><%= [lead.origin.presence, lead.product.presence].compact.join(" · ").presence || "Lead aguardando atendimento" %></span>
-                    <span>Recebido <%= time_ago_in_words(lead.created_at) %> atrás</span>
-                  </div>
-                  <%= link_to attend_admin_lead_path(lead), class: "ax-btn ax-btn--primary ax-btn--sm", data: { turbo: false } do %>
-                    <i class="bi bi-hand-index-thumb ax-ico" aria-hidden="true"></i><span>Atender</span>
-                  <% end %>
-                </article>
+            <div class="lead-pool-item__meta">
+              <span><%= source_label || "Lead sem origem detalhada" %></span>
+              <span>Regra: <%= lead.distribution_rule&.name.presence || "sem regra" %></span>
+              <span>No bolsão há <%= time_ago_in_words(available_at) %></span>
+              <% if previous_broker.present? %>
+                <span>Corretor anterior: <%= previous_broker %></span>
               <% end %>
-            <% else %>
-              <div class="lead-queue-empty">
-                <strong>Nenhum lead disponível neste bolsão.</strong>
-                <p>Quando um lead de Shark Tank ou aceite com prazo expirado cair nesta regra, ele aparecerá aqui.</p>
-              </div>
-            <% end %>
+            </div>
           </div>
 
-          <div class="lead-queue-list">
-            <% agents.each do |agent| %>
-              <%
-                user = agent.admin_user
-                current_agent = agent.admin_user_id == current_admin_user.id
-                display_position = @queue_agent_positions_by_id[agent.id]
-              %>
-              <article class="lead-queue-agent <%= 'is-current' if current_agent %>">
-                <span class="lead-queue-agent__position"><%= display_position.present? ? "#{display_position}º" : "--" %></span>
-                <div class="lead-queue-agent__copy">
-                  <strong><%= user&.name.presence || "Corretor sem nome" %></strong>
-                  <span><%= current_agent ? "Você" : user&.email %></span>
-                </div>
-                <span class="lead-queue-agent__status <%= 'is-muted' unless user&.active? %>">
-                  <i class="bi bi-circle-fill" aria-hidden="true"></i>
-                  <%= user&.active? ? "Ativo" : "Inativo" %>
-                </span>
-              </article>
-            <% end %>
-          </div>
-        </section>
+          <%= link_to attend_admin_lead_path(lead), class: "ax-btn ax-btn--primary ax-btn--sm", data: { turbo: false } do %>
+            <i class="bi bi-hand-index-thumb ax-ico" aria-hidden="true"></i><span>Atender</span>
+          <% end %>
+        </article>
       <% end %>
-    </div>
+    </section>
   <% else %>
-    <div class="lead-queue-empty">
-      <strong>Você não participa de nenhuma fila ativa.</strong>
-      <p>Quando seu usuário for incluído em uma regra de distribuição ativa, ela aparecerá aqui automaticamente.</p>
+    <div class="lead-pool-empty">
+      <strong>Nenhum lead disponível no bolsão.</strong>
+      <p>Quando um corretor não atender dentro do prazo, o lead aparecerá aqui.</p>
     </div>
   <% end %>
 </div>
 
 <script>
   (() => {
-    const resetQueueScroll = () => {
-      if (!document.querySelector(".lead-queue-page")) return;
+    const resetPoolScroll = () => {
+      if (!document.querySelector(".lead-pool-page")) return;
 
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
@@ -547,8 +390,8 @@
       window.setTimeout(scrollTop, 120);
     };
 
-    resetQueueScroll();
-    window.addEventListener("pageshow", resetQueueScroll, { once: true });
-    document.addEventListener("turbo:load", resetQueueScroll, { once: true });
+    resetPoolScroll();
+    window.addEventListener("pageshow", resetPoolScroll, { once: true });
+    document.addEventListener("turbo:load", resetPoolScroll, { once: true });
   })();
 </script>
