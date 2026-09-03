@@ -163,7 +163,8 @@ RSpec.describe "Admin::Leads", type: :request do
 
     it "oculta colunas operacionais do kanban" do
       create(:lead, tenant: admin.tenant, name: "Lead Represado Kanban", phone: "11999999991", status: "Represado")
-      create(:lead, tenant: admin.tenant, name: "Lead Aceite Kanban", phone: "11999999992", status: "Aguardando Aceite")
+      create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Aceite Kanban", phone: "11999999992", status: "Aguardando Aceite")
+      create(:lead, tenant: admin.tenant, admin_user: nil, name: "Lead Aceite Sem Corretor Kanban", phone: "11999999995", status: "Aguardando Aceite")
       create(:lead, tenant: admin.tenant, name: "Lead Concluido Kanban", phone: "11999999993", status: "Concluido")
       create(:lead, tenant: admin.tenant, name: "Lead Normal Kanban", phone: "11999999994", status: Lead.default_status(tenant: admin.tenant))
 
@@ -176,7 +177,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css(%([data-lead-kanban-status="Aguardando Aceite"]))).to be_nil
       expect(document.at_css(%([data-lead-kanban-status="Concluido"]))).to be_nil
       expect(document.at_css(%([data-lead-kanban-status="#{Lead.default_status(tenant: admin.tenant)}"])).text).to include("Lead Normal Kanban")
-      expect(response.body).not_to include("Lead Represado Kanban", "Lead Aceite Kanban", "Lead Concluido Kanban")
+      expect(response.body).not_to include("Lead Represado Kanban", "Lead Aceite Kanban", "Lead Aceite Sem Corretor Kanban", "Lead Concluido Kanban")
     end
 
     it "carrega o proximo lote de uma coluna do kanban respeitando filtros" do
@@ -214,6 +215,8 @@ RSpec.describe "Admin::Leads", type: :request do
 
     it "mantem a visualizacao em lista como alternativa" do
       lead = create(:lead, name: "Cliente Lista", phone: "11999999999", status: "Novo")
+      waiting_acceptance = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Cliente Aceite Lista", phone: "11999999998", status: "Aguardando Aceite")
+      unassigned_waiting_acceptance = create(:lead, tenant: admin.tenant, admin_user: nil, name: "Cliente Aceite Sem Corretor Lista", phone: "11999999997", status: "Aguardando Aceite")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
       integration.update!(
         status: "connected",
@@ -237,6 +240,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css("a[href='#{admin_lead_path(lead, return_to: "#{admin_leads_path(view: "list")}#lead_#{lead.id}", anchor: "whatsapp")}']")).to be_nil
       expect(response.body).not_to include("<table")
       expect(response.body).to include("Cliente Lista")
+      expect(response.body).not_to include(waiting_acceptance.name)
+      expect(response.body).not_to include(unassigned_waiting_acceptance.name)
     end
 
     it "oculta descartados da lista padrao e mostra quando filtrado ou no kanban" do
@@ -810,7 +815,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.text).not_to include("Fila sem o logado", "Corretor fora da fila", ExternalLeadIntegration::SUPPORT_RULE_NAME, "Sistema Interno")
     end
 
-    it "lista no Bolsao apenas leads sem dono das regras em que o usuario participa" do
+    it "lista no Bolsao apenas leads sem dono que entraram por prazo expirado nas regras do usuario" do
       broker_profile = Profile.create!(
         tenant: admin.tenant,
         name: "Corretor bolsao #{SecureRandom.hex(4)}",
@@ -827,8 +832,12 @@ RSpec.describe "Admin::Leads", type: :request do
       create(:distribution_rule_agent, distribution_rule: included_rule, admin_user: teammate, position: 2)
       create(:distribution_rule_agent, distribution_rule: outside_rule, admin_user: outside_user, position: 1)
       visible_lead = create(:lead, tenant: admin.tenant, name: "Cliente visivel", status: :waiting_acceptance, admin_user: nil, distribution_rule: included_rule, skip_automatic_routing: true)
+      visible_lead.activities.create!(kind: "pocket_pool_ready", metadata: { previous_admin_user_name: "Corretor anterior" })
       hidden_lead = create(:lead, tenant: admin.tenant, name: "Cliente oculto", status: :waiting_acceptance, admin_user: nil, distribution_rule: outside_rule, skip_automatic_routing: true)
+      hidden_lead.activities.create!(kind: "pocket_pool_ready")
+      shark_tank_lead = create(:lead, tenant: admin.tenant, name: "Cliente shark tank", status: :waiting_acceptance, admin_user: nil, distribution_rule: included_rule, skip_automatic_routing: true)
       assigned_lead = create(:lead, tenant: admin.tenant, name: "Cliente com dono", status: :waiting_acceptance, admin_user: teammate, distribution_rule: included_rule, skip_automatic_routing: true)
+      assigned_lead.activities.create!(kind: "pocket_pool_ready")
       sign_out admin
       sign_in current_user
 
@@ -836,9 +845,9 @@ RSpec.describe "Admin::Leads", type: :request do
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      expect(document.text).to include("Bolsao Vendas", "Cliente visivel", "Atender")
+      expect(document.text).to include("Bolsao Vendas", "Cliente visivel", "Corretor anterior", "Atender")
       expect(document.at_css("#lead-#{visible_lead.id}.is-focused")).to be_present
-      expect(document.text).not_to include("Bolsao Locacao", hidden_lead.name, assigned_lead.name)
+      expect(document.text).not_to include("Bolsao Locacao", hidden_lead.name, shark_tank_lead.name, assigned_lead.name)
     end
 
     it "aplica filtros mobile de natureza, canal e faixa de preço no banco" do
