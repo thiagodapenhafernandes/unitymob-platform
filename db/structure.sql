@@ -1,4 +1,4 @@
-\restrict qqNbY1cDLsP9qBknqd9Jz84dhLgl54Z7lfJeTVMx2S5ozhoKjnhNrwinMabxUCA
+\restrict eufmjXKKJ9H7PKPaGP72TnUJqocgVYemDyruQbdfrzzKjIbvHNeWOdpoaA3HSSX
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -6763,7 +6763,10 @@ CREATE TABLE public.whatsapp_business_integrations (
     presentation_enabled boolean DEFAULT true NOT NULL,
     require_presentation boolean DEFAULT false NOT NULL,
     require_presentation_since timestamp(6) without time zone,
-    inbox_attendance_enabled boolean DEFAULT false NOT NULL
+    inbox_attendance_enabled boolean DEFAULT false NOT NULL,
+    sale_redirect_after_capture boolean DEFAULT true NOT NULL,
+    rent_redirect_after_capture boolean DEFAULT true NOT NULL,
+    sale_rent_redirect_after_capture boolean DEFAULT true NOT NULL
 );
 
 
@@ -17969,11 +17972,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict qqNbY1cDLsP9qBknqd9Jz84dhLgl54Z7lfJeTVMx2S5ozhoKjnhNrwinMabxUCA
+\unrestrict eufmjXKKJ9H7PKPaGP72TnUJqocgVYemDyruQbdfrzzKjIbvHNeWOdpoaA3HSSX
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260903193000'),
 ('20260902130000'),
 ('20260902123000'),
 ('20260902120000'),

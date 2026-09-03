@@ -23,7 +23,10 @@ RSpec.describe "Leads", type: :request do
       sale_rent_whatsapp_number: "47 99999-0003",
       sale_requires_lead_form: true,
       rent_requires_lead_form: false,
-      sale_rent_requires_lead_form: true
+      sale_rent_requires_lead_form: true,
+      sale_redirect_after_capture: true,
+      rent_redirect_after_capture: true,
+      sale_rent_redirect_after_capture: true
     )
   end
 
@@ -105,6 +108,30 @@ RSpec.describe "Leads", type: :request do
       body = JSON.parse(response.body)
       expect(body["success"]).to be(true)
       expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
+    end
+
+    it "creates the lead and returns a confirmation message when WhatsApp redirect is disabled" do
+      WhatsappBusinessIntegration.current(Tenant.default).update!(sale_redirect_after_capture: false)
+      habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+
+      expect {
+        post leads_path, params: {
+          lead: {
+            name: "Cliente Sem Redirecionamento",
+            phone: "(47) 99999-9998",
+            property_id: habitation.id,
+            lead_type: "whatsapp_modal",
+            whatsapp_message: "Tenho interesse",
+            business_type: "sale"
+          }
+        }, as: :json
+      }.to change(Lead, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["success"]).to be(true)
+      expect(body["message"]).to include("Um corretor da nossa equipe")
+      expect(body).not_to have_key("whatsapp_url")
     end
 
     it "classifica como Site quando o lead veio do proprio site sem origem explicita" do

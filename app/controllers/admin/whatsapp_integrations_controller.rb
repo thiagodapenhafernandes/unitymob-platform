@@ -654,7 +654,10 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       :sale_rent_whatsapp_number,
       :sale_requires_lead_form,
       :rent_requires_lead_form,
-      :sale_rent_requires_lead_form
+      :sale_rent_requires_lead_form,
+      :sale_redirect_after_capture,
+      :rent_redirect_after_capture,
+      :sale_rent_redirect_after_capture
     )
   end
 

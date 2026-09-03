@@ -64,10 +64,7 @@ class LeadsController < ApplicationController
       LeadMailer.with(lead: @lead).new_lead_notification.deliver_later
       LeadMailer.with(lead: @lead).welcome_lead.deliver_later if @lead.email.present?
 
-      render json: { 
-        success: true, 
-        whatsapp_url: @lead.whatsapp_url(message: lead_whatsapp_message)
-      }
+      render json: lead_success_response(business_type)
     else
       render json: { 
         success: false, 
@@ -101,6 +98,17 @@ class LeadsController < ApplicationController
 
   def lead_whatsapp_message
     params.dig(:lead, :whatsapp_message).to_s
+  end
+
+  def lead_success_response(business_type)
+    integration = WhatsappBusinessIntegration.current(public_tenant)
+    response = {
+      success: true,
+      message: "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve."
+    }
+    return response unless integration.redirect_after_capture_for?(business_type)
+
+    response.merge(whatsapp_url: @lead.whatsapp_url(message: lead_whatsapp_message))
   end
 
   def apply_share_attribution(lead)

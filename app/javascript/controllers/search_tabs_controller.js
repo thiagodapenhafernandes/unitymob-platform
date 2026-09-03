@@ -9,7 +9,9 @@ export default class extends Controller {
 
   connect() {
     // Set initial state based on input value or default
-    this.updateTabs(this.inputTarget.value || 'venda')
+    const activeValue = this.inputTarget.value || 'venda'
+    this.updateTabs(activeValue)
+    this.updatePriceOptions(activeValue)
     this.advancedOpen = false
     this.advancedStateTimeout = null
     this.syncAdvancedState()

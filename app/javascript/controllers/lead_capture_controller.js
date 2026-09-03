@@ -114,6 +114,13 @@ export default class extends Controller {
       ...this.trackingParams()
     })
 
+    if (result?.success && !result.whatsapp_url) {
+      this.showSuccessMessage(result.message || "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve.")
+      this.close()
+      event.target.reset()
+      return
+    }
+
     const whatsappUrl = result?.whatsapp_url || this.whatsappUrlFor(this.negotiationType, this.whatsappMessage)
 
     // Redirect to WhatsApp
@@ -148,6 +155,14 @@ export default class extends Controller {
 
   validBrazilianPhone(digits) {
     return digits.startsWith("55") && [12, 13].includes(digits.length)
+  }
+
+  showSuccessMessage(message) {
+    if (typeof window.axToast === "function") {
+      window.axToast({ message, type: "success" })
+    } else {
+      window.alert(message)
+    }
   }
 
   brazilianMobileSubscriberWithoutNinthDigit(digits) {

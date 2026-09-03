@@ -60,6 +60,45 @@ RSpec.describe Leads::DistributorService do
     end
   end
 
+  describe "fidelização" do
+    it "mantem o mesmo corretor em atendimento direto sem enviar para aceite ou bolsao" do
+      LeadSetting.instance.update!(
+        stickiness_enabled: true,
+        stickiness_match: "phone_or_email",
+        stickiness_owner: "attended",
+        stickiness_fallback: "active_in_rule",
+        stickiness_window_days: nil,
+        secure_links_enabled: true,
+        secure_link_push: true
+      )
+      rule = create(:distribution_rule, require_active_checkin: false, pocket_active: true, pocket_time: 10)
+      rule_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
+      create(:lead, name: "Cliente anterior", phone: "11999999999", status: :em_atendimento, admin_user: agent_without_checkin)
+      allow(Leads::NotificationDispatcher).to receive(:deliver)
+      allow(Automation::Dispatcher).to receive(:dispatch)
+
+      clear_enqueued_jobs
+      lead = build_lead(phone: "11999999999")
+      described_class.find_and_distribute(lead)
+
+      lead.reload
+      expect(lead.admin_user_id).to eq(agent_without_checkin.id)
+      expect(lead.status).to eq(Lead.status_value(:em_atendimento))
+      expect(lead.distribution_rule_id).to eq(rule.id)
+      expect(rule_agent.reload.last_lead_received_at).to be_nil
+      expect(enqueued_jobs.any? { |job| job[:job] == Leads::PocketExpirationJob }).to be(false)
+      expect(Leads::NotificationDispatcher).to have_received(:deliver).with(lead, sticky: true)
+      activity = lead.activities.where(kind: "distributed").last
+      expect(activity.metadata).to include(
+        "sticky" => true,
+        "direct_attendance" => true,
+        "admin_user_id" => agent_without_checkin.id
+      )
+    ensure
+      clear_enqueued_jobs
+    end
+  end
+
   describe "webhook_tags" do
     it "distribui lead de webhook quando a tag da regra confere" do
       rule = create(:distribution_rule, source_site: false, source_webhook: true, webhook_tags: ["elite"])

@@ -362,6 +362,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("Telefones do Site")
     expect(document.css(".wa-form [style]")).to be_empty
     expect(document.at_css('input[type="tel"][name="whatsapp_business_integration[sale_whatsapp_number]"][data-controller="phone-input"]')).to be_present
+    expect(document.at_css('input[name="whatsapp_business_integration[sale_redirect_after_capture]"]')).to be_present
   end
 
   it "inclui metadados dos placeholders para mapear variaveis ao selecionar template de notificacao" do
@@ -587,7 +588,10 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
         sale_rent_whatsapp_number: "5547993333333",
         sale_requires_lead_form: "1",
         rent_requires_lead_form: "0",
-        sale_rent_requires_lead_form: "1"
+        sale_rent_requires_lead_form: "1",
+        sale_redirect_after_capture: "1",
+        rent_redirect_after_capture: "0",
+        sale_rent_redirect_after_capture: "1"
       }
     }
 
@@ -596,6 +600,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(integration.phone_for("sale")).to eq("5547991111111")
     expect(integration.phone_for("rent")).to eq("5547992222222")
     expect(integration.requires_form_for?("rent")).to be(false)
+    expect(integration.redirect_after_capture_for?("rent")).to be(false)
   end
 
   it "salva a conexao quando o embedded signup finaliza" do
