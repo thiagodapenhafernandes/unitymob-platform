@@ -151,6 +151,10 @@
                           label: "Captar dados antes de redirecionar",
                           checked_value: "1", unchecked_value: "0",
                           class_name: "wa-negotiation__toggle") %>
+                    <%= ax_toggle_chip(f, config[:redirect_attribute],
+                          label: "Redirecionar para o WhatsApp após captar o lead",
+                          checked_value: "1", unchecked_value: "0",
+                          class_name: "wa-negotiation__toggle") %>
                   </section>
                 <% end %>
               </div>
@@ -179,7 +183,13 @@
                 <div class="wa-state__row">
                   <dt>
                     <strong><%= item[:label] %></strong>
-                    <span><%= item[:requires_form] ? "Com formulário intermediário" : "Direto para o WhatsApp" %></span>
+                    <span>
+                      <%= if item[:requires_form]
+                            item[:redirect_after_capture] ? "Formulário e redirecionamento" : "Formulário sem redirecionamento"
+                          else
+                            "Direto para o WhatsApp"
+                          end %>
+                    </span>
                   </dt>
                   <dd><code><%= item[:phone].presence || @site_phone_settings[:default_phone] %></code></dd>
                 </div>

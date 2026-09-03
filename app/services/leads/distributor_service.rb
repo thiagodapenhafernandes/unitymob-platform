@@ -57,7 +57,7 @@ module Leads
       # em LeadSetting). Só quando elegível; senão segue a distribuição normal.
       sticky_user = Leads::StickyAssignment.corretor_for(@lead, rule, candidates: candidates)
       if sticky_user
-        finalize_assignment(rule, admin_user_id: sticky_user.id, admin_user_name: sticky_user.name, sticky: true)
+        finalize_sticky_assignment(rule, admin_user_id: sticky_user.id, admin_user_name: sticky_user.name)
         return rule
       end
 
@@ -95,18 +95,51 @@ module Leads
     private
 
     # Atribui o lead ao corretor, registra a atividade, agenda o pocket e dispara
-    # as notificações. Reutilizado pela fidelização e pela distribuição normal.
-    def finalize_assignment(rule, admin_user_id:, admin_user_name:, sticky: false)
+    # as notificações da distribuição normal.
+    def finalize_assignment(rule, admin_user_id:, admin_user_name:)
       @lead.update(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
       rule.mark_agent_served!(admin_user_id)
 
-      metadata = {
+      metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
+      log_assignment(rule, admin_user_id: admin_user_id, metadata: metadata)
+
+      if rule.pocket_operational?
+        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id, admin_user_id, tenant_id: @lead.tenant_id)
+      end
+
+      # Dispara notificações conforme as flags da regra (push/whatsapp/email/webhook)
+      begin
+        Leads::NotificationDispatcher.deliver(@lead.reload, sticky: false)
+      rescue => e
+        Rails.logger.warn("[DistributorService] notificação falhou pro lead #{@lead.id}: #{e.message}")
+      end
+    end
+
+    def finalize_sticky_assignment(rule, admin_user_id:, admin_user_name:)
+      @lead.update(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
+
+      metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
+      metadata[:sticky] = true
+      metadata[:direct_attendance] = true
+      log_assignment(rule, admin_user_id: admin_user_id, metadata: metadata)
+
+      begin
+        Leads::NotificationDispatcher.deliver(@lead.reload, sticky: true)
+      rescue => e
+        Rails.logger.warn("[DistributorService] notificação falhou pro lead #{@lead.id}: #{e.message}")
+      end
+    end
+
+    def assignment_metadata(rule, admin_user_id:, admin_user_name:)
+      {
         rule_id: rule.id,
         rule_name: rule.name,
         admin_user_id: admin_user_id,
         admin_user_name: admin_user_name
       }
-      metadata[:sticky] = true if sticky
+    end
+
+    def log_assignment(rule, admin_user_id:, metadata:)
       @lead.activities.create(kind: "distributed", metadata: metadata)
       Automation::Dispatcher.dispatch(
         :lead_assigned,
@@ -115,17 +148,6 @@ module Leads
         payload: metadata,
         idempotency_key: "lead_assigned:#{@lead.id}:#{admin_user_id}:#{rule.id}"
       )
-
-      if rule.pocket_operational?
-        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id, admin_user_id, tenant_id: @lead.tenant_id)
-      end
-
-      # Dispara notificações conforme as flags da regra (push/whatsapp/email/webhook)
-      begin
-        Leads::NotificationDispatcher.deliver(@lead.reload, sticky: sticky)
-      rescue => e
-        Rails.logger.warn("[DistributorService] notificação falhou pro lead #{@lead.id}: #{e.message}")
-      end
     end
 
     def dammed_no_eligible_checkin(rule)

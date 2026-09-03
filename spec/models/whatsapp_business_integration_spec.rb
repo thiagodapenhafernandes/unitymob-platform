@@ -52,6 +52,13 @@ RSpec.describe WhatsappBusinessIntegration, type: :model do
     expect(integration.requires_form_for?("rent")).to be(false)
   end
 
+  it "controla se o site redireciona para WhatsApp apos captar o lead" do
+    integration = build(:whatsapp_business_integration, rent_redirect_after_capture: false)
+
+    expect(integration.redirect_after_capture_for?("sale")).to be(true)
+    expect(integration.redirect_after_capture_for?("rent")).to be(false)
+  end
+
   it "monta url do WhatsApp usando a negociacao do imovel" do
     integration = build(:whatsapp_business_integration)
     habitation = build(:habitation, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 5_000_00)

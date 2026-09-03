@@ -8,18 +8,21 @@ class WhatsappBusinessIntegration < ApplicationRecord
       label: "Venda",
       phone_attribute: :sale_whatsapp_number,
       form_attribute: :sale_requires_lead_form,
+      redirect_attribute: :sale_redirect_after_capture,
       default_message: "Leads de imóveis de venda serão enviados para este número."
     },
     "rent" => {
       label: "Locação",
       phone_attribute: :rent_whatsapp_number,
       form_attribute: :rent_requires_lead_form,
+      redirect_attribute: :rent_redirect_after_capture,
       default_message: "Leads de imóveis de locação serão enviados para este número."
     },
     "sale_rent" => {
       label: "Venda e locação",
       phone_attribute: :sale_rent_whatsapp_number,
       form_attribute: :sale_rent_requires_lead_form,
+      redirect_attribute: :sale_rent_redirect_after_capture,
       default_message: "Leads de imóveis disponíveis para venda e locação serão enviados para este número."
     }
   }.freeze
@@ -31,6 +34,9 @@ class WhatsappBusinessIntegration < ApplicationRecord
     sale_requires_lead_form
     rent_requires_lead_form
     sale_rent_requires_lead_form
+    sale_redirect_after_capture
+    rent_redirect_after_capture
+    sale_rent_redirect_after_capture
   ].freeze
   SITE_PHONE_SETTINGS_CACHE_PREFIX = "public_site:whatsapp_phone_settings".freeze
 
@@ -123,7 +129,8 @@ class WhatsappBusinessIntegration < ApplicationRecord
         {
           label: config[:label],
           phone: Phones::Normalizer.call(phone),
-          requires_form: public_send(config[:form_attribute]) != false
+          requires_form: public_send(config[:form_attribute]) != false,
+          redirect_after_capture: public_send(config[:redirect_attribute]) != false
         }
       end
     }
@@ -138,6 +145,10 @@ class WhatsappBusinessIntegration < ApplicationRecord
     site_phone_settings.dig(:negotiations, negotiation_type.to_s, :requires_form) != false
   end
 
+  def redirect_after_capture_for?(negotiation_type)
+    site_phone_settings.dig(:negotiations, negotiation_type.to_s, :redirect_after_capture) != false
+  end
+
   def whatsapp_url_for(habitation:, message:)
     phone = phone_for(habitation&.whatsapp_negotiation_type)
     "https://wa.me/#{phone}?text=#{ERB::Util.url_encode(message)}"
@@ -149,7 +160,10 @@ class WhatsappBusinessIntegration < ApplicationRecord
     return self[attribute_name] if has_attribute?(attribute_name)
 
     value = instance_variable_get("@#{attribute_name}")
-    return true if value.nil? && attribute_name.to_s.end_with?("_requires_lead_form")
+    return true if value.nil? && (
+      attribute_name.to_s.end_with?("_requires_lead_form") ||
+        attribute_name.to_s.end_with?("_redirect_after_capture")
+    )
 
     value
   end
