@@ -348,16 +348,29 @@ module Leads
     # O sender global ainda pode trazer template_name próprio; o fallback evita
     # quebrar instalações antigas até configurarem a tela de integrações.
     def whatsapp_template_setting
-      NotificationTemplateSetting.setting_for(
+      current_setting = NotificationTemplateSetting.setting_for(
         tenant: @lead.tenant,
-        purpose: "lead_distribution_broker"
+        purpose: whatsapp_template_purpose
       )
+      current_setting || legacy_whatsapp_template_setting
+    end
+
+    def whatsapp_template_purpose
+      pool_push? ? "lead_distribution_broker_pool" : "lead_distribution_broker_rotary"
+    end
+
+    def legacy_whatsapp_template_setting
+      NotificationTemplateSetting.setting_for(tenant: @lead.tenant, purpose: "lead_distribution_broker")
     end
 
     def whatsapp_template_name(sender, setting = nil)
       setting&.whatsapp_template&.name.presence ||
         (sender.respond_to?(:template_name) && sender.template_name.presence) ||
-        WHATSAPP_LEAD_TEMPLATE
+        default_whatsapp_template_name
+    end
+
+    def default_whatsapp_template_name
+      WHATSAPP_LEAD_TEMPLATE
     end
 
     # Parâmetros do corpo do template configurado para a finalidade.

@@ -23,12 +23,24 @@ RSpec.describe NotificationTemplateSetting, type: :model do
     template = build_template(name: "lead_distribution_default", body: "Lead {{1}} veio de {{2}}")
 
     setting = tenant.notification_template_settings.create!(
-      purpose: "lead_distribution_broker",
+      purpose: "lead_distribution_broker_rotary",
       whatsapp_template: template
     )
 
-    expect(setting.variable_mapping["1"]).to eq("lead_name")
+    expect(setting.variable_mapping["1"]).to eq("broker_name")
     expect(setting.variable_mapping["2"]).to eq("lead_origin")
+  end
+
+  it "salva o mapa padrao de variaveis para bolsao" do
+    template = build_template(name: "lead_pool_default", body: "Lead {{1}} veio de {{2}}")
+
+    setting = tenant.notification_template_settings.create!(
+      purpose: "lead_distribution_broker_pool",
+      whatsapp_template: template
+    )
+
+    expect(setting.variable_mapping["1"]).to eq("broker_name")
+    expect(setting.variable_mapping["4"]).to eq("lead_phone_or_link")
   end
 
   it "aceita mapear dinamicamente a quantidade de variaveis do template" do

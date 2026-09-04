@@ -5,10 +5,42 @@ class NotificationTemplateSetting < ApplicationRecord
     "whatsapp" => "WhatsApp"
   }.freeze
 
+  LEAD_DISTRIBUTION_VARIABLES = {
+    "lead_name" => "Nome do lead",
+    "lead_origin" => "Origem do lead",
+    "lead_phone_or_link" => "Telefone do lead ou link seguro",
+    "lead_email_or_link" => "Email do lead ou link seguro",
+    "lead_other_or_link" => "Produto/origem ou link seguro",
+    "broker_name" => "Nome do corretor",
+    "broker_phone" => "Telefone do corretor",
+    "broker_email" => "Email do corretor"
+  }.freeze
+
+  LEAD_DISTRIBUTION_BROKER_FIRST_MAPPING = {
+    "1" => "broker_name",
+    "2" => "lead_origin",
+    "3" => "lead_name",
+    "4" => "lead_phone_or_link",
+    "5" => "lead_email_or_link",
+    "6" => "lead_other_or_link"
+  }.freeze
+
   PURPOSES = {
+    "lead_distribution_broker_rotary" => {
+      label: "Notificar corretor pelo rodízio",
+      description: "Usado quando uma regra de rodízio envia WhatsApp para o corretor que precisa atender no prazo.",
+      default_variable_mapping: LEAD_DISTRIBUTION_BROKER_FIRST_MAPPING,
+      variables: LEAD_DISTRIBUTION_VARIABLES
+    },
+    "lead_distribution_broker_pool" => {
+      label: "Notificar corretor pelo bolsão",
+      description: "Usado quando uma regra de bolsão envia WhatsApp aos corretores elegíveis para aceitar o lead.",
+      default_variable_mapping: LEAD_DISTRIBUTION_BROKER_FIRST_MAPPING,
+      variables: LEAD_DISTRIBUTION_VARIABLES
+    },
     "lead_distribution_broker" => {
-      label: "Notificar corretor pela regra de distribuição",
-      description: "Usado quando uma regra de distribuição envia WhatsApp para o corretor responsável.",
+      label: "Notificar corretor pela regra de distribuição (legado)",
+      description: "Compatibilidade com contas que ainda usam um único template para rodízio e bolsão.",
       default_variable_mapping: {
         "1" => "lead_name",
         "2" => "lead_origin",
@@ -17,16 +49,7 @@ class NotificationTemplateSetting < ApplicationRecord
         "5" => "lead_email_or_link",
         "6" => "lead_other_or_link"
       },
-      variables: {
-        "lead_name" => "Nome do lead",
-        "lead_origin" => "Origem do lead",
-        "lead_phone_or_link" => "Telefone do lead ou link seguro",
-        "lead_email_or_link" => "Email do lead ou link seguro",
-        "lead_other_or_link" => "Produto/origem ou link seguro",
-        "broker_name" => "Nome do corretor",
-        "broker_phone" => "Telefone do corretor",
-        "broker_email" => "Email do corretor"
-      }
+      variables: LEAD_DISTRIBUTION_VARIABLES
     }
   }.freeze
 

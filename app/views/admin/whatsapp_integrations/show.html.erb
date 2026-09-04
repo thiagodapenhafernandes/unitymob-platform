@@ -647,11 +647,6 @@
               </details>
             </section>
 
-            <% lead_alert_template = @lead_alert_template %>
-            <% lead_alert_status = lead_alert_template.status.to_s.presence || "DRAFT" %>
-            <% lead_alert_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(lead_alert_status.upcase, :gray) %>
-            <% lead_alert_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(lead_alert_status.upcase, lead_alert_status) %>
-
             <% notification_template_actions = capture do %>
               <div class="wa-context-actions">
                 <%= button_to sync_notification_templates_admin_whatsapp_integration_path,
@@ -680,27 +675,37 @@
                 <% end %>
               <% end %>
 
-              <article id="lead-alert-template" class="wa-number-row wa-template-submit-row">
-                <div class="wa-number-row__main">
-                  <strong>Enviar template para aprovação da Meta</strong>
-                  <span><%= Whatsapp::LeadAlertTemplate::TEMPLATE_NAME %> · Utility · Portuguese (BR)</span>
-                  <small>Confirmação automática enviada ao corretor quando entra um novo lead.</small>
-                </div>
-                <div class="wa-number-row__badges">
-                  <%= ax_badge(lead_alert_status_label, tone: lead_alert_status_tone, dot: lead_alert_status.upcase == "APPROVED") %>
-                </div>
-                <div class="wa-number-row__actions">
-                  <% if Whatsapp::LeadAlertTemplate.editable?(lead_alert_template) %>
-                    <%= button_to submit_lead_alert_template_admin_whatsapp_integration_path,
-                                  method: :post,
-                                  class: "ax-btn ax-btn--sm ax-btn--primary",
-                                  data: { turbo_submits_with: "Enviando..." },
-                                  form: { data: { turbo_confirm: "Enviar o template lead_alert para análise da Meta?" } } do %>
-                      <i class="bi bi-send ax-ico"></i><span>Enviar</span>
-                    <% end %>
-                  <% end %>
-                </div>
-              </article>
+              <div id="lead-alert-template" class="wa-template-stack">
+                <% @lead_alert_templates.each do |item| %>
+                  <% lead_alert_template = item[:template] %>
+                  <% lead_alert_status = lead_alert_template.status.to_s.presence || "DRAFT" %>
+                  <% lead_alert_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(lead_alert_status.upcase, :gray) %>
+                  <% lead_alert_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(lead_alert_status.upcase, lead_alert_status) %>
+
+                  <article class="wa-number-row wa-template-submit-row">
+                    <div class="wa-number-row__main">
+                      <strong><%= item[:definition].fetch(:label) %></strong>
+                      <span><%= item[:name] %> · Utility · Portuguese (BR)</span>
+                      <small><%= item[:definition].fetch(:description) %></small>
+                    </div>
+                    <div class="wa-number-row__badges">
+                      <%= ax_badge(lead_alert_status_label, tone: lead_alert_status_tone, dot: lead_alert_status.upcase == "APPROVED") %>
+                    </div>
+                    <div class="wa-number-row__actions">
+                      <% if Whatsapp::LeadAlertTemplate.editable?(lead_alert_template) %>
+                        <%= button_to submit_lead_alert_template_admin_whatsapp_integration_path,
+                                      method: :post,
+                                      params: { template_name: item[:name] },
+                                      class: "ax-btn ax-btn--sm ax-btn--primary",
+                                      data: { turbo_submits_with: "Enviando..." },
+                                      form: { data: { turbo_confirm: "Enviar o template #{item[:name]} para análise da Meta?" } } do %>
+                          <i class="bi bi-send ax-ico"></i><span>Enviar</span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </article>
+                <% end %>
+              </div>
 
               <div id="lead-conversation-templates" class="wa-template-stack">
                 <% if @lead_conversation_template_errors.present? %>

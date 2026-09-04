@@ -19,6 +19,22 @@ RSpec.describe Whatsapp::LeadAlertTemplate do
       expect(template.variable_count).to eq(6)
     end
 
+    it "monta os templates oficiais separados para rodizio e bolsao" do
+      tenant = Tenant.create!(name: "Templates Imobiliária", slug: "templates-#{SecureRandom.hex(3)}")
+      integration = WhatsappBusinessIntegration.current(tenant)
+      integration.update!(waba_id: "waba-lead-alerts")
+
+      distribution = described_class.for(tenant: tenant, integration: integration, name: "lead_distribution_alert")
+      pool = described_class.for(tenant: tenant, integration: integration, name: "lead_pool_alert")
+
+      expect(distribution.name).to eq("lead_distribution_alert")
+      expect(distribution.body).to include("rodízio", "10 minutos")
+      expect(distribution.variable_count).to eq(6)
+      expect(pool.name).to eq("lead_pool_alert")
+      expect(pool.body).to include("bolsão", "Quem pegar primeiro")
+      expect(pool.variable_count).to eq(6)
+    end
+
     it "monta payload Meta com somente corpo e seis exemplos" do
       tenant = Tenant.create!(name: "Payload Imobiliária", slug: "payload-#{SecureRandom.hex(3)}")
       integration = WhatsappBusinessIntegration.current(tenant)
