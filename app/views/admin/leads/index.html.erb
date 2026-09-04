@@ -3083,7 +3083,8 @@
 
               <div class="lead-list-row__context">
                 <div class="lead-list-row__origin">
-                  <%= ax_badge(conversion[:channel_label], tone: conversion[:color].to_sym) %>
+                  <%= ax_badge(lead_conversion_origin_badge_label(conversion), tone: conversion[:color].to_sym) %>
+                  <span><i class="bi <%= conversion[:icon] %>"></i><%= lead_tracking_origin_text(conversion) %></span>
                   <span><i class="bi bi-person-badge"></i><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span>
                 </div>
                 <div class="lead-list-row__property">

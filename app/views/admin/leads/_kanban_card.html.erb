@@ -36,7 +36,7 @@
       <div class="ax-board__card-line"><i class="bi bi-envelope"></i><span><%= lead.email %></span></div>
     <% end %>
     <% conversion = lead_conversion_summary(lead) %>
-    <div class="ax-board__card-line"><i class="bi <%= conversion[:icon] %>"></i><span><%= conversion[:channel_label] %></span></div>
+    <div class="ax-board__card-line"><i class="bi <%= conversion[:icon] %>"></i><span><%= lead_conversion_summary_label(conversion) %></span></div>
     <div class="ax-board__card-line"><i class="bi bi-person-badge"></i><span><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span></div>
   </div>
 

@@ -90,6 +90,7 @@ module Admin::ComercialHelper
     external_migration = external_lead_migration_lead?(lead, info, attribution)
     external_channel_label = external_lead_migration_channel_label(lead, info, attribution)
     generic_channel_label = generic_lead_channel_label(lead, info, attribution)
+    conversion_origin_label = lead_conversion_origin_label(lead, info, attribution)
 
     channel, channel_label, icon, color =
       if external_migration
@@ -107,11 +108,11 @@ module Admin::ComercialHelper
       elsif attributed_channel == "microsoft_ads"
         [:microsoft_ads, "Microsoft Ads", "bi-microsoft", "blue"]
       elsif attributed_channel == "organic_search"
-        [:organic_search, lead.origin.presence || "Busca orgânica", "bi-search", "green"]
+        [:organic_search, tracked_origin_label(display_origin, "Busca orgânica"), "bi-search", "green"]
       elsif attributed_channel == "organic_social"
-        [:organic_social, lead.origin.presence || "Social orgânico", "bi-instagram", "green"]
+        [:organic_social, tracked_origin_label(display_origin, "Social orgânico"), "bi-instagram", "green"]
       elsif attributed_channel == "referral"
-        [:referral, lead.origin.presence || "Referência", "bi-box-arrow-in-right", "amber"]
+        [:referral, tracked_origin_label(display_origin, "Referência"), "bi-box-arrow-in-right", "amber"]
       elsif attributed_channel == "direct"
         [:direct, "Direto / origem desconhecida", "bi-compass", "gray"]
       elsif origin.include?("facebook") || origin.include?("instagram") || origin.include?("meta") || info["meta_page_id"].present?
@@ -123,6 +124,7 @@ module Admin::ComercialHelper
       else
         [:other, lead.origin.presence || "Origem não informada", "bi-inbox", "gray"]
       end
+    lead_origin_label = lead_origin_label_for(channel, channel_label, display_origin)
 
     source_url   = attribution["landing_url"].presence || lead.source_url.presence || info["source_url"].presence || info["page_url"].presence
     referrer_url = attribution["referrer_url"].presence
@@ -141,7 +143,7 @@ module Admin::ComercialHelper
       when :organic_search then "Convertido por busca orgânica"
       when :organic_social then "Convertido por rede social"
       when :referral then "Convertido por site de referência"
-      when :direct then "Origem direta ou não identificada"
+      when :direct then conversion_origin_label == "Site" ? "Convertido no site" : "Origem direta ou não identificada"
       when :external_migration then "Convertido via #{channel_label}"
       when :webhook  then "Convertido via #{channel_label}#{" — recebido por #{received_by}" if received_by}"
       when :share    then "Convertido pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
@@ -160,7 +162,7 @@ module Admin::ComercialHelper
       when :organic_search then "Criado por uma busca orgânica (#{channel_label})"
       when :organic_social then "Criado por acesso social (#{channel_label})"
       when :referral then "Criado por uma referência externa (#{channel_label})"
-      when :direct then "Acesso direto ou origem não identificada"
+      when :direct then conversion_origin_label == "Site" ? "Criado por um formulário do site" : "Acesso direto ou origem não identificada"
       when :external_migration then "Criado pela migração externa (#{channel_label})"
       when :webhook  then "Criado via #{channel_label}#{" · recebido por #{received_by}" if received_by}"
       when :share    then "Criado pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
@@ -175,6 +177,8 @@ module Admin::ComercialHelper
       label: sentence,
       headline: headline,
       channel_label: channel_label,
+      lead_origin_label: lead_origin_label,
+      conversion_origin_label: conversion_origin_label,
       icon: icon,
       color: color,
       origin: display_origin.presence,
@@ -187,6 +191,23 @@ module Admin::ComercialHelper
       received_by: received_by,
       tags: webhook_tags
     }
+  end
+
+  def lead_tracking_origin_text(conversion)
+    "Origem: #{conversion[:lead_origin_label].presence || conversion[:channel_label]}"
+  end
+
+  def lead_conversion_origin_badge_label(conversion)
+    label = conversion[:conversion_origin_label].presence
+    label.present? ? "Conversão: #{label}" : conversion[:channel_label]
+  end
+
+  def lead_conversion_summary_label(conversion)
+    parts = [lead_tracking_origin_text(conversion)]
+    if conversion[:conversion_origin_label].present?
+      parts << "Conversão: #{conversion[:conversion_origin_label]}"
+    end
+    parts.compact_blank.uniq.join(" · ")
   end
 
   def lead_display_origin(lead, info = nil, attribution = nil)
@@ -249,6 +270,36 @@ module Admin::ComercialHelper
     return "Internet" if normalized.match?(/site|portal|internet/)
 
     raw
+  end
+
+  def lead_conversion_origin_label(lead, info, attribution)
+    source_url = attribution["landing_url"].presence || lead.source_url.presence || info["source_url"].presence || info["page_url"].presence
+    origin = lead.origin.to_s
+    lead_type = lead.lead_type.to_s
+
+    return "Site" if origin.casecmp("Site").zero?
+    return "Site" if source_url.present? && lead_type.match?(/site|whatsapp_modal|whatsapp_click/i)
+    return "WhatsApp" if origin.match?(/whatsapp/i) || lead_type.match?(/whatsapp/i)
+
+    nil
+  end
+
+  def tracked_origin_label(display_origin, fallback)
+    origin = display_origin.to_s.squish
+    return fallback if origin.blank? || origin.casecmp("Site").zero?
+
+    origin
+  end
+
+  def lead_origin_label_for(channel, channel_label, display_origin)
+    return channel_label if %i[google_ads meta microsoft_ads external_migration].include?(channel)
+
+    origin = tracked_origin_label(display_origin, channel_label)
+    normalized = origin.to_s.parameterize(separator: "_")
+    return "Google" if normalized == "google"
+    return "Meta" if normalized.match?(/facebook|instagram|meta/)
+
+    origin
   end
 
   def useful_generic_origin?(value)

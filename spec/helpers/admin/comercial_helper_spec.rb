@@ -54,6 +54,71 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
       expect(summary[:channel_label]).to eq("Rede Social")
       expect(helper.lead_card_interest_line(lead, summary)).to eq("Rede Social - Apartamento no Centro")
     end
+
+    it "separa origem direta da conversao feita pelo site" do
+      lead = build_stubbed(
+        :lead,
+        origin: "Site",
+        lead_type: "whatsapp_modal",
+        source_url: "https://conexaobc.com/imoveis/apartamento-centro-2431",
+        attribution_channel: "direct",
+        attribution_data: {
+          "captured_at" => "2026-09-03T15:54:25-03:00",
+          "landing_url" => "https://conexaobc.com/imoveis/apartamento-centro-2431"
+        }
+      )
+
+      summary = helper.lead_conversion_summary(lead)
+
+      expect(summary[:channel]).to eq(:direct)
+      expect(summary[:lead_origin_label]).to eq("Direto / origem desconhecida")
+      expect(summary[:conversion_origin_label]).to eq("Site")
+      expect(summary[:headline]).to eq("Criado por um formulário do site")
+      expect(helper.lead_conversion_summary_label(summary)).to eq("Origem: Direto / origem desconhecida · Conversão: Site")
+    end
+
+    it "mantem origem de midia separada da conversao pelo site" do
+      lead = build_stubbed(
+        :lead,
+        origin: "Site",
+        lead_type: "whatsapp_modal",
+        source_url: "https://conexaobc.com/imoveis/apartamento-centro-2431",
+        attribution_source: "google",
+        attribution_channel: "google_ads",
+        attribution_data: {
+          "utm_source" => "google",
+          "utm_medium" => "cpc",
+          "landing_url" => "https://conexaobc.com/imoveis/apartamento-centro-2431"
+        }
+      )
+
+      summary = helper.lead_conversion_summary(lead)
+
+      expect(summary[:lead_origin_label]).to eq("Google Ads")
+      expect(summary[:conversion_origin_label]).to eq("Site")
+      expect(helper.lead_conversion_origin_badge_label(summary)).to eq("Conversão: Site")
+      expect(helper.lead_tracking_origin_text(summary)).to eq("Origem: Google Ads")
+    end
+
+    it "aproveita utm_source quando o canal veio como direto" do
+      lead = build_stubbed(
+        :lead,
+        origin: "Site",
+        lead_type: "whatsapp_modal",
+        source_url: "https://conexaobc.com/imoveis/apartamento-centro-2431",
+        attribution_channel: "direct",
+        attribution_data: {
+          "utm_source" => "google",
+          "landing_url" => "https://conexaobc.com/imoveis/apartamento-centro-2431"
+        }
+      )
+
+      summary = helper.lead_conversion_summary(lead)
+
+      expect(summary[:channel_label]).to eq("Direto / origem desconhecida")
+      expect(summary[:lead_origin_label]).to eq("Google")
+      expect(summary[:conversion_origin_label]).to eq("Site")
+    end
   end
 
   describe "#lead_card_interest_line" do

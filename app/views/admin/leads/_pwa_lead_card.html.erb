@@ -62,8 +62,8 @@
   <div class="lead-pwa-card__body">
     <div class="lead-pwa-card__line">
       <i class="bi bi-megaphone" aria-hidden="true"></i>
-      <span><%= conversion[:origin].presence || conversion[:channel_label] %></span>
-      <strong class="lead-pwa-card__channel"><%= conversion[:channel_label] %></strong>
+      <span><%= lead_tracking_origin_text(conversion) %></span>
+      <strong class="lead-pwa-card__channel"><%= lead_conversion_origin_badge_label(conversion) %></strong>
     </div>
     <div class="lead-pwa-card__line">
       <i class="bi bi-currency-dollar" aria-hidden="true"></i>
