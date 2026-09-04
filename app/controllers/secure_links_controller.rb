@@ -51,6 +51,7 @@ class SecureLinksController < ApplicationController
   def render_lost_turn
     return head :conflict if params[:ack].present?
 
+    @lost_turn_reason = lost_turn_reason
     render :lost_turn, status: :ok, layout: false
   end
 
@@ -197,6 +198,17 @@ class SecureLinksController < ApplicationController
 
     Lead.where(id: @lead.id, admin_user_id: nil, status: claimable_statuses)
         .update_all(admin_user_id: claimer.id, status: Lead.status_value(:em_atendimento), updated_at: Time.current) == 1
+  end
+
+  def lost_turn_reason
+    return :pool_taken if pool_link?
+
+    :taken
+  end
+
+  def pool_link?
+    @lead&.distribution_rule&.pool_mode? ||
+      @lead&.activities&.where(kind: %w[shark_tank_ready pocket_pool_ready])&.exists?
   end
 
   def record_secure_link_access!

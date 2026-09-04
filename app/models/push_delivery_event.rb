@@ -11,6 +11,8 @@ class PushDeliveryEvent < ApplicationRecord
     no_active_subscription
     push_unavailable
     device_received
+    subscription_replaced
+    subscription_deduplicated
   ].freeze
 
   belongs_to :admin_user

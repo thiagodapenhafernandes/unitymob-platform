@@ -32,6 +32,7 @@ module Tasks
 
     def due_tasks_for(tenant, now)
       tenant.tasks
+            .operational_current
             .pendentes
             .where.not(admin_user_id: nil, due_at: nil)
             .where("due_at <= ?", now + UPCOMING_LEAD_TIME)
@@ -102,6 +103,7 @@ module Tasks
       admin_user = task.admin_user
       return if admin_user.blank?
       return unless same_tenant?(task, lead, admin_user)
+      return if lead_non_operational?(lead, task.tenant)
 
       Notifications::PushDispatcher.deliver(
         admin_user_id: admin_user.id,
@@ -138,6 +140,12 @@ module Tasks
 
     def same_tenant?(task, lead, admin_user)
       task.tenant_id == admin_user.tenant_id && (lead.blank? || task.tenant_id == lead.tenant_id)
+    end
+
+    def lead_non_operational?(lead, tenant)
+      return false unless lead
+
+      Lead.non_operational_status_values(tenant: tenant).include?(Lead.status_value(lead.status, tenant: tenant))
     end
   end
 end

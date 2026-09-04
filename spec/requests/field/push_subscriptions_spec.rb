@@ -143,6 +143,53 @@ RSpec.describe "Field::PushSubscriptions", type: :request do
     expect(subscription).to be_valid
   end
 
+  it "desativa o mesmo device token quando ele estava ativo em outro usuario" do
+    other_agent = create(:admin_user, :field_agent, tenant: agent.tenant, email: "field-push-other-#{SecureRandom.hex(8)}@salute.test")
+    stale_subscription = PushSubscription.create!(
+      admin_user: other_agent,
+      endpoint: "apns-device-token-123",
+      platform: "ios",
+      active: true
+    )
+
+    post native_field_push_subscriptions_path, params: { platform: "ios", token: "apns-device-token-123" }, as: :json
+
+    expect(response).to have_http_status(:created)
+    expect(stale_subscription.reload).not_to be_active
+    expect(PushSubscription.find_by!(admin_user: agent, endpoint: "apns-device-token-123")).to be_active
+    audit = PushDeliveryEvent.find_by!(push_subscription: stale_subscription, event_type: "subscription_replaced")
+    expect(audit).to have_attributes(admin_user_id: other_agent.id)
+    expect(audit.metadata).to include(
+      "reason" => "same_endpoint_new_login",
+      "replacement_admin_user_id" => agent.id,
+      "platform" => "ios"
+    )
+    expect(audit.endpoint_sha256).to be_present
+  end
+
+  it "mantem ativa apenas a assinatura nativa do ultimo aparelho logado" do
+    stale_ios = PushSubscription.create!(
+      admin_user: agent,
+      endpoint: "old-ios-token",
+      platform: "ios",
+      active: true
+    )
+    stale_android = PushSubscription.create!(
+      admin_user: agent,
+      endpoint: "old-android-token",
+      platform: "android",
+      active: true
+    )
+
+    post native_field_push_subscriptions_path, params: { platform: "ios", token: "new-ios-token" }, as: :json
+
+    expect(response).to have_http_status(:created)
+    expect(stale_ios.reload).not_to be_active
+    expect(stale_android.reload).not_to be_active
+    expect(PushSubscription.find_by!(admin_user: agent, endpoint: "new-ios-token")).to be_active
+    expect(PushDeliveryEvent.where(event_type: "subscription_replaced", push_subscription: [stale_ios, stale_android]).count).to eq(2)
+  end
+
   it "rejeita platform inválida no registro nativo" do
     post native_field_push_subscriptions_path, params: { platform: "windows-phone", token: "abc" }, as: :json
 
