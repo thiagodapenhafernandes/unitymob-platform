@@ -1,6 +1,6 @@
 # lib/tasks/builder_fields.thor
 require File.expand_path('config/environment.rb')
-require 'rest-client'
+require 'httparty'
 require 'thor'
 require 'cgi'
 require 'uri'
@@ -489,18 +489,15 @@ class BuilderFields < Thor::Group
       end
 
       with_retries do
-        resp = RestClient::Request.execute(
-          method: method,
-          url: full_url,
-          payload: payload,
-          headers: HEADERS,
-          timeout: TIMEOUT,
-          open_timeout: TIMEOUT
-        )
+        options = { headers: HEADERS, timeout: TIMEOUT, open_timeout: TIMEOUT }
+        options[:body] = payload if payload
+        resp = HTTParty.public_send(method, full_url, options)
+        raise HTTParty::Error, "HTTP #{resp.code}" unless resp.code.to_i.between?(200, 299)
+
         JSON.parse(resp.body)
       end
-    rescue RestClient::ExceptionWithResponse => e
-      say_status :error, "HTTP #{e.http_code} em #{path}: #{e.message}", :red
+    rescue HTTParty::Error, SocketError, Errno::ECONNRESET, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
+      say_status :error, "#{e.message} em #{path}", :red
       nil
     rescue JSON::ParserError => e
       say_status :error, "JSON invalido em #{path}: #{e.message}", :red
@@ -511,7 +508,7 @@ class BuilderFields < Thor::Group
       tries = 0
       begin
         yield
-      rescue RestClient::Exceptions::Timeout, RestClient::TooManyRequests, Errno::ECONNRESET => e
+      rescue HTTParty::Error, SocketError, Errno::ECONNRESET, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
         tries += 1
         raise if tries > MAX_RETRIES
         sleep(0.5 * (2 ** (tries - 1)))

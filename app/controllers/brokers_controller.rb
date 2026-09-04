@@ -44,7 +44,10 @@ class BrokersController < ApplicationController
 
     headers = { 'Accept': 'application/json' }
 
-    response = JSON.parse(RestClient.get(url + '&showtotal=1&show', headers))
+    response = HTTParty.get(url + '&showtotal=1&show', headers: headers)
+    raise "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
+
+    response = JSON.parse(response.body)
     
     Rails.logger.info "Vista API Response class: #{response.class}"
     

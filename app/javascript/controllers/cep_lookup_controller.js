@@ -88,9 +88,39 @@ export default class extends Controller {
 
   fillFields(data) {
     if (this.hasAddressTarget && data.logradouro) this.addressTarget.value = data.logradouro
-    if (this.hasNeighborhoodTarget && data.bairro) this.neighborhoodTarget.value = data.bairro
-    if (this.hasCityTarget && data.localidade) this.cityTarget.value = data.localidade
-    if (this.hasUfTarget && data.uf) this.ufTarget.value = data.uf.toUpperCase()
+    if (this.hasNeighborhoodTarget && data.bairro) this.setFieldValue(this.neighborhoodTarget, data.bairro)
+    if (this.hasCityTarget && data.localidade) this.setFieldValue(this.cityTarget, data.localidade)
+    if (this.hasUfTarget && data.uf) this.setFieldValue(this.ufTarget, data.uf.toUpperCase())
+  }
+
+  setTomSelectValue(element, value) {
+    this.setFieldValue(element, value)
+  }
+
+  setFieldValue(element, value) {
+    if (!value) return
+
+    const tomSelect = element.tomselect
+    if (!tomSelect) {
+      element.value = value
+      return
+    }
+
+    const normalizedValue = value.toString().toLowerCase()
+    const existing = Object.values(tomSelect.options).find((option) => {
+      return option.value.toLowerCase() === normalizedValue || option.text.toLowerCase() === normalizedValue
+    })
+
+    if (existing) {
+      tomSelect.setValue(existing.value)
+    } else {
+      tomSelect.addOption({ value: value, text: value })
+      tomSelect.setValue(value)
+    }
+  }
+
+  triggerChange(element) {
+    element.dispatchEvent(new Event("change", { bubbles: true }))
   }
 
   async triggerGeocode(cepData = null) {

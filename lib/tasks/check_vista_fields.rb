@@ -1,5 +1,5 @@
 require 'thor'
-require 'rest-client'
+require 'httparty'
 require 'json'
 
 class CheckVistaFields < Thor
@@ -13,7 +13,7 @@ class CheckVistaFields < Thor
     query = { fields: ['Codigo'], paginacao: { pagina: 1, quantidade: 1 } }
     params = { key: VISTA_KEY, pesquisa: query.to_json }
 
-    response = RestClient.get(url, { params: params, accept: :json })
+    response = HTTParty.get(url, query: params, headers: { "Accept" => "application/json" })
     first_imovel = JSON.parse(response.body).values.find { |v| v.is_a?(Hash) && v['Codigo'] }
     codigo = first_imovel['Codigo']
 
@@ -27,14 +27,16 @@ class CheckVistaFields < Thor
     details_params = { key: VISTA_KEY, imovel: codigo, pesquisa: payload.to_json }
     
     begin
-      details_resp = RestClient.get(details_url, { params: details_params, accept: :json })
+      details_resp = HTTParty.get(details_url, query: details_params, headers: { "Accept" => "application/json" })
+      raise HTTParty::Error, "HTTP #{details_resp.code}" unless details_resp.code.to_i.between?(200, 299)
+
       details = JSON.parse(details_resp.body)
 
       puts "\nFound Fields:"
       details.each { |k, v| puts "  #{k}: #{v}" }
-    rescue RestClient::ExceptionWithResponse => e
-      puts "Error: #{e.http_code}"
-      puts e.response.body
+    rescue => e
+      puts "Error: #{e.message}"
+      puts details_resp.body if defined?(details_resp)
     end
   end
 

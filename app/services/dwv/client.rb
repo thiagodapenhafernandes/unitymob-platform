@@ -22,26 +22,21 @@ module Dwv
     private
 
     def get(path, params: {})
-      response = RestClient::Request.execute(
-        method: :get,
-        url: "#{@base_url}#{path}",
-        headers: {
-          token: @token,
-          accept: :json,
-          params: params
-        },
+      response = HTTParty.get(
+        "#{@base_url}#{path}",
+        query: params,
+        headers: { "token" => @token, "Accept" => "application/json" },
         timeout: 30,
         open_timeout: 10
       )
+      unless response.code.to_i.between?(200, 299)
+        raise RequestError, "Erro DWV (HTTP #{response.code}): #{response.body.presence || 'sem detalhes'}"
+      end
 
       JSON.parse(response.body)
     rescue JSON::ParserError
       raise RequestError, "Resposta DWV inválida (JSON malformado)."
-    rescue RestClient::ExceptionWithResponse => e
-      body = e.response&.body.to_s
-      status = e.http_code
-      raise RequestError, "Erro DWV (HTTP #{status}): #{body.presence || 'sem detalhes'}"
-    rescue RestClient::Exception => e
+    rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
       raise RequestError, "Erro de conexão DWV: #{e.message}"
     end
   end
