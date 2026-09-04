@@ -11,7 +11,7 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
 
     allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
     allow(Storage::ProtectedBlobPolicy).to receive(:critical_attachment_scope).and_return(ActiveStorage::Attachment.where(id: attachment.id))
-    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name) do
+    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name.to_sym) do
       expect(Current.tenant).to eq(tenant)
       service
     end
@@ -60,7 +60,7 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
 
     allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
     allow(Storage::ProtectedBlobPolicy).to receive(:critical_attachment_scope).and_return(ActiveStorage::Attachment.where(id: attachment.id))
-    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name) do
+    allow(Storage::ActiveStorageRegistry).to receive(:fetch!).with(blob.service_name.to_sym) do
       expect(Current.tenant).to eq(tenant)
       service
     end
@@ -81,5 +81,35 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
         report_source: "storage.critical_blob_integrity"
       )
     )
+  end
+
+  it "usa a configuração do tenant para blobs antigos com service_name legacy" do
+    tenant = Tenant.create!(name: "Tenant legacy #{SecureRandom.hex(3)}", slug: "tenant-legacy-#{SecureRandom.hex(3)}")
+    setting = PropertySetting.create!(tenant: tenant)
+    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    attachment = setting.watermark_image.attachment
+    blob = attachment.blob
+    blob.update_columns(service_name: "do_spaces")
+    service = instance_double(ActiveStorage::Service, exist?: true)
+    storage_setting = instance_double(
+      StorageIntegrationSetting,
+      provider_for_service_name: "digital_ocean",
+      service_name_for_provider: :do_spaces_db_tenant_1
+    )
+    registry = instance_double(ActiveStorage::Service::Registry)
+
+    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+    allow(Storage::ProtectedBlobPolicy).to receive(:critical_attachment_scope).and_return(ActiveStorage::Attachment.where(id: attachment.id))
+    allow(StorageIntegrationSetting).to receive(:current).with(tenant: tenant).and_return(storage_setting)
+    allow(Storage::ActiveStorageRegistry).to receive(:register!).with(storage_setting)
+    allow(ActiveStorage::Blob).to receive(:services).and_return(registry)
+    allow(registry).to receive(:fetch).with(:do_spaces_db_tenant_1).and_return(service)
+    allow(Storage::BlobAuditRecorder).to receive(:record!)
+    allow(ErrorEvent).to receive(:record!)
+
+    result = described_class.perform_now
+
+    expect(result).to include(checked: 1, missing: 0, failed: 0)
+    expect(ErrorEvent).not_to have_received(:record!)
   end
 end

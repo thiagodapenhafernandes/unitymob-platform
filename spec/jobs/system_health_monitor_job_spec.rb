@@ -49,6 +49,26 @@ RSpec.describe SystemHealthMonitorJob, type: :job do
     expect { described_class.perform_now }.to have_enqueued_mail(SystemHealthAlertMailer, :degraded)
   end
 
+  it "não reenvia e-mail quando o mesmo alerta crítico já foi registrado recentemente" do
+    findings = [{ code: "application_errors", severity: "critical", message: "35 erros funcionais abertos" }]
+    SystemHealthSnapshot.create!(
+      status: "critical",
+      source: "platform",
+      collected_at: 10.minutes.ago,
+      metrics: { findings: findings }
+    )
+    allow(System::HealthAssessment).to receive(:call).and_return(status: "critical", findings: findings)
+    allow(Rails.cache).to receive(:write).and_return(true)
+    allow(Notifications::PushDispatcher).to receive(:deliver)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("SYSTEM_HEALTH_ALERT_EMAIL").and_return("operacao@example.com")
+
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_mail(SystemHealthAlertMailer, :degraded)
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+  end
+
   it "inclui contexto operacional e erros reais no e-mail de saúde" do
     error = ErrorEvent.create!(
       fingerprint: SecureRandom.hex(16),
