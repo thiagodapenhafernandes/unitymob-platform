@@ -42,15 +42,16 @@ module System
     def platform_findings
       findings = []
       errors = platform.fetch(:errors, {})
-      error_count = errors[:application_open].to_i
-      hard_error_count = errors.fetch(:application_error_open, error_count).to_i
-      warning_count = errors.fetch(:application_warning_open, 0).to_i
+      error_count = errors.fetch(:recent_application_open, errors[:application_open]).to_i
+      hard_error_count = errors.fetch(:recent_application_error_open, errors.fetch(:application_error_open, error_count)).to_i
+      warning_count = errors.fetch(:recent_application_warning_open, errors.fetch(:application_warning_open, 0)).to_i
       if error_count >= thresholds[:application_errors_warning]
         severity = hard_error_count >= thresholds[:application_errors_critical] ? "critical" : "warning"
         message = application_errors_message(error_count, hard_error_count, warning_count)
         findings << finding("application_errors", severity, message)
       end
-      findings << finding("unassigned_errors", "warning", "#{errors[:unassigned_open]} erros funcionais sem tenant") if errors[:unassigned_open].to_i.positive?
+      recent_unassigned = errors.fetch(:recent_unassigned_open, errors[:unassigned_open]).to_i
+      findings << finding("unassigned_errors", "warning", "#{recent_unassigned} erros funcionais sem tenant") if recent_unassigned.positive?
       findings << finding("migrations_pending", "critical", "Existem migrations pendentes") if platform.dig(:release, :migrations_pending)
 
       failures = platform.fetch(:tenants, []).sum { |tenant| tenant[:integration_failures].to_i }

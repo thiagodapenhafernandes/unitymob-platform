@@ -1,5 +1,7 @@
 module System
   class PlatformHealthReport
+    ERROR_RECENCY_WINDOW = ENV.fetch("HEALTH_ERROR_RECENCY_MINUTES", "30").to_i.minutes
+
     TRAFFIC_NOISE_EXCEPTIONS = %w[
       ActionController::RoutingError
       ActionController::UnknownFormat
@@ -97,10 +99,17 @@ module System
       application = unresolved.where.not(exception_class: TRAFFIC_NOISE_EXCEPTIONS)
       application_errors = application.where(severity: "error")
       application_warnings = application.where(severity: "warning")
+      recent_application = application.where("last_seen_at >= ?", ERROR_RECENCY_WINDOW.ago)
+      recent_application_errors = recent_application.where(severity: "error")
+      recent_application_warnings = recent_application.where(severity: "warning")
       {
         application_open: application.count,
         application_error_open: application_errors.count,
         application_warning_open: application_warnings.count,
+        recent_application_open: recent_application.count,
+        recent_application_error_open: recent_application_errors.count,
+        recent_application_warning_open: recent_application_warnings.count,
+        recent_unassigned_open: recent_application.where(tenant_id: nil).count,
         traffic_noise_open: noise.count,
         traffic_noise_occurrences: noise.sum(:occurrences_count),
         unassigned_open: application.where(tenant_id: nil).count,
@@ -115,6 +124,10 @@ module System
         application_open: 0,
         application_error_open: 0,
         application_warning_open: 0,
+        recent_application_open: 0,
+        recent_application_error_open: 0,
+        recent_application_warning_open: 0,
+        recent_unassigned_open: 0,
         traffic_noise_open: 0,
         traffic_noise_occurrences: 0,
         unassigned_open: 0,

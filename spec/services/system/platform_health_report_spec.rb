@@ -37,4 +37,38 @@ RSpec.describe System::PlatformHealthReport do
 
     expect(sql).to be_empty
   end
+
+  it "separa erros abertos antigos de ocorrências recentes" do
+    ErrorEvent.create!(
+      fingerprint: SecureRandom.hex(16),
+      exception_class: "RuntimeError",
+      message: "Falha antiga",
+      backtrace: "app/jobs/example_job.rb:1",
+      source: "manual",
+      severity: "error",
+      occurrences_count: 1,
+      first_seen_at: 2.hours.ago,
+      last_seen_at: 2.hours.ago
+    )
+    ErrorEvent.create!(
+      fingerprint: SecureRandom.hex(16),
+      exception_class: "RuntimeError",
+      message: "Falha recente",
+      backtrace: "app/jobs/example_job.rb:2",
+      source: "manual",
+      severity: "error",
+      occurrences_count: 1,
+      first_seen_at: 5.minutes.ago,
+      last_seen_at: 5.minutes.ago
+    )
+
+    errors = described_class.call.fetch(:errors)
+
+    expect(errors).to include(
+      application_open: 2,
+      application_error_open: 2,
+      recent_application_open: 1,
+      recent_application_error_open: 1
+    )
+  end
 end

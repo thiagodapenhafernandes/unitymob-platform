@@ -54,4 +54,24 @@ RSpec.describe System::HealthAssessment do
     expect(result[:status]).to eq("warning")
     expect(finding).to include(severity: "warning", message: "20 avisos funcionais abertos")
   end
+
+  it "não classifica backlog antigo de erros abertos como degradação atual" do
+    platform = healthy_platform.deep_merge(
+      errors: {
+        application_open: 30,
+        application_error_open: 30,
+        application_warning_open: 0,
+        unassigned_open: 12,
+        recent_application_open: 0,
+        recent_application_error_open: 0,
+        recent_application_warning_open: 0,
+        recent_unassigned_open: 0
+      }
+    )
+
+    result = described_class.call(runtime: healthy_runtime, platform: platform)
+
+    expect(result[:status]).to eq("healthy")
+    expect(result[:findings].pluck(:code)).not_to include("application_errors", "unassigned_errors")
+  end
 end
