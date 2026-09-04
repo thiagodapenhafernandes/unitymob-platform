@@ -1650,7 +1650,7 @@
       <% if @lead.display_email.present? %>
         <span><i class="bi bi-envelope"></i><b><%= @lead.display_email %></b></span>
       <% end %>
-      <span><i class="bi bi-megaphone"></i><b><%= @lead.origin.presence || detail_conversion[:channel_label] %></b></span>
+      <span><i class="bi bi-megaphone"></i><b><%= lead_conversion_summary_label(detail_conversion) %></b></span>
       <span><i class="bi bi-clock"></i><b>Entrada em <%= l(@lead.created_at, format: "%d/%m/%Y %H:%M") %></b></span>
     </div>
     <div class="lead-pwa-detail__actions">

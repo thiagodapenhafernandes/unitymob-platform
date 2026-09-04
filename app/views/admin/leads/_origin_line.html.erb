@@ -6,6 +6,10 @@
   <div class="lead-origin-block__body">
     <strong class="lead-origin-block__headline"><%= conv[:headline] %></strong>
     <div class="lead-origin-block__facts">
+      <span class="lead-origin-block__fact"><i class="bi <%= conv[:icon] %>"></i><%= lead_tracking_origin_text(conv) %></span>
+      <% if conv[:conversion_origin_label].present? %>
+        <span class="lead-origin-block__fact"><i class="bi bi-globe2"></i>Conversão: <%= conv[:conversion_origin_label] %></span>
+      <% end %>
       <% if conv[:product].present? %>
         <span class="lead-origin-block__fact"><i class="bi bi-house-door"></i><%= conv[:product] %></span>
       <% end %>
