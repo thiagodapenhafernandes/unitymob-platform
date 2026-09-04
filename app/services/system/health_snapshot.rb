@@ -5,6 +5,7 @@ module System
   class HealthSnapshot
     SNAPSHOT_FILENAME = "system_health.json".freeze
     HTTP_TIMEOUT = 5
+    MAX_FILE_AGE = ENV.fetch("SYSTEM_HEALTH_SNAPSHOT_MAX_AGE_SECONDS", "300").to_i.seconds
 
     def self.call
       new.call
@@ -12,7 +13,10 @@ module System
 
     def call
       data = JSON.parse(File.read(snapshot_path))
-      data.deep_symbolize_keys
+      snapshot = data.deep_symbolize_keys
+      return snapshot if fresh_file_snapshot?(snapshot)
+
+      live_snapshot
     rescue Errno::ENOENT, JSON::ParserError
       live_snapshot
     end
@@ -31,6 +35,13 @@ module System
 
       shared_tmp = Rails.root.join("..", "..", "shared", "tmp").cleanpath
       shared_tmp.join(SNAPSHOT_FILENAME)
+    end
+
+    def fresh_file_snapshot?(snapshot)
+      collected_at = Time.zone.parse(snapshot[:collected_at].to_s) if snapshot[:collected_at].present?
+      collected_at.present? && collected_at >= MAX_FILE_AGE.ago
+    rescue ArgumentError
+      false
     end
 
     def live_snapshot
