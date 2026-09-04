@@ -236,34 +236,105 @@ module Ai
         status: @habitation.status,
         situacao: @habitation.situacao,
         tipo: @habitation.tipo,
+        nome_empreendimento: @habitation.nome_empreendimento,
+        codigo_empreendimento: @habitation.codigo_empreendimento,
+        unidade_numero: @habitation.unidade_numero,
         titulo_atual: @habitation.titulo_anuncio,
-        descricao_atual: ActionController::Base.helpers.strip_tags(@habitation.display_description.to_s),
+        descricao_atual: sanitized_text(@habitation.display_description),
         cidade: @habitation.cidade,
         bairro: @habitation.bairro,
         bairro_comercial: @habitation.address&.bairro_comercial,
         endereco: address_payload,
+        empreendimento: development_payload,
         dormitorios: @habitation.dormitorios_qtd,
         suites: @habitation.suites_qtd,
         demi_suites: @habitation.demi_suites_qtd,
         banheiros: @habitation.banheiros_qtd,
+        salas: @habitation.salas_qtd,
+        varandas: @habitation.varandas_qtd,
         vagas: @habitation.vagas_qtd,
+        tipo_vaga: @habitation.tipo_vaga,
+        numero_box: @habitation.numero_box,
+        andar: @habitation.andar,
+        elevadores: @habitation.elevadores_qtd,
         area_privativa_m2: @habitation.area_privativa_m2,
         area_total_m2: @habitation.area_total_m2,
+        area_terreno_m2: @habitation.area_terreno_m2,
+        area_util_m2: @habitation.area_util_m2,
+        dimensoes_terreno: @habitation.dimensoes_terreno,
+        topografia: @habitation.topografia,
         valor_venda_cents: @habitation.valor_venda_cents,
         valor_locacao_cents: @habitation.valor_locacao_cents,
         valor_total_aluguel_cents: @habitation.valor_total_aluguel_cents,
+        valor_condominio_cents: @habitation.valor_condominio_cents,
+        valor_iptu_cents: @habitation.valor_iptu_cents,
+        valor_por_m2_cents: @habitation.valor_por_m2_cents,
+        valor_promocional_cents: @habitation.valor_promocional_cents,
+        valor_venda_anterior_cents: @habitation.valor_venda_anterior_cents,
+        valor_locacao_anterior_cents: @habitation.valor_locacao_anterior_cents,
         mobiliado: @habitation.mobiliado_flag,
         decorado: @habitation.decorado_flag,
         quadra_mar: @habitation.quadra_mar_flag,
         vista_frente_mar: @habitation.vista_frente_mar_flag,
         frente_mar_avenida_atlantica: @habitation.frente_mar_avenida_atlantica_flag,
+        aceita_permuta: @habitation.aceita_permuta_flag,
+        aceita_financiamento: @habitation.aceita_financiamento_flag,
+        aceita_parcelamento: @habitation.aceita_parcelamento_flag,
+        ocupacao: @habitation.ocupacao_status,
+        estado_conservacao: @habitation.estado_conservacao,
+        construtora: @habitation.constructor_name,
+        tipo_fachada: @habitation.tipo_fachada,
+        data_entrega: @habitation.data_entrega,
+        ano_construcao: @habitation.ano_construcao,
+        andares: @habitation.andares_qtd,
+        aptos_por_andar: @habitation.aptos_andar,
+        aptos_no_edificio: @habitation.aptos_edificio,
+        distancia_praia_m: @habitation.distancia_praia.presence,
         face: @habitation.face,
         caracteristicas: @habitation.property_features_for_display,
         infraestrutura: @habitation.leisure_features_for_display,
         destaques: @habitation.unique_features,
         imediacoes: @habitation.address&.imediacoes,
-        descricao_empreendimento: @habitation.descricao_empreendimento
+        midia: media_payload,
+        descricao_empreendimento: sanitized_text(@habitation.descricao_empreendimento)
       }
+    end
+
+    def development_payload
+      development = @habitation.empreendimento
+      return nil if development.blank?
+
+      {
+        codigo: development.codigo,
+        nome: development.nome_empreendimento,
+        titulo: development.titulo_anuncio,
+        cidade: development.cidade,
+        bairro: development.bairro,
+        bairro_comercial: development.bairro_comercial,
+        descricao: sanitized_text(development.display_description),
+        infraestrutura: development.leisure_features_for_display,
+        destaques: development.unique_features,
+        construtora: development.constructor_name,
+        tipo_fachada: development.tipo_fachada,
+        data_entrega: development.data_entrega,
+        ano_construcao: development.ano_construcao,
+        andares: development.andares_qtd,
+        aptos_por_andar: development.aptos_andar,
+        aptos_no_edificio: development.aptos_edificio,
+        elevadores: development.elevadores_qtd
+      }.compact
+    end
+
+    def media_payload
+      {
+        possui_fotos: @habitation.has_any_photo?,
+        classificacao_fotos: @habitation.foto_classificacao,
+        usa_fotos_empreendimento: @habitation.use_development_photos?
+      }
+    end
+
+    def sanitized_text(value)
+      ActionController::Base.helpers.strip_tags(value.to_s).squish
     end
 
     def address_payload
