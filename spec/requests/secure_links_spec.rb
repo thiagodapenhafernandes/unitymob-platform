@@ -72,6 +72,13 @@ RSpec.describe "SecureLinks", type: :request do
       "via" => "whatsapp",
       "secure_link" => true
     )
+    expect(lead.activities.where(kind: "secure_link_accessed").last.metadata).to include(
+      "admin_user_id" => corretor.id,
+      "action_type" => "view",
+      "contact" => "attend",
+      "via" => "whatsapp",
+      "lead_status" => Lead.status_value(:waiting_acceptance)
+    )
   end
 
   it "marca como atendido e abre o lead no sistema quando configurado para detalhes primeiro" do
@@ -130,6 +137,12 @@ RSpec.describe "SecureLinks", type: :request do
     expect(response.body).not_to include("11999999999")
     expect(lead.reload.status).to eq(Lead.status_value(:waiting_acceptance))
     expect(lead.activities.where(kind: "accepted")).to be_empty
+    expect(lead.activities.where(kind: "secure_link_accessed").last.metadata).to include(
+      "admin_user_id" => corretor.id,
+      "action_type" => "attend",
+      "via" => "push",
+      "lead_admin_user_id" => outro_corretor.id
+    )
   end
 
   it "recusa ack em background de notificacao antiga quando o lead ja pertence a outro corretor" do

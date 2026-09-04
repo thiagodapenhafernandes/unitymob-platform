@@ -204,4 +204,37 @@ RSpec.describe Leads::NotificationDispatcher do
       expect(args[:components].first[:parameters].size).to eq(6)
     end
   end
+
+  it "usa links seguros nos campos de contato do WhatsApp de bolsão" do
+    pool_rule = create(:distribution_rule, distribution_mode: :shark_tank, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
+    pool_lead = create(
+      :lead,
+      name: "Cliente Bolsão",
+      phone: "11999999999",
+      email: "cliente@teste.com",
+      origin: "Facebook",
+      status: :waiting_acceptance,
+      admin_user: nil,
+      distribution_rule: pool_rule
+    )
+    candidate = create(:distribution_rule_agent, distribution_rule: pool_rule, admin_user: corretor)
+    LeadSetting.instance.update!(notify_on_shark_tank: true, secure_links_enabled: true, secure_link_whatsapp: true)
+    NotificationTemplateSetting.where(tenant_id: Tenant.default.id).delete_all
+    sender = create(:whatsapp_business_integration, tenant: Tenant.default, connected_by_admin_user: corretor)
+    transport = Notifications::TransportResolver::Result.new(sender: sender, source: :tenant)
+    client = instance_double(Whatsapp::CloudClient)
+
+    allow(Notifications::TransportResolver).to receive(:whatsapp).with(Tenant.default).and_return(transport)
+    allow(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+    allow(client).to receive(:send_template).and_return(ok: true, message_id: "wamid.pool")
+
+    described_class.notify_pool(pool_lead, pool_rule, candidates: DistributionRuleAgent.where(id: candidate.id), context: "pocket_pool")
+
+    expect(client).to have_received(:send_template) do |args|
+      values = args[:components].first[:parameters].map { |param| param[:text] }
+      expect(values.values_at(3, 4, 5)).to all(include("/s/"))
+      expect(values.values_at(3, 4, 5)).not_to include(include("/admin/leads/lead_pool"))
+    end
+    expect(SecureLink.where(lead: pool_lead, issued_to_admin_user: corretor).pluck(:action_type)).to contain_exactly("phone", "email", "view")
+  end
 end

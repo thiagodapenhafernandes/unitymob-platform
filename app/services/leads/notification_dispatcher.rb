@@ -389,7 +389,7 @@ module Leads
     end
 
     def whatsapp_variable_value(source)
-      links = Leads::ContactLinks.new(@lead, @corretor)
+      links = Leads::ContactLinks.new(@lead, @corretor, setting: LeadSetting.instance(tenant: @lead.tenant))
 
       case source.to_s
       when "lead_name"
@@ -397,15 +397,15 @@ module Leads
       when "lead_origin"
         @lead.origin
       when "lead_phone_or_link"
-        return pool_queue_url if pool_push?
+        return pool_contact_value(links, :phone) if pool_push?
 
         links.secure?(:whatsapp) ? links.url(:phone) : @lead.display_phone
       when "lead_email_or_link"
-        return pool_queue_url if pool_push?
+        return pool_contact_value(links, :email) if pool_push?
 
         links.secure?(:whatsapp) ? links.url(:email) : @lead.display_email
       when "lead_other_or_link"
-        return pool_queue_url if pool_push?
+        return pool_contact_value(links, :view) if pool_push?
 
         links.secure?(:whatsapp) ? links.url(:view) : (@lead.product.presence || @lead.origin)
       when "broker_name"
@@ -417,6 +417,10 @@ module Leads
       else
         nil
       end
+    end
+
+    def pool_contact_value(links, action)
+      links.secure?(:whatsapp) ? links.url(action) : pool_queue_url
     end
 
     # A Cloud API rejeita parâmetros vazios ou com quebra de linha / espaços longos.

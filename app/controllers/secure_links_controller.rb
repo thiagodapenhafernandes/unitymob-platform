@@ -14,6 +14,7 @@ class SecureLinksController < ApplicationController
 
     @link.record_access!
     @lead = @link.lead
+    record_secure_link_access!
     return render_lost_turn if link_no_longer_available?
 
     return handle_contact_click(params[:contact]) if params[:contact].present?
@@ -196,6 +197,33 @@ class SecureLinksController < ApplicationController
 
     Lead.where(id: @lead.id, admin_user_id: nil, status: claimable_statuses)
         .update_all(admin_user_id: claimer.id, status: Lead.status_value(:em_atendimento), updated_at: Time.current) == 1
+  end
+
+  def record_secure_link_access!
+    issued_to = @link.issued_to_admin_user
+    LeadActivity.log!(
+      lead: @lead,
+      kind: "secure_link_accessed",
+      metadata: {
+        by: issued_to&.name || current_admin_user&.name,
+        admin_user_id: issued_to&.id || current_admin_user&.id,
+        action_type: @link.action_type,
+        contact: params[:contact].presence,
+        via: secure_link_access_via,
+        request_id: request.request_id,
+        lead_status: @lead.status,
+        lead_admin_user_id: @lead.admin_user_id
+      }.compact
+    )
+  end
+
+  def secure_link_access_via
+    return "push_ack" if params[:ack].present?
+    return "push" if params[:details].present? || @link.attend?
+    return "email" if params[:contact].to_s == "email" || @link.email?
+    return "whatsapp" if params[:contact].to_s.in?(%w[attend whatsapp]) || @link.phone?
+
+    "secure_link"
   end
 
   def noindex
