@@ -2444,6 +2444,39 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body.index(human_edited.titulo_anuncio)).to be < response.body.index(synced_by_dwv.titulo_anuncio)
   end
 
+  it "ordena o catálogo por valor de venda crescente e decrescente" do
+    low = create(:habitation, titulo_anuncio: "Preço baixo ordenação", cidade: "Cidade Ordenação Valor", valor_venda_cents: 800_000_00)
+    middle = create(:habitation, titulo_anuncio: "Preço médio ordenação", cidade: "Cidade Ordenação Valor", valor_venda_cents: 1_600_000_00)
+    high = create(:habitation, titulo_anuncio: "Preço alto ordenação", cidade: "Cidade Ordenação Valor", valor_venda_cents: 2_500_000_00)
+    [low, middle, high].each { |habitation| habitation.address.update!(cidade: "Cidade Ordenação Valor") }
+
+    get admin_habitations_path(
+      ownership: "all",
+      cidade: ["Cidade Ordenação Valor"],
+      min_price: "800000",
+      max_price: "2500000",
+      sort: "valor_venda_cents",
+      direction: "asc"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body.index(low.titulo_anuncio)).to be < response.body.index(middle.titulo_anuncio)
+    expect(response.body.index(middle.titulo_anuncio)).to be < response.body.index(high.titulo_anuncio)
+
+    get admin_habitations_path(
+      ownership: "all",
+      cidade: ["Cidade Ordenação Valor"],
+      min_price: "800000",
+      max_price: "2500000",
+      sort: "valor_venda_cents",
+      direction: "desc"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body.index(high.titulo_anuncio)).to be < response.body.index(middle.titulo_anuncio)
+    expect(response.body.index(middle.titulo_anuncio)).to be < response.body.index(low.titulo_anuncio)
+  end
+
   it "filtra por rua e número na localização do catálogo" do
     structured = create(:habitation, codigo: "RUA-EST-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel Rua Estruturada")
     structured.create_address!(

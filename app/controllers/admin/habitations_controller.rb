@@ -151,9 +151,8 @@ class Admin::HabitationsController < Admin::BaseController
     order_clauses << Arel.sql("#{search_relevance_order} ASC") if search_relevance_order.present?
     order_clauses << Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST")
 
-    @habitations = filtered_scope
+    @habitations = apply_habitation_catalog_order(filtered_scope, order_clauses)
       .includes(:address, :admin_user, :proprietor, { empreendimento: { photos_attachments: :blob } }, { broker_assignments: :admin_user }, { photos_attachments: :blob })
-      .order(*order_clauses)
 
     @habitations = @habitations.paginate(page: params[:page], per_page: @per_page)
     @filtered_count = @habitations.total_entries
@@ -264,7 +263,7 @@ class Admin::HabitationsController < Admin::BaseController
     @full_print_mode = full_print_mode?
     @public_site_profile = PublicSiteProfile.current(tenant: current_tenant)
 
-    scope = filtered_habitations_scope.order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
+    scope = apply_habitation_catalog_order(filtered_habitations_scope)
     ids = single_habitation_sheet_report? ? [] : sanitized_selected_ids
     scope = scope.where(id: ids) if ids.any?
 
@@ -332,7 +331,7 @@ class Admin::HabitationsController < Admin::BaseController
     @sort_direction = sort_direction
     fields = sanitized_export_fields
 
-    scope = filtered_habitations_scope.order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
+    scope = apply_habitation_catalog_order(filtered_habitations_scope)
     ids = sanitized_selected_ids
     scope = scope.where(id: ids) if ids.any?
 
@@ -1044,6 +1043,11 @@ class Admin::HabitationsController < Admin::BaseController
         ELSE 9
       END
     SQL
+  end
+
+  def apply_habitation_catalog_order(scope, order_clauses = nil)
+    order_clauses ||= [Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST")]
+    scope.reorder(*order_clauses)
   end
 
   def sort_options
