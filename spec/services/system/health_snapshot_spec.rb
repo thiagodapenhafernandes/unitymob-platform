@@ -3,13 +3,27 @@ require "rails_helper"
 RSpec.describe System::HealthSnapshot do
   it "usa o caminho configurado quando SYSTEM_HEALTH_SNAPSHOT_PATH está definido" do
     file = Tempfile.new("system-health")
-    file.write({ status: "healthy", collected_at: Time.current.iso8601 }.to_json)
+    file.write({ status: "healthy", collected_at: Time.current.iso8601, http_status: 200 }.to_json)
     file.close
 
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("SYSTEM_HEALTH_SNAPSHOT_PATH").and_return(file.path)
 
     expect(described_class.call).to include(status: "healthy")
+  ensure
+    file&.unlink
+  end
+
+  it "ignora arquivo configurado quando o snapshot está vencido" do
+    file = Tempfile.new("system-health")
+    file.write({ status: "unhealthy", collected_at: 15.minutes.ago.iso8601, http_status: 502 }.to_json)
+    file.close
+
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("SYSTEM_HEALTH_SNAPSHOT_PATH").and_return(file.path)
+    allow_any_instance_of(described_class).to receive(:live_snapshot).and_return(status: "healthy", http_status: 200)
+
+    expect(described_class.call).to include(status: "healthy", http_status: 200)
   ensure
     file&.unlink
   end
