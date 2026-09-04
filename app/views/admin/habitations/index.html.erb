@@ -148,9 +148,9 @@
         </li>
         <% pwa_habitation_sort_options.each do |sort_key, sort_config| %>
           <% active_sort = current_sort_key == sort_key %>
-          <% next_sort_direction = active_sort ? (sort_direction == "asc" ? "desc" : "asc") : sort_config[:default_direction] %>
+          <% option_sort_direction = active_sort ? (sort_direction == "asc" ? "desc" : "asc") : sort_config[:default_direction] %>
           <li>
-            <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: sort_key, direction: next_sort_direction)),
+            <%= link_to admin_habitations_path(request.query_parameters.except("page").merge("sort" => sort_key, "direction" => option_sort_direction)),
                         class: "habitations-command-menu__item #{active_sort ? 'is-active' : ''}" do %>
               <span class="habitations-command-menu__item-icon <%= active_sort ? '' : 'is-empty' %>">
                 <% if active_sort %><i class="bi bi-check2"></i><% end %>
@@ -337,8 +337,9 @@
           </li>
           <% sort_options.each do |sort_key, sort_config| %>
             <% active_sort = current_sort_key == sort_key %>
+            <% option_sort_direction = active_sort ? next_sort_direction : sort_config[:default_direction] %>
             <li>
-              <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: sort_key, direction: sort_config[:default_direction])),
+              <%= link_to admin_habitations_path(request.query_parameters.except("page").merge("sort" => sort_key, "direction" => option_sort_direction)),
                           class: "habitations-command-menu__item #{active_sort ? 'is-active' : ''}" do %>
                 <span class="habitations-command-menu__item-icon <%= active_sort ? '' : 'is-empty' %>">
                   <% if active_sort %>
@@ -353,7 +354,7 @@
         </ul>
       </div>
 
-      <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: current_sort_key, direction: next_sort_direction)),
+      <%= link_to admin_habitations_path(request.query_parameters.except("page").merge("sort" => current_sort_key, "direction" => next_sort_direction)),
                   class: "habitations-workspace-heading__tool habitations-workspace-heading__tool--icon",
                   title: sort_direction == "asc" ? "Ordenar decrescente" : "Ordenar crescente" do %>
         <i class="bi bi-sort-<%= sort_direction == "asc" ? "up" : "down" %>"></i>
@@ -403,8 +404,9 @@
         </li>
         <% sort_options.each do |sort_key, sort_config| %>
           <% active_sort = current_sort_key == sort_key %>
+          <% option_sort_direction = active_sort ? next_sort_direction : sort_config[:default_direction] %>
           <li>
-            <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: sort_key, direction: sort_config[:default_direction])),
+            <%= link_to admin_habitations_path(request.query_parameters.except("page").merge("sort" => sort_key, "direction" => option_sort_direction)),
                         class: "habitations-command-menu__item #{active_sort ? 'is-active' : ''}" do %>
               <span class="habitations-command-menu__item-icon <%= active_sort ? '' : 'is-empty' %>">
                 <% if active_sort %>
@@ -419,7 +421,7 @@
       </ul>
     </div>
 
-    <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: current_sort_key, direction: next_sort_direction)),
+    <%= link_to admin_habitations_path(request.query_parameters.except("page").merge("sort" => current_sort_key, "direction" => next_sort_direction)),
                 class: "habitations-workspace-heading__tool habitations-workspace-heading__tool--icon",
                 title: sort_direction == "asc" ? "Ordenar decrescente" : "Ordenar crescente" do %>
       <i class="bi bi-sort-<%= sort_direction == "asc" ? "up" : "down" %>"></i>

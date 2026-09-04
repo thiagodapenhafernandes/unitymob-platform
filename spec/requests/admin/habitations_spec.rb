@@ -3161,6 +3161,26 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(mobile_sort.at_css("[data-action*='ax-dropdown#toggle']")).to be_present
     expect(mobile_sort.at_css("[data-ax-dropdown-target='menu']")).to be_present
     expect(desktop_heading.text).to include("Catálogo operacional")
+
+    get admin_habitations_path(ownership: "all", min_price: "1400000", sort: "valor_venda_cents", direction: "desc")
+
+    expect(response).to have_http_status(:ok)
+
+    sort_toggle_links = Nokogiri::HTML(response.body).css("a[title='Ordenar crescente']")
+    expect(sort_toggle_links).not_to be_empty
+    sort_toggle_links.each do |link|
+      expect(link["href"]).to include("sort=valor_venda_cents")
+      expect(link["href"]).to include("direction=asc")
+      expect(link["href"]).not_to include("direction=desc")
+    end
+
+    active_sort_links = Nokogiri::HTML(response.body).css("a.habitations-command-menu__item.is-active").select { |link| link.text.include?("Valor venda") }
+    expect(active_sort_links).not_to be_empty
+    active_sort_links.each do |link|
+      expect(link["href"]).to include("sort=valor_venda_cents")
+      expect(link["href"]).to include("direction=asc")
+      expect(link["href"]).not_to include("direction=desc")
+    end
   end
 
   it "renderiza o catálogo em workspace com sidebar global e filtros no inspector" do
