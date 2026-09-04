@@ -112,4 +112,27 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
     expect(result).to include(checked: 1, missing: 0, failed: 0)
     expect(ErrorEvent).not_to have_received(:record!)
   end
+
+  it "ignora anexos críticos órfãos sem tenant confiável" do
+    tenant = Tenant.create!(name: "Tenant orphan #{SecureRandom.hex(3)}", slug: "tenant-orphan-#{SecureRandom.hex(3)}")
+    setting = HomeSetting.instance(tenant: tenant)
+    slide = setting.hero_slides.build(position: 1, active: true)
+    slide.image.attach(io: StringIO.new("orphan"), filename: "orphan.jpg", content_type: "image/jpeg")
+    slide.save!
+    attachment = slide.image.attachment
+    slide.delete
+
+    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+    allow(Storage::ProtectedBlobPolicy).to receive(:critical_attachment_scope).and_return(ActiveStorage::Attachment.where(id: attachment.id))
+    allow(Storage::ActiveStorageRegistry).to receive(:fetch!)
+    allow(Storage::BlobAuditRecorder).to receive(:record!)
+    allow(ErrorEvent).to receive(:record!)
+
+    result = described_class.perform_now
+
+    expect(result).to include(checked: 0, missing: 0, failed: 0, skipped: 1)
+    expect(Storage::ActiveStorageRegistry).not_to have_received(:fetch!)
+    expect(Storage::BlobAuditRecorder).not_to have_received(:record!)
+    expect(ErrorEvent).not_to have_received(:record!)
+  end
 end

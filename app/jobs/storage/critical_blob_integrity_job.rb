@@ -11,12 +11,13 @@ module Storage
       checked = 0
       missing = 0
       failed = 0
+      skipped = 0
 
       Storage::ProtectedBlobPolicy.critical_attachment_scope.find_each do |attachment|
         blob = attachment.blob
         next if blob.blank?
 
-        with_tenant_context(attachment, blob) do
+        ran_check = with_tenant_context(attachment, blob) do
           checked += 1
           if blob_exists?(blob)
             next
@@ -25,13 +26,15 @@ module Storage
           missing += 1
           record_missing_blob(attachment, blob)
         end
+
+        skipped += 1 unless ran_check
       rescue StandardError => error
         failed += 1
         record_check_failure(attachment, error)
       end
 
-      Rails.logger.info("[critical_blob_integrity] checked=#{checked} missing=#{missing} failed=#{failed}")
-      { checked: checked, missing: missing, failed: failed }
+      Rails.logger.info("[critical_blob_integrity] checked=#{checked} missing=#{missing} failed=#{failed} skipped=#{skipped}")
+      { checked: checked, missing: missing, failed: failed, skipped: skipped }
     end
 
     private
@@ -60,9 +63,10 @@ module Storage
 
     def with_tenant_context(attachment, blob, &block)
       tenant = tenant_for(attachment, blob)
-      return yield if tenant.blank?
+      return false if tenant.blank?
 
       Current.set(tenant: tenant, &block)
+      true
     end
 
     def tenant_for(attachment, blob)
