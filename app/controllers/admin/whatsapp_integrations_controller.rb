@@ -5,7 +5,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   META_LEADS_CONFIG_ID = "1330907151751153".freeze
   WHATSAPP_SYSTEM_TEMPLATE_NAMES = [
     Whatsapp::LeadActivationTemplate::TEMPLATE_NAME,
-    Whatsapp::LeadAlertTemplate::TEMPLATE_NAME,
+    *Whatsapp::LeadAlertTemplate.names,
     *Whatsapp::LeadConversationTemplates.names
   ].freeze
 
@@ -299,16 +299,18 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
 
     Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
-    template = Whatsapp::LeadAlertTemplate.for(tenant: current_tenant, integration: integration)
+    template_name = lead_alert_template_name
+    template = Whatsapp::LeadAlertTemplate.for(tenant: current_tenant, integration: integration, name: template_name)
+    definition = Whatsapp::LeadAlertTemplate.definition(template_name)
 
     unless Whatsapp::LeadAlertTemplate.editable?(template)
       redirect_to admin_whatsapp_integration_path(anchor: "lead-alert-template"),
-                  notice: "Template lead_alert já está #{template.status.to_s.downcase} na Meta."
+                  notice: "Template #{template_name} já está #{template.status.to_s.downcase} na Meta."
       return
     end
 
     template.assign_attributes(
-      name: Whatsapp::LeadAlertTemplate::TEMPLATE_NAME,
+      name: template_name,
       language: Whatsapp::LeadAlertTemplate::LANGUAGE,
       template_type: "text",
       category: "UTILITY",
@@ -316,7 +318,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       header_text: nil,
       header_media_handle: nil,
       footer_text: nil,
-      body: Whatsapp::LeadAlertTemplate::DEFAULT_BODY,
+      body: definition.fetch(:body),
       waba_id: integration.waba_id,
       status: "PENDING",
       buttons: [],
@@ -329,7 +331,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
     if result[:ok]
       redirect_to admin_whatsapp_integration_path(anchor: "lead-alert-template"),
-                  notice: "Template lead_alert enviado para análise da Meta."
+                  notice: "Template #{template_name} enviado para análise da Meta."
     else
       load_page_state
       @lead_alert_template = template
@@ -465,14 +467,15 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @notification_template_settings = current_tenant.notification_template_settings.includes(:whatsapp_template).ordered
     @new_notification_template_setting = current_tenant.notification_template_settings.new(
       channel: "whatsapp",
-      purpose: "lead_distribution_broker",
+      purpose: "lead_distribution_broker_rotary",
       active: true
     )
     @notification_template_purpose_options = NotificationTemplateSetting.purpose_options
     @notification_template_options = notification_template_options
     @notification_template_variable_sources = @new_notification_template_setting.variable_source_options
     @lead_activation_template = Whatsapp::LeadActivationTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
-    @lead_alert_template = Whatsapp::LeadAlertTemplate.for(tenant: current_tenant, integration: @whatsapp_integration)
+    @lead_alert_templates = Whatsapp::LeadAlertTemplate.all(tenant: current_tenant, integration: @whatsapp_integration)
+    @lead_alert_template = @lead_alert_templates.find { |item| item[:name] == Whatsapp::LeadAlertTemplate::TEMPLATE_NAME }&.fetch(:template)
     @lead_conversation_templates = Whatsapp::LeadConversationTemplates.all.map do |definition|
       {
         definition: definition,
@@ -504,6 +507,11 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     Rails.logger.warn("[WhatsappIntegrations] sync de templates pendentes falhou: #{result[:error]}") unless result[:ok]
   rescue => e
     Rails.logger.warn("[WhatsappIntegrations] sync de templates pendentes falhou: #{e.class}: #{e.message}")
+  end
+
+  def lead_alert_template_name
+    name = params[:template_name].to_s
+    Whatsapp::LeadAlertTemplate.names.include?(name) ? name : Whatsapp::LeadAlertTemplate::TEMPLATE_NAME
   end
 
   def campaign_sender_numbers

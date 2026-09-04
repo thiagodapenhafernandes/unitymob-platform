@@ -177,6 +177,90 @@ RSpec.describe Leads::NotificationDispatcher do
     end
   end
 
+  it "usa a finalidade de rodizio para escolher o template WhatsApp" do
+    whatsapp_rule = create(:distribution_rule, distribution_mode: :rotary, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
+    whatsapp_lead = create(
+      :lead,
+      name: "Cliente Rodizio",
+      phone: "21999999999",
+      origin: "landing",
+      status: :waiting_acceptance,
+      admin_user: corretor,
+      distribution_rule: whatsapp_rule
+    )
+    template = Tenant.default.whatsapp_templates.create!(
+      name: "lead_distribution_alert",
+      language: "pt_BR",
+      category: "UTILITY",
+      body: Whatsapp::LeadAlertTemplate::DISTRIBUTION_BODY,
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "none"
+    )
+    NotificationTemplateSetting.where(tenant_id: Tenant.default.id).delete_all
+    Tenant.default.notification_template_settings.create!(
+      purpose: "lead_distribution_broker_rotary",
+      whatsapp_template: template
+    )
+    sender = create(:whatsapp_business_integration, tenant: Tenant.default, connected_by_admin_user: corretor)
+    transport = Notifications::TransportResolver::Result.new(sender: sender, source: :tenant)
+    client = instance_double(Whatsapp::CloudClient)
+
+    allow(Notifications::TransportResolver).to receive(:whatsapp).with(Tenant.default).and_return(transport)
+    allow(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+    allow(client).to receive(:send_template).and_return(ok: true, message_id: "wamid.rotary")
+
+    described_class.deliver(whatsapp_lead)
+
+    expect(client).to have_received(:send_template) do |args|
+      expect(args[:name]).to eq("lead_distribution_alert")
+      expect(args[:components].first[:parameters].first[:text]).to eq(corretor.name)
+    end
+  end
+
+  it "usa a finalidade de bolsao para escolher o template WhatsApp" do
+    pool_rule = create(:distribution_rule, distribution_mode: :shark_tank, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
+    pool_lead = create(
+      :lead,
+      name: "Cliente Bolsao",
+      phone: "11999999999",
+      origin: "Facebook",
+      status: :waiting_acceptance,
+      admin_user: nil,
+      distribution_rule: pool_rule
+    )
+    candidate = create(:distribution_rule_agent, distribution_rule: pool_rule, admin_user: corretor)
+    template = Tenant.default.whatsapp_templates.create!(
+      name: "lead_pool_alert",
+      language: "pt_BR",
+      category: "UTILITY",
+      body: Whatsapp::LeadAlertTemplate::POOL_BODY,
+      status: "APPROVED",
+      template_type: "text",
+      header_format: "none"
+    )
+    LeadSetting.instance.update!(notify_on_shark_tank: true)
+    NotificationTemplateSetting.where(tenant_id: Tenant.default.id).delete_all
+    Tenant.default.notification_template_settings.create!(
+      purpose: "lead_distribution_broker_pool",
+      whatsapp_template: template
+    )
+    sender = create(:whatsapp_business_integration, tenant: Tenant.default, connected_by_admin_user: corretor)
+    transport = Notifications::TransportResolver::Result.new(sender: sender, source: :tenant)
+    client = instance_double(Whatsapp::CloudClient)
+
+    allow(Notifications::TransportResolver).to receive(:whatsapp).with(Tenant.default).and_return(transport)
+    allow(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+    allow(client).to receive(:send_template).and_return(ok: true, message_id: "wamid.pool-template")
+
+    described_class.notify_pool(pool_lead, pool_rule, candidates: DistributionRuleAgent.where(id: candidate.id), context: "pocket_pool")
+
+    expect(client).to have_received(:send_template) do |args|
+      expect(args[:name]).to eq("lead_pool_alert")
+      expect(args[:components].first[:parameters].first[:text]).to eq(corretor.name)
+    end
+  end
+
   it "usa lead_alert como fallback para notificar o corretor por WhatsApp" do
     whatsapp_rule = create(:distribution_rule, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
     whatsapp_lead = create(

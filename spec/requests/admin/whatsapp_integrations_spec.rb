@@ -42,6 +42,8 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("Template oficial para primeiro contato")
     expect(response.body).to include("lead_activation_default")
     expect(response.body).to include("lead_alert")
+    expect(response.body).to include("lead_distribution_alert")
+    expect(response.body).to include("lead_pool_alert")
     expect(response.body).to include("lead_followup")
     expect(response.body).to include("lead_appointment_reminder")
     expect(response.body).to include("lead_task_reminder_utility")
@@ -226,6 +228,52 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
 
     expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
     template = admin.tenant.whatsapp_templates.find_by!(name: "lead_alert", waba_id: integration.waba_id)
+    expect(template.status).to eq("PENDING")
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
+  it "envia o template de rodizio para analise da Meta" do
+    integration = current_whatsapp_integration!(
+      waba_id: "waba-lead-rotary-submit",
+      phone_number_id: "phone-lead-rotary-submit",
+      access_token: "token-lead-rotary-submit"
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 0 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      expect(template.name).to eq("lead_distribution_alert")
+      expect(template.body).to eq(Whatsapp::LeadAlertTemplate::DISTRIBUTION_BODY)
+      expect(template.meta_create_payload[:components].pluck(:type)).to eq(["BODY"])
+      template.update!(status: "PENDING", meta_id: "tpl-lead-rotary")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_alert_template_admin_whatsapp_integration_path, params: { template_name: "lead_distribution_alert" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
+    template = admin.tenant.whatsapp_templates.find_by!(name: "lead_distribution_alert", waba_id: integration.waba_id)
+    expect(template.status).to eq("PENDING")
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
+  it "envia o template de bolsao para analise da Meta" do
+    integration = current_whatsapp_integration!(
+      waba_id: "waba-lead-pool-submit",
+      phone_number_id: "phone-lead-pool-submit",
+      access_token: "token-lead-pool-submit"
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 0 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      expect(template.name).to eq("lead_pool_alert")
+      expect(template.body).to eq(Whatsapp::LeadAlertTemplate::POOL_BODY)
+      expect(template.meta_create_payload[:components].pluck(:type)).to eq(["BODY"])
+      template.update!(status: "PENDING", meta_id: "tpl-lead-pool")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_alert_template_admin_whatsapp_integration_path, params: { template_name: "lead_pool_alert" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
+    template = admin.tenant.whatsapp_templates.find_by!(name: "lead_pool_alert", waba_id: integration.waba_id)
     expect(template.status).to eq("PENDING")
     expect(Whatsapp::TemplateSubmission).to have_received(:call)
   end
