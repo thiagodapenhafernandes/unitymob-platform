@@ -4,6 +4,32 @@ module Ai
     API_KEY_SETTING = "openai_api_key".freeze
     MODEL_SETTING = "openai_model".freeze
     PROMPT_SETTING = "openai_property_enrichment_prompt".freeze
+    TEMPERATURE_SETTING = "openai_property_enrichment_temperature".freeze
+    TOP_P_SETTING = "openai_property_enrichment_top_p".freeze
+    FREQUENCY_PENALTY_SETTING = "openai_property_enrichment_frequency_penalty".freeze
+    PRESENCE_PENALTY_SETTING = "openai_property_enrichment_presence_penalty".freeze
+    DEFAULT_TEMPERATURE = 0.2
+    DEFAULT_TOP_P = 0.8
+    DEFAULT_FREQUENCY_PENALTY = 0.5
+    DEFAULT_PRESENCE_PENALTY = 0.2
+    RESPONSE_PARAMETER_RANGES = {
+      temperature: 0.0..2.0,
+      top_p: 0.0..1.0,
+      frequency_penalty: -2.0..2.0,
+      presence_penalty: -2.0..2.0
+    }.freeze
+    RESPONSE_PARAMETER_DEFAULTS = {
+      temperature: DEFAULT_TEMPERATURE,
+      top_p: DEFAULT_TOP_P,
+      frequency_penalty: DEFAULT_FREQUENCY_PENALTY,
+      presence_penalty: DEFAULT_PRESENCE_PENALTY
+    }.freeze
+    RESPONSE_PARAMETER_SETTINGS = {
+      temperature: TEMPERATURE_SETTING,
+      top_p: TOP_P_SETTING,
+      frequency_penalty: FREQUENCY_PENALTY_SETTING,
+      presence_penalty: PRESENCE_PENALTY_SETTING
+    }.freeze
 
     DEFAULT_PROMPT = <<~PROMPT.freeze
       Para Título:
@@ -56,6 +82,25 @@ module Ai
     def self.instructions(tenant: Current.tenant)
       fallback = default_prompt(tenant)
       Setting.tenant_get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
+    end
+
+    def self.response_parameters(tenant: Current.tenant)
+      RESPONSE_PARAMETER_SETTINGS.each_with_object({}) do |(key, setting_key), values|
+        values[key] = normalize_response_parameter(
+          key,
+          Setting.tenant_get(setting_key, RESPONSE_PARAMETER_DEFAULTS.fetch(key), tenant: tenant)
+        )
+      end
+    end
+
+    def self.normalize_response_parameter(key, value)
+      fallback = RESPONSE_PARAMETER_DEFAULTS.fetch(key)
+      number = Float(value)
+      range = RESPONSE_PARAMETER_RANGES.fetch(key)
+      number = fallback unless number.finite? && number.between?(range.begin, range.end)
+      number.round(2)
+    rescue ArgumentError, TypeError
+      fallback
     end
 
     def self.default_prompt(tenant)
@@ -140,6 +185,7 @@ module Ai
         model: self.class.resolved_model(tenant: @habitation.tenant),
         instructions: system_instructions,
         input: user_payload,
+        **self.class.response_parameters(tenant: @habitation.tenant),
         text: {
           format: {
             type: "json_schema",
