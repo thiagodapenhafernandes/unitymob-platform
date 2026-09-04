@@ -121,6 +121,15 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     expect(Notifications::PushDispatcher).not_to have_received(:deliver)
   end
 
+  it "ignora tarefa legada vinculada a lead descartado" do
+    discarded_lead = create(:lead, tenant: tenant, admin_user: broker, name: "Lead descartado", status: Lead.status_value(:descartado, tenant: tenant))
+    create(:task, tenant: tenant, lead: discarded_lead, admin_user: broker, title: Task::LEGACY_EXTERNAL_TITLE, source: "external_legacy", due_at: 5.minutes.ago)
+
+    described_class.perform_now
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver).with(hash_including(lead_id: discarded_lead.id))
+  end
+
   it "repete tarefa vencida de duas em duas horas durante horario comercial" do
     task = create(:task, tenant: tenant, lead: lead, admin_user: broker, due_at: 3.hours.ago)
     PushDeliveryEvent.create!(

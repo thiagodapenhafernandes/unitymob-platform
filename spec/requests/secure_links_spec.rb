@@ -145,6 +145,22 @@ RSpec.describe "SecureLinks", type: :request do
     )
   end
 
+  it "mostra mensagem de bolsao tomado quando outro corretor ja aceitou pelo link do WhatsApp" do
+    rule = create(:distribution_rule, distribution_mode: :shark_tank)
+    lead = create(:lead, name: "Cliente Bolsao", phone: "11999999999", status: :em_atendimento, admin_user: outro_corretor, distribution_rule: rule)
+    lead.activities.create!(kind: "shark_tank_ready", metadata: { rule_id: rule.id, rule_name: rule.name })
+    link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
+
+    get secure_link_path(link.token), params: { contact: "attend" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Outro corretor já pegou este lead")
+    expect(response.body).to include("disponível no bolsão")
+    expect(response.body).not_to include("11999999999")
+    expect(response).not_to redirect_to(lead.direct_whatsapp_url)
+    expect(lead.reload.admin_user_id).to eq(outro_corretor.id)
+  end
+
   it "recusa ack em background de notificacao antiga quando o lead ja pertence a outro corretor" do
     lead = create(:lead, name: "Cliente Ack Antigo", phone: "11999999999", status: :waiting_acceptance, admin_user: outro_corretor)
     link = SecureLink.link_for(lead, :attend, expiry_days: 7, issued_to: corretor)

@@ -4,22 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Lead já atendido</title>
+  <% pool_taken = @lost_turn_reason == :pool_taken %>
+  <title><%= pool_taken ? "Lead já pego no bolsão" : "Lead já atendido" %></title>
   <style>
     body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f1f5f9; color:#0f172a; }
-    .wrap { max-width:420px; margin:0 auto; padding:64px 20px; text-align:center; }
-    .icon { font-size:44px; color:#d97706; }
-    h1 { font-size:20px; margin:12px 0 6px; }
-    p { color:#64748b; font-size:15px; line-height:1.5; }
-    a { color:#365f8f; font-weight:700; text-decoration:none; }
+    .wrap { max-width:480px; margin:0 auto; padding:24px 16px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:20px; box-shadow:0 8px 30px rgba(2,6,23,.06); text-align:center; }
+    .eyebrow { font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#64748b; }
+    .icon { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 12px; border-radius:999px; background:#fef3c7; color:#92400e; font-size:28px; font-weight:900; }
+    h1 { font-size:22px; margin:4px 0 10px; }
+    p { color:#64748b; font-size:15px; line-height:1.5; margin:0; }
+    .actions { margin-top:18px; }
+    a { display:flex; align-items:center; justify-content:center; padding:13px 16px; border-radius:12px; background:#365f8f; color:#fff; font-weight:700; text-decoration:none; }
+    .foot { text-align:center; color:#64748b; font-size:12px; margin-top:14px; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="icon">!</div>
-    <h1>Lead já atendido</h1>
-    <p>Outro corretor ficou com este lead antes de você. Esta notificação antiga não abre mais os dados do contato.</p>
-    <p><a href="/field">Voltar para o PWA</a></p>
+    <div class="card">
+      <div class="icon">!</div>
+      <span class="eyebrow"><%= pool_taken ? "Bolsão" : "Lead indisponível" %></span>
+      <h1><%= pool_taken ? "Outro corretor já pegou este lead" : "Lead já atendido" %></h1>
+      <p>
+        <%= pool_taken ?
+              "Este lead estava disponível no bolsão, mas outro corretor aceitou primeiro. Esta notificação antiga não abre mais os dados do contato." :
+              "Outro corretor ficou com este lead antes de você. Esta notificação antiga não abre mais os dados do contato." %>
+      </p>
+      <div class="actions">
+        <a href="/field">Voltar para o PWA</a>
+      </div>
+    </div>
+    <p class="foot">Acesso seguro — link exclusivo deste lead.</p>
   </div>
 </body>
 </html>

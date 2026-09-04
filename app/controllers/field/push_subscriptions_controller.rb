@@ -22,6 +22,7 @@ module Field
       record.last_seen_at = Time.current
 
       if record.save
+        delete_duplicate_endpoint_subscriptions!(record)
         delete_stale_device_subscriptions!(record)
         render json: { ok: true, id: record.id }, status: :created
       else
@@ -33,7 +34,7 @@ module Field
     def destroy
       endpoint = params[:endpoint].to_s
       record = PushSubscription.find_by(admin_user: current_admin_user, endpoint: endpoint)
-      record&.update(active: false)
+      deactivate_subscription!(record, reason: "destroy_requested") if record
       render json: { ok: true }
     end
 
@@ -60,6 +61,7 @@ module Field
       record.last_seen_at = Time.current
 
       if record.save
+        delete_duplicate_endpoint_subscriptions!(record)
         delete_stale_device_subscriptions!(record)
         render json: { ok: true, id: record.id }, status: :created
       else
@@ -105,17 +107,44 @@ module Field
 
       PushSubscription
         .where(admin_user: current_admin_user, endpoint: old_endpoint)
-        .update_all(active: false, updated_at: Time.current)
+        .find_each { |subscription| deactivate_subscription!(subscription, reason: "old_endpoint_replaced") }
+    end
+
+    def delete_duplicate_endpoint_subscriptions!(record)
+      PushSubscription
+        .where(endpoint: record.endpoint)
+        .where.not(id: record.id)
+        .find_each { |subscription| deactivate_subscription!(subscription, replacement: record, reason: "same_endpoint_new_login") }
     end
 
     def delete_stale_device_subscriptions!(record)
       return unless record.persisted?
 
-      PushSubscription
-        .where(admin_user: current_admin_user, platform: record.platform, user_agent: record.user_agent)
+      scope = PushSubscription.where(admin_user: current_admin_user)
+      scope = record.native? ? scope.where(platform: PushSubscription::NATIVE_PLATFORMS) : scope.where(platform: record.platform, user_agent: record.user_agent)
+
+      scope
         .where.not(id: record.id)
-        .where.not(endpoint: record.endpoint)
-        .update_all(active: false, updated_at: Time.current)
+        .find_each { |subscription| deactivate_subscription!(subscription, replacement: record, reason: "last_native_login_wins") }
+    end
+
+    def deactivate_subscription!(subscription, replacement: nil, reason:)
+      return unless subscription&.active?
+
+      subscription.update!(active: false)
+      PushDeliveryEvent.record!(
+        event_type: replacement ? "subscription_replaced" : "subscription_deduplicated",
+        admin_user_id: subscription.admin_user_id,
+        push_subscription: subscription,
+        endpoint: subscription.endpoint,
+        user_agent: subscription.user_agent,
+        metadata: {
+          reason: reason,
+          replacement_subscription_id: replacement&.id,
+          replacement_admin_user_id: replacement&.admin_user_id,
+          platform: subscription.platform
+        }.compact
+      )
     end
   end
 end
