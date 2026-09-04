@@ -37,7 +37,25 @@ module Storage
     private
 
     def blob_exists?(blob)
-      Storage::ActiveStorageRegistry.fetch!(blob.service_name).exist?(blob.key)
+      storage_service_for(blob).exist?(blob.key)
+    end
+
+    def storage_service_for(blob)
+      service_name = blob.service_name.to_sym
+      return ActiveStorage::Blob.services.fetch(service_name) if service_name == :local
+
+      tenant = Current.tenant
+      if tenant.present? && legacy_service_name?(service_name)
+        setting = StorageIntegrationSetting.current(tenant: tenant)
+        Storage::ActiveStorageRegistry.register!(setting)
+        return ActiveStorage::Blob.services.fetch(setting.service_name_for_provider(setting.provider_for_service_name(service_name)))
+      end
+
+      Storage::ActiveStorageRegistry.fetch!(service_name)
+    end
+
+    def legacy_service_name?(service_name)
+      service_name.in?(StorageIntegrationSetting::LEGACY_DO_SERVICE_NAMES + StorageIntegrationSetting::LEGACY_S3_SERVICE_NAMES)
     end
 
     def with_tenant_context(attachment, blob, &block)

@@ -3,7 +3,7 @@ require "socket"
 class SystemHealthMonitorJob < ApplicationJob
   queue_as :checkin
 
-  ALERT_THROTTLE = 30.minutes
+  ALERT_THROTTLE = 2.hours
   RETENTION_PERIOD = SystemHealthSnapshot::RETENTION_PERIOD
 
   def perform
@@ -12,10 +12,10 @@ class SystemHealthMonitorJob < ApplicationJob
     assessment = System::HealthAssessment.call(runtime:, platform:)
     collected_at = parse_time(runtime[:collected_at]) || Time.current
 
-    persist_platform_snapshot(runtime, platform, assessment, collected_at)
+    platform_snapshot = persist_platform_snapshot(runtime, platform, assessment, collected_at)
     persist_tenant_snapshots(platform, collected_at)
     purge_expired_snapshots
-    notify_system_admins(assessment, runtime:, platform:, collected_at:) unless assessment[:status] == "healthy"
+    notify_system_admins(assessment, runtime:, platform:, collected_at:, snapshot: platform_snapshot) if notify?(assessment, platform_snapshot)
   end
 
   private
@@ -25,6 +25,17 @@ class SystemHealthMonitorJob < ApplicationJob
       status: assessment[:status], collected_at: collected_at,
       metrics: runtime.merge(errors: platform[:errors], findings: assessment[:findings])
     )
+  end
+
+  def notify?(assessment, snapshot)
+    return false if assessment[:status] == "healthy"
+
+    fingerprint = assessment_fingerprint(assessment)
+    return true if fingerprint.blank?
+
+    recent_snapshots(snapshot)
+      .where(status: assessment[:status])
+      .none? { |previous| assessment_fingerprint_from_snapshot(previous) == fingerprint }
   end
 
   def persist_tenant_snapshots(platform, collected_at)
@@ -44,8 +55,8 @@ class SystemHealthMonitorJob < ApplicationJob
     tenant[:status] == "healthy" ? "healthy" : "warning"
   end
 
-  def notify_system_admins(assessment, runtime:, platform:, collected_at:)
-    fingerprint = assessment[:findings].map { |finding| finding[:code] }.sort.join(":")
+  def notify_system_admins(assessment, runtime:, platform:, collected_at:, snapshot:)
+    fingerprint = assessment_fingerprint(assessment)
     cache_key = "system_health_monitor:#{Digest::SHA256.hexdigest(fingerprint)}"
     return unless Rails.cache.write(cache_key, Time.current.to_i, unless_exist: true, expires_in: ALERT_THROTTLE)
 
@@ -87,6 +98,21 @@ class SystemHealthMonitorJob < ApplicationJob
       degraded_tenants: degraded_tenants(platform),
       top_error_events: top_error_events
     }
+  end
+
+  def recent_snapshots(snapshot)
+    SystemHealthSnapshot.platform
+      .where.not(id: snapshot.id)
+      .where("collected_at >= ?", ALERT_THROTTLE.ago)
+      .recent_first
+  end
+
+  def assessment_fingerprint(assessment)
+    Array(assessment[:findings]).map { |finding| finding[:code].to_s }.reject(&:blank?).sort.join(":")
+  end
+
+  def assessment_fingerprint_from_snapshot(snapshot)
+    Array(snapshot.metrics.to_h["findings"]).map { |finding| finding["code"].to_s }.reject(&:blank?).sort.join(":")
   end
 
   def application_host
