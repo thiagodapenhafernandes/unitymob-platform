@@ -115,13 +115,6 @@ GEM
     bullet (8.1.0)
       activesupport (>= 3.0.0)
       uniform_notifier (~> 1.11)
-    carrierwave (3.1.2)
-      activemodel (>= 6.0.0)
-      activesupport (>= 6.0.0)
-      addressable (~> 2.6)
-      image_processing (~> 1.1)
-      marcel (~> 1.0.0)
-      ssrf_filter (~> 1.0)
     cgi (0.5.0)
     chunky_png (1.4.0)
     coderay (1.1.3)
@@ -129,7 +122,6 @@ GEM
     connection_pool (2.5.4)
     crass (1.0.6)
     csv (3.3.5)
-    dalli (3.2.8)
     dartsass-rails (0.5.1)
       railties (>= 6.0.0)
       sass-embedded (~> 1.63)
@@ -149,7 +141,6 @@ GEM
       devise (>= 4.0.0, < 6.0.0)
       warden-jwt_auth (~> 0.10)
     diff-lcs (1.6.2)
-    domain_name (0.6.20240107)
     dotenv (3.1.8)
     dotenv-rails (3.1.8)
       dotenv (= 3.1.8)
@@ -169,8 +160,6 @@ GEM
     erubi (1.13.1)
     et-orbi (1.4.0)
       tzinfo
-    excon (1.3.1)
-      logger
     execjs (2.10.0)
     factory_bot (6.5.6)
       activesupport (>= 6.1.0)
@@ -197,24 +186,6 @@ GEM
     ffi (1.17.2-x86_64-darwin)
     ffi (1.17.2-x86_64-linux-gnu)
     ffi (1.17.2-x86_64-linux-musl)
-    fog-aws (3.33.1)
-      base64 (>= 0.2, < 0.4)
-      fog-core (~> 2.6)
-      fog-json (~> 1.1)
-      fog-xml (~> 0.1)
-    fog-core (2.6.0)
-      builder
-      excon (~> 1.0)
-      formatador (>= 0.2, < 2.0)
-      mime-types
-    fog-json (1.2.0)
-      fog-core
-      multi_json (~> 1.10)
-    fog-xml (0.1.5)
-      fog-core
-      nokogiri (>= 1.5.11, < 2.0.0)
-    formatador (1.2.3)
-      reline
     friendly_id (5.5.1)
       activerecord (>= 4.0.0)
     fugit (1.12.1)
@@ -268,9 +239,6 @@ GEM
       signet (>= 0.16, < 2.a)
     hashie (5.1.0)
       logger
-    http-accept (1.7.0)
-    http-cookie (1.1.0)
-      domain_name (~> 0.5)
     httparty (0.23.2)
       csv
       mini_mime (>= 1.0.0)
@@ -323,10 +291,6 @@ GEM
     meta-tags (2.22.2)
       actionpack (>= 6.0.0, < 8.2)
     method_source (1.1.0)
-    mime-types (3.7.0)
-      logger
-      mime-types-data (~> 3.2025, >= 3.2025.0507)
-    mime-types-data (3.2025.0924)
     mina (1.2.5)
       rake
     mina-multistage (1.0.4)
@@ -362,7 +326,6 @@ GEM
       timeout
     net-smtp (0.5.1)
       net-protocol
-    netrc (0.11.0)
     nio4r (2.7.5)
     nokogiri (1.18.10-aarch64-linux-gnu)
       racc (~> 1.4)
@@ -435,17 +398,11 @@ GEM
     public_suffix (6.0.2)
     puma (6.6.1)
       nio4r (~> 2.0)
-    puma-daemon (0.5.0)
-      puma (>= 5.0)
-      rack
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.4)
     rack-attack (6.8.0)
       rack (>= 1.0, < 4)
-    rack-cors (3.0.0)
-      logger
-      rack (>= 3.0.14)
     rack-protection (4.2.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
@@ -511,11 +468,6 @@ GEM
     responders (3.2.0)
       actionpack (>= 7.0)
       railties (>= 7.0)
-    rest-client (2.1.0)
-      http-accept (>= 1.7.0, < 2.0)
-      http-cookie (>= 1.0.2, < 2.0)
-      mime-types (>= 1.16, < 4.0)
-      netrc (~> 0.8)
     retriable (4.2.0)
     rexml (3.4.4)
     rotp (6.3.0)
@@ -586,7 +538,6 @@ GEM
       actionpack (>= 6.1)
       activesupport (>= 6.1)
       sprockets (>= 3.0.0)
-    ssrf_filter (1.3.0)
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
     stringio (3.1.8)
@@ -657,8 +608,6 @@ DEPENDENCIES
   bcrypt (~> 3.1.7)
   bootsnap
   bullet
-  carrierwave (~> 3.0)
-  dalli
   dartsass-rails (~> 0.5.1)
   debug
   device_detector
@@ -667,7 +616,6 @@ DEPENDENCIES
   dotenv-rails
   factory_bot_rails
   faker
-  fog-aws
   friendly_id
   google-apis-calendar_v3 (~> 0.55)
   httparty
@@ -689,13 +637,10 @@ DEPENDENCIES
   pry
   pry-rails
   puma (~> 6.4)
-  puma-daemon
   rack-attack
-  rack-cors
   rails (~> 7.1.2)
   rails-i18n
   redis (~> 5.0)
-  rest-client
   rotp (~> 6.3)
   rqrcode (~> 2.2)
   rspec-rails (~> 7.0)

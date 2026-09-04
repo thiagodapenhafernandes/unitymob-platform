@@ -5,7 +5,6 @@ ruby "3.2.3"
 gem "rails", "~> 7.1.2"
 gem "pg", "~> 1.5"
 gem "puma", "~> 6.4"
-gem "puma-daemon", require: false
 
 # Assets & Frontend
 gem "sprockets-rails"
@@ -34,7 +33,6 @@ gem "prawn"
 gem "prawn-table"
 
 # API & External Services
-gem "rest-client"
 gem "httparty"
 gem "google-apis-calendar_v3", "~> 0.55"
 gem "koala", "~> 3.0"
@@ -42,18 +40,14 @@ gem "omniauth-facebook"
 gem "omniauth-rails_csrf_protection"
 
 # Performance & Caching
-gem "rack-cors"
 gem "rack-attack"
 gem "maxmind-db", "~> 1.2"
 gem "web-push", "~> 3.0"
-gem "dalli"
 
 # SEO & Images
 gem "sitemap_generator"
 gem "friendly_id"
 gem "mini_magick"
-gem "carrierwave", "~> 3.0"
-gem "fog-aws"
 gem "aws-sdk-s3", require: false
 
 # Authentication

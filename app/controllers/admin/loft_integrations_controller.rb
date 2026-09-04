@@ -36,9 +36,9 @@ class Admin::LoftIntegrationsController < Admin::BaseController
     raise "Host não configurado." if host.blank?
     raise "Token não configurado." if token.blank?
 
-    response = RestClient.get(
+    response = HTTParty.get(
       "#{host}/imoveis/listar",
-      params: {
+      query: {
         key: token,
         pesquisa: {
           fields: ["Codigo"],
@@ -47,8 +47,9 @@ class Admin::LoftIntegrationsController < Admin::BaseController
         showtotal: 1,
         showSuspended: 1
       },
-      accept: :json
+      headers: { "Accept" => "application/json" }
     )
+    raise HTTParty::Error, "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
 
     parsed = JSON.parse(response.body) rescue nil
     unless parsed.is_a?(Hash)
@@ -62,11 +63,11 @@ class Admin::LoftIntegrationsController < Admin::BaseController
     end
 
     redirect_to admin_loft_integrations_path, notice: "Conexão com Loft Soft validada (host e token aceitos)."
-  rescue RestClient::ExceptionWithResponse => e
-    body = e.response&.body.to_s
+  rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
+    body = response&.body.to_s if defined?(response)
     parsed_error = JSON.parse(body) rescue {}
     api_message = parsed_error["message"].presence || parsed_error["msg"].presence
-    error_text = api_message.presence || "#{e.response&.code || e.http_code} #{e.message}"
+    error_text = api_message.presence || "#{response&.code} #{e.message}"
     redirect_to admin_loft_integrations_path, alert: "Falha ao testar conexão Loft Soft: #{error_text}"
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao testar conexão Loft Soft: #{e.message}"

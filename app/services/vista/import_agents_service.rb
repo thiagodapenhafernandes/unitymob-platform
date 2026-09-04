@@ -172,7 +172,9 @@ module Vista
         showtotal: 1
       }
 
-      response = RestClient.get(url, { params: params, accept: :json })
+      response = HTTParty.get(url, query: params, headers: { "Accept" => "application/json" })
+      raise HTTParty::Error, "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
+
       JSON.parse(response.body)
     rescue => e
       puts "Erro na requisição: #{e.message}"

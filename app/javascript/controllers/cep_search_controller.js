@@ -1,6 +1,6 @@
-import { Controller } from "@hotwired/stimulus"
+import CepLookupController from "controllers/cep_lookup_controller"
 
-export default class extends Controller {
+export default class extends CepLookupController {
   static targets = ["cep", "logradouro", "bairro", "cidade", "uf", "tipo", "numero", "complemento"]
 
   connect() {
@@ -37,11 +37,12 @@ export default class extends Controller {
     this.cepTarget.classList.add("ax-control--loading")
 
     try {
-      const response = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`)
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
 
       if (!response.ok) throw new Error('CEP não encontrado')
 
       const data = await response.json()
+      if (data.erro) throw new Error('CEP não encontrado')
 
       this.populateForm(data)
       this.lastSearchedCep = cep
@@ -67,30 +68,30 @@ export default class extends Controller {
   }
 
   populateForm(data) {
-    if (!data.street) return
+    if (!data.logradouro) return
 
     // 1. UF
     if (this.hasUfTarget) {
-      this.setTomSelectValue(this.ufTarget, data.state)
+      this.setTomSelectValue(this.ufTarget, data.uf)
       this.triggerChange(this.ufTarget)
     }
 
     // 2. Cidade (TomSelect)
     if (this.hasCidadeTarget) {
-      this.setTomSelectValue(this.cidadeTarget, data.city)
+      this.setTomSelectValue(this.cidadeTarget, data.localidade)
     }
 
     // 3. Bairro (TomSelect)
     if (this.hasBairroTarget) {
-      this.setTomSelectValue(this.bairroTarget, data.neighborhood)
+      this.setTomSelectValue(this.bairroTarget, data.bairro)
     }
 
     // 4. Logradouro & Tipo
     // Try to split Street Type from Name
-    let streetName = data.street
+    let streetName = data.logradouro
 
     if (this.hasTipoTarget) {
-      const matched = this.matchStreetType(data.street)
+      const matched = this.matchStreetType(data.logradouro)
       if (matched) {
         this.setTomSelectValue(this.tipoTarget, matched.value)
         this.triggerChange(this.tipoTarget)
@@ -110,47 +111,6 @@ export default class extends Controller {
 
   normalizedCep() {
     return this.cepTarget.value.replace(/\D/g, "")
-  }
-
-  setTomSelectValue(element, value) {
-    if (!value) return
-
-    // Check for TomSelect instance
-    let ts = element.tomselect
-
-    if (ts) {
-      // TomSelect doesn't auto-add option if create is true programmatically usually, 
-      // we must add it if it doesn't exist.
-      // Check if value exists in options (check keys or text)
-      // TomSelect options are stored in ts.options = { value: {text, value} }
-
-      // We need to find if there is an option with this text (case insensitive?)
-      // BrasilAPI returns standardized case.
-
-      // Let's try to find an existing option by text to get its value
-      let existingValue = null
-      Object.values(ts.options).forEach(opt => {
-        if (opt.value.toLowerCase() === value.toLowerCase() || opt.text.toLowerCase() === value.toLowerCase()) {
-          existingValue = opt.value
-        }
-      })
-
-      if (existingValue) {
-        ts.setValue(existingValue)
-      } else {
-        // Create new option
-        ts.addOption({ value: value, text: value })
-        ts.setValue(value)
-      }
-    } else {
-      // Fallback for native select
-      element.value = value
-    }
-  }
-
-  triggerChange(element) {
-    const event = new Event('change', { bubbles: true })
-    element.dispatchEvent(event)
   }
 
   matchStreetType(fullStreet) {

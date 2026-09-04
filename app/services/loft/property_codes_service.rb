@@ -85,7 +85,9 @@ module Loft
       }
       params[:showtotal] = 1 if show_total
 
-      response = RestClient.get("#{@host}#{LIST_PATH}", params: params, accept: :json)
+      response = HTTParty.get("#{@host}#{LIST_PATH}", query: params, headers: { "Accept" => "application/json" })
+      raise HTTParty::Error, "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
+
       parsed = JSON.parse(response.body)
       if parsed.is_a?(Hash)
         status_code = parsed["status"].to_i
@@ -98,8 +100,8 @@ module Loft
       end
 
       raise "Resposta inválida ao listar imóveis na Vista."
-    rescue RestClient::ExceptionWithResponse => e
-      raise "Falha ao listar imóveis na Vista (página #{page}): #{e.response&.code || e.message}"
+    rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
+      raise "Falha ao listar imóveis na Vista (página #{page}): #{response&.code || e.message}"
     rescue JSON::ParserError
       raise "Resposta inválida ao listar imóveis na Vista (página #{page})."
     end

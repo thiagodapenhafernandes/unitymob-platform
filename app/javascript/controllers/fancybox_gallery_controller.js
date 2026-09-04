@@ -1,7 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
 
-const DEBUG = false
-
 // CSS self-hosted: o layout injeta o link nas telas com galeria e expõe o
 // caminho digerido do asset via <meta name="fancybox-css-path"> para carga sob demanda.
 function fancyboxStylesheetHref() {
@@ -18,26 +16,16 @@ export default class extends Controller {
     this.open = this.open.bind(this)
     this.element.dataset.fancyboxGalleryReady = "true"
     this.element.addEventListener("click", this.open, true)
-    this.debug("connect", {
-      links: this.galleryLinks().length,
-      fancyboxAvailable: this.fancyboxAvailable()
-    })
     this.ensureFancyboxAssets().catch(() => {})
   }
 
   disconnect() {
     delete this.element.dataset.fancyboxGalleryReady
     this.element.removeEventListener("click", this.open, true)
-    this.debug("disconnect")
   }
 
   open(event) {
     const trigger = this.triggerFor(event)
-    this.debug("click", {
-      target: this.describeElement(event.target),
-      trigger: this.describeElement(trigger),
-      defaultPrevented: event.defaultPrevented
-    })
 
     if (!trigger || !this.element.contains(trigger)) return
 
@@ -55,12 +43,10 @@ export default class extends Controller {
 
     Promise.all([this.ensureFancyboxAssets(), this.galleryItems()]).then(([Fancybox, items]) => {
       if (items.length === 0) {
-        this.debug("open:empty-gallery")
         return
       }
 
       const startIndex = Math.max(items.findIndex((item) => item.src === galleryTrigger.href), 0)
-      this.debug("open:fancybox", { links: items.length, startIndex, href: galleryTrigger.href })
       this.pauseEmbeddableMedia()
       const restoreDialog = this.suspendTopLayerDialog(galleryTrigger)
 
@@ -100,15 +86,12 @@ export default class extends Controller {
     }).catch((error) => {
       loadingCard?.classList.remove("is-loading")
       console.error("Failed to open image gallery", error)
-      this.debug("open:fallback", { error: error.message, href: galleryTrigger.href })
       this.galleryItems().then((items) => {
         if (items.length === 0) return
 
         const startIndex = Math.max(items.findIndex((item) => item.src === galleryTrigger.href), 0)
         this.showFallbackGallery(items, startIndex)
-      }).catch((galleryError) => {
-        this.debug("open:fallback-gallery-error", { error: galleryError.message })
-      })
+      }).catch(() => {})
     })
   }
 
@@ -459,24 +442,18 @@ export default class extends Controller {
 
   ensureFancybox() {
     if (this.fancyboxAvailable()) {
-      this.debug("ensure:available")
       return Promise.resolve(window.Fancybox)
     }
     if (fancyboxPromise) {
-      this.debug("ensure:reuse-promise")
       return fancyboxPromise
     }
-
-    this.debug("ensure:import-module")
 
     // Módulo self-hosted via importmap (vendor/javascript/@fancyapps--ui.js).
     fancyboxPromise = import("@fancyapps/ui").then(({ Fancybox }) => {
       if (!Fancybox || typeof Fancybox.show !== "function") {
-        this.debug("ensure:loaded-without-export")
         throw new Error("Fancybox carregou, mas não expôs Fancybox.show.")
       }
       window.Fancybox = window.Fancybox || Fancybox
-      this.debug("ensure:loaded")
       return Fancybox
     }).catch((error) => {
       fancyboxPromise = null
@@ -488,19 +465,5 @@ export default class extends Controller {
 
   fancyboxAvailable() {
     return Boolean(window.Fancybox && typeof window.Fancybox.show === "function")
-  }
-
-  debug(message, payload = {}) {
-    if (!DEBUG) return
-    console.log("[fancybox-gallery]", message, payload)
-  }
-
-  describeElement(element) {
-    if (!element) return null
-    const tag = element.tagName ? element.tagName.toLowerCase() : "unknown"
-    const id = element.id ? `#${element.id}` : ""
-    const classes = element.classList && element.classList.length > 0 ? `.${Array.from(element.classList).join(".")}` : ""
-    const fancybox = element.dataset && element.dataset.fancybox ? `[data-fancybox="${element.dataset.fancybox}"]` : ""
-    return `${tag}${id}${classes}${fancybox}`
   }
 }

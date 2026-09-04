@@ -1,6 +1,7 @@
-# Rails dumps db/structure.sql with pg_dump after migrations. In local
-# development this app runs against PostgreSQL 17, but Homebrew may expose an
-# older pg_dump first in PATH. Keep the client tools aligned with the server.
+# Rails dumps/loads db/structure.sql with PostgreSQL client tools. In local
+# development this app may have multiple Homebrew versions installed; prefer
+# the newest client tools, then remove pg_dump output that PG16 servers cannot
+# load.
 if Rails.env.development? || Rails.env.test?
   postgresql_client_bin_paths = [
     ENV["POSTGRESQL_CLIENT_BIN"],
@@ -9,7 +10,7 @@ if Rails.env.development? || Rails.env.test?
   ].compact_blank
 
   selected_postgresql_client_bin = postgresql_client_bin_paths.find do |path|
-    File.executable?(File.join(path, "pg_dump"))
+    File.executable?(File.join(path, "pg_dump")) && File.executable?(File.join(path, "psql"))
   end
 
   if selected_postgresql_client_bin.present?
@@ -18,5 +19,31 @@ if Rails.env.development? || Rails.env.test?
     unless current_path_entries.first == selected_postgresql_client_bin
       ENV["PATH"] = ([selected_postgresql_client_bin] + current_path_entries.reject { |entry| entry == selected_postgresql_client_bin }).join(File::PATH_SEPARATOR)
     end
+  end
+
+  ActiveSupport.on_load(:active_record) do
+    require "active_record/tasks/postgresql_database_tasks"
+
+    module PostgreSQLStructureCompatibility
+      INCOMPATIBLE_WITH_PG16 = /\ASET transaction_timeout = 0;\s*\z/
+
+      def structure_dump(filename, extra_flags)
+        super.tap { sanitize_structure_dump(filename) }
+      end
+
+      private
+
+      def sanitize_structure_dump(filename)
+        return unless File.exist?(filename)
+
+        lines = File.readlines(filename)
+        sanitized = lines.reject { |line| line.match?(INCOMPATIBLE_WITH_PG16) }
+        return if sanitized.length == lines.length
+
+        File.write(filename, sanitized.join)
+      end
+    end
+
+    ActiveRecord::Tasks::PostgreSQLDatabaseTasks.prepend(PostgreSQLStructureCompatibility)
   end
 end

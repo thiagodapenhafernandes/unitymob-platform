@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require "rest-client"
+require "httparty"
 require "uri"
 
 module Habitations
@@ -115,22 +115,23 @@ module Habitations
         ]
       }
 
-      response = RestClient.get(
+      response = HTTParty.get(
         "#{vista_host}#{DETALHES_PATH}",
-        params: {
+        query: {
           key: vista_key,
           imovel: code,
           showSuspended: 1,
           pesquisa: payload.to_json
         },
-        accept: :json
+        headers: { "Accept" => "application/json" }
       )
+      return nil unless response.code.to_i.between?(200, 299)
 
       data = JSON.parse(response.body)
       return nil if data.blank? || data["Codigo"].blank?
 
       data
-    rescue RestClient::ExceptionWithResponse
+    rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout
       nil
     end
 

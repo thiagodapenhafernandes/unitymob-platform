@@ -1,7 +1,7 @@
 require "base64"
 require "csv"
 require "open-uri"
-require "rest-client"
+require "httparty"
 require "securerandom"
 require "set"
 
@@ -372,19 +372,21 @@ module Vista
     def fetch_detail(codigo, fields)
       headers = {
         params: { key: @key, imovel: codigo, pesquisa: { "fields" => fields }.to_json, showSuspended: 1 },
-        accept: :json
+        accept: "application/json"
       }
       headers[:host] = @host_header if @host_header.present?
 
-      response = RestClient::Request.execute(
-        method: :get,
-        url: "#{@host}/imoveis/detalhes",
-        headers: headers,
+      response = HTTParty.get(
+        "#{@host}/imoveis/detalhes",
+        query: headers.fetch(:params),
+        headers: headers.except(:params).transform_keys { |key| key.to_s == "accept" ? "Accept" : key.to_s == "host" ? "Host" : key.to_s },
         open_timeout: @api_open_timeout,
         timeout: @api_timeout
       )
+      raise HTTParty::Error, "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
+
       normalize_detail_response(JSON.parse(response.body))
-    rescue RestClient::ExceptionWithResponse => e
+    rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout
       association_hash = fields.first if fields.size == 1 && fields.first.is_a?(Hash)
       if association_hash
         association, association_fields = association_hash.first

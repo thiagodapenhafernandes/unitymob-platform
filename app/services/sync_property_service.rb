@@ -92,19 +92,21 @@ class SyncPropertyService
       showSuspended: 1
     }
     
-    response = RestClient::Request.execute(
-      method: :get,
-      url: url,
-      headers: { params: params, accept: :json },
+    response = HTTParty.get(
+      url,
+      query: params,
+      headers: { "Accept" => "application/json" },
       open_timeout: ENV.fetch("VISTA_API_OPEN_TIMEOUT", "5").to_i,
       timeout: ENV.fetch("VISTA_API_TIMEOUT", "30").to_i
     )
+    raise HTTParty::Error, "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
+
     parsed = JSON.parse(response.body)
     return parsed if parsed.is_a?(Hash)
 
     raise "Resposta inválida ao consultar detalhes do imóvel #{@codigo}."
-  rescue RestClient::ExceptionWithResponse => e
-    body = e.response&.body.to_s
+  rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
+    body = response&.body.to_s if defined?(response)
     parsed_error = JSON.parse(body) rescue {}
     api_message = parsed_error["message"].presence || parsed_error["msg"].presence
     unavailable_field = unavailable_field_from(api_message)
@@ -112,7 +114,7 @@ class SyncPropertyService
       return fetch_details_with_fields(codigo, fields - [unavailable_field])
     end
 
-    @last_fetch_error = "Falha ao consultar imóvel #{@codigo} na API Loft: #{api_message.presence || e.response&.code || e.message}"
+    @last_fetch_error = "Falha ao consultar imóvel #{@codigo} na API Loft: #{api_message.presence || response&.code || e.message}"
     nil
   rescue JSON::ParserError
     @last_fetch_error = "Resposta inválida da API Loft ao consultar imóvel #{@codigo}."

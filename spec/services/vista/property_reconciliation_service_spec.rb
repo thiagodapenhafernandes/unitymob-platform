@@ -329,18 +329,15 @@ RSpec.describe Vista::PropertyReconciliationService do
     it "usa timeouts explicitos nas consultas de detalhes" do
       service = described_class.new(codigos: ["7110"], dry_run: true)
 
-      expect(RestClient::Request).to receive(:execute).with(
+      expect(HTTParty).to receive(:get).with(
+        a_string_ending_with("/imoveis/detalhes"),
         hash_including(
-          method: :get,
-          url: a_string_ending_with("/imoveis/detalhes"),
-          headers: hash_including(
-            accept: :json,
-            params: hash_including(imovel: "7110")
-          ),
+          query: hash_including(imovel: "7110"),
+          headers: hash_including("Accept" => "application/json"),
           open_timeout: 10,
           timeout: 30
         )
-      ).and_return(double(body: { "Codigo" => "7110" }.to_json))
+      ).and_return(double(code: 200, body: { "Codigo" => "7110" }.to_json))
 
       expect(service.send(:fetch_detail, "7110", ["Codigo"])).to eq("Codigo" => "7110")
     end
@@ -350,12 +347,12 @@ RSpec.describe Vista::PropertyReconciliationService do
       ENV["VISTA_HOST_HEADER"] = "saluteim20174-rest.vistahost.com.br"
       service = described_class.new(codigos: ["7110"], dry_run: true, host: "http://100.55.193.123")
 
-      expect(RestClient::Request).to receive(:execute).with(
+      expect(HTTParty).to receive(:get).with(
+        "http://100.55.193.123/imoveis/detalhes",
         hash_including(
-          url: "http://100.55.193.123/imoveis/detalhes",
-          headers: hash_including(host: "saluteim20174-rest.vistahost.com.br")
+          headers: hash_including("Host" => "saluteim20174-rest.vistahost.com.br")
         )
-      ).and_return(double(body: { "Codigo" => "7110" }.to_json))
+      ).and_return(double(code: 200, body: { "Codigo" => "7110" }.to_json))
 
       expect(service.send(:fetch_detail, "7110", ["Codigo"])).to eq("Codigo" => "7110")
     ensure

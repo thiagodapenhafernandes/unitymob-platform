@@ -131,7 +131,9 @@ module Vista
         paginacao:  { pagina: page, quantidade: PAGE_SIZE }
       }
       url = "#{vista_host}/imoveis/listar"
-      resp = RestClient.get(url, { params: { key: vista_key, pesquisa: query.to_json, showtotal: 1 }, accept: :json })
+      resp = HTTParty.get(url, query: { key: vista_key, pesquisa: query.to_json, showtotal: 1 }, headers: { "Accept" => "application/json" })
+      raise HTTParty::Error, "HTTP #{resp.code}" unless resp.code.to_i.between?(200, 299)
+
       JSON.parse(resp.body)
     rescue => e
       Rails.logger.warn("[Vista Backfill] Falha na página #{page}: #{e.message}")
