@@ -36,7 +36,9 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Ativação", "Interpretação", "Abrangência", "Contexto", "Acesso e resultado", "Aliases", "Compartilhamento", "Aprendizado")
     expect(response.body).to include("Seleção e validade", "Página pública", "Identificação e lead", "Mensagens operacionais")
     expect(response.body).to include("Recursos da busca", "Instruções da IA", "Consulta e mensagens", "Profundidade do contexto do catálogo")
-    expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(9)
+    expect(response.body).to include("Parâmetros da resposta")
+    expect(response.body).to include("Temperature", "Top P", "Frequency penalty", "Presence penalty")
+    expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(10)
     expect(response.body).to include("Nenhum alias cadastrado", "ax-empty-state")
     expect(response.body).to include("Aprendizado supervisionado", "Termos candidatos", "Buscas recentes")
     html = Nokogiri::HTML(response.body)
@@ -82,6 +84,10 @@ RSpec.describe "Admin::PropertySettings", type: :request do
       ai_property_search_default_sort: "recent",
       ai_property_search_max_audio_duration_seconds: 45,
       ai_property_search_history_retention_days: 20,
+      ai_property_search_temperature: 0.2,
+      ai_property_search_top_p: 0.8,
+      ai_property_search_frequency_penalty: 0.5,
+      ai_property_search_presence_penalty: 0.2,
       ai_property_search_fuzzy_similarity_threshold: 0.4,
       ai_property_search_catalog_property_types_limit: 10,
       ai_property_search_catalog_cities_limit: 11,
@@ -115,6 +121,10 @@ RSpec.describe "Admin::PropertySettings", type: :request do
       ai_property_search_catalog_developments_limit: 13,
       ai_property_search_catalog_feature_terms_limit: 14,
       ai_property_search_catalog_alias_names_limit: 4,
+      ai_property_search_temperature: 0.2,
+      ai_property_search_top_p: 0.8,
+      ai_property_search_frequency_penalty: 0.5,
+      ai_property_search_presence_penalty: 0.2,
       ai_property_search_broker_events_limit: 5
     )
     expect(setting.ai_property_search_allowed_fields).to match_array(%w[transaction_type city price])

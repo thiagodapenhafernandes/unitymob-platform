@@ -4946,7 +4946,11 @@ CREATE TABLE public.property_settings (
     ai_property_search_catalog_alias_names_limit integer DEFAULT 5 NOT NULL,
     ai_property_search_transcription_vocabulary_enabled boolean DEFAULT true NOT NULL,
     ai_property_search_resilient_search_enabled boolean DEFAULT false NOT NULL,
-    ai_property_search_location_fuzzy_threshold numeric(3,2) DEFAULT 0.4 NOT NULL
+    ai_property_search_location_fuzzy_threshold numeric(3,2) DEFAULT 0.4 NOT NULL,
+    ai_property_search_temperature numeric(3,2) DEFAULT 0.2 NOT NULL,
+    ai_property_search_top_p numeric(3,2) DEFAULT 0.8 NOT NULL,
+    ai_property_search_frequency_penalty numeric(3,2) DEFAULT 0.5 NOT NULL,
+    ai_property_search_presence_penalty numeric(3,2) DEFAULT 0.2 NOT NULL
 );
 
 
@@ -17976,6 +17980,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260904120000'),
 ('20260903193000'),
 ('20260902130000'),
 ('20260902123000'),

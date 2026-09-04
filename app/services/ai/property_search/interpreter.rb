@@ -39,6 +39,7 @@ module Ai
             current_filters: @current_filters,
             catalog: catalog_context
           }.to_json,
+          **@setting.ai_property_search_response_parameters,
           text: {
             format: {
               type: "json_schema",

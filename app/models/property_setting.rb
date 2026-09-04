@@ -94,6 +94,12 @@ class PropertySetting < ApplicationRecord
     feature_terms: { default: 20, range: 1..100 },
     alias_names: { default: 5, range: 1..20 }
   }.freeze
+  AI_PROPERTY_SEARCH_RESPONSE_PARAMETERS = {
+    temperature: { attribute: :ai_property_search_temperature, default: 0.20, range: 0.0..2.0 },
+    top_p: { attribute: :ai_property_search_top_p, default: 0.80, range: 0.0..1.0 },
+    frequency_penalty: { attribute: :ai_property_search_frequency_penalty, default: 0.50, range: -2.0..2.0 },
+    presence_penalty: { attribute: :ai_property_search_presence_penalty, default: 0.20, range: -2.0..2.0 }
+  }.freeze
   DEFAULT_WATERMARK_SIZE_PERCENTAGE = 28
   CENTER_WATERMARK_SIZE_PERCENTAGE = 58
   DEFAULT_WATERMARK_OPACITY_PERCENTAGE = 100
@@ -504,6 +510,7 @@ class PropertySetting < ApplicationRecord
     self.ai_property_search_result_fields = DEFAULT_AI_PROPERTY_SEARCH_RESULT_FIELDS if ai_property_search_result_fields.blank?
     self.ai_property_search_allowed_profiles = DEFAULT_AI_PROPERTY_SEARCH_ALLOWED_PROFILES if ai_property_search_allowed_profiles.blank?
     self.ai_property_search_allow_flexible_results = true if ai_property_search_allow_flexible_results.nil?
+    initialize_ai_property_search_response_parameter_defaults!
     self.ai_property_search_allowed_fields = Array(ai_property_search_allowed_fields).map(&:to_s).compact_blank.uniq
     self.ai_property_search_result_fields = Array(ai_property_search_result_fields).map(&:to_s).compact_blank.uniq
     self.ai_property_search_allowed_profiles = Array(ai_property_search_allowed_profiles).map(&:to_s).compact_blank.uniq
@@ -525,6 +532,13 @@ class PropertySetting < ApplicationRecord
     )
   end
 
+  def ai_property_search_response_parameters
+    AI_PROPERTY_SEARCH_RESPONSE_PARAMETERS.each_with_object({}) do |(key, definition), values|
+      attribute = definition.fetch(:attribute)
+      values[key] = has_attribute?(attribute) ? public_send(attribute).to_f.round(2) : definition.fetch(:default)
+    end
+  end
+
   private
 
   def validate_ai_property_search_settings
@@ -544,6 +558,7 @@ class PropertySetting < ApplicationRecord
     validate_ai_range(:ai_property_search_visitor_recognition_days, 1..730) if has_attribute?(:ai_property_search_visitor_recognition_days)
     validate_ai_range(:ai_property_search_broker_events_limit, 1..20) if has_attribute?(:ai_property_search_broker_events_limit)
     validate_ai_catalog_context_limits if has_attribute?(:ai_property_search_catalog_property_types_limit)
+    validate_ai_response_parameters
     threshold = ai_property_search_fuzzy_similarity_threshold.to_f
     errors.add(:ai_property_search_fuzzy_similarity_threshold, "deve estar entre 0,10 e 1,00") unless threshold.between?(0.10, 1.0)
     if has_attribute?(:ai_property_search_location_fuzzy_threshold)
@@ -578,6 +593,26 @@ class PropertySetting < ApplicationRecord
   def validate_ai_range(attribute, range)
     value = public_send(attribute)
     errors.add(attribute, "deve estar entre #{range.begin} e #{range.end}") unless value.to_i.in?(range)
+  end
+
+  def initialize_ai_property_search_response_parameter_defaults!
+    AI_PROPERTY_SEARCH_RESPONSE_PARAMETERS.each_value do |definition|
+      attribute = definition.fetch(:attribute)
+      next unless has_attribute?(attribute)
+
+      public_send("#{attribute}=", definition.fetch(:default)) if public_send(attribute).blank?
+    end
+  end
+
+  def validate_ai_response_parameters
+    AI_PROPERTY_SEARCH_RESPONSE_PARAMETERS.each_value do |definition|
+      attribute = definition.fetch(:attribute)
+      next unless has_attribute?(attribute)
+
+      value = public_send(attribute).to_f
+      range = definition.fetch(:range)
+      errors.add(attribute, "deve estar entre #{range.begin} e #{range.end}") unless value.between?(range.begin, range.end)
+    end
   end
 
   def initialize_ai_property_search_catalog_context_defaults!

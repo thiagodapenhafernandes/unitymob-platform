@@ -23,6 +23,8 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(response.body).to include("Modelo de interpretação")
     expect(response.body).to include("Modelo de transcrição")
     expect(response.body).to include("Diagnóstico textual do dashboard")
+    expect(response.body).to include("Parâmetros da resposta")
+    expect(response.body).to include("Temperature", "Top P", "Frequency penalty", "Presence penalty")
     expect(response.body).to include("Limite semanal de diagnósticos")
     expect(response.body).to include("Teto mensal estimado em centavos")
     expect(response.body).to include("Automático recomendado")
@@ -66,6 +68,10 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
           model_choice: OpenAi::ModelCatalog::CUSTOM_VALUE,
           model_custom: "gpt-custom-test",
           property_enrichment_prompt: "Prompt customizado",
+          temperature: "0.2",
+          top_p: "0.8",
+          frequency_penalty: "0.5",
+          presence_penalty: "0.2",
           dashboard_diagnosis_enabled: "1",
           dashboard_diagnosis_weekly_limit: "2",
           dashboard_diagnosis_monthly_budget_cents: "2500"
@@ -77,6 +83,12 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(Setting.get(Ai::PropertyContentService::API_KEY_SETTING, nil, tenant: admin.tenant)).to eq("general-token")
     expect(Setting.get(Ai::PropertyContentService::MODEL_SETTING, nil, tenant: admin.tenant)).to eq("gpt-custom-test")
     expect(Setting.get(Ai::PropertyContentService::PROMPT_SETTING, nil, tenant: admin.tenant)).to eq("Prompt customizado")
+    expect(Ai::PropertyContentService.response_parameters(tenant: admin.tenant)).to include(
+      temperature: 0.2,
+      top_p: 0.8,
+      frequency_penalty: 0.5,
+      presence_penalty: 0.2
+    )
     expect(Setting.get(Dashboard::AiDiagnosis::ENABLED_SETTING, nil, tenant: admin.tenant)).to eq("true")
     expect(Setting.get(Dashboard::AiDiagnosis::WEEKLY_REQUEST_LIMIT_SETTING, nil, tenant: admin.tenant)).to eq("2")
     expect(Setting.get(Dashboard::AiDiagnosis::MONTHLY_BUDGET_CENTS_SETTING, nil, tenant: admin.tenant)).to eq("2500")

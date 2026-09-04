@@ -41,6 +41,22 @@ RSpec.describe PropertySetting, type: :model do
     expect(setting.errors[:watermark_opacity_percentage]).to be_present
   end
 
+  it "valida faixas dos parâmetros da OpenAI na busca inteligente" do
+    setting = described_class.instance
+    setting.assign_attributes(
+      ai_property_search_temperature: 2.1,
+      ai_property_search_top_p: 1.1,
+      ai_property_search_frequency_penalty: 2.1,
+      ai_property_search_presence_penalty: -2.1
+    )
+
+    expect(setting).not_to be_valid
+    expect(setting.errors[:ai_property_search_temperature]).to be_present
+    expect(setting.errors[:ai_property_search_top_p]).to be_present
+    expect(setting.errors[:ai_property_search_frequency_penalty]).to be_present
+    expect(setting.errors[:ai_property_search_presence_penalty]).to be_present
+  end
+
 
   it "mantém a configuração da busca inteligente isolada por tenant" do
     first_tenant = Tenant.create!(name: "Conta IA A", slug: "conta-ia-a", active: true)

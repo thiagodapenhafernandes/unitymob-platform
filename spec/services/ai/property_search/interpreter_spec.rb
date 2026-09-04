@@ -7,7 +7,11 @@ RSpec.describe Ai::PropertySearch::Interpreter do
   before do
     setting.update!(
       ai_property_search_allowed_fields: %w[transaction_type property_type city neighborhood development developer_name price amenities],
-      ai_property_search_result_fields: %w[property_code title price city development_name]
+      ai_property_search_result_fields: %w[property_code title price city development_name],
+      ai_property_search_temperature: 0.31,
+      ai_property_search_top_p: 0.79,
+      ai_property_search_frequency_penalty: 0.41,
+      ai_property_search_presence_penalty: 0.21
     )
   end
 
@@ -49,6 +53,12 @@ RSpec.describe Ai::PropertySearch::Interpreter do
     expect(input.fetch("catalog")).to include("tenant", "search_config", "catalog")
     expect(captured_payload.fetch(:instructions)).to include("JSON de contexto do catálogo")
     expect(captured_payload.fetch(:instructions)).to include("property_code", "development_name", "Buscas por código")
+    expect(captured_payload).to include(
+      temperature: 0.31,
+      top_p: 0.79,
+      frequency_penalty: 0.41,
+      presence_penalty: 0.21
+    )
     expect(captured_payload.fetch(:text).dig(:format, :name)).to eq("ai_property_search_filters")
   end
 end

@@ -36,7 +36,8 @@ class Admin::AiIntegrationsController < Admin::BaseController
     @openai_model = Ai::PropertyContentService.model(tenant: current_tenant)
     @openai_model_options = OpenAi::ModelCatalog.response_model_options(api_key: @openai_api_key, selected: @openai_model)
     @openai_model_custom = model_custom_value(@openai_model, response: true)
-    @openai_prompt = Ai::PropertyContentService.instructions
+    @openai_prompt = Ai::PropertyContentService.instructions(tenant: current_tenant)
+    @openai_response_parameters = Ai::PropertyContentService.response_parameters(tenant: current_tenant)
     @property_search_connected = Ai::PropertySearch::Configuration.connected?(tenant: current_tenant)
     @property_search_dedicated_token = Ai::PropertySearch::Configuration.dedicated_api_key_configured?(tenant: current_tenant)
     @property_search_api_key = Ai::PropertySearch::Configuration.api_key(tenant: current_tenant)
@@ -77,6 +78,13 @@ class Admin::AiIntegrationsController < Admin::BaseController
     tenant_setting_set(Ai::PropertyContentService::API_KEY_SETTING, token, "Token da OpenAI") if token.present?
     tenant_setting_set(Ai::PropertyContentService::MODEL_SETTING, model, "Modelo OpenAI para enriquecimento de imóveis")
     tenant_setting_set(Ai::PropertyContentService::PROMPT_SETTING, prompt, "Instruções de IA para título e descrição dos imóveis")
+    Ai::PropertyContentService::RESPONSE_PARAMETER_SETTINGS.each do |key, setting_key|
+      tenant_setting_set(
+        setting_key,
+        Ai::PropertyContentService.normalize_response_parameter(key, permitted[key]).to_s,
+        "Parâmetro #{key} da OpenAI para título e descrição dos imóveis"
+      )
+    end
     if permitted.key?(:dashboard_diagnosis_enabled)
       tenant_setting_set(Dashboard::AiDiagnosis::ENABLED_SETTING, ActiveModel::Type::Boolean.new.cast(permitted[:dashboard_diagnosis_enabled]).to_s, "Habilita diagnóstico textual do BI com OpenAI")
     end
@@ -129,6 +137,10 @@ class Admin::AiIntegrationsController < Admin::BaseController
       :model_custom,
       :model,
       :property_enrichment_prompt,
+      :temperature,
+      :top_p,
+      :frequency_penalty,
+      :presence_penalty,
       :dashboard_diagnosis_enabled,
       :dashboard_diagnosis_weekly_limit,
       :dashboard_diagnosis_monthly_budget_cents,

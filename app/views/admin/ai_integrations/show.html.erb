@@ -79,6 +79,33 @@
               </div>
             </div>
 
+            <div class="tw-mb-3">
+              <%= ax_field_group(title: "Parâmetros da resposta", token: "OpenAI") do %>
+                <%= ax_field_grid do %>
+                  <div class="ax-span-3">
+                    <%= f.label :temperature, "Temperature", class: "ax-label tw-font-semibold" %>
+                    <%= f.number_field :temperature, class: "ax-control", min: 0, max: 2, step: 0.01, value: @openai_response_parameters.fetch(:temperature) %>
+                    <div class="ax-field-hint">Padrão conservador: 0,20.</div>
+                  </div>
+                  <div class="ax-span-3">
+                    <%= f.label :top_p, "Top P", class: "ax-label tw-font-semibold" %>
+                    <%= f.number_field :top_p, class: "ax-control", min: 0, max: 1, step: 0.01, value: @openai_response_parameters.fetch(:top_p) %>
+                    <div class="ax-field-hint">Padrão: 0,80.</div>
+                  </div>
+                  <div class="ax-span-3">
+                    <%= f.label :frequency_penalty, "Frequency penalty", class: "ax-label tw-font-semibold" %>
+                    <%= f.number_field :frequency_penalty, class: "ax-control", min: -2, max: 2, step: 0.01, value: @openai_response_parameters.fetch(:frequency_penalty) %>
+                    <div class="ax-field-hint">Padrão: 0,50.</div>
+                  </div>
+                  <div class="ax-span-3">
+                    <%= f.label :presence_penalty, "Presence penalty", class: "ax-label tw-font-semibold" %>
+                    <%= f.number_field :presence_penalty, class: "ax-control", min: -2, max: 2, step: 0.01, value: @openai_response_parameters.fetch(:presence_penalty) %>
+                    <div class="ax-field-hint">Padrão: 0,20.</div>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+
             <div class="tw-mb-3" id="ai-dashboard-diagnosis">
               <%= ax_operational_panel(eyebrow: "BI", title: "Diagnóstico textual do dashboard", actions: ax_badge(@dashboard_diagnosis_enabled ? "habilitado" : "desligado", tone: @dashboard_diagnosis_enabled ? :green : :gray)) do %>
                 <div class="tw-mb-3">
