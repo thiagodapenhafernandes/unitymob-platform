@@ -466,6 +466,8 @@ module Admin::ComercialHelper
       accepted_by = meta["by"].presence || activity.lead&.admin_user&.name
       via = notification_attendance_channel_label(meta["via"])
       [("Por #{accepted_by}" if accepted_by), ("canal #{via}" if via)].compact.join(" · ").presence
+    when "secure_link_accessed"
+      secure_link_access_detail(meta)
     when "automation_event"
       automation_event_detail(activity, meta)
     when "notification_sent", "notification_failed", "notification_skipped"
@@ -554,6 +556,7 @@ module Admin::ComercialHelper
       "distributed" => "Lead enviado para corretor",
       "pocket_expired" => "Corretor não atendeu no prazo",
       "accepted" => "Lead atendido",
+      "secure_link_accessed" => "Link de atendimento acessado",
       "rejected" => "Lead recusado",
       "status_change" => "Situação do lead atualizada",
       "notification_sent" => "Aviso enviado ao corretor",
@@ -580,10 +583,18 @@ module Admin::ComercialHelper
   def notification_attendance_channel_label(value)
     {
       "push" => "notificação do aplicativo",
+      "push_ack" => "confirmação da notificação",
       "whatsapp" => "WhatsApp",
       "email" => "e-mail",
       "system" => "sistema"
     }[value.to_s]
+  end
+
+  def secure_link_access_detail(meta)
+    actor = meta["by"].presence
+    via = notification_attendance_channel_label(meta["via"]) || "link seguro"
+    status = meta["lead_status"].presence
+    [("Por #{actor}" if actor), "via #{via}", ("status no clique: #{status}" if status)].compact.join(" · ")
   end
 
   def notification_transport_label(value)
