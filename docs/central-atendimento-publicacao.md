@@ -289,7 +289,8 @@ O gateway não recebe deploy neste pacote.
 - Mina: /home/unitymob/central/current -> releases/1. Web e Solid Queue ativos.
 - Banco exclusivo, configuração protegida com modo 0600, chaves de criptografia novas.
 - Administrador contato@unitymob.com.br preparado com o hash da senha já configurada
-  e verificação por e-mail. Nenhum chamado, sessão ou usuário QA local foi importado.
+  e verificação por autenticador TOTP, conforme escolha do usuário. Nenhum chamado, sessão
+  ou usuário QA local foi importado.
 - Espaços privados separados: unitymob-support-central, unitymob-support-salute,
   unitymob-support-conexao. Leitura/gravação e ACLs privadas verificadas.
 - Backup diário DO confirmado (sete dias). Backup PostgreSQL diário para prefixo
@@ -302,11 +303,29 @@ O gateway não recebe deploy neste pacote.
   arquivos before-central-20260905T191343.dump e before-central-20260905T191346.dump
   nos respectivos diretórios shared.
 
-### Pendência antes do mina all
+### Autenticação e conclusão do rollout
 
 SMTP smtp.umbler.com:587 expirou na central (Net::OpenTimeout). A DO bloqueia
 as portas SMTP 25/465/587: https://docs.digitalocean.com/support/why-is-smtp-blocked/ .
 Umbler documenta envio na porta 587. Não houve desativação da segunda etapa de login.
-É necessário configurar envio por API HTTPS ou o usuário optar pelo autenticador.
-O login por e-mail do admin ainda não está operacional. Mina all e os testes reais
-central ↔ CRMs ainda aguardam esta definição; não afirmar publicação dos CRMs.
+O usuário optou pelo autenticador TOTP. O administrador foi configurado para esse
+método e recebeu link individual de ativação com validade de uma hora (não registrar
+o token no repositório). A vinculação ao autenticador deve ser concluída pelo usuário.
+O envio SMTP continua indisponível; o login TOTP não depende dele.
+
+- `mina all deploy` concluído: Salute release 569 e Conexão release 162,
+  ambas na revisão 36012b665ee002f704d7d24bb530660ae6f71e04.
+- Web e Solid Queue ativos em ambas; endpoints HTTPS `/up` retornaram 200.
+- Registro automático das contas comprovado pelo agendamento de
+  `Support::RegisterAccountsJob`, sem cadastro manual de contas na central.
+- Testes com solicitantes sintéticos em cada CRM comprovaram abertura → central,
+  resposta com PNG → conta de origem e encerramento → conta de origem.
+  Conteúdo binário do anexo recebido comparado ao original; entregas sem pendências.
+- A rotina de notificação processou a resposta de teste na Conexão. Não foi enviada
+  notificação a usuários reais; a exibição do aviso em uma sessão real não integra
+  esta prova de transporte.
+- A simulação de indisponibilidade de rede em produção não foi executada.
+- O gateway existente permaneceu no servidor original.
+
+- Após as provas, os dois chamados sintéticos, mensagens, anexos e eventos de SLA
+  foram removidos dos três ambientes. Os registros de contas foram preservados.
