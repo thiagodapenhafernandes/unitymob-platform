@@ -1,6 +1,29 @@
 require "rails_helper"
 
 RSpec.describe Admin::ComercialHelper, type: :helper do
+  describe "fidelização na linha do tempo" do
+    it "explica a fidelização nos modos resumido e detalhado usando o nome registrado no evento" do
+      activity = LeadActivity.new(kind: "distributed", created_at: Time.current, metadata: {
+        "sticky" => true, "admin_user_name" => "Renata Santos Cardoso", "rule_name" => "Equipe vendas"
+      })
+      [true, false].each do |detailed|
+        entry = helper.timeline_entry(activity, detailed: detailed)
+        expect(entry[:label]).to eq("Encaminhado por fidelização")
+        expect(entry[:detail]).to include("Renata Santos Cardoso", "Cliente já atendido", "Sem consumir a vez no rodízio", "Equipe vendas")
+        expect(entry[:detail]).not_to include("pela fila")
+      end
+    end
+
+    it "preserva a apresentação da distribuição normal, sem inferir fidelização" do
+      [nil, false, "false"].each do |sticky|
+        activity = LeadActivity.new(kind: "distributed", metadata: { "sticky" => sticky, "admin_user_name" => "Levi", "rule_name" => "Equipe vendas" })
+        expect(helper.timeline_entry(activity, detailed: false)[:label]).to eq("Lead enviado para corretor")
+        expect(helper.timeline_entry(activity, detailed: false)[:detail]).to eq("Para Levi · pela fila Equipe vendas")
+        expect(helper.timeline_entry(activity)[:label]).to eq("Distribuído")
+      end
+    end
+  end
+
   describe "#lead_conversion_summary" do
     it "prefere a origem original do C2S em leads migrados" do
       lead = build_stubbed(
