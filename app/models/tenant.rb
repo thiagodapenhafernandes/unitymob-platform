@@ -120,6 +120,13 @@ class Tenant < ApplicationRecord
   before_validation :normalize_public_site_theme
   after_create :ensure_builtin_profiles!
   after_create :ensure_default_lead_pipeline!
+  after_create_commit :register_support_account
+
+  def register_support_account
+    Support::RegisterAccountsJob.perform_later(id) if Support::Registration.enabled?
+  rescue ActiveJob::EnqueueError, SolidQueue::Job::EnqueueError
+    Rails.logger.warn("[support] registro aguardando recorrência tenant_id=#{id}")
+  end
 
   def public_site_theme_key
     inferred_public_site_theme_key

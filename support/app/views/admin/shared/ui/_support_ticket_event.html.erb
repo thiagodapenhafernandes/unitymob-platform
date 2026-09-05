@@ -1,0 +1,15 @@
+<li>
+  <div>
+    <strong><%= support_event_title(event) %></strong>
+    <time datetime="<%= event.occurred_at.iso8601 %>"><%= l(event.occurred_at, format: '%d/%m/%Y às %H:%M:%S') %></time>
+  </div>
+  <p><%= support_event_actor(event, ticket) %></p>
+  <% (event.details['changes'] || {}).slice('status', 'priority', 'assignee_id').each do |key, change| %>
+    <% if change.is_a?(Array) && change.size == 2 && change.first != change.last %>
+      <p><%= { 'status' => 'Situação', 'priority' => 'Prioridade', 'assignee_id' => 'Responsável' }[key] %>: <%= support_audit_value(key, change.first, staff_names) %> → <%= support_audit_value(key, change.last, staff_names) %></p>
+    <% end %>
+  <% end %>
+  <% if event.kind == 'updated' && event.details.fetch('changes', {}).empty? %>
+    <p class="ax-compact-hint">Nenhuma mudança de situação, prioridade ou responsável registrada.</p>
+  <% end %>
+</li>

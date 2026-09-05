@@ -260,6 +260,8 @@
     <%= stylesheet_link_tag "vendor/admin-fonts", media: "all" %>
     <%# JS de framework legado removido — comportamento data-* legado tratado em application.js %>
     <%= javascript_importmap_tags %>
+    <%= stylesheet_link_tag "support_desk" %>
+    <%= javascript_include_tag "support_desk", defer: true %>
   </head>
 
   <% builder_layout = false %>
@@ -277,6 +279,7 @@
         data-controller="ax-drawer admin-navigation"
         data-admin-render-ms="<%= admin_metrics[:duration_ms] %>"
         data-admin-render-page="<%= admin_metrics[:page] %>">
+    <%= render "admin/shared/ui/support_access_banner" %>
     <% unless whatsapp_focus_workspace %>
       <%# ===== Navbar (novo shell Tailwind) ===== %>
       <nav class="ax-navbar">
@@ -350,6 +353,13 @@
               <% end %>
             <% end %>
             <div class="ax-menu__sep"></div>
+            <% if support_widget_available? %>
+              <%= link_to new_support_ticket_path, class: "ax-menu__item", data: { admin_navigation_ignore: true, action: "ax-dropdown#close", ax_modal_open: "support-modal", support_new_url: new_support_ticket_path(modal: "1", module: controller_name.humanize) } do %>
+                <i class="bi bi-life-preserver"></i><span>Abrir chamado</span>
+              <% end %>
+              <%= link_to support_tickets_path, class: "ax-menu__item" do %><i class="bi bi-chat-left-text"></i><span>Meus chamados</span><% end %>
+              <div class="ax-menu__sep"></div>
+            <% end %>
             <%= link_to admin_two_factor_settings_path, class: "ax-menu__item" do %>
               <i class="bi bi-shield-lock"></i><span>Verificação em duas etapas</span>
             <% end %>
@@ -424,6 +434,7 @@
       </div>
     </div>
 
+    <%= render "admin/shared/ui/support_widget" if support_widget_available? %>
     <%= render "admin/habitations/media/modal_shell" %>
     <%= render "admin/shared/pwa_bottom_nav" if current_admin_user && !whatsapp_focus_workspace %>
     

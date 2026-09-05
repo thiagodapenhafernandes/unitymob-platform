@@ -1,0 +1,18 @@
+<% if ticket.errors.any? %><div role="alert" class="ax-support-notice"><%= ticket.errors.full_messages.to_sentence %></div><% end %>
+  <%= form_with model: ticket, url: support_tickets_path(modal: modal ? "1" : nil), multipart: true, class: "ax-support-panel", data: { support_draft: "new-#{ticket.account.uid}-#{current_admin_user.id}" } do |form| %>
+    <%= hidden_field_tag :context_token, Rails.application.message_verifier(:support_context).generate({ 'user_id' => current_admin_user.id, 'tenant_id' => current_tenant.id, 'path' => ticket.source_path }, purpose: :intake, expires_in: 2.hours) %>
+    <%= form.hidden_field :source_path %><%= form.hidden_field :previous_uid %>
+    <div class="ax-support-questionnaire">
+      <% Support::Ticket::QUESTIONS.each do |key, question| %>
+        <% options = key == 'menu_module' ? (@screens || []).map(&:first) : Support::Intake::OPTIONS.fetch(key) %>
+        <% answer = params.dig(:intake_choices, key) || (options.include?(ticket.intake[key]) ? ticket.intake[key] : ticket.intake[key].present? ? 'other' : nil) %>
+        <%= render "admin/shared/ui/support_choice", key: key, question: question, options: options, answer: answer, detail: params.dig(:intake_details, key) || (answer == 'other' ? ticket.intake[key] : nil) %>
+      <% end %>
+    </div>
+    <h3>Tem um print da tela?</h3>
+    <p>Se puder, envie uma imagem mostrando o problema ou a mensagem que apareceu. Isso ajuda a resolver mais rápido. Você também pode colar uma imagem aqui.</p>
+    <label for="files">Adicionar print ou arquivo (opcional)</label>
+    <%= file_field_tag "files[]", id: "files", multiple: true, accept: Support::Message::TYPES.join(",") %>
+    <p data-support-draft-status role="status">Suas respostas ficam salvas nesta aba enquanto você escreve. Aceitamos até 5 imagens, PDFs ou áudios de 10 MB cada.</p>
+    <%= form.submit "Enviar chamado", class: "ax-btn ax-btn--primary" %>
+  <% end %>

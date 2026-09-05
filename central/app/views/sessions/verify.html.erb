@@ -1,0 +1,8 @@
+<section class="ax-support-login ax-support-panel"><p class="ax-support-eyebrow">Verificação por e-mail</p><h1>Confira sua caixa de entrada</h1>
+<p>Digite o código enviado para <strong><%= @staff.email %></strong>. Ele vale por 10 minutos.</p>
+<%= form_with url: verify_login_path do %>
+  <%= label_tag :code, "Código de acesso" %><%= text_field_tag :code, nil, required: true, inputmode: "numeric", pattern: "[0-9]{6}", maxlength: 6, autocomplete: "one-time-code", autofocus: true, class: "ax-input" %>
+  <%= submit_tag "Confirmar e entrar", class: "ax-btn ax-btn--primary" %>
+<% end %>
+<p>Não recebeu? Confira o spam. Você pode solicitar outro código entrando novamente após um minuto.</p><%= link_to "Voltar ao login", login_path, class: "ax-btn" %>
+</section>

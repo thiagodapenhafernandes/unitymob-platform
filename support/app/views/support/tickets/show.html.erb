@@ -1,0 +1,41 @@
+<%= stylesheet_link_tag "support_desk" %>
+<%= javascript_include_tag "support_desk", defer: true %>
+<% if support_operator? %>
+  <%= render "operator_conversation" %>
+<% else %>
+<section class="ax-support-workspace" data-support-url="<%= support_ticket_path(@ticket) %>" data-support-poll="<%= support_updates_path(ticket_id: @ticket.id) %>" data-support-version="<%= "#{@ticket.revision}:#{@ticket.messages.count}:#{@ticket.pending?}" %>">
+  <%= render "admin/shared/ui/support_header", title: @ticket.subject, back: support_tickets_path, status: @ticket.status %>
+  <% if flash[:alert] %><p role="alert" class="ax-support-notice"><%= flash[:alert] %></p><% end %>
+  <p><%= @ticket.account.name %> · <%= @ticket.requester_name %> · Protocolo <%= @ticket.uid %></p>
+  <% if @ticket.failed? %><p class="ax-support-notice" role="alert">Uma alteração não foi aceita pelo destino. Seu conteúdo permanece nesta conversa. Abra um chamado vinculado se o atendimento já foi encerrado.</p><% end %>
+  <% if @ticket.pending? %><p class="ax-support-notice" role="status">Envio pendente. A mensagem está salva e será entregue automaticamente quando a conexão voltar.</p><% end %>
+  <div class="ax-support-detail">
+    <section class="ax-support-panel" aria-label="Conversa">
+      <div class="ax-conversation">
+        <% @messages.each do |message| %><%= render "admin/shared/ui/support_message", message: message, ticket: @ticket %><% end %>
+      </div>
+      <% if @ticket.resolved? %>
+        <p>Este chamado foi resolvido e seu histórico foi preservado.</p>
+        <% unless support_operator? %><%= link_to "Continuar em novo chamado", new_support_ticket_path(previous: @ticket.uid), class: "ax-btn" %><% end %>
+      <% elsif support_operator? || @ticket.requester_id == current_admin_user.id.to_s %>
+        <%= form_with url: messages_support_ticket_path(@ticket), multipart: true, data: { support_draft: "reply-#{@ticket.uid}-#{support_operator? ? current_staff.id : current_admin_user.id}" } do %>
+          <label for="reply">Sua resposta</label>
+          <%= text_area_tag :body, @reply, id: "reply", rows: 4, maxlength: 20000, class: "ax-textarea" %>
+          <label for="reply-files">Imagens, PDF ou áudio · até 5 arquivos de 10 MB</label>
+          <%= file_field_tag "files[]", id: "reply-files", multiple: true, accept: Support::Message::TYPES.join(",") %>
+          <%= submit_tag "Enviar resposta", class: "ax-btn ax-btn--primary" %>
+        <% end %>
+      <% end %>
+      <%= link_to "Atualizar conversa", support_ticket_path(@ticket), class: "ax-btn" %>
+    </section>
+    <aside class="ax-support-context">
+      <details class="ax-support-panel" open><summary>Contexto do chamado</summary>
+        <% Support::Ticket::QUESTIONS.each do |key, label| %><h3><%= label %></h3><%= simple_format(@ticket.intake[key]) %><% end %>
+        <% if @ticket.source_path.present? %><p>Tela: <%= @ticket.source_path %></p><% end %>
+        <% if @ticket.previous_uid.present? %><p>Continuação de <%= @ticket.previous_uid %></p><% end %>
+      </details>
+    </aside>
+  </div>
+</section>
+
+<% end %>

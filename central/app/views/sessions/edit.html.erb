@@ -1,0 +1,9 @@
+<section class="ax-support-login ax-support-panel"><h1>Ativar seu acesso</h1><p><%= @staff.email_verification? ? "Cadastre sua senha. Ao entrar, você receberá um código por e-mail." : "Cadastre uma senha e escaneie o QR code no seu aplicativo autenticador." %></p>
+<%= @qr&.html_safe %>
+<%= form_with url: activate_path, method: :patch do %>
+  <%= hidden_field_tag :token, params[:token] %>
+  <%= label_tag :password, "Senha (mínimo 12 caracteres)" %><%= password_field_tag :password, nil, required: true, minlength: 12, autocomplete: "new-password", class: "ax-input" %>
+  <%= label_tag :password_confirmation, "Confirme a senha" %><%= password_field_tag :password_confirmation, nil, required: true, minlength: 12, autocomplete: "new-password", class: "ax-input" %>
+  <% unless @staff.email_verification? %><%= label_tag :code, "Código do autenticador" %><%= text_field_tag :code, nil, required: true, inputmode: "numeric", pattern: "[0-9]{6}", autocomplete: "one-time-code", class: "ax-input" %><% end %>
+  <%= submit_tag "Ativar acesso", class: "ax-btn ax-btn--primary" %>
+<% end %></section>

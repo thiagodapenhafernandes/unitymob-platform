@@ -1,0 +1,24 @@
+<details class="ax-support-disclosure ax-ticket-controls">
+  <summary><div>Chamado #<%= ticket.id %><small><%= ticket.requester_name %> · <%= ticket.account.name %></small></div><span class="ax-support-status ax-support-status--<%= ticket.status %>"><%= Support::Ticket::STATUS_LABELS[ticket.status] %></span></summary>
+  <p class="ax-ticket-controls__subject"><%= ticket.subject %></p>
+  <% unless ticket.resolved? %>
+    <%= form_with model: ticket, url: support_ticket_path(ticket), class: 'ax-ticket-controls__form' do |f| %>
+      <div><%= f.label :status, 'Situação do chamado' %><%= f.select :status, Support::Ticket::STATUS_LABELS.map { |v,l| [l,v] }, {}, class:'ax-input' %></div>
+      <div><%= f.label :priority, 'Prioridade' %><%= f.select :priority, [['Baixa','baixa'],['Normal','normal'],['Alta','alta']], {}, class:'ax-input' %></div>
+      <%= f.submit 'Salvar alterações', class:'ax-btn ax-btn--primary' %>
+    <% end %>
+  <% end %>
+  <div class="ax-ticket-controls__access"><span>Precisa verificar o problema na conta?</span><%= button_to 'Acessar conta', access_support_ticket_path(ticket), class:'ax-btn', form:{target:'_blank', data:{turbo:false}} %></div>
+  <details class="ax-compact-section"><summary>Informações da ocorrência</summary>
+    <% context = ticket.diagnostics %>
+    <% if context['page_url'].present? || context['request_id'].present? || Array(context['recent_errors']).any? %>
+      <dl class="ax-compact-facts"><% if context['page_url'].present? %><dt>Tela de origem</dt><dd><%= context['page_url'] %></dd><% end %><% if context['request_id'].present? %><dt>Identificador da ocorrência</dt><dd><%= context['request_id'] %></dd><% end %></dl>
+      <% Array(context['recent_errors']).grep(Hash).each do |error| %><p class="ax-compact-hint">Erro #<%= error['id'] %> · <%= error['type'] %></p><% end %>
+    <% else %><p class="ax-compact-hint">Nenhuma informação adicional foi registrada neste chamado.</p><% end %>
+  </details>
+  <details class="ax-compact-section"><summary>Histórico de alterações <span class="ax-support-status"><%= audits.size %><%= '+' if audits.size == 50 %></span></summary>
+    <% if audits.empty? %><p class="ax-compact-hint">Nenhuma alteração registrada.</p><% else %>
+      <ol class="ax-support-audit-list"><% audits.each do |audit| %><%= render 'admin/shared/ui/support_audit', audit: audit, staff_names: staff_names %><% end %></ol>
+    <% end %>
+  </details>
+</details>

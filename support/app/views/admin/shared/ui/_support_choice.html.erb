@@ -1,0 +1,8 @@
+<div class="ax-support-field" data-support-choice>
+  <%= label_tag "choice_#{key}", question %>
+  <%= select_tag "intake_choices[#{key}]", options_for_select(options.map { |label| [label, label] } + [['Outro', 'other']], answer), prompt: 'Selecione uma opção', required: true, id: "choice_#{key}", class: "ax-input", aria: { controls: "detail_#{key}" } %>
+  <div id="detail_<%= key %>" <%= 'hidden' unless answer == 'other' %>>
+    <%= label_tag "other_#{key}", 'Conte um pouco mais' %>
+    <%= text_area_tag "intake_details[#{key}]", detail, id: "other_#{key}", rows: 2, maxlength: 4000, required: answer == 'other', class: "ax-textarea" %>
+  </div>
+</div>

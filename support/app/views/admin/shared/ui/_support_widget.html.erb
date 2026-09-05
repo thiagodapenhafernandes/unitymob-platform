@@ -1,0 +1,12 @@
+<%= ax_quick_modal(id: "support-modal", title: "Abrir chamado", size: :lg, data: { admin_navigation_ignore: true }) do %>
+  <%= turbo_frame_tag "support_modal_form" do %><p role="status">Carregando formulário...</p><% end %>
+<% end %>
+<aside class="ax-support-reminder ax-support-panel" hidden aria-live="polite"
+       data-support-reminder data-support-notification="<%= support_updates_path %>"
+       data-support-scope="<%= current_tenant.id %>-<%= current_admin_user.id %>"
+       data-support-current-ticket="<%= @ticket&.id if controller_path == 'support/tickets' && action_name == 'show' %>">
+  <h3 data-support-reminder-title></h3>
+  <p data-support-reminder-body></p>
+  <a class="ax-btn ax-btn--primary" data-support-reminder-link>Acompanhar chamado</a>
+  <button type="button" class="ax-btn" data-support-reminder-dismiss>Fechar</button>
+</aside>

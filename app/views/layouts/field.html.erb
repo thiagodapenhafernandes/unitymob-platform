@@ -271,9 +271,12 @@
         border-radius: 12px;
       }
     </style>
+    <%= stylesheet_link_tag "support_desk" %>
   </head>
   <body class="ax-pwa-bottom-nav-body"
         data-controller="admin-navigation">
+    <%= render "admin/shared/ui/support_access_banner" %>
+
     <%= render 'shared/flash_messages', toast: true if flash.any? %>
 
     <div id="field-offline-banner" class="field-offline-banner">

@@ -1,0 +1,6 @@
+<div class="ax-support-editor">
+  <div class="ax-support-editor__toolbar" aria-label="Formatação da mensagem"><button type="button" class="ax-btn" data-support-format="bold" aria-label="Negrito"><strong>B</strong></button><button type="button" class="ax-btn" data-support-format="italic" aria-label="Itálico"><em>I</em></button><button type="button" class="ax-btn" data-support-format="list">Lista</button></div>
+  <%= text_area_tag :body, local_assigns[:body], rows: 4, maxlength: 20000, placeholder: 'Escreva sua mensagem…', aria: {label: 'Sua mensagem'}, class: 'ax-textarea' %>
+  <%= file_field_tag 'files[]', class: 'ax-support-file-input', multiple: true, accept: Support::Message::TYPES.join(','), aria: {label: 'Anexar imagens, PDF ou áudio'} if local_assigns[:attachments] %>
+  <% if local_assigns[:attachments] %><p class="ax-support-muted">Imagens, PDF ou áudio · até 5 arquivos de 10 MB.</p><% end %>
+</div>

@@ -1,0 +1,7 @@
+<%= stylesheet_link_tag "support_desk" %>
+<%= javascript_include_tag "support_desk", defer: true %>
+<section class="ax-support-workspace"><h1>Abrindo <%= @ticket.account.name %></h1>
+  <%= form_tag @handoff_url, authenticity_token: false, data: { support_handoff: true, turbo: false } do %>
+    <%= hidden_field_tag :token, @handoff_token %><%= submit_tag "Entrar na conta", class: "ax-btn" %>
+  <% end %>
+</section>

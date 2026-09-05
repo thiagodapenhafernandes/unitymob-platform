@@ -1,0 +1,15 @@
+<article class="ax-conversation-message ax-conversation-message--<%= message.side %>">
+  <header><strong><%= message.author %></strong><small><%= message.side == "support" ? "SUPORTE" : "USUÁRIO" %></small><time datetime="<%= message.created_at.iso8601 %>"><%= l(message.created_at, format: :short) %></time></header>
+  <div class="ax-conversation-message__body"><%= support_message_body(message.body) %></div>
+  <% if message.edited_at? %><small><%= message.deleted_at? ? 'Removida' : 'Editada' %> · <%= l(message.edited_at, format: :short) %></small><% end %>
+  <% if support_operator? && !ticket.resolved? && !message.deleted_at? && message.side == 'support' && (current_staff.admin? || message.author_staff_id == current_staff.id) %>
+    <details><summary>Editar mensagem</summary><%= form_with url: revise_message_support_ticket_path(ticket), method: :patch do %><%= hidden_field_tag :message_uid, message.uid %><%= text_area_tag :body, message.body, rows:3, maxlength:20000, aria:{label:'Editar mensagem'}, class:'ax-textarea' %><%= submit_tag 'Salvar edição', class:'ax-btn' %><% end %></details>
+    <%= button_to 'Remover mensagem', remove_message_support_ticket_path(ticket, message_uid:message.uid), method: :delete, class:'ax-btn', data:{turbo_confirm:'Remover esta mensagem da conversa? O histórico ficará na auditoria.'} %>
+  <% end %>
+  <% (message.deleted_at? ? [] : message.files).each do |file| %>
+    <% preview_url = attachment_support_ticket_path(ticket, message: message.uid, file: file.id, preview: '1') %>
+    <% if file.content_type.start_with?('image/') %><%= link_to preview_url, target: '_blank', rel: 'noopener', data: { turbo: false } do %><%= image_tag preview_url, alt: file.filename.to_s, loading: 'lazy', class: 'ax-support-image' %><% end %>
+    <% elsif Support::Message::AUDIO_TYPES.include?(file.content_type) %><audio controls preload="none" class="ax-support-audio" aria-label="<%= file.filename %>"><source src="<%= preview_url %>" type="<%= file.content_type %>"></audio><% end %>
+    <%= link_to "↓ #{file.filename}", attachment_support_ticket_path(ticket, message: message.uid, file: file.id), class: "ax-support-file", data: { turbo: false } %>
+  <% end %>
+</article>

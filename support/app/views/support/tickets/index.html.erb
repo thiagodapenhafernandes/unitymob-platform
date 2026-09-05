@@ -1,0 +1,29 @@
+<%= stylesheet_link_tag "support_desk" %>
+<%= javascript_include_tag "support_desk", defer: true %>
+<% if support_operator? %>
+  <%= render "operator_inbox" %>
+<% else %>
+<section class="ax-support-workspace">
+  <%= render "admin/shared/ui/support_header", title: "Seus chamados" %>
+  <%= link_to "Abrir chamado", new_support_ticket_path, class: "ax-btn ax-btn--primary" %>
+  <%= form_with url: support_tickets_path, method: :get, class: "ax-support-filters" do %>
+    <%= search_field_tag :q, params[:q], placeholder: "Buscar assunto ou protocolo", aria: { label: "Buscar chamado" }, class: "ax-input" %>
+    <%= select_tag :status, options_for_select(Support::Ticket::STATUS_LABELS.map { |value, label| [label, value] }, params[:status]), include_blank: "Todos os estados", aria: { label: "Estado" }, class: "ax-input" %>
+    <%= select_tag :priority, options_for_select(Support::Ticket::PRIORITIES.map { |s| [s.humanize, s] }, params[:priority]), include_blank: "Todas as prioridades", aria: { label: "Prioridade" }, class: "ax-input" %>
+    <%= submit_tag "Filtrar", class: "ax-btn" %>
+  <% end %>
+  <div class="ax-support-list">
+    <% @tickets.each do |ticket| %>
+      <%= link_to support_ticket_path(ticket), class: "ax-support-ticket", data: { turbo_frame: "_top", support_ticket_link: nil } do %>
+        <div><strong><%= ticket.subject %></strong><p><%= ticket.account.name %> · <%= ticket.requester_name %></p></div>
+        <div><span class="ax-support-status"><%= Support::Ticket::STATUS_LABELS.fetch(ticket.status) %></span><p><%= ticket.priority.humanize %> · <%= ticket.assignee_name || "Sem responsável" %></p><small><%= l(ticket.updated_at, format: :short) %></small></div>
+      <% end %>
+    <% end %>
+    <% if @tickets.empty? %><p class="ax-support-panel">Nenhum chamado por aqui. <%= support_operator? ? "Ajuste os filtros para consultar outros atendimentos." : "Precisa de ajuda? Abra um chamado para conversar com nossa equipe." %></p><% end %>
+  </div>
+  <nav class="ax-support-filters" aria-label="Páginas">
+    <% if @page > 1 %><%= link_to "Anterior", support_tickets_path(request.query_parameters.merge(page: @page - 1)), class: "ax-btn" %><% end %>
+    <% if @tickets.size == 30 %><%= link_to "Próxima", support_tickets_path(request.query_parameters.merge(page: @page + 1)), class: "ax-btn" %><% end %>
+  </nav>
+</section>
+<% end %>
