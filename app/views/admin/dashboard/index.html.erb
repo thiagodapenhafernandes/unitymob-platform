@@ -114,55 +114,6 @@
     </div>
   </section>
 
-  <% diagnosis_limit = @dashboard_ai_diagnosis[:limit_status].to_h.with_indifferent_access %>
-  <section class="ax-dashboard-panel ax-dashboard-actions" aria-labelledby="dashboard-ai-diagnosis-title">
-    <div class="ax-dashboard-panel__header">
-      <div>
-        <span class="ax-dashboard-panel__eyebrow">IA textual</span>
-        <h2 id="dashboard-ai-diagnosis-title"><%= @dashboard_ai_diagnosis[:title] %></h2>
-      </div>
-      <div class="ax-dashboard-panel__actions">
-        <%= ax_badge(@dashboard_ai_diagnosis[:source].to_s.start_with?("openai") ? "OpenAI" : "determinístico", tone: @dashboard_ai_diagnosis[:source].to_s.start_with?("openai") ? :blue : :gray) %>
-        <%= link_to "Limites", admin_ai_integration_path(anchor: "ai-dashboard-diagnosis"), class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
-      </div>
-    </div>
-
-    <div class="ax-dashboard-panel__body ax-dashboard-ai-diagnosis">
-      <p class="ax-dashboard-ai-diagnosis__summary"><%= @dashboard_ai_diagnosis[:summary] %></p>
-
-      <div class="ax-dashboard-actions__grid ax-dashboard-actions__grid--flush">
-        <% diagnosis_recommendations = Array(@dashboard_ai_diagnosis[:recommendations]).first(4) %>
-        <% if diagnosis_recommendations.any? %>
-        <% diagnosis_recommendations.each do |item| %>
-          <% item = item.with_indifferent_access %>
-          <div class="ax-dashboard-action ax-dashboard-action--<%= item[:tone].presence || "blue" %>">
-            <span class="ax-dashboard-action__icon"><i class="bi bi-stars"></i></span>
-            <span class="ax-dashboard-action__body">
-              <strong><%= item[:title] %></strong>
-              <small><%= item[:detail] %></small>
-            </span>
-            <b><%= number_with_delimiter(item[:value].to_i) %></b>
-          </div>
-        <% end %>
-        <% else %>
-          <div class="ax-dashboard-action ax-dashboard-action--green">
-            <span class="ax-dashboard-action__icon"><i class="bi bi-check2-circle"></i></span>
-            <span class="ax-dashboard-action__body">
-              <strong>Sem recomendação crítica</strong>
-              <small>Os principais sinais operacionais estão dentro do esperado para o período.</small>
-            </span>
-            <b>0</b>
-          </div>
-        <% end %>
-      </div>
-
-      <div class="ax-dashboard-ai-diagnosis__limits">
-        <%= ax_badge("#{diagnosis_limit[:weekly_used].to_i}/#{diagnosis_limit[:weekly_limit].to_i} diagnóstico(s) IA na semana", tone: diagnosis_limit[:weekly_remaining].to_i.positive? ? :blue : :amber) %>
-        <%= ax_badge("#{number_to_currency(diagnosis_limit[:monthly_cost_cents].to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".")} / #{number_to_currency(diagnosis_limit[:monthly_budget_cents].to_i / 100.0, unit: "R$ ", separator: ",", delimiter: ".")} no mês", tone: diagnosis_limit[:monthly_budget_remaining_cents].to_i.positive? ? :blue : :amber) %>
-      </div>
-    </div>
-  </section>
-
   <section class="ax-dashboard-panel ax-dashboard-questions ax-dashboard-questions--decision" aria-labelledby="dashboard-questions-title">
     <div class="ax-dashboard-panel__header">
       <div>

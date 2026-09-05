@@ -71,7 +71,7 @@ class Admin::DashboardController < Admin::BaseController
   # visível depende do usuário). As seções (charts/funnel/...) seguem ao vivo.
   def load_overview_slice
     metrics = Rails.cache.fetch(
-      ["dashboard-overview-v6", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      ["dashboard-overview-v7", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
       expires_in: OVERVIEW_CACHE_EXPIRATION
     ) { compute_overview_metrics }
     metrics.each { |name, value| instance_variable_set("@#{name}", value) }
@@ -81,16 +81,16 @@ class Admin::DashboardController < Admin::BaseController
     @overview_investigations = build_overview_investigations
     @recommended_actions = build_recommended_actions
     @dashboard_tab_badges = build_dashboard_tab_badges
-    @dashboard_ai_diagnosis = build_dashboard_ai_diagnosis
   end
 
   def compute_overview_metrics
     active_habitations = @habitation_scope.active
+    valid_leads = valid_dashboard_leads_scope
     beginning = Date.current.beginning_of_day
 
     @properties_count = active_habitations.count
-    @featured_count = @habitation_scope.featured.count
-    @developments_count = @habitation_scope.empreendimentos.count
+    @featured_count = active_habitations.featured.count
+    @developments_count = scoped_dashboard_catalog_habitations.empreendimentos.count
 
     @brokers_active = @is_admin_view ? current_tenant.admin_users.active.count : 0
     @stores_active_count = @is_admin_view ? current_tenant.stores.active.count : 0
@@ -99,12 +99,12 @@ class Admin::DashboardController < Admin::BaseController
     @suspicious_checkins = @is_admin_view ? CheckIn.where(tenant: current_tenant, suspicious: true).count : 0
     @pending_manual_requests = @is_admin_view ? ManualCheckinRequest.where(tenant: current_tenant).pending.count : 0
 
-    @leads_total = @lead_scope.count
-    @new_leads = @lead_scope.where(status: [Lead.default_status, nil]).count
-    @leads_today = @lead_scope.where("created_at >= ?", beginning).count
-    @leads_last_7_days = @lead_scope.where("created_at >= ?", 7.days.ago).count
-    @current_period_leads = @lead_scope.where("created_at >= ?", dashboard_window_start).count
-    @previous_period_leads = @lead_scope.where(created_at: previous_dashboard_window).count
+    @leads_total = valid_leads.count
+    @new_leads = valid_leads.where(status: [Lead.default_status, nil]).count
+    @leads_today = valid_leads.where("created_at >= ?", beginning).count
+    @leads_last_7_days = valid_leads.where("created_at >= ?", 7.days.ago).count
+    @current_period_leads = valid_leads.where("created_at >= ?", dashboard_window_start).count
+    @previous_period_leads = valid_leads.where(created_at: previous_dashboard_window).count
     @leads_period_change = percentage_change(@current_period_leads, @previous_period_leads)
     @holding_leads = @is_admin_view ? @lead_scope.holding.count : 0
     active_lead_statuses_with_blank = active_lead_status_values_with_blank
@@ -128,9 +128,9 @@ class Admin::DashboardController < Admin::BaseController
     @distribution_rules_active = @is_admin_view ? current_tenant.distribution_rules.active.count : 0
     @rules_with_checkin = @is_admin_view ? current_tenant.distribution_rules.where(require_active_checkin: true).count : 0
 
-    @sync_errors_count = @is_admin_view ? current_tenant.habitations.where(last_sync_status: "error").count : 0
+    @sync_errors_count = @is_admin_view ? scoped_dashboard_catalog_habitations.where(last_sync_status: "error").count : 0
     @today_captacoes = @captacao_scope.where(created_at: beginning..).count
-    @today_new_habitations = @habitation_scope.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
+    @today_new_habitations = scoped_dashboard_catalog_habitations.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
     draft_captacoes = @captacao_scope.where(intake_status: [nil, "draft"])
     @drafts_count = draft_captacoes.count
     @stale_drafts_count = draft_captacoes.where("habitations.updated_at < ?", 30.days.ago).count
@@ -152,16 +152,17 @@ class Admin::DashboardController < Admin::BaseController
     @lead_date_min = dashboard_window_start.to_date
     @lead_date_max = Date.current
     @selected_lead_date = selected_lead_date
-    @leads_by_status = @lead_scope.group(:status).count
+    chart_scope = valid_dashboard_leads_scope
+    @leads_by_status = chart_scope.group(:status).count
 
     if @selected_lead_date
-      @leads_series = leads_hourly_series(@selected_lead_date, @lead_scope)
+      @leads_series = leads_hourly_series(@selected_lead_date, chart_scope)
       @leads_total = @leads_series.sum { |_, count| count }
       @leads_chart_mode = "hourly"
       @leads_drilldown_urls = Array.new(24) { admin_leads_path(start_date: @selected_lead_date.iso8601, end_date: @selected_lead_date.iso8601, broker_id: @dashboard_broker_id) }
     else
-      @leads_series = leads_time_series(30, @lead_scope)
-      @leads_total = @lead_scope.where("created_at >= ?", dashboard_window_start).count
+      @leads_series = leads_time_series(30, chart_scope)
+      @leads_total = chart_scope.where("created_at >= ?", dashboard_window_start).count
       @leads_chart_mode = "daily"
       @leads_drilldown_urls = @leads_series.map { |date, _| admin_leads_path(start_date: date.iso8601, end_date: date.iso8601, broker_id: @dashboard_broker_id) }
     end
@@ -182,7 +183,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def load_status_slice
-    @leads_by_status = @lead_scope.where("created_at >= ?", dashboard_window_start).group(:status).count
+    @leads_by_status = valid_dashboard_leads_scope.where("created_at >= ?", dashboard_window_start).group(:status).count
     @lead_status_rows = @leads_by_status.map do |status, count|
       canonical_status = Lead.status_value(status.presence || Lead.default_status)
       {
@@ -244,7 +245,7 @@ class Admin::DashboardController < Admin::BaseController
                          else
                            current_tenant.checkin_audit_logs.includes(:actor_admin_user, check_in: :store).where(admin_user_id: current_admin_user.id).order(created_at: :desc).limit(6)
                          end
-    @recent_habitations = @habitation_scope
+    @recent_habitations = scoped_dashboard_catalog_habitations
       .includes(:address)
       .where.not(data_atualizacao_crm: nil)
       .order(data_atualizacao_crm: :desc)
@@ -334,7 +335,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def scoped_dashboard_catalog_habitations
-    current_tenant.habitations.where(
+    scoped_dashboard_habitations.commercially_publishable.where(
       "habitations.intake_origin IS NULL OR habitations.intake_origin != :broker_origin OR habitations.intake_status IN (:visible_statuses)",
       broker_origin: Habitation::INTAKE_ORIGIN_BROKER,
       visible_statuses: Habitation::CATALOG_VISIBLE_INTAKE_STATUSES
@@ -348,10 +349,21 @@ class Admin::DashboardController < Admin::BaseController
     @dashboard_broker_id ? scope.where(admin_user_id: @dashboard_broker_id) : scope
   end
 
+  def valid_dashboard_leads_scope
+    invalid_statuses = invalid_operational_lead_status_values
+    return @lead_scope if invalid_statuses.empty?
+
+    @lead_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", invalid_statuses)
+  end
+
+  def active_dashboard_leads_scope
+    @lead_scope.where(status: active_lead_status_values_with_blank)
+  end
+
   def dashboard_task_scope
     current_tenant.tasks
       .operational_current
-      .where(lead_id: @lead_scope.where(status: active_lead_status_values_with_blank).select(:id))
+      .where(lead_id: active_dashboard_leads_scope.select(:id))
   end
 
   def scoped_dashboard_captacoes
@@ -362,7 +374,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def commercial_funnel_rows
-    recent_scope = @lead_scope.where("created_at >= ?", dashboard_window_start)
+    recent_scope = valid_dashboard_leads_scope.where("created_at >= ?", dashboard_window_start)
     status_counts = recent_scope.group(:status).count
     total_leads = status_counts.values.sum
 
@@ -614,7 +626,7 @@ class Admin::DashboardController < Admin::BaseController
 
     [
       { label: "Sem endereço", value: without_address, icon: "geo-alt", tone: "red", filter: "missing_address" },
-      { label: "Sem fotos", value: without_photos, icon: "images", tone: "amber", filter: "missing_photos", path_params: { ownership: "all", somente_sem_imagens: "1" } },
+      { label: "Sem fotos", value: without_photos, icon: "images", tone: "amber", filter: "missing_photos" },
       {
         label: "Sem preço",
         value: without_price,
@@ -804,44 +816,6 @@ class Admin::DashboardController < Admin::BaseController
     end
 
     actions.sort_by { |action| [action[:priority], -action[:value].to_i] }.first(6)
-  end
-
-  def build_dashboard_ai_diagnosis
-    Dashboard::AiDiagnosis.new(
-      tenant: current_tenant,
-      admin_user: current_admin_user,
-      period: @dashboard_period,
-      metrics: dashboard_ai_metrics
-    ).call
-  end
-
-  def dashboard_ai_metrics
-    lost_money = lost_money_rows
-    property_low_progress = property_low_progress_rows
-    stage_losses = stage_loss_rows
-    reopens = stage_reopen_rows
-    slow_stages = stage_time_rows.select { |row| row[:value].to_f > 48 }
-
-    {
-      period_days: @dashboard_period,
-      leads_total: @current_period_leads,
-      previous_period_leads: @previous_period_leads,
-      leads_period_change: @leads_period_change,
-      no_first_contact_leads: @no_first_contact_leads,
-      sla_overdue_leads: @sla_overdue_leads,
-      pending_whatsapp_conversations: @pending_whatsapp_conversations,
-      avg_whatsapp_response_minutes: @avg_whatsapp_response_minutes,
-      site_visits: site_event_badge_counts["page_view"].to_i,
-      site_contacts: site_event_badge_counts.values_at("property_whatsapp_click", "property_phone_click", "lead_form_submitted").sum(&:to_i),
-      lost_money_count: lost_money.sum { |row| row[:value].to_i },
-      property_low_progress_count: property_low_progress.sum { |row| row[:value].to_i },
-      stage_bottleneck_count: slow_stages.size + stage_losses.sum { |row| row[:value].to_i } + reopens.sum { |row| row[:value].to_i },
-      top_lost_money: lost_money.first(4).map { |row| row.slice(:label, :value, :detail, :tone) },
-      top_property_low_progress: property_low_progress.first(4).map { |row| row.slice(:label, :value, :detail) },
-      slow_stages: slow_stages.first(4).map { |row| row.slice(:label, :value, :detail) },
-      stage_losses: stage_losses.first(4).map { |row| row.slice(:label, :value, :detail) },
-      stage_reopens: reopens.first(4).map { |row| row.slice(:label, :value, :detail) }
-    }
   end
 
   def recommended_action(title:, detail:, value:, tone:, icon:, path:)
@@ -1214,7 +1188,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def property_attention_rows
-    period_scope = @lead_scope.where("leads.created_at >= ?", dashboard_window_start).where.not(property_id: nil)
+    period_scope = active_dashboard_leads_scope.where("leads.created_at >= ?", dashboard_window_start).where.not(property_id: nil)
     lead_counts = period_scope.group(:property_id).count
     return [] if lead_counts.empty?
 
@@ -1228,7 +1202,7 @@ class Admin::DashboardController < Admin::BaseController
     candidate_ids = lead_counts.keys - property_ids_with_visits
     return [] if candidate_ids.empty?
 
-    properties = current_tenant.habitations
+    properties = scoped_dashboard_catalog_habitations
       .where(id: candidate_ids)
       .pluck(:id, :codigo, :titulo_anuncio, :nome_empreendimento)
       .index_by(&:first)
@@ -1255,7 +1229,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def property_low_progress_rows
     @property_low_progress_rows ||= begin
-      period_scope = @lead_scope.where("leads.created_at >= ?", dashboard_window_start).where.not(property_id: nil)
+      period_scope = active_dashboard_leads_scope.where("leads.created_at >= ?", dashboard_window_start).where.not(property_id: nil)
       lead_counts = period_scope.group(:property_id).count
 
       if lead_counts.empty?
@@ -1286,7 +1260,7 @@ class Admin::DashboardController < Admin::BaseController
             .where(habitation_id: candidate_ids)
             .group(:habitation_id)
             .count
-          properties = current_tenant.habitations
+          properties = scoped_dashboard_catalog_habitations
             .where(id: candidate_ids)
             .pluck(:id, :codigo, :titulo_anuncio, :nome_empreendimento)
             .index_by(&:first)
@@ -1500,7 +1474,8 @@ class Admin::DashboardController < Admin::BaseController
   def active_lead_status_values
     @active_lead_status_values ||= begin
       pipeline_statuses = current_tenant.lead_pipeline_stages.active.where(stage_type: "open").pluck(:name)
-      (pipeline_statuses.presence || Lead::LEGACY_STATUSES - [Lead.status_value(:descartado), Lead.status_value(:concluido)]).uniq
+      fallback_statuses = Lead::LEGACY_STATUSES - Lead.non_operational_status_values(tenant: current_tenant)
+      (pipeline_statuses.presence || fallback_statuses).uniq
     end
   end
 
@@ -1513,6 +1488,10 @@ class Admin::DashboardController < Admin::BaseController
       pipeline_statuses = current_tenant.lead_pipeline_stages.active.where(stage_type: "lost").pluck(:name)
       (pipeline_statuses.presence || [Lead.status_value(:descartado)]).map { |status| Lead.status_value(status, tenant: current_tenant) }.uniq
     end
+  end
+
+  def invalid_operational_lead_status_values
+    @invalid_operational_lead_status_values ||= Lead.non_operational_status_values(tenant: current_tenant)
   end
 
   def terminal_lead_status_values
@@ -1597,11 +1576,11 @@ class Admin::DashboardController < Admin::BaseController
 
   def lead_acquisition_result
     @lead_acquisition_result ||= Rails.cache.fetch(
-      ["dashboard-lead-acquisition-v2", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      ["dashboard-lead-acquisition-v3", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
       expires_in: DASHBOARD_AGGREGATE_CACHE_EXPIRATION
     ) do
       Dashboard::LeadAcquisitionQuery.new(
-        scope: @lead_scope,
+        scope: valid_dashboard_leads_scope,
         starts_at: dashboard_window_start,
         tenant: current_tenant
       ).call
@@ -1644,7 +1623,7 @@ class Admin::DashboardController < Admin::BaseController
   def average_first_contact_minutes
     contacted = LeadActivity
       .joins(:lead)
-      .merge(@lead_scope.where("leads.created_at >= ?", dashboard_window_start))
+      .merge(valid_dashboard_leads_scope.where("leads.created_at >= ?", dashboard_window_start))
       .human_operational
       .where(kind: CONTACT_ACTIVITY_KINDS)
       .group("leads.id", "leads.created_at")
