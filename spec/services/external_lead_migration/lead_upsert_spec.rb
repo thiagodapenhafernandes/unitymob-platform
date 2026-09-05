@@ -156,6 +156,26 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.admin_user).to eq(trash_user)
   end
 
+  it "atribui pelo codigo externo do vendedor quando ele corresponde ao vista_id local" do
+    broker.update!(vista_id: "108")
+    external_id_payload = payload.deep_dup
+    external_id_payload["id"] = "lead-c2s-vista-id"
+    external_id_payload["attributes"]["customer"]["id"] = "customer-c2s-vista-id"
+    external_id_payload["attributes"]["seller"] = {
+      "id" => "seller-hash-c2s",
+      "name" => "Adriana Stark",
+      "email" => "adriana.stark@saluteimoveis.com",
+      "external_id" => "108",
+      "external_name" => "Adriana Stark"
+    }
+    external_id_integration = create(:external_lead_integration, tenant:, seller_mappings: {})
+
+    described_class.call(integration: external_id_integration, payload: external_id_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-c2s-vista-id")
+    expect(lead.admin_user).to eq(broker)
+  end
+
   it "extrai o corpo da primeira mensagem quando o provedor envia a mensagem estruturada" do
     structured_payload = payload.deep_dup
     structured_payload["id"] = "lead-structured-first-message"
