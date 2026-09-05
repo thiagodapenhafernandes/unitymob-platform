@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
   before_action :require_staff!
   before_action do
     response.set_header("Cache-Control", "no-store")
-    response.set_header("Referrer-Policy", "no-referrer")
+    response.set_header("Referrer-Policy", "same-origin")
     response.set_header("X-Robots-Tag", "noindex, nofollow")
   end
   helper_method :current_staff, :current_staff_session
