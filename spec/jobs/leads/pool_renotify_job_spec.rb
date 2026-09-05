@@ -14,13 +14,12 @@ RSpec.describe Leads::PoolRenotifyJob, type: :job do
   let(:broker) { create(:admin_user, :field_agent) }
 
   before do
-    Lead.skip_callback(:commit, :after, :route_lead)
+    allow_any_instance_of(Lead).to receive(:route_lead)
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker)
     LeadSetting.instance(tenant: rule.tenant).update!(notify_on_shark_tank: true)
   end
 
   after do
-    Lead.set_callback(:commit, :after, :route_lead)
     clear_enqueued_jobs
   end
 

@@ -94,7 +94,8 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   end
 
   it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
-    manager = create(:admin_user, :admin, name: "Gestor Praia")
+    manager_profile = Profile.create!(tenant: admin.tenant, name: "Gestor de fila", axis: :vertical, position: 2_050)
+    manager = create(:admin_user, profile: manager_profile, name: "Gestor Praia")
     create(:admin_user, name: "Corretor Cascata", manager: manager)
     Profile.create!(
       tenant: admin.tenant,
@@ -107,7 +108,7 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     get new_admin_distribution_rule_path
 
     doc = Nokogiri::HTML(response.body)
-    vertical_profile_ids = admin.tenant.profiles.ordered_vertical.pluck(:id).map(&:to_s)
+    vertical_profile_ids = admin.tenant.profiles.ordered_vertical.reject { |profile| profile.tenant_owner? || profile.agent? }.map { |profile| profile.id.to_s }
     rendered_profile_ids = doc.css("#distribution_rule_hierarchy_filter select[data-profile-id]").map { |select| select["data-profile-id"] }
 
     expect(response).to have_http_status(:ok)
@@ -120,7 +121,7 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(rendered_profile_ids).to eq(vertical_profile_ids)
     expect(response.body).to include("Entrega para um corretor por vez")
     expect(response.body).to include("sorteio ponderado")
-    expect(response.body).to include("O primeiro que aceitar assume o lead")
+    expect(response.body).to include("O primeiro que clicar em Atender assume")
     expect(response.body).to include("Filtro opcional pela faixa de valor do lead")
     expect(doc.at_css("#distribution-rule-summary-title").text).to eq("Resumo da regra")
     expect(doc.at_css("[data-distribution-rule-summary-target='line'][role='status']")["aria-live"]).to eq("polite")
@@ -198,7 +199,7 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     rendered_profile_ids = doc.css("#distribution_rule_hierarchy_filter select[data-profile-id]").map { |select| select["data-profile-id"].to_i }
 
     expect(response).to have_http_status(:ok)
-    expect(rendered_profile_ids).to eq([coordinator_profile.id, agent_profile.id])
+    expect(rendered_profile_ids).to eq([coordinator_profile.id])
     expect(doc.at_css("#distribution_rule_hierarchy_filter")["data-hierarchical-user-filter-locked-user-id-value"]).to eq(coordinator.id.to_s)
     expect(response.body).to include("Coordenador Logado")
     expect(response.body).to include("Corretor da Coordenacao")
@@ -234,7 +235,7 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   end
 
   it "salva a fila de distribuicao a partir do select de corretores ao criar" do
-    receiver = create(:admin_user, :admin, name: "Administrador")
+    receiver = create(:admin_user, name: "Corretor")
 
     post admin_distribution_rules_path, params: {
       agent_select: [receiver.id.to_s],
@@ -313,8 +314,8 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   end
 
   it "atualiza a fila de distribuicao a partir do select de corretores ao editar" do
-    first_receiver = create(:admin_user, :admin)
-    second_receiver = create(:admin_user, :admin)
+    first_receiver = create(:admin_user)
+    second_receiver = create(:admin_user)
     rule = create(:distribution_rule)
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_receiver)
 
@@ -337,8 +338,8 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   end
 
   it "preserva a ordem enviada pela fila quando os nested attributes estao presentes" do
-    first_receiver = create(:admin_user, :admin)
-    second_receiver = create(:admin_user, :admin)
+    first_receiver = create(:admin_user)
+    second_receiver = create(:admin_user)
     rule = create(:distribution_rule)
     first_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_receiver, position: 1)
     second_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: second_receiver, position: 2)
@@ -366,8 +367,8 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   end
 
   it "salva os pesos dos corretores no modo performance" do
-    first_receiver = create(:admin_user, :admin)
-    second_receiver = create(:admin_user, :admin)
+    first_receiver = create(:admin_user)
+    second_receiver = create(:admin_user)
 
     post admin_distribution_rules_path, params: {
       agent_select: [first_receiver.id.to_s, second_receiver.id.to_s],

@@ -1,12 +1,7 @@
 require "rails_helper"
 
 RSpec.describe MetaLeadProcessingJob, type: :job do
-  around do |example|
-    Lead.skip_callback(:commit, :after, :route_lead)
-    example.run
-  ensure
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
+  before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
   it "cria o lead no tenant do usuario dono da integracao Meta" do
     tenant = Tenant.create!(name: "Conta Meta #{SecureRandom.hex(3)}", slug: "conta-meta-#{SecureRandom.hex(3)}")

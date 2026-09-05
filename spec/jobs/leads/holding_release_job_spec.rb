@@ -10,14 +10,11 @@ RSpec.describe Leads::HoldingReleaseJob, type: :job do
   let(:rule) { create(:distribution_rule, represamento_active: true, represamento_schedule: schedule) }
 
   before do
-    Lead.skip_callback(:commit, :after, :route_lead)
+    allow_any_instance_of(Lead).to receive(:route_lead)
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent, position: 1)
     allow(Leads::NotificationDispatcher).to receive(:deliver)
   end
 
-  after do
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
 
   it "distribui lead represado por horario quando o expediente comeca" do
     lead = create(:lead, status: :represado, admin_user: nil, distribution_rule: rule)

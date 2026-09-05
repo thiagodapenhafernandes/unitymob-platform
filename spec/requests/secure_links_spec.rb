@@ -8,13 +8,10 @@ RSpec.describe "SecureLinks", type: :request do
   let(:outro_corretor) { create(:admin_user, :field_agent, name: "Corretor Ganhador") }
 
   before do
-    Lead.skip_callback(:commit, :after, :route_lead)
+    allow_any_instance_of(Lead).to receive(:route_lead)
     host! "localhost"
   end
 
-  after do
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
 
   it "mostra o card seguro quando o push abre detalhes com usuario logado" do
     lead = create(:lead, name: "Cliente Detalhe", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)

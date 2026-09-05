@@ -20,10 +20,9 @@ RSpec.describe Leads::DistributorService do
     # agent_with_checkin tem check-in ativo na loja
     create(:check_in, admin_user: agent_with_checkin, store: store, status: :active, checked_in_at: 5.minutes.ago)
     # Testamos DistributorService em isolação, sem o callback after_create_commit
-    Lead.skip_callback(:commit, :after, :route_lead)
+    allow_any_instance_of(Lead).to receive(:route_lead)
   end
 
-  after { Lead.set_callback(:commit, :after, :route_lead) }
 
   def build_lead(attrs = {})
     Lead.create!(attrs.reverse_merge(name: "Cliente Teste", phone: "11999999999", origin: "site"))
