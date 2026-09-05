@@ -29,6 +29,9 @@ export default class extends Controller {
     "proprietorSelect",
     "captadorSelect",
     "deliveryDate",
+    "constructionYear",
+    "buildingFloors",
+    "unitsPerFloor",
     "constructionProfileSelect",
     "useDevelopmentPhotos",
     "streetTypeSelect",
@@ -624,12 +627,16 @@ export default class extends Controller {
     }
 
     this.syncDevelopmentEditLink(developmentData.edit_url)
-    this.syncDevelopmentRelationshipFields(developmentData)
+    this.syncDevelopmentRelationshipFields(developmentData, { overwrite: fromUser })
     this.syncDevelopmentAddressFields(developmentData.address, { overwrite: fromUser })
     if (fromUser) this.enableDevelopmentPhotosFallback()
   }
 
-  syncDevelopmentRelationshipFields(developmentData) {
+  syncDevelopmentRelationshipFields(developmentData, { overwrite = false } = {}) {
+    const options = { onlyWhenBlank: !overwrite }
+    this.setInputTargetValue("constructionYear", developmentData.ano_construcao, options)
+    this.setInputTargetValue("buildingFloors", developmentData.andares_qtd, options)
+    this.setInputTargetValue("unitsPerFloor", developmentData.aptos_andar, options)
     this.setInputTargetValue("deliveryDate", developmentData.data_entrega)
     this.setSelectTargetValue("constructionProfileSelect", developmentData.perfil_construcao)
   }

@@ -425,6 +425,25 @@ RSpec.describe Habitation, type: :model do
   end
 
   describe "development hierarchy sync" do
+    it "copies building capacity on linking, preserves unit values and fills missing values on later saves" do
+      development = create(:habitation, tipo: "Empreendimento", ano_construcao: 2020, andares_qtd: 20, aptos_andar: 4)
+      unit = create(:habitation, codigo_empreendimento: development.codigo)
+      expect(unit.reload).to have_attributes(ano_construcao: 2020, andares_qtd: 20, aptos_andar: 4)
+
+      unit.update!(ano_construcao: 2021, andares_qtd: 21, aptos_andar: nil)
+      expect(unit.reload).to have_attributes(ano_construcao: 2021, andares_qtd: 21, aptos_andar: 4)
+
+      other = create(:habitation, tipo: "Empreendimento", ano_construcao: 2024, andares_qtd: 30, aptos_andar: 2)
+      unit.update!(codigo_empreendimento: other.codigo)
+      expect(unit.reload).to have_attributes(ano_construcao: 2024, andares_qtd: 30, aptos_andar: 2)
+    end
+
+    it "does not erase unit values when the linked development has missing capacity data" do
+      development = create(:habitation, tipo: "Empreendimento")
+      unit = create(:habitation, codigo_empreendimento: development.codigo, ano_construcao: 2015, andares_qtd: 10, aptos_andar: 2)
+      expect(unit.reload).to have_attributes(ano_construcao: 2015, andares_qtd: 10, aptos_andar: 2)
+    end
+
     it "copies public development data without replacing the unit broker" do
       development_broker = create(:admin_user)
       unit_broker = create(:admin_user)

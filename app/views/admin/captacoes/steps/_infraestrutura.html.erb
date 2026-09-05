@@ -16,7 +16,7 @@
 %>
 
 <h1 class="wizard-section-title"><i class="bi bi-building tw-text-primary"></i>Edifício e lazer</h1>
-<p class="wizard-section-subtitle">Informe estrutura do prédio, condomínio e áreas de lazer.</p>
+<p class="wizard-section-subtitle"><%= @captacao.codigo_empreendimento.present? ? "Dados aproveitados do empreendimento, quando disponíveis. Confira e complete se necessário." : "Informe estrutura do prédio, condomínio e áreas de lazer." %></p>
 
 <% if @captacao.property_kind_terreno? && !show_infrastructure_fields %>
   <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
@@ -25,6 +25,10 @@
 <% else %>
   <% if @captacao.uses_building_infrastructure? %>
     <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <%= ax_number_field(form: f, method: :ano_construcao, label: "Ano de construção", min: 0,
+              inputmode: "numeric", class_name: "wizard-field-group") %>
+      </div>
       <div class="ax-span-4">
         <%= ax_number_field(form: f, method: :andares_total, label: "Total andares", min: 0,
               inputmode: "numeric", class_name: "wizard-field-group") %>
