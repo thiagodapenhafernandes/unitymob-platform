@@ -63,7 +63,7 @@ module Habitations
 
     def textual_match
       pattern = "%" + @key.gsub(/[^a-z0-9]+/, "%") + "%"
-      @scope.where("searchable_features LIKE :pattern", pattern: pattern)
+      @scope.where("unaccent(habitations.searchable_features) ILIKE :pattern", pattern: pattern)
     end
   end
 end
