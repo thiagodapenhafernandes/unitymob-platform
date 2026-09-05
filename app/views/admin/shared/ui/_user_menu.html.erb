@@ -1,0 +1,82 @@
+        <div class="ax-navbar__user ax-user-menu <%= "ax-user-menu--compact" if local_assigns[:compact] %>" data-controller="ax-dropdown">
+          <button type="button" class="ax-navbar__user-trigger" data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger" aria-expanded="false" aria-label="Menu do usuário">
+            <%= ax_avatar(
+                  name: current_admin_user&.name.presence || current_admin_user&.email || "Usuário",
+                  image: current_admin_user&.login_identity&.avatar,
+                  size: :xxs,
+                  class_name: "ax-navbar__avatar"
+                ) %>
+            <span class="tw-hidden sm:tw-inline ax-user-menu__name"><%= current_admin_user&.name.presence || current_admin_user&.email %></span>
+            <i class="bi bi-chevron-down tw-text-xs tw-text-ink-faint"></i>
+          </button>
+          <div class="ax-menu ax-menu--end" data-ax-dropdown-target="menu" hidden>
+            <div class="tw-px-2.5 tw-py-1.5 tw-text-xs tw-text-ink-muted tw-truncate"><%= current_admin_user&.notification_email %></div>
+            <div class="ax-menu__sep"></div>
+            <%= link_to edit_admin_my_profile_path, class: "ax-menu__item" do %>
+              <i class="bi bi-person-circle"></i><span>Meu perfil</span>
+            <% end %>
+            <% dark_theme_enabled = current_admin_user&.admin_dark_mode? %>
+            <%= button_to admin_theme_preference_path,
+                  method: :patch,
+                  params: { admin_user: { admin_theme_mode: dark_theme_enabled ? "light" : "dark" } },
+                  class: "ax-menu__item",
+                  form: {
+                    class: "tw-block tw-w-full",
+                    data: { controller: "theme-preference", action: "submit->theme-preference#submit" }
+                  },
+                  role: "switch",
+                  aria: { checked: dark_theme_enabled.to_s, label: "Alternar tema escuro" } do %>
+              <i class="bi bi-moon-stars"></i><span>Tema escuro</span>
+              <span class="ax-switch ax-switch--compact ax-menu__theme-switch <%= 'is-checked' if dark_theme_enabled %> tw-ml-auto" aria-hidden="true">
+                <span class="ax-switch__track"></span>
+              </span>
+            <% end %>
+            <%# Multi-conta: troca sem relogin (só fora de impersonação e com 2+ contas) %>
+            <%# Troca de contas: recurso de ADMIN DE CONTAS — só aparece quando a
+                identidade primária é Admin da Conta (tenant_owner) na conta natal. %>
+            <% if current_admin_user && !current_admin_user.system_admin? && session[:impersonator_admin_user_id].blank? &&
+                  (current_admin_user.login_identity.tenant_owner? rescue false) %>
+              <% accounts = current_admin_user.switchable_accounts rescue [] %>
+              <% if accounts.size > 1 %>
+                <div class="ax-menu__sep"></div>
+                <div class="tw-px-2.5 tw-py-1 tw-text-[10px] tw-font-extrabold tw-uppercase tw-tracking-wide tw-text-ink-muted">Contas</div>
+                <% accounts.each do |entry| %>
+                  <% is_current = entry[:admin_user].id == current_admin_user.id %>
+                  <% if is_current %>
+                    <div class="ax-menu__item ax-menu__item--current">
+                      <i class="bi bi-check2"></i><span><%= entry[:tenant].name %></span>
+                    </div>
+                  <% else %>
+                    <%= button_to admin_account_switch_path(tenant_id: entry[:tenant].id), method: :post,
+                          class: "ax-menu__item", form: { class: "tw-block tw-w-full", data: { turbo: false } } do %>
+                      <i class="bi bi-arrow-left-right"></i><span><%= entry[:tenant].name %></span>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              <% end %>
+            <% end %>
+            <div class="ax-menu__sep"></div>
+            <% if support_widget_available? %>
+              <%= link_to new_support_ticket_path, class: "ax-menu__item", data: { admin_navigation_ignore: true, action: "ax-dropdown#close", ax_modal_open: "support-modal", support_new_url: new_support_ticket_path(modal: "1", module: controller_name.humanize) } do %>
+                <i class="bi bi-life-preserver"></i><span>Abrir chamado</span>
+              <% end %>
+              <%= link_to support_tickets_path, class: "ax-menu__item" do %><i class="bi bi-chat-left-text"></i><span>Meus chamados</span><% end %>
+              <div class="ax-menu__sep"></div>
+            <% end %>
+            <%= link_to admin_two_factor_settings_path, class: "ax-menu__item" do %>
+              <i class="bi bi-shield-lock"></i><span>Verificação em duas etapas</span>
+            <% end %>
+            <div class="ax-menu__sep"></div>
+            <%# data: { turbo: false } força uma submissão de formulário de
+                verdade (sem fetch do Turbo). Necessário pro app nativo: o
+                logout redireciona pra capacitor://localhost, e o fetch do
+                Turbo não consegue seguir redirect pra um esquema não-http —
+                a navegação simplesmente travava (só um refresh manual saía
+                da tela), mesmo com a sessão já encerrada no servidor. %>
+            <%= button_to destroy_admin_user_session_path, method: :delete,
+                  class: "ax-menu__item ax-menu__item--danger",
+                  form: { class: "tw-block tw-w-full", data: { turbo: false } } do %>
+              <i class="bi bi-box-arrow-right"></i><span>Sair</span>
+            <% end %>
+          </div>
+        </div>

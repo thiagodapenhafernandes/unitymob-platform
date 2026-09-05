@@ -314,24 +314,7 @@
     <h1 class="field-header__name"><%= @admin_user.name.presence || @admin_user.email %></h1>
   </div>
   <div class="field-header__actions">
-    <% field_dark_theme = current_admin_user.admin_dark_mode? %>
-    <%= button_to admin_theme_preference_path,
-          method: :patch,
-          params: { admin_user: { admin_theme_mode: field_dark_theme ? "light" : "dark" } },
-          class: "field-theme-toggle",
-          form: { data: { controller: "theme-preference", action: "submit->theme-preference#submit" } },
-          title: field_dark_theme ? "Usar tema claro" : "Usar tema escuro",
-          role: "switch",
-          aria: { checked: field_dark_theme.to_s, label: "Alternar tema escuro" } do %>
-      <i class="bi <%= field_dark_theme ? 'bi-sun' : 'bi-moon-stars' %>"></i>
-    <% end %>
-    <%# data: { turbo: false } — mesmo motivo do menu do admin: o logout
-        redireciona pra capacitor://localhost no app nativo, e o fetch do
-        Turbo não consegue seguir redirect pra um esquema não-http. %>
-    <%= button_to destroy_admin_user_session_path, method: :delete, class: "field-logout", title: "Sair",
-          form: { data: { turbo: false } } do %>
-      <i class="bi bi-box-arrow-right"></i>
-    <% end %>
+    <%= render "admin/shared/ui/user_menu", compact: true %>
   </div>
 </div>
 

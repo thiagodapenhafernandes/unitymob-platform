@@ -30,6 +30,7 @@
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "admin/components/loading", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "admin/theme_tokens", "admin/components", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "field_theme", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "pwa_bottom_nav", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
@@ -272,6 +273,7 @@
       }
     </style>
     <%= stylesheet_link_tag "support_desk" %>
+    <%= javascript_include_tag "support_desk", defer: true %>
   </head>
   <body class="ax-pwa-bottom-nav-body"
         data-controller="admin-navigation">
@@ -579,5 +581,6 @@
       })();
 
     </script>
+    <%= render "admin/shared/ui/support_widget" if support_widget_available? %>
   </body>
 </html>

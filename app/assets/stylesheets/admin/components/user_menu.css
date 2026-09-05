@@ -1,0 +1,9 @@
+.ax-user-menu { position: relative; flex-shrink: 0; }
+.ax-user-menu--compact .ax-user-menu__name { display: none; }
+.ax-user-menu--compact .ax-navbar__user-trigger { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px; border: 1px solid var(--field-border, #d5deea); border-radius: 12px; background: var(--field-surface, #fff); color: var(--field-text, #344054); }
+.ax-user-menu--compact .ax-menu { width: min(310px, calc(100vw - 32px)); background: var(--field-surface, #fff); border-color: var(--field-border, #d5deea); }
+.ax-user-menu--compact .ax-menu__item { min-height: 44px; color: var(--field-text, #344054); }
+.ax-user-menu--compact .ax-menu__item--danger { color: #dc3545; }
+.ax-user-menu .ax-menu form { display: block; width: 100%; margin: 0; }
+.ax-user-menu .ax-menu__theme-switch { margin-left: auto; }
+.ax-user-menu--compact .ax-menu > div:first-child { padding: 10px; overflow: hidden; text-overflow: ellipsis; color: var(--field-text-muted, #667085); }

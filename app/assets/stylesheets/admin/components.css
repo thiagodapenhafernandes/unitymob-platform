@@ -1,5 +1,7 @@
 /*
  *= require admin/components/view_toggle
+ *= require admin/components/mobile_detail_header
+ *= require admin/components/user_menu
  *= require admin/components/avatar
  *= require admin/components/appointment_card
  *= require admin/components/dismissible_hint

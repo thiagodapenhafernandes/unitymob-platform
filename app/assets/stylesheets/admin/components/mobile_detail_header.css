@@ -1,0 +1,6 @@
+.ax-mobile-detail-header { display: none; }
+@media (max-width: 767px) {
+  .ax-mobile-detail-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 8px; background: var(--admin-surface-header, #fff); }
+  body:has(.ax-mobile-detail-header) .ax-navbar { display: none; }
+  body:has(.ax-mobile-detail-header) .ax-page-head { display: none; }
+}

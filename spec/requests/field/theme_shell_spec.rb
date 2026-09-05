@@ -46,8 +46,20 @@ RSpec.describe "Field theme shell", type: :request do
     expect(response).to have_http_status(:ok)
     expect(document.at_css("html")["data-field-theme"]).to eq("dark")
     expect(document.at_css('meta[name="theme-color"]')["content"]).to eq(LayoutSetting::ADMIN_DARK_THEME[:header])
-    expect(response.body).to include("--field-primary: #3E6F9E", "field-theme-toggle", 'aria-checked="true"')
+    expect(response.body).to include("--field-primary: #3E6F9E", "ax-user-menu--compact", 'aria-checked="true"')
+    expect(document.css('.field-theme-toggle, .field-logout')).to be_empty
+    expect(document.at_css('.ax-user-menu a[href="/admin/my_profile/edit"]')).to be_present
     expect(response.body).to include('data-controller="theme-preference"', 'submit-&gt;theme-preference#submit')
+  end
+
+  it "oferece chamados no menu e carrega a janela de abertura" do
+    Support::Account.create!(uid: SecureRandom.uuid, local_tenant_id: broker.tenant_id, name: "Conta", endpoint: "https://central.example.test", secret: "s" * 64)
+    get field_root_path, headers: mobile_headers
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('.ax-user-menu [data-support-new-url]')).to be_present
+    expect(document.at_css('#support-modal')).to be_present
+    expect(document.at_css('script[src*="support_desk"]')).to be_present
   end
 
   it "mantem a busca inteligente coberta pelo tema escuro do PWA" do

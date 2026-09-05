@@ -130,6 +130,7 @@ Rails.application.routes.draw do
 
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
+    resource :my_profile, only: [:edit, :update]
     resource :public_site_profile, only: [:edit, :update]
     resource :layout_setting, only: [:show, :edit, :update]
     resource :lead_setting, only: [:edit, :update]
