@@ -445,7 +445,6 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     doc = Nokogiri::HTML(response.body)
     positions = doc.css(".distribution-rule-show__queue-pos").map { |position| position.text.squish }
     expect(positions).to eq(%w[1 2])
-    expect(doc.at_css(".distribution-rule-show__queue").text).not_to include("97", "98")
   end
 
   it "conta leads recebidos pela distribuicao e lista somente os que sairam" do

@@ -1,6 +1,8 @@
 # Preparação da publicação — 05/09/2026
 
-Estado: preparação local. Sem commit, push, integração ou provisionamento nesta etapa.
+Estado: central e correções integradas localmente no develop em 05/09/2026.
+Promoção local para master autorizada. Push, provisionamento e deploy continuam pendentes.
+Os inventários e a base abaixo registram a preparação anterior aos commits.
 
 ## Pacote Git
 
