@@ -1,5 +1,5 @@
 <header class="ax-mobile-detail-header">
   <%= link_to back_path, class: "ax-btn", aria: { label: "Voltar" } do %><i class="bi bi-arrow-left" aria-hidden="true"></i><% end %>
-  <strong><%= title %></strong>
-  <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+  <div class="ax-mobile-detail-header__title"><strong><%= title %></strong><% if local_assigns[:subtitle].present? %><span><%= subtitle %></span><% end %></div>
+  <% if local_assigns[:status].present? %><span class="ax-mobile-detail-header__status"><%= status %></span><% else %><i class="bi bi-<%= icon %>" aria-hidden="true"></i><% end %>
 </header>

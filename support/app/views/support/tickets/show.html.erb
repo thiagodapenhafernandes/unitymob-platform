@@ -3,7 +3,8 @@
 <% if support_operator? %>
   <%= render "operator_conversation" %>
 <% else %>
-<section class="ax-support-workspace" data-support-url="<%= support_ticket_path(@ticket) %>" data-support-poll="<%= support_updates_path(ticket_id: @ticket.id) %>" data-support-version="<%= "#{@ticket.revision}:#{@ticket.messages.count}:#{@ticket.pending?}" %>">
+<section class="ax-support-workspace ax-support-workspace--ticket" data-support-url="<%= support_ticket_path(@ticket) %>" data-support-poll="<%= support_updates_path(ticket_id: @ticket.id) %>" data-support-version="<%= "#{@ticket.revision}:#{@ticket.messages.count}:#{@ticket.pending?}" %>">
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Chamado", subtitle: @ticket.subject, back_path: support_tickets_path, status: Support::Ticket::STATUS_LABELS.fetch(@ticket.status) %>
   <%= render "admin/shared/ui/support_header", title: @ticket.subject, back: support_tickets_path, status: @ticket.status %>
   <% if flash[:alert] %><p role="alert" class="ax-support-notice"><%= flash[:alert] %></p><% end %>
   <p><%= @ticket.account.name %> · <%= @ticket.requester_name %> · Protocolo <%= @ticket.uid %></p>

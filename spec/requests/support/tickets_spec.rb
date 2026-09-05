@@ -121,6 +121,19 @@ RSpec.describe 'Chamados na conta', type: :request do
     expect(Nokogiri::HTML(response.body).css('[data-support-unread-count][hidden]').size).to eq(2)
   end
 
+  it 'usa header compacto compartilhado no detalhe sem perder conversa e resposta' do
+    ticket = ticket_for
+    get "/admin/support/tickets/#{ticket.id}"
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    header = document.at_css('.ax-mobile-detail-header')
+    expect(header.at_css('a')['href']).to eq('/admin/support/tickets')
+    expect(header.at_css('.ax-mobile-detail-header__title').text).to include('Chamado', ticket.subject)
+    expect(header.at_css('.ax-mobile-detail-header__status').text).to eq('Aberto')
+    expect(document.at_css('#reply')).to be_present
+    expect(document.at_css('.ax-conversation')).to be_present
+  end
+
   it 'oferece somente telas do menu autorizado e exige descrição em Outro' do
     get '/admin/support/tickets/new', params: { modal: '1' }
     document = Nokogiri::HTML(response.body)
