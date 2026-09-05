@@ -1,0 +1,6 @@
+/.env*
+!/.env.example
+/log/*
+/tmp/*
+/storage/*
+/public/assets/*

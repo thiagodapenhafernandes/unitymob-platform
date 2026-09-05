@@ -1,0 +1,2 @@
+<% names=ticket.labels.to_s.split(',').map(&:strip).reject(&:blank?) %>
+<% if names.any? %><div class="ax-label-badges"><% names.each do |name| %><% label=catalog[name.downcase] %><span class="ax-support-status" <% if label %>style="background:<%= label.color %>;color:<%= label.text_color %>"<% end %>><%= name %></span><% end %></div><% end %>

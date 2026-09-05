@@ -1,0 +1,44 @@
+<% d = @dashboard %>
+<section class="ax-support-workspace">
+  <%= render 'admin/shared/ui/support_header', title: 'Visão geral da operação' %>
+  <div class="ax-support-toolbar"><p>Posição em <%= d.now.strftime('%d/%m/%Y') %> · <%= d.now.strftime('%H:%M:%S') %></p><div><%= link_to 'Atualizar painel', root_path, class: 'ax-btn' %> <%= link_to 'Abrir fila de atendimento', support_tickets_path, class: 'ax-btn ax-btn--primary' %></div></div>
+  <h2>O que precisa de atenção agora</h2>
+  <div class="ax-support-metrics">
+    <%= render 'admin/shared/ui/support_metric', label: 'Esperando o suporte', value: d.waiting_support, description: 'Abertos ou em atendimento.', href: support_tickets_path(queue: 'waiting_support'), tone: 'attention' %>
+    <%= render 'admin/shared/ui/support_metric', label: 'Esperando o usuário', value: d.counts.fetch('aguardando_usuario', 0), description: 'O suporte respondeu e aguarda retorno.', href: support_tickets_path(status: 'aguardando_usuario') %>
+    <%= render 'admin/shared/ui/support_metric', label: 'Com prazo vencido', value: d.overdue_ids.size, description: 'Chamados ativos com alguma meta de SLA vencida.', tone: d.overdue_ids.any? ? 'danger' : nil %>
+    <%= render 'admin/shared/ui/support_metric', label: 'Dentro dos prazos', value: d.on_time_ids.size, description: 'Chamados ativos com as duas metas verificáveis.', tone: 'success' %>
+    <%= render 'admin/shared/ui/support_metric', label: 'Sem responsável', value: d.unassigned, description: 'Precisam de alguém para conduzir o atendimento.', href: support_tickets_path(queue: 'unassigned'), tone: d.unassigned.positive? ? 'attention' : nil %>
+  </div>
+  <p class="ax-support-muted"><%= d.unmeasured_ids.size %> chamado(s) ativo(s) sem histórico ou metas suficientes para confirmar os prazos. A meta de resposta mede o primeiro retorno; a de resolução acompanha o atendimento completo.</p>
+  <div class="ax-support-toolbar ax-support-panel"><span><strong><%= d.open_tickets.size %></strong> em aberto no total</span><span><strong><%= d.counts.fetch('aberto', 0) %></strong> novos / abertos</span><span><strong><%= d.counts.fetch('em_atendimento', 0) %></strong> em atendimento</span><span><strong><%= d.received_today %></strong> recebidos hoje</span><span><strong><%= d.resolved_today %></strong> resolvidos hoje</span><span><strong><%= d.counts.fetch('resolvido', 0) %></strong> encerrados no histórico</span></div>
+
+  <section class="ax-support-panel"><h2>Próximos atendimentos</h2><p>Primeiro os atrasados, depois os sem responsável; os mais antigos vêm antes dentro de cada grupo. Até 10 chamados.</p>
+    <% if d.attention.empty? %><p class="ax-support-empty">Nenhum chamado em aberto. Novas solicitações aparecerão aqui.</p><% else %>
+      <div class="ax-support-table-scroll"><table class="ax-table"><thead><tr><th>Chamado / conta</th><th>Quem precisa agir</th><th>Responsável</th><th>Tempo desde a entrada</th><th>Situação do prazo</th></tr></thead><tbody>
+      <% d.attention.each do |ticket| %><% m = d.metrics.fetch(ticket.id) %><tr><td><%= link_to ticket.subject, support_ticket_path(ticket), class: 'ax-support-text-link' %><br><small><%= ticket.account.name %> · <%= ticket.priority.humanize %></small></td><td><%= ticket.status == 'aguardando_usuario' ? 'Usuário' : 'Suporte' %><br><small><%= Support::Ticket::STATUS_LABELS.fetch(ticket.status) %></small></td><td><%= ticket.assignee_name.presence || 'Definir responsável' %></td><td><%= sla_duration(m[:total_seconds]) %></td><td><span class="ax-support-status"><%= d.overdue_ids.include?(ticket.id) ? 'Atrasado' : d.on_time_ids.include?(ticket.id) ? 'Em dia' : 'Sem medição completa' %></span></td></tr><% end %>
+      </tbody></table></div>
+    <% end %>
+  </section>
+
+  <h2>Como estamos atendendo · últimos 30 dias</h2><p>Chamados recebidos na central nos últimos 30 dias. Médias consideram somente respostas e resoluções já registradas.</p>
+  <div class="ax-support-metrics">
+    <%= render 'admin/shared/ui/support_metric', label: 'Primeira resposta média', value: sla_duration(d.report.summary[:first_average]), description: "Respondidos: #{d.report.summary[:answered]}." %>
+    <%= render 'admin/shared/ui/support_metric', label: 'Resolução média', value: sla_duration(d.report.summary[:resolution_average]), description: "Resolvidos: #{d.report.summary[:resolved]}." %>
+    <%= render 'admin/shared/ui/support_metric', label: '90% das primeiras respostas', value: sla_duration(d.report.summary[:first_p90]), description: 'Ocorreram em até esse tempo.' %>
+    <%= render 'admin/shared/ui/support_metric', label: 'Chamados acompanhados', value: d.report.summary[:measured], description: "#{d.report.summary[:overdue]} ultrapassaram alguma meta, incluindo os já encerrados." %>
+  </div>
+
+  <% if current_staff.admin? %>
+    <section class="ax-support-panel"><div class="ax-support-toolbar"><h2>Equipe agora · <%= d.online_support %> do suporte online</h2><%= link_to 'Ver SLA e histórico da equipe →', sla_path, class: 'ax-support-text-link' %></div><p>Conexão confirmada recentemente em uma aba visível. Não equivale a trabalho contínuo. Carga e atrasos são atuais; tempo confirmado soma os últimos 30 dias.</p>
+      <div class="ax-support-table-scroll"><table class="ax-table"><thead><tr><th>Pessoa / perfil</th><th>Conexão</th><th>Sob responsabilidade</th><th>Atrasados</th><th>Tempo confirmado · 30 dias</th><th>Última atividade</th></tr></thead><tbody>
+      <% d.people.each do |staff| %><% stats = d.report.staff_stats.fetch(staff.id) %><tr><td><%= staff.name %><br><small><%= Staff::ROLE_LABELS.fetch(staff.role) %></small></td><td><%= stats[:online] ? 'Online' : 'Sem conexão recente' %></td><td><%= (d.staff_load[staff.id] || []).size %></td><td><%= (d.staff_overdue[staff.id] || []).size %></td><td><%= sla_duration(stats[:seconds]) %></td><td><%= stats[:last_activity] ? l(stats[:last_activity], format: :short) : 'Ainda sem registro' %></td></tr><% end %>
+      </tbody></table></div><% if d.people.none? { |s| s.role == 'suporte' } %><p>Nenhum perfil de suporte ativo. <%= link_to 'Gerenciar equipe', management_path %>.</p><% end %>
+    </section>
+    <section class="ax-support-panel"><div class="ax-support-toolbar"><h2>Contas e comunicação</h2><%= link_to 'Gerenciar contas →', management_path, class: 'ax-support-text-link' %></div><p><strong><%= d.accounts.count(&:active?) %></strong> contas habilitadas · <strong><%= d.pending %></strong> envios aguardando entrega · <strong><%= d.failed %></strong> envios com falha definitiva. Conta habilitada não comprova servidor online.</p>
+      <div class="ax-support-table-scroll"><table class="ax-table"><thead><tr><th>Conta</th><th>Acesso</th><th>Esperando suporte</th><th>Esperando usuário</th><th>Atrasados</th></tr></thead><tbody>
+      <% d.accounts.each do |account| %><% tickets = d.account_load[account.id] || [] %><tr><td><%= link_to account.name, support_tickets_path(account_id: account.id), class: 'ax-support-text-link' %></td><td><%= account.active? ? 'Habilitada' : 'Bloqueada' %></td><td><%= tickets.count { |t| t.status != 'aguardando_usuario' } %></td><td><%= tickets.count { |t| t.status == 'aguardando_usuario' } %></td><td><%= (d.account_overdue[account.id] || []).size %></td></tr><% end %>
+      </tbody></table></div>
+    </section>
+  <% end %>
+</section>

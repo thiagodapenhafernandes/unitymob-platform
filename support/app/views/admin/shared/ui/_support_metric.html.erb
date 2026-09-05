@@ -1,0 +1,5 @@
+<article class="ax-support-panel ax-support-metric <%= "ax-support-metric--#{local_assigns[:tone]}" if local_assigns[:tone] %>">
+  <h3><%= label %></h3><strong><%= value %></strong>
+  <p><%= description %></p>
+  <% if local_assigns[:href] %><%= link_to 'Ver chamados →', href, class: 'ax-support-text-link', aria: { label: "Ver chamados: #{label}" } %><% end %>
+</article>

@@ -1,0 +1,6 @@
+<li><div><strong><%= support_audit_action(audit.action) %></strong><time datetime="<%= audit.created_at.iso8601 %>"><%= l(audit.created_at, format: :short) %></time></div><p><%= support_audit_actor(audit.actor, staff_names) %></p>
+  <% audit.details.slice('status','priority','labels','assignee_id').each do |key, change| %>
+    <% if change.is_a?(Array) && change.size == 2 %><p><%= {'status'=>'Situação','priority'=>'Prioridade','labels'=>'Etiquetas','assignee_id'=>'Responsável'}[key] %>: <%= support_audit_value(key, change.first, staff_names) %> → <%= support_audit_value(key, change.last, staff_names) %></p><% end %>
+  <% end %>
+  <% if audit.details['previous_body'].present? %><details><summary>Ver mensagem anterior</summary><%= simple_format(audit.details['previous_body']) %></details><% end %>
+</li>

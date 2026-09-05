@@ -1,0 +1,7 @@
+<details class="ax-support-disclosure ax-intake-summary">
+  <summary><div>Pré-perguntas<small>O que o usuário relatou ao abrir o chamado</small></div><span>Ver detalhes</span></summary>
+  <dl class="ax-intake-grid">
+    <% Support::Ticket::QUESTIONS.sort_by { |key, _| key == 'actual_result' ? 1 : 0 }.each do |key, label| %><div class="<%= 'ax-intake-grid__wide' if key == 'actual_result' %>"><dt><%= label %></dt><dd><%= ticket.intake[key].presence || 'Não informado' %></dd></div><% end %>
+  </dl>
+  <% if ticket.source_path.present? %><p class="ax-intake-source">Tela de origem <code><%= ticket.source_path %></code></p><% end %>
+</details>

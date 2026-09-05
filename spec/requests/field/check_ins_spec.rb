@@ -13,6 +13,8 @@ RSpec.describe "Field::CheckIns", type: :request do
 
   describe "POST /field/check_ins" do
     context "sem turno ativo" do
+      before { store.update!(turnos_config: operational_shift_config_for(Time.current, active: false)) }
+
       it "responde 422 com erro :no_active_shift" do
         post "/field/check_ins", params: {
           lat: store.latitude, lng: store.longitude, accuracy: 10

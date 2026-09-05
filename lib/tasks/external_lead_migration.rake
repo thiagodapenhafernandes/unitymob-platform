@@ -1,8 +1,8 @@
 namespace :external_lead_migration do
   desc "Reconcilia tarefas e visitas agendadas importadas do C2S. Use EXECUTE=1 para gravar."
   task reconcile_scheduled_actions: :environment do
-    tenant = Tenant.find_by(id: ENV["TENANT_ID"]) if ENV["TENANT_ID"].present?
-    integration = ExternalLeadIntegration.find_by(id: ENV["INTEGRATION_ID"]) if ENV["INTEGRATION_ID"].present?
+    tenant = Tenant.find(ENV["TENANT_ID"]) if ENV["TENANT_ID"].present?
+    integration = ExternalLeadIntegration.find(ENV["INTEGRATION_ID"]) if ENV["INTEGRATION_ID"].present?
     execute = ENV["EXECUTE"].to_s == "1"
     operational_only = ENV["OPERATIONAL_ONLY"].to_s == "1"
 

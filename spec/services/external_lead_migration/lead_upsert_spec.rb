@@ -247,6 +247,49 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     )
   end
 
+  it "atualiza data, titulo, responsavel e status das mesmas atividades em eventos repetidos" do
+    event = payload.deep_dup
+    event["attributes"]["schedulated_actions"] = [
+      { "id" => "return-1", "schedulated_action_name" => "Retornar", "schedulated_action_date" => "2026-09-29T09:00:00-03:00", "created_at" => "2026-08-12T19:17:09-03:00", "status" => "Em aberto" },
+      { "id" => "visit-1", "schedulated_action_name" => "Visita", "schedulated_action_date" => "2026-09-29T10:00:00-03:00", "status" => "Em aberto" }
+    ]
+    lead = described_class.call(integration:, payload: event, historical: true).lead
+    task = lead.tasks.sole
+    appointment = lead.appointments.sole
+    task.update!(due_at: Time.zone.parse("2026-08-12T19:17:09-03:00"), title: "Ação agendada do legado")
+    new_broker = create(:admin_user, tenant:)
+    integration.update!(seller_mappings: { "seller-1" => new_broker.id })
+    event["attributes"]["schedulated_actions"][0].merge!("schedulated_action_name" => "Retorno alterado", "status" => "Finalizado sem informar")
+    event["attributes"]["schedulated_actions"][1].merge!("schedulated_action_name" => "Visita alterada", "schedulated_action_date" => "2026-09-30T10:00:00-03:00", "status" => "Cancelado")
+
+    2.times { described_class.call(integration:, payload: event, historical: false) }
+
+    expect(tenant.leads.where(external_lead_id: event["id"]).count).to eq(1)
+    expect(lead.tasks.reload.pluck(:id)).to eq([task.id])
+    expect(lead.appointments.reload.pluck(:id)).to eq([appointment.id])
+    expect(task.reload).to have_attributes(admin_user: new_broker, title: "Retorno alterado", due_at: Time.zone.parse("2026-09-29T09:00:00-03:00"), status: "concluida")
+    expect(appointment.reload).to have_attributes(admin_user: new_broker, title: "Visita alterada", starts_at: Time.zone.parse("2026-09-30T10:00:00-03:00"), status: "cancelado")
+    expect(lead.activities.find_by!(kind: "external_appointment").metadata.dig("raw", "schedulated_action_date")).to eq("2026-09-30T10:00:00-03:00")
+  end
+
+  it "nao usa a data de criacao como vencimento quando o C2S omite a data agendada" do
+    event = payload.deep_dup
+    event["attributes"]["schedulated_actions"] = [{ "id" => "without-date", "name" => "Retornar", "created_at" => "2026-08-12T19:17:09-03:00" }]
+    lead = described_class.call(integration:, payload: event, historical: true).lead
+    expect(lead.tasks).to be_empty
+  end
+
+  it "mantem atividades externas distintas mesmo com o mesmo titulo e horario" do
+    event = payload.deep_dup
+    event["attributes"]["schedulated_actions"] = [
+      { "id" => "one", "name" => "Retornar", "due_at" => "2026-09-29T09:00:00-03:00" },
+      { "id" => "two", "name" => "Retornar", "due_at" => "2026-09-29T09:00:00-03:00" }
+    ]
+    lead = described_class.call(integration:, payload: event, historical: true).lead
+    described_class.call(integration:, payload: event, historical: false)
+    expect(lead.tasks.reload.count).to eq(2)
+  end
+
   it "nao atribui agenda C2S ao usuario conector quando o vendedor externo esta sem mapeamento" do
     connector = create(:admin_user, tenant:, email: "conector-c2s@example.test")
     unmapped_integration = create(

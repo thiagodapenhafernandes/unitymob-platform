@@ -1,6 +1,7 @@
 require "rails_helper"
 
-# Fase 1 da granularidade: `delete` é ação PRÓPRIA, separada de `manage`.
+# Contrato atual: somente o dono da conta pode excluir imóveis e leads.
+# Histórico da granularidade: `delete` é ação PRÓPRIA, separada de `manage`.
 # O que precisa ficar provado aqui:
 #   1. manage NÃO implica delete (o caso "gerencia mas não exclui");
 #   2. leads#destroy exige permissão (antes bastava enxergar o lead);
@@ -75,24 +76,26 @@ RSpec.describe "Admin delete permission", type: :request do
       expect(Habitation.exists?(habitation.id)).to be(true)
     end
 
-    it "exclui quando o perfil tem delete com escopo total" do
+    it "bloqueia exclusão para perfil operacional mesmo com delete e escopo total" do
       user = create(:admin_user, profile: build_profile(imoveis_permissions(delete: true, scope: "all")))
       habitation = create(:habitation, admin_user: user)
       sign_in user
 
       delete_habitation(habitation)
 
-      expect(Habitation.exists?(habitation.id)).to be(false)
+      expect(response).to redirect_to(admin_habitations_path)
+      expect(Habitation.exists?(habitation.id)).to be(true)
     end
 
-    it "exclui o próprio imóvel quando tem delete com escopo 'próprios'" do
+    it "bloqueia exclusão do próprio imóvel para perfil operacional com delete" do
       user = create(:admin_user, profile: build_profile(imoveis_permissions(delete: true, scope: "own")))
       habitation = create(:habitation, admin_user: user)
       sign_in user
 
       delete_habitation(habitation)
 
-      expect(Habitation.exists?(habitation.id)).to be(false)
+      expect(response).to redirect_to(admin_habitations_path)
+      expect(Habitation.exists?(habitation.id)).to be(true)
     end
 
     # Regressão: set_habitation resolve só por tenant. Sem o recorte por
@@ -123,14 +126,15 @@ RSpec.describe "Admin delete permission", type: :request do
       expect(Lead.exists?(lead.id)).to be(true)
     end
 
-    it "exclui quando o perfil tem delete" do
+    it "bloqueia exclusão de lead para perfil operacional mesmo com delete" do
       user = create(:admin_user, profile: build_profile(leads_permissions(delete: true)))
       lead = create(:lead, admin_user: user)
       sign_in user
 
       delete_lead(lead)
 
-      expect(Lead.exists?(lead.id)).to be(false)
+      expect(response).to redirect_to(admin_leads_path)
+      expect(Lead.exists?(lead.id)).to be(true)
     end
   end
 

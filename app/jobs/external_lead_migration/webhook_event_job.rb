@@ -27,9 +27,6 @@ module ExternalLeadMigration
       return payload if mapper.external_lead_id.blank? || payload.dig("data", "attributes").present? || payload.dig("lead", "attributes").present?
 
       ExternalLeadMigration::Client.new(token: integration.access_token).lead(mapper.external_lead_id)
-    rescue ExternalLeadMigration::Client::Error => e
-      Rails.logger.warn("[ExternalLeadMigration Webhook] falha ao enriquecer payload: #{e.class}: #{e.message}")
-      payload
     end
   end
 end

@@ -2291,7 +2291,7 @@ RSpec.describe "Admin::Leads", type: :request do
       integration.save! unless integration.persisted?
       integration.update!(status: "disconnected", waba_id: nil, phone_number_id: nil, access_token: nil, inbox_attendance_enabled: false)
       LeadSetting.instance(tenant: broker.tenant).update!(push_lead_click_action: "system")
-      Lead.skip_callback(:commit, :after, :route_lead)
+      allow_any_instance_of(Lead).to receive(:route_lead)
       lead = create(:lead, status: :waiting_acceptance, admin_user: nil, distribution_rule: rule)
 
       sign_out admin
@@ -2305,8 +2305,6 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(lead.status).to eq(Lead.status_value(:em_atendimento))
       expect(rule_agent.reload.last_lead_received_at).to be_present
       expect(lead.activities.where(kind: "accepted").last.metadata).to include("shark_tank" => true)
-    ensure
-      Lead.set_callback(:commit, :after, :route_lead)
     end
 
     it "mostra lead ja atendido para corretor que perdeu a corrida do Shark Tank" do
@@ -2314,7 +2312,7 @@ RSpec.describe "Admin::Leads", type: :request do
       broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       winner = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-winner-#{SecureRandom.hex(4)}@salute.test")
       loser = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-loser-#{SecureRandom.hex(4)}@salute.test")
-      Lead.skip_callback(:commit, :after, :route_lead)
+      allow_any_instance_of(Lead).to receive(:route_lead)
       lead = create(:lead, status: :waiting_acceptance, admin_user: winner)
 
       sign_out admin
@@ -2325,8 +2323,6 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Lead já atendido")
       expect(lead.reload.admin_user_id).to eq(winner.id)
-    ensure
-      Lead.set_callback(:commit, :after, :route_lead)
     end
 
     it "bloqueia reivindicacao de Bolsao para corretor fora da regra" do
@@ -2336,7 +2332,7 @@ RSpec.describe "Admin::Leads", type: :request do
       outside = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-outside-#{SecureRandom.hex(4)}@salute.test")
       rule = create(:distribution_rule, distribution_mode: :shark_tank)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: inside)
-      Lead.skip_callback(:commit, :after, :route_lead)
+      allow_any_instance_of(Lead).to receive(:route_lead)
       lead = create(:lead, status: :waiting_acceptance, admin_user: nil, distribution_rule: rule)
 
       sign_out admin
@@ -2347,8 +2343,6 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Lead já atendido")
       expect(lead.reload.admin_user_id).to be_nil
-    ensure
-      Lead.set_callback(:commit, :after, :route_lead)
     end
 
     it "abre a conversa interna ao atender quando o inbox WhatsApp esta habilitado" do
@@ -2361,7 +2355,7 @@ RSpec.describe "Admin::Leads", type: :request do
         inbox_attendance_enabled: true
       )
       LeadSetting.instance(tenant: admin.tenant).update!(push_lead_click_action: "system")
-      Lead.skip_callback(:commit, :after, :route_lead)
+      allow_any_instance_of(Lead).to receive(:route_lead)
       lead = create(:lead, tenant: admin.tenant, status: :waiting_acceptance, admin_user: admin, phone: "47999990031")
 
       expect {
@@ -2372,8 +2366,6 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, lead_id: lead.id))
       expect(conversation.lead).to eq(lead)
       expect(conversation.contact_phone).to eq("5547999990031")
-    ensure
-      Lead.set_callback(:commit, :after, :route_lead)
     end
   end
 

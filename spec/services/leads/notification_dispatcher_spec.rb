@@ -16,14 +16,11 @@ RSpec.describe Leads::NotificationDispatcher do
   end
 
   before do
-    Lead.skip_callback(:commit, :after, :route_lead)
+    allow_any_instance_of(Lead).to receive(:route_lead)
     LeadSetting.instance.update!(secure_links_enabled: true, secure_link_push: true)
     allow(Notifications::PushDispatcher).to receive(:deliver).and_return(1)
   end
 
-  after do
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
 
   it "abre o card seguro do lead quando o destino do push e detalhes primeiro" do
     LeadSetting.instance.update!(push_lead_click_action: "system")

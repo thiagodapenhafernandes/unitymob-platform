@@ -231,7 +231,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     # precisa (nem deve) aparecer como opção selecionável.
     scope = current_tenant.admin_users.active.includes(:profile).where.not(profile_id: nil)
                           .where(profiles: { axis: Profile::AXES[:vertical] })
-                          .where.not(profiles: { key: "tenant_owner" })
+                          .where("profiles.key IS NULL OR profiles.key <> ?", "tenant_owner")
                           .references(:profile)
 
     # Área da regra (business_type) restringe por atuação do corretor:

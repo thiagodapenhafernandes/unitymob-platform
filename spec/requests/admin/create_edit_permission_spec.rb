@@ -120,9 +120,8 @@ RSpec.describe "Admin create/edit permission", type: :request do
       lead = create(:lead, admin_user: user, status: :novo)
       sign_in user
 
-      patch_lead(lead, lead: { status: "em_atendimento" })
-
-      expect(lead.reload.status).to eq("Novo")
+      expect { patch_lead(lead, lead: { status: "em_atendimento" }) }
+        .not_to change { lead.reload.status }
     end
 
     it "permite update de lead para quem edita" do

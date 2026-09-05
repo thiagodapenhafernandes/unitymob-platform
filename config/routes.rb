@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  instance_eval File.read(Rails.root.join("support/routes.rb")), "support/routes.rb"
   # Substitui o endpoint global do Active Storage por uma criação de blob
   # autenticada e vinculada ao tenant antes do upload direto.
   post "/rails/active_storage/direct_uploads", to: "admin/tenant_direct_uploads#create"

@@ -9,12 +9,7 @@ RSpec.describe Seo::MarketingInsights do
     )
   end
 
-  around do |example|
-    Lead.skip_callback(:commit, :after, :route_lead)
-    example.run
-  ensure
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
+  before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
   it "calcula oportunidades de imoveis apenas com habitations e leads do tenant informado" do
     current_tenant = Tenant.default

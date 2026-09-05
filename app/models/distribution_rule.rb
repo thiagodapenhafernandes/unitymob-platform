@@ -64,7 +64,7 @@ class DistributionRule < ApplicationRecord
         .where(tenant_id: tenant_id)
         .where(admin_users: { tenant_id: tenant_id, active: true, super_admin: false })
         .where(profiles: { tenant_id: tenant_id, axis: Profile::AXES[:vertical] })
-        .where.not(profiles: { key: "tenant_owner" })
+        .where("profiles.key IS NULL OR profiles.key <> ?", "tenant_owner")
     else
       candidates.select { |candidate| eligible_distribution_agent?(candidate.admin_user) }
     end

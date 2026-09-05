@@ -52,11 +52,11 @@ module DataHygiene
 
     def target_columns
       ApplicationRecord.descendants.reject(&:abstract_class?).sort_by(&:name).flat_map do |model|
-        next [] unless model.table_exists?
+        next [] unless model.connection.table_exists?(model.table_name)
 
         model.columns.filter_map do |column|
           next unless %i[string text].include?(column.type)
-          next if column.array
+          next if column.array || column.virtual?
           next if column.name.end_with?("_ciphertext")
           next if EXCLUDED_COLUMN_NAMES.include?(column.name)
           next if EXCLUDED_COLUMNS.fetch(model.table_name, []).include?(column.name)

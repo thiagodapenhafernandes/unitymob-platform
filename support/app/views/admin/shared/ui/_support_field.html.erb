@@ -1,0 +1,9 @@
+<% field_id = name.parameterize(separator: "_") %>
+<div class="ax-support-field">
+  <%= label_tag field_id, label %>
+  <% if local_assigns[:multiline] %>
+    <%= text_area_tag name, value, id: field_id, required: local_assigns.fetch(:required, false), rows: 3, maxlength: 4000, class: "ax-textarea" %>
+  <% else %>
+    <%= text_field_tag name, value, id: field_id, required: local_assigns.fetch(:required, false), maxlength: 180, class: "ax-input" %>
+  <% end %>
+</div>

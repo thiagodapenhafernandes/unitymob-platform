@@ -1,12 +1,7 @@
 require "rails_helper"
 
 RSpec.describe MetaSyncEnabledIntegrationsJob, type: :job do
-  around do |example|
-    Lead.skip_callback(:commit, :after, :route_lead)
-    example.run
-  ensure
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
+  before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
   it "agenda sincronizacao das integracoes Meta ativas" do
     tenant = Tenant.create!(name: "Conta Meta Sync #{SecureRandom.hex(3)}", slug: "conta-meta-sync-#{SecureRandom.hex(3)}")

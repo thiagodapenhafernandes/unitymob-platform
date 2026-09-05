@@ -119,7 +119,7 @@ module ExternalLeadMigration
     def sync_task!(action, due_at, index)
       title = action_title(action)
       status = task_status(action)
-      task = existing_task_for(action, index) ||
+      task = existing_task_for(action, index) || (lead.tasks.new if action["id"].present?) ||
         lead.tasks.find_or_initialize_by(
           admin_user: responsible_user,
           title: title,
@@ -127,6 +127,9 @@ module ExternalLeadMigration
         )
       task.assign_attributes(
         tenant: lead.tenant,
+        admin_user: responsible_user,
+        title: title,
+        due_at: due_at,
         created_by: integration.connected_by_admin_user,
         kind: task_kind(action),
         source: "external_legacy",
@@ -146,7 +149,7 @@ module ExternalLeadMigration
 
     def sync_appointment!(action, starts_at)
       title = action_title(action)
-      appointment = existing_appointment_for(action, starts_at) ||
+      appointment = existing_appointment_for(action, starts_at) || (lead.appointments.new if action["id"].present?) ||
         lead.appointments.find_or_initialize_by(
           admin_user: responsible_user,
           title: title,
@@ -154,6 +157,9 @@ module ExternalLeadMigration
         )
       appointment.assign_attributes(
         tenant: lead.tenant,
+        admin_user: responsible_user,
+        title: title,
+        starts_at: starts_at,
         habitation_id: lead.property_id,
         kind: appointment_kind(action),
         status: appointment_status(action),
@@ -161,7 +167,7 @@ module ExternalLeadMigration
       )
       appointment.save!
 
-      log_once!(
+      log_or_update_once!(
         kind: "external_appointment",
         key: action["id"].presence || "appointment:#{mapper.external_lead_id}:#{starts_at.to_i}",
         metadata: { appointment_id: appointment.id, title: appointment.title, starts_at: starts_at.iso8601, raw: action }.compact
@@ -195,12 +201,14 @@ module ExternalLeadMigration
 
     def log_or_update_once!(kind:, key:, metadata:)
       lookup = { source: SOURCE, external_key: key.to_s }
-      activity = lead.activities.where(kind: kind).where("metadata @> ?", lookup.to_json).first
-      if activity
-        updated_metadata = activity.metadata.to_h.merge(metadata || {})
-        updated_metadata = updated_metadata.merge("unassigned" => false).except("unassigned_reason") if metadata.to_h[:task_id].present? || metadata.to_h[:appointment_id].present?
-        activity.update!(metadata: updated_metadata)
-        return activity
+      activities = lead.activities.where(kind: kind).where("metadata @> ?", lookup.to_json).to_a
+      if activities.any?
+        activities.each do |activity|
+          updated_metadata = activity.metadata.to_h.merge(metadata || {})
+          updated_metadata = updated_metadata.merge("unassigned" => false).except("unassigned_reason") if metadata.to_h[:task_id].present? || metadata.to_h[:appointment_id].present?
+          activity.update!(metadata: updated_metadata)
+        end
+        return activities.first
       end
 
       LeadActivity.log!(
@@ -234,14 +242,13 @@ module ExternalLeadMigration
           action["due_at"].presence ||
           action["scheduled_at"].presence ||
           action["date"].presence ||
-          action["datetime"].presence ||
-          action["created_at"]
+          action["datetime"]
       )
     end
 
     def appointment_action?(action)
       text = action_classification_text(action)
-      text.include?("visita") || text.include?("reuniao")
+      text.include?("visita") || text.include?("scheduled_visit") || text.include?("reuniao")
     end
 
     def task_kind(action)
@@ -282,8 +289,9 @@ module ExternalLeadMigration
     def existing_appointment_for(action, starts_at)
       key = action["id"].presence || "appointment:#{mapper.external_lead_id}:#{starts_at.to_i}"
       appointment_id = lead.activities
-                           .where(kind: "external_appointment")
+                           .where(kind: %w[external_appointment external_scheduled_action])
                            .where("metadata @> ?", { source: SOURCE, external_key: key.to_s }.to_json)
+                           .order(id: :desc)
                            .pick(Arel.sql("metadata ->> 'appointment_id'"))
       return nil if appointment_id.blank?
 
@@ -295,21 +303,22 @@ module ExternalLeadMigration
       lead.activities
           .where(kind: kind)
           .where("metadata @> ?", { source: SOURCE, external_key: key.to_s }.to_json)
+          .order(id: :desc)
           .first
     end
 
     def task_status(action)
       status = [action["status"], action["status_name"], action["done"]].compact.join(" ").parameterize(separator: "_")
-      return "concluida" if status.include?("finalizado") || status.include?("concluido") || status == "true"
-      return "cancelada" if status.include?("cancel")
+      return "concluida" if status.include?("finalizado") || status.include?("concluido") || status.match?(/\Arealizad[oa](?:_|$)/) || status == "true"
+      return "cancelada" if status.include?("cancel") || status.include?("fechada_automaticamente") || status.include?("reagendad")
 
       "pendente"
     end
 
     def appointment_status(action)
       status = [action["status"], action["status_name"], action["done"]].compact.join(" ").parameterize(separator: "_")
-      return "realizado" if status.include?("finalizado") || status.include?("concluido") || status == "true"
-      return "cancelado" if status.include?("cancel")
+      return "realizado" if status.include?("finalizado") || status.include?("concluido") || status.match?(/\Arealizad[oa](?:_|$)/) || status == "true"
+      return "cancelado" if status.include?("cancel") || status.include?("fechada_automaticamente") || status.include?("reagendad")
 
       "agendado"
     end

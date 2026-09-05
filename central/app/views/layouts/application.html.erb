@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow"><meta name="turbo-cache-control" content="no-cache">
+  <title>Unitymob · Central</title><%= csrf_meta_tags %>
+  <%= stylesheet_link_tag "admin/theme_tokens", "admin/components", "support_desk" %>
+  <%= javascript_include_tag "turbo", type: "module" %>
+</head><body class="ax-support-central">
+  <nav class="ax-support-nav" aria-label="Navegação principal"><%= link_to "Unitymob · Central", root_path %>
+    <% if current_staff %>
+      <% if current_staff.operator? %><%= link_to "Chamados", support_tickets_path %><% end %>
+      <% if current_staff.admin? %><%= link_to "Equipe e contas", management_path %><%= link_to "SLA e equipe", sla_path %><% end %>
+      <% if current_staff.admin? || current_staff.role == "financeiro" %><%= link_to "Financeiro", finance_path %><% end %>
+      <% if current_staff.operator? %><%= render "admin/shared/ui/support_notification_bell" %><%= javascript_include_tag "central_notifications", defer: true %><% end %>
+      <span><%= current_staff.name %></span><%= button_to "Sair", logout_path, method: :delete, class: "ax-btn" %>
+    <% end %>
+  </nav>
+  <% if current_staff %><%= javascript_include_tag "central_presence", defer: true %><div data-central-presence="<%= presence_path %>" hidden></div><% end %>
+  <main><% flash.each do |kind, message| %><p class="ax-support-notice" role="<%= kind == 'alert' ? 'alert' : 'status' %>"><%= message %></p><% end %><%= yield %></main>
+</body></html>

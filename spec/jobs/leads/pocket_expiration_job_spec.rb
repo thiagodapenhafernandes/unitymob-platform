@@ -18,15 +18,12 @@ RSpec.describe Leads::PocketExpirationJob, type: :job do
   end
 
   before do
-    Lead.skip_callback(:commit, :after, :route_lead)
+    allow_any_instance_of(Lead).to receive(:route_lead)
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: next_agent, position: 1)
     create(:distribution_rule_agent, distribution_rule: rule, admin_user: first_agent, position: 2)
     LeadSetting.instance.update!(notify_on_redistribution: true, secure_links_enabled: true, secure_link_push: true)
   end
 
-  after do
-    Lead.set_callback(:commit, :after, :route_lead)
-  end
 
   it "redistribui lead vencido e dispara a notificacao da regra para o novo corretor" do
     lead = create(

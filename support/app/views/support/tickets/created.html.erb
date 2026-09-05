@@ -1,0 +1,7 @@
+<%= turbo_frame_tag "support_modal_form" do %>
+  <div data-support-created role="status">
+    <h3>Chamado registrado</h3>
+    <p>Você pode continuar trabalhando. Avisaremos por aqui quando o suporte responder.</p>
+    <%= link_to "Acompanhar chamado", support_ticket_path(@ticket), class: "ax-btn ax-btn--primary", data: { turbo_frame: "_top" } %>
+  </div>
+<% end %>
