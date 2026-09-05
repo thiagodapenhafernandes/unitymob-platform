@@ -279,3 +279,34 @@ O gateway não recebe deploy neste pacote.
 ?? support/routes.rb
 
 ```
+
+## Execução em produção — 05/09/2026
+
+- Push de develop e master concluído; central publicada pelo Mina na revisão eacce676.
+- Droplet definitivo: unitymob-central-01, ID 598080645, 167.99.239.17, nyc1,
+  Ubuntu 24.04, 1 vCPU / 2 GB / 50 GB. Gateway existente não foi alterado.
+- DNS admin.unitymob.com.br aponta para o novo IP. TLS emitido, renovação por certbot.timer.
+- Mina: /home/unitymob/central/current -> releases/1. Web e Solid Queue ativos.
+- Banco exclusivo, configuração protegida com modo 0600, chaves de criptografia novas.
+- Administrador contato@unitymob.com.br preparado com o hash da senha já configurada
+  e verificação por e-mail. Nenhum chamado, sessão ou usuário QA local foi importado.
+- Espaços privados separados: unitymob-support-central, unitymob-support-salute,
+  unitymob-support-conexao. Leitura/gravação e ACLs privadas verificadas.
+- Backup diário DO confirmado (sete dias). Backup PostgreSQL diário para prefixo
+  database-backups/ com retenção de 30 dias; restauração em banco separado passou.
+- /up e /login retornaram 200 via HTTPS; CSS/JS da tela de login retornaram 200.
+- Login TOTP com conta temporária, dashboard, equipe, SLA, fila e notificações
+  retornaram sucesso. Conta temporária, sessões e banco de restauração removidos.
+- Configurações SUPPORT_* adicionadas aos dois CRMs, com cópias prévias dos .env.
+- Backups pré-migrations: Salute 355902258 bytes; Conexão 92865845 bytes,
+  arquivos before-central-20260905T191343.dump e before-central-20260905T191346.dump
+  nos respectivos diretórios shared.
+
+### Pendência antes do mina all
+
+SMTP smtp.umbler.com:587 expirou na central (Net::OpenTimeout). A DO bloqueia
+as portas SMTP 25/465/587: https://docs.digitalocean.com/support/why-is-smtp-blocked/ .
+Umbler documenta envio na porta 587. Não houve desativação da segunda etapa de login.
+É necessário configurar envio por API HTTPS ou o usuário optar pelo autenticador.
+O login por e-mail do admin ainda não está operacional. Mina all e os testes reais
+central ↔ CRMs ainda aguardam esta definição; não afirmar publicação dos CRMs.
