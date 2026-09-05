@@ -804,6 +804,12 @@ RSpec.describe "Automation workflow runtime" do
   end
 
   it "executa intervencao de ciclo de vida do lead" do
+    pipeline = LeadPipeline.default_for(tenant: admin.tenant)
+    pipeline.stages.find_or_create_by!(name: "Descartado") do |stage|
+      stage.tenant = admin.tenant
+      stage.stage_type = "lost"
+      stage.active = true
+    end
     workflow = publish_workflow(
       definition_with(
         entry_node,
@@ -839,6 +845,8 @@ RSpec.describe "Automation workflow runtime" do
 
   it "executa resultado do caminho que gera atendimento" do
     destination_rule = create(:distribution_rule, name: "Bloco 3")
+    broker = create(:admin_user, tenant: admin.tenant)
+    create(:distribution_rule_agent, distribution_rule: destination_rule, admin_user: broker)
     workflow = publish_workflow(
       definition_with(
         entry_node,

@@ -381,63 +381,9 @@ module Automation
     end
 
     def response_condition_matches?(condition)
-      return button_payload_or_text_condition_matches?(condition) if condition[:match_strategy].to_s == "button_payload_or_text"
-
-      value = response_route_value(condition[:field])
-      expected = condition[:value].to_s.strip
-
-      case condition[:operator].to_s
-      when "present"
-        value.present?
-      when "not_contains"
-        expected.blank? || !value.to_s.downcase.include?(expected.downcase)
-      when "contains"
-        expected.blank? || value.to_s.downcase.include?(expected.downcase)
-      else
-        value.to_s.casecmp?(expected)
-      end
-    end
-
-    def button_payload_or_text_condition_matches?(condition)
-      expected_payload = condition[:button_payload].presence || condition[:button_key].presence || condition[:value].presence
-      expected_text = condition[:button_text].presence || condition[:fallback_value].presence
-      payload_value = response_route_value("interaction.button_payload")
-      text_value = response_route_value("interaction.button_text")
-
-      (expected_payload.present? && payload_value.to_s.casecmp?(expected_payload.to_s)) ||
-        (expected_text.present? && text_value.to_s.casecmp?(expected_text.to_s))
-    end
-
-    def response_route_value(field)
-      payload = (@automation_event&.payload || {}).with_indifferent_access
-      case field.to_s
-      when "message.body"
-        whatsapp_message_body
-      when "interaction.button_text"
-        payload.dig(:button, :title).presence ||
-          payload.dig(:interactive, :button_reply, :title).presence ||
-          payload[:button_text].presence ||
-          whatsapp_message_body
-      when "interaction.button_payload"
-        payload.dig(:button, :id).presence ||
-          payload.dig(:interactive, :button_reply, :id).presence ||
-          payload[:button_payload].presence ||
-          payload[:button_id]
-      when "campaign.response_decision.action"
-        payload.dig(:response_decision, :action)
-      when "campaign.response_decision.label"
-        payload.dig(:response_decision, :action_label)
-      when "campaign.response_decision.distribution_rule_id"
-        payload.dig(:response_decision, :distribution_rule_id)
-      when "lead.status", "lead.lifecycle"
-        @lead&.status
-      when "guardrail.outside_hours"
-        payload[:outside_hours]
-      when "guardrail.crm_error"
-        payload[:crm_error]
-      else
-        payload.dig(*field.to_s.split(".").map(&:to_sym))
-      end
+      ResponseCondition.new(
+        payload: @automation_event&.payload, lead: @lead
+      ) { whatsapp_message_body }.matches?(condition)
     end
 
     def whatsapp_campaign_matches?(config)

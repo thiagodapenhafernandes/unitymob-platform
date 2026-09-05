@@ -43,12 +43,15 @@ RSpec.describe "Admin::LeadLabels", type: :request do
 
   describe "POST create" do
     it "cria uma etiqueta do usuário atual" do
+      lead.activities.create!(kind: "note", metadata: { contact_kind: "ligacao", contact_result: "nao_respondeu" })
       expect {
         post admin_lead_lead_labels_path(lead), params: { lead_label: { name: "Urgente", color: "red" } }
       }.to change { admin.lead_labels.count }.by(1)
 
       expect(response).to have_http_status(:ok)
       expect(admin.lead_labels.last.name).to eq("Urgente")
+      panel = JSON.parse(response.body).fetch("pwa_operational_panel_html")
+      expect(panel).to include("Ligação", "Não respondeu")
     end
 
     it "rejeita cor inválida" do

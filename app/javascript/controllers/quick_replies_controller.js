@@ -1,38 +1,10 @@
-import { Controller } from "@hotwired/stimulus"
+import AxPopoverController from "controllers/ax_popover_controller"
 
 // "⚡ Respostas rápidas" do composer: cartões de apresentação (preenchem o
 // campo, editáveis) e modelos aprovados da Meta (definem o modo template).
 // Reusa a fiação existente: evento wa-presentation:fill e o select escondido
 // do wa-composer — nenhum fluxo novo de envio.
-export default class extends Controller {
-  static targets = ["popover"]
-
-  connect() {
-    this.onDocClick = this.closeOnOutside.bind(this)
-    this.onKey = this.closeOnEsc.bind(this)
-  }
-
-  disconnect() {
-    this.close()
-  }
-
-  toggle(event) {
-    event.preventDefault()
-    if (this.hasPopoverTarget && !this.popoverTarget.hidden) {
-      this.close()
-    } else {
-      this.popoverTarget.hidden = false
-      document.addEventListener("click", this.onDocClick)
-      document.addEventListener("keydown", this.onKey)
-    }
-  }
-
-  close() {
-    if (this.hasPopoverTarget) this.popoverTarget.hidden = true
-    document.removeEventListener("click", this.onDocClick)
-    document.removeEventListener("keydown", this.onKey)
-  }
-
+export default class extends AxPopoverController {
   useCard(event) {
     const item = event.currentTarget
     window.dispatchEvent(new CustomEvent("wa-presentation:fill", {
@@ -53,13 +25,5 @@ export default class extends Controller {
     select.value = event.currentTarget.dataset.templateName || ""
     select.dispatchEvent(new Event("change", { bubbles: true }))
     this.close()
-  }
-
-  closeOnOutside(event) {
-    if (!this.element.contains(event.target)) this.close()
-  }
-
-  closeOnEsc(event) {
-    if (event.key === "Escape") this.close()
   }
 }

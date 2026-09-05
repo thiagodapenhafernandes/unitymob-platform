@@ -44,6 +44,13 @@ class Lead < ApplicationRecord
   has_many :secure_links, dependent: :destroy
   has_many :ai_property_share_collections, dependent: :nullify
 
+  def unsuccessful_attempt_count
+    since = lead_audit_logs.where(action: "status_changed").order(created_at: :desc).limit(1).pick(:created_at) || created_at
+    last_customer_at = activities.where(kind: Leads::PipelineStageAutoAdvanceService::CUSTOMER_ACTIVITY_KINDS)
+                                 .where("created_at >= ?", since).maximum(:created_at) || since
+    activities.unsuccessful_contact_attempts.where("created_at >= ?", last_customer_at).count
+  end
+
   # Reivindicação atômica (Shark Tank): o 1º corretor a aceitar vira dono.
   # Retorna true se ESTE corretor pegou o lead; false se já estava com alguém.
   def self.claim!(lead_id, corretor_id)

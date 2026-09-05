@@ -11,6 +11,28 @@ RSpec.describe Lead, type: :model do
     Current.tenant = previous_tenant
   end
 
+  describe "#unsuccessful_attempt_count" do
+    it "conta somente tentativas deste lead desde a última resposta ou entrada na etapa" do
+      lead = create(:lead, created_at: 2.days.ago)
+      other_lead = create(:lead)
+      attempt = { contact_kind: "ligacao", contact_result: "nao_respondeu" }
+      lead.activities.create!(kind: "note", metadata: attempt, created_at: 30.hours.ago)
+      expect(lead.unsuccessful_attempt_count).to eq(1)
+
+      lead.lead_audit_logs.create!(action: "status_changed", source: "system", created_at: 1.day.ago)
+      expect(lead.unsuccessful_attempt_count).to eq(0)
+      lead.activities.create!(kind: "note", metadata: attempt, created_at: 20.hours.ago)
+      lead.activities.create!(kind: "whatsapp_in", created_at: 12.hours.ago)
+      expect(lead.unsuccessful_attempt_count).to eq(0)
+
+      lead.activities.create!(kind: "note", metadata: attempt, created_at: 1.hour.ago)
+      lead.activities.create!(kind: "note", metadata: attempt.merge(contact_result: "sem_interesse"))
+      lead.activities.create!(kind: "note", metadata: attempt.merge(contact_result: "respondeu"))
+      other_lead.activities.create!(kind: "note", metadata: attempt)
+      expect(lead.unsuccessful_attempt_count).to eq(2)
+    end
+  end
+
   describe "tenant consistency" do
     it "rejects responsible users and distribution rules from another tenant" do
       tenant = Tenant.create!(name: "Lead tenant #{SecureRandom.hex(3)}", slug: "lead-tenant-#{SecureRandom.hex(3)}")

@@ -1,4 +1,4 @@
-import { Controller } from "@hotwired/stimulus"
+import AxPopoverController from "controllers/ax_popover_controller"
 
 // Popover de emojis do composer (offline, sem dependência externa).
 // Insere o emoji na posição do cursor do textarea alvo e dispara "input"
@@ -16,38 +16,10 @@ const EMOJIS = [
   "🤔", "😬", "😢", "🙌", "🫡", "🤩", "😴", "🚀"
 ]
 
-export default class extends Controller {
-  static targets = ["popover"]
-
-  connect() {
-    this.onDocClick = this.closeOnOutside.bind(this)
-    this.onKey = this.closeOnEsc.bind(this)
-  }
-
-  disconnect() {
-    this.close()
-  }
-
-  toggle(event) {
-    event.preventDefault()
-    if (this.hasPopoverTarget && !this.popoverTarget.hidden) {
-      this.close()
-      return
-    }
-    this.open()
-  }
-
+export default class extends AxPopoverController {
   open() {
     this.buildPopover()
-    this.popoverTarget.hidden = false
-    document.addEventListener("click", this.onDocClick)
-    document.addEventListener("keydown", this.onKey)
-  }
-
-  close() {
-    if (this.hasPopoverTarget) this.popoverTarget.hidden = true
-    document.removeEventListener("click", this.onDocClick)
-    document.removeEventListener("keydown", this.onKey)
+    super.open()
   }
 
   buildPopover() {
@@ -77,13 +49,5 @@ export default class extends Controller {
     textarea.setSelectionRange(cursor, cursor)
     textarea.focus()
     textarea.dispatchEvent(new Event("input", { bubbles: true }))
-  }
-
-  closeOnOutside(event) {
-    if (!this.element.contains(event.target)) this.close()
-  }
-
-  closeOnEsc(event) {
-    if (event.key === "Escape") this.close()
   }
 }

@@ -1,10 +1,12 @@
 require "rails_helper"
 
 RSpec.describe "Webhooks::Whatsapp", type: :request do
+  include ActiveJob::TestHelper
+
   around do |example|
     previous_tenant = Current.tenant
     Current.tenant = Tenant.default
-    example.run
+    perform_enqueued_jobs(only: Whatsapp::InboundWebhookJob) { example.run }
   ensure
     Current.tenant = previous_tenant
   end

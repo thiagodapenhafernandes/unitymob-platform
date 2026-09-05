@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Contratos de popovers</title>
+<script type="importmap">
+{"imports":{"@hotwired/stimulus":"/stimulus.js","controllers/":"/controllers/"}}
+</script>
+<h1>Contratos de popovers</h1>
+<pre id="results">Executando…</pre>
+<div id="fixtures"></div>
+<script type="module">
+import { Application } from "@hotwired/stimulus"
+import AttachMenu from "controllers/attach_menu_controller"
+import QuickReplies from "controllers/quick_replies_controller"
+import EmojiPicker from "controllers/emoji_picker_controller"
+import Dropdown from "controllers/ax_dropdown_controller"
+
+const results = document.querySelector("#results")
+const fixtures = document.querySelector("#fixtures")
+const app = Application.start()
+const errors = []
+window.addEventListener("error", event => errors.push(event.message))
+app.handleError = (error) => errors.push(error.message)
+for (const [id, controller] of Object.entries({"attach-menu": AttachMenu, "quick-replies": QuickReplies, "emoji-picker": EmojiPicker, "ax-dropdown": Dropdown})) app.register(id, controller)
+const tick = () => new Promise(resolve => setTimeout(resolve, 0))
+const assert = (condition, message) => { if (!condition) throw new Error(message) }
+const passed = []
+async function check(name, run) {
+  await run()
+  assert(errors.length === 0, errors.join("; "))
+  passed.push(name)
+  results.textContent = passed.map(name => `PASS ${name}`).join("\n")
+}
+try {
+  for (const id of ["attach-menu", "quick-replies", "emoji-picker"]) {
+    await check(`${id}: targets herdados, toggle, Escape, clique externo e desconexão`, async () => {
+      fixtures.innerHTML = `<form><div data-controller="${id}"><button type="button" data-action="${id}#toggle">Abrir</button><div data-${id}-target="popover" hidden></div></div></form>`
+      await tick()
+      const host = fixtures.querySelector("[data-controller]")
+      const trigger = host.querySelector("button")
+      const panel = host.querySelector("div")
+      trigger.click(); assert(!panel.hidden, "Abre pelo data-action")
+      document.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape"})); assert(panel.hidden, "Fecha com Escape")
+      trigger.click(); document.body.click(); assert(panel.hidden, "Fecha com clique externo")
+      trigger.click(); trigger.click(); assert(panel.hidden, "Toggle fecha")
+      trigger.click()
+      const controller = app.getControllerForElementAndIdentifier(host, id)
+      const close = controller.close.bind(controller)
+      let closes = 0
+      controller.close = () => { closes++; close() }
+      host.remove(); await tick(); assert(panel.hidden, "Desconecta fechado")
+      closes = 0
+      document.body.click()
+      document.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape"}))
+      assert(closes === 0, "Não mantém listeners após desconexão")
+    })
+  }
+  await check("Anexos preservam accept/capture e abrem o mesmo input", async () => {
+    fixtures.innerHTML = `<form><input type="file" data-wa-composer-target="fileInput"><div data-controller="attach-menu"><div data-attach-menu-target="popover"><button type="button" data-action="attach-menu#pick" data-accept="image/jpeg" data-capture="environment">Câmera</button></div></div></form>`
+    await tick()
+    const input = fixtures.querySelector("input")
+    let picks = 0
+    input.click = () => { picks++ }
+    const button = fixtures.querySelector("button")
+    button.click()
+    assert(input.accept === "image/jpeg" && input.getAttribute("capture") === "environment" && picks === 1, "Câmera")
+    button.removeAttribute("data-capture"); button.click()
+    assert(!input.hasAttribute("capture") && picks === 2, "Remove capture para documento")
+  })
+  await check("Respostas rápidas preservam eventos, templates e apresentação", async () => {
+    fixtures.innerHTML = `<form><select data-wa-composer-target="template"><option></option><option value="hello">Hello</option></select><div data-controller="quick-replies"><div data-quick-replies-target="popover"><button type="button" data-action="quick-replies#useTemplate" data-template-name="hello">Template</button><button type="button" data-action="quick-replies#useCard" data-card-id="7" data-body="Olá">Cartão</button><button type="button" data-action="quick-replies#openCards">Gerenciar</button></div></div><button type="button" data-pc-manager-trigger>Manager</button></form>`
+    await tick()
+    const select = fixtures.querySelector("select")
+    let changed = 0, card, opened = 0
+    select.addEventListener("change", () => changed++)
+    window.addEventListener("wa-presentation:fill", event => { card = event.detail }, {once:true})
+    fixtures.querySelector("[data-pc-manager-trigger]").onclick = () => opened++
+    const buttons = fixtures.querySelectorAll("[data-action]")
+    buttons[0].click(); buttons[1].click(); buttons[2].click()
+    assert(select.value === "hello" && changed === 1, "Template/change")
+    assert(card.cardId === "7" && card.body === "Olá" && opened === 1, "Apresentação")
+  })
+  await check("Emojis preservam seleção, cursor, input e montagem única", async () => {
+    fixtures.innerHTML = `<form><textarea data-wa-composer-target="body">Olá mundo</textarea><div data-controller="emoji-picker"><button type="button" data-action="emoji-picker#toggle">Emoji</button><div data-emoji-picker-target="popover" hidden></div></div></form>`
+    await tick()
+    const trigger = fixtures.querySelector("button"), area = fixtures.querySelector("textarea"), panel = fixtures.querySelector("[data-emoji-picker-target]")
+    let inputs = 0
+    area.addEventListener("input", () => inputs++)
+    area.setSelectionRange(4, 9)
+    trigger.click(); const count = panel.children.length
+    const emoji = panel.firstElementChild.textContent
+    panel.firstElementChild.click()
+    assert(area.value === `Olá ${emoji}` && inputs === 1 && area.selectionStart === 4 + emoji.length, "Insere na seleção")
+    trigger.click(); trigger.click(); assert(panel.children.length === count, "Não duplica botões")
+    area.disabled = true; panel.firstElementChild.click(); assert(inputs === 1, "Não insere em textarea desabilitado")
+  })
+  await check("ax-dropdown preserva teclado, foco, ARIA, pares e fechamento animado", async () => {
+    fixtures.innerHTML = [1,2].map(i => `<div data-controller="ax-dropdown"><button data-ax-dropdown-target="trigger" data-action="ax-dropdown#toggle">Menu ${i}</button><div data-ax-dropdown-target="menu" hidden><button class="ax-menu__item">Um</button><button class="ax-menu__item">Dois</button></div></div>`).join("")
+    await tick()
+    const hosts = fixtures.querySelectorAll("[data-controller]")
+    const trigger = hosts[0].querySelector("button"), menu = hosts[0].querySelector("div")
+    trigger.dispatchEvent(new KeyboardEvent("keydown", {key:"ArrowDown", bubbles:true}))
+    assert(!menu.hidden && document.activeElement === menu.firstElementChild && trigger.getAttribute("aria-expanded") === "true", "Abre pelo teclado")
+    menu.firstElementChild.dispatchEvent(new KeyboardEvent("keydown", {key:"End", bubbles:true}))
+    assert(document.activeElement === menu.lastElementChild, "End move foco")
+    menu.lastElementChild.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", bubbles:true}))
+    assert(document.activeElement === trigger && trigger.getAttribute("aria-expanded") === "false", "Escape devolve foco")
+    await new Promise(resolve => setTimeout(resolve, 160)); assert(menu.hidden, "Fecha após animação")
+    trigger.click(); hosts[1].querySelector("button").click()
+    assert(!hosts[0].classList.contains("is-open") && hosts[1].classList.contains("is-open"), "Fecha outro dropdown")
+    fixtures.innerHTML = ""; await tick()
+  })
+  results.textContent += `\n\n${passed.length} checks, 0 failures`
+  document.title = "PASS — Popover components"
+} catch (error) {
+  results.textContent += `\nFAIL ${error.stack}`
+  document.title = "FAIL — Popover components"
+}
+</script>
