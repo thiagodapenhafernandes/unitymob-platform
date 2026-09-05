@@ -2537,6 +2537,9 @@ class Habitation < ApplicationRecord
     assign_development_value(:descricao_empreendimento, development_description_for_unit(parent), force: force_sync)
     assign_development_value(:data_entrega, parent.data_entrega, force: force_sync)
     assign_development_value(:perfil_construcao, parent.perfil_construcao, force: force_sync)
+    %i[ano_construcao andares_qtd aptos_andar].each do |attribute|
+      assign_development_value(attribute, parent[attribute], force: force_sync)
+    end
     sync_address_from_development(parent, force: force_sync)
   end
 

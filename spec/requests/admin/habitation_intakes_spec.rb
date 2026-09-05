@@ -1255,7 +1255,10 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       caracteristicas: ["Vista mar", "Mobiliado"],
       infra_estrutura: ["Piscina", "Academia"],
       data_entrega: Date.new(2027, 6, 15),
-      perfil_construcao: "Em construção"
+      perfil_construcao: "Em construção",
+      ano_construcao: 2027,
+      andares_qtd: 20,
+      aptos_andar: 4
     )
     development.address.update!(
       tipo_endereco: "Avenida",
@@ -1310,6 +1313,27 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.address.cidade).to eq("Porto Belo")
     expect(intake.address.uf).to eq("SC")
     expect(intake.address.cep).to eq("88210-000")
+    expect(intake.ano_construcao).to eq(2027)
+    expect(intake.andares_total).to eq(20)
+    expect(intake.aptos_por_andar).to eq(4)
+
+    get edit_admin_captacao_path(intake, step: "infraestrutura")
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    { ano_construcao: "2027", andares_total: "20", aptos_por_andar: "4" }.each do |field, value|
+      expect(document.at_css("input[name='habitation[#{field}]']")["value"]).to eq(value)
+    end
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "infraestrutura",
+      direction: "forward",
+      habitation: { ano_construcao: 2026, andares_total: 21, aptos_por_andar: 3 }
+    }
+    expect(response).to have_http_status(:redirect)
+    intake.reload
+    expect(intake.ano_construcao).to eq(2026)
+    expect(intake.andares_total).to eq(21)
+    expect(intake.aptos_por_andar).to eq(3)
   end
 
   it "bloqueia captação de unidade vinculada quando complemento já existe no empreendimento" do

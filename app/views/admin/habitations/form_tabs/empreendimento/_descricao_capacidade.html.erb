@@ -1,4 +1,5 @@
 <%= ax_form_section(title: "Descrição e capacidade", eyebrow: "Empreendimento", icon: "card-text") do %>
+  <p class="ax-field__hint" data-habitation-form-target="unitOnly">Ao vincular um empreendimento, o ano de construção, o número de andares e os imóveis por andar são preenchidos com os dados dele, quando informados. Sem trocar o vínculo, valores já preenchidos na unidade são preservados.</p>
   <%= ax_field_grid do %>
     <div class="ax-span-7">
       <div class="ax-field-group">
@@ -13,16 +14,16 @@
     <div class="ax-span-5">
       <%= ax_field_grid(class_name: "ax-field-grid--nested") do %>
         <div class="ax-span-4">
-          <%= ax_number_field(form: f, method: :andares_qtd, label: "Nº andares", min: 0) %>
+          <%= ax_number_field(form: f, method: :andares_qtd, label: "Nº andares", min: 0, data: { habitation_form_target: "buildingFloors" }) %>
         </div>
         <div class="ax-span-4">
-          <%= ax_number_field(form: f, method: :ano_construcao, label: "Ano constr.") %>
+          <%= ax_number_field(form: f, method: :ano_construcao, label: "Ano constr.", data: { habitation_form_target: "constructionYear" }) %>
         </div>
         <div class="ax-span-4">
           <%= ax_number_field(form: f, method: :elevadores_qtd, label: "Elevadores") %>
         </div>
         <div class="ax-span-6">
-          <%= ax_number_field(form: f, method: :aptos_andar, label: "Imóveis / andar") %>
+          <%= ax_number_field(form: f, method: :aptos_andar, label: "Imóveis / andar", data: { habitation_form_target: "unitsPerFloor" }) %>
         </div>
         <div class="ax-span-6">
           <%= ax_number_field(form: f, method: :aptos_edificio, label: "Total imóveis") %>

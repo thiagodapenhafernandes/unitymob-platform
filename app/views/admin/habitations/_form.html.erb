@@ -17,6 +17,9 @@
       admin_user_id: development.admin_user_id&.to_s,
       data_entrega: development.data_entrega&.iso8601,
       perfil_construcao: development.perfil_construcao.to_s,
+      ano_construcao: development.ano_construcao,
+      andares_qtd: development.andares_qtd,
+      aptos_andar: development.aptos_andar,
       address: {
         tipo_endereco: (development_address&.tipo_endereco.presence || development.tipo_endereco).to_s,
         logradouro: (development_address&.logradouro.presence || development.endereco).to_s,

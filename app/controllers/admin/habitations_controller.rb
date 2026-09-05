@@ -1111,7 +1111,7 @@ class Admin::HabitationsController < Admin::BaseController
                               .select(
                                 :id, :slug, :codigo, :nome_empreendimento, :titulo_anuncio,
                                 :constructor_id, :proprietor_id, :admin_user_id, :data_entrega,
-                                :perfil_construcao, :tipo_endereco, :endereco, :numero,
+                                :perfil_construcao, :ano_construcao, :andares_qtd, :aptos_andar, :tipo_endereco, :endereco, :numero,
                                 :bairro, :bairro_comercial, :cidade, :uf, :cep
                               )
                               .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
