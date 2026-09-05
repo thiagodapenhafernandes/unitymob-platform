@@ -61,6 +61,7 @@ module Admin::ComercialHelper
 
     base = TIMELINE_MAP[activity.kind] || { icon: "bi-dot", color: "gray", label: activity.kind.to_s.humanize }
     base = base.merge(label: timeline_summary_label(activity)) unless detailed
+    base = base.merge(label: "Encaminhado por fidelização") if sticky_timeline_activity?(activity)
     # "Lead recebido" ganha canal de conversão dinâmico (retroativo: lê o lead).
     if activity.kind.to_s == "received" && activity.lead
       conv = lead_conversion_summary(activity.lead)
@@ -459,6 +460,9 @@ module Admin::ComercialHelper
     when "distributed", "assigned_directly"
       who = meta["admin_user_name"].presence || activity.lead&.admin_user&.name
       rule = meta["rule_name"].presence
+      if sticky_timeline_activity?(activity)
+        return [("Para #{who}" if who), "Cliente já atendido por este corretor", "Sem consumir a vez no rodízio", ("Regra: #{rule}" if rule)].compact.join(" · ")
+      end
       return [("Para #{who}" if who), ("pela fila #{rule}" if rule)].compact.join(" · ").presence unless detailed
 
       [("Para #{who}" if who), ("via regra #{rule}" if rule)].compact.join(" · ").presence
@@ -549,7 +553,13 @@ module Admin::ComercialHelper
     [("Para #{target}" if target), channel, error].compact.join(" · ").presence
   end
 
+  def sticky_timeline_activity?(activity)
+    activity.kind.to_s == "distributed" && activity.metadata.is_a?(Hash) &&
+      [true, "true"].include?(activity.metadata["sticky"])
+  end
+
   def timeline_summary_label(activity)
+    return "Encaminhado por fidelização" if sticky_timeline_activity?(activity)
     return "Lead redistribuído" if activity.kind.to_s == "distributed" && redistributed_timeline_activity?(activity)
 
     {
