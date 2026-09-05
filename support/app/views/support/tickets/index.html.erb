@@ -8,7 +8,7 @@
   <%= link_to "Abrir chamado", new_support_ticket_path, class: "ax-btn ax-btn--primary" %>
   <%= form_with url: support_tickets_path, method: :get, class: "ax-support-filters" do %>
     <%= search_field_tag :q, params[:q], placeholder: "Buscar assunto ou protocolo", aria: { label: "Buscar chamado" }, class: "ax-input" %>
-    <%= select_tag :status, options_for_select(Support::Ticket::STATUS_LABELS.map { |value, label| [label, value] }, params[:status]), include_blank: "Todos os estados", aria: { label: "Estado" }, class: "ax-input" %>
+    <%= select_tag :status, options_for_select(Support::Ticket::STATUS_LABELS.except("resolvido").map { |value, label| [label, value] }, params[:status]), include_blank: "Todos os estados", aria: { label: "Estado" }, class: "ax-input" %>
     <%= select_tag :priority, options_for_select(Support::Ticket::PRIORITIES.map { |s| [s.humanize, s] }, params[:priority]), include_blank: "Todas as prioridades", aria: { label: "Prioridade" }, class: "ax-input" %>
     <%= submit_tag "Filtrar", class: "ax-btn" %>
   <% end %>

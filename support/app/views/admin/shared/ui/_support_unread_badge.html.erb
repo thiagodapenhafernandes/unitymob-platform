@@ -1,0 +1,1 @@
+<span class="ax-notification-count <%= 'ax-notification-count--inline' if local_assigns[:inline] %>" data-support-unread-count <%= 'hidden' if count.zero? %> aria-label="<%= count %> chamados com resposta não lida"><%= count > 99 ? '99+' : count %></span>

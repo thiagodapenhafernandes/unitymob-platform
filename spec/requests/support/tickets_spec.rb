@@ -88,16 +88,37 @@ RSpec.describe 'Chamados na conta', type: :request do
     expect(document.at_css('#support_form')['target']).to eq('_top')
   end
 
-  it 'avisa somente sobre os chamados do usuário, incluindo encerramento sem nova mensagem' do
+  it 'omite chamados finalizados da lista e dos avisos do usuário' do
     own = ticket_for
     other = ticket_for(create(:admin_user, tenant: tenant))
     other.messages.create!(side: 'support', author: 'Suporte', body: 'Outra conversa')
     own.update!(status: 'resolvido', resolved_at: Time.current)
     get '/admin/support/updates', headers: { 'ACCEPT' => 'application/json' }
-    expect(response.parsed_body).to include('count' => 1, 'ticket_id' => own.id, 'resolved' => true)
+    expect(response.parsed_body).to include('count' => 0, 'ticket_id' => nil)
+    get '/admin/support/tickets'
+    expect(Nokogiri::HTML(response.body).at_css(%(a[data-support-ticket-link][href="/admin/support/tickets/#{own.id}"]))).to be_nil
+    expect(response.body).not_to include('<option value="resolvido">')
     get "/admin/support/tickets/#{own.id}"
     get '/admin/support/updates', headers: { 'ACCEPT' => 'application/json' }
     expect(response.parsed_body).to include('count' => 0, 'open_count' => 0)
+  end
+
+  it 'conta respostas pessoais por chamado e atualiza após leitura' do
+    own = ticket_for
+    2.times { own.messages.create!(side: 'support', author: 'Suporte', body: 'Resposta') }
+    ticket_for(create(:admin_user, tenant: tenant)).messages.create!(side: 'support', author: 'Suporte', body: 'Outra pessoa')
+    get '/admin/support/updates', headers: { 'ACCEPT' => 'application/json' }
+    expect(response.parsed_body['count']).to eq(1)
+    get '/admin/support/tickets'
+    badges = Nokogiri::HTML(response.body).css('[data-support-unread-count]')
+    expect(badges.size).to eq(2)
+    expect(badges.map(&:text)).to eq(['1', '1'])
+    expect(badges.any? { |b| b.key?('hidden') }).to be(false)
+    get "/admin/support/tickets/#{own.id}"
+    get '/admin/support/updates', headers: { 'ACCEPT' => 'application/json' }
+    expect(response.parsed_body['count']).to eq(0)
+    get '/admin/support/tickets'
+    expect(Nokogiri::HTML(response.body).css('[data-support-unread-count][hidden]').size).to eq(2)
   end
 
   it 'oferece somente telas do menu autorizado e exige descrição em Outro' do

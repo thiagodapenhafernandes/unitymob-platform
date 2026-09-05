@@ -1,3 +1,4 @@
+<% unread_support_count = support_unread_count %>
         <div class="ax-navbar__user ax-user-menu <%= "ax-user-menu--compact" if local_assigns[:compact] %>" data-controller="ax-dropdown">
           <button type="button" class="ax-navbar__user-trigger" data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger" aria-expanded="false" aria-label="Menu do usuário">
             <%= ax_avatar(
@@ -7,6 +8,7 @@
                   class_name: "ax-navbar__avatar"
                 ) %>
             <span class="tw-hidden sm:tw-inline ax-user-menu__name"><%= current_admin_user&.name.presence || current_admin_user&.email %></span>
+            <%= render "admin/shared/ui/support_unread_badge", count: unread_support_count %>
             <i class="bi bi-chevron-down tw-text-xs tw-text-ink-faint"></i>
           </button>
           <div class="ax-menu ax-menu--end" data-ax-dropdown-target="menu" hidden>
@@ -60,7 +62,7 @@
               <%= link_to new_support_ticket_path, class: "ax-menu__item", data: { admin_navigation_ignore: true, action: "ax-dropdown#close", ax_modal_open: "support-modal", support_new_url: new_support_ticket_path(modal: "1", module: controller_name.humanize) } do %>
                 <i class="bi bi-life-preserver"></i><span>Abrir chamado</span>
               <% end %>
-              <%= link_to support_tickets_path, class: "ax-menu__item" do %><i class="bi bi-chat-left-text"></i><span>Meus chamados</span><% end %>
+              <%= link_to support_tickets_path, class: "ax-menu__item" do %><i class="bi bi-chat-left-text"></i><span>Meus chamados</span><%= render "admin/shared/ui/support_unread_badge", count: unread_support_count, inline: true %><% end %>
               <div class="ax-menu__sep"></div>
             <% end %>
             <%= link_to admin_two_factor_settings_path, class: "ax-menu__item" do %>

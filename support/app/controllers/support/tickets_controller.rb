@@ -9,7 +9,8 @@ class Support::TicketsController < Support::BaseController
     else
       # O lembrete é pessoal, mesmo quando o proprietário consulta chamados da equipe.
       own = support_operator? ? Support::Ticket.none : support_account.tickets.where(requester_id: current_admin_user.id.to_s)
-      unread = own.where("EXISTS (SELECT 1 FROM support_messages m WHERE m.ticket_id = support_tickets.id AND m.side = 'support' AND m.internal = false AND m.created_at > COALESCE(support_tickets.read_at, support_tickets.created_at)) OR support_tickets.resolved_at > COALESCE(support_tickets.read_at, support_tickets.created_at)")
+      own = own.ongoing
+      unread = own.unread_responses
       awaiting = own.where(status: "aguardando_usuario")
       open = own.where.not(status: "resolvido")
       ticket = unread.order(updated_at: :desc).first || awaiting.order(updated_at: :desc).first || open.order(updated_at: :desc).first
@@ -25,6 +26,7 @@ class Support::TicketsController < Support::BaseController
       return redirect_to support_tickets_path(current_staff.queue_preferences)
     end
     @tickets = visible_tickets.includes(:account)
+    @tickets = @tickets.ongoing unless support_operator?
     @tickets = @tickets.where(origin: params[:origin]) if %w[ativo receptivo].include?(params[:origin])
     begin
       @tickets = @tickets.where('support_tickets.created_at >= ?', Date.iso8601(params[:from]).in_time_zone.beginning_of_day) if params[:from].present?

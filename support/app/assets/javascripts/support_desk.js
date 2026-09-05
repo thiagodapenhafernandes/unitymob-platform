@@ -116,6 +116,12 @@
         const response = await fetch(reminder.dataset.supportNotification, {headers: {Accept: "application/json"}, credentials: "same-origin"});
         if (response.ok && reminder.isConnected) {
           const result = await response.json();
+          document.querySelectorAll("[data-support-unread-count]").forEach(badge => {
+            const count = Number(result.count) || 0;
+            badge.hidden = count === 0;
+            badge.textContent = count > 99 ? "99+" : String(count);
+            badge.setAttribute("aria-label", `${count} chamados com resposta não lida`);
+          });
           const urgent = result.count > 0 || result.awaiting_count > 0;
           reminder.dataset.state = result.state || "";
           reminder.dataset.snooze = urgent ? "30" : "240";

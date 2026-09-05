@@ -7,6 +7,8 @@ class Support::Ticket < ActiveRecord::Base
   belongs_to :account, class_name: "Support::Account"
   has_many :messages, -> { order(:created_at, :id) }, class_name: "Support::Message", dependent: :restrict_with_exception
   has_many :deliveries, class_name: "Support::Delivery", dependent: :restrict_with_exception
+  scope :ongoing, -> { where.not(status: "resolvido") }
+  scope :unread_responses, -> { where("EXISTS (SELECT 1 FROM support_messages m WHERE m.ticket_id = support_tickets.id AND m.side = 'support' AND m.internal = false AND m.created_at > COALESCE(support_tickets.read_at, support_tickets.created_at))") }
   before_validation { self.uid ||= SecureRandom.uuid }
   validates :uid, :subject, :requester_id, :requester_name, presence: true
   validates :subject, length: { maximum: 180 }
