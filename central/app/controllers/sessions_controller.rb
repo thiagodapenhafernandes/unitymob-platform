@@ -4,26 +4,55 @@ class SessionsController < ApplicationController
   def new; end
   def create
     staff = Staff.find_by(email: params[:email].to_s.strip.downcase, active: true)
+    session.delete(:totp_staff_id)
     if staff&.email_verification?
       return create_email_challenge(staff)
     end
-    ok = false
+    error = "E-mail ou senha incorretos. Confira os dados e tente novamente."
     if staff
       staff.with_lock do
-        if staff.activated_at && !staff.locked_until&.future? && staff.authenticate(params[:password].to_s) && staff.verify_otp!(params[:code])
-          staff.update!(failed_attempts: 0, locked_until: nil)
-          ok = true
+        if staff.locked_until&.future?
+          error = lock_message(staff)
+        elsif !staff.authenticate(params[:password].to_s)
+          register_login_failure(staff)
+          error = lock_message(staff) if staff.locked_until&.future?
+        elsif !staff.activated_at
+          error = "Seu acesso ainda não foi ativado. Abra o link de ativação e conclua o cadastro da senha e do autenticador."
         else
-          count = staff.failed_attempts + 1
-          staff.update!(failed_attempts: count, locked_until: count >= 5 ? 15.minutes.from_now : nil)
+          reset_session
+          session[:totp_staff_id] = staff.id
+          session[:totp_version] = staff.session_version
+          session[:totp_expires_at] = 10.minutes.from_now.to_i
+          return redirect_to verify_authenticator_path
         end
       end
     end
-    unless ok
-      flash.now[:alert] = "Dados inválidos ou acesso temporariamente bloqueado."
-      return render :new, status: :unprocessable_entity
+    flash.now[:alert] = error
+    render :new, status: :unprocessable_entity
+  end
+
+  def authenticator
+    @staff = pending_totp_staff
+    redirect_to login_path, alert: "A verificação expirou. Informe seu e-mail e senha novamente." unless @staff
+  end
+
+  def verify_authenticator
+    @staff = pending_totp_staff
+    return redirect_to login_path, alert: "A verificação expirou. Informe seu e-mail e senha novamente." unless @staff
+    ok = false
+    @staff.with_lock do
+      if @staff.locked_until&.future?
+        flash.now[:alert] = lock_message(@staff)
+      elsif @staff.verify_otp!(params[:code].to_s.strip)
+        @staff.update!(failed_attempts: 0, locked_until: nil)
+        ok = true
+      else
+        register_login_failure(@staff)
+        flash.now[:alert] = @staff.locked_until&.future? ? lock_message(@staff) : "Código inválido, expirado ou já utilizado. Aguarde um novo código no aplicativo e tente novamente."
+      end
     end
-    finish_login(staff)
+    return finish_login(@staff) if ok
+    render :authenticator, status: :unprocessable_entity
   end
   def verify
     @staff = pending_email_staff
@@ -66,6 +95,21 @@ class SessionsController < ApplicationController
     render :edit, status: :unprocessable_entity
   end
   private
+  def pending_totp_staff
+    return unless session[:totp_expires_at].to_i > Time.current.to_i
+    Staff.where.not(activated_at: nil).find_by(id: session[:totp_staff_id], session_version: session[:totp_version], active: true, verification_method: "totp")
+  end
+
+  def register_login_failure(staff)
+    count = staff.locked_until ? 1 : staff.failed_attempts + 1
+    staff.update!(failed_attempts: count, locked_until: count >= 5 ? 15.minutes.from_now : nil)
+  end
+
+  def lock_message(staff)
+    minutes = [(staff.locked_until - Time.current).fdiv(60).ceil, 1].max
+    "Acesso bloqueado temporariamente após várias tentativas. Tente novamente em #{minutes} #{minutes == 1 ? 'minuto' : 'minutos'}."
+  end
+
   def finish_login(staff)
     current_staff_session&.finish!("replaced")
     reset_session
@@ -89,9 +133,8 @@ class SessionsController < ApplicationController
         staff.update!(failed_attempts: 0, locked_until: nil)
         challenge = staff.issue_email_code!
       else
-        count = staff.failed_attempts + 1
-        staff.update!(failed_attempts: count, locked_until: count >= 5 ? 15.minutes.from_now : nil)
-        flash.now[:alert] = "Dados inválidos ou acesso temporariamente bloqueado."
+        register_login_failure(staff) unless staff.locked_until&.future?
+        flash.now[:alert] = staff.locked_until&.future? ? lock_message(staff) : "E-mail ou senha incorretos, ou ativação pendente. Confira os dados e seu link de ativação."
         return render :new, status: :unprocessable_entity
       end
     end

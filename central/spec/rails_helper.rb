@@ -20,6 +20,8 @@ end
 def central_login(role = 'suporte')
   staff = Staff.create!(name: 'Ana', email: "#{SecureRandom.hex(4)}@unitymob.test", role: role, password: 'uma-senha-longa-123', password_confirmation: 'uma-senha-longa-123', otp_secret: ROTP::Base32.random, activated_at: Time.current)
   post '/login', params: { email: staff.email, password: 'uma-senha-longa-123', code: ROTP::TOTP.new(staff.otp_secret).now }
-  expect(response).to have_http_status(:redirect)
+  expect(response).to redirect_to('/login/authenticator')
+  post '/login/authenticator', params: { code: ROTP::TOTP.new(staff.otp_secret).now }
+  expect(response).to redirect_to('/')
   staff
 end

@@ -2,9 +2,6 @@
 <%= form_with url: login_path do %>
   <%= label_tag :email, "E-mail" %><%= email_field_tag :email, params[:email], required: true, autocomplete: "username", class: "ax-input" %>
   <%= label_tag :password, "Senha" %><%= password_field_tag :password, nil, required: true, autocomplete: "current-password", class: "ax-input" %>
-  <p>Após informar sua senha, você receberá um código por e-mail.</p>
-  <details><summary>Meu acesso usa aplicativo autenticador</summary>
-    <%= label_tag :code, "Código do autenticador" %><%= text_field_tag :code, nil, inputmode: "numeric", pattern: "[0-9]{6}", autocomplete: "one-time-code", class: "ax-input" %>
-  </details>
-  <%= submit_tag "Entrar", class: "ax-btn ax-btn--primary" %>
+  <p>Etapa 1 de 2 · Depois, você confirmará seu acesso com um código.</p>
+  <%= submit_tag "Continuar", class: "ax-btn ax-btn--primary" %>
 <% end %><p>Precisa recuperar o acesso? Solicite um novo link ao administrador da central.</p></section>

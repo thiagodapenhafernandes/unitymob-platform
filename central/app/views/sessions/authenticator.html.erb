@@ -1,0 +1,13 @@
+<section class="ax-support-login ax-support-panel">
+  <p class="ax-support-eyebrow">Etapa 2 de 2 · Autenticador</p>
+  <h1>Confirme seu acesso</h1>
+  <p>Abra o aplicativo autenticador no celular e digite o código de 6 números da conta <strong>Unitymob Central</strong>.</p>
+  <p><%= @staff.email %></p>
+  <%= form_with url: verify_authenticator_path do %>
+    <%= label_tag :code, "Código do autenticador" %>
+    <%= text_field_tag :code, nil, required: true, inputmode: "numeric", pattern: "[0-9]{6}", maxlength: 6, autocomplete: "one-time-code", autofocus: true, class: "ax-input" %>
+    <%= submit_tag "Confirmar e entrar", class: "ax-btn ax-btn--primary" %>
+  <% end %>
+  <p>Use o código atual do aplicativo. Se acabou de ativar o acesso, aguarde aparecer um novo código.</p>
+  <%= link_to "Voltar ao login", login_path, class: "ax-btn" %>
+</section>

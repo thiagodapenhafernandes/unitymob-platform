@@ -16,6 +16,8 @@ Rails.application.routes.draw do
   post "/login", to: "sessions#create"
   get "/login/verify", to: "sessions#verify", as: :verify_login
   post "/login/verify", to: "sessions#verify_email"
+  get "/login/authenticator", to: "sessions#authenticator", as: :verify_authenticator
+  post "/login/authenticator", to: "sessions#verify_authenticator"
   delete "/logout", to: "sessions#destroy"
   get "/activate", to: "sessions#edit", as: :activate
   patch "/activate", to: "sessions#update"

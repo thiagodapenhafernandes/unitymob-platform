@@ -11,6 +11,8 @@ RSpec.describe 'Ativação e login', type: :request do
     expect(staff.reload.activated_at).to be_present
     travel 31.seconds do
       post '/login', params: { email: staff.email, password: 'senha-segura-1234', code: ROTP::TOTP.new(staff.otp_secret).now }
+      expect(response).to redirect_to('/login/authenticator')
+      post '/login/authenticator', params: { code: ROTP::TOTP.new(staff.otp_secret).now }
       expect(response).to redirect_to('/')
     end
     get '/activate', params: { token: token }
@@ -23,7 +25,7 @@ RSpec.describe 'Ativação e login', type: :request do
     expect(staff.reload.activated_at).to be_nil
     staff.update!(password: 'senha-segura-1234', activated_at: Time.current)
     post '/login', params: { email: staff.email, password: 'senha-segura-1234' }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to redirect_to('/login/authenticator')
     get '/'
     expect(response).to redirect_to('/login')
   end
