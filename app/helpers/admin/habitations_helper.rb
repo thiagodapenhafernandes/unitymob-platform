@@ -244,6 +244,15 @@ module Admin::HabitationsHelper
     end
   end
 
+  def admin_habitation_catalog_attribution(habitation)
+    if habitation.dwv_property?
+      name = habitation.construtora.to_s.squish.presence
+      { caption: "Construtora", label: name || "Não informada", title: name, icon: "bi-building" }
+    else
+      admin_habitation_captador_summary(habitation).merge(caption: "Captador", icon: "bi-person-badge")
+    end
+  end
+
   def admin_habitation_captador_summary(habitation)
     names = if habitation.respond_to?(:captador_names)
               habitation.captador_names

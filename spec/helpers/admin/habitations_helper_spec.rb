@@ -15,6 +15,24 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
     )
   end
 
+  describe "#admin_habitation_catalog_attribution" do
+    it "uses the imported constructor for DWV properties" do
+      property = Habitation.new(imovel_dwv: "Sim", construtora: "Santana Empreendimentos")
+      expect(helper.admin_habitation_catalog_attribution(property)).to include(caption: "Construtora", label: "Santana Empreendimentos")
+    end
+
+    it "does not present the DWV integration user as a constructor when the name is missing" do
+      property = Habitation.new(imovel_dwv: "Sim", construtora: " ")
+      expect(helper.admin_habitation_catalog_attribution(property)).to include(caption: "Construtora", label: "Não informada")
+    end
+
+    it "preserves captador names on properties outside DWV" do
+      property = Habitation.new(construtora: "Construtora local")
+      allow(property).to receive(:captador_names).and_return(["Ana", "João"])
+      expect(helper.admin_habitation_catalog_attribution(property)).to include(caption: "Captador", label: "Ana +1", title: "Ana | João")
+    end
+  end
+
   describe "#admin_habitation_publication_channels" do
     it "returns the site and active portal labels" do
       habitation = Habitation.new(

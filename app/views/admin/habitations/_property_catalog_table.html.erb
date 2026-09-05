@@ -41,7 +41,7 @@
           display_title = imovel.display_title
           catalog_title = admin_habitation_catalog_title(imovel)
           development_name = admin_habitation_catalog_development_name(imovel)
-          captador_summary = admin_habitation_captador_summary(imovel)
+          captador_summary = admin_habitation_catalog_attribution(imovel)
           captador_label = captador_summary[:label]
           pending_intake_status = admin_habitation_pending_intake_status(imovel, intake_review: @intake_review)
           data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
@@ -146,7 +146,7 @@
               <% if development_name.present? %>
                 <span>Empreendimento: <%= development_name %></span>
               <% end %>
-              <span title="<%= captador_summary[:title] %>">Captador: <%= captador_label %></span>
+              <span title="<%= captador_summary[:title] %>"><%= captador_summary[:caption] %>: <%= captador_label %></span>
             </div>
           </td>
           <td class="ax-property-table__money" data-column="price"><%= price_label %></td>

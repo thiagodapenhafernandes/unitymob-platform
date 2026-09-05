@@ -1,0 +1,35 @@
+/* Shared single-column form rhythm and touch targets for mobile workflows. */
+.ax-touch-form {
+  display: grid;
+  gap: 24px;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+.ax-touch-form .ax-field-group__body {
+  display: grid;
+  gap: 18px;
+  padding-top: 10px;
+}
+
+.ax-touch-form .ax-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ax-touch-form .ax-field__hint { margin: 0; }
+
+.ax-touch-form :is(.ax-control, .ax-file-field__button, .ax-btn) {
+  min-height: 46px;
+}
+
+.ax-touch-form .ax-control { font-size: 16px; }
+.ax-touch-form .ax-file-field__filename { min-width: 0; }
+.ax-touch-form > .ax-btn { width: 100%; }
+
+/* Profile identity composition; the avatar remains the shared primitive. */
+.ax-profile-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ax-profile-identity > div { display: grid; gap: 4px; min-width: 0; }
+.ax-profile-identity strong { line-height: 1.35; overflow-wrap: anywhere; }
+.ax-profile-identity span { font-size: 13px; color: var(--ab-muted); overflow-wrap: anywhere; }
