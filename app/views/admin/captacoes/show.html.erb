@@ -290,8 +290,8 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <div class="capt-detail-section-title"><i class="bi bi-person-badge"></i>Corretor responsável</div>
-        <div class="tw-text-sm"><strong><%= @captacao.corretor.name %></strong></div>
-        <div class="tw-text-sm tw-text-ink-muted"><%= @captacao.corretor.email %></div>
+        <div class="tw-text-sm"><strong><%= @captacao.corretor&.name.presence || "Sem corretor" %></strong></div>
+        <div class="tw-text-sm tw-text-ink-muted"><%= @captacao.corretor&.email %></div>
       </div>
     </div>
 

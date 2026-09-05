@@ -51,6 +51,18 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     sign_in admin
   end
 
+  it "exibe listagem e detalhe de captação sem corretor, preservando os atribuídos" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_status: "internal")
+    create(:habitation, :broker_intake, admin_user: admin)
+    intake.update_column(:admin_user_id, nil)
+    get admin_captacoes_path, params: { status: "all" }
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Sem corretor", admin.name)
+    get admin_captacao_path(intake)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Sem corretor")
+  end
+
   it "abre nova captação sem criar rascunho automaticamente" do
     expect {
       get new_admin_captacao_path

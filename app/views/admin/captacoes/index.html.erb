@@ -288,7 +288,7 @@
             <td><% if c.codigo.present? %><%= link_to c.codigo, admin_habitations_path(q: c.codigo) %><% else %>—<% end %></td>
             <td><span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span></td>
             <td><span class="ax-badge ax-badge--<%= mod_color %>"><%= mod_label %></span></td>
-            <% if can_filter_intakes_by_broker? %><td><%= c.corretor.name %></td><% end %>
+            <% if can_filter_intakes_by_broker? %><td><%= c.corretor&.name.presence || "Sem corretor" %></td><% end %>
             <td class="ax-num"><% if c.valor_venda.present? %><%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %><% elsif c.valor_locacao.present? %><%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês<% else %>—<% end %></td>
             <td>
               <% badge_tone = intake_status_badge_tones.fetch(c.intake_status, "gray") %>
@@ -331,7 +331,7 @@
           <div class="captacao-mobile-card__meta">
             <% if c.codigo.present? %><span>Cod. <%= c.codigo %></span><% end %>
             <% if captacao_subtitle.present? %><span><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= captacao_subtitle %></span><% end %>
-            <% if can_filter_intakes_by_broker? %><span><i class="bi bi-person" aria-hidden="true"></i> <%= c.corretor.name %></span><% end %>
+            <% if can_filter_intakes_by_broker? %><span><i class="bi bi-person" aria-hidden="true"></i> <%= c.corretor&.name.presence || "Sem corretor" %></span><% end %>
           </div>
           <div class="captacao-mobile-card__badges">
             <span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span>
