@@ -5,20 +5,19 @@
 <%= ax_operational_panel(title: "Foto e senha") do %>
   <div class="ax-panel-body">
     <% if @profile.errors.any? %><div class="ax-support-notice" role="alert"><%= @profile.errors.full_messages.join(" ") %></div><% end %>
-    <%= form_with model: @profile, url: admin_my_profile_path, method: :patch, local: true do |form| %>
-      <%= ax_avatar(name: @profile.name, image: @profile.avatar, size: :lg) %>
-      <p><strong><%= @profile.name %></strong><br><%= @profile.notification_email %></p>
-      <%= form.label :avatar, "Foto de perfil", class: "ax-label" %>
-      <%= form.file_field :avatar, accept: "image/jpeg,image/png,image/webp", class: "ax-input" %>
-      <p class="ax-field__hint">JPG, PNG ou WebP, até 5 MB.</p>
+    <%= form_with model: @profile, url: admin_my_profile_path, method: :patch, local: true, class: "ax-touch-form" do |form| %>
+      <div class="ax-profile-identity">
+        <%= ax_avatar(name: @profile.name, image: @profile.avatar, size: :lg) %>
+        <div><strong><%= @profile.name %></strong><span><%= @profile.notification_email %></span></div>
+      </div>
+      <%= ax_file_field(form: form, method: :avatar, label: "Foto de perfil",
+                        accept: "image/jpeg,image/png,image/webp", button_label: "Escolher foto",
+                        empty_label: "Nenhuma nova foto", hint: "JPG, PNG ou WebP, até 5 MB.") %>
       <%= ax_field_group(title: "Trocar senha", token: "Opcional") do %>
         <p class="ax-field__hint">Para alterar apenas a foto, deixe os campos de senha vazios.</p>
-        <%= label_tag :current_password, "Senha atual", class: "ax-label" %>
-        <%= password_field_tag :current_password, nil, autocomplete: "current-password", class: "ax-input" %>
-        <%= form.label :password, "Nova senha", class: "ax-label" %>
-        <%= form.password_field :password, autocomplete: "new-password", minlength: Devise.password_length.min, class: "ax-input" %>
-        <%= form.label :password_confirmation, "Confirme a nova senha", class: "ax-label" %>
-        <%= form.password_field :password_confirmation, autocomplete: "new-password", class: "ax-input" %>
+        <%= ax_standalone_field(name: :current_password, id: :current_password, label: "Senha atual", type: :password, autocomplete: "current-password") %>
+        <%= ax_text_field(form: form, method: :password, label: "Nova senha", type: :password, autocomplete: "new-password", minlength: Devise.password_length.min) %>
+        <%= ax_text_field(form: form, method: :password_confirmation, label: "Confirme a nova senha", type: :password, autocomplete: "new-password") %>
       <% end %>
       <%= form.submit "Salvar alterações", class: "ax-btn ax-btn--primary" %>
     <% end %>
