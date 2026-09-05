@@ -957,6 +957,7 @@ app/javascript/controllers
 ├── ax_confirm_submit_controller.js
 ├── ax_disclosure_controller.js
 ├── ax_drawer_controller.js
+├── ax_popover_controller.js  # ciclo de abrir/fechar compartilhado por menus e composer
 ├── ax_dropdown_controller.js
 ├── ax_form_hints_controller.js
 ├── ax_modal_controller.js
@@ -973,3 +974,16 @@ app/javascript/controllers
 - Consolidar selects relacionais e multiselects no mesmo contrato visual.
 - Criar exemplos pequenos de cada componente em uma página interna de referência
   se a equipe precisar testar visualmente os primitives sem abrir telas reais.
+
+### Ciclo compartilhado de popovers
+
+`AxPopoverController` concentra toggle, fechamento por Escape/clique externo e
+remoção de listeners na desconexão. `attach-menu`, `quick-replies` e
+`emoji-picker` herdam esse ciclo; mantêm apenas ações de domínio e conteúdo.
+`ax-dropdown` reutiliza os listeners e clique externo, preservando sua navegação
+por teclado, foco, ARIA e fechamento animado. Não trocar esses contratos ao
+adicionar um consumidor.
+
+Para verificar os quatro consumidores com o Stimulus instalado no projeto:
+execute `python3 script/test_popover_components` e abra
+`http://127.0.0.1:8766`. A página executa os contratos e mostra o resultado.

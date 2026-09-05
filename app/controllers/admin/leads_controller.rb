@@ -12,20 +12,6 @@ class Admin::LeadsController < Admin::BaseController
   HIDDEN_KANBAN_STATUSES = ["Aguardando Aceite", "Represado", "Concluido"].freeze
   # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
   MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
-  CONTACT_KIND_LABELS = {
-    "ligacao" => "Ligação",
-    "whatsapp" => "WhatsApp",
-    "email" => "E-mail",
-    "visita" => "Visita",
-    "nota" => "Anotação interna",
-    "note" => "Anotação interna"
-  }.freeze
-  CONTACT_RESULT_LABELS = {
-    "nao_respondeu" => "Não respondeu",
-    "falou_com_cliente" => "Falou com cliente",
-    "retornar_depois" => "Retornar depois",
-    "sem_interesse" => "Sem interesse"
-  }.freeze
   CONTACT_ACTIVITY_KINDS = %w[
     accepted note whatsapp_out appointment_created appointment_done
     proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
@@ -133,7 +119,7 @@ class Admin::LeadsController < Admin::BaseController
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
-  helper_method :can_destroy_lead?, :can_assign_lead_owner?, :lead_contact_kind_label, :lead_contact_result_label, :lead_unsuccessful_attempt_count
+  helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -462,8 +448,8 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def log_contact
-    kind = params[:contact_kind].presence_in(CONTACT_KIND_LABELS.keys) || "nota"
-    result = params[:contact_result].presence_in(CONTACT_RESULT_LABELS.keys)
+    kind = params[:contact_kind].presence_in(LeadActivity::CONTACT_KIND_LABELS.keys) || "nota"
+    result = params[:contact_result].presence_in(LeadActivity::CONTACT_RESULT_LABELS.keys)
     body = params[:body].to_s.strip
     if body.blank?
       return redirect_back fallback_location: admin_lead_path(@lead), alert: "Descreva o contato antes de salvar."
@@ -1178,7 +1164,7 @@ class Admin::LeadsController < Admin::BaseController
   def apply_attention_filter(scope)
     case @attention_filter.to_s
     when "requires_action"
-      scope.where(status: active_lead_status_values_with_blank).where(attention_leads_sql)
+      attention_leads(scope.where(status: active_lead_status_values_with_blank))
     when "task_overdue"
       scope.where(status: active_lead_status_values_with_blank).where(id: operational_task_scope.atrasadas.select(:lead_id))
     when "task_due_today"
@@ -1262,7 +1248,7 @@ class Admin::LeadsController < Admin::BaseController
             commercial_report_source_label(lead),
             lead.admin_user&.name || "Sem corretor",
             lead.lead_pipeline_stage&.name || lead.status,
-            lead_unsuccessful_attempt_count(lead),
+            lead.unsuccessful_attempt_count,
             report_datetime(last_attempt&.created_at),
             commercial_report_archive_reason(lead),
             property&.display_title || lead.product,
@@ -1816,35 +1802,10 @@ class Admin::LeadsController < Admin::BaseController
     active_lead_status_values + [nil]
   end
 
-  def attention_leads_sql
-    ActiveRecord::Base.sanitize_sql_array([
-      <<~SQL.squish,
-        leads.status = ?
-        OR leads.admin_user_id IS NULL
-        OR EXISTS (
-          SELECT 1
-          FROM tasks attention_tasks
-          WHERE attention_tasks.tenant_id = leads.tenant_id
-            AND attention_tasks.lead_id = leads.id
-            AND attention_tasks.status = 'pendente'
-            AND attention_tasks.due_at IS NOT NULL
-            AND attention_tasks.due_at < ?
-        )
-        OR (
-          leads.created_at < ?
-          AND NOT EXISTS (
-            SELECT 1
-            FROM lead_activities contact_activities
-            WHERE contact_activities.lead_id = leads.id
-              AND contact_activities.kind IN (?)
-          )
-        )
-      SQL
-      Lead.status_value(:represado),
-      Time.current,
-      first_contact_sla_hours.hours.ago,
-      CONTACT_ACTIVITY_KINDS
-    ])
+  def attention_leads(scope)
+    Leads::AttentionQuery.new(
+      scope: scope, sla_hours: first_contact_sla_hours, contact_kinds: CONTACT_ACTIVITY_KINDS
+    ).call
   end
 
   def operational_task_scope
@@ -2351,32 +2312,6 @@ class Admin::LeadsController < Admin::BaseController
     return false unless current_admin_user&.scope_for(:leads) == "own" && @lead&.admin_user_id == current_admin_user.id
 
     current_tenant.admin_users.active.where(id: admin_user_id).exists?
-  end
-
-  def lead_contact_kind_label(activity)
-    CONTACT_KIND_LABELS[activity.meta("contact_kind").to_s] || "Anotação interna"
-  end
-
-  def lead_contact_result_label(activity)
-    CONTACT_RESULT_LABELS[activity.meta("contact_result").to_s]
-  end
-
-  def lead_unsuccessful_attempt_count(lead)
-    return 0 unless lead
-
-    since = lead_stage_entered_at(lead) || lead.created_at
-    last_customer_at = lead.activities.where(kind: Leads::PipelineStageAutoAdvanceService::CUSTOMER_ACTIVITY_KINDS)
-                           .where("created_at >= ?", since)
-                           .maximum(:created_at) || since
-    lead.activities.unsuccessful_contact_attempts.where("created_at >= ?", last_customer_at).count
-  end
-
-  def lead_stage_entered_at(lead)
-    lead.lead_audit_logs
-      .where(action: "status_changed")
-      .order(created_at: :desc)
-      .limit(1)
-      .pick(:created_at) || lead.created_at
   end
 
   def lead_params

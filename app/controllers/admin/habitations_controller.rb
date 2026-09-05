@@ -2127,38 +2127,6 @@ class Admin::HabitationsController < Admin::BaseController
     scope.count
   end
 
-  def export_row(habitation, fields)
-    fields.map do |field|
-      case field
-      when "codigo" then habitation.codigo
-      when "categoria" then habitation.categoria
-      when "status" then habitation.status
-      when "logradouro" then habitation.logradouro || habitation.endereco
-      when "numero" then habitation.numero
-      when "complemento" then habitation.complemento
-      when "bairro" then habitation.bairro
-      when "cidade" then habitation.cidade
-      when "uf" then habitation.uf
-      when "cep" then habitation.cep
-      when "dormitorios_qtd" then habitation.dormitorios_qtd
-      when "suites_qtd" then habitation.suites_qtd
-      when "banheiros_qtd" then habitation.banheiros_qtd
-      when "vagas_qtd" then habitation.vagas_qtd
-      when "valor_venda" then habitation.valor_venda_formatted
-      when "valor_locacao" then habitation.valor_locacao_formatted
-      when "valor_condominio" then habitation.valor_condominio_formatted
-      when "valor_iptu" then habitation.valor_iptu_formatted
-      when "area_privativa_m2" then habitation.area_privativa_m2
-      when "area_total_m2" then habitation.area_total_m2
-      when "valor_por_m2" then habitation.valor_por_m2_formatted
-      when "corretor_nome" then habitation.corretor_nome
-      when "proprietario" then can_view_proprietor_data?(habitation) ? habitation.proprietario : "Captador: #{habitation.admin_user&.name || habitation.corretor_nome}"
-      when "codigo_empreendimento" then habitation.codigo_empreendimento
-      else habitation.public_send(field)
-      end
-    end
-  end
-
   def can_view_proprietor_data?(habitation)
     return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)

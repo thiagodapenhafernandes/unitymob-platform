@@ -18,6 +18,20 @@ class LeadActivity < ApplicationRecord
     automation_redistribution
     automation_available
   ].freeze
+  CONTACT_KIND_LABELS = {
+    "ligacao" => "Ligação",
+    "whatsapp" => "WhatsApp",
+    "email" => "E-mail",
+    "visita" => "Visita",
+    "nota" => "Anotação interna",
+    "note" => "Anotação interna"
+  }.freeze
+  CONTACT_RESULT_LABELS = {
+    "nao_respondeu" => "Não respondeu",
+    "falou_com_cliente" => "Falou com cliente",
+    "retornar_depois" => "Retornar depois",
+    "sem_interesse" => "Sem interesse"
+  }.freeze
   CONTACT_ATTEMPT_KINDS = %w[ligacao whatsapp email visita].freeze
   UNSUCCESSFUL_CONTACT_RESULTS = %w[nao_respondeu sem_interesse].freeze
   SOURCE_CATEGORIES = %w[human external_sync automation].freeze

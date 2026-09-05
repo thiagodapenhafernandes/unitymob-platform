@@ -1,6 +1,10 @@
 # This file is copied to spec/ when you run 'rails generate rspec:install'
 require 'spec_helper'
 ENV['RAILS_ENV'] ||= 'test'
+# Chaves descartáveis e exclusivas do ambiente de testes, antes do boot do Rails.
+%w[PRIMARY_KEY DETERMINISTIC_KEY KEY_DERIVATION_SALT].each do |key|
+  ENV["AR_ENCRYPTION_#{key}"] ||= "test-only-#{key.downcase.ljust(32, '0')}"
+end
 require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
@@ -95,6 +99,7 @@ RSpec.configure do |config|
   config.infer_spec_type_from_file_location!
 
   config.before(:each) do
+    Rack::Attack.reset!
     Current.tenant ||= Tenant.default
   end
 

@@ -116,7 +116,7 @@ class Admin::DashboardController < Admin::BaseController
     @lead_tasks_week = dashboard_task_scope.semana.count
     @attention_open_leads = @lead_scope
       .where(status: active_lead_statuses_with_blank)
-      .where(attention_leads_sql)
+      .then { |scope| attention_leads(scope) }
       .count
     @no_first_contact_leads = no_first_contact_scope.count
     @sla_overdue_leads = no_first_contact_scope.where("leads.created_at < ?", first_contact_sla_hours.hours.ago).count
@@ -1148,7 +1148,7 @@ class Admin::DashboardController < Admin::BaseController
   def broker_attention_rows
     counts = @lead_scope
       .where(status: active_lead_status_values_with_blank)
-      .where(attention_leads_sql)
+      .then { |scope| attention_leads(scope) }
       .group(:admin_user_id)
       .count
     return [] if counts.empty?
@@ -1532,35 +1532,10 @@ class Admin::DashboardController < Admin::BaseController
     "R$ 0,00"
   end
 
-  def attention_leads_sql
-    ActiveRecord::Base.sanitize_sql_array([
-      <<~SQL.squish,
-        leads.status = ?
-        OR leads.admin_user_id IS NULL
-        OR EXISTS (
-          SELECT 1
-          FROM tasks attention_tasks
-          WHERE attention_tasks.tenant_id = leads.tenant_id
-            AND attention_tasks.lead_id = leads.id
-            AND attention_tasks.status = 'pendente'
-            AND attention_tasks.due_at IS NOT NULL
-            AND attention_tasks.due_at < ?
-        )
-        OR (
-          leads.created_at < ?
-          AND NOT EXISTS (
-            SELECT 1
-            FROM lead_activities contact_activities
-            WHERE contact_activities.lead_id = leads.id
-              AND contact_activities.kind IN (?)
-          )
-        )
-      SQL
-      Lead.status_value(:represado),
-      Time.current,
-      first_contact_sla_hours.hours.ago,
-      CONTACT_ACTIVITY_KINDS
-    ])
+  def attention_leads(scope)
+    Leads::AttentionQuery.new(
+      scope: scope, sla_hours: first_contact_sla_hours, contact_kinds: CONTACT_ACTIVITY_KINDS
+    ).call
   end
 
   def no_first_contact_scope
@@ -1653,7 +1628,7 @@ class Admin::DashboardController < Admin::BaseController
       .where(status: closed_status).where.not(admin_user_id: nil).group(:admin_user_id).count
     attention_counts = @lead_scope
       .where(status: active_lead_status_values_with_blank)
-      .where(attention_leads_sql)
+      .then { |scope| attention_leads(scope) }
       .where.not(admin_user_id: nil)
       .group(:admin_user_id)
       .count

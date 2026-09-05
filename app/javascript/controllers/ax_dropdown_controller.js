@@ -1,4 +1,4 @@
-import { Controller } from "@hotwired/stimulus"
+import AxPopoverController from "controllers/ax_popover_controller"
 
 // Dropdown genérico do novo CRM (substitui bootstrap.Dropdown).
 // Uso:
@@ -6,12 +6,11 @@ import { Controller } from "@hotwired/stimulus"
 //     <button data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger">…</button>
 //     <div data-ax-dropdown-target="menu" class="ax-menu" hidden>…</div>
 //   </div>
-export default class extends Controller {
+export default class extends AxPopoverController {
   static targets = ["menu", "trigger"]
 
   connect() {
-    this.onDocClick = this.closeOnOutside.bind(this)
-    this.onKey = this.closeOnEsc.bind(this)
+    super.connect()
     this.onTriggerKeydown = this.handleTriggerKeydown.bind(this)
     this.onMenuKeydown = this.handleMenuKeydown.bind(this)
     this.closeTimer = null
@@ -31,8 +30,7 @@ export default class extends Controller {
 
   disconnect() {
     if (this.closeTimer) window.clearTimeout(this.closeTimer)
-    document.removeEventListener("click", this.onDocClick)
-    document.removeEventListener("keydown", this.onKey)
+    this.stopListening()
     if (this.hasTriggerTarget) this.triggerTarget.removeEventListener("keydown", this.onTriggerKeydown)
     this.menuTarget.removeEventListener("keydown", this.onMenuKeydown)
   }
@@ -53,8 +51,7 @@ export default class extends Controller {
     this.elevatedContainer = this.element.closest(".ax-property-card")
     if (this.elevatedContainer) this.elevatedContainer.classList.add("has-open-dropdown")
     if (this.hasTriggerTarget) this.triggerTarget.setAttribute("aria-expanded", "true")
-    document.addEventListener("click", this.onDocClick)
-    document.addEventListener("keydown", this.onKey)
+    this.listen()
   }
 
   close(options = {}) {
@@ -64,8 +61,7 @@ export default class extends Controller {
       this.elevatedContainer = null
     }
     if (this.hasTriggerTarget) this.triggerTarget.setAttribute("aria-expanded", "false")
-    document.removeEventListener("click", this.onDocClick)
-    document.removeEventListener("keydown", this.onKey)
+    this.stopListening()
     if (options.restoreFocus && this.hasTriggerTarget) this.triggerTarget.focus()
 
     if (this.closeTimer) window.clearTimeout(this.closeTimer)
@@ -85,10 +81,6 @@ export default class extends Controller {
       const controller = this.application.getControllerForElementAndIdentifier(element, "ax-dropdown")
       if (controller) controller.close()
     })
-  }
-
-  closeOnOutside(event) {
-    if (!this.element.contains(event.target)) this.close()
   }
 
   closeOnEsc(event) {
