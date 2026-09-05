@@ -7,7 +7,7 @@ User=unitymob
 WorkingDirectory=/home/unitymob/central/current/central
 Environment=RAILS_ENV=production
 EnvironmentFile=/home/unitymob/central/shared/central/.env
-ExecStart=/usr/local/rvm/wrappers/ruby-3.2.3@default/bundle exec puma -C config/puma.rb
+ExecStart=/usr/local/rvm/wrappers/ruby-3.2.3/bundle exec puma -C config/puma.rb
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
