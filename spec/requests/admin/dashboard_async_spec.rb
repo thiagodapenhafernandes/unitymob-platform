@@ -31,10 +31,9 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Cliques reais em chamadas de WhatsApp capturados no site público.")
     expect(response.body).not_to include('id="admin_dashboard_charts"')
     expect(response.body).to include("Decisão operacional")
-    expect(response.body).to include("IA textual")
-    expect(response.body).to include("Diagnóstico da semana")
-    expect(response.body).to include("determinístico")
-    expect(response.body).to include("diagnóstico(s) IA na semana")
+    expect(response.body).not_to include("IA textual")
+    expect(response.body).not_to include("Diagnóstico da semana")
+    expect(response.body).not_to include("diagnóstico(s) IA na semana")
     expect(response.body).to include("Mapa de investigação operacional")
     expect(response.body).not_to include("Resumo operacional")
     expect(response.body).not_to include("Hoje e próximos passos")
@@ -67,6 +66,15 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         created_at: 3.days.ago
       )
       create(
+        :lead,
+        tenant: tenant,
+        name: "Lead descartado fora da operação",
+        status: Lead.status_value(:descartado),
+        admin_user: nil,
+        updated_at: 3.days.ago,
+        created_at: 3.days.ago
+      )
+      create(
         :habitation,
         tenant: tenant,
         codigo: "dashboard-bi-sem-preco",
@@ -75,6 +83,25 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         valor_locacao_cents: 0
       )
       property_with_demand = create(:habitation, tenant: tenant, codigo: "dashboard-bi-demanda", valor_venda_cents: 900_000_00)
+      sold_property = create(
+        :habitation,
+        tenant: tenant,
+        codigo: "dashboard-vendido-fora",
+        status: "Vendido terceiros",
+        valor_venda_cents: 900_000_00,
+        valor_vendido_terceiros_cents: 900_000_00
+      )
+      3.times do
+        create(
+          :lead,
+          tenant: tenant,
+          status: Lead.status_value(:novo),
+          admin_user: owner,
+          property_id: sold_property.id,
+          created_at: 1.day.ago,
+          updated_at: 1.day.ago
+        )
+      end
       create(
         :lead,
         tenant: tenant,
@@ -85,6 +112,18 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         updated_at: 1.day.ago
       ).tap do |lead_with_task|
         create(:task, tenant: tenant, lead: lead_with_task, admin_user: owner, title: "Retornar lead do painel", due_at: 1.hour.ago)
+      end
+      4.times do |index|
+        create(
+          :lead,
+          tenant: tenant,
+          name: "Lead pago sem atendimento #{index}",
+          status: Lead.status_value(:novo),
+          admin_user: owner,
+          attribution_channel: "meta_ads",
+          created_at: 2.days.ago,
+          updated_at: 2.days.ago
+        )
       end
       whatsapp_conversation = WhatsappConversation.create!(
         tenant: tenant,
@@ -161,6 +200,8 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       expect(response.body).to include("Quais imóveis têm demanda sem avanço?")
       expect(response.body).to include("dashboard-bi-demanda")
       expect(response.body).to include("property_q=dashboard-bi-demanda")
+      expect(response.body).not_to include("dashboard-vendido-fora")
+      expect(response.body).not_to include("Lead descartado fora da operação")
       expect(response.body).to include("O que exige ação agora?")
       expect(response.body).to include("Quem precisa agir agora?")
       expect(response.body).to include("/admin/leads?attention_filter=requires_action")
@@ -225,16 +266,16 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     document = Nokogiri::HTML(response.body)
     missing_photos_card = document.css(".ax-dashboard-quality__item").find { |node| node.text.include?("Sem fotos") }
 
-    expect(missing_photos_card.text).to include("3")
+    expect(missing_photos_card.text).to include("2")
     expect(missing_photos_card["href"]).to include("ownership=all")
-    expect(missing_photos_card["href"]).to include("somente_sem_imagens=1")
+    expect(missing_photos_card["href"]).to include("dashboard_quality=missing_photos")
 
     get admin_habitations_path(ownership: "all", dashboard_quality: "missing_photos")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("dashboard-sem-foto-1")
     expect(response.body).to include("dashboard-sem-foto-2")
-    expect(response.body).to include("dashboard-sem-foto-pendente")
+    expect(response.body).not_to include("dashboard-sem-foto-pendente")
     expect(response.body).not_to include("dashboard-com-picture-publica")
 
     get admin_habitations_path(ownership: "all", somente_sem_imagens: "1")
@@ -263,7 +304,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     document = Nokogiri::HTML(response.body)
     missing_price_card = document.css(".ax-dashboard-quality__item").find { |node| node.text.include?("Sem preço") }
 
-    expect(missing_price_card.text).to include("2")
+    expect(missing_price_card.text).to include("1")
     expect(missing_price_card.text).to include("Sem valor de venda/locação")
     expect(missing_price_card.text).to include("1 empreendimento(s) fora do alerta")
     expect(missing_price_card["href"]).to include("ownership=all")
@@ -273,7 +314,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(missing_price.codigo)
-    expect(response.body).to include(internal_missing_price.codigo)
+    expect(response.body).not_to include(internal_missing_price.codigo)
     expect(response.body).not_to include(development.codigo)
     expect(response.body).not_to include(priced.codigo)
   end
@@ -714,7 +755,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(missing_price.codigo)
-    expect(response.body).to include(internal_missing_price.codigo)
+    expect(response.body).not_to include(internal_missing_price.codigo)
     expect(response.body).not_to include(development.codigo)
     expect(response.body).not_to include(priced.codigo)
   end

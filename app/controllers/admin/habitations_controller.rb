@@ -1841,6 +1841,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def apply_dashboard_quality_filter(scope, filter)
+    scope = scope.commercially_publishable if filter.present?
     return scope.where.not(id: Habitation.with_photos.select(:id)) if filter == "missing_photos"
     return scope.without_operational_price if filter == "missing_price"
 
