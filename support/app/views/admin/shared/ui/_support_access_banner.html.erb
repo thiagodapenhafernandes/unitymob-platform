@@ -1,0 +1,7 @@
+<% if respond_to?(:support_access_session) && (grant = support_access_session) %>
+  <aside class="ax-support-access" role="status">
+    <strong>Acesso do suporte · <%= grant.operator_name %></strong>
+    <span>Como <%= current_admin_user.name %> · até <%= l(grant.expires_at, format: :short) %></span>
+    <%= button_to "Encerrar acesso", support_access_path, method: :delete, form: { data: { turbo: false } }, class: "ax-btn" %>
+  </aside>
+<% end %>

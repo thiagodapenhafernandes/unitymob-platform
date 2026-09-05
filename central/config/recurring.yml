@@ -1,0 +1,14 @@
+production:
+  expire_staff_sessions:
+    command: "StaffSession.expire!"
+    schedule: every minute
+  support_deliveries:
+    class: Support::DispatchJob
+    schedule: every minute
+development:
+  expire_staff_sessions:
+    command: "StaffSession.expire!"
+    schedule: every minute
+  support_deliveries:
+    class: Support::DispatchJob
+    schedule: every minute

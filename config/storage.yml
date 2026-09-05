@@ -43,3 +43,17 @@ do_spaces:
 #   service: Mirror
 #   primary: local
 #   mirrors: [ amazon, google, microsoft ]
+
+support_private:
+<% if Rails.env.production? %>
+  service: S3
+  access_key_id: <%= ENV["SUPPORT_STORAGE_KEY"] %>
+  secret_access_key: <%= ENV["SUPPORT_STORAGE_SECRET"] %>
+  region: <%= ENV["SUPPORT_STORAGE_REGION"] %>
+  bucket: <%= ENV["SUPPORT_STORAGE_BUCKET"] %>
+  endpoint: <%= ENV["SUPPORT_STORAGE_ENDPOINT"] %>
+  public: false
+<% else %>
+  service: Disk
+  root: <%= Rails.root.join("storage/support") %>
+<% end %>

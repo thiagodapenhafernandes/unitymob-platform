@@ -1,0 +1,8 @@
+<% if current_staff.admin? %>
+  <%= form_with model: ticket, url: support_ticket_path(ticket), data: {turbo_frame:'support_conversation'}, class:'ax-support-assignee' do |f| %>
+    <%= f.label :assignee_id, 'Responsável', for: "assignee-#{ticket.id}" %>
+    <% choices = operators.map { |staff| ["#{staff.name} · #{Staff::ROLE_LABELS[staff.role]}#{staff.active? ? '' : ' · Desativado'}", staff.id, {disabled: !staff.active?}] } %>
+    <% if ticket.assignee_id && choices.none? { |_, id| id == ticket.assignee_id } %><% choices.unshift([ticket.assignee_name, ticket.assignee_id, {disabled: true}]) %><% end %>
+    <%= f.select :assignee_id, options_for_select(choices, ticket.assignee_id), {include_blank:'Sem responsável'}, id: "assignee-#{ticket.id}", class:'ax-input', data:{support_assign:true} %>
+  <% end %>
+<% else %><div class="ax-support-assignee"><span>Responsável</span><strong><%= ticket.assignee_name.presence || 'Sem responsável' %></strong></div><% end %>

@@ -1,0 +1,22 @@
+<turbo-frame id="support_conversation">
+<section class="ax-support-workspace ax-support-thread" data-support-url="<%= support_ticket_path(@ticket) %>" data-support-poll="<%= support_updates_path(ticket_id: @ticket.id) %>" data-support-version="<%= "#{@ticket.revision}:#{@ticket.messages.count}:#{@ticket.pending?}" %>" data-support-tabs>
+  <div class="ax-support-thread-mobile"><%= render "admin/shared/ui/support_header", title: "##{@ticket.id} · #{@ticket.requester_name}", back: support_tickets_path, status: @ticket.status, inbox_back: true %></div>
+  <% if flash[:alert] %><p role="alert" class="ax-support-notice"><%= flash[:alert] %></p><% end %>
+  <%= render 'admin/shared/ui/support_intake_summary', ticket: @ticket %>
+  <%= render 'admin/shared/ui/support_ticket_bi', ticket: @ticket, timing: @timing, timeline: @timeline %>
+  <div class="ax-support-tabs" role="tablist" aria-label="Conteúdo do chamado">
+    <% [['conversation','Conversa'],['notes',"Notas internas (#{@notes.size})"],['labels',"Etiquetas (#{@ticket.labels.to_s.split(',').reject(&:blank?).size})"]].each do |key,label| %><button type="button" role="tab" id="tab-<%= key %>" aria-controls="panel-<%= key %>" aria-selected="<%= key == 'conversation' %>" data-support-tab="<%= key %>" class="ax-support-tab"><%= label %></button><% end %>
+  </div>
+  <section id="panel-conversation" role="tabpanel" aria-labelledby="tab-conversation" data-support-tab-panel="conversation">
+    <div class="ax-conversation ax-conversation--feed"><% @messages.each do |message| %><%= render 'admin/shared/ui/support_message', message: message, ticket: @ticket %><% end %></div>
+    <% if @ticket.failed? %><p role="alert" class="ax-support-notice">A entrega falhou. O conteúdo está preservado; verifique a comunicação com a conta.</p><% elsif @ticket.pending? %><p role="status" class="ax-support-notice">Envio salvo, aguardando entrega à conta.</p><% end %>
+    <% if current_staff.admin? && !@ticket.resolved? && @ticket.assignee_id != current_staff.id %><%= button_to "Assumir atendimento", support_ticket_path(@ticket), method: :patch, params: {support_ticket: {assignee_id: current_staff.id}}, class: "ax-btn" %><% end %>
+    <% if @ticket.resolved? %><p class="ax-support-notice">Chamado encerrado. O histórico está preservado e novas respostas estão desabilitadas.</p><% end %>
+      <%= form_with url: messages_support_ticket_path(@ticket), multipart: true, data: {support_image_reply: true, support_draft: "reply-#{@ticket.uid}-#{current_staff.id}"} do %>
+        <fieldset class="ax-support-composer-fields" <%= 'disabled' if @ticket.resolved? %>><%= render 'admin/shared/ui/support_composer', body: @reply, attachments: true %><%= submit_tag 'Enviar mensagem', class: 'ax-btn ax-btn--primary' %></fieldset>
+      <% end %>
+  </section>
+  <section id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-support-tab-panel="notes" hidden><p class="ax-compact-hint">Visíveis apenas para a equipe.</p><div class="ax-support-notes"><% @notes.each do |note| %><%= render "admin/shared/ui/support_note", note: note %><% end %></div><% unless @ticket.resolved? %><%= form_with url: notes_support_ticket_path(@ticket) do %><%= render 'admin/shared/ui/support_composer', attachments: false %><%= submit_tag 'Adicionar nota interna', class: 'ax-btn' %><% end %><% end %></section>
+  <section id="panel-labels" role="tabpanel" aria-labelledby="tab-labels" data-support-tab-panel="labels" hidden><%= render 'admin/shared/ui/support_labels', ticket: @ticket %></section>
+  <%= render 'admin/shared/ui/support_ticket_controls', ticket: @ticket, audits: @audits, staff_names: @audit_staff_names %>
+</section></turbo-frame>

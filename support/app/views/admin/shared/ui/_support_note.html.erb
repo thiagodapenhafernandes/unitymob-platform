@@ -1,0 +1,4 @@
+<article class="ax-support-note">
+  <header><strong><%= note.author %></strong><time datetime="<%= note.created_at.iso8601 %>"><%= l(note.created_at, format: "%d/%m/%Y às %H:%M") %></time></header>
+  <div class="ax-support-note__body"><%= support_message_body(note.body) %></div>
+</article>

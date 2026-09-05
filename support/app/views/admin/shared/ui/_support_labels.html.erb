@@ -1,0 +1,5 @@
+<div class="ax-label-manager" data-label-catalog="<%= support_labels_path(ticket_id:ticket.id) %>" data-label-ticket="<%= ticket.id %>">
+  <p class="ax-compact-hint">Catálogo compartilhado da equipe. Marque para aplicar ao chamado. Alterações no nome e na cor valem para todos os chamados.</p>
+  <details class="ax-compact-create"><summary>Criar etiqueta</summary><form data-label-create class="ax-label-form"><label>Nome<input name="name" maxlength="40" required class="ax-input"></label><label>Cor<input type="color" name="color" value="#10b981"></label><label>Descrição (opcional)<input name="description" maxlength="160" class="ax-input"></label><button class="ax-btn ax-btn--primary">Criar</button></form></details>
+  <p data-label-error role="alert" hidden></p><div data-label-list class="ax-label-list">Carregando etiquetas…</div>
+</div>

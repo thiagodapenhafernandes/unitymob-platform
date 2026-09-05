@@ -1,0 +1,5 @@
+<header class="ax-support-header <%= 'ax-support-header--detail' if local_assigns[:back] %>">
+  <% if local_assigns[:back] %><%= link_to "← Voltar", back, class: "ax-btn", data: { support_inbox_back: local_assigns[:inbox_back] }, aria: { label: "Voltar aos chamados" } %><% end %>
+  <div><p class="ax-support-eyebrow">Atendimento Unitymob</p><h1><%= title %></h1></div>
+  <span class="ax-support-status"><%= Support::Ticket::STATUS_LABELS[local_assigns[:status]] %></span>
+</header>

@@ -1,4 +1,3 @@
-\restrict eufmjXKKJ9H7PKPaGP72TnUJqocgVYemDyruQbdfrzzKjIbvHNeWOdpoaA3HSSX
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -6245,6 +6244,282 @@ ALTER SEQUENCE public.stores_id_seq OWNED BY public.stores.id;
 
 
 --
+-- Name: support_access_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_access_sessions (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    ticket_id bigint NOT NULL,
+    token_digest character varying NOT NULL,
+    operator_id character varying NOT NULL,
+    operator_name character varying NOT NULL,
+    requester_id character varying NOT NULL,
+    redeem_before timestamp(6) without time zone NOT NULL,
+    started_at timestamp(6) without time zone,
+    expires_at timestamp(6) without time zone,
+    ended_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: support_access_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_access_sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_access_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_access_sessions_id_seq OWNED BY public.support_access_sessions.id;
+
+
+--
+-- Name: support_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_accounts (
+    id bigint NOT NULL,
+    uid character varying NOT NULL,
+    name character varying NOT NULL,
+    local_tenant_id bigint,
+    endpoint character varying NOT NULL,
+    secret text NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    control_revision integer DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: support_accounts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_accounts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_accounts_id_seq OWNED BY public.support_accounts.id;
+
+
+--
+-- Name: support_audits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_audits (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    ticket_id bigint,
+    actor character varying NOT NULL,
+    action character varying NOT NULL,
+    details jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: support_audits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_audits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_audits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_audits_id_seq OWNED BY public.support_audits.id;
+
+
+--
+-- Name: support_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_deliveries (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    ticket_id bigint,
+    uid character varying NOT NULL,
+    payload jsonb NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    delivered_at timestamp(6) without time zone,
+    next_attempt_at timestamp(6) without time zone NOT NULL,
+    last_error character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    failed_at timestamp(6) without time zone
+);
+
+
+--
+-- Name: support_deliveries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_deliveries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_deliveries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_deliveries_id_seq OWNED BY public.support_deliveries.id;
+
+
+--
+-- Name: support_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_messages (
+    id bigint NOT NULL,
+    ticket_id bigint NOT NULL,
+    uid character varying NOT NULL,
+    side character varying NOT NULL,
+    author character varying NOT NULL,
+    body text DEFAULT ''::text NOT NULL,
+    internal boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    notification_pending boolean DEFAULT false NOT NULL,
+    notified_at timestamp(6) without time zone,
+    author_staff_id bigint,
+    edited_at timestamp(6) without time zone,
+    deleted_at timestamp(6) without time zone,
+    revision integer DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: support_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_messages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_messages_id_seq OWNED BY public.support_messages.id;
+
+
+--
+-- Name: support_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_receipts (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    uid character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: support_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_receipts_id_seq OWNED BY public.support_receipts.id;
+
+
+--
+-- Name: support_tickets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_tickets (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    uid character varying NOT NULL,
+    requester_id character varying NOT NULL,
+    requester_name character varying NOT NULL,
+    subject character varying NOT NULL,
+    intake jsonb DEFAULT '{}'::jsonb NOT NULL,
+    source_path character varying,
+    status character varying DEFAULT 'aberto'::character varying NOT NULL,
+    priority character varying DEFAULT 'normal'::character varying NOT NULL,
+    assignee_id bigint,
+    assignee_name character varying,
+    labels character varying DEFAULT ''::character varying NOT NULL,
+    previous_uid character varying,
+    revision integer DEFAULT 0 NOT NULL,
+    first_response_at timestamp(6) without time zone,
+    resolved_at timestamp(6) without time zone,
+    read_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    diagnostics jsonb DEFAULT '{}'::jsonb NOT NULL,
+    origin character varying DEFAULT 'receptivo'::character varying NOT NULL,
+    outreach_kind character varying,
+    requester_email character varying
+);
+
+
+--
+-- Name: support_tickets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_tickets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_tickets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_tickets_id_seq OWNED BY public.support_tickets.id;
+
+
+--
 -- Name: system_health_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8114,6 +8389,55 @@ ALTER TABLE ONLY public.stores ALTER COLUMN id SET DEFAULT nextval('public.store
 
 
 --
+-- Name: support_access_sessions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_access_sessions ALTER COLUMN id SET DEFAULT nextval('public.support_access_sessions_id_seq'::regclass);
+
+
+--
+-- Name: support_accounts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_accounts ALTER COLUMN id SET DEFAULT nextval('public.support_accounts_id_seq'::regclass);
+
+
+--
+-- Name: support_audits id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_audits ALTER COLUMN id SET DEFAULT nextval('public.support_audits_id_seq'::regclass);
+
+
+--
+-- Name: support_deliveries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_deliveries ALTER COLUMN id SET DEFAULT nextval('public.support_deliveries_id_seq'::regclass);
+
+
+--
+-- Name: support_messages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_messages ALTER COLUMN id SET DEFAULT nextval('public.support_messages_id_seq'::regclass);
+
+
+--
+-- Name: support_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_receipts ALTER COLUMN id SET DEFAULT nextval('public.support_receipts_id_seq'::regclass);
+
+
+--
+-- Name: support_tickets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_tickets ALTER COLUMN id SET DEFAULT nextval('public.support_tickets_id_seq'::regclass);
+
+
+--
 -- Name: system_health_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9381,6 +9705,62 @@ ALTER TABLE ONLY public.stores
 
 
 --
+-- Name: support_access_sessions support_access_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_access_sessions
+    ADD CONSTRAINT support_access_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: support_accounts support_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_accounts
+    ADD CONSTRAINT support_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: support_audits support_audits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_audits
+    ADD CONSTRAINT support_audits_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: support_deliveries support_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_deliveries
+    ADD CONSTRAINT support_deliveries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: support_messages support_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_messages
+    ADD CONSTRAINT support_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: support_receipts support_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_receipts
+    ADD CONSTRAINT support_receipts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: support_tickets support_tickets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_tickets
+    ADD CONSTRAINT support_tickets_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: system_health_settings system_health_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9952,6 +10332,13 @@ CREATE INDEX idx_meta_pages_on_page_id ON public.meta_facebook_pages USING btree
 --
 
 CREATE UNIQUE INDEX idx_notification_template_settings_unique_purpose ON public.notification_template_settings USING btree (tenant_id, channel, purpose);
+
+
+--
+-- Name: idx_on_account_id_requester_id_updated_at_91392e48ef; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_account_id_requester_id_updated_at_91392e48ef ON public.support_tickets USING btree (account_id, requester_id, updated_at);
 
 
 --
@@ -14617,6 +15004,153 @@ CREATE INDEX index_stores_on_turnos_config ON public.stores USING gin (turnos_co
 
 
 --
+-- Name: index_support_access_sessions_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_access_sessions_on_account_id ON public.support_access_sessions USING btree (account_id);
+
+
+--
+-- Name: index_support_access_sessions_on_ticket_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_access_sessions_on_ticket_id ON public.support_access_sessions USING btree (ticket_id);
+
+
+--
+-- Name: index_support_access_sessions_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_access_sessions_on_token_digest ON public.support_access_sessions USING btree (token_digest);
+
+
+--
+-- Name: index_support_accounts_on_local_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_accounts_on_local_tenant_id ON public.support_accounts USING btree (local_tenant_id);
+
+
+--
+-- Name: index_support_accounts_on_uid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_accounts_on_uid ON public.support_accounts USING btree (uid);
+
+
+--
+-- Name: index_support_audits_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_audits_on_account_id ON public.support_audits USING btree (account_id);
+
+
+--
+-- Name: index_support_audits_on_ticket_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_audits_on_ticket_id ON public.support_audits USING btree (ticket_id);
+
+
+--
+-- Name: index_support_deliveries_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_deliveries_on_account_id ON public.support_deliveries USING btree (account_id);
+
+
+--
+-- Name: index_support_deliveries_on_delivered_at_and_next_attempt_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_deliveries_on_delivered_at_and_next_attempt_at ON public.support_deliveries USING btree (delivered_at, next_attempt_at);
+
+
+--
+-- Name: index_support_deliveries_on_ticket_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_deliveries_on_ticket_id ON public.support_deliveries USING btree (ticket_id);
+
+
+--
+-- Name: index_support_deliveries_on_uid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_deliveries_on_uid ON public.support_deliveries USING btree (uid);
+
+
+--
+-- Name: index_support_messages_on_notification_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_messages_on_notification_pending ON public.support_messages USING btree (notification_pending) WHERE (notification_pending = true);
+
+
+--
+-- Name: index_support_messages_on_ticket_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_messages_on_ticket_id ON public.support_messages USING btree (ticket_id);
+
+
+--
+-- Name: index_support_messages_on_uid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_messages_on_uid ON public.support_messages USING btree (uid);
+
+
+--
+-- Name: index_support_receipts_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_receipts_on_account_id ON public.support_receipts USING btree (account_id);
+
+
+--
+-- Name: index_support_receipts_on_account_id_and_uid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_receipts_on_account_id_and_uid ON public.support_receipts USING btree (account_id, uid);
+
+
+--
+-- Name: index_support_tickets_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_tickets_on_account_id ON public.support_tickets USING btree (account_id);
+
+
+--
+-- Name: index_support_tickets_on_assignee_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_tickets_on_assignee_id ON public.support_tickets USING btree (assignee_id);
+
+
+--
+-- Name: index_support_tickets_on_origin_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_tickets_on_origin_and_created_at ON public.support_tickets USING btree (origin, created_at);
+
+
+--
+-- Name: index_support_tickets_on_status_and_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_tickets_on_status_and_updated_at ON public.support_tickets USING btree (status, updated_at);
+
+
+--
+-- Name: index_support_tickets_on_uid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_tickets_on_uid ON public.support_tickets USING btree (uid);
+
+
+--
 -- Name: index_system_health_snapshots_on_status_and_collected_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15684,11 +16218,27 @@ ALTER TABLE ONLY public.client_interactions
 
 
 --
+-- Name: support_messages fk_rails_2221c68d3a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_messages
+    ADD CONSTRAINT fk_rails_2221c68d3a FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id);
+
+
+--
 -- Name: whatsapp_messages fk_rails_2263286ba5; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.whatsapp_messages
     ADD CONSTRAINT fk_rails_2263286ba5 FOREIGN KEY (presentation_card_id) REFERENCES public.presentation_cards(id);
+
+
+--
+-- Name: support_audits fk_rails_231023be7d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_audits
+    ADD CONSTRAINT fk_rails_231023be7d FOREIGN KEY (account_id) REFERENCES public.support_accounts(id);
 
 
 --
@@ -15737,6 +16287,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 ALTER TABLE ONLY public.whatsapp_campaigns
     ADD CONSTRAINT fk_rails_26c34a4ecc FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: support_tickets fk_rails_2701fe8b01; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_tickets
+    ADD CONSTRAINT fk_rails_2701fe8b01 FOREIGN KEY (account_id) REFERENCES public.support_accounts(id);
 
 
 --
@@ -16057,6 +16615,14 @@ ALTER TABLE ONLY public.development_aliases
 
 ALTER TABLE ONLY public.ai_property_share_items
     ADD CONSTRAINT fk_rails_457e3bcfa2 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: support_audits fk_rails_45e5dd85a0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_audits
+    ADD CONSTRAINT fk_rails_45e5dd85a0 FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id);
 
 
 --
@@ -17044,6 +17610,14 @@ ALTER TABLE ONLY public.stores
 
 
 --
+-- Name: support_receipts fk_rails_a4567484fb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_receipts
+    ADD CONSTRAINT fk_rails_a4567484fb FOREIGN KEY (account_id) REFERENCES public.support_accounts(id);
+
+
+--
 -- Name: lead_favorites fk_rails_a50c5477fa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17073,6 +17647,14 @@ ALTER TABLE ONLY public.admin_users
 
 ALTER TABLE ONLY public.captacao_goals
     ADD CONSTRAINT fk_rails_a73c6a331b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: support_access_sessions fk_rails_a99edf55bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_access_sessions
+    ADD CONSTRAINT fk_rails_a99edf55bc FOREIGN KEY (account_id) REFERENCES public.support_accounts(id);
 
 
 --
@@ -17628,6 +18210,14 @@ ALTER TABLE ONLY public.leads
 
 
 --
+-- Name: support_deliveries fk_rails_da99041835; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_deliveries
+    ADD CONSTRAINT fk_rails_da99041835 FOREIGN KEY (account_id) REFERENCES public.support_accounts(id);
+
+
+--
 -- Name: whatsapp_messages fk_rails_db315c944a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17641,6 +18231,14 @@ ALTER TABLE ONLY public.whatsapp_messages
 
 ALTER TABLE ONLY public.habitation_broker_assignments
     ADD CONSTRAINT fk_rails_dc25c47a24 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: support_access_sessions fk_rails_dc3c7c1b90; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_access_sessions
+    ADD CONSTRAINT fk_rails_dc3c7c1b90 FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id);
 
 
 --
@@ -17884,6 +18482,14 @@ ALTER TABLE ONLY public.leads
 
 
 --
+-- Name: support_deliveries fk_rails_f3236c7b5b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_deliveries
+    ADD CONSTRAINT fk_rails_f3236c7b5b FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id);
+
+
+--
 -- Name: landing_pages fk_rails_f383383ae6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17975,11 +18581,15 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eufmjXKKJ9H7PKPaGP72TnUJqocgVYemDyruQbdfrzzKjIbvHNeWOdpoaA3HSSX
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260905180000'),
+('20260905160000'),
+('20260905154000'),
+('20260905151000'),
+('20260905150000'),
 ('20260904120000'),
 ('20260903193000'),
 ('20260902130000'),

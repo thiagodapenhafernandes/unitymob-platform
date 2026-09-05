@@ -1,0 +1,27 @@
+<details class="ax-support-disclosure ax-ticket-bi">
+  <summary><div>Métricas do chamado<small>Tempos e cumprimento dos prazos</small></div><span>Ver indicadores</span></summary>
+  <% if timing[:measured] %>
+    <div class="ax-ticket-bi__kpis">
+      <%= render 'admin/shared/ui/support_kpi', label:'Primeira resposta', value:timing[:first_seconds] ? sla_duration(timing[:first_seconds]) : (ticket.resolved? ? 'Sem resposta' : 'Aguardando'), detail:timing[:first_sla] %>
+      <%= render 'admin/shared/ui/support_kpi', label:ticket.resolved? ? 'Tempo até encerrar' : 'Tempo em aberto', value:sla_duration(timing[:total_seconds]), detail:timing[:resolution_sla] %>
+      <%= render 'admin/shared/ui/support_kpi', label:'Aguardando suporte', value:sla_duration(timing[:support_seconds]), detail:'Tempo acumulado' %>
+      <%= render 'admin/shared/ui/support_kpi', label:'Aguardando usuário', value:sla_duration(timing[:user_seconds]), detail:'Tempo acumulado' %>
+    </div>
+    <% total=timing[:support_seconds]+timing[:user_seconds]; support_percent=total.positive? ? (100.0*timing[:support_seconds]/total).round(1) : 0; user_percent=total.positive? ? (100-support_percent).round(1) : 0 %>
+    <div class="ax-ticket-bi__distribution"><strong>Distribuição do tempo</strong>
+      <% if total.positive? %><div class="ax-time-bar" role="img" aria-label="Aguardando suporte: <%= support_percent %>%; aguardando usuário: <%= user_percent %>%"><span style="width:<%= support_percent %>%"></span><span style="width:<%= user_percent %>%"></span></div>
+      <div class="ax-time-legend"><span>Suporte <strong><%= support_percent %>%</strong></span><span>Usuário <strong><%= user_percent %>%</strong></span></div>
+      <% else %><p class="ax-compact-hint">Ainda não há tempo acumulado para comparar.</p><% end %>
+    </div>
+    <div class="ax-ticket-bi__dates"><span>Recebido <strong><%= l(timing[:received_at],format:'%d/%m/%Y às %H:%M') %></strong></span><span><%= timing[:resolved_at] ? 'Encerrado' : 'Posição em' %> <strong><%= l(timing[:resolved_at] || Time.current,format:'%d/%m/%Y às %H:%M') %></strong></span></div>
+  <% else %><p class="ax-compact-hint">Este chamado não tem histórico suficiente para calcular os tempos e o SLA.</p><% end %>
+  <details class="ax-compact-section"><summary>Eventos do atendimento <span class="ax-support-status"><%= timeline.size %></span></summary>
+    <% if timeline.empty? %>
+      <p class="ax-compact-hint">Nenhum evento registrado.</p>
+    <% else %>
+      <ol class="ax-support-audit-list">
+        <%= render partial: 'admin/shared/ui/support_ticket_event', collection: timeline, as: :event, locals: { ticket: ticket, staff_names: @audit_staff_names || {} } %>
+      </ol>
+    <% end %>
+  </details>
+</details>

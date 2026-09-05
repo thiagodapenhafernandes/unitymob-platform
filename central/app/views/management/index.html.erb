@@ -1,0 +1,33 @@
+<section class="ax-support-workspace"><%= render "admin/shared/ui/support_header", title: "Equipe e contas" %>
+  <% if @activation_url %><div class="ax-support-notice"><strong>Link de ativação · válido por 1 hora</strong><p>Copie e entregue diretamente ao colaborador. Este link só aparece agora.</p><%= text_field_tag :activation_link, @activation_url, readonly: true, class: "ax-input", aria: { label: "Link de ativação" } %></div><% end %>
+  <div class="ax-management-grid">
+    <section class="ax-support-panel"><h2 class="ax-compact-title">Equipe <span class="ax-support-status"><%= @staffs.size %></span></h2>
+      <% role_options = [["Admin do sistema", "admin"], ["Suporte", "suporte"], ["Financeiro", "financeiro"]] %>
+      <% @staffs.each do |staff| %><article class="ax-compact-record">
+        <%= render "admin/shared/ui/support_identity", name: staff.name, detail: staff.email %>
+        <div class="ax-compact-controls">
+        <%= form_with url: management_staff_member_path(staff), method: :patch, html: {class: "ax-compact-form"} do %>
+          <%= select_tag "staff[role]", options_for_select(role_options, staff.role), aria: { label: "Perfil de #{staff.name}" }, class: "ax-input" %>
+          <%= hidden_field_tag "staff[active]", "0", id: nil %><label class="ax-compact-check"><%= check_box_tag "staff[active]", "1", staff.active?, id: "staff-active-#{staff.id}" %> Ativo</label>
+          <%= submit_tag "Salvar acesso", class: "ax-btn" %>
+        <% end %>
+        <%= button_to "Gerar novo link de ativação", management_staff_member_path(staff), method: :patch, params: { reset: "1" }, class: "ax-btn" %>
+        </div>
+      </article><% end %>
+      <details class="ax-compact-create"><summary>Adicionar colaborador</summary><%= form_with url: management_staff_path, html: {class: "ax-compact-create-form"} do %>
+        <%= render "admin/shared/ui/support_field", name: "staff[name]", label: "Nome", value: nil, required: true %>
+        <%= render "admin/shared/ui/support_field", name: "staff[email]", label: "E-mail", value: nil, required: true %>
+        <%= select_tag "staff[role]", options_for_select(role_options), aria: { label: "Perfil" }, class: "ax-input" %><%= submit_tag "Criar acesso", class: "ax-btn ax-btn--primary" %>
+      <% end %></details>
+    </section>
+    <section class="ax-support-panel"><h2 class="ax-compact-title">Contas <span class="ax-support-status"><%= @accounts.size %></span></h2>
+      <% @accounts.each do |account| %><article class="ax-compact-record">
+        <%= render "admin/shared/ui/support_identity", name: account.name, detail: account.endpoint %>
+        <div class="ax-compact-controls"><span class="ax-support-status"><%= account.active? ? "Ativa" : "Desativada" %></span>
+        <%= button_to account.active? ? "Desativar conta" : "Ativar conta", management_account_path(account), method: :patch, params: { account: { active: !account.active? } }, class: "ax-btn" %>
+        </div>
+      </article><% end %>
+      <p class="ax-compact-hint">As contas são conectadas automaticamente quando criadas na plataforma.</p>
+    </section>
+  </div>
+</section>

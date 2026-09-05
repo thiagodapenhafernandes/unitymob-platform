@@ -1,0 +1,7 @@
+<%= turbo_frame_tag(params[:modal] == "1" ? "support_modal_form" : "support_form", target: params[:modal] == "1" ? "_self" : "_top") do %>
+  <% unless params[:modal] == "1" %>
+    <%= render "admin/shared/ui/support_header", title: "Abrir chamado", back: support_tickets_path %>
+  <% end %>
+  <p>Vamos ajudar você. Escolha as opções abaixo; se nenhuma servir, escolha “Outro” e conte com suas palavras.</p>
+  <%= render "admin/shared/ui/support_form", ticket: @ticket, modal: params[:modal] == "1" %>
+<% end %>
