@@ -11,7 +11,7 @@
       <div class="tw-pb-4 tw-flex-1">
         <div class="tw-flex tw-items-center tw-gap-2">
           <span class="ax-strong"><%= e[:label] %></span>
-          <span class="ax-page-subtitle"><%= time_ago_in_words(act.created_at) %> atrás</span>
+          <span class="ax-page-subtitle"><%= l(act.created_at, format: "%d/%m/%Y %H:%M") %></span>
         </div>
         <% if e[:detail].present? %><div class="ax-page-subtitle"><%= e[:detail] %></div><% end %>
       </div>

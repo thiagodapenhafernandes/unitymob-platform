@@ -68,6 +68,12 @@ class ExternalLeadIntegration < ApplicationRecord
       return email_user if email_user
     end
 
+    external_id = seller["external_id"].to_s.strip
+    if external_id.present?
+      external_id_user = tenant.admin_users.active.find_by(vista_id: external_id)
+      return external_id_user if external_id_user
+    end
+
     phone = Phones::Normalizer.call(seller["phone"])
     if phone.present?
       phone_user = tenant.admin_users.active.detect do |admin_user|

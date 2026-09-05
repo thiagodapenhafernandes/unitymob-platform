@@ -1,5 +1,7 @@
 class MetaLeadProcessingJob < ApplicationJob
   queue_as :default
+  PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?)\s*[:#-]?\s*(\d{2,})/i.freeze
+  AMBIGUOUS_PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?)\s*[:#-]?\s*\d{2,}\s*(?:e|,|\/|\+|&)\s*\d{2,}/i.freeze
 
   # Detalhes do lead indisponíveis na Graph API (oscilação, rate limit, token
   # expirado): fetch_lead_details engole erros por candidato, então esta classe
@@ -72,6 +74,22 @@ class MetaLeadProcessingJob < ApplicationJob
     Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} processado com sucesso."
   end
 
+  def self.property_code_from_text(value)
+    text = I18n.transliterate(value.to_s).squish
+    return nil if text.blank? || text.match?(AMBIGUOUS_PROPERTY_CODE_PATTERN)
+
+    codes = text.scan(PROPERTY_CODE_PATTERN).flatten.uniq
+    codes.one? ? codes.first : nil
+  end
+
+  def self.property_from_text(tenant, value)
+    code = property_code_from_text(value)
+    return nil if tenant.blank? || code.blank?
+
+    candidates = [code, code.to_i.to_s].uniq
+    tenant.habitations.commercially_publishable.where(codigo: candidates).first
+  end
+
   private
 
   # Ordem determinística de tentativa: integração não expirada primeiro,
@@ -119,6 +137,7 @@ class MetaLeadProcessingJob < ApplicationJob
     integration = reference_page.user_meta_integration
     form_record = ensure_meta_form_record(reference_page, form_id)
     product_name = form_record&.name || "Meta Lead (#{form_id})"
+    property = safe_property_from_text(tenant, product_name)
 
     Current.set(tenant: tenant) do
       auto_add_form_to_distribution_rules(tenant, page_id, form_id)
@@ -130,7 +149,7 @@ class MetaLeadProcessingJob < ApplicationJob
       end
 
       begin
-        tenant.leads.create!(
+        lead = tenant.leads.create!(
           # NÃO pré-atribuir ao dono da integração: o lead entra SEM corretor para
           # as regras de distribuição rodarem (RoutingService só distribui quando
           # admin_user_id é nil). O dono da integração fica auditado abaixo.
@@ -142,15 +161,18 @@ class MetaLeadProcessingJob < ApplicationJob
           client_phone: attributes[:phone],
           origin: "Facebook Lead Ads",
           product: product_name,
+          property_id: property&.id,
           custom_answers: map_to_custom_answers(attributes[:field_data]),
           other_information: lead_details.as_json.merge({
             "meta_leadgen_id" => lead_id.to_s,
             "meta_page_id" => page_id.to_s,
             "meta_form_id" => form_id.to_s,
+            "meta_property_code" => self.class.property_code_from_text(product_name),
             "meta_integration_user_id" => integration&.admin_user_id,
             "processed_at" => Time.current
           })
         )
+        create_property_interest!(lead, property)
       rescue ActiveRecord::RecordInvalid => e
         record_failed_lead_creation(e, tenant:, lead_id:, page_id:, form_id:, lead_details:, attributes:)
         raise
@@ -162,6 +184,26 @@ class MetaLeadProcessingJob < ApplicationJob
         Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já criado concorrentemente no tenant #{tenant_id} — ignorado."
       end
     end
+  end
+
+  def create_property_interest!(lead, property)
+    return if lead.blank? || property.blank?
+
+    lead.property_interests.find_or_create_by!(habitation: property) do |interest|
+      interest.tenant = lead.tenant
+    end
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    nil
+  end
+
+  def safe_property_from_text(tenant, text)
+    self.class.property_from_text(tenant, text)
+  rescue => e
+    Rails.logger.warn(
+      "[MetaLeadProcessingJob] Lead segue sem imovel vinculado: " \
+      "tenant_id=#{tenant&.id} product=#{text.to_s.truncate(120).inspect} #{e.class}: #{e.message}"
+    )
+    nil
   end
 
   def auto_add_form_to_distribution_rules(tenant, page_id, form_id)

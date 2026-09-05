@@ -4,6 +4,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
   let(:tenant) { Tenant.default }
   let(:admin) { create(:admin_user, :admin, tenant:) }
   let(:broker) { create(:admin_user, tenant:, email: "seller@example.test", name: "Seller Local") }
+  let(:external_id_broker) { create(:admin_user, tenant:, email: "external-id-local@example.test", name: "Corretor por codigo", vista_id: "108") }
   let(:owner) { create(:admin_user, :admin, tenant:, email: "owner-externo@example.test", name: "Owner Local") }
   let(:trash_user) { create(:admin_user, tenant:, email: ExternalLeadIntegration::LEGACY_TRASH_LOCAL_EMAIL, name: "Lixeira Conexão BC") }
   let(:integration) { ExternalLeadIntegration.create!(tenant:, access_token: "token-externo", connected_by_admin_user: admin) }
@@ -14,6 +15,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
       sellers: [
         { "id" => "seller-1", "name" => "Seller Externo", "email" => broker.email },
         { "id" => "seller-owner", "name" => "Owner Externo", "email" => owner.email },
+        { "id" => "seller-external-id", "name" => "Adriana Stark", "email" => "adriana.stark@saluteimoveis.com", "external_id" => "108" },
         { "id" => "seller-trash", "name" => "Lixeira Conexão BC", "email" => "lixeira_cbc2025@c2sglobal.com" },
         { "id" => "seller-2", "name" => "Sem Par", "email" => "sem-par@example.test" }
       ],
@@ -24,6 +26,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
   before do
     Current.tenant = tenant
     trash_user
+    external_id_broker
     allow(ExternalLeadMigration::Client).to receive(:new).with(token: "token-externo").and_return(client)
   end
 
@@ -35,7 +38,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
 
     expect(integration).to be_connected
     expect(integration.company_name).to eq("Conta externa")
-    expect(integration.seller_mappings).to eq("seller-1" => broker.id, "seller-owner" => owner.id, "seller-trash" => trash_user.id)
+    expect(integration.seller_mappings).to eq("seller-1" => broker.id, "seller-owner" => owner.id, "seller-external-id" => external_id_broker.id, "seller-trash" => trash_user.id)
     expect(rule).to have_attributes(
       tenant: tenant,
       name: ExternalLeadIntegration::SUPPORT_RULE_NAME,
@@ -45,7 +48,7 @@ RSpec.describe ExternalLeadMigration::SetupService do
       source_portal: false
     )
     expect(rule.webhook_tags).to contain_exactly(ExternalLeadIntegration::WEBHOOK_TAG)
-    expect(rule.admin_users).to contain_exactly(broker)
+    expect(rule.admin_users).to contain_exactly(broker, external_id_broker)
     expect(tenant.attribute_options.where(context: "lead", category: "source", name: ExternalLeadIntegration::LEAD_ORIGIN)).to exist
   end
 end
