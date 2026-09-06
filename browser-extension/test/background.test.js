@@ -189,7 +189,7 @@ test("installation limits the panel to WhatsApp and navigation away disables it"
   chrome.sidePanel.setOptions = async value => { options.push(value); };
   chrome.tabs.query = async () => [{ id: 1, url: "https://web.whatsapp.com/" }, { id: 2, url: "https://youtube.com/" }];
   await installed();
-  assert.deepEqual(options, [{ path: "panel.html", enabled: true }, { tabId: 1, path: "panel.html", enabled: true }, { tabId: 2, path: "panel.html", enabled: false }]);
+  assert.deepEqual(options, [{ enabled: false }, { tabId: 1, path: "panel.html", enabled: true }, { tabId: 2, path: "panel.html", enabled: false }]);
   tabUpdated(1, { url: "https://youtube.com/" }, { id: 1, url: "https://youtube.com/" });
   assert.deepEqual(options.at(-1), { tabId: 1, path: "panel.html", enabled: false });
 });

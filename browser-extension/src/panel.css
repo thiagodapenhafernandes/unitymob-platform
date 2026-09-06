@@ -63,3 +63,12 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension #change-status { min-height: 23px; padding: 2px 6px; font-size: 10px; }
 .um-extension #chat-status { padding-right: 25px; }
 .um-extension #search-options summary { font-size: 11px; }
+
+.um-extension #chat-panel > .ax-operational-panel__body { gap: 12px; }
+.um-extension #chat-status { font-size: 13px; font-weight: 600; line-height: 1.5; padding: 2px 32px 4px 0; overflow-wrap: anywhere; }
+.um-extension #refresh { top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 8px; background: #f3f6fa; font-size: 15px; }
+.um-extension #candidates:empty { display: none; }
+.um-extension #candidates { color: #64748b; font-size: 12px; line-height: 1.5; }
+.um-extension #search-options[open] form { margin-top: 0; }
+.um-extension #create-lead-form { gap: 8px; }
+.um-extension #create-lead-form .ax-btn { margin-top: 3px; }

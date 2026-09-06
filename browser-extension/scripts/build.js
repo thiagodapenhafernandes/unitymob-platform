@@ -26,7 +26,7 @@ await writeFile(resolve(dist, "manifest.json"), JSON.stringify({
   manifest_version: 3, name: "Unitymob para WhatsApp", version, minimum_chrome_version: "116", key,
   description: "Consulte e crie leads, registre notas e agende tarefas durante o atendimento no WhatsApp Web.",
   permissions: ["sidePanel", "storage", "scripting", "identity"],
-  host_permissions: ["https://web.whatsapp.com/*", ...(discoveryOrigin ? [`${discoveryOrigin}/*`] : [])],
+  host_permissions: ["https://web.whatsapp.com/*", `https://${extensionId}.chromiumapp.org/*`, ...(discoveryOrigin ? [`${discoveryOrigin}/*`] : [])],
   optional_host_permissions: discoveryOrigin ? ["https://*/*"] : crmOrigins.map(origin => `${origin}/*`),
   icons,
   action: { default_title: "Abrir Unitymob", default_icon: icons }, side_panel: { default_path: "panel.html" },
@@ -47,3 +47,7 @@ for (const name of ["operational_panel", "button", "form_control", "stack", "men
   await copyFile(resolve(styles, `components/${name}.css`), resolve(dist, `shared/${name}.css`));
 }
 console.log(`Pacote: ${dist}\nID: ${extensionId}\nWA-JS: 4.6.0\nSem dados de sessão ou arquivos do RD.`);
+
+const iconCss = await readFile(resolve(styles, "../vendor/bootstrap-icons.css.erb"), "utf8");
+await writeFile(resolve(dist, "shared/bootstrap-icons.css"), iconCss.replace(/<%= asset_path\("(bootstrap-icons\.woff2?)"\) %>/g, "$1"));
+for (const name of ["bootstrap-icons.woff", "bootstrap-icons.woff2"]) await copyFile(resolve(root, "../app/assets/fonts", name), resolve(dist, "shared", name));

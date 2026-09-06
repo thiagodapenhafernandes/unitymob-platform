@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="shared/form_control.css">
   <link rel="stylesheet" href="shared/stack.css">
   <link rel="stylesheet" href="shared/menu.css">
+  <link rel="stylesheet" href="shared/bootstrap-icons.css">
   <link rel="stylesheet" href="panel.css">
   <script type="module" src="panel.js"></script>
 </head>
@@ -44,12 +45,13 @@
           <button class="ax-btn ax-btn--primary" type="submit">Entrar na Unitymob</button>
         </form>
         <form id="discovery-code-form" class="ax-record-list" hidden>
-          <p>Enviamos um código para confirmar seu e-mail e localizar suas imobiliárias.</p>
+          <p id="discovery-sent-to" role="status"></p><p>Confira a caixa de entrada e o spam. O código vale por 10 minutos.</p>
           <label for="discovery-code">Código de 6 dígitos</label><input id="discovery-code" class="ax-control" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
           <button class="ax-btn ax-btn--primary" type="submit">Confirmar e-mail</button>
         </form>
         <div id="discovery-accounts" class="ax-record-list" hidden></div>
         <button id="discovery-restart" type="button" class="ax-btn" hidden>Usar outro e-mail</button>
+        <button id="reset-connection" type="button" class="ax-btn" hidden>Encerrar conexão anterior</button>
         <p id="connection-status">Conecte sua conta para consultar seus leads.</p>
       </div>
     </section>
@@ -66,7 +68,7 @@
     <section id="chat-panel" class="ax-operational-panel ax-operational-panel--compact" hidden aria-label="Conversa atual">
 
       <div class="ax-operational-panel__body">
-        <button id="refresh" type="button" class="ax-btn" aria-label="Atualizar atendimento" title="Atualizar atendimento">↻</button>
+        <button id="refresh" type="button" class="ax-btn" aria-label="Atualizar atendimento" title="Atualizar atendimento"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
         <p id="chat-status" role="status">Abra uma conversa individual no WhatsApp Web.</p>
         <div id="lead-identity" class="ax-contact-summary" hidden>
           <span id="lead-avatar" class="ax-contact-summary__avatar" aria-hidden="true"></span>
@@ -87,24 +89,24 @@
           </form>
         </details>
         <button id="open-whatsapp" type="button" class="ax-btn">Abrir WhatsApp Web</button>
-        <details id="search-options"><summary>Buscar outro telefone</summary>
+        <details id="search-options" class="ax-disclosure"><summary><i class="bi bi-search" aria-hidden="true"></i><span>Buscar outro telefone</span><i class="bi bi-chevron-down ax-disclosure__chevron" aria-hidden="true"></i></summary>
         <form id="search-form" hidden class="ax-record-list">
           <label for="phone">Buscar lead pelo telefone</label>
           <input id="phone" type="tel" maxlength="40" class="ax-control" autocomplete="off" required>
-          <button type="submit" class="ax-btn">Buscar</button>
+          <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-search" aria-hidden="true"></i> Buscar lead</button>
         </form>
         </details>
         <p id="match-explanation" class="ax-workspace-muted" hidden></p>
         <div id="candidates" class="ax-record-list"></div>
-        <details id="create-lead-panel" hidden>
-          <summary>Criar lead para este contato</summary>
+        <details id="create-lead-panel" class="ax-disclosure" hidden>
+          <summary><i class="bi bi-person-plus" aria-hidden="true"></i><span>Criar lead</span><i class="bi bi-chevron-down ax-disclosure__chevron" aria-hidden="true"></i></summary>
           <form id="create-lead-form" class="ax-record-list">
             <label for="new-lead-name">Nome</label>
             <input id="new-lead-name" class="ax-control" maxlength="200" required>
             <label for="new-lead-email">E-mail (opcional)</label>
             <input id="new-lead-email" class="ax-control" type="email" maxlength="254">
-            <p>O lead será criado sob sua responsabilidade, seguindo as regras de cadastro manual do CRM.</p>
-            <label><input type="checkbox" required> Confirmo o cadastro do contato <strong id="create-contact"></strong>.</label>
+            <p class="ax-workspace-muted">Você será o responsável por este lead.</p>
+            <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o cadastro do contato <strong id="create-contact"></strong>.</span></label>
             <button class="ax-btn ax-btn--primary" type="submit">Criar lead</button>
           </form>
         </details>

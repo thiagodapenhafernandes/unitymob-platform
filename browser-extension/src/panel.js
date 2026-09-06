@@ -20,10 +20,18 @@ $("discovery-email").required = !!discoveryOrigin;
 const ready = () => me?.capabilities?.read_leads === true;
 
 const errors = {
+  invalid_email: "Informe um e-mail válido, como nome@empresa.com.br. Confira se não há espaços ou erros de digitação.",
+  code_send_failed: "Não conseguimos enviar o código agora. Tente novamente mais tarde.",
+  discovery_connection_failed: "Não conseguimos acessar o serviço de login. Confira sua conexão e tente novamente.",
+  already_connected: "Há uma conexão anterior salva. Clique em Encerrar conexão anterior para iniciar um novo login.",
+  login_cancelled: "O login foi cancelado. Clique em Entrar novamente e conclua o acesso na janela da imobiliária.",
+  login_window_failed: "O Chrome não conseguiu abrir ou concluir a janela de login. Abra o sistema da imobiliária no navegador, confira seu acesso e tente novamente.",
+  invalid_callback: "O sistema não retornou uma autorização válida para a extensão. Inicie o login novamente.",
+  permission_required: "Autorize o acesso da extensão ao domínio da imobiliária para continuar.",
   lead_changed: "O status mudou no CRM. Atualize o atendimento antes de tentar novamente.",
   account_mismatch: "O login pertence a outra conta ou usuário. Entre no CRM com o e-mail confirmado e a imobiliária escolhida.",
-  invalid_code: "Código inválido ou expirado. Confira o código ou solicite outro.",
-  discovery_rate_limited: "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
+  invalid_code: "Código incorreto, expirado ou já utilizado. Confira os 6 dígitos do último e-mail ou solicite um novo código.",
+  discovery_rate_limited: "Muitas tentativas. Aguarde 10 minutos antes de solicitar outro código.",
   discovery_unavailable: "Não foi possível localizar suas contas agora. Tente novamente em instantes.",
   permission_denied: "Você não tem permissão para esta ação.",
   invalid_fields: "Confira os campos e o contato. A tarefa precisa ter data futura.",
@@ -76,6 +84,7 @@ function clearContext() {
 }
 
 function feedback(error) {
+  $("reset-connection").hidden = error.message !== "already_connected";
   $("feedback").textContent = errors[error.message] || errors.unavailable;
   if (["not_connected", "http_401", "http_403", "http_410"].includes(error.message)) {
     me = null; clearContext(); renderAccount();
@@ -90,6 +99,7 @@ function renderAccount() {
   $("discovery-accounts").hidden = !!me || discoveryStep !== "accounts";
   $("discovery-restart").hidden = !!me || !discoveryOrigin || discoveryStep === "email";
   $("connect-form").querySelector("button").disabled = pairing;
+  $("connect-form").querySelector("button").textContent = discoveryOrigin ? "Enviar código por e-mail" : "Entrar na Unitymob";
   $("discovery-restart").textContent = discoveryStep === "accounts" ? "Usar outro e-mail" : "Corrigir e-mail ou solicitar novo código";
   $("discovery-restart").disabled = pairing;
   $("discovery-accounts").querySelectorAll("button").forEach(button => { button.disabled = pairing; });
@@ -440,29 +450,38 @@ async function refresh(force = false) {
 async function connectAccount(account = null) {
   try {
     const origin = account?.origin || crmOrigin;
-    if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }))) return;
+    if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => { throw new Error("permission_required"); }))) throw new Error("permission_required");
     pairing = true; renderAccount(); $("feedback").textContent = "";
     await request("connect", account ? { accountId: account.id } : {});
     pairing = false; lastSessionCheck = 0; await refreshSession(true);
   } catch (error) { pairing = false; renderAccount(); feedback(error); }
 }
+$("discovery-email").addEventListener("input", event => event.target.setCustomValidity(""));
+$("discovery-email").addEventListener("invalid", event => {
+  event.target.setCustomValidity(errors.invalid_email);
+  $("feedback").textContent = errors.invalid_email;
+});
 $("connect-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (!discoveryOrigin) return connectAccount();
   const button = event.currentTarget.querySelector("button"); button.disabled = true;
+  button.textContent = "Enviando código…"; button.setAttribute("aria-busy", "true"); $("feedback").textContent = "";
   try {
     await request("discovery_start", { email: $("discovery-email").value });
+    $("discovery-sent-to").textContent = `Código enviado para ${$("discovery-email").value.trim().toLowerCase()}.`;
     discoveryStep = "code"; $("discovery-code-form").reset(); renderAccount(); $("discovery-code").focus();
   } catch (error) { feedback(error); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; button.removeAttribute("aria-busy"); button.textContent = "Enviar código por e-mail"; }
 });
 $("discovery-code-form").addEventListener("submit", async event => {
   event.preventDefault();
   const button = event.currentTarget.querySelector("button"); button.disabled = true;
+  button.textContent = "Confirmando código…"; button.setAttribute("aria-busy", "true"); $("feedback").textContent = "";
   try {
     const result = await request("discovery_verify", { code: $("discovery-code").value });
+    $("feedback").textContent = "";
     discoveryStep = "accounts"; $("discovery-accounts").replaceChildren();
-    const text = document.createElement("p"); text.textContent = result.accounts.length ? (result.accounts.length === 1 ? "Conta encontrada. Continue para entrar:" : "Escolha a imobiliária em que deseja entrar:") : "Nenhuma conta ativa encontrada. Confira o e-mail ou solicite a atualização do seu cadastro.";
+    const text = document.createElement("p"); text.textContent = result.accounts.length ? (result.accounts.length === 1 ? "Conta encontrada. Continue para entrar:" : "Escolha a imobiliária em que deseja entrar:") : "Não encontramos uma conta ativa vinculada a este e-mail. Use outro e-mail ou peça ao administrador da imobiliária para conferir seu cadastro.";
     $("discovery-accounts").append(text);
     for (const account of result.accounts) {
       const card = document.createElement("div"); card.className = "ax-operational-panel";
@@ -476,12 +495,12 @@ $("discovery-code-form").addEventListener("submit", async event => {
     }
     renderAccount();
   } catch (error) { feedback(error); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; button.removeAttribute("aria-busy"); button.textContent = "Confirmar e-mail"; }
 });
 $("discovery-restart").addEventListener("click", () => { discoveryStep = "email"; renderAccount(); });
-for (const id of ["disconnect", "switch-account"]) {
+for (const id of ["disconnect", "switch-account", "reset-connection"]) {
   $(id).addEventListener("click", async () => {
-    try { await request("disconnect"); me = null; discoveryStep = "email"; clearContext(); renderAccount(); }
+    try { await request("disconnect"); $("reset-connection").hidden = true; $("feedback").textContent = ""; me = null; discoveryStep = "email"; clearContext(); renderAccount(); }
     catch (error) { feedback(error); }
   });
 }

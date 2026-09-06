@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 const dir = await mkdtemp(join(tmpdir(), "unitymob-discovery-test-"));
-for (const file of ["background.js", "context.js", "security.js", "launcher.js"]) await copyFile(new URL(`../src/${file}`, import.meta.url), join(dir, file));
+for (const file of ["background.js", "context.js", "security.js", "launcher.js", "auth-tab.js"]) await copyFile(new URL(`../src/${file}`, import.meta.url), join(dir, file));
 await writeFile(join(dir, "package.json"), '{"type":"module"}');
 await writeFile(join(dir, "config.js"), 'export const crmOrigins=["https://dev.unitymob.com.br"]; export const crmOrigin=crmOrigins[0]; export const discoveryOrigin="https://gateway.example.com";');
 let listener, local, session, calls, issuer;
@@ -65,4 +65,28 @@ test("rejects a legacy CRM that cannot attest the selected account",async()=>{
  global.fetch=async()=>json({token:"t".repeat(43),expires_at:new Date(Date.now()+60000).toISOString()});
  assert.equal((await send({type:"connect",accountId:1})).error,"account_mismatch");
  assert.equal(local.connection,undefined);
+});
+
+test("cancelled login does not open a fallback tab", async () => {
+ await verify();
+ const launch = chrome.identity.launchWebAuthFlow;
+ chrome.identity.launchWebAuthFlow = async () => { throw new Error("The user did not approve access."); };
+ try { assert.equal((await send({type:"connect",accountId:1})).error,"login_cancelled"); }
+ finally { chrome.identity.launchWebAuthFlow = launch; }
+});
+
+test("rejects malformed email before contacting the service", async () => {
+ for (const email of [null, 123, "", "nome", "nome@", "nome @empresa.com", "a".repeat(255)]) {
+  assert.equal((await send({type:"discovery_start", email})).error,"invalid_email");
+ }
+ assert.equal(calls.length,0);
+});
+
+test("distinguishes email rejection, sending failure, throttling and network failure", async () => {
+ for (const [status, error] of [[422,"invalid_email"],[503,"code_send_failed"],[429,"discovery_rate_limited"]]) {
+  global.fetch=async()=>json({},status);
+  assert.equal((await send({type:"discovery_start",email:"broker@example.com"})).error,error);
+ }
+ global.fetch=async()=>{throw new TypeError("Failed to fetch");};
+ assert.equal((await send({type:"discovery_start",email:"broker@example.com"})).error,"discovery_connection_failed");
 });
