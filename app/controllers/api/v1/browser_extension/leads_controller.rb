@@ -2,6 +2,7 @@ module Api
   module V1
     module BrowserExtension
       class LeadsController < BaseController
+        include HabitationQuickFilters
         before_action :require_terms!
         def resolve
           phone = Phones::Normalizer.call(params[:contact_phone].to_s.first(40))
@@ -22,7 +23,29 @@ module Api
           purpose = params[:purpose].to_s
           return render json: {error: "invalid_fields"}, status: :unprocessable_entity unless query.length <= 100 && %w[venda locacao].include?(purpose)
           scope = purpose == "venda" ? property_scope.for_sale : property_scope.for_rent
-          scope = scope.admin_search_text(query) if query.present?
+          category = params[:category].to_s.strip
+          quick = params[:quick].to_s
+          return render json: {error: "invalid_fields"}, status: :unprocessable_entity if category.length > 100 || (quick.present? && !HabitationQuickFilters::QUICK_FILTERS.key?(quick))
+          scope = scope.by_category(category) if category.present?
+          scope = apply_quick_scope_filter(scope, quick) if quick.present?
+          if query.match?(/\A\d+\z/)
+            scope = scope.where("habitations.codigo::text LIKE ?", "#{query}%")
+          elsif query.present?
+            scope = scope.admin_search_text(query)
+          end
+          price_column = purpose == "venda" ? :valor_venda_cents : :valor_locacao_cents
+          filters = params.permit(:min_price, :max_price, :suites, :bedrooms, :parking).to_h
+          unless filters.values.all? { |value| value.blank? || value.to_s.match?(/\A\d{1,12}(?:\.\d{1,2})?\z/) }
+            return render json: {error: "invalid_fields"}, status: :unprocessable_entity
+          end
+          minimum = filters["min_price"].presence&.to_d
+          maximum = filters["max_price"].presence&.to_d
+          return render json: {error: "invalid_fields"}, status: :unprocessable_entity if minimum && maximum && minimum > maximum
+          scope = scope.where("habitations.#{price_column} >= ?", (minimum * 100).to_i) if minimum
+          scope = scope.where("habitations.#{price_column} <= ?", (maximum * 100).to_i) if maximum
+          {"suites" => :suites_qtd, "bedrooms" => :dormitorios_qtd, "parking" => :vagas_qtd}.each do |key, column|
+            scope = scope.where("habitations.#{column} >= ?", filters[key].to_i) if filters[key].present?
+          end
           rows = scope.includes(:address).order(updated_at: :desc).limit(21).to_a
           linked_ids = lead.property_interests.pluck(:habitation_id) + [lead.property_id]
           render json: { properties: rows.first(20).map { |p| {id: p.id, code: p.codigo, title: p.display_title,
@@ -35,6 +58,8 @@ module Api
           property_ids = lead.property_interests.limit(30).pluck(:habitation_id)
           property_ids << lead.property_id if lead.property_id
           properties = grant.tenant.habitations.where(id: property_ids.uniq).includes(:address).limit(30)
+          development_names = grant.tenant.habitations.where(codigo: properties.map(&:codigo_empreendimento).compact_blank)
+            .pluck(:codigo, :nome_empreendimento).to_h
           appointments = proposals = []
           tasks = if grant.admin_user.can?(:view, :comercial)
             ids = grant.admin_user.owns_all?(:comercial) ? nil :
@@ -65,7 +90,15 @@ module Api
               author: note.meta("by").to_s.first(200), kind: LeadActivity::CONTACT_KIND_LABELS[note.meta("contact_kind")] || "Anotação interna",
               created_at: note.created_at.iso8601 } },
             tasks_count: tasks.size,
-            properties: properties.map { |property| { id: property.id, code: property.codigo, title: property.display_title, city: property.cidade, neighborhood: property.bairro } },
+            property_categories: property_scope.where.not(categoria: [nil, ""]).distinct.order(:categoria).pluck(:categoria),
+            property_quick_filters: HabitationQuickFilters::QUICK_FILTERS,
+            public_origin: grant.tenant.public_base_url(fallback_base_url: request.base_url),
+            properties: properties.map { |property| { removable: lead.property_id != property.id, public_path: property.exibir_no_site_flag && Habitation::PUBLIC_STATUSES.include?(property.status) ? property_path(property.codigo) : nil, id: property.id, code: property.codigo, title: property.display_title,
+              card_title: property.nome_empreendimento.presence || development_names[property.codigo_empreendimento].presence || [property.categoria.presence || "Imóvel", property.bairro.presence || property.cidade.presence].compact.join(" em "),
+              bedrooms: property.dormitorios_qtd, suites: property.suites_qtd, parking: property.vagas_qtd, area: property.public_area_m2,
+              price_cents: property.valor_venda_cents.to_i.positive? ? property.valor_venda_cents : property.valor_locacao_cents,
+              rental: !property.valor_venda_cents.to_i.positive? && property.valor_locacao_cents.to_i.positive?,
+              condo_cents: property.valor_condominio_cents, iptu_cents: property.valor_iptu_cents, city: property.cidade, neighborhood: property.bairro } },
             tasks: tasks.first(20).map { |task| { id: task.id, title: task.title, kind: task.kind_label, priority: task.priority_label, due_at: task.due_at&.iso8601 } }
           }
         end

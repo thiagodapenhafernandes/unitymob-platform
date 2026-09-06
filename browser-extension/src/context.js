@@ -59,3 +59,15 @@ export function validateContext(context) {
   if (context.state === "ready" && (!context.account || !context.chatId)) throw new Error("invalid_context");
   return { state: context.state, account: context.account, chatId: context.chatId, phone: context.phone || null, name: context.name || null };
 }
+
+// Only a confirmed, bounded property message can be sent to the still-active individual chat.
+export async function sendPropertyMessage(expected, text) {
+  const wpp = window.WPP;
+  if (!/@(c\.us|s\.whatsapp\.net|lid)$/.test(expected.chatId || "")) return {error: "context_changed"};
+  const idOf = value => typeof value === "string" ? value : value?._serialized || value?.toString?.() || "";
+  if (!wpp?.isReady || wpp.version !== "4.6.0" ||
+      idOf(wpp.conn.getMyUserId()) !== expected.account || idOf(wpp.chat.getActiveChat()?.id) !== expected.chatId) return {error: "context_changed"};
+  if (typeof text !== "string" || !text.length || text.length > 10000) return {error: "invalid_fields"};
+  await wpp.chat.sendTextMessage(expected.chatId, text, {createChat: false});
+  return {sent: true};
+}

@@ -89,6 +89,19 @@ module Api
           end
         end
 
+        def unlink_property
+          lead = confirmed_lead!
+          id = params.require(:property).permit(:id)[:id].to_s
+          raise ArgumentError unless id.match?(/\A[1-9]\d*\z/)
+          persist_once({id: id}) do
+            lead.with_lock do
+              raise ArgumentError if lead.property_id.to_s == id
+              lead.property_interests.where(tenant_id: grant.tenant_id, habitation_id: id).destroy_all
+            end
+            {lead_id: lead.id}
+          end
+        end
+
         def link_properties
           lead = confirmed_lead!
           raw = params.require(:properties).permit(:ids)[:ids].to_s
@@ -125,7 +138,7 @@ module Api
 
         def authorize_operation!
           return render json: { error: "terms_required" }, status: :forbidden unless grant.terms_accepted?
-          capability = { "create_lead" => :create_leads, "create_note" => :create_notes, "create_task" => :create_tasks, "create_appointment" => :create_appointments, "set_labels" => :manage_labels, "link_properties" => :link_properties, "change_status" => :change_status }.fetch(action_name)
+          capability = { "create_lead" => :create_leads, "create_note" => :create_notes, "create_task" => :create_tasks, "create_appointment" => :create_appointments, "set_labels" => :manage_labels, "link_properties" => :link_properties, "unlink_property" => :link_properties, "change_status" => :change_status }.fetch(action_name)
           render json: { error: "permission_denied" }, status: :forbidden unless grant.capabilities[capability]
         end
 

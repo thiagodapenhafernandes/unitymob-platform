@@ -587,4 +587,66 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:forbidden)
   end
 
+  it "filters property autocomplete by code, price range and minimum rooms" do
+    lead = make_lead
+    matching = create(:habitation, tenant: tenant, codigo: "8334", status: "Venda", valor_venda_cents: 80000000, suites_qtd: 3, dormitorios_qtd: 4, vagas_qtd: 2)
+    create(:habitation, tenant: tenant, codigo: "7777", descricao_web: "Código mencionado 8334", status: "Venda", valor_venda_cents: 80000000)
+    endpoint = "/api/v1/browser_extension/leads/#{lead.id}/properties/search"
+    post endpoint, params: {q: "8334", purpose: "venda", min_price: "700000", max_price: "900000", suites: "3", bedrooms: "4", parking: "2"}, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).to eq([matching.id])
+    post endpoint, params: {q: "8334", purpose: "venda", suites: "4"}, headers: headers, as: :json
+    expect(response.parsed_body.fetch("properties")).to eq([])
+    post endpoint, params: {q: "8334", purpose: "venda", min_price: "900000", max_price: "700000"}, headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    post endpoint, params: {q: "8334", purpose: "venda", min_price: "1 OR 1=1"}, headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "removes an interest idempotently without removing the primary property" do
+    lead = make_lead
+    property = create(:habitation, tenant: tenant, exibir_no_site_flag: true, status: "Venda")
+    lead.property_interests.create!(tenant: tenant, habitation: property)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("properties").first).to include("public_path" => "/imovel/#{property.codigo}", "removable" => true)
+    expect(response.parsed_body.fetch("public_origin")).to be_present
+    attrs = operation_params(property: {id: property.id.to_s})
+    2.times do
+      post "/api/v1/browser_extension/leads/#{lead.id}/properties/remove", params: attrs, headers: headers, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+    expect(lead.property_interests.count).to eq(0)
+    lead.update!(property_id: property.id)
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties/remove", params: operation_params(property: {id: property.id.to_s}), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(lead.reload.property_id).to eq(property.id)
+  end
+
+  it "combines category and desktop quick filters inside the tenant catalog" do
+    lead = make_lead
+    property = create(:habitation, tenant: tenant, categoria: "Apartamento", status: "Venda", valor_venda_cents: 50000000, destaque_web_flag: true)
+    create(:habitation, tenant: tenant, categoria: "Casa", status: "Venda", valor_venda_cents: 50000000, destaque_web_flag: true)
+    endpoint = "/api/v1/browser_extension/leads/#{lead.id}/properties/search"
+    post endpoint, params: {q: "", purpose: "venda", category: "Apartamento", quick: "destaque_web"}, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).to eq([property.id])
+    post endpoint, params: {q: "", purpose: "venda", quick: "destroy_all"}, headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("property_categories")).to include("Apartamento", "Casa")
+    expect(response.parsed_body.fetch("property_quick_filters")).to include("frente_mar" => "Frente Mar")
+  end
+
+  it "returns compact card data and a factual fallback when the building name is absent" do
+    lead = make_lead
+    property = create(:habitation, tenant: tenant, nome_empreendimento: nil, categoria: "Apartamento", bairro: "Centro", dormitorios_qtd: 3, suites_qtd: 2, vagas_qtd: 1, area_privativa_m2: 143, valor_venda_cents: 350200000, valor_condominio_cents: 0, valor_iptu_cents: nil)
+    lead.property_interests.create!(tenant: tenant, habitation: property)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    card = response.parsed_body.fetch("properties").first
+    expect(card).to include("card_title" => "Apartamento em Centro", "bedrooms" => 3, "suites" => 2, "parking" => 1, "price_cents" => 350200000, "condo_cents" => 0, "iptu_cents" => nil)
+    property.update!(nome_empreendimento: "Residencial Teste")
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("properties").first["card_title"]).to eq("Residencial Teste")
+  end
+
 end

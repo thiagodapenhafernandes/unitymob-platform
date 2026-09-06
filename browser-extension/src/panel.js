@@ -54,7 +54,10 @@ function showLeadIdentity(visible) {
 }
 
 function clearLead() {
-  clearPropertySearch();
+  $("property-category").replaceChildren(new Option("Todas as categorias", ""));
+  $("property-quick-options").replaceChildren();
+  $("property-quick").value = "";
+  propertySelection.clear(); clearPropertySearch();
   showLeadIdentity(false);
   selectedLead = null; resolvedPhone = null;
   $("match-explanation").hidden = true;
@@ -94,6 +97,10 @@ function renderAccount() {
   $("terms-panel").hidden = !me || ready();
   $("chat-panel").hidden = !ready();
   $("terms-text").textContent = me?.terms?.text || "";
+  const hour = new Date().getHours();
+  $("greeting").textContent = me ? (hour < 12 ? "Bom dia," : hour < 18 ? "Boa tarde," : "Boa noite,") : "Seu atendimento, junto da conversa.";
+  $("welcome-name").textContent = me?.user?.name || "Unitymob";
+  $("account-avatar").textContent = (me?.user?.name || "U").trim().split(/\s+/).slice(0, 2).map(word => Array.from(word)[0]).join("").toLocaleUpperCase("pt-BR");
   $("tenant").textContent = me?.tenant?.name || "";
   $("user").textContent = me?.user?.name || "";
   $("connection-status").textContent = me ? (ready() ? "Atendimento conectado. As ações disponíveis seguem suas permissões." : "Login concluído. Leia e aceite os termos para começar.") :
@@ -114,25 +121,33 @@ async function fetchLead(id, version) {
   const result = await request("lead", { tabId: current.tabId, contextKey: contextKey(current), leadId: id });
   if (version !== revision || !me) return;
   selectedLead = result.lead;
-  for (const [kind, capability, action, add] of [["appointment", "create_appointments", "action-agenda", "add-appointments"], ["label", "manage_labels", "action-labels", "add-labels"]]) {
+  for (const [kind, capability, add] of [["appointment", "create_appointments", "add-appointments"], ["label", "manage_labels", "add-labels"]]) {
     $(`${kind}-panel`).hidden = !me.capabilities[capability];
-    $(action).hidden = !me.capabilities[capability]; $(add).hidden = !me.capabilities[capability];
+    $(add).hidden = !me.capabilities[capability];
     $(`${kind}-contact`).textContent = `${result.lead.name} · ${resolvedPhone}`;
   }
   $("note-panel").hidden = !me.capabilities.create_notes;
   $("task-panel").hidden = !me.capabilities.create_tasks;
-  $("action-task").hidden = !me.capabilities.create_tasks;
   $("add-task").hidden = !me.capabilities.create_tasks;
   $("add-note").hidden = !me.capabilities.create_notes;
   $("actions-help").textContent = me.capabilities.create_notes || me.capabilities.create_tasks || me.capabilities.create_appointments || me.capabilities.manage_labels ? "" : "Seu perfil permite apenas consultar este atendimento. Alterações dependem das permissões do CRM.";
   for (const id of ["note-contact", "task-contact"]) $(id).textContent = `${result.lead.name} · ${resolvedPhone}`;
   $("create-lead-panel").hidden = true;
   $("property-panel").hidden = !me.capabilities.link_properties;
-  $("action-properties").hidden = !me.capabilities.link_properties;
   $("add-properties").hidden = !me.capabilities.link_properties;
   $("property-contact").textContent = `${result.lead.name} · ${resolvedPhone}`;
-  $("shortcut-properties").textContent = result.properties.length;
-  clearPropertySearch();
+  $("property-category").replaceChildren(new Option("Todas as categorias", ""), ...(result.property_categories || []).map(category => new Option(category, category)));
+  $("property-quick-options").replaceChildren();
+  for (const [key, label] of Object.entries(result.property_quick_filters || {})) {
+    const button = document.createElement("button"); button.type = "button"; button.className = "ax-label-chip"; button.textContent = label; button.setAttribute("aria-pressed", "false");
+    button.onclick = () => {
+      $("property-quick").value = $("property-quick").value === key ? "" : key;
+      for (const chip of $("property-quick-options").children) chip.setAttribute("aria-pressed", String(chip === button && $("property-quick").value === key));
+      $("property-quick").dispatchEvent(new Event("input"));
+    };
+    $("property-quick-options").append(button);
+  }
+  propertySelection.clear(); clearPropertySearch();
   showLeadIdentity(true);
   $("match-explanation").hidden = true;
   $("lead-reference").textContent = `Lead #${result.lead.id}`;
@@ -152,19 +167,51 @@ async function fetchLead(id, version) {
   $("lead-context").textContent = [me.tenant.name, result.lead.owner_name ? `Responsável: ${result.lead.owner_name}` : "Sem responsável"].join(" · ");
   $("lead-context").title = leadContext(result.lead);
   $("open-lead").href = `${me.origin}/admin/leads/${result.lead.id}`;
-  const fullLead = $("open-lead").href;
-  for (const [key, anchor] of [["closed", ""], ["archive", ""]]) {
-    $(`action-${key}`).href = `${fullLead}${anchor ? `#lead-desktop-${anchor}` : ""}`;
-  }
-  for (const [key, anchor] of [["appointments", "agenda"], ["labels", "etiquetas"]]) {
+  for (const key of ["appointments", "labels"]) {
     $(`${key}-count`).textContent = result[`${key}_count`] ?? result[key]?.length ?? 0;
-    $(`shortcut-${key}`).textContent = $(`${key}-count`).textContent;
   }
-  $("shortcut-tasks").textContent = result.tasks_count ?? result.tasks.length;
   $("attempts-count").textContent = result.unsuccessful_attempts ?? 0;
   renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · ") })), "Nada agendado.");
   renderLabelChoices(result.label_catalog || [], result.labels || []);
-  renderRecords("properties", result.properties.map(p => ({ title: [p.code, p.title].filter(Boolean).join(" · "), meta: [p.city, p.neighborhood].filter(Boolean).join(" · ") })), "Nenhum imóvel vinculado.");
+  $("properties").replaceChildren();
+  for (const property of result.properties) {
+    const row = document.createElement("div"); row.className = "ax-property-interest ax-property-interest--detail";
+    const check = document.createElement("input"); check.type = "checkbox"; check.value = property.id; check.disabled = !property.public_path; check.title = property.public_path ? "Selecionar para enviar" : "Imóvel sem link público disponível para envio";
+    const title = document.createElement("strong"); title.className = "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
+    const specs = document.createElement("div"); specs.className = "ax-property-interest__specs";
+    for (const [icon, value, label] of [["M5 21V3h14v18M2 21h20M15 12h1", property.bedrooms, "Dorm."], ["M8 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm4-4h10m-3 0v3m-3-3v2", property.suites, "Suítes"], ["m5 6-2 7v6h3v-3h12v3h3v-6l-2-7ZM3 12h18M6 14h2m8 0h2", property.parking, "Vagas"], ["M4 9V4h5m11 11v5h-5M4 4l6 6m10 10-6-6", property.area == null ? null : Number(property.area).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1}), "m²"]]) {
+      const chip = document.createElement("span");
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none"); svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", "1.6"); svg.setAttribute("aria-hidden", "true");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", icon); svg.append(path);
+      chip.append(svg, document.createTextNode(`${value ?? "—"} ${label}`)); chip.title = `${value ?? "Não informado"} ${label}`; specs.append(chip);
+    }
+    const money = value => value == null ? "—" : new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: value === 0 ? 0 : 2}).format(Number(value) / 100);
+    const financial = document.createElement("div"); financial.className = "ax-property-interest__financial";
+    for (const [tag, text] of [["strong", `${money(property.price_cents)}${property.rental ? "/mês" : ""}`], ["span", `Cond. ${money(property.condo_cents)}`], ["span", `IPTU ${money(property.iptu_cents)}`]]) {
+      const part = document.createElement(tag); part.textContent = text; part.title = text; financial.append(part);
+    }
+    check.setAttribute("aria-label", `Selecionar ${property.code} para enviar`);
+    row.append(check, title, specs, financial);
+    if (property.removable && me.capabilities.link_properties) {
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "ax-property-interest__remove"; remove.textContent = "×";
+      remove.setAttribute("aria-label", `Remover ${property.code} dos interesses`);
+      remove.onclick = async () => {
+        if (saving) return;
+        const version = revision; saving = true; remove.disabled = true;
+        try {
+          const saved = await request("unlink_property", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id, phone: resolvedPhone, confirmed: true, payload: {id: String(property.id)}});
+          if (version === revision) await loadLead(saved.lead_id);
+        } catch (error) { if (version === revision) feedback(error); }
+        finally { saving = false; remove.disabled = false; }
+      };
+      row.append(remove);
+    }
+    $("properties").append(row);
+  }
+  if (!result.properties.length) $("properties").textContent = "Nenhum imóvel de interesse.";
+  $("share-properties").hidden = !result.properties.some(property => property.public_path);
+  $("share-properties").disabled = true;
+  $("properties").onchange = () => { $("share-properties").disabled = saving || !$("properties").querySelector("input:checked"); };
   renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
   renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhuma anotação registrada.");
   $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
@@ -178,11 +225,23 @@ function formatDate(value) {
 }
 
 let propertySearchVersion = 0;
+let propertySearchTimer;
+const propertySelection = new Map();
+const propertyFilterKeys = ["min_price", "max_price", "suites", "bedrooms", "parking", "category", "quick"];
+// Match the desktop currency-mask: values in whole reais, grouping while typing.
+for (const key of ["min_price", "max_price"]) $(`property-${key}`).addEventListener("input", event => {
+  const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
+  event.target.value = digits ? new Intl.NumberFormat("pt-BR", {maximumFractionDigits: 0}).format(Number(digits)) : "";
+});
 function clearPropertySearch() {
+  clearTimeout(propertySearchTimer);
   propertySearchVersion++;
   $("property-form").hidden = true; $("property-options").replaceChildren(); $("property-search-feedback").textContent = "";
 }
-for (const id of ["property-query", "property-purpose"]) $(id).addEventListener("input", clearPropertySearch);
+for (const id of ["property-query", "property-purpose", ...propertyFilterKeys.map(key => `property-${key}`)]) $(id).addEventListener("input", () => {
+  clearPropertySearch();
+  propertySearchTimer = setTimeout(() => $("property-search-form").requestSubmit(), 300);
+});
 $("property-search-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (!selectedLead || !ready() || saving || context?.state !== "ready") return;
@@ -190,18 +249,20 @@ $("property-search-form").addEventListener("submit", async event => {
   $("property-search-feedback").textContent = "Buscando imóveis…";
   try {
     const result = await request("search_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id,
-      query: $("property-query").value.trim(), purpose: $("property-purpose").value});
+      query: $("property-query").value.trim(), purpose: $("property-purpose").value, filters: Object.fromEntries(propertyFilterKeys.map(key => [key, ["min_price", "max_price"].includes(key) ? $(`property-${key}`).value.replace(/\D/g, "") : $(`property-${key}`).value]))});
     if (version !== revision || searchVersion !== propertySearchVersion) return;
     for (const property of result.properties) {
-      const option = document.createElement("label"); option.className = "ax-workspace-record";
-      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.disabled = property.linked; input.checked = property.linked;
+      const option = document.createElement("label"); option.className = "ax-property-option";
+      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.disabled = property.linked; input.checked = property.linked || propertySelection.has(String(property.id));
+      input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`; };
       const title = document.createElement("strong"); title.textContent = [property.code, property.title].filter(Boolean).join(" · ");
       const meta = document.createElement("span"); meta.className = "ax-workspace-muted";
       const price = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(Number(property.price_cents) / 100);
       meta.textContent = [property.neighborhood, property.city, price, property.linked ? "Já relacionado" : ""].filter(Boolean).join(" · ");
       option.append(input, title, meta); $("property-options").append(option);
     }
-    $("property-form").hidden = !result.properties.some(property => !property.linked);
+    $("property-form").hidden = !result.properties.some(property => !property.linked) && propertySelection.size === 0;
+    $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`;
     $("property-search-feedback").textContent = !result.properties.length ? "Nenhum imóvel encontrado." : result.properties.every(property => property.linked) ? "Os imóveis encontrados já estão relacionados." : result.more ? "Mostrando 20 imóveis. Refine a busca para encontrar outros." : "Selecione os imóveis que deseja relacionar.";
   } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { $("property-search-feedback").textContent = "Não foi possível buscar os imóveis."; feedback(error); } }
 });
@@ -243,10 +304,36 @@ function renderRecords(id, records, empty) {
   }
 }
 
-for (const [button, kind] of [["action-task", "task"], ["add-task", "task"], ["add-note", "note"], ["action-agenda", "appointment"], ["add-appointments", "appointment"], ["action-labels", "label"], ["add-labels", "label"], ["action-properties", "property"], ["add-properties", "property"], ["change-status", "status"]]) {
-  $(button).addEventListener("click", () => {
-    const panel = $(`${kind}-panel`); panel.open = true;
-    panel.scrollIntoView({ block: "nearest" }); panel.querySelector("input, textarea, select, button")?.focus();
+function toggleDisclosure(panel, open = !panel.open) {
+  panel.getAnimations().forEach(animation => animation.cancel());
+  const start = panel.getBoundingClientRect().height;
+  if (open) panel.open = true;
+  const summary = panel.querySelector(":scope > summary");
+  const end = open ? panel.getBoundingClientRect().height : (summary?.hidden ? 0 : summary?.getBoundingClientRect().height || 0);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { panel.open = open; return; }
+  const animation = panel.animate([{height: `${start}px`, opacity: open ? 0.6 : 1}, {height: `${end}px`, opacity: open ? 1 : 0.6}], {duration: 180, easing: "ease-out"});
+  panel.style.overflow = "hidden";
+  animation.onfinish = () => { panel.open = open; panel.style.overflow = ""; };
+  animation.oncancel = () => { panel.style.overflow = ""; };
+}
+for (const panel of document.querySelectorAll("details")) {
+  panel.addEventListener("toggle", () => { if (!panel.open) panel.getAnimations().forEach(animation => animation.cancel()); });
+  const summary = panel.querySelector(":scope > summary");
+  if (summary && !summary.hidden) summary.addEventListener("click", event => { event.preventDefault(); toggleDisclosure(panel); });
+}
+for (const [button, kind] of [["add-task", "task"], ["add-note", "note"], ["add-appointments", "appointment"], ["add-labels", "label"], ["add-properties", "property"], ["change-status", "status"]]) {
+  const control = $(button), panel = $(`${kind}-panel`);
+  const label = control.getAttribute("aria-label") || control.textContent;
+  control.setAttribute("aria-controls", panel.id);
+  control.setAttribute("aria-expanded", "false");
+  panel.addEventListener("toggle", () => {
+    control.setAttribute("aria-expanded", String(panel.open));
+    control.setAttribute("aria-label", panel.open ? "Fechar formulário" : label);
+    if (button !== "change-status") control.textContent = panel.open ? "−" : "＋";
+  });
+  control.addEventListener("click", () => {
+    if (kind === "property" && !panel.open) panel.querySelector(".ax-property-filters").open = true;
+    toggleDisclosure(panel);
   });
 }
 
@@ -281,7 +368,7 @@ async function resolve(phone) {
   } catch (error) { if (version === revision) feedback(error); }
 }
 
-function clearSelected() { clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").removeAttribute("href"); }
+function clearSelected() { propertySelection.clear(); clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").removeAttribute("href"); }
 
 async function refreshSession(force = false) {
   if (checkingSession) return;
@@ -298,13 +385,15 @@ async function refreshSession(force = false) {
       lastSessionCheck = Date.now();
       try {
         const next = await request("me");
+        const accountChanged = JSON.stringify(me) !== JSON.stringify(next);
         if (!me || me.origin !== next.origin || me.user.id !== next.user.id || me.tenant.id !== next.tenant.id || ready() !== next.capabilities.read_leads) {
           clearContext(); $("terms-accepted").checked = false; $("accept-terms").disabled = true;
         }
         me = next;
-      } catch (error) { if (me || error.message !== "not_connected") feedback(error); me = null; clearContext(); }
+        if (accountChanged) renderAccount();
+      } catch (error) { if (["not_connected", "http_401", "http_403"].includes(error.message)) { me = null; clearContext(); renderAccount(); } else if (force) feedback(error); }
     }
-    renderAccount();
+    if (!me) renderAccount();
   } finally { checkingSession = false; }
 }
 
@@ -320,6 +409,8 @@ async function refresh(force = false) {
     const version = revision;
     const next = await request("snapshot", { tabId: tab.id });
     if (version !== revision || document.hidden) return;
+    if (!force && context?.state === "ready" && ["changed", "loading", "unavailable"].includes(next.state)) return;
+    if (!force && next.state === "ready" && next.account === context?.account && next.chatId === context?.chatId && context?.phone && !next.phone) return;
     const changed = next.tabId !== context?.tabId || contextKey(next) !== contextKey(context);
     if (changed || force) {
       clearContext(); context = next;
@@ -337,7 +428,7 @@ async function refresh(force = false) {
       $("phone").value = next.phone || "";
       if (me && next.state === "ready" && next.phone) void resolve(next.phone);
     }
-  } catch (error) { clearContext(); feedback(error); }
+  } catch (error) { if (force) feedback(error); }
   finally { refreshing = false; }
 }
 
@@ -387,10 +478,10 @@ for (const id of ["disconnect", "switch-account"]) {
 $("search-form").addEventListener("submit", event => { event.preventDefault(); resolve($("phone").value); });
 $("refresh").addEventListener("click", () => { $("feedback").textContent = ""; refresh(true); });
 $("open-whatsapp").addEventListener("click", () => request("open_whatsapp").catch(feedback));
-document.addEventListener("visibilitychange", () => { if (document.hidden) clearContext(); else refresh(true); });
-chrome.tabs.onActivated.addListener(() => { clearContext(); refresh(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+chrome.tabs.onActivated.addListener(() => refresh());
 chrome.tabs.onUpdated.addListener((id, change) => { if (context?.tabId === id && (change.url || change.status === "loading")) { clearContext(); refresh(); } });
-setInterval(() => refresh(), 1500);
+setInterval(() => refresh(), 2500);
 refresh(true);
 
 $("terms-accepted").addEventListener("change", () => { $("accept-terms").disabled = !$("terms-accepted").checked; });
@@ -420,7 +511,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
     const payload = type === "create_lead" ? { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() } :
       type === "create_note" ? { body: $("note-body").value.trim() } :
       type === "change_status" ? { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") } :
-      type === "link_properties" ? { ids: [...$("property-options").querySelectorAll("input:checked:not(:disabled)")].map(input => input.value).sort().join(",") } :
+      type === "link_properties" ? { ids: [...propertySelection.keys()].sort().join(",") } :
       type === "set_labels" ? { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") } :
       type === "create_appointment" ? { title: $("appointment-title").value.trim(), kind: $("appointment-kind").value,
         starts_at: new Date($("appointment-start").value).toISOString(), ends_at: $("appointment-end").value ? new Date($("appointment-end").value).toISOString() : "", location: $("appointment-location").value.trim() } :
@@ -470,3 +561,23 @@ function leadContext(lead) {
   const date = lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : null;
   return [`Responsável: ${lead.owner_name || "Sem responsável"}`, lead.origin && `Origem: ${lead.origin}`, date && `Cadastro: ${date}`].filter(Boolean).join(" · ");
 }
+
+$("share-properties").addEventListener("click", async () => {
+  if (!selectedLead || !ready() || saving) return;
+  const checked = [...$("properties").querySelectorAll("input:checked")];
+  if (!checked.length || !window.confirm(`Enviar agora para ${context.name || selectedLead.name} (${resolvedPhone})?\n\n${checked.map(input => input.closest(".ax-property-interest").querySelector("strong").textContent).join("\n")}`)) return;
+  const version = revision;
+  saving = true; $("share-properties").disabled = true;
+  $("share-properties").textContent = "Enviando…"; $("share-properties").setAttribute("aria-busy", "true");
+  try {
+    await request("send_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id, confirmed: true, phone: resolvedPhone,
+      ids: [...$("properties").querySelectorAll("input:checked")].map(input => input.value)});
+    if (version === revision) $("feedback").textContent = "Imóveis enviados para a conversa.";
+  } catch (error) {
+    if (version === revision) $("feedback").textContent = "Não foi possível confirmar o envio. Confira a conversa antes de tentar novamente.";
+  }
+  finally {
+    saving = false; $("share-properties").disabled = !$("properties").querySelector("input:checked");
+    $("share-properties").textContent = "Enviar selecionados no WhatsApp"; $("share-properties").removeAttribute("aria-busy");
+  }
+});

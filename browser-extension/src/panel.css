@@ -4,7 +4,6 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension { display: grid; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 12px 24px; min-width: 0; }
 .um-extension, .um-extension * { box-sizing: border-box; }
 .um-extension p { margin: 0; }
-.um-extension > header strong { font-size: 20px; }
 .um-extension > header p { color: var(--ab-muted); }
 .um-extension h3 { font-size: 13px; margin: 0 0 6px; }
 .um-extension ul { padding-left: 18px; margin: 0; overflow-wrap: anywhere; }
@@ -41,3 +40,26 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 
 .um-extension #status-panel:not([open]) { display: none; }
 .um-extension #status-panel[open] form { margin-top: 10px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .um-extension :is(button, a, input, select, textarea, summary) { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease; }
+  .um-extension .ax-menu:not([hidden]) { animation: ax-operational-appear 160ms ease-out; }
+}
+
+.um-extension #share-properties { margin-top: 12px; }
+.um-extension #share-properties[aria-busy="true"] { cursor: wait; }
+
+.um-extension #property-search-form { gap: 5px; }
+.um-extension #property-search-form > label { font-size: 11px; margin-top: 3px; }
+.um-extension #property-search-form .ax-control { min-height: 29px; height: 29px; font-size: 12px; padding: 4px 7px; }
+.um-extension #property-search-form .ax-property-filters__grid { gap: 5px 8px; padding-top: 7px; }
+.um-extension #property-search-form .ax-property-filters__grid label { font-size: 10px; gap: 2px; }
+
+.um-extension #chat-panel { position: relative; }
+.um-extension #refresh { position: absolute; top: 7px; right: 7px; min-height: 25px; width: 25px; padding: 0; border: 0; background: transparent; box-shadow: none; color: #65748b; font-size: 19px; }
+.um-extension #lead-identity .ax-contact-summary__content { padding-right: 18px; }
+.um-extension #lead-name { font-size: 15px; line-height: 1.25; }
+.um-extension #lead-context { margin-top: 3px; }
+.um-extension #change-status { min-height: 23px; padding: 2px 6px; font-size: 10px; }
+.um-extension #chat-status { padding-right: 25px; }
+.um-extension #search-options summary { font-size: 11px; }
