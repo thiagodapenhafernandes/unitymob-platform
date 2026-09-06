@@ -231,6 +231,7 @@ async function handle(message) {
     }
     case "create_lead":
     case "create_note":
+    case "create_contact":
     case "create_task":
     case "create_appointment":
     case "set_labels":
@@ -246,6 +247,7 @@ async function handle(message) {
       if (context.phone && context.phone.replace(/\D/g, "") !== message.phone.replace(/\D/g, "")) throw new Error("context_changed");
       const definitions = {
         create_lead: { path: "leads", key: "lead", fields: ["name", "email"] },
+        create_contact: { suffix: "contacts", key: "contact", fields: ["body", "contact_kind", "contact_result"] },
         create_note: { suffix: "notes", key: "note", fields: ["body"] },
         create_task: { suffix: "tasks", key: "task", fields: ["title", "kind", "priority", "due_at"] },
         create_appointment: { suffix: "appointments", key: "appointment", fields: ["title", "kind", "starts_at", "ends_at", "location"] },
@@ -295,7 +297,7 @@ async function handle(message) {
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (!isPanelSender(sender, chrome.runtime)) return false;
   const authenticationChange = ["discovery_start", "discovery_verify", "connect", "pair", "disconnect", "accept_terms", "me"].includes(message?.type);
-  const writing = ["create_lead", "create_note", "create_task", "create_appointment", "set_labels", "link_properties", "unlink_property", "change_status", "send_properties"].includes(message?.type);
+  const writing = ["create_lead", "create_note", "create_contact", "create_task", "create_appointment", "set_labels", "link_properties", "unlink_property", "change_status", "send_properties"].includes(message?.type);
   const operation = authenticationChange ? authenticationQueue.then(() => handle(message)) :
     writing ? writeQueue.then(() => handle(message)) : handle(message);
   if (writing) writeQueue = operation.catch(() => {});

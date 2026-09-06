@@ -260,3 +260,12 @@ test("property sharing requires confirmation and rejects foreign property links"
   assert.equal((await send({...message, confirmed: true})).ok, false);
   assert.equal((await send({...message, confirmed: true, phone: "+5511000000000"})).ok, false);
 });
+
+test("contact history sends only allowed fields to the dedicated confirmed endpoint", async () => {
+  const message = {...noteRequest(), type: "create_contact", payload: {body: "Resumo", contact_kind: "ligacao", contact_result: "nao_respondeu", tenant_id: 99}};
+  assert.equal((await send({...message, confirmed: false})).ok, false);
+  assert.equal(requests.length, 0);
+  assert.equal((await send(message)).ok, true);
+  assert.equal(requests[0].url, `${origin}/api/v1/browser_extension/leads/7/contacts`);
+  assert.deepEqual(JSON.parse(requests[0].options.body).contact, {body: "Resumo", contact_kind: "ligacao", contact_result: "nao_respondeu"});
+});

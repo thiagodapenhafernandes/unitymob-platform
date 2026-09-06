@@ -126,10 +126,11 @@ async function fetchLead(id, version) {
     $(add).hidden = !me.capabilities[capability];
     $(`${kind}-contact`).textContent = `${result.lead.name} · ${resolvedPhone}`;
   }
-  $("note-panel").hidden = !me.capabilities.create_notes;
+  $("note-panel").hidden = !me.capabilities.create_notes || !result.contact_options;
   $("task-panel").hidden = !me.capabilities.create_tasks;
   $("add-task").hidden = !me.capabilities.create_tasks;
-  $("add-note").hidden = !me.capabilities.create_notes;
+  $("add-note").hidden = !me.capabilities.create_notes || !result.contact_options;
+  renderContactOptions(result.contact_options);
   $("actions-help").textContent = me.capabilities.create_notes || me.capabilities.create_tasks || me.capabilities.create_appointments || me.capabilities.manage_labels ? "" : "Seu perfil permite apenas consultar este atendimento. Alterações dependem das permissões do CRM.";
   for (const id of ["note-contact", "task-contact"]) $(id).textContent = `${result.lead.name} · ${resolvedPhone}`;
   $("create-lead-panel").hidden = true;
@@ -213,7 +214,7 @@ async function fetchLead(id, version) {
   $("share-properties").disabled = true;
   $("properties").onchange = () => { $("share-properties").disabled = saving || !$("properties").querySelector("input:checked"); };
   renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
-  renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhuma anotação registrada.");
+  renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [n.result, formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhum contato registrado.");
   $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
   $("notes-count").textContent = result.notes_count ?? result.notes?.length ?? 0;
   $("properties-count").textContent = result.properties.length;
@@ -499,7 +500,28 @@ $("terms-form").addEventListener("submit", async event => {
 });
 
 
-for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_note"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["property-form", "link_properties"], ["status-form", "change_status"]]) {
+function renderContactOptions(options) {
+  for (const [id, entries, placeholder] of [["contact-kind", options?.kinds, null], ["contact-result", options?.results, "Selecione o resultado..."]]) {
+    const select = $(id), previous = select.value;
+    select.replaceChildren();
+    if (placeholder) select.add(new Option(placeholder, ""));
+    for (const [value, label] of Object.entries(entries || {})) select.add(new Option(label, value));
+    if ([...select.options].some(option => option.value === previous)) select.value = previous;
+  }
+  $("contact-kind").dataset.attemptKinds = JSON.stringify(options?.attempt_kinds || []);
+  syncContactResult();
+}
+function syncContactResult() {
+  const operational = JSON.parse($("contact-kind").dataset.attemptKinds || "[]").includes($("contact-kind").value);
+  $("contact-result-field").hidden = !operational;
+  $("contact-result").required = operational;
+  $("contact-result").disabled = !operational;
+  if (!operational) $("contact-result").value = "";
+}
+$("contact-kind").addEventListener("change", syncContactResult);
+$("note-form").addEventListener("reset", () => queueMicrotask(syncContactResult));
+
+for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_contact"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["property-form", "link_properties"], ["status-form", "change_status"]]) {
   $(formId).addEventListener("submit", async event => {
     event.preventDefault();
     if (saving || !ready() || context?.state !== "ready" || !resolvedPhone) return;
@@ -509,7 +531,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
     const phone = resolvedPhone;
     const form = event.currentTarget;
     const payload = type === "create_lead" ? { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() } :
-      type === "create_note" ? { body: $("note-body").value.trim() } :
+      type === "create_contact" ? { body: $("note-body").value.trim(), contact_kind: $("contact-kind").value, contact_result: $("contact-result").value } :
       type === "change_status" ? { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") } :
       type === "link_properties" ? { ids: [...propertySelection.keys()].sort().join(",") } :
       type === "set_labels" ? { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") } :
@@ -526,7 +548,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       if (version !== revision) return;
       form.reset(); form.closest("details").open = false;
       if (type === "create_lead") $("candidates").replaceChildren();
-      $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_note" ? "Nota interna salva." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "link_properties" ? "Imóveis relacionados." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
+      $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_contact" ? "Contato registrado." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "link_properties" ? "Imóveis relacionados." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
       await loadLead(result.lead_id);
     } catch (error) {
       if (version === revision) {
@@ -536,6 +558,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
     } finally {
       saving = false;
       for (const control of form.elements) control.disabled = false;
+      if (type === "create_contact") syncContactResult();
     }
   });
 }

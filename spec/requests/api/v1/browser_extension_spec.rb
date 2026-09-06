@@ -362,6 +362,39 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:conflict)
   end
 
+  it "records each contact kind with CRM results, counts attempts and returns the complete history" do
+    lead = make_lead
+    LeadActivity::CONTACT_ATTEMPT_KINDS.zip(LeadActivity::CONTACT_RESULT_LABELS.keys).each do |kind, result|
+      attrs = operation_params(contact: {body: "  Conversa registrada  ", contact_kind: kind, contact_result: result})
+      expect { 2.times { post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: attrs, headers: headers, as: :json } }.to change(LeadActivity, :count).by(1)
+      expect(response).to have_http_status(:ok)
+      expect(lead.activities.find(response.parsed_body.fetch("note_id")).metadata).to include(
+        "contact_kind" => kind, "contact_result" => result, "body" => "Conversa registrada", "admin_user_id" => user.id)
+    end
+    expect(lead.unsuccessful_attempt_count).to eq(2)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("notes").map { |note| note.fetch("result") }).to match_array(LeadActivity::CONTACT_RESULT_LABELS.values)
+    expect(response.parsed_body.dig("contact_options", "kinds").keys).to eq(%w[ligacao whatsapp email visita nota])
+    expect(response.parsed_body.dig("contact_options", "results")).to eq(LeadActivity::CONTACT_RESULT_LABELS)
+    expect(lead.reload.admin_user).to eq(user)
+  end
+
+  it "keeps internal contact notes outside attempt counts and rejects missing or forged contact choices" do
+    lead = make_lead
+    attrs = operation_params(contact: {body: "Preferência", contact_kind: "nota", contact_result: "nao_respondeu"})
+    post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(lead.activities.last.meta("contact_result")).to be_nil
+    expect(lead.unsuccessful_attempt_count).to eq(0)
+    [{contact_kind: "ligacao"}, {contact_kind: "whatsapp", contact_result: "inventado"},
+     {contact_kind: "inventado", contact_result: "nao_respondeu"}, {contact_kind: "nota", body: ""}].each do |fields|
+      expect {
+        post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: operation_params(contact: {body: "Resumo"}.merge(fields)), headers: headers, as: :json
+      }.not_to change(LeadActivity, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+  end
+
   it "creates one task and its timeline event with timezone and current owner, including late retries" do
     lead = make_lead
     due = 1.hour.from_now.change(usec: 0)
@@ -395,6 +428,7 @@ RSpec.describe "Browser extension API", type: :request do
     lead = make_lead
     user.profile.update!(permissions: { "leads" => { "view" => true, "scope" => "own" } })
     [ ["leads", { lead: { name: "Novo" } }], ["leads/#{lead.id}/notes", { note: { body: "Nota" } }],
+      ["leads/#{lead.id}/contacts", { contact: {body: "Resumo", contact_kind: "nota"} }],
       ["leads/#{lead.id}/tasks", { task: { title: "Tarefa" } }] ].each do |path, attrs|
       post "/api/v1/browser_extension/#{path}", params: operation_params(attrs), headers: headers, as: :json
       expect(response).to have_http_status(:forbidden)
@@ -411,7 +445,7 @@ RSpec.describe "Browser extension API", type: :request do
     other_tenant = Tenant.create!(name: "External write", slug: "write-#{SecureRandom.hex(4)}")
     other_owner = create(:admin_user, tenant: other_tenant)
     [make_lead(owner: create(:admin_user, tenant: tenant)), make_lead(owner: other_owner, account: other_tenant)].each do |lead|
-      %w[notes tasks].each do |action|
+      %w[notes tasks contacts].each do |action|
         post "/api/v1/browser_extension/leads/#{lead.id}/#{action}", params: operation_params(note: { body: "Nota" }, task: { title: "Tarefa" }), headers: headers, as: :json
         expect(response).to have_http_status(:not_found)
       end
