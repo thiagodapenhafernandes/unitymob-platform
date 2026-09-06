@@ -34,7 +34,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(desktop_header).to be_present
       expect(desktop_header.to_html).to include("A fazer", "Visitas", "Futuras", "Favoritos", "Todos")
       expect(desktop_header.to_html).to include(
-        "Leads que precisam de uma ação agora",
+        "Leads novos ou em atendimento, sem contato registrado",
         "Leads com visita marcada",
         "Leads com retorno ou tarefa marcada"
       )
@@ -299,6 +299,55 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Lead Normal PWA")
       expect(response.body).to include("bi-star-fill")
       expect(other).to be_persisted
+    end
+
+    it "inclui em A Fazer o lead aceito sem acao e exclui atendimentos ja trabalhados" do
+      allow_any_instance_of(Lead).to receive(:route_lead)
+      make = ->(name) { create(:lead, tenant: admin.tenant, admin_user: admin, name: name, status: "Em Atendimento") }
+      untouched = make.call("Aceito sem acao")
+      %w[received distributed accepted secure_link_accessed notification_sent automation_event].each do |kind|
+        untouched.activities.create!(tenant: admin.tenant, kind: kind)
+      end
+      noted = make.call("Com contato registrado")
+      noted.activities.create!(tenant: admin.tenant, kind: "note", metadata: {contact_kind: "ligacao", contact_result: "nao_respondeu"})
+      undated = make.call("Com tarefa sem data")
+      create(:task, tenant: admin.tenant, lead: undated, admin_user: admin, due_at: nil)
+      completed = make.call("Com tarefa concluida")
+      create(:task, tenant: admin.tenant, lead: completed, admin_user: admin, status: "concluida")
+      meeting = make.call("Com reuniao marcada")
+      create(:appointment, tenant: admin.tenant, lead: meeting, admin_user: admin, kind: "reuniao")
+      proposed = make.call("Com proposta registrada")
+      Proposal.create!(lead: proposed, admin_user: admin, status: "rascunho")
+      closed = make.call("Lead encerrado sem acao")
+      closed.update!(status: "Concluido")
+      excluded = [noted, undated, completed, meeting, proposed, closed].map(&:name)
+
+      get admin_leads_path(view: "list", mobile_tab: "todo", lead_tab: "todo")
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      [document.at_css(".lead-list").text, document.css(".lead-pwa-card").map(&:text).join].each do |text|
+        expect(text).to include(untouched.name)
+        expect(text).not_to include(*excluded)
+      end
+      get pwa_leads_page_admin_leads_path(mobile_tab: "todo", offset: 0), headers: {"Accept" => "application/json"}
+      expect(response.parsed_body["total"]).to eq(1)
+      expect(response.parsed_body["html"]).to include(untouched.name)
+    end
+
+    it "preserva Futuras, Visitas e Favoritos ao incluir atendimentos intocados em A Fazer" do
+      allow_any_instance_of(Lead).to receive(:route_lead)
+      untouched = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Atendimento intocado", status: "Em Atendimento")
+      future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno agendado", status: "Em Atendimento")
+      create(:task, tenant: admin.tenant, admin_user: admin, lead: future, due_at: 1.day.ago)
+      visit = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Visita agendada", status: "Em Atendimento")
+      create(:appointment, tenant: admin.tenant, admin_user: admin, lead: visit, kind: "visita")
+      create(:lead_favorite, tenant: admin.tenant, admin_user: admin, lead: future)
+      {"todo" => [untouched], "future" => [future], "visits" => [visit], "favorites" => [future], "all" => [untouched, future, visit]}.each do |tab, leads|
+        get pwa_leads_page_admin_leads_path(mobile_tab: tab, offset: 0), headers: {"Accept" => "application/json"}
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body["total"]).to eq(leads.size)
+        leads.each { |lead| expect(response.parsed_body["html"]).to include(lead.name) }
+      end
     end
 
     it "renderiza cards do Kanban PWA com gestos e acoes rapidas" do
