@@ -12,8 +12,35 @@ export async function configurePanel(tab) {
   await chrome.sidePanel.setOptions({ tabId: tab.id, path: "panel.html", enabled: isWhatsAppTab(tab) });
 }
 
-export async function openFromToolbar(tab) {
-  // Open before any await: Chrome requires the original toolbar user gesture.
-  const panel = chrome.sidePanel.open({ windowId: tab.windowId });
-  await Promise.all([panel, isWhatsAppTab(tab) ? Promise.resolve(tab) : openWhatsApp(tab.windowId)]);
+// Chrome retains the click gesture through API callbacks, not arbitrary async work.
+export function openFromToolbar(tab) {
+  return new Promise((resolve, reject) => {
+    const failed = () => {
+      const error = chrome.runtime.lastError;
+      if (error) reject(new Error(error.message));
+      return !!error;
+    };
+    const open = target => {
+      chrome.sidePanel.setOptions({ tabId: target.id, path: "panel.html", enabled: true }, () => {
+        if (failed()) return;
+        chrome.sidePanel.open({ tabId: target.id }, () => {
+          if (!failed()) resolve();
+        });
+      });
+    };
+    if (isWhatsAppTab(tab)) return open(tab);
+    chrome.tabs.query({ windowId: tab.windowId, url: "https://web.whatsapp.com/*" }, tabs => {
+      if (failed()) return;
+      const target = tabs.find(item => item.active) || tabs[0];
+      if (target) {
+        chrome.tabs.update(target.id, { active: true }, updated => {
+          if (!failed()) open(updated);
+        });
+      } else {
+        chrome.tabs.create({ windowId: tab.windowId, url: "https://web.whatsapp.com/", active: true }, created => {
+          if (!failed()) open(created);
+        });
+      }
+    });
+  });
 }

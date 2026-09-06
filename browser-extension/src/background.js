@@ -1,3 +1,4 @@
+import { authorizeInTab } from "./auth-tab.js";
 import { readWhatsAppContext, sendPropertyMessage, contextKey, validateContext } from "./context.js";
 import { isWhatsAppTab, allowedOrigin, isPanelSender, createPairing, leadId } from "./security.js";
 import { openFromToolbar, openWhatsApp, configurePanel } from "./launcher.js";
@@ -9,7 +10,7 @@ const storageReady = Promise.all([
 ]);
 async function configurePanels() {
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
-  await chrome.sidePanel.setOptions({ path: "panel.html", enabled: true });
+  await chrome.sidePanel.setOptions({ enabled: false });
   for (const tab of await chrome.tabs.query({})) await configurePanel(tab).catch(() => {});
 }
 chrome.runtime.onInstalled.addListener(configurePanels);
@@ -90,8 +91,8 @@ async function discoveryFetch(path, body) {
   const response = await fetch(`${discoveryOrigin}/discovery/v2/${path}`, {
     method: "POST", credentials: "omit", redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15000),
     headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body)
-  });
-  if (!response.ok) throw new Error(response.status === 429 ? "discovery_rate_limited" : response.status === 422 ? "invalid_code" : "discovery_unavailable");
+  }).catch(() => { throw new Error("discovery_connection_failed"); });
+  if (!response.ok) throw new Error(response.status === 429 ? "discovery_rate_limited" : response.status === 422 ? (path === "challenges" ? "invalid_email" : "invalid_code") : (path === "challenges" ? "code_send_failed" : "discovery_unavailable"));
   return response.json();
 }
 
@@ -100,8 +101,8 @@ async function handle(message) {
   switch (message.type) {
     case "discovery_start": {
       await chrome.storage.session.remove("discovery");
-      const email = message.email?.trim().toLowerCase();
-      if (typeof email !== "string" || email.length > 254) throw new Error("invalid_fields");
+      const email = typeof message.email === "string" ? message.email.trim().toLowerCase() : "";
+      if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("invalid_email");
       const result = await discoveryFetch("challenges", { email });
       if (!/^[A-Za-z0-9_-]{43}$/.test(result.challenge)) throw new Error("invalid_response");
       await chrome.storage.session.set({ discovery: { challenge: result.challenge, until: Date.now() + 600000 } });
@@ -132,7 +133,10 @@ async function handle(message) {
       return { state: "opened" };
     }
     case "connect": {
-      const { connection } = await chrome.storage.local.get("connection");
+      const connection = await session().catch(error => {
+        if (error.message !== "not_connected") throw error;
+        return null;
+      });
       if (connection) throw new Error("already_connected");
       let origin = allowedOrigin(crmOrigin, crmOrigins);
       let target = null, email = null;
@@ -146,8 +150,12 @@ async function handle(message) {
       const pairing = { ...await createPairing(), origin, target, email, until: Date.now() + 5 * 60_000 };
       await chrome.storage.session.set({ pairing });
       try {
+        const loginUrl = `${origin}/admin/browser_extension_connections/new?${new URLSearchParams({ challenge: pairing.challenge, extension_id: chrome.runtime.id })}`;
         const callback = await chrome.identity.launchWebAuthFlow({ interactive: true,
-          url: `${origin}/admin/browser_extension_connections/new?${new URLSearchParams({ challenge: pairing.challenge, extension_id: chrome.runtime.id })}` });
+          url: loginUrl }).catch(error => {
+            if (/did not approve|canceled|cancelled/i.test(error.message)) throw new Error("login_cancelled");
+            return authorizeInTab(loginUrl, chrome.identity.getRedirectURL("unitymob"));
+          });
         const result = new URL(callback);
         const expected = new URL(chrome.identity.getRedirectURL("unitymob"));
         if (result.origin !== expected.origin || result.pathname !== expected.pathname || result.searchParams.get("state") !== pairing.challenge || !result.searchParams.get("login_token")) {
@@ -305,7 +313,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (authenticationChange) authenticationQueue = operation.catch(() => {});
   operation.then(data => respond({ ok: true, data })).catch(error => {
     const code = error.message;
-    const safe = /^(discovery_rate_limited|discovery_unavailable|invalid_code|account_mismatch|http_\d{3}|not_connected|pairing_expired|context_changed|invalid_phone|no_whatsapp|permission_required|terms_required|invalid_fields|permission_denied|request_conflict)$/.test(code) ? code : "unavailable";
+    const safe = /^(invalid_email|code_send_failed|discovery_connection_failed|already_connected|login_cancelled|login_window_failed|invalid_callback|discovery_rate_limited|discovery_unavailable|invalid_code|account_mismatch|http_\d{3}|not_connected|pairing_expired|context_changed|invalid_phone|no_whatsapp|permission_required|terms_required|invalid_fields|permission_denied|request_conflict)$/.test(code) ? code : "unavailable";
     respond({ ok: false, error: safe });
   });
   return true;
