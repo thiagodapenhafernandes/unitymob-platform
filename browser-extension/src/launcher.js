@@ -9,11 +9,11 @@ export async function openWhatsApp(windowId) {
 
 export async function configurePanel(tab) {
   if (!Number.isInteger(tab?.id)) return;
-  await chrome.sidePanel.setOptions({ tabId: tab.id, path: "panel.html", enabled: isWhatsAppTab(tab) });
+  await chrome.sidePanel.setOptions({ tabId: tab.id, path: "panel.html", enabled: true });
 }
 
 export async function openFromToolbar(tab) {
-  const target = isWhatsAppTab(tab) ? tab : await openWhatsApp(tab.windowId);
-  await configurePanel(target);
-  await chrome.sidePanel.open({ tabId: target.id });
+  // Open before any await: Chrome requires the original toolbar user gesture.
+  const panel = chrome.sidePanel.open({ windowId: tab.windowId });
+  await Promise.all([panel, isWhatsAppTab(tab) ? Promise.resolve(tab) : openWhatsApp(tab.windowId)]);
 }

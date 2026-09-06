@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { openFromToolbar, configurePanel } from "../src/launcher.js";
 
-test("toolbar creates WhatsApp and opens only its panel, preserving the source page", async () => {
+test("toolbar opens the panel synchronously before creating WhatsApp, preserving the source page", async () => {
   const calls = [];
   global.chrome = {
     sidePanel: { async setOptions(options) { calls.push(["options", options]); }, async open(options) { calls.push(["panel", options]); } },
@@ -10,21 +10,37 @@ test("toolbar creates WhatsApp and opens only its panel, preserving the source p
   };
   await openFromToolbar({ id: 1, windowId: 3, url: "https://youtube.com/" });
   assert.deepEqual(calls, [
-    ["create", { windowId: 3, url: "https://web.whatsapp.com/", active: true }],
-    ["options", { tabId: 9, path: "panel.html", enabled: true }], ["panel", { tabId: 9 }]
+    ["panel", { windowId: 3 }],
+    ["create", { windowId: 3, url: "https://web.whatsapp.com/", active: true } ]
   ]);
 });
 
-test("toolbar reuses the active WhatsApp tab without a window-wide panel", async () => {
+test("toolbar reuses the active WhatsApp tab", async () => {
   const calls = [];
   global.chrome = { sidePanel: { async setOptions(options) { calls.push(options); }, async open(options) { calls.push(options); } } };
   await openFromToolbar({ id: 9, windowId: 3, url: "https://web.whatsapp.com/" });
-  assert.deepEqual(calls, [{ tabId: 9, path: "panel.html", enabled: true }, { tabId: 9 }]);
+  assert.deepEqual(calls, [{ windowId: 3 }]);
 });
 
-test("other sites disable the panel and returning to WhatsApp enables it", async () => {
+test("previously disabled tabs can display the global panel", async () => {
   const calls = [];
   global.chrome = { sidePanel: { async setOptions(options) { calls.push(options); } } };
   for (const url of ["https://web.whatsapp.com/", "https://youtube.com/", "chrome://newtab/", "https://web.whatsapp.com/"]) await configurePanel({ id: 9, url });
-  assert.deepEqual(calls.map(call => call.enabled), [true, false, false, true]);
+  assert.deepEqual(calls.map(call => call.enabled), [true, true, true, true]);
+});
+
+
+test("toolbar focuses an existing WhatsApp tab in the same window", async () => {
+  const calls = [];
+  global.chrome = {
+    sidePanel: { async open(options) { calls.push(["panel", options]); } },
+    tabs: {
+      async query(options) { assert.deepEqual(options, { windowId: 3, url: "https://web.whatsapp.com/*" }); return [{ id: 9 }]; },
+      async update(id, options) { calls.push(["focus", id, options]); }
+    }
+  };
+  const opening = openFromToolbar({ id: 1, windowId: 3, url: "https://example.com/" });
+  assert.deepEqual(calls, [["panel", { windowId: 3 }]]);
+  await opening;
+  assert.deepEqual(calls.at(-1), ["focus", 9, { active: true }]);
 });
