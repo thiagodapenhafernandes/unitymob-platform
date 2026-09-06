@@ -1,0 +1,2 @@
+class DiscoveryChallenge < ApplicationRecord
+end

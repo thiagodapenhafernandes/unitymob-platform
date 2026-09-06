@@ -1,3 +1,4 @@
+\restrict m5zlXJvHxYkXOjLjYZuxUxPhtJi2FQGmBtma3qL41pEStJnH4lMvQ3YWlihLsmn
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1468,6 +1469,49 @@ CREATE SEQUENCE public.banners_id_seq
 --
 
 ALTER SEQUENCE public.banners_id_seq OWNED BY public.banners.id;
+
+
+--
+-- Name: browser_extension_grants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.browser_extension_grants (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    trusted_device_id bigint,
+    extension_id character varying NOT NULL,
+    challenge_digest character varying NOT NULL,
+    challenge_expires_at timestamp(6) without time zone NOT NULL,
+    exchanged_at timestamp(6) without time zone,
+    token_digest character varying,
+    expires_at timestamp(6) without time zone NOT NULL,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    terms_accepted_at timestamp(6) without time zone,
+    terms_version character varying,
+    terms_digest character varying
+);
+
+
+--
+-- Name: browser_extension_grants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.browser_extension_grants_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: browser_extension_grants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.browser_extension_grants_id_seq OWNED BY public.browser_extension_grants.id;
 
 
 --
@@ -7647,6 +7691,13 @@ ALTER TABLE ONLY public.banners ALTER COLUMN id SET DEFAULT nextval('public.bann
 
 
 --
+-- Name: browser_extension_grants id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_grants ALTER COLUMN id SET DEFAULT nextval('public.browser_extension_grants_id_seq'::regclass);
+
+
+--
 -- Name: captacao_goals id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8806,6 +8857,14 @@ ALTER TABLE ONLY public.automation_workflows
 
 ALTER TABLE ONLY public.banners
     ADD CONSTRAINT banners_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: browser_extension_grants browser_extension_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_grants
+    ADD CONSTRAINT browser_extension_grants_pkey PRIMARY KEY (id);
 
 
 --
@@ -11760,6 +11819,48 @@ CREATE INDEX index_automation_workflows_on_tenant_id_and_status ON public.automa
 --
 
 CREATE INDEX index_banners_on_tenant_id ON public.banners USING btree (tenant_id);
+
+
+--
+-- Name: index_browser_extension_grants_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_browser_extension_grants_on_admin_user_id ON public.browser_extension_grants USING btree (admin_user_id);
+
+
+--
+-- Name: index_browser_extension_grants_on_challenge_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_browser_extension_grants_on_challenge_digest ON public.browser_extension_grants USING btree (challenge_digest);
+
+
+--
+-- Name: index_browser_extension_grants_on_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_browser_extension_grants_on_expires_at ON public.browser_extension_grants USING btree (expires_at);
+
+
+--
+-- Name: index_browser_extension_grants_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_browser_extension_grants_on_tenant_id ON public.browser_extension_grants USING btree (tenant_id);
+
+
+--
+-- Name: index_browser_extension_grants_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_browser_extension_grants_on_token_digest ON public.browser_extension_grants USING btree (token_digest);
+
+
+--
+-- Name: index_browser_extension_grants_on_trusted_device_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_browser_extension_grants_on_trusted_device_id ON public.browser_extension_grants USING btree (trusted_device_id);
 
 
 --
@@ -16282,6 +16383,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 
 --
+-- Name: browser_extension_grants fk_rails_26396efd26; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_grants
+    ADD CONSTRAINT fk_rails_26396efd26 FOREIGN KEY (trusted_device_id) REFERENCES public.trusted_devices(id);
+
+
+--
 -- Name: whatsapp_campaigns fk_rails_26c34a4ecc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16399,6 +16508,14 @@ ALTER TABLE ONLY public.client_interactions
 
 ALTER TABLE ONLY public.lead_pipeline_stage_automations
     ADD CONSTRAINT fk_rails_307601fb83 FOREIGN KEY (auto_advance_to_stage_id) REFERENCES public.lead_pipeline_stages(id) ON DELETE SET NULL;
+
+
+--
+-- Name: browser_extension_grants fk_rails_30fba97a28; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_grants
+    ADD CONSTRAINT fk_rails_30fba97a28 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -18266,6 +18383,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: browser_extension_grants fk_rails_e0bc6cc4d3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_grants
+    ADD CONSTRAINT fk_rails_e0bc6cc4d3 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: location_pings fk_rails_e12dc32194; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18578,13 +18703,80 @@ ALTER TABLE ONLY public.push_subscriptions
 
 
 --
+-- Name: browser_extension_operations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.browser_extension_operations (
+    id bigint NOT NULL,
+    browser_extension_grant_id bigint NOT NULL,
+    request_key uuid NOT NULL,
+    request_digest character varying NOT NULL,
+    result jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: browser_extension_operations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.browser_extension_operations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: browser_extension_operations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.browser_extension_operations_id_seq OWNED BY public.browser_extension_operations.id;
+
+
+--
+-- Name: browser_extension_operations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_operations ALTER COLUMN id SET DEFAULT nextval('public.browser_extension_operations_id_seq'::regclass);
+
+
+--
+-- Name: browser_extension_operations browser_extension_operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_operations
+    ADD CONSTRAINT browser_extension_operations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_extension_operations_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_extension_operations_request ON public.browser_extension_operations USING btree (browser_extension_grant_id, request_key);
+
+
+--
+-- Name: browser_extension_operations fk_rails_c2b3b01291; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_operations
+    ADD CONSTRAINT fk_rails_c2b3b01291 FOREIGN KEY (browser_extension_grant_id) REFERENCES public.browser_extension_grants(id);
+
+
 -- PostgreSQL database dump complete
 --
 
+\unrestrict m5zlXJvHxYkXOjLjYZuxUxPhtJi2FQGmBtma3qL41pEStJnH4lMvQ3YWlihLsmn
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260906023000'),
+('20260906013000'),
+('20260905203000'),
 ('20260905180000'),
 ('20260905160000'),
 ('20260905154000'),

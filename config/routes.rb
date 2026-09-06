@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   get "pwa-icon-:size", to: "pwa_icons#show", as: :pwa_icon, constraints: { size: /192|512/ }
 
   namespace :admin do
+    resources :browser_extension_connections, only: [:index, :new, :create, :destroy]
     resource :theme_preference, only: :update
     delete "context_items", to: "context_items#clear", as: :context_items
     delete "context_items/:id", to: "context_items#destroy", as: :context_item, constraints: { id: /[^\/]+/ }
@@ -524,6 +525,15 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      namespace :browser_extension, defaults: { format: :json } do
+        post "session/terms", to: "sessions#accept_terms"
+        resource :session, only: [:create, :show, :destroy], controller: "sessions"
+        post "leads/resolve", to: "leads#resolve"
+        post "leads", to: "operations#create_lead"
+        post "leads/:id/notes", to: "operations#create_note"
+        post "leads/:id/tasks", to: "operations#create_task"
+        resources :leads, only: :show
+      end
       namespace :field, defaults: { format: :json } do
         # API mobile (app híbrido) autenticada por Bearer/JWT — não usa
         # sessão/cookie, e não afeta as rotas de /admin ou /field (PWA web).

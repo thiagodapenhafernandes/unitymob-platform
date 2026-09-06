@@ -81,3 +81,11 @@ namespace :webhooks do
 end
 
 task default: "db:migrate"
+
+namespace :discovery do
+  desc "Remove expired verification challenges and rate windows (schedule hourly)"
+  task :cleanup do
+    DiscoveryChallenge.where('expires_at < ?', Time.now.utc).delete_all
+    DiscoveryLimit.where('expires_at < ?', Time.now.utc).delete_all
+  end
+end

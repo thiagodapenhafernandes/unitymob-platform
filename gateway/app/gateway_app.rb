@@ -2,9 +2,11 @@
 
 require "json"
 require "sinatra/base"
+require_relative "discovery_routes"
 
 module Gateway
   class App < Sinatra::Base
+    register Gateway::DiscoveryRoutes
     configure do
       set :show_exceptions, false
       set :raise_errors, false
@@ -187,6 +189,17 @@ module Gateway
     post "/discovery/resolve" do
       allow_discovery_cors!
       payload = parse_json(request.body.read)
+      if ENV['DISCOVERY_SECRET'].to_s.length >= 32
+        halt 429, json(error: "rate_limited") unless DiscoveryLimit.allow?("legacy-ip:#{request.ip}", limit: 30, period: 600)
+      end
+      normalized = payload["email"].to_s.strip.downcase
+      memberships = AccountMembership.where(email: normalized)
+      if memberships.exists?
+        accounts = memberships.where(active: true).limit(50).filter_map(&:public_account)
+        halt 409, json(error: "multiple_accounts", upgrade_required: true) if accounts.size > 1
+        halt 404, json(error: "account_not_found") if accounts.empty?
+        return json(tenant_url: accounts.first.fetch(:origin))
+      end
       route = AccountResolver.call(email: payload["email"])
       halt 404, json(error: "account_not_found") unless route
 

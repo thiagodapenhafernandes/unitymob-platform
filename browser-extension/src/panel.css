@@ -1,0 +1,34 @@
+/* Only composition for Chrome's narrow side panel. Primitives come from shared ax assets. */
+body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13px/1.5 system-ui, sans-serif; }
+[hidden] { display: none !important; }
+.um-extension { display: grid; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 12px 24px; min-width: 0; }
+.um-extension, .um-extension * { box-sizing: border-box; }
+.um-extension p { margin: 0; }
+.um-extension > header strong { font-size: 20px; }
+.um-extension > header p { color: var(--ab-muted); }
+.um-extension h3 { font-size: 13px; margin: 0 0 6px; }
+.um-extension ul { padding-left: 18px; margin: 0; overflow-wrap: anywhere; }
+.um-extension li + li { margin-top: 8px; }
+.um-extension .ax-btn { white-space: normal; height: auto; min-height: 32px; padding-block: 5px; }
+.um-extension #feedback:empty { display: none; }
+.um-extension #lead-name { overflow-wrap: anywhere; }
+
+.um-extension__terms { white-space: pre-line; max-height: 320px; overflow-y: auto; }
+
+.um-extension__heading, .um-extension__account { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.um-extension__heading #version { color: var(--ab-muted); font-size: 11px; }
+.um-extension__account { margin-top: 10px; }
+.um-extension__account > span { min-width: 0; overflow-wrap: anywhere; }
+.um-extension__account-menu { position: relative; flex-shrink: 0; }
+.um-extension__account-menu .ax-menu { width: 240px; max-width: calc(100vw - 48px); }
+
+.um-extension #lead-context { font-size: 11px; color: var(--ab-muted); }
+.um-extension #search-options summary { cursor: pointer; color: #365f8f; font-size: 12px; }
+.um-extension #search-options[open] form { margin-top: 10px; }
+.um-extension #note-panel[open] form, .um-extension #task-panel[open] form { margin-top: 12px; }
+.um-extension #actions-help:empty { display: none; }
+
+.um-extension #task-panel:not([open]), .um-extension #note-panel:not([open]) { display: none; }
+.um-extension #tasks-title { color: #b45309; }
+.um-extension #appointments-title { color: #365f8f; }
+.um-extension #labels-title { color: #0369a1; }

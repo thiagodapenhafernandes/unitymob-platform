@@ -10,6 +10,8 @@ class TrustedDevice < ApplicationRecord
   }.freeze
 
   belongs_to :admin_user
+  # Apagar o dispositivo também elimina as concessões derivadas dele.
+  has_many :browser_extension_grants, dependent: :destroy
   belongs_to :created_by, class_name: "AdminUser", optional: true
 
   validates :fingerprint, :status, presence: true
