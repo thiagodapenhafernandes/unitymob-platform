@@ -225,3 +225,30 @@ test("revoked persisted login and its retry keys are removed", async () => {
   assert.equal(stored.connection, undefined);
   assert.equal(stored.writeAttempts, undefined);
 });
+
+test("agenda and labels use confirmed writes, fixed paths and stripped payloads", async () => {
+  for (const [type, path, key, payload] of [
+    ["create_appointment", "appointments", "appointment", { title: "Visita", kind: "visita", starts_at: "2026-12-01T12:00:00Z", ends_at: "", location: "Recepção" }],
+    ["set_labels", "labels", "labels", { ids: "1,2" }],
+    ["link_properties", "properties", "properties", { ids: "1,2" }],
+    ["change_status", "status", "status", { stage_id: "3", expected_stage_id: "2" }]
+  ]) {
+    const message = { type, tabId: 1, contextKey: contextKey(projection), leadId: 15, phone: projection.phone, payload: { ...payload, tenant_id: "999", admin_user_id: "999" } };
+    assert.equal((await send(message)).ok, false);
+    const before = requests.length;
+    assert.equal((await send({ ...message, confirmed: true })).ok, true);
+    assert.equal(requests.length, before + 1);
+    assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads/15/${path}`);
+    const body = JSON.parse(requests.at(-1).options.body);
+    assert.deepEqual(body[key], payload);
+    assert.match(body.request_key, /^[0-9a-f-]{36}$/);
+  }
+});
+
+test("property search is scoped to the selected lead and rejects arbitrary filters", async () => {
+  const message = {type: "search_properties", tabId: 1, contextKey: contextKey(projection), leadId: 15, query: "Centro", purpose: "locacao"};
+  assert.equal((await send({...message, purpose: "all"})).ok, false);
+  assert.equal((await send(message)).ok, true);
+  assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads/15/properties/search`);
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body), {q: "Centro", purpose: "locacao"});
+});

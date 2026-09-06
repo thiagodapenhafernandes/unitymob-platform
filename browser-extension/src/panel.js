@@ -20,6 +20,7 @@ $("discovery-email").required = !!discoveryOrigin;
 const ready = () => me?.capabilities?.read_leads === true;
 
 const errors = {
+  lead_changed: "O status mudou no CRM. Atualize o atendimento antes de tentar novamente.",
   account_mismatch: "O login pertence a outra conta ou usuário. Entre no CRM com o e-mail confirmado e a imobiliária escolhida.",
   invalid_code: "Código inválido ou expirado. Confira o código ou solicite outro.",
   discovery_rate_limited: "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
@@ -47,16 +48,23 @@ async function request(type, data = {}) {
   return result.data;
 }
 
+function showLeadIdentity(visible) {
+  $("lead-identity").hidden = !visible;
+  $("chat-status").hidden = visible;
+}
+
 function clearLead() {
+  clearPropertySearch();
+  showLeadIdentity(false);
   selectedLead = null; resolvedPhone = null;
   $("match-explanation").hidden = true;
   $("lead-context").textContent = "";
-  for (const id of ["create-lead", "note", "task"]) {
+  for (const id of ["create-lead", "note", "task", "appointment", "label", "property", "status"]) {
     $(`${id}-panel`).hidden = true; $(`${id}-panel`).open = false;
     $(`${id}-form`).reset();
   }
   $("lead-panel").hidden = true;
-  for (const id of ["candidates", "properties", "tasks", "notes", "appointments", "labels", "proposals", "lead-name", "lead-status"]) $(id).replaceChildren();
+  for (const id of ["candidates", "properties", "tasks", "notes", "appointments", "labels", "lead-name", "lead-status"]) $(id).replaceChildren();
   $("open-lead").removeAttribute("href");
 }
 
@@ -106,32 +114,56 @@ async function fetchLead(id, version) {
   const result = await request("lead", { tabId: current.tabId, contextKey: contextKey(current), leadId: id });
   if (version !== revision || !me) return;
   selectedLead = result.lead;
+  for (const [kind, capability, action, add] of [["appointment", "create_appointments", "action-agenda", "add-appointments"], ["label", "manage_labels", "action-labels", "add-labels"]]) {
+    $(`${kind}-panel`).hidden = !me.capabilities[capability];
+    $(action).hidden = !me.capabilities[capability]; $(add).hidden = !me.capabilities[capability];
+    $(`${kind}-contact`).textContent = `${result.lead.name} · ${resolvedPhone}`;
+  }
   $("note-panel").hidden = !me.capabilities.create_notes;
   $("task-panel").hidden = !me.capabilities.create_tasks;
   $("action-task").hidden = !me.capabilities.create_tasks;
   $("add-task").hidden = !me.capabilities.create_tasks;
   $("add-note").hidden = !me.capabilities.create_notes;
-  $("actions-help").textContent = me.capabilities.create_notes || me.capabilities.create_tasks ? "" : "Seu perfil permite apenas consultar este atendimento. Alterações dependem das permissões do CRM.";
+  $("actions-help").textContent = me.capabilities.create_notes || me.capabilities.create_tasks || me.capabilities.create_appointments || me.capabilities.manage_labels ? "" : "Seu perfil permite apenas consultar este atendimento. Alterações dependem das permissões do CRM.";
   for (const id of ["note-contact", "task-contact"]) $(id).textContent = `${result.lead.name} · ${resolvedPhone}`;
   $("create-lead-panel").hidden = true;
+  $("property-panel").hidden = !me.capabilities.link_properties;
+  $("action-properties").hidden = !me.capabilities.link_properties;
+  $("add-properties").hidden = !me.capabilities.link_properties;
+  $("property-contact").textContent = `${result.lead.name} · ${resolvedPhone}`;
+  $("shortcut-properties").textContent = result.properties.length;
+  clearPropertySearch();
+  showLeadIdentity(true);
+  $("match-explanation").hidden = true;
+  $("lead-reference").textContent = `Lead #${result.lead.id}`;
+  $("lead-avatar").textContent = String(result.lead.name || "?").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(word => Array.from(word)[0]).join("").toLocaleUpperCase("pt-BR");
+  $("lead-phone").textContent = resolvedPhone ? `+${resolvedPhone.replace(/\D/g, "")}` : "Telefone não informado";
   $("lead-name").textContent = result.lead.name;
   $("lead-status").textContent = result.lead.status;
-  $("lead-context").textContent = `${me.tenant.name} · ${leadContext(result.lead)}`;
+  $("status-panel").hidden = !me.capabilities.change_status;
+  $("change-status").hidden = !me.capabilities.change_status;
+  $("status-contact").textContent = `${result.lead.name} · ${resolvedPhone}`;
+  $("status-stage").replaceChildren(new Option("Selecione o novo status", ""));
+  for (const stage of result.status_options || []) {
+    if (String(stage.id) !== String(result.lead.stage_id)) $("status-stage").append(new Option(stage.name, String(stage.id)));
+  }
+  $("change-status").disabled = $("status-stage").options.length === 1;
+  $("change-status").title = $("change-status").disabled ? "Nenhuma próxima etapa disponível para seu perfil." : "Alterar status do lead";
+  $("lead-context").textContent = [me.tenant.name, result.lead.owner_name ? `Responsável: ${result.lead.owner_name}` : "Sem responsável"].join(" · ");
+  $("lead-context").title = leadContext(result.lead);
   $("open-lead").href = `${me.origin}/admin/leads/${result.lead.id}`;
   const fullLead = $("open-lead").href;
-  for (const [key, anchor] of [["agenda", "agenda"], ["labels", "etiquetas"], ["proposals", "propostas"], ["closed", ""], ["archive", ""]]) {
+  for (const [key, anchor] of [["closed", ""], ["archive", ""]]) {
     $(`action-${key}`).href = `${fullLead}${anchor ? `#lead-desktop-${anchor}` : ""}`;
   }
-  for (const [key, anchor] of [["appointments", "agenda"], ["labels", "etiquetas"], ["proposals", "propostas"]]) {
-    $(`add-${key}`).href = `${fullLead}#lead-desktop-${anchor}`;
+  for (const [key, anchor] of [["appointments", "agenda"], ["labels", "etiquetas"]]) {
     $(`${key}-count`).textContent = result[`${key}_count`] ?? result[key]?.length ?? 0;
     $(`shortcut-${key}`).textContent = $(`${key}-count`).textContent;
   }
   $("shortcut-tasks").textContent = result.tasks_count ?? result.tasks.length;
   $("attempts-count").textContent = result.unsuccessful_attempts ?? 0;
   renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · ") })), "Nada agendado.");
-  renderRecords("labels", (result.labels || []).map(l => ({ title: l.name })), "Nenhuma etiqueta aplicada.");
-  renderRecords("proposals", (result.proposals || []).map(p => ({ title: `Proposta #${p.id}`, meta: [p.status, formatDate(p.created_at)].join(" · ") })), "Nenhuma proposta.");
+  renderLabelChoices(result.label_catalog || [], result.labels || []);
   renderRecords("properties", result.properties.map(p => ({ title: [p.code, p.title].filter(Boolean).join(" · "), meta: [p.city, p.neighborhood].filter(Boolean).join(" · ") })), "Nenhum imóvel vinculado.");
   renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
   renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhuma anotação registrada.");
@@ -143,6 +175,54 @@ async function fetchLead(id, version) {
 
 function formatDate(value) {
   return new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+let propertySearchVersion = 0;
+function clearPropertySearch() {
+  propertySearchVersion++;
+  $("property-form").hidden = true; $("property-options").replaceChildren(); $("property-search-feedback").textContent = "";
+}
+for (const id of ["property-query", "property-purpose"]) $(id).addEventListener("input", clearPropertySearch);
+$("property-search-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!selectedLead || !ready() || saving || context?.state !== "ready") return;
+  clearPropertySearch(); const searchVersion = propertySearchVersion; const version = revision;
+  $("property-search-feedback").textContent = "Buscando imóveis…";
+  try {
+    const result = await request("search_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id,
+      query: $("property-query").value.trim(), purpose: $("property-purpose").value});
+    if (version !== revision || searchVersion !== propertySearchVersion) return;
+    for (const property of result.properties) {
+      const option = document.createElement("label"); option.className = "ax-workspace-record";
+      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.disabled = property.linked; input.checked = property.linked;
+      const title = document.createElement("strong"); title.textContent = [property.code, property.title].filter(Boolean).join(" · ");
+      const meta = document.createElement("span"); meta.className = "ax-workspace-muted";
+      const price = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(Number(property.price_cents) / 100);
+      meta.textContent = [property.neighborhood, property.city, price, property.linked ? "Já relacionado" : ""].filter(Boolean).join(" · ");
+      option.append(input, title, meta); $("property-options").append(option);
+    }
+    $("property-form").hidden = !result.properties.some(property => !property.linked);
+    $("property-search-feedback").textContent = !result.properties.length ? "Nenhum imóvel encontrado." : result.properties.every(property => property.linked) ? "Os imóveis encontrados já estão relacionados." : result.more ? "Mostrando 20 imóveis. Refine a busca para encontrar outros." : "Selecione os imóveis que deseja relacionar.";
+  } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { $("property-search-feedback").textContent = "Não foi possível buscar os imóveis."; feedback(error); } }
+});
+
+function labelChip(label) {
+  const chip = document.createElement("span"); chip.className = "ax-label-chip";
+  const colors = {red: "#ef4444", amber: "#d97706", green: "#059669", cyan: "#0891b2", purple: "#7c3aed", gray: "#64748b"};
+  chip.style.setProperty("--label-color", colors[label.color] || (/^#[0-9a-f]{6}$/i.test(label.color) ? label.color : colors.gray));
+  chip.textContent = label.name; return chip;
+}
+function renderLabelChoices(catalog, assigned) {
+  const selected = new Set(assigned.map(label => String(label.id)));
+  $("labels").replaceChildren(); $("label-options").replaceChildren();
+  for (const label of assigned) $("labels").append(labelChip(label));
+  if (!assigned.length) $("labels").textContent = "Nenhuma etiqueta aplicada.";
+  for (const label of catalog) {
+    const option = document.createElement("label"); option.className = "ax-label-option";
+    const input = document.createElement("input"); input.type = "checkbox"; input.name = "label_ids"; input.value = label.id; input.checked = selected.has(String(label.id));
+    option.append(input, labelChip(label)); $("label-options").append(option);
+  }
+  if (!catalog.length) $("label-options").textContent = "Seu catálogo de etiquetas está vazio. Cadastre as etiquetas no CRM.";
 }
 
 function renderRecords(id, records, empty) {
@@ -163,10 +243,10 @@ function renderRecords(id, records, empty) {
   }
 }
 
-for (const [button, kind] of [["action-task", "task"], ["add-task", "task"], ["add-note", "note"]]) {
+for (const [button, kind] of [["action-task", "task"], ["add-task", "task"], ["add-note", "note"], ["action-agenda", "appointment"], ["add-appointments", "appointment"], ["action-labels", "label"], ["add-labels", "label"], ["action-properties", "property"], ["add-properties", "property"], ["change-status", "status"]]) {
   $(button).addEventListener("click", () => {
     const panel = $(`${kind}-panel`); panel.open = true;
-    panel.scrollIntoView({ block: "nearest" }); panel.querySelector("input, textarea").focus();
+    panel.scrollIntoView({ block: "nearest" }); panel.querySelector("input, textarea, select, button")?.focus();
   });
 }
 
@@ -201,7 +281,7 @@ async function resolve(phone) {
   } catch (error) { if (version === revision) feedback(error); }
 }
 
-function clearSelected() { selectedLead = null; for (const id of ["note", "task"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").removeAttribute("href"); }
+function clearSelected() { clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").removeAttribute("href"); }
 
 async function refreshSession(force = false) {
   if (checkingSession) return;
@@ -328,7 +408,7 @@ $("terms-form").addEventListener("submit", async event => {
 });
 
 
-for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_note"], ["task-form", "create_task"]]) {
+for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_note"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["property-form", "link_properties"], ["status-form", "change_status"]]) {
   $(formId).addEventListener("submit", async event => {
     event.preventDefault();
     if (saving || !ready() || context?.state !== "ready" || !resolvedPhone) return;
@@ -339,7 +419,13 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
     const form = event.currentTarget;
     const payload = type === "create_lead" ? { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() } :
       type === "create_note" ? { body: $("note-body").value.trim() } :
+      type === "change_status" ? { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") } :
+      type === "link_properties" ? { ids: [...$("property-options").querySelectorAll("input:checked:not(:disabled)")].map(input => input.value).sort().join(",") } :
+      type === "set_labels" ? { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") } :
+      type === "create_appointment" ? { title: $("appointment-title").value.trim(), kind: $("appointment-kind").value,
+        starts_at: new Date($("appointment-start").value).toISOString(), ends_at: $("appointment-end").value ? new Date($("appointment-end").value).toISOString() : "", location: $("appointment-location").value.trim() } :
       { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: new Date($("task-due").value).toISOString() };
+    if (type === "link_properties" && !payload.ids) { $("feedback").textContent = "Selecione pelo menos um imóvel."; return; }
     saving = true;
     for (const control of form.elements) control.disabled = true;
     $("feedback").textContent = "Salvando…";
@@ -349,7 +435,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       if (version !== revision) return;
       form.reset(); form.closest("details").open = false;
       if (type === "create_lead") $("candidates").replaceChildren();
-      $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_note" ? "Nota interna salva." : "Tarefa agendada.";
+      $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_note" ? "Nota interna salva." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "link_properties" ? "Imóveis relacionados." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
       await loadLead(result.lead_id);
     } catch (error) {
       if (version === revision) {

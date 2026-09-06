@@ -50,11 +50,82 @@ module Api
           end
         end
 
+        def create_appointment
+          lead = confirmed_lead!
+          attrs = params.require(:appointment).permit(:title, :kind, :starts_at, :ends_at, :location).to_h
+          attrs["title"] = required_text(attrs["title"], 200)
+          starts_at = Time.iso8601(attrs["starts_at"].to_s)
+          ends_at = Time.iso8601(attrs["ends_at"]) if attrs["ends_at"].present?
+          raise ArgumentError unless Appointment::KINDS.key?(attrs["kind"]) && (!ends_at || ends_at > starts_at)
+          raise ArgumentError if attrs["location"].to_s.length > 300
+          persist_once(attrs) do
+            raise ArgumentError unless starts_at > Time.current
+            appointment = grant.tenant.appointments.create!(attrs.merge(starts_at: starts_at, ends_at: ends_at,
+              lead: lead, admin_user: grant.admin_user, status: "agendado"))
+            lead.activities.create!(tenant: grant.tenant, kind: "appointment_created",
+              metadata: actor.merge(appointment_id: appointment.id, title: appointment.title, starts_at: appointment.starts_at, kind: appointment.kind))
+            { lead_id: lead.id, appointment_id: appointment.id }
+          end
+        end
+
+        def change_status
+          lead = confirmed_lead!
+          attrs = params.require(:status).permit(:stage_id, :expected_stage_id).to_h
+          raise ArgumentError unless attrs["stage_id"].to_s.match?(/\A[1-9]\d*\z/) && attrs["expected_stage_id"].to_s.match?(/\A\d*\z/)
+          persist_once(attrs) do
+            lead.with_lock do
+              if lead.lead_pipeline_stage_id.to_s != attrs["expected_stage_id"].to_s
+                return render json: {error: "lead_changed"}, status: :conflict
+              end
+              stage = available_status_stages(lead).find { |candidate| candidate.id.to_s == attrs["stage_id"] }
+              raise ArgumentError unless stage
+              previous = lead.status
+              lead.update!(lead_pipeline_stage: stage, status: stage.name)
+              if previous != lead.status
+                lead.activities.create!(tenant: grant.tenant, kind: "status_change", metadata: actor.merge(from: previous, to: lead.status))
+              end
+            end
+            {lead_id: lead.id}
+          end
+        end
+
+        def link_properties
+          lead = confirmed_lead!
+          raw = params.require(:properties).permit(:ids)[:ids].to_s
+          raise ArgumentError unless raw.length <= 1000 && raw.match?(/\A\d+(?:,\d+)*\z/)
+          ids = raw.split(",").map(&:to_i).uniq.sort
+          raise ArgumentError if ids.length > 20
+          persist_once({ids: ids}) do
+            properties = property_scope.where(id: ids).to_a
+            raise ActiveRecord::RecordNotFound unless properties.length == ids.length
+            lead.with_lock do
+              properties.each { |property| lead.property_interests.find_or_create_by!(tenant: grant.tenant, habitation: property) }
+            end
+            {lead_id: lead.id}
+          end
+        end
+
+        def set_labels
+          lead = confirmed_lead!
+          raw = params.require(:labels).permit(:ids)[:ids].to_s
+          raise ArgumentError unless raw.length <= 2000 && raw.match?(/\A(?:\d+(?:,\d+)*)?\z/)
+          ids = raw.split(",").map(&:to_i).uniq.sort
+          own_labels = grant.admin_user.lead_labels.where(tenant_id: grant.tenant_id)
+          raise ArgumentError unless own_labels.where(id: ids).count == ids.length
+          persist_once({ ids: ids }) do
+            lead.with_lock do
+              lead.lead_labelings.where(tenant_id: grant.tenant_id, lead_label_id: own_labels.select(:id)).where.not(lead_label_id: ids).destroy_all
+              ids.each { |id| lead.lead_labelings.find_or_create_by!(tenant: grant.tenant, lead_label_id: id) }
+            end
+            { lead_id: lead.id }
+          end
+        end
+
         private
 
         def authorize_operation!
           return render json: { error: "terms_required" }, status: :forbidden unless grant.terms_accepted?
-          capability = { "create_lead" => :create_leads, "create_note" => :create_notes, "create_task" => :create_tasks }.fetch(action_name)
+          capability = { "create_lead" => :create_leads, "create_note" => :create_notes, "create_task" => :create_tasks, "create_appointment" => :create_appointments, "set_labels" => :manage_labels, "link_properties" => :link_properties, "change_status" => :change_status }.fetch(action_name)
           render json: { error: "permission_denied" }, status: :forbidden unless grant.capabilities[capability]
         end
 

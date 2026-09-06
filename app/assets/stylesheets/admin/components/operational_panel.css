@@ -155,3 +155,40 @@
 
 .ax-workspace-record--counter { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ax-workspace-record--counter .ax-workspace-badge { background: #fef3c7; color: #b45309; }
+
+/* Compact context cards retain full-size controls and expandable content. */
+.ax-operational-panel--compact > .ax-operational-panel__header {
+  min-height: 0;
+  padding: 6px 10px;
+  gap: 8px;
+  align-items: center;
+}
+.ax-operational-panel--compact > .ax-operational-panel__body {
+  padding: 8px 10px;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.ax-operational-panel--compact > .ax-operational-panel__body > :empty {
+  display: none;
+}
+
+/* Identity summary shared by compact contact cards. */
+.ax-contact-summary { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ax-contact-summary__avatar { flex: 0 0 42px; width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid #d5e1ee; border-radius: 10px; background: #edf3f9; color: #365f8f; font-size: 16px; font-weight: 800; }
+.ax-contact-summary__content { min-width: 0; display: grid; gap: 3px; }
+.ax-contact-summary__label { color: #64748b; font-size: 10px; line-height: 1.2; font-weight: 800; text-transform: uppercase; letter-spacing: .035em; }
+.ax-contact-summary__name { margin: 0; font-size: 15px; line-height: 1.2; font-weight: 800; overflow-wrap: anywhere; }
+.ax-contact-summary__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: #64748b; font-size: 12px; line-height: 1.3; }
+.ax-contact-summary__detail { margin: 0; font-size: 11px; line-height: 1.35; color: #64748b; overflow-wrap: anywhere; }
+
+.ax-workspace-actions--compact { gap: 6px; }
+.ax-workspace-actions--compact .ax-workspace-action { grid-template-columns: 18px minmax(0, 1fr); gap: 1px 5px; padding: 7px 5px; border-radius: 8px; }
+.ax-workspace-actions--compact .ax-workspace-action svg { width: 17px; height: 17px; margin: 0; grid-row: 1 / 3; align-self: center; }
+.ax-workspace-actions--compact .ax-workspace-action strong { font-size: 11px; }
+.ax-workspace-actions--compact .ax-workspace-action small { font-size: 10px; }
+.ax-label-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.ax-label-option { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.ax-label-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid #d8dee8; border-radius: 16px; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.ax-label-chip::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--label-color, #64748b); flex-shrink: 0; }
+.ax-label-option input:checked + .ax-label-chip { border-color: var(--label-color, #64748b); background: #f1f5f9; }
+.ax-label-option input:focus-visible + .ax-label-chip { outline: 2px solid #365f8f; outline-offset: 2px; }

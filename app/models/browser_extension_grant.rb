@@ -1,12 +1,12 @@
 # Concessão limitada à API da extensão. Não é um token Devise/mobile.
 class BrowserExtensionGrant < ApplicationRecord
-  TERMS_VERSION = "2026-09-06.v2".freeze
+  TERMS_VERSION = "2026-09-06.v3".freeze
   TERMS_TEXT = <<~TEXT.strip.freeze
     Termos de uso e privacidade da extensão Unitymob — piloto de atendimento
 
     A extensão relaciona o telefone da conversa individual aberta aos leads que você pode acessar na conta Unitymob identificada neste painel. Após seu aceite, esse telefone é enviado à sua Unitymob para a busca. O painel apresenta o lead, os imóveis vinculados e as tarefas disponíveis conforme suas permissões.
 
-    Você poderá criar leads, registrar notas internas e agendar tarefas, conforme suas permissões, confirmando cada salvamento no painel. Os registros ficam associados à sua conta e ao seu usuário. Novos leads seguem as regras e notificações de cadastro manual do CRM; tarefas seguem os lembretes configurados. A extensão não importa o histórico das conversas nem envia mensagens pelo WhatsApp Web. Use os dados somente para o atendimento autorizado pela sua imobiliária. Não compartilhe seu acesso.
+    Você poderá criar leads, registrar notas internas, agendar tarefas e compromissos, aplicar ou remover suas etiquetas existentes, relacionar imóveis disponíveis da imobiliária e alterar a etapa do lead, conforme suas permissões, confirmando cada salvamento no painel. Os registros ficam associados à sua conta e ao seu usuário. Novos leads seguem as regras e notificações de cadastro manual do CRM; tarefas seguem os lembretes configurados. A extensão não importa o histórico das conversas nem envia mensagens pelo WhatsApp Web. Use os dados somente para o atendimento autorizado pela sua imobiliária. Não compartilhe seu acesso.
 
     O acesso dura até oito horas e pode ser revogado em Gerenciar acesso ou Desconectar. Registramos a data e a versão deste aceite associadas ao seu usuário e à conta. A extensão depende do WhatsApp Web e pode ficar indisponível quando ele mudar.
 
@@ -22,7 +22,11 @@ class BrowserExtensionGrant < ApplicationRecord
     accepted = terms_accepted?
     { read_leads: accepted, create_leads: accepted && admin_user.can?(:create, :leads),
       create_notes: accepted && admin_user.can?(:edit, :leads),
-      create_tasks: accepted && admin_user.can?(:manage, :comercial) }
+      create_tasks: accepted && admin_user.can?(:manage, :comercial),
+      create_appointments: accepted && admin_user.can?(:manage, :comercial),
+      manage_labels: accepted && admin_user.can?(:view, :leads),
+      link_properties: accepted && admin_user.can?(:view, :leads),
+      change_status: accepted && admin_user.can?(:edit, :leads) }
   end
 
   validates :extension_id, format: { with: /\A[a-p]{32}\z/ }
