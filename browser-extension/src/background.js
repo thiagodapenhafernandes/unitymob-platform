@@ -9,7 +9,7 @@ const storageReady = Promise.all([
 ]);
 async function configurePanels() {
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
-  await chrome.sidePanel.setOptions({ enabled: false });
+  await chrome.sidePanel.setOptions({ path: "panel.html", enabled: true });
   for (const tab of await chrome.tabs.query({})) await configurePanel(tab).catch(() => {});
 }
 chrome.runtime.onInstalled.addListener(configurePanels);
@@ -17,7 +17,7 @@ chrome.runtime.onStartup.addListener(configurePanels);
 chrome.tabs.onUpdated.addListener((id, change, tab) => {
   if (change.url || change.status === "complete") void configurePanel(tab).catch(() => {});
 });
-chrome.action.onClicked.addListener(tab => { openFromToolbar(tab).catch(() => {}); });
+chrome.action.onClicked.addListener(tab => { openFromToolbar(tab).catch(() => console.warn("Não foi possível abrir o WhatsApp com o painel Unitymob.")); });
 
 // Pairing is single-use. Multiple open panels must share one exchange at a time.
 let authenticationQueue = Promise.resolve();
