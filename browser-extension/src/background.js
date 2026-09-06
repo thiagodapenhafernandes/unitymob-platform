@@ -1,4 +1,4 @@
-import { readWhatsAppContext, contextKey, validateContext } from "./context.js";
+import { readWhatsAppContext, sendPropertyMessage, contextKey, validateContext } from "./context.js";
 import { isWhatsAppTab, allowedOrigin, isPanelSender, createPairing, leadId } from "./security.js";
 import { openFromToolbar, openWhatsApp, configurePanel } from "./launcher.js";
 import { crmOrigin, crmOrigins, discoveryOrigin } from "./config.js";
@@ -189,6 +189,25 @@ async function handle(message) {
       await chrome.storage.local.set({ connection: { ...connection, termsAccepted: true } });
       return result;
     }
+    case "send_properties": {
+      const connection = await session();
+      if (!connection.termsAccepted) throw new Error("terms_required");
+      const context = await snapshot(message.tabId);
+      if (context.state !== "ready" || contextKey(context) !== message.contextKey) throw new Error("context_changed");
+      if (message.confirmed !== true || !context.phone || context.phone.replace(/\D/g, "") !== String(message.phone).replace(/\D/g, "")) throw new Error("context_changed");
+      if (!Array.isArray(message.ids) || !message.ids.length || message.ids.length > 20) throw new Error("invalid_fields");
+      const result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
+      const properties = message.ids.map(id => result.properties.find(property => String(property.id) === String(id)));
+      if (properties.some(property => !property?.public_path || !/^\/imovel\/[A-Za-z0-9_%_-]+$/.test(property.public_path))) throw new Error("invalid_fields");
+      if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
+      const publicOrigin = new URL(result.public_origin || connection.origin);
+      if (publicOrigin.protocol !== "https:" || publicOrigin.username || publicOrigin.password || publicOrigin.pathname !== "/" || publicOrigin.search || publicOrigin.hash) throw new Error("invalid_fields");
+      const text = properties.map(property => `${property.code} · ${property.title}\n${[property.neighborhood, property.city].filter(Boolean).join(" · ")}\n${publicOrigin.origin}${property.public_path}`).join("\n\n");
+      const prepared = await chrome.scripting.executeScript({target: {tabId: message.tabId}, world: "MAIN", func: sendPropertyMessage, args: [context, text]});
+      const response = prepared.find(item => item.frameId === 0)?.result;
+      if (!response?.sent) throw new Error(response?.error || "send_unconfirmed");
+      return response;
+    }
     case "resolve":
     case "lead":
     case "search_properties": {
@@ -203,7 +222,7 @@ async function handle(message) {
         result = await authenticatedFetch(connection, "leads/resolve", { method: "POST", body: { contact_phone: phone } });
       } else if (message.type === "search_properties") {
         if (typeof message.query !== "string" || message.query.length > 100 || !["venda", "locacao"].includes(message.purpose)) throw new Error("invalid_fields");
-        result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose}});
+        result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose, ...Object.fromEntries(["min_price", "max_price", "suites", "bedrooms", "parking", "category", "quick"].filter(key => message.filters?.[key] != null).map(key => [key, String(message.filters[key])]))}});
       } else {
         result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
       }
@@ -215,6 +234,7 @@ async function handle(message) {
     case "create_task":
     case "create_appointment":
     case "set_labels":
+    case "unlink_property":
     case "link_properties":
     case "change_status": {
       const connection = await session();
@@ -230,6 +250,7 @@ async function handle(message) {
         create_task: { suffix: "tasks", key: "task", fields: ["title", "kind", "priority", "due_at"] },
         create_appointment: { suffix: "appointments", key: "appointment", fields: ["title", "kind", "starts_at", "ends_at", "location"] },
         set_labels: { suffix: "labels", key: "labels", fields: ["ids"] },
+        unlink_property: { suffix: "properties/remove", key: "property", fields: ["id"] },
         link_properties: { suffix: "properties", key: "properties", fields: ["ids"] },
         change_status: { suffix: "status", key: "status", fields: ["stage_id", "expected_stage_id"] }
       };
@@ -274,7 +295,7 @@ async function handle(message) {
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (!isPanelSender(sender, chrome.runtime)) return false;
   const authenticationChange = ["discovery_start", "discovery_verify", "connect", "pair", "disconnect", "accept_terms", "me"].includes(message?.type);
-  const writing = ["create_lead", "create_note", "create_task", "create_appointment", "set_labels", "link_properties", "change_status"].includes(message?.type);
+  const writing = ["create_lead", "create_note", "create_task", "create_appointment", "set_labels", "link_properties", "unlink_property", "change_status", "send_properties"].includes(message?.type);
   const operation = authenticationChange ? authenticationQueue.then(() => handle(message)) :
     writing ? writeQueue.then(() => handle(message)) : handle(message);
   if (writing) writeQueue = operation.catch(() => {});

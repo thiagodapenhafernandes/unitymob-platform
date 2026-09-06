@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readWhatsAppContext, validateContext, contextKey } from "../src/context.js";
+import { readWhatsAppContext, sendPropertyMessage, validateContext, contextKey } from "../src/context.js";
 
 function fixture({ chatId = "5511999999999@c.us", phone = "5511999999999", contact = { name: "Contato salvo", pushname: "Perfil" }, resolve } = {}) {
   const wpp = {
@@ -95,4 +95,15 @@ test("name metadata does not reset the conversation identity; invalid names are 
   for (const name of [{}, "x".repeat(201), "bad\nname"]) {
     assert.throws(() => validateContext({ ...context, name }));
   }
+});
+
+test("property sending targets only the unchanged individual conversation", async () => {
+  const wpp = fixture();
+  let sends = 0;
+  wpp.chat.sendTextMessage = async (id, text) => { sends++; assert.equal(id, "5511999999999@c.us"); assert.equal(text, "Imóvel 8334"); };
+  const expected = await readWhatsAppContext();
+  assert.deepEqual(await sendPropertyMessage(expected, "Imóvel 8334"), {sent: true});
+  wpp.chat.getActiveChat = () => ({id: "other@c.us"});
+  assert.deepEqual(await sendPropertyMessage(expected, "Imóvel 8334"), {error: "context_changed"});
+  assert.equal(sends, 1);
 });

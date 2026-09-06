@@ -252,3 +252,11 @@ test("property search is scoped to the selected lead and rejects arbitrary filte
   assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads/15/properties/search`);
   assert.deepEqual(JSON.parse(requests.at(-1).options.body), {q: "Centro", purpose: "locacao"});
 });
+
+test("property sharing requires confirmation and rejects foreign property links", async () => {
+  const message = {type: "send_properties", tabId: 1, contextKey: contextKey(projection), leadId: 1, ids: [7], phone: projection.phone};
+  assert.equal((await send(message)).ok, false);
+  global.fetch = async () => json({properties: [{id: 7, public_path: "https://evil.test"}]});
+  assert.equal((await send({...message, confirmed: true})).ok, false);
+  assert.equal((await send({...message, confirmed: true, phone: "+5511000000000"})).ok, false);
+});
