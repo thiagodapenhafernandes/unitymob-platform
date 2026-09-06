@@ -1983,7 +1983,9 @@
             Ação restrita ao admin da conta. Remove este lead definitivamente.
           </p>
           <%= form_with url: admin_lead_path(@lead), method: :delete,
-                        id: delete_form_id, class: "tw-hidden", data: { turbo: false } do %><% end %>
+                        id: delete_form_id, class: "tw-hidden", data: { turbo: false } do %>
+            <%= hidden_field_tag :return_to, @return_to_path %>
+          <% end %>
           <%= ax_confirm_submit(
                 form_id: delete_form_id,
                 message: "Remover permanentemente este lead? Esta ação não pode ser desfeita.",

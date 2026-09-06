@@ -5,10 +5,10 @@
 .ax-field textarea {
   width: 100%;
   min-width: 0;
-  min-height: var(--ax-form-control-height);
+  min-height: var(--ax-form-control-height, 28px);
   padding: 0 .75rem;
   border: 1px solid var(--ax-field-border);
-  border-radius: var(--ax-form-control-radius);
+  border-radius: var(--ax-form-control-radius, 7px);
   background: #fff;
   color: #1f2733;
   box-shadow: none !important;

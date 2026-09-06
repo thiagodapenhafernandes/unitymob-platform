@@ -1,0 +1,15 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Extensão Unitymob", back_path: admin_root_path, icon: "shield-check" %>
+<% end %>
+<%= ax_operational_panel(title: "Conexões autorizadas", eyebrow: current_tenant.name) do %>
+  <p>Conexões de <%= current_admin_user.name %> para consulta no WhatsApp Web.</p>
+  <% if @grants.empty? %>
+    <%= ax_empty_state title: "Nenhuma conexão ativa", description: "Use Conectar no painel da extensão para iniciar." %>
+  <% end %>
+  <% @grants.each do |grant| %>
+    <div class="ax-record-list">
+      <p>Autorizada em <%= l(grant.created_at, format: :short) %> · expira em <%= l(grant.expires_at, format: :short) %></p>
+      <%= button_to "Revogar acesso", admin_browser_extension_connection_path(grant), method: :delete, class: "ax-btn ax-btn--danger" %>
+    </div>
+  <% end %>
+<% end %>

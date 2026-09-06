@@ -1,0 +1,11 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Entrar na Unitymob", back_path: admin_root_path, icon: "shield-check" %>
+<% end %>
+<%= ax_operational_panel(title: "Entrando na Unitymob", eyebrow: current_tenant.name) do %>
+  <p>Login de <strong><%= current_admin_user.name %></strong> concluído. Volte ao WhatsApp para ler e aceitar os termos.</p>
+  <%= form_with url: admin_browser_extension_connections_path, data: { controller: "browser-extension-login", turbo: false } do |form| %>
+    <%= form.hidden_field :challenge, value: @challenge %>
+    <%= form.hidden_field :extension_id, value: @extension_id %>
+    <%= form.submit "Continuar no WhatsApp", class: "ax-btn ax-btn--primary" %>
+  <% end %>
+<% end %>

@@ -1,0 +1,13 @@
+{
+  "name": "unitymob-whatsapp-extension",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "@wppconnect/wa-js": "4.6.0"
+  }
+}

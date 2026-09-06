@@ -9,6 +9,12 @@ require "ipaddr"
 # quando Rails.cache é NullStore, cai num MemoryStore dedicado.
 
 class Rack::Attack
+  throttle("browser_extension/pairing", limit: 90, period: 5.minutes) do |req|
+    req.ip if req.post? && req.path == "/api/v1/browser_extension/session"
+  end
+  throttle("browser_extension/requests", limit: 180, period: 1.minute) do |req|
+    req.ip if req.path.start_with?("/api/v1/browser_extension/")
+  end
   WHATSAPP_WEBHOOK_PATH = "/webhooks/whatsapp".freeze
   PUBLIC_PROPERTY_RATE_LIMIT = ENV.fetch("PUBLIC_PROPERTY_RATE_LIMIT", 120).to_i
   PUBLIC_PROPERTY_LISTING_RATE_LIMIT = ENV.fetch("PUBLIC_PROPERTY_LISTING_RATE_LIMIT", 40).to_i

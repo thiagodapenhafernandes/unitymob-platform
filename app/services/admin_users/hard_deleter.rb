@@ -15,6 +15,7 @@ module AdminUsers
 
     # Já tratadas pelo `dependent:` do model AdminUser — não mexemos aqui.
     MODEL_HANDLED = {
+      "browser_extension_grants" => %w[admin_user_id], # credencial pessoal, dependent: :destroy
       "access_control_rules"  => %w[admin_user_id],   # dependent: :nullify
       "check_ins"             => %w[admin_user_id],   # dependent: :destroy
       "habitation_share_links" => %w[admin_user_id],  # dependent: :destroy

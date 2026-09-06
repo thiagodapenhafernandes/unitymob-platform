@@ -2,14 +2,15 @@ module AccessControl
   class Policy
     Result = Struct.new(:allowed?, :reason, :device, keyword_init: true)
 
-    def self.call(admin_user:, request:, controller: nil)
-      new(admin_user: admin_user, request: request, controller: controller).call
+    def self.call(admin_user:, request:, controller: nil, trusted_device: nil)
+      new(admin_user: admin_user, request: request, controller: controller, trusted_device: trusted_device).call
     end
 
-    def initialize(admin_user:, request:, controller: nil)
+    def initialize(admin_user:, request:, controller: nil, trusted_device: nil)
       @admin_user = admin_user
       @request = request
       @controller = controller
+      @trusted_device = trusted_device
     end
 
     def call
@@ -69,6 +70,10 @@ module AccessControl
 
     def device
       return @device if defined?(@device)
+      # Somente chamadas internas passam o dispositivo de uma concessão autenticada.
+      if @trusted_device && @trusted_device.admin_user_id == admin_user.id && @trusted_device.tenant_id == admin_user.tenant_id
+        return @device = @trusted_device
+      end
       return @device = nil unless controller
 
       @device = AccessControl::DeviceRegistry.call(controller, admin_user)

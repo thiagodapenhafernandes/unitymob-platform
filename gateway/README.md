@@ -162,3 +162,11 @@ O gateway envia para o `target_url` cadastrado:
 - `X-Unitymob-Gateway-Provider: whatsapp` ou `meta`.
 
 O destino deve validar a assinatura com o `forwarding_secret` da rota.
+
+## Discovery V2 (ativação coordenada)
+
+Implementação aditiva: índice `account_memberships`, credenciais exclusivas por instância, confirmação de e-mail via API HTTPS do Resend, desafios de uso único e limites persistidos. Não altera os contratos de webhook.
+
+Contratos, configuração privada, reconciliador e rollback: [roteiro de ativação](../docs/discovery-v2-activation.md). Execute as migrations antes de subir o processo novo. Configure a manutenção horária `bundle exec rake discovery:cleanup`.
+
+O endpoint antigo continua compatível para um destino único. Com múltiplos vínculos V2, responde `409 multiple_accounts`; é necessário o cliente V2 para escolher a conta. Não existe fallback silencioso para o último CRM sincronizado nesse caso.

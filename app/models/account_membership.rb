@@ -4,6 +4,8 @@
 class AccountMembership < ApplicationRecord
   include TenantScoped
 
+  after_commit :sync_discovery_member
+
   INVITE_VALIDITY = 7.days
 
   belongs_to :tenant
@@ -65,6 +67,12 @@ class AccountMembership < ApplicationRecord
   end
 
   private
+
+  def sync_discovery_member
+    return unless Mobile::AccountMembershipRegistrar.configured?
+    member_id = member_admin_user_id || member_admin_user_id_before_last_save
+    Mobile::SyncAccountMembershipJob.perform_later(member_id) if member_id
+  end
 
   def profile_belongs_to_tenant
     return if profile.blank? || tenant.blank?

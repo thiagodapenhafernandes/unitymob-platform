@@ -35,6 +35,7 @@ class AdminUser < ApplicationRecord
   has_many :data_export_audit_logs
   has_many :lead_audit_logs
   has_many :trusted_devices, dependent: :destroy
+  has_many :browser_extension_grants, dependent: :destroy
   has_many :access_control_rules, dependent: :nullify
   has_many :created_whatsapp_campaigns, class_name: "WhatsappCampaign", foreign_key: "created_by_id", dependent: :restrict_with_error
   has_many :lead_labels, dependent: :destroy
@@ -102,6 +103,8 @@ class AdminUser < ApplicationRecord
 
   # Discovery do app híbrido: mantém o gateway central sabendo em qual
   # servidor cada e-mail loga, sem cadastro manual (ver Mobile::AccountRouteRegistrar).
+  before_destroy :capture_discovery_mirror_memberships, prepend: true
+  after_commit :sync_account_membership_for_discovery, on: %i[create update destroy]
   after_commit :sync_account_route_for_discovery, on: %i[create update]
   after_commit :deactivate_account_route_for_discovery, on: :destroy
   
@@ -446,6 +449,30 @@ class AdminUser < ApplicationRecord
   # discovery no gateway central.
   def eligible_for_account_route_discovery?
     !super_admin? && !mirror? && tenant.present?
+  end
+
+  def capture_discovery_mirror_memberships
+    return unless Mobile::AccountMembershipRegistrar.configured?
+    @discovery_mirror_memberships = mirror_users.includes(:tenant).map do |mirror|
+      {tenant_id: mirror.tenant_id.to_s, user_id: mirror.id.to_s, email: email,
+        tenant_name: mirror.tenant&.name || "Conta", active: false, source_updated_at: Time.current.utc.iso8601(6)}
+    end
+  end
+
+  def sync_account_membership_for_discovery
+    return unless Mobile::AccountMembershipRegistrar.configured?
+    if destroyed? || saved_change_to_tenant_id? && tenant_id_before_last_save.present?
+      previous_tenant = destroyed? ? tenant_id : tenant_id_before_last_save
+      if previous_tenant
+        Mobile::SyncAccountMembershipJob.perform_later(id, {tenant_id: previous_tenant.to_s, user_id: id.to_s,
+          email: login_identity.email, tenant_name: Tenant.find_by(id: previous_tenant)&.name || "Conta",
+          active: false, source_updated_at: Time.current.utc.iso8601(6)})
+      end
+      Array(@discovery_mirror_memberships).each { |payload| Mobile::SyncAccountMembershipJob.perform_later(payload[:user_id].to_i, payload) }
+    end
+    if !destroyed? && (previously_new_record? || (previous_changes.keys & %w[email active tenant_id role profile_id super_admin primary_admin_user_id]).any?)
+      Mobile::SyncAccountMembershipJob.perform_later(id)
+    end
   end
 
   def sync_account_route_for_discovery

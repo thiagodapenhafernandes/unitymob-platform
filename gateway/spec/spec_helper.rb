@@ -10,9 +10,11 @@ require "webmock/rspec"
 require_relative "../config/environment"
 
 connection = ActiveRecord::Base.connection
+raise "Use an isolated *_test database" unless connection.select_value("SELECT current_database()").end_with?("_test")
 connection.drop_table(:webhook_events, if_exists: true)
 connection.drop_table(:webhook_routes, if_exists: true)
 connection.drop_table(:account_routes, if_exists: true)
+%i[account_memberships discovery_challenges discovery_limits].each { |table| connection.drop_table(table, if_exists: true) }
 
 ActiveRecord::Schema.define do
   suppress_messages do
@@ -64,6 +66,9 @@ ActiveRecord::Schema.define do
   end
 end
 
+require_relative "../db/migrate/20260906040000_create_discovery_v2"
+ActiveRecord::Migration.suppress_messages { CreateDiscoveryV2.new.migrate(:up) }
+
 RSpec.configure do |config|
   config.include Rack::Test::Methods
 
@@ -71,5 +76,8 @@ RSpec.configure do |config|
     WebhookEvent.delete_all
     WebhookRoute.delete_all
     AccountRoute.delete_all
+    AccountMembership.delete_all
+    DiscoveryChallenge.delete_all
+    DiscoveryLimit.delete_all
   end
 end
