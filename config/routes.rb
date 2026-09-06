@@ -531,6 +531,7 @@ Rails.application.routes.draw do
         post "leads/resolve", to: "leads#resolve"
         post "leads", to: "operations#create_lead"
         post "leads/:id/notes", to: "operations#create_note"
+        post "leads/:id/contacts", to: "operations#create_contact"
         post "leads/:id/tasks", to: "operations#create_task"
         post "leads/:id/appointments", to: "operations#create_appointment"
         post "leads/:id/labels", to: "operations#set_labels"
