@@ -85,9 +85,15 @@ module Api
             proposals: proposals.first(20).map { |item| { id: item.id, status: item.status_label, created_at: item.created_at.iso8601 } },
             labels: lead.labels_for(grant.admin_user).where(tenant_id: grant.tenant_id).map { |label| { id: label.id, name: label.name, color: label.color } },
             label_catalog: grant.admin_user.lead_labels.where(tenant_id: grant.tenant_id).ordered.map { |label| { id: label.id, name: label.name, color: label.color } },
+            contact_options: {
+              kinds: LeadActivity::CONTACT_KIND_LABELS.except("note").merge("nota" => "Nota interna"),
+              results: LeadActivity::CONTACT_RESULT_LABELS,
+              attempt_kinds: LeadActivity::CONTACT_ATTEMPT_KINDS
+            },
             notes_count: notes.count,
             notes: notes.limit(20).map { |note| { id: note.id, body: note.meta("body").to_s.first(5000),
               author: note.meta("by").to_s.first(200), kind: LeadActivity::CONTACT_KIND_LABELS[note.meta("contact_kind")] || "Anotação interna",
+              result: LeadActivity::CONTACT_RESULT_LABELS[note.meta("contact_result")],
               created_at: note.created_at.iso8601 } },
             tasks_count: tasks.size,
             property_categories: property_scope.where.not(categoria: [nil, ""]).distinct.order(:categoria).pluck(:categoria),

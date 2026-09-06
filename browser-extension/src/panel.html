@@ -192,14 +192,20 @@
           <div id="labels" class="ax-record-list"></div>
         </section>
         <section class="ax-workspace-section" aria-labelledby="notes-title">
-          <div class="ax-workspace-section__header"><h3 id="notes-title"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v14H6ZM15 3v5h4M9 12h7M9 16h7"/></svg>Histórico de contatos</h3><span id="notes-count" class="ax-workspace-badge"></span><button id="add-note" type="button" class="ax-btn" aria-label="Registrar nota interna" aria-controls="note-panel">＋</button></div>
+          <div class="ax-workspace-section__header"><h3 id="notes-title"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l4 4v14H6ZM15 3v5h4M9 12h7M9 16h7"/></svg>Histórico de contatos</h3><span id="notes-count" class="ax-workspace-badge"></span><button id="add-note" type="button" class="ax-btn" aria-label="Registrar contato" aria-controls="note-panel">＋</button></div>
                   <details id="note-panel" hidden>
           <summary hidden aria-hidden="true"></summary>
           <form id="note-form" class="ax-record-list">
-            <label for="note-body">Anotação</label>
-            <textarea id="note-body" class="ax-control" rows="4" maxlength="5000" required></textarea>
-            <label><input type="checkbox" required> Confirmo a nota para <strong id="note-contact"></strong>.</label>
-            <button class="ax-btn ax-btn--primary" type="submit">Salvar nota</button>
+            <label for="contact-kind">Tipo de contato</label>
+            <select id="contact-kind" class="ax-control" required></select>
+            <div id="contact-result-field" class="ax-record-list">
+              <label for="contact-result">Resultado</label>
+              <select id="contact-result" class="ax-control" required></select>
+            </div>
+            <label for="note-body">O que aconteceu?</label>
+            <textarea id="note-body" class="ax-control" placeholder="Resumo da conversa, próximos passos..." rows="3" maxlength="5000" required></textarea>
+            <label><input type="checkbox" required> Confirmo o registro de contato para <strong id="note-contact"></strong>.</label>
+            <button class="ax-btn ax-btn--primary" type="submit">Registrar</button>
           </form>
         </details>
           <div id="notes" class="ax-record-list"></div>

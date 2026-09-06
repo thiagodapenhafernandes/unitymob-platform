@@ -33,6 +33,25 @@ module Api
           end
         end
 
+        def create_contact
+          lead = confirmed_lead!
+          attrs = params.require(:contact).permit(:body, :contact_kind, :contact_result).to_h
+          body = required_text(attrs["body"], 5000)
+          kind = attrs["contact_kind"]
+          raise ArgumentError unless (LeadActivity::CONTACT_ATTEMPT_KINDS + ["nota"]).include?(kind)
+          result = attrs["contact_result"].presence
+          if LeadActivity::CONTACT_ATTEMPT_KINDS.include?(kind)
+            raise ArgumentError unless LeadActivity::CONTACT_RESULT_LABELS.key?(result)
+          else
+            result = nil
+          end
+          metadata = {contact_kind: kind, contact_result: result, body: body}.compact
+          persist_once(metadata) do
+            activity = lead.activities.create!(tenant: grant.tenant, kind: "note", metadata: actor.merge(metadata))
+            {lead_id: lead.id, note_id: activity.id}
+          end
+        end
+
         def create_task
           lead = confirmed_lead!
           attrs = params.require(:task).permit(:title, :kind, :due_at, :priority).to_h
@@ -138,7 +157,7 @@ module Api
 
         def authorize_operation!
           return render json: { error: "terms_required" }, status: :forbidden unless grant.terms_accepted?
-          capability = { "create_lead" => :create_leads, "create_note" => :create_notes, "create_task" => :create_tasks, "create_appointment" => :create_appointments, "set_labels" => :manage_labels, "link_properties" => :link_properties, "unlink_property" => :link_properties, "change_status" => :change_status }.fetch(action_name)
+          capability = { "create_lead" => :create_leads, "create_note" => :create_notes, "create_contact" => :create_notes, "create_task" => :create_tasks, "create_appointment" => :create_appointments, "set_labels" => :manage_labels, "link_properties" => :link_properties, "unlink_property" => :link_properties, "change_status" => :change_status }.fetch(action_name)
           render json: { error: "permission_denied" }, status: :forbidden unless grant.capabilities[capability]
         end
 
