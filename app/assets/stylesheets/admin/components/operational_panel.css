@@ -244,4 +244,4 @@
 .ax-extension-welcome__account > span:first-child { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: #e3edf3; color: #365f8f; font-size: 11px; font-weight: 700; }
 .ax-extension-welcome__version { display: block; padding: 6px 12px; color: #65748b; font-size: 10px; }
 
-.ax-extension-welcome span, .ax-extension-welcome strong, .ax-extension-welcome__identity > strong, .ax-extension-welcome__account > span:first-child { color: #fff; }
+.ax-extension-welcome span, .ax-extension-welcome strong, .ax-extension-welcome__identity > strong { color: #fff; }
