@@ -532,6 +532,11 @@ Rails.application.routes.draw do
         post "leads", to: "operations#create_lead"
         post "leads/:id/notes", to: "operations#create_note"
         post "leads/:id/tasks", to: "operations#create_task"
+        post "leads/:id/appointments", to: "operations#create_appointment"
+        post "leads/:id/labels", to: "operations#set_labels"
+        post "leads/:id/properties/search", to: "leads#search_properties"
+        post "leads/:id/properties", to: "operations#link_properties"
+        post "leads/:id/status", to: "operations#change_status"
         resources :leads, only: :show
       end
       namespace :field, defaults: { format: :json } do

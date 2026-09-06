@@ -60,10 +60,28 @@
         </form>
       </div>
     </section>
-    <section id="chat-panel" class="ax-operational-panel" hidden aria-label="Conversa atual">
+    <section id="chat-panel" class="ax-operational-panel ax-operational-panel--compact" hidden aria-label="Conversa atual">
       <header class="ax-operational-panel__header"><h2>Conversa atual</h2><button id="refresh" type="button" class="ax-btn">Atualizar</button></header>
       <div class="ax-operational-panel__body">
         <p id="chat-status" role="status">Abra uma conversa individual no WhatsApp Web.</p>
+        <div id="lead-identity" class="ax-contact-summary" hidden>
+          <span id="lead-avatar" class="ax-contact-summary__avatar" aria-hidden="true"></span>
+          <div class="ax-contact-summary__content">
+            <span id="lead-reference" class="ax-contact-summary__label"></span>
+            <h2 id="lead-name" class="ax-contact-summary__name"></h2>
+            <div class="ax-contact-summary__meta"><span id="lead-phone"></span><span id="lead-status" class="ax-workspace-badge"></span><button id="change-status" type="button" class="ax-btn" aria-controls="status-panel" hidden>Alterar status</button></div>
+            <p id="lead-context" class="ax-contact-summary__detail"></p>
+          </div>
+        </div>
+        <details id="status-panel" hidden>
+          <summary class="ax-btn">Fechar alteração</summary>
+          <form id="status-form" class="ax-record-list">
+            <label for="status-stage">Novo status</label><select id="status-stage" class="ax-control" required></select>
+            <p class="ax-workspace-muted">A mudança segue as regras e automações do funil.</p>
+            <label><input type="checkbox" required> Confirmo a alteração para <strong id="status-contact"></strong>.</label>
+            <button class="ax-btn ax-btn--primary" type="submit">Salvar status</button>
+          </form>
+        </details>
         <button id="open-whatsapp" type="button" class="ax-btn">Abrir WhatsApp Web</button>
         <details id="search-options"><summary>Buscar outro telefone</summary>
         <form id="search-form" hidden class="ax-record-list">
@@ -89,24 +107,33 @@
       </div>
     </section>
     <section id="lead-panel" class="ax-operational-panel" hidden aria-label="Lead selecionado">
-      <header class="ax-operational-panel__header"><h2 id="lead-name"></h2></header>
       <div class="ax-operational-panel__body">
-        <span id="lead-status" class="ax-workspace-badge"></span>
-        <p id="lead-context"></p>
         <a id="open-lead" class="ax-btn" target="_blank" rel="noopener noreferrer">Abrir ficha completa ↗</a>
         <h3>Ações do lead</h3>
         <div class="ax-workspace-record ax-workspace-record--counter"><div><strong>Tentativas sem resposta</strong><p class="ax-workspace-muted">Desde a última resposta do contato.</p></div><span id="attempts-count" class="ax-workspace-badge"></span></div>
-        <div class="ax-workspace-actions">
-          <a id="action-agenda" target="_blank" rel="noopener noreferrer" title="Agenda: abrir na ficha completa" class="ax-workspace-action ax-workspace-action--blue"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-9 3v5m-2.5-2.5h5"/></svg><strong>Agenda</strong><small id="shortcut-appointments">0</small></a>
+        <div class="ax-workspace-actions ax-workspace-actions--compact">
+          <button id="action-agenda" type="button" class="ax-workspace-action ax-workspace-action--blue"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-9 3v5m-2.5-2.5h5"/></svg><strong>Agenda</strong><small id="shortcut-appointments">0</small></button>
           <button id="action-task" type="button" aria-controls="task-panel" class="ax-workspace-action ax-workspace-action--amber"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/></svg><strong>Tarefa</strong><small id="shortcut-tasks">0</small></button>
-          <a id="action-labels" target="_blank" rel="noopener noreferrer" title="Etiquetas: abrir na ficha completa" class="ax-workspace-action ax-workspace-action--cyan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 8 0 10 10-8 8L3 11Z"/><circle cx="7.5" cy="7.5" r="1"/></svg><strong>Etiquetas</strong><small id="shortcut-labels">0</small></a>
-          <a id="action-proposals" target="_blank" rel="noopener noreferrer" title="Proposta: abrir na ficha completa" class="ax-workspace-action"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H5v20h14V7Zm0 0v5h5M8 12h8m-8 4h6"/></svg><strong>Proposta</strong><small id="shortcut-proposals">0</small></a>
+          <button id="action-labels" type="button" class="ax-workspace-action ax-workspace-action--cyan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 8 0 10 10-8 8L3 11Z"/><circle cx="7.5" cy="7.5" r="1"/></svg><strong>Etiquetas</strong><small id="shortcut-labels">0</small></button>
+          <button id="action-properties" type="button" class="ax-workspace-action"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 10 9-7 9 7v11H3ZM9 21v-8h6v8"/></svg><strong>Imóveis</strong><small id="shortcut-properties">0</small></button>
           <a id="action-closed" target="_blank" rel="noopener noreferrer" title="Fechado: abrir na ficha completa" class="ax-workspace-action ax-workspace-action--green"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg><strong>Fechado</strong><small>Na ficha ↗</small></a>
           <a id="action-archive" target="_blank" rel="noopener noreferrer" title="Arquivar: abrir na ficha completa" class="ax-workspace-action ax-workspace-action--red"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8v13h16V8M3 3h18v5H3Zm6 9h6"/></svg><strong>Arquivar</strong><small>Na ficha ↗</small></a>
         </div>
         <p id="actions-help" class="ax-workspace-muted"></p>
         <section class="ax-workspace-section" aria-labelledby="appointments-title">
-          <div class="ax-workspace-section__header"><h3 id="appointments-title">Agenda</h3><span id="appointments-count" class="ax-workspace-badge"></span><a id="add-appointments" class="ax-btn" target="_blank" rel="noopener noreferrer" aria-label="Gerenciar agenda na ficha completa">＋</a></div>
+          <div class="ax-workspace-section__header"><h3 id="appointments-title">Agenda</h3><span id="appointments-count" class="ax-workspace-badge"></span><button id="add-appointments" type="button" class="ax-btn" aria-label="Agendar compromisso">＋</button></div>
+          <details id="appointment-panel" hidden>
+            <summary class="ax-btn">Fechar formulário</summary>
+            <form id="appointment-form" class="ax-record-list">
+              <label for="appointment-title">Título</label><input id="appointment-title" class="ax-control" maxlength="200" required>
+              <label for="appointment-kind">Tipo</label><select id="appointment-kind" class="ax-control"><option value="visita">Visita</option><option value="reuniao">Reunião</option><option value="ligacao">Ligação</option><option value="outro">Outro</option></select>
+              <label for="appointment-start">Data e hora</label><input id="appointment-start" class="ax-control" type="datetime-local" required>
+              <label for="appointment-end">Término (opcional)</label><input id="appointment-end" class="ax-control" type="datetime-local">
+              <label for="appointment-location">Local (opcional)</label><input id="appointment-location" class="ax-control" maxlength="300">
+              <label><input type="checkbox" required> Confirmo o compromisso para <strong id="appointment-contact"></strong>.</label>
+              <button type="submit" class="ax-btn ax-btn--primary">Agendar compromisso</button>
+            </form>
+          </details>
           <div id="appointments" class="ax-record-list"></div>
         </section>
         <section class="ax-workspace-section" aria-labelledby="tasks-title">
@@ -130,7 +157,16 @@
           <div id="tasks" class="ax-record-list"></div>
         </section>
         <section class="ax-workspace-section" aria-labelledby="labels-title">
-          <div class="ax-workspace-section__header"><h3 id="labels-title">Etiquetas</h3><span id="labels-count" class="ax-workspace-badge"></span><a id="add-labels" class="ax-btn" target="_blank" rel="noopener noreferrer" aria-label="Gerenciar etiquetas na ficha completa">＋</a></div>
+          <div class="ax-workspace-section__header"><h3 id="labels-title">Etiquetas</h3><span id="labels-count" class="ax-workspace-badge"></span><button id="add-labels" type="button" class="ax-btn" aria-label="Selecionar etiquetas">＋</button></div>
+          <details id="label-panel" hidden>
+            <summary class="ax-btn">Fechar seleção</summary>
+            <form id="label-form" class="ax-record-list">
+              <p class="ax-workspace-muted">Selecione suas etiquetas para este lead.</p>
+              <div id="label-options" class="ax-label-options"></div>
+              <label><input type="checkbox" required> Confirmo as etiquetas para <strong id="label-contact"></strong>.</label>
+              <button type="submit" class="ax-btn ax-btn--primary">Salvar etiquetas</button>
+            </form>
+          </details>
           <div id="labels" class="ax-record-list"></div>
         </section>
         <section class="ax-workspace-section" aria-labelledby="notes-title">
@@ -146,12 +182,22 @@
         </details>
           <div id="notes" class="ax-record-list"></div>
         </section>
-        <section class="ax-workspace-section" aria-labelledby="proposals-title">
-          <div class="ax-workspace-section__header"><h3 id="proposals-title">Propostas</h3><span id="proposals-count" class="ax-workspace-badge"></span><a id="add-proposals" class="ax-btn" target="_blank" rel="noopener noreferrer" aria-label="Gerenciar propostas na ficha completa">＋</a></div>
-          <div id="proposals" class="ax-record-list"></div>
-        </section>
         <section id="properties-section" class="ax-workspace-section" aria-labelledby="properties-title" tabindex="-1">
-          <div class="ax-workspace-section__header"><h3 id="properties-title">Imóveis vinculados</h3><span id="properties-count" class="ax-workspace-badge"></span></div>
+          <div class="ax-workspace-section__header"><h3 id="properties-title">Imóveis vinculados</h3><span id="properties-count" class="ax-workspace-badge"></span><button id="add-properties" type="button" class="ax-btn" aria-label="Relacionar imóveis">＋</button></div>
+          <details id="property-panel" hidden>
+            <summary class="ax-btn">Fechar busca</summary>
+            <form id="property-search-form" class="ax-record-list">
+              <label for="property-purpose">Finalidade</label><select id="property-purpose" class="ax-control"><option value="venda">Venda</option><option value="locacao">Locação</option></select>
+              <label for="property-query">Código, nome ou localização</label><input id="property-query" class="ax-control" maxlength="100" type="search">
+              <button class="ax-btn" type="submit">Buscar imóveis</button>
+            </form>
+            <p id="property-search-feedback" role="status" class="ax-workspace-muted"></p>
+            <form id="property-form" class="ax-record-list" hidden>
+              <div id="property-options" class="ax-record-list"></div>
+              <label><input type="checkbox" required> Confirmo o vínculo com <strong id="property-contact"></strong>.</label>
+              <button class="ax-btn ax-btn--primary" type="submit">Relacionar selecionados</button>
+            </form>
+          </details>
           <div id="properties" class="ax-record-list"></div>
         </section>
       </div>

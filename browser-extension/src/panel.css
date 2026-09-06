@@ -32,3 +32,12 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension #tasks-title { color: #b45309; }
 .um-extension #appointments-title { color: #365f8f; }
 .um-extension #labels-title { color: #0369a1; }
+
+.um-extension #appointment-panel:not([open]), .um-extension #label-panel:not([open]) { display: none; }
+.um-extension #appointment-panel[open] form, .um-extension #label-panel[open] form { margin-top: 10px; }
+
+.um-extension #property-panel:not([open]) { display: none; }
+.um-extension #property-panel[open] form { margin-top: 10px; }
+
+.um-extension #status-panel:not([open]) { display: none; }
+.um-extension #status-panel[open] form { margin-top: 10px; }

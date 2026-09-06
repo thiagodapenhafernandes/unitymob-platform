@@ -30,6 +30,22 @@ module Api
           Current.set(tenant: grant.tenant, admin_user: grant.admin_user, &block)
         end
 
+        def available_status_stages(lead)
+          return [] unless lead.lead_pipeline_id
+          scope = grant.tenant.lead_pipeline_stages.where(lead_pipeline_id: lead.lead_pipeline_id).active.ordered.includes(:policy)
+          current = lead.lead_pipeline_stage
+          if current && current.transitions.exists?
+            scope = scope.where(id: current.transitions.select(:next_stage_id))
+          end
+          scope.select { |stage| stage.visible_to_admin_user?(grant.admin_user) }
+        end
+
+        def property_scope
+          grant.tenant.habitations.shareable_commercial_selection.where(
+            "habitations.intake_origin IS NULL OR habitations.intake_origin != :origin OR habitations.intake_status IN (:statuses)",
+            origin: Habitation::INTAKE_ORIGIN_BROKER, statuses: Habitation::CATALOG_VISIBLE_INTAKE_STATUSES)
+        end
+
         def lead_scope
           scope = grant.tenant.leads
           return scope if grant.admin_user.owns_all?(:leads)
