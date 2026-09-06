@@ -22,7 +22,7 @@ global.chrome = {
   } },
   action: { onClicked: { addListener() {} } },
   sidePanel: { async setOptions() {} }, permissions: { async contains() { return true; } },
-  tabs: { onUpdated: { addListener(fn) { tabUpdated = fn; } }, async get(id) { return { id, active: true, url: "https://web.whatsapp.com/" }; }, async create() {} },
+  tabs: { onCreated: { addListener() {} }, onUpdated: { addListener(fn) { tabUpdated = fn; } }, async get(id) { return { id, active: true, url: "https://web.whatsapp.com/" }; }, async create() {} },
   scripting: { async executeScript() { return [{ frameId: 0, result: { ...projection } }]; } }
 };
 await import("../src/background.js");
@@ -183,15 +183,15 @@ test("write bodies discard arbitrary owner, tenant, routing and contact metadata
 });
 
 
-test("installation enables the global panel and previously disabled tabs", async () => {
+test("installation limits the panel to WhatsApp and navigation away disables it", async () => {
   const options = [];
   chrome.sidePanel.setPanelBehavior = async () => {};
   chrome.sidePanel.setOptions = async value => { options.push(value); };
   chrome.tabs.query = async () => [{ id: 1, url: "https://web.whatsapp.com/" }, { id: 2, url: "https://youtube.com/" }];
   await installed();
-  assert.deepEqual(options, [{ path: "panel.html", enabled: true }, { tabId: 1, path: "panel.html", enabled: true }, { tabId: 2, path: "panel.html", enabled: true }]);
+  assert.deepEqual(options, [{ path: "panel.html", enabled: true }, { tabId: 1, path: "panel.html", enabled: true }, { tabId: 2, path: "panel.html", enabled: false }]);
   tabUpdated(1, { url: "https://youtube.com/" }, { id: 1, url: "https://youtube.com/" });
-  assert.deepEqual(options.at(-1), { tabId: 1, path: "panel.html", enabled: true });
+  assert.deepEqual(options.at(-1), { tabId: 1, path: "panel.html", enabled: false });
 });
 
 

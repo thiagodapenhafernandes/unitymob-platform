@@ -14,7 +14,7 @@ const store = get => ({async setAccessLevel(){}, async get(key){return {[key]:ge
 global.chrome = {
  runtime:{id:"a".repeat(32),getURL:path=>`chrome-extension://${"a".repeat(32)}/${path}`,onInstalled:{addListener(){}},onStartup:{addListener(){}},onMessage:{addListener(fn){listener=fn;}}},
  storage:{local:store(()=>local),session:store(()=>session)},
- tabs:{onUpdated:{addListener(){}}},action:{onClicked:{addListener(){}}},permissions:{async contains(){return true;}},
+ tabs:{onCreated:{addListener(){}},onUpdated:{addListener(){}}},action:{onClicked:{addListener(){}}},permissions:{async contains(){return true;}},
  identity:{getRedirectURL:()=>`https://${"a".repeat(32)}.chromiumapp.org/unitymob`,async launchWebAuthFlow({url}){
    calls.push({url}); const state=new URL(url).searchParams.get("challenge");
    return `${chrome.identity.getRedirectURL()}?state=${state}&login_token=signed&issuer=${encodeURIComponent(issuer)}`;

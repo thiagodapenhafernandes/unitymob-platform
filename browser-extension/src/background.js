@@ -14,6 +14,7 @@ async function configurePanels() {
 }
 chrome.runtime.onInstalled.addListener(configurePanels);
 chrome.runtime.onStartup.addListener(configurePanels);
+chrome.tabs.onCreated.addListener(tab => { void configurePanel({ ...tab, url: tab.pendingUrl || tab.url }).catch(() => {}); });
 chrome.tabs.onUpdated.addListener((id, change, tab) => {
   if (change.url || change.status === "complete") void configurePanel(tab).catch(() => {});
 });

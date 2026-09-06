@@ -90,6 +90,10 @@ function renderAccount() {
   $("discovery-accounts").hidden = !!me || discoveryStep !== "accounts";
   $("discovery-restart").hidden = !!me || !discoveryOrigin || discoveryStep === "email";
   $("connect-form").querySelector("button").disabled = pairing;
+  $("discovery-restart").textContent = discoveryStep === "accounts" ? "Usar outro e-mail" : "Corrigir e-mail ou solicitar novo código";
+  $("discovery-restart").disabled = pairing;
+  $("discovery-accounts").querySelectorAll("button").forEach(button => { button.disabled = pairing; });
+  $("connection-status").hidden = !me && discoveryStep === "accounts" && !pairing;
   $("account").hidden = !me;
   $("login-panel").hidden = !!me;
   if (!me) closeAccountMenu();
@@ -458,12 +462,17 @@ $("discovery-code-form").addEventListener("submit", async event => {
   try {
     const result = await request("discovery_verify", { code: $("discovery-code").value });
     discoveryStep = "accounts"; $("discovery-accounts").replaceChildren();
-    const text = document.createElement("p"); text.textContent = result.accounts.length ? (result.accounts.length === 1 ? "Sua conta foi localizada:" : "Escolha a imobiliária para este atendimento:") : "Nenhuma conta ativa encontrada. Confira o e-mail ou solicite a atualização do seu cadastro.";
+    const text = document.createElement("p"); text.textContent = result.accounts.length ? (result.accounts.length === 1 ? "Conta encontrada. Continue para entrar:" : "Escolha a imobiliária em que deseja entrar:") : "Nenhuma conta ativa encontrada. Confira o e-mail ou solicite a atualização do seu cadastro.";
     $("discovery-accounts").append(text);
     for (const account of result.accounts) {
-      const choice = document.createElement("button"); choice.type = "button"; choice.className = "ax-btn";
-      choice.textContent = `Entrar em ${account.name} · ${new URL(account.origin).hostname}`;
-      choice.addEventListener("click", () => connectAccount(account)); $("discovery-accounts").append(choice);
+      const card = document.createElement("div"); card.className = "ax-operational-panel";
+      const body = document.createElement("div"); body.className = "ax-operational-panel__body ax-record-list";
+      const name = document.createElement("strong"); name.textContent = account.name;
+      const domain = document.createElement("small"); domain.textContent = new URL(account.origin).hostname;
+      const choice = document.createElement("button"); choice.type = "button"; choice.className = "ax-btn ax-btn--primary";
+      choice.textContent = `Entrar em ${account.name}`;
+      choice.addEventListener("click", () => connectAccount(account));
+      body.append(name, domain, choice); card.append(body); $("discovery-accounts").append(card);
     }
     renderAccount();
   } catch (error) { feedback(error); }
