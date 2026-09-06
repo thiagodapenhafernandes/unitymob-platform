@@ -22,11 +22,11 @@ test("toolbar reuses the active WhatsApp tab", async () => {
   assert.deepEqual(calls, [{ windowId: 3 }]);
 });
 
-test("previously disabled tabs can display the global panel", async () => {
+test("panel is restricted to WhatsApp, including after navigating away and back", async () => {
   const calls = [];
   global.chrome = { sidePanel: { async setOptions(options) { calls.push(options); } } };
   for (const url of ["https://web.whatsapp.com/", "https://youtube.com/", "chrome://newtab/", "https://web.whatsapp.com/"]) await configurePanel({ id: 9, url });
-  assert.deepEqual(calls.map(call => call.enabled), [true, true, true, true]);
+  assert.deepEqual(calls.map(call => call.enabled), [true, false, false, true]);
 });
 
 

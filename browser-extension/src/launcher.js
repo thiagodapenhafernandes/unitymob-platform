@@ -9,7 +9,7 @@ export async function openWhatsApp(windowId) {
 
 export async function configurePanel(tab) {
   if (!Number.isInteger(tab?.id)) return;
-  await chrome.sidePanel.setOptions({ tabId: tab.id, path: "panel.html", enabled: true });
+  await chrome.sidePanel.setOptions({ tabId: tab.id, path: "panel.html", enabled: isWhatsAppTab(tab) });
 }
 
 export async function openFromToolbar(tab) {
