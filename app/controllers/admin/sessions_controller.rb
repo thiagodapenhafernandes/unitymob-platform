@@ -118,7 +118,9 @@ class Admin::SessionsController < Devise::SessionsController
   end
   
   def after_sign_in_path_for(resource)
-    extension_login = session.delete(:browser_extension_login_return)&.with_indifferent_access
+    extension_login = cookies.encrypted[:browser_extension_login_return]&.with_indifferent_access
+    cookies.delete(:browser_extension_login_return)
+    session.delete(:browser_extension_login_return)
     if extension_login && extension_login[:expires_at].to_i > Time.current.to_i &&
         extension_login[:challenge].to_s.match?(/\A[0-9a-f]{64}\z/) && BrowserExtensionGrant.allowed_extension?(extension_login[:extension_id])
       return new_admin_browser_extension_connection_path(challenge: extension_login[:challenge], extension_id: extension_login[:extension_id])

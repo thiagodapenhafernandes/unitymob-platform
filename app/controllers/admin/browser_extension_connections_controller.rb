@@ -10,13 +10,20 @@ class Admin::BrowserExtensionConnectionsController < Admin::BaseController
       return head :bad_request
     end
 
-    session[:browser_extension_pairing] = { challenge: @challenge, extension_id: @extension_id, expires_at: 5.minutes.from_now.to_i }
+    cookies.encrypted[:browser_extension_pairing] = {
+      value: { challenge: @challenge, extension_id: @extension_id, expires_at: 5.minutes.from_now.to_i },
+      expires: 5.minutes.from_now, httponly: true, secure: request.ssl?, same_site: :lax
+    }
+    session.delete(:browser_extension_pairing)
+    cookies.delete(:browser_extension_login_return)
     session.delete(:browser_extension_login_return)
     @page_title = "Conectar extensão Unitymob"
   end
 
   def create
-    pairing = session.delete(:browser_extension_pairing)&.with_indifferent_access
+    pairing = cookies.encrypted[:browser_extension_pairing]&.with_indifferent_access
+    cookies.delete(:browser_extension_pairing)
+    session.delete(:browser_extension_pairing)
     unless pairing && pairing[:expires_at].to_i > Time.current.to_i &&
         pairing[:challenge] == params[:challenge] && pairing[:extension_id] == params[:extension_id] &&
         BrowserExtensionGrant.allowed_extension?(pairing[:extension_id])
@@ -57,7 +64,11 @@ class Admin::BrowserExtensionConnectionsController < Admin::BaseController
     extension_id = params[:extension_id].to_s
     return unless challenge.match?(/\A[0-9a-f]{64}\z/) && BrowserExtensionGrant.allowed_extension?(extension_id)
 
-    session[:browser_extension_login_return] = { challenge: challenge, extension_id: extension_id, expires_at: 5.minutes.from_now.to_i }
+    session.delete(:browser_extension_login_return)
+    cookies.encrypted[:browser_extension_login_return] = {
+      value: { challenge: challenge, extension_id: extension_id, expires_at: 5.minutes.from_now.to_i },
+      expires: 5.minutes.from_now, httponly: true, secure: request.ssl?, same_site: :lax
+    }
   end
 
   def require_completed_login!
