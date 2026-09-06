@@ -558,6 +558,13 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).not_to include(rental.id, unavailable.id, foreign.id)
     post "/api/v1/browser_extension/leads/#{lead.id}/properties/search", params: {q: rental.codigo, purpose: "locacao"}, headers: headers, as: :json
     expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).to eq([rental.id])
+    expect(response.parsed_body.fetch("properties").first).to include(
+      "bedrooms" => rental.dormitorios_qtd, "suites" => rental.suites_qtd, "parking" => rental.vagas_qtd,
+      "condo_cents" => rental.valor_condominio_cents, "iptu_cents" => rental.valor_iptu_cents,
+      "rental" => true, "city" => rental.cidade, "neighborhood" => rental.bairro)
+    expect(response.parsed_body.fetch("properties").first).to have_key("area")
+    expect(response.parsed_body.fetch("properties").first.fetch("card_title")).to be_present
+
     lead.property_interests.create!(habitation: sale, tenant: tenant)
     lead.update!(property_id: rental.id)
     post "/api/v1/browser_extension/leads/#{lead.id}/properties/search", params: {q: sale.codigo, purpose: "venda"}, headers: headers, as: :json

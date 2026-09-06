@@ -48,8 +48,13 @@ module Api
           end
           linked_ids = (lead.property_interests.pluck(:habitation_id) + [lead.property_id]).compact
           rows = scope.where.not(id: linked_ids).includes(:address).order(updated_at: :desc).limit(21).to_a
+          development_names = grant.tenant.habitations.where(codigo: rows.map(&:codigo_empreendimento).compact_blank)
+            .pluck(:codigo, :nome_empreendimento).to_h
           render json: { properties: rows.first(20).map { |p| {id: p.id, code: p.codigo, title: p.display_title,
             city: p.cidade, neighborhood: p.bairro, price_cents: purpose == "venda" ? p.valor_venda_cents : p.valor_locacao_cents,
+            card_title: p.nome_empreendimento.presence || development_names[p.codigo_empreendimento].presence || [p.categoria.presence || "Imóvel", p.bairro.presence || p.cidade.presence].compact.join(" em "),
+            bedrooms: p.dormitorios_qtd, suites: p.suites_qtd, parking: p.vagas_qtd, area: p.public_area_m2,
+            condo_cents: p.valor_condominio_cents, iptu_cents: p.valor_iptu_cents, rental: purpose == "locacao",
             linked: linked_ids.include?(p.id)} }, more: rows.length > 20 }
         end
 
@@ -57,7 +62,7 @@ module Api
           lead = lead_scope.find(params[:id])
           property_ids = lead.property_interests.limit(30).pluck(:habitation_id)
           property_ids << lead.property_id if lead.property_id
-          properties = grant.tenant.habitations.where(id: property_ids.uniq).includes(:address).limit(30)
+          properties = grant.tenant.habitations.where(id: property_ids.uniq).includes(:address, photos_attachments: :blob).limit(30)
           development_names = grant.tenant.habitations.where(codigo: properties.map(&:codigo_empreendimento).compact_blank)
             .pluck(:codigo, :nome_empreendimento).to_h
           appointments = proposals = []
@@ -99,7 +104,7 @@ module Api
             property_categories: property_scope.where.not(categoria: [nil, ""]).distinct.order(:categoria).pluck(:categoria),
             property_quick_filters: HabitationQuickFilters::QUICK_FILTERS,
             public_origin: grant.tenant.public_base_url(fallback_base_url: request.base_url),
-            properties: properties.map { |property| { removable: lead.property_id != property.id, public_path: property.exibir_no_site_flag && Habitation::PUBLIC_STATUSES.include?(property.status) ? property_path(property.codigo) : nil, id: property.id, code: property.codigo, title: property.display_title,
+            properties: properties.map { |property| { photo_urls: property.public_image_sources.filter_map { |source| Storage::PublicCdnImageUrl.resolve(source) }.first(100), removable: lead.property_id != property.id, public_path: property.exibir_no_site_flag && Habitation::PUBLIC_STATUSES.include?(property.status) ? property_path(property.codigo) : nil, id: property.id, code: property.codigo, title: property.display_title,
               card_title: property.nome_empreendimento.presence || development_names[property.codigo_empreendimento].presence || [property.categoria.presence || "Imóvel", property.bairro.presence || property.cidade.presence].compact.join(" em "),
               bedrooms: property.dormitorios_qtd, suites: property.suites_qtd, parking: property.vagas_qtd, area: property.public_area_m2,
               price_cents: property.valor_venda_cents.to_i.positive? ? property.valor_venda_cents : property.valor_locacao_cents,

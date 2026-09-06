@@ -86,7 +86,7 @@ function clearLead() {
 }
 
 function clearContext() {
-  revision++; context = null; editedForms.clear(); clearLead(); $("search-form").hidden = true; $("phone").value = "";
+  revision++; context = null; closePropertyGallery(); editedForms.clear(); clearLead(); $("search-form").hidden = true; $("phone").value = "";
 }
 
 function feedback(error) {
@@ -177,6 +177,7 @@ async function fetchLead(id, version) {
   $("lead-phone").textContent = resolvedPhone ? `+${resolvedPhone.replace(/\D/g, "")}` : "Telefone não informado";
   $("lead-name").textContent = result.lead.name;
   $("lead-status").textContent = result.lead.status;
+  $("lead-status").dataset.tone = ({"Em Atendimento": "success", "Concluido": "success", "Novo": "info", "Aguardando Aceite": "warning", "Represado": "warning", "Descartado": "danger"})[result.lead.status] || "neutral";
   $("status-panel").hidden = !me.capabilities.change_status;
   $("change-status").hidden = !me.capabilities.change_status;
   $("status-contact").textContent = `${result.lead.name} · ${resolvedPhone}`;
@@ -199,20 +200,16 @@ async function fetchLead(id, version) {
   for (const property of result.properties) {
     const row = document.createElement("div"); row.className = "ax-property-interest ax-property-interest--detail";
     const check = document.createElement("input"); check.type = "checkbox"; check.value = property.id; check.disabled = !property.public_path; check.title = property.public_path ? "Selecionar para enviar" : "Imóvel sem link público disponível para envio";
-    const title = document.createElement("strong"); title.className = "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
-    const specs = document.createElement("div"); specs.className = "ax-property-interest__specs";
-    for (const [value, label] of [[property.bedrooms, "Dorm."], [property.suites, "Suítes"], [property.parking, "Vagas"], [property.area == null ? null : Number(property.area).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1}), "m²"]]) {
-      const chip = document.createElement("span");
-      const glyph = document.createElement("i"); glyph.className = `bi bi-${({"Dorm.": "door-open", "Suítes": "key", "Vagas": "car-front", "m²": "arrows-angle-expand"})[label]}`; glyph.setAttribute("aria-hidden", "true");
-      chip.append(glyph, document.createTextNode(`${value ?? "—"} ${label}`)); chip.title = `${value ?? "Não informado"} ${label}`; specs.append(chip);
-    }
-    const money = value => value == null ? "—" : new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: value === 0 ? 0 : 2}).format(Number(value) / 100);
-    const financial = document.createElement("div"); financial.className = "ax-property-interest__financial";
-    for (const [tag, text] of [["strong", `${money(property.price_cents)}${property.rental ? "/mês" : ""}`], ["span", `Cond. ${money(property.condo_cents)}`], ["span", `IPTU ${money(property.iptu_cents)}`]]) {
-      const part = document.createElement(tag); part.textContent = text; part.title = text; financial.append(part);
-    }
     check.setAttribute("aria-label", `Selecionar ${property.code} para enviar`);
-    row.append(check, title, specs, financial);
+    const content = propertyCardContent(property);
+    const photos = (property.photo_urls || []).filter(url => { try { return ["https:", "http:"].includes(new URL(url).protocol); } catch { return false; } });
+    if (photos.length) {
+      const link = document.createElement("button"); link.type = "button"; link.className = "ax-property-photos"; link.textContent = "Ver fotos";
+      link.setAttribute("aria-label", `Ver fotos de ${property.code} · ${property.card_title || property.title}`);
+      link.onclick = () => openPropertyGallery(photos, `${property.code} · ${property.card_title || property.title}`);
+      content[0].append(link); content[0].classList.add("ax-property-interest__title--photos");
+    }
+    row.append(check, ...content);
     if (property.removable && me.capabilities.link_properties) {
       const remove = document.createElement("button"); remove.type = "button"; remove.className = "ax-property-interest__remove"; remove.textContent = "×";
       remove.setAttribute("aria-label", `Remover ${property.code} dos interesses`);
@@ -274,21 +271,15 @@ $("property-search-form").addEventListener("submit", async event => {
     if (version !== revision || searchVersion !== propertySearchVersion) return;
     const available = result.properties.filter(property => !property.linked);
     for (const property of available) {
-      const option = document.createElement("label"); option.className = "ax-property-option";
+      const option = document.createElement("label"); option.className = "ax-property-option ax-property-option--detail";
       const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id));
       input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`; };
-      const title = document.createElement("strong"); title.textContent = [property.code, property.title].filter(Boolean).join(" · "); title.title = title.textContent;
-      input.setAttribute("aria-label", `Selecionar ${property.code} · ${property.title}`);
-      const meta = document.createElement("span"); meta.className = "ax-workspace-muted";
-      const price = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(Number(property.price_cents) / 100);
-      const pin = document.createElement("i"); pin.className = "bi bi-geo-alt"; pin.setAttribute("aria-hidden", "true");
-      meta.append(pin, document.createTextNode([property.neighborhood, property.city].filter(Boolean).join(" · ") || "Localização não informada"));
-      const amount = document.createElement("span"); amount.className = "ax-property-option__price"; amount.textContent = property.price_cents == null ? "Valor sob consulta" : price;
-      option.append(input, title, meta, amount); $("property-options").append(option);
+      input.setAttribute("aria-label", `Selecionar ${property.code} · ${property.card_title || property.title}`);
+      option.append(input, ...propertyCardContent(property)); $("property-options").append(option);
     }
     $("property-form").hidden = !available.length && propertySelection.size === 0;
     $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`;
-    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : result.more ? "Mais de 20 imóveis encontrados. Refine a busca." : `${available.length} imóvel(is) disponível(is). Selecione para relacionar.`;
+    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : result.more ? "Mostrando 20 imóveis. Refine os filtros para ver outras opções." : `${available.length} imóvel(is) disponível(is). Selecione para relacionar.`;
   } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { $("property-search-feedback").textContent = "Não foi possível buscar os imóveis."; feedback(error); } }
 });
 
@@ -644,3 +635,42 @@ $("share-properties").addEventListener("click", async () => {
     $("share-properties").textContent = "Enviar selecionados no WhatsApp"; $("share-properties").removeAttribute("aria-busy");
   }
 });
+
+function propertyCardContent(property) {
+    const title = document.createElement("strong"); title.className = "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
+    const specs = document.createElement("div"); specs.className = "ax-property-interest__specs";
+    for (const [value, label] of [[property.bedrooms, "Dorm."], [property.suites, "Suítes"], [property.parking, "Vagas"], [property.area == null ? null : Number(property.area).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1}), "m²"]]) {
+      const chip = document.createElement("span");
+      const glyph = document.createElement("i"); glyph.className = `bi bi-${({"Dorm.": "door-open", "Suítes": "key", "Vagas": "car-front", "m²": "arrows-angle-expand"})[label]}`; glyph.setAttribute("aria-hidden", "true");
+      chip.append(glyph, document.createTextNode(`${value ?? "—"} ${label}`)); chip.title = `${value ?? "Não informado"} ${label}`; specs.append(chip);
+    }
+    const money = value => value == null ? "—" : new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: value === 0 ? 0 : 2}).format(Number(value) / 100);
+    const financial = document.createElement("div"); financial.className = "ax-property-interest__financial";
+    for (const [tag, text] of [["strong", `${money(property.price_cents)}${property.rental ? "/mês" : ""}`], ["span", `Cond. ${money(property.condo_cents)}`], ["span", `IPTU ${money(property.iptu_cents)}`]]) {
+      const part = document.createElement(tag); part.textContent = text; part.title = text; financial.append(part);
+    }
+    const location = document.createElement("span"); location.className = "ax-property-interest__location";
+    const pin = document.createElement("i"); pin.className = "bi bi-geo-alt"; pin.setAttribute("aria-hidden", "true");
+    location.append(pin, document.createTextNode([property.neighborhood, property.city].filter(Boolean).join(" · ") || "Localização não informada")); location.title = location.textContent;
+    return [title, location, specs, financial];
+}
+
+let propertyGallery;
+function closePropertyGallery() { if (propertyGallery?.open) propertyGallery.close(); }
+function openPropertyGallery(photos, title) {
+  propertyGallery?.remove();
+  const dialog = document.createElement("dialog"); propertyGallery = dialog; dialog.className = "ax-property-gallery";
+  const heading = document.createElement("strong"); heading.id = "property-gallery-title"; heading.textContent = title;
+  dialog.setAttribute("aria-labelledby", heading.id);
+  const close = document.createElement("button"); close.type = "button"; close.textContent = "Fechar"; close.onclick = () => dialog.close();
+  const image = document.createElement("img"); image.referrerPolicy = "no-referrer";
+  const feedback = document.createElement("p"); feedback.setAttribute("role", "status");
+  const nav = document.createElement("div"); const prev = document.createElement("button"), next = document.createElement("button"), count = document.createElement("span");
+  prev.type = next.type = "button"; prev.textContent = "Anterior"; next.textContent = "Próxima"; count.setAttribute("aria-live", "polite");
+  let index = 0;
+  const render = () => { feedback.textContent = "Carregando foto…"; image.hidden = true; image.alt = `${title} — foto ${index + 1}`; image.src = photos[index]; count.textContent = `${index + 1} / ${photos.length}`; prev.disabled = index === 0; next.disabled = index === photos.length - 1; };
+  image.onload = () => { feedback.textContent = ""; image.hidden = false; }; image.onerror = () => { feedback.textContent = "Não foi possível carregar esta foto. Tente a próxima."; };
+  prev.onclick = () => { if (index > 0) { index--; render(); } }; next.onclick = () => { if (index < photos.length - 1) { index++; render(); } };
+  dialog.addEventListener("keydown", event => { if (event.key === "ArrowLeft") { event.preventDefault(); prev.click(); } if (event.key === "ArrowRight") { event.preventDefault(); next.click(); } });
+  nav.append(prev, count, next); dialog.append(heading, close, image, feedback, nav); document.body.append(dialog); dialog.showModal(); render();
+}
