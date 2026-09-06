@@ -52,7 +52,7 @@ async function crmFetch(origin, path, { token, body, method = "GET" } = {}) {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const known = ["terms_required", "permission_denied", "invalid_fields", "request_conflict", "account_mismatch"];
+    const known = ["terms_required", "permission_denied", "invalid_fields", "request_conflict", "account_mismatch", "lead_changed"];
     throw new Error(known.includes(body.error) ? body.error : `http_${response.status}`);
   }
   if (response.status === 204) return null;
@@ -190,7 +190,8 @@ async function handle(message) {
       return result;
     }
     case "resolve":
-    case "lead": {
+    case "lead":
+    case "search_properties": {
       if (!(await session()).termsAccepted) throw new Error("terms_required");
       const context = await snapshot(message.tabId);
       if (context.state !== "ready" || contextKey(context) !== message.contextKey) throw new Error("context_changed");
@@ -200,6 +201,9 @@ async function handle(message) {
         const phone = message.phone || context.phone;
         if (typeof phone !== "string" || !/^\+?\d[\d ()-]{6,38}$/.test(phone)) throw new Error("invalid_phone");
         result = await authenticatedFetch(connection, "leads/resolve", { method: "POST", body: { contact_phone: phone } });
+      } else if (message.type === "search_properties") {
+        if (typeof message.query !== "string" || message.query.length > 100 || !["venda", "locacao"].includes(message.purpose)) throw new Error("invalid_fields");
+        result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose}});
       } else {
         result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
       }
@@ -208,7 +212,11 @@ async function handle(message) {
     }
     case "create_lead":
     case "create_note":
-    case "create_task": {
+    case "create_task":
+    case "create_appointment":
+    case "set_labels":
+    case "link_properties":
+    case "change_status": {
       const connection = await session();
       if (!connection.termsAccepted) throw new Error("terms_required");
       if (message.confirmed !== true) throw new Error("invalid_fields");
@@ -219,7 +227,11 @@ async function handle(message) {
       const definitions = {
         create_lead: { path: "leads", key: "lead", fields: ["name", "email"] },
         create_note: { suffix: "notes", key: "note", fields: ["body"] },
-        create_task: { suffix: "tasks", key: "task", fields: ["title", "kind", "priority", "due_at"] }
+        create_task: { suffix: "tasks", key: "task", fields: ["title", "kind", "priority", "due_at"] },
+        create_appointment: { suffix: "appointments", key: "appointment", fields: ["title", "kind", "starts_at", "ends_at", "location"] },
+        set_labels: { suffix: "labels", key: "labels", fields: ["ids"] },
+        link_properties: { suffix: "properties", key: "properties", fields: ["ids"] },
+        change_status: { suffix: "status", key: "status", fields: ["stage_id", "expected_stage_id"] }
       };
       const operation = definitions[message.type];
       operation.path ||= `leads/${leadId(message.leadId)}/${operation.suffix}`;
@@ -262,7 +274,7 @@ async function handle(message) {
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (!isPanelSender(sender, chrome.runtime)) return false;
   const authenticationChange = ["discovery_start", "discovery_verify", "connect", "pair", "disconnect", "accept_terms", "me"].includes(message?.type);
-  const writing = ["create_lead", "create_note", "create_task"].includes(message?.type);
+  const writing = ["create_lead", "create_note", "create_task", "create_appointment", "set_labels", "link_properties", "change_status"].includes(message?.type);
   const operation = authenticationChange ? authenticationQueue.then(() => handle(message)) :
     writing ? writeQueue.then(() => handle(message)) : handle(message);
   if (writing) writeQueue = operation.catch(() => {});

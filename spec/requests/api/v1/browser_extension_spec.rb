@@ -114,7 +114,7 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response.parsed_body.fetch("proposals").map { |row| row.fetch("status") }).to eq(["Rascunho"])
     expect(response.body).not_to include("Agenda de outra equipe", "public_token")
     expect(response.parsed_body.fetch("tasks_count")).to eq(1)
-    expect(response.parsed_body.fetch("lead").keys).to contain_exactly("id", "name", "status", "owner_name", "origin", "created_at")
+    expect(response.parsed_body.fetch("lead").keys).to contain_exactly("id", "name", "status", "stage_id", "owner_name", "origin", "created_at")
     expect(response.parsed_body.fetch("properties").map { |row| row.fetch("id") }).to eq([property.id])
     expect(response.parsed_body.fetch("tasks").map { |row| row.fetch("title") }).to eq(["Retornar"])
     expect(response.body).not_to include("internal note not serialized", "Outra equipe")
@@ -442,6 +442,149 @@ RSpec.describe "Browser extension API", type: :request do
     expect(rows.first).to include("owner_name" => own.admin_user.name, "origin" => "C2S", "created_at" => own.created_at.iso8601)
     get "/api/v1/browser_extension/leads/#{foreign.id}", headers: headers
     expect(response).to have_http_status(:not_found)
+  end
+
+  it "creates an agenda appointment once with trusted ownership and an audit event" do
+    lead = make_lead
+    attrs = operation_params(appointment: {title: "Visitar imóvel", kind: "visita", starts_at: 1.hour.from_now.iso8601,
+      ends_at: 2.hours.from_now.iso8601, location: "Recepção", admin_user_id: 999, tenant_id: 999})
+    expect { post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs, headers: headers, as: :json }.to change(Appointment, :count).by(1)
+    expect(response).to have_http_status(:ok)
+    appointment = Appointment.find(response.parsed_body.fetch("appointment_id"))
+    expect(appointment).to have_attributes(admin_user_id: user.id, tenant_id: tenant.id, lead_id: lead.id, status: "agendado")
+    travel 3.hours do
+      expect { post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs, headers: headers, as: :json }.not_to change(Appointment, :count)
+      expect(response).to have_http_status(:ok)
+    end
+    expect(lead.activities.where(kind: "appointment_created").count).to eq(1)
+  end
+
+  it "rejects invalid agenda times, missing confirmation, unauthorized leads and permissions" do
+    lead = make_lead
+    attrs = operation_params(appointment: {title: "Visita", kind: "visita", starts_at: 2.hours.from_now.iso8601, ends_at: 1.hour.from_now.iso8601})
+    post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    attrs[:appointment][:ends_at] = 3.hours.from_now.iso8601
+    post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs.merge(confirmed: false), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    other = make_lead(owner: create(:admin_user, tenant: tenant))
+    post "/api/v1/browser_extension/leads/#{other.id}/appointments", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    allow_any_instance_of(AdminUser).to receive(:can?).and_call_original
+    allow_any_instance_of(AdminUser).to receive(:can?).with(:manage, :comercial).and_return(false)
+    post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "returns the private label catalog with colors and applies only the user's labels idempotently" do
+    lead = make_lead
+    own = user.lead_labels.create!(tenant: tenant, name: "Quente", color: "#123456")
+    colleague = create(:admin_user, tenant: tenant)
+    private_label = colleague.lead_labels.create!(tenant: tenant, name: "Privada", color: "purple")
+    lead.lead_labelings.create!(tenant: tenant, lead_label: private_label)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("label_catalog")).to eq([{ "id" => own.id, "name" => "Quente", "color" => "#123456" }])
+    expect(response.parsed_body.fetch("labels")).to eq([])
+    attrs = operation_params(labels: {ids: own.id.to_s})
+    2.times { post "/api/v1/browser_extension/leads/#{lead.id}/labels", params: attrs, headers: headers, as: :json; expect(response).to have_http_status(:ok) }
+    expect(lead.lead_labelings.pluck(:lead_label_id)).to contain_exactly(own.id, private_label.id)
+    post "/api/v1/browser_extension/leads/#{lead.id}/labels", params: operation_params(labels: {ids: ""}), headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(lead.lead_labelings.pluck(:lead_label_id)).to eq([private_label.id])
+    post "/api/v1/browser_extension/leads/#{lead.id}/labels", params: operation_params(labels: {ids: private_label.id.to_s}), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "searches sale and rental properties within the tenant and excludes unavailable listings" do
+    lead = make_lead
+    sale = create(:habitation, tenant: tenant, status: "Venda", valor_venda_cents: 50000000)
+    rental = create(:habitation, tenant: tenant, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 250000)
+    unavailable = create(:habitation, tenant: tenant)
+    unavailable.update_columns(status: "Vendido terceiros")
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra imobiliária", slug: "other-#{SecureRandom.hex(4)}"))
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties/search", params: {q: "", purpose: "venda"}, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).to include(sale.id)
+    expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).not_to include(rental.id, unavailable.id, foreign.id)
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties/search", params: {q: rental.codigo, purpose: "locacao"}, headers: headers, as: :json
+    expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).to eq([rental.id])
+    other_lead = make_lead(owner: create(:admin_user, tenant: tenant))
+    post "/api/v1/browser_extension/leads/#{other_lead.id}/properties/search", params: {q: "", purpose: "venda"}, headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "links selected properties once without replacing the primary property and rejects foreign IDs atomically" do
+    lead = make_lead
+    first = create(:habitation, tenant: tenant)
+    second = create(:habitation, tenant: tenant)
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra imobiliária", slug: "other-#{SecureRandom.hex(4)}"))
+    lead.update!(property_id: first.id)
+    attrs = operation_params(properties: {ids: "#{first.id},#{second.id}"})
+    2.times do
+      post "/api/v1/browser_extension/leads/#{lead.id}/properties", params: attrs, headers: headers, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+    expect(lead.property_interests.pluck(:habitation_id)).to contain_exactly(first.id, second.id)
+    expect(lead.reload.property_id).to eq(first.id)
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties", params: operation_params(properties: {ids: "#{first.id},#{foreign.id}"}), headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    expect(lead.property_interests.count).to eq(2)
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties", params: operation_params(properties: {ids: ""}), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "changes the lead stage with an audit trail once and keeps retries idempotent" do
+    lead = make_lead
+    stage = lead.lead_pipeline.stages.create!(tenant: tenant, name: "Contato confirmado", active: true)
+    lead.lead_pipeline_stage.transitions.destroy_all
+    lead.lead_pipeline_stage.transitions.create!(tenant: tenant, next_stage: stage)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("status_options").map { |row| row["id"] }).to eq([stage.id])
+    attrs = operation_params(status: {stage_id: stage.id.to_s, expected_stage_id: lead.lead_pipeline_stage_id.to_s})
+    previous = lead.status
+    2.times do
+      post "/api/v1/browser_extension/leads/#{lead.id}/status", params: attrs, headers: headers, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+    expect(lead.reload).to have_attributes(status: stage.name, lead_pipeline_stage_id: stage.id)
+    expect(lead.activities.where(kind: "status_change").count).to eq(1)
+    expect(lead.activities.find_by(kind: "status_change").metadata).to include("from" => previous, "to" => stage.name)
+  end
+
+  it "rejects stale stages and stages outside the permitted transitions, pipeline and tenant" do
+    lead = make_lead
+    stage = lead.lead_pipeline.stages.create!(tenant: tenant, name: "Próximo contato", active: true)
+    unavailable = lead.lead_pipeline.stages.create!(tenant: tenant, name: "Não permitido", active: true)
+    lead.lead_pipeline_stage.transitions.create!(tenant: tenant, next_stage: stage)
+    attrs = operation_params(status: {stage_id: stage.id.to_s, expected_stage_id: "99999999"})
+    post "/api/v1/browser_extension/leads/#{lead.id}/status", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(response.parsed_body["error"]).to eq("lead_changed")
+    other = tenant.lead_pipelines.create!(name: "Outro funil", kind: "sale")
+    other_stage = other.stages.create!(tenant: tenant, name: "Nova etapa", active: true)
+    foreign_tenant = Tenant.create!(name: "Status externo", slug: "status-#{SecureRandom.hex(4)}")
+    foreign_pipeline = foreign_tenant.lead_pipelines.create!(name: "Funil externo", kind: "sale")
+    foreign = foreign_pipeline.stages.create!(tenant: foreign_tenant, name: "Etapa externa", active: true)
+    [unavailable, other_stage, foreign].each do |target|
+      post "/api/v1/browser_extension/leads/#{lead.id}/status", params: operation_params(status: {stage_id: target.id.to_s, expected_stage_id: lead.lead_pipeline_stage_id.to_s}), headers: headers, as: :json
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+    expect(lead.activities.where(kind: "status_change").count).to eq(0)
+  end
+
+  it "hides role-restricted stages and refuses status changes without edit permission" do
+    lead = make_lead
+    stage = lead.lead_pipeline.stages.create!(tenant: tenant, name: "Só administrativo", active: true)
+    stage.create_policy!(tenant: tenant, visible_to_roles: ["administrative"])
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("status_options").map { |row| row["id"] }).not_to include(stage.id)
+    attrs = operation_params(status: {stage_id: stage.id.to_s, expected_stage_id: lead.lead_pipeline_stage_id.to_s})
+    post "/api/v1/browser_extension/leads/#{lead.id}/status", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    allow_any_instance_of(AdminUser).to receive(:can?).and_call_original
+    allow_any_instance_of(AdminUser).to receive(:can?).with(:edit, :leads).and_return(false)
+    post "/api/v1/browser_extension/leads/#{lead.id}/status", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:forbidden)
   end
 
 end
