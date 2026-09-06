@@ -2534,14 +2534,22 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def pwa_actionable_leads(base_scope)
-    base_scope
+    # Aceitar o lead ou abrir seu link não representa uma ação de atendimento.
+    action_kinds = (CONTACT_ACTIVITY_KINDS - ["accepted"]) + %w[task_created task_completed]
+    acted_ids = current_tenant.lead_activities.human_operational
+      .where(lead_id: base_scope.select(:id), kind: action_kinds).select(:lead_id)
+    imported_schedule_ids = current_tenant.lead_activities
+      .where(lead_id: base_scope.select(:id), kind: EXTERNAL_SCHEDULE_KIND).select(:lead_id)
+
+    scope = base_scope
       .where(status: active_lead_status_values_with_blank)
-      .where(
-        "leads.id IN (:due_task_ids) OR (leads.status IN (:priority_statuses) AND leads.id NOT IN (:scheduled_later_ids))",
-        due_task_ids: pwa_due_task_lead_ids(base_scope),
-        priority_statuses: pwa_priority_lead_status_values,
-        scheduled_later_ids: pwa_later_scheduled_lead_ids(base_scope)
-      )
+      .where(status: pwa_priority_lead_status_values + [Lead.status_value(:em_atendimento, tenant: current_tenant)])
+      .where.not(id: acted_ids)
+      .where.not(id: imported_schedule_ids)
+    [Task, Appointment].each do |model|
+      scope = scope.where.not(id: model.where(tenant_id: current_tenant.id, lead_id: base_scope.select(:id)).select(:lead_id))
+    end
+    scope.where.not(id: Proposal.where(lead_id: base_scope.select(:id)).select(:lead_id))
   end
 
   def pwa_future_visit_lead_ids(base_scope)
