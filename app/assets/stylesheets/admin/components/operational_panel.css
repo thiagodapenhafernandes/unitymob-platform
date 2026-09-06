@@ -349,7 +349,7 @@
 .ax-property-gallery::backdrop { background: #17222dcc; }
 .ax-property-gallery > strong { display: block; margin-bottom: 12px; }
 .ax-property-gallery img { display: block; width: 100%; height: 55dvh; object-fit: contain; margin-top: 12px; }
-.ax-property-gallery img[hidden] { display: none; }
+.ax-property-gallery > p { height: 32px; margin: 8px 0; font-size: 11px; line-height: 16px; color: #67778b; }
 .ax-property-gallery > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
 .ax-property-gallery button { min-height: 36px; padding: 6px 12px; border: 1px solid #dce3ec; border-radius: 8px; background: #f3f6fa; color: #30506b; cursor: pointer; }
 .ax-property-gallery button:disabled { opacity: .45; cursor: default; }

@@ -663,13 +663,34 @@ function openPropertyGallery(photos, title) {
   const heading = document.createElement("strong"); heading.id = "property-gallery-title"; heading.textContent = title;
   dialog.setAttribute("aria-labelledby", heading.id);
   const close = document.createElement("button"); close.type = "button"; close.textContent = "Fechar"; close.onclick = () => dialog.close();
-  const image = document.createElement("img"); image.referrerPolicy = "no-referrer";
+  let image = document.createElement("img"); image.style.visibility = "hidden";
   const feedback = document.createElement("p"); feedback.setAttribute("role", "status");
   const nav = document.createElement("div"); const prev = document.createElement("button"), next = document.createElement("button"), count = document.createElement("span");
   prev.type = next.type = "button"; prev.textContent = "Anterior"; next.textContent = "Próxima"; count.setAttribute("aria-live", "polite");
-  let index = 0;
-  const render = () => { feedback.textContent = "Carregando foto…"; image.hidden = true; image.alt = `${title} — foto ${index + 1}`; image.src = photos[index]; count.textContent = `${index + 1} / ${photos.length}`; prev.disabled = index === 0; next.disabled = index === photos.length - 1; };
-  image.onload = () => { feedback.textContent = ""; image.hidden = false; }; image.onerror = () => { feedback.textContent = "Não foi possível carregar esta foto. Tente a próxima."; };
+  let index = 0, requestId = 0;
+  const render = async () => {
+    const currentRequest = ++requestId, requestedIndex = index;
+    feedback.textContent = "Carregando foto…";
+    dialog.setAttribute("aria-busy", "true");
+    prev.disabled = index === 0; next.disabled = index === photos.length - 1;
+    const incoming = new Image(); incoming.referrerPolicy = "no-referrer";
+    incoming.alt = `${title} — foto ${requestedIndex + 1}`;
+    incoming.src = photos[requestedIndex];
+    try {
+      await incoming.decode();
+      if (currentRequest !== requestId || !dialog.open) return;
+      image.replaceWith(incoming); image = incoming;
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) image.animate([{opacity: .5}, {opacity: 1}], {duration: 180, easing: "ease-out"});
+      count.textContent = `${requestedIndex + 1} / ${photos.length}`;
+      feedback.textContent = "";
+    } catch {
+      if (currentRequest !== requestId || !dialog.open) return;
+      feedback.textContent = "Não foi possível carregar esta foto. Tente a próxima.";
+    } finally {
+      if (currentRequest === requestId) dialog.removeAttribute("aria-busy");
+    }
+  };
+  dialog.addEventListener("close", () => { requestId++; });
   prev.onclick = () => { if (index > 0) { index--; render(); } }; next.onclick = () => { if (index < photos.length - 1) { index++; render(); } };
   dialog.addEventListener("keydown", event => { if (event.key === "ArrowLeft") { event.preventDefault(); prev.click(); } if (event.key === "ArrowRight") { event.preventDefault(); next.click(); } });
   nav.append(prev, count, next); dialog.append(heading, close, image, feedback, nav); document.body.append(dialog); dialog.showModal(); render();
