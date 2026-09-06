@@ -71,3 +71,8 @@ export async function sendPropertyMessage(expected, text) {
   await wpp.chat.sendTextMessage(expected.chatId, text, {createChat: false});
   return {sent: true};
 }
+
+// A real conversation change must always invalidate the previous recipient.
+export function shouldReloadContext(changed, forced, editing) {
+  return changed || (forced && !editing);
+}

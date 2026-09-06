@@ -1,8 +1,14 @@
 import { crmOrigin, discoveryOrigin } from "./config.js";
-import { contextKey } from "./context.js";
+import { contextKey, shouldReloadContext } from "./context.js";
 import { isWhatsAppTab } from "./security.js";
 
 const $ = id => document.getElementById(id);
+const editedForms = new Set();
+for (const form of document.querySelectorAll("#chat-panel form, #lead-panel form")) {
+  form.addEventListener("input", () => editedForms.add(form));
+  form.addEventListener("change", () => editedForms.add(form));
+  form.addEventListener("reset", () => editedForms.delete(form));
+}
 let context = null;
 let selectedLead = null;
 let resolvedPhone = null;
@@ -76,11 +82,11 @@ function clearLead() {
   }
   $("lead-panel").hidden = true;
   for (const id of ["candidates", "properties", "tasks", "notes", "appointments", "labels", "lead-name", "lead-status"]) $(id).replaceChildren();
-  $("open-lead").removeAttribute("href");
+  $("open-lead").hidden = true; $("open-lead").removeAttribute("href");
 }
 
 function clearContext() {
-  revision++; context = null; clearLead(); $("search-form").hidden = true; $("phone").value = "";
+  revision++; context = null; editedForms.clear(); clearLead(); $("search-form").hidden = true; $("phone").value = "";
 }
 
 function feedback(error) {
@@ -155,6 +161,7 @@ async function fetchLead(id, version) {
   $("property-quick-options").replaceChildren();
   for (const [key, label] of Object.entries(result.property_quick_filters || {})) {
     const button = document.createElement("button"); button.type = "button"; button.className = "ax-label-chip"; button.textContent = label; button.setAttribute("aria-pressed", "false");
+    const mark = document.createElement("i"); mark.className = "bi bi-check2"; mark.setAttribute("aria-hidden", "true"); button.prepend(mark);
     button.onclick = () => {
       $("property-quick").value = $("property-quick").value === key ? "" : key;
       for (const chip of $("property-quick-options").children) chip.setAttribute("aria-pressed", String(chip === button && $("property-quick").value === key));
@@ -181,7 +188,7 @@ async function fetchLead(id, version) {
   $("change-status").title = $("change-status").disabled ? "Nenhuma próxima etapa disponível para seu perfil." : "Alterar status do lead";
   $("lead-context").textContent = [me.tenant.name, result.lead.owner_name ? `Responsável: ${result.lead.owner_name}` : "Sem responsável"].join(" · ");
   $("lead-context").title = leadContext(result.lead);
-  $("open-lead").href = `${me.origin}/admin/leads/${result.lead.id}`;
+  $("open-lead").hidden = false; $("open-lead").href = `${me.origin}/admin/leads/${result.lead.id}`;
   for (const key of ["appointments", "labels"]) {
     $(`${key}-count`).textContent = result[`${key}_count`] ?? result[key]?.length ?? 0;
   }
@@ -194,11 +201,10 @@ async function fetchLead(id, version) {
     const check = document.createElement("input"); check.type = "checkbox"; check.value = property.id; check.disabled = !property.public_path; check.title = property.public_path ? "Selecionar para enviar" : "Imóvel sem link público disponível para envio";
     const title = document.createElement("strong"); title.className = "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
     const specs = document.createElement("div"); specs.className = "ax-property-interest__specs";
-    for (const [icon, value, label] of [["M5 21V3h14v18M2 21h20M15 12h1", property.bedrooms, "Dorm."], ["M8 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm4-4h10m-3 0v3m-3-3v2", property.suites, "Suítes"], ["m5 6-2 7v6h3v-3h12v3h3v-6l-2-7ZM3 12h18M6 14h2m8 0h2", property.parking, "Vagas"], ["M4 9V4h5m11 11v5h-5M4 4l6 6m10 10-6-6", property.area == null ? null : Number(property.area).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1}), "m²"]]) {
+    for (const [value, label] of [[property.bedrooms, "Dorm."], [property.suites, "Suítes"], [property.parking, "Vagas"], [property.area == null ? null : Number(property.area).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1}), "m²"]]) {
       const chip = document.createElement("span");
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none"); svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", "1.6"); svg.setAttribute("aria-hidden", "true");
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", icon); svg.append(path);
-      chip.append(svg, document.createTextNode(`${value ?? "—"} ${label}`)); chip.title = `${value ?? "Não informado"} ${label}`; specs.append(chip);
+      const glyph = document.createElement("i"); glyph.className = `bi bi-${({"Dorm.": "door-open", "Suítes": "key", "Vagas": "car-front", "m²": "arrows-angle-expand"})[label]}`; glyph.setAttribute("aria-hidden", "true");
+      chip.append(glyph, document.createTextNode(`${value ?? "—"} ${label}`)); chip.title = `${value ?? "Não informado"} ${label}`; specs.append(chip);
     }
     const money = value => value == null ? "—" : new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: value === 0 ? 0 : 2}).format(Number(value) / 100);
     const financial = document.createElement("div"); financial.className = "ax-property-interest__financial";
@@ -266,19 +272,23 @@ $("property-search-form").addEventListener("submit", async event => {
     const result = await request("search_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id,
       query: $("property-query").value.trim(), purpose: $("property-purpose").value, filters: Object.fromEntries(propertyFilterKeys.map(key => [key, ["min_price", "max_price"].includes(key) ? $(`property-${key}`).value.replace(/\D/g, "") : $(`property-${key}`).value]))});
     if (version !== revision || searchVersion !== propertySearchVersion) return;
-    for (const property of result.properties) {
+    const available = result.properties.filter(property => !property.linked);
+    for (const property of available) {
       const option = document.createElement("label"); option.className = "ax-property-option";
-      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.disabled = property.linked; input.checked = property.linked || propertySelection.has(String(property.id));
+      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id));
       input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`; };
-      const title = document.createElement("strong"); title.textContent = [property.code, property.title].filter(Boolean).join(" · ");
+      const title = document.createElement("strong"); title.textContent = [property.code, property.title].filter(Boolean).join(" · "); title.title = title.textContent;
+      input.setAttribute("aria-label", `Selecionar ${property.code} · ${property.title}`);
       const meta = document.createElement("span"); meta.className = "ax-workspace-muted";
       const price = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(Number(property.price_cents) / 100);
-      meta.textContent = [property.neighborhood, property.city, price, property.linked ? "Já relacionado" : ""].filter(Boolean).join(" · ");
-      option.append(input, title, meta); $("property-options").append(option);
+      const pin = document.createElement("i"); pin.className = "bi bi-geo-alt"; pin.setAttribute("aria-hidden", "true");
+      meta.append(pin, document.createTextNode([property.neighborhood, property.city].filter(Boolean).join(" · ") || "Localização não informada"));
+      const amount = document.createElement("span"); amount.className = "ax-property-option__price"; amount.textContent = property.price_cents == null ? "Valor sob consulta" : price;
+      option.append(input, title, meta, amount); $("property-options").append(option);
     }
-    $("property-form").hidden = !result.properties.some(property => !property.linked) && propertySelection.size === 0;
+    $("property-form").hidden = !available.length && propertySelection.size === 0;
     $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`;
-    $("property-search-feedback").textContent = !result.properties.length ? "Nenhum imóvel encontrado." : result.properties.every(property => property.linked) ? "Os imóveis encontrados já estão relacionados." : result.more ? "Mostrando 20 imóveis. Refine a busca para encontrar outros." : "Selecione os imóveis que deseja relacionar.";
+    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : result.more ? "Mais de 20 imóveis encontrados. Refine a busca." : `${available.length} imóvel(is) disponível(is). Selecione para relacionar.`;
   } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { $("property-search-feedback").textContent = "Não foi possível buscar os imóveis."; feedback(error); } }
 });
 
@@ -339,15 +349,15 @@ for (const panel of document.querySelectorAll("details")) {
 for (const [button, kind] of [["add-task", "task"], ["add-note", "note"], ["add-appointments", "appointment"], ["add-labels", "label"], ["add-properties", "property"], ["change-status", "status"]]) {
   const control = $(button), panel = $(`${kind}-panel`);
   const label = control.getAttribute("aria-label") || control.textContent;
+  if (button !== "change-status") control.innerHTML = '<i class="bi bi-plus-lg" aria-hidden="true"></i>';
   control.setAttribute("aria-controls", panel.id);
   control.setAttribute("aria-expanded", "false");
   panel.addEventListener("toggle", () => {
     control.setAttribute("aria-expanded", String(panel.open));
     control.setAttribute("aria-label", panel.open ? "Fechar formulário" : label);
-    if (button !== "change-status") control.textContent = panel.open ? "−" : "＋";
+    if (button !== "change-status") control.innerHTML = `<i class="bi bi-${panel.open ? "dash-lg" : "plus-lg"}" aria-hidden="true"></i>`;
   });
   control.addEventListener("click", () => {
-    if (kind === "property" && !panel.open) panel.querySelector(".ax-property-filters").open = true;
     toggleDisclosure(panel);
   });
 }
@@ -383,7 +393,7 @@ async function resolve(phone) {
   } catch (error) { if (version === revision) feedback(error); }
 }
 
-function clearSelected() { propertySelection.clear(); clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").removeAttribute("href"); }
+function clearSelected() { propertySelection.clear(); clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").hidden = true; $("open-lead").removeAttribute("href"); }
 
 async function refreshSession(force = false) {
   if (checkingSession) return;
@@ -427,7 +437,9 @@ async function refresh(force = false) {
     if (!force && context?.state === "ready" && ["changed", "loading", "unavailable"].includes(next.state)) return;
     if (!force && next.state === "ready" && next.account === context?.account && next.chatId === context?.chatId && context?.phone && !next.phone) return;
     const changed = next.tabId !== context?.tabId || contextKey(next) !== contextKey(context);
-    if (changed || force) {
+    const editing = saving || editedForms.size > 0 || !!document.activeElement?.closest("form");
+    if (force && !changed && editing) $("feedback").textContent = "Seu preenchimento foi mantido. Conclua a edição antes de atualizar.";
+    if (shouldReloadContext(changed, force, editing)) {
       clearContext(); context = next;
       $("search-options").open = next.state === "ready" && !next.phone;
       const states = {

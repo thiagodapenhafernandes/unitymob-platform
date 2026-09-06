@@ -46,8 +46,8 @@ module Api
           {"suites" => :suites_qtd, "bedrooms" => :dormitorios_qtd, "parking" => :vagas_qtd}.each do |key, column|
             scope = scope.where("habitations.#{column} >= ?", filters[key].to_i) if filters[key].present?
           end
-          rows = scope.includes(:address).order(updated_at: :desc).limit(21).to_a
-          linked_ids = lead.property_interests.pluck(:habitation_id) + [lead.property_id]
+          linked_ids = (lead.property_interests.pluck(:habitation_id) + [lead.property_id]).compact
+          rows = scope.where.not(id: linked_ids).includes(:address).order(updated_at: :desc).limit(21).to_a
           render json: { properties: rows.first(20).map { |p| {id: p.id, code: p.codigo, title: p.display_title,
             city: p.cidade, neighborhood: p.bairro, price_cents: purpose == "venda" ? p.valor_venda_cents : p.valor_locacao_cents,
             linked: linked_ids.include?(p.id)} }, more: rows.length > 20 }

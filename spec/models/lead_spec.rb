@@ -11,6 +11,22 @@ RSpec.describe Lead, type: :model do
     Current.tenant = previous_tenant
   end
 
+  describe "#destroy!" do
+    it "desvincula a conversa sem apagar mensagens ou afetar outro lead" do
+      lead = create(:lead)
+      other_lead = create(:lead)
+      conversation = WhatsappConversation.create!(lead: lead, contact_phone: "5547999991001")
+      other_conversation = WhatsappConversation.create!(lead: other_lead, contact_phone: "5547999991002")
+      message = conversation.messages.create!(direction: "inbound", body: "Tenho interesse")
+
+      expect { lead.destroy! }.to change(Lead, :count).by(-1)
+
+      expect(conversation.reload.lead_id).to be_nil
+      expect(message.reload.whatsapp_conversation_id).to eq(conversation.id)
+      expect(other_conversation.reload.lead_id).to eq(other_lead.id)
+    end
+  end
+
   describe "#unsuccessful_attempt_count" do
     it "conta somente tentativas deste lead desde a última resposta ou entrada na etapa" do
       lead = create(:lead, created_at: 2.days.ago)
