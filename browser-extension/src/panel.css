@@ -8,7 +8,7 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension h3 { font-size: 13px; margin: 0 0 6px; }
 .um-extension ul { padding-left: 18px; margin: 0; overflow-wrap: anywhere; }
 .um-extension li + li { margin-top: 8px; }
-.um-extension .ax-btn { white-space: normal; height: auto; min-height: 32px; padding-block: 5px; }
+.um-extension .ax-btn { white-space: normal; height: auto; min-height: 32px; padding-block: 5px; border: 0px; border-radius: 10px; }
 .um-extension #feedback:empty { display: none; }
 .um-extension #lead-name { overflow-wrap: anywhere; }
 
