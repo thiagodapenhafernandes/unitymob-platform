@@ -174,13 +174,21 @@ RSpec.describe Leads::NotificationDispatcher do
     end
   end
 
+  it "preserva origem de outros canais e usa fallback quando o formulario Meta esta vazio" do
+    [["Facebook Lead Ads", nil], ["Facebook Lead Ads", " "], ["Indicação", "Apartamento Centro"]].each do |origin, product|
+      lead.assign_attributes(origin: origin, product: product)
+      expect(described_class.new(lead).send(:whatsapp_variable_value, "lead_origin")).to eq(origin)
+    end
+  end
+
   it "usa a finalidade de rodizio para escolher o template WhatsApp" do
     whatsapp_rule = create(:distribution_rule, distribution_mode: :rotary, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
     whatsapp_lead = create(
       :lead,
       name: "Cliente Rodizio",
       phone: "21999999999",
-      origin: "landing",
+      origin: "Facebook Lead Ads",
+      product: "Form Notre Dame - Cód. 4195",
       status: :waiting_acceptance,
       admin_user: corretor,
       distribution_rule: whatsapp_rule
@@ -211,6 +219,7 @@ RSpec.describe Leads::NotificationDispatcher do
 
     expect(client).to have_received(:send_template) do |args|
       expect(args[:name]).to eq("lead_distribution_alert")
+      expect(args[:components].first[:parameters][1][:text]).to eq("Form Notre Dame - Cód. 4195")
       expect(args[:components].first[:parameters].first[:text]).to eq(corretor.name)
     end
   end
