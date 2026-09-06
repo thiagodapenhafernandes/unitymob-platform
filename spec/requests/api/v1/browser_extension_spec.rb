@@ -194,6 +194,19 @@ RSpec.describe "Browser extension API", type: :request do
     expect(grant.reload.exchanged_at).to be_nil
   end
 
+  it "keeps extension authorization out of an already large CRM session" do
+    sign_in user
+    allow_any_instance_of(Admin::BrowserExtensionConnectionsController).to receive(:remember_extension_login!).and_wrap_original do |original, *args|
+      original.receiver.session[:existing_filters] = "x" * 1850
+      original.call(*args)
+    end
+    get "/admin/browser_extension_connections/new", params: { challenge: BrowserExtensionGrant.digest(verifier), extension_id: extension_id }
+    expect(response).to have_http_status(:ok)
+    expect(request.session[:existing_filters]).to eq("x" * 1850)
+    expect(request.session[:browser_extension_pairing]).to be_nil
+    expect(cookies[:browser_extension_pairing]).to be_present
+  end
+
   it "requires an authenticated browser approval before exchange" do
     params = { challenge: BrowserExtensionGrant.digest(verifier), extension_id: extension_id }
     expect { post "/admin/browser_extension_connections", params: params }.not_to change(BrowserExtensionGrant, :count)
@@ -202,6 +215,9 @@ RSpec.describe "Browser extension API", type: :request do
     get "/admin/browser_extension_connections/new", params: params
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Continuar no WhatsApp", tenant.name)
+    expect(request.session[:browser_extension_pairing]).to be_nil
+    expect(request.session[:browser_extension_login_return]).to be_nil
+    expect(cookies[:browser_extension_pairing]).to be_present
     expect { post "/admin/browser_extension_connections", params: params }.to change(BrowserExtensionGrant, :count).by(1)
     callback = URI.parse(response.location)
     expect(callback.host).to eq("#{extension_id}.chromiumapp.org")
