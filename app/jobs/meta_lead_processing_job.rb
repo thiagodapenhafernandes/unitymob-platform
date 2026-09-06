@@ -119,12 +119,7 @@ class MetaLeadProcessingJob < ApplicationJob
 
     email = extract_field(field_data, [ "email", "email_address" ])
     phone = extract_phone(field_data)
-    name  = extract_field(field_data, [ "full_name", "fullname", "name", "first_name" ])
-
-    if name && !field_data.any? { |f| f["name"].to_s.downcase.include?("full") }
-      last_name = extract_field(field_data, [ "last_name", "surname" ])
-      name = "#{name} #{last_name}".strip if last_name.present?
-    end
+    name = extract_contact_name(field_data)
 
     { name: name.presence || "Lead Facebook", email: email, phone: phone, field_data: field_data }
   end
@@ -259,6 +254,31 @@ class MetaLeadProcessingJob < ApplicationJob
         lead_details: lead_details
       }
     )
+  end
+
+  def extract_contact_name(field_data)
+    candidates = field_data.filter_map do |field|
+      label = normalize_field_name(field["name"].to_s.gsub(/([a-z])([A-Z])/, '\\1 \\2')).gsub(/[^a-z0-9]+/, " ").squish
+      # Campaign/property labels are not the person's name, even if they contain "name".
+      next if label.match?(/\b(campanha|campaign|anuncio|ad|adset|empresa|company|business|empreendimento|condominio|imovel|property|produto|product|formulario|form)\b/)
+      words = label.split
+      full = label.match?(/\b(full ?name|nome ?completo|nome e sobrenome|first and last name)\b/)
+      last = !full && label.match?(/\b(last ?name|sur ?name|sobrenome|apelido de familia)\b/)
+      first = label.match?(/\b(first ?name|primeiro nome|given ?name)\b/)
+      next unless full || last || first || (words & %w[nome name]).any?
+
+      value = field_values(field).find { |item| item.strip.present? }&.strip
+      next unless value
+      { value: value, rank: full ? 0 : (first ? 2 : 1), last: last, full: full }
+    end
+    selected = candidates.reject { |item| item[:last] }.min_by { |item| item[:rank] }
+    return nil unless selected
+    name = selected[:value]
+    surname = candidates.find { |item| item[:last] }&.fetch(:value)
+    if !selected[:full] && surname.present? && !name.downcase.end_with?(surname.downcase)
+      name = "#{name} #{surname}"
+    end
+    name
   end
 
   def extract_field(field_data, keys)

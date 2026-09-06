@@ -15,7 +15,7 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
       get_lead_details: {
         "id" => "lead-meta-1",
         "field_data" => [
-          { "name" => "full_name", "values" => ["Maria Meta"] },
+          { "name" => "nome_completo", "values" => ["Maria Meta"] },
           { "name" => "email", "values" => ["maria@example.com"] },
           { "name" => "phone_number", "values" => ["5547999990000"] }
         ]
@@ -31,6 +31,7 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     lead = tenant.leads.last
     expect(lead.admin_user).to be_nil
     expect(lead.name).to eq("Maria Meta")
+    expect(lead.client_name).to eq("Maria Meta")
     expect(lead.phone).to eq("5547999990000")
     expect(lead.product).to eq("Captação Meta Tenant")
     expect(lead.other_information["meta_page_id"]).to eq("page-meta-tenant")
@@ -159,6 +160,43 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.reload.distribution_rule_id).to eq(rule.id)
     expect(lead.admin_user_id).to eq(broker.id)
     expect(MetaLeadForm.find_by(form_id: "form-new-auto")).to be_present
+  end
+
+  it "reconhece nomes em portugues, ingles e perguntas personalizadas" do
+    ["nome", "name", "nome_completo", "full_name", "fullname", "fullName", "nomeCompleto",
+     "NÓME-COMPLETO", "Qual é o seu nome completo?", "informe_seu_nome", "your name"].each do |label|
+      attributes = described_class.new.send(:extract_lead_attributes, {
+        "field_data" => [{"name" => label, "values" => ["  Alissia P B Montibeller  "]}]
+      })
+      expect(attributes[:name]).to eq("Alissia P B Montibeller"), label
+    end
+  end
+
+  it "prioriza nome completo mesmo depois de primeiro nome ou de campos vazios" do
+    fields = [{"name" => "first_name", "values" => ["Maria"]},
+              {"name" => "full_name", "values" => [" "]},
+              {"name" => "nome_completo", "values" => ["Maria da Silva"]},
+              {"name" => "last_name", "values" => ["Silva"]}]
+    expect(described_class.new.send(:extract_lead_attributes, {"field_data" => fields})[:name]).to eq("Maria da Silva")
+  end
+
+  it "junta primeiro nome e sobrenome independentemente da ordem sem duplicar sobrenome" do
+    [["first_name", "last_name"], ["primeiro_nome", "sobrenome"], ["nome", "surname"]].each do |first, last|
+      fields = [{"name" => last, "values" => ["Silva"]}, {"name" => first, "values" => ["Maria"]}]
+      expect(described_class.new.send(:extract_lead_attributes, {"field_data" => fields})[:name]).to eq("Maria Silva")
+      fields.last["values"] = ["Maria Silva"]
+      expect(described_class.new.send(:extract_lead_attributes, {"field_data" => fields})[:name]).to eq("Maria Silva")
+    end
+  end
+
+  it "nao usa nome de campanha, empreendimento, username ou sobrenome isolado como pessoa" do
+    fields = %w[campaign_name nome_do_empreendimento nome_da_campanha company_name username sobrenome].map do |label|
+      {"name" => label, "values" => ["Nao e o nome"]}
+    end
+    expect(described_class.new.send(:extract_lead_attributes, {"field_data" => fields})[:name]).to eq("Lead Facebook")
+    fields.pop
+    fields << {"name" => "nome", "values" => ["Alissia"]}
+    expect(described_class.new.send(:extract_lead_attributes, {"field_data" => fields})[:name]).to eq("Alissia")
   end
 
   it "extrai telefone de campos Meta com abreviacoes brasileiras" do

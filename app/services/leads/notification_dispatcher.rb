@@ -408,7 +408,7 @@ module Leads
       when "lead_name"
         @lead.display_name
       when "lead_origin"
-        @lead.origin
+        @lead.origin == "Facebook Lead Ads" ? (@lead.product.presence || @lead.origin) : @lead.origin
       when "lead_phone_or_link"
         return pool_contact_value(links, :phone) if pool_push?
 
