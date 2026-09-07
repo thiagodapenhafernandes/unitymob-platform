@@ -12024,7 +12024,6 @@ body.ax-habitations-workspace .ts-dropdown {
   color: var(--hab-field-text, #1f2937);
   font-size: .8rem;
   overflow: hidden;
-  z-index: 1300 !important;
 }
 
 body.ax-habitations-workspace .ts-dropdown .dropdown-input-wrap {

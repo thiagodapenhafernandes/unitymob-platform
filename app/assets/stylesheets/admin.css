@@ -1085,7 +1085,6 @@ body.admin-drawer-catalog-layout .admin-sidebar-offcanvas {
   box-shadow: var(--admin-shadow-lg) !important;
   border: 1px solid var(--admin-border) !important;
   margin-top: 4px !important;
-  z-index: 1100 !important;
 }
 
 .ts-dropdown .active {
