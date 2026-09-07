@@ -212,11 +212,14 @@ async function handle(message) {
       if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
       const publicOrigin = new URL(result.public_origin || connection.origin);
       if (publicOrigin.protocol !== "https:" || publicOrigin.username || publicOrigin.password || publicOrigin.pathname !== "/" || publicOrigin.search || publicOrigin.hash) throw new Error("invalid_fields");
-      const text = properties.map(property => `${property.code} · ${property.title}\n${[property.neighborhood, property.city].filter(Boolean).join(" · ")}\n${publicOrigin.origin}${property.public_path}`).join("\n\n");
-      const prepared = await chrome.scripting.executeScript({target: {tabId: message.tabId}, world: "MAIN", func: sendPropertyMessage, args: [context, text]});
-      const response = prepared.find(item => item.frameId === 0)?.result;
-      if (!response?.sent) throw new Error(response?.error || "send_unconfirmed");
-      return response;
+      for (const property of properties) {
+        if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
+        const text = `${property.code} · ${property.title}\n${[property.neighborhood, property.city].filter(Boolean).join(" · ")}\n${publicOrigin.origin}${property.public_path}`;
+        const prepared = await chrome.scripting.executeScript({target: {tabId: message.tabId}, world: "MAIN", func: sendPropertyMessage, args: [context, text]});
+        const response = prepared.find(item => item.frameId === 0)?.result;
+        if (!response?.sent) throw new Error(response?.error || "send_unconfirmed");
+      }
+      return {sent:true,count:properties.length};
     }
     case "resolve":
     case "lead":

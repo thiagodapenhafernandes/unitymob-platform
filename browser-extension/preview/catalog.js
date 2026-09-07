@@ -11,7 +11,7 @@ const rows = [
 export const catalog = rows.map(([id,title,category,neighborhood,price,bedrooms,suites,parking,area,purpose,quick]) => ({
   id,code:id,title,card_title:title,category,neighborhood,price_cents:price*100,bedrooms,suites,parking,area,purpose,quick,
   city:'Balneário Camboriú',rental:purpose==='locacao',condo_cents:category==='Casa'?0:65000,iptu_cents:180000,
-  removable:true,public_path:'/imovel-demonstrativo',photo_urls:[]
+  removable:true,public_path:'/imovel-demonstrativo',photo_urls:["https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=900&q=80","https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=900&q=80"]
 }));
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function searchCatalog({query='',purpose='venda',filters={}}, linked = new Set()) {

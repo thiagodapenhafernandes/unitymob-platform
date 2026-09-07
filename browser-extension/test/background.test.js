@@ -269,3 +269,25 @@ test("contact history sends only allowed fields to the dedicated confirmed endpo
   assert.equal(requests[0].url, `${origin}/api/v1/browser_extension/leads/7/contacts`);
   assert.deepEqual(JSON.parse(requests[0].options.body).contact, {body: "Resumo", contact_kind: "ligacao", contact_result: "nao_respondeu"});
 });
+
+test("sends one property per message and stops when the active conversation changes", async () => {
+  const original=chrome.scripting.executeScript;
+  const properties=[{id:7,code:'7',title:'Primeiro',public_path:'/imovel/7'},{id:8,code:'8',title:'Segundo',public_path:'/imovel/8'}];
+  global.fetch=async()=>json({properties,public_origin:'https://example.com'});
+  const message={type:'send_properties',tabId:1,contextKey:contextKey(projection),leadId:1,ids:[7,8],phone:projection.phone,confirmed:true};
+  const sent=[];
+  try {
+    chrome.scripting.executeScript=async options=>{
+      if(options.func?.name==='sendPropertyMessage'){sent.push(options.args[1]);return [{frameId:0,result:{sent:true}}];}
+      return [{frameId:0,result:{...projection}}];
+    };
+    assert.equal((await send(message)).ok,true);
+    assert.equal(sent.length,2);assert.match(sent[0],/\/imovel\/7/);assert.doesNotMatch(sent[0],/\/imovel\/8/);
+    sent.length=0;
+    chrome.scripting.executeScript=async options=>{
+      if(options.func?.name==='sendPropertyMessage'){sent.push(options.args[1]);projection.chatId='5511000000000@c.us';return [{frameId:0,result:{sent:true}}];}
+      return [{frameId:0,result:{...projection}}];
+    };
+    assert.equal((await send(message)).ok,false);assert.equal(sent.length,1);
+  } finally {chrome.scripting.executeScript=original;}
+});

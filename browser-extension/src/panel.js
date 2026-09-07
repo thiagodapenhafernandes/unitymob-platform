@@ -1,3 +1,4 @@
+import { propertyPagination } from "./property-pagination.js";
 import { mountPropertyCatalog } from "./property-catalog.js";
 import { mountWorkspaceTabs } from "./workspace-tabs.js";
 import { crmOrigin, discoveryOrigin } from "./config.js";
@@ -158,7 +159,6 @@ async function fetchLead(id, version) {
   for (const id of ["note-contact", "task-contact"]) $(id).textContent = `${result.lead.name} · ${resolvedPhone}`;
   $("create-lead-panel").hidden = true;
   $("property-panel").hidden = !me.capabilities.link_properties;
-  $("add-properties").hidden = !me.capabilities.link_properties;
   $("property-contact").textContent = `${result.lead.name} · ${resolvedPhone}`;
   propertySelection.clear(); clearPropertySearch();
   propertyCatalog.reset();
@@ -191,20 +191,13 @@ async function fetchLead(id, version) {
   renderLabelChoices(result.label_catalog || [], result.labels || []);
   $("properties").replaceChildren();
   for (const property of result.properties) {
-    const row = document.createElement("div"); row.className = "ax-property-interest ax-property-interest--detail";
+    const actions=document.createElement("div");actions.className="pc-card-actions";
     const check = document.createElement("input"); check.type = "checkbox"; check.value = property.id; check.disabled = !property.public_path; check.title = property.public_path ? "Selecionar para enviar" : "Imóvel sem link público disponível para envio";
     check.setAttribute("aria-label", `Selecionar ${property.code} para enviar`);
-    const content = propertyCardContent(property);
-    const photos = (property.photo_urls || []).filter(url => { try { return ["https:", "http:"].includes(new URL(url).protocol); } catch { return false; } });
-    if (photos.length) {
-      const link = document.createElement("button"); link.type = "button"; link.className = "ax-property-photos"; link.textContent = "Ver fotos";
-      link.setAttribute("aria-label", `Ver fotos de ${property.code} · ${property.card_title || property.title}`);
-      link.onclick = () => openPropertyGallery(photos, `${property.code} · ${property.card_title || property.title}`);
-      content[0].append(link); content[0].classList.add("ax-property-interest__title--photos");
-    }
-    row.append(check, ...content);
+    const selection=document.createElement("label");selection.className="pc-card-select";selection.title=check.title;selection.append(check);actions.append(selection);
+    const row=horizontalPropertyCard(property,actions);
     if (property.removable && me.capabilities.link_properties) {
-      const remove = document.createElement("button"); remove.type = "button"; remove.className = "ax-property-interest__remove"; remove.textContent = "×";
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "pc-card-remove"; remove.textContent = "×";
       remove.setAttribute("aria-label", `Remover ${property.code} dos interesses`);
       remove.onclick = async () => {
         if (saving) return;
@@ -215,14 +208,13 @@ async function fetchLead(id, version) {
         } catch (error) { if (version === revision) feedback(error); }
         finally { saving = false; remove.disabled = false; }
       };
-      row.append(remove);
+      actions.append(remove);
     }
     $("properties").append(row);
   }
   if (!result.properties.length) $("properties").textContent = "Nenhum imóvel de interesse.";
-  $("share-properties").hidden = !result.properties.some(property => property.public_path);
-  $("share-properties").disabled = true;
-  $("properties").onchange = () => { $("share-properties").disabled = saving || !$("properties").querySelector("input:checked"); };
+  syncShareSelection();
+  $("properties").onchange = syncShareSelection;
   renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
   renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [n.result, formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhum contato registrado.");
   $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
@@ -238,8 +230,18 @@ function formatDate(value) {
 let propertySearchVersion = 0;
 let propertySearchTimer;
 const propertySelection = new Map();
-const propertyCatalog = mountPropertyCatalog({search: () => $("property-search-form").requestSubmit(), clearSelection: () => propertySelection.clear()});
+const propertyPages=propertyPagination(params=>request("search_properties",params));
+const propertyCatalog = mountPropertyCatalog({storage:chrome.storage.local,scope:()=>JSON.stringify([me.origin,me.tenant.id,me.user.id]),search: () => $("property-search-form").requestSubmit(), clearSelection: () => { propertySelection.clear(); syncPropertySelection(); }});
+function syncPropertySelection() {
+  const actions = $("property-selection-actions");
+  const count = propertySelection.size;
+  actions.hidden = !count || !me?.capabilities?.link_properties;
+  actions.querySelector("button").textContent = `Adicionar ${count} ${count === 1 ? "imóvel" : "imóveis"} ao lead`;
+  if (!count) actions.querySelector("input").checked = false;
+}
 function clearPropertySearch() {
+  propertyPages.reset();
+  syncPropertySelection();
   clearTimeout(propertySearchTimer);
   propertySearchVersion++;
   $("property-form").hidden = true; $("property-options").replaceChildren(); $("property-search-feedback").textContent = "";
@@ -253,26 +255,21 @@ $("property-search-form").addEventListener("submit", async event => {
   propertyCatalog.loading();
   $("property-search-feedback").textContent = "Buscando imóveis…";
   try {
-    const result = await request("search_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id,
+    const result = await propertyPages.load({tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id,
       ...criteria});
     if (version !== revision || searchVersion !== propertySearchVersion) return;
     propertyCatalog.update(result);
     const available = result.properties;
     for (const property of available) {
-      const option = document.createElement("label"); option.className = "pc-card";
       const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id)); input.disabled = !!property.linked || !me?.capabilities?.link_properties; input.dataset.locked = String(input.disabled);
-      input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`; };
+      input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); syncPropertySelection(); };
       input.setAttribute("aria-label", `Selecionar ${property.code} · ${property.card_title || property.title}`);
-      const imageUrl = property.photo_urls?.[0];
-      if(typeof imageUrl === "string" && /^https:\/\//.test(imageUrl)) { const image=document.createElement("img"); image.src=imageUrl; image.alt=property.card_title || property.title; image.loading="lazy"; image.referrerPolicy="no-referrer"; image.onerror=()=>image.remove(); option.append(image); }
-      const body=document.createElement("div"); body.className="pc-card-body"; body.append(...propertyCardContent(property, true));
-      const selection=document.createElement("span");selection.className="pc-pick";selection.append(input,document.createTextNode(property.linked?"Já relacionado ao lead":"Selecionar imóvel"));body.append(selection);option.append(body);$("property-options").append(option);
+      const selection=document.createElement("label");selection.className="pc-card-select";selection.title=property.linked?"Já relacionado ao lead":"Selecionar imóvel";selection.append(input);
+      $("property-options").append(horizontalPropertyCard(property,selection));
     }
     $("property-form").hidden = !available.length && propertySelection.size === 0;
-    $("property-form").querySelector('.ax-confirmation').hidden = !me.capabilities.link_properties;
-    $("property-form").querySelector('button[type="submit"]').hidden = !me.capabilities.link_properties;
-    $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`;
-    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : result.more ? "Há mais imóveis. Use Carregar mais imóveis para continuar." : `${available.length} imóvel(is) disponível(is). Selecione para relacionar.`;
+    syncPropertySelection();
+    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : "";
   } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { propertyCatalog.failed(); $("property-search-feedback").textContent = "Não foi possível buscar os imóveis. Confira os filtros e tente novamente."; feedback(error); } }
 });
 
@@ -610,25 +607,47 @@ function leadContext(lead) {
   return [`Responsável: ${lead.owner_name || "Sem responsável"}`, lead.origin && `Origem: ${lead.origin}`, date && `Cadastro: ${date}`].filter(Boolean).join(" · ");
 }
 
+function syncShareSelection() {
+  const count=$("properties").querySelectorAll("input:checked").length;
+  $("share-property-actions").hidden=!count;
+  $("share-properties").disabled=saving || !count;
+  if(!saving) $("share-properties").textContent=`Enviar ${count} ${count===1?'imóvel':'imóveis'} no WhatsApp`;
+}
 $("share-properties").addEventListener("click", async () => {
   if (!selectedLead || !ready() || saving) return;
   const checked = [...$("properties").querySelectorAll("input:checked")];
-  if (!checked.length || !window.confirm(`Enviar agora para ${context.name || selectedLead.name} (${resolvedPhone})?\n\n${checked.map(input => input.closest(".ax-property-interest").querySelector("strong").textContent).join("\n")}`)) return;
+  if (!checked.length || !window.confirm(`Enviar uma mensagem por imóvel para ${context.name || selectedLead.name} (${resolvedPhone})?\n\n${checked.map(input => input.closest(".pc-card").querySelector(".pc-title").textContent).join("\n")}`)) return;
   const version = revision;
   saving = true; $("share-properties").disabled = true;
   $("share-properties").textContent = "Enviando…"; $("share-properties").setAttribute("aria-busy", "true");
   try {
     await request("send_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id, confirmed: true, phone: resolvedPhone,
       ids: [...$("properties").querySelectorAll("input:checked")].map(input => input.value)});
-    if (version === revision) $("feedback").textContent = "Imóveis enviados para a conversa.";
+    if (version === revision) { checked.forEach(input=>input.checked=false); $("feedback").textContent = "Imóveis enviados em mensagens individuais."; }
   } catch (error) {
     if (version === revision) $("feedback").textContent = "Não foi possível confirmar o envio. Confira a conversa antes de tentar novamente.";
   }
   finally {
-    saving = false; $("share-properties").disabled = !$("properties").querySelector("input:checked");
-    $("share-properties").textContent = "Enviar selecionados no WhatsApp"; $("share-properties").removeAttribute("aria-busy");
+    saving = false; syncShareSelection();
+    $("share-properties").removeAttribute("aria-busy");
   }
 });
+
+function horizontalPropertyCard(property,actions) {
+  const option=document.createElement("article");option.className="pc-card pc-card--horizontal";
+  const photos=(property.photo_urls || []).filter(url=>typeof url==='string' && /^https:\/\//.test(url));
+  const photo=document.createElement("button");photo.type="button";photo.className="pc-card-photo";
+  photo.setAttribute("aria-label", `Ver fotos de ${property.code} · ${property.card_title || property.title}`);
+  if(photos.length){
+    const image=document.createElement("img");image.src=photos[0];image.alt="";image.loading="lazy";image.referrerPolicy="no-referrer";
+    const count=document.createElement("span");count.textContent=`▧ ${photos.length}`;
+    image.onerror=()=>{image.remove();count.textContent="Ver fotos";};
+    photo.append(image,count);photo.onclick=()=>openPropertyGallery(photos,`${property.code} · ${property.card_title || property.title}`);
+  } else {photo.textContent="Sem foto";photo.disabled=true;}
+  const body=document.createElement("div");body.className="pc-card-body";body.append(...propertyCardContent(property,true));
+  option.append(photo,body,actions);
+  return option;
+}
 
 function propertyCardContent(property, catalog = false) {
     const title = document.createElement("strong"); title.className = catalog ? "pc-title" : "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
@@ -647,16 +666,11 @@ function propertyCardContent(property, catalog = false) {
     const pin = document.createElement("i"); pin.className = "bi bi-geo-alt"; pin.setAttribute("aria-hidden", "true");
     location.append(pin, document.createTextNode([property.neighborhood, property.city].filter(Boolean).join(" · ") || "Localização não informada")); location.title = location.textContent;
     if(catalog) {
-      financial.className="pc-financial";
-      financial.replaceChildren();
-      const label=document.createElement("small");label.textContent="VALOR DO IMÓVEL";
-      const price=document.createElement("strong");price.textContent=`${money(property.price_cents)}${property.rental?"/mês":""}`;
-      const costs=document.createElement("div");
-      for(const [name,value] of [["Condomínio",property.condo_cents],["IPTU",property.iptu_cents]]){const item=document.createElement("span");item.textContent=name;const amount=document.createElement("b");amount.textContent=money(value);item.append(amount);costs.append(item);}
-      financial.append(label,price,costs);
-      const purpose=document.createElement("small");purpose.className="pc-kind";purpose.textContent=property.rental?"LOCAÇÃO":"VENDA";
-      const owner=document.createElement("span");owner.className="pc-location";owner.textContent=property.owner?`Captador: ${property.owner}`:"";
-      return [title,purpose,location,owner,specs,financial];
+      const price=document.createElement("strong");price.className="pc-card-price";price.textContent=`${money(property.price_cents)}${property.rental?"/mês":""}`;
+      const costs=document.createElement("small");costs.className="pc-card-costs";costs.textContent=`Cond. ${money(property.condo_cents)} · IPTU ${money(property.iptu_cents)}`;costs.title=costs.textContent;
+      location.replaceChildren(document.createTextNode(location.textContent));
+      for(const chip of specs.children)chip.querySelector('i')?.remove();
+      return [title,location,specs,price,costs];
     }
     return [title, location, specs, financial];
 }

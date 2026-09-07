@@ -65,4 +65,5 @@ export function mountSort(root,onSelect){
  const next=e.key==='ArrowDown'?(i+1)%buttons.length:e.key==='ArrowUp'?(i+buttons.length-1)%buttons.length:e.key==='Home'?0:e.key==='End'?buttons.length-1:null;
  if(next!==null){e.preventDefault();buttons[next].focus();}
  },true);
+ return {restore(key,dir){current=sortOptions.some(([value])=>value===key)?key:'activity';direction=dir==='asc'?'asc':'desc';close(false);}};
 }

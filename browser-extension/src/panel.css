@@ -1,7 +1,7 @@
 /* Only composition for Chrome's narrow side panel. Primitives come from shared ax assets. */
 body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13px/1.5 system-ui, sans-serif; }
 [hidden] { display: none !important; }
-.um-extension { display: grid; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 12px 24px; min-width: 0; }
+.um-extension { display: grid; gap: 12px; /* padding: max(12px, env(safe-area-inset-top)) 12px 24px; */ min-width: 0; }
 .um-extension, .um-extension * { box-sizing: border-box; }
 .um-extension p { margin: 0; }
 .um-extension > header p { color: var(--ab-muted); }
@@ -69,7 +69,7 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension #create-lead-form .ax-btn { margin-top: 3px; }
 
 /* Composition of the approved compact workspace. */
-.um-extension.ax-operational-workspace { padding: 14px; gap: 12px; background: #f4f6f8; }
+.um-extension.ax-operational-workspace { /* padding: 14px; */ gap: 12px; background: #f4f6f8; }
 .um-extension.ax-operational-workspace #lead-name { font-size: 16px; }
 .um-extension.ax-operational-workspace #lead-phone { flex-basis: 100%; }
 .um-extension.ax-operational-workspace #change-status { background: transparent; color: var(--workspace-accent); padding: 2px 0; margin-left: auto; }
@@ -107,8 +107,7 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension #pane-lead #chat-panel { border-radius:0 0 12px 12px; }
 .um-extension #pane-lead #greeting { display:none; }
 .um-extension #pane-lead #welcome-name { font-size:13px; }
-.um-extension #lead-panel #properties-title,
 .um-extension #lead-panel #notes-title { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); }
-.um-extension #lead-panel :is(#properties-section,[aria-labelledby="notes-title"]) > .ax-workspace-section__header { justify-content:flex-end; }
+.um-extension #lead-panel [aria-labelledby="notes-title"] > .ax-workspace-section__header { justify-content:flex-end; }
 
 .um-extension #pane-lead #contact-history { padding:14px; margin-top:12px; background:#fff; border-radius:12px; }

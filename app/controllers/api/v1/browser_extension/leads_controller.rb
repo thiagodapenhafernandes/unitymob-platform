@@ -37,7 +37,7 @@ module Api
             card_title: p.nome_empreendimento.presence || development_names[p.codigo_empreendimento].presence || [p.categoria.presence || "Imóvel", p.bairro.presence || p.cidade.presence].compact.join(" em "),
             bedrooms: p.dormitorios_qtd, suites: p.suites_qtd, parking: p.vagas_qtd, area: p.public_area_m2,
             condo_cents: p.valor_condominio_cents, iptu_cents: p.valor_iptu_cents, rental: purpose == "locacao" || params[:facet] == "locacao" || !p.valor_venda_cents.to_i.positive?,
-            photo_urls: p.public_image_sources.filter_map { |source| Storage::PublicCdnImageUrl.resolve(source) }.first(1),
+            photo_urls: p.public_image_sources.filter_map { |source| Storage::PublicCdnImageUrl.resolve(source) }.first(100),
             owner: p.admin_user&.tenant_id == grant.tenant_id ? p.admin_user.name : nil,
             linked: linked_ids.include?(p.id)} }, more: rows.length > 20, total: total, page: page, counts: params[:catalog] == true ? catalog.counts : nil,
             filter_options: params[:include_options] == true ? catalog.options : nil }
