@@ -53,11 +53,11 @@ module Tasks
     end
 
     def reminder_sent?(task, phase, now = Time.current)
-      PushDeliveryEvent.where(tag: reminder_tag(task, phase, now), event_type: SENT_EVENT_TYPES).exists?
+      PushDeliveryEvent.where(admin_user_id: task.admin_user_id, tag: reminder_tag(task, phase, now), event_type: SENT_EVENT_TYPES).exists?
     end
 
     def recent_attempt?(task, phase, now)
-      PushDeliveryEvent.where(tag: reminder_tag(task, phase, now))
+      PushDeliveryEvent.where(admin_user_id: task.admin_user_id, tag: reminder_tag(task, phase, now))
                        .where("created_at >= ?", now - RETRY_ATTEMPT_AFTER)
                        .exists?
     end
@@ -93,6 +93,11 @@ module Tasks
     end
 
     def deliver_reminder(task, now)
+      task.reload
+      return unless task.open_activity?
+      return if task.lead_owner_missing?
+      return if task.lead && task.admin_user_id != task.lead.admin_user_id
+
       phase = reminder_phase(task, now)
       phase = overdue_phase(task, now) if phase == "due" && (reminder_sent?(task, "due", now) || task.due_at <= now - OVERDUE_REPEAT_INTERVAL)
       return if phase.blank?

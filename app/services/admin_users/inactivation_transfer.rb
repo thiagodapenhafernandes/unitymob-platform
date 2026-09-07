@@ -24,9 +24,11 @@ module AdminUsers
       ActiveRecord::Base.transaction do
         target_id = reassign? ? @target.id : nil
 
-        result.leads_count = @user.tenant.leads
-          .where(admin_user_id: @user.id)
-          .update_all(admin_user_id: target_id, updated_at: now)
+        @user.tenant.leads.where(admin_user_id: @user.id).lock.find_each do |lead|
+          lead.update_columns(admin_user_id: target_id, updated_at: now)
+          lead.sync_open_activity_owners!
+          result.leads_count += 1
+        end
 
         result.habitations_count = @user.tenant.habitations
           .where(admin_user_id: @user.id)

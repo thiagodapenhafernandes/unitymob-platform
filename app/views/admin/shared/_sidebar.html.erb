@@ -173,7 +173,9 @@
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless comercial_open %>>
           <li><%= link_to admin_tasks_path, class: "ax-nav__link #{'active' if controller_name == 'tasks'}" do %><i class="bi bi-check2-square"></i><span>Minhas Tarefas</span><% end %></li>
           <li><%= link_to admin_appointments_path, class: "ax-nav__link #{'active' if controller_name == 'appointments'}" do %><i class="bi bi-calendar-event"></i><span>Agenda</span><% end %></li>
+          <% if admin_or_administrative_user? %>
           <li><%= link_to admin_commercial_contract_proposals_path, class: "ax-nav__link #{'active' if controller_name == 'commercial_contract_proposals'}" do %><i class="bi bi-file-earmark-check"></i><span>Contratos B2B</span><% end %></li>
+          <% end %>
         </ul>
       </li>
     <% end %>
@@ -401,7 +403,7 @@
       # "Atendimento WhatsApp" só aparece com o número da empresa conectado.
       sidebar_tenant = respond_to?(:current_tenant) ? current_tenant : Current.tenant
       whatsapp_service_visible = sidebar_tenant.present? &&
-                                 can_access.call(:manage, :whatsapp_inbox) &&
+                                 tenant_owner? &&
                                  WhatsappBusinessIntegration.current(sidebar_tenant)&.messaging_ready?
       settings_visible = can_access.call(:view, :catalogos) ||
                          tenant_owner? ||

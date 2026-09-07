@@ -202,7 +202,7 @@ RSpec.describe Lead, type: :model do
     end
 
     it "limpa a data ao sair de concluido" do
-      lead = create(:lead, status: "Concluido")
+      lead = create(:lead, status: "Concluido", admin_user: create(:admin_user, tenant: Current.tenant))
 
       expect(lead.closed_at).to be_present
 

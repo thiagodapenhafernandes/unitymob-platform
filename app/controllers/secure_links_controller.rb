@@ -196,8 +196,7 @@ class SecureLinksController < ApplicationController
       Lead.status_value(:waiting_acceptance)
     ].compact
 
-    Lead.where(id: @lead.id, admin_user_id: nil, status: claimable_statuses)
-        .update_all(admin_user_id: claimer.id, status: Lead.status_value(:em_atendimento), updated_at: Time.current) == 1
+    Lead.claim_unassigned!(@lead.id, claimer.id, statuses: claimable_statuses)
   end
 
   def lost_turn_reason

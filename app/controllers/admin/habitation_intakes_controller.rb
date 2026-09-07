@@ -6,8 +6,8 @@ module Admin
     before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish proprietor_lookup]
     before_action :authorize_export!, only: %i[export]
     before_action :set_property_setting, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish]
-    before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site]
-    before_action :authorize_access!, only: %i[show edit update destroy submit_for_review release_to_site]
+    before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish]
+    before_action :authorize_access!, only: %i[show edit update destroy submit_for_review release_to_site publish]
     before_action :authorize_intake_edit!, only: %i[edit update]
     before_action :authorize_review!, only: %i[approve return_to_broker]
     before_action :load_form_options, only: %i[edit update]
@@ -600,6 +600,7 @@ module Admin
     end
 
     def can_broker_release_to_site?(habitation)
+      return false unless can?(:publish, :captacoes)
       return false unless habitation&.broker_release_pending?
       return false if tenant_owner? || can?(:review, :captacoes)
 

@@ -41,7 +41,7 @@
       </button>
     <% end %>
 
-    <% if can?(:manage, :whatsapp_inbox) %>
+    <% if can?(:manage, :integracoes) %>
       <%= button_to sync_templates_admin_whatsapp_conversations_path, method: :post, class: "ax-btn ax-btn--sm ax-btn--ghost wa-inbox-heading__sync", form_class: "tw-inline" do %>
         <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar modelos</span>
       <% end %>

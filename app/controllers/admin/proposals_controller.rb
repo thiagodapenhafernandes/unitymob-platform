@@ -82,11 +82,11 @@ class Admin::ProposalsController < Admin::BaseController
   private
 
   def set_lead
-    @lead = current_tenant.leads.find(params[:lead_id])
+    @lead = accessible_commercial_leads.find(params[:lead_id])
   end
 
   def set_proposal
-    @proposal = Proposal.joins(:lead).where(leads: { tenant_id: current_tenant.id }).find(params[:id])
+    @proposal = Proposal.where(lead_id: accessible_commercial_leads.select(:id)).find(params[:id])
   end
 
   def habitation_options

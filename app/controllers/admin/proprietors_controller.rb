@@ -277,8 +277,35 @@ module Admin
     end
 
     def set_quick_proprietor
-      @proprietor = current_tenant.proprietors.find_by(id: params[:id])
+      scope = current_tenant.proprietors
+      if !admin_or_administrative_user? && params[:habitation_id].present?
+        property = current_tenant.habitations.find_by(id: params[:habitation_id])
+        unless property && quick_proprietor_context_allowed?(property)
+          return render json: { errors: ["Captação ou imóvel não encontrado."] }, status: :not_found
+        end
+
+        @complete_unlinked_proprietor = property.proprietor_id.to_s != params[:id].to_s
+      elsif !admin_or_administrative_user?
+        resource = quick_property_owner_permission? ? :imoveis : :captacoes
+        ids = accessible_owner_ids(resource)
+        properties = current_tenant.habitations
+        properties = properties.where(admin_user_id: ids) unless ids.nil?
+        scope = scope.where(id: properties.select(:proprietor_id))
+      end
+      @proprietor = scope.find_by(id: params[:id])
       render json: { errors: ["Proprietário não encontrado."] }, status: :not_found unless @proprietor
+    end
+
+    def quick_proprietor_context_allowed?(property)
+      if property.broker_intake?
+        return false unless can?(:manage, :captacoes) && owner_in_scope?(:captacoes, property.admin_user_id)
+        return true unless property.intake_submitted_for_admin_review?
+
+        can_review_captacao?(property) || current_admin_user.can_view_team?(:captacoes)
+      else
+        quick_property_owner_permission? &&
+          (owner_in_scope?(:imoveis, property.admin_user_id) || property.broker_responsible_for?(current_admin_user))
+      end
     end
 
     def authorize_quick_proprietor_access!
@@ -312,6 +339,11 @@ module Admin
     def quick_update_attributes
       permitted = quick_proprietor_params.to_h.symbolize_keys
       permitted.delete_if { |attribute, value| value.blank? && attribute != :email }
+      if @complete_unlinked_proprietor
+        attributes = permitted.slice(:email, :city).select { |attribute, _| @proprietor.public_send(attribute).blank? }
+        attributes[:phone_primary] = permitted[:phone_primary] if permitted[:phone_primary].present? && quick_proprietor_phone_blank?(@proprietor)
+        return attributes
+      end
       return permitted if admin_or_administrative_user? || quick_property_owner_permission?
 
       attributes = permitted.slice(:email, :city)

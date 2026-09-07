@@ -2,6 +2,7 @@ class Admin::TasksController < Admin::BaseController
   before_action -> { check_permission!(:view, :comercial) }, only: [:index]
   before_action -> { check_permission!(:manage, :comercial) }, only: [:create, :update, :complete, :destroy]
   before_action :set_task, only: [:update, :complete, :destroy]
+  before_action :authorize_linked_lead!, only: %i[create update complete destroy]
 
   FILTERS = %w[pendentes hoje atrasadas semana concluidas todas legado].freeze
 
@@ -101,6 +102,16 @@ class Admin::TasksController < Admin::BaseController
 
   def set_task
     @task = task_scope.find(params[:id])
+  end
+
+  def authorize_linked_lead!
+    if @task&.open_activity? && @task.lead_id.present?
+      accessible_commercial_leads.find(@task.lead_id)
+    end
+    id = params.dig(:task, :lead_id)
+    return if id.blank? || id.to_s == @task&.lead_id.to_s
+
+    accessible_commercial_leads.find(id)
   end
 
   def task_params

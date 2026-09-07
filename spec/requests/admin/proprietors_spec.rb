@@ -158,6 +158,7 @@ RSpec.describe "Admin::Proprietors", type: :request do
     )
     manager = create(:admin_user, profile: manager_profile)
     proprietor = create(:proprietor, tenant: manager.tenant, name: "Dono Gerente", phone_primary: "(47) 98888-7777", city: "Itapema")
+    create(:habitation, tenant: manager.tenant, admin_user: manager, proprietor: proprietor)
     sign_in manager
 
     patch quick_update_admin_proprietor_path(proprietor),
@@ -417,6 +418,9 @@ RSpec.describe "Admin::Proprietors", type: :request do
     )
     duplicate = create(:proprietor, tenant: broker.tenant, name: "Dono Duplicado", phone_primary: "(47) 96666-2222", city: "Camboriú")
     blank_phone_proprietor = create(:proprietor, tenant: broker.tenant, name: "Dono Sem Telefone", phone_primary: nil, city: nil)
+    [proprietor, blank_phone_proprietor].each do |record|
+      create(:habitation, :broker_intake, tenant: broker.tenant, admin_user: broker, proprietor: record)
+    end
 
     patch quick_update_admin_proprietor_path(proprietor),
           params: {

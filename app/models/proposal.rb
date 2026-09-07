@@ -24,6 +24,7 @@ class Proposal < ApplicationRecord
               less_than_or_equal_to: MAX_MONEY_CENTS
             }
   validate :money_inputs_are_valid
+  validate :associations_belong_to_lead_tenant
 
   before_validation :ensure_token, on: :create
 
@@ -76,6 +77,16 @@ class Proposal < ApplicationRecord
   end
 
   private
+
+  def associations_belong_to_lead_tenant
+    return unless lead
+
+    { habitation: habitation, admin_user: admin_user }.each do |name, record|
+      next if record.nil? || record.tenant_id == lead.tenant_id
+
+      errors.add(name, "deve pertencer à mesma conta do lead")
+    end
+  end
 
   def parse_money(value, attribute)
     money_parse_errors.delete(attribute)

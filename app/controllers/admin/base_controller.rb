@@ -1,4 +1,8 @@
 class Admin::BaseController < ApplicationController
+  class PermissionDenied < StandardError; end
+
+  rescue_from PermissionDenied, with: :render_permission_denied
+
   include Admin::ContextItems
   include UserActivityTrackable
 
@@ -46,6 +50,10 @@ class Admin::BaseController < ApplicationController
   end
 
   def render_lead_operational_turbo_stream(lead, notice: nil, alert: nil, status: :ok)
+    unless lead.tenant_id == current_tenant.id && can?(:view, :leads) && owner_in_scope?(:leads, lead.admin_user_id)
+      return redirect_back(fallback_location: admin_root_path, notice: notice, alert: alert)
+    end
+
     flash.now[:notice] = notice if notice.present?
     flash.now[:alert] = alert if alert.present?
 
@@ -71,6 +79,8 @@ class Admin::BaseController < ApplicationController
 
   def track_unhandled_admin_exception
     yield
+  rescue PermissionDenied
+    raise
   rescue StandardError => exception
     Rails.logger.error(
       "[admin_exception] request_id=#{request.request_id} " \
@@ -304,11 +314,23 @@ class Admin::BaseController < ApplicationController
       )
 
       @access_audit_denied = true
-      respond_to do |format|
-        format.html { redirect_to admin_root_path, alert: "Você não tem permissão para acessar esta área." }
-        format.json { render json: { error: "forbidden" }, status: :forbidden }
-        format.any { head :forbidden }
-      end
+      raise PermissionDenied
+    end
+  end
+
+  def render_permission_denied
+    respond_to do |format|
+      format.html { redirect_to admin_root_path, alert: "Você não tem permissão para acessar esta área." }
+      format.json { render json: { error: "forbidden" }, status: :forbidden }
+      format.any { head :forbidden }
+    end
+  end
+
+  def accessible_commercial_leads
+    check_permission!(:view, :leads)
+    %i[leads comercial].reduce(current_tenant.leads) do |scope, resource|
+      ids = accessible_owner_ids(resource)
+      ids.nil? ? scope : scope.where(admin_user_id: ids)
     end
   end
 
