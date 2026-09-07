@@ -18,6 +18,23 @@ RSpec.describe Appointments::DueReminderJob, type: :job do
     allow(Notifications::PushDispatcher).to receive(:deliver).and_return(1)
   end
 
+  it "avisa o novo responsável mesmo se o anterior já recebeu o lembrete" do
+    activity = create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 5.minutes.ago)
+    PushDeliveryEvent.create!(admin_user: broker, lead: lead, event_type: "provider_accepted", tag: "appointment-due-#{activity.id}")
+    new_owner = create(:admin_user, tenant: tenant, profile: profile)
+    lead.update!(admin_user: new_owner)
+    described_class.perform_now
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(admin_user_id: new_owner.id))
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver).with(hash_including(admin_user_id: broker.id))
+  end
+
+  it "não notifica atividade antiga quando o lead perdeu o corretor" do
+    create(:appointment, tenant: tenant, lead: lead, admin_user: broker, starts_at: 3.hours.ago)
+    lead.update_columns(admin_user_id: nil)
+    described_class.perform_now
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+  end
+
   it "envia push trinta minutos antes do compromisso iniciar" do
     appointment = create(:appointment, tenant: tenant, lead: lead, admin_user: broker, title: "Visita no Centro", starts_at: 20.minutes.from_now)
 

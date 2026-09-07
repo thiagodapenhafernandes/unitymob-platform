@@ -30,7 +30,7 @@ RSpec.describe "Admin::Appointments", type: :request do
 
   describe "POST /admin/appointments" do
     it "agenda compromisso e registra na timeline do lead" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
 
       expect {
         post admin_appointments_path, params: { appointment: { title: "Visita", kind: "visita", starts_at: 1.day.from_now, lead_id: lead.id } }
@@ -76,7 +76,7 @@ RSpec.describe "Admin::Appointments", type: :request do
 
   describe "PATCH /admin/appointments/:id" do
     it "atualiza compromisso e registra historico no lead" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
       appt = Appointment.create!(title: "Visita", admin_user: admin, lead: lead, starts_at: 1.day.from_now, status: "agendado")
 
       expect {
@@ -88,7 +88,7 @@ RSpec.describe "Admin::Appointments", type: :request do
     end
 
     it "marca como realizado e loga na timeline" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
       appt = Appointment.create!(title: "Visita", admin_user: admin, lead: lead, starts_at: 1.hour.ago, status: "agendado")
 
       patch admin_appointment_path(appt), params: { appointment: { status: "realizado" } }

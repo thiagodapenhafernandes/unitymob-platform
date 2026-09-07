@@ -56,16 +56,45 @@ class Lead < ApplicationRecord
   def self.claim!(lead_id, corretor_id)
     return false if corretor_id.blank?
 
-    where(id: lead_id, admin_user_id: nil, status: status_value(:waiting_acceptance))
-      .update_all(admin_user_id: corretor_id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
+    claim_unassigned!(lead_id, corretor_id, statuses: [status_value(:waiting_acceptance)])
   end
 
   def self.claim_for_rules!(lead_id, corretor_id, distribution_rule_ids)
     rule_ids = Array(distribution_rule_ids).compact
     return false if corretor_id.blank? || rule_ids.blank?
 
-    where(id: lead_id, admin_user_id: nil, status: status_value(:waiting_acceptance), distribution_rule_id: rule_ids)
-      .update_all(admin_user_id: corretor_id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
+    claim_unassigned!(lead_id, corretor_id, statuses: [status_value(:waiting_acceptance)], rule_ids: rule_ids)
+  end
+
+  def self.claim_unassigned!(lead_id, corretor_id, statuses:, rule_ids: nil)
+    user = Current.tenant&.admin_users&.find_by(id: corretor_id)
+    return false unless user
+
+    transaction do
+      scope = where(id: lead_id, tenant_id: user.tenant_id, admin_user_id: nil, status: statuses)
+      scope = scope.where(distribution_rule_id: rule_ids) if rule_ids
+      claimed = scope.update_all(admin_user_id: user.id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
+      where(id: lead_id, tenant_id: user.tenant_id).find(lead_id).sync_open_activity_owners! if claimed
+      claimed
+    end
+  end
+
+  # Called inside the ownership transaction, including atomic claims and backfills.
+  def sync_open_activity_owners!
+    return if admin_user_id.blank? || admin_user&.tenant_id != tenant_id
+
+    changes = {}
+    [[tasks, "pendente"], [appointments, "agendado"]].each do |scope, open_status|
+      scope = scope.where(tenant_id: tenant_id, status: open_status).where("admin_user_id IS DISTINCT FROM ?", admin_user_id)
+      rows = scope.pluck(:id, :admin_user_id)
+      next if rows.empty?
+
+      scope.where(id: rows.map(&:first)).update_all(admin_user_id: admin_user_id, updated_at: Time.current)
+      changes[scope.klass.table_name] = rows.map { |id, from| { id: id, from: from, to: admin_user_id } }
+    end
+    activities.create!(tenant_id: tenant_id, kind: "activity_ownership_transferred",
+                       source_category: Current.admin_user ? "human" : "automation",
+                       metadata: { changes: changes, by_admin_user_id: Current.admin_user&.id }) if changes.present?
   end
   has_many :public_navigation_sessions, dependent: :nullify
   has_many :public_navigation_events, dependent: :nullify
@@ -73,6 +102,7 @@ class Lead < ApplicationRecord
   has_many :automation_events, dependent: :nullify
   has_many :seo_conversion_events, dependent: :nullify
   has_many :push_delivery_events, dependent: :nullify
+  has_many :whatsapp_conversations, dependent: :nullify
   has_many :whatsapp_campaign_messages, dependent: :destroy
   has_many :tasks, dependent: :nullify
   has_many :appointments, dependent: :nullify
@@ -143,6 +173,7 @@ class Lead < ApplicationRecord
   end
 
   after_create :record_audit_create
+  after_update :sync_open_activity_owners!, if: :saved_change_to_admin_user_id?
   after_update :record_audit_update
   after_destroy :record_audit_destroy
   after_create_commit :route_lead, unless: :skip_automatic_routing?
@@ -188,6 +219,7 @@ class Lead < ApplicationRecord
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
   validates :phone, presence: true, unless: -> { business_scoped_user_id.present? }
   validate :associated_records_must_belong_to_tenant
+  validate :in_service_requires_owner
 
   # Motivo e justificativa só são exigidos no fluxo dedicado de arquivar
   # (Admin::LeadsController#archive) — o update genérico (funil/kanban) segue
@@ -471,6 +503,13 @@ class Lead < ApplicationRecord
   def stronger_property_share_status(current, candidate)
     order = { "sent" => 0, "viewed" => 1, "opened" => 2, "interested" => 3 }
     order.fetch(candidate, 0) > order.fetch(current, 0) ? candidate : current
+  end
+
+  def in_service_requires_owner
+    return if admin_user_id.present?
+    return unless status == self.class.status_value(:em_atendimento, tenant: tenant || Current.tenant)
+
+    errors.add(:admin_user, "deve ser atribuído antes de colocar o lead em atendimento")
   end
 
   def normalize_status

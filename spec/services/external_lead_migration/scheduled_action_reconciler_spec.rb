@@ -172,7 +172,8 @@ RSpec.describe ExternalLeadMigration::ScheduledActionReconciler do
   it "nao usa o usuario conector como fallback para agenda sem corretor mapeado" do
     connector = create(:admin_user, tenant:, email: "connector-c2s-reconcile@example.test")
     integration = create(:external_lead_integration, tenant:, connected_by_admin_user: connector, seller_mappings: {})
-    lead = create(:lead, tenant:, external_lead_integration: integration, admin_user: nil, status: "Em Atendimento")
+    lead = create(:lead, tenant:, external_lead_integration: integration, admin_user: nil, status: "Novo")
+    lead.update_columns(status: "Em Atendimento")
     create_external_schedule_activity(
       lead: lead,
       task_id: nil,
@@ -199,6 +200,7 @@ RSpec.describe ExternalLeadMigration::ScheduledActionReconciler do
       title: "Ação agendada do legado",
       due_at: Time.zone.parse("2026-08-15T13:43:30-03:00")
     )
+    task.update_columns(admin_user_id: wrong_user.id) # Simula divergência legada.
     create_external_schedule_activity(
       lead: lead,
       task_id: task.id,
@@ -217,7 +219,8 @@ RSpec.describe ExternalLeadMigration::ScheduledActionReconciler do
   it "pula leads sem corretor ativo no backfill operacional" do
     inactive = create(:admin_user, tenant:, active: false)
     [nil, inactive].each_with_index do |owner, index|
-      lead = create(:lead, tenant:, admin_user: owner, status: "Em Atendimento")
+      lead = create(:lead, tenant:, admin_user: owner, status: "Novo")
+      lead.update_columns(status: "Em Atendimento")
       create_external_schedule_activity(lead:, task_id: nil, external_key: "inactive-#{index}", date: "2026-09-29T09:00:00-03:00", name: "Retornar", alias_name: "feedback_customer")
     end
     result = described_class.call(tenant:, execute: true, operational_only: true)

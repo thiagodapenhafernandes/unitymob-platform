@@ -57,7 +57,7 @@ RSpec.describe "Admin::Tasks", type: :request do
 
   describe "POST /admin/tasks" do
     it "cria tarefa e registra atividade no lead" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
 
       expect {
         post admin_tasks_path, params: { task: { title: "Enviar proposta", kind: "follow_up", lead_id: lead.id } }
@@ -69,7 +69,7 @@ RSpec.describe "Admin::Tasks", type: :request do
     end
 
     it "atualiza o painel operacional do lead via Turbo Stream" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
 
       post admin_tasks_path,
            params: { task: { title: "Enviar proposta", kind: "follow_up", lead_id: lead.id } },
@@ -115,7 +115,7 @@ RSpec.describe "Admin::Tasks", type: :request do
 
   describe "PATCH /admin/tasks/:id" do
     it "atualiza tarefa e registra historico no lead" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
       task = Task.create!(title: "Follow-up", admin_user: admin, lead: lead, status: "pendente")
 
       expect {
@@ -129,7 +129,7 @@ RSpec.describe "Admin::Tasks", type: :request do
 
   describe "PATCH /admin/tasks/:id/complete" do
     it "conclui a tarefa e loga na timeline" do
-      lead = create(:lead)
+      lead = create(:lead, admin_user: admin)
       task = Task.create!(title: "Follow-up", admin_user: admin, lead: lead, status: "pendente")
 
       patch complete_admin_task_path(task)

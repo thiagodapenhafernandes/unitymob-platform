@@ -15,6 +15,7 @@ module Admin::ComercialHelper
     "comment"            => { icon: "bi-chat-left-text",   color: "gray",  label: "Comentário" },
     "note"               => { icon: "bi-pencil-square",    color: "gray",  label: "Contato registrado" },
     "task_created"       => { icon: "bi-check2-square",    color: "amber", label: "Tarefa criada" },
+    "activity_ownership_transferred" => { icon: "bi-arrow-left-right", color: "blue", label: "Pendências transferidas com o lead" },
     "task_updated"       => { icon: "bi-pencil-square",    color: "amber", label: "Tarefa atualizada" },
     "task_completed"     => { icon: "bi-check-circle-fill",color: "green", label: "Tarefa concluída" },
     "appointment_created"=> { icon: "bi-calendar-plus",    color: "blue",  label: "Compromisso agendado" },

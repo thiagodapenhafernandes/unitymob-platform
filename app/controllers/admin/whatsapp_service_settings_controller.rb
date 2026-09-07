@@ -2,7 +2,7 @@
 # A conexão do número/app continua em /admin/whatsapp_integration (Integrações);
 # aqui é só política de atendimento — por isso exige a integração pronta.
 class Admin::WhatsappServiceSettingsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :whatsapp_inbox) }
+  before_action :require_admin!
   before_action :set_integration
   before_action :require_messaging_ready
 

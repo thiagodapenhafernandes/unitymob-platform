@@ -300,7 +300,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
         header_format: "none",
         body: definition.body
       )
-      lead = create(:lead, tenant: admin.tenant)
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
       Appointment.create!(
         tenant: admin.tenant,
         lead: lead,

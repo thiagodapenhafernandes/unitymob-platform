@@ -42,6 +42,11 @@ module Appointments
     end
 
     def deliver_reminder(appointment, now)
+      appointment.reload
+      return unless appointment.open_activity?
+      return if appointment.lead_owner_missing?
+      return if appointment.lead && appointment.admin_user_id != appointment.lead.admin_user_id
+
       phase = reminder_phase(appointment, now)
       phase = overdue_phase(appointment, now) if phase == "due" && (reminder_sent?(appointment, "due", now) || appointment.starts_at <= now - OVERDUE_REPEAT_INTERVAL)
       return if phase.blank?
@@ -77,11 +82,11 @@ module Appointments
     end
 
     def reminder_sent?(appointment, phase, now = Time.current)
-      PushDeliveryEvent.where(tag: reminder_tag(appointment, phase, now), event_type: SENT_EVENT_TYPES).exists?
+      PushDeliveryEvent.where(admin_user_id: appointment.admin_user_id, tag: reminder_tag(appointment, phase, now), event_type: SENT_EVENT_TYPES).exists?
     end
 
     def recent_attempt?(appointment, phase, now)
-      PushDeliveryEvent.where(tag: reminder_tag(appointment, phase, now))
+      PushDeliveryEvent.where(admin_user_id: appointment.admin_user_id, tag: reminder_tag(appointment, phase, now))
                        .where("created_at >= ?", now - RETRY_ATTEMPT_AFTER)
                        .exists?
     end

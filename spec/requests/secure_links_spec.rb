@@ -95,7 +95,9 @@ RSpec.describe "SecureLinks", type: :request do
 
   it "atribui o corretor do link ao atender lead ativo sem responsavel" do
     LeadSetting.instance(tenant: corretor.tenant).update!(push_lead_click_action: "whatsapp")
-    lead = create(:lead, name: "Cliente Sem Dono", phone: "11999999999", status: :em_atendimento, admin_user: nil)
+    lead = create(:lead, name: "Cliente Sem Dono", phone: "11999999999", status: :waiting_acceptance, admin_user: nil)
+    # Legado anterior à validação que exige corretor em atendimento.
+    lead.update_columns(status: Lead.status_value(:em_atendimento))
     link = SecureLink.link_for(lead, :view, expiry_days: 7, issued_to: corretor)
 
     get secure_link_path(link.token), params: { contact: "attend" }

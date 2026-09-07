@@ -2,6 +2,7 @@ class Admin::AppointmentsController < Admin::BaseController
   before_action -> { check_permission!(:view, :comercial) }, only: [:index]
   before_action -> { check_permission!(:manage, :comercial) }, only: [:create, :update, :destroy]
   before_action :set_appointment, only: [:update, :destroy]
+  before_action :authorize_linked_lead!, only: %i[create update destroy]
 
   def index
     @view = params[:view].presence_in(%w[semana dia lista]) || "semana"
@@ -94,6 +95,16 @@ class Admin::AppointmentsController < Admin::BaseController
 
   def appointment_meta
     { appointment_id: @appointment.id, title: @appointment.title, starts_at: @appointment.starts_at, kind: @appointment.kind }
+  end
+
+  def authorize_linked_lead!
+    if @appointment&.open_activity? && @appointment.lead_id.present?
+      accessible_commercial_leads.find(@appointment.lead_id)
+    end
+    id = params.dig(:appointment, :lead_id)
+    return if id.blank? || id.to_s == @appointment&.lead_id.to_s
+
+    accessible_commercial_leads.find(id)
   end
 
   def appointment_params

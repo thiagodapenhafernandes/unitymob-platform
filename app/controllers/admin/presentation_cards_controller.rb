@@ -4,6 +4,7 @@
 # excluível/desativável — garante que o seletor do inbox jamais fique vazio.
 class Admin::PresentationCardsController < Admin::BaseController
   before_action -> { check_permission!(:view, :whatsapp_inbox) }
+  before_action -> { check_permission!(:manage, :whatsapp_inbox) }, except: %i[index]
   before_action :set_card, only: [:edit, :update, :destroy]
 
   def index

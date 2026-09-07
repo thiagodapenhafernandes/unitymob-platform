@@ -1,5 +1,7 @@
 class Task < ApplicationRecord
   include TenantScoped
+  include LeadOwnerRequired
+  include LeadActivityOwnership
 
   KINDS = {
     "ligacao" => "Ligação",

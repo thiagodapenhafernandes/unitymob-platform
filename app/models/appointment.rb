@@ -1,5 +1,7 @@
 class Appointment < ApplicationRecord
   include TenantScoped
+  include LeadOwnerRequired
+  include LeadActivityOwnership
 
   KINDS = {
     "visita" => "Visita",
