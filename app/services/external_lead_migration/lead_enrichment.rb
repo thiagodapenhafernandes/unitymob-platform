@@ -37,7 +37,7 @@ module ExternalLeadMigration
     end
 
     def sync_labels!
-      return if responsible_user.blank?
+      return if lead.admin_user_id.blank? || responsible_user.blank?
 
       mapper.label_names.each do |name|
         label = responsible_user.lead_labels.find_or_initialize_by(name: name)
@@ -103,7 +103,7 @@ module ExternalLeadMigration
         due_at = action_due_at(action)
         next if due_at.blank?
 
-        if responsible_user.blank?
+        if lead.admin_user_id.blank? || responsible_user.blank?
           log_unassigned_scheduled_action!(action, due_at, index)
           next
         end

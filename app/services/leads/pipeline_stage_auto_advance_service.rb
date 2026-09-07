@@ -232,12 +232,12 @@ module Leads
     end
 
     def make_available_for_automation!(lead, automation:)
-      lead.update!(admin_user_id: nil)
+      lead.update!(admin_user_id: nil, status: Lead.default_status(tenant: lead.tenant, pipeline: lead.lead_pipeline))
       LeadActivity.log!(lead: lead, kind: "automation_available", metadata: automation_metadata(automation))
     end
 
     def create_task!(lead, automation:)
-      assignee = lead.admin_user || lead.tenant.admin_users.where(active: true).order(:id).first
+      assignee = lead.admin_user
       return if assignee.blank?
 
       task = lead.tenant.tasks.create!(

@@ -25,6 +25,10 @@ module ExternalLeadMigration
       seller = hash_at("seller")
       tags = tags_from(@attributes["tags"])
       status = mapped_status(tenant: integration.tenant)
+      owner = integration.local_user_for_seller(seller)
+      if owner.blank? && status == Lead.status_value(:em_atendimento, tenant: integration.tenant)
+        status = Lead.default_status(tenant: integration.tenant, pipeline: pipeline_for(tenant: integration.tenant, product:))
+      end
       pipeline = pipeline_for(tenant: integration.tenant, product:)
       property_id = habitation_id_for(tenant: integration.tenant, product:)
 
@@ -36,7 +40,7 @@ module ExternalLeadMigration
         external_internal_id: external_internal_id,
         external_last_synced_at: Time.current,
         distribution_rule: integration.distribution_rule,
-        admin_user: integration.local_user_for_seller(seller),
+        admin_user: owner,
         property_id: property_id,
         name: customer["name"].presence || @attributes["name"].presence || "Lead externo",
         email: customer["email"].presence || @attributes["email"],
