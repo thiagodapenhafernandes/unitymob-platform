@@ -76,7 +76,7 @@ module ExternalLeadMigration
       return skip! unless @canonical_activity_ids[activity.id]
 
       action = scheduled_action_from(activity)
-      return skip! if lead.blank? || action[:due_at].blank? || action[:admin_user].blank?
+      return skip! if lead.blank? || lead.admin_user_id.blank? || action[:due_at].blank? || action[:admin_user].blank?
 
       action[:visit] ? reconcile_appointment(activity, lead, action) : reconcile_task(activity, lead, action)
     end

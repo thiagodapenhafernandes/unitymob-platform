@@ -77,7 +77,7 @@ RSpec.describe Automation::ActionExecutor do
     expect(task.description).to include("Apartamento compatível")
   end
 
-  it "uses the configured fallback user when the lead has no responsible user" do
+  it "does not create a task for an unassigned lead even with configured fallback" do
     fallback = create(:admin_user, :admin, email: "fallback-interest-#{SecureRandom.hex(6)}@salute.test")
     lead.update!(admin_user: nil)
 
@@ -90,7 +90,7 @@ RSpec.describe Automation::ActionExecutor do
       lead
     )
 
-    expect(Task.last.admin_user).to eq(fallback)
+    expect(Task.count).to eq(0)
   end
 
   it "ignores configured fallback users from another Tenant" do
@@ -100,7 +100,7 @@ RSpec.describe Automation::ActionExecutor do
     other_profile = other_tenant.profiles.find_by!(key: "agent")
     tenant_fallback = create(:admin_user, tenant: lead_tenant, profile: lead_profile, email: "tenant-fallback-#{SecureRandom.hex(6)}@salute.test")
     other_fallback = create(:admin_user, tenant: other_tenant, profile: other_profile, email: "other-fallback-#{SecureRandom.hex(6)}@salute.test")
-    lead.update!(tenant: lead_tenant, admin_user: nil)
+    lead.update!(tenant: lead_tenant, admin_user: nil, lead_pipeline: nil, lead_pipeline_stage: nil)
 
     described_class.execute(
       {
@@ -111,7 +111,7 @@ RSpec.describe Automation::ActionExecutor do
       lead
     )
 
-    expect(Task.last.admin_user).to eq(tenant_fallback)
+    expect(Task.count).to eq(0)
   end
 
   it "keeps the current lead responsible before using the configured fallback" do

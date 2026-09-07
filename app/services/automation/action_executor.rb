@@ -355,7 +355,7 @@ module Automation
     end
 
     def task_assignee(action)
-      @lead.admin_user || fallback_admin_user(action) || tenant.admin_users.active.first
+      @lead.admin_user
     end
 
     def fallback_admin_user(action)
