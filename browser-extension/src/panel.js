@@ -1,10 +1,13 @@
+import { mountPropertyCatalog } from "./property-catalog.js";
+import { mountWorkspaceTabs } from "./workspace-tabs.js";
 import { crmOrigin, discoveryOrigin } from "./config.js";
 import { contextKey, shouldReloadContext } from "./context.js";
 import { isWhatsAppTab } from "./security.js";
 
 const $ = id => document.getElementById(id);
+mountWorkspaceTabs(document.getElementById("workspace-panel"), chrome.storage.local);
 const editedForms = new Set();
-for (const form of document.querySelectorAll("#chat-panel form, #lead-panel form")) {
+for (const form of document.querySelectorAll("#workspace-panel form")) {
   form.addEventListener("input", () => editedForms.add(form));
   form.addEventListener("change", () => editedForms.add(form));
   form.addEventListener("reset", () => editedForms.delete(form));
@@ -63,15 +66,15 @@ async function request(type, data = {}) {
 }
 
 function showLeadIdentity(visible) {
+  $("contact-history").hidden = !visible;
+  $("workspace-panel").dispatchEvent(new CustomEvent("workspace:lead-state", { detail: visible }));
   $("lead-identity").hidden = !visible;
   $("chat-status").hidden = visible;
 }
 
 function clearLead() {
-  $("property-category").replaceChildren(new Option("Todas as categorias", ""));
-  $("property-quick-options").replaceChildren();
-  $("property-quick").value = "";
   propertySelection.clear(); clearPropertySearch();
+  propertyCatalog.reset();
   showLeadIdentity(false);
   selectedLead = null; resolvedPhone = null;
   $("match-explanation").hidden = true;
@@ -151,25 +154,15 @@ async function fetchLead(id, version) {
   $("add-task").hidden = !me.capabilities.create_tasks;
   $("add-note").hidden = !me.capabilities.create_notes || !result.contact_options;
   renderContactOptions(result.contact_options);
-  $("actions-help").textContent = me.capabilities.create_notes || me.capabilities.create_tasks || me.capabilities.create_appointments || me.capabilities.manage_labels ? "" : "Seu perfil permite apenas consultar este atendimento. Alterações dependem das permissões do CRM.";
+  $("actions-help").textContent = me.capabilities.create_notes || me.capabilities.create_tasks || me.capabilities.create_appointments || me.capabilities.manage_labels || me.capabilities.link_properties || me.capabilities.change_status ? "" : "Seu perfil permite apenas consultar este atendimento. Alterações dependem das permissões do CRM.";
   for (const id of ["note-contact", "task-contact"]) $(id).textContent = `${result.lead.name} · ${resolvedPhone}`;
   $("create-lead-panel").hidden = true;
   $("property-panel").hidden = !me.capabilities.link_properties;
   $("add-properties").hidden = !me.capabilities.link_properties;
   $("property-contact").textContent = `${result.lead.name} · ${resolvedPhone}`;
-  $("property-category").replaceChildren(new Option("Todas as categorias", ""), ...(result.property_categories || []).map(category => new Option(category, category)));
-  $("property-quick-options").replaceChildren();
-  for (const [key, label] of Object.entries(result.property_quick_filters || {})) {
-    const button = document.createElement("button"); button.type = "button"; button.className = "ax-label-chip"; button.textContent = label; button.setAttribute("aria-pressed", "false");
-    const mark = document.createElement("i"); mark.className = "bi bi-check2"; mark.setAttribute("aria-hidden", "true"); button.prepend(mark);
-    button.onclick = () => {
-      $("property-quick").value = $("property-quick").value === key ? "" : key;
-      for (const chip of $("property-quick-options").children) chip.setAttribute("aria-pressed", String(chip === button && $("property-quick").value === key));
-      $("property-quick").dispatchEvent(new Event("input"));
-    };
-    $("property-quick-options").append(button);
-  }
   propertySelection.clear(); clearPropertySearch();
+  propertyCatalog.reset();
+  queueMicrotask(() => { if(selectedLead) propertyCatalog.activate(); });
   showLeadIdentity(true);
   $("match-explanation").hidden = true;
   $("lead-reference").textContent = `Lead #${result.lead.id}`;
@@ -245,42 +238,42 @@ function formatDate(value) {
 let propertySearchVersion = 0;
 let propertySearchTimer;
 const propertySelection = new Map();
-const propertyFilterKeys = ["min_price", "max_price", "suites", "bedrooms", "parking", "category", "quick"];
-// Match the desktop currency-mask: values in whole reais, grouping while typing.
-for (const key of ["min_price", "max_price"]) $(`property-${key}`).addEventListener("input", event => {
-  const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
-  event.target.value = digits ? new Intl.NumberFormat("pt-BR", {maximumFractionDigits: 0}).format(Number(digits)) : "";
-});
+const propertyCatalog = mountPropertyCatalog({search: () => $("property-search-form").requestSubmit(), clearSelection: () => propertySelection.clear()});
 function clearPropertySearch() {
   clearTimeout(propertySearchTimer);
   propertySearchVersion++;
   $("property-form").hidden = true; $("property-options").replaceChildren(); $("property-search-feedback").textContent = "";
 }
-for (const id of ["property-query", "property-purpose", ...propertyFilterKeys.map(key => `property-${key}`)]) $(id).addEventListener("input", () => {
-  clearPropertySearch();
-  propertySearchTimer = setTimeout(() => $("property-search-form").requestSubmit(), 300);
-});
 $("property-search-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (!selectedLead || !ready() || saving || context?.state !== "ready") return;
-  clearPropertySearch(); const searchVersion = propertySearchVersion; const version = revision;
+  const criteria = propertyCatalog.criteria();
+  if(criteria.page === 1) clearPropertySearch();
+  const searchVersion = ++propertySearchVersion; const version = revision;
+  propertyCatalog.loading();
   $("property-search-feedback").textContent = "Buscando imóveis…";
   try {
     const result = await request("search_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id,
-      query: $("property-query").value.trim(), purpose: $("property-purpose").value, filters: Object.fromEntries(propertyFilterKeys.map(key => [key, ["min_price", "max_price"].includes(key) ? $(`property-${key}`).value.replace(/\D/g, "") : $(`property-${key}`).value]))});
+      ...criteria});
     if (version !== revision || searchVersion !== propertySearchVersion) return;
-    const available = result.properties.filter(property => !property.linked);
+    propertyCatalog.update(result);
+    const available = result.properties;
     for (const property of available) {
-      const option = document.createElement("label"); option.className = "ax-property-option ax-property-option--detail";
-      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id));
+      const option = document.createElement("label"); option.className = "pc-card";
+      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id)); input.disabled = !!property.linked || !me?.capabilities?.link_properties; input.dataset.locked = String(input.disabled);
       input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`; };
       input.setAttribute("aria-label", `Selecionar ${property.code} · ${property.card_title || property.title}`);
-      option.append(input, ...propertyCardContent(property)); $("property-options").append(option);
+      const imageUrl = property.photo_urls?.[0];
+      if(typeof imageUrl === "string" && /^https:\/\//.test(imageUrl)) { const image=document.createElement("img"); image.src=imageUrl; image.alt=property.card_title || property.title; image.loading="lazy"; image.referrerPolicy="no-referrer"; image.onerror=()=>image.remove(); option.append(image); }
+      const body=document.createElement("div"); body.className="pc-card-body"; body.append(...propertyCardContent(property, true));
+      const selection=document.createElement("span");selection.className="pc-pick";selection.append(input,document.createTextNode(property.linked?"Já relacionado ao lead":"Selecionar imóvel"));body.append(selection);option.append(body);$("property-options").append(option);
     }
     $("property-form").hidden = !available.length && propertySelection.size === 0;
+    $("property-form").querySelector('.ax-confirmation').hidden = !me.capabilities.link_properties;
+    $("property-form").querySelector('button[type="submit"]').hidden = !me.capabilities.link_properties;
     $("property-selection-count").textContent = `${propertySelection.size} selecionado(s)`;
-    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : result.more ? "Mostrando 20 imóveis. Refine os filtros para ver outras opções." : `${available.length} imóvel(is) disponível(is). Selecione para relacionar.`;
-  } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { $("property-search-feedback").textContent = "Não foi possível buscar os imóveis."; feedback(error); } }
+    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : result.more ? "Há mais imóveis. Use Carregar mais imóveis para continuar." : `${available.length} imóvel(is) disponível(is). Selecione para relacionar.`;
+  } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { propertyCatalog.failed(); $("property-search-feedback").textContent = "Não foi possível buscar os imóveis. Confira os filtros e tente novamente."; feedback(error); } }
 });
 
 function labelChip(label) {
@@ -337,7 +330,7 @@ for (const panel of document.querySelectorAll("details")) {
   const summary = panel.querySelector(":scope > summary");
   if (summary && !summary.hidden) summary.addEventListener("click", event => { event.preventDefault(); toggleDisclosure(panel); });
 }
-for (const [button, kind] of [["add-task", "task"], ["add-note", "note"], ["add-appointments", "appointment"], ["add-labels", "label"], ["add-properties", "property"], ["change-status", "status"]]) {
+for (const [button, kind] of [["add-task", "task"], ["add-note", "note"], ["add-appointments", "appointment"], ["add-labels", "label"], ["change-status", "status"]]) {
   const control = $(button), panel = $(`${kind}-panel`);
   const label = control.getAttribute("aria-label") || control.textContent;
   if (button !== "change-status") control.innerHTML = '<i class="bi bi-plus-lg" aria-hidden="true"></i>';
@@ -384,7 +377,7 @@ async function resolve(phone) {
   } catch (error) { if (version === revision) feedback(error); }
 }
 
-function clearSelected() { propertySelection.clear(); clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").hidden = true; $("open-lead").removeAttribute("href"); }
+function clearSelected() { propertyCatalog.reset(); propertySelection.clear(); clearPropertySearch(); showLeadIdentity(false); selectedLead = null; for (const id of ["note", "task", "appointment", "label", "property", "status"]) { $(`${id}-form`).reset(); $(`${id}-panel`).open = false; } $("lead-panel").hidden = true; $("open-lead").hidden = true; $("open-lead").removeAttribute("href"); }
 
 async function refreshSession(force = false) {
   if (checkingSession) return;
@@ -577,7 +570,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       const result = await request(type, { tabId: context.tabId, contextKey: contextKey(context), leadId: target?.id,
         phone, confirmed: true, payload });
       if (version !== revision) return;
-      form.reset(); form.closest("details").open = false;
+      form.reset(); if(form.closest("details")) form.closest("details").open = false;
       if (type === "create_lead") $("candidates").replaceChildren();
       $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_contact" ? "Contato registrado." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "link_properties" ? "Imóveis relacionados." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
       await loadLead(result.lead_id);
@@ -588,8 +581,9 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       }
     } finally {
       saving = false;
-      for (const control of form.elements) control.disabled = false;
+      for (const control of form.elements) control.disabled = control.dataset.locked === "true";
       if (type === "create_contact") syncContactResult();
+      if (version === revision && selectedLead) propertyCatalog.activate();
     }
   });
 }
@@ -636,9 +630,9 @@ $("share-properties").addEventListener("click", async () => {
   }
 });
 
-function propertyCardContent(property) {
-    const title = document.createElement("strong"); title.className = "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
-    const specs = document.createElement("div"); specs.className = "ax-property-interest__specs";
+function propertyCardContent(property, catalog = false) {
+    const title = document.createElement("strong"); title.className = catalog ? "pc-title" : "ax-property-interest__title"; title.textContent = `${property.code} · ${property.card_title || property.title}`; title.title = title.textContent;
+    const specs = document.createElement("div"); specs.className = catalog ? "pc-specs" : "ax-property-interest__specs";
     for (const [value, label] of [[property.bedrooms, "Dorm."], [property.suites, "Suítes"], [property.parking, "Vagas"], [property.area == null ? null : Number(property.area).toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1}), "m²"]]) {
       const chip = document.createElement("span");
       const glyph = document.createElement("i"); glyph.className = `bi bi-${({"Dorm.": "door-open", "Suítes": "key", "Vagas": "car-front", "m²": "arrows-angle-expand"})[label]}`; glyph.setAttribute("aria-hidden", "true");
@@ -649,9 +643,21 @@ function propertyCardContent(property) {
     for (const [tag, text] of [["strong", `${money(property.price_cents)}${property.rental ? "/mês" : ""}`], ["span", `Cond. ${money(property.condo_cents)}`], ["span", `IPTU ${money(property.iptu_cents)}`]]) {
       const part = document.createElement(tag); part.textContent = text; part.title = text; financial.append(part);
     }
-    const location = document.createElement("span"); location.className = "ax-property-interest__location";
+    const location = document.createElement("span"); location.className = catalog ? "pc-location" : "ax-property-interest__location";
     const pin = document.createElement("i"); pin.className = "bi bi-geo-alt"; pin.setAttribute("aria-hidden", "true");
     location.append(pin, document.createTextNode([property.neighborhood, property.city].filter(Boolean).join(" · ") || "Localização não informada")); location.title = location.textContent;
+    if(catalog) {
+      financial.className="pc-financial";
+      financial.replaceChildren();
+      const label=document.createElement("small");label.textContent="VALOR DO IMÓVEL";
+      const price=document.createElement("strong");price.textContent=`${money(property.price_cents)}${property.rental?"/mês":""}`;
+      const costs=document.createElement("div");
+      for(const [name,value] of [["Condomínio",property.condo_cents],["IPTU",property.iptu_cents]]){const item=document.createElement("span");item.textContent=name;const amount=document.createElement("b");amount.textContent=money(value);item.append(amount);costs.append(item);}
+      financial.append(label,price,costs);
+      const purpose=document.createElement("small");purpose.className="pc-kind";purpose.textContent=property.rental?"LOCAÇÃO":"VENDA";
+      const owner=document.createElement("span");owner.className="pc-location";owner.textContent=property.owner?`Captador: ${property.owner}`:"";
+      return [title,purpose,location,owner,specs,financial];
+    }
     return [title, location, specs, financial];
 }
 

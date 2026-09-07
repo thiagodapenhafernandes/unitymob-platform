@@ -576,6 +576,33 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "filters and sorts the authorized catalog including linked properties and scoped options" do
+    lead = make_lead
+    first = create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", dormitorios_qtd: 2, valor_venda_cents: 50000000)
+    second = create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", dormitorios_qtd: 3, valor_venda_cents: 70000000)
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Foreign catalog", slug: "foreign-catalog"), nome_empreendimento: "Foreign secret")
+    lead.property_interests.create!(tenant: tenant, habitation: first)
+    endpoint = "/api/v1/browser_extension/leads/#{lead.id}/properties/search"
+    attrs = {q: "", purpose: "all", catalog: true, facet: "mine", order: "sale_price", direction: "asc", category: ["Apartamento"], bedrooms_min: "2", bedrooms_max: "3", include_options: true}
+    post endpoint, params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    body = response.parsed_body
+    expect(body.fetch("properties").map { |p| p["id"] }).to eq([first.id, second.id])
+    expect(body.fetch("properties").first["linked"]).to eq(true)
+    expect(body.fetch("filter_options").fetch("development")).not_to include("Foreign secret")
+    expect(body.fetch("counts").fetch("mine")).to eq(2)
+    ::BrowserExtension::PropertyCatalog::SORT_KEYS.each_key do |order|
+      query = ::BrowserExtension::PropertyCatalog.new(scope: tenant.habitations, user: user, params: {order: order})
+      expect { query.call.limit(1).to_a }.not_to raise_error
+    end
+    post endpoint, params: attrs.merge(direction: "desc"), headers: headers, as: :json
+    expect(response.parsed_body.fetch("properties").map { |p| p["id"] }).to eq([second.id, first.id])
+    post endpoint, params: attrs.merge(bedrooms_min: "4", bedrooms_max: "2"), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    post endpoint, params: attrs.merge(order: "id; DROP TABLE habitations"), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
   it "links selected properties once without replacing the primary property and rejects foreign IDs atomically" do
     lead = make_lead
     first = create(:habitation, tenant: tenant)

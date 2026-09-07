@@ -22,14 +22,14 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension__account-menu .ax-menu { width: 240px; max-width: calc(100vw - 48px); }
 
 .um-extension #lead-context { font-size: 11px; color: var(--ab-muted); }
-.um-extension #search-options summary { cursor: pointer; color: #365f8f; font-size: 12px; }
+.um-extension #search-options summary { cursor: pointer; color: var(--workspace-accent); font-size: 12px; }
 .um-extension #search-options[open] form { margin-top: 10px; }
 .um-extension #note-panel[open] form, .um-extension #task-panel[open] form { margin-top: 12px; }
 .um-extension #actions-help:empty { display: none; }
 
 .um-extension #task-panel:not([open]), .um-extension #note-panel:not([open]) { display: none; }
 .um-extension #tasks-title { color: #b45309; }
-.um-extension #appointments-title { color: #365f8f; }
+.um-extension #appointments-title { color: var(--workspace-accent); }
 .um-extension #labels-title { color: #0369a1; }
 
 .um-extension #appointment-panel:not([open]), .um-extension #label-panel:not([open]) { display: none; }
@@ -69,10 +69,10 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension #create-lead-form .ax-btn { margin-top: 3px; }
 
 /* Composition of the approved compact workspace. */
-.um-extension.ax-operational-workspace { padding: 14px; gap: 12px; background: #f2f5f8; }
+.um-extension.ax-operational-workspace { padding: 14px; gap: 12px; background: #f4f6f8; }
 .um-extension.ax-operational-workspace #lead-name { font-size: 16px; }
 .um-extension.ax-operational-workspace #lead-phone { flex-basis: 100%; }
-.um-extension.ax-operational-workspace #change-status { background: transparent; color: #385f8f; padding: 2px 0; margin-left: auto; }
+.um-extension.ax-operational-workspace #change-status { background: transparent; color: var(--workspace-accent); padding: 2px 0; margin-left: auto; }
 .um-extension.ax-operational-workspace #lead-status { font-size: 10px; border-radius: 5px; padding: 3px 6px; font-weight: 500; }
 .um-extension.ax-operational-workspace #lead-panel { background: transparent; box-shadow: none; }
 .um-extension.ax-operational-workspace #lead-panel > .ax-operational-panel__body { padding: 0; gap: 0; }
@@ -94,3 +94,21 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension.ax-operational-workspace .ax-property-interest__financial { display: flex; gap: 6px; }
 .um-extension.ax-operational-workspace .ax-property-interest__financial > strong { flex: 0 0 auto; }
 .um-extension.ax-operational-workspace .ax-property-interest__financial > span { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Geometry of the extension's three persistent workspaces. */
+.um-extension #lead-panel [role="tabpanel"] { min-width:0; }
+.um-extension #lead-panel #properties-section { border-radius:0 0 10px 10px; margin-bottom:0; }
+.um-extension #lead-panel #actions-help:not(:empty) { padding:12px 14px; background:#fff; }
+.um-extension #lead-panel [role="tabpanel"]:focus-visible { outline:2px solid var(--workspace-accent); outline-offset:2px; }
+
+/* The tabs are the workspace header; lead context lives in its own panel. */
+.um-extension #workspace-panel { min-width:0; }
+.um-extension #pane-lead .ax-extension-welcome { border-top:0; border-radius:0; box-shadow:none; }
+.um-extension #pane-lead #chat-panel { border-radius:0 0 12px 12px; }
+.um-extension #pane-lead #greeting { display:none; }
+.um-extension #pane-lead #welcome-name { font-size:13px; }
+.um-extension #lead-panel #properties-title,
+.um-extension #lead-panel #notes-title { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); }
+.um-extension #lead-panel :is(#properties-section,[aria-labelledby="notes-title"]) > .ax-workspace-section__header { justify-content:flex-end; }
+
+.um-extension #pane-lead #contact-history { padding:14px; margin-top:12px; background:#fff; border-radius:12px; }

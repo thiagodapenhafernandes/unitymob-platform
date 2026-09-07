@@ -14,7 +14,7 @@ test("restores a valid session before any lead or filter response exists", async
       return elements.get(id);
     },
     Option: function(label, value) { this.label = label; this.value = value; },
-    closePropertyGallery() {}, editedForms: new Set(), propertySelection: new Map([["1", {}]]), clearPropertySearch() {}, showLeadIdentity() {},
+    closePropertyGallery() {}, editedForms: new Set(), propertySelection: new Map([["1", {}]]), clearPropertySearch() {}, catalogResets: 0, propertyCatalog: {reset() { context.catalogResets++; }}, showLeadIdentity() {},
     selectedLead: {id: 99}, resolvedPhone: "old", revision: 0, context: {},
     checkingSession: false, pairing: false, me: null, lastPairCheck: Date.now(), lastSessionCheck: 0,
     ready() { return false; }, request: async () => session,
@@ -26,7 +26,7 @@ test("restores a valid session before any lead or filter response exists", async
   assert.equal(context.me, session);
   assert.equal(context.selectedLead, null);
   assert.equal(context.propertySelection.size, 0);
-  assert.equal(elements.get("property-quick").value, "");
+  assert.equal(context.catalogResets, 1);
 });
 
 test("internal note hides and clears the result while operational contacts require it", () => {

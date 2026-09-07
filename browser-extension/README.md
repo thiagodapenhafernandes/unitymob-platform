@@ -148,3 +148,27 @@ O build padrão mantém o piloto local em `dist`. Com `UNITYMOB_DISCOVERY_ORIGIN
 O worker aceita somente contas recebidas da verificação, com validade de dez minutos. Origem, instância, conta e e-mail são conferidos no pareamento e na resposta do CRM. Tokens de outro diretório/ambiente não são reutilizados. A nova permissão potencial HTTPS é opcional; o navegador pede acesso ao domínio efetivamente escolhido. O Gateway não recebe a senha nem as operações do atendimento.
 
 Arquitetura, configuração, migração do mobile e publicação: `../docs/discovery-v2-activation.md`.
+
+## Abas do atendimento
+
+As abas são o cabeçalho do atendimento: Lead, Imóveis, Tarefas e Histórico. Lead reúne identificação, status, conta, busca de telefone e histórico de contatos, incluindo o formulário de registro. A cor primária é #377E90. Tarefas reúne tarefas e compromissos da agenda, preservando os formulários e permissões de cada operação. Histórico reúne tentativas sem resposta e etiquetas.
+
+A última aba escolhida é salva em `chrome.storage.local`, na chave `workspaceActiveTab`, e restaurada ao reabrir o painel, inclusive após reiniciar o navegador. É uma preferência global da extensão, sem dados do lead. Valor ausente ou inválido abre Lead; falha de armazenamento não impede navegar. Trocar abas preserva os formulários; trocar de conversa continua limpando os dados pelo fluxo de segurança existente. Setas, Home e End permitem navegar entre as abas pelo teclado.
+
+Sem lead selecionado, as abas operacionais ficam indisponíveis e Lead abre temporariamente, sem sobrescrever a preferência salva.
+
+## Prévia interativa de imóveis (dados fictícios)
+
+Execute `npm run build` e `node preview/build.js` dentro de `browser-extension`. Sirva `/tmp/unitymob-extension-tabs-preview` com `python3 -m http.server 4174 --bind 127.0.0.1 --directory /tmp/unitymob-extension-tabs-preview` e abra `http://127.0.0.1:4174/panel.html`.
+
+A prévia carrega o HTML, CSS e JavaScript reais do painel. O adaptador em `preview/bootstrap.js` substitui apenas as APIs Chrome/CRM por respostas locais: oito imóveis fictícios, filtros, vínculos e remoções em memória. Não acessa o CRM nem o WhatsApp. A aba escolhida persiste localmente; os vínculos simulados reiniciam ao recarregar. O adaptador não é incluído no pacote da extensão. Filtros do servidor, permissões reais, autenticação e envio não são validados por esta prévia. Outras operações não implementadas pelo adaptador permanecem indisponíveis.
+
+### Carteira integrada
+
+A aba Imóveis usa o módulo real `src/property-catalog.js`: busca, segmentos Meus/Venda/Locação/Oportunidades/Todos, 14 ordenações e filtros ocupando a aba. O menu indica a ordenação atual; selecioná-la novamente inverte a direção. Aplicar confirma os critérios, fechar descarta a edição e Limpar redefine os campos antes de aplicar. A última aba continua persistida; filtros e seleção são limpos ao trocar de atendimento.
+
+Os controles vivem em `app/javascript/lib/catalog_controls.js` e o estilo compartilhado em `app/assets/stylesheets/admin/components/property_catalog.css`; o build copia ambos com o Tom Select já presente no repositório. Os cards usam fotos reais quando disponíveis, sem imagens substitutas de outros imóveis.
+
+A API consulta `BrowserExtension::PropertyCatalog` sobre o escopo comercial autorizado da imobiliária. Opções, totais, filtros e paginação (20 por página) vêm do servidor. Meus considera o usuário captador e suas atribuições. A ordenação compartilha as definições do catálogo administrativo. Os filtros administrativos condicionais não são expostos pela extensão. Vincular e enviar continuam exigindo as confirmações e permissões originais.
+
+Para ativar fora da prévia, publique primeiro o backend com o novo contrato do catálogo e depois distribua o pacote da extensão. O build padrão continua apontando para `https://dev.unitymob.com.br`; não é um pacote de produção. A prévia agora usa este mesmo layout e o adaptador local apenas para dados e operações simuladas.

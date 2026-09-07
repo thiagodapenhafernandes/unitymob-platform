@@ -13,28 +13,9 @@
   <link rel="stylesheet" href="shared/bootstrap-icons.css">
   <link rel="stylesheet" href="panel.css">
   <script type="module" src="panel.js"></script>
-</head>
+<link rel="stylesheet" href="shared/tom-select.css"><link rel="stylesheet" href="shared/property_catalog.css"></head>
 <body>
-  <main class="um-extension ax-operational-workspace">
-    <header class="ax-extension-welcome">
-      <div class="ax-extension-welcome__identity">
-        <span id="greeting" class="ax-extension-welcome__greeting">Seu atendimento, junto da conversa.</span>
-        <strong id="welcome-name">Unitymob</strong>
-        <span id="tenant" class="ax-extension-welcome__tenant"></span>
-      </div>
-      <div id="account" hidden>
-        <div id="account-menu" class="um-extension__account-menu">
-          <button id="account-toggle" type="button" class="ax-btn ax-extension-welcome__account" aria-label="Sua conta" aria-expanded="false" aria-controls="account-actions"><span id="account-avatar" aria-hidden="true"></span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
-          <div id="account-actions" class="ax-menu ax-menu--end" hidden>
-            <div id="user" class="ax-menu__header"></div>
-            <a id="connections" class="ax-menu__item" target="_blank" rel="noopener noreferrer">Gerenciar acesso</a>
-            <button id="switch-account" class="ax-menu__item" type="button">Trocar conta</button>
-            <button id="disconnect" class="ax-menu__item ax-menu__item--danger" type="button">Desconectar</button>
-            <span id="version" class="ax-extension-welcome__version"></span>
-          </div>
-        </div>
-      </div>
-    </header>
+  <main class="um-extension ax-operational-workspace ax-operational-workspace--teal">
     <p id="feedback" role="status" aria-live="polite"></p>
     <section id="login-panel" class="ax-operational-panel" aria-label="Conta Unitymob">
       <header class="ax-operational-panel__header"><h2 id="account-title">Entrar na Unitymob</h2></header>
@@ -65,6 +46,33 @@
         </form>
       </div>
     </section>
+    <div id="workspace-panel">
+        <div class="ax-workspace-tabs" role="tablist" aria-label="Atendimento do lead">
+          <button id="tab-lead" type="button" role="tab" aria-selected="true" aria-controls="pane-lead" data-workspace-tab="lead"><i class="bi bi-person" aria-hidden="true"></i>Lead</button>
+          <button id="tab-properties" disabled type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="pane-properties" data-workspace-tab="properties"><i class="bi bi-houses" aria-hidden="true"></i>Imóveis</button>
+          <button id="tab-tasks" disabled type="button" role="tab" aria-selected="false" aria-controls="pane-tasks" tabindex="-1" data-workspace-tab="tasks"><i class="bi bi-check2-square" aria-hidden="true"></i>Tarefas</button>
+          <button id="tab-history" disabled type="button" role="tab" aria-selected="false" aria-controls="pane-history" tabindex="-1" data-workspace-tab="history"><i class="bi bi-clock-history" aria-hidden="true"></i>Histórico</button>
+        </div>
+        <div id="pane-lead" role="tabpanel" aria-labelledby="tab-lead" tabindex="0">
+    <header class="ax-extension-welcome">
+      <div class="ax-extension-welcome__identity">
+        <span id="greeting" class="ax-extension-welcome__greeting">Seu atendimento, junto da conversa.</span>
+        <strong id="welcome-name">Unitymob</strong>
+        <span id="tenant" class="ax-extension-welcome__tenant"></span>
+      </div>
+      <div id="account" hidden>
+        <div id="account-menu" class="um-extension__account-menu">
+          <button id="account-toggle" type="button" class="ax-btn ax-extension-welcome__account" aria-label="Sua conta" aria-expanded="false" aria-controls="account-actions"><span id="account-avatar" aria-hidden="true"></span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+          <div id="account-actions" class="ax-menu ax-menu--end" hidden>
+            <div id="user" class="ax-menu__header"></div>
+            <a id="connections" class="ax-menu__item" target="_blank" rel="noopener noreferrer">Gerenciar acesso</a>
+            <button id="switch-account" class="ax-menu__item" type="button">Trocar conta</button>
+            <button id="disconnect" class="ax-menu__item ax-menu__item--danger" type="button">Desconectar</button>
+            <span id="version" class="ax-extension-welcome__version"></span>
+          </div>
+        </div>
+      </div>
+    </header>
     <section id="chat-panel" class="ax-operational-panel ax-operational-panel--compact" hidden aria-label="Conversa atual">
 
       <div class="ax-operational-panel__body">
@@ -113,25 +121,36 @@
         </details>
       </div>
     </section>
+        <section id="contact-history" hidden class="ax-workspace-section" aria-labelledby="notes-title">
+          <div class="ax-workspace-section__header"><h3 id="notes-title"><i class="bi bi-chat-left-text" aria-hidden="true"></i>Histórico de contatos</h3><span id="notes-count" class="ax-workspace-badge"></span><button id="add-note" type="button" class="ax-btn" aria-label="Registrar contato" aria-controls="note-panel">＋</button></div>
+                  <details id="note-panel" hidden>
+          <summary hidden aria-hidden="true"></summary>
+          <form id="note-form" class="ax-record-list">
+            <label for="contact-kind">Tipo de contato</label>
+            <select id="contact-kind" class="ax-control" required></select>
+            <div id="contact-result-field" class="ax-record-list">
+              <label for="contact-result">Resultado</label>
+              <select id="contact-result" class="ax-control" required></select>
+            </div>
+            <label for="note-body">O que aconteceu?</label>
+            <textarea id="note-body" class="ax-control" placeholder="Resumo da conversa, próximos passos..." rows="3" maxlength="5000" required></textarea>
+            <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o registro de contato para <strong id="note-contact"></strong>.</span></label>
+            <button class="ax-btn ax-btn--primary" type="submit">Registrar</button>
+          </form>
+        </details>
+          <div id="notes" class="ax-record-list"></div>
+        </section>
+        </div>
     <section id="lead-panel" class="ax-operational-panel" hidden aria-label="Lead selecionado">
       <div class="ax-operational-panel__body">
 
+        <p id="actions-help" class="ax-workspace-muted"></p>
+        <div id="pane-properties" role="tabpanel" aria-labelledby="tab-properties" tabindex="0" hidden>
         <section id="properties-section" class="ax-workspace-section" aria-labelledby="properties-title" tabindex="-1">
           <div class="ax-workspace-section__header"><h3 id="properties-title"><i class="bi bi-houses" aria-hidden="true"></i>Imóveis de interesse</h3><span id="properties-count" class="ax-workspace-badge"></span><button id="add-properties" type="button" class="ax-btn" aria-label="Relacionar imóveis">＋</button></div>
           <details id="property-panel" hidden>
             <summary hidden aria-hidden="true"></summary>
-            <form id="property-search-form" class="ax-record-list ax-property-search">
-              <label for="property-purpose"><i class="bi bi-house" aria-hidden="true"></i> Finalidade</label><select id="property-purpose" class="ax-control"><option value="venda">Venda</option><option value="locacao">Locação</option></select>
-              <label for="property-category"><i class="bi bi-buildings" aria-hidden="true"></i> Categoria</label><select id="property-category" class="ax-control"><option value="">Todas as categorias</option></select>
-              <label for="property-query"><i class="bi bi-search" aria-hidden="true"></i> Código, nome, empreendimento ou localização</label><input id="property-query" placeholder="Código, empreendimento, endereço, bairro ou cidade" class="ax-control" maxlength="100" type="search">
-              <div class="ax-property-filters__grid">
-<label>Valor mínimo (R$)<input id="property-min_price" class="ax-control" type="text" inputmode="numeric" maxlength="18" placeholder="0"></label>
-<label>Valor máximo (R$)<input id="property-max_price" class="ax-control" type="text" inputmode="numeric" maxlength="18" placeholder="0"></label>
-<label>Suítes mín.<input id="property-suites" class="ax-control" type="number" min="0" max="50"></label>
-<label>Dorm. mín.<input id="property-bedrooms" class="ax-control" type="number" min="0" max="50"></label>
-<label>Vagas mín.<input id="property-parking" class="ax-control" type="number" min="0" max="100"></label>
-</div><div id="property-quick-options" class="ax-property-quick-options" aria-label="Características do imóvel"></div><input id="property-quick" type="hidden"><button class="ax-btn ax-btn--primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Buscar imóveis</button>
-            </form>
+            <form id="property-search-form" hidden></form>
             <p id="property-search-feedback" role="status" class="ax-workspace-muted"></p>
             <form id="property-form" class="ax-record-list" hidden>
               <div id="property-options" class="ax-record-list ax-property-suggestions"></div><span id="property-selection-count" class="ax-workspace-muted"></span>
@@ -141,12 +160,10 @@
           </details>
           <div id="properties" class="ax-record-list"></div><button id="share-properties" class="ax-btn" type="button" hidden>Enviar selecionados no WhatsApp</button>
         </section>
-        <h3 id="actions-title">Ações do lead</h3>
-        <div class="ax-workspace-record ax-workspace-record--counter"><div><strong>Tentativas sem resposta</strong><p class="ax-workspace-muted">Desde a última resposta do contato.</p></div><span id="attempts-count" class="ax-workspace-badge"></span></div>
-
-        <p id="actions-help" class="ax-workspace-muted"></p>
+        </div>
+        <div id="pane-tasks" role="tabpanel" aria-labelledby="tab-tasks" tabindex="0" hidden>
         <section class="ax-workspace-section" aria-labelledby="appointments-title">
-          <div class="ax-workspace-section__header"><h3 id="appointments-title"><i class="bi bi-calendar3" aria-hidden="true"></i>Agenda</h3><span id="appointments-count" class="ax-workspace-badge"></span><button id="add-appointments" type="button" class="ax-btn" aria-label="Agendar compromisso">＋</button></div>
+          <div class="ax-workspace-section__header"><h3 id="appointments-title"><i class="bi bi-calendar3" aria-hidden="true"></i>Compromissos da agenda</h3><span id="appointments-count" class="ax-workspace-badge"></span><button id="add-appointments" type="button" class="ax-btn" aria-label="Agendar compromisso">＋</button></div>
           <details id="appointment-panel" hidden>
             <summary hidden aria-hidden="true"></summary>
             <form id="appointment-form" class="ax-record-list">
@@ -181,6 +198,12 @@
         </details>
           <div id="tasks" class="ax-record-list"></div>
         </section>
+        </div>
+        <div id="pane-history" role="tabpanel" aria-labelledby="tab-history" tabindex="0" hidden>
+        <h3 id="actions-title">Ações do lead</h3>
+        <div class="ax-workspace-record ax-workspace-record--counter"><div><strong>Tentativas sem resposta</strong><p class="ax-workspace-muted">Desde a última resposta do contato.</p></div><span id="attempts-count" class="ax-workspace-badge"></span></div>
+
+
         <section class="ax-workspace-section" aria-labelledby="labels-title">
           <div class="ax-workspace-section__header"><h3 id="labels-title"><i class="bi bi-tags" aria-hidden="true"></i>Etiquetas</h3><span id="labels-count" class="ax-workspace-badge"></span><button id="add-labels" type="button" class="ax-btn" aria-label="Selecionar etiquetas">＋</button></div>
           <details id="label-panel" hidden>
@@ -194,28 +217,12 @@
           </details>
           <div id="labels" class="ax-record-list"></div>
         </section>
-        <section class="ax-workspace-section" aria-labelledby="notes-title">
-          <div class="ax-workspace-section__header"><h3 id="notes-title"><i class="bi bi-chat-left-text" aria-hidden="true"></i>Histórico de contatos</h3><span id="notes-count" class="ax-workspace-badge"></span><button id="add-note" type="button" class="ax-btn" aria-label="Registrar contato" aria-controls="note-panel">＋</button></div>
-                  <details id="note-panel" hidden>
-          <summary hidden aria-hidden="true"></summary>
-          <form id="note-form" class="ax-record-list">
-            <label for="contact-kind">Tipo de contato</label>
-            <select id="contact-kind" class="ax-control" required></select>
-            <div id="contact-result-field" class="ax-record-list">
-              <label for="contact-result">Resultado</label>
-              <select id="contact-result" class="ax-control" required></select>
-            </div>
-            <label for="note-body">O que aconteceu?</label>
-            <textarea id="note-body" class="ax-control" placeholder="Resumo da conversa, próximos passos..." rows="3" maxlength="5000" required></textarea>
-            <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o registro de contato para <strong id="note-contact"></strong>.</span></label>
-            <button class="ax-btn ax-btn--primary" type="submit">Registrar</button>
-          </form>
-        </details>
-          <div id="notes" class="ax-record-list"></div>
-        </section>
 
+
+        </div>
       </div>
     </section>
+    </div>
   </main>
 </body>
 </html>
