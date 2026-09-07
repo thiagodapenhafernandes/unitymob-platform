@@ -27,7 +27,7 @@ Conferir que os três documentos legais, a home e seus assets constam do pacote.
 
 ```bash
 ssh root@72.61.221.253 'install -d -m 700 /var/lib/unitymob-site/backups; tar -czf /var/lib/unitymob-site/backups/site-$(date -u +%Y%m%dT%H%M%SZ).tar.gz -C /var/www/html unitymob.com.br'
-rsync -azn --itemize-changes --chmod=D755,F644 "$site_package/public/site/" root@72.61.221.253:/var/www/html/unitymob.com.br/
+rsync -rlptzn --itemize-changes --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$site_package/public/site/" root@72.61.221.253:/var/www/html/unitymob.com.br/
 ```
 
 Conferir o backup com `tar -tzf` e registrar o nome exato para rollback. O backup fica fora do diretório público. Não usar `--delete`: arquivos do servidor não pertencentes ao pacote devem ser avaliados separadamente.
@@ -37,8 +37,8 @@ Conferir o backup com `tar -tzf` e registrar o nome exato para rollback. O backu
 Publicar assets antes do HTML. `--delay-updates` prepara arquivos temporários e só substitui cada arquivo após a transferência; não é troca atômica da árvore inteira.
 
 ```bash
-rsync -az --delay-updates --chmod=D755,F644 "$site_package/public/site/assets/" root@72.61.221.253:/var/www/html/unitymob.com.br/assets/
-rsync -az --delay-updates --chmod=F644 "$site_package/public/site/"*.html root@72.61.221.253:/var/www/html/unitymob.com.br/
+rsync -rlptz --delay-updates --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$site_package/public/site/assets/" root@72.61.221.253:/var/www/html/unitymob.com.br/assets/
+rsync -rlptz --delay-updates --chmod=Fu=rw,Fgo=r "$site_package/public/site/"*.html root@72.61.221.253:/var/www/html/unitymob.com.br/
 ```
 
 O glob acima é seguro porque o pacote foi criado com apenas os quatro HTML explicitamente permitidos. Não executar contra `public/site` local, que contém backups antigos.
