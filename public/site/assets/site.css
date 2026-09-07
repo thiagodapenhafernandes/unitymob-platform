@@ -1,16 +1,20 @@
 :root {
+  --logo-cyan:#5accf9;
+  --logo-blue:#2970f5;
+  --logo-violet:#8a38e0;
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
   --bg:#edf2f7;
   --text:#202934;
   --muted:#53647a;
   --muted2:#5d6d82;
-  --blue:#365f8f;
-  --brand:#365f8f;
+  --blue:#054ad7;
+  --brand:#054ad7;
   --line:#d5dfeb;
   --surface:#fff;
   --radius:16px;
   --max:1200px;
   --red:#8e454d;
-  --accent:#365f8f
+  --accent:#8a38e0
 }
 * {
   box-sizing:border-box
@@ -134,7 +138,7 @@ header {
   border-color:var(--blue)
 }
 .btn-primary:hover {
-  background:#284c75
+  background:#0236ad
 }
 .btn-ghost {
   background:white;
@@ -197,7 +201,7 @@ h1 {
   padding-left:8px
 }
 .hero-visual {
-  background:var(--blue);
+  background:linear-gradient(135deg,#2970f5,#054ad7 65%,#6116be);
   padding:38px 22px;
   border-radius:18px;
   min-width:0
@@ -757,16 +761,22 @@ tr:last-child td {
   font-size:24px
 }
 .faq-a {
-  display:none;
+  height:0;
+  overflow:hidden;
+  opacity:0;
+  transition:height 240ms var(--ease-out),opacity 200ms var(--ease-out);
   color:var(--muted);
   font-size:15px;
   line-height:1.8;
-  padding-bottom:24px;
   max-width:800px
 }
 .faq-item.open .faq-a {
-  display:block
+  height:auto;
+  opacity:1
 }
+.faq-a-content { padding-bottom:24px; }
+.faq-q span { transition:transform 200ms var(--ease-out); color:var(--logo-violet); }
+.faq-item.open .faq-q span { transform:rotate(45deg); }
 footer {
   padding:36px 0 100px;
   border-top:1px solid var(--line)
@@ -1153,5 +1163,56 @@ footer {
   .hero-actions .btn {
     font-size:13px;
     padding:13px 14px
+  }
+}
+
+/* Brand accents: keep the reading surfaces quiet. */
+.card,.sys,.step { --detail:var(--logo-blue); }
+.card:nth-child(3n+2),.sys:nth-child(3n+2),.step:nth-child(3n+2) { --detail:var(--logo-violet); }
+.card:nth-child(3n),.sys:nth-child(3n),.step:nth-child(3n) { --detail:#2d97e9; }
+.icon,.sys-icon,.step:before { color:var(--detail); }
+.icon { display:grid; place-items:center; width:44px; height:44px; border-radius:12px; background:color-mix(in srgb,var(--detail) 8%,white); }
+.step { border-top-color:color-mix(in srgb,var(--detail) 35%,var(--line)); }
+.trust-row span:first-child { border-color:var(--logo-cyan); }
+.trust-row span:nth-child(2) { border-color:var(--logo-blue); }
+.trust-row span:nth-child(3) { border-color:var(--logo-violet); }
+.product-shell { border-bottom:3px solid transparent; background:linear-gradient(white,white) padding-box,linear-gradient(90deg,var(--logo-cyan),var(--logo-blue),var(--logo-violet)) border-box; }
+.next-task { border-left-color:var(--logo-violet); }
+.side-item.active svg { color:var(--logo-blue); }
+.kicker:before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--logo-cyan); margin-right:10px; }
+.demo-tabs button[aria-pressed=true] { box-shadow:inset 0 -3px var(--logo-cyan); }
+.qual-chat-button svg { color:var(--logo-cyan); }
+.qual-chat__bar { background:linear-gradient(90deg,var(--logo-cyan),var(--logo-blue),var(--logo-violet)); transition:none; }
+.reveal.motion-ready { opacity:0; transform:translateY(16px); transition:opacity 500ms var(--ease-out),transform 500ms var(--ease-out); }
+.reveal.motion-ready.visible { opacity:1; transform:none; }
+.grid-3 .motion-ready:nth-child(2),.grid-4 .motion-ready:nth-child(2),.steps .motion-ready:nth-child(2) { transition-delay:50ms; }
+.grid-3 .motion-ready:nth-child(3),.grid-4 .motion-ready:nth-child(3),.steps .motion-ready:nth-child(3) { transition-delay:100ms; }
+.grid-4 .motion-ready:nth-child(4),.steps .motion-ready:nth-child(4) { transition-delay:150ms; }
+.btn { transition:transform 150ms var(--ease-out),background 150ms ease; }
+.demo-tabs button { transition:background 180ms ease,color 180ms ease,border-color 180ms ease; }
+.qual-chat { transform-origin:bottom right; transition:opacity 240ms var(--ease-out),transform 240ms var(--ease-out),visibility 0s 240ms; }
+.qual-chat.open { transition-delay:0s; }
+@media(hover:hover) and (pointer:fine) {
+  .btn:hover { transform:translateY(-2px); }
+  .btn:active { transform:translateY(1px); }
+}
+@media(prefers-reduced-motion:reduce) {
+  .reveal.motion-ready { opacity:1; transform:none; }
+  .btn:hover,.btn:active,.qual-chat,.qual-chat.open { transform:none; }
+}
+
+.grad { color:#6116be; }
+.kicker,.pill { color:#054ad7; }
+
+/* The header mark assembles once; other logo instances stay static.
+   Geometry and paint order come from assets/unitymob-icon.svg. */
+#header .logo-assembly { display:block; width:100%; height:46px; overflow:visible; }
+@media(prefers-reduced-motion:no-preference) {
+  #header .logo-assembly path {
+    animation:logo-assemble 800ms var(--ease-out) var(--piece-delay) both;
+  }
+  @keyframes logo-assemble {
+    from { opacity:0; transform:translate(var(--piece-x),var(--piece-y)); }
+    to { opacity:1; transform:translate(0,0); }
   }
 }

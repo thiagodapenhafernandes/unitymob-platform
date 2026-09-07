@@ -1,4 +1,4 @@
-:root { --bg:#edf2f7; --text:#202934; --muted:#53647a; --line:#d5dfeb; --brand:#365f8f; }
+:root { --bg:#edf2f7; --text:#202934; --muted:#53647a; --line:#d5dfeb; --brand:#054ad7; }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--text); font-family:Arial,Helvetica,sans-serif; }
 a { color:var(--brand); text-underline-offset:3px; }
@@ -22,3 +22,8 @@ ul { padding-left:22px; }
 .button { display:inline-flex; padding:14px 20px; background:var(--brand); color:white; border-radius:6px; text-decoration:none; font-weight:700; }
 footer { text-align:center; color:var(--muted); font-size:12px; line-height:1.6; padding:28px 0; }
 @media(max-width:640px) { .shell { width:calc(100% - 28px); padding-top:22px; } .top { align-items:flex-start; flex-direction:column; } .nav { gap:12px; font-size:13px; } main { padding:26px 20px; } h2 { font-size:21px; } p,li { font-size:15px; } }
+
+/* A restrained signature shared with the institutional site. */
+main { border-top:3px solid #5accf9; }
+.notice,.card { border-left-color:#8a38e0; }
+.pill:before { content:''; display:inline-block; width:5px; height:5px; margin-right:7px; border-radius:50%; background:#2970f5; }
