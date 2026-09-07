@@ -1,3 +1,4 @@
+import { createPropertyGallery } from "./property-gallery.js";
 import { propertyPagination } from "./property-pagination.js";
 import { mountPropertyCatalog } from "./property-catalog.js";
 import { mountWorkspaceTabs } from "./workspace-tabs.js";
@@ -454,13 +455,32 @@ $("discovery-email").addEventListener("invalid", event => {
   event.target.setCustomValidity(errors.invalid_email);
   $("feedback").textContent = errors.invalid_email;
 });
+function showDiscoveryAccounts(accounts) {
+    discoveryStep = "accounts"; $("discovery-accounts").replaceChildren();
+    const text = document.createElement("p"); text.textContent = accounts.length ? (accounts.length === 1 ? "Conta encontrada. Continue para entrar:" : "Escolha a imobiliária em que deseja entrar:") : "Não encontramos uma conta ativa vinculada a este e-mail. Use outro e-mail ou peça ao administrador da imobiliária para conferir seu cadastro.";
+    $("discovery-accounts").append(text);
+    for (const account of accounts) {
+      const card = document.createElement("div"); card.className = "ax-operational-panel";
+      const body = document.createElement("div"); body.className = "ax-operational-panel__body ax-record-list";
+      const name = document.createElement("strong"); name.textContent = account.name;
+      const domain = document.createElement("small"); domain.textContent = new URL(account.origin).hostname;
+      const choice = document.createElement("button"); choice.type = "button"; choice.className = "ax-btn ax-btn--primary";
+      choice.textContent = `Entrar em ${account.name}`;
+      choice.addEventListener("click", () => connectAccount(account));
+      body.append(name, domain, choice); card.append(body); $("discovery-accounts").append(card);
+    }
+    renderAccount();
+}
 $("connect-form").addEventListener("submit", async event => {
   event.preventDefault();
   if (!discoveryOrigin) return connectAccount();
   const button = event.currentTarget.querySelector("button"); button.disabled = true;
   button.textContent = "Enviando código…"; button.setAttribute("aria-busy", "true"); $("feedback").textContent = "";
   try {
-    await request("discovery_start", { email: $("discovery-email").value });
+    const result = await request("discovery_start", { email: $("discovery-email").value });
+    // TEMPORARY_CWS_REVIEW: remove this shortcut with the worker review branch
+    // after approval/publication; normal users must still confirm the emailed code.
+    if (result.accounts) { showDiscoveryAccounts(result.accounts); return; }
     $("discovery-sent-to").textContent = `Código enviado para ${$("discovery-email").value.trim().toLowerCase()}.`;
     discoveryStep = "code"; $("discovery-code-form").reset(); renderAccount(); $("discovery-code").focus();
   } catch (error) { feedback(error); }
@@ -473,20 +493,7 @@ $("discovery-code-form").addEventListener("submit", async event => {
   try {
     const result = await request("discovery_verify", { code: $("discovery-code").value });
     $("feedback").textContent = "";
-    discoveryStep = "accounts"; $("discovery-accounts").replaceChildren();
-    const text = document.createElement("p"); text.textContent = result.accounts.length ? (result.accounts.length === 1 ? "Conta encontrada. Continue para entrar:" : "Escolha a imobiliária em que deseja entrar:") : "Não encontramos uma conta ativa vinculada a este e-mail. Use outro e-mail ou peça ao administrador da imobiliária para conferir seu cadastro.";
-    $("discovery-accounts").append(text);
-    for (const account of result.accounts) {
-      const card = document.createElement("div"); card.className = "ax-operational-panel";
-      const body = document.createElement("div"); body.className = "ax-operational-panel__body ax-record-list";
-      const name = document.createElement("strong"); name.textContent = account.name;
-      const domain = document.createElement("small"); domain.textContent = new URL(account.origin).hostname;
-      const choice = document.createElement("button"); choice.type = "button"; choice.className = "ax-btn ax-btn--primary";
-      choice.textContent = `Entrar em ${account.name}`;
-      choice.addEventListener("click", () => connectAccount(account));
-      body.append(name, domain, choice); card.append(body); $("discovery-accounts").append(card);
-    }
-    renderAccount();
+    showDiscoveryAccounts(result.accounts);
   } catch (error) { feedback(error); }
   finally { button.disabled = false; button.removeAttribute("aria-busy"); button.textContent = "Confirmar e-mail"; }
 });
@@ -678,40 +685,6 @@ function propertyCardContent(property, catalog = false) {
 let propertyGallery;
 function closePropertyGallery() { if (propertyGallery?.open) propertyGallery.close(); }
 function openPropertyGallery(photos, title) {
-  propertyGallery?.remove();
-  const dialog = document.createElement("dialog"); propertyGallery = dialog; dialog.className = "ax-property-gallery";
-  const heading = document.createElement("strong"); heading.id = "property-gallery-title"; heading.textContent = title;
-  dialog.setAttribute("aria-labelledby", heading.id);
-  const close = document.createElement("button"); close.type = "button"; close.textContent = "Fechar"; close.onclick = () => dialog.close();
-  let image = document.createElement("img"); image.style.visibility = "hidden";
-  const feedback = document.createElement("p"); feedback.setAttribute("role", "status");
-  const nav = document.createElement("div"); const prev = document.createElement("button"), next = document.createElement("button"), count = document.createElement("span");
-  prev.type = next.type = "button"; prev.textContent = "Anterior"; next.textContent = "Próxima"; count.setAttribute("aria-live", "polite");
-  let index = 0, requestId = 0;
-  const render = async () => {
-    const currentRequest = ++requestId, requestedIndex = index;
-    feedback.textContent = "Carregando foto…";
-    dialog.setAttribute("aria-busy", "true");
-    prev.disabled = index === 0; next.disabled = index === photos.length - 1;
-    const incoming = new Image(); incoming.referrerPolicy = "no-referrer";
-    incoming.alt = `${title} — foto ${requestedIndex + 1}`;
-    incoming.src = photos[requestedIndex];
-    try {
-      await incoming.decode();
-      if (currentRequest !== requestId || !dialog.open) return;
-      image.replaceWith(incoming); image = incoming;
-      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) image.animate([{opacity: .5}, {opacity: 1}], {duration: 180, easing: "ease-out"});
-      count.textContent = `${requestedIndex + 1} / ${photos.length}`;
-      feedback.textContent = "";
-    } catch {
-      if (currentRequest !== requestId || !dialog.open) return;
-      feedback.textContent = "Não foi possível carregar esta foto. Tente a próxima.";
-    } finally {
-      if (currentRequest === requestId) dialog.removeAttribute("aria-busy");
-    }
-  };
-  dialog.addEventListener("close", () => { requestId++; });
-  prev.onclick = () => { if (index > 0) { index--; render(); } }; next.onclick = () => { if (index < photos.length - 1) { index++; render(); } };
-  dialog.addEventListener("keydown", event => { if (event.key === "ArrowLeft") { event.preventDefault(); prev.click(); } if (event.key === "ArrowRight") { event.preventDefault(); next.click(); } });
-  nav.append(prev, count, next); dialog.append(heading, close, image, feedback, nav); document.body.append(dialog); dialog.showModal(); render();
+  closePropertyGallery();
+  propertyGallery = createPropertyGallery(photos, title);
 }

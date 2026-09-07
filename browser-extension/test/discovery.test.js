@@ -90,3 +90,31 @@ test("distinguishes email rejection, sending failure, throttling and network fai
  global.fetch=async()=>{throw new TypeError("Failed to fetch");};
  assert.equal((await send({type:"discovery_start",email:"broker@example.com"})).error,"discovery_connection_failed");
 });
+
+// TEMPORARY_CWS_REVIEW: remove these two exception tests when removing the shortcut.
+// Keep the standard discovery authentication and account-mismatch regression tests.
+test("review address skips email code but still binds CRM login to Conexao and exact email", async () => {
+ const started = await send({type:"discovery_start",email:" WEB.IPRODUTORA@gmail.com "});
+ assert.equal(started.ok,true);
+ assert.equal(calls.length,0);
+ assert.equal(local.connection,undefined);
+ assert.equal(started.data.accounts[0].origin,"https://app.conexaobc.com");
+ issuer="https://app.conexaobc.com";
+ global.fetch=async(url,options)=>{calls.push({url,options});return json({tenant_id:"72",instance_id:"conexao",login_email:"web.iprodutora@gmail.com",token:"t".repeat(43),expires_at:new Date(Date.now()+60000).toISOString()});};
+ assert.equal((await send({type:"connect",accountId:-1})).ok,true);
+ const body=JSON.parse(calls.find(c=>c.options).options.body);
+ assert.equal(body.expected_email,"web.iprodutora@gmail.com");
+ assert.equal(body.expected_tenant_id,"72");
+ assert.equal(body.expected_instance_id,"conexao");
+ assert.ok(calls.some(c=>c.url.includes("/admin/browser_extension_connections/new")));
+});
+
+test("review route cannot authenticate another user and aliases keep normal verification", async () => {
+ for(const email of ["web.iprodutora+review@gmail.com","web.iprodutora@gmail.com.evil.test","other@gmail.com"]) {
+   assert.equal((await send({type:"discovery_start",email})).data.state,"code_sent");
+ }
+ await send({type:"discovery_start",email:"web.iprodutora@gmail.com"});
+ issuer="https://app.conexaobc.com";
+ assert.equal((await send({type:"connect",accountId:-1})).error,"account_mismatch");
+ assert.equal(local.connection,undefined);
+});

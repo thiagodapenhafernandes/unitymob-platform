@@ -104,6 +104,16 @@ async function handle(message) {
       await chrome.storage.session.remove("discovery");
       const email = typeof message.email === "string" ? message.email.trim().toLowerCase() : "";
       if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("invalid_email");
+      // TEMPORARY_CWS_REVIEW: remove this entire branch after Chrome Web Store
+      // approval AND publication. Rollback checklist: docs/extension-review-access.md.
+      // Only this exact email skips directory verification, never CRM authentication.
+      // Tenant, identity and issuer are still attested by the session endpoint.
+      // No password or reusable authorization token is included in the extension.
+      if (discoveryOrigin && email === "web.iprodutora@gmail.com") {
+        const accounts = [{ id: -1, origin: "https://app.conexaobc.com", tenant_id: "72", instance_id: "conexao", name: "Conexão Imobiliária" }];
+        await chrome.storage.session.set({ discovery: { accounts, email, until: Date.now() + 600000 } });
+        return { state: "account_selected", accounts };
+      }
       const result = await discoveryFetch("challenges", { email });
       if (!/^[A-Za-z0-9_-]{43}$/.test(result.challenge)) throw new Error("invalid_response");
       await chrome.storage.session.set({ discovery: { challenge: result.challenge, until: Date.now() + 600000 } });

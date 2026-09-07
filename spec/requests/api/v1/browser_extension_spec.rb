@@ -305,6 +305,19 @@ RSpec.describe "Browser extension API", type: :request do
   ensure
     ActionController::Base.allow_forgery_protection = previous
   end
+  it "requires a new explicit acceptance when an existing grant has the previous terms version" do
+    grant.update!(terms_version: "2026-09-06.v4")
+    get "/api/v1/browser_extension/session", headers: headers
+    expect(response.parsed_body.dig("capabilities", "read_leads")).to be(false)
+    terms = response.parsed_body.fetch("terms")
+    post "/api/v1/browser_extension/leads/resolve", params: { contact_phone: "+5511999999999" }, headers: headers, as: :json
+    expect(response).to have_http_status(:forbidden)
+    expect(response.parsed_body.fetch("error")).to eq("terms_required")
+    post "/api/v1/browser_extension/session/terms", params: { accepted: true, version: terms["version"], digest: terms["digest"] }, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(grant.reload).to be_terms_accepted
+  end
+
   it "blocks commercial reads until the current terms are explicitly accepted" do
     grant.update!(terms_accepted_at: nil, terms_version: nil, terms_digest: nil)
     get "/api/v1/browser_extension/session", headers: headers

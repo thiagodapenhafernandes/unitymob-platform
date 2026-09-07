@@ -111,3 +111,6 @@ body { margin: 0; background: var(--ax-page-bg); color: var(--ab-ink); font: 13p
 .um-extension #lead-panel [aria-labelledby="notes-title"] > .ax-workspace-section__header { justify-content:flex-end; }
 
 .um-extension #pane-lead #contact-history { padding:14px; margin-top:12px; background:#fff; border-radius:12px; }
+
+.um-extension__privacy-links { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-block: 8px 12px; font-size: 12px; line-height: 1.5; }
+.um-extension__privacy-links a { color: #377e90; text-decoration: underline; text-underline-offset: 2px; }
