@@ -5,7 +5,6 @@
 <% google_ads_conversion_id = tracking_setting.normalized_google_ads_conversion_id %>
 <% google_site_verification_token = tracking_setting.normalized_google_site_verification_token %>
 <% rd_station_loader_url = tracking_setting.normalized_rd_station_loader_url %>
-<% tracking_requires_consent = !lgpd_consent_accepted? %>
 <% has_gtm = tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
 <% has_meta_pixel = tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
 <% has_google_ads = tracking_setting.google_ads_enabled? && google_ads_conversion_id.present? %>
@@ -19,19 +18,12 @@
   <script>
     (function(w,d){
       var COOKIE_KEY = "unitymob_lgpd_consent";
-      var STORAGE_KEY = "unitymob_lgpd_consent_v1";
       var ACCEPTED_VALUE = "accepted";
       var loaded = false;
 
       function consentAccepted() {
-        if (!<%= tracking_requires_consent ? "true" : "false" %>) return true;
-        if (d.cookie.split(";").some(function(cookie) { return cookie.trim() === COOKIE_KEY + "=" + ACCEPTED_VALUE; })) return true;
-
-        try {
-          return w.localStorage.getItem(STORAGE_KEY) === ACCEPTED_VALUE;
-        } catch (_error) {
-          return false;
-        }
+        if (w.UnitymobLgpdConsent) return w.UnitymobLgpdConsent.accepted();
+        return d.cookie.split(";").some(function(cookie) { return cookie.trim() === COOKIE_KEY + "=" + ACCEPTED_VALUE; });
       }
 
       function loadScript(src) {

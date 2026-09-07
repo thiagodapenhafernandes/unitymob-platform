@@ -8,6 +8,9 @@
       <p class="text-gray-500">Última atualização: <%= Date.current.strftime("%d de %B de %Y") %></p>
     </div>
 
+    <div class="max-w-4xl mx-auto mb-6 text-gray-600">
+      <p>Para mudar sua escolha neste site, use o botão <strong>Preferências de cookies</strong>. É possível rejeitar os opcionais de medição e publicidade sem impedir a navegação essencial. A escolha vale para este domínio e navegador; a revogação não exclui automaticamente dados anteriores.</p>
+    </div>
     <!-- Content Card -->
     <div class="bg-white rounded-2xl shadow-xl p-8 lg:p-12 max-w-4xl mx-auto border border-gray-100">
       
@@ -19,7 +22,7 @@
         <div class="prose prose-lg text-gray-600 max-w-none pl-11">
           <p class="mb-4">A <strong><%= @public_site_profile.legal_name.presence || @public_identity.name %></strong><%= ", inscrita sob o documento nº #{@public_site_profile.legal_document}" if @public_site_profile.legal_document.present? %><%= ", com sede em #{@public_site_profile.legal_address}" if @public_site_profile.legal_address.present? %>, está comprometida com a proteção da privacidade e dos dados pessoais de seus usuários, clientes e visitantes.</p>
           <p class="mb-4">Esta Política de Privacidade foi elaborada em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018)</strong> e descreve como coletamos, usamos, armazenamos, compartilhamos e protegemos suas informações pessoais.</p>
-          <p>Ao utilizar nosso website, preencher formulários ou entrar em contato conosco, você concorda com os termos desta política.</p>
+          <p>Esta política informa como seus dados são tratados. A navegação não constitui consentimento geral. Quando necessário, sua autorização será solicitada para a finalidade específica.</p>
         </div>
       </section>
 

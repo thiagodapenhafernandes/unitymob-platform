@@ -1,6 +1,6 @@
-<% consent_already_accepted = lgpd_consent_accepted? %>
-<div class="fixed inset-x-0 bottom-4 z-[90] px-4 <%= "hidden" if consent_already_accepted %>"
-     data-controller="lgpd-consent"
+<% consent_chosen = %w[accepted rejected].include?(cookies[ApplicationController::LGPD_CONSENT_COOKIE]) %>
+<div data-controller="lgpd-consent">
+<div class="fixed inset-x-0 bottom-4 z-[90] px-4 <%= "hidden" if consent_chosen %>"
      data-lgpd-consent-target="banner"
      role="region"
      aria-label="Consentimento de privacidade">
@@ -12,8 +12,7 @@
       <div>
         <h2 class="text-sm font-bold text-blue-three">Privacidade e cookies</h2>
         <p class="mt-1 text-xs leading-relaxed text-gray-600 sm:text-sm">
-          Usamos cookies e tecnologias semelhantes para melhorar sua experiência, medir a navegação e personalizar o atendimento.
-          Ao continuar, você concorda com nossa
+          Cookies essenciais mantêm o site funcionando. Você pode aceitar ou rejeitar os opcionais de medição e publicidade, sem impedir a navegação. Consulte nossa
           <%= link_to "Política de Privacidade", privacy_policy_path, class: "font-semibold text-blue-three underline decoration-golden-one underline-offset-2" %>
           e os
           <%= link_to "Termos de Uso", terms_of_use_path, class: "font-semibold text-blue-three underline decoration-golden-one underline-offset-2" %>.
@@ -21,10 +20,18 @@
       </div>
     </div>
 
+    <div class="flex flex-wrap gap-2">
+    <button type="button" class="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-three px-5 py-3 text-sm font-bold text-white" data-action="lgpd-consent#reject">Rejeitar opcionais</button>
     <button type="button"
             class="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-lg bg-blue-three px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-one focus:outline-none focus:ring-2 focus:ring-golden-one focus:ring-offset-2"
             data-action="click->lgpd-consent#accept">
-      Aceitar e continuar
+      Aceitar opcionais
     </button>
+    </div>
   </div>
+</div>
+  <button type="button" data-lgpd-consent-target="preferences" data-action="lgpd-consent#manage"
+          class="fixed bottom-4 left-4 z-[90] rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-blue-three shadow-sm <%= 'hidden' unless consent_chosen %>">
+    Preferências de cookies
+  </button>
 </div>

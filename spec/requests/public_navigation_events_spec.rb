@@ -13,6 +13,18 @@ RSpec.describe "Public navigation events", type: :request do
       )
     end
 
+    it "honors rejection even when tracking does not require prior consent" do
+      cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "rejected"
+      cookies[:unitymob_interest_consent] = "accepted"
+
+      expect do
+        post "/navigation_events", params: { navigation_event: { name: "page_view", path: "/" } }, as: :json
+      end.not_to change(PublicNavigationEvent, :count)
+
+      expect(JSON.parse(response.body)).to include("consent_required" => true)
+      expect(PublicNavigationSession.count).to eq(0)
+    end
+
     it "records an anonymous property navigation event" do
       habitation = create(:habitation, cidade: "Balneário Camboriú", bairro: "Centro", dormitorios_qtd: 3)
 

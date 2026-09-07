@@ -8,7 +8,7 @@ class PublicNavigationEventsController < ApplicationController
       return
     end
 
-    if settings.enabled_value?("requires_public_tracking_consent") && !public_tracking_consent_accepted?
+    if public_tracking_consent_rejected? || (settings.enabled_value?("requires_public_tracking_consent") && !public_tracking_consent_accepted?)
       render json: { ok: false, consent_required: true }
       return
     end
@@ -41,6 +41,10 @@ class PublicNavigationEventsController < ApplicationController
   end
 
   private
+
+  def public_tracking_consent_rejected?
+    cookies[ApplicationController::LGPD_CONSENT_COOKIE] == "rejected" || cookies[:unitymob_interest_consent] == "rejected"
+  end
 
   def public_tracking_consent_accepted?
     cookies[:unitymob_interest_consent] == "accepted" || lgpd_consent_accepted?

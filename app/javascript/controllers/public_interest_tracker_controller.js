@@ -25,6 +25,12 @@ export default class extends Controller {
     this.boundSubmit = this.trackSubmit.bind(this)
     this.boundVisibility = this.trackVisibility.bind(this)
     this.boundPageHide = this.trackPageHide.bind(this)
+    this.boundConsentChange = () => {
+      this.renderConsentState()
+      this.trackPage()
+    }
+    window.addEventListener("unitymob:lgpd-consent-accepted", this.boundConsentChange)
+    window.addEventListener("unitymob:lgpd-consent-rejected", this.boundConsentChange)
     document.addEventListener("click", this.boundClick, { capture: true })
     document.addEventListener("focusin", this.boundFocusIn, { capture: true })
     document.addEventListener("submit", this.boundSubmit, { capture: true })
@@ -34,6 +40,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    window.removeEventListener("unitymob:lgpd-consent-accepted", this.boundConsentChange)
+    window.removeEventListener("unitymob:lgpd-consent-rejected", this.boundConsentChange)
     if (this.boundClick) document.removeEventListener("click", this.boundClick, { capture: true })
     if (this.boundFocusIn) document.removeEventListener("focusin", this.boundFocusIn, { capture: true })
     if (this.boundSubmit) document.removeEventListener("submit", this.boundSubmit, { capture: true })
@@ -138,6 +146,7 @@ export default class extends Controller {
   }
 
   acceptConsent() {
+    if (window.UnitymobLgpdConsent?.rejected()) return
     window.localStorage.setItem(this.consentKey(), "accepted")
     document.cookie = "unitymob_interest_consent=accepted; max-age=15552000; path=/; SameSite=Lax"
     this.renderConsentState()
@@ -202,20 +211,24 @@ export default class extends Controller {
 
   canTrack() {
     if (!this.enabledValue) return false
+    if (this.consentRejected()) return false
     if (navigator.doNotTrack === "1") return false
     if (!this.consentRequiredValue) return true
     return this.consentAccepted()
   }
 
+  consentRejected() {
+    return document.cookie.split(";").some(cookie => ["unitymob_lgpd_consent=rejected", "unitymob_interest_consent=rejected"].includes(cookie.trim())) || window.UnitymobLgpdConsent?.rejected() === true
+  }
+
   consentAccepted() {
-    return window.localStorage.getItem(this.consentKey()) === "accepted" ||
-      document.cookie.includes("unitymob_interest_consent=accepted") ||
-      document.cookie.includes("unitymob_lgpd_consent=accepted")
+    if (this.consentRejected()) return false
+    return document.cookie.split(";").some(cookie => ["unitymob_interest_consent=accepted", "unitymob_lgpd_consent=accepted"].includes(cookie.trim())) || window.UnitymobLgpdConsent?.accepted() === true
   }
 
   renderConsentState() {
     if (!this.hasConsentBannerTarget) return
-    this.consentBannerTarget.hidden = !this.consentRequiredValue || this.consentAccepted() || window.localStorage.getItem(this.consentKey()) === "rejected"
+    this.consentBannerTarget.hidden = !this.consentRequiredValue || this.consentAccepted() || this.consentRejected()
   }
 
   consentKey() {
