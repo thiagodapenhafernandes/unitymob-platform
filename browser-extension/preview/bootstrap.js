@@ -1,5 +1,10 @@
 import {catalog} from './catalog.js';
 import {filterWorkspace} from './property-workspace.js';
+// Additional demo rows make infinite scrolling observable in the preview.
+for (let index=0;index<16;index++) {
+  const source=catalog[index%8],id=String(6000+index);
+  catalog.push({...source,id,code:id,title:`${source.title} · unidade ${index+1}`,card_title:`${source.title} · unidade ${index+1}`});
+}
 // Local demonstration adapter. The actual panel module remains unchanged.
 const linked = new Set(['1842']);
 const lead = {id:1842,name:'Mariana Souza',status:'Em Atendimento',owner_name:'Thiago',stage_id:1};
@@ -17,10 +22,10 @@ const adapter = async message => {
     case 'search_properties':
       await wait(350);
       {
-        const stock=catalog.map((p,i)=>({...p,mine:i%3===0,opportunity:i===1,owner:'Thiago',activity:100-i,photo_urls:[]}));
+        const stock=catalog.map((p,i)=>({...p,mine:i%3===0,opportunity:i===1,owner:'Thiago',activity:100-i}));
         const results=filterWorkspace(stock,message).map(p=>({...p,linked:linked.has(p.id)}));
         const counts=Object.fromEntries(['all','mine','venda','locacao','opportunity'].map(facet=>[facet,filterWorkspace(stock,{facet}).length]));
-        return {properties:results.slice((message.page-1)*20,message.page*20),total:results.length,counts,more:false,filter_options:message.includeOptions?{category:['Apartamento','Casa','Comercial'],development:catalog.map(p=>p.title),city:['Balneário Camboriú'],neighborhood:['Centro','Jardim','Barra Sul'],owner:['Thiago'],status:['Venda','Locação'],situation:['Novo','Usado'],keys:['Imobiliária','Proprietário']}:null};
+        return {properties:results.slice((message.page-1)*20,message.page*20),total:results.length,counts,more:message.page*20<results.length,filter_options:message.includeOptions?{category:['Apartamento','Casa','Comercial'],development:catalog.map(p=>p.title),city:['Balneário Camboriú'],neighborhood:['Centro','Jardim','Barra Sul'],owner:['Thiago'],status:['Venda','Locação'],situation:['Novo','Usado'],keys:['Imobiliária','Proprietário']}:null};
       }
     case 'link_properties':
       for(const id of message.payload.ids.split(',')) if(catalog.some(p=>p.id===id)) linked.add(id);

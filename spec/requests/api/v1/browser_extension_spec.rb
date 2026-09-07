@@ -545,6 +545,23 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
   end
 
+  it "returns multiple gallery photos in property search, matching linked properties" do
+    lead = make_lead
+    property = create(:habitation, tenant: tenant, status: "Venda", valor_venda_cents: 50000000)
+    urls = 3.times.map { |index| "https://images.example.com/gallery-#{index}.jpg" }
+    allow_any_instance_of(Habitation).to receive(:public_image_sources).and_return(urls)
+    urls.each { |url| allow(Storage::PublicCdnImageUrl).to receive(:resolve).with(url).and_return(url) }
+
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties/search",
+      params: { q: property.codigo, purpose: "venda" }, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties").first.fetch("photo_urls")).to eq(urls)
+
+    lead.property_interests.create!(habitation: property, tenant: tenant)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("properties").first.fetch("photo_urls")).to eq(urls)
+  end
+
   it "searches sale and rental properties within the tenant and excludes unavailable listings" do
     lead = make_lead
     sale = create(:habitation, tenant: tenant, status: "Venda", valor_venda_cents: 50000000)

@@ -47,7 +47,7 @@
       </div>
     </section>
     <div id="workspace-panel">
-        <div class="ax-workspace-tabs" role="tablist" aria-label="Atendimento do lead">
+        <div class="ax-workspace-tabs ax-workspace-tabs--sticky" role="tablist" aria-label="Atendimento do lead">
           <button id="tab-lead" type="button" role="tab" aria-selected="true" aria-controls="pane-lead" data-workspace-tab="lead"><i class="bi bi-person" aria-hidden="true"></i>Lead</button>
           <button id="tab-properties" disabled type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="pane-properties" data-workspace-tab="properties"><i class="bi bi-houses" aria-hidden="true"></i>Imóveis</button>
           <button id="tab-tasks" disabled type="button" role="tab" aria-selected="false" aria-controls="pane-tasks" tabindex="-1" data-workspace-tab="tasks"><i class="bi bi-check2-square" aria-hidden="true"></i>Tarefas</button>
@@ -147,18 +147,20 @@
         <p id="actions-help" class="ax-workspace-muted"></p>
         <div id="pane-properties" role="tabpanel" aria-labelledby="tab-properties" tabindex="0" hidden>
         <section id="properties-section" class="ax-workspace-section" aria-labelledby="properties-title" tabindex="-1">
-          <div class="ax-workspace-section__header"><h3 id="properties-title"><i class="bi bi-houses" aria-hidden="true"></i>Imóveis de interesse</h3><span id="properties-count" class="ax-workspace-badge"></span><button id="add-properties" type="button" class="ax-btn" aria-label="Relacionar imóveis">＋</button></div>
+          <div class="ax-workspace-section__header"><h3 id="properties-title"><i class="bi bi-houses" aria-hidden="true"></i>Imóveis de interesse</h3><span id="properties-count" class="ax-workspace-badge"></span></div>
           <details id="property-panel" hidden>
             <summary hidden aria-hidden="true"></summary>
             <form id="property-search-form" hidden></form>
             <p id="property-search-feedback" role="status" class="ax-workspace-muted"></p>
             <form id="property-form" class="ax-record-list" hidden>
-              <div id="property-options" class="ax-record-list ax-property-suggestions"></div><span id="property-selection-count" class="ax-workspace-muted"></span>
-              <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o vínculo com <strong id="property-contact"></strong>.</span></label>
-              <button class="ax-btn ax-btn--primary" type="submit">Relacionar selecionados</button>
+              <div id="property-options" class="ax-record-list ax-property-suggestions"></div>
+              <div id="property-selection-actions" class="pc-selection-actions" hidden>
+                <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o vínculo com <strong id="property-contact"></strong>.</span></label>
+                <button class="ax-btn ax-btn--primary" type="submit">Adicionar imóveis ao lead</button>
+              </div>
             </form>
           </details>
-          <div id="properties" class="ax-record-list"></div><button id="share-properties" class="ax-btn" type="button" hidden>Enviar selecionados no WhatsApp</button>
+          <div id="properties" class="ax-record-list pc-related-cards"></div><div id="share-property-actions" class="pc-selection-actions" hidden><button id="share-properties" class="ax-btn ax-btn--primary" type="button">Enviar imóveis no WhatsApp</button></div>
         </section>
         </div>
         <div id="pane-tasks" role="tabpanel" aria-labelledby="tab-tasks" tabindex="0" hidden>

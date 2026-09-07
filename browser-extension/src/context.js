@@ -68,7 +68,7 @@ export async function sendPropertyMessage(expected, text) {
   if (!wpp?.isReady || wpp.version !== "4.6.0" ||
       idOf(wpp.conn.getMyUserId()) !== expected.account || idOf(wpp.chat.getActiveChat()?.id) !== expected.chatId) return {error: "context_changed"};
   if (typeof text !== "string" || !text.length || text.length > 10000) return {error: "invalid_fields"};
-  await wpp.chat.sendTextMessage(expected.chatId, text, {createChat: false});
+  await wpp.chat.sendTextMessage(expected.chatId, text, {createChat: false, linkPreview: true});
   return {sent: true};
 }
 
