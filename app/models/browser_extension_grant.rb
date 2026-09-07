@@ -1,16 +1,20 @@
 # Concessão limitada à API da extensão. Não é um token Devise/mobile.
 class BrowserExtensionGrant < ApplicationRecord
-  TERMS_VERSION = "2026-09-06.v4".freeze
+  TERMS_VERSION = "2026-09-07.v5".freeze
   TERMS_TEXT = <<~TEXT.strip.freeze
-    Termos de uso e privacidade da extensão Unitymob — piloto de atendimento
+    Uso de dados e termos da extensão Unitymob para WhatsApp
 
-    A extensão relaciona o telefone da conversa individual aberta aos leads que você pode acessar na conta Unitymob identificada neste painel. Após seu aceite, esse telefone é enviado à sua Unitymob para a busca. O painel apresenta o lead, os imóveis vinculados e as tarefas disponíveis conforme suas permissões.
+    Para conectar sua conta, tratamos o e-mail informado, a imobiliária escolhida e uma credencial temporária de acesso. Após este aceite, a extensão acessa o nome, o telefone e identificadores técnicos da conversa individual aberta no WhatsApp Web para identificar o contato e conferir o destinatário. O telefone é enviado ao CRM da imobiliária selecionada para buscar somente os leads permitidos ao seu usuário.
 
-    Você poderá criar leads, registrar notas internas, agendar tarefas e compromissos, aplicar ou remover suas etiquetas existentes, relacionar imóveis disponíveis da imobiliária e alterar a etapa do lead, conforme suas permissões, confirmando cada salvamento no painel. Os registros ficam associados à sua conta e ao seu usuário. Novos leads seguem as regras e notificações de cadastro manual do CRM; tarefas seguem os lembretes configurados. A extensão não importa o histórico das conversas e permite enviar os links públicos dos imóveis selecionados pelo WhatsApp Web somente após sua confirmação. Use os dados somente para o atendimento autorizado pela sua imobiliária. Não compartilhe seu acesso.
+    Conforme suas permissões, você pode consultar e criar leads, registrar contatos e notas, organizar tarefas e compromissos, aplicar ou remover etiquetas existentes, alterar a etapa do lead e relacionar imóveis. As alterações que você confirma ficam registradas no CRM, associadas à sua conta e ao seu usuário. Cadastros e tarefas seguem as regras de notificações e lembretes do CRM.
 
-    O acesso dura até oito horas e pode ser revogado em Gerenciar acesso ou Desconectar. Registramos a data e a versão deste aceite associadas ao seu usuário e à conta. A extensão depende do WhatsApp Web e pode ficar indisponível quando ele mudar.
+    A extensão não importa o histórico de mensagens do WhatsApp. Os links públicos dos imóveis selecionados são enviados individualmente na conversa atual somente após sua ação e confirmação. Confira os imóveis e o destinatário antes de enviar. Não use o recurso para spam ou contatos indevidos.
 
-    Ao aceitar, você autoriza esse uso da extensão nesta conta. Se não concordar, desconecte. As políticas gerais da sua conta continuam aplicáveis.
+    Os dados são usados para essas funcionalidades, segurança e suporte, conforme a Política de Privacidade, pela imobiliária e pelos operadores necessários à prestação do serviço. Não são vendidos nem usados para publicidade personalizada. A credencial fica no armazenamento local do Chrome, não é sincronizada entre navegadores e expira em até oito horas. Você pode revogar o acesso em Gerenciar acesso ou Desconectar. Isso não apaga os registros já criados no CRM; consulte Opções de privacidade para solicitações sobre seus dados.
+
+    Registramos a data e a versão deste aceite com seu usuário e sua conta. Use somente dados de atendimentos autorizados e não compartilhe seu acesso. A extensão depende do WhatsApp Web e pode ficar indisponível quando ele mudar; não é um produto oficial da Meta ou do Google.
+
+    Ao aceitar, você concorda com este uso da extensão nesta conta e com os Termos de Uso. Consulte os links de Política de Privacidade e Opções de privacidade neste painel. Se não concordar, desconecte.
   TEXT
   include TenantScoped
 

@@ -346,14 +346,31 @@
 .ax-property-interest__title--photos { position: relative; padding-right: 62px; }
 .ax-property-photos { position: absolute; right: 0; top: 0; border: 0; background: transparent; color: #385f8f; font: inherit; font-size: 10px; cursor: pointer; padding: 0 2px; height: 20px; text-decoration: underline; text-underline-offset: 2px; }
 .ax-property-photos:focus-visible { outline: 2px solid #385f8f; outline-offset: 1px; }
-.ax-property-gallery { box-sizing: border-box; width: calc(100% - 24px); max-width: 760px; max-height: calc(100dvh - 24px); padding: 16px; border: 1px solid #dce3ec; border-radius: 12px; color: #253345; background: #fff; font: 13px system-ui; }
-.ax-property-gallery::backdrop { background: #17222dcc; }
-.ax-property-gallery > strong { display: block; margin-bottom: 12px; }
-.ax-property-gallery img { display: block; width: 100%; height: 55dvh; object-fit: contain; margin-top: 12px; }
-.ax-property-gallery > p { height: 32px; margin: 8px 0; font-size: 11px; line-height: 16px; color: #67778b; }
-.ax-property-gallery > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
-.ax-property-gallery button { min-height: 36px; padding: 6px 12px; border: 1px solid #dce3ec; border-radius: 8px; background: #f3f6fa; color: #30506b; cursor: pointer; }
-.ax-property-gallery button:disabled { opacity: .45; cursor: default; }
+/* Full-panel lightbox. Keep old/new images on the same canvas during decoding and fade. */
+.ax-property-gallery { box-sizing: border-box; position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: #101820f5; color: #fff; font: 13px system-ui; overflow: hidden; }
+.ax-property-gallery[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.ax-property-gallery::backdrop { background: #101820e8; }
+.ax-property-gallery .ax-gallery-header { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.ax-property-gallery .ax-gallery-title { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-property-gallery button { display: grid; place-items: center; flex: none; margin: 0; padding: 0; border: 0; color: #fff; background: #ffffff12; cursor: pointer; border-radius: 6px; }
+.ax-property-gallery button:hover { background: #ffffff26; }
+.ax-property-gallery button:focus-visible { outline: 2px solid #6cd4e5; outline-offset: -2px; }
+.ax-property-gallery button:disabled { opacity: .25; cursor: default; }
+.ax-property-gallery .ax-gallery-close { width: 36px; height: 36px; font-size: 28px; line-height: 1; }
+.ax-property-gallery .ax-gallery-stage { position: relative; min-height: 0; min-width: 0; }
+.ax-property-gallery .ax-gallery-canvas { position: absolute; inset: 0; overflow: hidden; }
+.ax-property-gallery .ax-gallery-canvas img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.ax-property-gallery .ax-gallery-arrow { position: absolute; z-index: 1; top: 50%; transform: translateY(-50%); width: 36px; height: 48px; font: 38px/1 system-ui; background: #10182080; text-shadow: 0 1px 3px #000; }
+.ax-property-gallery .ax-gallery-prev { left: 8px; }
+.ax-property-gallery .ax-gallery-next { right: 8px; }
+.ax-property-gallery .ax-gallery-footer { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 12px; padding: 10px 12px max(12px, env(safe-area-inset-bottom)); }
+.ax-property-gallery .ax-gallery-count { font-variant-numeric: tabular-nums; color: #fff; }
+.ax-property-gallery .ax-gallery-status { min-height: 16px; font-size: 11px; color: #becbd4; text-align: right; }
+.ax-property-gallery .ax-gallery-thumbs { grid-column: 1 / -1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #ffffff40 transparent; padding: 3px 0; }
+.ax-property-gallery .ax-gallery-thumb { width: 48px; height: 48px; overflow: hidden; opacity: .55; }
+.ax-property-gallery .ax-gallery-thumb[aria-current="true"] { opacity: 1; outline: 2px solid #6cd4e5; outline-offset: -2px; }
+.ax-property-gallery .ax-gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
 
 /* Teal workspace identity, opt-in so existing admin surfaces retain their theme. */
 .ax-operational-workspace--teal {
