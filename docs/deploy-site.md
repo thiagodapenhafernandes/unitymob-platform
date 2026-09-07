@@ -18,10 +18,10 @@ Identificar o pacote autorizado, preservar WIP externo, testar e publicar uma re
 git fetch origin
 site_revision=$(git rev-parse origin/master)
 site_package=$(mktemp -d /tmp/unitymob-site.XXXXXX)
-git archive "$site_revision" public/site/index.html public/site/politica-de-privacidade.html public/site/opcoes-de-privacidade.html public/site/termos-de-uso.html public/site/assets | tar -x -C "$site_package"
+git archive "$site_revision" public/site/index.html public/site/politica-de-privacidade.html public/site/opcoes-de-privacidade.html public/site/termos-de-uso.html public/site/suporte-extensao.html public/site/assets | tar -x -C "$site_package"
 ```
 
-Conferir que os três documentos legais, a home e seus assets constam do pacote. Links relativos precisam funcionar na raiz do domínio. Usar `node --check` nos scripts e conferir HTML/links. Para alterações Rails, executar os testes específicos e Zeitwerk.
+Conferir que os três documentos legais, a home, o suporte da extensão e seus assets constam do pacote. Links relativos precisam funcionar na raiz do domínio. Usar `node --check` nos scripts e conferir HTML/links. Para alterações Rails, executar os testes específicos e Zeitwerk.
 
 ## Backup e dry-run
 
@@ -41,11 +41,11 @@ rsync -rlptz --delay-updates --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r "$site_package/pu
 rsync -rlptz --delay-updates --chmod=Fu=rw,Fgo=r "$site_package/public/site/"*.html root@72.61.221.253:/var/www/html/unitymob.com.br/
 ```
 
-O glob acima é seguro porque o pacote foi criado com apenas os quatro HTML explicitamente permitidos. Não executar contra `public/site` local, que contém backups antigos.
+O glob acima é seguro porque o pacote foi criado com apenas os cinco HTML explicitamente permitidos. Não executar contra `public/site` local, que contém backups antigos.
 
 ## Validação
 
-- Confirmar 200 e `Content-Type` em `/`, `/politica-de-privacidade.html`, `/opcoes-de-privacidade.html`, `/termos-de-uso.html`.
+- Confirmar 200 e `Content-Type` em `/`, `/politica-de-privacidade.html`, `/opcoes-de-privacidade.html`, `/termos-de-uso.html`, `/suporte-extensao.html`.
 - Comparar SHA-256 do conteúdo HTTP de cada HTML e asset com o pacote; usar query com a revisão para evitar cache antigo.
 - Conferir domínio `www`, imagens, CSS, navegação legal e abrir a página real no browser.
 - Verificar seletor das demonstrações e abertura do diagnóstico sem enviar mensagens reais.
