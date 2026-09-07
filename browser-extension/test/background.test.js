@@ -247,7 +247,7 @@ test("agenda and labels use confirmed writes, fixed paths and stripped payloads"
 
 test("property search is scoped to the selected lead and rejects arbitrary filters", async () => {
   const message = {type: "search_properties", tabId: 1, contextKey: contextKey(projection), leadId: 15, query: "Centro", purpose: "locacao"};
-  assert.equal((await send({...message, purpose: "all"})).ok, false);
+  assert.equal((await send({...message, purpose: "invalid"})).ok, false);
   assert.equal((await send(message)).ok, true);
   assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads/15/properties/search`);
   assert.deepEqual(JSON.parse(requests.at(-1).options.body), {q: "Centro", purpose: "locacao"});

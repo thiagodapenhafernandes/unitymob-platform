@@ -1,3 +1,4 @@
+import { catalogSearchParams } from "./catalog-request.js";
 import { authorizeInTab } from "./auth-tab.js";
 import { readWhatsAppContext, sendPropertyMessage, contextKey, validateContext } from "./context.js";
 import { isWhatsAppTab, allowedOrigin, isPanelSender, createPairing, leadId } from "./security.js";
@@ -230,8 +231,8 @@ async function handle(message) {
         if (typeof phone !== "string" || !/^\+?\d[\d ()-]{6,38}$/.test(phone)) throw new Error("invalid_phone");
         result = await authenticatedFetch(connection, "leads/resolve", { method: "POST", body: { contact_phone: phone } });
       } else if (message.type === "search_properties") {
-        if (typeof message.query !== "string" || message.query.length > 100 || !["venda", "locacao"].includes(message.purpose)) throw new Error("invalid_fields");
-        result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose, ...Object.fromEntries(["min_price", "max_price", "suites", "bedrooms", "parking", "category", "quick"].filter(key => message.filters?.[key] != null).map(key => [key, String(message.filters[key])]))}});
+        if (typeof message.query !== "string" || message.query.length > 100 || !["venda", "locacao", "all"].includes(message.purpose)) throw new Error("invalid_fields");
+        result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose, ...catalogSearchParams(message)}});
       } else {
         result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
       }

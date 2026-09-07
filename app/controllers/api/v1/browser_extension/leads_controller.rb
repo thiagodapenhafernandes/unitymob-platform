@@ -3,6 +3,7 @@ module Api
     module BrowserExtension
       class LeadsController < BaseController
         include HabitationQuickFilters
+        rescue_from ArgumentError, with: -> { render json: {error: "invalid_fields"}, status: :unprocessable_entity }
         before_action :require_terms!
         def resolve
           phone = Phones::Normalizer.call(params[:contact_phone].to_s.first(40))
@@ -19,43 +20,27 @@ module Api
 
         def search_properties
           lead = lead_scope.find(params[:id])
-          query = params[:q].to_s.strip
-          purpose = params[:purpose].to_s
-          return render json: {error: "invalid_fields"}, status: :unprocessable_entity unless query.length <= 100 && %w[venda locacao].include?(purpose)
-          scope = purpose == "venda" ? property_scope.for_sale : property_scope.for_rent
-          category = params[:category].to_s.strip
-          quick = params[:quick].to_s
-          return render json: {error: "invalid_fields"}, status: :unprocessable_entity if category.length > 100 || (quick.present? && !HabitationQuickFilters::QUICK_FILTERS.key?(quick))
-          scope = scope.by_category(category) if category.present?
-          scope = apply_quick_scope_filter(scope, quick) if quick.present?
-          if query.match?(/\A\d+\z/)
-            scope = scope.where("habitations.codigo::text LIKE ?", "#{query}%")
-          elsif query.present?
-            scope = scope.admin_search_text(query)
-          end
-          price_column = purpose == "venda" ? :valor_venda_cents : :valor_locacao_cents
-          filters = params.permit(:min_price, :max_price, :suites, :bedrooms, :parking).to_h
-          unless filters.values.all? { |value| value.blank? || value.to_s.match?(/\A\d{1,12}(?:\.\d{1,2})?\z/) }
-            return render json: {error: "invalid_fields"}, status: :unprocessable_entity
-          end
-          minimum = filters["min_price"].presence&.to_d
-          maximum = filters["max_price"].presence&.to_d
-          return render json: {error: "invalid_fields"}, status: :unprocessable_entity if minimum && maximum && minimum > maximum
-          scope = scope.where("habitations.#{price_column} >= ?", (minimum * 100).to_i) if minimum
-          scope = scope.where("habitations.#{price_column} <= ?", (maximum * 100).to_i) if maximum
-          {"suites" => :suites_qtd, "bedrooms" => :dormitorios_qtd, "parking" => :vagas_qtd}.each do |key, column|
-            scope = scope.where("habitations.#{column} >= ?", filters[key].to_i) if filters[key].present?
-          end
+          catalog = ::BrowserExtension::PropertyCatalog.new(scope: property_scope, user: grant.admin_user, params: catalog_params)
+          scope = catalog.call
           linked_ids = (lead.property_interests.pluck(:habitation_id) + [lead.property_id]).compact
-          rows = scope.where.not(id: linked_ids).includes(:address).order(updated_at: :desc).limit(21).to_a
+          # Legacy clients expect linked properties to be omitted.
+          scope = scope.where.not(id: linked_ids) unless params[:catalog] == true
+          total = scope.except(:order).count
+          page = Integer(params[:page].presence || 1)
+          raise ArgumentError unless page.between?(1, 10000)
+          rows = scope.includes(:address, :admin_user, photos_attachments: :blob).offset((page - 1) * 20).limit(21).to_a
+          purpose = params[:purpose].to_s
           development_names = grant.tenant.habitations.where(codigo: rows.map(&:codigo_empreendimento).compact_blank)
             .pluck(:codigo, :nome_empreendimento).to_h
           render json: { properties: rows.first(20).map { |p| {id: p.id, code: p.codigo, title: p.display_title,
-            city: p.cidade, neighborhood: p.bairro, price_cents: purpose == "venda" ? p.valor_venda_cents : p.valor_locacao_cents,
+            city: p.cidade, neighborhood: p.bairro, price_cents: purpose == "locacao" || params[:facet] == "locacao" || !p.valor_venda_cents.to_i.positive? ? p.valor_locacao_cents : p.valor_venda_cents,
             card_title: p.nome_empreendimento.presence || development_names[p.codigo_empreendimento].presence || [p.categoria.presence || "Imóvel", p.bairro.presence || p.cidade.presence].compact.join(" em "),
             bedrooms: p.dormitorios_qtd, suites: p.suites_qtd, parking: p.vagas_qtd, area: p.public_area_m2,
-            condo_cents: p.valor_condominio_cents, iptu_cents: p.valor_iptu_cents, rental: purpose == "locacao",
-            linked: linked_ids.include?(p.id)} }, more: rows.length > 20 }
+            condo_cents: p.valor_condominio_cents, iptu_cents: p.valor_iptu_cents, rental: purpose == "locacao" || params[:facet] == "locacao" || !p.valor_venda_cents.to_i.positive?,
+            photo_urls: p.public_image_sources.filter_map { |source| Storage::PublicCdnImageUrl.resolve(source) }.first(1),
+            owner: p.admin_user&.tenant_id == grant.tenant_id ? p.admin_user.name : nil,
+            linked: linked_ids.include?(p.id)} }, more: rows.length > 20, total: total, page: page, counts: params[:catalog] == true ? catalog.counts : nil,
+            filter_options: params[:include_options] == true ? catalog.options : nil }
         end
 
         def show
@@ -115,6 +100,14 @@ module Api
         end
 
         private
+
+        def catalog_params
+          lists = %i[category quick development owner status city neighborhood situation keys amenities exchange_type]
+          ranges = ::BrowserExtension::PropertyCatalog::RANGES.keys.flat_map { |key| [key, "#{key}_min", "#{key}_max"] }
+          params.permit(:q, :purpose, :facet, :order, :direction, :reference, :address, :number,
+            :promotion, :exchange, :installments, :rental_management, :min_price, :max_price,
+            *ranges, *lists, lists.index_with { [] })
+        end
 
         def require_terms!
           render json: { error: "terms_required" }, status: :forbidden unless grant.terms_accepted?

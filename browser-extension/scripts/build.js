@@ -43,7 +43,7 @@ for (const name of await readdir(resolve(vendor, "dist"))) {
 }
 const styles = resolve(root, "../app/assets/stylesheets/admin");
 await copyFile(resolve(styles, "theme_tokens.css"), resolve(dist, "shared/theme_tokens.css"));
-for (const name of ["operational_panel", "button", "form_control", "stack", "menu"]) {
+for (const name of ["operational_panel", "property_catalog", "button", "form_control", "stack", "menu"]) {
   await copyFile(resolve(styles, `components/${name}.css`), resolve(dist, `shared/${name}.css`));
 }
 console.log(`Pacote: ${dist}\nID: ${extensionId}\nWA-JS: 4.6.0\nSem dados de sessão ou arquivos do RD.`);
@@ -51,3 +51,7 @@ console.log(`Pacote: ${dist}\nID: ${extensionId}\nWA-JS: 4.6.0\nSem dados de ses
 const iconCss = await readFile(resolve(styles, "../vendor/bootstrap-icons.css.erb"), "utf8");
 await writeFile(resolve(dist, "shared/bootstrap-icons.css"), iconCss.replace(/<%= asset_path\("(bootstrap-icons\.woff2?)"\) %>/g, "$1"));
 for (const name of ["bootstrap-icons.woff", "bootstrap-icons.woff2"]) await copyFile(resolve(root, "../app/assets/fonts", name), resolve(dist, "shared", name));
+
+await copyFile(resolve(root, "../app/javascript/lib/catalog_controls.js"), resolve(dist, "shared/catalog_controls.js"));
+await copyFile(resolve(root, "../vendor/javascript/tom-select.js"), resolve(dist, "vendor/tom-select.js"));
+await copyFile(resolve(root, "../app/assets/stylesheets/vendor/tom-select.bootstrap5.min.css"), resolve(dist, "shared/tom-select.css"));
