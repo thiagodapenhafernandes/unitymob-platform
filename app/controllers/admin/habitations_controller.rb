@@ -1264,7 +1264,7 @@ class Admin::HabitationsController < Admin::BaseController
     keys = %w[
       codigo cidade logradouro numero bairro_comercial promotion_status accepts_exchange accepts_installments key_location rental_management min_price max_price
       amenities
-      permuta_vehicle permuta_property permuta_others
+      permuta_vehicle permuta_property permuta_others proprietario_cidade
       situacao area_total_min area_total_max area_privativa_min area_privativa_max
       dorms_min dorms_max suites_min suites_max vagas_min vagas_max banheiros_min banheiros_max
       empreendimento_codigo corretor_id
@@ -1469,6 +1469,7 @@ class Admin::HabitationsController < Admin::BaseController
     @permuta_min_garagens = nil
     @key_location = params[:key_location]
     @rental_management = params[:rental_management]
+    @proprietario_cidade = params[:proprietario_cidade].to_s.strip
     @empreendimento_codigos = filter_values(params[:empreendimento_codigo], except: "Todos").filter_map { |value| normalize_development_filter_value(value) }
     @empreendimento_codigo = @empreendimento_codigos.first
     @corretor_ids = can_filter_by_broker? ? catalog_filter_admin_user_ids(params[:corretor_id]) : []
@@ -1682,6 +1683,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.where(proprietor_id: @proprietor_id) if @proprietor_id.present?
 
     scope = apply_boolean_filter(scope, @rental_management, :rental_management_flag)
+    scope = scope.by_proprietor_city(@proprietario_cidade) if @proprietario_cidade.present?
     scope = apply_price_range_filter(scope)
 
     captacao_inicio = parse_date_param(@captacao_inicio)

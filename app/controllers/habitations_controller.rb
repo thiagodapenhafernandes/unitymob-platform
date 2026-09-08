@@ -214,6 +214,8 @@ class HabitationsController < ApplicationController
     property_metadata = Seo::PropertyMetadataBuilder.new(@habitation).attributes
     @page_title = public_habitation_page_title(property_metadata)
     @page_description = property_metadata[:meta_description].presence || default_property_description(@habitation)
+    @social_title = public_habitation_page_title(meta_title: property_metadata[:og_title])
+    @social_description = property_metadata[:og_description]
     @page_keywords = property_metadata[:meta_keywords]
     @page_name = property_metadata[:page_name]
     @canonical_url = absolute_public_url_for_path(property_metadata[:canonical_path])

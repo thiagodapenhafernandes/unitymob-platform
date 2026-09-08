@@ -1,18 +1,8 @@
 <%
-  company_name = public_site_profile&.legal_name.presence || brand_name
-  company_address = public_site_profile&.legal_address.to_s.squish
-  company_document = public_site_profile&.legal_document.to_s.squish
-  company_creci = public_site_profile&.creci.to_s.squish
-  broker_name = habitation.admin_user&.name.presence || habitation.corretor_nome.presence || current_admin_user&.name
   owner_name = habitation.proprietario_nome.to_s.squish
   owner_phone = habitation.proprietario_telefone.to_s.squish
   owner_business_phone = habitation.proprietario_telefone_comercial_display.to_s.squish
   owner_email = habitation.proprietario_email_display.to_s.squish
-  company_details = [
-    company_address,
-    (company_document.present? ? "Documento: #{company_document}" : nil),
-    (company_creci.present? ? "CRECI: #{company_creci}" : nil)
-  ].compact_blank
 
   value_for = lambda do |attribute|
     habitation.respond_to?(attribute) ? habitation.public_send(attribute).presence : nil
@@ -60,39 +50,9 @@
 %>
 
 <article class="capture-sheet">
-  <header class="capture-sheet__header">
-    <div>
-      <h1 class="capture-sheet__title">Ficha de captação<br>Residencial</h1>
-      <div class="capture-sheet__field">
-        <span>Referência:</span>
-        <span class="capture-sheet__value"><%= habitation.codigo.presence || habitation.id %></span>
-      </div>
-      <div class="capture-sheet__field">
-        <span>Nome Captador:</span>
-        <span class="capture-sheet__value"><%= broker_name %></span>
-      </div>
-    </div>
-
-    <div class="capture-sheet__brand">
-      <svg class="capture-sheet__brand-plate" viewBox="0 0 118 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        <rect width="118" height="60" rx="12" ry="12" style="fill: <%= @print_brand_badge_color %>;"></rect>
-      </svg>
-      <% if layout_setting&.logo&.attached? %>
-        <%= image_tag layout_setting.logo, alt: brand_name %>
-      <% else %>
-        <span class="capture-sheet__brand-fallback"><%= brand_name %></span>
-      <% end %>
-    </div>
-
-    <div class="capture-sheet__company">
-      <strong><%= company_name %></strong>
-      <% company_details.each do |detail| %>
-        <span><%= detail %></span>
-      <% end %>
-      <span>Emitida em <%= generated_label %></span>
-      <span>Página <%= page_number %><%= total_pages.present? ? " / #{total_pages}" : "" %></span>
-    </div>
-  </header>
+  <%= render "admin/shared/ui/capture_sheet_header", habitation: habitation,
+      category_label: "Residencial", layout_setting: layout_setting, public_site_profile: public_site_profile,
+      brand_name: brand_name, generated_label: generated_label, page_number: page_number, total_pages: total_pages %>
 
   <section class="capture-sheet__address">
     <h2 class="capture-sheet__section-title">Localização do imóvel</h2>

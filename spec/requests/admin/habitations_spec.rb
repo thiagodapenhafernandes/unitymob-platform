@@ -2477,6 +2477,52 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body.index(middle.titulo_anuncio)).to be < response.body.index(low.titulo_anuncio)
   end
 
+  it "filtra cidade do proprietário atual e legado sem confundir com a cidade do imóvel" do
+    owner = create(:proprietor, city: "São José")
+    current = create(:habitation, proprietor: owner, titulo_anuncio: "Cidade proprietario atual")
+    legacy = create(:habitation, proprietario_cidade: "São José", titulo_anuncio: "Cidade proprietario legado")
+    other = create(:habitation, proprietor: create(:proprietor, city: "Itajaí"), proprietario_cidade: "São José", titulo_anuncio: "Cidade antiga substituida")
+    unrelated = create(:habitation, observacoes_visitas: "Observação: São José", titulo_anuncio: "Cidade somente no endereco")
+    unrelated.address.update!(cidade: "São José")
+    other_tenant = Tenant.create!(name: "Outra conta", slug: "owner-city-other")
+    outside = create(:habitation, tenant: other_tenant, proprietario_cidade: "São José", titulo_anuncio: "Cidade de outra conta")
+
+    get admin_habitations_path(proprietario_cidade: "sao jo")
+
+    expect(response).to have_http_status(:ok)
+    [current, legacy].each { |record| expect(response.body).to include(record.titulo_anuncio) }
+    [other, unrelated, outside].each { |record| expect(response.body).not_to include(record.titulo_anuncio) }
+    html = Nokogiri::HTML(response.body)
+    expect(html.css(".habitations-active-filter-chips").text).to include("Cidade do proprietário: sao jo")
+
+    get filter_inspector_admin_habitations_path(proprietario_cidade: "sao jo"), headers: turbo_frame_headers
+    input = Nokogiri::HTML(response.body).at_css('input[type="text"][name="proprietario_cidade"]')
+    expect(input["value"]).to eq("sao jo")
+    section = input.ancestors.find { |node| node["class"].to_s.split.include?("ax-filter-section") }
+    expect(section.text).to include("Negociação")
+
+    get admin_habitations_path
+    follow_redirect! if response.redirect?
+    expect(response.body).to include(current.titulo_anuncio)
+    expect(response.body).not_to include(other.titulo_anuncio)
+
+    get admin_habitations_path(clear_filters: "1")
+    follow_redirect! if response.redirect?
+    expect(response.body).to include(other.titulo_anuncio)
+  end
+
+  it "trata curingas da cidade do proprietário como texto e não busca nas outras notas" do
+    create(:habitation, proprietario_cidade: "São José", observacoes_visitas: "Cidade do proprietário: São José\nObservação: Itajaí")
+
+    get admin_habitations_path(proprietario_cidade: "%")
+    expect(response).to have_http_status(:ok)
+    expect(controller.view_assigns["habitations"]).to be_empty
+
+    get admin_habitations_path(proprietario_cidade: "Itajaí")
+    expect(response).to have_http_status(:ok)
+    expect(controller.view_assigns["habitations"]).to be_empty
+  end
+
   it "filtra por rua e número na localização do catálogo" do
     structured = create(:habitation, codigo: "RUA-EST-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel Rua Estruturada")
     structured.create_address!(
@@ -3642,6 +3688,37 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(filtered_habitation.codigo)
     expect(response.body).not_to include(selected_habitation.codigo)
+  end
+
+  %w[capture_sheet_commercial capture_sheet_residential capture_sheet_land].each do |report_type|
+    it "usa a marca Conexão BC e deixa o captador vazio em #{report_type}" do
+      admin.tenant.update!(slug: "conexao-imobiliaria")
+
+      get print_admin_habitations_path(report_type: report_type, full_print: "1")
+
+      expect(response).to have_http_status(:ok)
+      header = Nokogiri::HTML(response.body).at_css(".capture-sheet__header")
+      expect(header.at_css(".capture-sheet__company strong").text).to eq("Conexão BC")
+      expect(header.at_css(".capture-sheet__brand img")["src"]).to include("conexao-bc")
+      expect(header.at_css(".capture-sheet__brand-plate")).to be_nil
+      captador = header.css(".capture-sheet__field").find { |field| field.text.include?("Nome Captador:") }
+      expect(captador.at_css(".capture-sheet__value").text).to be_blank
+    end
+
+    it "preserva a identidade e deixa o captador vazio nas outras contas em #{report_type}" do
+      setting = LayoutSetting.instance(tenant: admin.tenant)
+      setting.logo.attach(io: File.open(Rails.root.join("app/assets/images/brands/conexao-bc.png")), filename: "logo-da-conta.png", content_type: "image/png")
+
+      get print_admin_habitations_path(report_type: report_type, full_print: "1")
+
+      expect(response).to have_http_status(:ok)
+      header = Nokogiri::HTML(response.body).at_css(".capture-sheet__header")
+      expect(header.at_css(".capture-sheet__brand img")["src"]).to include("logo-da-conta.png")
+      expect(header.at_css(".capture-sheet__brand-plate")).to be_nil
+      expect(header.at_css(".capture-sheet__company strong").text).not_to eq("Conexão BC")
+      captador = header.css(".capture-sheet__field").find { |field| field.text.include?("Nome Captador:") }
+      expect(captador.at_css(".capture-sheet__value").text).to be_blank
+    end
   end
 
   it "gera ficha de captação comercial em branco sem atrelar a um imóvel" do

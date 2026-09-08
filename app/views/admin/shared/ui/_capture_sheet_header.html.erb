@@ -1,0 +1,41 @@
+<%
+  conexao = layout_setting&.tenant&.slug == "conexao-imobiliaria"
+  company_name = conexao ? "Conexão BC" : (public_site_profile&.legal_name.presence || brand_name)
+  company_details = [
+    public_site_profile&.legal_address.to_s.squish,
+    (public_site_profile&.legal_document.present? ? "Documento: #{public_site_profile.legal_document.to_s.squish}" : nil),
+    (public_site_profile&.creci.present? ? "CRECI: #{public_site_profile.creci.to_s.squish}" : nil)
+  ].compact_blank
+%>
+  <header class="capture-sheet__header">
+    <div>
+      <h1 class="capture-sheet__title">Ficha de captação<br><%= category_label %></h1>
+      <div class="capture-sheet__field">
+        <span>Referência:</span>
+        <span class="capture-sheet__value"><%= habitation.codigo.presence || habitation.id %></span>
+      </div>
+      <div class="capture-sheet__field">
+        <span>Nome Captador:</span>
+        <span class="capture-sheet__value"></span>
+      </div>
+    </div>
+
+    <div class="capture-sheet__brand">
+      <% if conexao %>
+        <%= image_tag "brands/conexao-bc.png", alt: company_name, class: "capture-sheet__supplied-logo" %>
+      <% elsif layout_setting&.logo&.attached? %>
+        <%= image_tag layout_setting.logo, alt: brand_name %>
+      <% else %>
+        <span class="capture-sheet__brand-fallback"><%= brand_name %></span>
+      <% end %>
+    </div>
+
+    <div class="capture-sheet__company">
+      <strong><%= company_name %></strong>
+      <% company_details.each do |detail| %>
+        <span><%= detail %></span>
+      <% end %>
+      <span>Emitida em <%= generated_label %></span>
+      <span>Página <%= page_number %><%= total_pages.present? ? " / #{total_pages}" : "" %></span>
+    </div>
+  </header>

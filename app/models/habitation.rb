@@ -1115,6 +1115,17 @@ class Habitation < ApplicationRecord
   end
   def proprietario_cidade = captacao_note_value("Cidade do proprietário")
 
+  def self.by_proprietor_city(city)
+    where(<<~'SQL'.squish, city: "%#{sanitize_sql_like(city.to_s.strip)}%")
+      unaccent(COALESCE(
+        (SELECT NULLIF(TRIM(proprietors.city), '') FROM proprietors
+         WHERE proprietors.id = habitations.proprietor_id
+           AND proprietors.tenant_id = habitations.tenant_id),
+        substring(habitations.observacoes_visitas FROM '(?n)^Cidade do proprietário:([^\r\n]*)')
+      )) ILIKE unaccent(:city)
+    SQL
+  end
+
   def area_total = area_total_m2
   def area_privativa = area_privativa_m2
   def dormitorios = dormitorios_qtd
