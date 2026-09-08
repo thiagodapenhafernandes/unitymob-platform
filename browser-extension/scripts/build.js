@@ -53,5 +53,6 @@ await writeFile(resolve(dist, "shared/bootstrap-icons.css"), iconCss.replace(/<%
 for (const name of ["bootstrap-icons.woff", "bootstrap-icons.woff2"]) await copyFile(resolve(root, "../app/assets/fonts", name), resolve(dist, "shared", name));
 
 await copyFile(resolve(root, "../app/javascript/lib/catalog_controls.js"), resolve(dist, "shared/catalog_controls.js"));
+await copyFile(resolve(root, "../app/javascript/lib/currency_filter.js"), resolve(dist, "shared/currency_filter.js"));
 await copyFile(resolve(root, "../vendor/javascript/tom-select.js"), resolve(dist, "vendor/tom-select.js"));
 await copyFile(resolve(root, "../app/assets/stylesheets/vendor/tom-select.bootstrap5.min.css"), resolve(dist, "shared/tom-select.css"));

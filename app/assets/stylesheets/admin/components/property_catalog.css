@@ -123,7 +123,9 @@
 .pc-filter-group[open] summary { border-bottom:1px solid #dbe4f0; border-radius:8px 8px 0 0; }
 .pc-filter-group[open] summary .bi:last-child { transform:rotate(180deg); }
 .pc-group-body { display:grid; gap:12px; padding:11px 10px; background:#fff; border-radius:0 0 8px 8px; }
-.pc-group-body>label { display:grid; gap:4px; font-size:11px; font-weight:700; text-transform:uppercase; }
+.pc-group-body>label,.pc-range-pair>label { display:grid; min-width:0; gap:4px; font-size:11px; font-weight:700; text-transform:uppercase; }
+.pc-range-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; min-width:0; }
+.pc-range-pair input { width:100%; min-width:0; }
 .pc-group-body input,.pc-group-body select { min-height:34px; border-radius:6px; padding:7px 8px; font-size:12px; font-weight:400; text-transform:none; }
 .pc-input-group { display:flex; min-width:0; border:1px solid #cbd6df; border-radius:6px; overflow:hidden; }
 .pc-input-group>span { display:grid; place-items:center; padding:0 9px; border-right:1px solid #cbd6df; background:#f7f9fb; color:#738198; min-width:32px; }

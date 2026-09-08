@@ -608,6 +608,8 @@ RSpec.describe "Browser extension API", type: :request do
 
   it "filters and sorts the authorized catalog including linked properties and scoped options" do
     lead = make_lead
+    tenant.attribute_options.find_or_create_by!(context: "habitation", category: "feature", name: "Adega")
+    tenant.attribute_options.find_or_create_by!(context: "habitation", category: "infrastructure", name: "Salão de festas")
     first = create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", dormitorios_qtd: 2, valor_venda_cents: 50000000)
     second = create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", dormitorios_qtd: 3, valor_venda_cents: 70000000)
     foreign = create(:habitation, tenant: Tenant.create!(name: "Foreign catalog", slug: "foreign-catalog"), nome_empreendimento: "Foreign secret")
@@ -620,6 +622,8 @@ RSpec.describe "Browser extension API", type: :request do
     expect(body.fetch("properties").map { |p| p["id"] }).to eq([first.id, second.id])
     expect(body.fetch("properties").first["linked"]).to eq(true)
     expect(body.fetch("filter_options").fetch("development")).not_to include("Foreign secret")
+    expect(body.fetch("filter_options").fetch("amenity_features")).to include("Adega")
+    expect(body.fetch("filter_options").fetch("amenity_infrastructure")).to include("Salão de festas")
     expect(body.fetch("counts").fetch("mine")).to eq(2)
     ::BrowserExtension::PropertyCatalog::SORT_KEYS.each_key do |order|
       query = ::BrowserExtension::PropertyCatalog.new(scope: tenant.habitations, user: user, params: {order: order})
@@ -632,6 +636,25 @@ RSpec.describe "Browser extension API", type: :request do
     post endpoint, params: attrs.merge(order: "id; DROP TABLE habitations"), headers: headers, as: :json
     expect(response).to have_http_status(:unprocessable_entity)
   end
+
+  it "busca apartamentos entre três milhões e três milhões e duzentos mil sem ampliar a faixa" do
+    lead = make_lead
+    properties = [299999999, 300000000, 310000000, 320000000, 320000001, 32000000000].map do |price|
+      create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", cidade: "Balneário Camboriú", valor_venda_cents: price)
+    end
+    endpoint = "/api/v1/browser_extension/leads/#{lead.id}/properties/search"
+    filters = {catalog: true, facet: "mine", order: "sale_price", direction: "asc", purpose: "all",
+               status: ["Venda"], category: ["Apartamento"], city: ["Balneário Camboriú"], min_price: "3000000", max_price: "3200000"}
+    post endpoint, params: filters, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties").map { |property| property["id"] }).to eq(properties[1..3].map(&:id))
+    post endpoint, params: filters.merge(min_price: "3300000", max_price: "3400000"), headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties")).to be_empty
+    post endpoint, params: filters.merge(min_price: "3200000", max_price: "3000000"), headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
 
   it "links selected properties once without replacing the primary property and rejects foreign IDs atomically" do
     lead = make_lead

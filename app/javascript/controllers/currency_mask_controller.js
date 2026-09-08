@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { formatCurrencyFilter, currencyFilterDigits } from "lib/currency_filter"
 
 export default class extends Controller {
   connect() {
@@ -6,25 +7,11 @@ export default class extends Controller {
   }
 
   format(event) {
-    let value = this.element.value.replace(/\D/g, '')
-
-    if (value === '') {
-      this.element.value = ''
-      return
-    }
-
-    // Convert to number and format
-    const numberValue = parseInt(value)
-
-    // Format as Brazilian currency
-    this.element.value = new Intl.NumberFormat('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(numberValue)
+    this.element.value = formatCurrencyFilter(this.element.value)
   }
 
   // Get raw numeric value (for form submission)
   get numericValue() {
-    return this.element.value.replace(/\D/g, '')
+    return currencyFilterDigits(this.element.value)
   }
 }

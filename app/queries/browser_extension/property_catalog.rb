@@ -78,6 +78,12 @@ module BrowserExtension
       result = OPTIONS.to_h { |key, column| [key, @base.where.not(column => [nil, ""]).distinct.order(column).pluck(column)] }
       result[:city] = address_options(:cidade)
       result[:neighborhood] = address_options(:bairro_comercial)
+      {amenity_features: "feature", amenity_infrastructure: "infrastructure"}.each do |key, category|
+        names = @user.tenant.attribute_options.where(context: "habitation", category: category).pluck(:name)
+        normalizer = AttributeOptions::HabitationFeatureNormalizer
+        result[key] = names.filter_map { |name| normalizer.label(name, category: "infrastructure") }
+                           .index_by { |name| normalizer.key(name) }.values.sort_by { |name| normalizer.key(name) }
+      end
       # Only expose brokers assigned to an authorized property in this tenant.
       ids = @base.where.not(admin_user_id: nil).distinct.pluck(:admin_user_id)
       ids |= HabitationBrokerAssignment.where(habitation_id: @base.select(:id)).distinct.pluck(:admin_user_id)
