@@ -1,3 +1,5 @@
+import { shareHistoryKey, readShareHistory, recordPropertyShare } from "./share-history.js";
+import { preparePropertyPhoto } from "./property-preview.js";
 import { catalogSearchParams } from "./catalog-request.js";
 import { authorizeInTab } from "./auth-tab.js";
 import { readWhatsAppContext, sendPropertyMessage, contextKey, validateContext } from "./context.js";
@@ -161,7 +163,7 @@ async function handle(message) {
       const pairing = { ...await createPairing(), origin, target, email, until: Date.now() + 5 * 60_000 };
       await chrome.storage.session.set({ pairing });
       try {
-        const loginUrl = `${origin}/admin/browser_extension_connections/new?${new URLSearchParams({ challenge: pairing.challenge, extension_id: chrome.runtime.id })}`;
+        const loginUrl = `${origin}/admin/browser_extension_connections/new?${new URLSearchParams({ challenge: pairing.challenge, extension_id: chrome.runtime.id, remember: message.remember === true ? "1" : "0" })}`;
         const callback = await chrome.identity.launchWebAuthFlow({ interactive: true,
           url: loginUrl }).catch(error => {
             if (/did not approve|canceled|cancelled/i.test(error.message)) throw new Error("login_cancelled");
@@ -200,7 +202,7 @@ async function handle(message) {
     case "me": {
       const connection = await session();
       const result = await authenticatedFetch(connection, "session");
-      await chrome.storage.local.set({ connection: { ...connection, termsAccepted: result.capabilities.read_leads === true } });
+      await chrome.storage.local.set({ connection: { ...connection, ...(result.tenant?.id ? {tenantId: result.tenant.id} : {}), termsAccepted: result.capabilities.read_leads === true } });
       return { ...result, origin: connection.origin };
     }
     case "accept_terms": {
@@ -215,21 +217,49 @@ async function handle(message) {
       const context = await snapshot(message.tabId);
       if (context.state !== "ready" || contextKey(context) !== message.contextKey) throw new Error("context_changed");
       if (message.confirmed !== true || !context.phone || context.phone.replace(/\D/g, "") !== String(message.phone).replace(/\D/g, "")) throw new Error("context_changed");
-      if (!Array.isArray(message.ids) || !message.ids.length || message.ids.length > 20) throw new Error("invalid_fields");
-      const result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
+      if (!Array.isArray(message.ids) || !message.ids.length || message.ids.length > 20 || (message.fromSearch === true && message.ids.length !== 1)) throw new Error("invalid_fields");
+      const result = message.fromSearch === true
+        ? await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/share`, {method: "POST", body: {ids: message.ids}})
+        : await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
       const properties = message.ids.map(id => result.properties.find(property => String(property.id) === String(id)));
       if (properties.some(property => !property?.public_path || !/^\/imovel\/[A-Za-z0-9_%_-]+$/.test(property.public_path))) throw new Error("invalid_fields");
       if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
       const publicOrigin = new URL(result.public_origin || connection.origin);
       if (publicOrigin.protocol !== "https:" || publicOrigin.username || publicOrigin.password || publicOrigin.pathname !== "/" || publicOrigin.search || publicOrigin.hash) throw new Error("invalid_fields");
+      const historyKey = await shareHistoryKey(connection, context, message.leadId);
+      const shares = {};
+      const pendingKey = `${historyKey}:pending-links`;
+      const pendingLinks = message.fromSearch === true ? (await chrome.storage.local.get(pendingKey))[pendingKey] || {} : {};
       for (const property of properties) {
         if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
+        if (message.fromSearch === true && pendingLinks[property.id]) {
+          shares[property.id] = (await readShareHistory(historyKey))[property.id] || null;
+          continue;
+        }
         const text = `${property.code} · ${property.title}\n${[property.neighborhood, property.city].filter(Boolean).join(" · ")}\n${publicOrigin.origin}${property.public_path}`;
-        const prepared = await chrome.scripting.executeScript({target: {tabId: message.tabId}, world: "MAIN", func: sendPropertyMessage, args: [context, text]});
+        const thumbnail = property.photo_urls?.[0] ? await preparePropertyPhoto(property.photo_urls[0]) : null;
+        if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
+        if (thumbnail && message.progressId) await chrome.runtime.sendMessage({type:"property_share_progress", progressId:message.progressId, stage:"sending"}).catch(() => {});
+        const prepared = await chrome.scripting.executeScript({target: {tabId: message.tabId}, world: "MAIN", func: sendPropertyMessage, args: [context, text, {url: `${publicOrigin.origin}${property.public_path}`, title: `${property.code} · ${property.title}`, description: [property.neighborhood, property.city].filter(Boolean).join(" · "), thumbnail}]});
         const response = prepared.find(item => item.frameId === 0)?.result;
         if (!response?.sent) throw new Error(response?.error || "send_unconfirmed");
+        // A storage failure must never turn an already-sent message into a retry.
+        shares[property.id] = await recordPropertyShare(historyKey, property.id).catch(() => null);
+        if (message.fromSearch === true) {
+          pendingLinks[property.id] = true;
+          await chrome.storage.local.set({[pendingKey]: pendingLinks}).catch(() => {});
+        }
       }
-      return {sent:true,count:properties.length};
+      let linkPending = false;
+      if (message.fromSearch === true) {
+        try {
+          await handle({...message, type: "link_properties", payload: {ids: message.ids.join(",")}});
+          for (const id of message.ids) delete pendingLinks[id];
+          await chrome.storage.local.set({[pendingKey]: pendingLinks});
+        }
+        catch { linkPending = true; }
+      }
+      return {sent:true,count:properties.length,shares, ...(message.fromSearch === true ? {linkPending} : {})};
     }
     case "resolve":
     case "lead":
@@ -248,6 +278,12 @@ async function handle(message) {
         result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose, ...catalogSearchParams(message)}});
       } else {
         result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}`);
+      }
+      if (message.type === "lead" || message.type === "search_properties") {
+        const key = await shareHistoryKey(connection, context, message.leadId);
+        const history = await readShareHistory(key).catch(() => ({}));
+        const pending = (await chrome.storage.local.get(`${key}:pending-links`))[`${key}:pending-links`] || {};
+        result.properties = (result.properties || []).map(property => ({...property, share_history: history[property.id] || null, link_pending: !!pending[property.id]}));
       }
       if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
       return result;
@@ -301,6 +337,12 @@ async function handle(message) {
       // Recheck after storage/crypto awaits, immediately before the mutation.
       if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
       const result = await authenticatedFetch(connection, operation.path, { method: "POST", body });
+      if (message.type === "link_properties") {
+        const key = `${await shareHistoryKey(connection, context, message.leadId)}:pending-links`;
+        const pending = (await chrome.storage.local.get(key))[key] || {};
+        for (const id of String(payload.ids).split(",")) delete pending[id];
+        await chrome.storage.local.set({[key]: pending}).catch(() => {});
+      }
       writeAttempts[fingerprint].expiresAt = Date.now() + 30000;
       await chrome.storage.local.set({ writeAttempts });
       return result;
@@ -327,7 +369,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (authenticationChange) authenticationQueue = operation.catch(() => {});
   operation.then(data => respond({ ok: true, data })).catch(error => {
     const code = error.message;
-    const safe = /^(invalid_email|code_send_failed|discovery_connection_failed|already_connected|login_cancelled|login_window_failed|invalid_callback|discovery_rate_limited|discovery_unavailable|invalid_code|account_mismatch|http_\d{3}|not_connected|pairing_expired|context_changed|invalid_phone|no_whatsapp|permission_required|terms_required|invalid_fields|permission_denied|request_conflict)$/.test(code) ? code : "unavailable";
+    const safe = /^(preview_timeout|preview_unavailable|preview_image_failed|preview_image_invalid|send_unconfirmed|invalid_email|code_send_failed|discovery_connection_failed|already_connected|login_cancelled|login_window_failed|invalid_callback|discovery_rate_limited|discovery_unavailable|invalid_code|account_mismatch|http_\d{3}|not_connected|pairing_expired|context_changed|invalid_phone|no_whatsapp|permission_required|terms_required|invalid_fields|permission_denied|request_conflict)$/.test(code) ? code : "unavailable";
     respond({ ok: false, error: safe });
   });
   return true;

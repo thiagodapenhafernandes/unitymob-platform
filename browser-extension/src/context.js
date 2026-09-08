@@ -61,14 +61,39 @@ export function validateContext(context) {
 }
 
 // Only a confirmed, bounded property message can be sent to the still-active individual chat.
-export async function sendPropertyMessage(expected, text) {
+export async function sendPropertyMessage(expected, text, preview = null) {
   const wpp = window.WPP;
   if (!/@(c\.us|s\.whatsapp\.net|lid)$/.test(expected.chatId || "")) return {error: "context_changed"};
   const idOf = value => typeof value === "string" ? value : value?._serialized || value?.toString?.() || "";
   if (!wpp?.isReady || wpp.version !== "4.6.0" ||
       idOf(wpp.conn.getMyUserId()) !== expected.account || idOf(wpp.chat.getActiveChat()?.id) !== expected.chatId) return {error: "context_changed"};
   if (typeof text !== "string" || !text.length || text.length > 10000) return {error: "invalid_fields"};
-  await wpp.chat.sendTextMessage(expected.chatId, text, {createChat: false, linkPreview: true});
+  let directMessage = null;
+  if (preview?.thumbnail) {
+    try {
+      const linkUrl = new URL(preview.url);
+      if (linkUrl.protocol !== "https:" || linkUrl.username || linkUrl.password || !text.includes(linkUrl.href)) return {error: "invalid_fields"};
+      directMessage = {body: text, type: "chat", subtype: "url", canonicalUrl: preview.url, matchedText: preview.url,
+        title: String(preview.title || "Imóvel").slice(0, 200), description: String(preview.description || "").slice(0, 200),
+        doNotPlayInline: true, richPreviewType: 0, thumbnail: preview.thumbnail};
+    } catch { return {error: "invalid_fields"}; }
+  }
+  if ((!directMessage && typeof wpp.chat.prepareLinkPreview !== "function") || typeof wpp.chat.sendRawMessage !== "function") return {error: "preview_unavailable"};
+  let timer;
+  let prepared;
+  try {
+    prepared = await Promise.race([
+      directMessage ? Promise.resolve(directMessage) : wpp.chat.prepareLinkPreview({body: text, type: "chat", subtype: null, urlText: null, urlNumber: null}, {linkPreview: true}),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("preview_timeout")), 15000); })
+    ]);
+  } catch (error) { return {error: error.message === "preview_timeout" ? "preview_timeout" : "preview_unavailable"}; }
+  finally { clearTimeout(timer); }
+  // Preparation can finish after the user switches conversations. Never send to the old recipient.
+  if (idOf(wpp.conn.getMyUserId()) !== expected.account || idOf(wpp.chat.getActiveChat()?.id) !== expected.chatId) return {error: "context_changed"};
+  if (prepared?.subtype !== "url" || typeof prepared.thumbnail !== "string" || !prepared.thumbnail.length) return {error: "preview_unavailable"};
+  // Same final step used by sendTextMessage, reusing the prepared image instead of fetching twice.
+  try { await wpp.chat.sendRawMessage(expected.chatId, prepared, {createChat: false}); }
+  catch { return {error: "send_unconfirmed"}; }
   return {sent: true};
 }
 

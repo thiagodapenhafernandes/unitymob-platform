@@ -11,7 +11,7 @@ class Admin::BrowserExtensionConnectionsController < Admin::BaseController
     end
 
     cookies.encrypted[:browser_extension_pairing] = {
-      value: { challenge: @challenge, extension_id: @extension_id, expires_at: 5.minutes.from_now.to_i },
+      value: { challenge: @challenge, extension_id: @extension_id, remember: params[:remember] == "1", expires_at: 5.minutes.from_now.to_i },
       expires: 5.minutes.from_now, httponly: true, secure: request.ssl?, same_site: :lax
     }
     session.delete(:browser_extension_pairing)
@@ -36,7 +36,7 @@ class Admin::BrowserExtensionConnectionsController < Admin::BaseController
     grant = BrowserExtensionGrant.create!(
       tenant: current_tenant, admin_user: current_admin_user, trusted_device: access.device,
       extension_id: pairing[:extension_id], challenge_digest: pairing[:challenge],
-      challenge_expires_at: 5.minutes.from_now, expires_at: 8.hours.from_now
+      challenge_expires_at: 5.minutes.from_now, expires_at: (pairing[:remember] == true ? 30.days.from_now : 8.hours.from_now)
     )
     callback = "https://#{grant.extension_id}.chromiumapp.org/unitymob"
     code = grant.signed_id(purpose: :browser_extension_pairing, expires_in: 5.minutes)
@@ -66,7 +66,7 @@ class Admin::BrowserExtensionConnectionsController < Admin::BaseController
 
     session.delete(:browser_extension_login_return)
     cookies.encrypted[:browser_extension_login_return] = {
-      value: { challenge: challenge, extension_id: extension_id, expires_at: 5.minutes.from_now.to_i },
+      value: { challenge: challenge, extension_id: extension_id, remember: params[:remember] == "1", expires_at: 5.minutes.from_now.to_i },
       expires: 5.minutes.from_now, httponly: true, secure: request.ssl?, same_site: :lax
     }
   end

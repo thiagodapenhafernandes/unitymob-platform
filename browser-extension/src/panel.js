@@ -54,7 +54,7 @@ const errors = {
   http_404: "Este lead não está mais disponível para você.",
   http_410: "A autorização expirou. Inicie uma nova conexão.",
   http_429: "Muitas consultas. Aguarde um momento antes de tentar novamente.",
-  pairing_expired: "A autorização expirou. Clique em Entrar na Unitymob para tentar novamente.",
+  pairing_expired: "A autorização expirou. Tente entrar novamente.",
   context_changed: "A conversa mudou. Confira o contato antes de continuar.",
   invalid_phone: "Confira o telefone, incluindo DDD e código do país.",
   no_whatsapp: "Abra o WhatsApp Web para consultar o atendimento.",
@@ -107,6 +107,8 @@ function feedback(error) {
 function renderAccount() {
   if (ready()) $("workspace-panel").querySelector('[role="tablist"]').after($("feedback"));
   else $(me ? "terms-form" : "connect-form").after($("feedback"));
+  $("remember-connection-field").hidden = !!me;
+  $("remember-connection").disabled = pairing;
   $("connect-form").hidden = !!me || (!!discoveryOrigin && discoveryStep !== "email");
   $("discovery-code-form").hidden = !!me || discoveryStep !== "code";
   $("discovery-accounts").hidden = !!me || discoveryStep !== "accounts";
@@ -192,6 +194,16 @@ async function fetchLead(id, version) {
   $("attempts-count").textContent = result.unsuccessful_attempts ?? 0;
   renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · ") })), "Nada agendado.");
   renderLabelChoices(result.label_catalog || [], result.labels || []);
+  renderLeadProperties(result);
+  renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
+  renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [n.result, formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhum contato registrado.");
+  $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
+  $("notes-count").textContent = result.notes_count ?? result.notes?.length ?? 0;
+  $("properties-count").textContent = result.properties.length;
+  $("lead-panel").hidden = false;
+}
+
+function renderLeadProperties(result) {
   $("properties").replaceChildren();
   for (const property of result.properties) {
     const actions=document.createElement("div");actions.className="pc-card-actions";
@@ -199,6 +211,7 @@ async function fetchLead(id, version) {
     check.setAttribute("aria-label", `Selecionar ${property.code} para enviar`);
     const selection=document.createElement("label");selection.className="pc-card-select";selection.title=check.title;selection.append(check);actions.append(selection);
     const row=horizontalPropertyCard(property,actions);
+    renderShareHistory(row, property.share_history);
     if (property.removable && me.capabilities.link_properties) {
       const remove = document.createElement("button"); remove.type = "button"; remove.className = "pc-card-remove"; remove.textContent = "×";
       remove.setAttribute("aria-label", `Remover ${property.code} dos interesses`);
@@ -218,12 +231,7 @@ async function fetchLead(id, version) {
   if (!result.properties.length) $("properties").textContent = "Nenhum imóvel de interesse.";
   syncShareSelection();
   $("properties").onchange = syncShareSelection;
-  renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
-  renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [n.result, formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhum contato registrado.");
-  $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
-  $("notes-count").textContent = result.notes_count ?? result.notes?.length ?? 0;
   $("properties-count").textContent = result.properties.length;
-  $("lead-panel").hidden = false;
 }
 
 function formatDate(value) {
@@ -233,13 +241,15 @@ function formatDate(value) {
 let propertySearchVersion = 0;
 let propertySearchTimer;
 const propertySelection = new Map();
+const pendingPropertyLinks = new Set();
+const propertyLinkKey = id => JSON.stringify([me.origin, me.user.id, selectedLead.id, contextKey(context), String(id)]);
 const propertyPages=propertyPagination(params=>request("search_properties",params));
 const propertyCatalog = mountPropertyCatalog({storage:chrome.storage.local,scope:()=>JSON.stringify([me.origin,me.tenant.id,me.user.id]),search: () => $("property-search-form").requestSubmit(), clearSelection: () => { propertySelection.clear(); syncPropertySelection(); }});
 function syncPropertySelection() {
   const actions = $("property-selection-actions");
   const count = propertySelection.size;
   actions.hidden = !count || !me?.capabilities?.link_properties;
-  actions.querySelector("button").textContent = `Adicionar ${count} ${count === 1 ? "imóvel" : "imóveis"} ao lead`;
+  actions.querySelector("button").textContent = [...propertySelection.keys()].every(id => pendingPropertyLinks.has(propertyLinkKey(id))) ? "Concluir vínculo dos imóveis enviados" : `Enviar ${count} ${count === 1 ? "imóvel" : "imóveis"} no WhatsApp`;
   if (!count) actions.querySelector("input").checked = false;
 }
 function clearPropertySearch() {
@@ -264,15 +274,18 @@ $("property-search-form").addEventListener("submit", async event => {
     propertyCatalog.update(result);
     const available = result.properties;
     for (const property of available) {
-      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id)); input.disabled = !!property.linked || !me?.capabilities?.link_properties; input.dataset.locked = String(input.disabled);
-      input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Relacione até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); syncPropertySelection(); };
+      const input = document.createElement("input"); input.type = "checkbox"; input.name = "property_ids"; input.value = property.id; input.checked = propertySelection.has(String(property.id)); input.disabled = !property.public_path || !me?.capabilities?.link_properties; input.dataset.locked = String(input.disabled);
+      input.onchange = () => { if (input.checked && propertySelection.size >= 20) { input.checked = false; $("property-search-feedback").textContent = "Envie até 20 imóveis por vez."; return; } if (input.checked) propertySelection.set(String(property.id), property); else propertySelection.delete(String(property.id)); syncPropertySelection(); };
       input.setAttribute("aria-label", `Selecionar ${property.code} · ${property.card_title || property.title}`);
-      const selection=document.createElement("label");selection.className="pc-card-select";selection.title=property.linked?"Já relacionado ao lead":"Selecionar imóvel";selection.append(input);
-      $("property-options").append(horizontalPropertyCard(property,selection));
+      const selection=document.createElement("label");selection.className="pc-card-select";selection.title=property.public_path?"Selecionar para enviar":"Imóvel sem link público disponível para envio";selection.append(input);
+      const card = horizontalPropertyCard(property,selection);
+      renderShareHistory(card, property.share_history);
+      if (property.link_pending) pendingPropertyLinks.add(propertyLinkKey(property.id));
+      $("property-options").append(card);
     }
     $("property-form").hidden = !available.length && propertySelection.size === 0;
     syncPropertySelection();
-    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível para adicionar com estes filtros." : "";
+    $("property-search-feedback").textContent = !available.length ? "Nenhum imóvel disponível com estes filtros." : "";
   } catch (error) { if (version === revision && searchVersion === propertySearchVersion) { propertyCatalog.failed(); $("property-search-feedback").textContent = "Não foi possível buscar os imóveis. Confira os filtros e tente novamente."; feedback(error); } }
 });
 
@@ -448,9 +461,15 @@ async function connectAccount(account = null) {
     const origin = account?.origin || crmOrigin;
     if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => { throw new Error("permission_required"); }))) throw new Error("permission_required");
     pairing = true; renderAccount(); $("feedback").textContent = "";
-    await request("connect", account ? { accountId: account.id } : {});
+    await request("connect", { ...(account ? { accountId: account.id } : {}), remember: $("remember-connection").checked });
     pairing = false; lastSessionCheck = 0; await refreshSession(true);
-  } catch (error) { pairing = false; renderAccount(); feedback(error); }
+  } catch (error) {
+    pairing = false; renderAccount(); feedback(error);
+    if (error.message === "pairing_expired") {
+      const action = account ? `Entrar em ${account.name}` : "Entrar na Unitymob";
+      $("feedback").textContent = `A autorização expirou. Clique em “${action}” para tentar novamente.`;
+    }
+  }
 }
 $("discovery-email").addEventListener("input", event => event.target.setCustomValidity(""));
 $("discovery-email").addEventListener("invalid", event => {
@@ -551,7 +570,7 @@ function syncContactResult() {
 $("contact-kind").addEventListener("change", syncContactResult);
 $("note-form").addEventListener("reset", () => queueMicrotask(syncContactResult));
 
-for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_contact"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["property-form", "link_properties"], ["status-form", "change_status"]]) {
+for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_contact"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["status-form", "change_status"]]) {
   $(formId).addEventListener("submit", async event => {
     event.preventDefault();
     if (saving || !ready() || context?.state !== "ready" || !resolvedPhone) return;
@@ -563,12 +582,10 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
     const payload = type === "create_lead" ? { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() } :
       type === "create_contact" ? { body: $("note-body").value.trim(), contact_kind: $("contact-kind").value, contact_result: $("contact-result").value } :
       type === "change_status" ? { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") } :
-      type === "link_properties" ? { ids: [...propertySelection.keys()].sort().join(",") } :
       type === "set_labels" ? { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") } :
       type === "create_appointment" ? { title: $("appointment-title").value.trim(), kind: $("appointment-kind").value,
         starts_at: new Date($("appointment-start").value).toISOString(), ends_at: $("appointment-end").value ? new Date($("appointment-end").value).toISOString() : "", location: $("appointment-location").value.trim() } :
       { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: new Date($("task-due").value).toISOString() };
-    if (type === "link_properties" && !payload.ids) { $("feedback").textContent = "Selecione pelo menos um imóvel."; return; }
     saving = true;
     form.append($("feedback"));
     for (const control of form.elements) control.disabled = true;
@@ -580,7 +597,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       form.reset(); if(form.closest("details")) form.closest("details").open = false;
       if (type === "create_lead") $("candidates").replaceChildren();
       $("workspace-panel").querySelector('[role="tablist"]').after($("feedback"));
-      $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_contact" ? "Contato registrado." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "link_properties" ? "Imóveis relacionados." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
+      $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_contact" ? "Contato registrado." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
       await loadLead(result.lead_id);
     } catch (error) {
       if (version === revision) {
@@ -624,25 +641,122 @@ function syncShareSelection() {
   $("share-properties").disabled=saving || !count;
   if(!saving) $("share-properties").textContent=`Enviar ${count} ${count===1?'imóvel':'imóveis'} no WhatsApp`;
 }
-$("share-properties").addEventListener("click", async () => {
+$("share-properties").addEventListener("click", () => shareSelectedProperties(false));
+$("property-form").addEventListener("submit", event => { event.preventDefault(); shareSelectedProperties(true); });
+async function shareSelectedProperties(fromSearch) {
   if (!selectedLead || !ready() || saving) return;
-  const checked = [...$("properties").querySelectorAll("input:checked")];
-  if (!checked.length || !window.confirm(`Enviar uma mensagem por imóvel para ${context.name || selectedLead.name} (${resolvedPhone})?\n\n${checked.map(input => input.closest(".pc-card").querySelector(".pc-title").textContent).join("\n")}`)) return;
+  const container = $(fromSearch ? "property-options" : "properties");
+  const button = fromSearch ? $("property-selection-actions").querySelector("button") : $("share-properties");
+  const checked = fromSearch ? [...propertySelection].map(([id, property]) => {
+    const existing = [...container.querySelectorAll("input")].find(input => input.value === id);
+    if (existing) return existing;
+    const input = document.createElement("input"); input.type = "checkbox"; input.value = id; input.checked = true;
+    horizontalPropertyCard(property, input); return input;
+  }) : [...container.querySelectorAll("input:checked")];
+  const toSend = checked.filter(input => !fromSearch || !pendingPropertyLinks.has(propertyLinkKey(input.value)));
+  if (!checked.length || (toSend.length && !window.confirm(`Enviar uma mensagem por imóvel para ${context.name || selectedLead.name} (${resolvedPhone})?\n\n${toSend.map(input => input.closest(".pc-card").querySelector(".pc-title").textContent).join("\n")}`))) return;
   const version = revision;
-  saving = true; $("share-properties").disabled = true;
-  $("share-properties").textContent = "Enviando…"; $("share-properties").setAttribute("aria-busy", "true");
+  saving = true; button.disabled = true;
+  button.textContent = "Enviando…"; button.setAttribute("aria-busy", "true");
+  const cards = checked.map(input => ({input, card: input.closest(".pc-card")}));
+  const status = (item, text, busy = false) => {
+    let label = item.card.querySelector(".pc-share-status");
+    if (!label) { label = document.createElement("p"); label.className = "pc-share-status"; item.card.classList.add("pc-card--share-feedback"); label.setAttribute("role", "status"); item.card.querySelector(".pc-card-body").append(label); }
+    label.textContent = text;
+    item.card.classList.toggle("pc-card--sharing", busy);
+    item.card.setAttribute("aria-busy", String(busy));
+  };
+  const controls = [...container.querySelectorAll("input, button")].map(control => [control, control.disabled]);
+  controls.forEach(([control]) => { control.disabled = true; });
+  cards.forEach(item => { item.card.classList.remove("pc-card--share-error"); status(item, "Na fila · aguardando sua vez"); });
+  let current = null;
+  let sent = 0;
+  let linkFailures = 0;
+  $("feedback").textContent = "";
   try {
-    await request("send_properties", {tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id, confirmed: true, phone: resolvedPhone,
-      ids: [...$("properties").querySelectorAll("input:checked")].map(input => input.value)});
-    if (version === revision) { checked.forEach(input=>input.checked=false); $("feedback").textContent = "Imóveis enviados em mensagens individuais."; }
+    for (const item of cards) {
+      if (version !== revision) break;
+      current = item;
+      const linkKey = fromSearch ? propertyLinkKey(item.input.value) : null;
+      if (fromSearch && pendingPropertyLinks.has(linkKey)) {
+        status(item, "Incluindo nos imóveis de interesse…", true);
+        try {
+          await request("link_properties", {tabId:context.tabId, contextKey:contextKey(context), leadId:selectedLead.id, confirmed:true, phone:resolvedPhone, payload:{ids:item.input.value}});
+          pendingPropertyLinks.delete(linkKey);
+          if (version !== revision) break;
+          propertySelection.delete(item.input.value); item.input.checked = false;
+          status(item, "Incluído nos imóveis de interesse");
+        } catch { linkFailures++; status(item, "Já enviado · vínculo pendente. Tente concluir o vínculo."); }
+        sent++; current = null; continue;
+      }
+      status(item, "Preparando foto e compartilhamento…", true);
+      button.textContent = `Preparando e enviando ${sent + 1} de ${cards.length}…`;
+      const progressId = crypto.randomUUID();
+      const onProgress = (message, sender) => {
+        if (sender.id === chrome.runtime.id && message.type === "property_share_progress" && message.progressId === progressId && version === revision) {
+          status(item, "Foto pronta · enviando no WhatsApp…", true);
+          button.textContent = `Enviando ${sent + 1} de ${cards.length}…`;
+        }
+      };
+      chrome.runtime.onMessage.addListener(onProgress);
+      let receipt;
+      try { receipt = await request("send_properties", {fromSearch, progressId, tabId: context.tabId, contextKey: contextKey(context), leadId: selectedLead.id, confirmed: true, phone: resolvedPhone, ids: [item.input.value]}); }
+      finally { chrome.runtime.onMessage.removeListener(onProgress); }
+      sent++;
+      if (version !== revision) break;
+      if (fromSearch && receipt.linkPending) {
+        pendingPropertyLinks.add(linkKey); linkFailures++;
+        renderShareHistory(item.card, receipt.shares?.[item.input.value] || {count:null});
+        status(item, "Enviado · vínculo pendente. Tente concluir o vínculo.");
+        current = null; continue;
+      }
+      if (fromSearch) propertySelection.delete(item.input.value);
+      item.input.checked = false;
+      item.card.querySelector(".pc-share-status")?.remove();
+      item.card.classList.remove("pc-card--share-feedback", "pc-card--sharing");
+      renderShareHistory(item.card, receipt.shares?.[item.input.value] || {count:null});
+      current = null;
+    }
+    if (version === revision) $("feedback").textContent = linkFailures ? "Os envios foram confirmados, mas há vínculos pendentes. Tente concluir o vínculo; as mensagens não serão reenviadas." : "";
   } catch (error) {
-    if (version === revision) $("feedback").textContent = "Não foi possível confirmar o envio. Confira a conversa antes de tentar novamente.";
+    if (version === revision) {
+      const messages = {
+        preview_unavailable: "Prévia indisponível. Este imóvel não foi enviado.",
+        preview_timeout: "A foto demorou para carregar. Este imóvel não foi enviado.",
+        preview_image_failed: "Não foi possível carregar a foto. Este imóvel não foi enviado.",
+        preview_image_invalid: "A foto não é adequada para a prévia. Este imóvel não foi enviado.",
+        context_changed: "A conversa mudou. O envio foi interrompido."
+      };
+      const noPreview = error.message.startsWith("preview_");
+      if (current) current.card.classList.add("pc-card--share-error");
+      if (current) status(current, messages[error.message] || "Envio sem confirmação. Confira o WhatsApp antes de repetir.");
+      cards.slice(sent + 1).forEach(item => status(item, "Não enviado"));
+      $("feedback").textContent = `${sent} de ${cards.length} enviados. ${noPreview ? "A preparação da foto falhou; os demais não foram enviados. Tente novamente." : messages[error.message] || "Confira a conversa antes de tentar novamente."}`;
+    }
   }
   finally {
-    saving = false; syncShareSelection();
-    $("share-properties").removeAttribute("aria-busy");
+    cards.forEach(item => { item.card.classList.remove("pc-card--sharing"); item.card.setAttribute("aria-busy", "false"); });
+    controls.forEach(([control, disabled]) => { control.disabled = disabled; });
+    saving = false; syncShareSelection(); if (version === revision && fromSearch) syncPropertySelection();
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    if (fromSearch && sent && version === revision) {
+      try {
+        const result = await request("lead", {tabId:context.tabId, contextKey:contextKey(context), leadId:selectedLead.id});
+        if (version === revision) renderLeadProperties(result);
+      } catch { if (version === revision) $("feedback").textContent = "Confira os vínculos atualizando o atendimento. Os envios confirmados não serão repetidos automaticamente."; }
+    }
   }
-});
+}
+
+function renderShareHistory(card, history) {
+  if (!history) return;
+  let label = card.querySelector(".pc-share-history");
+  if (!label) { label = document.createElement("small"); label.className = "pc-share-history"; label.setAttribute("role", "status"); card.querySelector(".pc-card-body").append(label); }
+  label.textContent = history.count ? `✓ Enviado ${history.count}×` : "✓ Enviado";
+  label.title = history.count ? `Envios confirmados por esta extensão neste navegador. Último envio: ${formatDate(history.last_sent_at)}` : "Enviado, mas não foi possível salvar a contagem neste navegador.";
+  card.classList.add("pc-card--share-history");
+}
 
 function horizontalPropertyCard(property,actions) {
   const option=document.createElement("article");option.className="pc-card pc-card--horizontal";
