@@ -565,7 +565,7 @@ module Habitation::SearchScopes
     scope :sol_manha, -> {
       where(
         "unaccent(lower(COALESCE(face, ''))) IN ('leste', 'nordeste', 'sudeste') OR " \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sol%manha%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%manha%') OR unaccent(lower(kv.key)) ILIKE unaccent('%sol%matinal%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%matinal%')) OR " \
+        "EXISTS (SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(caracteristicas) = 'object' THEN caracteristicas ELSE '{}'::jsonb END) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sol%manha%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%manha%') OR unaccent(lower(kv.key)) ILIKE unaccent('%sol%matinal%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%matinal%')) OR " \
         "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent('%sol%manha%')"
       )
     }
@@ -573,7 +573,7 @@ module Habitation::SearchScopes
     scope :sol_tarde, -> {
       where(
         "unaccent(lower(COALESCE(face, ''))) IN ('oeste', 'noroeste', 'sudoeste') OR " \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sol%tarde%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%tarde%')) OR " \
+        "EXISTS (SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(caracteristicas) = 'object' THEN caracteristicas ELSE '{}'::jsonb END) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sol%tarde%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%tarde%')) OR " \
         "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent('%sol%tarde%')"
       )
     }
@@ -581,7 +581,7 @@ module Habitation::SearchScopes
     scope :sol_dia_todo, -> {
       where(
         "unaccent(lower(COALESCE(face, ''))) = 'norte' OR " \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sol%dia%todo%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%dia%todo%') OR unaccent(lower(kv.key)) ILIKE unaccent('%sol%manha%tarde%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%manha%tarde%')) OR " \
+        "EXISTS (SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(caracteristicas) = 'object' THEN caracteristicas ELSE '{}'::jsonb END) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sol%dia%todo%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%dia%todo%') OR unaccent(lower(kv.key)) ILIKE unaccent('%sol%manha%tarde%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sol%manha%tarde%')) OR " \
         "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent('%sol%dia%todo%') OR " \
         "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent('%sol%manha%tarde%')"
       )
@@ -590,7 +590,7 @@ module Habitation::SearchScopes
     scope :dependencia_empregada, -> {
       where(
         "EXISTS (" \
-        "SELECT 1 FROM jsonb_each_text(caracteristicas) kv " \
+        "SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(caracteristicas) = 'object' THEN caracteristicas ELSE '{}'::jsonb END) kv " \
         "WHERE unaccent(lower(kv.key)) ILIKE unaccent('%depend%empreg%') " \
         "OR unaccent(lower(kv.value)) ILIKE unaccent('%depend%empreg%') " \
         "OR unaccent(lower(kv.key)) ILIKE unaccent('%dep%empreg%') " \
