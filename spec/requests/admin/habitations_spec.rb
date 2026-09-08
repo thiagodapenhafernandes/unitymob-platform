@@ -3692,7 +3692,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
   %w[capture_sheet_commercial capture_sheet_residential capture_sheet_land].each do |report_type|
     it "usa a marca Conexão BC e deixa o captador vazio em #{report_type}" do
-      admin.tenant.update!(slug: "conexao-imobiliaria")
+      admin.tenant.tenant_domains.create!(hostname: "app.conexaobc.com")
 
       get print_admin_habitations_path(report_type: report_type, full_print: "1")
 
