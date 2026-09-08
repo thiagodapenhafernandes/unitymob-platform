@@ -45,7 +45,7 @@ const errors = {
   discovery_rate_limited: "Muitas tentativas. Aguarde 10 minutos antes de solicitar outro código.",
   discovery_unavailable: "Não foi possível localizar suas contas agora. Tente novamente em instantes.",
   permission_denied: "Você não tem permissão para esta ação.",
-  invalid_fields: "Confira os campos e o contato. A tarefa precisa ter data futura.",
+  invalid_fields: "Não foi possível salvar. Confira os dados informados.",
   request_conflict: "Esta tentativa tem dados diferentes. Atualize o painel antes de continuar.",
   terms_required: "Leia e aceite os termos para começar.",
   not_connected: "Entre na sua conta para continuar.",
@@ -105,6 +105,8 @@ function feedback(error) {
 }
 
 function renderAccount() {
+  if (ready()) $("workspace-panel").querySelector('[role="tablist"]').after($("feedback"));
+  else $(me ? "terms-form" : "connect-form").after($("feedback"));
   $("connect-form").hidden = !!me || (!!discoveryOrigin && discoveryStep !== "email");
   $("discovery-code-form").hidden = !!me || discoveryStep !== "code";
   $("discovery-accounts").hidden = !!me || discoveryStep !== "accounts";
@@ -568,6 +570,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: new Date($("task-due").value).toISOString() };
     if (type === "link_properties" && !payload.ids) { $("feedback").textContent = "Selecione pelo menos um imóvel."; return; }
     saving = true;
+    form.append($("feedback"));
     for (const control of form.elements) control.disabled = true;
     $("feedback").textContent = "Salvando…";
     try {
@@ -576,6 +579,7 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
       if (version !== revision) return;
       form.reset(); if(form.closest("details")) form.closest("details").open = false;
       if (type === "create_lead") $("candidates").replaceChildren();
+      $("workspace-panel").querySelector('[role="tablist"]').after($("feedback"));
       $("feedback").textContent = type === "create_lead" ? "Lead criado." : type === "create_contact" ? "Contato registrado." : type === "create_appointment" ? "Compromisso agendado." : type === "set_labels" ? "Etiquetas atualizadas." : type === "link_properties" ? "Imóveis relacionados." : type === "change_status" ? "Status atualizado." : "Tarefa agendada.";
       await loadLead(result.lead_id);
     } catch (error) {

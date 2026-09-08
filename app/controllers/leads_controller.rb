@@ -61,7 +61,6 @@ class LeadsController < ApplicationController
       ).compact, request: request)
 
       # Send Emails (Async)
-      LeadMailer.with(lead: @lead).new_lead_notification.deliver_later
       LeadMailer.with(lead: @lead).welcome_lead.deliver_later if @lead.email.present?
 
       render json: lead_success_response(business_type)

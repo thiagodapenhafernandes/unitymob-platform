@@ -62,7 +62,7 @@
         <%# ===== Notificações por evento ===== %>
         <%= ax_operational_panel(eyebrow: "Notificações", title: "Quando avisar o corretor") do %>
           <div class="ax-panel-body">
-            <p class="ax-field__hint tw-mb-2">Cada evento usa os canais ligados na regra (push/WhatsApp/e-mail/webhook). Desligue aqui os que não quiser.</p>
+            <p class="ax-field__hint tw-mb-2">Os eventos de distribuição usam os canais ligados na regra: push, WhatsApp, e-mail e webhook. Os outros eventos abaixo enviam apenas push. Desligue aqui os eventos que não quiser.</p>
 
             <strong class="ax-field-caption">Distribuição</strong>
             <div class="ax-option-stack tw-mb-3">
@@ -80,6 +80,28 @@
             </div>
 
             <p class="ax-field__hint tw-mt-2">Lembre: push é por aparelho — cada corretor precisa ativar no <code>/field</code> dele.</p>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Como funciona", title: "Notificações quando o lead está sem corretor") do %>
+          <div class="ax-panel-body ax-field-group-stack">
+            <%= ax_field_group(title: "Tarefas, agenda e visitas") do %>
+              <p class="ax-field__hint">Sem corretor no lead, os lembretes dessas atividades não são enviados, mesmo que uma atividade antiga ainda esteja no nome de outro usuário. Para criar ou agendar uma atividade vinculada ao lead, atribua um corretor primeiro.</p>
+              <p class="ax-field__hint">Ao transferir o lead, as tarefas pendentes e os compromissos agendados, inclusive atrasados, acompanham o novo responsável. Os próximos lembretes passam a ser dele. Atividades concluídas ou canceladas preservam o histórico.</p>
+              <p class="ax-field__hint">Atividades pessoais, sem vínculo com um lead, continuam notificando seu próprio responsável. Estes lembretes não são controlados pelas opções de eventos acima.</p>
+            <% end %>
+
+            <%= ax_field_group(title: "Novos leads: rodízio e Bolsão") do %>
+              <p class="ax-field__hint">No rodízio, o aviso ao corretor acontece após a atribuição. No Bolsão (Shark Tank), os corretores elegíveis podem receber o aviso enquanto o lead está sem responsável, para que alguém o assuma. O envio depende da opção Shark Tank acima e dos canais da regra; a repetição depende do intervalo configurado na regra.</p>
+            <% end %>
+
+            <%= ax_field_group(title: "Leads recebidos pelo formulário do site") do %>
+              <p class="ax-field__hint">O formulário do site não envia aviso de novo lead para o e-mail principal da imobiliária. Os avisos aos corretores seguem as regras de distribuição acima. Se o cliente informar um e-mail, o sistema agenda uma mensagem de boas-vindas, independentemente de haver corretor atribuído. As boas-vindas dependem da configuração de e-mail da conta e não são controladas pelas opções acima.</p>
+            <% end %>
+
+            <%= ax_inline_notice(announce: false) do %>
+              Não há um alerta específico ao gestor apenas porque um lead ficou sem corretor. Acompanhe os leads sem responsável na listagem de leads.
+            <% end %>
           </div>
         <% end %>
 

@@ -1,11 +1,15 @@
 require "rails_helper"
 
 RSpec.describe "Leads", type: :request do
+  let(:lead_mailer) { double("LeadMailer parametrizado") }
+  let(:welcome_delivery) { double("Boas-vindas", deliver_later: nil) }
+
   before do
     host! "localhost"
     allow(WebhookService).to receive(:send_form_data)
-    allow(LeadMailer).to receive_message_chain(:with, :new_lead_notification, :deliver_later)
-    allow(LeadMailer).to receive_message_chain(:with, :welcome_lead, :deliver_later)
+    allow(LeadMailer).to receive(:with).and_return(lead_mailer)
+    allow(lead_mailer).to receive(:welcome_lead).and_return(welcome_delivery)
+    expect(lead_mailer).not_to receive(:new_lead_notification)
     WhatsappBusinessIntegration.delete_all
     Whatsapp::SiteRouting.update!(
       default_number: "47 3311-1067",
@@ -72,6 +76,26 @@ RSpec.describe "Leads", type: :request do
   end
 
   describe "POST /leads" do
+    it "mantém as boas-vindas ao cliente sem avisar o e-mail principal da imobiliária" do
+      post leads_path, params: {
+        lead: { name: "Cliente Site", phone: "47999991234", email: "cliente@example.com" }
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      lead = Lead.order(:created_at).last
+      expect(LeadMailer).to have_received(:with).with(lead: lead)
+      expect(welcome_delivery).to have_received(:deliver_later).once
+    end
+
+    it "não agenda e-mails do formulário quando o cliente não informa e-mail" do
+      post leads_path, params: {
+        lead: { name: "Cliente Sem Email", phone: "47999991235" }
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(LeadMailer).not_to have_received(:with)
+    end
+
     it "creates the lead and returns the configured WhatsApp URL" do
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
 

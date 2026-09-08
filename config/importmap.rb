@@ -12,6 +12,7 @@ pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin "@rails/actioncable", to: "actioncable.esm.js", preload: false
 pin_all_from "app/javascript/controllers", under: "controllers", preload: false
+pin "lib/currency_filter", to: "lib/currency_filter.js", preload: false
 pin_all_from "app/javascript/channels", under: "channels", preload: false
 pin "swiper/bundle", to: "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.mjs", preload: false
 pin "tom-select", preload: false # @2.2.2 (vendor/javascript, self-host)
