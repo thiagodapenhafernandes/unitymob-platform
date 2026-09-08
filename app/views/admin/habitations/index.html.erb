@@ -577,6 +577,7 @@
   active_filter_chips << "Preço reduzido: Sim" if params[:promotion_status] == "with_promo"
   active_filter_chips << "Preço reduzido: Não" if params[:promotion_status] == "without_promo"
   active_filter_chips << "Chaves: #{params[:key_location]}" if params[:key_location].present?
+  active_filter_chips << "Cidade do proprietário: #{@proprietario_cidade}" if @proprietario_cidade.present?
   active_filter_chips << "Adm. locação: Sim" if params[:rental_management] == "1"
   active_filter_chips << "Adm. locação: Não" if params[:rental_management] == "0"
   active_filter_chips << "Parcelamento: Sim" if params[:accepts_installments] == "1"

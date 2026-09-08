@@ -12,7 +12,7 @@
 
   data_filter_keys = %w[codigo empreendimento_codigo corretor_id status categoria min_price max_price]
   location_filter_keys = %w[cidade city logradouro numero bairro_comercial]
-  business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location rental_management permuta_vehicle permuta_property permuta_others]
+  business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location rental_management permuta_vehicle permuta_property permuta_others proprietario_cidade]
   feature_filter_keys = %w[dorms_min dorms_max suites_min suites_max banheiros_min banheiros_max vagas_min vagas_max area_total_min area_total_max area_privativa_min area_privativa_max amenities]
   administrative_filter_keys = %w[
     destaque_web festival exibir_no_site_portal tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv
@@ -310,6 +310,14 @@
           <%= ax_filter_check(name: :permuta_vehicle, checked: params[:permuta_vehicle] == "1", label: "Aceita veículo", id: "permuta_vehicle_filter") %>
           <%= ax_filter_check(name: :permuta_property, checked: params[:permuta_property] == "1", label: "Aceita imóvel", id: "permuta_property_filter") %>
           <%= ax_filter_check(name: :permuta_others, checked: params[:permuta_others] == "1", label: "Aceita outros", id: "permuta_others_filter") %>
+        </div>
+        <div class="ax-span-2">
+          <%= ax_text_field(clearable: true, form: f,
+                            method: :proprietario_cidade,
+                            label: "Cidade do proprietário",
+                            value: @proprietario_cidade,
+                            placeholder: "Ex: Balneário Camboriú",
+                            autocomplete: "off") %>
         </div>
       <% end %>
     <% end %>

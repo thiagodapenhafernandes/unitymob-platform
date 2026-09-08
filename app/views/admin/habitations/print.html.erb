@@ -372,8 +372,7 @@
       print-color-adjust: exact;
     }
 
-    .visit-sheet__brand-plate,
-    .capture-sheet__brand-plate {
+    .visit-sheet__brand-plate {
       position: absolute;
       inset: 0;
       z-index: 0;
@@ -613,10 +612,10 @@
       width: 118px;
       min-height: 60px;
       padding: 8px 12px;
-      border: 1px solid rgb(255 255 255 / .16);
-      border-radius: 12px;
-      background: <%= brand_badge_color %>;
-      box-shadow: 0 1px 2px rgb(15 23 42 / .12);
+      border: 0;
+      border-radius: 0;
+      background: #fff;
+      box-shadow: none;
       overflow: hidden;
       text-align: center;
       -webkit-print-color-adjust: exact;
@@ -629,6 +628,14 @@
       max-width: 94px;
       max-height: 44px;
       object-fit: contain;
+    }
+
+    .capture-sheet__brand img.capture-sheet__supplied-logo {
+      position: absolute;
+      width: 180px;
+      max-width: none;
+      max-height: none;
+      height: auto;
     }
 
     .capture-sheet__brand-fallback {

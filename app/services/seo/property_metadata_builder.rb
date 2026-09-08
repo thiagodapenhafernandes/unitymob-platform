@@ -18,8 +18,8 @@ module Seo
         meta_title: meta_title,
         meta_description: meta_description,
         meta_keywords: meta_keywords,
-        og_title: meta_title,
-        og_description: meta_description
+        og_title: social_title,
+        og_description: social_description
       }
     end
 
@@ -47,6 +47,19 @@ module Seo
 
     def property_title_source
       @habitation.meta_title.presence || @habitation.display_title.presence || @habitation.titulo_anuncio.presence || "Imovel"
+    end
+
+    def social_title
+      return meta_title if @habitation.empreendimento?
+
+      append_site_suffix(@habitation.display_title.presence || "Imovel")
+    end
+
+    def social_description
+      return meta_description if @habitation.empreendimento?
+
+      source = @habitation.display_description_plain_text.presence || fallback_description
+      source.to_s.squish.truncate(DESCRIPTION_LIMIT, separator: " ", omission: "")
     end
 
     def development_title_source
