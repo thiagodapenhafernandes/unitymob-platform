@@ -1,5 +1,6 @@
 <%
-  conexao = layout_setting&.tenant&.slug == "conexao-imobiliaria"
+  tenant = layout_setting&.tenant
+  conexao = tenant && (tenant.slug == "conexao-imobiliaria" || tenant.tenant_domains.exists?(hostname: "app.conexaobc.com"))
   company_name = conexao ? "Conexão BC" : (public_site_profile&.legal_name.presence || brand_name)
   company_details = [
     public_site_profile&.legal_address.to_s.squish,
