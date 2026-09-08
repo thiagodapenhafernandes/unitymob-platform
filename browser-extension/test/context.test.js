@@ -100,10 +100,67 @@ test("name metadata does not reset the conversation identity; invalid names are 
 test("property sending targets only the unchanged individual conversation", async () => {
   const wpp = fixture();
   let sends = 0;
-  wpp.chat.sendTextMessage = async (id, text) => { sends++; assert.equal(id, "5511999999999@c.us"); assert.equal(text, "Imóvel 8334"); };
+  wpp.chat.prepareLinkPreview = async message => ({...message, subtype: "url", thumbnail: "jpeg-base64"});
+  wpp.chat.sendRawMessage = async (id, message, options) => { sends++; assert.equal(id, "5511999999999@c.us"); assert.equal(message.body, "Imóvel 8334"); assert.equal(message.thumbnail, "jpeg-base64"); assert.equal(options.createChat, false); };
   const expected = await readWhatsAppContext();
   assert.deepEqual(await sendPropertyMessage(expected, "Imóvel 8334"), {sent: true});
   wpp.chat.getActiveChat = () => ({id: "other@c.us"});
   assert.deepEqual(await sendPropertyMessage(expected, "Imóvel 8334"), {error: "context_changed"});
   assert.equal(sends, 1);
+});
+
+
+test("does not send without an image or after a preparation failure", async () => {
+  for (const preview of [{subtype: "url"}, {subtype: "url", thumbnail: ""}, {thumbnail: "jpeg"}, null]) {
+    const wpp = fixture();
+    wpp.chat.prepareLinkPreview = async () => { if (!preview) throw new Error("network"); return preview; };
+    wpp.chat.sendRawMessage = async () => assert.fail("must not send");
+    assert.deepEqual(await sendPropertyMessage(await readWhatsAppContext(), "https://example.com/imovel/1"), {error: "preview_unavailable"});
+  }
+});
+
+test("waits for preparation and rechecks the recipient", async () => {
+  const wpp = fixture();
+  let complete;
+  let sent = false;
+  wpp.chat.prepareLinkPreview = () => new Promise(resolve => { complete = resolve; });
+  wpp.chat.sendRawMessage = async () => { sent = true; };
+  const pending = sendPropertyMessage(await readWhatsAppContext(), "https://example.com/imovel/1");
+  assert.equal(sent, false);
+  wpp.chat.getActiveChat = () => ({id: "another@c.us"});
+  complete({subtype: "url", thumbnail: "jpeg"});
+  assert.deepEqual(await pending, {error: "context_changed"});
+  assert.equal(sent, false);
+});
+
+test("uncertain sends are never retried automatically", async () => {
+  const wpp = fixture();
+  let sends = 0;
+  wpp.chat.prepareLinkPreview = async () => ({subtype: "url", thumbnail: "jpeg"});
+  wpp.chat.sendRawMessage = async () => { sends++; throw new Error("send_unconfirmed"); };
+  assert.deepEqual(await sendPropertyMessage(await readWhatsAppContext(), "https://example.com/imovel/1"), {error: "send_unconfirmed"});
+  assert.equal(sends, 1);
+});
+
+test("timed-out preparation cannot send later", async t => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  const wpp = fixture();
+  let complete;
+  wpp.chat.prepareLinkPreview = () => new Promise(resolve => { complete = resolve; });
+  wpp.chat.sendRawMessage = async () => assert.fail("must not send after timeout");
+  const pending = sendPropertyMessage(await readWhatsAppContext(), "https://example.com/imovel/1");
+  t.mock.timers.tick(15000);
+  assert.deepEqual(await pending, {error: "preview_timeout"});
+  complete({subtype: "url", thumbnail: "jpeg"});
+  await Promise.resolve();
+});
+test("uses the prepared thumbnail without external preview services", async () => {
+  const wpp = fixture();
+  let raw;
+  wpp.chat.prepareLinkPreview = () => assert.fail("external preview must not be used");
+  wpp.chat.sendRawMessage = async (_, message) => { raw = message; };
+  const result = await sendPropertyMessage(await readWhatsAppContext(), "https://example.com/imovel/1", {url:"https://example.com/imovel/1",thumbnail:"direct-photo",title:"Imóvel 1"});
+  assert.deepEqual(result,{sent:true});
+  assert.equal(raw.thumbnail,"direct-photo");
+  assert.equal(raw.canonicalUrl,"https://example.com/imovel/1");
 });

@@ -226,3 +226,16 @@
 .pc-card-actions .pc-card-remove:hover { background:#fbeeee; color:#aa4040; }
 
 .pc-subtabs { position:sticky; top:var(--pc-tabs-top,0px); z-index:29; }
+
+.pc-share-status { display:flex; align-items:center; gap:6px; margin:6px 0 0; font-size:11px; font-weight:600; color:#356477; }
+.pc-card--sharing { background:#eaf6f8; }
+.pc-card--sharing .pc-share-status::before { content:""; flex:none; width:12px; height:12px; border:2px solid #bfdde3; border-top-color:#337f91; border-radius:50%; animation:pc-share-spin .8s linear infinite; }
+@keyframes pc-share-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .pc-card--sharing .pc-share-status::before { animation:none; } }
+
+:is(.ax-property-catalog,.pc-related-cards) .pc-card--horizontal.pc-card--share-feedback { height:auto; min-height:112px; overflow:visible; padding-bottom:12px; }
+.pc-card--share-feedback .pc-share-status { white-space:normal; overflow-wrap:anywhere; line-height:1.45; padding-top:6px; border-top:1px solid #d3e4e7; }
+.pc-card--share-error .pc-share-status { color:#9b3535; }
+
+:is(.ax-property-catalog,.pc-related-cards) .pc-card--horizontal.pc-card--share-history { height:auto; min-height:112px; }
+.pc-share-history { display:block; margin-top:4px; font-size:10px; line-height:1.4; font-weight:400; color:#627c82; }

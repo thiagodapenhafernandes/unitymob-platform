@@ -1,6 +1,6 @@
 # Concessão limitada à API da extensão. Não é um token Devise/mobile.
 class BrowserExtensionGrant < ApplicationRecord
-  TERMS_VERSION = "2026-09-07.v5".freeze
+  TERMS_VERSION = "2026-09-08.v6".freeze
   TERMS_TEXT = <<~TEXT.strip.freeze
     Uso de dados e termos da extensão Unitymob para WhatsApp
 
@@ -10,7 +10,7 @@ class BrowserExtensionGrant < ApplicationRecord
 
     A extensão não importa o histórico de mensagens do WhatsApp. Os links públicos dos imóveis selecionados são enviados individualmente na conversa atual somente após sua ação e confirmação. Confira os imóveis e o destinatário antes de enviar. Não use o recurso para spam ou contatos indevidos.
 
-    Os dados são usados para essas funcionalidades, segurança e suporte, conforme a Política de Privacidade, pela imobiliária e pelos operadores necessários à prestação do serviço. Não são vendidos nem usados para publicidade personalizada. A credencial fica no armazenamento local do Chrome, não é sincronizada entre navegadores e expira em até oito horas. Você pode revogar o acesso em Gerenciar acesso ou Desconectar. Isso não apaga os registros já criados no CRM; consulte Opções de privacidade para solicitações sobre seus dados.
+    Os dados são usados para essas funcionalidades, segurança e suporte, conforme a Política de Privacidade, pela imobiliária e pelos operadores necessários à prestação do serviço. Não são vendidos nem usados para publicidade personalizada. A credencial fica no armazenamento local do Chrome, não é sincronizada entre navegadores e expira em até oito horas ou, se você marcar “Manter conectado por 30 dias”, em até 30 dias. Você pode revogar o acesso em Gerenciar acesso ou Desconectar. Isso não apaga os registros já criados no CRM; consulte Opções de privacidade para solicitações sobre seus dados.
 
     Registramos a data e a versão deste aceite com seu usuário e sua conta. Use somente dados de atendimentos autorizados e não compartilhe seu acesso. A extensão depende do WhatsApp Web e pode ficar indisponível quando ele mudar; não é um produto oficial da Meta ou do Google.
 
@@ -80,7 +80,19 @@ class BrowserExtensionGrant < ApplicationRecord
   end
 
   def terms_accepted?
-    terms_accepted_at.present? && terms_version == TERMS_VERSION && terms_digest == self.class.digest(TERMS_TEXT)
+    terms_acceptance.present?
+  end
+
+  # Expiring/revoking an access token does not undo the user's recorded acceptance.
+  # Keep the original record and date; never fabricate a new acceptance on login.
+  def terms_acceptance
+    digest = self.class.digest(TERMS_TEXT)
+    return self if terms_accepted_at.present? && terms_version == TERMS_VERSION && terms_digest == digest
+    return unless tenant_id && admin_user_id
+
+    self.class.where(tenant_id: tenant_id, admin_user_id: admin_user_id,
+      terms_version: TERMS_VERSION, terms_digest: digest)
+      .where.not(terms_accepted_at: nil).order(terms_accepted_at: :desc, id: :desc).first
   end
 
   private

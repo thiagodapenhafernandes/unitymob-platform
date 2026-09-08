@@ -123,7 +123,7 @@ class Admin::SessionsController < Devise::SessionsController
     session.delete(:browser_extension_login_return)
     if extension_login && extension_login[:expires_at].to_i > Time.current.to_i &&
         extension_login[:challenge].to_s.match?(/\A[0-9a-f]{64}\z/) && BrowserExtensionGrant.allowed_extension?(extension_login[:extension_id])
-      return new_admin_browser_extension_connection_path(challenge: extension_login[:challenge], extension_id: extension_login[:extension_id])
+      return new_admin_browser_extension_connection_path(challenge: extension_login[:challenge], extension_id: extension_login[:extension_id], remember: extension_login[:remember] == true ? "1" : nil)
     end
     # Roteia por capacidade real, não pelo eixo/cargo. Perfis intermediários com
     # acesso ao admin ficam no painel; usuários field-only seguem para o PWA.

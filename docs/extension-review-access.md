@@ -30,3 +30,7 @@ A Conexão atualmente autoriza somente o ID da extensão descompactada `hokkkaib
 ## Mais instruções (menos de 500 caracteres)
 
 Abra o WhatsApp Web com uma conta de teste própria. Abra a extensão e informe o e-mail fornecido; esse acesso de avaliação não solicita código por e-mail. Clique em Entrar em Conexão Imobiliária, use a senha fornecida, autorize a extensão e aceite os termos. Abra uma conversa de teste. Teste Lead, busca/filtros de imóveis, galeria, associação e tarefas. Envie imóveis apenas à conversa de teste. Não altere nem envie dados de clientes reais.
+
+## Empacotamento para a loja
+
+Usar `UNITYMOB_WEB_STORE=1` junto às variáveis de origem do build. Esse modo gera `dist-webstore` sem o campo `key`, evitando conflito com o item existente na loja. O build descompactado mantém sua chave. Para 0.4.6, usar `unitymob-whatsapp-0.4.6-webstore.zip`; o ZIP sem esse sufixo foi rejeitado por conter a chave local. A autorização do ID da loja no CRM continua necessária.

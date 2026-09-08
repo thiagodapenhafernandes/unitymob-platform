@@ -536,6 +536,7 @@ Rails.application.routes.draw do
         post "leads/:id/appointments", to: "operations#create_appointment"
         post "leads/:id/labels", to: "operations#set_labels"
         post "leads/:id/properties/search", to: "leads#search_properties"
+        post "leads/:id/properties/share", to: "leads#share_properties"
         post "leads/:id/properties/remove", to: "operations#unlink_property"
         post "leads/:id/properties", to: "operations#link_properties"
         post "leads/:id/status", to: "operations#change_status"

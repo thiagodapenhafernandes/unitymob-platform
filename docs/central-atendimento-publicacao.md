@@ -1,5 +1,9 @@
 # Preparação da publicação — 05/09/2026
 
+> Documento histórico da preparação inicial. A Central já foi publicada. Para
+> deploys atuais, use [Deploys de produção](deploys.md); as pendências e propostas
+> abaixo descrevem somente o momento do levantamento.
+
 Estado: central e correções integradas localmente no develop em 05/09/2026.
 Promoção local para master autorizada. Push, provisionamento e deploy continuam pendentes.
 Os inventários e a base abaixo registram a preparação anterior aos commits.

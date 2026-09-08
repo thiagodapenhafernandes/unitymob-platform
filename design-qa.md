@@ -1,37 +1,50 @@
-# QA — Fila de atendimento inspirada no NotificaLead
-
-- Referência: `/var/folders/vp/8s97f7610sg5n819krdn7h0m0000gn/T/codex-clipboard-755ea4ca-e374-4e25-bb6e-cfb6b3998dbb.png` (3400×3775 pixels).
-- Evidência desktop inicial: `tmp/support-qa/reference-desktop.jpg`.
-- Evidência desktop final: `tmp/support-qa/reference-desktop-final.jpg` (1500×1664, DPR 1).
-- Evidência mobile: `tmp/support-qa/reference-mobile.jpg` (390×844, DPR 1).
-- Normalização: imagem fonte visualizada em 1499×1664; comparação lado a lado no mesmo retorno de ferramenta com implementação em 1500×1664. A densidade original da captura do NotificaLead não foi informada. Não alegar cópia pixel a pixel.
-- Estado: operador autenticado, chamado QA encerrado com imagem, pré-perguntas/métricas recolhidas, aba Conversa. A referência tem 352 registros; a aplicação tem três chamados QA reais. Não foram inventados clientes para preencher a lista.
-
-## Comparação e correções
-
-1. P2 inicial: painel estreito e cartões com linha adicional de assunto. Ajustado gutter para 30px, divisão 33%/restante e cartões compactos com nome/conta/estado/responsável. Evidência pós-correção: desktop final.
-2. P2 inicial: descrição de chamado ativo/equipe sumia quando recolhido. Movida para o cabeçalho dos painéis, preservando o contexto da referência.
-3. P2 mobile: filtros/painéis competiam com a conversa. Seleção recolhe o topo e abre cabeçalho de detalhe compartilhado com voltar, nome e estado. Evidência mobile e verificação DOM: viewport/scrollWidth ambos 390.
-4. Comparação final: mesmas regiões funcionais — filtros/chips, contato ativo/equipe, lista lateral, pré-perguntas/métricas, abas, mensagens/anexos e rodapé de estado.
-
-## Superfícies avaliadas
-
-- Tipografia: system-ui e pesos/tamanhos dos componentes Unitymob; hierarquia compacta e truncamento do cabeçalho mobile. Fonte exata do print não identificada; manter o design system existente é intencional.
-- Espaçamento: gutters, duas colunas, gaps, cards arredondados e feed rolável conferidos no desktop completo; mobile sem overflow horizontal.
-- Cores: tokens Unitymob preservados, verde para resolvido, destaque azul da seleção. Não reproduzida a borda vermelha indiscriminada da referência para evitar sinalizar atrasos sem dados.
-- Imagens: anexos reais do QA, com proporção preservada e link de abertura/download. Não substituídos por imagens artificiais.
-- Conteúdo: nomes/contas/datas reais do ambiente local. Nota interna separada. Encerrados mantêm histórico e não exibem editor nem atribuição editável (restrição de domínio anterior, intencional).
-- P3 residual: ícones decorativos e tonalidades do NotificaLead não copiados; ações possuem rótulos acessíveis no padrão existente.
-
-## Interações e segurança
-
-- Busca autenticada do destinatário na conta, criação ativa pelo formulário, entrega entre aplicativos, edição e remoção sincronizadas, etiqueta persistida e nota interna ausente no cliente comprovadas no QA #3.
-- Chips de origem filtraram a lista sem fechar a conversa; contador atualizado.
-- Abas testadas no desktop/mobile, retorno à lista no mobile e zero erros no console após navegação verificada.
-- 37 testes centrais + 24 testes CRM passaram; cobrem autorização, frames, anexos, áudio, revisões ordenadas, diretório por tenant, replay e edição por autor/admin.
-
-## Limites intencionais
-
-O contato ativo usa o aviso pessoal já existente da Unitymob; não bloqueia o trabalho do usuário com popup obrigatório. Áudio enviado como arquivo; gravação de microfone não incluída. Edição/remoção apenas com chamado aberto e auditoria. Nenhum deploy ou mudança no código do NotificaLead.
+# Unitymob public/site — verificação do redesign
 
 final result: passed
+
+## Referência e escopo
+
+Referências: `public/site/assets/whatsapp-1.png` a `whatsapp-4.png`, fornecidas pelo usuário (1280 × 800 px).
+Pedido: adaptar a identidade visual ao site comercial existente; não copiar o conteúdo de WhatsApp para toda a página.
+Implementação: `public/site/index.html`, `assets/site.css`, `assets/qualification.css`, `assets/site.js`.
+Backup integral conferido byte a byte: `backups/site-before-redesign-20260906-224213.tar.gz`.
+
+## Evidências
+
+Capturas via Codex In-app Browser, viewport desktop 1280 × 800 e mobile 390 × 844, imagens na mesma dimensão CSS (densidade normalizada 1:1):
+- `output/site-redesign-qa/desktop.png` — entrada desktop, comparada à referência 1 na mesma inspeção visual.
+- `output/site-redesign-qa/mobile.png` — entrada mobile após ajuste de tipografia.
+- `output/site-redesign-qa/mobile-tools.png` — aba Imóveis e enquadramento do painel.
+- `output/site-redesign-qa/pricing.png` — plano e condições comerciais.
+A referência não fornece um layout mobile: empilhamento e foco no lado direito da demonstração são adaptações intencionais.
+
+## Superfícies verificadas
+
+- Tipografia: sans-serif de sistema, títulos fortes, tracking compacto e destaques azuis. Arial é uma aproximação de família; a fonte exata da referência não foi fornecida. Hierarquia e legibilidade verificadas.
+- Layout: texto à esquerda e produto à direita na entrada; leitura empilhada no mobile; largura 390 sem overflow horizontal da página. Tabela comparativa conserva rolagem interna.
+- Cores: fundo #edf2f7, azul #365f8f, texto #202934 e painéis brancos. Logo original mantido.
+- Imagens: as quatro referências originais são reutilizadas sem recompressão; mobile enquadra o painel à direita. Não há imagens quebradas. O CRM da entrada é markup de interface ilustrativa, com indicação de dados fictícios.
+- Conteúdo: módulos, público, preço de R$ 3.000, uso operacional normal, custos de terceiros, implantação e perguntas frequentes preservados. Manchetes comerciais condensadas. Documentos legais existentes permanecem intactos nesta alteração.
+- Comparação focada: painel do CRM e painel da extensão inspecionados nos screenshots emitidos no browser. O painel da extensão mantém o próprio asset de origem; não foi redesenhado de forma aproximada.
+
+## Interações e verificações
+
+- Quatro abas: cada seleção atualiza imagem, descrição e aria-pressed.
+- Calculadora: incremento de R$ 100 levou total de R$ 3.500 para R$ 3.600 e economia de R$ 500 para R$ 600; valor restaurado.
+- Diagnóstico: abre, recebe nome fictício e avança à pergunta da imobiliária; fecha. Não houve envio externo. Etapas posteriores herdadas não foram reexecutadas integralmente.
+- FAQ: abertura confirmada com aria-expanded=true.
+- Navegação por âncoras e destinos legais locais conferidos.
+- Console observado sem warnings ou erros.
+- Sintaxe dos scripts validada por node --check; assets, IDs únicos, âncoras e git diff --check válidos.
+
+## Histórico de correções
+
+- P2: imagem completa exigia deslocamento lateral no mobile. Corrigido com enquadramento responsivo no painel da ferramenta; evidência mobile-tools.png.
+- P2: título e ações ocupavam espaço excessivo no mobile. Fonte ajustada para 44px e botões compactados; evidência mobile.png.
+- Sem P0/P1/P2 pendente na inspeção realizada.
+
+## Limites e próximos refinamentos
+
+- P3: fonte exata das referências não identificada; aproximação por fonte local sem dependência de CDN.
+- Demonstrações são ilustrativas, não realizam operações no CRM.
+- Publicação não executada. Fluxo final de envio ao WhatsApp não acionado.

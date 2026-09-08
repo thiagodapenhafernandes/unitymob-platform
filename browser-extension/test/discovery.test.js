@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 const dir = await mkdtemp(join(tmpdir(), "unitymob-discovery-test-"));
-for (const file of ["background.js", "catalog-request.js", "context.js", "security.js", "launcher.js", "auth-tab.js"]) await copyFile(new URL(`../src/${file}`, import.meta.url), join(dir, file));
+for (const file of ["share-history.js", "property-preview.js", "background.js", "catalog-request.js", "context.js", "security.js", "launcher.js", "auth-tab.js"]) await copyFile(new URL(`../src/${file}`, import.meta.url), join(dir, file));
 await writeFile(join(dir, "package.json"), '{"type":"module"}');
 await writeFile(join(dir, "config.js"), 'export const crmOrigins=["https://dev.unitymob.com.br"]; export const crmOrigin=crmOrigins[0]; export const discoveryOrigin="https://gateway.example.com";');
 let listener, local, session, calls, issuer;

@@ -108,6 +108,7 @@ test("login uses the configured Unitymob and exchanges only the signed Chrome ca
       const login = new URL(url);
       assert.equal(login.origin, origin);
       assert.equal(interactive, true);
+      assert.equal(login.searchParams.get("remember"), "1");
       return `${this.getRedirectURL("unitymob")}?${new URLSearchParams({ state: login.searchParams.get("challenge"), login_token: "signed-code" })}`;
     }
   };
@@ -116,7 +117,7 @@ test("login uses the configured Unitymob and exchanges only the signed Chrome ca
     assert.equal(JSON.parse(options.body).login_token, "signed-code");
     return json({ token: "t".repeat(43), expires_at: validConnection().expires_at });
   };
-  assert.deepEqual(await send({ type: "connect", origin: "https://evil.test" }), { ok: true, data: { state: "connected" } });
+  assert.deepEqual(await send({ type: "connect", origin: "https://evil.test", remember: true }), { ok: true, data: { state: "connected" } });
   assert.equal(stored.connection.termsAccepted, false);
 });
 
@@ -290,4 +291,96 @@ test("sends one property per message and stops when the active conversation chan
     };
     assert.equal((await send(message)).ok,false);assert.equal(sent.length,1);
   } finally {chrome.scripting.executeScript=original;}
+});
+test("preserves preparation errors across the worker-panel boundary", async () => {
+  const original = chrome.scripting.executeScript;
+  global.fetch = async () => json({properties:[{id:7,code:"7",title:"Imóvel",public_path:"/imovel/7"}],public_origin:"https://example.com"});
+  try {
+    for (const code of ["preview_timeout","preview_image_failed","preview_image_invalid","preview_unavailable","send_unconfirmed"]) {
+      chrome.scripting.executeScript = async options => [{frameId:0,result:options.func?.name === "sendPropertyMessage" ? {error:code} : {...projection}}];
+      assert.deepEqual(await send({type:"send_properties",tabId:1,contextKey:contextKey(projection),leadId:1,ids:[7],phone:projection.phone,confirmed:true}),{ok:false,error:code});
+    }
+  } finally { chrome.scripting.executeScript = original; }
+});
+
+test('prepares the public photo before sending and reports the sending phase', async t => {
+  const original=chrome.scripting.executeScript;
+  const oldBitmap=globalThis.createImageBitmap, oldCanvas=globalThis.OffscreenCanvas;
+  const stages=[];
+  chrome.runtime.sendMessage=async message=>stages.push(message);
+  globalThis.createImageBitmap=async()=>({width:1280,height:720,close(){}});
+  globalThis.OffscreenCanvas=class {
+    getContext(){return {drawImage(){}};}
+    async convertToBlob(){return new Blob(['jpeg']);}
+  };
+  global.fetch=async url=>url.startsWith('https://cdn.example.com') ? new Response('image',{headers:{'Content-Type':'image/jpeg'}}) : json({properties:[{id:7,code:'7',title:'Imóvel',public_path:'/imovel/7',photo_urls:['https://cdn.example.com/photo']}],public_origin:'https://example.com'});
+  let sends=0;
+  chrome.scripting.executeScript=async options=>{
+    if(options.func?.name==='sendPropertyMessage') {
+      assert.equal(options.args[2].thumbnail,btoa('jpeg'));
+      assert.equal(stages.at(-1).stage,'sending');
+      sends++;
+      return [{frameId:0,result:{sent:true}}];
+    }
+    return [{frameId:0,result:{...projection}}];
+  };
+  try {
+    const message={type:'send_properties',tabId:1,contextKey:contextKey(projection),leadId:1,ids:[7],phone:projection.phone,confirmed:true,progressId:'test'};
+    assert.equal((await send(message)).ok,true);
+    assert.equal(sends,1);
+    globalThis.createImageBitmap=async()=>{throw new Error('invalid photo');};
+    assert.deepEqual(await send(message),{ok:false,error:'preview_image_failed'});
+    assert.equal(sends,1);
+  } finally {
+    chrome.scripting.executeScript=original;
+    delete chrome.runtime.sendMessage;
+    globalThis.createImageBitmap=oldBitmap;globalThis.OffscreenCanvas=oldCanvas;
+  }
+});
+
+test("catalog sharing links only confirmed sends and retries failed links without resending", async () => {
+  const original = chrome.scripting.executeScript;
+  const property = {id:7,code:'7',title:'Apartamento',public_path:'/imovel/7'};
+  let delivered = 0, linkFails = true;
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({url, body: options.body && JSON.parse(options.body)});
+    if (url.endsWith('/properties/share')) return json({properties:[property],public_origin:'https://example.com'});
+    if (url.endsWith('/properties')) return json(linkFails ? {error:'unavailable'} : {lead_id:1}, linkFails ? 503 : 200);
+    return json({properties:[]});
+  };
+  chrome.scripting.executeScript = async options => {
+    if (options.func?.name === 'sendPropertyMessage') { delivered++; return [{frameId:0,result:{sent:true}}]; }
+    return [{frameId:0,result:{...projection}}];
+  };
+  const message = {type:'send_properties',fromSearch:true,tabId:1,contextKey:contextKey(projection),leadId:1,ids:[7],phone:projection.phone,confirmed:true};
+  try {
+    const first = await send(message);
+    assert.equal(first.ok,true); assert.equal(first.data.linkPending,true); assert.equal(delivered,1);
+    assert.equal(calls[0].url.endsWith('/properties/share'),true);
+    linkFails = false;
+    const retry = await send(message);
+    assert.equal(retry.ok,true); assert.equal(retry.data.linkPending,false); assert.equal(delivered,1);
+    assert.equal(calls.at(-1).body.properties.ids,'7');
+    const again = await send(message);
+    assert.equal(again.ok,true); assert.equal(delivered,2);
+  } finally { chrome.scripting.executeScript = original; }
+});
+
+test("catalog sharing never links an unconfirmed send or sends after access denial", async () => {
+  const original = chrome.scripting.executeScript;
+  let denied = false, deliveries = 0;
+  const calls = [];
+  global.fetch = async (url) => { calls.push(url); return denied ? json({error:'forbidden'},403) : json({properties:[{id:7,public_path:'/imovel/7'}]}); };
+  chrome.scripting.executeScript = async options => {
+    if(options.func?.name === 'sendPropertyMessage') { deliveries++; return [{frameId:0,result:{sent:false,error:'send_unconfirmed'}}]; }
+    return [{frameId:0,result:{...projection}}];
+  };
+  const message = {type:'send_properties',fromSearch:true,tabId:1,contextKey:contextKey(projection),leadId:1,ids:[7],phone:projection.phone,confirmed:true};
+  try {
+    assert.equal((await send(message)).ok,false);
+    assert.equal(deliveries,1); assert.equal(calls.some(url=>url.endsWith('/properties')),false);
+    denied=true;
+    assert.equal((await send(message)).ok,false); assert.equal(deliveries,1);
+  } finally { chrome.scripting.executeScript=original; }
 });

@@ -2,6 +2,11 @@
 
 ## Deploy
 
+- Referência completa por alvo: `docs/deploys.md`.
+- `all` publica apenas Salute e Conexão. Central e Gateway são independentes.
+- `$fazer_deploy central`: usar Mina em `central/`, com `CENTRAL_HOST=167.99.239.17`.
+- `$fazer_deploy gateway`: usar o procedimento Docker Compose de `docs/deploys.md`, não Mina.
+
 - O deploy de produção deste projeto é feito com Mina multistage.
 - Para a Salute, usar:
   `rvm 3.2.3 do bundle exec mina saluteimoveis deploy`

@@ -207,6 +207,25 @@ RSpec.describe "Browser extension API", type: :request do
     expect(cookies[:browser_extension_pairing]).to be_present
   end
 
+  [nil, "0", "1", "30", "true"].each do |remember|
+    it "bounds the extension session duration for remember=#{remember.inspect}" do
+      sign_in user
+      travel_to Time.current.change(usec: 0) do
+        params = {challenge: BrowserExtensionGrant.digest(verifier), extension_id: extension_id}
+        get "/admin/browser_extension_connections/new", params: params.merge(remember: remember)
+        expect(response).to have_http_status(:ok)
+        # The POST cannot override the choice bound to the encrypted pairing cookie.
+        post "/admin/browser_extension_connections", params: params.merge(remember: "1", expires_at: 1.year.from_now)
+        expect(response).to have_http_status(:redirect)
+        issued = BrowserExtensionGrant.find_signed!(Rack::Utils.parse_query(URI.parse(response.location).query).fetch("login_token"), purpose: :browser_extension_pairing)
+        expect(issued.expires_at).to eq(remember == "1" ? 30.days.from_now : 8.hours.from_now)
+        expect(issued.challenge_expires_at).to eq(5.minutes.from_now)
+        issued.update!(revoked_at: Time.current)
+        expect(issued).not_to be_accessible
+      end
+    end
+  end
+
   it "requires an authenticated browser approval before exchange" do
     params = { challenge: BrowserExtensionGrant.digest(verifier), extension_id: extension_id }
     expect { post "/admin/browser_extension_connections", params: params }.not_to change(BrowserExtensionGrant, :count)
@@ -305,6 +324,42 @@ RSpec.describe "Browser extension API", type: :request do
   ensure
     ActionController::Base.allow_forgery_protection = previous
   end
+  it "reuses the user's current acceptance after a new login without recording another acceptance" do
+    original = grant
+    original.update!(expires_at: 1.hour.ago, revoked_at: Time.current)
+    fresh = BrowserExtensionGrant.create!(tenant: tenant, admin_user: user, extension_id: extension_id,
+      challenge_digest: BrowserExtensionGrant.digest(SecureRandom.urlsafe_base64(32)),
+      challenge_expires_at: 5.minutes.from_now, expires_at: 8.hours.from_now)
+    new_headers = { "Authorization" => "Bearer #{fresh.exchange!}" }
+    get "/api/v1/browser_extension/session", headers: new_headers
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig("terms", "accepted")).to be(true)
+    expect(response.parsed_body.dig("capabilities", "read_leads")).to be(true)
+    expect(fresh.reload.terms_accepted_at).to be_nil
+    expect(fresh.terms_acceptance.id).to eq(original.id)
+    post "/api/v1/browser_extension/leads/resolve", params: { contact_phone: "+5511999999999" }, headers: new_headers, as: :json
+    expect(response).to have_http_status(:ok)
+    original.update!(terms_digest: "outdated")
+    get "/api/v1/browser_extension/session", headers: new_headers
+    expect(response.parsed_body.dig("terms", "accepted")).to be(false)
+  end
+
+  it "does not reuse another user's or another tenant's acceptance" do
+    original = grant
+    original.update!(terms_accepted_at: nil, terms_version: nil, terms_digest: nil)
+    other_tenant = Tenant.create!(name: "Terms other", slug: "terms-#{SecureRandom.hex(4)}")
+    [create(:admin_user, tenant: tenant), create(:admin_user, tenant: other_tenant)].each do |other|
+      BrowserExtensionGrant.create!(tenant: other.tenant, admin_user: other, extension_id: extension_id,
+        challenge_digest: BrowserExtensionGrant.digest(SecureRandom.urlsafe_base64(32)),
+        challenge_expires_at: 5.minutes.from_now, expires_at: 8.hours.from_now,
+        terms_accepted_at: Time.current, terms_version: BrowserExtensionGrant::TERMS_VERSION,
+        terms_digest: BrowserExtensionGrant.digest(BrowserExtensionGrant::TERMS_TEXT))
+    end
+    get "/api/v1/browser_extension/session", headers: headers
+    expect(response.parsed_body.dig("terms", "accepted")).to be(false)
+    expect(response.parsed_body.dig("capabilities", "read_leads")).to be(false)
+  end
+
   it "requires a new explicit acceptance when an existing grant has the previous terms version" do
     grant.update!(terms_version: "2026-09-06.v4")
     get "/api/v1/browser_extension/session", headers: headers
@@ -349,7 +404,7 @@ RSpec.describe "Browser extension API", type: :request do
 
   it "returns to extension login after real password and TOTP, leaving ordinary logins unchanged" do
     user.update!(otp_secret: ROTP::Base32.random, otp_enabled_at: Time.current)
-    query = { challenge: BrowserExtensionGrant.digest(verifier), extension_id: extension_id }
+    query = { challenge: BrowserExtensionGrant.digest(verifier), extension_id: extension_id, remember: "1" }
     get "/admin/browser_extension_connections/new", params: query
     expect(response).to redirect_to(new_admin_user_session_path)
     post "/admin/sign_in", params: { admin_user: { email: user.email, password: "password123" } }
@@ -391,39 +446,6 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:conflict)
   end
 
-  it "records each contact kind with CRM results, counts attempts and returns the complete history" do
-    lead = make_lead
-    LeadActivity::CONTACT_ATTEMPT_KINDS.zip(LeadActivity::CONTACT_RESULT_LABELS.keys).each do |kind, result|
-      attrs = operation_params(contact: {body: "  Conversa registrada  ", contact_kind: kind, contact_result: result})
-      expect { 2.times { post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: attrs, headers: headers, as: :json } }.to change(LeadActivity, :count).by(1)
-      expect(response).to have_http_status(:ok)
-      expect(lead.activities.find(response.parsed_body.fetch("note_id")).metadata).to include(
-        "contact_kind" => kind, "contact_result" => result, "body" => "Conversa registrada", "admin_user_id" => user.id)
-    end
-    expect(lead.unsuccessful_attempt_count).to eq(2)
-    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
-    expect(response.parsed_body.fetch("notes").map { |note| note.fetch("result") }).to match_array(LeadActivity::CONTACT_RESULT_LABELS.values)
-    expect(response.parsed_body.dig("contact_options", "kinds").keys).to eq(%w[ligacao whatsapp email visita nota])
-    expect(response.parsed_body.dig("contact_options", "results")).to eq(LeadActivity::CONTACT_RESULT_LABELS)
-    expect(lead.reload.admin_user).to eq(user)
-  end
-
-  it "keeps internal contact notes outside attempt counts and rejects missing or forged contact choices" do
-    lead = make_lead
-    attrs = operation_params(contact: {body: "Preferência", contact_kind: "nota", contact_result: "nao_respondeu"})
-    post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: attrs, headers: headers, as: :json
-    expect(response).to have_http_status(:ok)
-    expect(lead.activities.last.meta("contact_result")).to be_nil
-    expect(lead.unsuccessful_attempt_count).to eq(0)
-    [{contact_kind: "ligacao"}, {contact_kind: "whatsapp", contact_result: "inventado"},
-     {contact_kind: "inventado", contact_result: "nao_respondeu"}, {contact_kind: "nota", body: ""}].each do |fields|
-      expect {
-        post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: operation_params(contact: {body: "Resumo"}.merge(fields)), headers: headers, as: :json
-      }.not_to change(LeadActivity, :count)
-      expect(response).to have_http_status(:unprocessable_entity)
-    end
-  end
-
   it "creates one task and its timeline event with timezone and current owner, including late retries" do
     lead = make_lead
     due = 1.hour.from_now.change(usec: 0)
@@ -457,7 +479,6 @@ RSpec.describe "Browser extension API", type: :request do
     lead = make_lead
     user.profile.update!(permissions: { "leads" => { "view" => true, "scope" => "own" } })
     [ ["leads", { lead: { name: "Novo" } }], ["leads/#{lead.id}/notes", { note: { body: "Nota" } }],
-      ["leads/#{lead.id}/contacts", { contact: {body: "Resumo", contact_kind: "nota"} }],
       ["leads/#{lead.id}/tasks", { task: { title: "Tarefa" } }] ].each do |path, attrs|
       post "/api/v1/browser_extension/#{path}", params: operation_params(attrs), headers: headers, as: :json
       expect(response).to have_http_status(:forbidden)
@@ -474,7 +495,7 @@ RSpec.describe "Browser extension API", type: :request do
     other_tenant = Tenant.create!(name: "External write", slug: "write-#{SecureRandom.hex(4)}")
     other_owner = create(:admin_user, tenant: other_tenant)
     [make_lead(owner: create(:admin_user, tenant: tenant)), make_lead(owner: other_owner, account: other_tenant)].each do |lead|
-      %w[notes tasks contacts].each do |action|
+      %w[notes tasks].each do |action|
         post "/api/v1/browser_extension/leads/#{lead.id}/#{action}", params: operation_params(note: { body: "Nota" }, task: { title: "Tarefa" }), headers: headers, as: :json
         expect(response).to have_http_status(:not_found)
       end
@@ -558,6 +579,29 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
   end
 
+  it "prepares catalog sharing without linking, with tenant and lead authorization" do
+    lead = make_lead
+    property = create(:habitation, tenant: tenant, status: "Venda", exibir_no_site_flag: true, valor_venda_cents: 300000000)
+    endpoint = "/api/v1/browser_extension/leads/#{lead.id}/properties/share"
+    post endpoint, params: {ids: [property.id]}, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("properties").first.fetch("public_path")).to start_with("/imovel/")
+    expect(lead.property_interests.count).to eq(0)
+
+    property.update!(exibir_no_site_flag: false)
+    post endpoint, params: {ids: [property.id]}, headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    property.update!(exibir_no_site_flag: true)
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Other sharing", slug: "other-sharing"), status: "Venda", exibir_no_site_flag: true)
+    post endpoint, params: {ids: [foreign.id]}, headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    other_lead = make_lead(owner: create(:admin_user, tenant: tenant))
+    post "/api/v1/browser_extension/leads/#{other_lead.id}/properties/share", params: {ids: [property.id]}, headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    post endpoint, params: {ids: ["invalid"]}, headers: headers, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
   it "returns multiple gallery photos in property search, matching linked properties" do
     lead = make_lead
     property = create(:habitation, tenant: tenant, status: "Venda", valor_venda_cents: 50000000)
@@ -613,6 +657,7 @@ RSpec.describe "Browser extension API", type: :request do
     first = create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", dormitorios_qtd: 2, valor_venda_cents: 50000000)
     second = create(:habitation, tenant: tenant, admin_user: user, status: "Venda", categoria: "Apartamento", dormitorios_qtd: 3, valor_venda_cents: 70000000)
     foreign = create(:habitation, tenant: Tenant.create!(name: "Foreign catalog", slug: "foreign-catalog"), nome_empreendimento: "Foreign secret")
+    foreign.tenant.attribute_options.create!(context: "habitation", category: "feature", name: "Característica exclusiva externa")
     lead.property_interests.create!(tenant: tenant, habitation: first)
     endpoint = "/api/v1/browser_extension/leads/#{lead.id}/properties/search"
     attrs = {q: "", purpose: "all", catalog: true, facet: "mine", order: "sale_price", direction: "asc", category: ["Apartamento"], bedrooms_min: "2", bedrooms_max: "3", include_options: true}
@@ -624,6 +669,7 @@ RSpec.describe "Browser extension API", type: :request do
     expect(body.fetch("filter_options").fetch("development")).not_to include("Foreign secret")
     expect(body.fetch("filter_options").fetch("amenity_features")).to include("Adega")
     expect(body.fetch("filter_options").fetch("amenity_infrastructure")).to include("Salão de festas")
+    expect(body.fetch("filter_options").fetch("amenity_features")).not_to include("Característica exclusiva externa")
     expect(body.fetch("counts").fetch("mine")).to eq(2)
     ::BrowserExtension::PropertyCatalog::SORT_KEYS.each_key do |order|
       query = ::BrowserExtension::PropertyCatalog.new(scope: tenant.habitations, user: user, params: {order: order})
@@ -654,7 +700,6 @@ RSpec.describe "Browser extension API", type: :request do
     post endpoint, params: filters.merge(min_price: "3200000", max_price: "3000000"), headers: headers, as: :json
     expect(response).to have_http_status(:unprocessable_entity)
   end
-
 
   it "links selected properties once without replacing the primary property and rejects foreign IDs atomically" do
     lead = make_lead
@@ -730,6 +775,41 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:forbidden)
   end
 
+  it "records each contact kind with CRM results, counts attempts and returns the complete history" do
+    lead = make_lead
+    LeadActivity::CONTACT_ATTEMPT_KINDS.zip(LeadActivity::CONTACT_RESULT_LABELS.keys).each do |kind, result|
+      attrs = operation_params(contact: {body: "  Conversa registrada  ", contact_kind: kind, contact_result: result})
+      expect { 2.times { post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: attrs, headers: headers, as: :json } }.to change(LeadActivity, :count).by(1)
+      expect(response).to have_http_status(:ok)
+      expect(lead.activities.find(response.parsed_body.fetch("note_id")).metadata).to include(
+        "contact_kind" => kind, "contact_result" => result, "body" => "Conversa registrada", "admin_user_id" => user.id)
+    end
+    expect(lead.unsuccessful_attempt_count).to eq(2)
+    get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
+    expect(response.parsed_body.fetch("notes").map { |note| note.fetch("result") }).to match_array(LeadActivity::CONTACT_RESULT_LABELS.values)
+    expect(response.parsed_body.dig("contact_options", "kinds").keys).to eq(%w[ligacao whatsapp email visita nota])
+    expect(response.parsed_body.dig("contact_options", "results")).to eq(LeadActivity::CONTACT_RESULT_LABELS)
+    expect(lead.reload.admin_user).to eq(user)
+  end
+
+
+  it "keeps internal contact notes outside attempt counts and rejects missing or forged contact choices" do
+    lead = make_lead
+    attrs = operation_params(contact: {body: "Preferência", contact_kind: "nota", contact_result: "nao_respondeu"})
+    post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: attrs, headers: headers, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(lead.activities.last.meta("contact_result")).to be_nil
+    expect(lead.unsuccessful_attempt_count).to eq(0)
+    [{contact_kind: "ligacao"}, {contact_kind: "whatsapp", contact_result: "inventado"},
+     {contact_kind: "inventado", contact_result: "nao_respondeu"}, {contact_kind: "nota", body: ""}].each do |fields|
+      expect {
+        post "/api/v1/browser_extension/leads/#{lead.id}/contacts", params: operation_params(contact: {body: "Resumo"}.merge(fields)), headers: headers, as: :json
+      }.not_to change(LeadActivity, :count)
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+  end
+
+
   it "filters property autocomplete by code, price range and minimum rooms" do
     lead = make_lead
     matching = create(:habitation, tenant: tenant, codigo: "8334", status: "Venda", valor_venda_cents: 80000000, suites_qtd: 3, dormitorios_qtd: 4, vagas_qtd: 2)
@@ -745,6 +825,7 @@ RSpec.describe "Browser extension API", type: :request do
     post endpoint, params: {q: "8334", purpose: "venda", min_price: "1 OR 1=1"}, headers: headers, as: :json
     expect(response).to have_http_status(:unprocessable_entity)
   end
+
 
   it "removes an interest idempotently without removing the primary property" do
     lead = make_lead
@@ -765,6 +846,7 @@ RSpec.describe "Browser extension API", type: :request do
     expect(lead.reload.property_id).to eq(property.id)
   end
 
+
   it "combines category and desktop quick filters inside the tenant catalog" do
     lead = make_lead
     property = create(:habitation, tenant: tenant, categoria: "Apartamento", status: "Venda", valor_venda_cents: 50000000, destaque_web_flag: true)
@@ -779,6 +861,7 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response.parsed_body.fetch("property_categories")).to include("Apartamento", "Casa")
     expect(response.parsed_body.fetch("property_quick_filters")).to include("frente_mar" => "Frente Mar")
   end
+
 
   it "returns compact card data and a factual fallback when the building name is absent" do
     lead = make_lead

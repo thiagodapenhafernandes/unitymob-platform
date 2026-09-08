@@ -7,12 +7,13 @@ import { allowedOrigin } from "../src/security.js";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const discoveryOrigin = process.env.UNITYMOB_DISCOVERY_ORIGIN || null;
 if (discoveryOrigin) allowedOrigin(discoveryOrigin, [discoveryOrigin]);
-const dist = resolve(root, discoveryOrigin ? "dist-discovery" : "dist");
+const webStore = process.env.UNITYMOB_WEB_STORE === "1";
+const dist = resolve(root, webStore ? "dist-webstore" : discoveryOrigin ? "dist-discovery" : "dist");
 const { version } = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const crmOrigins = (process.env.UNITYMOB_CRM_ORIGINS || "https://dev.unitymob.com.br").split(",").map(s => s.trim());
 if (crmOrigins.length !== 1) throw new Error("Configure exatamente uma origem por pacote.");
 for (const origin of crmOrigins) allowedOrigin(origin, crmOrigins);
-const key = (await readFile(resolve(root, "public-key.txt"), "utf8")).trim();
+const key = (await readFile(resolve(root, webStore ? "webstore-public-key.txt" : "public-key.txt"), "utf8")).replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
 const extensionId = createHash("sha256").update(Buffer.from(key, "base64")).digest("hex").slice(0, 32).replace(/[0-9a-f]/g, c => String.fromCharCode(97 + parseInt(c, 16)));
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, "vendor"), { recursive: true });
@@ -23,7 +24,7 @@ for (const path of Object.values(icons)) await copyFile(resolve(root, path), res
 for (const name of await readdir(resolve(root, "src"))) await copyFile(resolve(root, "src", name), resolve(dist, name));
 await writeFile(resolve(dist, "config.js"), `export const crmOrigins = ${JSON.stringify(crmOrigins)};\nexport const crmOrigin = crmOrigins[0];\nexport const discoveryOrigin = ${JSON.stringify(discoveryOrigin)};\n`);
 await writeFile(resolve(dist, "manifest.json"), JSON.stringify({
-  manifest_version: 3, name: "Unitymob para WhatsApp", version, minimum_chrome_version: "116", key,
+  manifest_version: 3, name: "Unitymob para WhatsApp", version, minimum_chrome_version: "116", ...(webStore ? {} : { key }),
   description: "Consulte e crie leads, registre notas e agende tarefas durante o atendimento no WhatsApp Web.",
   permissions: ["sidePanel", "storage", "scripting", "identity"],
   host_permissions: ["https://web.whatsapp.com/*", `https://${extensionId}.chromiumapp.org/*`, ...(discoveryOrigin ? [`${discoveryOrigin}/*`] : [])],

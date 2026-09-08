@@ -25,6 +25,7 @@
           <a href="https://unitymob.com.br/termos-de-uso.html" target="_blank" rel="noopener noreferrer">Termos de Uso</a>
           <a href="https://unitymob.com.br/opcoes-de-privacidade.html" target="_blank" rel="noopener noreferrer">Opções de privacidade</a>
         </nav>
+        <label id="remember-connection-field"><input id="remember-connection" type="checkbox"> Manter conectado por 30 dias neste navegador</label>
         <form id="connect-form" class="ax-record-list">
           <p>Acesse sua conta para continuar no WhatsApp.</p>
           <div id="discovery-email-field" hidden><label for="discovery-email">E-mail da sua conta</label><input id="discovery-email" class="ax-control" type="email" maxlength="254" autocomplete="email"></div>
@@ -166,8 +167,8 @@
             <form id="property-form" class="ax-record-list" hidden>
               <div id="property-options" class="ax-record-list ax-property-suggestions"></div>
               <div id="property-selection-actions" class="pc-selection-actions" hidden>
-                <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o vínculo com <strong id="property-contact"></strong>.</span></label>
-                <button class="ax-btn ax-btn--primary" type="submit">Adicionar imóveis ao lead</button>
+                <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o envio para <strong id="property-contact"></strong>.</span></label>
+                <button class="ax-btn ax-btn--primary" type="submit">Enviar imóveis no WhatsApp</button>
               </div>
             </form>
           </details>

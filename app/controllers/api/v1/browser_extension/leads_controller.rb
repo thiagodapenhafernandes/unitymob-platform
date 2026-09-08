@@ -18,6 +18,23 @@ module Api
           render json: { contact_phone: phone, leads: matches.first(10).map { |lead| summary(lead) }, more: matches.size > 10 }
         end
 
+        def share_properties
+          lead_scope.find(params[:id])
+          return render json: {error: "forbidden"}, status: :forbidden unless grant.capabilities[:link_properties]
+
+          ids = params[:ids]
+          raise ArgumentError unless ids.is_a?(Array) && ids.length.between?(1, 20) && ids.all? { |id| id.to_s.match?(/\A[1-9]\d*\z/) }
+          ids = ids.map(&:to_i).uniq
+          properties = property_scope.where(id: ids, exibir_no_site_flag: true, status: Habitation::PUBLIC_STATUSES)
+            .includes(photos_attachments: :blob).to_a
+          raise ActiveRecord::RecordNotFound unless properties.length == ids.length
+
+          render json: {public_origin: grant.tenant.public_base_url(fallback_base_url: request.base_url),
+            properties: properties.map { |property| {id: property.id, code: property.codigo, title: property.display_title,
+              city: property.cidade, neighborhood: property.bairro, public_path: property_path(property.codigo),
+              photo_urls: property.public_image_sources.filter_map { |source| Storage::PublicCdnImageUrl.resolve(source) }.first(1)} }}
+        end
+
         def search_properties
           lead = lead_scope.find(params[:id])
           catalog = ::BrowserExtension::PropertyCatalog.new(scope: property_scope, user: grant.admin_user, params: catalog_params)
@@ -39,6 +56,7 @@ module Api
             condo_cents: p.valor_condominio_cents, iptu_cents: p.valor_iptu_cents, rental: purpose == "locacao" || params[:facet] == "locacao" || !p.valor_venda_cents.to_i.positive?,
             photo_urls: p.public_image_sources.filter_map { |source| Storage::PublicCdnImageUrl.resolve(source) }.first(100),
             owner: p.admin_user&.tenant_id == grant.tenant_id ? p.admin_user.name : nil,
+            public_path: p.exibir_no_site_flag && Habitation::PUBLIC_STATUSES.include?(p.status) ? property_path(p.codigo) : nil,
             linked: linked_ids.include?(p.id)} }, more: rows.length > 20, total: total, page: page, counts: params[:catalog] == true ? catalog.counts : nil,
             filter_options: params[:include_options] == true ? catalog.options : nil }
         end

@@ -26,6 +26,10 @@ bundle exec rackup -p 4001
 
 ## Deploy em `webhooks.unitymob.com.br`
 
+Procedimento canônico: [Deploys de produção](../docs/deploys.md#gateway-docker-compose-sem-mina).
+O alvo `$fazer_deploy gateway` publica somente este componente; `all` não o inclui.
+Prefira o pacote extraído do commit descrito nessa referência ao checkout local.
+
 Este subapp roda separado do CRM principal no servidor `root@webhooks.unitymob.com.br`:
 
 - path: `/opt/unitymob-whatsapp-gateway`
