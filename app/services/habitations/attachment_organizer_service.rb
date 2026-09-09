@@ -7,12 +7,13 @@ module Habitations
   # Por padrão o ActiveStorage gera keys hash na raiz do bucket. Esse serviço
   # roda após o save, detecta blobs ainda na key padrão e faz copy + delete + update key.
   #
-  # Usado pelo Habitation para fichas_cadastro e autorizacoes_venda.
+  # Usado pelo Habitation para fichas_cadastro, autorizacoes_venda e documentos.
   class AttachmentOrganizerService
     # Mapeia o nome da associação ActiveStorage para a subpasta no bucket.
     FOLDER_MAP = {
       "fichas_cadastro"    => "fichas-cadastro",
-      "autorizacoes_venda" => "autorizacoes"
+      "autorizacoes_venda" => "autorizacoes",
+      "documentos"          => "documentos"
     }.freeze
 
     def initialize(habitation)

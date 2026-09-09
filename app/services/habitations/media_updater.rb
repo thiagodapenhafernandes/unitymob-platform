@@ -98,7 +98,7 @@ module Habitations
     end
 
     def extract_document_uploads!(attributes)
-      %i[fichas_cadastro autorizacoes_venda].each_with_object({}) do |key, result|
+      %i[fichas_cadastro autorizacoes_venda documentos].each_with_object({}) do |key, result|
         next unless attributes.key?(key)
 
         uploads = Array(attributes.delete(key)).reject do |upload|

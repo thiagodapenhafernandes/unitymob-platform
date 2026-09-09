@@ -355,7 +355,8 @@
   internal_document_groups = if can_view_habitation_show_sensitive_data?(@habitation)
     [
       ["Fichas de cadastro", @habitation.fichas_cadastro.attachments],
-      ["Autorizações de venda", @habitation.autorizacoes_venda.attachments]
+      ["Autorizações de venda", @habitation.autorizacoes_venda.attachments],
+      ["Documentos", @habitation.documentos.attachments]
     ].filter_map do |label, attachments|
       persisted_attachments = attachments.select { |attachment| attachment.persisted? && attachment.blob&.persisted? }
       [label, persisted_attachments] if persisted_attachments.any?

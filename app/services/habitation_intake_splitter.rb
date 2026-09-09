@@ -82,6 +82,7 @@ class HabitationIntakeSplitter
     copy_attachment_collection(@habitation.photos, target.photos)
     copy_attachment_collection(@habitation.fichas_cadastro, target.fichas_cadastro)
     copy_attachment_collection(@habitation.autorizacoes_venda, target.autorizacoes_venda)
+    copy_attachment_collection(@habitation.documentos, target.documentos)
   end
 
   def copy_attachment_collection(source, target)

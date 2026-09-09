@@ -1,8 +1,10 @@
 <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
   <% can_upload_fichas = can_manage_internal_documents && habitation_field_editable?("fichas_cadastro") %>
   <% can_upload_autorizacoes = can_manage_internal_documents && habitation_field_editable?("autorizacoes_venda") %>
+  <% can_upload_documentos = can_manage_internal_documents && habitation_field_editable?("documentos") %>
   <% can_remove_fichas = can_manage_internal_documents && habitation_field_editable?("acao:remover_fichas_cadastro") %>
   <% can_remove_autorizacoes = can_manage_internal_documents && habitation_field_editable?("acao:remover_autorizacoes_venda") %>
+  <% can_remove_documentos = can_manage_internal_documents && habitation_field_editable?("acao:remover_documentos") %>
   <div class="ax-form-workspace">
     <%= ax_form_section(
           title: "Documentos internos",
@@ -143,6 +145,74 @@
                     title: "Nenhuma autorização anexada",
                     description: "Anexe autorizações assinadas quando houver.",
                     icon: "shield-check"
+                  ) %>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="ax-span-12">
+          <%= ax_field_group(
+                title: "Documentos",
+                token: "#{habitation.documentos.attachments.size} arquivo(s)",
+                class_name: "ax-field-group--panel",
+                tooltip: "Demais documentos internos do imóvel, como matrícula, IPTU, boletos e comprovantes."
+              ) do %>
+            <% if can_upload_documentos %>
+              <div class="ax-upload-control">
+                <% if habitation.persisted? %>
+                  <%= ax_file_upload_button(
+                        label: "Adicionar arquivos",
+                        input_id: "habitation_documentos",
+                        accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt,.doc,.docx,.xlsx,.zip",
+                        label_data: { internal_document_upload_label: true }
+                      ) %>
+                <% else %>
+                  <%= ax_file_upload_button(
+                        form: f,
+                        method: :documentos,
+                        label: "Adicionar arquivos",
+                        input_id: "habitation_documentos",
+                        accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt,.doc,.docx,.xlsx,.zip"
+                      ) %>
+                <% end %>
+                <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_documentos"></div>
+              </div>
+            <% end %>
+
+            <% if habitation.documentos.attached? %>
+              <ul class="ax-file-list">
+                <% habitation.documentos.attachments.each do |attachment| %>
+                  <% next unless attachment.persisted? && attachment.blob&.persisted? %>
+                  <% attachment_actions = capture do %>
+                    <% if habitation.persisted? && can_remove_documentos %>
+                      <%= ax_confirm_submit(
+                            form_id: "purge_attachment_#{attachment.id}",
+                            message: "Remover este arquivo?",
+                            confirm_label: "Remover"
+                          ) do %>
+                        <%= button_tag type: "button",
+                                       class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
+                                       title: "Remover arquivo",
+                                       form: "purge_attachment_#{attachment.id}",
+                                       data: { action: "click->ax-confirm-submit#request" } do %>
+                          <i class="bi bi-trash"></i>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                  <%= ax_attachment_item(
+                        attachment:,
+                        url: rails_blob_path(attachment, disposition: "attachment"),
+                        meta: number_to_human_size(attachment.byte_size),
+                        actions: attachment_actions
+                      ) %>
+                <% end %>
+              </ul>
+            <% else %>
+              <%= ax_empty_state(
+                    title: "Nenhum documento anexado",
+                    description: "Anexe documentos internos do imóvel quando houver.",
+                    icon: "file-earmark-text"
                   ) %>
             <% end %>
           <% end %>

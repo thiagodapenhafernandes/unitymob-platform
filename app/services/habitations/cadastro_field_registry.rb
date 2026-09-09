@@ -297,8 +297,10 @@ module Habitations
         items: [
           { key: "fichas_cadastro", label: "Fichas de cadastro" },
           { key: "autorizacoes_venda", label: "Autorizações de venda" },
+          { key: "documentos", label: "Documentos" },
           { key: "acao:remover_fichas_cadastro", label: "Remover fichas de cadastro", kind: :action },
-          { key: "acao:remover_autorizacoes_venda", label: "Remover autorizações de venda", kind: :action }
+          { key: "acao:remover_autorizacoes_venda", label: "Remover autorizações de venda", kind: :action },
+          { key: "acao:remover_documentos", label: "Remover documentos", kind: :action }
         ]
       },
       {

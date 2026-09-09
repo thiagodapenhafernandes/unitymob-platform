@@ -867,16 +867,16 @@ class Admin::HabitationsController < Admin::BaseController
   def purge_attachment
     @habitation = find_admin_habitation_param!(params[:id])
     association = params[:association].to_s
-    allowed = %w[fichas_cadastro autorizacoes_venda photos]
+    allowed = %w[fichas_cadastro autorizacoes_venda documentos photos]
     unless allowed.include?(association)
       redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Anexo inválido."
       return
     end
-    if association.in?(%w[fichas_cadastro autorizacoes_venda]) && !can_manage_internal_documents?
+    if association.in?(Habitation::INTERNAL_DOCUMENT_ATTACHMENT_NAMES.map(&:to_s)) && !can_manage_internal_documents?
       redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Você não tem permissão para remover documentos internos."
       return
     end
-    if association.in?(%w[fichas_cadastro autorizacoes_venda])
+    if association.in?(Habitation::INTERNAL_DOCUMENT_ATTACHMENT_NAMES.map(&:to_s))
       action_key = "acao:remover_#{association}"
       if Habitations::FieldLockPolicy.for(current_admin_user).action_locked?(action_key)
         redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Este perfil não pode remover esse tipo de documento."
@@ -2812,7 +2812,7 @@ class Admin::HabitationsController < Admin::BaseController
   def preload_operational_hub_associations
     ActiveRecord::Associations::Preloader.new(
       records: [@habitation],
-      associations: [:admin_user, :photos_attachments, :fichas_cadastro_attachments, :autorizacoes_venda_attachments]
+      associations: [:admin_user, :photos_attachments, :fichas_cadastro_attachments, :autorizacoes_venda_attachments, :documentos_attachments]
     ).call
   end
 
@@ -3096,7 +3096,7 @@ class Admin::HabitationsController < Admin::BaseController
       :use_development_photos_flag,
       rental_guarantee_method: [],
       videos: [], plantas: [], fotos_empreendimento: [], photos: [],
-      fichas_cadastro: [], autorizacoes_venda: [],
+      fichas_cadastro: [], autorizacoes_venda: [], documentos: [],
       meta_keywords: [],
       caracteristicas: [], infra_estrutura: [], caracteristica_unica: [],
       broker_assignments_attributes: [:id, :admin_user_id, :role, :commission_type, :commission_value, :observations, :_destroy],
@@ -3170,6 +3170,7 @@ class Admin::HabitationsController < Admin::BaseController
       proprietor_id
       fichas_cadastro
       autorizacoes_venda
+      documentos
     ]
   end
 

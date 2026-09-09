@@ -11,7 +11,7 @@ module Habitations
       photo_ids_order
       tipo_vaga
     ].freeze
-    ATTACHMENT_ASSOCIATIONS = %w[photos fichas_cadastro autorizacoes_venda].freeze
+    ATTACHMENT_ASSOCIATIONS = %w[photos fichas_cadastro autorizacoes_venda documentos].freeze
     BROKER_ASSIGNMENT_FIELDS = %w[
       id admin_user_id admin_user_name role commission_type commission_value observations
     ].freeze

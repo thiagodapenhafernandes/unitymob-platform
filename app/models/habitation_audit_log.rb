@@ -69,6 +69,7 @@ class HabitationAuditLog < ApplicationRecord
     "photos_attachments" => "Fotos anexadas",
     "fichas_cadastro_attachments" => "Fichas de cadastro",
     "autorizacoes_venda_attachments" => "Autorizações de venda",
+    "documentos_attachments" => "Documentos",
     "broker_assignments" => "Corretores vinculados",
     "owner_contact_confirmation" => "Contato com proprietário",
     "rental_short_cycle_alert" => "Alerta de locação com menos de 30 dias",

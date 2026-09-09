@@ -110,7 +110,7 @@
         :commercial
       elsif %w[photos ordered_photo_ids ordered_picture_indices videos tour_virtual podcast_url foto_classificacao plantas fotos_empreendimento].include?(attribute)
         :media
-      elsif %w[fichas_cadastro autorizacoes_venda].include?(attribute)
+      elsif %w[fichas_cadastro autorizacoes_venda documentos].include?(attribute)
         :documents
       else
         :other
@@ -367,7 +367,8 @@
 <% if habitation.persisted? && can_manage_internal_documents %>
   <% [
        ["habitation_fichas_cadastro", :fichas_cadastro],
-       ["habitation_autorizacoes_venda", :autorizacoes_venda]
+       ["habitation_autorizacoes_venda", :autorizacoes_venda],
+       ["habitation_documentos", :documentos]
      ].each do |input_id, association| %>
     <%= form_with model: [:admin, habitation],
                   local: true,
@@ -397,7 +398,8 @@
 <% if habitation.persisted? && can_manage_internal_documents %>
   <% [
        ["fichas_cadastro", habitation.fichas_cadastro.attachments],
-       ["autorizacoes_venda", habitation.autorizacoes_venda.attachments]
+       ["autorizacoes_venda", habitation.autorizacoes_venda.attachments],
+       ["documentos", habitation.documentos.attachments]
     ].each do |association, attachments| %>
     <% attachments.each do |attachment| %>
       <% next unless attachment.persisted? && attachment.blob&.persisted? %>

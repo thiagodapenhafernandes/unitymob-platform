@@ -271,6 +271,7 @@ class PropertySetting < ApplicationRecord
       photos
       autorizacoes_venda
       autorizacao_pdf
+      documentos
     ].freeze,
     "visitas" => %w[
       key_location
