@@ -9,11 +9,12 @@
       social_property = defined?(@habitation) ? @habitation : nil
       property_page = social_property.present?
       property_seo_key = "property:#{social_property.codigo.presence || social_property.id}" if property_page
-      seo = current_public_seo_setting
+      blog_page = @page_name == "blog"
+      seo = current_public_seo_setting unless blog_page
       property_seo = seo if property_seo_key.present? && seo&.canonical_key == property_seo_key
       property_seo ||= SeoSetting.for_canonical_key(property_seo_key) if property_seo_key.present?
       seo ||= property_seo if property_seo&.public_applicable? && property_seo.manual_mode?
-      seo ||= SeoSetting.for_page(@page_name || 'home') unless property_page
+      seo ||= SeoSetting.for_page(@page_name || 'home') unless property_page || blog_page
       seo_public = seo&.public_applicable?
       effective_title = if property_page
         @page_title
@@ -89,7 +90,7 @@
       social_url = sanitize_utf8.call(@social_url.presence || canonical_url)
       og_title = sanitize_utf8.call(property_page ? (@social_title.presence || effective_title) : ((seo_public ? seo.og_title.presence : nil) || effective_title))
       og_description = strip_tags(property_page ? (@social_description.presence || effective_description) : ((seo_public ? seo.og_description.presence : nil) || effective_description))
-      og_type = social_property.present? ? "product" : "website"
+      og_type = @blog_article.present? ? "article" : (social_property.present? ? "product" : "website")
       image_alt = sanitize_utf8.call([og_title, site_name].reject(&:blank?).join(" | "))
       social_price_cents = if social_property.present?
         social_property.valor_venda_cents.to_i.positive? ? social_property.valor_venda_cents : social_property.valor_locacao_cents

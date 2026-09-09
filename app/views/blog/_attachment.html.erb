@@ -1,0 +1,8 @@
+<figure class="blog-attachment">
+  <% if blob.image? %>
+    <%= image_tag blog_image_url(blob, size: [1400, 1400]), alt: caption.presence || blob.filename.base, loading: "lazy", decoding: "async", width: blob.metadata["width"], height: blob.metadata["height"] %>
+  <% else %>
+    <%= link_to blob.filename, rails_blob_path(blob, disposition: "attachment"), rel: "nofollow" %>
+  <% end %>
+  <% if caption.present? %><figcaption><%= caption %></figcaption><% end %>
+</figure>

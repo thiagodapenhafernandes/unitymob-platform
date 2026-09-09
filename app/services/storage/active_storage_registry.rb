@@ -16,6 +16,18 @@ module Storage
         services.delete(key)
       end
 
+      if Rails.env.development?
+        configurations.each do |name, config|
+          next if name.to_s == "development_sandbox"
+          service = config[:service] || config["service"]
+          next unless %w[S3 DigitalOceanSpaces].include?(service)
+
+          config.delete("service")
+          config[:service] = "DevelopmentReadOnlyS3"
+          services.delete(name.to_sym)
+        end
+      end
+
       registry.instance_variable_set(:@configurations, configurations)
       registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(configurations))
       true

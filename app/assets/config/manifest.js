@@ -30,3 +30,5 @@
 //= link_tree ../stylesheets/public_site_themes .css
 //= link ax_toast.css
 //= link field_theme.css
+//= link blog.css
+//= link blog_admin.css

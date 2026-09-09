@@ -1,4 +1,16 @@
 module Admin::UiHelper
+  def ax_rich_text_editor_value(rich_text)
+    return "" unless rich_text&.body
+
+    rich_text.body.render_attachments do |attachment|
+      blob = attachment.attachable
+      next attachment unless blob.is_a?(ActiveStorage::Blob)
+
+      url = rails_storage_proxy_path(blob, only_path: true)
+      ActionText::Attachment.from_attributes(attachment.full_attributes.merge("url" => url, "href" => url), blob)
+    end.to_trix_html
+  end
+
   AX_BADGE_TONES = {
     gray: "ax-badge--gray",
     neutral: "ax-badge--gray",

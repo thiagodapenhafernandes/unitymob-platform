@@ -1,0 +1,27 @@
+.ax-rich-text-field { min-width: 0; }
+.ax-menu.ax-editor-menu { position: fixed; inset: auto; margin: 0; width: min(248px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; transform: none; }
+.ax-menu.ax-editor-menu:popover-open { opacity: 1; visibility: visible; pointer-events: auto; }
+.ax-editor-menu .ax-menu__item { min-height: 34px; }
+.ax-editor-menu .ax-menu__item[aria-pressed="true"] { background: var(--admin-primary-softer); color: var(--admin-primary); }
+.ax-editor-menu summary { list-style: none; }
+.ax-editor-menu summary::-webkit-details-marker { display: none; }
+.ax-editor-menu summary .bi-chevron-down { margin-left: auto; font-size: 10px; }
+.ax-editor-menu details[open] .bi-chevron-down { transform: rotate(180deg); }
+.ax-editor-menu__link { display: grid; gap: 8px; padding: 8px 9px; }
+.ax-editor-menu .ax-field__hint:empty { display: none; }
+@supports not selector(:popover-open) { .ax-editor-menu { display: none; } }
+.ax-control.ax-control--editor-title { font-family: inherit; font-size: 22px; font-weight: 600; line-height: 1.4; resize: vertical; }
+.ax-rich-text-field trix-toolbar .trix-button-group { border-color: var(--ax-field-border); }
+.ax-rich-text-field trix-toolbar .trix-button { background-color: var(--ax-control-bg); }
+.ax-rich-text-field trix-editor { min-height: 540px; max-height: 72vh; overflow-y: auto; overflow-wrap: anywhere; padding: 24px max(20px, calc((100% - 76ch) / 2)); font-family: inherit; font-size: 15px; line-height: 1.7; }
+.ax-rich-text-field trix-editor img { max-width: 100%; height: auto; }
+.ax-rich-text-field trix-toolbar { display: block; padding: 8px 0; }
+.ax-rich-text-field trix-toolbar .trix-button-group { margin-bottom: 0; border-radius: 4px; }
+.ax-rich-text-field trix-toolbar .trix-button { min-width: 32px; min-height: 32px; }
+.ax-rich-text-field trix-editor h1 { font-size: 1.4em; line-height: 1.3; margin: 24px 0 12px; }
+.ax-rich-text-field trix-editor .attachment { margin: 20px 0; }
+.ax-rich-text-field trix-editor .attachment img { display: block; margin: auto; }
+@media (max-width: 767px) {
+  .ax-rich-text-field trix-editor { padding: 16px; min-height: 400px; font-size: 16px; }
+  .ax-rich-text-field trix-toolbar .trix-button-row { flex-wrap: wrap; gap: 8px; }
+}

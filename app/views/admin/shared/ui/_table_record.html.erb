@@ -1,0 +1,4 @@
+<%= link_to url, class: "ax-table__media-record" do %>
+  <% if image_url.present? %><%= image_tag image_url, alt: "", width: 66, height: 44, loading: "lazy", decoding: "async" %><% end %>
+  <span><%= title %></span>
+<% end %>

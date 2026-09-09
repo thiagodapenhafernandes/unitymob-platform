@@ -60,6 +60,9 @@
       <%= stylesheet_link_tag "vendor/fancybox", media: "all" %>
     <% end %>
     
+    <% if controller_path == "admin/blog_articles" && %w[new edit create update].include?(action_name) %>
+      <%= stylesheet_link_tag "vendor/trix", "blog_admin", media: "all" %>
+    <% end %>
     <%= stylesheet_link_tag "admin", media: "all" %>
     <%# Camada de compatibilidade de classes legadas (telas ainda não 100% migradas, no visual novo) %>
     <%= stylesheet_link_tag "admin_compat", media: "all" %>

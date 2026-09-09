@@ -113,3 +113,20 @@
 }
 [data-admin-theme="dark"] .ax-media-source-notice__copy strong { color: var(--ax-dark-text); }
 [data-admin-theme="dark"] .ax-media-source-notice__copy span { color: var(--ax-dark-text-muted); }
+
+/* Shared upload and processing states within the existing media grid. */
+.ax-media-processing-items { display: contents; }
+.ax-media-processing__status { display: flex; flex-direction: column; gap: .5rem; padding: .75rem; font-size: .8125rem; }
+.ax-media-processing__status strong { overflow-wrap: anywhere; }
+.ax-media-processing__status progress { width: 100%; height: .4rem; accent-color: var(--ax-primary, #355f90); }
+.ax-media-processing__status .ax-btn { align-self: flex-start; }
+
+.ax-media-processing { border: 1px solid var(--ax-border, #d9e2ec); border-radius: .75rem; overflow: hidden; background: var(--ax-surface, #fff); }
+.ax-media-processing__status { font-size: 12px; line-height: 1.4; }
+.ax-media-processing__phase { display: flex; justify-content: space-between; gap: .5rem; }
+.ax-media-processing__error { color: #a52b35; }
+.ax-media-processing__status progress { appearance: none; border: 0; border-radius: 4px; overflow: hidden; background: #e5ebf0; }
+.ax-media-processing__status progress::-webkit-progress-bar { background: #e5ebf0; }
+.ax-media-processing__status progress::-webkit-progress-value { background: #397f8e; }
+.ax-media-processing__status progress::-moz-progress-bar { background: #397f8e; }
+.ax-media-processing__status details p { margin: .5rem 0; }

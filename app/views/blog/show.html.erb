@@ -1,0 +1,18 @@
+<% content_for :head do %>
+  <%= stylesheet_link_tag "blog" %>
+  <% if controller_path.start_with?("admin/") %><meta name="robots" content="noindex, nofollow"><% end %>
+  <script type="application/ld+json"><%= raw json_escape({ "@context" => "https://schema.org", "@type" => "BlogPosting", "headline" => @blog_article.title, "description" => @page_description, "datePublished" => @blog_article.published_at&.iso8601, "dateModified" => @blog_article.updated_at.iso8601, "mainEntityOfPage" => @canonical_url, "author" => { "@type" => "Organization", "name" => @layout_setting.site_name }, "image" => @page_image }.compact.to_json) %></script>
+<% end %>
+<div class="blog-page blog-article">
+  <nav class="blog-breadcrumb" aria-label="Navegação"><%= link_to "Blog", blog_path %><% @blog_article.blog_categories.each do |category| %><span>/</span><%= link_to category.name, blog_category_path(category.slug) %><% end %></nav>
+  <header class="blog-article-heading"><p class="blog-eyebrow"><%= @blog_article.blog_categories.map(&:name).join(" · ") %></p><h1><%= @blog_article.title %></h1><p class="blog-meta"><%= @layout_setting.site_name %> · <%= l(@blog_article.published_at.to_date, format: :long) if @blog_article.published_at %> · <%= @blog_article.reading_minutes %> min de leitura</p></header>
+  <%= blog_cover(@blog_article, hero: true) %>
+  <% cache ["blog-body-v2", public_tenant.id, @blog_article], expires_in: 15.minutes do %>
+    <% body, toc = blog_article_body(@blog_article) %>
+    <div class="blog-reading">
+      <aside class="blog-toc"><% if toc.any? %><strong>Neste artigo</strong><nav aria-label="Índice do artigo"><% toc.each do |title, id| %><%= link_to title, "##{id}" %><% end %></nav><% end %><%= link_to "← Todos os artigos", blog_path %></aside>
+      <article class="blog-prose"><%= body %></article>
+    </div>
+  <% end %>
+  <% if @related_articles.any? %><section class="blog-related"><h2>Continue explorando</h2><div class="blog-grid"><%= render partial: "blog/card", collection: @related_articles, as: :article %></div></section><% end %>
+</div>

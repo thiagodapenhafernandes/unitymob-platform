@@ -1,0 +1,9 @@
+development:
+  dispatchers:
+    - polling_interval: 1
+      batch_size: 100
+  workers:
+    - queues: media
+      threads: 2
+      processes: 1
+      polling_interval: 0.5

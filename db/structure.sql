@@ -1,4 +1,4 @@
-\restrict m5zlXJvHxYkXOjLjYZuxUxPhtJi2FQGmBtma3qL41pEStJnH4lMvQ3YWlihLsmn
+\restrict rm8cV1VC4Jo2mhctYhOUG9GoPfWMFxYxwJPFO4iEdWfufbHSyTA2QQof6I6lUHl
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1473,6 +1473,112 @@ ALTER SEQUENCE public.banners_id_seq OWNED BY public.banners.id;
 
 
 --
+-- Name: blog_articles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.blog_articles (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    title character varying NOT NULL,
+    slug character varying NOT NULL,
+    excerpt text,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    published_at timestamp(6) without time zone,
+    cover_alt character varying,
+    meta_title character varying,
+    meta_description character varying,
+    wordpress_id integer,
+    source_url character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT blog_article_publication_date CHECK ((((status)::text <> 'published'::text) OR (published_at IS NOT NULL))),
+    CONSTRAINT blog_article_status CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[])))
+);
+
+
+--
+-- Name: blog_articles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.blog_articles_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: blog_articles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.blog_articles_id_seq OWNED BY public.blog_articles.id;
+
+
+--
+-- Name: blog_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.blog_categories (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    name character varying NOT NULL,
+    slug character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: blog_categories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.blog_categories_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: blog_categories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.blog_categories_id_seq OWNED BY public.blog_categories.id;
+
+
+--
+-- Name: blog_categorizations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.blog_categorizations (
+    id bigint NOT NULL,
+    blog_article_id bigint NOT NULL,
+    blog_category_id bigint NOT NULL
+);
+
+
+--
+-- Name: blog_categorizations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.blog_categorizations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: blog_categorizations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.blog_categorizations_id_seq OWNED BY public.blog_categorizations.id;
+
+
+--
 -- Name: browser_extension_grants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1513,6 +1619,40 @@ CREATE SEQUENCE public.browser_extension_grants_id_seq
 --
 
 ALTER SEQUENCE public.browser_extension_grants_id_seq OWNED BY public.browser_extension_grants.id;
+
+
+--
+-- Name: browser_extension_operations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.browser_extension_operations (
+    id bigint NOT NULL,
+    browser_extension_grant_id bigint NOT NULL,
+    request_key uuid NOT NULL,
+    request_digest character varying NOT NULL,
+    result jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: browser_extension_operations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.browser_extension_operations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: browser_extension_operations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.browser_extension_operations_id_seq OWNED BY public.browser_extension_operations.id;
 
 
 --
@@ -7710,10 +7850,38 @@ ALTER TABLE ONLY public.banners ALTER COLUMN id SET DEFAULT nextval('public.bann
 
 
 --
+-- Name: blog_articles id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_articles ALTER COLUMN id SET DEFAULT nextval('public.blog_articles_id_seq'::regclass);
+
+
+--
+-- Name: blog_categories id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categories ALTER COLUMN id SET DEFAULT nextval('public.blog_categories_id_seq'::regclass);
+
+
+--
+-- Name: blog_categorizations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categorizations ALTER COLUMN id SET DEFAULT nextval('public.blog_categorizations_id_seq'::regclass);
+
+
+--
 -- Name: browser_extension_grants id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.browser_extension_grants ALTER COLUMN id SET DEFAULT nextval('public.browser_extension_grants_id_seq'::regclass);
+
+
+--
+-- Name: browser_extension_operations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_operations ALTER COLUMN id SET DEFAULT nextval('public.browser_extension_operations_id_seq'::regclass);
 
 
 --
@@ -8879,11 +9047,43 @@ ALTER TABLE ONLY public.banners
 
 
 --
+-- Name: blog_articles blog_articles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_articles
+    ADD CONSTRAINT blog_articles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: blog_categories blog_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categories
+    ADD CONSTRAINT blog_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: blog_categorizations blog_categorizations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categorizations
+    ADD CONSTRAINT blog_categorizations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: browser_extension_grants browser_extension_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.browser_extension_grants
     ADD CONSTRAINT browser_extension_grants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: browser_extension_operations browser_extension_operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_operations
+    ADD CONSTRAINT browser_extension_operations_pkey PRIMARY KEY (id);
 
 
 --
@@ -10242,6 +10442,13 @@ CREATE INDEX idx_distribution_rules_tenant_auto_update ON public.distribution_ru
 --
 
 CREATE UNIQUE INDEX idx_email_settings_on_tenant_unique ON public.email_settings USING btree (tenant_id) WHERE (tenant_id IS NOT NULL);
+
+
+--
+-- Name: idx_extension_operations_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_extension_operations_request ON public.browser_extension_operations USING btree (browser_extension_grant_id, request_key);
 
 
 --
@@ -11838,6 +12045,76 @@ CREATE INDEX index_automation_workflows_on_tenant_id_and_status ON public.automa
 --
 
 CREATE INDEX index_banners_on_tenant_id ON public.banners USING btree (tenant_id);
+
+
+--
+-- Name: index_blog_articles_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_blog_articles_on_tenant_id ON public.blog_articles USING btree (tenant_id);
+
+
+--
+-- Name: index_blog_articles_on_tenant_id_and_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_blog_articles_on_tenant_id_and_slug ON public.blog_articles USING btree (tenant_id, slug);
+
+
+--
+-- Name: index_blog_articles_on_tenant_id_and_wordpress_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_blog_articles_on_tenant_id_and_wordpress_id ON public.blog_articles USING btree (tenant_id, wordpress_id);
+
+
+--
+-- Name: index_blog_articles_public_listing; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_blog_articles_public_listing ON public.blog_articles USING btree (tenant_id, status, published_at, id);
+
+
+--
+-- Name: index_blog_categories_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_blog_categories_on_tenant_id ON public.blog_categories USING btree (tenant_id);
+
+
+--
+-- Name: index_blog_categories_on_tenant_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_blog_categories_on_tenant_id_and_name ON public.blog_categories USING btree (tenant_id, name);
+
+
+--
+-- Name: index_blog_categories_on_tenant_id_and_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_blog_categories_on_tenant_id_and_slug ON public.blog_categories USING btree (tenant_id, slug);
+
+
+--
+-- Name: index_blog_categorizations_on_blog_article_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_blog_categorizations_on_blog_article_id ON public.blog_categorizations USING btree (blog_article_id);
+
+
+--
+-- Name: index_blog_categorizations_on_blog_category_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_blog_categorizations_on_blog_category_id ON public.blog_categorizations USING btree (blog_category_id);
+
+
+--
+-- Name: index_blog_categorizations_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_blog_categorizations_unique ON public.blog_categorizations USING btree (blog_article_id, blog_category_id);
 
 
 --
@@ -16114,6 +16391,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
 
 
 --
+-- Name: blog_categorizations fk_rails_073b23b892; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categorizations
+    ADD CONSTRAINT fk_rails_073b23b892 FOREIGN KEY (blog_category_id) REFERENCES public.blog_categories(id);
+
+
+--
 -- Name: email_settings fk_rails_09c40e8cf2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16986,6 +17271,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: blog_categories fk_rails_59e64fbdbc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categories
+    ADD CONSTRAINT fk_rails_59e64fbdbc FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: notification_template_settings fk_rails_5a780d873b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17842,6 +18135,14 @@ ALTER TABLE ONLY public.automation_events
 
 
 --
+-- Name: blog_articles fk_rails_b3a93bbd2a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_articles
+    ADD CONSTRAINT fk_rails_b3a93bbd2a FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: operational_user_events fk_rails_b3b6e1b618; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18031,6 +18332,14 @@ ALTER TABLE ONLY public.seo_conversion_events
 
 ALTER TABLE ONLY public.check_ins
     ADD CONSTRAINT fk_rails_c2a6d4a105 FOREIGN KEY (store_shift_id) REFERENCES public.store_shifts(id);
+
+
+--
+-- Name: browser_extension_operations fk_rails_c2b3b01291; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browser_extension_operations
+    ADD CONSTRAINT fk_rails_c2b3b01291 FOREIGN KEY (browser_extension_grant_id) REFERENCES public.browser_extension_grants(id);
 
 
 --
@@ -18618,6 +18927,14 @@ ALTER TABLE ONLY public.lead_property_interests
 
 
 --
+-- Name: blog_categorizations fk_rails_f2d3f31cd9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blog_categorizations
+    ADD CONSTRAINT fk_rails_f2d3f31cd9 FOREIGN KEY (blog_article_id) REFERENCES public.blog_articles(id);
+
+
+--
 -- Name: leads fk_rails_f3159e7558; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18722,77 +19039,15 @@ ALTER TABLE ONLY public.push_subscriptions
 
 
 --
--- Name: browser_extension_operations; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.browser_extension_operations (
-    id bigint NOT NULL,
-    browser_extension_grant_id bigint NOT NULL,
-    request_key uuid NOT NULL,
-    request_digest character varying NOT NULL,
-    result jsonb NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: browser_extension_operations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.browser_extension_operations_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: browser_extension_operations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.browser_extension_operations_id_seq OWNED BY public.browser_extension_operations.id;
-
-
---
--- Name: browser_extension_operations id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.browser_extension_operations ALTER COLUMN id SET DEFAULT nextval('public.browser_extension_operations_id_seq'::regclass);
-
-
---
--- Name: browser_extension_operations browser_extension_operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.browser_extension_operations
-    ADD CONSTRAINT browser_extension_operations_pkey PRIMARY KEY (id);
-
-
---
--- Name: idx_extension_operations_request; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_extension_operations_request ON public.browser_extension_operations USING btree (browser_extension_grant_id, request_key);
-
-
---
--- Name: browser_extension_operations fk_rails_c2b3b01291; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.browser_extension_operations
-    ADD CONSTRAINT fk_rails_c2b3b01291 FOREIGN KEY (browser_extension_grant_id) REFERENCES public.browser_extension_grants(id);
-
-
 -- PostgreSQL database dump complete
 --
 
-\unrestrict m5zlXJvHxYkXOjLjYZuxUxPhtJi2FQGmBtma3qL41pEStJnH4lMvQ3YWlihLsmn
+\unrestrict rm8cV1VC4Jo2mhctYhOUG9GoPfWMFxYxwJPFO4iEdWfufbHSyTA2QQof6I6lUHl
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260909190000'),
 ('20260909160000'),
 ('20260908190000'),
 ('20260906023000'),

@@ -1,0 +1,24 @@
+<% uploads.each do |upload| %>
+  <% percent = { "received" => 25, "processing" => 50, "saving" => 75 }.fetch(upload[:phase], 25) %>
+  <article class="ax-media-grid__item ax-media-processing" aria-label="<%= upload[:filename] %>">
+    <div class="ax-media-tile__frame">
+      <%= image_tag watermark_preview_admin_habitation_media_path(habitation, photo_id: upload[:id]), class: "ax-media-tile__image", alt: upload[:filename], loading: "lazy" %>
+    </div>
+    <div class="ax-media-processing__status">
+      <strong><%= upload[:filename] %></strong>
+      <% if upload[:status] == "failed" %>
+        <span class="ax-media-processing__error" role="status"><i class="bi bi-exclamation-circle"></i> Não foi possível concluir</span>
+        <details><summary>Ver motivo</summary><p><%= upload[:error].presence || "Falha ao processar a foto." %></p></details>
+        <% if retry_allowed %>
+          <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="photo-upload#retryWatermark" data-photo-id="<%= upload[:id] %>">Tentar novamente</button>
+        <% end %>
+      <% else %>
+        <div class="ax-media-processing__phase"><span><%= upload[:status] == "retrying" ? "Nova tentativa agendada" : { "processing" => "Aplicando marca", "saving" => "Salvando foto" }.fetch(upload[:phase], "Na fila de processamento") %></span><strong><%= percent %>%</strong></div>
+        <progress max="100" value="<%= percent %>" aria-label="Etapas concluídas de <%= upload[:filename] %>" title="25% recebido · 50% aplicação da marca · 75% salvamento · 100% concluído"></progress>
+      <% end %>
+      <% if discard_allowed %>
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="photo-upload#discardWatermark" data-photo-id="<%= upload[:id] %>">Remover pendência</button>
+      <% end %>
+    </div>
+  </article>
+<% end %>

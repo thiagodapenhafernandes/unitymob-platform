@@ -12,9 +12,9 @@ class Admin::HabitationMediaController < Admin::BaseController
   before_action :set_habitation
   before_action :scope_habitation_by_permission
   before_action :load_property_setting
-  before_action :authorize_media_management!, only: %i[update upload watermark_status retry_watermark discard_watermark reorder visibility destroy_photo destroy_selected ambiente organize share download]
+  before_action :authorize_media_management!, only: %i[update upload watermark_preview watermark_status retry_watermark discard_watermark reorder visibility destroy_photo destroy_selected ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:abrir_organizador_midia") }, only: %i[show modal]
-  before_action -> { authorize_profile_field!("photos") }, only: %i[upload watermark_status retry_watermark discard_watermark reorder visibility destroy_photo destroy_selected ambiente organize share download]
+  before_action -> { authorize_profile_field!("photos") }, only: %i[upload watermark_preview watermark_status retry_watermark discard_watermark reorder visibility destroy_photo destroy_selected ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:gerenciar_ordem_fotos") }, only: :reorder
   before_action -> { authorize_profile_action!("acao:alterar_visibilidade_fotos") }, only: :visibility
   before_action -> { authorize_profile_action!("acao:remover_foto") }, only: %i[destroy_photo destroy_selected discard_watermark]
@@ -24,6 +24,14 @@ class Admin::HabitationMediaController < Admin::BaseController
 
   rescue_from Habitations::MediaUpdater::PhotoPublicationError do
     respond_with_media_error("Não foi possível concluir o envio. Confira as fotos pendentes antes de enviar novamente.")
+  end
+
+  def watermark_preview
+    photo = @habitation.watermark_photos.attachments.find(params[:photo_id])
+    return head :unsupported_media_type unless %w[image/jpeg image/png image/gif image/webp image/avif].include?(photo.content_type)
+
+    response.headers["Cache-Control"] = "private, no-store"
+    send_data photo.download, type: photo.content_type, disposition: :inline
   end
 
   def watermark_status
@@ -682,10 +690,11 @@ class Admin::HabitationMediaController < Admin::BaseController
       message: message,
       media_url: admin_habitation_media_path(@habitation.id),
       watermark_photos: Habitations::MediaGallery.new(@habitation).watermark_uploads,
-      watermark_html: render_to_string(partial: "admin/shared/ui/upload_processing_status", formats: [:html], locals: {
+      watermark_html: render_to_string(partial: "admin/shared/ui/media_processing_tiles", formats: [:html], locals: {
+        habitation: @habitation,
         uploads: Habitations::MediaGallery.new(@habitation).watermark_uploads,
-        retry_action: ("photo-upload#retryWatermark" unless media_field_lock_policy.field_locked?("apply_photo_watermark")),
-        discard_action: ("photo-upload#discardWatermark" unless media_field_lock_policy.action_locked?("acao:remover_foto"))
+        retry_allowed: !media_field_lock_policy.field_locked?("apply_photo_watermark"),
+        discard_allowed: !media_field_lock_policy.action_locked?("acao:remover_foto")
       }),
       gallery_html: media_gallery_html(gallery_locals),
       counts: {

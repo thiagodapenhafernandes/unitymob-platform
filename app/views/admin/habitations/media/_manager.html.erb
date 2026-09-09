@@ -90,11 +90,6 @@
 <div class="ax-form-section ax-form-section--media">
   <div class="ax-form-section__body">
     <div class="ax-media-manager <%= 'ax-media-manager--compact' if compact_mode %>" <%= tag.attributes(data: media_controller_data) %>>
-      <div data-photo-upload-target="watermarkStatus">
-        <%= render "admin/shared/ui/upload_processing_status", uploads: media_gallery.watermark_uploads,
-          retry_action: ("photo-upload#retryWatermark" if can_apply_watermark),
-          discard_action: ("photo-upload#discardWatermark" if media_action_allowed.call("acao:remover_foto")) %>
-      </div>
       <div class="ax-media-toolbar">
         <div class="ax-media-toolbar__title">
           <h6>Fotos</h6>

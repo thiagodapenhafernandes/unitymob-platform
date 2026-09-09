@@ -1,0 +1,17 @@
+<% content_for :head do %><%= stylesheet_link_tag "blog" %><% end %>
+<div class="blog-page">
+  <header class="blog-intro"><p class="blog-eyebrow">Blog <%= @layout_setting.site_name %></p><h1><%= @category&.name || "Um olhar local. Novas possibilidades." %></h1><p>Conheça a região e acompanhe o mercado imobiliário.</p></header>
+  <nav class="blog-categories" aria-label="Categorias do blog">
+    <%= link_to "Todos", blog_path, aria: { current: @category.nil? ? "page" : nil } %>
+    <% @categories.each do |category| %><%= link_to category.name, blog_category_path(category.slug), aria: { current: @category == category ? "page" : nil } %><% end %>
+  </nav>
+  <%= form_with url: @category ? blog_category_path(@category.slug) : blog_path, method: :get, class: "blog-search" do |form| %><%= form.label :q, "Buscar no blog" %><%= form.search_field :q, value: params[:q], placeholder: "Título ou palavra-chave" %><%= form.submit "Buscar" %><% end %>
+  <% list = @articles.to_a %>
+  <% if params[:page].to_i <= 1 && params[:q].blank? && list.any? %>
+    <% hero = list.shift %>
+    <article class="blog-hero"><%= link_to blog_cover(hero, hero: true), blog_article_path(hero), aria: { label: hero.title } %><div><p class="blog-eyebrow">Em destaque</p><p class="blog-meta"><%= hero.blog_categories.map(&:name).join(" · ") %></p><h2><%= link_to hero.title, blog_article_path(hero) %></h2><p><%= hero.excerpt.to_s.truncate(220) %></p><%= link_to "Ler artigo →", blog_article_path(hero) %></div></article>
+  <% end %>
+  <section class="blog-latest"><h2>Últimos artigos</h2><div class="blog-grid"><%= render partial: "blog/card", collection: list, as: :article %></div></section>
+  <% if @articles.empty? %><p>Nenhum artigo encontrado.</p><% end %>
+  <%= will_paginate @articles, previous_label: "Anterior", next_label: "Próxima", class: "blog-pagination" %>
+</div>

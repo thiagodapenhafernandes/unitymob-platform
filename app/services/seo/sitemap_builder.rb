@@ -40,6 +40,7 @@ module Seo
       entries.concat(seo_setting_entries)
       entries.concat(property_entries)
       entries.concat(landing_page_entries)
+      entries.concat(blog_entries)
       entries
     end
 
@@ -86,6 +87,17 @@ module Seo
           priority: 0.6
         )
       end
+    end
+
+    def blog_entries
+      scope = @tenant.blog_articles.publicly_visible
+      return [] unless scope.exists?
+
+      entries = [add_entry(loc: absolute_url(@url_helpers.blog_path), lastmod: scope.maximum(:updated_at), changefreq: "weekly", priority: 0.6)]
+      scope.select(:id, :slug, :updated_at).find_each do |article|
+        entries << add_entry(loc: absolute_url(@url_helpers.public_landing_page_path(article.slug)), lastmod: article.updated_at, changefreq: "monthly", priority: 0.6)
+      end
+      entries.compact
     end
 
     def add_entry(loc:, lastmod:, changefreq:, priority:)

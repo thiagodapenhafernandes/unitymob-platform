@@ -1,0 +1,27 @@
+<div class="ax-field ax-rich-text-field" data-controller="ax-rich-text" data-ax-rich-text-upload-url-value="<%= upload_url %>" data-action="trix-file-accept->ax-rich-text#accept trix-attachment-add->ax-rich-text#upload contextmenu->ax-rich-text#openMenu keydown->ax-rich-text#keyboardMenu pointerdown@document->ax-rich-text#dismissMenu keydown@document->ax-rich-text#dismissMenu">
+  <%= form.label method, label, class: "ax-label" %>
+  <%= form.rich_text_area method, value: ax_rich_text_editor_value(form.object.public_send(method)), class: "ax-control ax-rich-text-control ax-rich-text-control--lg", data: { direct_upload_url: upload_url } %>
+  <div class="ax-menu ax-editor-menu" popover="manual" role="dialog" aria-label="Formatar conteúdo" data-ax-rich-text-target="menu">
+    <% [["bold", "Negrito", "type-bold"], ["italic", "Itálico", "type-italic"], ["underline", "Sublinhado", "type-underline"], ["heading1", "Título", "type-h1"]].each do |attribute, text, icon| %>
+      <button type="button" class="ax-menu__item" data-action="ax-rich-text#format" data-attribute="<%= attribute %>"><%= ax_icon(icon) %><span><%= text %></span></button>
+    <% end %>
+    <div class="ax-menu__sep"></div>
+    <% [["small", "Diminuir texto", "zoom-out"], ["normal", "Tamanho normal", "type"], ["large", "Aumentar texto", "zoom-in"]].each do |attribute, text, icon| %>
+      <button type="button" class="ax-menu__item" data-action="ax-rich-text#format" data-attribute="<%= attribute %>"><%= ax_icon(icon) %><span><%= text %></span></button>
+    <% end %>
+    <div class="ax-menu__sep"></div>
+    <button type="button" class="ax-menu__item" data-action="ax-rich-text#pickImage"><%= ax_icon("image") %><span>Inserir imagem</span></button>
+    <details data-ax-rich-text-target="linkDetails">
+      <summary class="ax-menu__item"><%= ax_icon("link-45deg") %><span>Inserir link</span><%= ax_icon("chevron-down") %></summary>
+      <div class="ax-editor-menu__link">
+        <label class="ax-label" for="<%= form.field_id(method, :link) %>">URL do link</label>
+        <input id="<%= form.field_id(method, :link) %>" type="url" class="ax-control" placeholder="https://" data-ax-rich-text-target="link">
+        <button type="button" class="ax-btn ax-btn--primary" data-action="ax-rich-text#link">Aplicar link</button>
+      </div>
+    </details>
+    <button type="button" class="ax-menu__item" data-action="ax-rich-text#unlink"><%= ax_icon("link-45deg") %><span>Remover link</span></button>
+    <p role="status" class="ax-field__hint" data-ax-rich-text-target="menuMessage"></p>
+  </div>
+  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden data-ax-rich-text-target="image" data-action="change->ax-rich-text#insertImage">
+  <p class="ax-field__hint" role="status" data-ax-rich-text-target="message"></p>
+</div>

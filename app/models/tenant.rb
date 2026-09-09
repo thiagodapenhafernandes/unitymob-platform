@@ -81,6 +81,8 @@ class Tenant < ApplicationRecord
   has_many :lead_favorites, dependent: :restrict_with_error
   has_many :habitation_exports, dependent: :restrict_with_error
   has_many :captacao_goals, dependent: :restrict_with_error
+  has_many :blog_articles, dependent: :restrict_with_error
+  has_many :blog_categories, dependent: :restrict_with_error
   has_many :landing_pages, dependent: :restrict_with_error
   has_many :public_forms, dependent: :restrict_with_error
   has_many :public_form_submissions, dependent: :restrict_with_error

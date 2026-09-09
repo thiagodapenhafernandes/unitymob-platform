@@ -139,6 +139,10 @@ class ApplicationController < ActionController::Base
     end
     return if request.path.start_with?("/admin")
 
+    load_public_site_settings
+  end
+
+  def load_public_site_settings
     @home_setting = HomeSetting.instance(tenant: public_tenant)
     @contact_setting = ContactSetting.instance(tenant: public_tenant)
     @footer_setting = FooterSetting.instance(tenant: public_tenant)

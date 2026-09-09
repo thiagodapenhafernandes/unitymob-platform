@@ -248,3 +248,10 @@
         ) %>
   <% end %>
 <% end %>
+
+<div class="ax-media-processing-items" data-photo-upload-target="watermarkStatus">
+  <%= render "admin/shared/ui/media_processing_tiles", habitation: habitation,
+    uploads: Habitations::MediaGallery.new(habitation).watermark_uploads,
+    retry_allowed: can_edit_photos && !Habitations::FieldLockPolicy.for(current_admin_user).field_locked?("apply_photo_watermark"),
+    discard_allowed: can_edit_photos && !Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:remover_foto") %>
+</div>

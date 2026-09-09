@@ -1,0 +1,9 @@
+.ax-workspace-shell.blog-editor-workspace { --ax-workspace-aside-w: 310px; align-items: start; gap: 16px; }
+.ax-workspace-shell.blog-editor-workspace .ax-workspace-aside { display: grid; gap: 14px; }
+.ax-workspace-shell.blog-editor-workspace .ax-field__hint { overflow-wrap: anywhere; }
+.blog-admin-cover { width: 100%; max-height: 180px; object-fit: cover; margin-bottom: 12px; }
+@media(max-width: 767px) { .ax-workspace-shell.blog-editor-workspace { display: block; } .ax-workspace-shell.blog-editor-workspace .ax-workspace-aside { margin-top: 16px; } }
+
+.ax-workspace-shell.blog-editor-workspace .ax-workspace-main { display: block; height: auto; overflow: visible; }
+.ax-workspace-shell.blog-editor-workspace .ax-workspace-main__body { overflow: visible; }
+.ax-workspace-shell.blog-editor-workspace .ax-workspace-aside { height: auto; }

@@ -6,7 +6,7 @@ module Habitations
 
     def watermark_uploads
       habitation.watermark_photos.attachments.includes(:blob).map do |photo|
-        { id: photo.id, filename: photo.filename.to_s, status: photo.blob.metadata["watermark_status"] || "pending", error: photo.blob.metadata["watermark_error"] }
+        { id: photo.id, filename: photo.filename.to_s, status: photo.blob.metadata["watermark_status"] || "pending", error: photo.blob.metadata["watermark_error"], phase: PhotoProcessingProgress.read(photo) }
       end
     end
 

@@ -11,7 +11,14 @@ const loadActionText = () => {
   if (actionTextLoadPromise) return actionTextLoadPromise
 
   actionTextLoadPromise = import("trix")
-    .then(() => import("@rails/actiontext"))
+    .then((module) => {
+      const Trix = module.default || window.Trix
+      Trix.config.textAttributes.underline = { tagName: "u", inheritable: true }
+      for (const [name, size] of [["small", "0.85em"], ["large", "1.25em"]]) {
+        Trix.config.textAttributes[name] = { style: { fontSize: size }, inheritable: true, parser: element => element.style.fontSize === size }
+      }
+      return import("@rails/actiontext")
+    })
     .catch((error) => {
       actionTextLoadPromise = null
       console.error("Failed to load rich text editor", error)

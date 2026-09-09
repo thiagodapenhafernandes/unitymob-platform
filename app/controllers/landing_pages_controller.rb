@@ -1,6 +1,12 @@
 class LandingPagesController < ApplicationController
+  include BlogArticlePresentation
   def show
-    @landing_page = public_tenant.landing_pages.find_by!(slug: params[:slug], active: true)
+    @landing_page = public_tenant.landing_pages.find_by(slug: params[:slug], active: true)
+    unless @landing_page
+      @blog_article = public_tenant.blog_articles.publicly_visible.with_rich_text_content_and_embeds.with_attached_cover.includes(:blog_categories).find_by!(slug: params[:slug])
+      prepare_blog_article
+      return render "blog/show"
+    end
     
     # The filter_params are stored as a JSON hash in the database
     filters = @landing_page.filter_params || {}

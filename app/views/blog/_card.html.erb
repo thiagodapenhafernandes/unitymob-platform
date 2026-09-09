@@ -1,0 +1,11 @@
+<% cache ["blog-card-v2", public_tenant.id, article, article.blog_categories.map(&:cache_key_with_version)], expires_in: 15.minutes do %>
+  <article class="blog-card">
+    <%= link_to blog_article_path(article) do %>
+      <%= blog_cover(article) %>
+      <p class="blog-meta"><%= article.blog_categories.map(&:name).join(" · ") %></p>
+      <h2><%= article.title %></h2>
+    <% end %>
+    <p><%= article.excerpt.to_s.truncate(160) %></p>
+    <time datetime="<%= article.published_at.iso8601 %>"><%= l(article.published_at.to_date, format: :long) %></time>
+  </article>
+<% end %>

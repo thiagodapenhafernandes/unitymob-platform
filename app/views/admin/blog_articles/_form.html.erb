@@ -1,0 +1,51 @@
+<% content_for :mobile_detail_header do %><%= render "admin/shared/ui/mobile_detail_header", title: @article.new_record? ? "Novo artigo" : "Editar artigo", back_path: admin_blog_articles_path, action: button_tag("Salvar", type: "submit", form: "blog-article-form", class: "ax-btn ax-btn--primary") %><% end %>
+<%= ax_workspace_heading(title: @article.new_record? ? "Novo artigo" : "Editar artigo", eyebrow: "Blog", icon: "journal-richtext") %>
+<%= form_with model: [:admin, @article], id: "blog-article-form", data: { controller: "blog-editor", blog_editor_categories_url_value: admin_blog_categories_path, action: "submit->blog-editor#guardUploads" } do |form| %>
+  <% if @article.errors.any? %><div class="ax-inline-notice ax-inline-notice--danger" role="alert"><%= @article.errors.full_messages.to_sentence %></div><% end %>
+  <% main = capture do %>
+    <%= ax_panel do %>
+      <%= ax_text_field(form: form, method: :title, label: "Título do artigo", type: :textarea, rows: 2, required: true, maxlength: 250, class: "ax-control--editor-title") %>
+      <%= render "admin/shared/ui/rich_text_field", form: form, method: :content, label: "Conteúdo", upload_url: admin_blog_uploads_path %>
+    <% end %>
+  <% end %>
+  <% aside = capture do %>
+    <%= ax_panel(title: "Publicação", class_name: "ax-panel--settings") do %>
+      <%= ax_select_field(form: form, method: :status, label: "Status", choices: [["Rascunho", "draft"], ["Publicado", "published"]]) %>
+      <%= ax_text_field(form: form, method: :published_at, label: "Data de publicação", type: "datetime-local") %>
+      <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-3">
+        <%= form.submit "Salvar artigo", class: "ax-btn ax-btn--primary" %>
+        <% if @article.persisted? %><%= ax_button("Ver preview", preview_admin_blog_article_path(@article), target: "_blank", rel: "noopener", icon: "eye") %><% end %>
+        <%= ax_button("Voltar", admin_blog_articles_path) %>
+      </div>
+    <% end %>
+    <%= ax_panel(title: "Categorias", class_name: "ax-panel--settings") do %>
+      <%= hidden_field_tag "blog_article[blog_category_ids][]", "" %>
+      <div class="tw-grid tw-gap-2" data-blog-editor-target="categories">
+        <% @categories.each do |category| %>
+          <%= ax_filter_check(name: "blog_article[blog_category_ids][]", value: category.id, checked: @article.blog_categories.include?(category), label: category.name, id: "blog-category-#{category.id}") %>
+        <% end %>
+      </div>
+      <details class="tw-mt-3"><summary>Criar categoria</summary>
+        <label class="ax-field tw-mt-2" for="new-blog-category"><span class="ax-label">Nome da categoria</span><input id="new-blog-category" class="ax-control" maxlength="100" data-blog-editor-target="categoryName"></label>
+        <button class="ax-btn tw-mt-2" type="button" data-action="blog-editor#createCategory" data-blog-editor-target="categoryButton">Criar e selecionar</button>
+      </details>
+      <p class="ax-field__hint" role="status" data-blog-editor-target="message"></p>
+    <% end %>
+    <%= ax_panel(title: "Imagem de capa", class_name: "ax-panel--settings") do %>
+      <% if @article.cover.attached? %><%= image_tag public_image_url(@article.cover, resize_to_limit: [600, 340], format: :webp, force_variant: true), alt: @article.cover_alt, class: "blog-admin-cover", loading: "lazy" %><% end %>
+      <%= form.label :cover, "Selecionar imagem", class: "ax-label" %>
+      <%= form.file_field :cover, accept: Blog::Storage::IMAGE_TYPES.join(","), class: "ax-control" %>
+      <%= ax_text_field(form: form, method: :cover_alt, label: "Texto alternativo") %>
+    <% end %>
+    <%= ax_panel(title: "Resumo e endereço", class_name: "ax-panel--settings") do %>
+      <%= ax_text_field(form: form, method: :excerpt, label: "Resumo", type: :textarea, rows: 4, maxlength: 1000) %>
+      <%= ax_text_field(form: form, method: :slug, label: "Endereço do artigo", placeholder: "nome-do-artigo", maxlength: 250) %>
+      <% if @article.persisted? %><p class="ax-field__hint"><%= @article.public_url(fallback_base_url: request.base_url) %></p><% end %>
+      <details><summary>Opções de SEO</summary>
+        <%= ax_text_field(form: form, method: :meta_title, label: "Título nos buscadores", maxlength: 250) %>
+        <%= ax_text_field(form: form, method: :meta_description, label: "Descrição nos buscadores", type: :textarea, rows: 3, maxlength: 500) %>
+      </details>
+    <% end %>
+  <% end %>
+  <%= render "admin/shared/ui/workspace_shell", main: main, aside: aside, contextbar: false, class_name: "blog-editor-workspace" %>
+<% end %>

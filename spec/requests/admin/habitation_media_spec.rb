@@ -535,8 +535,9 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     payload = response.parsed_body
     expect(payload.fetch("photos")).to be_empty
     expect(payload.fetch("watermark_photos").first["filename"]).to eq("pendente.jpg")
-    expect(payload.fetch("watermark_html")).to include("Aguardando processamento")
-    expect(payload.fetch("gallery_html")).not_to include("pendente.jpg")
+    expect(payload.fetch("watermark_html")).to include("Na fila de processamento")
+    expect(payload.fetch("gallery_html")).to include("watermark_preview")
+    expect(payload.fetch("gallery_html")).not_to include("/rails/active_storage/")
   end
 
   it "retoma uma falha e remove somente a pendência selecionada" do
@@ -575,6 +576,26 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     delete discard_watermark_admin_habitation_media_path(habitation, format: :json), params: { photo_id: id }
     expect(response).to have_http_status(:not_found)
     expect(other.reload.watermark_photos).to be_attached
+  end
+
+  it "mostra a miniatura pendente apenas no imóvel correto e sem cache público" do
+    habitation = create_media_habitation
+    habitation.watermark_photos.attach(io: StringIO.new("imagem"), filename: "pendente.jpg", content_type: "image/jpeg")
+    attachment = habitation.watermark_photos.attachments.first
+    get watermark_preview_admin_habitation_media_path(habitation, photo_id: attachment.id)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to eq("imagem")
+    expect(response.headers["Cache-Control"]).to include("no-store")
+    other = create_media_habitation
+    get watermark_preview_admin_habitation_media_path(other, photo_id: attachment.id)
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "não serve conteúdo ativo como miniatura pendente" do
+    habitation = create_media_habitation
+    habitation.watermark_photos.attach(io: StringIO.new("<svg></svg>"), filename: "foto.svg", content_type: "image/svg+xml")
+    get watermark_preview_admin_habitation_media_path(habitation, photo_id: habitation.watermark_photos.attachments.first.id)
+    expect(response).to have_http_status(:unsupported_media_type)
   end
 
 end

@@ -36,6 +36,10 @@ module Storage
       return false unless blob
       return false unless s3_blob?(blob)
 
+      if Rails.env.development? && blob.service_name != "development_sandbox"
+        raise IOError, "Publicação bloqueada no armazenamento de origem"
+      end
+
       blob.service.send(:object_for, blob.key).acl.put(acl: "public-read")
       true
     rescue StandardError => e
@@ -46,6 +50,11 @@ module Storage
     end
 
     def public_base_url(blob = nil, tenant: Current.tenant)
+      if Rails.env.development? && blob&.service_name == "development_sandbox"
+        region = ENV.fetch("DO_SPACES_REGION", "sfo3")
+        return "https://unitymob-development-media.#{region}.digitaloceanspaces.com"
+      end
+
       configured = configured_public_base_url(blob, tenant: tenant)
       return configured if configured.present?
 

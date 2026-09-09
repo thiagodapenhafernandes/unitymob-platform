@@ -51,6 +51,7 @@ class HabitationPhotoWatermarkJob < ApplicationJob
     raise Images::WatermarkProcessor::MissingWatermarkError, "Configure uma imagem de marca válida antes de tentar novamente." unless setting.watermark_configured?
     raise Images::WatermarkProcessor::ProcessingError, "O arquivo enviado não é uma foto compatível." unless blob.content_type.to_s.start_with?("image/")
 
+    Habitations::PhotoProcessingProgress.write(attachment, "processing")
     result = nil
     blob.open do |file|
       result = Images::WatermarkProcessor.call(BlobUpload.new(blob, file), setting: setting, raise_errors: true)
@@ -59,6 +60,7 @@ class HabitationPhotoWatermarkJob < ApplicationJob
       raise Images::WatermarkProcessor::ProcessingError, "Não foi possível gerar a foto com a marca."
     end
 
+    Habitations::PhotoProcessingProgress.write(attachment, "saving")
     new_blob = create_watermarked_blob(blob, result.attachable)
     if Storage::PublicPropertyPhoto.public_photos_enabled?(tenant: tenant)
       Storage::PublicPropertyPhoto.publish_blob!(new_blob, raise_errors: true)

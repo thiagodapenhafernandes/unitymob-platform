@@ -1,5 +1,6 @@
 class LandingPage < ApplicationRecord
   include TenantScoped
+  include PublicRootSlug
   extend FriendlyId
   friendly_id :title, use: :slugged
 

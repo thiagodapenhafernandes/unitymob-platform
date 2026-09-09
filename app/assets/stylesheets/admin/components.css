@@ -71,6 +71,7 @@
  *= require admin/components/loading
  *= require admin/components/integration_layout
  *= require admin/components/operational_panel
+ *= require admin/components/rich_text_field
  *= require admin/components/panel
  *= require admin/components/media_preview
  *= require admin/components/audit_history_modal

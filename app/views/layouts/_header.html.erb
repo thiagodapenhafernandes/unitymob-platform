@@ -4,6 +4,8 @@
         <%= tag.attributes(style: public_header_style) if public_header_style.present? %>>
   <% public_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant) %>
   <% public_contact_setting = @contact_setting || ContactSetting.instance(tenant: public_tenant) %>
+  <% internal_blog = public_tenant.blog_articles.publicly_visible.exists? %>
+  <% public_blog_url = internal_blog ? blog_path : public_contact_setting.blog_url %>
   <% public_phone = public_identity.phone %>
   <% is_buying = controller_name == "habitations" && params[:transaction_type].to_s.downcase == "venda" %>
   <% is_renting = controller_name == "habitations" && %w[aluguel locacao locação].include?(params[:transaction_type].to_s.downcase) %>
@@ -56,9 +58,9 @@
           <%= link_to "Lançamentos",
               habitations_path(characteristics: ['lancamento']),
               class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_launches ? 'text-blue-three' : 'hover:text-blue-three'}" %>
-          <% if public_contact_setting.blog_url.present? %>
+          <% if public_blog_url.present? %>
             <%= link_to "Blog",
-                public_contact_setting.blog_url, target: "_blank", rel: "noopener",
+                public_blog_url, target: internal_blog ? nil : "_blank", rel: "noopener",
                 class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" %>
           <% end %>
           <%= link_to favorite_habitations_path,
@@ -107,8 +109,8 @@
           <li><%= link_to "Anunciar", contato_path, class: "text-gray-700 hover:text-blue-three" %></li>
           <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three" %></li>
           <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three" %></li>
-          <% if public_contact_setting.blog_url.present? %>
-            <li><%= link_to "Blog", public_contact_setting.blog_url, target: "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three" %></li>
+          <% if public_blog_url.present? %>
+            <li><%= link_to "Blog", public_blog_url, target: internal_blog ? nil : "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three" %></li>
           <% end %>
           <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three" %></li>
           <li><%= link_to "Fale com um corretor", brokers_path, class: "text-gray-700 hover:text-blue-three" %></li>
@@ -134,8 +136,8 @@
           <li><%= link_to "Anunciar", contato_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <% if public_contact_setting.blog_url.present? %>
-            <li><%= link_to "Blog", public_contact_setting.blog_url, target: "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <% if public_blog_url.present? %>
+            <li><%= link_to "Blog", public_blog_url, target: internal_blog ? nil : "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <% end %>
           <li><%= link_to "Favoritos", favorite_habitations_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>

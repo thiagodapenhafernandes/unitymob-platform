@@ -1,0 +1,28 @@
+<%= ax_workspace_heading(title: "Blog", eyebrow: "Site público", icon: "journal-richtext", actions: ax_button("Novo artigo", new_admin_blog_article_path, variant: :primary, icon: "plus-lg")) %>
+<%= ax_filter_form(url: admin_blog_articles_path, reset_path: admin_blog_articles_path) do |form| %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-6"><%= ax_text_field(form: form, method: :q, label: "Buscar artigo", value: params[:q], placeholder: "Título ou palavra-chave") %></div>
+    <div class="ax-span-3"><%= ax_select_field(form: form, method: :category_id, label: "Categoria", choices: @categories.map { |c| [c.name, c.id] }, select_options: { include_blank: "Todas", selected: params[:category_id] }) %></div>
+    <div class="ax-span-3"><%= ax_select_field(form: form, method: :status, label: "Status", choices: [["Publicado", "published"], ["Rascunho", "draft"]], select_options: { include_blank: "Todos", selected: params[:status] }) %></div>
+  <% end %>
+<% end %>
+  <div class="ax-table-wrap"><table class="ax-table ax-table--media-list">
+    <thead><tr><th>Artigo</th><th>Categorias</th><th>Status</th><th>Publicação</th><th class="ax-num">Ações</th></tr></thead>
+    <tbody>
+    <% @articles.each do |article| %>
+      <tr>
+        <td><%= render "admin/shared/ui/table_record", title: article.title, url: edit_admin_blog_article_path(article), image_url: article.cover.attached? ? blog_image_url(article.cover, size: [132, 88]) : nil %></td>
+        <td><% article.blog_categories.each do |category| %><div><%= category.name %></div><% end %><%= "Sem categoria" if article.blog_categories.empty? %></td>
+        <td><%= ax_badge(article.published? ? "Publicado" : "Rascunho", tone: article.published? ? :green : :gray) %></td>
+        <td><%= l(article.published_at.to_date, format: "%d/%m/%Y") if article.published_at %></td>
+        <td class="ax-num"><div class="tw-inline-flex tw-gap-2">
+          <%= ax_button("Preview", preview_admin_blog_article_path(article), target: "_blank", rel: "noopener") %>
+          <%= ax_button("Editar", edit_admin_blog_article_path(article)) %>
+          <%= button_to "Excluir", admin_blog_article_path(article), method: :delete, class: "ax-btn ax-btn--danger", form: { data: { turbo_confirm: "Excluir o artigo ‘#{article.title}’? Esta ação não pode ser desfeita." } } %>
+        </div></td>
+      </tr>
+    <% end %>
+    <% if @articles.empty? %><tr><td colspan="5">Nenhum artigo encontrado.</td></tr><% end %>
+    </tbody>
+  </table></div>
+  <%= ax_pagination(@articles) %>

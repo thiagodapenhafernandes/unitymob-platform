@@ -236,6 +236,7 @@ Rails.application.routes.draw do
         get :modal
         post :upload
         get :watermark_status
+        get :watermark_preview
         post :retry_watermark
         delete :discard_watermark
         patch :reorder
@@ -448,6 +449,12 @@ Rails.application.routes.draw do
       post :block_day
       delete "block_days/:id", action: :unblock_day, as: :unblock_day
     end
+    resources :blog_articles, except: [:show] do
+      get :preview, on: :member
+    end
+    resources :blog_categories, only: [:create]
+    resources :blog_uploads, only: [:create]
+
     resources :landing_pages do
       get :preview, on: :collection
     end
@@ -707,6 +714,9 @@ Rails.application.routes.draw do
       get ":portal/feed", to: "feeds#show", as: :feed
     end
   end
+
+  get "blog", to: "blog#index", as: :blog
+  get "blog/categoria/:slug", to: "blog#index", as: :blog_category
 
   # A resolução acontece nos controllers. O roteador não deve consultar banco
   # para cada URL desconhecida (especialmente sob tráfego de bots).

@@ -563,6 +563,9 @@ export default class extends Controller {
     if (!item) return
 
     const fileId = item.dataset.newFileId
+    if (this.uploadInProgress) return
+    const entry = this.selectedNewFiles.find(file => file.id === fileId)
+    if (entry?.previewUrl) URL.revokeObjectURL(entry.previewUrl)
     this.selectedNewFiles = this.selectedNewFiles.filter(entry => entry.id !== fileId)
     item.remove()
 
@@ -788,6 +791,13 @@ export default class extends Controller {
           </div>
         </div>
       `
+      fileEntry.previewUrl = previewUrl
+      if (this.canSyncUpload()) {
+        const status = document.createElement("div")
+        status.className = "ax-media-processing__status"
+        status.innerHTML = `<strong>${this.escapeHtml(file.name)}</strong><span>Aguardando envio</span><progress max="100" value="0" aria-label="Envio de ${this.escapeHtml(file.name)}"></progress>`
+        imgContainer.appendChild(status)
+      }
       this.previewContainerTarget.appendChild(imgContainer)
     })
 
@@ -937,7 +947,7 @@ export default class extends Controller {
   }
 
   async pollWatermark() {
-    if (this.uploadInProgress || this.formSubmitInProgress || this.selectedNewFiles.length || this.mediaDragState) {
+    if (this.uploadInProgress || this.formSubmitInProgress || this.selectedNewFiles.some(entry => !entry.failed) || this.mediaDragState) {
       this.scheduleWatermarkPoll()
       return
     }
@@ -957,9 +967,24 @@ export default class extends Controller {
   }
 
   updateWatermarkStatus(payload) {
-    if (typeof payload.watermark_html === "string" && this.hasWatermarkStatusTarget) {
+    if (typeof payload.watermark_html === "string" && this.hasWatermarkStatusTarget && this.watermarkStatusTarget.innerHTML !== payload.watermark_html) {
       this.watermarkStatusTarget.innerHTML = payload.watermark_html
     }
+    const pending = payload.watermark_photos || []
+    this.processingProgress ||= new Map()
+    const liveIds = new Set(pending.map(photo => String(photo.id)))
+    const completedIds = new Set((payload.photos || []).map(photo => String(photo.id)))
+    for (const id of this.processingProgress.keys()) {
+      if (completedIds.has(id)) this.processingProgress.set(id, { ...this.processingProgress.get(id), percent: 100, failed: false })
+      else if (!liveIds.has(id)) this.processingProgress.delete(id)
+    }
+    pending.forEach(photo => this.processingProgress.set(String(photo.id), {
+      percent: { received: 25, processing: 50, saving: 75 }[photo.phase] || 25,
+      failed: photo.status === "failed",
+      watermarked: true
+    }))
+    this.hadPendingWatermark = pending.length > 0
+    this.renderProcessingSummary()
     if (payload.photos) this.watermarkPhotoSignature = payload.photos.map(photo => String(photo.id)).sort().join(",")
     if (payload.watermark_photos?.some(photo => photo.status !== "failed")) this.scheduleWatermarkPoll()
     else clearTimeout(this.watermarkPollTimer)
@@ -981,41 +1006,83 @@ export default class extends Controller {
     }
   }
 
-  async uploadNewFiles(fileEntries) {
-    if (!this.canSyncUpload() || fileEntries.length === 0) return
-    if (this.uploadInProgress) return
+  renderProcessingSummary() {
+    const items = [...(this.processingProgress?.values() || []), ...this.selectedNewFiles.map(entry => ({ percent: entry.percent || 0, failed: entry.failed }))]
+    if (!items.length) return
+    const done = items.filter(item => item.percent === 100).length
+    const failed = items.filter(item => item.failed).length
+    const percent = Math.floor(items.reduce((sum, item) => sum + item.percent, 0) / items.length)
+    const complete = done === items.length && !failed
+    const message = complete
+      ? `${done} ${done === 1 ? "foto salva" : "fotos salvas"}${items.every(item => item.watermarked) ? " com marca d’água" : ""}. Tudo pronto!`
+      : `${done} de ${items.length} fotos salvas${failed ? ` · ${failed} com falha` : ""}`
+    this.showProgressFeedback(message, percent, failed ? "error" : complete ? "success" : "active")
+  }
 
+  setPhotoUploadState(entry, message, percent = null, failed = false) {
+    entry.percent = percent || 0
+    const item = this.previewContainerTarget.querySelector(`[data-new-file-id="${entry.id}"]`)
+    const status = item?.querySelector(".ax-media-processing__status")
+    if (!status) return
+    status.querySelector("span").textContent = message
+    const progress = status.querySelector("progress")
+    progress.hidden = failed
+    if (percent === null) progress.removeAttribute("value")
+    else progress.value = percent
+    status.querySelector(".ax-media-processing__retry")?.remove()
+    if (failed) {
+      const retry = document.createElement("button")
+      retry.type = "button"
+      retry.className = "ax-btn ax-btn--sm ax-btn--ghost ax-media-processing__retry"
+      retry.textContent = "Tentar novamente"
+      retry.addEventListener("click", () => { entry.failed = false; this.uploadNewFiles([entry]) })
+      status.appendChild(retry)
+    }
+  }
+
+  async uploadNewFiles(fileEntries) {
+    if (!this.canSyncUpload() || fileEntries.length === 0 || this.uploadInProgress) return
     this.uploadInProgress = true
     this.setBusyState(true)
-    this.showProgressFeedback("Preparando envio das fotos...", 1)
-
-    const formData = new FormData()
-    fileEntries.forEach(entry => formData.append("habitation[photos][]", entry.file))
-
-    const watermarkInput = this.element.querySelector('input[name="habitation[apply_photo_watermark]"][type="checkbox"]')
-    if (watermarkInput) {
-      formData.append("habitation[apply_photo_watermark]", watermarkInput.checked ? "1" : "0")
-    }
-
     try {
-      const response = await this.requestJsonWithProgress(this.uploadUrlValue, {
-        method: "POST",
-        body: formData,
-        onProgress: (percent) => {
-          this.showProgressFeedback(`Enviando fotos... ${percent}%`, percent)
+      // Drain the live queue, including photos added during the current upload.
+      let entry
+      while (!this.watermarkDisconnected && (entry = this.selectedNewFiles.find(file => !file.failed))) {
+        const formData = new FormData()
+        formData.append("habitation[photos][]", entry.file)
+        const watermarkInput = this.element.querySelector('input[name="habitation[apply_photo_watermark]"][type="checkbox"]')
+        formData.append("habitation[apply_photo_watermark]", watermarkInput?.checked ? "1" : "0")
+        this.showProgressFeedback(`Enviando ${entry.file.name}…`, 0)
+        this.setPhotoUploadState(entry, "Enviando · 0%", 0)
+        try {
+          const response = await this.requestJsonWithProgress(this.uploadUrlValue, {
+            method: "POST", body: formData,
+            onProgress: percent => {
+              this.setPhotoUploadState(entry, percent < 100 ? `Enviando · ${Math.round(percent / 4)}%` : "Envio recebido · 25%", Math.round(percent / 4))
+              this.renderProcessingSummary()
+            }
+          })
+          if (this.watermarkDisconnected) return
+          this.previewContainerTarget.querySelector(`[data-new-file-id="${entry.id}"]`)?.remove()
+          URL.revokeObjectURL(entry.previewUrl)
+          this.selectedNewFiles = this.selectedNewFiles.filter(file => file.id !== entry.id)
+          this.syncInputFilesFromState()
+          this.processingProgress ||= new Map()
+          const previousIds = new Set((this.watermarkPhotoSignature || "").split(","))
+          ;(response.photos || []).filter(photo => !previousIds.has(String(photo.id))).forEach(photo => this.processingProgress.set(String(photo.id), { percent: 100 }))
+          this.applyMediaPayload(response)
+        } catch (error) {
+          entry.failed = true
+          this.setPhotoUploadState(entry, error.message || "Falha no envio", null, true)
         }
-      })
-
-      this.selectedNewFiles = []
-      if (this.hasInputTarget) this.inputTarget.value = ""
-      this.applyMediaPayload(response, { scrollToEnd: true })
-      this.showProgressFeedback(response.message || "Fotos enviadas com sucesso.", 100, "success")
-      this.hideProgressLater()
-    } catch (error) {
-      this.showProgressFeedback(error.message || "Não foi possível enviar as fotos agora.", 100, "error")
+      }
     } finally {
       this.uploadInProgress = false
       this.setBusyState(false)
+      if (!this.watermarkDisconnected) {
+        this.renderProcessingSummary()
+        this.scheduleWatermarkPoll()
+      }
     }
   }
 
@@ -1035,16 +1102,21 @@ export default class extends Controller {
     this.showProgressFeedback("Salvando mídia...", 8)
 
     try {
+      const formData = new FormData(this.form)
+      // Async photos are saved by their own requests, never resubmitted by Save media.
+      if (this.canSyncUpload()) formData.delete("habitation[photos][]")
       const response = await this.requestJsonWithProgress(this.form.action, {
         method: this.resolvedFormMethod(),
-        body: new FormData(this.form),
+        body: formData,
         onProgress: (percent) => {
           this.showProgressFeedback(`Salvando mídia... ${percent}%`, percent)
         }
       })
 
-      this.selectedNewFiles = []
-      if (this.hasInputTarget) this.inputTarget.value = ""
+      if (!this.canSyncUpload()) {
+        this.selectedNewFiles = []
+        if (this.hasInputTarget) this.inputTarget.value = ""
+      }
       this.applyMediaPayload(response)
       this.showProgressFeedback(response.message || "Mídia salva com sucesso.", 100, "success")
       this.hideProgressLater()
@@ -1159,7 +1231,7 @@ export default class extends Controller {
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable || typeof options.onProgress !== "function") return
 
-        const percent = Math.max(1, Math.min(95, Math.round((event.loaded / event.total) * 95)))
+        const percent = Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100)))
         options.onProgress(percent)
       }
 
@@ -1232,9 +1304,16 @@ export default class extends Controller {
     const replaceGallery = options.replaceGallery !== false
 
     if (replaceGallery && typeof payload.gallery_html === "string" && this.hasPreviewContainerTarget) {
+      const unsent = Array.from(this.previewContainerTarget.querySelectorAll(".new-photo-preview"))
+        .filter(item => this.selectedNewFiles.some(entry => entry.id === item.dataset.newFileId))
       this.previewContainerTarget.innerHTML = payload.gallery_html
+      unsent.forEach(item => this.previewContainerTarget.appendChild(item))
       this.refreshMediaDragAndDrop()
       this.syncSiteVisibilityControls()
+      const tools = this.application?.getControllerForElementAndIdentifier(this.element, "media-tools")
+      tools?.prunAndReflectSelection()
+      tools?.updateSelectionSummary()
+      tools?.syncSelectAllButtons()
     }
 
     if (payload.inputs) {
@@ -1360,6 +1439,11 @@ export default class extends Controller {
     if (this.fallbackUploadLimitFeedback) elements.push(this.fallbackUploadLimitFeedback)
     if (ensure && elements.length === 0) elements.push(this.ensureUploadLimitFeedback())
 
+    const footer = elements.find(element => element.hasAttribute("data-photo-upload-feedback"))
+    if (footer) {
+      elements.filter(element => element !== footer).forEach(element => { element.hidden = true })
+      return [footer]
+    }
     return Array.from(new Set(elements)).filter(Boolean)
   }
 
