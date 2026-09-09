@@ -27,7 +27,15 @@ três grupos e sua sequência, considerando dependências da mudança.
 ## Git e preparação (todos os alvos)
 
 1. Conferir branch, arquivos modificados, diff, remoto e commits pendentes.
-2. Identificar o pacote autorizado; não incluir mudanças não relacionadas silenciosamente.
+2. Inventariar alterações locais, arquivos novos e commits pendentes de publicação,
+   incluindo os pacotes trabalhados na conversa e checkouts isolados usados nela.
+   Apresentar uma lista numerada por funcionalidade, com dependências e validações,
+   e perguntar: **“Quer subir tudo o que está listado ou apenas alguns itens? Quais?”**
+   Aguardar a escolha antes de commit, merge, push ou deploy. `all` define destinos,
+   não o conteúdo. Não limitar silenciosamente à última correção. Se já houver
+   escolha explícita sobre a lista atual, seguir sem repetir a pergunta. Informar
+   o que entra e o que fica pendente; excluir segredos, backups e artefatos locais
+   gerados. Componentes com publicação separada devem aparecer na lista.
 3. Rodar testes proporcionais, revisar migrations e compatibilidade com componentes não publicados.
 4. Em `develop`, commitar o pacote nela. Fazer `git fetch --prune origin` e
    `git pull --ff-only origin develop`.

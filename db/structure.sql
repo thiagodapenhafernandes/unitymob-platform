@@ -1041,7 +1041,8 @@ CREATE TABLE public.appointments (
     properties_to_visit_count integer,
     invite_via_email boolean DEFAULT false NOT NULL,
     invite_via_whatsapp boolean DEFAULT false NOT NULL,
-    invite_email_recipients text
+    invite_email_recipients text,
+    reminder_state jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -4125,7 +4126,22 @@ CREATE TABLE public.lead_settings (
     stage_automation_sweep_interval_minutes integer DEFAULT 15 NOT NULL,
     stage_automation_last_swept_at timestamp(6) without time zone,
     push_lead_click_action character varying DEFAULT 'system'::character varying NOT NULL,
-    lead_whatsapp_conversation_enabled boolean DEFAULT true NOT NULL
+    lead_whatsapp_conversation_enabled boolean DEFAULT true NOT NULL,
+    reminder_first_minutes integer DEFAULT 60 NOT NULL,
+    reminder_second_minutes integer DEFAULT 30 NOT NULL,
+    reminder_third_minutes integer DEFAULT 15 NOT NULL,
+    reminder_overdue_minutes integer DEFAULT 120 NOT NULL,
+    reminder_retry_minutes integer DEFAULT 30 NOT NULL,
+    reminder_due_enabled boolean DEFAULT true NOT NULL,
+    reminder_start_time character varying DEFAULT '08:00'::character varying NOT NULL,
+    reminder_end_time character varying DEFAULT '18:00'::character varying NOT NULL,
+    CONSTRAINT lead_settings_reminder_first_minutes_range CHECK (((reminder_first_minutes >= 1) AND (reminder_first_minutes <= 10080))),
+    CONSTRAINT lead_settings_reminder_hours CHECK ((((reminder_start_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_end_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_start_time)::text < (reminder_end_time)::text))),
+    CONSTRAINT lead_settings_reminder_order CHECK (((reminder_first_minutes > reminder_second_minutes) AND (reminder_second_minutes > reminder_third_minutes))),
+    CONSTRAINT lead_settings_reminder_overdue_minutes_range CHECK (((reminder_overdue_minutes >= 1) AND (reminder_overdue_minutes <= 10080))),
+    CONSTRAINT lead_settings_reminder_retry_minutes_range CHECK (((reminder_retry_minutes >= 1) AND (reminder_retry_minutes <= 10080))),
+    CONSTRAINT lead_settings_reminder_second_minutes_range CHECK (((reminder_second_minutes >= 1) AND (reminder_second_minutes <= 10080))),
+    CONSTRAINT lead_settings_reminder_third_minutes_range CHECK (((reminder_third_minutes >= 1) AND (reminder_third_minutes <= 10080)))
 );
 
 
@@ -6694,7 +6710,8 @@ CREATE TABLE public.tasks (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     tenant_id bigint NOT NULL,
-    source character varying DEFAULT 'manual'::character varying NOT NULL
+    source character varying DEFAULT 'manual'::character varying NOT NULL,
+    reminder_state jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -18774,6 +18791,7 @@ ALTER TABLE ONLY public.browser_extension_operations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260908190000'),
 ('20260906023000'),
 ('20260906013000'),
 ('20260905203000'),

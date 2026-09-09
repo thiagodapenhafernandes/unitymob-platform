@@ -33,6 +33,7 @@ export default class extends Controller {
     this.element.removeEventListener("ax-modal:close", this.onRequestedClose)
     document.removeEventListener("keydown", this.onKey)
     this.unlockScroll()
+    if (!this.overlayTarget.hidden && this.previouslyFocusedElement?.isConnected) this.previouslyFocusedElement.focus()
   }
 
   open(event) {

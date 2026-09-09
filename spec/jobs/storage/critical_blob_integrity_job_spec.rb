@@ -4,7 +4,7 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
   it "registra auditoria e erro quando um blob crítico não existe no storage" do
     tenant = Tenant.create!(name: "Tenant integrity #{SecureRandom.hex(3)}", slug: "tenant-integrity-#{SecureRandom.hex(3)}")
     setting = PropertySetting.create!(tenant: tenant)
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
     attachment = setting.watermark_image.attachment
     blob = attachment.blob
     service = instance_double(ActiveStorage::Service)
@@ -86,7 +86,7 @@ RSpec.describe Storage::CriticalBlobIntegrityJob do
   it "usa a configuração do tenant para blobs antigos com service_name legacy" do
     tenant = Tenant.create!(name: "Tenant legacy #{SecureRandom.hex(3)}", slug: "tenant-legacy-#{SecureRandom.hex(3)}")
     setting = PropertySetting.create!(tenant: tenant)
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
     attachment = setting.watermark_image.attachment
     blob = attachment.blob
     blob.update_columns(service_name: "do_spaces")

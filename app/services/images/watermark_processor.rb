@@ -3,6 +3,7 @@ require "mini_magick"
 module Images
   class WatermarkProcessor
     class ProcessingError < StandardError; end
+    class MissingWatermarkError < ProcessingError; end
 
     Result = Struct.new(:attachable, :tempfile, keyword_init: true)
 
@@ -27,6 +28,7 @@ module Images
     def call
       return Result.new(attachable: upload) unless processable?
 
+      output = nil
       setting.watermark_image.open do |watermark_file|
         image = MiniMagick::Image.open(upload.tempfile.path)
         image.auto_orient
@@ -37,6 +39,8 @@ module Images
 
         output = build_tempfile
         composed = image.composite(watermark) do |config|
+          config.colorspace "sRGB"
+          config.type "TrueColor"
           config.compose "Over"
           config.gravity gravity
           config.geometry geometry_for(image)
@@ -48,19 +52,21 @@ module Images
           attachable: {
             io: output,
             filename: upload.original_filename,
-            content_type: upload.content_type.presence || image.mime_type
+            content_type: Marcel::MimeType.for(output, name: upload.original_filename)
           },
           tempfile: output
         )
       end
     rescue ActiveStorage::FileNotFoundError
-      raise if raise_errors
+      output&.close!
+      raise MissingWatermarkError, "Arquivo da marca indisponível. Envie a marca novamente nas configurações." if raise_errors
 
       Result.new(attachable: upload)
     rescue StandardError => error
+      output&.close!
       message = "Falha ao aplicar marca d'água em #{upload_filename}: #{error.class} - #{error.message}"
       Rails.logger.warn("[WatermarkProcessor] #{message}")
-      raise ProcessingError, message if raise_errors
+      raise ProcessingError, "Não foi possível aplicar a marca. Confira se a foto e a marca são imagens válidas." if raise_errors
 
       Result.new(attachable: upload)
     end
@@ -89,10 +95,7 @@ module Images
         PropertySetting::WATERMARK_SIZE_RANGE.begin,
         PropertySetting::WATERMARK_SIZE_RANGE.end
       ) / 100.0
-      minimum = setting.watermark_position == "center" ? 180 : 120
-      maximum = (image.width * (PropertySetting::WATERMARK_SIZE_RANGE.end / 100.0)).round
-
-      [[(image.width * ratio).round, minimum].max, maximum].min
+      [(image.width * ratio).round, 1].max
     end
 
     def apply_watermark_opacity(watermark)
@@ -117,7 +120,7 @@ module Images
     def geometry_for(image)
       return "+0+0" if setting.watermark_position == "center"
 
-      margin = [[(image.width * 0.035).round, 24].max, 64].min
+      margin = (image.width * 0.035).round
       "+#{margin}+#{margin}"
     end
 

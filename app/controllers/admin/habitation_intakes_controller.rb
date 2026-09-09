@@ -3,16 +3,28 @@ module Admin
     include RentalGuaranteeParamNormalizer
 
     before_action -> { check_permission!(:view, :captacoes) }
-    before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish proprietor_lookup]
+    before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish proprietor_lookup retry_watermark discard_watermark]
     before_action :authorize_export!, only: %i[export]
-    before_action :set_property_setting, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish]
-    before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish]
-    before_action :authorize_access!, only: %i[show edit update destroy submit_for_review release_to_site publish]
-    before_action :authorize_intake_edit!, only: %i[edit update]
+    before_action :set_property_setting, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish retry_watermark discard_watermark]
+    before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish retry_watermark discard_watermark]
+    before_action :authorize_access!, only: %i[show edit update destroy submit_for_review release_to_site publish retry_watermark discard_watermark]
+    before_action :authorize_intake_edit!, only: %i[edit update retry_watermark discard_watermark]
     before_action :authorize_review!, only: %i[approve return_to_broker]
     before_action :load_form_options, only: %i[edit update]
     layout :resolve_layout
     helper_method :can_export_captacoes?, :can_broker_release_to_site?, :can_filter_intakes_by_broker?
+
+    def retry_watermark
+      habitation_media_updater.retry_watermark(params[:photo_id])
+      redirect_to edit_admin_captacao_path(@habitation, step: "fotos"), notice: "Nova tentativa de aplicação da marca agendada."
+    rescue Habitations::MediaUpdater::PhotoPublicationError
+      redirect_to edit_admin_captacao_path(@habitation, step: "fotos"), alert: "Não foi possível agendar. Tente novamente."
+    end
+
+    def discard_watermark
+      habitation_media_updater.discard_watermark(params[:photo_id])
+      redirect_to edit_admin_captacao_path(@habitation, step: "fotos"), notice: "Foto pendente removida."
+    end
 
     def index
       @status = params[:status].presence

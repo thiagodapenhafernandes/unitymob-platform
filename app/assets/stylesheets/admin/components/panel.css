@@ -154,3 +154,16 @@
     transition: none !important;
   }
 }
+
+/* Shared settings density and readable touch controls. */
+.ax-panel--settings { --ax-form-control-height: 34px; }
+.ax-panel--settings .ax-panel__title { font-size: 14px; line-height: 1.4; }
+.ax-panel--settings .ax-panel__body { display: grid; gap: 16px; }
+.ax-panel--settings .ax-field-group__body { display: grid; gap: 12px; }
+.ax-panel--settings .ax-toggle-chip { min-width: 0; }
+.ax-panel--settings .ax-toggle-chip__label { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 620px) {
+  .ax-panel--settings { --ax-form-control-height: 44px; }
+  .ax-panel--settings .ax-field .ax-control { font-size: 16px; }
+  .ax-panel--settings .ax-toggle-chip { min-height: 44px; }
+}

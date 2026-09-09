@@ -1,3 +1,7 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "Fluxo de revisão", subtitle: "Configurações de imóveis", back_path: edit_admin_property_setting_path, icon: "diagram-3" %>
+<% end %>
+
 <% content_for :admin_contextbar_breadcrumb do %>
   <%= link_to "Admin", admin_root_path %>
   <i class="bi bi-chevron-right"></i>
@@ -25,22 +29,22 @@
   ].compact_blank.join(" · ")
 %>
 
-<%= ax_workflow(label: "Configuração do fluxo de revisão por conjunto operacional") do %>
+<%= ax_workflow(class_name: "ax-workflow--settings", label: "Configuração do fluxo de revisão por conjunto operacional") do %>
   <%= ax_workspace_heading(
         eyebrow: "Configuração operacional",
         icon: "diagram-3",
         title: "Revisão por tipo, categoria e modalidade",
         subtitle: "Escolha um conjunto e veja exatamente o que o sistema exige na captação, revisão e publicação.",
         actions: ax_badge(@review_result.source_label, tone: @review_result.specific? ? :green : :gray, dot: true),
-        class_name: "ax-workflow__heading"
+        class_name: "ax-workflow__heading ax-page-head"
       ) %>
 
-  <%= ax_operational_panel(eyebrow: "Conjunto", title: "Escolha o cenário que quer configurar") do %>
-    <div class="ax-workflow__panel-body">
+  <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Conjunto", title: "Escolha o cenário que quer configurar") do %>
+    <div class="ax-panel-body">
       <%= form_with url: review_workflow_admin_property_setting_path,
             method: :get,
             local: true,
-            class: "ax-field-grid ax-field-grid--12 tw-items-end",
+            class: "ax-field-grid ax-field-grid--12 ax-field-grid--actions",
             data: {
               controller: "auto-submit review-policy-context",
               review_policy_context_categories_by_type_value: PropertyReviewPolicy::CATEGORIES_BY_REGISTRATION_TYPE.to_json
@@ -91,12 +95,12 @@
 
   <div class="ax-workflow__layout">
     <div class="ax-workflow__main">
-      <%= ax_operational_panel(
+      <%= ax_operational_panel(class_name: "ax-operational-panel--settings",
             eyebrow: "Resultado",
             title: "Regra aplicada agora",
             actions: ax_badge(@review_result.specific? ? "Própria" : "Padrão", tone: @review_result.specific? ? :green : :gray)
           ) do %>
-        <div class="ax-workflow__panel-body">
+        <div class="ax-panel-body">
           <%= ax_inline_notice(tone: @review_result.specific? ? :success : :info, icon: @review_result.specific? ? "check-circle" : "info-circle") do %>
             <strong><%= context_label %></strong><br>
             <% if @review_result.specific? %>
@@ -126,16 +130,16 @@
         </div>
       <% end %>
 
-      <%= ax_operational_panel(
+      <%= ax_operational_panel(class_name: "ax-operational-panel--settings",
             eyebrow: "Bloqueios",
             title: "O sistema vai exigir",
             actions: ax_badge("#{@review_result.applicable_checks.size} itens", tone: :blue)
           ) do %>
-        <div class="ax-workflow__panel-body">
+        <div class="ax-panel-body">
           <% if @review_result.applicable_checks.any? %>
-            <div class="ax-chip-grid">
+            <div class="ax-badge-list">
               <% @review_result.applicable_checks.each do |_key, label| %>
-                <span class="ax-badge ax-badge--blue"><i class="bi bi-check2"></i> <%= label %></span>
+                <span class="ax-badge ax-badge--blue ax-badge--wrap"><i class="bi bi-check2"></i> <%= label %></span>
               <% end %>
             </div>
           <% else %>
@@ -146,12 +150,12 @@
         </div>
       <% end %>
 
-      <%= ax_operational_panel(
+      <%= ax_operational_panel(class_name: "ax-operational-panel--settings",
             eyebrow: "Condições",
             title: "Não se aplica neste conjunto",
             actions: ax_badge("#{@review_result.ignored_checks.size} itens", tone: @review_result.ignored_checks.any? ? :amber : :gray)
           ) do %>
-        <div class="ax-workflow__panel-body">
+        <div class="ax-panel-body">
           <% if @review_result.ignored_checks.any? %>
             <dl class="ax-workflow__state">
               <% @review_result.ignored_checks.each do |ignored| %>
@@ -167,14 +171,14 @@
         </div>
       <% end %>
 
-      <%= ax_operational_panel(eyebrow: "Editar", title: "Ajustar regra deste conjunto") do %>
-        <div class="ax-workflow__panel-body">
+      <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Editar", title: "Ajustar regra deste conjunto") do %>
+        <div class="ax-panel-body">
           <%= form_with model: @review_policy, url: review_workflow_admin_property_setting_path(registration_type: @review_registration_type, category: @review_selected_categories, modality: @review_modality), method: :patch, html: { id: "review_workflow_form", class: "ax-workflow__form" } do |f| %>
             <% if @review_policy.errors.any? %>
               <%= ax_error_summary(@review_policy) %>
             <% end %>
 
-            <div class="habitation-form-ui ax-workflow__switches">
+            <div class="ax-workflow__switches">
               <%= ax_toggle_chip(f, :broker_capture_layer_enabled,
                     label: "Exigir aprovação administrativa antes de publicar",
                     checked_value: "true",
@@ -182,7 +186,7 @@
                     class_name: "ax-workflow__switch") %>
             </div>
 
-            <div class="ax-workflow__field habitation-form-ui">
+            <div class="ax-workflow__field">
               <%= hidden_field_tag "property_review_policy[required_broker_intake_checks][]", "" %>
               <%= ax_multiselect_field(
                     form: f,
@@ -217,7 +221,7 @@
               <% end %>
             </div>
 
-            <div class="habitation-form-ui ax-workflow__switches">
+            <div class="ax-workflow__switches">
               <%= ax_toggle_chip(f, :notify_internal_review_events,
                     label: "Avisar admins e revisores dentro do sistema",
                     checked_value: "true",
@@ -244,8 +248,8 @@
     </div>
 
     <aside class="ax-workflow__inspector" aria-label="Resumo da regra selecionada">
-      <%= ax_operational_panel(eyebrow: "Resumo", title: "Leitura rápida") do %>
-        <div class="ax-workflow__panel-body">
+      <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Resumo", title: "Leitura rápida") do %>
+        <div class="ax-panel-body">
           <dl class="ax-workflow__state">
             <div class="ax-workflow__state-row">
               <dt>Tipo</dt>
@@ -268,6 +272,11 @@
               <dd><strong><%= @review_result.applicable_checks.size %></strong></dd>
             </div>
           </dl>
+        </div>
+      <% end %>
+      <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Como funciona", title: "Avisos de revisão de captações") do %>
+        <div class="ax-panel-body">
+          <p class="ax-workflow__hint">Envio para revisão, aprovação, devolução ao corretor e publicação no site podem gerar notificações, conforme as opções de notificação. O aviso dentro do sistema é enviado aos administradores da conta e aos usuários com permissão de revisão, desde que estejam ativos. Quando o e-mail estiver habilitado, o aviso também será enviado aos endereços informados em “Quem recebe e-mail de acompanhamento”.</p>
         </div>
       <% end %>
     </aside>

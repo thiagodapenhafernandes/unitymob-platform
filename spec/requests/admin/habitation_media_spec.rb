@@ -251,7 +251,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
   it "agenda marca d'água no upload assíncrono quando o seletor está ativo" do
     habitation = create_media_habitation
     setting = PropertySetting.instance(tenant: habitation.tenant)
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
     uploaded_photo = Tempfile.new(["media-upload-watermark", ".jpg"])
     uploaded_photo.write("foto nova")
     uploaded_photo.rewind
@@ -527,4 +527,54 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
       expect(response).to redirect_to(admin_habitations_path)
     end
   end
+  it "mostra o processamento sem expor a URL da foto original" do
+    habitation = create_media_habitation
+    habitation.watermark_photos.attach(io: StringIO.new("foto"), filename: "pendente.jpg", content_type: "image/jpeg")
+    get watermark_status_admin_habitation_media_path(habitation, format: :json)
+    expect(response).to have_http_status(:ok)
+    payload = response.parsed_body
+    expect(payload.fetch("photos")).to be_empty
+    expect(payload.fetch("watermark_photos").first["filename"]).to eq("pendente.jpg")
+    expect(payload.fetch("watermark_html")).to include("Aguardando processamento")
+    expect(payload.fetch("gallery_html")).not_to include("pendente.jpg")
+  end
+
+  it "retoma uma falha e remove somente a pendência selecionada" do
+    habitation = create_media_habitation
+    habitation.watermark_photos.attach(io: StringIO.new("foto"), filename: "pendente.jpg", content_type: "image/jpeg")
+    attachment = habitation.watermark_photos.attachments.first
+    attachment.blob.update!(metadata: { "watermark_status" => "failed" })
+    expect {
+      post retry_watermark_admin_habitation_media_path(habitation, format: :json), params: { photo_id: attachment.id }
+    }.to have_enqueued_job(HabitationPhotoWatermarkJob)
+    expect(response).to have_http_status(:ok)
+    expect(attachment.reload.blob.metadata["watermark_status"]).to eq("pending")
+    delete discard_watermark_admin_habitation_media_path(habitation, format: :json), params: { photo_id: attachment.id }
+    expect(response).to have_http_status(:ok)
+    expect(habitation.reload.watermark_photos).not_to be_attached
+  end
+
+  it "bloqueia a retomada quando o perfil não permite aplicar marca" do
+    habitation = create_media_habitation
+    habitation.watermark_photos.attach(io: StringIO.new("foto"), filename: "pendente.jpg", content_type: "image/jpeg")
+    attachment = habitation.watermark_photos.attachments.first
+    attachment.blob.update!(metadata: { "watermark_status" => "failed" })
+    allow_any_instance_of(Habitations::FieldLockPolicy).to receive(:field_locked?).and_call_original
+    allow_any_instance_of(Habitations::FieldLockPolicy).to receive(:field_locked?).with("apply_photo_watermark").and_return(true)
+    expect {
+      post retry_watermark_admin_habitation_media_path(habitation, format: :json), params: { photo_id: attachment.id }
+    }.not_to have_enqueued_job(HabitationPhotoWatermarkJob)
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "não aceita uma pendência de outro imóvel" do
+    habitation = create_media_habitation
+    other = create_media_habitation
+    other.watermark_photos.attach(io: StringIO.new("foto"), filename: "outra.jpg", content_type: "image/jpeg")
+    id = other.watermark_photos.attachments.first.id
+    delete discard_watermark_admin_habitation_media_path(habitation, format: :json), params: { photo_id: id }
+    expect(response).to have_http_status(:not_found)
+    expect(other.reload.watermark_photos).to be_attached
+  end
+
 end

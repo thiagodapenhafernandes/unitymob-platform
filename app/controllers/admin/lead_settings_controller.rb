@@ -10,7 +10,7 @@ module Admin
       attrs = lead_setting_params
 
       # Janela em branco ou <= 0 significa "para sempre" (nil).
-      if attrs[:stickiness_window_days].blank? || attrs[:stickiness_window_days].to_i <= 0
+      if attrs.key?(:stickiness_window_days) && (attrs[:stickiness_window_days].blank? || attrs[:stickiness_window_days].to_i <= 0)
         attrs[:stickiness_window_days] = nil
       end
 
@@ -31,6 +31,10 @@ module Admin
 
     def lead_setting_params
       params.require(:lead_setting).permit(
+        *LeadSetting::REMINDER_MINUTE_FIELDS,
+        :reminder_due_enabled,
+        :reminder_start_time,
+        :reminder_end_time,
         :stickiness_enabled,
         :stickiness_match,
         :stickiness_owner,

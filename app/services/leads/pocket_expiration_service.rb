@@ -108,7 +108,6 @@ module Leads
       return :pool_ready unless rule
 
       Leads::NotificationDispatcher.notify_pool(lead, rule, candidates: rule.candidates_filtered_by_checkin, context: "pocket_pool")
-      Leads::PoolRenotifyJob.set(wait: rule.pool_renotify_minutes_value.minutes).perform_later(lead.id, tenant_id: lead.tenant_id) if rule.pool_renotify_interval?
       :pool_ready
     end
   end

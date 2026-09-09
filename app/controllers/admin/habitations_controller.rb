@@ -1,4 +1,8 @@
 class Admin::HabitationsController < Admin::BaseController
+  rescue_from Habitations::MediaUpdater::PhotoPublicationError do
+    redirect_to edit_admin_habitation_path(@habitation), alert: "Imóvel salvo, mas o envio das fotos não foi concluído. Confira as pendências na aba Mídia antes de enviar novamente."
+  end
+
   include HabitationQuickFilters
   HABITATIONS_FILTER_SESSION_MAX_ARRAY_ITEMS = 20
   HABITATIONS_FILTER_SESSION_MAX_VALUE_LENGTH = 180
@@ -6,6 +10,7 @@ class Admin::HabitationsController < Admin::BaseController
   include RentalGuaranteeParamNormalizer
 
   before_action -> { check_permission!(:view, :imoveis) }
+  before_action :authorize_administrative_review_filter!
   before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create, :duplicate]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility, :share_selection]
@@ -58,6 +63,7 @@ class Admin::HabitationsController < Admin::BaseController
   DASHBOARD_QUALITY_FILTERS = %w[missing_address missing_photos missing_price stale].freeze
   REPORT_MAX_PAGES = 100
   DEFAULT_CATALOG_STATUSES = ["Venda", "Aluguel", "Diária"].freeze
+  INTAKE_REVIEW_LABELS = { "pending" => "Pendente de revisão", "administrative" => "Revisão administrativa" }.freeze
   DEFAULT_CODIGO_SORT_SQL = "CASE WHEN (habitations.codigo ~ '^[0-9]+$') THEN habitations.codigo::bigint ELSE 0 END".freeze
   # Fonte única dos campos de exportação vive no service (reusado pelo job async).
   EXPORT_FIELDS = Habitations::CsvExporter::FIELDS
@@ -93,6 +99,7 @@ class Admin::HabitationsController < Admin::BaseController
                 :broker_habitation_allowed_actions
   helper_method :active_extra_filters_count, :clear_extra_filter_params
   helper_method :owns_all_resource?
+  helper_method :can_view_administrative_review?, :intake_review_label
 
   def index
     if clear_habitations_filter_session_requested?
@@ -1511,7 +1518,7 @@ class Admin::HabitationsController < Admin::BaseController
     @ownership_scope = params[:ownership].presence_in(%w[mine all]) ||
                        (owns_all_resource?(:imoveis) ? "all" : "mine")
     @ownership_scope = "all" if @corretor_id.present?
-    @intake_review = params[:intake_review].presence_in(%w[pending])
+    @intake_review = params[:intake_review].presence_in(INTAKE_REVIEW_LABELS.keys)
     @captacao_inicio = params[:captacao_inicio]
     @captacao_fim = params[:captacao_fim]
     @atualizacao_inicio = params[:atualizacao_inicio]
@@ -1551,7 +1558,9 @@ class Admin::HabitationsController < Admin::BaseController
 
   def filtered_habitations_scope
     scope = current_tenant.habitations.left_outer_joins(:address)
-    scope = if @codigo.present?
+    scope = if @intake_review == "administrative"
+              administrative_intake_review_scope(scope)
+            elsif @codigo.present?
               apply_ownership_scope(scope)
             elsif @intake_review == "pending"
               pending_intake_review_scope(scope)
@@ -1963,6 +1972,28 @@ class Admin::HabitationsController < Admin::BaseController
     else
       scope_for_current_user_properties(scope)
     end
+  end
+
+  def can_view_administrative_review?
+    tenant_owner? || current_admin_user&.horizontal_profile.present?
+  end
+
+  def intake_review_label
+    INTAKE_REVIEW_LABELS[@intake_review] || "Todos"
+  end
+
+  def authorize_administrative_review_filter!
+    head :forbidden if params[:intake_review] == "administrative" && !can_view_administrative_review?
+  end
+
+  def administrative_intake_review_scope(scope)
+    return scope.none unless can_view_administrative_review?
+
+    scope = scope.broker_intakes.where(intake_status: "submitted_for_admin_review")
+    return scope if tenant_owner? || owns_all_resource?(:captacoes)
+    return restrict_pending_review_to_manager_team(scope) if current_admin_user&.can_view_team?(:captacoes)
+
+    scope_for_current_user_properties(scope)
   end
 
   def normalized_report_type

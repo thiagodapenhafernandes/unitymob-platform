@@ -417,7 +417,7 @@ RSpec.describe Leads::DistributorService do
       expect(Leads::NotificationDispatcher).not_to have_received(:notify_shark_tank)
     end
 
-    it "agenda renotificacao quando a regra de Shark Tank usa intervalo" do
+    it "registra a entrada no Bolsão sem criar uma cadeia de jobs" do
       rule = create(:distribution_rule, distribution_mode: :shark_tank, pool_renotify_mode: "interval", pool_renotify_minutes: 9)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
       allow(Leads::NotificationDispatcher).to receive(:notify_shark_tank)
@@ -426,7 +426,7 @@ RSpec.describe Leads::DistributorService do
       lead = build_lead
       described_class.find_and_distribute(lead)
 
-      expect(enqueued_jobs.any? { |job| job[:job] == Leads::PoolRenotifyJob }).to be(true)
+      expect(enqueued_jobs.any? { |job| job[:job] == Leads::PoolRenotifyJob }).to be(false)
     ensure
       clear_enqueued_jobs
     end

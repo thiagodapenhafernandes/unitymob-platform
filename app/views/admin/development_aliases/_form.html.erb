@@ -1,0 +1,19 @@
+<%= form_with url: admin_development_aliases_path, method: :post, data: { turbo: true } do %>
+  <div class="ax-record-list">
+    <% if local_assigns[:error].present? %>
+      <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle", compact: true) { local_assigns[:error] } %>
+    <% end %>
+    <%= ax_standalone_select_field(name: :development_id, id: "development_alias_development_id",
+          label: "Empreendimento", selected: local_assigns[:development_id], include_blank: "Selecione",
+          choices: developments.map { |item| [item.nome_empreendimento.presence || item.titulo_anuncio.presence || item.codigo, item.id] },
+          required: true) %>
+    <%= ax_standalone_field(name: :names, id: "development_alias_names", type: :textarea,
+          label: "Nomes alternativos", value: local_assigns[:names], rows: 3,
+          hint: "Separe os nomes por ponto e vírgula ou por linha.",
+          placeholder: "Reserva Parque; Residencial Reserva do Parque", required: true) %>
+    <div class="tw-flex tw-justify-end tw-gap-2">
+      <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+      <%= submit_tag "Adicionar nomes", class: "ax-btn ax-btn--primary" %>
+    </div>
+  </div>
+<% end %>

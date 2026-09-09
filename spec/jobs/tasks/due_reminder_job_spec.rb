@@ -45,7 +45,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
       title: "Retornar para o cliente",
       body: "Está na hora da tarefa: Gilson",
       url: "/admin/leads/#{lead.id}",
-      tag: "task-return-#{task.id}",
+      tag: a_string_starting_with("task-return-#{task.id}-"),
       urgency: "high",
       ttl: 3600,
       require_interaction: true,
@@ -64,7 +64,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
       title: "Em breve: Ligar para confirmar visita",
       body: "Faltam 30 minutos para a tarefa: Gilson. Horário: 19/08/2026 às 09:50.",
       url: "/admin/leads/#{lead.id}",
-      tag: "task-30_minutes_before-#{task.id}",
+      tag: a_string_starting_with("task-30_minutes_before-#{task.id}-"),
       urgency: "high",
       ttl: 3600,
       require_interaction: true,
@@ -123,7 +123,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
       admin_user_id: broker.id,
       body: "Está na hora da tarefa: Cobrar documento",
       url: "/admin/tasks",
-      tag: "task-return-#{task.id}",
+      tag: a_string_starting_with("task-return-#{task.id}-"),
       lead_id: nil,
       metadata: { task_id: task.id, source: "task_due_reminder", phase: "due" }
     ))
@@ -153,6 +153,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
       admin_user: broker,
       lead: lead,
       event_type: "provider_accepted",
+      created_at: 3.hours.ago,
       tag: "task-return-#{task.id}",
       metadata: { task_id: task.id }
     )
@@ -162,7 +163,7 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(hash_including(
       admin_user_id: broker.id,
       body: "Essa tarefa está vencida: Gilson. Conclua ou cancele quando resolver.",
-      tag: "task-overdue-#{task.id}-#{Time.current.to_i / 2.hours.to_i}",
+      tag: a_string_starting_with("task-overdue-#{task.id}-"),
       metadata: { task_id: task.id, source: "task_due_reminder", phase: "overdue" }
     ))
   end
@@ -182,4 +183,15 @@ RSpec.describe Tasks::DueReminderJob, type: :job do
 
     expect(Notifications::PushDispatcher).not_to have_received(:deliver)
   end
+  it "processa tarefas além do primeiro lote sem repetir os lembretes aceitos" do
+    stub_const("Tasks::DueReminderJob::BATCH_SIZE", 2)
+    tasks = create_list(:task, 3, tenant: tenant, lead: lead, admin_user: broker, due_at: 5.minutes.from_now)
+    2.times { described_class.perform_now }
+    tasks.each do |task|
+      expect(Notifications::PushDispatcher).to have_received(:deliver).with(
+        hash_including(metadata: hash_including(task_id: task.id))
+      ).once
+    end
+  end
+
 end

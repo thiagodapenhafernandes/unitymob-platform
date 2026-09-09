@@ -37,26 +37,64 @@ module Habitations
       end
       return if valid_uploads.blank?
 
-      existing_attachment_ids = habitation.photos.attachments.ids
-      blobs = valid_uploads.map.with_index { |upload, index| blob_for_photo_upload(upload, index) }
-      habitation.photos.attach(blobs)
-      habitation.reload
-
-      new_attachment_ids = habitation.photos.attachments.ids - existing_attachment_ids
-      return if new_attachment_ids.blank?
-
-      publication_errors = []
-      habitation.photos.attachments.includes(:blob).where(id: new_attachment_ids).find_each do |attachment|
-        next if Storage::PublicPropertyPhoto.public_url_for_attachment(attachment).blank?
-        next if Storage::PublicPropertyPhoto.publish_attachment!(attachment)
-
-        publication_errors << attachment.id
+      if property_setting && property_setting.tenant_id != habitation.tenant_id
+        raise ArgumentError, "Configuração de marca não pertence à conta do imóvel"
       end
-      raise PhotoPublicationError, "Falha ao publicar fotos: #{publication_errors.join(', ')}" if publication_errors.any?
 
-      return unless apply_watermark && property_setting&.watermark_configured?
+      blobs = valid_uploads.map.with_index { |upload, index| blob_for_photo_upload(upload, index) }
+      if apply_watermark
+        raise ArgumentError, "Configuração da conta obrigatória" unless property_setting
+        # Pending originals are never included in photos/public galleries.
+        habitation.watermark_photos.attach(blobs)
+        habitation.save!
+        habitation.reload
+        attachments = habitation.watermark_photos.attachments.where(blob_id: blobs.map(&:id))
+        begin
+          job = HabitationPhotoWatermarkJob.perform_later(habitation.id, attachments.ids, property_setting.id, tenant_id: habitation.tenant_id)
+          raise PhotoPublicationError unless job
+        rescue StandardError
+          attachments.includes(:blob).each do |attachment|
+            attachment.blob.update!(metadata: attachment.blob.metadata.to_h.merge("watermark_status" => "failed", "watermark_error" => "Não foi possível agendar. Tente novamente."))
+          end
+          raise PhotoPublicationError, "Não foi possível agendar a aplicação da marca"
+        end
+      else
+        begin
+          Habitation.transaction(requires_new: true) do
+            habitation.photos.attach(blobs)
+            habitation.save!
+            habitation.reload
+            habitation.photos.attachments.where(blob_id: blobs.map(&:id)).includes(:blob).each do |attachment|
+              next if Storage::PublicPropertyPhoto.public_url_for_attachment(attachment).blank?
+              next if Storage::PublicPropertyPhoto.publish_attachment!(attachment)
 
-      HabitationPhotoWatermarkJob.perform_later(habitation.id, new_attachment_ids, property_setting.id, tenant_id: habitation.tenant_id)
+              raise PhotoPublicationError, "Não foi possível publicar as fotos"
+            end
+          end
+        rescue PhotoPublicationError
+          blobs.each { |blob| Storage::SafePurgeJob.set(wait: 15.minutes).perform_later(blob.id) }
+          raise
+        end
+      end
+      habitation.reload
+    end
+
+    def retry_watermark(attachment_id)
+      attachment = habitation.watermark_photos.attachments.find(attachment_id)
+      attachment.with_lock(requires_new: true) do
+        return unless attachment.name == "watermark_photos" && attachment.blob.metadata["watermark_status"] == "failed"
+
+        attachment.blob.update!(metadata: attachment.blob.metadata.to_h.except("watermark_error").merge("watermark_status" => "pending"))
+        job = HabitationPhotoWatermarkJob.perform_later(habitation.id, [attachment.id], property_setting.id, tenant_id: habitation.tenant_id)
+        raise PhotoPublicationError unless job
+      end
+    rescue ActiveJob::EnqueueError, SolidQueue::Job::EnqueueError
+      raise PhotoPublicationError, "Não foi possível agendar a aplicação da marca"
+    end
+
+    def discard_watermark(attachment_id)
+      attachment = habitation.watermark_photos.attachments.find(attachment_id)
+      attachment.with_lock { attachment.purge_later if attachment.name == "watermark_photos" }
     end
 
     def extract_document_uploads!(attributes)
@@ -172,6 +210,8 @@ module Habitations
     end
 
     def apply_photo_watermark_requested?
+      return false if FieldLockPolicy.for(actor).field_locked?("apply_photo_watermark")
+
       ActiveModel::Type::Boolean.new.cast(params.dig(:habitation, :apply_photo_watermark))
     end
 
