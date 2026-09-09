@@ -16,7 +16,7 @@ window.UnitymobLgpdConsent = {
 }
 
 export default class extends Controller {
-  static targets = ["banner", "preferences"]
+  static targets = ["banner"]
 
   connect() {
     this.render()
@@ -32,13 +32,6 @@ export default class extends Controller {
 
   render() {
     this.bannerTarget.classList.toggle("hidden", choice() !== null)
-    this.preferencesTarget.classList.toggle("hidden", choice() === null)
-  }
-
-  manage() {
-    this.bannerTarget.classList.remove("hidden")
-    this.preferencesTarget.classList.add("hidden")
-    this.bannerTarget.querySelector("button")?.focus()
   }
 
   accept() {

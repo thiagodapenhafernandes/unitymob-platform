@@ -69,6 +69,12 @@ class HabitationsController < ApplicationController
       @page_keywords = [@strategic_landing[:label], "imóveis", default_public_city, public_site_name].compact_blank.join(", ")
     end
     
+    if requested_public_listing_page > 1
+      canonical_params = request.query_parameters.except("share_token", "gclid", "fbclid").reject { |key, _| key.start_with?("utm_") }
+      canonical_params["page"] = requested_public_listing_page
+      @canonical_url = "#{request.base_url}#{request.path}?#{canonical_params.to_query}"
+    end
+
     # Cache da página
     cache_index_page
     

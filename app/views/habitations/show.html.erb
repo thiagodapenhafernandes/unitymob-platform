@@ -19,6 +19,14 @@
 
 <% content_for :head do %>
   <%= json_ld_tag(real_estate_listing_schema(@habitation)) %>
+  <%= json_ld_tag({
+    "@context" => "https://schema.org", "@type" => "BreadcrumbList",
+    "itemListElement" => [
+      { "@type" => "ListItem", "position" => 1, "name" => "Início", "item" => root_url },
+      { "@type" => "ListItem", "position" => 2, "name" => "Imóveis", "item" => habitations_url },
+      { "@type" => "ListItem", "position" => 3, "name" => @habitation.codigo, "item" => @canonical_url }
+    ]
+  }) %>
   <% if primary_image_url.present? %>
     <link rel="preload"
           as="image"

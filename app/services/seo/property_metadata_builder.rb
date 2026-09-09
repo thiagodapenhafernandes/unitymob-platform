@@ -40,7 +40,7 @@ module Seo
     def meta_title
       base = @habitation.empreendimento? ? development_title_source : property_title_source
       title = base.to_s.squish
-      return title.truncate(TITLE_LIMIT, separator: " ", omission: "") if title.match?(/\|\s*#{Regexp.escape(site_name)}\z/i)
+      return title if title.match?(/\|\s*#{Regexp.escape(site_name)}\z/i)
 
       append_site_suffix(title)
     end
@@ -83,8 +83,7 @@ module Seo
       title = title.to_s.squish
 
       suffix = " | #{site_name}"
-      max_base_length = [TITLE_LIMIT - suffix.length, 20].max
-      "#{title.truncate(max_base_length, separator: " ", omission: "...")}#{suffix}"
+      "#{title}#{suffix}"
     end
 
     def fits_with_site_suffix?(title)
@@ -222,7 +221,7 @@ module Seo
     end
 
     def site_name
-      LayoutSetting.instance.site_name.presence || "Unitymob"
+      LayoutSetting.instance(tenant: @habitation.tenant).site_name.presence || "Unitymob"
     rescue StandardError
       "Unitymob"
     end

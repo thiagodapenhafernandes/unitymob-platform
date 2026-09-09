@@ -16,8 +16,6 @@ class RobotsController < ApplicationController
       Disallow: /rails/
       Allow: /rails/active_storage/blobs/proxy/
       Allow: /rails/active_storage/representations/proxy/
-      Disallow: /imoveis?page=
-      Disallow: /imoveis?*page=
       Crawl-delay: 5
 
       Sitemap: #{base_url}/sitemap.xml

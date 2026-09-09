@@ -4,6 +4,7 @@ class BlogArticle < ApplicationRecord
 
   has_rich_text :content
   has_one_attached :cover do |image|
+    image.variant :blog_social, resize_to_fill: [1200, 630], format: :jpg, preprocessed: true
     image.variant :blog_card, resize_to_limit: [640, 420], format: :webp, preprocessed: true
     image.variant :blog_hero, resize_to_limit: [1600, 1000], format: :webp, preprocessed: true
   end

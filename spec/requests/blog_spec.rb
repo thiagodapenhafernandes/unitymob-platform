@@ -15,6 +15,27 @@ RSpec.describe "Blog", type: :request do
 
   before { host! "localhost" }
 
+  it "serves correctly sized JPEG social images for blog, category and article" do
+    post = article
+    post.cover.attach(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "cover.png", content_type: "image/png", metadata: {tenant_id: tenant.id, purpose: "blog"})
+    post.save!
+    ["/blog", "/blog/categoria/#{post.blog_categories.first.slug}", "/#{post.slug}"].each do |path|
+      get path, headers: { "HTTP_USER_AGENT" => "WhatsApp/2.23.20.0" }
+      expect(response).to have_http_status(:ok)
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css('meta[property="og:image:type"]')["content"]).to eq("image/jpeg")
+      expect(page.at_css('meta[property="og:image:width"]')["content"]).to eq("1200")
+      expect(page.at_css('meta[property="og:image:height"]')["content"]).to eq("630")
+      expect(page.at_css('meta[property="og:image:alt"]')["content"]).to eq(post.title)
+      expect(page.at_css('meta[property="og:image"]')["content"]).to include("/representations/proxy/")
+    end
+    variant = post.cover.variant(:blog_social).processed
+    expect(variant.image.blob.content_type).to eq("image/jpeg")
+    variant.image.blob.open do |file|
+      expect(MiniMagick::Image.open(file.path).dimensions).to eq([1200, 630])
+    end
+  end
+
   it "serves the article at the root with category, canonical metadata, no home SEO and a table of contents" do
     post = article
     get "/#{post.slug}"
