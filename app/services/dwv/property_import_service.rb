@@ -393,7 +393,16 @@ module Dwv
     def resolved_development_name(category)
       text_value(["building", "title"]).presence ||
         inferred_condominium_name(category).presence ||
-        development_name_from_unit_context.presence
+        development_name_from_unit_context.presence ||
+        development_name_from_title_for_third_party_unit(category).presence
+    end
+
+    def development_name_from_title_for_third_party_unit(category)
+      return nil unless third_party?
+      return nil if Habitation.standalone_category_without_development_name?(category)
+
+      title = text_value(["third_party_property", "title"], ["title"])
+      Dwv::DevelopmentNameInference.call(title)
     end
 
     def development_name_from_unit_context

@@ -231,6 +231,23 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.address.complemento).to eq("Condomínio Fechado")
     end
 
+    it "uses a third party apartment title as development name when DWV omits building" do
+      payload = third_party_payload.deep_dup
+      payload["data"]["third_party_property"].merge!(
+        "title" => "Res. Mar de Atlanta",
+        "type" => "Apartamento",
+        "unit_info" => "Apartamento 301",
+        "address" => payload["data"]["third_party_property"]["address"].merge("complement" => "Apartamento 301")
+      )
+
+      habitation = described_class.new(payload, tenant: tenant).perform.fetch(:habitation)
+
+      expect(habitation.categoria).to eq("Apartamento")
+      expect(habitation.titulo_anuncio).to eq("Res. Mar de Atlanta")
+      expect(habitation.nome_empreendimento).to eq("Res. Mar de Atlanta")
+      expect(habitation.address.complemento).to eq("Apartamento 301")
+    end
+
     it "não altera status nem publicação quando a DWV envia payload removido para imóvel existente" do
       habitation = create(
         :habitation,
