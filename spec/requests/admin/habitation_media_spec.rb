@@ -297,6 +297,18 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(habitation.reload.photo_ids_order).to eq(attachments.reverse.map(&:id))
   end
 
+  it "reordena fotos DWV duas vezes com os índices da galeria atualizada" do
+    habitation = create_media_habitation(imovel_dwv: "Sim", pictures: %w[a b c].map { |name| { "url" => "https://dwvimagesv1.b-cdn.net/#{name}.jpg" } })
+    ["2,0,1", "1,0,2"].each do |order|
+      patch reorder_admin_habitation_media_path(habitation, format: :json), params: { habitation: { ordered_picture_indices: order } }
+      expect(response).to have_http_status(:ok)
+      payload = JSON.parse(response.body)
+      expect(payload.dig("inputs", "ordered_picture_indices")).to eq("0,1,2")
+      expect(payload["gallery_html"]).to include('data-api-index="0"')
+    end
+    expect(habitation.reload.pictures.map { |pic| File.basename(pic["url"]) }).to eq(%w[a.jpg c.jpg b.jpg])
+  end
+
   it "atualiza visibilidade de fotos e imagens da API por JSON" do
     habitation = create_media_habitation(
       imovel_dwv: "Sim",

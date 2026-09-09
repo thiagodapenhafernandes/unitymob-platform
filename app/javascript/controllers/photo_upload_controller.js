@@ -1141,7 +1141,7 @@ export default class extends Controller {
           }
         }
       })
-      this.applyMediaPayload(response, { replaceGallery: false })
+      this.applyMediaPayload(response)
     } catch (error) {
       this.showTransientFeedback(error.message || "Não foi possível salvar a ordem das fotos.", true)
     }
