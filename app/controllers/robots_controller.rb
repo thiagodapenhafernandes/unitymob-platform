@@ -14,6 +14,8 @@ class RobotsController < ApplicationController
       User-agent: *
       Disallow: /admin/
       Disallow: /rails/
+      Allow: /rails/active_storage/blobs/proxy/
+      Allow: /rails/active_storage/representations/proxy/
       Disallow: /imoveis?page=
       Disallow: /imoveis?*page=
       Crawl-delay: 5

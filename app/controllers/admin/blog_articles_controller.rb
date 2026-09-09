@@ -9,7 +9,7 @@ class Admin::BlogArticlesController < Admin::BaseController
   def index
     @categories = current_tenant.blog_categories.order(:name)
     scope = current_tenant.blog_articles.matching(params[:q])
-    scope = scope.where(status: params[:status]) if params[:status].in?(BlogArticle.statuses.keys)
+    scope = scope.with_publication_status(params[:status])
     if params[:category_id].present?
       category = @categories.find(params[:category_id])
       scope = scope.joins(:blog_categorizations).where(blog_categorizations: { blog_category_id: category.id })

@@ -31,7 +31,12 @@ class HomeController < ApplicationController
     @page_description = 'Os melhores imóveis para venda e locação. Apartamentos, casas, terrenos e mais.'
     
     # Cache da página (Browser)
-    expires_in 15.minutes, public: true
+    if @home_sections.any?(&:blog?)
+      # Revalidate HTML so scheduled or withdrawn articles never wait for a browser/CDN TTL.
+      expires_now
+    else
+      expires_in 15.minutes, public: true
+    end
   end
   
   def sobre
@@ -111,6 +116,11 @@ class HomeController < ApplicationController
 
   def build_home_section_payloads(sections)
     sections.each_with_object({}) do |section, payloads|
+      if section.blog?
+        @home_blog_articles ||= public_tenant.blog_articles.publicly_visible.recent.with_attached_cover.includes(:blog_categories).limit(3).to_a
+        payloads[section.id] = { kind: "blog", records: @home_blog_articles }
+        next
+      end
       next unless section.property_content_section?
 
       payloads[section.id] =

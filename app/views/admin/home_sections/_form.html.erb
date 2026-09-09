@@ -1,8 +1,14 @@
-<%= form_with model: [:admin, @home_section], local: true do |f| %>
+<%= form_with model: [:admin, @home_section], local: true, data: { controller: "conditional-reveal", conditional_reveal_kind_value: "select" } do |f| %>
   <%= ax_error_summary(@home_section) %>
 
   <div class="ax-card">
     <div class="ax-card__body">
+      <div class="tw-mb-3">
+        <%= label_tag "home_section_content_kind", "Conteúdo", class: "ax-label" %>
+        <% choices = [["Imóveis", "properties"], ["Blog", "blog"]] %>
+        <% choices << [@home_section.section_type_label, "custom"] unless @home_section.blog? || @home_section.property_content_section? %>
+        <%= select_tag "home_section[content_kind]", options_for_select(choices, @home_section.blog? ? "blog" : (@home_section.property_content_section? ? "properties" : "custom")), id: "home_section_content_kind", class: "ax-control", data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
+      </div>
       <div class="tw-mb-3">
         <%= f.label :title, "Título", class: "ax-label" %>
         <%= f.text_field :title, class: "ax-control", required: true %>
@@ -18,7 +24,7 @@
         <small class="tw-text-ink-muted">Seções inativas não aparecem na página inicial</small>
       </div>
 
-      <div class="border tw-rounded-lg tw-p-2 tw-mb-3">
+      <div class="border tw-rounded-lg tw-p-2 tw-mb-3" data-conditional-reveal-target="panel" data-conditional-reveal-values="properties|custom" <%= "hidden" if @home_section.blog? %>>
         <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Curadoria de imóveis</h6>
         <p class="ax-page-subtitle tw-mb-3">
           Imóveis selecionados manualmente aparecem primeiro. Os filtros completam a seção com imóveis públicos deste tenant.

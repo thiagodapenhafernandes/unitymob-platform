@@ -10,11 +10,12 @@
   <% end %>
   <% aside = capture do %>
     <%= ax_panel(title: "Publicação", class_name: "ax-panel--settings") do %>
-      <%= ax_select_field(form: form, method: :status, label: "Status", choices: [["Rascunho", "draft"], ["Publicado", "published"]]) %>
-      <%= ax_text_field(form: form, method: :published_at, label: "Data de publicação", type: "datetime-local") %>
+      <%= ax_select_field(form: form, method: :status, label: "Status", choices: BlogArticle::STATUS_LABELS.map { |value, label| [label, value] }, select_options: { selected: @article.publication_status }) %>
+      <%= ax_text_field(form: form, method: :published_at, label: "Publicação (horário de Brasília)", type: "datetime-local") %>
       <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-3">
         <%= form.submit "Salvar artigo", class: "ax-btn ax-btn--primary" %>
         <% if @article.persisted? %><%= ax_button("Ver preview", preview_admin_blog_article_path(@article), target: "_blank", rel: "noopener", icon: "eye") %><% end %>
+        <% if @article.publicly_visible? %><%= ax_button("Ver artigo publicado", @article.public_url(fallback_base_url: request.base_url), target: "_blank", rel: "noopener", icon: "box-arrow-up-right") %><% end %>
         <%= ax_button("Voltar", admin_blog_articles_path) %>
       </div>
     <% end %>

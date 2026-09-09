@@ -1,4 +1,4 @@
-<% content_for :head do %><%= stylesheet_link_tag "blog" %><% end %>
+<% content_for :head do %><%= stylesheet_link_tag "blog" %><%= render "blog/structured_data" %><% end %>
 <div class="blog-page">
   <header class="blog-intro"><p class="blog-eyebrow">Blog <%= @layout_setting.site_name %></p><h1><%= @category&.name || "Um olhar local. Novas possibilidades." %></h1><p>Conheça a região e acompanhe o mercado imobiliário.</p></header>
   <nav class="blog-categories" aria-label="Categorias do blog">
@@ -9,7 +9,7 @@
   <% list = @articles.to_a %>
   <% if params[:page].to_i <= 1 && params[:q].blank? && list.any? %>
     <% hero = list.shift %>
-    <article class="blog-hero"><%= link_to blog_cover(hero, hero: true), blog_article_path(hero), aria: { label: hero.title } %><div><p class="blog-eyebrow">Em destaque</p><p class="blog-meta"><%= hero.blog_categories.map(&:name).join(" · ") %></p><h2><%= link_to hero.title, blog_article_path(hero) %></h2><p><%= hero.excerpt.to_s.truncate(220) %></p><%= link_to "Ler artigo →", blog_article_path(hero) %></div></article>
+    <article class="blog-hero"><%= link_to blog_cover(hero, hero: true, archive: true), blog_article_path(hero), aria: { label: hero.title } %><div><p class="blog-eyebrow">Em destaque</p><p class="blog-meta"><%= hero.blog_categories.map(&:name).join(" · ") %></p><h2><%= link_to hero.title, blog_article_path(hero) %></h2><p><%= hero.excerpt.to_s.truncate(220) %></p><%= link_to "Ler artigo →", blog_article_path(hero) %></div></article>
   <% end %>
   <section class="blog-latest"><h2>Últimos artigos</h2><div class="blog-grid"><%= render partial: "blog/card", collection: list, as: :article %></div></section>
   <% if @articles.empty? %><p>Nenhum artigo encontrado.</p><% end %>

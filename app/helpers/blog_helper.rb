@@ -1,20 +1,61 @@
 module BlogHelper
+  def blog_structured_data
+    base = public_tenant.public_base_url(fallback_base_url: request.base_url)
+    organization = { "@type" => "Organization", "name" => @layout_setting.site_name, "url" => base }
+    breadcrumbs = [{ "@type" => "ListItem", "position" => 1, "name" => "Blog", "item" => "#{base}#{blog_path}" }]
+    page = {
+      "@type" => @blog_article ? "BlogPosting" : "CollectionPage",
+      "@id" => @canonical_url, "url" => @canonical_url,
+      "name" => @page_title, "description" => @page_description,
+      "inLanguage" => "pt-BR", "publisher" => organization,
+      "isPartOf" => { "@type" => "Blog", "@id" => "#{base}#{blog_path}#blog", "name" => "Blog #{@layout_setting.site_name}", "url" => "#{base}#{blog_path}" }
+    }
+    page["image"] = @page_image if @page_image.present?
+    if @blog_article
+      page.merge!(
+        "headline" => @blog_article.title,
+        "datePublished" => @blog_article.published_at&.iso8601,
+        "dateModified" => @blog_article.updated_at.iso8601,
+        "mainEntityOfPage" => { "@type" => "WebPage", "@id" => @canonical_url },
+        "author" => organization,
+        "articleSection" => @blog_article.blog_categories.map(&:name),
+        "wordCount" => @blog_article.content.to_plain_text.split.size
+      )
+      breadcrumbs << { "@type" => "ListItem", "position" => 2, "name" => @blog_article.title, "item" => @canonical_url }
+    else
+      page["mainEntity"] = {
+        "@type" => "ItemList",
+        "itemListElement" => @articles.each_with_index.map do |article, index|
+          { "@type" => "ListItem", "position" => @articles.offset + index + 1,
+            "name" => article.title, "url" => article.public_url(fallback_base_url: request.base_url) }
+        end
+      }
+      breadcrumbs << { "@type" => "ListItem", "position" => 2, "name" => @category.name, "item" => "#{base}#{blog_category_path(@category.slug)}" } if @category
+    end
+    graph = [page.compact]
+    graph << { "@type" => "BreadcrumbList", "itemListElement" => breadcrumbs } if breadcrumbs.size > 1
+    { "@context" => "https://schema.org", "@graph" => graph }
+  end
+
   def blog_article_path(article)
     public_landing_page_path(article.slug)
   end
 
   def blog_image_url(source, size:)
-    url = public_image_url(source, resize_to_limit: size, format: :webp, force_variant: true, representation_proxy: true)
-    # Cached HTML must never contain expiring Spaces URLs. Keep objects private.
-    url.to_s.start_with?("/") ? url : rails_storage_proxy_path(source.respond_to?(:blob) ? source.blob : source, only_path: true)
+    blob = source.respond_to?(:blob) ? source.blob : source
+    # Generate a signed route only: no Spaces HEAD requests or image processing while rendering HTML.
+    image = blob.variable? ? blob.variant(resize_to_limit: size, format: :webp) : blob
+    rails_storage_proxy_path(image, only_path: true)
   end
 
-  def blog_cover(article, hero: false)
+  def blog_cover(article, hero: false, archive: false)
     return unless article.cover.attached?
 
     image_tag blog_image_url(article.cover, size: hero ? [1600, 1000] : [640, 420]),
       alt: article.cover_alt.presence || article.title, width: hero ? 1600 : 640, height: hero ? 900 : 360,
-      loading: hero ? "eager" : "lazy", fetchpriority: hero ? "high" : "auto", class: "blog-image"
+      srcset: hero ? "#{blog_image_url(article.cover, size: [640, 420])} 640w, #{blog_image_url(article.cover, size: [1600, 1000])} 1600w" : nil,
+      sizes: hero ? (archive ? "(max-width: 767px) calc(100vw - 40px), 600px" : "(max-width: 767px) calc(100vw - 40px), (max-width: 1256px) calc(100vw - 72px), 1184px") : nil,
+      decoding: "async", loading: hero ? "eager" : "lazy", fetchpriority: hero ? "high" : "auto", class: "blog-image"
   end
 
   def blog_article_body(article)

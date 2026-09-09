@@ -27,6 +27,9 @@
       <% end %>
 
       <div class="tw-mb-3">
+        <% if @home_section.blog? %>
+          <p>Os 3 artigos publicados mais recentes desta conta.</p>
+        <% else %>
         <strong>Filtros dos imóveis:</strong>
         <% if @home_section.property_filter_labels.any? %>
           <div class="tw-flex tw-flex-wrap tw-gap-1 tw-mt-2">
@@ -36,6 +39,7 @@
           </div>
         <% else %>
           <span class="tw-text-ink-muted">Nenhum filtro adicional.</span>
+        <% end %>
         <% end %>
       </div>
 

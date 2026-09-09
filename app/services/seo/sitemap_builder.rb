@@ -97,6 +97,10 @@ module Seo
       scope.select(:id, :slug, :updated_at).find_each do |article|
         entries << add_entry(loc: absolute_url(@url_helpers.public_landing_page_path(article.slug)), lastmod: article.updated_at, changefreq: "monthly", priority: 0.6)
       end
+      @tenant.blog_categories.joins(:blog_articles).merge(scope)
+        .group("blog_categories.id").pluck("blog_categories.slug", "blog_categories.updated_at", Arel.sql("MAX(blog_articles.updated_at)")).each do |slug, category_updated_at, modified_at|
+        entries << add_entry(loc: absolute_url(@url_helpers.blog_category_path(slug)), lastmod: [modified_at, category_updated_at].max, changefreq: "weekly", priority: 0.5)
+      end
       entries.compact
     end
 

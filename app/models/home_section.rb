@@ -1,6 +1,7 @@
 class HomeSection < ApplicationRecord
   include TenantScoped
   SECTION_TYPE_LABELS = {
+    "blog" => "Blog",
     "services" => "Serviços",
     "why_choose_us" => "Por que escolher a imobiliária",
     "cta_contact" => "Chamada para contato",
@@ -99,7 +100,8 @@ class HomeSection < ApplicationRecord
     featured_properties: 3,
     opportunities: 4,
     developments: 5,
-    rentals: 6
+    rentals: 6,
+    blog: 7
   }
   
   # Validations
@@ -150,6 +152,7 @@ class HomeSection < ApplicationRecord
   end
 
   def property_content_section?
+    return false if blog?
     section_type.in?(PROPERTY_SECTION_TYPES) || enabled_property_filters.any? || selected_property_ids.any?
   end
 
@@ -230,6 +233,7 @@ class HomeSection < ApplicationRecord
   private
 
   def normalize_property_filters
+    return self.property_filters = {} if blog?
     raw_filters = property_filters || {}
     normalized_filters = PROPERTY_FILTER_OPTIONS.keys.each_with_object({}) do |key, filters|
       legacy_keys = LEGACY_PROPERTY_FILTER_KEYS.select { |_legacy_key, canonical_key| canonical_key == key }.keys

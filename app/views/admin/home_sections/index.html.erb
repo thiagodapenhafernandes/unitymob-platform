@@ -32,7 +32,7 @@
                 <% section.property_filter_labels.each do |label| %><span class="ax-badge ax-badge--gray"><%= label %></span><% end %>
               </div>
             <% else %>
-              <div class="tw-text-2xs tw-text-ink-faint tw-mt-1">Sem filtros adicionais</div>
+              <div class="tw-text-2xs tw-text-ink-faint tw-mt-1"><%= section.blog? ? "3 artigos publicados mais recentes" : "Sem filtros adicionais" %></div>
             <% end %>
           </td>
           <td>

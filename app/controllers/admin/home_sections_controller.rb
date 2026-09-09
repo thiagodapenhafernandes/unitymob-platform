@@ -69,6 +69,8 @@ class Admin::HomeSectionsController < Admin::BaseController
         { selected_property_ids: [] }
       ]
     )
+    content_kind = params.dig(:home_section, :content_kind)
+    blog_content = content_kind == "blog" || (content_kind.blank? && @home_section&.blog?)
     filters = permitted.delete(:property_filters)
     filters = if filters.respond_to?(:to_unsafe_h)
                 filters.to_unsafe_h
@@ -79,7 +81,8 @@ class Admin::HomeSectionsController < Admin::BaseController
     end
     filters["selected_property_ids"] = permitted_property_ids(filters["selected_property_ids"])
     attrs = permitted.to_h.merge(property_filters: filters)
-    attrs[:section_type] = HomeSection.infer_section_type_from_filters(filters, fallback: section_type_fallback)
+    attrs[:section_type] = blog_content ? "blog" : HomeSection.infer_section_type_from_filters(filters, fallback: content_kind == "properties" ? nil : section_type_fallback)
+    attrs[:property_filters] = {} if blog_content
     attrs[:order_position] = next_order_position unless @home_section&.persisted?
     attrs
   end

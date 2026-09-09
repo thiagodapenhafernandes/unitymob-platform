@@ -30,7 +30,8 @@
       effective_description ||= "Os melhores imóveis para venda e locação. Encontre seu imóvel ideal com a #{site_name}."
       effective_keywords = (seo_public ? seo.meta_keywords.presence : nil) || @page_keywords
       effective_robots = seo_public ? seo.robots_content : "index, follow"
-      effective_robots = "noindex, follow" if params[:page].to_i >= 3
+      effective_robots = "noindex, follow" if !blog_page && params[:page].to_i >= 3
+      effective_robots = @page_robots if blog_page && @page_robots.present?
     %>
     
     <%# Dynamic Metadata %>
@@ -97,7 +98,7 @@
       end
       social_price_value = (social_price_cents || 0).to_i
       social_price_amount = social_price_value.positive? ? format("%.2f", social_price_value / 100.0) : nil
-      social_modified_at = (seo&.updated_at || social_property&.updated_at)
+      social_modified_at = (@blog_article&.updated_at || seo&.updated_at || social_property&.updated_at)
     %>
     
     <%# Open Graph / Facebook %>

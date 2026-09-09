@@ -1,5 +1,6 @@
 <% content_for :head do %>
   <%= json_ld_tag(real_estate_agent_schema) %>
+  <%= stylesheet_link_tag "blog" if @home_sections.any?(&:blog?) %>
 <% end %>
 
 <!-- Hero Section -->
@@ -14,6 +15,8 @@
   <% payload = @home_section_payloads[section.id] || {} %>
   
   <% case payload[:kind] %>
+  <% when 'blog' %>
+    <%= render 'home/blog_section', section: section, articles: payload[:records], bg_class: bg_class if payload[:records].present? %>
   <% when 'properties' %>
     <% properties = payload[:records] || [] %>
     <% if properties.present? %>

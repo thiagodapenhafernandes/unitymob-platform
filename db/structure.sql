@@ -1,4 +1,4 @@
-\restrict rm8cV1VC4Jo2mhctYhOUG9GoPfWMFxYxwJPFO4iEdWfufbHSyTA2QQof6I6lUHl
+\restrict DWfs770o27tRe18UKdOvjzHPnjw9haH1eY8Che9iPLeBC1UJObuscWdLxrAfOjf
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1491,8 +1491,8 @@ CREATE TABLE public.blog_articles (
     source_url character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT blog_article_publication_date CHECK ((((status)::text <> 'published'::text) OR (published_at IS NOT NULL))),
-    CONSTRAINT blog_article_status CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[])))
+    CONSTRAINT blog_article_publication_date CHECK ((((status)::text <> ALL ((ARRAY['published'::character varying, 'scheduled'::character varying])::text[])) OR (published_at IS NOT NULL))),
+    CONSTRAINT blog_article_status CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'scheduled'::character varying, 'published'::character varying, 'inactive'::character varying])::text[])))
 );
 
 
@@ -19042,11 +19042,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rm8cV1VC4Jo2mhctYhOUG9GoPfWMFxYxwJPFO4iEdWfufbHSyTA2QQof6I6lUHl
+\unrestrict DWfs770o27tRe18UKdOvjzHPnjw9haH1eY8Che9iPLeBC1UJObuscWdLxrAfOjf
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260909193000'),
 ('20260909190000'),
 ('20260909160000'),
 ('20260908190000'),
