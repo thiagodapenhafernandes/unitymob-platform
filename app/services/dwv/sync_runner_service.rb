@@ -41,6 +41,18 @@ module Dwv
       end
     end
 
+    def sync_property(payload)
+      if Dwv::PropertyImportService.removed_listing?(payload)
+        property_id = Dwv::PropertyImportService.extract_property_id(payload).to_s.strip
+        raise ArgumentError, "ID do imóvel DWV não encontrado no payload." if property_id.blank?
+
+        { imported: 0, deactivated: destroy_removed_properties_by_ids([property_id]) }
+      else
+        result = Dwv::PropertyImportService.new(payload, tenant: tenant).perform
+        result.merge(imported: 1, deactivated: 0)
+      end
+    end
+
     private
 
     attr_reader :tenant
@@ -57,7 +69,6 @@ module Dwv
       missing_active_ids = active_ids_missing_locally(active_ids_snapshot)
       active_ids = (changed_active_ids + missing_active_ids).uniq
       removed_ids = collect_removed_property_ids(client, limit: limit, max_pages: max_pages, filters: filters)
-      removed_ids += local_dwv_ids_missing_from(active_ids_snapshot)
       removed_ids = removed_ids.uniq
       total_steps = active_ids.size + removed_ids.size
       processed_steps = 0
@@ -69,12 +80,9 @@ module Dwv
       active_ids.each do |property_id|
         begin
           details = client.property_details(property_id)
-          if Dwv::PropertyImportService.active_listing?(details)
-            Dwv::PropertyImportService.new(details, tenant: tenant).perform
-            imported += 1
-          else
-            deactivated += destroy_removed_properties_by_ids([property_id])
-          end
+          result = sync_property(details)
+          imported += result.fetch(:imported)
+          deactivated += result.fetch(:deactivated)
         rescue => e
           errors_count += 1
           errors_by_reason[normalize_error_message(e.message)] += 1
@@ -106,7 +114,7 @@ module Dwv
       errors_by_reason = Hash.new(0)
       active_ids = collect_active_property_ids(client, limit: limit, max_pages: max_pages)
       removed_ids = if deactivate_removed
-        (collect_removed_property_ids(client, limit: limit, max_pages: max_pages) + local_dwv_ids_missing_from(active_ids)).uniq
+        collect_removed_property_ids(client, limit: limit, max_pages: max_pages)
       else
         []
       end
@@ -120,12 +128,9 @@ module Dwv
       active_ids.each do |property_id|
         begin
           details = client.property_details(property_id)
-          if Dwv::PropertyImportService.active_listing?(details)
-            Dwv::PropertyImportService.new(details, tenant: tenant).perform
-            imported += 1
-          else
-            deactivated += destroy_removed_properties_by_ids([property_id])
-          end
+          result = sync_property(details)
+          imported += result.fetch(:imported)
+          deactivated += result.fetch(:deactivated)
         rescue => e
           errors_count += 1
           errors_by_reason[normalize_error_message(e.message)] += 1
@@ -209,13 +214,6 @@ module Dwv
       end
     end
 
-    def local_dwv_ids_missing_from(active_ids)
-      active_ids = active_ids.map(&:to_s)
-      scope = tenant.habitations.where(imovel_dwv: "Sim").where.not(codigo_dwv: [nil, ""])
-      scope = active_ids.any? ? scope.where.not(codigo_dwv: active_ids) : scope
-      scope.distinct.pluck(:codigo_dwv)
-    end
-
     def active_ids_missing_locally(active_ids)
       active_ids = active_ids.map(&:to_s).reject(&:blank?)
       return [] if active_ids.empty?
@@ -244,7 +242,7 @@ module Dwv
 
       collection.each do |item|
           next if state == :active && !Dwv::PropertyImportService.active_listing?(item)
-          next if state == :removed && Dwv::PropertyImportService.active_listing?(item)
+          next if state == :removed && !Dwv::PropertyImportService.removed_listing?(item)
 
           property_id = Dwv::PropertyImportService.extract_property_id(item).to_s.strip
           next if property_id.blank?

@@ -57,7 +57,12 @@ class Admin::DwvIntegrationsController < Admin::BaseController
     return redirect_to(admin_dwv_integrations_path, alert: "Informe o ID do imóvel na DWV.") if property_id.blank?
 
     payload = dwv_client.property_details(property_id)
-    result = Dwv::PropertyImportService.new(payload, tenant: current_tenant).perform
+    result = Dwv::SyncRunnerService.new(tenant: current_tenant).sync_property(payload)
+
+    if result[:imported].zero?
+      stamp_sync!("Imóvel DWV ##{property_id} fora da pauta. Removidos: #{result[:deactivated]}.")
+      return redirect_to(admin_dwv_integrations_path, notice: "Disponibilidade do imóvel sincronizada.")
+    end
 
     stamp_sync!("Imóvel DWV ##{property_id} sincronizado. Código local: #{result[:habitation].codigo}")
     redirect_to admin_dwv_integrations_path, notice: "Imóvel sincronizado com sucesso."

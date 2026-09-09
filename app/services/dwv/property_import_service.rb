@@ -70,13 +70,12 @@ module Dwv
 
     def self.removed_listing?(payload)
       payload = unwrap_payload(payload)
-      raw_status = value(payload, ["status"], ["integration_status"]).to_s.strip.downcase
+      statuses = %w[status integration_status].map { |key| value(payload, [key]).to_s.strip.downcase }
       deleted = value(payload, ["deleted"])
 
       deleted == true ||
         deleted.to_s == "true" ||
-        raw_status == "inactive" ||
-        raw_status == "auto_inactive"
+        statuses.any? { |status| status.in?(%w[inactive auto_inactive]) }
     end
 
     def self.truthy?(raw)
@@ -151,7 +150,7 @@ module Dwv
       end
 
       assign_habitation_attributes(habitation, dwv_id:, incoming_codigo:, existing_record:)
-      address_attrs = extract_address
+      address_attrs = extract_address unless existing_record
 
       Habitation.transaction do
         habitation.save!
@@ -192,6 +191,20 @@ module Dwv
       rent_cents = self.class.cents_from_first(@payload, RENT_PRICE_PATHS)
       effective_sale = sale_cents || habitation.valor_venda_cents
       effective_rent = rent_cents || habitation.valor_locacao_cents
+
+      if existing_record
+        habitation.assign_attributes(
+          codigo_dwv: dwv_id,
+          imovel_dwv: "Sim",
+          valor_venda_cents: effective_sale,
+          valor_locacao_cents: effective_rent,
+          data_atualizacao_crm: parse_time(value(["last_updated_at"], ["updated_at"])) || Time.current,
+          last_sync_at: Time.current,
+          last_sync_status: "success",
+          last_sync_message: "Sincronizado via DWV (preço atualizado)"
+        )
+        return
+      end
 
       raw_status = value(["status"], ["property_status"]).to_s.strip.downcase
       raw_integration_status = value(["integration_status"]).to_s.strip.downcase
@@ -259,36 +272,16 @@ module Dwv
         data_atualizacao_crm: parse_time(value(["last_updated_at"], ["updated_at"])) || Time.current,
         last_sync_at: Time.current,
         last_sync_status: "success",
-        last_sync_message: existing_record ? "Sincronizado via DWV (mapeamento completo)" : "Sincronizado via DWV (cadastro inicial)"
+        last_sync_message: "Sincronizado via DWV (cadastro inicial)"
       }
       attrs[:descricao_web] = description if description.present?
       attrs[:dwv_payload] = @payload if habitation.has_attribute?(:dwv_payload)
 
       attrs.merge!(legacy_address_attrs(address_attrs)) if address_attrs.present?
       attrs.merge!(derived_feature_flags(features + infrastructure))
-      attrs[:codigo] = resolve_codigo_for(habitation) unless existing_record
-
-      attrs = existing_record_attrs(attrs) if existing_record
+      attrs[:codigo] = resolve_codigo_for(habitation)
 
       habitation.assign_attributes(attrs)
-    end
-
-    def existing_record_attrs(attrs)
-      attrs.slice(
-        :codigo_dwv,
-        :imovel_dwv,
-        :construtora,
-        :constructor_id,
-        :proprietor_id,
-        :proprietario,
-        :proprietario_codigo,
-        :valor_venda_cents,
-        :valor_locacao_cents,
-        :data_atualizacao_crm,
-        :last_sync_at,
-        :last_sync_status,
-        :last_sync_message
-      ).merge(last_sync_message: "Sincronizado via DWV (preço atualizado)")
     end
 
     def find_existing_habitation(dwv_id:, codigo:)

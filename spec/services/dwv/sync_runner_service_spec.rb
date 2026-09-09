@@ -52,7 +52,7 @@ RSpec.describe Dwv::SyncRunnerService do
       expect(Dwv::PropertyImportService).to have_received(:new).with(details, tenant: current_tenant)
     end
 
-    it "remove imóvel DWV local que desapareceu da lista ativa durante o incremental" do
+    it "preserva imóvel DWV ausente da lista ativa durante o incremental" do
       current_tenant = Tenant.create!(name: "Tenant incremental removed DWV #{SecureRandom.hex(3)}", slug: "tenant-incremental-removed-dwv-#{SecureRandom.hex(3)}")
       Current.tenant = current_tenant
       Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
@@ -71,9 +71,9 @@ RSpec.describe Dwv::SyncRunnerService do
 
       result = service.call(mode: "incremental", limit: 50, max_pages: 1, last_updates: "21/07/2026", status_service: status_service)
 
-      expect(result).to include(imported: 0, deactivated: 1, errors_count: 0)
+      expect(result).to include(imported: 0, deactivated: 0, errors_count: 0)
       expect(current_tenant.habitations.where(id: kept_habitation.id)).to exist
-      expect(current_tenant.habitations.where(id: removed_habitation.id)).not_to exist
+      expect(current_tenant.habitations.where(id: removed_habitation.id)).to exist
     end
 
     it "importa imóvel de locação ativo que ainda não existe localmente" do
@@ -127,7 +127,7 @@ RSpec.describe Dwv::SyncRunnerService do
       expect(client).to have_received(:list_properties).with(limit: 50, page: 1, deleted: false).twice
     end
 
-    it "remove imóvel DWV local que não aparece mais na lista ativa" do
+    it "preserva imóvel DWV quando a lista ativa está vazia" do
       current_tenant = Tenant.create!(name: "Tenant missing DWV #{SecureRandom.hex(3)}", slug: "tenant-missing-dwv-#{SecureRandom.hex(3)}")
       Current.tenant = current_tenant
       Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
@@ -144,8 +144,45 @@ RSpec.describe Dwv::SyncRunnerService do
 
       result = service.call(mode: "full", limit: 50, max_pages: 1, status_service: status_service)
 
-      expect(result).to include(imported: 0, deactivated: 1, errors_count: 0)
-      expect(current_tenant.habitations.where(id: missing_habitation.id)).not_to exist
+      expect(result).to include(imported: 0, deactivated: 0, errors_count: 0)
+      expect(current_tenant.habitations.where(id: missing_habitation.id)).to exist
+    end
+  end
+
+  %w[full incremental].each do |mode|
+    it "preserva ausentes em página limitada e remove apenas inativos explícitos no modo #{mode}" do
+      tenant = Tenant.create!(name: "Pauta parcial", slug: "parcial-#{SecureRandom.hex(4)}")
+      Setting.set("dwv_enabled", "true", "teste", tenant: tenant)
+      Setting.set("dwv_api_token", "token", "teste", tenant: tenant)
+      absent = create(:habitation, tenant: tenant, imovel_dwv: "Sim", codigo_dwv: "absent")
+      inactive = create(:habitation, tenant: tenant, imovel_dwv: "Sim", codigo_dwv: "inactive")
+      client = instance_double(Dwv::Client)
+      service = described_class.new(tenant: tenant)
+      allow(service).to receive(:build_client).and_return(client)
+      allow(service).to receive(:pause_if_needed)
+      allow(client).to receive(:list_properties) do |**args|
+        { "data" => args[:deleted] ? [{ "id" => "inactive", "deleted" => true }] : [{ "id" => "active" }] }
+      end
+      allow(client).to receive(:property_details).with("active").and_return({ "id" => "active" })
+      allow(Dwv::PropertyImportService).to receive(:new).and_return(instance_double(Dwv::PropertyImportService, perform: { success: true }))
+
+      result = service.call(mode: mode, limit: 1, max_pages: 1)
+
+      expect(result).to include(imported: 1, deactivated: 1, errors_count: 0)
+      expect(absent.reload).to be_persisted
+      expect(Habitation.exists?(inactive.id)).to be(false)
+    end
+  end
+
+  describe "sincronização individual" do
+    it "remove somente o imóvel do tenant quando a indisponibilidade é explícita" do
+      tenant = Tenant.create!(name: "Tenant individual", slug: "individual-#{SecureRandom.hex(4)}")
+      habitation = create(:habitation, tenant: tenant, imovel_dwv: "Sim", codigo_dwv: "123")
+      other = create(:habitation, imovel_dwv: "Sim", codigo_dwv: "123", tenant: Tenant.create!(name: "Outro individual", slug: "outro-individual-#{SecureRandom.hex(4)}"))
+      result = described_class.new(tenant: tenant).sync_property("id" => "123", "status" => "active", "integration_status" => "inactive")
+      expect(result).to eq(imported: 0, deactivated: 1)
+      expect(Habitation.exists?(habitation.id)).to be(false)
+      expect(other.reload).to be_persisted
     end
   end
 

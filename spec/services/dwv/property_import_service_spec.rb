@@ -66,7 +66,9 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.address.complemento).to be_blank
     end
 
-    it "updates price, owner link and sync metadata on an existing DWV record" do
+    it "updates only prices and sync metadata on an existing DWV record" do
+      proprietor = tenant.proprietors.create!(name: "Proprietário local")
+      constructor = Constructor.create!(name: "Construtora local")
       habitation = create(
         :habitation,
         tenant: tenant,
@@ -74,6 +76,10 @@ RSpec.describe Dwv::PropertyImportService do
         codigo_dwv: "632439",
         imovel_dwv: "Sim",
         titulo_anuncio: "Título antigo",
+        proprietor: proprietor,
+        constructor: constructor,
+        construtora: "Construtora local",
+        proprietario: "Proprietário local",
         descricao_web: "Descrição antiga",
         pictures: [{ "url" => "https://cdn.dwv.test/old.jpg" }],
         area_privativa_m2: BigDecimal("99.0"),
@@ -84,8 +90,14 @@ RSpec.describe Dwv::PropertyImportService do
         valor_locacao_cents: 5_000_00
       )
 
+      habitation.create_address!(logradouro: "Rua local", bairro: "Centro", cidade: "Itajaí", uf: "SC", complemento: "Ajuste local")
+      before_address = habitation.address.attributes
+      expect(Constructor).not_to receive(:where)
+      expect(Dwv::ProprietorResolver).not_to receive(:new)
+
       described_class.new(unit_payload, tenant: tenant).perform
       habitation.reload
+      expect(habitation.address.attributes).to eq(before_address)
 
       expect(habitation.titulo_anuncio).to eq("Título antigo")
       expect(habitation.descricao_web.to_plain_text).to include("Descrição antiga")
@@ -95,9 +107,10 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.exibir_no_site_flag).to eq(false)
       expect(habitation.dwv_payload).to include("title" => "Payload antigo")
       expect(habitation.valor_venda_cents).to eq(439_776_500)
-      expect(habitation.construtora).to eq("Rzilli")
-      expect(habitation.proprietor.name).to eq("Rzilli")
-      expect(habitation.proprietario).to eq("Rzilli")
+      expect(habitation.construtora).to eq("Construtora local")
+      expect(habitation.constructor_id).to eq(constructor.id)
+      expect(habitation.proprietor_id).to eq(proprietor.id)
+      expect(habitation.proprietario).to eq("Proprietário local")
       expect(habitation.preco_atualizado_em).to be_present
       expect(habitation.last_sync_message).to eq("Sincronizado via DWV (preço atualizado)")
     end
