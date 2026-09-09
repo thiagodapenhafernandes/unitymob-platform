@@ -28,6 +28,7 @@ const MEDIA_DRAG_TUNING = {
 // Connects to data-controller="photo-upload"
 export default class extends Controller {
   static targets = [
+    "watermarkStatus",
     "input",
     "orderInput",
     "apiOrderInput",
@@ -40,6 +41,10 @@ export default class extends Controller {
   ]
 
   static values = {
+    watermarkStatusUrl: String,
+    watermarkRetryUrl: String,
+    watermarkDiscardUrl: String,
+    watermarkPending: Boolean,
     async: Boolean,
     uploadUrl: String,
     reorderUrl: String,
@@ -50,6 +55,9 @@ export default class extends Controller {
   static maxUploadBytes = 250 * 1024 * 1024
 
   connect() {
+    this.watermarkDisconnected = false
+    this.watermarkPhotoSignature = this.hasOrderInputTarget ? this.orderInputTarget.value.split(",").filter(Boolean).sort().join(",") : ""
+    if (this.watermarkPendingValue) this.scheduleWatermarkPoll()
     this.selectedNewFiles = []
     this.newFileIdCounter = 0
     this.boundHandleDragOver = this.handleDragOver.bind(this)
@@ -77,6 +85,9 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.watermarkDisconnected = true
+    clearTimeout(this.watermarkPollTimer)
+    this.watermarkRequest?.abort()
     this.cleanupMediaDragAndDrop?.()
     this.stopSortableAutoScroll()
     this.element.removeEventListener("pointerdown", this.boundCaptureMediaPointerDown, true)
@@ -918,6 +929,58 @@ export default class extends Controller {
     this.clearFeedbackElements()
   }
 
+  scheduleWatermarkPoll() {
+    clearTimeout(this.watermarkPollTimer)
+    if (!this.watermarkDisconnected && this.hasWatermarkStatusUrlValue) {
+      this.watermarkPollTimer = setTimeout(() => this.pollWatermark(), 3000)
+    }
+  }
+
+  async pollWatermark() {
+    if (this.uploadInProgress || this.formSubmitInProgress || this.selectedNewFiles.length || this.mediaDragState) {
+      this.scheduleWatermarkPoll()
+      return
+    }
+    this.watermarkRequest = new AbortController()
+    try {
+      const payload = await this.requestJson(this.watermarkStatusUrlValue, { signal: this.watermarkRequest.signal })
+      if (this.watermarkDisconnected) return
+      const signature = payload.photos.map(photo => String(photo.id)).sort().join(",")
+      if (signature !== this.watermarkPhotoSignature) this.applyMediaPayload(payload)
+      else this.updateWatermarkStatus(payload)
+    } catch (error) {
+      if (error.name !== "AbortError" && !this.watermarkDisconnected) {
+        this.showTransientFeedback("Não foi possível atualizar o processamento das fotos. Tentando novamente...", true)
+        this.scheduleWatermarkPoll()
+      }
+    }
+  }
+
+  updateWatermarkStatus(payload) {
+    if (typeof payload.watermark_html === "string" && this.hasWatermarkStatusTarget) {
+      this.watermarkStatusTarget.innerHTML = payload.watermark_html
+    }
+    if (payload.photos) this.watermarkPhotoSignature = payload.photos.map(photo => String(photo.id)).sort().join(",")
+    if (payload.watermark_photos?.some(photo => photo.status !== "failed")) this.scheduleWatermarkPoll()
+    else clearTimeout(this.watermarkPollTimer)
+  }
+
+  retryWatermark(event) { return this.changeWatermark(event, this.watermarkRetryUrlValue, "POST") }
+  discardWatermark(event) { return this.changeWatermark(event, this.watermarkDiscardUrlValue, "DELETE") }
+
+  async changeWatermark(event, url, method) {
+    const button = event.currentTarget
+    button.disabled = true
+    try {
+      const payload = await this.requestJson(url, { method, json: { photo_id: button.dataset.photoId } })
+      if (!this.watermarkDisconnected) this.applyMediaPayload(payload)
+    } catch (error) {
+      this.showTransientFeedback(error.message, true)
+    } finally {
+      button.disabled = false
+    }
+  }
+
   async uploadNewFiles(fileEntries) {
     if (!this.canSyncUpload() || fileEntries.length === 0) return
     if (this.uploadInProgress) return
@@ -1059,7 +1122,8 @@ export default class extends Controller {
 
     const requestOptions = {
       method: options.method || "GET",
-      headers
+      headers,
+      signal: options.signal
     }
 
     if (options.body) {
@@ -1164,6 +1228,7 @@ export default class extends Controller {
   }
 
   applyMediaPayload(payload, options = {}) {
+    this.updateWatermarkStatus(payload)
     const replaceGallery = options.replaceGallery !== false
 
     if (replaceGallery && typeof payload.gallery_html === "string" && this.hasPreviewContainerTarget) {

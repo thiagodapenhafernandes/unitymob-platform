@@ -25,11 +25,11 @@ module Admin
 
     def update
       previous_layer_enabled = @property_setting.broker_capture_layer_enabled?
-      purge_watermark_image_if_requested
       @property_setting.assign_attributes(property_setting_params)
       return_to_review_workflow = params[:return_to].to_s == review_workflow_admin_property_setting_path
 
       if @property_setting.save
+        purge_watermark_image_if_requested
         if previous_layer_enabled && !@property_setting.broker_capture_layer_enabled
           reassign_broker_intakes_to_fallback_admin_user!
         end

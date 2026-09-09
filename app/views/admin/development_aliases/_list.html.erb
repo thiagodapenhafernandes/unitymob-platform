@@ -1,0 +1,15 @@
+<div id="development-alias-list" class="property-settings-alias-list">
+  <% if local_assigns[:message].present? %>
+    <div role="status"><%= ax_inline_notice(tone: :success, compact: true) { message } %></div>
+  <% end %>
+  <% aliases.each do |alias_record| %>
+    <div class="property-settings-alias-item">
+      <span><strong><%= alias_record.name %></strong><small><%= alias_record.development.nome_empreendimento.presence || alias_record.development.titulo_anuncio %></small></span>
+      <%= ax_icon_button label: "Remover nome alternativo #{alias_record.name}", icon: "trash", url: admin_development_alias_path(alias_record),
+            data: { turbo_method: :delete, turbo_stream: true } %>
+    </div>
+  <% end %>
+  <% if aliases.empty? %>
+    <%= ax_empty_state(title: "Nenhum nome alternativo cadastrado", description: "Adicione nomes comerciais para ampliar o reconhecimento das buscas.", icon: "tags", compact: true) %>
+  <% end %>
+</div>

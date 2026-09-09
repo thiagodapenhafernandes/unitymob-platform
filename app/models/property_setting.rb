@@ -1,3 +1,5 @@
+require "mini_magick"
+
 class PropertySetting < ApplicationRecord
   AI_PROPERTY_SEARCH_DATA_SOURCES = %w[database external_api imported_xml json_feed].freeze
   AI_PROPERTY_SEARCH_SORTS = %w[relevance price_asc price_desc recent area_desc].freeze
@@ -287,6 +289,7 @@ class PropertySetting < ApplicationRecord
   }.freeze
 
   has_one_attached :watermark_image
+  validate :validate_watermark_upload
   belongs_to :broker_capture_fallback_admin_user, class_name: "AdminUser", optional: true
   has_many :property_review_policies, dependent: :destroy
 
@@ -443,6 +446,46 @@ class PropertySetting < ApplicationRecord
   end
 
   private
+
+  def validate_watermark_upload
+    change = attachment_changes["watermark_image"]
+    return unless change.is_a?(ActiveStorage::Attached::Changes::CreateOne)
+
+    blob = change.blob
+    if blob.persisted? && blob.metadata["tenant_id"].present? && blob.metadata["tenant_id"].to_s != tenant_id.to_s
+      errors.add(:watermark_image, "não pertence a esta conta")
+      return
+    end
+    unless %w[image/png image/jpeg image/webp].include?(blob.content_type) && blob.byte_size <= 5.megabytes
+      errors.add(:watermark_image, "deve ser PNG, JPEG ou WebP de até 5 MB")
+      return
+    end
+
+    attachable = change.attachable
+    io = if attachable.respond_to?(:tempfile)
+      attachable.tempfile
+    elsif attachable.is_a?(Hash)
+      attachable.fetch(:io)
+    end
+    if io
+      io.rewind
+      validate_watermark_image_content(io.read)
+      io.rewind
+    else
+      blob.open { |file| validate_watermark_image_content(file.read) }
+    end
+  rescue ActiveStorage::FileNotFoundError, MiniMagick::Error
+    errors.add(:watermark_image, "não pôde ser lida; envie uma imagem válida")
+  end
+
+  def validate_watermark_image_content(bytes)
+    image = MiniMagick::Image.read(bytes)
+    unless image.valid? && %w[PNG JPEG WEBP].include?(image.type) && image.width * image.height <= 25_000_000
+      errors.add(:watermark_image, "deve ser uma imagem PNG, JPEG ou WebP válida de até 25 megapixels")
+    end
+  ensure
+    image&.destroy!
+  end
 
   def initialize_ai_property_search_defaults!
     return unless has_attribute?(:ai_property_search_enabled)

@@ -119,4 +119,89 @@ RSpec.describe "Admin::LeadSettings", type: :request do
 
     expect(response).to redirect_to(admin_root_path)
   end
+  it "salva tempos por conta e recusa configuração inválida" do
+    other_tenant = Tenant.create!(name: "Outra conta", slug: "lembretes-outra-#{SecureRandom.hex(4)}")
+    other_setting = LeadSetting.instance(tenant: other_tenant)
+    LeadSetting.instance(tenant: admin.tenant).update!(stickiness_window_days: 90)
+    patch admin_lead_setting_path, params: { lead_setting: {
+      reminder_first_minutes: 90, reminder_second_minutes: 45, reminder_third_minutes: 20,
+      reminder_overdue_minutes: 180, reminder_retry_minutes: 40, reminder_due_enabled: "0",
+      reminder_start_time: "09:30", reminder_end_time: "17:45", tenant_id: other_tenant.id
+    } }
+    expect(response).to redirect_to(edit_admin_lead_setting_path)
+    setting = LeadSetting.instance(tenant: admin.tenant).reload
+    expect(setting.reminder_first_minutes).to eq(90)
+    expect(setting.stickiness_window_days).to eq(90)
+    expect(setting.reminder_due_enabled).to be(false)
+    expect(setting.reminder_start_time).to eq("09:30")
+    expect(other_setting.reload.reminder_first_minutes).to eq(60)
+    patch admin_lead_setting_path, params: { lead_setting: { reminder_retry_minutes: 0 } }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(setting.reload.reminder_retry_minutes).to eq(40)
+  end
+
+  it "renderiza os tempos padrão em controles nativos dentro do formulário de salvamento" do
+    get edit_admin_lead_setting_path
+    doc = Nokogiri::HTML(response.body)
+    form = doc.at_css('form[action="/admin/lead_setting"]')
+    { reminder_first_minutes: "60", reminder_second_minutes: "30", reminder_third_minutes: "15",
+      reminder_overdue_minutes: "120", reminder_retry_minutes: "30" }.each do |field, value|
+      input = form.at_css("input[name='lead_setting[#{field}]']")
+      expect(input["type"]).to eq("number")
+      expect(input["value"]).to eq(value)
+      expect(input["required"]).not_to be_nil
+    end
+    expect(form.at_css('input[type="time"][name="lead_setting[reminder_start_time]"]')["value"]).to eq("08:00")
+    expect(form.at_css('input[type="time"][name="lead_setting[reminder_end_time]"]')["value"]).to eq("18:00")
+    expect(form.at_css('input[type="checkbox"][name="lead_setting[reminder_due_enabled]"]')["checked"]).not_to be_nil
+  end
+
+  it "salva o formulário completo sem alterar eventos, privacidade ou fidelização" do
+    setting = LeadSetting.instance(tenant: admin.tenant)
+    preserved = {
+      notify_on_distribution: false, notify_on_sticky: true, notify_on_redistribution: false,
+      notify_on_shark_tank: true, notify_on_direct_assignment: false, notify_on_reassignment: true,
+      notify_on_lost_turn: false, stickiness_enabled: true, stickiness_window_days: 90,
+      secure_links_enabled: true, secure_link_whatsapp: false, secure_link_email: true,
+      secure_link_push: false, push_lead_click_action: "whatsapp"
+    }
+    setting.update!(preserved)
+    get edit_admin_lead_setting_path
+    form = Nokogiri::HTML(response.body).at_css('form[action="/admin/lead_setting"]')
+    # Controles bem-sucedidos do navegador, incluindo os hidden dos checkboxes.
+    pairs = form.css('input[name]').filter_map do |input|
+      next if input["disabled"] || %w[submit button].include?(input["type"])
+      next if %w[checkbox radio].include?(input["type"]) && !input["checked"]
+      [input["name"], input["value"].to_s]
+    end
+    params = Rack::Utils.parse_nested_query(URI.encode_www_form(pairs))
+    params.fetch("lead_setting").merge!("reminder_first_minutes" => "90", "reminder_second_minutes" => "45",
+      "reminder_third_minutes" => "20", "reminder_due_enabled" => "0", "reminder_start_time" => "09:30",
+      "reminder_end_time" => "17:45", "reminder_overdue_minutes" => "180", "reminder_retry_minutes" => "40")
+    patch admin_lead_setting_path, params: params
+    expect(response).to redirect_to(edit_admin_lead_setting_path)
+    expect(setting.reload.attributes.symbolize_keys.slice(*preserved.keys)).to eq(preserved)
+    expect(setting.reminder_first_minutes).to eq(90)
+    expect(setting.reminder_due_enabled).to be(false)
+    follow_redirect!
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css('input[name="lead_setting[reminder_start_time]"]')["value"]).to eq("09:30")
+    expect(doc.at_css('input[type="checkbox"][name="lead_setting[reminder_due_enabled]"]')["checked"]).to be_nil
+    expect(response.body).to include("90, 45 e 20 minutos antes", "180 minutos, entre 09:30 e 17:45")
+  end
+
+  it "mantém valores e mostra erros ao rejeitar a ordem dos lembretes" do
+    setting = LeadSetting.instance(tenant: admin.tenant)
+    original = setting.attributes
+    patch admin_lead_setting_path, params: { lead_setting: {
+      reminder_first_minutes: 10, reminder_second_minutes: 30, reminder_third_minutes: 15,
+      notify_on_shark_tank: "0"
+    } }
+    expect(response).to have_http_status(:unprocessable_entity)
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css('input[name="lead_setting[reminder_first_minutes]"]')["value"]).to eq("10")
+    expect(doc.at_css('.ax-form-error-summary')).to be_present
+    expect(setting.reload.attributes).to eq(original)
+  end
+
 end

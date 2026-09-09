@@ -4,7 +4,7 @@ RSpec.describe Storage::ProtectedBlobPolicy do
   it "identifica anexos críticos de configuração visual" do
     tenant = Tenant.create!(name: "Tenant protected #{SecureRandom.hex(3)}", slug: "tenant-protected-#{SecureRandom.hex(3)}")
     setting = PropertySetting.create!(tenant: tenant)
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
 
     expect(described_class.protected_attachment?(setting.watermark_image.attachment)).to be(true)
     expect(described_class.protected_blob?(setting.watermark_image.blob)).to be(true)

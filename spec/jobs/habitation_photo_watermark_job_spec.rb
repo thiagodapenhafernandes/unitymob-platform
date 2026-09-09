@@ -13,7 +13,7 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
     habitation = create(:habitation, tenant: tenant)
     setting = PropertySetting.create!(tenant: tenant, watermark_position: "bottom_left")
     setting.watermark_image.attach(
-      io: StringIO.new("watermark"),
+      io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))),
       filename: "watermark.png",
       content_type: "image/png"
     )
@@ -45,7 +45,7 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
     allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!).and_return(true)
 
     expect do
-      described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
+      described_class.new.perform(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
     end.to have_enqueued_job(Storage::SafePurgeJob).with(original_blob.id).at(
       be_within(2.seconds).of(described_class::ORIGINAL_BLOB_PURGE_DELAY.from_now)
     )
@@ -70,7 +70,7 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
     habitation = create(:habitation, tenant: tenant)
     setting = PropertySetting.create!(tenant: tenant, watermark_position: "center")
     setting.watermark_image.attach(
-      io: StringIO.new("watermark"),
+      io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))),
       filename: "watermark.png",
       content_type: "image/png"
     )
@@ -90,52 +90,22 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
     allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!)
 
     expect do
-      described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
+      described_class.new.perform(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
     end.to raise_error(Images::WatermarkProcessor::ProcessingError, /marca ausente/)
 
     expect(attachment.reload.blob_id).to eq(original_blob.id)
     expect(Storage::PublicPropertyPhoto).not_to have_received(:publish_blob!)
   end
 
-  it "descarta sem falhar quando o arquivo original não existe mais no storage" do
-    suffix = SecureRandom.hex(3)
-    tenant = Tenant.create!(name: "Tenant watermark missing #{suffix}", slug: "tenant-watermark-missing-#{suffix}")
-    habitation = create(:habitation, tenant: tenant)
-    setting = PropertySetting.create!(tenant: tenant, watermark_position: "center")
-    setting.watermark_image.attach(
-      io: StringIO.new("watermark"),
-      filename: "watermark.png",
-      content_type: "image/png"
-    )
-    habitation.photos.attach(
-      io: StringIO.new("original-photo"),
-      filename: "photo.jpg",
-      content_type: "image/jpeg"
-    )
-    attachment = habitation.photos.attachments.last
-    original_blob = attachment.blob
-
-    allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+  it "preserva a pendência e identifica corretamente a falta da foto original" do
+    habitation = create(:habitation)
+    setting = PropertySetting.instance(tenant: habitation.tenant)
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
+    habitation.watermark_photos.attach(io: StringIO.new("original"), filename: "foto.jpg", content_type: "image/jpeg")
+    attachment = habitation.watermark_photos.attachments.last
     allow_any_instance_of(ActiveStorage::Blob).to receive(:open).and_raise(ActiveStorage::FileNotFoundError)
-    allow(Storage::BlobAuditRecorder).to receive(:record!)
-    allow(Images::WatermarkProcessor).to receive(:call)
-    allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!)
-
-    expect do
-      described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
-    end.not_to raise_error
-
-    expect(Storage::BlobAuditRecorder).to have_received(:record!).with(
-      blob: original_blob,
-      attachment: attachment,
-      action: "watermark_source_missing",
-      source: "habitation_photo_watermark_job",
-      metadata: {
-        error: "ActiveStorage::FileNotFoundError"
-      }
-    )
-    expect(Images::WatermarkProcessor).not_to have_received(:call)
-    expect(Storage::PublicPropertyPhoto).not_to have_received(:publish_blob!)
-    expect(attachment.reload.blob_id).to eq(original_blob.id)
+    expect { described_class.new.perform(habitation.id, [attachment.id], setting.id, tenant_id: habitation.tenant_id) }.to raise_error(Images::WatermarkProcessor::ProcessingError, /foto original/)
+    expect(attachment.reload.blob.metadata["watermark_error"]).to include("foto original")
+    expect(habitation.reload.photos).not_to be_attached
   end
 end

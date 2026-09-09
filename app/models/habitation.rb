@@ -664,6 +664,7 @@ class Habitation < ApplicationRecord
   
   # Active Storage Photos (For manual upload)
   has_many_attached :photos
+  has_many_attached :watermark_photos
 
   scope :with_local_photos, -> {
     where(<<~SQL.squish)

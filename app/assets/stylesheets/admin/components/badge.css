@@ -70,3 +70,7 @@
   border-color: var(--ax-dark-focus-border);
   box-shadow: 0 0 0 2px var(--admin-primary-ring);
 }
+
+/* Status lists with complete labels, including long validation names. */
+.ax-badge-list { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.ax-badge--wrap { height: auto; min-height: 24px; max-width: 100%; padding-block: 4px; white-space: normal; line-height: 1.4; overflow-wrap: anywhere; }

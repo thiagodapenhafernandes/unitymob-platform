@@ -203,6 +203,35 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
     expect(option.reload.name).to eq("Sem fit")
   end
 
+  it "mantém o cadastro fechado em um modal acionado pela listagem" do
+    get admin_attribute_options_path
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css('[data-ax-modal-open="#newAttributeOptionModal"]')).to be_present
+    modal = doc.at_css('#newAttributeOptionModal')
+    expect(modal["hidden"]).not_to be_nil
+    expect(modal["data-ax-modal-open-value"]).to eq("false")
+    expect(modal.at_css('form input[name="attribute_option[name]"]')).to be_present
+    expect(doc.at_css('.attribute-options-admin select[name="attribute_option[context]"]')).to be_nil
+  end
+
+  it "reabre o cadastro com os valores e erros sem criar um atributo duplicado" do
+    name = "Atributo existente #{SecureRandom.hex(4)}"
+    admin.tenant.attribute_options.create!(context: "habitation", category: "feature", name: name)
+    expect {
+      post admin_attribute_options_path, params: {
+        **csrf_params_from_response,
+        attribute_option: { context: "habitation", category: "feature", name: name }
+      }
+    }.not_to change { admin.tenant.attribute_options.count }
+    expect(response).to have_http_status(:unprocessable_entity)
+    doc = Nokogiri::HTML(response.body)
+    modal = doc.at_css('#newAttributeOptionModal')
+    expect(modal["data-ax-modal-open-value"]).to eq("true")
+    expect(modal.at_css('input[name="attribute_option[name]"]')["value"]).to eq(name)
+    expect(modal.at_css('.ax-form-error-summary').text).to include("já existe nesta categoria")
+    expect(doc.at_css('.ax-table')).to be_present
+  end
+
   def csrf_params_from_response
     token = csrf_token_from_catalog
     token.present? ? { authenticity_token: token } : {}

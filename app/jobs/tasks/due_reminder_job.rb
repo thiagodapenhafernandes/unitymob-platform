@@ -2,23 +2,14 @@ module Tasks
   class DueReminderJob < ApplicationJob
     queue_as :default
 
-    BATCH_LIMIT = 200
-    UPCOMING_LEAD_TIME = 1.hour
-    UPCOMING_PHASES = {
-      "15_minutes_before" => 15.minutes,
-      "30_minutes_before" => 30.minutes,
-      "1_hour_before" => 1.hour
-    }.freeze
-    OVERDUE_REPEAT_INTERVAL = 2.hours
-    BUSINESS_HOURS = 8...18
-    RETRY_ATTEMPT_AFTER = 30.minutes
-    SENT_EVENT_TYPES = %w[provider_accepted device_received].freeze
+    BATCH_SIZE = 200
 
-    def perform(now: Time.current)
-      Tenant.find_each do |tenant|
+    def perform(now: nil)
+      Tenant.find_each(batch_size: BATCH_SIZE) do |tenant|
         Current.set(tenant: tenant) do
-          due_tasks_for(tenant, now).find_each do |task|
-            deliver_reminder(task, now)
+          @reminder_setting = LeadSetting.instance(tenant: tenant)
+          due_tasks_for(tenant, now || Time.current).find_each(batch_size: BATCH_SIZE) do |task|
+            deliver_reminder(task, now || Time.current)
           rescue => e
             Rails.logger.warn("[Tasks::DueReminderJob] falha na tarefa #{task.id}: #{e.class} #{e.message}")
           end
@@ -35,38 +26,10 @@ module Tasks
             .operational_current
             .pendentes
             .where.not(admin_user_id: nil, due_at: nil)
-            .where("due_at <= ?", now + UPCOMING_LEAD_TIME)
+            .where("due_at <= ?", now + @reminder_setting.reminder_first_minutes.minutes)
             .joins(:admin_user)
             .merge(AdminUser.active)
             .includes(:admin_user, :lead)
-            .limit(BATCH_LIMIT)
-    end
-
-    def reminder_phase(task, now)
-      return "due" if task.due_at <= now
-
-      UPCOMING_PHASES.each do |phase, lead_time|
-        return phase if task.due_at <= now + lead_time
-      end
-
-      nil
-    end
-
-    def reminder_sent?(task, phase, now = Time.current)
-      PushDeliveryEvent.where(admin_user_id: task.admin_user_id, tag: reminder_tag(task, phase, now), event_type: SENT_EVENT_TYPES).exists?
-    end
-
-    def recent_attempt?(task, phase, now)
-      PushDeliveryEvent.where(admin_user_id: task.admin_user_id, tag: reminder_tag(task, phase, now))
-                       .where("created_at >= ?", now - RETRY_ATTEMPT_AFTER)
-                       .exists?
-    end
-
-    def reminder_tag(task, phase, now = Time.current)
-      return "task-return-#{task.id}" if phase == "due"
-      return "task-overdue-#{task.id}-#{overdue_bucket(now)}" if phase == "overdue"
-
-      "task-#{phase}-#{task.id}"
     end
 
     def reminder_title(task, phase)
@@ -79,12 +42,10 @@ module Tasks
       time = I18n.l(task.due_at, format: "%d/%m/%Y às %H:%M")
 
       case phase
-      when "1_hour_before"
-        "Falta 1 hora para a tarefa: #{subject}. Horário: #{time}."
-      when "30_minutes_before"
-        "Faltam 30 minutos para a tarefa: #{subject}. Horário: #{time}."
-      when "15_minutes_before"
-        "Faltam 15 minutos para a tarefa: #{subject}. Horário: #{time}."
+      when *@reminder_setting.reminder_phases.keys
+        minutes = (@reminder_setting.reminder_phases.fetch(phase) / 60).to_i
+        anticipation = { 1 => "Falta 1 minuto", 60 => "Falta 1 hora" }.fetch(minutes) { "Faltam #{minutes} minutos" }
+        "#{anticipation} para a tarefa: #{subject}. Horário: #{time}."
       when "overdue"
         "Essa tarefa está vencida: #{subject}. Conclua ou cancele quando resolver."
       else
@@ -93,64 +54,24 @@ module Tasks
     end
 
     def deliver_reminder(task, now)
-      task.reload
-      return unless task.open_activity?
-      return if task.lead_owner_missing?
-      return if task.lead && task.admin_user_id != task.lead.admin_user_id
-
-      phase = reminder_phase(task, now)
-      phase = overdue_phase(task, now) if phase == "due" && (reminder_sent?(task, "due", now) || task.due_at <= now - OVERDUE_REPEAT_INTERVAL)
-      return if phase.blank?
-      return if reminder_sent?(task, phase, now)
-      return if recent_attempt?(task, phase, now)
-
-      lead = task.lead
-      admin_user = task.admin_user
-      return if admin_user.blank?
-      return unless same_tenant?(task, lead, admin_user)
-      return if lead_non_operational?(lead, task.tenant)
-
-      Notifications::PushDispatcher.deliver(
-        admin_user_id: admin_user.id,
-        title: reminder_title(task, phase),
-        body: reminder_body(task, lead, phase),
-        url: reminder_url(task),
-        tag: reminder_tag(task, phase, now),
-        urgency: "high",
-        ttl: 3600,
-        require_interaction: true,
-        lead_id: lead&.id,
-        metadata: { task_id: task.id, source: "task_due_reminder", phase: phase }
-      )
-    end
-
-    def overdue_phase(task, now)
-      return nil if task.due_at > now - OVERDUE_REPEAT_INTERVAL
-      return nil unless business_hours?(now)
-
-      "overdue"
-    end
-
-    def business_hours?(time)
-      BUSINESS_HOURS.cover?(time.in_time_zone.hour)
-    end
-
-    def overdue_bucket(time)
-      (time.to_i / OVERDUE_REPEAT_INTERVAL.to_i)
+      Activities::ReminderDelivery.new(task, setting: @reminder_setting, now: now).call do |phase, tag|
+        Notifications::PushDispatcher.deliver(
+          admin_user_id: task.admin_user_id,
+          title: reminder_title(task, phase),
+          body: reminder_body(task, task.lead, phase),
+          url: reminder_url(task),
+          tag: tag,
+          urgency: "high",
+          ttl: 3600,
+          require_interaction: true,
+          lead_id: task.lead_id,
+          metadata: { task_id: task.id, source: "task_due_reminder", phase: phase }
+        )
+      end
     end
 
     def reminder_url(task)
       task.lead_id.present? ? "/admin/leads/#{task.lead_id}" : "/admin/tasks"
-    end
-
-    def same_tenant?(task, lead, admin_user)
-      task.tenant_id == admin_user.tenant_id && (lead.blank? || task.tenant_id == lead.tenant_id)
-    end
-
-    def lead_non_operational?(lead, tenant)
-      return false unless lead
-
-      Lead.non_operational_status_values(tenant: tenant).include?(Lead.status_value(lead.status, tenant: tenant))
     end
   end
 end

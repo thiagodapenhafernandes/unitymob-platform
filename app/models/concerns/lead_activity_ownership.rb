@@ -5,6 +5,7 @@ module LeadActivityOwnership
   included do
     before_validation :assign_current_lead_owner
     around_save :save_with_current_lead_owner
+    before_save :reset_rescheduled_reminders
   end
 
   def open_activity?
@@ -12,6 +13,14 @@ module LeadActivityOwnership
   end
 
   private
+
+  def reset_rescheduled_reminders
+    schedule_attribute = is_a?(Task) ? :due_at : :starts_at
+    return unless will_save_change_to_attribute?(schedule_attribute)
+
+    self.reminder_state = { "scheduled_at" => self[schedule_attribute]&.iso8601(6),
+                            "admin_user_id" => admin_user_id, "initialized" => persisted? }
+  end
 
   def follows_lead_owner?
     lead.present? && (open_activity? || (persisted? && status_in_database.in?(%w[pendente agendado])))

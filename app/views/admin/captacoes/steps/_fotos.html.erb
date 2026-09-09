@@ -1,3 +1,4 @@
+<%= render "admin/captacoes/watermark_status" %>
 <% photos_attachment = @captacao.respond_to?(:photos) ? @captacao.photos : @captacao.fotos %>
 <% ordered_photos = @captacao.respond_to?(:ordered_photos) ? @captacao.ordered_photos : photos_attachment %>
 <% authorization_attachments = @captacao.respond_to?(:autorizacoes_venda) ? @captacao.autorizacoes_venda : @captacao.autorizacao_pdf %>

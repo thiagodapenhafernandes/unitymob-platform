@@ -6,6 +6,44 @@ RSpec.describe "Admin::PropertySettings", type: :request do
   before { host! "localhost" }
   before { PropertySetting.instance.update!(broker_capture_layer_enabled: true) }
 
+  it "mantém o cadastro de nomes alternativos fora do formulário de configurações" do
+    sign_in create(:admin_user, :admin)
+    get edit_admin_property_setting_path
+    html = Nokogiri::HTML(response.body)
+    modal = html.at_css('#newDevelopmentAliasModal')
+    expect(modal.ancestors('form')).to be_empty
+    expect(modal.at_css('form')["action"]).to eq(admin_development_aliases_path)
+    expect(html.at_css('.property-settings-form [formaction]')).to be_nil
+  end
+
+  it "não remove a marca atual quando outra configuração é inválida" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    setting = PropertySetting.instance
+    setting.watermark_image.attach(png_upload("preservar.png", "120x60", "none", "white"))
+    blob_id = setting.watermark_image.blob.id
+    with_forgery_protection_disabled do
+      patch admin_property_setting_path, params: { property_setting: {
+        remove_watermark_image: "1", watermark_size_percentage: -1
+      } }
+    end
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(setting.reload.watermark_image.blob.id).to eq(blob_id)
+  end
+
+  it "remove a marca quando a configuração é válida" do
+    sign_in create(:admin_user, :admin)
+    setting = PropertySetting.instance
+    setting.watermark_image.attach(png_upload("remover.png", "120x60", "none", "white"))
+    with_forgery_protection_disabled do
+      patch admin_property_setting_path, params: { property_setting: {
+        remove_watermark_image: "1", watermark_size_percentage: 40
+      } }
+    end
+    expect(response).to have_http_status(:redirect)
+    expect(setting.reload.watermark_image).not_to be_attached
+  end
+
   it "allows system admins to configure the property watermark" do
     admin = create(:admin_user, :admin)
     sign_in admin
@@ -33,13 +71,13 @@ RSpec.describe "Admin::PropertySettings", type: :request do
       "property-settings-ai-panel--sharing",
       "property-settings-ai-panel--learning"
     )
-    expect(response.body).to include("Ativação", "Interpretação", "Abrangência", "Contexto", "Acesso e resultado", "Aliases", "Compartilhamento", "Aprendizado")
+    expect(response.body).to include("Ativação", "Interpretação", "Abrangência", "Contexto", "Acesso e resultado", "Nomes alternativos", "Compartilhamento", "Aprendizado")
     expect(response.body).to include("Seleção e validade", "Página pública", "Identificação e lead", "Mensagens operacionais")
     expect(response.body).to include("Recursos da busca", "Instruções da IA", "Consulta e mensagens", "Profundidade do contexto do catálogo")
     expect(response.body).to include("Parâmetros da resposta")
     expect(response.body).to include("Temperature", "Top P", "Frequency penalty", "Presence penalty")
     expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(10)
-    expect(response.body).to include("Nenhum alias cadastrado", "ax-empty-state")
+    expect(response.body).to include("Nenhum nome alternativo cadastrado", "ax-empty-state")
     expect(response.body).to include("Aprendizado supervisionado", "Termos candidatos", "Buscas recentes")
     html = Nokogiri::HTML(response.body)
     expect(html.css(".ax-range-field").size).to eq(2)
@@ -52,7 +90,7 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(html.css("#property-settings-ai-search .ax-field > label.ax-field-label").size).to be >= 35
     expect(html.css("#property-settings-ai-search .property-settings-ai-subtabs .ax-form-tabs__item").size).to eq(8)
     expect(html.at_css('input[name="return_anchor"][data-form-return-anchor-target="input"]')).to be_present
-    expect(html.at_css('select#development_id[name="development_id"]')).to be_present
+    expect(html.at_css('select#development_alias_development_id[name="development_id"]')).to be_present
     expect(html.at_css('textarea#development_alias_names[name="names"]')).to be_present
     expect(html.css("#property-settings-ai-search label.ax-field")).to be_empty
 

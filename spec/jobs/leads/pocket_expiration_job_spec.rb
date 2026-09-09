@@ -101,7 +101,7 @@ RSpec.describe Leads::PocketExpirationJob, type: :job do
       expect(context).to eq("pocket_pool")
     end
     expect(Leads::NotificationDispatcher).not_to have_received(:deliver)
-    expect(enqueued_jobs.any? { |job| job[:job] == Leads::PoolRenotifyJob }).to be(true)
+    expect(enqueued_jobs.any? { |job| job[:job] == Leads::PoolRenotifyJob }).to be(false)
   ensure
     clear_enqueued_jobs
   end

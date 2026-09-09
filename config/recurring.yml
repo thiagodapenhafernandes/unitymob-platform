@@ -10,6 +10,10 @@
 #     schedule: at 5am every day
 
 development:
+  lead_pool_renotify:
+    class: Leads::PoolRenotifyJob
+    queue: default
+    schedule: every minute
   support_accounts:
     class: Support::RegisterAccountsJob
     schedule: every minute
@@ -30,6 +34,10 @@ development:
     schedule: every 5 minutes
 
 production:
+  lead_pool_renotify:
+    class: Leads::PoolRenotifyJob
+    queue: default
+    schedule: every minute
   support_accounts:
     class: Support::RegisterAccountsJob
     schedule: every minute

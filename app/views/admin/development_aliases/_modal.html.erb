@@ -1,0 +1,7 @@
+<%= ax_quick_modal(id: "newDevelopmentAliasModal", title: "Novos nomes alternativos", size: :sm,
+      data: { ax_modal_open_value: local_assigns.fetch(:open, false) }) do %>
+  <div id="development-alias-form">
+    <%= render "admin/development_aliases/form", developments: developments,
+          error: local_assigns[:error], development_id: local_assigns[:development_id], names: local_assigns[:names] %>
+  </div>
+<% end %>

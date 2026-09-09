@@ -17,105 +17,105 @@
         eyebrow: "Configuração · Catálogos",
         icon: "tags-fill",
         title: "Atributos dinâmicos",
-        subtitle: "Gerencie as opções usadas em Características, Infraestrutura, Destaques e Leads."
+        subtitle: "Gerencie as opções usadas em Características, Infraestrutura, Destaques e Leads.",
+        actions: ax_button("Novo atributo", nil, variant: :primary, icon: "plus-lg", data: { ax_modal_open: "#newAttributeOptionModal" })
       ) %>
 
-  <%= ax_field_grid do %>
-    <div class="ax-span-4">
-      <%= ax_operational_panel(eyebrow: "Cadastro", title: "Novo atributo") do %>
-        <%= form_with model: [:admin, AttributeOption.new] do |form| %>
-          <div class="ax-record-list">
-            <%= ax_select_field(form:, method: :context, label: "Módulo/Contexto", choices: context_options) %>
-            <%= ax_select_field(form:, method: :category, label: "Categoria", choices: category_options) %>
-            <%= ax_text_field(form:, method: :name, label: "Nome do atributo", placeholder: "Ex: Ar-condicionado", required: true) %>
-            <%= form.submit "Criar atributo", class: "ax-btn ax-btn--primary tw-w-full" %>
-          </div>
-        <% end %>
-      <% end %>
+  <%= ax_filter_form(
+        url: admin_attribute_options_path,
+        reset_path: (admin_attribute_options_path if params.values_at(:query, :context, :category).any?(&:present?)),
+        submit_label: "Filtrar",
+        class_name: "tw-mb-3"
+      ) do |form| %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-5">
+        <%= ax_text_field(form:, method: :query, label: "Buscar por nome", value: params[:query], placeholder: "Ex: Ar-condicionado...", clearable: true) %>
+      </div>
+      <div class="ax-span-3">
+        <%= ax_select_field(form:, method: :context, label: "Contexto", choices: context_filter_options, select_options: { selected: params[:context] }) %>
+      </div>
+      <div class="ax-span-4">
+        <%= ax_select_field(form:, method: :category, label: "Categoria", choices: category_filter_options, select_options: { selected: params[:category] }) %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Catálogo", title: "Atributos cadastrados") do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th class="ax-table__col--md">Contexto</th>
+            <th class="ax-table__col--w-180">Categoria</th>
+            <th>Nome</th>
+            <th class="ax-num ax-table__col--compact">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @options.each do |option| %>
+            <tr>
+              <td><%= ax_badge(option.context.capitalize, tone: :blue) %></td>
+              <td class="tw-text-ink-muted"><%= option.category.humanize %></td>
+              <td class="ax-strong"><%= option.name %></td>
+              <td class="ax-num">
+                <span class="tw-inline-flex tw-gap-0.5">
+                  <button type="button" class="ax-ico-btn" data-ax-modal-open="attributeOptionModal<%= option.id %>" title="Editar" aria-label="Editar <%= option.name %>">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <%= link_to admin_attribute_option_path(option),
+                              data: { turbo_method: :delete, turbo_confirm: "Tem certeza? Isso pode afetar os registros que já utilizam este atributo." },
+                              class: "ax-ico-btn",
+                              title: "Excluir",
+                              aria: { label: "Excluir #{option.name}" } do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                </span>
+
+                <%= ax_quick_modal(id: "attributeOptionModal#{option.id}", title: "Editar atributo", size: :sm) do %>
+                  <%= form_with model: [:admin, option], method: :patch, local: true do |form| %>
+                    <div class="ax-record-list">
+                      <%= ax_record_item(title: option.context.humanize, eyebrow: "Contexto", icon: "grid") %>
+                      <%= ax_record_item(title: option.category.humanize, eyebrow: "Categoria", icon: "tag") %>
+                      <%= form.hidden_field :context %>
+                      <%= form.hidden_field :category %>
+                      <%= ax_text_field(form:, method: :name, label: "Nome", required: true, autofocus: true) %>
+                      <div class="tw-flex tw-justify-end tw-gap-2">
+                        <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+                        <%= form.submit "Salvar", class: "ax-btn ax-btn--primary" %>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @options.empty? %>
+            <tr>
+              <td colspan="4">
+                <%= ax_empty_state(title: "Nenhum atributo encontrado", description: "Ajuste os filtros ou cadastre uma nova opção.", icon: "tags", compact: true) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
 
-    <div class="ax-span-8">
-      <%= ax_filter_form(
-            url: admin_attribute_options_path,
-            reset_path: (admin_attribute_options_path if params.values_at(:query, :context, :category).any?(&:present?)),
-            submit_label: "Filtrar",
-            class_name: "tw-mb-3"
-          ) do |form| %>
-        <%= ax_field_grid do %>
-          <div class="ax-span-5">
-            <%= ax_text_field(form:, method: :query, label: "Buscar por nome", value: params[:query], placeholder: "Ex: Ar-condicionado...", clearable: true) %>
-          </div>
-          <div class="ax-span-3">
-            <%= ax_select_field(form:, method: :context, label: "Contexto", choices: context_filter_options, select_options: { selected: params[:context] }) %>
-          </div>
-          <div class="ax-span-4">
-            <%= ax_select_field(form:, method: :category, label: "Categoria", choices: category_filter_options, select_options: { selected: params[:category] }) %>
-          </div>
-        <% end %>
-      <% end %>
-
-      <%= ax_operational_panel(eyebrow: "Catálogo", title: "Atributos cadastrados") do %>
-        <div class="ax-table-wrap">
-          <table class="ax-table">
-            <thead>
-              <tr>
-                <th class="ax-table__col--md">Contexto</th>
-                <th class="ax-table__col--w-180">Categoria</th>
-                <th>Nome</th>
-                <th class="ax-num ax-table__col--compact">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @options.each do |option| %>
-                <tr>
-                  <td><%= ax_badge(option.context.capitalize, tone: :blue) %></td>
-                  <td class="tw-text-ink-muted"><%= option.category.humanize %></td>
-                  <td class="ax-strong"><%= option.name %></td>
-                  <td class="ax-num">
-                    <span class="tw-inline-flex tw-gap-0.5">
-                      <button type="button" class="ax-ico-btn" data-ax-modal-open="attributeOptionModal<%= option.id %>" title="Editar" aria-label="Editar <%= option.name %>">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <%= link_to admin_attribute_option_path(option),
-                                  data: { turbo_method: :delete, turbo_confirm: "Tem certeza? Isso pode afetar os registros que já utilizam este atributo." },
-                                  class: "ax-ico-btn",
-                                  title: "Excluir",
-                                  aria: { label: "Excluir #{option.name}" } do %>
-                        <i class="bi bi-trash"></i>
-                      <% end %>
-                    </span>
-
-                    <%= ax_quick_modal(id: "attributeOptionModal#{option.id}", title: "Editar atributo", size: :sm) do %>
-                      <%= form_with model: [:admin, option], method: :patch, local: true do |form| %>
-                        <div class="ax-record-list">
-                          <%= ax_record_item(title: option.context.humanize, eyebrow: "Contexto", icon: "grid") %>
-                          <%= ax_record_item(title: option.category.humanize, eyebrow: "Categoria", icon: "tag") %>
-                          <%= form.hidden_field :context %>
-                          <%= form.hidden_field :category %>
-                          <%= ax_text_field(form:, method: :name, label: "Nome", required: true, autofocus: true) %>
-                          <div class="tw-flex tw-justify-end tw-gap-2">
-                            <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
-                            <%= form.submit "Salvar", class: "ax-btn ax-btn--primary" %>
-                          </div>
-                        </div>
-                      <% end %>
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-              <% if @options.empty? %>
-                <tr>
-                  <td colspan="4">
-                    <%= ax_empty_state(title: "Nenhum atributo encontrado", description: "Ajuste os filtros ou cadastre uma nova opção.", icon: "tags", compact: true) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-
-        <%= ax_pagination @options, params: request.query_parameters %>
-      <% end %>
-    </div>
+    <%= ax_pagination @options, params: request.query_parameters %>
   <% end %>
 </div>
+
+<%= ax_quick_modal(id: "newAttributeOptionModal", title: "Novo atributo", size: :sm,
+      data: { ax_modal_open_value: @attribute_option.errors.any? }) do %>
+  <%= form_with model: [:admin, @attribute_option], local: true do |form| %>
+    <div class="ax-record-list">
+      <%= ax_error_summary(@attribute_option) if @attribute_option.errors.any? %>
+      <%= ax_select_field(form: form, method: :context, label: "Módulo/Contexto", choices: context_options) %>
+      <%= ax_select_field(form: form, method: :category, label: "Categoria", choices: category_options) %>
+      <%= ax_text_field(form: form, method: :name, label: "Nome do atributo", placeholder: "Ex: Ar-condicionado", required: true) %>
+      <div class="tw-flex tw-justify-end tw-gap-2">
+        <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+        <%= form.submit "Criar atributo", class: "ax-btn ax-btn--primary" %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

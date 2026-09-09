@@ -18,6 +18,10 @@
   if habitation.persisted?
     media_controller_data.merge!(
       photo_upload_async_value: true,
+      photo_upload_watermark_status_url_value: watermark_status_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_watermark_retry_url_value: retry_watermark_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_watermark_discard_url_value: discard_watermark_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_watermark_pending_value: habitation.watermark_photos.attached?,
       photo_upload_upload_url_value: upload_admin_habitation_media_path(habitation, format: :json),
       photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation, format: :json),
       photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation, format: :json),
@@ -86,6 +90,11 @@
 <div class="ax-form-section ax-form-section--media">
   <div class="ax-form-section__body">
     <div class="ax-media-manager <%= 'ax-media-manager--compact' if compact_mode %>" <%= tag.attributes(data: media_controller_data) %>>
+      <div data-photo-upload-target="watermarkStatus">
+        <%= render "admin/shared/ui/upload_processing_status", uploads: media_gallery.watermark_uploads,
+          retry_action: ("photo-upload#retryWatermark" if can_apply_watermark),
+          discard_action: ("photo-upload#discardWatermark" if media_action_allowed.call("acao:remover_foto")) %>
+      </div>
       <div class="ax-media-toolbar">
         <div class="ax-media-toolbar__title">
           <h6>Fotos</h6>

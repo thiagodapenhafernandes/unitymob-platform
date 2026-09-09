@@ -1,0 +1,25 @@
+<%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Notificações", title: "Lembretes de tarefas, agenda e visitas") do %>
+  <div class="ax-panel-body">
+    <p class="ax-field__hint">Lembretes por push para o responsável da atividade. As regras abaixo valem para esta conta, inclusive para atividades pessoais.</p>
+    <%= ax_field_group(class_name: "ax-field-group--settings", title: "Antes do horário agendado") do %>
+      <%= ax_field_grid(columns: 12) do %>
+        <%= ax_number_field(form: f, method: :reminder_first_minutes, class_name: "ax-span-4", label: "1º lembrete · minutos antes", min: 1, max: 10080, required: true) %>
+        <%= ax_number_field(form: f, method: :reminder_second_minutes, class_name: "ax-span-4", label: "2º lembrete · minutos antes", min: 1, max: 10080, required: true) %>
+        <%= ax_number_field(form: f, method: :reminder_third_minutes, class_name: "ax-span-4", label: "3º lembrete · minutos antes", min: 1, max: 10080, required: true) %>
+      <% end %>
+      <%= ax_toggle_chip(f, :reminder_due_enabled, label: "Avisar também no vencimento") %>
+    <% end %>
+    <%= ax_field_group(class_name: "ax-field-group--settings", title: "Enquanto a atividade estiver atrasada") do %>
+      <%= ax_number_field(form: f, method: :reminder_overdue_minutes, label: "Repetir a cada · minutos", min: 1, max: 10080, required: true) %>
+      <%= ax_field_grid(columns: 2) do %>
+        <%= ax_text_field(form: f, method: :reminder_start_time, label: "A partir de", type: :time, required: true, step: 60) %>
+        <%= ax_text_field(form: f, method: :reminder_end_time, label: "Até", type: :time, required: true, step: 60) %>
+      <% end %>
+      <p class="ax-field__hint">Horário de Brasília. O intervalo é contado a partir do último envio.</p>
+    <% end %>
+    <%= ax_field_group(class_name: "ax-field-group--settings", title: "Quando uma tentativa falhar") do %>
+      <%= ax_number_field(form: f, method: :reminder_retry_minutes, label: "Aguardar antes de tentar novamente · minutos", min: 1, max: 10080, required: true,
+            hint: "Aplica-se à repetição de uma tentativa. Os próximos lembretes programados mantêm seus horários.") %>
+    <% end %>
+  </div>
+<% end %>

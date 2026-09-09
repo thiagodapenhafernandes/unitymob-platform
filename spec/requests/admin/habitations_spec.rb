@@ -635,6 +635,65 @@ RSpec.describe "Admin::Habitations", type: :request do
     )
   end
 
+  it "mostra a aba Revisão administrativa ao admin e filtra somente captações em revisão da conta" do
+    submitted = create(:habitation, :broker_intake, admin_user: admin, intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão administrativa alvo")
+    approved = create(:habitation, :broker_intake, admin_user: admin, intake_status: "admin_approved", titulo_anuncio: "Já liberado para publicação")
+    draft = create(:habitation, :broker_intake, admin_user: admin, titulo_anuncio: "Rascunho administrativo")
+    other_tenant = Tenant.create!(name: "Outra conta revisão", slug: "other-administrative-review")
+    outside = create(:habitation, :broker_intake, tenant: other_tenant, intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão de outra conta")
+
+    get admin_habitations_path(intake_review: "administrative", ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    tabs = html.css('.habitations-view-toggle--scope a')
+    expect(tabs.map { |tab| tab.text.squish }).to eq(["Todos", "Pendente de revisão", "Revisão administrativa"])
+    expect(tabs.last["class"]).to include("is-active")
+    expect(response.body).to include(submitted.titulo_anuncio)
+    [approved, draft, outside].each { |record| expect(response.body).not_to include(record.titulo_anuncio) }
+
+    get admin_habitations_path(intake_review: "administrative", codigo: approved.codigo)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(approved.titulo_anuncio)
+
+    get admin_habitations_path(intake_review: "all", codigo: "")
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css('.habitations-view-toggle--scope .is-active').text.squish).to eq("Todos")
+  end
+
+  it "permite a aba Revisão administrativa ao perfil horizontal respeitando o escopo próprio" do
+    vertical = default_agent_profile
+    horizontal = Profile.create!(tenant: admin.tenant, name: "Operacional revisão", axis: "horizontal", vertical_profile: vertical,
+                                 permissions: { "imoveis" => { "view" => true }, "captacoes" => { "view" => true, "scope" => "own" } })
+    operator = create(:admin_user, profile: vertical, horizontal_profile: horizontal)
+    own = create(:habitation, :broker_intake, admin_user: operator, intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão própria do operacional")
+    outside = create(:habitation, :broker_intake, admin_user: admin, intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão fora do escopo")
+    sign_in operator
+
+    get admin_habitations_path(intake_review: "administrative")
+
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).css('.habitations-view-toggle--scope').text).to include("Revisão administrativa")
+    expect(response.body).to include(own.titulo_anuncio)
+    expect(response.body).not_to include(outside.titulo_anuncio)
+  end
+
+  it "oculta e bloqueia a aba Revisão administrativa para perfil vertical comum mesmo com permissão de revisão" do
+    profile = default_agent_profile
+    profile.update!(permissions: profile.permissions.merge("captacoes" => { "view" => true, "review" => true, "scope" => "all" }))
+    broker = create(:admin_user, profile: profile)
+    sign_in broker
+
+    get admin_habitations_path
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).css('.habitations-view-toggle--scope').text).not_to include("Revisão administrativa")
+
+    get admin_habitations_path(intake_review: "administrative")
+    expect(response).to have_http_status(:forbidden)
+    get filter_inspector_admin_habitations_path(intake_review: "administrative"), headers: turbo_frame_headers
+    expect(response).to have_http_status(:forbidden)
+  end
+
   it "separa captações restritas da listagem geral de imóveis" do
     draft = create(:habitation, :broker_intake, admin_user: admin, codigo: "DRAFT-#{SecureRandom.hex(6)}", titulo_anuncio: "Captação em rascunho")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "REV-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação finalizada")
@@ -4249,7 +4308,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       uf: "SC"
     )
     setting = PropertySetting.instance
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
     direct_upload_io = StringIO.new("foto enviada direto")
     direct_upload_io.rewind
     blob = ActiveStorage::Blob.create_and_upload!(
@@ -4270,7 +4329,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     end.to have_enqueued_job(HabitationPhotoWatermarkJob)
 
     expect(response).to redirect_to(admin_habitations_path)
-    expect(habitation.reload.photos.attachments.size).to eq(1)
+    expect(habitation.reload.photos.attachments.size).to eq(0)
+    expect(habitation.watermark_photos.attachments.size).to eq(1)
   end
 
   it "mantém fotos da API ao adicionar fotos anexadas" do

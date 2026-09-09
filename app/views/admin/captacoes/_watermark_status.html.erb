@@ -1,0 +1,7 @@
+<% if @captacao.is_a?(Habitation) && @captacao.watermark_photos.attached? %>
+  <%= render "admin/shared/ui/upload_processing_status",
+    uploads: Habitations::MediaGallery.new(@captacao).watermark_uploads,
+    retry_url: ->(upload) { retry_watermark_admin_captacao_path(@captacao, photo_id: upload[:id]) },
+    discard_url: ->(upload) { discard_watermark_admin_captacao_path(@captacao, photo_id: upload[:id]) } %>
+  <%= link_to "Atualizar processamento das fotos", edit_admin_captacao_path(@captacao, step: "fotos"), class: "ax-btn ax-btn--sm ax-btn--ghost" %>
+<% end %>

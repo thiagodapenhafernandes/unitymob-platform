@@ -10,6 +10,35 @@ class LeadSetting < ApplicationRecord
   MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 5
   MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 1440
 
+  REMINDER_MINUTE_FIELDS = %i[reminder_first_minutes reminder_second_minutes reminder_third_minutes
+                             reminder_overdue_minutes reminder_retry_minutes].freeze
+  validates(*REMINDER_MINUTE_FIELDS, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 10_080 })
+  validates :reminder_due_enabled, inclusion: { in: [true, false] }
+  validates :reminder_start_time, :reminder_end_time, format: { with: /\A(?:[01]\d|2[0-3]):[0-5]\d\z/ }
+  validate :ordered_reminder_settings
+
+  # Stable phase identifiers preserve delivered phases when an account changes its times.
+  def reminder_phases
+    { "15_minutes_before" => reminder_third_minutes.minutes,
+      "30_minutes_before" => reminder_second_minutes.minutes,
+      "1_hour_before" => reminder_first_minutes.minutes }
+  end
+
+  def reminder_business_hours?(time)
+    local_time = time.in_time_zone.strftime("%H:%M")
+    local_time >= reminder_start_time && local_time < reminder_end_time
+  end
+
+  def ordered_reminder_settings
+    values = [reminder_first_minutes, reminder_second_minutes, reminder_third_minutes]
+    if values.all? && !(values[0] > values[1] && values[1] > values[2])
+      errors.add(:base, "As antecedências devem estar em ordem decrescente e ser diferentes")
+    end
+    if reminder_start_time.present? && reminder_end_time.present? && reminder_start_time >= reminder_end_time
+      errors.add(:reminder_end_time, "deve ser posterior ao início")
+    end
+  end
+
   # Status que contam como "atendido de fato" pelo corretor (owner = attended).
   ATTENDED_STATUSES = %i[em_atendimento concluido].freeze
 

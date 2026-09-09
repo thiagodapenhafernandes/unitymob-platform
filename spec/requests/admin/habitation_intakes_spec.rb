@@ -1570,7 +1570,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   it "agenda marca d'água para fotos enviadas pela captação quando há logo configurada" do
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "fotos", photo_flow_choice: "upload")
     setting = PropertySetting.instance(tenant: intake.tenant)
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
     authorization = Rack::Test::UploadedFile.new(
       StringIO.new("autorizacao"),
       "image/png",
@@ -2269,6 +2269,22 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   ensure
     ActionController::Base.allow_forgery_protection = false
   end
+  it "permite acompanhar, retomar e remover fotos pendentes na captação" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "fotos", photo_flow_choice: "upload")
+    intake.watermark_photos.attach(io: StringIO.new("foto"), filename: "pendente.jpg", content_type: "image/jpeg")
+    photo = intake.watermark_photos.attachments.first
+    photo.blob.update!(metadata: { "watermark_status" => "failed" })
+    get edit_admin_captacao_path(intake, step: "fotos")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Fotos aguardando marca", "Tentar novamente")
+    post retry_watermark_admin_captacao_path(intake), params: { photo_id: photo.id }
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "fotos"))
+    expect(photo.reload.blob.metadata["watermark_status"]).to eq("pending")
+    delete discard_watermark_admin_captacao_path(intake), params: { photo_id: photo.id }
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "fotos"))
+    expect(intake.reload.watermark_photos).not_to be_attached
+  end
+
   it "envia a categoria do rascunho de terreno e preserva a validação de duplicidade por complemento" do
     intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Terreno", status: "Venda", intake_step: "endereco", bloco: nil)
     existing = create(:habitation, tenant: admin.tenant, categoria: "Terreno", status: "Venda", bloco: nil)

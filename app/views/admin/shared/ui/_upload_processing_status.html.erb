@@ -1,0 +1,29 @@
+<% if uploads.any? %>
+  <div class="ax-alert ax-alert--warning" role="status" aria-live="polite">
+    <div class="ax-alert__content">
+      <strong class="ax-alert__title">Fotos aguardando marca d'água</strong>
+      <ul class="ax-alert__list">
+        <% uploads.each do |upload| %>
+          <li>
+            <%= upload[:filename] %> —
+            <% if upload[:status] == "failed" %>
+              <%= upload[:error].presence || "Não foi possível concluir o processamento." %>
+              <% if local_assigns[:retry_action].present? %>
+                <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="<%= retry_action %>" data-photo-id="<%= upload[:id] %>">Tentar novamente</button>
+              <% elsif local_assigns[:retry_url] %>
+                <%= link_to "Tentar novamente", retry_url.call(upload), class: "ax-btn ax-btn--sm ax-btn--ghost", data: { turbo_method: :post } %>
+              <% end %>
+            <% else %>
+              <%= upload[:status] == "retrying" ? "Nova tentativa automática em andamento." : "Aguardando processamento." %>
+            <% end %>
+            <% if local_assigns[:discard_action].present? %>
+              <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="<%= discard_action %>" data-photo-id="<%= upload[:id] %>">Remover pendência</button>
+            <% elsif local_assigns[:discard_url] %>
+              <%= link_to "Remover pendência", discard_url.call(upload), class: "ax-btn ax-btn--sm ax-btn--ghost", data: { turbo_method: :delete } %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+<% end %>

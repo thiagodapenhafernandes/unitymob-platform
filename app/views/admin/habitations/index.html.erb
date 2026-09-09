@@ -198,7 +198,7 @@
     </div>
     <div class="habitations-workspace-heading__title-row">
       <h1>Imóveis</h1>
-      <span class="habitations-workspace-heading__scope"><%= @intake_review == "pending" ? "Pendente de revisão" : "Todos" %></span>
+      <span class="habitations-workspace-heading__scope"><%= intake_review_label %></span>
       <% if filtering_active %>
         <span class="habitations-workspace-heading__scope">Filtros ativos</span>
       <% end %>
@@ -381,6 +381,12 @@
       <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
         <i class="bi bi-clipboard-check"></i>
         <span>Pendente de revisão</span>
+      <% end %>
+    <% end %>
+    <% if can_view_administrative_review? %>
+      <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "administrative")), class: "habitations-view-toggle__item #{@intake_review == 'administrative' ? 'is-active' : ''}" do %>
+        <i class="bi bi-clipboard-check"></i>
+        <span>Revisão administrativa</span>
       <% end %>
     <% end %>
   </div>
@@ -608,7 +614,7 @@
     active_filter_chips << "Empreendimento: #{@empreendimento_codigos.map { |codigo| admin_habitation_development_filter_label(codigo) }.join(', ')}"
   end
   active_filter_chips << "Corretor: #{@corretor_filter_labels.join(', ')}" if @corretor_filter_labels.any?
-  active_filter_chips << "Pendente de revisão" if @intake_review == "pending"
+  active_filter_chips << intake_review_label if @intake_review.present?
   if show_administrative_filter_chips
     portal_option_label = lambda do |choices, value|
       choices.find { |_label, option_value| option_value.to_s == value.to_s }&.first || value

@@ -55,7 +55,7 @@ RSpec.describe Storage::SafePurgeJob do
   it "bloqueia purge de blob protegido e registra o anexo crítico" do
     tenant = Tenant.create!(name: "Tenant safe purge #{SecureRandom.hex(3)}", slug: "tenant-safe-purge-#{SecureRandom.hex(3)}")
     setting = PropertySetting.create!(tenant: tenant)
-    setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    setting.watermark_image.attach(io: StringIO.new(File.binread(Rails.root.join("spec/fixtures/files/watermark.png"))), filename: "watermark.png", content_type: "image/png")
     attachment = setting.watermark_image.attachment
     blob = attachment.blob
 

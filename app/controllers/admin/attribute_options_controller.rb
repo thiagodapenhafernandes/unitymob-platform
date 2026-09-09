@@ -10,15 +10,8 @@ module Admin
     def index
       # This action serves both the sidebar page (HTML) and modal usage (JSON)
       rebuild_address_catalog_from_usage_if_needed
-      @options = current_tenant.attribute_options
-
-      if modal_request?
-        @options = @options.for_context(params[:context]).for_category(params[:category]).order(name: :asc)
-      else
-        @options = @options.search_name(params[:query]).for_context(params[:context]).for_category(params[:category])
-        @options = @options.order(context: :asc, category: :asc, name: :asc)
-                           .paginate(page: params[:page], per_page: 20)
-      end
+      load_options
+      @attribute_option = current_tenant.attribute_options.new
 
       return render json: @options if modal_request?
 
@@ -42,7 +35,10 @@ module Admin
         return render json: @attribute_option.errors, status: :unprocessable_entity if modal_request?
 
         respond_to do |format|
-          format.html { redirect_to admin_attribute_options_path, alert: "Erro: #{@attribute_option.errors.full_messages.join(', ')}" }
+          format.html do
+            load_options
+            render :index, status: :unprocessable_entity
+          end
           format.json { render json: @attribute_option.errors, status: :unprocessable_entity }
         end
       end
@@ -90,6 +86,18 @@ module Admin
     end
 
     private
+
+    def load_options
+      @options = current_tenant.attribute_options
+
+      if modal_request?
+        @options = @options.for_context(params[:context]).for_category(params[:category]).order(name: :asc)
+      else
+        @options = @options.search_name(params[:query]).for_context(params[:context]).for_category(params[:category])
+        @options = @options.order(context: :asc, category: :asc, name: :asc)
+                           .paginate(page: params[:page], per_page: 10)
+      end
+    end
 
     def set_attribute_option
       @attribute_option = current_tenant.attribute_options.find(params[:id])

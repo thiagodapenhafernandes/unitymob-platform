@@ -235,6 +235,9 @@ Rails.application.routes.draw do
       resource :media, only: [:show, :update], controller: "habitation_media" do
         get :modal
         post :upload
+        get :watermark_status
+        post :retry_watermark
+        delete :discard_watermark
         patch :reorder
         patch :visibility
         patch :ambiente
@@ -455,6 +458,8 @@ Rails.application.routes.draw do
 
     # === Captação (wizard + dashboard) ===
     resources :captacoes, controller: "habitation_intakes" do
+      post :retry_watermark, on: :member
+      delete :discard_watermark, on: :member
       collection do
         get :dashboard, to: "captacoes#dashboard"
         patch :dashboard_title, to: "captacoes#update_dashboard_title"

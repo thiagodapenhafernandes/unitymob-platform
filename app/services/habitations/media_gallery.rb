@@ -4,6 +4,12 @@ module Habitations
       @habitation = habitation
     end
 
+    def watermark_uploads
+      habitation.watermark_photos.attachments.includes(:blob).map do |photo|
+        { id: photo.id, filename: photo.filename.to_s, status: photo.blob.metadata["watermark_status"] || "pending", error: photo.blob.metadata["watermark_error"] }
+      end
+    end
+
     def locals
       {
         habitation: habitation,

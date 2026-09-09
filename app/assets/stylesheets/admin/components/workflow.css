@@ -254,3 +254,23 @@
 @media (max-width: 640px) {
   .ax-workflow__scope-actions .ax-btn { width: 100%; }
 }
+
+/* Settings composition uses the shared panel inset and form controls. */
+.ax-workflow--settings { gap: 16px; min-width: 0; }
+.ax-workflow--settings .ax-workflow__layout,
+.ax-workflow--settings .ax-workflow__main,
+.ax-workflow--settings .ax-workflow__inspector { gap: 16px; }
+.ax-workflow--settings .ax-workflow__form { gap: 20px; }
+.ax-workflow--settings .ax-workflow__field { gap: 8px; }
+.ax-workflow--settings .ax-workflow__hint { color: var(--ax-text-muted, #697586); line-height: 1.6; }
+.ax-workflow--settings .ax-workflow__state-row { align-items: start; }
+.ax-workflow--settings .ax-workflow__state-row > * { min-width: 0; overflow-wrap: anywhere; }
+.ax-workflow--settings .ax-workflow__state-row dd { text-align: right; max-width: 65%; }
+.ax-workflow--settings .ax-toggle-chip { min-width: 0; }
+.ax-workflow--settings .ax-toggle-chip__label { white-space: normal; overflow-wrap: anywhere; }
+.ax-workflow--settings .ax-multiselect { min-width: 0; }
+@media (max-width: 620px) {
+  .ax-workflow--settings .ax-workflow__state-row { flex-direction: column; gap: 4px; }
+  .ax-workflow--settings .ax-workflow__state-row dd { max-width: 100%; text-align: left; }
+}
+[data-admin-theme="dark"] .ax-workflow--settings .ax-workflow__hint { color: var(--ax-dark-text-muted); }

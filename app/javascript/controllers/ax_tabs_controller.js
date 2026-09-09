@@ -3,7 +3,8 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["tab"]
   static values = {
-    panelSelector: String
+    panelSelector: String,
+    revealActive: { type: Boolean, default: false }
   }
 
   connect() {
@@ -15,6 +16,10 @@ export default class extends Controller {
     this.element.addEventListener("keydown", this.handleKeydownBound)
     this.element.setAttribute("role", "tablist")
 
+    if (this.revealActiveValue) {
+      this.resizeObserver = new ResizeObserver(() => this.revealActiveTab())
+      this.resizeObserver.observe(this.element)
+    }
     this.initializeState()
     this.activateFromHash()
     requestAnimationFrame(() => {
@@ -24,6 +29,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.resizeObserver?.disconnect()
     window.removeEventListener("hashchange", this.activateFromHashBound)
     document.removeEventListener("DOMContentLoaded", this.activateFromHashBound)
     window.removeEventListener("load", this.activateFromHashBound)
@@ -51,6 +57,7 @@ export default class extends Controller {
 
     this.syncPeerTriggers(targetSelector, content)
     this.syncHash(targetSelector)
+    this.revealActiveTab()
 
     panel.dispatchEvent(new CustomEvent("ax:tab-shown", {
       bubbles: true,
@@ -63,6 +70,16 @@ export default class extends Controller {
     }))
 
     return true
+  }
+
+  revealActiveTab() {
+    if (!this.revealActiveValue || !this.element.clientWidth) return
+    const active = this.tabTargets.find((tab) => tab.getAttribute("aria-selected") === "true")
+    if (!active) return
+    const strip = this.element.getBoundingClientRect()
+    const tab = active.getBoundingClientRect()
+    if (tab.left < strip.left) this.element.scrollLeft -= strip.left - tab.left
+    else if (tab.right > strip.right) this.element.scrollLeft += tab.right - strip.right
   }
 
   initializeState() {

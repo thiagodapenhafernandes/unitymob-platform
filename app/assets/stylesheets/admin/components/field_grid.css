@@ -55,3 +55,12 @@
   .ax-field-grid--nested { grid-template-columns: 1fr; }
   .ax-field-grid > [class*="ax-span-"] { grid-column: 1 / -1; }
 }
+
+/* Align mixed select and multiselect controls with a trailing action. */
+.ax-field-grid--actions { align-items: end; }
+.ax-field-grid--actions > * { min-width: 0; }
+.ax-field-grid--actions > :last-child { padding-bottom: 0; }
+.ax-field-grid--actions > :last-child .ax-btn { min-height: var(--ax-form-control-height, 34px); }
+@media (max-width: 620px) {
+  .ax-field-grid--actions > :last-child .ax-btn { width: 100%; }
+}

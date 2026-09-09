@@ -1,0 +1,12 @@
+pt-BR:
+  activerecord:
+    attributes:
+      lead_setting:
+        reminder_first_minutes: "Primeiro lembrete"
+        reminder_second_minutes: "Segundo lembrete"
+        reminder_third_minutes: "Terceiro lembrete"
+        reminder_overdue_minutes: "Intervalo dos atrasados"
+        reminder_retry_minutes: "Intervalo entre tentativas"
+        reminder_due_enabled: "Aviso no vencimento"
+        reminder_start_time: "Início do horário de repetição"
+        reminder_end_time: "Fim do horário de repetição"

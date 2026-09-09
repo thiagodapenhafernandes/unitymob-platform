@@ -101,3 +101,18 @@
     margin-left: 0;
   }
 }
+
+/* Opt-in rhythm for settings forms; keeps existing operational forms intact. */
+.ax-field-group--settings { gap: 10px; }
+.ax-field-group--settings > .ax-field-group__body {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.ax-field-group-stack--settings {
+  margin-top: 0;
+  padding-top: 4px;
+  padding-bottom: 0;
+  padding-left: 12px;
+  gap: 20px;
+}

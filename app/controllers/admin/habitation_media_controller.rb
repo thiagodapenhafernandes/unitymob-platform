@@ -12,15 +12,36 @@ class Admin::HabitationMediaController < Admin::BaseController
   before_action :set_habitation
   before_action :scope_habitation_by_permission
   before_action :load_property_setting
-  before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo destroy_selected ambiente organize share download]
+  before_action :authorize_media_management!, only: %i[update upload watermark_status retry_watermark discard_watermark reorder visibility destroy_photo destroy_selected ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:abrir_organizador_midia") }, only: %i[show modal]
-  before_action -> { authorize_profile_field!("photos") }, only: %i[upload reorder visibility destroy_photo destroy_selected ambiente organize share download]
+  before_action -> { authorize_profile_field!("photos") }, only: %i[upload watermark_status retry_watermark discard_watermark reorder visibility destroy_photo destroy_selected ambiente organize share download]
   before_action -> { authorize_profile_action!("acao:gerenciar_ordem_fotos") }, only: :reorder
   before_action -> { authorize_profile_action!("acao:alterar_visibilidade_fotos") }, only: :visibility
-  before_action -> { authorize_profile_action!("acao:remover_foto") }, only: %i[destroy_photo destroy_selected]
+  before_action -> { authorize_profile_action!("acao:remover_foto") }, only: %i[destroy_photo destroy_selected discard_watermark]
   before_action -> { authorize_profile_action!("acao:configurar_ambiente_foto") }, only: :ambiente
   before_action -> { authorize_profile_action!("acao:organizar_fotos") }, only: :organize
   before_action -> { authorize_profile_action!("acao:enviar_fotos") }, only: :share
+
+  rescue_from Habitations::MediaUpdater::PhotoPublicationError do
+    respond_with_media_error("Não foi possível concluir o envio. Confira as fotos pendentes antes de enviar novamente.")
+  end
+
+  def watermark_status
+    respond_with_media_success("Status das fotos atualizado.")
+  end
+
+  def retry_watermark
+    authorize_profile_field!("apply_photo_watermark")
+    return if performed?
+
+    habitation_media_updater.retry_watermark(params[:photo_id])
+    respond_with_media_success("Nova tentativa agendada.")
+  end
+
+  def discard_watermark
+    habitation_media_updater.discard_watermark(params[:photo_id])
+    respond_with_media_success("Foto pendente removida.")
+  end
 
   def show
     @page_title = "Mídia do Imóvel: #{@habitation.codigo}"
@@ -100,7 +121,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     if @habitation.save
       media_update.attach_new_photos(new_photo_uploads, apply_watermark: apply_watermark)
       media_update.record_habitation_updated(before_snapshot: before_snapshot)
-      respond_with_media_success("Fotos enviadas com sucesso.")
+      respond_with_media_success(@habitation.watermark_photos.attached? ? "Upload recebido. Aguardando aplicação da marca nas fotos pendentes." : "Fotos enviadas com sucesso.")
     else
       respond_with_media_validation_error
     end
@@ -660,6 +681,12 @@ class Admin::HabitationMediaController < Admin::BaseController
       ok: true,
       message: message,
       media_url: admin_habitation_media_path(@habitation.id),
+      watermark_photos: Habitations::MediaGallery.new(@habitation).watermark_uploads,
+      watermark_html: render_to_string(partial: "admin/shared/ui/upload_processing_status", formats: [:html], locals: {
+        uploads: Habitations::MediaGallery.new(@habitation).watermark_uploads,
+        retry_action: ("photo-upload#retryWatermark" unless media_field_lock_policy.field_locked?("apply_photo_watermark")),
+        discard_action: ("photo-upload#discardWatermark" unless media_field_lock_policy.action_locked?("acao:remover_foto"))
+      }),
       gallery_html: media_gallery_html(gallery_locals),
       counts: {
         photos: photos.size,
