@@ -2269,4 +2269,44 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   ensure
     ActionController::Base.allow_forgery_protection = false
   end
+  it "envia a categoria do rascunho de terreno e preserva a validação de duplicidade por complemento" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Terreno", status: "Venda", intake_step: "endereco", bloco: nil)
+    existing = create(:habitation, tenant: admin.tenant, categoria: "Terreno", status: "Venda", bloco: nil)
+    existing.create_address!(logradouro: "Márcio Ferreira de Mello e Silva", numero: "55", cidade: "Itajaí", uf: "SC", bairro: "Praia Brava", complemento: nil)
+
+    get edit_admin_captacao_path(intake, step: "endereco")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('[data-habitation-duplicate-check-target="category"]')["value"]).to eq("Terreno")
+    expect(document.at_css('[data-habitation-duplicate-check-target="comparison"]')["value"]).to eq("street")
+
+    query = { street: "Avenida Marcio Ferreira de Mello e Silva", number: "55", category: "Terreno", status: "Venda", comparison: "condominium_unit", ignored_id: intake.id }
+    ["Lote E", "E"].each do |complement|
+      get check_admin_habitation_duplicate_path, params: query.merge(complement: complement)
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["duplicate"]).to eq(false)
+    end
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco", direction: "forward",
+      habitation: { zip_code: "88306-782", street: query[:street], street_number: "55", city: "Itajaí", state: "SC", neighborhood: "Praia Brava", complemento: "Lote E" }
+    }
+    expect(response).to have_http_status(:redirect)
+    expect(intake.reload.complemento).to eq("Lote E")
+    expect(intake.intake_step).not_to eq("endereco")
+    intake.update!(intake_step: "endereco")
+
+    existing.address.update!(complemento: "Lote E")
+    get check_admin_habitation_duplicate_path, params: query.merge(complement: "Lote E")
+    expect(response.parsed_body["duplicate"]).to eq(true)
+    expect(response.parsed_body["matches"].map { |match| match["id"] }).to include(existing.id)
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco", direction: "forward",
+      habitation: { zip_code: "88306-782", street: query[:street], street_number: "55", city: "Itajaí", state: "SC", complemento: "Lote E" }
+    }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Já existe imóvel cadastrado")
+    expect(intake.reload.intake_step).to eq("endereco")
+  end
+
 end
