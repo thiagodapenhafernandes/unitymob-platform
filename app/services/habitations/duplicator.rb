@@ -165,6 +165,7 @@ module Habitations
     def copy_internal_attachments_to(target)
       copy_attachment_collection(source.fichas_cadastro, target, :fichas_cadastro)
       copy_attachment_collection(source.autorizacoes_venda, target, :autorizacoes_venda)
+      copy_attachment_collection(source.documentos, target, :documentos)
     end
 
     def copy_attachment_collection(source_attachments, target, association_name)

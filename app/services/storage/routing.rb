@@ -3,7 +3,8 @@ module Storage
     PROPERTY_PHOTO_ATTACHMENT = ["Habitation", "photos"].freeze
     PROPERTY_DOCUMENT_ATTACHMENTS = [
       ["Habitation", "fichas_cadastro"],
-      ["Habitation", "autorizacoes_venda"]
+      ["Habitation", "autorizacoes_venda"],
+      ["Habitation", "documentos"]
     ].freeze
 
     module_function

@@ -708,14 +708,15 @@ class Habitation < ApplicationRecord
   # Documentos internos do imóvel (só admin/editor enxergam — não vão para o site público)
   # Após anexar, AttachmentOrganizerService move os blobs para
   # imoveis/{codigo}/fichas-cadastro/ e imoveis/{codigo}/autorizacoes/ no DO Spaces.
-  INTERNAL_DOCUMENT_ATTACHMENT_NAMES = %i[fichas_cadastro autorizacoes_venda].freeze
+  INTERNAL_DOCUMENT_ATTACHMENT_NAMES = %i[fichas_cadastro autorizacoes_venda documentos].freeze
   has_many_attached :fichas_cadastro
   has_many_attached :autorizacoes_venda
+  has_many_attached :documentos
 
   after_commit :organize_document_attachments, on: %i[create update]
 
   def organize_document_attachments
-    return unless fichas_cadastro.attached? || autorizacoes_venda.attached?
+    return unless fichas_cadastro.attached? || autorizacoes_venda.attached? || documentos.attached?
     Habitations::AttachmentOrganizerService.new(self).call
   end
 

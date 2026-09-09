@@ -16,7 +16,7 @@ module Habitations
     end
 
     def document_count
-      habitation.fichas_cadastro.attachments.size + habitation.autorizacoes_venda.attachments.size
+      habitation.fichas_cadastro.attachments.size + habitation.autorizacoes_venda.attachments.size + habitation.documentos.attachments.size
     end
 
     def responsible_name
