@@ -5,8 +5,8 @@ module Dashboard
       "microsoft_ads" => "Microsoft Ads", "organic_search" => "Busca orgânica",
       "organic_social" => "Social orgânico", "referral" => "Referência",
       "campaign" => "Outras campanhas", "direct" => "Direto / desconhecido"
-    }.freeze
-    PAID_CHANNELS = %w[meta_ads google_ads microsoft_ads].freeze
+    }.merge(Leads::Attribution::CHANNEL_LABELS).freeze
+    PAID_CHANNELS = (Leads::Attribution::PAID_SOURCES.values + ["paid_campaign"]).uniq.freeze
     CAMPAIGN_ID_KEYS = %w[utm_id campaign_id gad_campaignid].freeze
 
     def initialize(scope:, starts_at:, tenant:)

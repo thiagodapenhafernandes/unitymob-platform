@@ -12,10 +12,29 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
+  it "valida a conta de anúncios antes de vinculá-la" do
+    service = instance_double(Facebook::MetaService)
+    allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
+    allow(service).to receive(:ad_account).with("123456").and_return({"account_id" => "123456", "name" => "Conta correta"})
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_id: "act_123456"}}
+    expect(response).to redirect_to(admin_meta_integrations_path)
+    expect(integration.reload.ad_account_id).to eq("123456")
+    expect(integration.ad_account_name).to eq("Conta correta")
+  end
+
+  it "recusa ID inválido sem substituir a configuração" do
+    integration.update!(ad_account_id: "123456")
+    expect(Facebook::MetaService).not_to receive(:new)
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_id: "../me"}}
+    expect(integration.reload.ad_account_id).to eq("123456")
+    expect(flash[:alert]).to be_present
+  end
+
   it "renderiza a conta conectada com páginas no workspace compartilhado" do
     page
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("direct")
+    allow(Meta::WebhookConfiguration).to receive(:verify_token).and_return("test-verify-token")
     allow(ENV).to receive(:[]).with("META_LEADS_DIRECT_WEBHOOK_PUBLIC_URL").and_return("https://app.saluteimoveis.com.br/webhooks/meta")
 
     get admin_meta_integrations_path

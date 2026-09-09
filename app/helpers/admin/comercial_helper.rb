@@ -82,7 +82,7 @@ module Admin::ComercialHelper
 
   # Resumo de conversão do lead — canal + origem + detalhes, derivado de
   # origin/lead_type/other_information. Fonte única para o cabeçalho e a timeline.
-  def lead_conversion_summary(lead)
+  def lead_conversion_summary(lead, include_whatsapp_campaign: true)
     info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
     attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
     display_origin = lead_display_origin(lead, info, attribution)
@@ -103,6 +103,8 @@ module Admin::ComercialHelper
         [:share, "Link do corretor", "bi-share", "green"]
       elsif origin.include?("zap") || origin.include?("vivareal") || origin.include?("olx")
         [:portal, "Portal imobiliário", "bi-buildings", "amber"]
+      elsif (tracked_channel = lead_attribution_presentation(lead))
+        tracked_channel
       elsif attributed_channel == "google_ads"
         [:google_ads, "Google Ads", "bi-google", "blue"]
       elsif attributed_channel == "meta_ads"
@@ -110,7 +112,7 @@ module Admin::ComercialHelper
       elsif attributed_channel == "microsoft_ads"
         [:microsoft_ads, "Microsoft Ads", "bi-microsoft", "blue"]
       elsif attributed_channel == "organic_search"
-        [:organic_search, tracked_origin_label(display_origin, "Busca orgânica"), "bi-search", "green"]
+        [:organic_search, lead_organic_search_label(lead.attribution_source, display_origin), "bi-search", "green"]
       elsif attributed_channel == "organic_social"
         [:organic_social, tracked_origin_label(display_origin, "Social orgânico"), "bi-instagram", "green"]
       elsif attributed_channel == "referral"
@@ -130,17 +132,17 @@ module Admin::ComercialHelper
 
     source_url   = attribution["landing_url"].presence || lead.source_url.presence || info["source_url"].presence || info["page_url"].presence
     referrer_url = attribution["referrer_url"].presence
-    campaign     = attribution["utm_campaign"].presence || info["utm_campaign"].presence || info["campanha"].presence
+    campaign     = attribution["campaign_name"].presence || attribution["utm_campaign"].presence || info["utm_campaign"].presence || info["campanha"].presence
     received_by  = info["inbound_webhook_user_name"].presence
     webhook_tags = Array(info["webhook_tags"]).compact_blank
 
     # Campanha de WhatsApp que originou o lead (se veio de resposta a disparo)
-    wa_campaign = (lead.whatsapp_campaign_messages.includes(:whatsapp_campaign).first&.whatsapp_campaign&.name rescue nil)
+    wa_campaign = include_whatsapp_campaign && (lead.whatsapp_campaign_messages.includes(:whatsapp_campaign).first&.whatsapp_campaign&.name rescue nil)
 
     sentence =
       case channel
       when :google_ads then "Convertido via Google Ads"
-      when :meta     then "Convertido via Meta Ads#{" — formulário #{info['meta_form_id']}" if info['meta_form_id'].present?}"
+      when :meta, :meta_ads then "Convertido via Meta Ads#{" — formulário #{info['meta_form_id']}" if info['meta_form_id'].present?}"
       when :microsoft_ads then "Convertido via Microsoft Ads"
       when :organic_search then "Convertido por busca orgânica"
       when :organic_social then "Convertido por rede social"
@@ -159,7 +161,7 @@ module Admin::ComercialHelper
     headline =
       case channel
       when :google_ads then "Criado por um anúncio no Google Ads"
-      when :meta     then "Criado por um anúncio no Meta Ads (Facebook/Instagram)"
+      when :meta, :meta_ads then "Criado por um anúncio no Meta Ads (Facebook/Instagram)"
       when :microsoft_ads then "Criado por um anúncio no Microsoft Ads"
       when :organic_search then "Criado por uma busca orgânica (#{channel_label})"
       when :organic_social then "Criado por acesso social (#{channel_label})"
@@ -193,6 +195,39 @@ module Admin::ComercialHelper
       received_by: received_by,
       tags: webhook_tags
     }
+  end
+
+  def lead_organic_search_label(source, fallback)
+    normalized = source.to_s.downcase
+    normalized = "microsoft" if normalized == "bing"
+    name = Leads::Attribution::SOURCE_LABELS[normalized] || tracked_origin_label(fallback, "Busca orgânica")
+    name.match?(/org[aâ]nic/i) ? name : "#{name} orgânico"
+  end
+
+  def lead_attribution_presentation(lead)
+    channel = lead.attribution_channel.to_s
+    data = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
+    return unless data["version"] == 2 || %w[tiktok_ads linkedin_ads pinterest_ads x_ads youtube_ads paid_campaign organic_social social email messaging].include?(channel)
+
+    source = lead.attribution_source.to_s
+    label = Leads::Attribution::SOURCE_LABELS[source] || data["label"].presence || source.presence || "Origem não informada"
+    icon = { "google" => "google", "microsoft" => "bing", "meta" => "meta", "facebook" => "facebook",
+      "instagram" => "instagram", "tiktok" => "tiktok", "linkedin" => "linkedin", "pinterest" => "pinterest",
+      "x" => "twitter-x", "youtube" => "youtube", "whatsapp" => "whatsapp", "telegram" => "telegram" }.fetch(source, "inbox")
+    if Leads::Attribution::PAID_SOURCES.value?(channel) || channel == "paid_campaign"
+      icon = "meta" if channel == "meta_ads"
+      icon = "microsoft" if channel == "microsoft_ads"
+      [channel.to_sym, Leads::Attribution::CHANNEL_LABELS.fetch(channel), "bi-#{icon}", "blue"]
+    else
+      case channel
+      when "organic_search" then [:organic_search, lead_organic_search_label(source, label), "bi-search", "green"]
+      when "organic_social", "social", "messaging" then [channel.to_sym, label, "bi-#{icon}", "green"]
+      when "email" then [:email, label, "bi-envelope", "blue"]
+      when "campaign" then [:campaign, label, "bi-#{icon}", "gray"]
+      when "referral" then [:referral, label, "bi-box-arrow-in-right", "amber"]
+      else [:direct, "Direto / origem desconhecida", "bi-compass", "gray"]
+      end
+    end
   end
 
   def lead_tracking_origin_text(conversion)
@@ -294,7 +329,7 @@ module Admin::ComercialHelper
   end
 
   def lead_origin_label_for(channel, channel_label, display_origin)
-    return channel_label if %i[google_ads meta microsoft_ads external_migration].include?(channel)
+    return channel_label if %i[organic_social organic_search google_ads meta meta_ads microsoft_ads tiktok_ads linkedin_ads pinterest_ads x_ads youtube_ads paid_campaign social messaging email campaign external_migration].include?(channel)
 
     origin = tracked_origin_label(display_origin, channel_label)
     normalized = origin.to_s.parameterize(separator: "_")
@@ -346,9 +381,10 @@ module Admin::ComercialHelper
   end
 
   def external_lead_migration_channel_label(_lead, info, attribution)
+    channel = attribution["channel"].is_a?(Hash) ? attribution["channel"] : {}
     candidates = [
-      attribution.dig("channel", "name"),
-      attribution.dig("channel", "alias"),
+      channel["name"],
+      channel["alias"],
       info.dig("external_lead_payload", "attributes", "channel", "name"),
       info.dig("external_lead_payload", "attributes", "channel", "alias"),
       info.dig("attributes", "channel", "name"),

@@ -35,6 +35,15 @@
             <% end %>
           <% end %>
 
+          <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch, class: "tw-mb-4" do |form| %>
+            <%= form.label :ad_account_id, "Conta de anúncios para enriquecer os leads", class: "ax-label" %>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <%= form.text_field :ad_account_id, value: @integration.ad_account_id, placeholder: "ID da conta de anúncios", class: "ax-input", inputmode: "numeric" %>
+              <%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+            </div>
+            <% if @integration.ad_account_name.present? %><span class="ax-stat-label"><%= @integration.ad_account_name %></span><% end %>
+          <% end %>
+
           <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
             <span class="ax-stat-label">Suas Páginas</span>
             <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--sm" do %>

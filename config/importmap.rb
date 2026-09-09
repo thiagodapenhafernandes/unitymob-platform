@@ -24,3 +24,5 @@ pin "@atlaskit/pragmatic-drag-and-drop/element/adapter", to: "@atlaskit--pragmat
 pin "@fancyapps/ui", to: "@fancyapps--ui.js", preload: false # @5.0.36 (vendor/javascript, self-host)
 pin "@fingerprintjs/fingerprintjs", to: "@fingerprintjs--fingerprintjs.js", preload: false # @4.6.2 (vendor/javascript, self-host)
 pin "intl-tel-input", to: "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/+esm", preload: false
+
+pin "lib/lead_attribution", to: "lib/lead_attribution.js"

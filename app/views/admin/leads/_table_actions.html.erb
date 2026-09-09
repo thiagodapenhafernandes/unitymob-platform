@@ -1,0 +1,35 @@
+<div class="ax-record-actions" data-controller="lead-labels ax-modal"
+     data-lead-labels-index-url-value="<%= admin_lead_lead_labels_path(lead) %>"
+     data-lead-labels-lead-id-value="<%= lead.id %>">
+  <% if lead.direct_whatsapp_url.present? %>
+    <%= link_to lead.direct_whatsapp_url, target: "_blank", rel: "noopener",
+                class: "ax-btn ax-btn--sm ax-record-actions__whatsapp" do %>
+      <%= ax_icon("whatsapp") %><span class="tw-sr-only">WhatsApp</span>
+    <% end %>
+  <% end %>
+  <%= link_to "Atender", admin_lead_path(lead, return_to: lead_return_to_path), class: "ax-btn ax-btn--sm ax-btn--primary" %>
+  <div data-controller="ax-dropdown" data-ax-dropdown-fixed-value="true">
+    <button type="button" class="ax-btn ax-btn--sm" aria-label="Mais ações para <%= lead.display_name %>"
+            data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger"><%= ax_icon("three-dots") %></button>
+    <div class="ax-menu ax-menu--end" data-ax-dropdown-target="menu" hidden>
+      <% if phone_digits.present? %>
+        <%= link_to "tel:#{phone_digits}", class: "ax-menu__item" do %>
+          <%= ax_icon("telephone") %><span>Ligar</span>
+        <% end %>
+      <% end %>
+      <button type="button" class="ax-menu__item" data-action="lead-labels#open ax-modal#open">
+        <%= ax_icon("tags") %><span>Etiquetas</span>
+      </button>
+      <% if can_destroy_lead? %>
+        <%= form_with url: admin_lead_path(lead), method: :delete,
+                      id: "delete_lead_#{lead.id}", class: "tw-hidden" do %><% end %>
+        <%= ax_confirm_submit(form_id: "delete_lead_#{lead.id}", message: "Excluir este lead?", confirm_label: "Excluir") do %>
+          <button type="button" class="ax-menu__item ax-menu__item--danger" data-action="click->ax-confirm-submit#request">
+            <%= ax_icon("trash") %><span>Excluir lead</span>
+          </button>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <%= render "admin/lead_labels/modal" %>
+</div>

@@ -1,0 +1,274 @@
+/* Shared record-table presentation: identity, context, badges and row actions. */
+.ax-table-wrap--records {
+  border-radius:8px
+}
+
+/* A shared grid keeps article rows and headings aligned without table sizing. */
+.ax-record-list {
+  --ax-record-columns:25% 23% 18% 11% 9% 14%;
+  min-width:1180px;
+  font-size:12px;
+}
+.ax-record-list__row {
+  display:grid;
+  grid-template-columns:var(--ax-record-columns);
+  align-items:center;
+}
+.ax-record-list__row {
+  height:76px;
+  box-sizing:border-box;
+  border-bottom:1px solid #e8edf0;
+  background:var(--ax-panel-bg,#fff);
+}
+.ax-record-list__cell { min-width:0; padding:4px 12px; }
+.ax-record-list__row:hover,.ax-record-list__row:focus-within {
+  background:var(--admin-primary-softer,#f1f7f8);
+}
+
+.ax-record-identity {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0
+}
+
+.ax-record-identity__copy {
+  flex:1;
+  min-width:0
+}
+
+.ax-record-avatar {
+  width:36px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  flex:none;
+  border:1px solid #bbccd2;
+  border-radius:7px;
+  background:#edf4f6;
+  color:#477b87;
+  font-size:16px;
+  font-weight:700
+}
+
+.ax-record-list .ax-record-name {
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+  font-weight:650;
+  margin-bottom:0;
+  color:var(--admin-ink,#26323d)
+}
+
+.ax-record-contact {
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:4px 8px;
+  color:#586775
+}
+
+.ax-record-email {
+  display:block;
+  font-size:11px;
+  color:#65727c;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  margin-top:0
+}
+
+.ax-record-list .ax-record-reference {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  color:#a22c58;
+  font-size:12px;
+  margin-bottom:0
+}
+
+.ax-record-list .ax-record-title {
+  display:block;
+  font-size:12px;
+  line-height:16px;
+  font-weight:550;
+  color:#426f7b
+}
+
+.ax-record-badges {
+  display:flex;
+  flex-wrap:nowrap;
+  gap:4px;
+  margin-top:2px
+}
+
+.ax-record-list .ax-badge {
+  height:auto;
+  min-height:18px;
+  font-weight:550;
+  border-radius:999px;
+  font-size:10px;
+  padding:1px 5px;
+  line-height:16px;
+  white-space:nowrap
+}
+
+.ax-record-contact .ax-badge {
+  flex-shrink:0;
+  font-weight:650
+}
+
+.ax-record-origin {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  font-weight:600
+}
+
+.ax-brand-icon {
+  width:20px;
+  height:20px;
+  flex:none;
+  font-size:18px;
+  line-height:20px
+}
+
+.ax-record-origin--blue {
+  color:#315d8b
+}
+.ax-record-origin--green {
+  color:#147350
+}
+.ax-record-origin--amber {
+  color:#895500
+}
+.ax-record-origin--gray {
+  color:#5d6975
+}
+
+.ax-record-origin[data-brand="meta"] {
+  color:#0866ff
+}
+.ax-record-origin[data-brand="google"] {
+  color:#1967d2
+}
+.ax-record-origin[data-brand="instagram"] {
+  color:#c13584
+}
+.ax-record-origin[data-brand="microsoft"] {
+  color:#505050
+}
+.ax-record-origin[data-brand="whatsapp"] {
+  color:#128c7e
+}
+
+.ax-record-conversion {
+  margin-top:2px
+}
+
+.ax-record-sub {
+  display:block;
+  font-size:11px;
+  color:#697680;
+  margin-top:0
+}
+
+.ax-record-owner {
+  font-size:12px;
+  color:#697680
+}
+.ax-record-date {
+  font-variant-numeric:tabular-nums;
+  font-size:12px
+}
+
+.ax-record-actions {
+  display:flex;
+  gap:6px;
+  justify-content:flex-end;
+  align-items:center
+}
+
+.ax-record-actions .ax-btn {
+  min-height:34px;
+  padding:0 10px;
+  font-size:12px;
+  border-radius:5px
+}
+
+.ax-record-actions .ax-record-actions__whatsapp {
+  color:#29714e;
+  border-color:#cbe3d5;
+  background:#f4fbf6
+}
+
+.ax-record-actions-heading {
+  text-align:right!important
+}
+
+.ax-record-actions [data-controller="ax-dropdown"] {
+  position:relative
+}
+
+.ax-record-actions .ax-menu>div {
+  width:100%
+}
+
+[data-admin-theme="dark"] .ax-record-list__row {
+  background:var(--ax-dark-surface);
+  color:var(--ax-dark-text)
+}
+
+[data-admin-theme="dark"] .ax-record-list__row:hover {
+  background:var(--ax-dark-surface-hover)
+}
+
+
+.ax-record-list .ax-badge--blue  {
+   background: #e2edf8;
+   color: #315d8b;
+ 
+}
+
+.ax-record-list .ax-badge--cyan  {
+   background: #dff4f7;
+   color: #126477;
+ 
+}
+
+
+.ax-record-origin[data-brand="tiktok"] { color: #161823; }
+.ax-record-origin[data-brand="linkedin"] { color: #0a66c2; }
+.ax-record-origin[data-brand="pinterest"] { color: #bd081c; }
+.ax-record-origin[data-brand="twitter-x"] { color: #14171a; }
+.ax-record-origin[data-brand="youtube"] { color: #c00; }
+.ax-record-origin[data-brand="facebook"] { color: #1877f2; }
+
+.ax-record-list .ax-record-title,.ax-record-list .ax-record-sub,.ax-record-owner {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.ax-record-list .ax-record-name { line-height:16px; }
+.ax-record-list .ax-record-email { line-height:16px; }
+.ax-record-list .ax-record-badges { overflow-x:auto; scrollbar-width:none; }
+.ax-record-list .ax-record-badges .ax-badge { flex:none; }
+.ax-record-list .ax-record-conversion .ax-badge {
+  display:inline-block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  vertical-align:top;
+}
+.ax-record-list .ax-record-origin { display:flex; line-height:18px; }
+.ax-record-list .ax-brand-icon { width:16px; height:16px; font-size:16px; line-height:16px; }
+.ax-record-list .ax-record-owner { display:block; }
+
+.ax-record-list .ax-record-sub { line-height:16px; }
+.ax-record-list .ax-record-conversion { line-height:18px; }
+.ax-record-list .ax-record-contact-details { display:flex; gap:4px; align-items:center; min-width:0; }
+.ax-record-list .ax-record-contact-details .ax-record-email { min-width:0; }
+.ax-record-list .lead-labels-chips { flex:none; max-width:50%; overflow-x:auto; white-space:nowrap; }

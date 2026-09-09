@@ -1,8 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
+import { LeadAttribution } from "lib/lead_attribution"
 
 export default class extends Controller {
-  static attributionStorageKey = "unitymob_first_touch_attribution_v1"
-  static attributionTtlMs = 90 * 24 * 60 * 60 * 1000
 
   static targets = ["modal", "propertyId", "leadType", "origin", "shareToken", "name", "phone", "email", "submitButton"]
   static values = {
@@ -12,7 +11,10 @@ export default class extends Controller {
   }
 
   connect() {
-    this.persistFirstTouchAttribution()
+    this.attribution = new LeadAttribution()
+    this.onAttributionConsent = () => this.attribution.payload()
+    window.addEventListener('unitymob:lgpd-consent-accepted', this.onAttributionConsent)
+    window.addEventListener('unitymob:lgpd-consent-rejected', this.onAttributionConsent)
 
     // Close on escape key
     document.addEventListener('keydown', (e) => {
@@ -20,6 +22,11 @@ export default class extends Controller {
         this.close()
       }
     })
+  }
+
+  disconnect() {
+    window.removeEventListener('unitymob:lgpd-consent-accepted', this.onAttributionConsent)
+    window.removeEventListener('unitymob:lgpd-consent-rejected', this.onAttributionConsent)
   }
 
   async open(event) {
@@ -235,49 +242,6 @@ export default class extends Controller {
   }
 
   trackingParams() {
-    return this.storedFirstTouchAttribution() || this.currentAttribution()
-  }
-
-  persistFirstTouchAttribution() {
-    if (this.storedFirstTouchAttribution()) return
-
-    const attribution = this.currentAttribution()
-
-    try {
-      window.localStorage.setItem(this.constructor.attributionStorageKey, JSON.stringify({
-        attribution,
-        expires_at: Date.now() + this.constructor.attributionTtlMs
-      }))
-    } catch (_error) {
-      // Navegação privada ou política do navegador pode bloquear storage.
-    }
-  }
-
-  storedFirstTouchAttribution() {
-    try {
-      const stored = JSON.parse(window.localStorage.getItem(this.constructor.attributionStorageKey))
-      if (!stored?.attribution || Number(stored.expires_at) <= Date.now()) {
-        window.localStorage.removeItem(this.constructor.attributionStorageKey)
-        return null
-      }
-
-      return stored.attribution
-    } catch (_error) {
-      return null
-    }
-  }
-
-  currentAttribution() {
-    const params = new URLSearchParams(window.location.search)
-    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "campaign_id", "gad_campaignid", "gclid", "fbclid", "msclkid", "gbraid", "wbraid"]
-
-    return keys.reduce((payload, key) => {
-      const value = params.get(key)
-      if (value) payload[key] = value
-      return payload
-    }, {
-      landing_url: window.location.href,
-      referrer_url: document.referrer
-    })
+    return this.attribution.payload()
   }
 }

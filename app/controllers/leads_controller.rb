@@ -57,7 +57,10 @@ class LeadsController < ApplicationController
         utm_content: attribution["utm_content"],
         gclid: attribution["gclid"],
         fbclid: attribution["fbclid"],
-        msclkid: attribution["msclkid"]
+        msclkid: attribution["msclkid"],
+        gbraid: attribution["gbraid"],
+        wbraid: attribution["wbraid"],
+        ttclid: attribution["ttclid"]
       ).compact, request: request)
 
       # Send Emails (Async)
@@ -90,7 +93,7 @@ class LeadsController < ApplicationController
   end
 
   def attribution_params
-    raw = params.require(:lead).permit(*Leads::Attribution::TRACKING_KEYS).to_h
+    raw = params.require(:lead).permit(*Leads::Attribution::TRACKING_KEYS, first_touch: Leads::Attribution::TRACKING_KEYS, conversion_touch: Leads::Attribution::TRACKING_KEYS).to_h
     raw["landing_url"] = raw["landing_url"].presence || source_page_url
     raw
   end

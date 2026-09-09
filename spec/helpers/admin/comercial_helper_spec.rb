@@ -246,3 +246,30 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
     end
   end
 end
+
+RSpec.describe Admin::ComercialHelper, type: :helper do
+  it "explicita Google orgânico para registros legados e novos" do
+    [ {}, {"version" => 2} ].each do |data|
+      lead = build(:lead, origin: "Site", attribution_channel: "organic_search", attribution_source: "google", attribution_data: data)
+      expect(helper.lead_conversion_summary(lead)[:lead_origin_label]).to eq("Google orgânico")
+    end
+  end
+
+  it "mostra TikTok Ads e não confunde clique Meta com anúncio" do
+    lead = build(:lead, origin: "Site")
+    Leads::Attribution.apply!(lead, raw: {ttclid: "click"})
+    expect(helper.lead_conversion_summary(lead)).to include(lead_origin_label: "TikTok Ads", icon: "bi-tiktok")
+    other = build(:lead, origin: "Site")
+    Leads::Attribution.apply!(other, raw: {fbclid: "click"})
+    expect(helper.lead_conversion_summary(other)).to include(lead_origin_label: "Meta", channel: :social)
+  end
+end
+
+RSpec.describe Admin::ComercialHelper, type: :helper do
+  it "mantém nome e ícone da mesma rede em atribuições sociais legadas" do
+    {"meta" => ["Meta", "bi-meta"], "instagram" => ["Instagram", "bi-instagram"], "facebook" => ["Facebook", "bi-facebook"]}.each do |source, (label, icon)|
+      lead = build(:lead, origin: "Site", attribution_channel: "organic_social", attribution_source: source, attribution_data: {})
+      expect(helper.lead_conversion_summary(lead)).to include(lead_origin_label: label, icon: icon)
+    end
+  end
+end

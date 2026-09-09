@@ -108,7 +108,7 @@ class WebhookService
       request_query = request&.query_parameters || {}
       source_data = data.respond_to?(:to_h) ? data.to_h : {}
 
-      %w[utm_source utm_medium utm_campaign utm_term utm_content gclid fbclid msclkid].each do |key|
+      (Leads::Attribution::TRACKING_KEYS - %w[landing_url referrer_url]).each do |key|
         value = source_data[key] || source_data[key.to_sym] || request_query[key] || request_query[key.to_sym]
         params[key] = value if value.present?
       end

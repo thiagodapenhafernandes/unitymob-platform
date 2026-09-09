@@ -28,6 +28,16 @@ module Admin::UiHelper
     )
   end
 
+  # Bootstrap Icons assets retain the approved brand palette.
+  def ax_brand_icon(name)
+    key = name.to_s.delete_prefix("bi-")
+    if %w[meta google microsoft instagram whatsapp tiktok linkedin pinterest twitter-x youtube facebook bing telegram].include?(key)
+      image_tag("bootstrap-brands/#{key}.svg", class: "ax-brand-icon", alt: "", aria: { hidden: true })
+    else
+      ax_icon(key, class_name: "ax-brand-icon")
+    end
+  end
+
   # Iniciais para avatares (WhatsApp inbox e afins): 2 primeiras letras do nome.
   # Botões "WhatsApp" de atendimento apontam para o inbox interno quando o
   # admin da conta ativa em Configurações → Atendimento WhatsApp (e o usuário

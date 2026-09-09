@@ -76,6 +76,23 @@ RSpec.describe "Leads", type: :request do
   end
 
   describe "POST /leads" do
+    it "persiste a primeira origem separada da conversão e encaminha os identificadores" do
+      post leads_path, params: { lead: {
+        name: "Atribuição multicanal", phone: "47999992345", origin: "Site", lead_type: "whatsapp_modal",
+        page_url: "http://localhost/imovel", first_touch: { gbraid: "GoogleFirst" },
+        conversion_touch: { ttclid: "TikTokLast", utm_source: "tiktok", utm_campaign: "Lançamento", landing_url: "http://localhost/imovel" }
+      } }, as: :json
+      expect(response).to have_http_status(:ok)
+      lead = Lead.order(:created_at).last
+      expect(lead.attribution_channel).to eq("tiktok_ads")
+      expect(lead.origin).to eq("Site")
+      expect(lead.attribution_data.dig("first_touch", "channel")).to eq("google_ads")
+      expect(lead.attribution_data.dig("conversion_touch", "ttclid")).to eq("TikTokLast")
+      expect(WebhookService).to have_received(:send_form_data).with(
+        "whatsapp_lead", hash_including(ttclid: "TikTokLast"), anything
+      )
+    end
+
     it "mantém as boas-vindas ao cliente sem avisar o e-mail principal da imobiliária" do
       post leads_path, params: {
         lead: { name: "Cliente Site", phone: "47999991234", email: "cliente@example.com" }

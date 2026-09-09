@@ -6875,7 +6875,9 @@ CREATE TABLE public.user_meta_integrations (
     sync_progress integer,
     last_synced_at timestamp(6) without time zone,
     sync_message character varying,
-    tenant_id bigint
+    tenant_id bigint,
+    ad_account_id character varying,
+    ad_account_name character varying
 );
 
 
@@ -18791,6 +18793,7 @@ ALTER TABLE ONLY public.browser_extension_operations
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260909160000'),
 ('20260908190000'),
 ('20260906023000'),
 ('20260906013000'),

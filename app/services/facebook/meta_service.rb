@@ -43,6 +43,18 @@ module Facebook
       raise MetaAPIError.new("Não foi possível subscrever a página para webhooks.")
     end
 
+    def ad_account(account_id)
+      @graph.get_object("act_#{account_id}", fields: "account_id,name")
+    end
+
+    def ad_details(ad_id)
+      @graph.get_object(ad_id, fields: "id,name,account_id,campaign{id,name},adset{id,name}")
+    end
+
+    def campaign_details(campaign_id)
+      @graph.get_object(campaign_id, fields: "id,name,account_id")
+    end
+
     def get_lead_details(lead_id)
       @graph.get_object(lead_id)
     rescue Koala::Facebook::APIError => e

@@ -176,6 +176,7 @@ class Lead < ApplicationRecord
   after_update :sync_open_activity_owners!, if: :saved_change_to_admin_user_id?
   after_update :record_audit_update
   after_destroy :record_audit_destroy
+  after_create_commit :enqueue_meta_enrichment
   after_create_commit :route_lead, unless: :skip_automatic_routing?
   after_create_commit :dispatch_automation_created, unless: :skip_automatic_routing?
   after_update_commit :dispatch_automation_stage_changed, unless: :skip_automatic_routing?
@@ -605,6 +606,17 @@ class Lead < ApplicationRecord
 
   def record_audit_destroy
     Leads::AuditChangeRecorder.record_destroy!(self)
+  end
+
+  def enqueue_meta_enrichment
+    info = other_information.to_h
+    return unless attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
+    return unless info["meta_leadgen_id"].present? || info["ad_id"].present? || info["campaign_id"].present? ||
+      attribution_data.to_h.values_at("ad_id", "campaign_id").any?(&:present?)
+
+    MetaLeadEnrichmentJob.perform_later(tenant_id, id)
+  rescue StandardError => error
+    Rails.logger.warn("Meta enrichment enqueue failed lead_id=#{id} error=#{error.class}")
   end
 
   def route_lead

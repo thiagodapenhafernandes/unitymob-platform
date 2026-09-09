@@ -44,6 +44,7 @@
  *= require admin/components/form_actions
  *= require admin/components/form_section
  *= require admin/components/table
+ *= require admin/components/record_table
  *= require admin/components/card
  *= require admin/components/disclosure_card
  *= require admin/components/documentation

@@ -8,12 +8,14 @@ import AxPopoverController from "controllers/ax_popover_controller"
 //   </div>
 export default class extends AxPopoverController {
   static targets = ["menu", "trigger"]
+  static values = { fixed: Boolean }
 
   connect() {
     super.connect()
     this.onTriggerKeydown = this.handleTriggerKeydown.bind(this)
     this.onMenuKeydown = this.handleMenuKeydown.bind(this)
     this.closeTimer = null
+    this.onViewportChange = () => this.close()
 
     if (this.hasTriggerTarget) {
       this.triggerTarget.setAttribute("aria-haspopup", "menu")
@@ -31,6 +33,7 @@ export default class extends AxPopoverController {
   disconnect() {
     if (this.closeTimer) window.clearTimeout(this.closeTimer)
     this.stopListening()
+    this.stopViewportListening()
     if (this.hasTriggerTarget) this.triggerTarget.removeEventListener("keydown", this.onTriggerKeydown)
     this.menuTarget.removeEventListener("keydown", this.onMenuKeydown)
   }
@@ -52,9 +55,26 @@ export default class extends AxPopoverController {
     if (this.elevatedContainer) this.elevatedContainer.classList.add("has-open-dropdown")
     if (this.hasTriggerTarget) this.triggerTarget.setAttribute("aria-expanded", "true")
     this.listen()
+    if (this.fixedValue) {
+      const rect = this.triggerTarget.getBoundingClientRect()
+      const menu = this.menuTarget
+      this.menuItems.forEach((item) => item.setAttribute("role", "menuitem"))
+      menu.style.position = "fixed"
+      menu.style.right = "auto"
+      menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`
+      menu.style.top = `${Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - menu.offsetHeight - 8))}px`
+      window.addEventListener("resize", this.onViewportChange)
+      document.addEventListener("scroll", this.onViewportChange, true)
+    }
+  }
+
+  stopViewportListening() {
+    window.removeEventListener("resize", this.onViewportChange)
+    document.removeEventListener("scroll", this.onViewportChange, true)
   }
 
   close(options = {}) {
+    this.stopViewportListening()
     this.element.classList.remove("is-open")
     if (this.elevatedContainer) {
       this.elevatedContainer.classList.remove("has-open-dropdown")

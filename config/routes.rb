@@ -402,6 +402,7 @@ Rails.application.routes.draw do
       collection do
         post :sync_pages
         post :sync_forms
+        patch :ad_account
         delete :disconnect
         get :list_forms
       end

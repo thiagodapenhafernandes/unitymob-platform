@@ -236,9 +236,19 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css("#leadDesktopFilterModal")).to be_present
       expect(document.at_css(".ax-workspace-heading")).to be_nil
       expect(response.body).to include("WhatsApp")
-      expect(document.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}'][method='post']")).to be_present
+      expect(document.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}'][method='post']")).to be_nil
       expect(document.at_css("a[href='#{admin_lead_path(lead, return_to: "#{admin_leads_path(view: "list")}#lead_#{lead.id}", anchor: "whatsapp")}']")).to be_nil
-      expect(response.body).not_to include("<table")
+      table = document.at_css(".ax-record-list[role=table]")
+      expect(table).to be_present
+      expect(table.at_css("article[role=row]")).to be_present
+      whatsapp = table.at_css("#lead_#{lead.id} a.ax-record-actions__whatsapp")
+      expect(whatsapp["href"]).to eq(lead.direct_whatsapp_url)
+      expect(whatsapp["target"]).to eq("_blank")
+      expect(table.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}']")).to be_nil
+      expect(table.at_css(".ax-record-list__header")).to be_nil
+      expect(table.at_css("#lead_#{lead.id} .ax-badge--cyan").text).to eq(lead.reload.status)
+      expect(table.at_css(".ax-menu .ax-modal-overlay")).to be_nil
+      expect(table.at_css(".ax-record-actions > .ax-modal-overlay")).to be_present
       expect(response.body).to include("Cliente Lista")
       expect(response.body).not_to include(waiting_acceptance.name)
       expect(response.body).not_to include(unassigned_waiting_acceptance.name)

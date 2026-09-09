@@ -41,6 +41,23 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     trigger_sync(notice: "A sincronização dos formulários foi iniciada.")
   end
 
+  def ad_account
+    raise ActiveRecord::RecordNotFound unless @integration
+
+    account_id = params.require(:meta_integration).permit(:ad_account_id)[:ad_account_id].to_s.delete_prefix("act_")
+    if account_id.blank?
+      @integration.update!(ad_account_id: nil, ad_account_name: nil)
+    else
+      raise ArgumentError unless account_id.match?(/\A[0-9]{5,30}\z/)
+      account = Facebook::MetaService.new(@integration.access_token).ad_account(account_id)
+      raise ArgumentError unless account["account_id"].to_s == account_id
+      @integration.update!(ad_account_id: account_id, ad_account_name: account["name"])
+    end
+    redirect_to admin_meta_integrations_path, notice: "Conta de anúncios atualizada."
+  rescue Koala::Facebook::APIError, ArgumentError
+    redirect_to admin_meta_integrations_path, alert: "Não foi possível validar essa conta de anúncios na conexão Meta."
+  end
+
   def disconnect
     @integration&.destroy
     redirect_to admin_meta_integrations_path, notice: "Conta do Facebook desconectada."
@@ -81,7 +98,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def set_integration
-    @integration = UserMetaIntegration.find_by(admin_user: current_admin_user)
+    @integration = UserMetaIntegration.find_by(admin_user: current_admin_user, tenant_id: current_tenant.id)
   end
 
   def set_page
