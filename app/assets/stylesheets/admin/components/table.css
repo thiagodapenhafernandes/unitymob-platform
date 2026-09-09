@@ -145,3 +145,12 @@
   .ax-table tbody td { padding: 6px 9px; }
   .ax-table tbody td.ax-table__empty { padding: 18px 12px; }
 }
+
+.ax-table .ax-table__record-name {
+  display: block;
+  max-width: 34ch;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ax-table .ax-table__record-detail { display: block; margin-top: 3px; }
+.ax-table th.ax-table__actions-heading { text-align: right; }

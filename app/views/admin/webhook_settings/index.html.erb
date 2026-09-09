@@ -1,3 +1,4 @@
+<div class="ax-integration-layout">
 <% active_tab = @active_tab || "outbound" %>
 <%
   active_outbound_count = @can_manage_outbound_webhooks ? @webhook_settings.to_a.count(&:active?) : 0
@@ -104,3 +105,5 @@
       controller: "ax-aside",
       storage_key: "admin-webhook-settings-aside-collapsed",
       preload_class: "ax-webhook-settings-aside-collapsed-preload" %>
+
+</div>

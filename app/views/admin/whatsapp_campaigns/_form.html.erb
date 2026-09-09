@@ -131,7 +131,8 @@
 
     <section class="whatsapp-campaign-builder__pane" id="whatsapp-campaign-step-panel-2" role="tabpanel" aria-labelledby="whatsapp-campaign-step-tab-2" aria-hidden="true" data-whatsapp-campaign-builder-target="step" data-step="2" hidden>
       <%= ax_operational_panel(eyebrow: "Etapa 2", title: "Modelo e variáveis") do %>
-        <div class="ax-panel-body whatsapp-campaign-form__stack">
+        <div class="ax-panel-body whatsapp-campaign-form__stack whatsapp-campaign-model-layout">
+          <div class="whatsapp-campaign-form__stack whatsapp-campaign-model-controls">
           <div class="ax-field">
             <%= ax_field_label(f, :whatsapp_template_id, text: "Modelo WhatsApp aprovado") %>
             <%= f.select :whatsapp_template_id,
@@ -147,15 +148,6 @@
             <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
               Selecione um modelo para o sistema identificar e montar os campos variáveis automaticamente.
             <% end %>
-          </div>
-          <div class="whatsapp-campaign-template-preview">
-            <div>
-              <strong>Preview do modelo</strong>
-              <div class="whatsapp-campaign-template-preview__content" data-whatsapp-campaign-builder-target="templatePreview">Selecione um modelo para visualizar.</div>
-            </div>
-            <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#previewTemplate">
-              <i class="bi bi-eye ax-ico"></i><span>Atualizar preview</span>
-            </button>
           </div>
           <div class="whatsapp-response-decision-map">
             <div class="whatsapp-response-decision-map__head">
@@ -210,6 +202,17 @@
             <span data-whatsapp-campaign-builder-target="testResult"></span>
           </div>
           <p class="ax-field__hint">Escolha quais dados do lead preencherão cada campo do modelo aprovado.</p>
+          </div>
+          <div class="whatsapp-campaign-model-preview">
+            <div>
+              <strong>Prévia da mensagem</strong>
+              <div class="whatsapp-campaign-model-preview__content" data-whatsapp-campaign-builder-target="templatePreview">Selecione um modelo para visualizar.</div>
+            </div>
+            <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#previewTemplate">
+              <i class="bi bi-eye ax-ico"></i><span>Atualizar prévia</span>
+            </button>
+          </div>
+
         </div>
       <% end %>
     </section>

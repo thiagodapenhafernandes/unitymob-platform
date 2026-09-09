@@ -1,3 +1,4 @@
+<div class="ax-integration-layout">
 <%# Migração de Imagens — compacto (.ax-*). Todos os data-targets do Stimulus preservados. %>
 <% worker = @status[:worker] %>
 <% execution = @status[:execution] || {} %>
@@ -56,7 +57,7 @@
         <% end %>
       </div>
       <%= form_with url: admin_image_migration_configuration_path, method: :patch, scope: :image_migration, local: true do |f| %>
-        <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-items-end">
+        <div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-items-end">
           <div class="lg:tw-col-span-2"><%= f.label :mode, "Escopo", class: "ax-label" %><%= f.select :mode, options_for_select(Admin::ImageMigrationStatusController::SYNC_MODES.map { |v, l| [l, v] }, @configuration["mode"]), {}, class: "ax-select" %></div>
           <div><%= f.label :batch_size, "Lote", class: "ax-label" %><%= f.number_field :batch_size, value: @configuration["batch_size"], min: 1, max: 500, class: "ax-input" %></div>
           <div><%= f.label :workers, "Workers", class: "ax-label" %><%= f.number_field :workers, value: @configuration["workers"], min: 1, max: 8, class: "ax-input" %></div>
@@ -87,7 +88,7 @@
         label: "Progresso da migração de imagens",
         data: { image_migration_status_target: "executionProgressBar" }
       ) %>
-      <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-text-2xs">
+      <div class="tw-grid tw-grid-cols-1 sm:tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-text-2xs">
         <div><div class="tw-text-ink-muted">Imóveis novos</div><div class="ax-strong" data-image-migration-status-target="executionPropertiesAdded"><%= number_with_delimiter(execution[:properties_added].to_i) %></div></div>
         <div><div class="tw-text-ink-muted">Fotos novas</div><div class="ax-strong" data-image-migration-status-target="executionImagesAdded"><%= number_with_delimiter(execution[:images_added].to_i) %></div></div>
         <div><div class="tw-text-ink-muted">Restantes</div><div class="ax-strong" data-image-migration-status-target="executionRemaining"><%= number_with_delimiter(execution[:remaining].to_i) %></div></div>
@@ -132,4 +133,6 @@
   <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
     A execução usa a galeria da API/Vista como origem, reaproveita fotos já anexadas por nome de arquivo e baixa apenas o que ainda falta no Active Storage/DO Spaces.
   <% end %>
+</div>
+
 </div>

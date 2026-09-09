@@ -43,7 +43,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response.body).to include("ax-operational-panel", "meta-integration-avatar--page")
     expect(response.body).to include("ax-record-item", "meta-integration-account", "ax-disclosure-card")
     expect(response.body).to include("Sincronizar Páginas", "Desconectar conta", page.name)
-    expect(response.body).to include("Webhook Meta · App próprio", "https://app.saluteimoveis.com.br/webhooks/meta")
+    expect(response.body).to include("Configuração do webhook", "App próprio", "https://app.saluteimoveis.com.br/webhooks/meta")
     expect(response.body).to include("Webhook Ativo") if page.active?
     expect(Nokogiri::HTML(response.body).at_css(".meta-integration-workspace").to_html).not_to match(/\bstyle\s*=/i)
   end

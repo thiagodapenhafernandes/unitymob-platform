@@ -1,5 +1,6 @@
+<div class="ax-integration-layout">
 <div class="integration-workspace meta-integration-workspace">
-<%= ax_workspace_heading(eyebrow: "Integrações · Aquisição", icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", metrics: [{ value: @pages.size, label: "páginas" }], actions: capture do %>
+<%= ax_workspace_heading(icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", metrics: [{ value: @pages.size, label: "páginas" }], actions: capture do %>
   <% if @integration %>
     <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
     <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Tem certeza? Isso irá parar a importação de leads." } do %>
@@ -11,7 +12,7 @@
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
   <div class="lg:tw-col-span-12">
     <%= render "sync_status", integration: @integration %>
-    <%= ax_operational_panel(eyebrow: "Aquisição", title: "Conexão Facebook") do %>
+    <%= ax_operational_panel(title: @integration ? "Conta conectada" : "Conexão Facebook") do %>
         <% if @integration %>
           <%= ax_record_item(
                 title: "Conectado como #{@integration.name}",
@@ -24,41 +25,37 @@
                 ], " ")
               ) %>
 
-          <% if @meta_webhook_callback_url.present? && @meta_webhook_verify_token.present? %>
-            <%= ax_inline_notice(tone: :info, icon: "globe2", compact: true) do %>
-              <strong>Webhook Meta · <%= @meta_webhook_mode_label %>:</strong>
-              configure a Callback URL
-              <code><%= @meta_webhook_callback_url %></code>
-              e o Verify Token
-              <code><%= @meta_webhook_verify_token %></code>.
-              <%= @meta_webhook_mode_description %>
+          <%= ax_form_section(title: "Conta de anúncios", tooltip: "Usada para buscar informações de anúncios e campanhas dos leads.") do %>
+            <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch do |form| %>
+              <%= ax_text_field(form: form, method: :ad_account_id, label: "ID da conta de anúncios",
+                    value: @integration.ad_account_id, placeholder: "ID da conta de anúncios", inputmode: "numeric") %>
+              <% if @integration.ad_account_name.present? %><p class="ax-stat-label"><%= @integration.ad_account_name %></p><% end %>
+              <div class="ax-form-actions"><%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %></div>
             <% end %>
           <% end %>
 
-          <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch, class: "tw-mb-4" do |form| %>
-            <%= form.label :ad_account_id, "Conta de anúncios para enriquecer os leads", class: "ax-label" %>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <%= form.text_field :ad_account_id, value: @integration.ad_account_id, placeholder: "ID da conta de anúncios", class: "ax-input", inputmode: "numeric" %>
-              <%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
-            </div>
-            <% if @integration.ad_account_name.present? %><span class="ax-stat-label"><%= @integration.ad_account_name %></span><% end %>
+          <% if @meta_webhook_callback_url.present? && @meta_webhook_verify_token.present? %>
+            <%= ax_form_section(title: "Configuração do webhook", collapse_id: "meta-webhook-settings", collapsed: true, tooltip: @meta_webhook_mode_description) do %>
+              <div class="ax-field"><%= label_tag :meta_webhook_callback, "Callback URL", class: "ax-label" %><%= text_field_tag :meta_webhook_callback, @meta_webhook_callback_url, class: "ax-control", readonly: true %></div>
+              <div class="ax-field"><%= label_tag :meta_webhook_verify, "Verify Token", class: "ax-label" %><%= text_field_tag :meta_webhook_verify, @meta_webhook_verify_token, class: "ax-control", readonly: true %></div>
+              <span class="ax-stat-label"><%= @meta_webhook_mode_label %></span>
+            <% end %>
           <% end %>
 
-          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
-            <span class="ax-stat-label">Suas Páginas</span>
+          <% pages_actions = capture do %>
             <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--sm" do %>
               <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Sincronizar Páginas
             <% end %>
-          </div>
-
-          <div class="tw-flex tw-flex-col tw-divide-y tw-divide-line tw-border tw-border-line tw-rounded">
+          <% end %>
+          <%= ax_form_section(title: "Páginas e formulários", actions: pages_actions) do %>
+          <div class="tw-flex tw-flex-col tw-gap-3">
             <% @pages.each do |page| %>
               <details class="ax-disclosure-card meta-integration-page">
                 <summary class="ax-disclosure-card__summary">
-                  <span class="tw-flex tw-items-center tw-gap-3">
+                  <span class="tw-flex tw-items-center tw-gap-3 tw-min-w-0">
                     <span class="ax-navbar__avatar meta-integration-avatar meta-integration-avatar--page" aria-hidden="true"><i class="bi bi-facebook tw-text-blue-600"></i></span>
                     <span>
-                      <span class="ax-strong tw-block"><%= page.name %></span>
+                      <span class="ax-strong tw-block tw-break-words"><%= page.name %></span>
                       <span class="tw-text-2xs tw-text-ink-faint"><%= page.category %></span>
                     </span>
                   </span>
@@ -68,7 +65,7 @@
                   </span>
                 </summary>
                 <div class="ax-disclosure-card__body">
-                  <div class="ax-stat-label tw-mb-2"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
+                  <div class="ax-stat-label tw-mt-3 tw-mb-2"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
                   <turbo-frame id="page_forms_<%= page.id %>" src="<%= list_forms_admin_meta_integrations_path(page_id: page.id) %>" loading="lazy">
                     <div class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-py-3 tw-text-ink-faint tw-text-2xs" role="status" aria-live="polite">
                       <span class="ax-spinner" aria-hidden="true"></span><span>Carregando formulários...</span>
@@ -85,6 +82,7 @@
                   ) %>
             <% end %>
           </div>
+          <% end %>
         <% else %>
           <div class="tw-text-center tw-py-8">
             <i class="bi bi-facebook tw-text-blue-600 meta-integration-connect-icon" aria-hidden="true"></i>
@@ -99,4 +97,6 @@
   </div>
 
 </div>
+</div>
+
 </div>

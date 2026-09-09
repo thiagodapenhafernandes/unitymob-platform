@@ -1,0 +1,27 @@
+<% attachment = template.header_media_file %>
+<% kind = attachment.attached? && attachment.blob.content_type.to_s.start_with?("audio/") ? "audio" : template.header_format %>
+<div class="ax-message-preview" aria-label="Prévia da mensagem WhatsApp">
+  <div class="ax-message-preview__bubble">
+    <%= render "admin/shared/ui/message_media", kind: kind, url: whatsapp_preview_media_url(attachment, template.header_media_handle) %>
+    <div class="ax-message-preview__content">
+      <% if template.header_format == "text" %><strong><%= template.header_text %></strong><% end %>
+      <%= whatsapp_preview_text(local_assigns.fetch(:body) { template.render_body(template.example_values) }) %>
+      <% if template.footer_text.present? %><small class="ax-message-preview__footer"><%= template.footer_text %></small><% end %>
+    </div>
+    <% template.interactive_buttons.reject { |button| button["source"] == "carousel" }.each do |button| %>
+      <div class="ax-message-preview__button"><%= ax_icon(button["kind"] == "url" ? "box-arrow-up-right" : "reply") %><%= button["text"] %></div>
+    <% end %>
+  </div>
+  <% if template.template_type == "carousel" %>
+    <div class="ax-message-preview__carousel">
+      <% template.clean_carousel_cards.each_with_index do |card, index| %>
+        <% file = template.carousel_card_media_files[index] %>
+        <div class="ax-message-preview__bubble ax-message-preview__card">
+          <%= render "admin/shared/ui/message_media", kind: card["media_type"], url: file ? url_for(file) : whatsapp_preview_media_url(nil, card["media_handle"]) %>
+          <div class="ax-message-preview__content"><%= whatsapp_preview_text(card["text"]) %></div>
+          <% if card["button_text"].present? %><div class="ax-message-preview__button"><%= card["button_text"] %></div><% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

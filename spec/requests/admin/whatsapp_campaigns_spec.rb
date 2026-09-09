@@ -425,6 +425,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)
       expect(data["body"]).to eq("Oi Maria Lead, origem site.")
+      expect(data["preview_html"]).to include("ax-message-preview", "Oi Maria Lead, origem site.")
     end
 
     it "retorna botoes do template para configurar decisoes comerciais" do
@@ -611,6 +612,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)
       expect(data["body"]).to eq("Oi Maria Lead, origem site.")
+      expect(data["preview_html"]).to include("ax-message-preview", "Oi Maria Lead, origem site.")
     end
   end
 
@@ -766,6 +768,44 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
   end
 
   describe "POST whatsapp sender numbers" do
+    let(:gateway) { instance_double(Whatsapp::WebhookGatewayClient, register_route: Whatsapp::WebhookGatewayClient::Result.new(ok?: true, skipped?: false)) }
+
+    before do
+      allow(Whatsapp::WebhookGatewayClient).to receive(:new).and_return(gateway)
+    end
+
+    it "registra a rota com os dados atualizados do numero e da conta" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant)
+      expect(Whatsapp::WebhookGatewayClient).to receive(:new) do |integration:, tenant:, target_url:|
+        expect(integration.id).to eq(sender.id)
+        expect(integration.waba_id).to eq("nova-waba")
+        expect(tenant).to eq(admin.tenant)
+        expect(target_url).to eq("http://localhost/webhooks/whatsapp")
+        gateway
+      end
+      patch admin_whatsapp_sender_number_path(sender), params: { whatsapp_sender_number: { waba_id: "nova-waba" } }
+      expect(gateway).to have_received(:register_route)
+    end
+
+    it "preserva o numero salvo e informa falha no registro da rota" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant)
+      allow(gateway).to receive(:register_route).and_return(Whatsapp::WebhookGatewayClient::Result.new(ok?: false, skipped?: false, error: "Gateway indisponível"))
+      patch admin_whatsapp_sender_number_path(sender), params: { whatsapp_sender_number: { label: "Atualizado" } }
+      expect(sender.reload.label).to eq("Atualizado")
+      expect(flash[:alert]).to include("Gateway indisponível")
+    end
+
+    it "nao registra rota quando o cadastro e invalido" do
+      post admin_whatsapp_sender_numbers_path, params: { whatsapp_sender_number: { label: "Inválido" } }
+      expect(gateway).not_to have_received(:register_route)
+    end
+
+    it "nao reativa rota de numero desativado ao editar" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, active: false)
+      patch admin_whatsapp_sender_number_path(sender), params: { whatsapp_sender_number: { label: "Inativo" } }
+      expect(gateway).not_to have_received(:register_route)
+    end
+
     it "adiciona numero de envio" do
       expect {
         post admin_whatsapp_sender_numbers_path, params: {
@@ -780,6 +820,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
 
       expect(response).to redirect_to(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: WhatsappSenderNumber.last.id))
       expect(WhatsappSenderNumber.last.label).to eq("Relacionamento")
+      expect(gateway).to have_received(:register_route)
     end
 
     it "atualiza parametros de CPL do numero" do

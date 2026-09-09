@@ -30,6 +30,15 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     end
   end
 
+  it "explica os retornos e traduz a conta oficial sem exibir o objeto bruto" do
+    allow(Whatsapp::WebhookGatewayClient).to receive(:enabled?).and_return(false)
+    allow_any_instance_of(Admin::WhatsappIntegrationsController).to receive(:whatsapp_phone_info).and_return({ official_business_account: { "oba_status" => "NOT_STARTED" }, code_verification_status: "EXPIRED" })
+    get admin_whatsapp_integration_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Solicitação de conta oficial não iniciada", "Verificação do número", "Gateway não configurado completamente", "confirmações de entrega e leitura", "Enviar para aprovação")
+    expect(response.body).not_to include("NOT_STARTED", "Pronto p/ envio")
+  end
+
   it "exibe a tela sem duplicar paginas/forms do Meta Leads" do
     get admin_whatsapp_integration_path
 
@@ -380,6 +389,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
   end
 
   it "mantem webhook proprio nos campos e exibe nota do webhook global quando configurado" do
+    allow(Whatsapp::WebhookGatewayClient).to receive(:enabled?).and_return(true)
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_PUBLIC_URL").and_return("https://webhooks.unitymob.com.br/webhooks/whatsapp")
     allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
@@ -395,7 +405,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(callback["placeholder"]).to eq("http://localhost/webhooks/whatsapp")
     expect(callback["value"]).to eq("http://localhost/webhooks/whatsapp")
     expect(token["value"]).not_to eq("gateway-verify-token")
-    expect(response.body).to include("Webhook global Unitymob")
+    expect(response.body).to include("Endpoint público do gateway Unitymob")
     expect(response.body).to include("https://webhooks.unitymob.com.br/webhooks/whatsapp")
     expect(response.body).to include("gateway-verify-token")
   end
@@ -404,7 +414,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     get admin_whatsapp_integration_path(tab: "site_phones")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Telefones dos formulários do site")
+    expect(response.body).to include("Telefones do site")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css(".ax-input-group__icon--whatsapp")).to be_present
     expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("Telefones do Site")
@@ -626,7 +636,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     get admin_whatsapp_integration_path(tab: "site_phones")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Telefones dos formulários do site")
+    expect(response.body).to include("Telefones do site")
 
     patch phone_settings_admin_whatsapp_integration_path, params: {
       whatsapp_business_integration: {

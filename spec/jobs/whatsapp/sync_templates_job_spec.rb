@@ -111,7 +111,12 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
 
     expect(result).to eq(ok: true, synced: 1)
     template = tenant.whatsapp_templates.find_by!(name: "sample_image_url_template", language: "pt_BR")
-    expect(template.header_media_file).to be_attached
+    expect(template.header_media_file).not_to be_attached
+    expect(Whatsapp::SyncTemplateMediaJob).to have_been_enqueued.with(tenant.id, template.id)
+    Whatsapp::SyncTemplateMediaJob.perform_now(tenant.id, template.id)
+    Whatsapp::SyncTemplateMediaJob.perform_now(tenant.id, template.id)
+    expect(HTTParty).to have_received(:get).with("https://scontent.whatsapp.net/media/header.png?oh=123", timeout: 30).once
+    expect(template.reload.header_media_file).to be_attached
     expect(template.header_media_file.blob.filename.to_s).to eq("header.png")
     expect(template.header_media_file.blob).to have_attributes(content_type: "image/png", byte_size: "fake-image-content".bytesize)
   end

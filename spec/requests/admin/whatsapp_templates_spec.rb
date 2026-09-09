@@ -62,7 +62,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       expect(response.body).to include("Nenhum template encontrado", "Ajuste os filtros ou sincronize novamente")
     end
 
-    it "nao lista o numero fixo das notificacoes como numero de campanha" do
+    it "permite gerenciar templates tambem para o numero da integracao principal" do
       WhatsappBusinessIntegration.current(admin.tenant).update!(
         status: "connected",
         phone_number_id: "phone-notificacoes",
@@ -75,8 +75,62 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       get admin_whatsapp_templates_path
 
       expect(response.body).to include("Campanhas")
-      expect(response.body).to include("554733111067")
-      expect(response.body).not_to include("554721228669")
+      expect(response.body).to include("55 (47) 3311-1067")
+      expect(response.body).to include("55 (47) 2122-8669")
+    end
+  end
+
+  describe "contexto do numero" do
+    it "preserva o numero ao entrar na previa e voltar pelo desktop ou mobile" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-previa")
+      template = admin.tenant.whatsapp_templates.create!(name: "previa", language: "pt_BR", status: "APPROVED", category: "MARKETING", body: "Olá", waba_id: sender.waba_id)
+      listing_path = admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
+      preview_path = admin_whatsapp_template_path(template, whatsapp_sender_number_id: sender.id)
+
+      get listing_path
+      document = Nokogiri::HTML(response.body)
+      expect(document.css("a").map { |link| link["href"] }).to include(preview_path)
+
+      get preview_path
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".ax-mobile-detail-header a")["href"]).to eq(listing_path)
+      expect(document.css("a.ax-contextbar__button").map { |link| link["href"] }).to include(listing_path)
+      expect(document.css("a").map { |link| link["href"] }).to include(new_campaign_admin_whatsapp_template_path(template, whatsapp_sender_number_id: sender.id))
+
+      get listing_path
+      expect(Nokogiri::HTML(response.body).at_css("a.whatsapp-template-selector__option[aria-current='true']")["href"]).to eq(listing_path)
+    end
+
+    it "preserva o numero principal selecionado no formulario e na WABA enviada" do
+      integration = WhatsappBusinessIntegration.current(admin.tenant)
+      integration.update!(phone_number_id: "principal-test", waba_id: "principal-waba", access_token: "token")
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, phone_number_id: integration.phone_number_id, waba_id: integration.waba_id)
+      get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
+      expect(response.body).to include(new_admin_whatsapp_template_path(whatsapp_sender_number_id: sender.id))
+      get new_admin_whatsapp_template_path(template_type: "text", whatsapp_sender_number_id: sender.id)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('input[name="whatsapp_sender_number_id"]')["value"]).to eq(sender.id.to_s)
+      client = instance_double(Whatsapp::CloudClient)
+      expect(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+      expect(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+        expect(template.waba_id).to eq(sender.waba_id)
+        {ok: true}
+      end
+      post admin_whatsapp_templates_path, params: {whatsapp_sender_number_id: sender.id, whatsapp_template: {name: "contexto", body: "Olá", language: "pt_BR", category: "MARKETING", template_type: "text"}}
+      expect(response).to redirect_to(admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id))
+    end
+
+    it "recusa numero inativo ou de outra conta sem usar outro remetente" do
+      inactive = create(:whatsapp_sender_number, tenant: admin.tenant, active: false)
+      other = Tenant.create!(name: "Outra conta templates", slug: "other-template-sender")
+      foreign = create(:whatsapp_sender_number, tenant: other, whatsapp_business_integration: nil)
+      [inactive, foreign].each do |sender|
+        Current.tenant = admin.tenant
+        sign_in admin
+        get new_admin_whatsapp_template_path(whatsapp_sender_number_id: sender.id)
+        expect(response).to have_http_status(:not_found), "location=#{response.location} flash=#{flash.to_hash}"
+      end
     end
   end
 
@@ -147,7 +201,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       }
 
       expect(response).to have_http_status(:redirect)
-      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
+      expect(response).to redirect_to(admin_whatsapp_templates_path)
       template = WhatsappTemplate.find_by!(name: "convite_video")
       expect(template.status).to eq("PENDING")
       expect(template.meta_id).to eq("123")
@@ -172,7 +226,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       }
 
       expect(response).to have_http_status(:redirect)
-      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
+      expect(response).to redirect_to(admin_whatsapp_templates_path)
       expect(client).to have_received(:create_template).with(hash_including(name: "campanha_fake"))
       expect(WhatsappTemplate.find_by!(name: "campanha_fake").status).to eq("PENDING")
     end
@@ -230,7 +284,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       }
 
       expect(response).to have_http_status(:redirect)
-      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
+      expect(response).to redirect_to(admin_whatsapp_templates_path)
       template = WhatsappTemplate.find_by!(name: "carrossel_lancamento")
       expect(template.meta_id).to eq("carousel-123")
       expect(template.carousel_cards.map { |card| card["media_handle"] }).to eq(%w[card-handle-1 card-handle-2])
@@ -261,7 +315,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       }
 
       expect(response).to have_http_status(:redirect)
-      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
+      expect(response).to redirect_to(admin_whatsapp_templates_path)
       template = WhatsappTemplate.find_by!(name: "flow_agendamento")
       expect(template.meta_id).to eq("flow-123")
       expect(template.components.last["buttons"].first).to include(

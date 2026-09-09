@@ -147,8 +147,9 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   end
 
   def selected_sender_number(allow_default: true)
-    selected = sender_number_scope.active.find_by(id: params[:whatsapp_sender_number_id])
-    return selected if selected
+    if params[:whatsapp_sender_number_id].present?
+      return sender_number_scope.active.find(params[:whatsapp_sender_number_id])
+    end
     return nil unless allow_default
 
     sender_number_scope.active.order(:label, :display_phone_number).first
@@ -183,10 +184,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   end
 
   def sender_number_scope
-    scope = current_tenant.whatsapp_sender_numbers
-    notification_phone_id = WhatsappBusinessIntegration.current(current_tenant).phone_number_id.to_s.presence
-    scope = scope.where.not(phone_number_id: notification_phone_id) if notification_phone_id
-    scope
+    current_tenant.whatsapp_sender_numbers
   end
 
   def template_params

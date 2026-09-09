@@ -5,7 +5,7 @@
     <i class="bi bi-arrow-left ax-ico"></i><span>Campanhas</span>
   <% end %>
   <% if @sender_number %>
-    <%= button_to sync_admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number.id), method: :post, class: "ax-contextbar__button" do %>
+    <%= button_to sync_admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number.id), method: :post, class: "ax-contextbar__button", data: { submit_guard_label: "Sincronizando templates…" } do %>
       <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar</span>
     <% end %>
     <%= link_to new_admin_whatsapp_template_path(whatsapp_sender_number_id: @sender_number.id), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
@@ -27,19 +27,25 @@
     </div>
   </section>
 
-  <section class="whatsapp-template-selector">
-    <div>
-      <strong>Número / WABA</strong>
-      <span>Templates são aprovados por WABA. Ao escolher o número, a listagem mostra os modelos dessa conexão.</span>
-    </div>
-    <div class="whatsapp-template-selector__options">
+  <section class="whatsapp-template-selector ax-panel" aria-label="Número de envio">
+    <header class="ax-panel__header">
+      <div class="ax-panel__heading">
+        <h2 class="ax-panel__title">Número / WABA</h2>
+        <p class="ax-panel__subtitle">Templates são aprovados por WABA. Ao escolher o número, a listagem mostra os modelos dessa conexão.</p>
+      </div>
+    </header>
+    <div class="whatsapp-template-selector__options ax-panel__body ax-field-grid">
       <% @sender_numbers.each do |number| %>
         <%= link_to admin_whatsapp_templates_path(whatsapp_sender_number_id: number.id),
-                    class: "whatsapp-template-selector__option #{'is-active' if @sender_number&.id == number.id}",
+                    class: "ax-option-card ax-option-card--link whatsapp-template-selector__option #{'is-active' if @sender_number&.id == number.id}",
                     aria: ({ current: "true" } if @sender_number&.id == number.id) do %>
-          <strong><%= number.formatted_phone %></strong>
-          <span><%= number.label %></span>
-          <small>WABA: <%= number.waba_id.presence || "não informada" %></small>
+          <%= ax_icon("whatsapp") %>
+          <span>
+            <strong><%= number.formatted_phone %></strong>
+            <span class="ax-option-card__description"><%= number.label %></span>
+            <small>WABA: <%= number.waba_id.presence || "não informada" %></small>
+          </span>
+          <% if @sender_number&.id == number.id %><%= ax_icon("check-circle-fill", class_name: "ax-option-card__mark") %><% end %>
         <% end %>
       <% end %>
       <% if @sender_numbers.empty? %>
@@ -80,6 +86,7 @@
 
   <% if @sender_number %>
     <section class="whatsapp-template-table-section">
+    <div class="ax-table-wrap">
     <table class="ax-table whatsapp-template-table">
       <caption class="ax-table__caption--sr-only">Templates da WABA selecionada</caption>
       <thead>
@@ -89,26 +96,26 @@
           <th scope="col">Categoria</th>
           <th scope="col">Idioma</th>
           <th scope="col">Status</th>
-          <th scope="col">Ações</th>
+          <th scope="col" class="ax-table__actions-heading">Ações</th>
         </tr>
       </thead>
       <tbody>
         <% @templates.each do |template| %>
           <tr>
             <td>
-              <strong><%= template.name %></strong>
-              <span><%= template.status.to_s.upcase == "APPROVED" ? "Disponível para campanhas" : "Aguardando revisão" %></span>
+              <strong class="ax-table__record-name"><%= template.name %></strong>
+              <span class="ax-table__record-detail"><%= template.approved? ? "Disponível para campanhas" : t("whatsapp_template_statuses.#{template.status.to_s.upcase}", default: template.status.to_s.humanize) %></span>
             </td>
             <td><%= template.template_type_label %></td>
             <td><%= ax_badge(template.category_label.presence || "Sem categoria", tone: :gray) %></td>
-            <td><%= template.language %></td>
+            <td><%= template.language == "pt_BR" ? "Português (BR)" : template.language %></td>
             <td>
               <% tone = template.approved? ? :green : (template.pending? ? :amber : :red) %>
-              <%= ax_badge(template.status.to_s.titleize.presence || "Rascunho", tone: tone, dot: true) %>
+              <%= ax_badge(t("whatsapp_template_statuses.#{template.status.to_s.upcase}", default: template.status.presence || "Rascunho"), tone: tone, dot: true) %>
             </td>
             <td>
               <div class="whatsapp-template-table__actions">
-                <%= link_to admin_whatsapp_template_path(template), class: "ax-btn ax-btn--sm" do %>
+                <%= link_to admin_whatsapp_template_path(template, whatsapp_sender_number_id: @sender_number.id), class: "ax-btn ax-btn--sm" do %>
                   <i class="bi bi-eye ax-ico"></i><span>Prévia</span>
                 <% end %>
                 <% if template.approved? %>
@@ -135,6 +142,7 @@
         <% end %>
       </tbody>
     </table>
+    </div>
     <%= ax_pagination @templates, params: request.query_parameters %>
     </section>
   <% end %>

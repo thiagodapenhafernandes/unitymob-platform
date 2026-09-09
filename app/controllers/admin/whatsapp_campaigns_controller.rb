@@ -123,6 +123,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     render json: {
       ok: true,
       body: preview.body,
+      preview_html: render_to_string(partial: "admin/shared/ui/whatsapp_message_preview", formats: [:html], locals: { template: template, body: preview.body }),
       values: preview.values,
       media: template_preview_media(template),
       variable_count: template.variable_count,

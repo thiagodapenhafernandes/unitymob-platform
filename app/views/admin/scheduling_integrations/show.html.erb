@@ -1,3 +1,4 @@
+<div class="ax-integration-layout">
 <% can_manage_schedule = can?(:manage, :agenda_fotografia) || can?(:manage, :integracoes) %>
 
 <% content_for :admin_contextbar_breadcrumb do %>
@@ -116,3 +117,5 @@
       controller: "ax-aside",
       storage_key: "admin-scheduling-aside-collapsed",
       preload_class: "ax-scheduling-aside-collapsed-preload" %>
+
+</div>

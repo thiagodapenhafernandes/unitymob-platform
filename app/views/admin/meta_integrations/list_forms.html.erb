@@ -30,11 +30,10 @@
       </turbo-frame>
     <% end %>
   <% else %>
-    <%= ax_empty_state(
+    <%= ax_record_item(
           title: "Nenhum formulário encontrado",
-          description: "Esta página ainda não possui formulários sincronizados.",
-          icon: "file-earmark-x",
-          compact: true
+          meta: "Esta página ainda não possui formulários sincronizados.",
+          icon: "file-earmark-x"
         ) %>
   <% end %>
 </turbo-frame>

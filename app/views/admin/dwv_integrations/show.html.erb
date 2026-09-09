@@ -1,3 +1,4 @@
+<div class="ax-integration-layout">
 <%= ax_workspace_heading(eyebrow: "Integrações · Estoque", icon: "hdd-network", title: "DWV", pills: [@dwv_enabled ? "ativa" : "inativa"], subtitle: "Monitore conexão, sincronização e disponibilidade do estoque de lançamentos.", metrics: [{ value: current_tenant.habitations.where(imovel_dwv: "Sim").count, label: "importados" }], actions: ax_button("Documentação", "https://api.dwvapp.com.br/", variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener")) %>
 
 <%= ax_field_grid do %>
@@ -12,7 +13,7 @@
         </div>
       </div>
       <div class="ax-card__body">
-        <%= form_with url: admin_dwv_integrations_path, method: :patch, scope: :dwv, local: true do |f| %>
+        <%= form_with url: admin_dwv_integrations_path, method: :patch, scope: :dwv, local: true, class: "tw-grid tw-gap-3" do |f| %>
           <%= ax_switch_field(label: "Ativar integração DWV", form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @dwv_enabled }) %>
 
           <div class="tw-mb-3">
@@ -75,7 +76,7 @@
         <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat dwv-integration-title-icon dwv-integration-title-icon--info"></i>Controles de Sincronização</h5>
       </div>
       <div class="ax-card__body">
-        <%= form_with url: sync_property_admin_dwv_integrations_path, method: :post, local: true, class: "tw-flex tw-items-center tw-gap-2 tw-mb-4" do |f| %>
+        <%= form_with url: sync_property_admin_dwv_integrations_path, method: :post, local: true, class: "tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-mb-4" do |f| %>
           <div class="tw-w-full">
             <%= label_tag :property_id, "ID do imóvel na DWV", class: "ax-label tw-font-semibold" %>
             <%= text_field_tag :property_id, nil, class: "ax-control", placeholder: "Ex: 12345" %>
@@ -108,3 +109,5 @@
     <% end %>
   </div>
 <% end %>
+
+</div>

@@ -1,0 +1,15 @@
+/* Shared composition for integration settings; controls retain their own styles. */
+.ax-integration-layout { display: grid; gap: 16px; min-width: 0; }
+.ax-integration-layout > *,
+.ax-integration-layout .ax-operational-panel__body > *,
+.ax-integration-layout .ax-field { min-width: 0; }
+.ax-integration-layout .ax-operational-panel__header,
+.ax-integration-layout .ax-card__header { flex-wrap: wrap; gap: 12px; }
+.ax-integration-layout .ax-operational-panel__actions { flex-wrap: wrap; gap: 8px; }
+.ax-integration-layout .ax-disclosure-card__body { padding-top: 12px; }
+.ax-integration-layout .ax-panel-body { display: grid; gap: 16px; min-width: 0; }
+.ax-integration-layout .ax-form-actions { flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) {
+  .ax-integration-layout .ax-operational-panel__actions { justify-content: flex-start; }
+  .ax-integration-layout .ax-disclosure-card__summary { flex-wrap: wrap; }
+}

@@ -1,3 +1,4 @@
+<div class="ax-integration-layout">
 <%
   can_launch_signup = @diagnostics.all? { |item| item[:ok] || item[:fallback].present? }
   active_tab = params[:tab].presence || "whatsapp"
@@ -25,6 +26,7 @@
       "EXPIRED" => "Expirado",
       "PENDING_REVIEW" => "Em análise",
       "NONE" => "Sem solicitação",
+      "NOT_STARTED" => "Solicitação de conta oficial não iniciada",
       "VERIFIED" => "Registrado",
       "NOT_VERIFIED" => "Pendente",
       "LIVE" => "Produção",
@@ -37,7 +39,7 @@
   }
   official_account_label = ->(value) {
     info = value.respond_to?(:to_h) ? value.to_h.with_indifferent_access : {}
-    status = info[:status].presence || value
+    status = info[:oba_status].presence || info[:status].presence || (value unless value.respond_to?(:to_h))
     meta_status_label.call(status)
   }
   throughput_label = ->(value) {
@@ -55,9 +57,6 @@
 <% end %>
 
 <% content_for :admin_contextbar_actions do %>
-  <%= link_to admin_whatsapp_conversations_path, class: "ax-contextbar__button" do %>
-    <i class="bi bi-chat-dots"></i><span>Atendimento</span>
-  <% end %>
   <% if @whatsapp_integration.persisted? && connected %>
     <%= button_to disconnect_admin_whatsapp_integration_path, method: :delete,
                   class: "ax-contextbar__button ax-contextbar__button--danger",
@@ -78,15 +77,15 @@
   <% connection_status = if @whatsapp_using_global
        ax_badge("Usando conexão global", tone: :blue, dot: true)
      elsif connected
-       ax_badge("Conectado", tone: :green, dot: true)
+       ax_badge("Conexão cadastrada", tone: :green, dot: true)
      else
-       ax_badge("Aguardando conexão", tone: :gray)
+       ax_badge(@whatsapp_integration.messaging_ready? ? "Credenciais de envio configuradas" : "Conexão não configurada", tone: :gray)
      end %>
   <%= ax_workspace_heading(
         eyebrow: "Integração",
         icon: "whatsapp",
         title: "Integração WhatsApp",
-        subtitle: "Conecte o WhatsApp Business pela Meta e configure os telefones usados nos formulários do site.",
+        subtitle: "Gerencie a conexão, os retornos de mensagens, as notificações e os números de disparo. Configure os contatos públicos na aba Telefones do Site.",
         actions: connection_status,
         class_name: "wa-command"
       ) %>
@@ -108,8 +107,7 @@
     <div class="wa-grid">
       <div class="wa-main">
         <%= ax_operational_panel(
-              eyebrow: "Formulários do site",
-              title: "Telefones dos formulários do site"
+              title: "Telefones do site"
             ) do %>
           <div class="wa-panel-body">
             <p class="wa-hint">Defina o número de destino e se o visitante passa pelo formulário intermediário antes do WhatsApp.</p>
@@ -123,7 +121,7 @@
             <%= form_with model: @whatsapp_integration, url: phone_settings_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
               <div class="wa-field">
                 <%= ax_field_label(f, :default_whatsapp_number, text: "Número padrão",
-                      tooltip: "Usado quando o tipo de negociação não tiver número específico.") %>
+                      tooltip: "Usado quando o tipo de negociação não tiver número específico. Locação diária segue a regra de locação.") %>
                 <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp ax-input-group__icon--whatsapp")) do %>
                   <%= f.telephone_field :default_whatsapp_number,
                         class: "ax-control",
@@ -135,27 +133,20 @@
 
               <div class="wa-negotiations">
                 <% WhatsappBusinessIntegration::NEGOTIATION_TYPES.each do |key, config| %>
-                  <section class="wa-negotiation">
-                    <header class="wa-negotiation__head">
-                      <span class="wa-negotiation__icon"><i class="bi bi-whatsapp"></i></span>
-                      <div>
-                        <strong><%= config[:label] %></strong>
-                        <span><%= config[:default_message] %></span>
-                      </div>
-                    </header>
-                    <div class="wa-field">
+                  <%= ax_form_section(title: config[:label], tooltip: config[:default_message]) do %>
+                    <div class="wa-negotiation-fields">
                       <%= ax_text_field(form: f, method: config[:phone_attribute], label: "WhatsApp de destino",
                             type: :tel, placeholder: "Usar número padrão", data: { controller: "phone-input" }) %>
+                      <div class="wa-negotiation-options">
+                        <%= ax_switch_field(form: f, method: config[:form_attribute],
+                              label: "Captar dados antes de redirecionar",
+                              checked_value: "1", unchecked_value: "0") %>
+                        <%= ax_switch_field(form: f, method: config[:redirect_attribute],
+                              label: "Redirecionar para o WhatsApp após captar o lead",
+                              checked_value: "1", unchecked_value: "0") %>
+                      </div>
                     </div>
-                    <%= ax_toggle_chip(f, config[:form_attribute],
-                          label: "Captar dados antes de redirecionar",
-                          checked_value: "1", unchecked_value: "0",
-                          class_name: "wa-negotiation__toggle") %>
-                    <%= ax_toggle_chip(f, config[:redirect_attribute],
-                          label: "Redirecionar para o WhatsApp após captar o lead",
-                          checked_value: "1", unchecked_value: "0",
-                          class_name: "wa-negotiation__toggle") %>
-                  </section>
+                  <% end %>
                 <% end %>
               </div>
 
@@ -176,7 +167,7 @@
       </div>
 
       <aside class="wa-aside">
-        <%= ax_operational_panel(eyebrow: "Resumo", title: "Como o site usa") do %>
+        <%= ax_operational_panel(title: "Resumo dos destinos") do %>
           <div class="wa-panel-body">
             <dl class="wa-state">
               <% @site_phone_settings[:negotiations].each do |key, item| %>
@@ -198,15 +189,11 @@
           </div>
         <% end %>
 
-        <%= ax_operational_panel(eyebrow: "Regra", title: "Regra padrão") do %>
-          <div class="wa-panel-body">
-            <p class="wa-hint">Se um número específico ficar em branco, o site usa o número padrão. Locação diária entra na regra de locação.</p>
-          </div>
-        <% end %>
+
       </aside>
     </div>
   <% else %>
-    <div class="wa-grid">
+    <div class="wa-grid wa-grid--compact">
       <div class="wa-main">
         <% if @whatsapp_using_global %>
           <%= ax_inline_notice(tone: :info, icon: "globe2") do %>
@@ -216,9 +203,8 @@
         <% end %>
 
         <%= ax_operational_panel(
-              eyebrow: "WhatsApp Business API",
               title: "Conexão WhatsApp",
-              actions: ax_badge(@whatsapp_using_global ? "Global ativo" : (connected ? "Conectado" : "Aguardando conexão"), tone: @whatsapp_using_global ? :blue : (connected ? :green : :gray), dot: connected || @whatsapp_using_global)
+              actions: ax_badge(@whatsapp_using_global ? "Global ativo" : (connected ? "Conexão cadastrada" : (@whatsapp_integration.messaging_ready? ? "Credenciais de envio configuradas" : "Conexão não configurada")), tone: @whatsapp_using_global ? :blue : (connected ? :green : :gray), dot: connected || @whatsapp_using_global)
             ) do %>
           <div class="wa-panel-body">
             <% if connected %>
@@ -278,12 +264,11 @@
               <section class="wa-webhook">
                 <header class="wa-webhook__head">
                   <div>
-                    <span class="ax-operational-panel__eyebrow">Inbox</span>
-                    <h3>Webhook de mensagens</h3>
+                    <span class="ax-operational-panel__eyebrow">Mensagens e retornos</span>
+                    <h3>Recebimento de mensagens e status</h3>
                   </div>
-                  <%= link_to "Abrir Atendimento", admin_whatsapp_conversations_path, class: "ax-btn ax-btn--sm" %>
                 </header>
-                <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber mensagens e retornos de aprovação. Campos a assinar: <code>messages</code> e <code>message_template_status_update</code>.</p>
+                <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber mensagens, confirmações de entrega e leitura, falhas dos disparos e atualizações de aprovação dos templates. Campos a assinar: <code>messages</code> e <code>message_template_status_update</code>.</p>
 
                 <% if @webhook_settings_errors.present? %>
                   <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
@@ -294,8 +279,8 @@
                 <%= form_with model: @whatsapp_integration, url: admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
                   <div class="wa-webhook__grid">
                     <div class="wa-field">
-                      <%= ax_text_field(form: f, method: :webhook_callback_url, label: "Callback URL", type: :url,
-                            tooltip: "Em produção, use o domínio público (HTTPS). Em branco, usa o padrão: #{@default_webhook_callback_url}",
+                      <%= ax_text_field(form: f, method: :webhook_callback_url, label: "Endpoint desta aplicação", type: :url,
+                            tooltip: "Destino desta aplicação para receber os eventos. Quando houver gateway, este é o destino do encaminhamento, não o callback público configurado na Meta. Em branco: #{@default_webhook_callback_url}",
                             value: @webhook_callback_url, placeholder: @default_webhook_callback_url) %>
                     </div>
                     <div class="wa-field">
@@ -308,17 +293,24 @@
                   </div>
                 <% end %>
 
-                <% if @global_webhook_callback_url.present? && @global_webhook_verify_token.present? %>
+                <% if Whatsapp::WebhookGatewayClient.enabled? && @global_webhook_callback_url.present? && @global_webhook_verify_token.present? %>
                   <%= ax_inline_notice(tone: :info, icon: "globe2", compact: true) do %>
-                    <strong>Webhook global Unitymob:</strong>
+                    <strong>Endpoint público do gateway Unitymob:</strong>
                     para usar o app Meta central, configure a Callback URL
                     <code><%= @global_webhook_callback_url %></code>
-                    e o Verify Token
+                    e o token de verificação do gateway
                     <code><%= @global_webhook_verify_token %></code>.
+                    O gateway encaminha os eventos para a aplicação cadastrada na rota do número.
                   <% end %>
                 <% end %>
               </section>
             </details>
+            <% unless Whatsapp::WebhookGatewayClient.enabled? && @global_webhook_callback_url.present? && @global_webhook_verify_token.present? %>
+                  <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
+                    Gateway não configurado completamente neste ambiente. O registro automático de rotas depende dessa configuração; credenciais de envio não confirmam o recebimento de retornos.
+                  <% end %>
+            <% end %>
+
 
             <% if !connected && @whatsapp_integration.last_error_message.present? %>
               <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
@@ -350,17 +342,15 @@
 
         <%# Conexão manual (System User / Cloud API) — número fixo das notificações do sistema %>
         <%= ax_operational_panel(
-              eyebrow: "Notificações do sistema",
-              title: "Número fixo para notificações automáticas",
-              actions: ax_badge(@whatsapp_using_global ? "Usando global" : (@whatsapp_integration.messaging_ready? ? "Pronto p/ envio" : "Não configurado"), tone: @whatsapp_using_global ? :blue : (@whatsapp_integration.messaging_ready? ? :green : :gray))
+              title: "Número das notificações",
+              actions: ax_badge(@whatsapp_using_global ? "Usando global" : (@whatsapp_integration.messaging_ready? ? "Credenciais de envio configuradas" : "Não configurado"), tone: @whatsapp_using_global ? :blue : (@whatsapp_integration.messaging_ready? ? :green : :gray))
             ) do %>
           <div class="wa-panel-body">
-            <section class="wa-context-block wa-context-block--primary">
+            <section class="wa-notification-number">
               <div class="wa-context-block__head">
                 <div>
-                  <span>Envio automático</span>
-                  <strong>Número das notificações do sistema</strong>
-                  <p>Usado para distribuição de leads e avisos internos. Este número é único para as notificações automáticas da conta.</p>
+                  <%= ax_field_label(text: "Número das notificações do sistema", tooltip: "Usado para distribuição de leads e avisos internos. Este número é único para as notificações automáticas da conta.") %>
+
                 </div>
               </div>
 
@@ -375,13 +365,28 @@
                     <strong><%= @phone_info[:name].presence || "—" %></strong>
                   </div>
                   <div class="wa-phone-info__cell">
-                    <span>Qualidade</span>
+                    <%= ax_field_label(text: "Qualidade", tooltip: "Avaliação informada pela Meta com base na experiência dos destinatários.") %>
                     <%= ax_badge(quality_label.call(@phone_info[:quality]), tone: quality_tone.call(@phone_info[:quality]), dot: quality_tone.call(@phone_info[:quality]) != :gray) %>
                   </div>
                   <div class="wa-phone-info__cell">
-                    <span>Registro</span>
+                    <%= ax_field_label(text: "Verificação do número", tooltip: "Estado de verificação informado pela Meta; não representa a confirmação de entrega dos disparos.") %>
                     <%= ax_badge(meta_status_label.call(@phone_info[:code_verification_status]), tone: @phone_info[:code_verification_status].to_s == "VERIFIED" ? :green : :gray, dot: @phone_info[:code_verification_status].to_s == "VERIFIED") %>
                   </div>
+                </div>
+              <% end %>
+
+              <% if @manual_connection_errors.present? %>
+                <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                  <strong>Revise os campos:</strong> <%= @manual_connection_errors.to_sentence %>
+                <% end %>
+              <% end %>
+
+              <details class="wa-advanced-details" <%= "open" if @manual_connection_errors.present? %>>
+                <summary class="wa-advanced-details__summary">
+                  <span>Configuração avançada do número</span>
+                  <i class="bi bi-chevron-down"></i>
+                </summary>
+                <% if @phone_info %><div class="wa-phone-info">
                   <% if @phone_info[:official_business_account].present? %>
                     <div class="wa-phone-info__cell">
                       <span>Conta comercial oficial</span>
@@ -413,20 +418,7 @@
                       <strong><%= throughput_label.call(@phone_info[:throughput]) %></strong>
                     </div>
                   <% end %>
-                </div>
-              <% end %>
-
-              <% if @manual_connection_errors.present? %>
-                <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-                  <strong>Revise os campos:</strong> <%= @manual_connection_errors.to_sentence %>
-                <% end %>
-              <% end %>
-
-              <details class="wa-advanced-details" <%= "open" if @manual_connection_errors.present? %>>
-                <summary class="wa-advanced-details__summary">
-                  <span>Configuração avançada do número</span>
-                  <i class="bi bi-chevron-down"></i>
-                </summary>
+                </div><% end %>
 
                 <%= form_with model: @whatsapp_integration, url: manual_connection_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
                   <div class="wa-field">
@@ -526,18 +518,10 @@
             <% activation_editable = Whatsapp::LeadActivationTemplate.editable?(activation_template) %>
             <% activation_status = activation_template.status.to_s.presence || "DRAFT" %>
             <% activation_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(activation_status.upcase, :gray) %>
-            <% activation_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(activation_status.upcase, activation_status) %>
+            <% activation_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Rascunho" }.fetch(activation_status.upcase, activation_status) %>
             <% activation_preview_values = ["Nome do corretor", "Nome da imobiliária"] %>
 
-            <section id="lead-activation-template" class="wa-context-block">
-              <div class="wa-context-block__head">
-                <div>
-                  <span>Apresentação do corretor</span>
-                  <strong>Template oficial para primeiro contato</strong>
-                  <p>Template oficial usado no menu Apresentação do lead para iniciar conversa.</p>
-                </div>
-              </div>
-
+            <%= ax_form_section(title: "Apresentação do corretor", collapse_id: "lead-activation-template", collapsed: @lead_activation_template_errors.blank? && !%w[REJECTED PAUSED DISABLED].include?(activation_status.upcase), eyebrow: activation_status_label, tooltip: "Template oficial para primeiro contato do corretor com o lead.") do %>
               <% if @lead_activation_template_errors.present? %>
                 <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
                   <strong>Revise o template:</strong> <%= @lead_activation_template_errors.to_sentence %>
@@ -547,7 +531,7 @@
               <article class="wa-number-row wa-template-submit-row">
                 <div class="wa-number-row__main">
                   <strong>Enviar template para aprovação da Meta</strong>
-                  <span><%= Whatsapp::LeadActivationTemplate::TEMPLATE_NAME %> · Portuguese (BR)</span>
+                  <span><%= Whatsapp::LeadActivationTemplate::TEMPLATE_NAME %> · Português (Brasil)</span>
                   <small>Mensagem oficial com foto do corretor e variáveis {{1}} nome do corretor, {{2}} nome da imobiliária.</small>
                 </div>
                 <div class="wa-number-row__badges">
@@ -560,7 +544,7 @@
                                   class: "ax-btn ax-btn--sm ax-btn--primary",
                                   data: { turbo_submits_with: "Enviando..." },
                                   form: { class: "wa-lead-activation__approval", data: { turbo_confirm: "Enviar este template para aprovação da Meta? Depois disso, edite apenas se a Meta rejeitar." } } do %>
-                      <i class="bi bi-send ax-ico"></i><span>Enviar</span>
+                      <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação</span>
                     <% end %>
                   <% end %>
                 </div>
@@ -626,26 +610,12 @@
 
                     <div class="wa-lead-activation__preview" aria-label="Prévia do WhatsApp">
                       <span>Prévia do primeiro contato</span>
-                      <div class="wa-template-phone">
-                        <div class="wa-template-bubble">
-                          <% if activation_template.header_media_file.attached? %>
-                            <%= image_tag activation_template.header_media_file, class: "wa-template-bubble__image", alt: "Imagem do template" %>
-                          <% else %>
-                            <div class="wa-template-bubble__image wa-template-bubble__image--placeholder">
-                              <i class="bi bi-person-bounding-box"></i>
-                            </div>
-                          <% end %>
-                          <p><%= simple_format(activation_template.render_body(activation_preview_values), {}, wrapper_tag: "span") %></p>
-                          <% if activation_template.footer_text.present? %>
-                            <small><%= activation_template.footer_text %></small>
-                          <% end %>
-                        </div>
-                      </div>
+                      <%= render "admin/shared/ui/whatsapp_message_preview", template: activation_template, body: activation_template.render_body(activation_preview_values) %>
                     </div>
                   </aside>
                 </div>
               </details>
-            </section>
+            <% end %>
 
             <% notification_template_actions = capture do %>
               <div class="wa-context-actions">
@@ -659,16 +629,9 @@
               </div>
             <% end %>
 
-            <section class="wa-context-block">
-              <div class="wa-context-block__head">
-                <div>
-                  <span>Templates do sistema</span>
-                  <strong>Templates usados nas notificações automáticas</strong>
-                  <p>Cada finalidade aponta para um template aprovado da WABA do número das notificações.</p>
-                </div>
-                <%= notification_template_actions %>
-              </div>
-
+            <% notification_templates = (@lead_alert_templates + @lead_conversation_templates).map { |item| item[:template] }.compact %>
+            <% template_pending_count = notification_templates.count { |template| template.status.to_s.upcase != "APPROVED" } %>
+            <%= ax_form_section(title: "Templates das notificações", eyebrow: "#{notification_templates.size - template_pending_count} aprovados · #{template_pending_count} pendentes", collapse_id: "notification-template-settings", collapsed: @lead_alert_template_errors.blank? && @lead_conversation_template_errors.blank? && notification_templates.none? { |template| %w[REJECTED PAUSED DISABLED].include?(template.status.to_s.upcase) }, actions: notification_template_actions, tooltip: "Cada finalidade usa um template aprovado da WABA do número de notificações.") do %>
               <% if @lead_alert_template_errors.present? %>
                 <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
                   <strong>Revise o template lead_alert:</strong> <%= @lead_alert_template_errors.to_sentence %>
@@ -680,12 +643,12 @@
                   <% lead_alert_template = item[:template] %>
                   <% lead_alert_status = lead_alert_template.status.to_s.presence || "DRAFT" %>
                   <% lead_alert_status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(lead_alert_status.upcase, :gray) %>
-                  <% lead_alert_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(lead_alert_status.upcase, lead_alert_status) %>
+                  <% lead_alert_status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Rascunho" }.fetch(lead_alert_status.upcase, lead_alert_status) %>
 
                   <article class="wa-number-row wa-template-submit-row">
                     <div class="wa-number-row__main">
                       <strong><%= item[:definition].fetch(:label) %></strong>
-                      <span><%= item[:name] %> · Utility · Portuguese (BR)</span>
+                      <span><%= item[:name] %> · Utility · Português (Brasil)</span>
                       <small><%= item[:definition].fetch(:description) %></small>
                     </div>
                     <div class="wa-number-row__badges">
@@ -699,7 +662,7 @@
                                       class: "ax-btn ax-btn--sm ax-btn--primary",
                                       data: { turbo_submits_with: "Enviando..." },
                                       form: { data: { turbo_confirm: "Enviar o template #{item[:name]} para análise da Meta?" } } do %>
-                          <i class="bi bi-send ax-ico"></i><span>Enviar</span>
+                          <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação</span>
                         <% end %>
                       <% end %>
                     </div>
@@ -720,12 +683,12 @@
                   <% template = item[:template] %>
                   <% status = template.status.to_s.presence || "DRAFT" %>
                   <% status_tone = { "APPROVED" => :green, "PENDING" => :amber, "REJECTED" => :red, "PAUSED" => :amber, "DRAFT" => :gray }.fetch(status.upcase, :gray) %>
-                  <% status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Enviar" }.fetch(status.upcase, status) %>
+                  <% status_label = { "APPROVED" => "Aprovado", "PENDING" => "Pendente", "REJECTED" => "Reprovado", "PAUSED" => "Pausado", "DRAFT" => "Rascunho" }.fetch(status.upcase, status) %>
 
                   <article class="wa-number-row wa-template-submit-row">
                     <div class="wa-number-row__main">
                       <strong><%= definition.label %></strong>
-                      <span><%= definition.name %> · <%= definition.category.titleize %> · Portuguese (BR)</span>
+                      <span><%= definition.name %> · <%= definition.category.titleize %> · Português (Brasil)</span>
                       <small><%= definition.description %></small>
                     </div>
                     <div class="wa-number-row__badges">
@@ -739,7 +702,7 @@
                                       class: "ax-btn ax-btn--sm ax-btn--primary",
                                       data: { turbo_submits_with: "Enviando..." },
                                       form: { data: { turbo_confirm: "Enviar o template #{definition.name} para análise da Meta?" } } do %>
-                          <i class="bi bi-send ax-ico"></i><span>Enviar</span>
+                          <i class="bi bi-send ax-ico"></i><span>Enviar para aprovação</span>
                         <% end %>
                       <% end %>
                     </div>
@@ -764,7 +727,7 @@
                       <small><%= setting.purpose_description %></small>
                     </div>
                     <div class="wa-number-row__badges">
-                      <%= ax_badge(setting.active? ? "Ativo" : "Inativo", tone: setting.active? ? :green : :gray, dot: setting.active?) %>
+                      <%= ax_badge(setting.active? ? "Finalidade habilitada" : "Finalidade desabilitada", tone: setting.active? ? :green : :gray, dot: setting.active?) %>
                     </div>
                     <div class="wa-number-row__actions">
                       <%= ax_button("Editar", nil, size: :sm, icon: "pencil", data: { ax_modal_open: "#notificationTemplateSettingEditModal#{setting.id}" }) %>
@@ -788,7 +751,7 @@
                       <%= ax_select_field(form: f, method: :whatsapp_template_id, label: "Template aprovado",
                             choices: @notification_template_options, select_options: { include_blank: "Selecione" }) %>
                       <div class="ax-field">
-                        <span class="ax-label">Mapa das variáveis</span>
+                        <%= ax_field_label(text: "Preenchimento das variáveis", tooltip: "Escolha qual informação será usada em cada variável da mensagem.") %>
                         <% edit_mapping = setting.variable_mapping.presence || setting.default_variable_mapping %>
                         <% edit_count = [setting.whatsapp_template&.variable_count.to_i, edit_mapping.keys.map(&:to_i).max || 0, 1].max %>
                         <% edit_refs = Array(setting.whatsapp_template&.variable_references).index_by { |item| item[:index].to_i } %>
@@ -826,7 +789,7 @@
                   ) %>
                 <% end %>
               </div>
-            </section>
+            <% end %>
 
             <%= ax_quick_modal(id: "notificationTemplateSettingModal", title: "Adicionar template de notificação", size: :sm, class_name: "whatsapp-sender-modal") do %>
               <%= form_with model: [:admin, @new_notification_template_setting],
@@ -848,7 +811,7 @@
                         } %>
                 </div>
                 <div class="ax-field">
-                  <span class="ax-label">Mapa padrão das variáveis</span>
+                  <%= ax_field_label(text: "Preenchimento das variáveis", tooltip: "O sistema sugere os campos pelo texto do template. Confira cada associação antes de salvar.") %>
                   <div class="wa-variable-map"
                        data-whatsapp-integration-target="notificationVariableMap"
                        data-variable-sources="<%= @notification_template_variable_sources.to_json %>"
@@ -863,7 +826,6 @@
                     <% end %>
                   </div>
                 </div>
-                <p class="wa-hint">Ao selecionar um template, o sistema monta o mapa pela quantidade de placeholders e tenta inferir cada fonte pelo texto aprovado. Revise antes de salvar.</p>
                 <div class="whatsapp-sender-modal__actions">
                   <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
                   <button type="submit" class="ax-btn ax-btn--primary">
@@ -873,6 +835,8 @@
               <% end %>
             <% end %>
 
+          </div>
+        <% end %>
             <% sender_panel_actions = capture do %>
               <% if @whatsapp_integration.messaging_ready? && @whatsapp_integration.phone_number_id.present? && !@current_integration_sender_number&.active? %>
                 <%= button_to use_current_number_for_campaigns_admin_whatsapp_integration_path,
@@ -885,16 +849,8 @@
               <%= ax_button("Adicionar número", nil, variant: :success, size: :sm, icon: "plus-circle", data: { ax_modal_open: "#whatsappAccountNumberModal" }) %>
             <% end %>
 
-            <section class="wa-context-block">
-              <div class="wa-context-block__head">
-                <div>
-                  <span>Campanhas</span>
-                  <strong>Números disponíveis para campanhas</strong>
-                  <p>Estes números aparecem na seleção das campanhas de disparo. Não alteram o número fixo das notificações acima.</p>
-                </div>
-                <%= sender_panel_actions %>
-              </div>
-
+            <%= ax_operational_panel(title: "Números de disparo", actions: sender_panel_actions) do %>
+              <div class="wa-panel-body">
               <div class="wa-number-list">
                 <% @whatsapp_sender_numbers.each do |number| %>
                   <article class="wa-number-row">
@@ -904,7 +860,7 @@
                       <small>Phone Number ID: <%= number.phone_number_id %><%= " · WABA: #{number.waba_id}" if number.waba_id.present? %></small>
                     </div>
                     <div class="wa-number-row__badges">
-                      <%= ax_badge(number.messaging_ready? ? "Conectado" : number.status.humanize, tone: number.messaging_ready? ? :green : :amber, dot: true) %>
+                      <%= ax_badge(number.messaging_ready? ? "Credenciais de envio configuradas" : "Envio não configurado", tone: number.messaging_ready? ? :green : :amber, dot: true) %>
                     </div>
                     <div class="wa-number-row__actions">
                       <%= ax_button("Editar", nil, size: :sm, icon: "pencil", data: { ax_modal_open: "#whatsappAccountNumberEditModal#{number.id}" }) %>
@@ -936,8 +892,8 @@
                       <%= ax_text_field(form: f, method: :label, label: "Nome interno") %>
                       <%= ax_text_field(form: f, method: :display_phone_number, label: "Número WhatsApp", type: :tel,
                             data: { controller: "phone-input" }) %>
-                      <%= ax_text_field(form: f, method: :phone_number_id, label: "Phone Number ID") %>
-                      <%= ax_text_field(form: f, method: :waba_id, label: "WhatsApp Business Account ID (WABA)") %>
+                      <%= ax_text_field(form: f, method: :phone_number_id, label: "ID do telefone na Meta", tooltip: "Identificador do telefone na Cloud API. É diferente do número com DDD.") %>
+                      <%= ax_text_field(form: f, method: :waba_id, label: "ID da conta WhatsApp (WABA)", tooltip: "Conta empresarial da Meta à qual este número pertence. Os templates são compartilhados por essa conta.") %>
                       <div class="whatsapp-sender-modal__actions">
                         <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
                         <button type="submit" class="ax-btn ax-btn--primary">
@@ -957,7 +913,8 @@
                   ) %>
                 <% end %>
               </div>
-            </section>
+              </div>
+            <% end %>
 
             <%= ax_quick_modal(id: "whatsappAccountNumberModal", title: "Adicionar número WhatsApp", size: :sm, class_name: "whatsapp-sender-modal") do %>
               <%= form_with model: [:admin, @new_whatsapp_sender_number],
@@ -968,8 +925,8 @@
                 <%= ax_text_field(form: f, method: :label, label: "Nome interno", placeholder: "Ex: Campanhas venda") %>
                 <%= ax_text_field(form: f, method: :display_phone_number, label: "Número WhatsApp", type: :tel,
                       placeholder: "(47) 2122-8669", data: { controller: "phone-input" }) %>
-                <%= ax_text_field(form: f, method: :phone_number_id, label: "Phone Number ID", placeholder: "434291556438028") %>
-                <%= ax_text_field(form: f, method: :waba_id, label: "WhatsApp Business Account ID (WABA)", placeholder: "428655400336219") %>
+                <%= ax_text_field(form: f, method: :phone_number_id, label: "ID do telefone na Meta", tooltip: "Identificador do telefone na Cloud API. É diferente do número com DDD.", placeholder: "434291556438028") %>
+                <%= ax_text_field(form: f, method: :waba_id, label: "ID da conta WhatsApp (WABA)", tooltip: "Conta empresarial da Meta à qual este número pertence. Os templates são compartilhados por essa conta.", placeholder: "428655400336219") %>
                 <p class="wa-hint">O número ficará disponível na seleção da campanha automaticamente.</p>
                 <div class="whatsapp-sender-modal__actions">
                   <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
@@ -979,12 +936,10 @@
                 </div>
               <% end %>
             <% end %>
-          </div>
-        <% end %>
       </div>
 
       <aside class="wa-aside">
-        <%= ax_operational_panel(eyebrow: "Status", title: "Diagnóstico") do %>
+        <%= ax_form_section(title: "Diagnóstico técnico", collapse_id: "whatsapp-diagnostics", collapsed: @diagnostics.all? { |item| item[:ok] || item[:fallback].present? }, tooltip: "Verifica os requisitos da conexão pela Meta. Credenciais completas não comprovam entrega de mensagens.") do %>
           <div class="wa-panel-body">
             <dl class="wa-state">
               <% @diagnostics.each do |item| %>
@@ -1010,11 +965,7 @@
           </div>
         <% end %>
 
-        <%= ax_operational_panel(eyebrow: "Segurança", title: "Token e segredo") do %>
-          <div class="wa-panel-body">
-            <p class="wa-hint">O token retornado pela Meta é salvo no backend e não é exibido completo na interface.</p>
-          </div>
-        <% end %>
+
       </aside>
     </div>
 
@@ -1050,6 +1001,15 @@
   .wa-connected__cell { display: grid; gap: 2px; min-width: 0; }
   .wa-connected__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
   .wa-connected__cell strong { color: #1f2733; font-size: 13px; overflow-wrap: anywhere; }
+  .wa-grid--compact { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .wa-grid--compact .wa-main { gap: 16px; }
+  .wa-grid--compact .wa-aside { position: static; }
+  .wa-notification-number { display: grid; gap: 14px; min-width: 0; }
+  .wa-grid--compact .wa-context-block__head { margin-bottom: 0; }
+  @media (max-width: 640px) {
+    .wa-grid--compact .wa-number-row { grid-template-columns: minmax(0, 1fr); }
+    .wa-grid--compact .wa-number-row__actions { justify-content: flex-start; flex-wrap: wrap; }
+  }
   .wa-summary-row {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr) auto;
@@ -1076,7 +1036,8 @@
   .wa-summary-row__main span { color: #4b5565; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
   .wa-summary-row__main small { color: #8a93a3; font-size: 11px; overflow-wrap: anywhere; }
   .wa-summary-row__meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; color: #8a93a3; font-size: 11px; font-weight: 700; }
-  .wa-advanced-details { display: grid; gap: 10px; }
+  .wa-advanced-details { display: block; }
+  .wa-advanced-details[open] > :not(summary) { margin-top: 10px; }
   .wa-advanced-details__summary {
     display: inline-flex;
     width: fit-content;
@@ -1100,12 +1061,9 @@
   @media (max-width: 720px) { .wa-webhook__grid { grid-template-columns: minmax(0, 1fr); } }
   .wa-webhook__actions { display: flex; justify-content: flex-end; }
 
-  .wa-negotiations { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-  .wa-negotiation { border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
-  .wa-negotiation__head { display: flex; align-items: flex-start; gap: 8px; }
-  .wa-negotiation__icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: 0 0 auto; border-radius: 999px; background: #e6f6ec; color: #0e9f6e; }
-  .wa-negotiation__head strong { display: block; color: #1f2733; font-size: 12.5px; }
-  .wa-negotiation__head span { color: #8a93a3; font-size: 11px; line-height: 1.35; }
+  .wa-negotiations { display: grid; gap: 14px; min-width: 0; }
+  .wa-negotiation-fields { display: grid; gap: 14px; min-width: 0; }
+  .wa-negotiation-options { display: grid; gap: 12px; min-width: 0; }
 
   .wa-connect { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
@@ -1167,8 +1125,8 @@
   .wa-variable-map__row > span { color: #344054; font-size: 12px; font-weight: 800; }
   .wa-variable-map__row > strong { color: #1f2733; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
   .wa-variable-map__row small { display: block; margin-top: 2px; color: #8a93a3; font-size: 10.5px; font-weight: 650; line-height: 1.25; }
-  .wa-template-details { display: grid; gap: 12px; }
-  .wa-template-details[open] { gap: 14px; }
+  .wa-template-details { display: block; }
+  .wa-template-details[open] > :not(summary) { margin-top: 14px; }
   .wa-template-details__summary {
     display: inline-flex;
     width: fit-content;
@@ -1184,11 +1142,11 @@
   .wa-template-details__summary i { transition: transform .16s ease; }
   .wa-template-details[open] .wa-template-details__summary i { transform: rotate(180deg); }
 
-  .wa-lead-activation { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(300px, 420px); gap: 18px; align-items: start; }
+  .wa-lead-activation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 18px; align-items: start; }
   .wa-lead-activation__form,
   .wa-lead-activation__side,
   .wa-lead-activation__preview { min-width: 0; }
-  .wa-lead-activation__form { display: grid; gap: 12px; }
+  .wa-lead-activation__form { display: grid; gap: 12px; align-content: start; }
   .wa-lead-activation__side { display: grid; gap: 12px; align-content: start; }
   .wa-lead-activation__approval { margin: 0; }
   .wa-lead-activation__submit-meta { width: 100%; justify-content: center; min-height: 38px; }
@@ -1209,44 +1167,6 @@
     letter-spacing: .04em;
     text-transform: uppercase;
   }
-  .wa-template-phone {
-    padding: 10px;
-    border: 1px solid #202c33;
-    border-radius: 8px;
-    background: #111b21;
-    background-image:
-      radial-gradient(circle at 16px 16px, rgba(255,255,255,.05) 0 2px, transparent 2px),
-      radial-gradient(circle at 48px 44px, rgba(255,255,255,.04) 0 1px, transparent 1px);
-    background-size: 56px 56px;
-  }
-  .wa-template-bubble {
-    width: 100%;
-    max-width: 286px;
-    margin: 0 auto;
-    padding: 6px 6px 8px;
-    border-radius: 7px;
-    background: #202c33;
-    color: #e9edef;
-    box-shadow: 0 2px 8px rgba(0,0,0,.28);
-  }
-  .wa-template-bubble__image {
-    display: block;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    object-fit: cover;
-    border-radius: 6px;
-    background: #2a3942;
-  }
-  .wa-template-bubble__image--placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #8696a0;
-    font-size: 44px;
-  }
-  .wa-template-bubble p { margin: 8px 6px 0; font-size: 13px; line-height: 1.35; }
-  .wa-template-bubble span { display: inline; }
-  .wa-template-bubble small { display: block; margin: 6px 6px 0; color: #8696a0; font-size: 10.5px; text-align: right; }
   @media (max-width: 540px) {
     .wa-variable-map__row { grid-template-columns: minmax(0, 1fr); align-items: start; }
   }
@@ -1276,3 +1196,5 @@
   .wa-state__row dt span { color: #8a93a3; font-size: 11px; }
   .wa-state__row dd { margin: 0; flex: 0 0 auto; font-size: 12.5px; color: #1f2733; }
 </style>
+
+</div>

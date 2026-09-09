@@ -1,0 +1,18 @@
+<div class="ax-message-preview__media-container">
+<% if url.present? %>
+  <% case kind.to_s %>
+  <% when "image" %>
+    <%= image_tag url, alt: "Imagem do template", class: "ax-message-preview__media", loading: "lazy", data: { controller: "image-fallback", action: "error->image-fallback#hide" } %>
+  <% when "video" %>
+    <%= video_tag url, controls: true, playsinline: true, preload: "metadata", class: "ax-message-preview__media" %>
+  <% when "audio" %>
+    <%= audio_tag url, controls: true, preload: "none", class: "ax-message-preview__media" %>
+  <% else %>
+    <%= link_to url, class: "ax-message-preview__document", target: "_blank", rel: "noopener" do %><%= ax_icon("file-earmark-text") %> Abrir documento<% end %>
+  <% end %>
+<% elsif kind.to_s.in?(%w[image video audio document]) %>
+  <div class="ax-message-preview__missing"><%= ax_icon("image") %> Mídia de exemplo indisponível</div>
+<% end %>
+
+<div class="ax-message-preview__error">Mídia indisponível para prévia</div>
+</div>

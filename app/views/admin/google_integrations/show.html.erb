@@ -1,3 +1,4 @@
+<div class="ax-integration-layout">
 <% active_tab_label = { "sheets" => "Google Sheets", "calendar" => "Agenda", "maps" => "Mapa" }.fetch(@active_tab, @active_tab.to_s.humanize) %>
 <%= ax_workspace_heading(eyebrow: "Integrações", icon: "google", title: "Google e Mapa", pills: [active_tab_label], subtitle: "Configure integrações administrativas e o provedor de mapa do site público.") %>
 
@@ -36,16 +37,16 @@
         <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_sheets, local: true do |f| %>
           <%= ax_switch_field(label: tag.span("Ativar sincronização de captações com Google Sheets", class: "tw-font-semibold"), form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @google_sheets_setting.enabled? }) %>
 
-          <%= ax_text_field(form: f, method: :web_app_url, label: "URL do Web App do Apps Script", type: :url, value: @google_sheets_setting.web_app_url, placeholder: "https://script.google.com/macros/s/.../exec", hint: "URL publicada no Google Apps Script para receber e atualizar as captações.", field_class: "tw-mb-3") %>
+          <%= ax_text_field(form: f, method: :web_app_url, label: "URL do Web App do Apps Script", type: :url, value: @google_sheets_setting.web_app_url, placeholder: "https://script.google.com/macros/s/.../exec", tooltip: "URL publicada no Google Apps Script para receber e atualizar as captações.", field_class: "tw-mb-3") %>
 
-          <%= ax_text_field(form: f, method: :token, label: "Token de segurança", type: :password, autocomplete: "off", placeholder: (@google_sheets_setting.token_configured? ? "Token já configurado. Preencha apenas para substituir." : "Crie um token simples para o Apps Script validar"), hint: "Este valor será enviado junto do payload e validado pelo Apps Script.", field_class: "tw-mb-3") %>
+          <%= ax_text_field(form: f, method: :token, label: "Token de segurança", type: :password, autocomplete: "off", placeholder: (@google_sheets_setting.token_configured? ? "Token já configurado. Preencha apenas para substituir." : "Crie um token simples para o Apps Script validar"), tooltip: "Este valor será enviado junto do payload e validado pelo Apps Script.", field_class: "tw-mb-3") %>
 
           <%= ax_field_grid do %>
             <div class="ax-span-6">
               <%= ax_text_field(form: f, method: :worksheet_name, label: "Nome da aba", value: @google_sheets_setting.worksheet_name, placeholder: GoogleSheetsIntegrationSetting::DEFAULT_WORKSHEET_NAME) %>
             </div>
             <div class="ax-span-6">
-              <%= ax_text_field(form: f, method: :key_column, label: "Coluna-chave para atualização", value: @google_sheets_setting.key_column, placeholder: GoogleSheetsIntegrationSetting::DEFAULT_KEY_COLUMN, hint: "Padrão recomendado: Cód. imóvel CRM.") %>
+              <%= ax_text_field(form: f, method: :key_column, label: "Coluna-chave para atualização", value: @google_sheets_setting.key_column, placeholder: GoogleSheetsIntegrationSetting::DEFAULT_KEY_COLUMN, tooltip: "Padrão recomendado: Cód. imóvel CRM.") %>
             </div>
           <% end %>
 
@@ -82,11 +83,11 @@
         <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_calendar, local: true do |f| %>
           <%= ax_switch_field(label: tag.span("Criar evento no Google Calendar quando a captação agendar fotógrafo", class: "tw-font-semibold"), form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @google_calendar_setting.enabled? }) %>
 
-          <%= ax_text_field(form: f, method: :calendar_id, label: "ID da agenda", value: @google_calendar_setting.calendar_id.presence || GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID, placeholder: GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID, hint: "Use o e-mail ou Calendar ID e compartilhe a agenda com o client_email da service account.", field_class: "tw-mb-3") %>
+          <%= ax_text_field(form: f, method: :calendar_id, label: "ID da agenda", value: @google_calendar_setting.calendar_id.presence || GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID, placeholder: GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID, tooltip: "Use o e-mail ou Calendar ID e compartilhe a agenda com o client_email da service account.", field_class: "tw-mb-3") %>
 
           <%= ax_number_field(form: f, method: :default_duration_minutes, label: "Duração padrão do evento", value: @google_calendar_setting.default_duration_minutes.presence || GoogleCalendarIntegrationSetting::DEFAULT_DURATION_MINUTES, min: GoogleCalendarIntegrationSetting::MIN_DURATION_MINUTES, max: GoogleCalendarIntegrationSetting::MAX_DURATION_MINUTES, step: 15, class_name: "tw-mb-3") %>
 
-          <%= ax_text_field(form: f, method: :service_account_json, label: "JSON da service account", type: :textarea, rows: 8, autocomplete: "off", placeholder: (@google_calendar_setting.service_account_configured? ? "Credencial já configurada. Cole um novo JSON apenas para substituir." : "{\"type\":\"service_account\",...}"), hint: "A chave privada fica criptografada no banco e o conteúdo salvo não é exibido novamente.", field_class: "tw-mb-3") %>
+          <%= ax_text_field(form: f, method: :service_account_json, label: "JSON da service account", type: :textarea, rows: 8, autocomplete: "off", placeholder: (@google_calendar_setting.service_account_configured? ? "Credencial já configurada. Cole um novo JSON apenas para substituir." : "{\"type\":\"service_account\",...}"), tooltip: "A chave privada fica criptografada no banco e o conteúdo salvo não é exibido novamente.", field_class: "tw-mb-3") %>
 
           <%= ax_form_actions(sticky: false) do %><%= f.submit "Salvar agenda", class: "ax-btn ax-btn--primary" %><% end %>
         <% end %>
@@ -104,4 +105,6 @@
   </div>
 
   <% end %>
+</div>
+
 </div>

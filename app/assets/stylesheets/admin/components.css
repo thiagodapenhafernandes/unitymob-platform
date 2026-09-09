@@ -1,4 +1,5 @@
 /*
+ *= require admin/components/message_preview
  *= require admin/components/view_toggle
  *= require admin/components/mobile_detail_header
  *= require admin/components/user_menu
@@ -68,6 +69,7 @@
  *= require admin/components/menu
  *= require admin/components/icon_button
  *= require admin/components/loading
+ *= require admin/components/integration_layout
  *= require admin/components/operational_panel
  *= require admin/components/panel
  *= require admin/components/media_preview

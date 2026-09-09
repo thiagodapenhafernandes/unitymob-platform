@@ -1,0 +1,11 @@
+pt-BR:
+  whatsapp_template_statuses:
+    APPROVED: Aprovado
+    PENDING: Em análise
+    REJECTED: Rejeitado
+    PAUSED: Pausado
+    DISABLED: Desativado
+    IN_APPEAL: Em recurso
+    PENDING_DELETION: Exclusão pendente
+    DELETED: Excluído
+    DRAFT: Rascunho

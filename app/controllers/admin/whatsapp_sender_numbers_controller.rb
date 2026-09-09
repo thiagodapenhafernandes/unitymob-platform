@@ -8,7 +8,7 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
     @sender_number.active = true
 
     if @sender_number.save
-      redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), notice: "Número WhatsApp adicionado."
+      redirect_after_save("Número WhatsApp adicionado.")
     else
       redirect_to sender_number_return_path(admin_whatsapp_campaigns_path), alert: @sender_number.errors.full_messages.to_sentence
     end
@@ -16,7 +16,7 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
 
   def update
     if @sender_number.update(sender_number_params)
-      redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), notice: "Parâmetros do número atualizados."
+      redirect_after_save("Parâmetros do número atualizados.")
     else
       redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), alert: @sender_number.errors.full_messages.to_sentence
     end
@@ -54,6 +54,22 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
   end
 
   private
+
+  def redirect_after_save(message)
+    flash_type = :notice
+    if @sender_number.active?
+      result = Whatsapp::WebhookGatewayClient.new(
+        integration: @sender_number,
+        tenant: current_tenant,
+        target_url: webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
+      ).register_route
+      unless result.ok? || result.skipped?
+        flash_type = :alert
+        message += " Não foi possível registrar a rota no gateway de webhooks: #{result.error.presence || 'sem detalhes retornados'}."
+      end
+    end
+    redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), flash_type => message
+  end
 
   def set_sender_number
     @sender_number = current_tenant.whatsapp_sender_numbers.find(params[:id])
