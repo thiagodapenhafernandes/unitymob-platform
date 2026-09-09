@@ -17,7 +17,7 @@ module Dwv
     # Marcadores medianos: caracterizam nome de empreendimento quando acompanhados
     # de um nome próprio (garantido pela exigência de 2+ palavras). Inclui as
     # abreviações brasileiras usuais (ED., EDIF., COND., RESID., TORRE).
-    MEDIUM_MARKERS = /\b(condominio|cond|edificio|edif|edf|ed|resid|park|garden|gardens|portal|solar|morada|jardim|jardins|clube|reserva|parque|villa|villas|home|homes|tower|towers|torre|torres|ville)\b/.freeze
+    MEDIUM_MARKERS = /\b(condominio|cond|edificio|edif|edf|ed|resid|res|park|garden|gardens|portal|solar|morada|jardim|jardins|clube|reserva|parque|villa|villas|home|homes|tower|towers|torre|torres|ville)\b/.freeze
 
     # Localizadores de unidade — nunca são nome de empreendimento.
     UNIT_LOCATOR = /\A(casa|sobrado|apto|apartamento|ap|bloco|bl|lote|lt|quadra|qd|sala|loja|galpao|box|vaga|unidade|un|und|fundos|frente|terreo|pavimento|pav|andar|cobertura|cob)\b[\s\-]*[a-z0-9]{0,4}\z/.freeze
