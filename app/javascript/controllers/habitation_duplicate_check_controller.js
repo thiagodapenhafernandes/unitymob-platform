@@ -8,17 +8,29 @@ export default class extends Controller {
   }
 
   connect() {
+    this.requestVersion = this.requestVersion || 0
     this.timeout = null
     this.hasDuplicate = false
     this.check()
   }
 
+  disconnect() {
+    clearTimeout(this.timeout)
+    this.requestVersion += 1
+    this.abortController?.abort()
+  }
+
   schedule() {
+    this.requestVersion += 1
+    this.abortController?.abort()
     clearTimeout(this.timeout)
     this.timeout = setTimeout(() => this.check(), 350)
   }
 
   async check() {
+    clearTimeout(this.timeout)
+    this.abortController?.abort()
+    const requestVersion = ++this.requestVersion
     if (!this.identityComplete()) {
       this.hasDuplicate = false
       this.clearStatus()
@@ -26,6 +38,7 @@ export default class extends Controller {
       return
     }
 
+    this.abortController = new AbortController()
     try {
       const params = new URLSearchParams({
         street: this.streetTarget.value,
@@ -43,9 +56,11 @@ export default class extends Controller {
       if (this.hasIgnoredIdValue && this.ignoredIdValue) params.set("ignored_id", this.ignoredIdValue)
 
       const response = await fetch(`${this.urlValue}?${params.toString()}`, {
-        headers: { "Accept": "application/json" }
+        headers: { "Accept": "application/json" },
+        signal: this.abortController.signal
       })
       const data = await response.json()
+      if (requestVersion !== this.requestVersion) return
       this.hasDuplicate = Boolean(data.duplicate)
 
       if (this.hasDuplicate) {
@@ -55,6 +70,7 @@ export default class extends Controller {
       }
       this.toggleSubmit(this.hasDuplicate)
     } catch (error) {
+      if (error.name === "AbortError" || requestVersion !== this.requestVersion) return
       console.error("[habitation-duplicate-check] erro:", error)
       this.clearStatus()
       this.toggleSubmit(false)
@@ -94,8 +110,9 @@ export default class extends Controller {
   comparisonValue() {
     if (this.linkedDevelopmentIdentityComplete()) return "unit"
 
-    if (this.complementBlockCategorySelected() && (this.targetValue("unit").trim().length > 0 || this.targetValue("complement").trim().length > 0)) {
-      return "condominium_unit"
+    if (this.complementBlockCategorySelected()) {
+      const hasUnitIdentity = ["unit", "complement", "lot", "blockSection"].some(name => this.targetValue(name).trim().length > 0)
+      return hasUnitIdentity ? "condominium_unit" : "street"
     }
 
     return this.hasComparisonTarget ? this.comparisonTarget.value : ""

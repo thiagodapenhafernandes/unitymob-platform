@@ -85,6 +85,9 @@
     <%= hidden_field_tag :duplicate_check_status,
                          @captacao.status,
                          data: { habitation_duplicate_check_target: "commercialStatus" } %>
+    <%= hidden_field_tag :duplicate_check_category,
+                         @captacao.categoria,
+                         data: { habitation_duplicate_check_target: "category" } %>
     <%= hidden_field_tag :duplicate_check_comparison,
                          @captacao.duplicate_identity_scope,
                          data: { habitation_duplicate_check_target: "comparison" } %>
