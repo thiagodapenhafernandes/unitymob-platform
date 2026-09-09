@@ -15,9 +15,11 @@ module Api
 
           persist_once(attrs) do
             pipeline = LeadPipeline.default_for(tenant: grant.tenant)
-            lead = grant.tenant.leads.create!(attrs.merge(admin_user: grant.admin_user, origin: "Cadastro manual",
-              lead_pipeline: pipeline, lead_pipeline_stage: pipeline&.default_stage,
-              status: pipeline&.default_stage&.name || Lead.status_value(:novo, tenant: grant.tenant)))
+            stage = pipeline&.stages&.active&.detect { |item| item.name.to_s.parameterize(separator: "_") == "em_atendimento" }
+            raise ArgumentError unless stage
+            lead = grant.tenant.leads.create!(attrs.merge(admin_user: grant.admin_user, origin: "WhatsApp",
+              other_information: {"creation_source" => "browser_extension"},
+              lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name))
             lead.activities.create!(tenant: grant.tenant, kind: "created", metadata: actor.merge(origin: lead.origin, owner_id: grant.admin_user_id))
             { lead_id: lead.id }
           end

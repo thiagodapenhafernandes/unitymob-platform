@@ -305,7 +305,7 @@ class Admin::LeadsController < Admin::BaseController
 
     tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
     offset = [params[:offset].to_i, 0].max
-    base_scope = hide_discarded_from_list_scope(filtered_lead_scope_for_current_user.where(admin_user_id: current_admin_user&.id))
+    base_scope = hide_discarded_from_list_scope(filtered_lead_scope_for_current_user)
     lead_scope = pwa_lead_scope_for_tab(base_scope, tab)
     total = lead_scope.reorder(nil).count
     leads = lead_scope
@@ -2456,9 +2456,9 @@ class Admin::LeadsController < Admin::BaseController
     @pwa_lead_tab = params[:mobile_tab].presence_in(%w[todo visits future favorites all]) || "todo"
     @pwa_queue_position = current_user_distribution_queue_position
 
-    base_scope = filtered_scope.where(admin_user_id: current_admin_user&.id)
+    base_scope = filtered_scope
     list_base_scope = hide_discarded_from_list_scope(base_scope)
-    original_scope = (unfiltered_scope || filtered_scope).where(admin_user_id: current_admin_user&.id)
+    original_scope = unfiltered_scope || filtered_scope
     @pwa_tab_counts = lead_tab_counts_for(list_base_scope)
     @pwa_tab_original_counts = lead_tab_counts_for(hide_discarded_from_list_scope(original_scope))
 

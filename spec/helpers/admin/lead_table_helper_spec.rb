@@ -15,6 +15,13 @@ RSpec.describe Admin::LeadTableHelper, type: :helper do
     expect(helper.lead_table_conversion(lead, {}, form_name: names[lead.id])[:label]).to eq("Formulário: Nome sincronizado")
   end
 
+  it "identifica a extensão em roxo sem alterar outros cadastros WhatsApp" do
+    lead = build(:lead, origin: "WhatsApp", other_information: {"creation_source" => "browser_extension"})
+    expect(helper.lead_table_conversion(lead, {})).to include(label: "Cadastro: Extensão Unitymob", icon: "puzzle", tone: :purple)
+    lead.other_information = {}
+    expect(helper.lead_table_conversion(lead, {conversion_origin_label: "WhatsApp"})[:label]).to eq("Conversão: WhatsApp")
+  end
+
   it "distingue os seis status e mantém o alias Novo Lead" do
     statuses = ["Novo", "Em Atendimento", "Aguardando Aceite", "Represado", "Descartado", "Concluido"]
     expect(statuses.map { |status| helper.lead_table_status_tone(status) }).to eq(%i[cyan blue amber gray red green])

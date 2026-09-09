@@ -39,6 +39,8 @@ module Admin::LeadTableHelper
 
   def lead_table_conversion(lead, conversion, form_name: nil)
     info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    return {label: "Cadastro: Extensão Unitymob", icon: "puzzle", tone: :purple, campaign: nil} if info["creation_source"] == "browser_extension"
+
     form_name ||= info["meta_form_name"].presence || info["form_name"].presence
     form_name ||= lead.product.presence if info["meta_form_id"].present?
     campaign = info["meta_campaign_name"].presence || info["campaign_name"].presence || conversion[:campaign].presence
