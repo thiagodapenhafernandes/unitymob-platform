@@ -96,6 +96,41 @@ RSpec.describe Images::WatermarkProcessor do
     result&.tempfile&.close!
   end
 
+  it "preserva transparência e aplica a opacidade configurada em marcas indexadas" do
+    setting = PropertySetting.instance
+    setting.update!(watermark_position: "center", watermark_size_percentage: 25, watermark_opacity_percentage: 25)
+    mark = png_upload("marca.png", "120x60", "none", "red")
+    setting.watermark_image.attach(mark)
+    result = described_class.call(png_upload("foto.png", "320x220", "white", "white"), setting: setting, raise_errors: true)
+    image = MiniMagick::Image.open(result.tempfile.path)
+    pixels = image.get_pixels
+    expect(image.dimensions).to eq([320, 220])
+    expect(pixels[110][150].first(3)).to eq([255, 191, 191])
+    expect(pixels[91][121].first(3)).to eq([255, 255, 255])
+  ensure
+    image&.destroy!
+    result&.tempfile&.close!
+  end
+
+  it "preserva o fundo transparente da marca quando a foto é JPEG" do
+    setting = PropertySetting.instance
+    setting.update!(watermark_position: "center", watermark_size_percentage: 25, watermark_opacity_percentage: 25)
+    setting.watermark_image.attach(png_upload("marca.png", "120x60", "none", "red"))
+    photo = png_upload("foto.png", "320x220", "white", "white")
+    jpeg = Tempfile.new(["foto", ".jpg"])
+    system("magick", photo.path, jpeg.path, exception: true)
+    result = described_class.call(Rack::Test::UploadedFile.new(jpeg.path, "image/jpeg"), setting: setting, raise_errors: true)
+    image = MiniMagick::Image.open(result.tempfile.path)
+    pixels = image.get_pixels
+    expect(image.dimensions).to eq([320, 220])
+    expect(pixels[110][150][1]).to be_within(4).of(191)
+    expect(pixels[91][121].first(3)).to all(be >= 250)
+  ensure
+    image&.destroy!
+    result&.tempfile&.close!
+    jpeg&.close!
+  end
+
   def png_upload(filename, size, background, fill)
     file = Tempfile.new([File.basename(filename, ".png"), ".png"])
     file.close

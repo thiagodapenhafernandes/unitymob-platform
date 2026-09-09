@@ -34,13 +34,19 @@ module Images
         image.auto_orient
 
         watermark = MiniMagick::Image.open(watermark_file.path)
+        watermark.format "png"
+        watermark.filter "Lanczos"
         watermark.resize "#{watermark_width_for(image)}x"
         apply_watermark_opacity(watermark)
 
         output = build_tempfile
         composed = image.composite(watermark) do |config|
           config.colorspace "sRGB"
-          config.type "TrueColor"
+          config.type "TrueColorAlpha"
+          if image.type == "JPEG"
+            config.quality "100"
+            config.sampling_factor "4:4:4"
+          end
           config.compose "Over"
           config.gravity gravity
           config.geometry geometry_for(image)
