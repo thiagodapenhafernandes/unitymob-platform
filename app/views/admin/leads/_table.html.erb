@@ -1,11 +1,12 @@
 <% meta_form_names = lead_table_meta_form_names(leads, tenant: current_tenant) %>
+<% interest_properties = lead_table_interest_properties(leads, tenant: current_tenant) %>
 <div class="ax-table-wrap ax-table-wrap--records">
 <div class="lead-list ax-record-list" role="table" aria-label="Leads, contatos, imóveis de interesse e responsáveis">
   <div role="rowgroup">
   <% leads.each do |lead| %>
     <%
       lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
-      property = @properties_by_id[lead.property_id]
+      property = @properties_by_id[lead.property_id] || interest_properties[lead.id]
       display_name = lead.display_name.presence || lead.name
       phone_digits = lead.display_phone.to_s.gsub(/[^0-9+]/, "")
       conversion = lead_conversion_summary(lead, include_whatsapp_campaign: false)

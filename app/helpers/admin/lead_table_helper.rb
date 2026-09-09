@@ -1,4 +1,15 @@
 module Admin::LeadTableHelper
+  def lead_table_interest_properties(leads, tenant:)
+    lead_ids = leads.select { |lead| lead.tenant_id == tenant.id && lead.property_id.blank? }.map(&:id)
+    return {} if lead_ids.empty?
+
+    interests = LeadPropertyInterest.where(tenant_id: tenant.id).joins(:habitation)
+      .where(lead_id: lead_ids, habitations: { tenant_id: tenant.id })
+      .select("DISTINCT ON (lead_property_interests.lead_id) lead_property_interests.*")
+      .order(:lead_id, :created_at, :id).includes(:habitation)
+    interests.to_h { |interest| [interest.lead_id, interest.habitation] }
+  end
+
   def lead_table_status_tone(status)
     { "info" => :cyan, "primary" => :blue, "warning" => :amber,
       "secondary" => :gray, "danger" => :red, "success" => :green }.fetch(Lead.status_badge_class(status), :gray)

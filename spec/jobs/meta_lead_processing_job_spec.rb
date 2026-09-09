@@ -3,6 +3,19 @@ require "rails_helper"
 RSpec.describe MetaLeadProcessingJob, type: :job do
   before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
+  it "identifica empreendimento pelo nome sem escolher uma unidade ou outra conta" do
+    property = create(:habitation, tipo: "Empreendimento", nome_empreendimento: "Gralha Azul Condomínio Residencial", status: "Venda", exibir_no_site_flag: true)
+    tenant = property.tenant
+    unit = create(:habitation, tenant: tenant, nome_empreendimento: property.nome_empreendimento, status: "Venda", exibir_no_site_flag: true)
+    expect(described_class.property_from_text(tenant, "Form - Gralha Azul 1M")).to eq(property)
+    expect(described_class.property_from_text(tenant, "Form - Gralha Azul 1M CÓD 999999999")).to be_nil
+    expect(described_class.property_from_text(tenant, "CÓD 2788 E 2940 Gralha Azul")).to be_nil
+    other = Tenant.create!(name: "Outra conta nomes", slug: "other-property-names")
+    expect(described_class.property_from_text(other, "Form - Gralha Azul 1M")).to be_nil
+    create(:habitation, tenant: tenant, tipo: "Empreendimento", nome_empreendimento: property.nome_empreendimento, status: "Venda", exibir_no_site_flag: true)
+    expect(described_class.property_from_text(tenant, "Form - Gralha Azul 1M")).to be_nil
+  end
+
   it "cria o lead no tenant do usuario dono da integracao Meta" do
     tenant = Tenant.create!(name: "Conta Meta #{SecureRandom.hex(3)}", slug: "conta-meta-#{SecureRandom.hex(3)}")
     admin = create(:admin_user, :admin, tenant: tenant)

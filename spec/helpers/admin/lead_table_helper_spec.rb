@@ -1,6 +1,22 @@
 require "rails_helper"
 
 RSpec.describe Admin::LeadTableHelper, type: :helper do
+  it "usa o primeiro interesse somente quando não há imóvel principal" do
+    lead = create(:lead)
+    first_property = create(:habitation, tenant: lead.tenant)
+    second_property = create(:habitation, tenant: lead.tenant)
+    lead.property_interests.create!(tenant: lead.tenant, habitation: first_property, created_at: 2.days.ago)
+    lead.property_interests.create!(tenant: lead.tenant, habitation: second_property, created_at: 1.day.ago)
+    expect(helper.lead_table_interest_properties([lead], tenant: lead.tenant)).to eq(lead.id => first_property)
+    lead.property_id = second_property.id
+    expect(helper.lead_table_interest_properties([lead], tenant: lead.tenant)).to be_empty
+    lead.property_id = nil
+    other = Tenant.create!(name: "Outra conta", slug: "other-interest-account")
+    expect(helper.lead_table_interest_properties([lead], tenant: other)).to be_empty
+    lead.property_interests.destroy_all
+    expect(helper.lead_table_interest_properties([lead], tenant: lead.tenant)).to be_empty
+  end
+
   it "resolve formulário local sem conta de anúncios e ignora outras contas" do
     integration = create(:user_meta_integration)
     page = create(:meta_facebook_page, user_meta_integration: integration)

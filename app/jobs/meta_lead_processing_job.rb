@@ -83,11 +83,35 @@ class MetaLeadProcessingJob < ApplicationJob
   end
 
   def self.property_from_text(tenant, value)
-    code = property_code_from_text(value)
-    return nil if tenant.blank? || code.blank?
+    return nil if tenant.blank?
 
-    candidates = [code, code.to_i.to_s].uniq
-    tenant.habitations.commercially_publishable.where(codigo: candidates).first
+    text = I18n.transliterate(value.to_s).squish
+    return nil if text.match?(AMBIGUOUS_PROPERTY_CODE_PATTERN)
+
+    code = property_code_from_text(value)
+    scope = tenant.habitations.commercially_publishable
+    if code.present?
+      return scope.where(codigo: [code, code.to_i.to_s].uniq).first
+    end
+    # Um código explícito não encontrado não pode virar uma associação por nome.
+    return nil if text.match?(/\bcod(?:igo)?\b/i)
+
+    name = property_name_from_text(text)
+    return nil if name.split.size < 2
+
+    candidates = scope.select(:id, :tipo, :nome_empreendimento, :titulo_anuncio).select do |property|
+      names = [property.titulo_anuncio]
+      names << property.nome_empreendimento if property.tipo == "Empreendimento"
+      names.compact.any? { |label| property_name_from_text(label) == name }
+    end
+    scope.find_by(id: candidates.first.id) if candidates.one?
+  end
+
+  def self.property_name_from_text(value)
+    I18n.transliterate(value.to_s).downcase
+      .gsub(/\b(?:formulario|form|campanha|campaign|condominio|residencial|empreendimento)\b/, " ")
+      .gsub(/\b\d+(?:[.,]\d+)?\s*[mk]\b/, " ")
+      .gsub(/[^a-z0-9]+/, " ").squish
   end
 
   private
