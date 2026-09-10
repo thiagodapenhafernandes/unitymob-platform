@@ -2803,7 +2803,15 @@ class Admin::LeadsController < Admin::BaseController
 
   def lead_statuses_for_kanban(lead_scope)
     configured_statuses = lead_status_options_for_selected_context
-    return visible_kanban_statuses(@status_filters) if @status_filters.present?
+    if @selected_pipeline.blank?
+      default_pipeline = LeadPipeline.default_for(tenant: current_tenant)
+      default_statuses = default_pipeline ? visible_stages_for(default_pipeline.stages.active.ordered).map(&:name) : []
+      configured_statuses = visible_kanban_statuses(default_statuses + configured_statuses)
+    end
+    if @status_filters.present?
+      filters = visible_kanban_statuses(@status_filters)
+      return visible_kanban_statuses(configured_statuses + filters) & filters
+    end
     return visible_kanban_statuses(configured_statuses) if @selected_pipeline.present?
 
     visible_kanban_statuses(configured_statuses + lead_scope.reorder(nil).distinct.pluck(:status).compact)

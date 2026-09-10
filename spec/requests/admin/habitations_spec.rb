@@ -829,14 +829,15 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include('novalidate="novalidate"')
   end
 
-  it "exibe todos os status comerciais canônicos na etapa inicial" do
+  it "exibe apenas status comerciais de abertura na etapa inicial" do
     get new_admin_habitation_path
 
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
     rendered_statuses = document.css('input[name="habitation[status]"]').map { |input| input["value"] }
-    expect(rendered_statuses).to eq(Habitation::STATUS_OPTIONS)
+    expect(rendered_statuses).to eq(["Venda", "Aluguel", "Diária", "Lançamento"])
     expect(response.body).to include("Locação anual", "Locação diária")
+    expect(rendered_statuses).not_to include("Pendente", "Suspenso", "Alugado imobiliária", "Alugado terceiros", "Vendido imobiliária", "Vendido terceiros")
   end
 
   it "abre novo imóvel como cadastro direto fora do fluxo de revisão depois do tipo definido" do

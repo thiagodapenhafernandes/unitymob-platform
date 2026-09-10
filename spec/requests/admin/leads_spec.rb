@@ -12,6 +12,36 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads" do
+    it "mantém no kanban desktop e mobile a ordem salva no modal, inclusive com filtros" do
+      pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+      stages = %w[Triagem Contato Negociação].map do |name|
+        create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: pipeline, name: name)
+      end
+      other_pipeline = create(:lead_pipeline, tenant: admin.tenant)
+      create(:lead_pipeline_stage, tenant: admin.tenant, lead_pipeline: other_pipeline, name: "Negociação", position: 0)
+      ordered_stages = [stages[1], stages[0], stages[2]] + pipeline.stages.ordered.to_a.excluding(*stages)
+
+      post bulk_update_admin_lead_statuses_path, params: {
+        lead_pipeline_id: pipeline.id,
+        statuses: ordered_stages.map { |stage| { id: stage.id, name: stage.name, stage_type: stage.stage_type } }
+      }, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(pipeline.stages.ordered.pluck(:id)).to eq(ordered_stages.map(&:id))
+
+      [nil, pipeline.id].each do |pipeline_id|
+        [nil, stages.reverse.map(&:name)].each do |statuses|
+          get admin_leads_path(view: "kanban", lead_pipeline_id: pipeline_id, status: statuses)
+          expect(response).to have_http_status(:ok)
+          document = Nokogiri::HTML(response.body)
+          ["[data-lead-kanban-status]", ".lead-pwa-kanban-column"].each do |selector|
+            attribute = selector == ".lead-pwa-kanban-column" ? "data-lead-status" : "data-lead-kanban-status"
+            names = document.css(selector).map { |column| column[attribute] }
+            expect(names & stages.map(&:name)).to eq(%w[Contato Triagem Negociação])
+          end
+        end
+      end
+    end
+
     it "exibe o kanban como visualizacao padrao" do
       create(:lead, name: "Cliente Kanban", phone: "11999999999", status: "Novo")
       create(:lead, name: "Cliente Atendimento", phone: "11888888888", status: "Em Atendimento")

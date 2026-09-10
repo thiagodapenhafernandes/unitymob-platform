@@ -3,7 +3,8 @@
   selected_profile = habitation.registration_profile.presence || "apartamentos"
   selected_config = profiles.fetch(selected_profile, profiles.fetch("apartamentos"))
   selected_category = habitation.categoria.presence || selected_config.fetch(:categories).first
-  selected_status = habitation.status.presence || "Venda"
+  start_status_options = Habitation::STATUS_OPTIONS - ["Pendente", "Suspenso", "Alugado imobiliária", "Alugado terceiros", "Vendido imobiliária", "Vendido terceiros"]
+  selected_status = start_status_options.include?(habitation.status) ? habitation.status : "Venda"
   categories_by_profile = profiles.transform_values { |config| config.fetch(:categories) }
   tipo_by_profile = profiles.transform_values { |config| config.fetch(:tipo) }
   status_labels = {
@@ -86,7 +87,7 @@
         <div class="wizard-field-group">
           <label class="ax-label">Status comercial <span class="required-star">*</span></label>
           <div class="wizard-status-grid" data-controller="option-picker">
-            <% Habitation::STATUS_OPTIONS.each do |value| %>
+            <% start_status_options.each do |value| %>
               <label class="wizard-status-chip <%= 'selected' if selected_status == value %>">
                 <%= radio_button_tag "habitation[status]", value, selected_status == value, data: { action: "change->option-picker#pick" } %>
                 <i class="bi <%= status_icons.fetch(value, "bi-tag") %>"></i>
