@@ -219,7 +219,7 @@ export default class extends Controller {
       return `9${digits}`
     }
 
-    if (digits.length === 10 && !digits.startsWith("55")) {
+    if (digits.length === 10) {
       const ddd = digits.slice(0, 2)
       const subscriber = digits.slice(2)
       if (this.brazilianMobileSubscriberWithoutNinthDigit(subscriber)) return `${ddd}9${subscriber}`

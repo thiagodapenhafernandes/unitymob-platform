@@ -7,7 +7,8 @@ module Geo
   class AddressGeocoder
     Result = Data.define(:latitude, :longitude, :display_name, :house_number, :provider, :precision)
 
-    def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil")
+    def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil", api_key: nil)
+      @api_key = api_key
       @address = address.to_s.strip
       @number = number.to_s.strip
       @neighborhood = neighborhood.to_s.strip
@@ -18,6 +19,8 @@ module Geo
     end
 
     def call
+      return google_result if @api_key.present?
+
       google_result || nominatim_result
     end
 
@@ -26,7 +29,7 @@ module Geo
     attr_reader :address, :number, :neighborhood, :city, :state, :zip_code, :country
 
     def google_result
-      key = ENV["GOOGLE_MAPS_API_KEY"].presence || ENV["GOOGLE_GEOCODING_API_KEY"].presence
+      key = @api_key.presence || ENV["GOOGLE_MAPS_API_KEY"].presence || ENV["GOOGLE_GEOCODING_API_KEY"].presence
       return nil if key.blank?
 
       data = json_get(

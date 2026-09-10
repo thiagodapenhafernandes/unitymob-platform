@@ -78,8 +78,8 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.headers["Content-Disposition"]).to include("attachment")
     expect(response.headers["Content-Disposition"]).to include("fotos-imovel-#{habitation.codigo}")
     expect(response.body.bytes.first(2).pack("C*")).to eq("PK")
-    expect(response.body).to include("um.jpg")
-    expect(response.body).to include("dois.jpg")
+    expect(response.body).to include("#{habitation.codigo}-01.jpg")
+    expect(response.body).to include("#{habitation.codigo}-02.jpg")
   end
 
   it "remove fotos selecionadas em lote e registra auditoria" do
@@ -138,7 +138,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.media_type).to eq("application/zip")
     expect(response.body.bytes.first(2).pack("C*")).to eq("PK")
-    expect(response.body).to include("serenity-externa.jpg")
+    expect(response.body).to include("#{unit.codigo}-01.jpg")
     expect(response.body).to include("foto empreendimento")
   end
 

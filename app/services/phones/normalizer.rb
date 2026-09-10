@@ -82,7 +82,7 @@ module Phones
         return "9#{digits}" if brazilian_mobile_subscriber_without_ninth_digit?(digits)
       end
 
-      if digits.length == 10 && digits.first(2) != BRAZIL_COUNTRY_CODE
+      if digits.length == 10 && !value.to_s.strip.start_with?("+")
         ddd = digits.first(2)
         subscriber = digits.from(2)
         return "#{ddd}9#{subscriber}" if brazilian_mobile_subscriber_without_ninth_digit?(subscriber)

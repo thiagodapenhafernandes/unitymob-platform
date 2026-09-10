@@ -470,8 +470,8 @@ class HabitationsController < ApplicationController
     lookup_scope = scope.with_attached_photos.includes(:address)
     lookup_scope.find_by(slug: identifier) ||
       lookup_scope.find_by(codigo: identifier) ||
-      find_habitation_by_trailing_code(identifier, lookup_scope) ||
-      find_habitation_by_friendly_id(identifier, lookup_scope)
+      find_habitation_by_friendly_id(identifier, lookup_scope) ||
+      find_habitation_by_trailing_code(identifier, lookup_scope)
   end
 
   def public_habitation_scope

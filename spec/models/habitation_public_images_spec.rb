@@ -96,7 +96,7 @@ RSpec.describe Habitation, type: :model do
       expect(first_source["url"]).to be_nil
     end
 
-    it "não usa fotos do empreendimento vinculado quando a unidade não optou por esse fallback" do
+    it "inclui fotos do empreendimento pelo vínculo mesmo com a opção legada desativada" do
       development = create(
         :habitation,
         codigo: unique_code("EMP-IMG-1"),
@@ -114,8 +114,8 @@ RSpec.describe Habitation, type: :model do
       )
       unit.update_column(:use_development_photos_flag, false)
 
-      expect(unit.public_image_sources).to be_empty
-      expect(unit.has_any_photo?).to be(false)
+      expect(unit.public_image_sources).to be_present
+      expect(unit.has_any_photo?).to be(true)
     end
 
     it "usa fotos do empreendimento vinculado quando a unidade optou pelo fallback e não tem fotos próprias" do

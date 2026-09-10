@@ -151,7 +151,7 @@ export default class extends Controller {
 
     if (digits.length === 8 && this.brazilianMobileSubscriberWithoutNinthDigit(digits)) {
       digits = `9${digits}`
-    } else if (digits.length === 10 && !digits.startsWith("55")) {
+    } else if (digits.length === 10) {
       const ddd = digits.slice(0, 2)
       const subscriber = digits.slice(2)
       if (this.brazilianMobileSubscriberWithoutNinthDigit(subscriber)) digits = `${ddd}9${subscriber}`

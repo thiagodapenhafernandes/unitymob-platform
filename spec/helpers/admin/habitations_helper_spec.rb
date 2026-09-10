@@ -29,7 +29,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
     it "preserves captador names on properties outside DWV" do
       property = Habitation.new(construtora: "Construtora local")
       allow(property).to receive(:captador_names).and_return(["Ana", "João"])
-      expect(helper.admin_habitation_catalog_attribution(property)).to include(caption: "Captador", label: "Ana +1", title: "Ana | João")
+      expect(helper.admin_habitation_catalog_attribution(property)).to include(caption: "Captador", label: "Ana / João", title: "Ana | João")
     end
   end
 

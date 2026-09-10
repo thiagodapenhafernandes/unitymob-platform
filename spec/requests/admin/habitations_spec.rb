@@ -31,6 +31,22 @@ RSpec.describe "Admin::Habitations", type: :request do
     sign_in admin
   end
 
+  it "disponibiliza infraestrutura do empreendimento para preencher a unidade no formulário" do
+    development = create(:habitation, tenant: admin.tenant, tipo: "Empreendimento", nome_empreendimento: "Residencial Infraestrutura", infra_estrutura: ["Elevador", "Lazer exclusivo do empreendimento"])
+    foreign = create(:habitation, tenant: Tenant.create!(name: "Outra conta infraestrutura", slug: "other-infrastructure"), tipo: "Empreendimento", nome_empreendimento: "Residencial Outra Conta", infra_estrutura: ["Lazer de outra conta"])
+
+    get new_admin_habitation_path(habitation: { registration_profile: "apartamentos" })
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    lookup = JSON.parse(doc.at_css('[data-habitation-form-developments-value]')['data-habitation-form-developments-value'])
+    expect(lookup.fetch(development.codigo).fetch("infra_estrutura")).to match_array(development.caracteristicas_predio)
+    expect(lookup).not_to have_key(foreign.codigo)
+    values = doc.css('#infra-checkbox-list input[type="checkbox"]').map { |input| input['value'] }
+    expect(values).to include("Lazer exclusivo do empreendimento")
+    expect(values).not_to include("Lazer de outra conta")
+  end
+
   it "responde JSON invalido do catalogo com erro controlado" do
     get admin_habitations_path(format: :json)
 
@@ -1608,7 +1624,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
     expect(card).to be_present
-    expect(card.text).to include("Captador: Captador Principal +1")
+    expect(card.text).to include("Captador: Captador Principal / Captador Secundário")
     expect(card.at_css("[title='Captador Principal | Captador Secundário']")).to be_present
     expect(card.text).to include("Proprietário:")
     expect(card.text).to include(owner_name)
@@ -1621,7 +1637,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
     expect(card).to be_present
-    expect(card.text).to include("Captador: Captador Principal +1")
+    expect(card.text).to include("Captador: Captador Principal / Captador Secundário")
     expect(card.text).not_to include("Proprietário:")
     expect(response.body).not_to include(owner_name)
     expect(response.body).not_to include("https://wa.me/5547999999999")

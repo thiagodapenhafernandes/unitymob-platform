@@ -296,6 +296,9 @@ class AdminUser < ApplicationRecord
   end
 
   def can?(action, resource)
+    if resource.to_s == "proprietarios" && horizontal_profile && !system_admin?
+      return horizontal_profile.can?(action, resource)
+    end
     return true if admin?
     return false unless vertical_profile
 

@@ -330,6 +330,11 @@ class Admin::HabitationMediaController < Admin::BaseController
       return
     end
 
+    code = (@habitation.codigo.presence || @habitation.id).to_s.gsub(/[^[:alnum:]_-]/, "-")
+    entries.each_with_index do |entry, index|
+      entry[:name] = "#{code}-#{format('%02d', index + 1)}#{File.extname(entry[:name])}"
+    end
+
     send_data(
       Downloads::ZipArchive.build(entries),
       filename: "fotos-imovel-#{@habitation.codigo.presence || @habitation.id}.zip",

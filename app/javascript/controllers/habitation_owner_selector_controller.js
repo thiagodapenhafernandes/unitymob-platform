@@ -680,7 +680,7 @@ export default class extends Controller {
   }
 
   brazilianNationalDigits(digits) {
-    return digits.startsWith("55") ? digits.slice(2) : digits
+    return digits.startsWith("55") && [12, 13].includes(digits.length) ? digits.slice(2) : digits
   }
 
   redirectDuplicateToSearch(payload, phoneField) {

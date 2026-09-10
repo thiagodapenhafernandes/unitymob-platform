@@ -206,3 +206,15 @@
     transition: none;
   }
 }
+
+/* Checklists ordered from top to bottom in each responsive column. */
+.ax-chip-grid.ax-chip-grid--columns {
+  display: block;
+  columns: 148px;
+  column-gap: 6px;
+}
+.ax-chip-grid--columns > .ax-chip-grid__item {
+  display: flex;
+  break-inside: avoid;
+  margin-bottom: 6px;
+}

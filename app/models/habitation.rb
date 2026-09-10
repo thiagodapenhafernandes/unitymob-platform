@@ -134,6 +134,15 @@ class Habitation < ApplicationRecord
     "Licenças operacionais"
   ].freeze
 
+  COMMERCIAL_FEATURE_OPTIONS = [
+    "Ar-condicionado", "Copa", "Escritório", "Lavabo", "Mezanino", "Piso elevado",
+    "Canaletas no rodapé", "Alarme", "Monitoramento", "Acessibilidade"
+  ].freeze
+  COMMERCIAL_INFRASTRUCTURE_OPTIONS = [
+    "Elevador", "Estacionamento", "Portaria 24h", "Controle de acesso", "Vigilância 24h",
+    "CFTV", "Gerador", "Interfone", "Acessibilidade"
+  ].freeze
+
   CORPORATE_INFRASTRUCTURE_OPTIONS = [
     "Docas",
     "Docas niveladoras",
@@ -325,7 +334,7 @@ class Habitation < ApplicationRecord
     if profile == "terrenos"
       LAND_FEATURE_OPTIONS
     elsif profile == "comerciais_industriais" || category.match?(/galp|industrial|comercial|loja|ponto/i)
-      CORPORATE_FEATURE_OPTIONS
+      category.match?(/galp|industrial/i) ? CORPORATE_FEATURE_OPTIONS : COMMERCIAL_FEATURE_OPTIONS
     else
       []
     end
@@ -338,7 +347,7 @@ class Habitation < ApplicationRecord
     if profile == "terrenos"
       LAND_INFRASTRUCTURE_OPTIONS
     elsif profile == "comerciais_industriais" || category.match?(/galp|industrial|comercial|loja|ponto/i)
-      CORPORATE_INFRASTRUCTURE_OPTIONS
+      category.match?(/galp|industrial/i) ? CORPORATE_INFRASTRUCTURE_OPTIONS : COMMERCIAL_INFRASTRUCTURE_OPTIONS
     else
       []
     end
@@ -639,7 +648,7 @@ class Habitation < ApplicationRecord
 
   # FriendlyId para URLs amigáveis (SEO)
   extend FriendlyId
-  friendly_id :slug_candidates, use: [:slugged, :finders]
+  friendly_id :slug_candidates, use: [:slugged, :finders, :history]
   
   # Paginação
   self.per_page = 12
@@ -781,7 +790,8 @@ class Habitation < ApplicationRecord
   before_validation :infer_registration_profile
   before_validation :unpublish_when_commercial_status_inactive
   before_validation :clear_category_mismatched_slug, prepend: true
-  before_validation :assign_codigo_automaticamente, on: :create
+  before_validation :assign_codigo_automaticamente, on: :create, prepend: true
+  before_update :preserve_legacy_slug, if: :will_save_change_to_slug?
   before_validation :finalize_temporary_broker_intake_codigo_for_registered_status
   before_validation :set_data_cadastro_crm, on: :create
   before_validation :normalize_codigo_empreendimento
@@ -1670,13 +1680,19 @@ class Habitation < ApplicationRecord
   end
 
   def own_public_image_sources
-    attached_images = public_ordered_photos.filter_map do |photo|
+    all_photos = ordered_photos
+    hidden_ids = Array(site_hidden_photo_ids).map(&:to_i)
+    attached_images = all_photos.reject { |photo| hidden_ids.include?(photo.id) }.filter_map do |photo|
       source = { "attachment" => photo }
       source if public_attachment_source_available?(photo, source)
     end
     api_images = image_payload_sources
 
-    attached_images.presence || api_images
+    return attached_images.presence || api_images unless dwv_property?
+
+    # Keep the remaining DWV photos visible while attachments are processed.
+    materialized_urls = all_photos.filter_map { |photo| photo.blob.metadata["source_url"] }
+    attached_images + api_images.reject { |source| materialized_urls.include?(source["url"]) }
   end
 
   def public_attachment_source_available?(photo, source)
@@ -1684,7 +1700,7 @@ class Habitation < ApplicationRecord
   end
 
   def use_development_photos?
-    use_development_photos_flag? && !empreendimento? && codigo_empreendimento.present?
+    !empreendimento? && codigo_empreendimento.present?
   end
 
   def linked_development_public_image_sources
@@ -2083,7 +2099,7 @@ class Habitation < ApplicationRecord
 
   def unique_features
     raw = self[:caracteristica_unica]
-    Array(raw).flatten.compact.map { |feature| feature.to_s.strip }.reject(&:blank?)
+    Array(raw).flatten.compact.map { |feature| feature.to_s.strip }.reject { |feature| feature.blank? || public_commercial_feature_label?(feature) }
   end
 
   def effective_constructor
@@ -2300,7 +2316,7 @@ class Habitation < ApplicationRecord
   end
 
   def leisure_features_for_display
-    normalize_feature_values(infra_estrutura, category: "infrastructure")
+    normalize_feature_values(infra_estrutura, category: "infrastructure").reject { |feature| public_commercial_feature_label?(feature) }
   end
 
   def public_neighborhood
@@ -2546,6 +2562,7 @@ class Habitation < ApplicationRecord
 
     self.nome_empreendimento = parent.nome_empreendimento.presence || parent.titulo_anuncio
     self.use_development_photos_flag = true if force_sync
+    self.infra_estrutura = (caracteristicas_predio + parent.caracteristicas_predio).uniq if force_sync
     assign_development_value(:constructor_id, parent.constructor_id, force: force_sync)
     assign_development_value(:descricao_empreendimento, development_description_for_unit(parent), force: force_sync)
     assign_development_value(:data_entrega, parent.data_entrega, force: force_sync)
@@ -2608,7 +2625,7 @@ class Habitation < ApplicationRecord
     # Vista mar usually maps to vista mar
     assign_feature_flag(:vista_frente_mar_flag, feature_names.include?('Vista Mar') || feature_names.include?('Vista para o Mar'))
     assign_feature_flag(:aceita_financiamento_flag, feature_names.include?('Aceita Financiamento'))
-    assign_feature_flag(:aceita_permuta_flag, feature_names.include?('Aceita Permuta'))
+    assign_feature_flag(:aceita_permuta_flag, aceita_permuta_answer.present? ? aceita_permuta_answer == 'sim' : feature_names.include?('Aceita Permuta'))
     assign_feature_flag(:lavabo_flag, feature_names.include?('Lavabo'))
   end
 
@@ -2706,6 +2723,11 @@ class Habitation < ApplicationRecord
     finalize_broker_intake_registration!(submitted_at: submitted_for_review_at.presence || Time.current)
   end
 
+  def preserve_legacy_slug
+    previous_slug = slug_in_database
+    slugs.find_or_create_by!(slug: previous_slug) if previous_slug.present?
+  end
+
   def slug_candidates
     if empreendimento?
       return [
@@ -2717,7 +2739,8 @@ class Habitation < ApplicationRecord
     [
       [:tipo_imovel_slug, :cidade_slug, :bairro_slug, :codigo],
       [:tipo_imovel_slug, :cidade_slug, :codigo],
-      [:categoria, :codigo]
+      [:categoria, :codigo],
+      [:tipo_imovel_slug, :tenant_id, :codigo]
     ]
   end
 
@@ -2736,7 +2759,7 @@ class Habitation < ApplicationRecord
     code_suffix = codigo.to_s.parameterize
     expected_prefix = tipo_imovel_slug.to_s
     return false if code_suffix.blank? || expected_prefix.blank?
-    return false unless current_slug.end_with?("-#{code_suffix}")
+    return true unless current_slug.end_with?("-#{code_suffix}")
 
     !current_slug.start_with?("#{expected_prefix}-")
   end

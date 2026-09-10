@@ -13,6 +13,7 @@ export default class extends Controller {
 
   static values = {
     ambienteUrl: String,
+    updateUrl: String,
     organizeUrl: String,
     shareUrl: String,
     downloadUrl: String,
@@ -73,13 +74,30 @@ export default class extends Controller {
     }
   }
 
+  async saveClassification(event) {
+    const select = event.currentTarget
+    if (!this.canEditValue || !this.hasUpdateUrlValue) return
+    this.setBusy(select, true)
+    try {
+      await this.requestJson(this.updateUrlValue, {
+        method: "PATCH", json: { habitation: { foto_classificacao: select.value } }
+      })
+      this.toast("Classificação atualizada.", "success")
+    } catch (error) {
+      this.reportError(error)
+    } finally {
+      this.setBusy(select, false)
+    }
+  }
+
   // --- Organizar por ambiente ------------------------------------------------
 
   async organize(event) {
     event?.preventDefault?.()
     if (!this.canEditValue || !this.hasOrganizeUrlValue) return
 
-    this.setBusy(event?.currentTarget, true)
+    const button = event?.currentTarget
+    this.setBusy(button, true)
 
     try {
       const payload = await this.requestJson(this.organizeUrlValue, { method: "POST" })
@@ -87,7 +105,7 @@ export default class extends Controller {
     } catch (error) {
       this.reportError(error)
     } finally {
-      this.setBusy(event?.currentTarget, false)
+      this.setBusy(button, false)
     }
   }
 
@@ -189,7 +207,8 @@ export default class extends Controller {
     const message = `Excluir ${totalDeletable} foto${totalDeletable === 1 ? "" : "s"} selecionada${totalDeletable === 1 ? "" : "s"}? Essa ação não pode ser desfeita.`
     if (!window.confirm(message)) return
 
-    this.setBusy(event?.currentTarget, true)
+    const button = event?.currentTarget
+    this.setBusy(button, true)
 
     try {
       const payload = await this.requestJson(this.destroySelectedUrlValue, {
@@ -205,7 +224,7 @@ export default class extends Controller {
     } catch (error) {
       this.reportError(error)
     } finally {
-      this.setBusy(event?.currentTarget, false)
+      this.setBusy(button, false)
     }
   }
 
@@ -224,7 +243,8 @@ export default class extends Controller {
       return
     }
 
-    this.setBusy(event?.currentTarget, true)
+    const button = event?.currentTarget
+    this.setBusy(button, true)
 
     try {
       const payload = await this.requestJson(this.shareUrlValue, {
@@ -235,7 +255,7 @@ export default class extends Controller {
     } catch (error) {
       this.renderShareResult({ error: this.errorMessage(error) })
     } finally {
-      this.setBusy(event?.currentTarget, false)
+      this.setBusy(button, false)
     }
   }
 

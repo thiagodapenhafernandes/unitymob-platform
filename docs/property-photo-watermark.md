@@ -17,3 +17,9 @@ A marca aceita PNG, JPEG e WebP de até 5 MB e 25 megapixels, com validação do
 - Se a foto original estiver ausente, remover sua pendência e enviar a foto novamente.
 - Fotos e falhas anteriores à implantação não são alteradas por backfill. Não reaplicar automaticamente a marca em acervos importados.
 - Não é necessária migration: pendências usam os anexos e metadados existentes do Active Storage. Em rollback, pendências permanecem armazenadas e exigem retomar a versão que as processa.
+
+## Importações DWV
+
+Novos imóveis DWV usam `DwvPhotoWatermarkJob` quando a conta tem marca configurada. O job baixa somente imagens HTTPS da origem DWV permitida, com limite de 20 MB por arquivo, e reutiliza `HabitationPhotoWatermarkJob`. Ambiente e visibilidade são preservados; novas execuções reconhecem cada `source_url` já materializada. As URLs restantes continuam disponíveis durante o processamento, sem duplicar as fotos prontas.
+
+O histórico não é reprocessado automaticamente. Para selecionar imóveis existentes, use `script/maintenance/repair_property_catalog.rb` com `OPERATIONS=dwv_photos`, `TENANT_ID` e `CODES`. A execução padrão apenas informa o escopo; `EXECUTE=1` agenda o processamento.

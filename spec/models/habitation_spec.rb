@@ -425,6 +425,22 @@ RSpec.describe Habitation, type: :model do
   end
 
   describe "development hierarchy sync" do
+    it "merges infrastructure when linking and preserves later manual changes" do
+      development = create(:habitation, tipo: "Empreendimento", infra_estrutura: ["Elevador", "Piscina coletiva"])
+      unit = create(:habitation, codigo_empreendimento: development.codigo, infra_estrutura: ["Jardim", "Elevador"])
+      expect(unit.reload.infra_estrutura).to match_array(["Jardim", "Elevador", "Piscina coletiva"])
+
+      unit.update!(infra_estrutura: ["Jardim"])
+      expect(unit.reload.infra_estrutura).to eq(["Jardim"])
+
+      other = create(:habitation, tipo: "Empreendimento", infra_estrutura: ["Bicicletário"])
+      unit.update!(codigo_empreendimento: other.codigo)
+      expect(unit.reload.infra_estrutura).to match_array(["Jardim", "Bicicletário"])
+
+      unit.update!(codigo_empreendimento: nil)
+      expect(unit.reload.infra_estrutura).to match_array(["Jardim", "Bicicletário"])
+    end
+
     it "copies building capacity on linking, preserves unit values and fills missing values on later saves" do
       development = create(:habitation, tipo: "Empreendimento", ano_construcao: 2020, andares_qtd: 20, aptos_andar: 4)
       unit = create(:habitation, codigo_empreendimento: development.codigo)

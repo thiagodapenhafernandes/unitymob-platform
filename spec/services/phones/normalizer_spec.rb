@@ -29,6 +29,14 @@ RSpec.describe Phones::Normalizer do
     end
   end
 
+  it "preserva DDD 55 e diferencia números nacionais de internacionais" do
+    expect(described_class.call("(55) 99999-1234")).to eq("5555999991234")
+    expect(described_class.call("(55) 9999-1234")).to eq("5555999991234")
+    expect(described_class.call("(55) 3333-1234")).to eq("555533331234")
+    expect(described_class.call("+55 55 99999-1234")).to eq("5555999991234")
+    expect(described_class.call("+1 646 555 1234")).to eq("16465551234")
+  end
+
   describe ".display" do
     it "formata telefone brasileiro canônico" do
       expect(described_class.display("5547996158980")).to eq("55 (47) 99615-8980")

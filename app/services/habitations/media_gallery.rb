@@ -54,14 +54,8 @@ module Habitations
 
     attr_reader :habitation
 
-    # ATENÇÃO — fonte recorrente de confusão:
-    # Imagens de DWV NÃO são nossas: elas ficam na URL PRÓPRIA do DWV e NÃO
-    # baixamos para o nosso Spaces. Por isso aqui usamos a URL crua
-    # (picture_url) e NÃO passamos pelo Storage::PublicCdnImageUrl.resolve
-    # (o resolver só valida/aceita URLs do nosso CDN/Spaces — e é pra continuar
-    # assim). As imagens PRÓPRias do imóvel (ActiveStorage no nosso Spaces) é que
-    # passam pelo resolver, em Habitation#image_payload_sources / attached_media.
-    # Só entram aqui quando o imóvel é DWV (imovel_dwv == "Sim").
+    # DWV URLs remain available until their watermarked attachments are ready.
+    # covered_by_attached_media? removes each source once processing finishes.
     def raw_dwv_pictures
       return [] unless habitation.dwv_property? && habitation.pictures.is_a?(Array)
 

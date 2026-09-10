@@ -69,7 +69,7 @@ class Admin::HabitationsController < Admin::BaseController
   EXPORT_FIELDS = Habitations::CsvExporter::FIELDS
   RETURN_PARAM_DENYLIST = %w[
     controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
-    habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save
+    habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save publication_choice
     association attachment_id
   ].freeze
   LATEST_HUMAN_ACTIVITY_SQL = HabitationCatalogSort::LATEST_HUMAN_ACTIVITY_SQL
@@ -581,6 +581,12 @@ class Admin::HabitationsController < Admin::BaseController
   def create
     source_habitation
     permitted_attributes = habitation_params
+    if params[:publication_choice].in?(%w[publish internal]) && !admin_paper_intake_form?
+      if params[:publication_choice] == "publish" && Habitations::FieldLockPolicy.for(current_admin_user).field_locked?("exibir_no_site_flag")
+        return head :forbidden
+      end
+      permitted_attributes[:exibir_no_site_flag] = params[:publication_choice] == "publish"
+    end
     new_photo_uploads = extract_photo_uploads!(permitted_attributes)
     new_document_uploads = extract_document_uploads!(permitted_attributes)
     @habitation = current_tenant.habitations.new(permitted_attributes)
@@ -1092,7 +1098,7 @@ class Admin::HabitationsController < Admin::BaseController
                               .select(
                                 :id, :slug, :codigo, :nome_empreendimento, :titulo_anuncio,
                                 :constructor_id, :proprietor_id, :admin_user_id, :data_entrega,
-                                :perfil_construcao, :ano_construcao, :andares_qtd, :aptos_andar, :tipo_endereco, :endereco, :numero,
+                                :perfil_construcao, :ano_construcao, :andares_qtd, :aptos_andar, :infra_estrutura, :tipo_endereco, :endereco, :numero,
                                 :bairro, :bairro_comercial, :cidade, :uf, :cep
                               )
                               .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
@@ -1432,6 +1438,7 @@ class Admin::HabitationsController < Admin::BaseController
     if permitted_habitation_filter_statuses.present?
       @statuses &= (["Todos"] + permitted_habitation_filter_statuses)
     end
+    @statuses = DEFAULT_CATALOG_STATUSES.dup if @statuses.empty?
     @status = @statuses.first
     @categorias = filter_values([params[:categoria], params[:category]], except: "Todas")
     @categoria = @categorias.first
@@ -2164,7 +2171,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def can_edit_habitation?(habitation)
     return false unless property_accessible?(habitation)
-    return false unless habitation_matches_current_user_acting_type?(habitation)
+    return false unless property_captured_by_current_user?(habitation) || habitation_matches_current_user_acting_type?(habitation)
 
     can?(:edit, :imoveis) || property_belongs_to_current_user?(habitation)
   end
@@ -3229,7 +3236,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def property_belongs_to_current_user?(habitation)
-    return false unless current_admin_user
+    return false unless current_admin_user && habitation
     return true if habitation.admin_user_id == current_admin_user.id
     return true if habitation.broker_assignments.loaded? ? habitation.broker_assignments.any? { |assignment| assignment.admin_user_id == current_admin_user.id } : habitation.broker_assignments.exists?(admin_user_id: current_admin_user.id)
 
@@ -3238,7 +3245,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def property_captured_by_current_user?(habitation)
-    return false unless current_admin_user
+    return false unless current_admin_user && habitation
     return true if habitation.admin_user_id == current_admin_user.id
     if habitation.broker_assignments.loaded?
       return true if habitation.broker_assignments.any? { |assignment| assignment.admin_user_id == current_admin_user.id && assignment.role == "captador" }
@@ -3291,7 +3298,11 @@ class Admin::HabitationsController < Admin::BaseController
   def catalog_filter_admin_users
     # O catálogo operacional pode ser filtrado por colegas da mesma conta.
     # Edição/atribuição de responsáveis continua usando habitation_visible_admin_users.
-    current_tenant.admin_users.active
+    users = current_tenant.admin_users.active
+    captured_ids = current_tenant.habitations.where.not(admin_user_id: nil).select(:admin_user_id)
+    assignment_ids = HabitationBrokerAssignment.where(habitation_id: current_tenant.habitations.select(:id), role: "captador").select(:admin_user_id)
+    agent_profiles = current_tenant.profiles.where(key: "agent").select(:id)
+    users.where(profile_id: agent_profiles, horizontal_profile_id: nil).or(users.where(id: captured_ids)).or(users.where(id: assignment_ids))
   end
 
   def catalog_filter_admin_user_id(value)
@@ -3352,6 +3363,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   # manager_team_user_ids / manager_allowed_acting_types vivem no BaseController.
   def manager_can_view_proprietor_data?(habitation)
+    return false unless habitation
     return false unless habitation_matches_current_user_acting_type?(habitation, total_access: false)
 
     team_ids = manager_team_user_ids

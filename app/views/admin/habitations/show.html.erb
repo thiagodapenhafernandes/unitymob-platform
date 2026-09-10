@@ -22,7 +22,7 @@
     when Hash
       value.values.compact_blank.join(", ")
     when ActiveSupport::TimeWithZone, Time
-      l(value, format: :short)
+      l(value, format: "%d/%m/%Y %H:%M")
     when Date
       l(value)
     else
@@ -61,9 +61,9 @@
                          "ax-badge--gray"
                        end
 
-  feature_names = array_value.call(@habitation.caracteristicas)
-  infrastructure_names = array_value.call(@habitation.infra_estrutura)
-  unique_feature_names = array_value.call(@habitation.caracteristica_unica)
+  feature_names = @habitation.public_property_features_for_display
+  infrastructure_names = @habitation.leisure_features_for_display
+  unique_feature_names = @habitation.unique_features
 
   admin_gallery_photo_limit = 12
   attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.first(admin_gallery_photo_limit).select { |photo| photo.persisted? && photo.blob&.persisted? }.filter_map.with_index { |photo, index|
@@ -395,8 +395,8 @@
   end
 
   description_section_class = media_links.any? && description.present? ? "ax-property-show-bottom__body--wide" : "ax-property-show-bottom__body--description-only"
-  internal_feature_names = feature_names.compact_blank.uniq
-  infrastructure_item_names = (infrastructure_names + unique_feature_names).compact_blank.uniq
+  internal_feature_names = feature_names.compact_blank.uniq.sort_by { |name| I18n.transliterate(name).downcase }
+  infrastructure_item_names = (infrastructure_names + unique_feature_names).compact_blank.uniq.sort_by { |name| I18n.transliterate(name).downcase }
   item_names = (internal_feature_names + infrastructure_item_names).compact_blank.uniq
   public_item_names = item_names.map { |name| name.to_s.parameterize }
   public_flags = public_flags.reject { |label, _value| public_item_names.include?(label.to_s.parameterize) }

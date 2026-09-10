@@ -2833,6 +2833,10 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
       -webkit-line-clamp: 1;
     }
 
+    body.ax-habitations-workspace .ax-property-card__meta span.ax-property-card__attribution {
+      -webkit-line-clamp: unset;
+    }
+
     body.ax-habitations-workspace .ax-property-card__meta span:first-child {
       -webkit-line-clamp: 2;
     }

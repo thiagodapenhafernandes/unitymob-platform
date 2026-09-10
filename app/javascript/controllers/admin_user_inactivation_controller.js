@@ -7,6 +7,16 @@ export default class extends Controller {
     this.modeChanged()
   }
 
+  prepareFromToggle(event) {
+    const input = event.currentTarget
+    if (input.checked) return
+
+    input.checked = true
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+    this.prepare(event)
+    document.getElementById("inactivateUserModal")?.dispatchEvent(new CustomEvent("ax-modal:open", { bubbles: true }))
+  }
+
   prepare(event) {
     const trigger = event.currentTarget
     const userId = trigger.dataset.userId

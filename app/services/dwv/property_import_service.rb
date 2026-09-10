@@ -162,6 +162,10 @@ module Dwv
         end
       end
 
+      if !existing_record && PropertySetting.instance(tenant: tenant).watermark_configured?
+        DwvPhotoWatermarkJob.perform_later(habitation.id, tenant_id: tenant.id)
+      end
+
       { success: true, habitation: habitation }
     rescue => e
       if defined?(habitation) && habitation&.persisted?
