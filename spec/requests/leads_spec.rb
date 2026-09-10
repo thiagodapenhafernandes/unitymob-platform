@@ -151,6 +151,30 @@ RSpec.describe "Leads", type: :request do
       expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
     end
 
+    it "reaproveita lead whatsapp_modal recente em duplo envio do formulário" do
+      habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+      payload = {
+        lead: {
+          name: "Cliente Duplicado",
+          phone: "(47) 98888-0000",
+          email: "",
+          property_id: habitation.id,
+          lead_type: "whatsapp_modal",
+          whatsapp_message: "Tenho interesse",
+          business_type: "sale",
+          page_url: "https://site.example/imoveis/#{habitation.id}"
+        }
+      }
+
+      expect {
+        2.times { post leads_path, params: payload, as: :json }
+      }.to change(Lead, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(WebhookService).to have_received(:send_form_data).once
+      expect(Lead.order(:created_at).last.phone).to eq("5547988880000")
+    end
+
     it "creates the lead and returns a confirmation message when WhatsApp redirect is disabled" do
       WhatsappBusinessIntegration.current(Tenant.default).update!(sale_redirect_after_capture: false)
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)

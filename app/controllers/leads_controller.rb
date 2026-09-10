@@ -21,56 +21,27 @@ class LeadsController < ApplicationController
     apply_share_attribution(@lead)
     Leads::Attribution.apply!(@lead, raw: attribution_params, request: request)
     normalize_site_origin(@lead)
-    
-    if @lead.save
-      InterestIntelligence::SessionLinker.call(
-        lead: @lead,
-        token: cookies.signed[PublicNavigationSession::COOKIE_KEY]
-      )
 
+    saved_new_lead = false
+    public_tenant.with_lock do
+      duplicate = recent_whatsapp_modal_duplicate(@lead)
+      if duplicate
+        @lead = duplicate
+      else
+        saved_new_lead = @lead.save
+      end
+    end
+
+    if @lead.persisted?
       habitation ||= public_tenant.habitations.find_by(id: @lead.property_id)
       business_type = lead_business_type(habitation)
-
-      Seo::ConversionTracker.record!(
-        event_type: "lead_created",
-        request: request,
-        lead: @lead,
-        habitation: habitation,
-        metadata: { origin: @lead.origin, lead_type: @lead.lead_type }
-      )
-
-      # Disparar Webhook
-      # Disparar Webhook para todos os endpoints configurados
-      attribution = @lead.attribution_data.to_h
-      WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
-        property_code: habitation&.codigo,
-        property_title: habitation&.display_title,
-        property_url: habitation ? habitation_url(habitation) : nil,
-        business_type: business_type,
-        business_type_label: Whatsapp::SiteRouting::NEGOTIATION_TYPES[business_type],
-        page_url: source_page_url,
-        referrer_url: attribution["referrer_url"],
-        utm_source: attribution["utm_source"],
-        utm_medium: attribution["utm_medium"],
-        utm_campaign: attribution["utm_campaign"],
-        utm_term: attribution["utm_term"],
-        utm_content: attribution["utm_content"],
-        gclid: attribution["gclid"],
-        fbclid: attribution["fbclid"],
-        msclkid: attribution["msclkid"],
-        gbraid: attribution["gbraid"],
-        wbraid: attribution["wbraid"],
-        ttclid: attribution["ttclid"]
-      ).compact, request: request)
-
-      # Send Emails (Async)
-      LeadMailer.with(lead: @lead).welcome_lead.deliver_later if @lead.email.present?
+      after_lead_created(habitation, business_type) if saved_new_lead
 
       render json: lead_success_response(business_type)
     else
-      render json: { 
-        success: false, 
-        errors: @lead.errors.full_messages 
+      render json: {
+        success: false,
+        errors: @lead.errors.full_messages
       }, status: :unprocessable_entity
     end
   end
@@ -111,6 +82,60 @@ class LeadsController < ApplicationController
     return response unless integration.redirect_after_capture_for?(business_type)
 
     response.merge(whatsapp_url: @lead.whatsapp_url(message: lead_whatsapp_message))
+  end
+
+  def after_lead_created(habitation, business_type)
+    InterestIntelligence::SessionLinker.call(
+      lead: @lead,
+      token: cookies.signed[PublicNavigationSession::COOKIE_KEY]
+    )
+
+    Seo::ConversionTracker.record!(
+      event_type: "lead_created",
+      request: request,
+      lead: @lead,
+      habitation: habitation,
+      metadata: { origin: @lead.origin, lead_type: @lead.lead_type }
+    )
+
+    attribution = @lead.attribution_data.to_h
+    WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
+      property_code: habitation&.codigo,
+      property_title: habitation&.display_title,
+      property_url: habitation ? habitation_url(habitation) : nil,
+      business_type: business_type,
+      business_type_label: Whatsapp::SiteRouting::NEGOTIATION_TYPES[business_type],
+      page_url: source_page_url,
+      referrer_url: attribution["referrer_url"],
+      utm_source: attribution["utm_source"],
+      utm_medium: attribution["utm_medium"],
+      utm_campaign: attribution["utm_campaign"],
+      utm_term: attribution["utm_term"],
+      utm_content: attribution["utm_content"],
+      gclid: attribution["gclid"],
+      fbclid: attribution["fbclid"],
+      msclkid: attribution["msclkid"],
+      gbraid: attribution["gbraid"],
+      wbraid: attribution["wbraid"],
+      ttclid: attribution["ttclid"]
+    ).compact, request: request)
+
+    LeadMailer.with(lead: @lead).welcome_lead.deliver_later if @lead.email.present?
+  end
+
+  def recent_whatsapp_modal_duplicate(lead)
+    return unless lead.lead_type == "whatsapp_modal"
+
+    phone = Phones::Normalizer.call(lead.phone).to_s
+    return if phone.blank?
+
+    lead.phone = phone
+    public_tenant.leads
+                 .where(lead_type: lead.lead_type, phone:, property_id: lead.property_id, source_url: lead.source_url)
+                 .where("LOWER(TRIM(COALESCE(name, ''))) = ?", lead.name.to_s.downcase.strip)
+                 .where("created_at >= ?", 5.minutes.ago)
+                 .order(created_at: :desc)
+                 .first
   end
 
   def apply_share_attribution(lead)

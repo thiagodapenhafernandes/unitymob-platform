@@ -83,6 +83,7 @@ export default class extends Controller {
 
   async submit(event) {
     event.preventDefault()
+    if (this.submitting) return
 
     const name = this.nameTarget.value.trim()
     const phoneWithMask = this.phoneTarget.value
@@ -107,6 +108,9 @@ export default class extends Controller {
     // But to respect the flow, we will first capture on backend then redirect.
     // If backend fails, we redirect anyway to not block the user.
 
+    this.submitting = true
+    if (this.hasSubmitButtonTarget) this.submitButtonTarget.disabled = true
+
     const result = await this.sendLeadData({
       name,
       phone,
@@ -125,6 +129,8 @@ export default class extends Controller {
       this.showSuccessMessage(result.message || "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve.")
       this.close()
       event.target.reset()
+      this.submitting = false
+      if (this.hasSubmitButtonTarget) this.submitButtonTarget.disabled = false
       return
     }
 
