@@ -1293,7 +1293,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       }
     }
 
-    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
+    expect(response).to redirect_to(edit_admin_captacao_path(intake.reload, step: "caracteristicas"))
     intake.reload
     expect(intake.tipo).to eq("Unitário")
     expect(intake.categoria).to eq("Apartamento")

@@ -1,27 +1,27 @@
 <%
   habitation = local_assigns.fetch(:habitation)
   captador = habitation.primary_captador
-  captador_name = habitation.primary_captador_name.presence
+  captador_name = habitation.captador_names.join(" / ").presence
   initials = captador_name.to_s.split.map { |part| part.first }.join.first(2).presence || "NI"
   phone = captador&.phone
   creci = captador&.creci
   compact = local_assigns[:compact]
-  wrapper_class = ["ax-captador-card", ("ax-captador-card--compact" if compact), local_assigns[:class_name]].compact.join(" ")
+  wrapper_class = ["ax-captador-card", ("ax-captador-card--compact" if compact), ("ax-captador-card--multiple" if habitation.captador_names.size > 1), local_assigns[:class_name]].compact.join(" ")
 %>
 
 <aside class="<%= wrapper_class %>" aria-label="Captador responsável">
   <div class="ax-captador-card__avatar">
     <% if captador&.avatar&.attached? %>
-      <%= image_tag captador.avatar, alt: "Foto de #{captador_name || "captador"}" %>
+      <%= image_tag captador.avatar, alt: "Foto de #{captador.name}" %>
     <% else %>
       <span aria-hidden="true"><%= initials %></span>
     <% end %>
   </div>
 
   <div class="ax-captador-card__body">
-    <span class="ax-captador-card__eyebrow">Captador responsável:</span>
+    <span class="ax-captador-card__eyebrow"><%= habitation.captador_names.size > 1 ? "Captadores responsáveis:" : "Captador responsável:" %></span>
     <strong title="<%= captador_name || "Não informado" %>"><%= captador_name || "Não informado" %></strong>
-    <div class="ax-captador-card__meta">
+    <div class="ax-captador-card__meta" title="<%= "Contato de #{captador.name}" if captador %>">
       <% if creci.present? %>
         <span><i class="bi bi-card-text"></i>CRECI <%= creci %></span>
       <% end %>

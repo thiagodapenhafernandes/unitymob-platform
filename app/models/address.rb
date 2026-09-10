@@ -14,9 +14,17 @@ class Address < ApplicationRecord
   validates :uf, length: { is: 2 }
   validates :cep, format: { with: /\A\d{5}-?\d{3}\z/, message: "formato inválido (00000-000)" }, allow_blank: true
   
-  # Geocoding (Placeholder for future implementation)
-  # geocoded_by :full_address
-  # after_validation :geocode, if: ->(obj){ obj.logradouro_changed? || obj.cidade_changed? }
+  after_commit :schedule_missing_coordinates, on: [:create, :update]
+
+  def schedule_missing_coordinates
+    return unless addressable_type == "Habitation" && (latitude.blank? || longitude.blank?)
+    return unless previous_changes.keys.intersect?(%w[id logradouro numero bairro cidade uf cep])
+
+    setting = GoogleMapsIntegrationSetting.for(addressable.tenant)
+    return unless setting.configured? && setting.provider == "google"
+
+    HabitationGeocodeJob.perform_later(addressable_id, tenant_id: addressable.tenant_id)
+  end
 
   def full_address
     [logradouro, numero, bairro, cidade, uf, pais].compact.join(', ')

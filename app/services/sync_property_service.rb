@@ -74,7 +74,7 @@ class SyncPropertyService
         'ValorCondominio', 'ValorIptu', 'Empreendimento', 'CodigoEmpreendimento', 'Lancamento',
         'DescricaoWeb', 'CaracteristicaUnica', 'Caracteristicas', 'InfraEstrutura', 'ExibirNoSite', 'DestaqueWeb', 'Categoria', 'Construtora',
         'Proprietario', 'CodigoProprietario',
-        { 'proprietarios' => ['Nome', 'Email', 'Celular', 'FoneComercial', 'FoneResidencial'] },
+        { 'proprietarios' => ['Codigo', 'Nome', 'EmailResidencial', 'Celular', 'FonePrincipal', 'FoneComercial', 'FoneResidencial'] },
         'Corretor', 'CodigoCorretor',
         'DataCadastro', 'DataAtualizacao', 'DataEntrega', { 'Foto' => ['Foto', 'FotoPequena', 'Destaque', 'Ordem'] }
       ]
@@ -102,9 +102,11 @@ class SyncPropertyService
     raise HTTParty::Error, "HTTP #{response.code}" unless response.code.to_i.between?(200, 299)
 
     parsed = JSON.parse(response.body)
-    return parsed if parsed.is_a?(Hash)
+    if parsed.is_a?(Hash) && %w[Categoria Status Endereco].any? { |key| parsed[key].present? && parsed[key] != false }
+      return parsed
+    end
 
-    raise "Resposta inválida ao consultar detalhes do imóvel #{@codigo}."
+    raise "Resposta incompleta ao consultar detalhes do imóvel #{@codigo}: faltam os dados cadastrais."
   rescue HTTParty::Error, SocketError, Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout => e
     body = response&.body.to_s if defined?(response)
     parsed_error = JSON.parse(body) rescue {}
@@ -182,7 +184,7 @@ class SyncPropertyService
       proprietario: proprietor&.name,
       proprietario_codigo: proprietor&.vista_code,
       proprietario_email: proprietor&.email,
-      proprietario_celular: proprietor&.mobile_phone,
+      proprietario_celular: proprietor&.mobile_phone.presence || proprietor&.phone_primary,
       proprietario_telefone_comercial: proprietor&.business_phone,
       proprietario_telefone_residencial: proprietor&.residential_phone,
       exibir_no_site_flag: hb['ExibirNoSite'] == 'Sim',
@@ -395,10 +397,15 @@ class SyncPropertyService
     proprietor.name = proprietor_name.to_s.strip
     proprietor.role = role
     proprietor.vista_code = proprietor_code if proprietor_code.present?
-    proprietor.email = owner_data['Email'].to_s.strip.presence if owner_data['Email'].to_s.strip.present?
-    proprietor.mobile_phone = owner_data['Celular'].to_s.strip.presence if owner_data['Celular'].to_s.strip.present?
-    proprietor.business_phone = owner_data['FoneComercial'].to_s.strip.presence if owner_data['FoneComercial'].to_s.strip.present?
-    proprietor.residential_phone = owner_data['FoneResidencial'].to_s.strip.presence if owner_data['FoneResidencial'].to_s.strip.present?
+    {
+      email: owner_data['EmailResidencial'].presence || owner_data['Email'],
+      phone_primary: owner_data['FonePrincipal'],
+      mobile_phone: owner_data['Celular'],
+      business_phone: owner_data['FoneComercial'],
+      residential_phone: owner_data['FoneResidencial']
+    }.each do |attribute, value|
+      proprietor[attribute] = value.to_s.strip if value.present? && value != false
+    end
     proprietor.save!
     proprietor
   rescue
@@ -408,6 +415,8 @@ class SyncPropertyService
   def extract_owner_data(raw_owner_data)
     case raw_owner_data
     when Hash
+      return raw_owner_data if raw_owner_data.key?("Nome")
+
       first_value = raw_owner_data.values.first
       first_value.is_a?(Hash) ? first_value : {}
     when Array

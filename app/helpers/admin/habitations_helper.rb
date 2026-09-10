@@ -262,10 +262,20 @@ module Admin::HabitationsHelper
     names = names.map { |name| name.to_s.squish }.compact_blank.uniq
     return { label: "Não informado", title: nil, names: [] } if names.blank?
 
-    remaining_count = names.size - 1
-    label = remaining_count.positive? ? "#{names.first} +#{remaining_count}" : names.first
+    label = names.join(" / ")
 
     { label:, title: names.join(" | "), names: }
+  end
+
+  def habitation_feature_options(habitation, category:, catalog:)
+    selected = category == "feature" ? habitation.property_features_for_display : habitation.leisure_features_for_display
+    standard = category == "feature" ? habitation.standard_feature_options : habitation.standard_infrastructure_options
+    known_labels = AttributeOptions::HabitationFeatureNormalizer::INFRASTRUCTURE_LABELS.values +
+      Habitation::CORPORATE_FEATURE_OPTIONS + Habitation::CORPORATE_INFRASTRUCTURE_OPTIONS +
+      Habitation::COMMERCIAL_FEATURE_OPTIONS + Habitation::COMMERCIAL_INFRASTRUCTURE_OPTIONS +
+      Habitation::LAND_FEATURE_OPTIONS + Habitation::LAND_INFRASTRUCTURE_OPTIONS
+    options = standard.present? ? standard + (Array(catalog) - known_labels) : Array(catalog)
+    (options + selected).compact_blank.uniq.sort_by { |value| I18n.transliterate(value.to_s).downcase }
   end
 
   def admin_habitation_editor_tab_missing_counts(habitation, property_setting: nil)
@@ -308,6 +318,7 @@ module Admin::HabitationsHelper
       (current_admin_user.can_view_team?(:imoveis) && habitation_owned_by_current_team?(habitation))
 
     @admin_habitation_edit_permissions[cache_key] =
+      habitation.admin_user_id == current_admin_user.id || habitation_assigned_to_current_user?(habitation, role: "captador") ||
       current_admin_user.owns_all?(:imoveis) ||
       (admin_habitation_matches_current_user_acting_type?(habitation) && owns_or_matches)
   end
@@ -334,11 +345,11 @@ module Admin::HabitationsHelper
     admin_habitation_catalog_media_visible?(habitation)
   end
 
-  def habitation_assigned_to_current_user?(habitation)
+  def habitation_assigned_to_current_user?(habitation, role: nil)
     if habitation.broker_assignments.loaded?
-      habitation.broker_assignments.any? { |assignment| assignment.admin_user_id == current_admin_user.id }
+      habitation.broker_assignments.any? { |assignment| assignment.admin_user_id == current_admin_user.id && (role.nil? || assignment.role == role) }
     else
-      habitation.broker_assignments.exists?(admin_user_id: current_admin_user.id)
+      habitation.broker_assignments.exists?({ admin_user_id: current_admin_user.id }.merge(role.present? ? { role: role } : {}))
     end
   end
 

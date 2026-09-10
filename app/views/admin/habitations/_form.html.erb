@@ -20,6 +20,7 @@
       ano_construcao: development.ano_construcao,
       andares_qtd: development.andares_qtd,
       aptos_andar: development.aptos_andar,
+      infra_estrutura: development.caracteristicas_predio,
       address: {
         tipo_endereco: (development_address&.tipo_endereco.presence || development.tipo_endereco).to_s,
         logradouro: (development_address&.logradouro.presence || development.endereco).to_s,
@@ -138,6 +139,7 @@
      data-attribute-manager-modal-id-value="attributeManagerModal"
      data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"
      data-habitation-form-tipo-by-type-value="<%= json_escape(cadastro_tipo_by_type.to_json) %>"
+     data-habitation-form-new-record-value="<%= habitation.new_record? %>"
      data-habitation-form-developments-value="<%= json_escape(development_lookup.to_json) %>"
      data-habitation-form-error-fields-value="<%= json_escape(habitation.errors.attribute_names.map(&:to_s).uniq.to_json) %>"
      data-habitation-form-validation-rules-value="<%= json_escape(tab_validation_rules.to_json) %>"
@@ -152,6 +154,8 @@
   <%= hidden_field_tag :intake_mode, "paper" if habitation.new_record? && habitation.broker_intake? %>
   <%= f.hidden_field :registration_profile, value: (habitation.registration_profile.presence || inferred_cadastro_type) %>
 
+  <% direct_new_record = habitation.new_record? && !habitation.broker_intake? %>
+  <% can_publish_new_record = !Habitations::FieldLockPolicy.for(current_admin_user).field_locked?("exibir_no_site_flag") %>
   <% action_footer_meta = capture do %>
     <% if updated_reference_at %>
       <i class="bi bi-clock-history ax-ico"></i>
@@ -196,21 +200,23 @@
       <% end %>
     <% end %>
     <%= f.button type: "submit",
-                 name: "save_navigation",
-                 value: "stay",
+                 name: direct_new_record ? "publication_choice" : "save_navigation",
+                 value: direct_new_record ? (can_publish_new_record ? "publish" : "internal") : "stay",
                  form: "admin_habitation_form",
                  class: "ax-btn ax-btn--primary",
                  data: { save_state_target: "submitButton", habitation_duplicate_check_target: "submit", save_state_direct: true } do %>
       <span class="ax-btn__spinner" role="status" aria-hidden="true" hidden data-save-state-target="spinner"></span>
-      <span data-save-state-target="label">Salvar</span>
+      <span data-save-state-target="label"><%= direct_new_record ? (can_publish_new_record ? "Publicar no site" : "Salvar interno") : "Salvar" %></span>
     <% end %>
+    <% if !direct_new_record || can_publish_new_record %>
     <%= f.button type: "submit",
-                 name: "save_navigation",
-                 value: "exit",
+                 name: direct_new_record ? "publication_choice" : "save_navigation",
+                 value: direct_new_record ? "internal" : "exit",
                  form: "admin_habitation_form",
                  class: "ax-btn",
                  data: { habitation_duplicate_check_target: "submit", save_state_direct: true } do %>
-      Salvar e sair
+      <%= direct_new_record ? "Salvar interno" : "Salvar e sair" %>
+    <% end %>
     <% end %>
   <% end %>
 

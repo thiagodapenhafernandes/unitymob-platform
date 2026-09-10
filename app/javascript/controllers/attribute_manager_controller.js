@@ -30,11 +30,13 @@ export default class extends Controller {
   disconnect() {
     if (!this.modalElement) return
 
+    if (this.modalElement.attributeManagerController === this) delete this.modalElement.attributeManagerController
     this.modalElement.removeEventListener("submit", this.boundModalSubmit)
     this.modalElement.removeEventListener("click", this.boundModalClick)
   }
 
   handleModalSubmit(event) {
+    if (this.modalElement?.attributeManagerController !== this) return
     const editForm = event.target.closest("[data-attribute-manager-edit-form]")
     if (editForm) {
       this.update(event)
@@ -47,6 +49,7 @@ export default class extends Controller {
   }
 
   handleModalClick(event) {
+    if (this.modalElement?.attributeManagerController !== this) return
     const cancelEditButton = event.target.closest("[data-attribute-manager-action='cancel-edit']")
     if (cancelEditButton) {
       event.preventDefault()
@@ -100,6 +103,7 @@ export default class extends Controller {
       return
     }
 
+    this.modalElement.attributeManagerController = this
     this.clearMessage()
     this.fetchAttributes()
     this.modalElement.dispatchEvent(new CustomEvent("ax-modal:open", { bubbles: true }))

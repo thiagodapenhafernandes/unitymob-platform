@@ -94,7 +94,12 @@
           <% end %>
 
           <%= ax_chip_grid do %>
-            <%= ax_toggle_chip(f, :active, label: "Ativo no sistema", id: "admin_user_active") %>
+            <%= ax_toggle_chip(f, :active, label: "Ativo no sistema", id: "admin_user_active",
+                  disabled: admin_user == current_admin_user,
+                  input_data: (admin_user.persisted? && admin_user.active? ? {
+                    controller: "admin-user-inactivation", action: "change->admin-user-inactivation#prepareFromToggle",
+                    user_id: admin_user.id, user_name: admin_user.name, url: inactivate_admin_admin_user_path(admin_user)
+                  } : {})) %>
             <span data-admin-user-access-target="verticalOnly">
               <%= ax_toggle_chip(f, :display_on_site, label: "Exibir perfil no site", id: "admin_user_display_on_site") %>
             </span>
@@ -161,3 +166,5 @@
     <%= f.submit (admin_user.persisted? ? "Salvar alterações" : "Criar usuário"), class: "ax-btn ax-btn--primary" %>
   <% end %>
 <% end %>
+
+<%= render "admin/admin_users/inactivation_modal" if admin_user.persisted? && admin_user.active? %>

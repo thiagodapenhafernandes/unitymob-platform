@@ -48,6 +48,7 @@ export default class extends Controller {
     categoriesByType: Object,
     tipoByType: Object,
     developments: Object,
+    newRecord: Boolean,
     errorFields: Array,
     validationRules: Array
   }
@@ -629,7 +630,18 @@ export default class extends Controller {
     this.syncDevelopmentEditLink(developmentData.edit_url)
     this.syncDevelopmentRelationshipFields(developmentData, { overwrite: fromUser })
     this.syncDevelopmentAddressFields(developmentData.address, { overwrite: fromUser })
+    if (fromUser || this.newRecordValue) this.syncDevelopmentInfrastructure(developmentData.infra_estrutura)
     if (fromUser) this.enableDevelopmentPhotosFallback()
+  }
+
+  syncDevelopmentInfrastructure(values = []) {
+    const selected = new Set(values)
+    this.element.querySelectorAll('input[name="habitation[infra_estrutura][]"]').forEach((input) => {
+      if (input.disabled || input.checked || !selected.has(input.value)) return
+
+      input.checked = true
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+    })
   }
 
   syncDevelopmentRelationshipFields(developmentData, { overwrite = false } = {}) {

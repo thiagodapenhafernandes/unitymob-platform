@@ -153,14 +153,21 @@ module Habitations
     end
 
     def sync_habitation_from(proprietor)
+      same_owner = habitation.persisted? && habitation.proprietor_id_in_database == proprietor.id &&
+        !owner_name_conflicts_with?(proprietor) && (vista_code.blank? || vista_code == proprietor.vista_code.to_s)
       habitation.proprietor = proprietor
       habitation.proprietor_id = proprietor.id
       habitation.proprietario = proprietor.name
       habitation.proprietario_codigo = proprietor.vista_code
-      habitation.proprietario_email = proprietor.email
-      habitation.proprietario_celular = proprietor.mobile_phone.presence || proprietor.phone_primary
-      habitation.proprietario_telefone_comercial = proprietor.business_phone
-      habitation.proprietario_telefone_residencial = proprietor.residential_phone
+      {
+        proprietario_email: proprietor.email,
+        proprietario_celular: proprietor.mobile_phone.presence || proprietor.phone_primary,
+        proprietario_telefone_comercial: proprietor.business_phone,
+        proprietario_telefone_residencial: proprietor.residential_phone
+      }.each do |attribute, value|
+        # An unrelated edit must not erase legacy contact data for the same owner.
+        habitation[attribute] = value if value.present? || !same_owner
+      end
       habitation.proprietario_cidade = proprietor.city
     end
 

@@ -13,9 +13,10 @@
 <% end %>
 
 <%= ax_form_section(title: "Infraestrutura e lazer", eyebrow: "Checklist", icon: "tree", actions: infrastructure_actions) do %>
-  <% current_infra = f.object.infra_estrutura.is_a?(Array) ? f.object.infra_estrutura : [] %>
-  <% infrastructure_options = (@external_features.to_a + f.object.standard_infrastructure_options.to_a + current_infra).compact_blank.uniq.sort_by { |feature| I18n.transliterate(feature.to_s).downcase } %>
-  <%= ax_chip_grid(id: "infra-checkbox-list") do %>
+  <% current_infra = f.object.caracteristicas_predio %>
+  <% infrastructure_options = habitation_feature_options(f.object, category: "infrastructure", catalog: @external_features) %>
+  <% infrastructure_options = (infrastructure_options + Array(@developments).flat_map(&:caracteristicas_predio)).uniq.sort_by { |value| I18n.transliterate(value).downcase } %>
+  <%= ax_chip_grid(id: "infra-checkbox-list", class_name: "ax-chip-grid--columns") do %>
     <% infrastructure_options.each do |feature| %>
       <% checked = current_infra.include?(feature) %>
       <label class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">

@@ -1947,6 +1947,12 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   white-space: nowrap;
 }
 
+.ax-property-card__meta .ax-property-card__attribution {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .ax-property-card__features {
   display: flex;
   flex-wrap: wrap;
@@ -12654,6 +12660,11 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ax-captador-card--multiple strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ax-captador-card__meta {

@@ -26,6 +26,7 @@
       photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation, format: :json),
       photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation, format: :json),
       photo_upload_destroy_url_value: destroy_photo_admin_habitation_media_path(habitation, format: :json),
+      media_tools_update_url_value: admin_habitation_media_path(habitation, format: :json),
       media_tools_ambiente_url_value: ambiente_admin_habitation_media_path(habitation, format: :json),
       media_tools_organize_url_value: organize_admin_habitation_media_path(habitation, format: :json),
       media_tools_share_url_value: share_admin_habitation_media_path(habitation, format: :json),
@@ -46,7 +47,7 @@
             label: "Classificação das fotos",
             choices: Habitation::FOTO_CLASSIFICACAO,
             select_options: { include_blank: "Selecione..." },
-            html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+            html_options: { data: { controller: "tom-select", placeholder: "Selecione...", action: "change->media-tools#saveClassification" } }
           ) %>
     </div>
   <% end %>
@@ -156,11 +157,6 @@
 
       <% if linked_development.present? %>
         <% linked_development_name = linked_development.nome_empreendimento.presence || linked_development.codigo %>
-        <% development_photo_action = capture do %>
-          <%= ax_toggle_chip(f, :use_development_photos_flag,
-                label: "Usar fotos do empreendimento",
-                input_data: { habitation_form_target: "useDevelopmentPhotos" }) %>
-        <% end %>
         <% if compact_mode %>
           <details class="ax-media-compact-details">
             <summary>
@@ -173,9 +169,8 @@
                   description: safe_join([
                     "Usar fotos de ",
                     tag.strong(linked_development_name),
-                    " quando o imóvel não tiver fotos próprias."
-                  ]),
-                  action: development_photo_action
+                    " junto às fotos do imóvel."
+                  ])
                 ) %>
           </details>
         <% else %>
@@ -184,9 +179,8 @@
                 description: safe_join([
                   "Este imóvel está vinculado a ",
                   tag.strong(linked_development_name),
-                  ". Se não houver fotos próprias, ele pode usar as fotos desse empreendimento."
-                ]),
-                action: development_photo_action
+                  ". As fotos do empreendimento são incluídas junto às fotos do imóvel."
+                ])
               ) %>
         <% end %>
       <% end %>
