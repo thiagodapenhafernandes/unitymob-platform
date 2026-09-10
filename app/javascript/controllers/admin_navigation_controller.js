@@ -12,6 +12,7 @@ export default class extends Controller {
     this.failsafeTimer = null
     this.pendingFrameResumes = []
     this.navigationStartedAt = null
+    this.pendingPrimaryNavLink = null
     this.boundClick = this.handleClick.bind(this)
     this.boundSubmit = this.handleSubmit.bind(this)
     this.boundBeforeVisit = this.handleTurboBeforeVisit.bind(this)
@@ -40,9 +41,14 @@ export default class extends Controller {
     window.addEventListener("pageshow", this.boundPageShow)
 
     // O overlay é turbo-permanent e pode chegar ao novo controller ainda com
-    // o estado da página anterior. Ao conectar, o DOM atual já está pronto e
-    // qualquer loading herdado deve ser encerrado imediatamente.
-    this.handlePageReady()
+    // o estado da página anterior. Se uma navegação está ativa, só encerramos
+    // depois do primeiro paint da página nova; esconder no connect expõe um
+    // frame do snapshot antigo antes do destino aparecer.
+    if (document.documentElement.classList.contains("ax-admin-is-loading") || (this.hasOverlayTarget && !this.overlayTarget.hidden)) {
+      this.afterNextPaint(() => this.handlePageReady())
+    } else {
+      this.handlePageReady()
+    }
   }
 
   disconnect() {
@@ -67,6 +73,7 @@ export default class extends Controller {
     const link = event.target.closest("a[href]")
     if (link && this.isPrimaryMobileNavigationLink(link)) {
       if (this.shouldShowForPrimaryMobileNavigationLink(link, event)) {
+        this.markPrimaryNavigationPending(link)
         this.show(link.dataset.adminNavigationLabel || "Carregando página...")
       }
       return
@@ -123,13 +130,13 @@ export default class extends Controller {
   handleTurboLoad() {
     if (this.isTurboPreview()) return
 
-    this.handlePageReady()
+    this.afterNextPaint(() => this.handlePageReady())
   }
 
   handleTurboSubmitEnd() {
-    // Com redirect, erro de validação ou resposta sem nova visita, o submit já
-    // terminou e não deve manter o workspace bloqueado esperando turbo:load.
-    this.handlePageReady()
+    // Com erro de validação ou resposta sem nova visita, o submit já terminou;
+    // ainda assim aguardamos o próximo paint para não revelar DOM intermediário.
+    this.afterNextPaint(() => this.handlePageReady())
   }
 
   handleTurboBeforeCache() {
@@ -172,6 +179,11 @@ export default class extends Controller {
   }
 
   handlePageReady() {
+    if (!this.primaryNavigationDestinationReady()) {
+      this.afterNextPaint(() => this.handlePageReady())
+      return
+    }
+
     this.hideNow()
     this.updateMetrics()
   }
@@ -215,6 +227,11 @@ export default class extends Controller {
     }
 
     document.documentElement.classList.remove("ax-admin-is-loading")
+    this.clearPrimaryNavigationPending()
+
+    if (this.hasOverlayTarget) {
+      delete this.overlayTarget.dataset.primaryNavigationTarget
+    }
 
     // Libera frames do dashboard que foram adiados durante a navegação.
     if (this.pendingFrameResumes && this.pendingFrameResumes.length) {
@@ -222,6 +239,44 @@ export default class extends Controller {
       this.pendingFrameResumes = []
       resumes.forEach((resume) => { try { resume() } catch (_e) { /* frame já resolvido */ } })
     }
+  }
+
+
+  markPrimaryNavigationPending(link) {
+    this.clearPrimaryNavigationPending()
+    this.pendingPrimaryNavLink = link
+    link.classList.add("is-pending")
+    link.setAttribute("aria-busy", "true")
+
+    if (this.hasOverlayTarget) {
+      this.overlayTarget.dataset.primaryNavigationTarget = this.urlPathAndSearch(link.href)
+    }
+  }
+
+  clearPrimaryNavigationPending() {
+    if (!this.pendingPrimaryNavLink) return
+
+    this.pendingPrimaryNavLink.classList.remove("is-pending")
+    this.pendingPrimaryNavLink.removeAttribute("aria-busy")
+    this.pendingPrimaryNavLink = null
+  }
+
+  primaryNavigationDestinationReady() {
+    if (!this.hasOverlayTarget) return true
+
+    const target = this.overlayTarget.dataset.primaryNavigationTarget
+    if (!target) return true
+    if (this.urlPathAndSearch(window.location.href) !== target) return false
+
+    const activeLink = document.querySelector(".ax-pwa-bottom-nav__item.is-active[href]")
+    if (!activeLink) return false
+
+    return this.urlPathAndSearch(activeLink.href) === target
+  }
+
+  urlPathAndSearch(urlValue) {
+    const url = new URL(urlValue, window.location.href)
+    return `${url.pathname}${url.search}`
   }
 
   markRendered() {

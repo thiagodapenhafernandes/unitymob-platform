@@ -19,6 +19,7 @@
       var savedTenantUrl;
       try { savedTenantUrl = localStorage.getItem(STORAGE_KEY); } catch (e) {}
       if (savedTenantUrl) {
+        document.documentElement.classList.add("is-bridging");
         window.location.replace(savedTenantUrl.replace(/\/$/, "") + "/field");
       }
     })();
@@ -136,9 +137,33 @@
     .login-alert.is-visible { display: flex; }
     .login-alert svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
     .login-footer { margin: 0; color: rgba(255, 255, 255, .82); font-size: 12px; font-weight: 650; text-align: center; }
+    .app-transition {
+      position: fixed; inset: 0; z-index: 9999; display: none; place-items: center;
+      padding: 24px; background: linear-gradient(135deg, #243a65, #5a67b2); color: #fff;
+      font-weight: 800; letter-spacing: -.02em;
+    }
+    .app-transition__box { display: grid; justify-items: center; gap: 14px; }
+    .app-transition__icon {
+      width: 72px; height: 72px; display: grid; place-items: center; border-radius: 22px;
+      background: #fff; box-shadow: 0 18px 44px rgba(17, 24, 39, .25);
+    }
+    .app-transition__icon img { width: 44px; height: 44px; }
+    .app-transition__spinner {
+      width: 24px; height: 24px; border: 3px solid rgba(255,255,255,.35);
+      border-top-color: #fff; border-radius: 50%; animation: unitymob-spin .75s linear infinite;
+    }
+    .is-bridging body > :not(.app-transition), body.is-bridging > :not(.app-transition) { visibility: hidden; }
+    .is-bridging .app-transition, body.is-bridging .app-transition { display: grid; }
   </style>
 </head>
 <body>
+  <div class="app-transition" id="app-transition" aria-live="polite" aria-busy="true">
+    <div class="app-transition__box">
+      <div class="app-transition__icon"><img src="unitymob-mark.svg" alt="" /></div>
+      <div>Entrando...</div>
+      <div class="app-transition__spinner" aria-hidden="true"></div>
+    </div>
+  </div>
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">

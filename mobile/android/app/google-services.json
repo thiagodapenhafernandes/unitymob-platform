@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "948147144205",
+    "project_id": "unitymob",
+    "storage_bucket": "unitymob.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948147144205:android:e6fafc39f1c6c49bcc3744",
+        "android_client_info": {
+          "package_name": "br.com.unitymob.field"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0J1iqJhapa6zmLYbvGOeJnCxpRCzL_EM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
