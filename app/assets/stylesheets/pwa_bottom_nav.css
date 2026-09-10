@@ -595,3 +595,8 @@
     display: none;
   }
 }
+@media (max-width: 768px) {
+  .ax-pwa-bottom-nav__item.is-pending {
+    color: var(--lead-pwa-primary, var(--admin-primary, #365f8f));
+  }
+}

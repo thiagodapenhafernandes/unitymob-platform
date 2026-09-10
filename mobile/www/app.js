@@ -63,8 +63,24 @@
     submitLabel.textContent = isLoading ? "Entrando..." : "Entrar";
   }
 
+  async function requestNativeNotificationPermission() {
+    const FirebaseMessaging = window.Capacitor?.Plugins?.FirebaseMessaging;
+    if (!FirebaseMessaging) return;
+
+    const status = (await FirebaseMessaging.checkPermissions()).receive;
+    if (status === "prompt" || status === "prompt-with-rationale") {
+      await FirebaseMessaging.requestPermissions();
+    }
+  }
+
+  function showTransition() {
+    document.body.classList.add("is-bridging");
+    document.documentElement.classList.add("is-bridging");
+  }
+
   function submitBridgeLogin(tenantUrl, email, password) {
     const base = tenantUrl.replace(/\/$/, "");
+    showTransition();
     const bridgeForm = document.createElement("form");
     bridgeForm.method = "POST";
     bridgeForm.action = `${base}/mobile/sign_in`;
@@ -90,10 +106,12 @@
     setLoading(true);
 
     try {
+      const email = emailInput.value;
+      const password = passwordInput.value;
       const response = await fetch(DISCOVERY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailInput.value }),
+        body: JSON.stringify({ email: email }),
       });
 
       if (!response.ok) {
@@ -104,7 +122,8 @@
 
       const data = await response.json();
       localStorage.setItem(STORAGE_KEY, data.tenant_url);
-      submitBridgeLogin(data.tenant_url, emailInput.value, passwordInput.value);
+      await requestNativeNotificationPermission();
+      submitBridgeLogin(data.tenant_url, email, password);
       // Não reabilita o botão aqui: a página está navegando (sucesso ou
       // fallback para a tela real de login com o erro do Devise).
     } catch (error) {

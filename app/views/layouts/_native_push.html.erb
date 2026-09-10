@@ -12,6 +12,8 @@
   // back-end usa pra enviar) e manda pro back-end assinar as notificações
   // da conta.
   async function registerNativePush() {
+    if (window.__nativePushRegistering) return;
+    window.__nativePushRegistering = true;
     try {
       // Reforço extra: mesmo no "load", o plugin nativo pode levar mais
       // alguns instantes pra se registrar no bridge — tenta por até ~3s
@@ -57,14 +59,17 @@
       });
     } catch (err) {
       console.warn("[native push] setup failed:", err);
+    } finally {
+      window.__nativePushRegistering = false;
     }
   }
 
   if (isNativeAppRequest()) {
-    // O bridge nativo do Capacitor registra os plugins de forma
-    // assíncrona — chamar isso cedo demais (antes do "load") faz
-    // window.Capacitor.Plugins.FirebaseMessaging ainda não existir,
-    // e a função sai sem erro nenhum (silenciosamente).
+    // O bridge nativo do Capacitor registra os plugins de forma assíncrona.
+    // No app Android, depois do login a navegação pode acontecer por Turbo;
+    // então repetimos o registro de forma idempotente quando a tela autenticada entra.
     window.addEventListener("load", registerNativePush);
+    document.addEventListener("DOMContentLoaded", registerNativePush);
+    document.addEventListener("turbo:load", registerNativePush);
   }
 </script>
