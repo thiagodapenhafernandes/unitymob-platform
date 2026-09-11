@@ -2943,7 +2943,25 @@ CREATE TABLE public.habitations (
     public_rating_source character varying,
     intake_review_policy_version integer,
     intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
-    registration_profile character varying
+    registration_profile character varying,
+    outra_operacao_galpao character varying,
+    setor_terreno character varying,
+    area_armazenagem_m2 numeric(14,2),
+    pe_direito_livre_m numeric(14,2),
+    altura_armazenagem_m numeric(14,2),
+    capacidade_piso_ton_m2 numeric(14,2),
+    capacidade_eletrica_kva numeric(14,2),
+    lateral_1_terreno_m numeric(14,2),
+    lateral_2_terreno_m numeric(14,2),
+    docas_qtd integer,
+    CONSTRAINT habitations_altura_armazenagem_m_positive CHECK (((altura_armazenagem_m IS NULL) OR (altura_armazenagem_m > (0)::numeric))),
+    CONSTRAINT habitations_area_armazenagem_m2_positive CHECK (((area_armazenagem_m2 IS NULL) OR (area_armazenagem_m2 > (0)::numeric))),
+    CONSTRAINT habitations_capacidade_eletrica_kva_positive CHECK (((capacidade_eletrica_kva IS NULL) OR (capacidade_eletrica_kva > (0)::numeric))),
+    CONSTRAINT habitations_capacidade_piso_ton_m2_positive CHECK (((capacidade_piso_ton_m2 IS NULL) OR (capacidade_piso_ton_m2 > (0)::numeric))),
+    CONSTRAINT habitations_docas_qtd_nonnegative CHECK (((docas_qtd IS NULL) OR (docas_qtd >= 0))),
+    CONSTRAINT habitations_lateral_1_terreno_m_positive CHECK (((lateral_1_terreno_m IS NULL) OR (lateral_1_terreno_m > (0)::numeric))),
+    CONSTRAINT habitations_lateral_2_terreno_m_positive CHECK (((lateral_2_terreno_m IS NULL) OR (lateral_2_terreno_m > (0)::numeric))),
+    CONSTRAINT habitations_pe_direito_livre_m_positive CHECK (((pe_direito_livre_m IS NULL) OR (pe_direito_livre_m > (0)::numeric)))
 );
 
 
@@ -19047,6 +19065,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260911120000'),
 ('20260910210000'),
 ('20260909193000'),
 ('20260909190000'),

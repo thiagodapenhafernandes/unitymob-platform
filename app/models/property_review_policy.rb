@@ -17,8 +17,8 @@ class PropertyReviewPolicy < ApplicationRecord
 
   CATEGORIES_BY_REGISTRATION_TYPE = {
     "apartamentos" => ["Apartamento", "Cobertura", "Loft", "Studio"],
-    "comerciais_industriais" => ["Sala Comercial", "Loja", "Prédio Comercial", "Galpão", "Galpão Industrial", "Área", "Casa comercial", "Condomínio Industrial", "Ponto Comercial", "Salas/Conjuntos"],
-    "imoveis_residenciais" => ["Casa", "Casa em Condomínio", "Sobrado", "Rural", "Condomínio", "Chácara", "Sítio"],
+    "comerciais_industriais" => ["Sala Comercial", "Loja", "Prédio Comercial", "Galpão", "Galpão em Condomínio", "Galpão Industrial", "Área", "Casa comercial", "Condomínio Industrial", "Ponto Comercial", "Salas/Conjuntos"],
+    "imoveis_residenciais" => ["Casa", "Casa em Condomínio", "Sobrado", "Rural", "Condomínio", "Chácara", "Sítio", "Diferenciado"],
     "terrenos" => ["Terreno", "Terreno em Condomínio", "Área", "Terreno Comercial", "Terreno Industrial"],
     "ficha_interna" => Habitation::CATEGORIES,
     "cadastro_direto" => Habitation::CATEGORIES
@@ -57,7 +57,7 @@ class PropertyReviewPolicy < ApplicationRecord
     normalized = category.to_s.parameterize
     return "terrenos" if normalized.include?("terreno") || normalized == "area"
     return "comerciais_industriais" if normalized.match?(/sala|loja|comercial|predio|galpao|ponto|conjunto/)
-    return "imoveis_residenciais" if normalized.match?(/casa|sobrado|rural|chacara|sitio/)
+    return "imoveis_residenciais" if normalized.match?(/casa|sobrado|rural|chacara|sitio|diferenciado/)
 
     "apartamentos"
   end

@@ -1131,7 +1131,13 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get edit_admin_captacao_path(galpao, step: "caracteristicas")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Galpão cross-docking")
+    document = Nokogiri::HTML(response.body)
+    warehouse_type_select = document.at_css('select#captacao_warehouse_type[name="captacao[caracteristicas_imovel][]"]')
+    expect(warehouse_type_select).to be_present
+    expect(warehouse_type_select.css("option").map(&:text)).to include("Galpão Cross-Docking")
+    expect(document.css('input[type="checkbox"][name="captacao[caracteristicas_imovel][]"][value="Galpão Cross-Docking"]')).to be_empty
+    patch admin_captacao_path(galpao), params: { current_step: "caracteristicas", captacao: { caracteristicas_imovel: ["", "Galpão Cross-Docking", "CFTV"] } }
+    expect(galpao.reload.caracteristicas_imovel).to include("Galpão Cross-Docking", "Cftv")
 
     get edit_admin_captacao_path(galpao, step: "infraestrutura")
 
@@ -2323,6 +2329,50 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
     expect(response.body).to include("Já existe imóvel cadastrado")
     expect(intake.reload.intake_step).to eq("endereco")
+  end
+
+  it "oferece os equipamentos na captação e salva e desmarca nos campos existentes" do
+    equipment = Habitation::CategoryDetails::INTERNAL_EQUIPMENT_OPTIONS
+    charger = Habitation::CategoryDetails::EV_CHARGING_OPTION
+    ["Apartamento", "Casa", "Sala Comercial", "Galpão", "Terreno"].each do |category|
+      intake = create(:habitation, :broker_intake, admin_user: admin, categoria: category, intake_step: "caracteristicas")
+      get edit_admin_captacao_path(intake, step: "caracteristicas")
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      equipment.each do |option|
+        expect(document.css("input[name='captacao[caracteristicas_imovel][]'][value='#{option}']").size).to eq(category == "Terreno" ? 0 : 1)
+      end
+      get edit_admin_captacao_path(intake, step: "infraestrutura")
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.css("input[name='captacao[caracteristicas_predio][]'][value='#{charger}']").size).to eq(category == "Terreno" ? 0 : 1)
+    end
+
+    intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Casa", intake_step: "caracteristicas")
+    patch admin_captacao_path(intake), params: { current_step: "caracteristicas", captacao: { caracteristicas_imovel: ["", *equipment] } }
+    expect(intake.reload.caracteristicas_imovel).to match_array(equipment)
+    patch admin_captacao_path(intake), params: { current_step: "infraestrutura", captacao: { caracteristicas_predio: ["", charger] } }
+    expect(intake.reload.caracteristicas_predio).to eq([charger])
+    expect(intake.caracteristicas_imovel).to match_array(equipment)
+
+    patch admin_captacao_path(intake), params: { current_step: "caracteristicas", captacao: { caracteristicas_imovel: [""], sacada: "0", terraco: "0", dependencia_empregada: "0", precisa_reforma: "0" } }
+    expect(intake.reload.caracteristicas_imovel).to be_empty
+    expect(intake.caracteristicas_predio).to eq([charger])
+    patch admin_captacao_path(intake), params: { current_step: "infraestrutura", captacao: { caracteristicas_predio: [""] } }
+    expect(intake.reload.caracteristicas_predio).to be_empty
+  end
+
+  it "não autoriza conversão para empreendimento de outra conta nem aceita a flag interna por parâmetros" do
+    other_tenant = Tenant.create!(name: "Outra conta captação", slug: "other-intake-equipment")
+    development = create(:habitation, tenant: other_tenant, tipo: "Empreendimento", categoria: "Empreendimento")
+    intake = create(:habitation, :broker_intake, admin_user: admin, tipo: "Empreendimento", categoria: "Empreendimento", intake_step: "endereco")
+    patch admin_captacao_path(intake), params: { current_step: "endereco", habitation: {
+      codigo_empreendimento: development.codigo, unidade_numero: "101",
+      intake_unit_conversion: "1", registration_profile: "imoveis_residenciais"
+    } }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(intake.reload.registration_profile).to eq("empreendimento")
+    expect(intake.codigo_empreendimento).to be_blank
   end
 
 end

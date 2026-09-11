@@ -92,7 +92,7 @@
   %>
     <% if produto_visible %>
       <li class="ax-nav__section" data-nav-section="product">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-product" title="Produto">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-product">
           <i class="bi bi-grid-1x2"></i><span>Produto</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-product" data-menu-sections-target="items">
@@ -157,7 +157,7 @@
 
     <% if operacao_visible %>
       <li class="ax-nav__section" data-nav-section="operation">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-operation" title="Operação">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-operation">
           <i class="bi bi-briefcase"></i><span>Operação</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-operation" data-menu-sections-target="items">
@@ -262,7 +262,7 @@
 
     <% if gestao_visible %>
       <li class="ax-nav__section" data-nav-section="management">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-management" title="Gestão">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-management">
           <i class="bi bi-people"></i><span>Gestão</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-management" data-menu-sections-target="items">
@@ -308,7 +308,7 @@
 
     <% if crescimento_visible %>
       <li class="ax-nav__section" data-nav-section="growth">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-growth" title="Crescimento">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-growth">
           <i class="bi bi-graph-up-arrow"></i><span>Crescimento</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-growth" data-menu-sections-target="items">
@@ -327,7 +327,7 @@
 
     <% if can_access.call(:manage, :marketing) %>
       <li class="ax-nav__section" data-nav-section="public-site">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-public-site" title="Site público">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-public-site">
           <i class="bi bi-globe2"></i><span>Site público</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-public-site" data-menu-sections-target="items">
@@ -354,7 +354,7 @@
     <% schedule_context = can_access.call(:view, :agenda_fotografia) || can_access.call(:manage, :agenda_fotografia) || can_access.call(:manage, :integracoes) %>
     <% if can_access.call(:manage, :integracoes) || schedule_context %>
       <li class="ax-nav__section" data-nav-section="integrations">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-integrations" title="Integrações">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-integrations">
           <i class="bi bi-plug"></i><span>Integrações</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-integrations" data-menu-sections-target="items">
@@ -407,7 +407,7 @@
     %>
     <% if settings_visible %>
       <li class="ax-nav__section" data-nav-section="settings">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-settings" title="Configurações">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-settings">
           <i class="bi bi-sliders"></i><span>Configurações</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-settings" data-menu-sections-target="items">
@@ -442,7 +442,7 @@
     %>
     <% if tenant_owner? || security_menu_visible || audit_menu_visible || whatsapp_admin_menu_visible || brand_menu_visible || notif_menu_visible %>
       <li class="ax-nav__section" data-nav-section="account">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-account" title="Conta">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-account">
           <i class="bi bi-building-gear"></i><span>Conta</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-account" data-menu-sections-target="items">

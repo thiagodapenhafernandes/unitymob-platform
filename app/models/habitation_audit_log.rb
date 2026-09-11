@@ -150,7 +150,7 @@ class HabitationAuditLog < ApplicationRecord
 
       before = values.is_a?(Hash) ? fetch_change_value(values, "before") : nil
       after = values.is_a?(Hash) ? fetch_change_value(values, "after") : nil
-      next if DISPLAY_IGNORED_WHEN_AFTER_BLANK_FIELDS.include?(field.to_s) && blank_audit_value?(after)
+      next if DISPLAY_IGNORED_WHEN_AFTER_BLANK_FIELDS.include?(field.to_s) && blank_audit_value?(after) && !changeset.key?("categoria")
       next if display_noop?(field, before, after)
 
       {
@@ -195,7 +195,7 @@ class HabitationAuditLog < ApplicationRecord
   end
 
   def field_label(field)
-    FIELD_LABELS[field.to_s] || field.to_s.humanize
+    Habitation::CategoryDetails::DETAIL_FIELDS.dig(field.to_sym, :label) || FIELD_LABELS[field.to_s] || field.to_s.humanize
   end
 
   def display_value(field, value)

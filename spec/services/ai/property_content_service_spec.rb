@@ -1,6 +1,14 @@
 require "rails_helper"
 
 RSpec.describe Ai::PropertyContentService do
+  it "usa detalhes aplicáveis e valores ainda não salvos sem alterar o imóvel" do
+    property = create(:habitation, categoria: "Galpão", docas_qtd: 2, dormitorios_qtd: 3)
+    payload = described_class.new(property, context_attributes: { docas_qtd: 7 }).send(:property_payload)
+    expect(payload[:dados_especificos][:docas_qtd]).to eq(7)
+    expect(payload).not_to have_key(:dormitorios)
+    expect(property.reload.docas_qtd).to eq(2)
+  end
+
   describe "payload de geração" do
     it "inclui parâmetros configuráveis da OpenAI" do
       habitation = create(:habitation)
@@ -143,6 +151,9 @@ RSpec.describe Ai::PropertyContentService do
         foto_classificacao: "Profissional",
         observacoes_visitas: "Distância da praia: 350 m"
       )
+
+      # O vínculo inicial herda o prédio. A edição posterior preserva valores da unidade.
+      habitation.update!(ano_construcao: 2025, andares_qtd: 40, aptos_andar: 2)
 
       payload = described_class.new(habitation).send(:property_payload)
 

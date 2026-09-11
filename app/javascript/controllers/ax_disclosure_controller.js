@@ -22,7 +22,6 @@ export default class extends Controller {
 
   toggle(event) {
     if (event) event.preventDefault()
-    if (this.element.closest(".ax-sidebar") && document.body.classList.contains("is-compact")) return
 
     this.apply(!this.element.classList.contains("is-open"))
   }

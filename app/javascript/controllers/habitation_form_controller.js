@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { setConditionalFieldsVisible, enforceExclusiveChoice } from "lib/conditional_fields"
 
 export default class extends Controller {
   static targets = [
@@ -46,6 +47,8 @@ export default class extends Controller {
 
   static values = {
     categoriesByType: Object,
+    detailFields: Object,
+    legacyCategoryFields: Object,
     tipoByType: Object,
     developments: Object,
     newRecord: Boolean,
@@ -55,12 +58,31 @@ export default class extends Controller {
 
   connect() {
     this.refreshValidationBadgesBound = this.refreshValidationBadges.bind(this)
+    this.categoryDependencyChanged = (event) => {
+      if (this.hasCategoryTarget && ["Galpão", "Galpão em Condomínio"].includes(this.categoryTarget.value)) enforceExclusiveChoice(event.target, this.element)
+      if (event.target.name === "habitation[caracteristicas][]") this.applyCategoryBehavior()
+      if (event.target.name === "habitation[caracteristicas][]" && event.target.checked) {
+        const normalize = (value) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        const choice = normalize(event.target.value)
+        if (["mobiliado", "sem mobilia"].includes(choice)) {
+          this.findInputsByName("habitation[caracteristicas]").forEach((field) => {
+            if (["mobiliado", "sem mobilia"].includes(normalize(field.value)) && field !== event.target && field.checked && !field.disabled) {
+              field.checked = false
+              field.dispatchEvent(new Event("change", { bubbles: true }))
+            }
+          })
+        }
+      }
+    }
+    this.element.addEventListener("change", this.categoryDependencyChanged)
     this.element.addEventListener("input", this.refreshValidationBadgesBound)
     this.element.addEventListener("change", this.refreshValidationBadgesBound)
     this.element.addEventListener("trix-change", this.refreshValidationBadgesBound)
 
     this.activateTabFromHash()
     this.applyCadastroType()
+    this.previousCategory = this.categoryTarget?.value
+    this.applyCategoryBehavior()
     this.applySuspensionReasonVisibility()
     this.applyInactiveStatusVisibility()
     this.previousStatusValue = this.hasStatusSelectTarget ? this.statusSelectTarget.value : ""
@@ -81,6 +103,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.element.removeEventListener("change", this.categoryDependencyChanged)
     this.element.removeEventListener("input", this.refreshValidationBadgesBound)
     this.element.removeEventListener("change", this.refreshValidationBadgesBound)
     this.element.removeEventListener("trix-change", this.refreshValidationBadgesBound)
@@ -186,7 +209,7 @@ export default class extends Controller {
 
   refreshValidationBadges() {
     const counts = this.currentValidationCounts()
-    const statuses = Array.from(this.element.querySelectorAll("[data-habitation-form-tab-status]"))
+    const statuses = Array.from(this.element.querySelectorAll("[data-habitation-form-tab-status]")).filter((node) => !this.element.querySelector(`#${node.dataset.habitationFormTabStatus}`)?.hidden)
 
     statuses.forEach((status) => {
       const tab = status.dataset.habitationFormTabStatus
@@ -211,7 +234,9 @@ export default class extends Controller {
     rules.forEach((rule) => {
       if (this.ruleSatisfied(rule)) return
 
-      const tab = String(rule.tab || "general")
+      const fields = (rule.names || rule.groups?.flat() || []).flatMap((name) => this.fieldsForName(name))
+      if (fields.length && fields.every((field) => field.disabled)) return
+      const tab = fields.find((field) => !field.disabled)?.closest(".tab-pane")?.id || String(rule.tab || "general")
       counts[tab] = (counts[tab] || 0) + 1
     })
 
@@ -360,6 +385,111 @@ export default class extends Controller {
 
   escapeAttributeValue(value) {
     return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  }
+
+  fieldApplicable(name, category = this.categoryTarget.value) {
+    const group = this.selectedCadastroTypeValue()
+    const warehouse = ["Galpão", "Galpão em Condomínio"].includes(category)
+    const config = this.detailFieldsValue?.[name]
+    if (config) {
+      if (config.group === "warehouse") return warehouse
+      return group === "terrenos"
+    }
+    if (["dormitorios_qtd", "suites_qtd", "demi_suites_qtd", "varandas_qtd", "hidromassagem_qtd"].includes(name)) return group === "imoveis_residenciais"
+    if (["salas_qtd", "banheiros_qtd", "vagas_qtd", "tipo_vaga", "numero_box", "andar"].includes(name)) return !["terrenos", "empreendimento"].includes(group)
+    return true
+  }
+
+  categoryChanged() {
+    if (this.categoryTarget.value === this.previousCategory) return
+    const fields = Object.keys(this.detailFieldsValue || {}).filter((name) => !this.fieldApplicable(name))
+    const populated = fields.filter((name) => this.findInputsByName(`habitation[${name}]`).some((field) => {
+      return field.tagName === "SELECT" && field.multiple ? field.selectedOptions.length > 0 : String(field.value || "").trim() !== ""
+    }))
+    const incompatibleChecks = Array.from(this.element.querySelectorAll("[data-category-options]")).filter((node) => {
+      if (JSON.parse(node.dataset.categoryOptions).includes(this.categoryTarget.value)) return false
+      return Boolean(node.querySelector("input:checked") || Array.from(node.querySelectorAll("select")).some((field) => String(field.value || "").trim() !== ""))
+    })
+    const legacyLabels = Object.entries(this.legacyCategoryFieldsValue || {}).filter(([name]) => !this.fieldApplicable(name)).map(([, config]) => config.label)
+    const labels = populated.map((name) => this.detailFieldsValue[name].label).concat(incompatibleChecks.map((node) => {
+      const field = node.querySelector("input:checked") || Array.from(node.querySelectorAll("select")).find((select) => String(select.value || "").trim() !== "")
+      return field.value
+    }), legacyLabels)
+    if (labels.length && !window.confirm("A categoria escolhida não utiliza: " + labels.join(", ") + ". Ao salvar, os valores anteriores ficarão no histórico. Continuar?")) {
+      if (this.categoryTarget.tomselect) this.categoryTarget.tomselect.setValue(this.previousCategory, true)
+      else this.categoryTarget.value = this.previousCategory
+      return
+    }
+    const confirmation = this.element.querySelector('[name="habitation[confirm_category_change]"]')
+    if (confirmation) confirmation.value = "1"
+    this.previousCategory = this.categoryTarget.value
+    this.applyCategoryBehavior()
+  }
+
+  applyCategoryBehavior() {
+    if (!this.hasCategoryTarget) return
+    const category = this.categoryTarget.value
+    const commercialUnit = ["Sala Comercial", "Ponto Comercial", "Loja"].includes(category)
+    const development = this.selectedCadastroTypeValue() === "empreendimento"
+    this.element.querySelectorAll("[data-category-field]").forEach((wrapper) => {
+      const name = wrapper.dataset.categoryField
+      let visible = this.fieldApplicable(name)
+      if (name === "outra_operacao_galpao") {
+        visible = visible && Boolean(this.element.querySelector('input[name="habitation[caracteristicas][]"][value="Outra operação"]:checked'))
+        const input = wrapper.querySelector("input")
+        if (input) input.required = visible
+      }
+      setConditionalFieldsVisible(wrapper, visible)
+    })
+    const detailSection = this.element.querySelector("[data-category-details-section]")
+    if (detailSection) this.setVisible(detailSection, Array.from(detailSection.querySelectorAll("[data-category-field]")).some((node) => !node.hidden))
+    this.element.querySelectorAll("[data-category-options]").forEach((node) => {
+      setConditionalFieldsVisible(node, JSON.parse(node.dataset.categoryOptions).includes(category))
+    })
+    this.element.querySelectorAll("[data-residential-land-field]").forEach((node) => {
+      const field = node.querySelector("input, select")
+      const apartment = ["Apartamento", "Cobertura", "Loft"].includes(category)
+      setConditionalFieldsVisible(node, !apartment || Boolean(field?.value))
+    })
+    const builtArea = this.element.querySelector("[data-existing-built-area]")
+    if (builtArea) {
+      const warehouse = ["Galpão", "Galpão em Condomínio"].includes(category)
+      setConditionalFieldsVisible(builtArea, warehouse || Boolean(builtArea.querySelector("input")?.value))
+      const label = builtArea.querySelector("label")
+      if (label) label.textContent = warehouse ? "Área construída" : "Área útil"
+    }
+    const roomsLabel = this.element.querySelector('label[for="habitation_salas_qtd"]')
+    if (roomsLabel) roomsLabel.textContent = commercialUnit ? "Número de ambientes" : "Salas"
+    this.moveCategorySection("[data-category-public-text]", development ? "[data-category-public-text-destination]" : null)
+    this.moveCategorySection("[data-category-infrastructure]", commercialUnit ? "[data-category-infrastructure-destination]" : null)
+    this.moveCategorySection("[data-category-floors]", commercialUnit ? "[data-category-floors-destination]" : null)
+    const floorsDestination = this.element.querySelector("[data-category-floors-destination]")
+    if (floorsDestination) this.setVisible(floorsDestination, commercialUnit)
+    const floorsLabel = this.element.querySelector('label[for="habitation_andares_qtd"]')
+    if (floorsLabel) floorsLabel.textContent = commercialUnit ? "Número de pavimentos" : "Nº andares"
+    this.toggleCategoryTab("features", !development)
+    this.toggleCategoryTab("infra", !commercialUnit)
+    this.refreshValidationBadges()
+  }
+
+  moveCategorySection(selector, destinationSelector) {
+    const node = this.element.querySelector(selector)
+    if (!node) return
+    if (!node.categoryHome) {
+      node.categoryHome = document.createComment("category section")
+      node.before(node.categoryHome)
+    }
+    const destination = destinationSelector && this.element.querySelector(destinationSelector)
+    if (destination) destination.append(node)
+    else node.categoryHome.after(node)
+  }
+
+  toggleCategoryTab(id, visible) {
+    this.element.querySelectorAll(`[data-ax-tabs-target-param="#${id}"], [data-bs-target="#${id}"]`).forEach((trigger) => this.setVisible(trigger, visible))
+    const pane = this.element.querySelector(`#${id}`)
+    if (!visible && pane?.classList.contains("active")) this.showTab(this.tabTriggerForId("general"))
+    // Text and infrastructure have already moved, so no duplicate input is submitted.
+    setConditionalFieldsVisible(pane, visible)
   }
 
   cadastroTypeChanged() {
@@ -549,7 +679,8 @@ export default class extends Controller {
     if (!this.hasCadastroTypeTarget || !this.hasCategoryTarget || !this.hasTipoTarget) return
 
     const typeKey = this.selectedCadastroTypeValue()
-    const allowedCategories = this.categoriesByTypeValue[typeKey] || []
+    const allowedCategories = [...(this.categoriesByTypeValue[typeKey] || [])]
+    if (!fromUser && !this.newRecordValue && this.categoryTarget.value && !allowedCategories.includes(this.categoryTarget.value)) allowedCategories.push(this.categoryTarget.value)
     const tipoValue = this.tipoByTypeValue[typeKey] || "Unitário"
 
     this.tipoTarget.value = tipoValue
@@ -603,14 +734,15 @@ export default class extends Controller {
   }
 
   pickCategoryValue(currentValue, allowedCategories, fromUser, typeKey) {
-    if (typeKey === "empreendimento") return "Empreendimento"
     if (allowedCategories.includes(currentValue)) return currentValue
+    if (typeKey === "empreendimento") return "Empreendimento"
     if (fromUser) return ""
     return currentValue || ""
   }
 
   developmentChanged() {
     this.syncFromDevelopmentSelection(true)
+    this.applyCategoryBehavior()
   }
 
   syncFromDevelopmentSelection(fromUser = false) {

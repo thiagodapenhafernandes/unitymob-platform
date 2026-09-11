@@ -1,6 +1,10 @@
 <%
   kind = @captacao.property_kind.to_s
   features_imovel = captacao_feature_options(@internal_features, @captacao.standard_feature_options, @captacao.caracteristicas_imovel)
+  warehouse_type_values = AttributeOptions::HabitationFeatureNormalizer.normalize_list(Habitation::CategoryDetails::WAREHOUSE_TYPE_CHOICE_VALUES)
+  features_imovel -= warehouse_type_values
+  warehouse_type = @captacao.selected_warehouse_type
+  warehouse_type_options = (Habitation::CategoryDetails::WAREHOUSE_TYPE_OPTIONS + [warehouse_type]).compact_blank.uniq
   ocupacao_choices = [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]]
   situacao_choices = [["Novo", "Novo"], ["Usado", "Usado"], ["Em construção", "Em construção"]]
   topografia_choices = [["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]]
@@ -211,10 +215,23 @@
         selected: @captacao.extras["face"], include_blank: "—", class_name: "wizard-field-group") %>
 <% end %>
 
+<% if @captacao.property_kind_galpao? %>
+  <hr class="my-3">
+  <div class="wizard-field-group">
+    <label class="ax-label" for="captacao_warehouse_type">Tipo de galpão</label>
+    <%= select_tag "captacao[caracteristicas_imovel][]",
+                   options_for_select(warehouse_type_options, warehouse_type),
+                   include_blank: "Selecione...",
+                   id: "captacao_warehouse_type",
+                   class: "ax-control" %>
+  </div>
+<% end %>
+
 <% if features_imovel.any? %>
   <hr class="my-3">
   <div class="wizard-field-group">
     <label class="ax-label">Características do imóvel</label>
+    <%= hidden_field_tag "captacao[caracteristicas_imovel][]", "" %>
     <div class="wizard-choice-panel wizard-choice-panel--boxed wizard-choice-panel--scroll <%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_imovel) %>">
       <% features_imovel.each do |feat| %>
         <% selected = captacao_feature_selected?(@captacao.caracteristicas_imovel, feat) %>

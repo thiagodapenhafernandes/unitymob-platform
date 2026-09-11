@@ -44,10 +44,16 @@
         )
         seo_keywords = suggestion.seo_keywords_list.join(", ")
       %>
+      <div data-ai-suggestion-review>
+      <p><strong><%= suggestion.generated_title %></strong></p>
+      <%= description_html %>
+      <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-action="ai-preview#apply">Aplicar ao formulário</button>
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="ai-preview#discard">Descartar prévia</button>
       <span class="tw-hidden"
             data-ai-preview-fill-title="<%= suggestion.generated_title.to_s %>"
             data-ai-preview-fill-description-html="<%= description_html %>"
             data-ai-preview-fill-seo-keywords="<%= seo_keywords %>"></span>
+      </div>
     <% elsif show_button %>
       <%= ax_inline_notice(tone: :neutral,
                            icon: "info-circle",

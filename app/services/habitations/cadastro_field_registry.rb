@@ -20,7 +20,12 @@ module Habitations
   # A completude é garantida por spec (cadastro_field_registry_spec) que varre o
   # formulário e falha se algum campo `habitation[...]` não estiver aqui.
   module CadastroFieldRegistry
+    CATEGORY_FIELD_ITEMS = Habitation::CategoryDetails::DETAIL_FIELDS.map { |name, config| { key: name.to_s, label: config[:label] } } + [
+      { key: "frente_terreno_m", label: "Frente do terreno (m)" },
+      { key: "fundo_terreno_m", label: "Fundo do terreno (m)" }
+    ]
     GROUPS = [
+      { tab: "Visão geral", section: "Dados específicos da categoria", items: CATEGORY_FIELD_ITEMS },
       {
         tab: "Visão geral", section: "Definições básicas",
         items: [
@@ -106,6 +111,7 @@ module Habitations
           { key: "tipo_vaga", label: "Tipo de vaga" },
           { key: "area_privativa_m2", label: "Área privativa (m²)" },
           { key: "area_total_m2", label: "Área total (m²)" },
+          { key: "area_util_m2", label: "Área útil / construída (m²)" },
           { key: "area_terreno_m2", label: "Área do terreno (m²)" },
           { key: "dimensoes_terreno", label: "Dimensões do terreno" },
           { key: "topografia", label: "Topografia" },
@@ -325,7 +331,7 @@ module Habitations
     # Campos do formulário deliberadamente FORA da trava (sempre livres/estruturais):
     # não representam edição de conteúdo do imóvel.
     NON_LOCKABLE_FORM_FIELDS = %w[
-      id codigo intake_status name registration_profile
+      id codigo intake_status name registration_profile confirm_category_change
     ].freeze
 
     module_function

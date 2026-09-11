@@ -395,7 +395,7 @@ RSpec.describe Habitation, type: :model do
       commercial = create(:habitation, categoria: "Galpão Industrial", registration_profile: nil)
       condominium = create(:habitation, tipo: "Empreendimento", categoria: "Condomínio", registration_profile: nil)
 
-      expect(apartment.registration_profile).to eq("apartamentos")
+      expect(apartment.registration_profile).to eq("imoveis_residenciais")
       expect(land.registration_profile).to eq("terrenos")
       expect(area.registration_profile).to eq("terrenos")
       expect(development.registration_profile).to eq("empreendimento")

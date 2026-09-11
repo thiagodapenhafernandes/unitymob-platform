@@ -871,8 +871,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("não passa pelo fluxo de captação/revisão")
     expect(response.body).to include("Criar ficha de captação interna")
     expect(response.body).to include('name="habitation[registration_profile]"')
-    expect(response.body).to include('value="apartamentos"')
-    expect(response.body).to include("Apartamentos")
+    expect(response.body).to include('value="imoveis_residenciais"')
+    expect(response.body).to include("Imóveis residenciais")
     expect(response.body).not_to include("Enviar para corretor")
     expect(response.body).not_to include("Salvar Interno")
     expect(response.body).to include("Salvar")
@@ -949,8 +949,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Galpão cross-docking")
-    expect(response.body).to include("Docas")
+    expect(response.body).to include("Galpão Cross-Docking")
+    expect(response.body).to include("Quantidade de docas")
 
     get new_admin_habitation_path, params: {
       habitation: {
@@ -961,7 +961,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Viabilidade de loteamento")
+    expect(response.body).to include("Drenagem pluvial")
     expect(response.body).to include("Rede de água")
   end
 
@@ -976,7 +976,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('value="apartamentos"')
+    expect(response.body).to include('value="imoveis_residenciais"')
     expect(response.body).to include('value="Unitário"')
     selected_category = Nokogiri::HTML(response.body).at_css("select#habitation_categoria option[selected]")
     expect(selected_category["value"]).to eq("Apartamento")
@@ -1288,7 +1288,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     habitation = Habitation.order(:created_at).last
     expect(habitation).not_to be_broker_intake
     expect(habitation.intake_origin).to be_blank
-    expect(habitation.registration_profile).to eq("apartamentos")
+    expect(habitation.registration_profile).to eq("imoveis_residenciais")
   end
 
   it "cria imóvel direto preservando a consistência do perfil de cadastro" do
@@ -1313,7 +1313,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     }.to change(Habitation, :count).by(1)
 
     habitation = Habitation.order(:created_at).last
-    expect(habitation.registration_profile).to eq("apartamentos")
+    expect(habitation.registration_profile).to eq("imoveis_residenciais")
     expect(habitation.categoria).to eq("Apartamento")
     expect(habitation.tipo).to eq("Unitário")
   end
@@ -1550,7 +1550,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(vista_property.titulo_anuncio)
   end
 
-  it "exibe o usuário fake da DWV como captador no card do catálogo" do
+  it "exibe imóvel DWV no card do catálogo sem atribuir ao usuário fake" do
     create(:admin_user, tenant: admin.tenant, name: "Dwv - Imóveis Pauta", email: "laudicardoso@gmail.com")
     dwv_property = create(
       :habitation,
@@ -1558,15 +1558,17 @@ RSpec.describe "Admin::Habitations", type: :request do
       admin_user: nil,
       codigo: "DWV-CARD-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Imóvel DWV sem captador direto",
-      imovel_dwv: "Sim"
+      imovel_dwv: "Sim",
+      construtora: " "
     )
 
     get admin_habitations_path(q: dwv_property.codigo)
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(dwv_property.titulo_anuncio)
-    expect(response.body).to include("Captador:")
-    expect(response.body).to include("Dwv - Imóveis Pauta")
+    expect(response.body).to include("Construtora:")
+    expect(response.body).to include("Não informada")
+    expect(response.body).not_to include("Dwv - Imóveis Pauta")
   end
 
   it "exibe o empreendimento abaixo do endereço e acima do captador no card do catálogo" do
@@ -3340,6 +3342,49 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(input["data-action"].to_s).not_to include("input->")
     expect(submit["type"]).to eq("submit")
     expect(submit["aria-label"]).to eq("Buscar imóveis")
+  end
+
+  it "mantém a busca direta do catálogo fora dos filtros antigos do PWA" do
+    get admin_habitations_path(
+      ownership: "mine",
+      status: "Aluguel",
+      empreendimento_codigo: ["name:Montreal"],
+      min_price: "500000",
+      visualizacao: "grade"
+    )
+
+    expect(response).to have_http_status(:ok)
+    form = Nokogiri::HTML(response.body).at_css("form.habitations-pwa-search")
+    hidden_fields = form.css("input[type='hidden']").map { |input| [input["name"], input["value"]] }
+
+    expect(hidden_fields).to include(["ownership", "all"])
+    expect(hidden_fields).to include(["visualizacao", "grade"])
+    expect(hidden_fields.map(&:first)).not_to include("status")
+    expect(hidden_fields.map(&:first)).not_to include("empreendimento_codigo[]")
+    expect(hidden_fields.map(&:first)).not_to include("min_price")
+  end
+
+  it "busca direta de corretor encontra imóvel do catálogo mesmo vindo de Meus imóveis" do
+    broker_profile = default_agent_profile
+    broker = create(:admin_user, profile: broker_profile, name: "Corretor Busca")
+    other_broker = create(:admin_user, profile: broker_profile, name: "Outro Captador")
+    own_property = create(:habitation, admin_user: broker, codigo: "OWN-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel próprio do corretor")
+    catalog_property = create(:habitation, admin_user: other_broker, codigo: "CAT-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel encontrado por código direto")
+
+    sign_out admin
+    sign_in broker
+
+    get admin_habitations_path(ownership: "mine", q: catalog_property.codigo)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(catalog_property.titulo_anuncio)
+    expect(response.body).not_to include(own_property.titulo_anuncio)
+
+    get admin_habitations_path(ownership: "mine", codigo: catalog_property.codigo)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(catalog_property.titulo_anuncio)
+    expect(response.body).not_to include(own_property.titulo_anuncio)
   end
 
   it "prioriza empreendimento correspondente antes de imóveis que só citam o termo na descrição" do
