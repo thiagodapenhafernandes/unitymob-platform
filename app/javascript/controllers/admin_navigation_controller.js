@@ -45,6 +45,7 @@ export default class extends Controller {
     // depois do primeiro paint da página nova; esconder no connect expõe um
     // frame do snapshot antigo antes do destino aparecer.
     if (document.documentElement.classList.contains("ax-admin-is-loading") || (this.hasOverlayTarget && !this.overlayTarget.hidden)) {
+      this.armFailsafe()
       this.afterNextPaint(() => this.handlePageReady())
     } else {
       this.handlePageReady()
@@ -180,6 +181,11 @@ export default class extends Controller {
 
   handlePageReady() {
     if (!this.primaryNavigationDestinationReady()) {
+      if (this.failsafeElapsed()) {
+        this.hideNow()
+        return
+      }
+
       this.afterNextPaint(() => this.handlePageReady())
       return
     }
@@ -206,8 +212,20 @@ export default class extends Controller {
     // overlay está visível desde que foi mostrado pela página ANTERIOR.
     this.overlayTarget.dataset.shownAt = String(performance.now())
 
+    this.armFailsafe()
+  }
+
+  armFailsafe() {
     window.clearTimeout(this.failsafeTimer)
-    this.failsafeTimer = window.setTimeout(() => this.hideNow(), this.constructor.FAILSAFE_MS)
+
+    const shownAt = Number(this.overlayTarget?.dataset?.shownAt || performance.now())
+    const remainingMs = Math.max(0, this.constructor.FAILSAFE_MS - (performance.now() - shownAt))
+    this.failsafeTimer = window.setTimeout(() => this.hideNow(), remainingMs)
+  }
+
+  failsafeElapsed() {
+    const shownAt = Number(this.overlayTarget?.dataset?.shownAt || 0)
+    return shownAt > 0 && performance.now() - shownAt >= this.constructor.FAILSAFE_MS
   }
 
   hideNow() {
