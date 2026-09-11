@@ -1,4 +1,4 @@
-\restrict DWfs770o27tRe18UKdOvjzHPnjw9haH1eY8Che9iPLeBC1UJObuscWdLxrAfOjf
+\restrict oA4AvsuUFwagmaHhXS5D9jlodKu9hYZBGdw43uLPJaWyjUod1F83fXjHj0hv0xb
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2944,8 +2944,18 @@ CREATE TABLE public.habitations (
     intake_review_policy_version integer,
     intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     registration_profile character varying,
+    tipo_galpao character varying,
     outra_operacao_galpao character varying,
+    classificacao_galpao character varying,
+    tipo_piso_galpao character varying,
+    alimentacao_eletrica character varying,
     setor_terreno character varying,
+    rua_interna_condominio character varying,
+    operacoes_galpao text[] DEFAULT '{}'::text[] NOT NULL,
+    layouts_galpao text[] DEFAULT '{}'::text[] NOT NULL,
+    zoneamentos_galpao text[] DEFAULT '{}'::text[] NOT NULL,
+    instalacoes_eletricas text[] DEFAULT '{}'::text[] NOT NULL,
+    area_total_construida_m2 numeric(14,2),
     area_armazenagem_m2 numeric(14,2),
     pe_direito_livre_m numeric(14,2),
     altura_armazenagem_m numeric(14,2),
@@ -2953,15 +2963,18 @@ CREATE TABLE public.habitations (
     capacidade_eletrica_kva numeric(14,2),
     lateral_1_terreno_m numeric(14,2),
     lateral_2_terreno_m numeric(14,2),
+    testada_terreno_m numeric(14,2),
     docas_qtd integer,
     CONSTRAINT habitations_altura_armazenagem_m_positive CHECK (((altura_armazenagem_m IS NULL) OR (altura_armazenagem_m > (0)::numeric))),
     CONSTRAINT habitations_area_armazenagem_m2_positive CHECK (((area_armazenagem_m2 IS NULL) OR (area_armazenagem_m2 > (0)::numeric))),
+    CONSTRAINT habitations_area_total_construida_m2_positive CHECK (((area_total_construida_m2 IS NULL) OR (area_total_construida_m2 > (0)::numeric))),
     CONSTRAINT habitations_capacidade_eletrica_kva_positive CHECK (((capacidade_eletrica_kva IS NULL) OR (capacidade_eletrica_kva > (0)::numeric))),
     CONSTRAINT habitations_capacidade_piso_ton_m2_positive CHECK (((capacidade_piso_ton_m2 IS NULL) OR (capacidade_piso_ton_m2 > (0)::numeric))),
     CONSTRAINT habitations_docas_qtd_nonnegative CHECK (((docas_qtd IS NULL) OR (docas_qtd >= 0))),
     CONSTRAINT habitations_lateral_1_terreno_m_positive CHECK (((lateral_1_terreno_m IS NULL) OR (lateral_1_terreno_m > (0)::numeric))),
     CONSTRAINT habitations_lateral_2_terreno_m_positive CHECK (((lateral_2_terreno_m IS NULL) OR (lateral_2_terreno_m > (0)::numeric))),
-    CONSTRAINT habitations_pe_direito_livre_m_positive CHECK (((pe_direito_livre_m IS NULL) OR (pe_direito_livre_m > (0)::numeric)))
+    CONSTRAINT habitations_pe_direito_livre_m_positive CHECK (((pe_direito_livre_m IS NULL) OR (pe_direito_livre_m > (0)::numeric))),
+    CONSTRAINT habitations_testada_terreno_m_positive CHECK (((testada_terreno_m IS NULL) OR (testada_terreno_m > (0)::numeric)))
 );
 
 
@@ -19060,11 +19073,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict DWfs770o27tRe18UKdOvjzHPnjw9haH1eY8Che9iPLeBC1UJObuscWdLxrAfOjf
+\unrestrict oA4AvsuUFwagmaHhXS5D9jlodKu9hYZBGdw43uLPJaWyjUod1F83fXjHj0hv0xb
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260911194000'),
 ('20260911120000'),
 ('20260910210000'),
 ('20260909193000'),

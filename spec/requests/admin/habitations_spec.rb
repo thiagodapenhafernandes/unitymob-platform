@@ -851,7 +851,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
     rendered_statuses = document.css('input[name="habitation[status]"]').map { |input| input["value"] }
-    expect(rendered_statuses).to eq(["Venda", "Aluguel", "Diária", "Lançamento"])
+    expect(rendered_statuses).to eq(["Venda", "Aluguel", "Venda e Aluguel", "Diária", "Lançamento"])
     expect(response.body).to include("Locação anual", "Locação diária")
     expect(rendered_statuses).not_to include("Pendente", "Suspenso", "Alugado imobiliária", "Alugado terceiros", "Vendido imobiliária", "Vendido terceiros")
   end

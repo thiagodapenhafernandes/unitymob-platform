@@ -457,6 +457,7 @@ module Dwv
     end
 
     def infer_status_from_prices(sale_cents, rent_cents)
+      return "Venda e Aluguel" if sale_cents.to_i.positive? && rent_cents.to_i.positive?
       return "Venda" if sale_cents.to_i.positive?
       return "Aluguel" if rent_cents.to_i.positive?
 

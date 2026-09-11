@@ -238,7 +238,7 @@ class Habitation < ApplicationRecord
   RENT_TITLE_PATTERN = /\b(?:para\s+alugar|aluguel|loca[cç][aã]o)\b/i
 
   STATUS_OPTIONS = [
-    'Venda', 'Aluguel', 'Diária', 'Pendente', 'Lançamento', 'Suspenso',
+    'Venda', 'Aluguel', 'Venda e Aluguel', 'Diária', 'Pendente', 'Lançamento', 'Suspenso',
     'Alugado imobiliária', 'Alugado terceiros',
     'Vendido imobiliária', 'Vendido terceiros'
   ].freeze
@@ -248,8 +248,12 @@ class Habitation < ApplicationRecord
   # e pela migration de normalização.
   STATUS_NORMALIZATION_MAP = {
     "venda"                => "Venda",
-    "venda e aluguel"      => "Venda",
-    "venda aluguel"        => "Venda",
+    "venda e aluguel"      => "Venda e Aluguel",
+    "venda aluguel"        => "Venda e Aluguel",
+    "venda e locacao"      => "Venda e Aluguel",
+    "venda e locação"      => "Venda e Aluguel",
+    "venda locacao"        => "Venda e Aluguel",
+    "venda locação"        => "Venda e Aluguel",
     "a venda"              => "Venda",
     "para venda"           => "Venda",
     "aluguel"              => "Aluguel",
@@ -288,7 +292,7 @@ class Habitation < ApplicationRecord
     [/\b(?:venda|vende|vender)\b/, "Venda"]
   ].freeze
 
-  PUBLIC_STATUSES = ['Venda', 'Aluguel'].freeze
+  PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Venda e Aluguel'].freeze
   INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido pendente].freeze
   INACTIVE_COMMERCIAL_STATUS_REGEX = "(suspenso|alugado|vendido|pendente)".freeze
   SITE_PUBLICATION_FIELDS = %i[exibir_no_site_flag exibir_no_site_portal_flag].freeze
@@ -304,12 +308,18 @@ class Habitation < ApplicationRecord
 
     normalized = STATUS_NORMALIZATION_MAP[key] ||
       STATUS_KEYWORD_NORMALIZATION.find { |pattern, _status| key.match?(pattern) }&.last
+    return "Venda e Aluguel" if dual_sale_rent_prices?(valor_venda_cents, valor_locacao_cents) && normalized.in?(%w[Venda Aluguel])
     return normalized if normalized.present?
 
+    return "Venda e Aluguel" if dual_sale_rent_prices?(valor_venda_cents, valor_locacao_cents)
     return "Aluguel" if valor_locacao_cents.to_i.positive? && !valor_venda_cents.to_i.positive?
     return "Venda" if valor_venda_cents.to_i.positive?
 
     raw
+  end
+
+  def self.dual_sale_rent_prices?(valor_venda_cents, valor_locacao_cents)
+    valor_venda_cents.to_i.positive? && valor_locacao_cents.to_i.positive?
   end
 
   def self.standalone_category_without_development_name?(category)
