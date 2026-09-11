@@ -543,17 +543,17 @@ module Admin::ComercialHelper
     meta = activity.metadata.to_h
     return [] unless meta["channel"].to_s == "whatsapp" && meta["message_id"].present?
 
-    events = [["Aceito pela Meta", activity.created_at, nil]]
+    events = [["Aceito pela Meta", activity.created_at, nil, :gray]]
     {
-      "whatsapp_sent_at" => "Enviado pelo WhatsApp",
-      "whatsapp_delivered_at" => "Entregue no WhatsApp",
-      "whatsapp_read_at" => "Lido no WhatsApp",
-      "whatsapp_failed_at" => "Falhou no WhatsApp"
-    }.each do |key, label|
+      "whatsapp_sent_at" => ["Enviado pelo WhatsApp", :gray],
+      "whatsapp_delivered_at" => ["Entregue no WhatsApp", :cyan],
+      "whatsapp_read_at" => ["Lido no WhatsApp", :blue],
+      "whatsapp_failed_at" => ["Falhou no WhatsApp", :red]
+    }.each do |key, (label, tone)|
       occurred_at = notification_whatsapp_time(meta[key])
       next unless occurred_at
 
-      events << [label, occurred_at, (meta["whatsapp_error"] if key == "whatsapp_failed_at")]
+      events << [label, occurred_at, (meta["whatsapp_error"] if key == "whatsapp_failed_at"), tone]
     end
     events
   end
