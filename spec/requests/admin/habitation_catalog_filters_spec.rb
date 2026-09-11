@@ -165,7 +165,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     scalar_filter_cases = [
       ["codigo", { codigo: "COD-UNICO" }, { codigo: "COD-UNICO" }, { codigo: "COD-UNICO-#{SecureRandom.hex(3)}" }],
       ["q", { q: "Vista Alpha" }, { titulo_anuncio: "Filtro q match Vista Alpha #{SecureRandom.hex(6)}" }, { titulo_anuncio: "Filtro q miss Beta #{SecureRandom.hex(6)}" }],
-      ["status", { status: "Aluguel" }, { status: "Aluguel", valor_locacao_cents: 450_000 }, { status: "Venda" }],
+      ["status", { status: "Aluguel" }, { status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 450_000 }, { status: "Venda" }],
       ["categoria", { categoria: "Terreno" }, { categoria: "Terreno" }, { categoria: "Apartamento" }],
       ["bairro_comercial", { bairro_comercial: "Meia Praia" }, { bairro_comercial: "Meia Praia" }, { bairro_comercial: "Centro" }],
       ["situacao", { situacao: "Novo" }, { situacao: "Novo" }, { situacao: "Usado" }],

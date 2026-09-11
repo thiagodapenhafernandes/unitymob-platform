@@ -6,6 +6,7 @@ RSpec.describe Habitation, type: :model do
       expect(described_class.normalize_status("Locação anual")).to eq("Aluguel")
       expect(described_class.normalize_status("Para alugar")).to eq("Aluguel")
       expect(described_class.normalize_status("À venda")).to eq("Venda")
+      expect(described_class.normalize_status("Venda e Aluguel")).to eq("Venda e Aluguel")
       expect(described_class.normalize_status("Temporada")).to eq("Diária")
       expect(described_class.normalize_status("imóvel vendido por terceiros")).to eq("Vendido terceiros")
     end
@@ -13,6 +14,12 @@ RSpec.describe Habitation, type: :model do
     it "uses commercial prices as fallback for operational statuses" do
       expect(described_class.normalize_status("Liberar site", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)).to eq("Aluguel")
       expect(described_class.normalize_status("Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)).to eq("Venda")
+      expect(described_class.normalize_status("Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)).to eq("Venda e Aluguel")
+    end
+
+    it "keeps inactive statuses even when both prices are present" do
+      expect(described_class.normalize_status("Suspenso", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)).to eq("Suspenso")
+      expect(described_class.normalize_status("Vendido terceiros", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)).to eq("Vendido terceiros")
     end
   end
 
@@ -26,11 +33,11 @@ RSpec.describe Habitation, type: :model do
     end
 
     it "normalizes operational publication status using the current commercial price" do
-      habitation = build(:habitation, status: "Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+      habitation = build(:habitation, status: "Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
 
       habitation.validate
 
-      expect(habitation.status).to eq("Venda")
+      expect(habitation.status).to eq("Venda e Aluguel")
     end
   end
 
@@ -367,10 +374,12 @@ RSpec.describe Habitation, type: :model do
       rent_variant = build(:habitation, status: "Locação anual", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
       operational_sale = build(:habitation, status: "Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
       operational_rent = build(:habitation, status: "Liberar site", valor_venda_cents: 0, valor_locacao_cents: 4_925_00)
+      sale_rent = build(:habitation, status: "Venda e Aluguel", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
 
       expect(rent_variant).to be_shareable_commercial_status
       expect(operational_sale).to be_shareable_commercial_status
       expect(operational_rent).to be_shareable_commercial_status
+      expect(sale_rent).to be_shareable_commercial_status
     end
 
     it "blocks daily, seasonal and inactive statuses even when prices are present" do

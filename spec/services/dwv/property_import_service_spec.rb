@@ -103,7 +103,7 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.descricao_web.to_plain_text).to include("Descrição antiga")
       expect(habitation.area_privativa_m2).to eq(BigDecimal("99.0"))
       expect(habitation.pictures.map { |pic| pic["url"] }).to eq(["https://cdn.dwv.test/old.jpg"])
-      expect(habitation.status).to eq("Aluguel")
+      expect(habitation.status).to eq("Venda e Aluguel")
       expect(habitation.exibir_no_site_flag).to eq(false)
       expect(habitation.dwv_payload).to include("title" => "Payload antigo")
       expect(habitation.valor_venda_cents).to eq(439_776_500)

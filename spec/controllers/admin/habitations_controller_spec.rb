@@ -12,14 +12,19 @@ RSpec.describe Admin::HabitationsController, type: :controller do
   describe "#apply_status_filter" do
     it "shows only active commercial statuses when no status filter is selected" do
       active = create(:habitation, status: "Venda")
-      rental = create(:habitation, status: "Aluguel")
+      rental = create(:habitation, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 5_000_00)
+      sale_rent = create(:habitation, status: "Venda", valor_venda_cents: 900_000_00, valor_locacao_cents: 5_000_00)
       daily = create(:habitation, status: "Diária")
       pending = create(:habitation, status: "Pendente")
       suspended = create(:habitation, status: "Suspenso", motivo_suspensao: "Teste")
 
-      result = controller.send(:apply_status_filter, Habitation.where(id: [active.id, rental.id, daily.id, pending.id, suspended.id]), nil)
+      result = controller.send(
+        :apply_status_filter,
+        Habitation.where(id: [active.id, rental.id, sale_rent.id, daily.id, pending.id, suspended.id]),
+        described_class::DEFAULT_CATALOG_STATUSES
+      )
 
-      expect(result).to contain_exactly(active, rental, daily)
+      expect(result).to contain_exactly(active, rental, sale_rent, daily)
     end
 
     it "shows suspended properties when the suspended status filter is selected" do

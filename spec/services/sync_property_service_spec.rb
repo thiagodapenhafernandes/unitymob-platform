@@ -109,12 +109,13 @@ RSpec.describe SyncPropertyService do
         {
           "Status" => "Liberar site",
           "ValorVenda" => "900000",
-          "ValorLocacao" => "0"
+          "ValorLocacao" => "4925"
         }
       )
 
-      expect(habitation_attrs[:status]).to eq("Venda")
+      expect(habitation_attrs[:status]).to eq("Venda e Aluguel")
       expect(habitation_attrs[:valor_venda_cents]).to eq(90_000_000)
+      expect(habitation_attrs[:valor_locacao_cents]).to eq(492_500)
     end
   end
 

@@ -1,7 +1,7 @@
 class Admin::ImageMigrationStatusController < Admin::BaseController
   before_action -> { check_permission!(:manage, :integracoes) }
 
-  PUBLIC_STATUSES = ["Venda", "Aluguel"].freeze
+  PUBLIC_STATUSES = Habitation::PUBLIC_STATUSES
   CONFIG_PREFIX = "image_migration.".freeze
   API_FILE_ASSET_DUMP_DIR = "api:vista".freeze
   SYNC_MODES = {
