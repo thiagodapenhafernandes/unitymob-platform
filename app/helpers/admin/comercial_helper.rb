@@ -507,12 +507,13 @@ module Admin::ComercialHelper
     when "distributed", "assigned_directly"
       who = meta["admin_user_name"].presence || activity.lead&.admin_user&.name
       rule = meta["rule_name"].presence
+      by = activity.kind == "assigned_directly" ? assigned_directly_actor(activity, meta) : nil
       if sticky_timeline_activity?(activity)
         return [("Para #{who}" if who), "Cliente já atendido por este corretor", "Sem consumir a vez no rodízio", ("Regra: #{rule}" if rule)].compact.join(" · ")
       end
-      return [("Para #{who}" if who), ("pela fila #{rule}" if rule)].compact.join(" · ").presence unless detailed
+      return [("Para #{who}" if who), ("por #{by}" if by), ("pela fila #{rule}" if rule)].compact.join(" · ").presence unless detailed
 
-      [("Para #{who}" if who), ("via regra #{rule}" if rule)].compact.join(" · ").presence
+      [("Para #{who}" if who), ("por #{by}" if by), ("via regra #{rule}" if rule)].compact.join(" · ").presence
     when "accepted"
       accepted_by = meta["by"].presence || activity.lead&.admin_user&.name
       via = notification_attendance_channel_label(meta["via"])
@@ -526,6 +527,15 @@ module Admin::ComercialHelper
     when "interest_reprocessed" then "#{meta['matches_count'].to_i} imóvel(is) compatível(is), #{meta['confidence'].to_i}% de confiança"
     else nil
     end
+  end
+
+  # "assigned_directly" (RoutingService) não sabe quem atribuiu — só que o lead
+  # já chegou com admin_user_id. Quando foi atribuição manual (não link pessoal
+  # do corretor), quem fez está no "by" da atividade "created" do mesmo lead.
+  def assigned_directly_actor(activity, meta)
+    return nil unless meta["reason"].to_s == "manual_assignment"
+
+    activity.lead&.activities&.find_by(kind: "created")&.metadata.to_h["by"].presence
   end
 
   def notification_activity_detail(meta)
@@ -551,7 +561,7 @@ module Admin::ComercialHelper
 
     events = [["Aceito pela Meta", activity.created_at, nil, :gray]]
     {
-      "whatsapp_sent_at" => ["Enviado pelo WhatsApp", :gray],
+      "whatsapp_sent_at" => ["Enviado pelo WhatsApp", :purple],
       "whatsapp_delivered_at" => ["Entregue no WhatsApp", :cyan],
       "whatsapp_read_at" => ["Lido no WhatsApp", :blue],
       "whatsapp_failed_at" => ["Falhou no WhatsApp", :red]
