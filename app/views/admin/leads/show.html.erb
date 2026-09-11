@@ -1691,6 +1691,17 @@
 
   <%= render "admin/leads/pwa_operational_panel", lead: @lead %>
 
+  <section class="lead-pwa-detail__panel">
+    <%= form_with model: [:admin, @lead], namespace: :mobile, local: true do |f| %>
+      <%= ax_text_field(form: f, method: :notes, label: "Observações internas",
+            type: :textarea, rows: 3, class_name: "tw-mb-3",
+            placeholder: "Histórico de conversas, preferências do cliente...") %>
+      <div class="tw-flex tw-justify-end">
+        <%= f.submit "Salvar observações", class: "ax-btn ax-btn--primary" %>
+      </div>
+    <% end %>
+  </section>
+
   <section class="lead-pwa-detail__panel lead-pwa-origin-panel">
     <div class="lead-pwa-detail__section-title">
       <span>Imóvel de origem</span>

@@ -443,3 +443,13 @@ dialog.ax-property-gallery .ax-gallery-thumb img { width: 100%; height: 100%; ob
     overflow-wrap: anywhere;
   }
 }
+
+/* Selectable operational record; also used by the extension's lead picker. */
+.ax-workspace-record--choice { width: 100%; text-align: left; color: var(--ab-ink, #273449); font: inherit; cursor: pointer; }
+.ax-workspace-record--choice:hover { border-color: var(--workspace-accent, #377e90); background: var(--workspace-soft, #e9f7f7); }
+.ax-workspace-record--choice[aria-pressed="true"] { border-color: var(--workspace-accent, #377e90); background: var(--workspace-soft, #e9f7f7); box-shadow: inset 3px 0 var(--workspace-accent, #377e90); }
+.ax-workspace-record--choice:focus-visible { outline: 2px solid var(--workspace-accent, #377e90); outline-offset: 2px; }
+.ax-workspace-record__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.ax-workspace-record__heading strong { font-size: 13px; line-height: 1.4; }
+.ax-workspace-record__heading > .ax-workspace-muted { flex-shrink: 0; }
+.ax-workspace-record__detail { font-size: 12px; line-height: 1.5; }

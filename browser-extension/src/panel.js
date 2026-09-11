@@ -1,4 +1,5 @@
 import { createPropertyGallery } from "./property-gallery.js";
+import { requestPropertyPhotoAccess } from "./property-preview.js";
 import { propertyPagination } from "./property-pagination.js";
 import { mountPropertyCatalog } from "./property-catalog.js";
 import { mountWorkspaceTabs } from "./workspace-tabs.js";
@@ -150,6 +151,9 @@ async function fetchLead(id, version) {
   const result = await request("lead", { tabId: current.tabId, contextKey: contextKey(current), leadId: id });
   if (version !== revision || !me) return;
   selectedLead = result.lead;
+  for (const button of $("candidates").querySelectorAll("[data-lead-id]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.leadId === String(selectedLead.id)));
+  }
   for (const [kind, capability, add] of [["appointment", "create_appointments", "add-appointments"], ["label", "manage_labels", "add-labels"]]) {
     $(`${kind}-panel`).hidden = !me.capabilities[capability];
     $(add).hidden = !me.capabilities[capability];
@@ -379,10 +383,9 @@ async function resolve(phone) {
     } else if (result.leads.length === 1) {
       await loadLead(result.leads[0].id);
     } else {
-      $("candidates").textContent = result.more ? "Há mais de dez atendimentos. Consulte a ficha na Unitymob se necessário." : "Escolha um lead abaixo para consultar a ficha, registrar notas e agendar tarefas:";
+      $("candidates").textContent = result.more ? "Mostrando 10 atendimentos. Consulte os demais na ficha completa." : "Selecione o atendimento:";
       for (const lead of result.leads) {
-        const button = document.createElement("button"); button.className = "ax-btn"; button.type = "button";
-        button.textContent = `${lead.name} · ${lead.status} · #${lead.id} — ${leadContext(lead)}`;
+        const button = leadChoice(lead);
         button.addEventListener("click", () => { revision++; clearSelected(); loadLead(lead.id); });
         $("candidates").append(button);
       }
@@ -630,6 +633,34 @@ $("connections").addEventListener("click", closeAccountMenu);
 $("disconnect").addEventListener("click", closeAccountMenu);
 $("version").textContent = `v${chrome.runtime.getManifest().version}`;
 
+function leadChoice(lead) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "ax-workspace-record ax-workspace-record--choice";
+  button.dataset.leadId = String(lead.id);
+  button.setAttribute("aria-pressed", "false");
+  const title = document.createElement("span");
+  title.className = "ax-workspace-record__heading";
+  const name = document.createElement("strong");
+  name.textContent = lead.name;
+  const code = document.createElement("span");
+  code.className = "ax-workspace-muted";
+  code.textContent = `#${lead.id}`;
+  title.append(name, code);
+  const status = document.createElement("span");
+  status.className = "ax-workspace-badge";
+  status.textContent = lead.status;
+  const owner = document.createElement("span");
+  owner.className = "ax-workspace-record__detail";
+  owner.textContent = `Responsável: ${lead.owner_name || "Sem responsável"}`;
+  const details = document.createElement("span");
+  details.className = "ax-workspace-muted";
+  const date = lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : null;
+  details.textContent = [lead.origin && `Origem: ${lead.origin}`, date && `Cadastro: ${date}`].filter(Boolean).join(" · ");
+  button.append(title, status, owner, details);
+  return button;
+}
+
 function leadContext(lead) {
   const date = lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : null;
   return [`Responsável: ${lead.owner_name || "Sem responsável"}`, lead.origin && `Origem: ${lead.origin}`, date && `Cadastro: ${date}`].filter(Boolean).join(" · ");
@@ -674,6 +705,7 @@ async function shareSelectedProperties(fromSearch) {
   let linkFailures = 0;
   $("feedback").textContent = "";
   try {
+    await requestPropertyPhotoAccess(toSend.map(input => input.closest(".pc-card").dataset.sharePhotoUrl));
     for (const item of cards) {
       if (version !== revision) break;
       current = item;
@@ -721,6 +753,7 @@ async function shareSelectedProperties(fromSearch) {
   } catch (error) {
     if (version === revision) {
       const messages = {
+        preview_permission_required: "Autorize o acesso às fotos para compartilhar. Nenhum novo envio foi realizado.",
         preview_unavailable: "Prévia indisponível. Este imóvel não foi enviado.",
         preview_timeout: "A foto demorou para carregar. Este imóvel não foi enviado.",
         preview_image_failed: "Não foi possível carregar a foto. Este imóvel não foi enviado.",
@@ -730,7 +763,7 @@ async function shareSelectedProperties(fromSearch) {
       const noPreview = error.message.startsWith("preview_");
       if (current) current.card.classList.add("pc-card--share-error");
       if (current) status(current, messages[error.message] || "Envio sem confirmação. Confira o WhatsApp antes de repetir.");
-      cards.slice(sent + 1).forEach(item => status(item, "Não enviado"));
+      cards.slice(current ? sent + 1 : sent).forEach(item => status(item, "Não enviado"));
       $("feedback").textContent = `${sent} de ${cards.length} enviados. ${noPreview ? "A preparação da foto falhou; os demais não foram enviados. Tente novamente." : messages[error.message] || "Confira a conversa antes de tentar novamente."}`;
     }
   }
@@ -761,6 +794,7 @@ function renderShareHistory(card, history) {
 function horizontalPropertyCard(property,actions) {
   const option=document.createElement("article");option.className="pc-card pc-card--horizontal";
   const photos=(property.photo_urls || []).filter(url=>typeof url==='string' && /^https:\/\//.test(url));
+  option.dataset.sharePhotoUrl = photos[0] || "";
   const photo=document.createElement("button");photo.type="button";photo.className="pc-card-photo";
   photo.setAttribute("aria-label", `Ver fotos de ${property.code} · ${property.card_title || property.title}`);
   if(photos.length){

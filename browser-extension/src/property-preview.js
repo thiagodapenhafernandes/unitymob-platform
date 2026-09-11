@@ -26,3 +26,12 @@ export async function preparePropertyPhoto(url) {
     throw new Error(error.message === 'preview_image_invalid' ? error.message : 'preview_image_failed');
   } finally { clearTimeout(timeout); bitmap?.close(); }
 }
+// Called directly from the share click, before any await loses the user gesture.
+export async function requestPropertyPhotoAccess(urls) {
+  const origins = [...new Set(urls.filter(Boolean).map(url => {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('preview_image_invalid');
+    return `${parsed.origin}/*`;
+  }))];
+  if (origins.length && !await chrome.permissions.request({origins}).catch(() => false)) throw new Error('preview_permission_required');
+}
