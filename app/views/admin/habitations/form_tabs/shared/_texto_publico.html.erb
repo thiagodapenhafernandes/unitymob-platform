@@ -9,6 +9,7 @@
         data: {
           controller: "ai-preview",
           turbo_frame: dom_id(habitation, :ai_content_preview),
+          turbo_method: "post",
           action: "click->ai-preview#submit",
           ai_preview_method: "POST",
           ai_preview_loading_text: "Gerando...",
