@@ -38,12 +38,18 @@ module Admin::ComercialHelper
   }.freeze
 
   SUMMARY_TIMELINE_KINDS = %w[
+    created
     received
+    assigned_directly
     distributed
+    dammed
+    shark_tank_ready
     pocket_expired
     accepted
     rejected
     status_change
+    external_lead_imported
+    external_lead_synced
     notification_sent
     notification_failed
     notification_skipped
