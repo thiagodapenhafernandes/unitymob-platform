@@ -40,6 +40,8 @@ module Habitations
       valor_vendido_terceiros_cents rental_guarantee_method permuta_valor_percentual frente_terreno_m fundo_terreno_m
       permuta_veiculo_valor_cents permuta_outros_valor_cents permuta_outros_descricao
       public_map_display_mode public_street_view_mode public_rating_value public_rating_count public_rating_source
+      area_armazenagem_m2 pe_direito_livre_m altura_armazenagem_m capacidade_piso_ton_m2
+      capacidade_eletrica_kva docas_qtd outra_operacao_galpao setor_terreno lateral_1_terreno_m lateral_2_terreno_m
       meta_title meta_description meta_keywords
     ].freeze
 

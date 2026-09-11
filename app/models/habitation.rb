@@ -20,6 +20,7 @@ class Habitation < ApplicationRecord
   include Habitation::SearchScopes
   include Habitation::CacheableMethods
   include Habitation::SeoHelpers
+  include Habitation::CategoryDetails
 
   LEGACY_GENERIC_COLUMN_ALIASES = {
     "festival_flag" => "festival_salute_flag",
@@ -42,7 +43,7 @@ class Habitation < ApplicationRecord
   # Constantes Padronizadas para Enums e Atributos
   CATEGORIES = [
     'Apartamento', 'Cobertura', 'Loft',
-    'Casa', 'Casa em Condomínio', 'Sobrado', 'Chácara', 'Sítio',
+    'Casa', 'Casa em Condomínio', 'Sobrado', 'Chácara', 'Sítio', 'Diferenciado',
     'Casa Comercial', 'Condomínio Industrial', 'Galpão', 'Galpão em Condomínio',
     'Loja', 'Ponto Comercial', 'Prédio Comercial', 'Sala Comercial',
     'Área', 'Terreno', 'Terreno em Condomínio',
@@ -50,12 +51,6 @@ class Habitation < ApplicationRecord
   ].freeze
 
   REGISTRATION_PROFILES = {
-    "apartamentos" => {
-      label: "Apartamentos",
-      icon: "bi-building-fill",
-      tipo: "Unitário",
-      categories: ["Apartamento", "Cobertura", "Loft"]
-    },
     "comerciais_industriais" => {
       label: "Comerciais e industriais",
       icon: "bi-shop",
@@ -72,7 +67,7 @@ class Habitation < ApplicationRecord
       label: "Imóveis residenciais",
       icon: "bi-house-door-fill",
       tipo: "Unitário",
-      categories: ["Casa", "Casa em Condomínio", "Sobrado", "Chácara", "Sítio"]
+      categories: ["Apartamento", "Casa", "Casa em Condomínio", "Chácara", "Cobertura", "Loft", "Sobrado", "Sítio", "Diferenciado"]
     },
     "terrenos" => {
       label: "Terrenos",
@@ -98,6 +93,7 @@ class Habitation < ApplicationRecord
     "terreno comercial" => "Terreno",
     "terreno industrial" => "Terreno"
   }.freeze
+  LEGACY_REGISTRATION_PROFILES = { "apartamentos" => "imoveis_residenciais" }.freeze
   REGISTRATION_PROFILE_KEYS = REGISTRATION_PROFILES.keys.freeze
   REGISTRATION_PROFILE_CATEGORY_INDEX = REGISTRATION_PROFILES.each_with_object({}) do |(profile, config), index|
     config.fetch(:categories).each { |category| index[category] = profile }
@@ -167,11 +163,11 @@ class Habitation < ApplicationRecord
     "Casa de bombas",
     "Detecção inteligente de incêndio",
     "BMS integrado",
-    "Cabine primária",
+    "Disponibilidade de cabine primária",
     "Subestação",
-    "Gerador diesel",
+    "Gerador a Diesel",
     "Energia trifásica",
-    "Placas fotovoltaicas",
+    "Cobertura com previsão para Placas Fotovoltaicas",
     "Iluminação LED",
     "Ventilação natural",
     "Climatização",
@@ -318,6 +314,16 @@ class Habitation < ApplicationRecord
 
   def self.standalone_category_without_development_name?(category)
     STANDALONE_CATEGORIES_WITHOUT_DEVELOPMENT_NAME.include?(category.to_s.parameterize)
+  end
+
+  # Interpreta o grupo antigo sem reescrever imóveis ou políticas de revisão.
+  def self.normalize_registration_profile(value)
+    LEGACY_REGISTRATION_PROFILES.fetch(value.to_s, value.to_s).presence
+  end
+
+  def registration_group
+    self.class.normalize_registration_profile(registration_profile) ||
+      self.class.registration_profile_for(tipo: tipo, categoria: categoria)
   end
 
   def self.registration_profile_for(tipo:, categoria:)
@@ -565,7 +571,7 @@ class Habitation < ApplicationRecord
   # Novos Enums (Gap Analysis)
   OCUPACAO_STATUS = ["Desocupado", "Ocupado", "Inquilino", "Proprietário", "Reservado"].freeze
   ESTADO_CONSERVACAO = ["Novo", "Ótimo", "Bom", "Regular", "Seminovo", "Usado", "Reformado", "Original", "Em Obras", "Na Planta"].freeze
-  TOPOGRAFIA_OPTIONS = ["Plano", "Aclive", "Declive", "Irregular"].freeze
+  TOPOGRAFIA_OPTIONS = ["Plano", "Aclive", "Declive", "Misto", "Irregular"].freeze
   FOTO_CLASSIFICACAO = ["Profissionais", "Boas", "Aceitáveis", "Não tem fotos"].freeze
   # Ambientes das fotos do imóvel (armazenados em blob.metadata["ambiente"]).
   FOTO_QUARTO_AMBIENTES = (1..5).map { |number| "#{number} #{number == 1 ? 'Quarto' : 'Quartos'}" }.freeze
@@ -775,7 +781,7 @@ class Habitation < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0 },
             allow_nil: true
   validates :key_location, inclusion: { in: KEY_LOCATION_OPTIONS }, allow_blank: true
-  validates :registration_profile, inclusion: { in: REGISTRATION_PROFILE_KEYS }, allow_blank: true
+  validates :registration_profile, inclusion: { in: REGISTRATION_PROFILE_KEYS + LEGACY_REGISTRATION_PROFILES.keys }, allow_blank: true
   validate :rental_guarantee_methods_must_be_valid
   validate :codigo_empreendimento_must_exist, if: :validate_codigo_empreendimento?
   validate :codigo_empreendimento_cannot_reference_self
@@ -1207,8 +1213,14 @@ class Habitation < ApplicationRecord
 
   def caracteristicas_imovel = normalize_captacao_list(caracteristicas, category: "feature")
   def caracteristicas_predio = normalize_captacao_list(infra_estrutura, category: "infrastructure")
-  def standard_feature_options = self.class.standard_feature_options_for(registration_profile: registration_profile, categoria: categoria, tipo: tipo)
-  def standard_infrastructure_options = self.class.standard_infrastructure_options_for(registration_profile: registration_profile, categoria: categoria, tipo: tipo)
+  def standard_feature_options
+    options = self.class.standard_feature_options_for(registration_profile: registration_profile, categoria: categoria, tipo: tipo)
+    registration_group.in?(%w[imoveis_residenciais comerciais_industriais]) ? options + INTERNAL_EQUIPMENT_OPTIONS : options
+  end
+  def standard_infrastructure_options
+    options = self.class.standard_infrastructure_options_for(registration_profile: registration_profile, categoria: categoria, tipo: tipo)
+    registration_group == "terrenos" ? options : options + [EV_CHARGING_OPTION]
+  end
   def aceita_permuta
     aceita_permuta_answer == "sim" || aceita_permuta_flag? ? ["Sim"] : []
   end
@@ -2490,6 +2502,7 @@ class Habitation < ApplicationRecord
 
   def infer_registration_profile
     self.registration_profile = self.class.registration_profile_for(tipo: tipo, categoria: categoria) if registration_profile.blank?
+    self.registration_profile = self.class.normalize_registration_profile(registration_profile) if new_record?
   end
 
   def normalize_registration_category
@@ -2500,6 +2513,13 @@ class Habitation < ApplicationRecord
   def registration_profile_is_immutable
     return unless will_save_change_to_registration_profile?
     return if registration_profile_was.blank?
+    # A captação já converte rascunhos de empreendimento em unidades vinculadas.
+    # A autorização é interna ao controller, após validar o vínculo na conta.
+    return if intake_unit_conversion && broker_intake? && tipo_in_database == "Empreendimento" &&
+      registration_profile_in_database == "empreendimento" && tipo == "Unitário" &&
+      categoria == "Apartamento" && registration_profile == "imoveis_residenciais"
+
+    return if self.class.normalize_registration_profile(registration_profile_was) == self.class.normalize_registration_profile(registration_profile)
 
     errors.add(:registration_profile, "não pode ser alterado depois de definido")
   end

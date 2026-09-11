@@ -153,6 +153,7 @@ module Admin
         if key == "imoveis"
           submitted = Array(entry[:locked_fields]).map(&:to_s).reject(&:blank?)
           res_perms["locked_fields"] = submitted & Habitations::CadastroFieldRegistry.all_keys
+          res_perms["category_fields_version"] = 1
         end
 
         perms[key] = res_perms

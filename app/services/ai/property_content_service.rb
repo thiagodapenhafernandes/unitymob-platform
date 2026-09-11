@@ -118,9 +118,14 @@ module Ai
       api_key(tenant: tenant).present?
     end
 
-    def initialize(habitation, admin_user: nil)
+    def initialize(habitation, admin_user: nil, context_attributes: {})
       @habitation = habitation
       @admin_user = admin_user
+      @context_feature_override = context_attributes.key?(:caracteristicas) || context_attributes.key?("caracteristicas")
+      @content_habitation = habitation.dup
+      @content_habitation.assign_attributes(context_attributes)
+      @content_habitation.address = habitation.address
+
     end
 
     def generate_suggestion!
@@ -214,6 +219,10 @@ module Ai
         Você é um redator imobiliário da #{Tenants::PublicIdentity.new(@habitation.tenant).name}.
         Siga estritamente as instruções configuradas pelo administrador.
         Nunca invente informações ausentes no cadastro.
+        A categoria atual é #{@content_habitation.categoria}. Adapte o texto à finalidade dessa categoria.
+        Não trate terrenos, galpões, lojas ou empreendimentos como apartamentos.
+        Não infira quartos, suítes, medidas ou infraestrutura a partir do tipo do imóvel.
+        Dados inativos de categorias anteriores não podem ser usados.
         Retorne apenas JSON no formato solicitado.
 
         INSTRUÇÕES DO ADMINISTRADOR:
@@ -229,79 +238,91 @@ module Ai
     end
 
     def property_payload
-      {
+      payload = {
         id: @habitation.id,
-        codigo: @habitation.codigo,
-        categoria: @habitation.categoria,
-        status: @habitation.status,
-        situacao: @habitation.situacao,
-        tipo: @habitation.tipo,
-        nome_empreendimento: @habitation.nome_empreendimento,
-        codigo_empreendimento: @habitation.codigo_empreendimento,
-        unidade_numero: @habitation.unidade_numero,
-        titulo_atual: @habitation.titulo_anuncio,
-        descricao_atual: sanitized_text(@habitation.display_description),
-        cidade: @habitation.cidade,
-        bairro: @habitation.bairro,
-        bairro_comercial: @habitation.address&.bairro_comercial,
+        codigo: @content_habitation.codigo,
+        categoria: @content_habitation.categoria,
+        status: @content_habitation.status,
+        situacao: @content_habitation.situacao,
+        tipo: @content_habitation.tipo,
+        nome_empreendimento: @content_habitation.nome_empreendimento,
+        codigo_empreendimento: @content_habitation.codigo_empreendimento,
+        unidade_numero: @content_habitation.unidade_numero,
+        titulo_atual: @content_habitation.titulo_anuncio,
+        descricao_atual: sanitized_text(@content_habitation.display_description),
+        cidade: @content_habitation.cidade,
+        bairro: @content_habitation.bairro,
+        bairro_comercial: @content_habitation.address&.bairro_comercial,
         endereco: address_payload,
         empreendimento: development_payload,
-        dormitorios: @habitation.dormitorios_qtd,
-        suites: @habitation.suites_qtd,
-        demi_suites: @habitation.demi_suites_qtd,
-        banheiros: @habitation.banheiros_qtd,
-        salas: @habitation.salas_qtd,
-        varandas: @habitation.varandas_qtd,
-        vagas: @habitation.vagas_qtd,
-        tipo_vaga: @habitation.tipo_vaga,
-        numero_box: @habitation.numero_box,
-        andar: @habitation.andar,
-        elevadores: @habitation.elevadores_qtd,
-        area_privativa_m2: @habitation.area_privativa_m2,
-        area_total_m2: @habitation.area_total_m2,
-        area_terreno_m2: @habitation.area_terreno_m2,
-        area_util_m2: @habitation.area_util_m2,
-        dimensoes_terreno: @habitation.dimensoes_terreno,
-        topografia: @habitation.topografia,
-        valor_venda_cents: @habitation.valor_venda_cents,
-        valor_locacao_cents: @habitation.valor_locacao_cents,
-        valor_total_aluguel_cents: @habitation.valor_total_aluguel_cents,
-        valor_condominio_cents: @habitation.valor_condominio_cents,
-        valor_iptu_cents: @habitation.valor_iptu_cents,
-        valor_por_m2_cents: @habitation.valor_por_m2_cents,
-        valor_promocional_cents: @habitation.valor_promocional_cents,
-        valor_venda_anterior_cents: @habitation.valor_venda_anterior_cents,
-        valor_locacao_anterior_cents: @habitation.valor_locacao_anterior_cents,
-        mobiliado: @habitation.mobiliado_flag,
-        decorado: @habitation.decorado_flag,
-        quadra_mar: @habitation.quadra_mar_flag,
-        vista_frente_mar: @habitation.vista_frente_mar_flag,
-        frente_mar_avenida_atlantica: @habitation.frente_mar_avenida_atlantica_flag,
-        aceita_permuta: @habitation.aceita_permuta_flag,
-        aceita_financiamento: @habitation.aceita_financiamento_flag,
-        aceita_parcelamento: @habitation.aceita_parcelamento_flag,
-        ocupacao: @habitation.ocupacao_status,
-        estado_conservacao: @habitation.estado_conservacao,
-        construtora: @habitation.constructor_name,
-        tipo_fachada: @habitation.tipo_fachada,
-        data_entrega: @habitation.data_entrega,
-        ano_construcao: @habitation.ano_construcao,
-        andares: @habitation.andares_qtd,
-        aptos_por_andar: @habitation.aptos_andar,
-        aptos_no_edificio: @habitation.aptos_edificio,
-        distancia_praia_m: @habitation.distancia_praia.presence,
-        face: @habitation.face,
-        caracteristicas: @habitation.property_features_for_display,
-        infraestrutura: @habitation.leisure_features_for_display,
-        destaques: @habitation.unique_features,
-        imediacoes: @habitation.address&.imediacoes,
+        dormitorios: @content_habitation.dormitorios_qtd,
+        suites: @content_habitation.suites_qtd,
+        demi_suites: @content_habitation.demi_suites_qtd,
+        banheiros: @content_habitation.banheiros_qtd,
+        salas: @content_habitation.salas_qtd,
+        varandas: @content_habitation.varandas_qtd,
+        vagas: @content_habitation.vagas_qtd,
+        tipo_vaga: @content_habitation.tipo_vaga,
+        numero_box: @content_habitation.numero_box,
+        andar: @content_habitation.andar,
+        elevadores: @content_habitation.elevadores_qtd,
+        area_privativa_m2: @content_habitation.area_privativa_m2,
+        area_total_m2: @content_habitation.area_total_m2,
+        area_terreno_m2: @content_habitation.area_terreno_m2,
+        area_util_m2: @content_habitation.area_util_m2,
+        dimensoes_terreno: @content_habitation.dimensoes_terreno,
+        topografia: @content_habitation.topografia,
+        valor_venda_cents: @content_habitation.valor_venda_cents,
+        valor_locacao_cents: @content_habitation.valor_locacao_cents,
+        valor_total_aluguel_cents: @content_habitation.valor_total_aluguel_cents,
+        valor_condominio_cents: @content_habitation.valor_condominio_cents,
+        valor_iptu_cents: @content_habitation.valor_iptu_cents,
+        valor_por_m2_cents: @content_habitation.valor_por_m2_cents,
+        valor_promocional_cents: @content_habitation.valor_promocional_cents,
+        valor_venda_anterior_cents: @content_habitation.valor_venda_anterior_cents,
+        valor_locacao_anterior_cents: @content_habitation.valor_locacao_anterior_cents,
+        mobiliado: @content_habitation.mobiliado_flag,
+        decorado: @content_habitation.decorado_flag,
+        quadra_mar: @content_habitation.quadra_mar_flag,
+        vista_frente_mar: @content_habitation.vista_frente_mar_flag,
+        frente_mar_avenida_atlantica: @content_habitation.frente_mar_avenida_atlantica_flag,
+        aceita_permuta: @content_habitation.aceita_permuta_flag,
+        aceita_financiamento: @content_habitation.aceita_financiamento_flag,
+        aceita_parcelamento: @content_habitation.aceita_parcelamento_flag,
+        ocupacao: @content_habitation.ocupacao_status,
+        estado_conservacao: @content_habitation.estado_conservacao,
+        construtora: @content_habitation.constructor_name,
+        tipo_fachada: @content_habitation.tipo_fachada,
+        data_entrega: @content_habitation.data_entrega,
+        ano_construcao: @content_habitation.ano_construcao,
+        andares: @content_habitation.andares_qtd,
+        aptos_por_andar: @content_habitation.aptos_andar,
+        aptos_no_edificio: @content_habitation.aptos_edificio,
+        distancia_praia_m: @content_habitation.distancia_praia.presence,
+        face: @content_habitation.face,
+        caracteristicas: @content_habitation.property_features_for_display,
+        infraestrutura: @content_habitation.leisure_features_for_display,
+        destaques: @content_habitation.unique_features,
+        imediacoes: @content_habitation.address&.imediacoes,
         midia: media_payload,
-        descricao_empreendimento: sanitized_text(@habitation.descricao_empreendimento)
+        dados_especificos: @content_habitation.category_details_for_display,
+        descricao_empreendimento: sanitized_text(@content_habitation.descricao_empreendimento)
       }
+      { dormitorios: :dormitorios_qtd, suites: :suites_qtd, demi_suites: :demi_suites_qtd,
+        banheiros: :banheiros_qtd, salas: :salas_qtd, varandas: :varandas_qtd,
+        vagas: :vagas_qtd, tipo_vaga: :tipo_vaga, numero_box: :numero_box, andar: :andar }.each do |key, field|
+        payload.delete(key) unless @content_habitation.category_field_applicable?(field)
+      end
+      if @context_feature_override
+        payload[:mobiliado] = @content_habitation.property_features_for_display.include?("Mobiliado")
+        payload[:decorado] = @content_habitation.property_features_for_display.include?("Decorado")
+      end
+      payload.delete(:caracteristicas) if @content_habitation.registration_group == "empreendimento"
+      payload
     end
 
     def development_payload
-      development = @habitation.empreendimento
+      development = @content_habitation.empreendimento
       return nil if development.blank?
 
       {

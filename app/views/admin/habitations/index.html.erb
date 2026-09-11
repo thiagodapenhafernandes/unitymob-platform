@@ -77,7 +77,7 @@
 <%
   pwa_habitation_nav_counts = @pwa_habitation_nav_counts || {}
   pwa_habitation_base_params = request.query_parameters.except("page", "status", "scope", "ownership", "intake_review", "clear_filters")
-  pwa_habitation_search_params = request.query_parameters.except("q", "page", "clear_filters")
+  pwa_habitation_search_params = request.query_parameters.slice("visualizacao")
   pwa_habitation_status_values = selected_status_filter_values.map { |status| Habitation.normalize_status(status) }
   pwa_habitation_active_tab =
     if @scope == "oportunidade"
@@ -114,6 +114,7 @@
                   method: :get,
                   local: true,
                   class: "habitations-pwa-search" do %>
+      <%= hidden_field_tag :ownership, "all" %>
       <% pwa_habitation_search_params.each do |param_key, param_value| %>
         <% Array(param_value).reject(&:blank?).each do |hidden_value| %>
           <%= hidden_field_tag(param_value.is_a?(Array) ? "#{param_key}[]" : param_key, hidden_value) %>

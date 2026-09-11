@@ -115,7 +115,7 @@ module Habitations
       raw = permissions.dig("imoveis", "locked_fields")
       return nil unless raw.is_a?(Array)
 
-      Set.new(raw.map(&:to_s))
+      self.class.effective_locked_keys_for(permissions["imoveis"])
     end
 
     class << self
@@ -123,7 +123,10 @@ module Habitations
       # config salva (locked_fields) quando presente, senão o default do card #1.
       def effective_locked_keys_for(imoveis_permissions)
         raw = imoveis_permissions.is_a?(Hash) ? imoveis_permissions["locked_fields"] : nil
-        return Set.new(raw.map(&:to_s)) if raw.is_a?(Array)
+        if raw.is_a?(Array)
+          additional = imoveis_permissions["category_fields_version"].to_i >= 1 ? [] : CadastroFieldRegistry::CATEGORY_FIELD_ITEMS.map { |item| item[:key] }
+          return Set.new(raw.map(&:to_s) + additional)
+        end
 
         default_locked_keys
       end

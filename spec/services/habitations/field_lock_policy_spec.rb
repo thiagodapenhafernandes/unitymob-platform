@@ -136,4 +136,16 @@ RSpec.describe Habitations::FieldLockPolicy do
       end
     end
   end
+  it "trava campos novos em permissões antigas e permite liberação explícita na versão atual" do
+    profile = profile_with("view" => true, "scope" => "own", "locked_fields" => [])
+    user = user_with(profile)
+    expect(described_class.for(user).field_locked?("docas_qtd")).to be(true)
+    expect(described_class.effective_locked_keys_for(profile.permissions["imoveis"])).to include("docas_qtd")
+    permissions = profile.permissions.deep_dup
+    permissions["imoveis"]["category_fields_version"] = 1
+    profile.update!(permissions: permissions)
+    user.reload
+    expect(described_class.for(user).field_locked?("docas_qtd")).to be(false)
+  end
+
 end

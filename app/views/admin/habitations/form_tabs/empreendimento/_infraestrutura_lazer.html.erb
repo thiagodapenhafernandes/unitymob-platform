@@ -14,13 +14,14 @@
 
 <%= ax_form_section(title: "Infraestrutura e lazer", eyebrow: "Checklist", icon: "tree", actions: infrastructure_actions) do %>
   <% current_infra = f.object.caracteristicas_predio %>
-  <% infrastructure_options = habitation_feature_options(f.object, category: "infrastructure", catalog: @external_features) %>
-  <% infrastructure_options = (infrastructure_options + Array(@developments).flat_map(&:caracteristicas_predio)).uniq.sort_by { |value| I18n.transliterate(value).downcase } %>
+  <% category_options = habitation_category_checklist(f.object, "infrastructure", @external_features) %>
+  <% infrastructure_options = category_options.values.flatten.uniq.sort %>
+  <%= hidden_field_tag "habitation[infra_estrutura][]", "" %>
   <%= ax_chip_grid(id: "infra-checkbox-list", class_name: "ax-chip-grid--columns") do %>
     <% infrastructure_options.each do |feature| %>
       <% checked = current_infra.include?(feature) %>
-      <label class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
-        <input type="checkbox" name="habitation[infra_estrutura][]" value="<%= feature %>" <%= 'checked' if checked %>>
+      <label data-category-options="<%= json_escape(category_options.select { |_, values| values.include?(feature) }.keys.to_json) %>" class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
+        <input type="checkbox" name="habitation[infra_estrutura][]" value="<%= feature %>" data-exclusive-choice-group="<%= f.object.warehouse_exclusive_choice_group(feature) %>" <%= 'checked' if checked %>>
         <span title="<%= feature %>"><%= feature %></span>
       </label>
     <% end %>

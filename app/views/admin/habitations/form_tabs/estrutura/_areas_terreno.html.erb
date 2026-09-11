@@ -1,8 +1,15 @@
 <%
-  profile = f.object.registration_profile.presence || Habitation.registration_profile_for(tipo: f.object.tipo, categoria: f.object.categoria)
-  land_fields = profile.in?(%w[terrenos imoveis_residenciais empreendimento]) || f.object.categoria.to_s.match?(/galp|industrial/i)
+  profile = f.object.registration_group
+  land_fields = profile.in?(%w[terrenos empreendimento]) ||
+    (profile == "imoveis_residenciais" && !f.object.property_kind_apartment_unit?) ||
+    f.object.categoria.to_s.match?(/galp|industrial/i)
 %>
 <%= ax_field_grid do %>
+  <% if profile == "comerciais_industriais" || f.object.area_util_m2.present? %>
+  <div class="ax-span-2" data-existing-built-area>
+    <%= ax_measure_field(form: f, method: :area_util_m2, label: Habitation::CategoryDetails::WAREHOUSE_CATEGORIES.include?(f.object.categoria) ? "Área construída" : "Área útil", unit: "m²") %>
+  </div>
+  <% end %>
   <% if profile != "terrenos" || f.object.area_privativa_m2.present? %>
   <div class="ax-span-2">
     <%= ax_measure_field(form: f, method: :area_privativa_m2, label: "Área privativa", unit: "m²") %>
@@ -11,23 +18,23 @@
   <div class="ax-span-2">
     <%= ax_measure_field(form: f, method: :area_total_m2, label: "Área total", unit: "m²") %>
   </div>
-  <% if land_fields || f.object.area_terreno_m2.present? %>
-  <div class="ax-span-2">
+  <% if land_fields || profile == "imoveis_residenciais" || f.object.area_terreno_m2.present? %>
+  <div class="ax-span-2" data-residential-land-field="area_terreno_m2">
     <%= ax_measure_field(form: f, method: :area_terreno_m2, label: "Área terreno", unit: "m²") %>
   </div>
   <% end %>
-  <% if land_fields || f.object.dimensoes_terreno.present? %>
-  <div class="ax-span-2">
+  <% if land_fields || profile == "imoveis_residenciais" || f.object.dimensoes_terreno.present? %>
+  <div class="ax-span-2" data-residential-land-field="dimensoes_terreno">
     <%= ax_text_field(form: f, method: :dimensoes_terreno, label: "Dimensões terreno", placeholder: "Ex: 12x30") %>
   </div>
   <% end %>
-  <% if land_fields || f.object.topografia.present? %>
-  <div class="ax-span-2">
+  <% if land_fields || profile == "imoveis_residenciais" || f.object.topografia.present? %>
+  <div class="ax-span-2" data-residential-land-field="topografia">
     <%= ax_select_field(
           form: f,
           method: :topografia,
           label: "Topografia",
-          choices: Habitation::TOPOGRAFIA_OPTIONS,
+          choices: (Habitation::TOPOGRAFIA_OPTIONS + [f.object.topografia]).compact_blank.uniq,
           select_options: { include_blank: true },
           html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
         ) %>

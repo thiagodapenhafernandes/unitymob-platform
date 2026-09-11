@@ -3,9 +3,7 @@
   cadastro_categories = cadastro_profiles.transform_values { |config| config.fetch(:categories) }
   cadastro_tipo_by_type = cadastro_profiles.transform_values { |config| config.fetch(:tipo) }
   cadastro_type_labels = cadastro_profiles.transform_values { |config| config.fetch(:label) }
-  inferred_cadastro_type =
-    habitation.registration_profile.presence ||
-    Habitation.registration_profile_for(tipo: habitation.tipo, categoria: habitation.categoria)
+  inferred_cadastro_type = habitation.registration_group
   show_development_context = habitation.codigo_empreendimento.present? || habitation.proprietor_id.present? || habitation.tipo == "Empreendimento"
   cadastro_reference_at = habitation.data_cadastro_crm
   updated_reference_at = [habitation.data_atualizacao_crm, habitation.updated_at].compact.max
@@ -62,7 +60,7 @@
     attribute = error.attribute.to_s
 
     tab_key =
-      if attribute.start_with?("address.")
+      if attribute.start_with?("address.") || (Habitation::CategoryDetails::DETAIL_FIELDS.keys + Habitation::CategoryDetails::LAND_MEASURES).include?(attribute.to_sym)
         :general
       elsif %w[
         codigo codigo_dwv categoria status situacao ocupacao_status estado_conservacao tipo
@@ -117,6 +115,11 @@
         :other
       end
 
+    tab_key = :infra if tab_key == :features && inferred_cadastro_type == "empreendimento"
+    if Habitation::CategoryDetails::COMMERCIAL_UNIT_CATEGORIES.include?(habitation.categoria)
+      tab_key = :general if attribute == "andares_qtd"
+      tab_key = :features if attribute == "infra_estrutura"
+    end
     grouped_errors[tab_key] << error.full_message
   end
 
@@ -139,6 +142,8 @@
      data-attribute-manager-modal-id-value="attributeManagerModal"
      data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"
      data-habitation-form-tipo-by-type-value="<%= json_escape(cadastro_tipo_by_type.to_json) %>"
+     data-habitation-form-legacy-category-fields-value="<%= json_escape((Habitation::CategoryDetails::RESIDENTIAL_COUNTS + Habitation::CategoryDetails::UNIT_FIELDS).filter_map { |name| [name, { value: habitation[name], label: Habitation.human_attribute_name(name) }] if habitation[name].present? && habitation[name].to_s != "0" }.to_h.to_json) %>"
+     data-habitation-form-detail-fields-value="<%= json_escape(Habitation::CategoryDetails::DETAIL_FIELDS.to_json) %>"
      data-habitation-form-new-record-value="<%= habitation.new_record? %>"
      data-habitation-form-developments-value="<%= json_escape(development_lookup.to_json) %>"
      data-habitation-form-error-fields-value="<%= json_escape(habitation.errors.attribute_names.map(&:to_s).uniq.to_json) %>"
@@ -152,6 +157,7 @@
   <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
   <%= hidden_field_tag :source_habitation_id, source_habitation.id if source_habitation.present? %>
   <%= hidden_field_tag :intake_mode, "paper" if habitation.new_record? && habitation.broker_intake? %>
+  <%= f.hidden_field :confirm_category_change, value: habitation.confirm_category_change %>
   <%= f.hidden_field :registration_profile, value: (habitation.registration_profile.presence || inferred_cadastro_type) %>
 
   <% direct_new_record = habitation.new_record? && !habitation.broker_intake? %>

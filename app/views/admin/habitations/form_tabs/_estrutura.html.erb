@@ -5,13 +5,16 @@
     <% standard_feature_options = habitation&.standard_feature_options.to_a %>
     <% show_internal_features = profile != "terrenos" || standard_feature_options.any? %>
 
+    <div data-category-public-text>
     <%= render "admin/habitations/form_tabs/shared/texto_publico",
                f: f,
                can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
+    </div>
     <% if show_internal_features %>
       <%= render "admin/habitations/form_tabs/estrutura/caracteristicas_internas",
                  f: f,
                  standard_feature_options: standard_feature_options %>
     <% end %>
+    <div data-category-infrastructure-destination></div>
   </div>
 </div>
