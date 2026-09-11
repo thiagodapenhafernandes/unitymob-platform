@@ -232,13 +232,15 @@ module Whatsapp
     end
 
     def handle_status(status)
+      state = status["status"].to_s
+      return unless WhatsappMessage::STATUSES.include?(state)
+
+      update_lead_notification_status(status, state)
+
       message = tenant.whatsapp_messages.find_by(wa_message_id: status["id"])
       return unless message
 
       backfill_conversation_phone(message.whatsapp_conversation, status["recipient_id"])
-
-      state = status["status"].to_s
-      return unless WhatsappMessage::STATUSES.include?(state)
 
       attrs = message_status_attrs(message, state, status)
       return if attrs.blank?
@@ -251,7 +253,7 @@ module Whatsapp
       campaign_message = tenant.whatsapp_campaign_messages.find_by(external_message_id: status["id"])
       return unless campaign_message
 
-      occurred_at = status["timestamp"].present? ? Time.zone.at(status["timestamp"].to_i) : Time.current
+      occurred_at = status_timestamp(status) || Time.current
       case state
       when "sent"
         campaign_message.mark_accepted_by_meta!(
@@ -266,6 +268,47 @@ module Whatsapp
       when "failed"
         campaign_message.mark_failed!(attrs[:error_message].presence || "Falha informada pela Meta")
       end
+    end
+
+    def update_lead_notification_status(status, state)
+      message_id = status["id"].presence
+      return false if message_id.blank?
+
+      occurred_at = status_timestamp(status) || Time.current
+      timestamp_key = "whatsapp_#{state}_at"
+      error_message = Whatsapp::SendFailureClassifier.message_from_status_error(status.dig("errors", 0)) if state == "failed"
+      updated = false
+
+      lead_notification_activities_for_message(message_id).find_each do |activity|
+        meta = activity.metadata.to_h
+        current = meta["whatsapp_status"].to_s
+        current_rank = MESSAGE_STATUS_PROGRESS.fetch(current, -1)
+        next_rank = MESSAGE_STATUS_PROGRESS.fetch(state, -1)
+
+        meta[timestamp_key] ||= occurred_at.iso8601
+        if state == "failed"
+          next if current_rank >= MESSAGE_STATUS_PROGRESS.fetch("delivered")
+
+          meta["whatsapp_status"] = state
+          meta["whatsapp_error"] = error_message if error_message.present?
+        elsif next_rank >= current_rank
+          meta["whatsapp_status"] = state
+          meta.delete("whatsapp_error")
+        end
+
+        activity.update_columns(metadata: meta, updated_at: Time.current)
+        updated = true
+      end
+
+      updated
+    end
+
+    def lead_notification_activities_for_message(message_id)
+      LeadActivity.joins(:lead)
+        .where(leads: { tenant_id: tenant.id })
+        .where(kind: "notification_sent")
+        .where("lead_activities.metadata ->> 'channel' = ?", "whatsapp")
+        .where("lead_activities.metadata ->> 'message_id' = ?", message_id)
     end
 
     def message_status_attrs(message, state, status)
@@ -507,6 +550,9 @@ module Whatsapp
 
         campaign_message_tenant = unique_tenant_from_relation(WhatsappCampaignMessage.where(external_message_id: message_ids))
         return campaign_message_tenant if campaign_message_tenant
+
+        notification_tenant = unique_tenant_from_lead_notifications(message_ids)
+        return notification_tenant if notification_tenant
       end
 
       template_id = value["message_template_id"].presence&.to_s
@@ -515,6 +561,19 @@ module Whatsapp
         return template_tenant if template_tenant
       end
 
+      nil
+    end
+
+    def unique_tenant_from_lead_notifications(message_ids)
+      relation = LeadActivity.joins(:lead)
+        .where(kind: "notification_sent")
+        .where("lead_activities.metadata ->> 'channel' = ?", "whatsapp")
+        .where("lead_activities.metadata ->> 'message_id' IN (?)", message_ids)
+
+      tenant_ids = relation.distinct.limit(2).pluck("leads.tenant_id")
+      return Tenant.find_by(id: tenant_ids.first) if tenant_ids.one?
+
+      @tenant_resolution_ambiguous = true if tenant_ids.many?
       nil
     end
 

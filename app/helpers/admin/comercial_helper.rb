@@ -70,7 +70,11 @@ module Admin::ComercialHelper
       base = base.merge(icon: conv[:icon], color: conv[:color], label: label)
     end
     detail = timeline_detail(activity, detailed: detailed)
-    base.merge(detail: detail, at: activity.created_at)
+    base.merge(
+      detail: detail,
+      at: activity.created_at,
+      whatsapp_status_events: notification_whatsapp_status_events(activity)
+    )
   end
 
   def lead_timeline_event_visible?(activity, detailed: true)
@@ -531,6 +535,36 @@ module Admin::ComercialHelper
     target_name = meta["admin_user_name"].presence
     target = target_name.present? ? "para #{target_name}" : nil
     [channel, transport, target, status_detail].compact.join(" · ")
+  end
+
+  def notification_whatsapp_status_events(activity)
+    return [] unless activity.respond_to?(:kind) && activity.kind.to_s == "notification_sent"
+
+    meta = activity.metadata.to_h
+    return [] unless meta["channel"].to_s == "whatsapp" && meta["message_id"].present?
+
+    events = [["Aceito pela Meta", activity.created_at, nil]]
+    {
+      "whatsapp_sent_at" => "Enviado pelo WhatsApp",
+      "whatsapp_delivered_at" => "Entregue no WhatsApp",
+      "whatsapp_read_at" => "Lido no WhatsApp",
+      "whatsapp_failed_at" => "Falhou no WhatsApp"
+    }.each do |key, label|
+      occurred_at = notification_whatsapp_time(meta[key])
+      next unless occurred_at
+
+      events << [label, occurred_at, (meta["whatsapp_error"] if key == "whatsapp_failed_at")]
+    end
+    events
+  end
+
+  def notification_whatsapp_time(value)
+    return value if value.respond_to?(:to_time)
+    return if value.blank?
+
+    Time.zone.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def push_delivery_timeline_entry(event, detailed: true)

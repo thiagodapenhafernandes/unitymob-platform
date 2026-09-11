@@ -1291,6 +1291,37 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(timeline.text).to include("confirmação 201")
     end
 
+    it "mostra rastreio WhatsApp do aviso ao corretor com data e horario" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead WhatsApp", status: "Em Atendimento")
+      LeadActivity.create!(
+        lead: lead,
+        kind: "notification_sent",
+        created_at: Time.zone.parse("2026-09-11 08:00"),
+        updated_at: Time.zone.parse("2026-09-11 08:00"),
+        metadata: {
+          channel: "whatsapp",
+          transport: "tenant",
+          admin_user_name: admin.name,
+          message_id: "wamid.TRACK",
+          whatsapp_status: "read",
+          whatsapp_sent_at: Time.zone.parse("2026-09-11 08:01").iso8601,
+          whatsapp_delivered_at: Time.zone.parse("2026-09-11 08:02").iso8601,
+          whatsapp_read_at: Time.zone.parse("2026-09-11 08:03").iso8601
+        }
+      )
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      timeline = Nokogiri::HTML(response.body).at_css("#leadTimelineSection")
+
+      expect(timeline.text).to include("WhatsApp · pela conta · para #{admin.name}")
+      expect(timeline.text).to include("Aceito pela Meta: 11/09/2026 08:00")
+      expect(timeline.text).to include("Enviado pelo WhatsApp: 11/09/2026 08:01")
+      expect(timeline.text).to include("Entregue no WhatsApp: 11/09/2026 08:02")
+      expect(timeline.text).to include("Lido no WhatsApp: 11/09/2026 08:03")
+    end
+
     it "mostra redistribuicao de forma resumida para o usuario comum" do
       first_broker = create(:admin_user, tenant: admin.tenant, name: "Primeiro Corretor")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Redistribuido", phone: "11999990003", status: "Em Atendimento")
