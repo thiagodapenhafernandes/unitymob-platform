@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Unitymob para WhatsApp",
+  "version": "0.4.13",
+  "minimum_chrome_version": "116",
+  "description": "Consulte e crie leads, registre notas e agende tarefas durante o atendimento no WhatsApp Web.",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "scripting",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://anpohhipfkehheinckhpgbphcibifocm.chromiumapp.org/*",
+    "https://webhooks.unitymob.com.br/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Abrir Unitymob",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none';"
+  }
+}
