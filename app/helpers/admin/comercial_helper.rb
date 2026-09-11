@@ -559,8 +559,8 @@ module Admin::ComercialHelper
   end
 
   def notification_whatsapp_time(value)
-    return value if value.respond_to?(:to_time)
     return if value.blank?
+    return value if value.is_a?(Time) || value.is_a?(Date) || value.is_a?(DateTime)
 
     Time.zone.parse(value.to_s)
   rescue ArgumentError, TypeError
