@@ -32,8 +32,19 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.status).to eq("Aluguel")
     end
 
-    it "normalizes operational publication status using the current commercial price" do
-      habitation = build(:habitation, status: "Liberar site", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
+    it "keeps an explicit sale or rental status even when both prices are present" do
+      sale = build(:habitation, status: "Venda", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
+      rental = build(:habitation, status: "Aluguel", valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
+
+      sale.validate
+      rental.validate
+
+      expect(sale.status).to eq("Venda")
+      expect(rental.status).to eq("Aluguel")
+    end
+
+    it "infers the status from prices only when the status is blank" do
+      habitation = build(:habitation, status: nil, valor_venda_cents: 900_000_00, valor_locacao_cents: 4_925_00)
 
       habitation.validate
 

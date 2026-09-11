@@ -322,6 +322,14 @@ class Habitation < ApplicationRecord
     valor_venda_cents.to_i.positive? && valor_locacao_cents.to_i.positive?
   end
 
+  def self.status_from_prices(valor_venda_cents, valor_locacao_cents)
+    return "Venda e Aluguel" if dual_sale_rent_prices?(valor_venda_cents, valor_locacao_cents)
+    return "Aluguel" if valor_locacao_cents.to_i.positive?
+    return "Venda" if valor_venda_cents.to_i.positive?
+
+    nil
+  end
+
   def self.standalone_category_without_development_name?(category)
     STANDALONE_CATEGORIES_WITHOUT_DEVELOPMENT_NAME.include?(category.to_s.parameterize)
   end
@@ -2697,11 +2705,11 @@ class Habitation < ApplicationRecord
   end
 
   def normalize_commercial_status
-    self.status = self.class.normalize_status(
-      status,
-      valor_venda_cents: valor_venda_cents,
-      valor_locacao_cents: valor_locacao_cents
-    )
+    self.status = if status.present?
+      self.class.normalize_status(status)
+    else
+      self.class.status_from_prices(valor_venda_cents, valor_locacao_cents)
+    end
   end
 
   def inactive_commercial_status_details_required

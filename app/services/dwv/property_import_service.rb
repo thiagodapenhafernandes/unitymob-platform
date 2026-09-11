@@ -200,6 +200,7 @@ module Dwv
         habitation.assign_attributes(
           codigo_dwv: dwv_id,
           imovel_dwv: "Sim",
+          status: existing_record_dwv_status(habitation.status, effective_sale, effective_rent),
           valor_venda_cents: effective_sale,
           valor_locacao_cents: effective_rent,
           data_atualizacao_crm: parse_time(value(["last_updated_at"], ["updated_at"])) || Time.current,
@@ -457,11 +458,14 @@ module Dwv
     end
 
     def infer_status_from_prices(sale_cents, rent_cents)
-      return "Venda e Aluguel" if sale_cents.to_i.positive? && rent_cents.to_i.positive?
-      return "Venda" if sale_cents.to_i.positive?
-      return "Aluguel" if rent_cents.to_i.positive?
+      Habitation.status_from_prices(sale_cents, rent_cents)
+    end
 
-      nil
+    def existing_record_dwv_status(current_status, sale_cents, rent_cents)
+      normalized_current = Habitation.normalize_status(current_status)
+      return normalized_current if normalized_current.to_s.match?(Regexp.new(Habitation::INACTIVE_COMMERCIAL_STATUS_REGEX))
+
+      infer_status_from_prices(sale_cents, rent_cents) || normalized_current || current_status
     end
 
     def derive_dwv_status(raw_status:, raw_integration_status:, raw_deleted:, sale_cents:, rent_cents:, current_status:)
