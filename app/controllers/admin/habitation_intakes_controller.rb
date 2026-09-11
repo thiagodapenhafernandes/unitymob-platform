@@ -1274,8 +1274,8 @@ module Admin
       attrs["situacao"] = attrs.delete("situacao_imovel") if attrs["situacao_imovel"].present?
       normalize_intake_feature_fields!(attrs)
       normalize_intake_visit_fields!(attrs)
-      attrs["caracteristicas"] = attrs.delete("caracteristicas_imovel") if attrs["caracteristicas_imovel"].present?
-      attrs["infra_estrutura"] = attrs.delete("caracteristicas_predio") if attrs["caracteristicas_predio"].present?
+      attrs["caracteristicas"] = attrs.delete("caracteristicas_imovel") if attrs.key?("caracteristicas_imovel")
+      attrs["infra_estrutura"] = attrs.delete("caracteristicas_predio") if attrs.key?("caracteristicas_predio")
       attrs["aceita_permuta_answer"] = Array(attrs.delete("aceita_permuta")).include?("Sim") ? "sim" : "nao" if attrs.key?("aceita_permuta")
       attrs["aceita_parcelamento_flag"] = ActiveModel::Type::Boolean.new.cast(attrs["aceita_parcelamento_flag"]) if attrs.key?("aceita_parcelamento_flag")
       if attrs["aceita_parcelamento"].present?
@@ -1310,8 +1310,8 @@ module Admin
     end
 
     def normalize_intake_feature_fields!(attrs)
-      features = Array(attrs["caracteristicas_imovel"].presence || @habitation.caracteristicas).compact_blank
-      touched = false
+      touched = attrs.key?("caracteristicas_imovel")
+      features = touched ? Array(attrs["caracteristicas_imovel"]).compact_blank : @habitation.caracteristicas_imovel
       {
         "sacada" => "Sacada",
         "terraco" => "Terraço",
@@ -1325,7 +1325,7 @@ module Admin
         features = features.reject { |feature| feature.to_s.casecmp?(label) }
         features << label if enabled
       end
-      attrs["caracteristicas_imovel"] = features if touched || features.present?
+      attrs["caracteristicas_imovel"] = features if touched
     end
 
     def normalize_intake_proprietor_fields!(attrs)
@@ -1401,6 +1401,10 @@ module Admin
       current_categoria = attrs["categoria"].presence || @habitation&.categoria
       return unless current_tipo.to_s == "Empreendimento" || current_categoria.to_s == "Empreendimento"
 
+      return unless current_tenant.habitations.empreendimentos.where(codigo: attrs["codigo_empreendimento"]).where.not(id: @habitation.id).exists?
+
+      @habitation.intake_unit_conversion = true
+      attrs["registration_profile"] = "imoveis_residenciais"
       attrs["tipo"] = "Unitário"
       attrs["categoria"] = "Apartamento"
     end

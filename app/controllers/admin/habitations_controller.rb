@@ -590,6 +590,7 @@ class Admin::HabitationsController < Admin::BaseController
     new_photo_uploads = extract_photo_uploads!(permitted_attributes)
     new_document_uploads = extract_document_uploads!(permitted_attributes)
     @habitation = current_tenant.habitations.new(permitted_attributes)
+    @habitation.category_form_submission = true
     @habitation.skip_auto_audit = true
     prepare_admin_paper_intake(@habitation) if admin_paper_intake_form?
     apply_picture_removals_to_memory(@habitation)
@@ -725,6 +726,8 @@ class Admin::HabitationsController < Admin::BaseController
     new_photo_uploads = extract_photo_uploads!(permitted_attributes)
     new_document_uploads = extract_document_uploads!(permitted_attributes)
     @habitation.assign_attributes(permitted_attributes)
+    @habitation.category_form_submission = true
+    @habitation.category_transition_locked_fields = Habitations::FieldLockPolicy.for(current_admin_user).locked_keys.to_a
     touch_manual_habitation_update!(@habitation, force: new_photo_uploads.present? || new_document_uploads.present?)
     apply_picture_removals_to_memory(@habitation)
     keep_admin_review_intake_hidden
@@ -821,8 +824,10 @@ class Admin::HabitationsController < Admin::BaseController
       return redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Configure o token da OpenAI em Integrações > IA antes de gerar a sugestão."
     end
 
-    suggestion = Ai::PropertyContentService.new(@habitation, admin_user: current_admin_user).generate_suggestion!
-    return render_ai_content_preview(suggestion: suggestion, message: "Sugestão gerada e carregada nos campos para revisão.", message_type: "success") if turbo_frame_request?
+    context_attributes = params[:habitation].present? ? habitation_params.to_h.slice(*Habitation.column_names) : {}
+    context_attributes.except!("id", "tenant_id", "created_at", "updated_at")
+    suggestion = Ai::PropertyContentService.new(@habitation, admin_user: current_admin_user, context_attributes: context_attributes).generate_suggestion!
+    return render_ai_content_preview(suggestion: suggestion, message: "Sugestão gerada para revisão. Aplique ao formulário e salve para confirmar.", message_type: "success") if turbo_frame_request?
 
     redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Sugestão com IA gerada para revisão."
   rescue => e
@@ -853,11 +858,9 @@ class Admin::HabitationsController < Admin::BaseController
 
   def apply_ai_suggestion
     suggestion = @habitation.ai_property_suggestions.pending.find(params[:suggestion_id])
-    Ai::PropertyContentService.new(@habitation, admin_user: current_admin_user).apply!(suggestion)
+    return render_ai_content_preview(suggestion: suggestion, message: "Revise a prévia e aplique ao formulário. Salve o cadastro para confirmar.", message_type: "success") if turbo_frame_request?
 
-    return render_ai_content_preview(suggestion: nil, message: "Sugestão aplicada ao título, descrição e SEO do imóvel.", message_type: "success") if turbo_frame_request?
-
-    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Sugestão aplicada ao título, descrição e SEO do imóvel."
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Revise a prévia e aplique ao formulário antes de salvar."
   rescue ActiveRecord::RecordNotFound
     return render_ai_content_preview(message: "Sugestão não encontrada ou já aplicada.", message_type: "warning") if turbo_frame_request?
 
@@ -1522,8 +1525,13 @@ class Admin::HabitationsController < Admin::BaseController
     # Catálogo: o corretor também pode navegar todos os imóveis (curadoria), então
     # "all" é permitido para todos. O default é "all" para quem tem escopo total e
     # "mine" para os demais. Dados sensíveis por imóvel seguem gateados à parte.
-    @ownership_scope = params[:ownership].presence_in(%w[mine all]) ||
-                       (owns_all_resource?(:imoveis) ? "all" : "mine")
+    @ownership_scope =
+      if broker_catalog_user? && direct_catalog_search?
+        "all"
+      else
+        params[:ownership].presence_in(%w[mine all]) ||
+          (owns_all_resource?(:imoveis) ? "all" : "mine")
+      end
     @ownership_scope = "all" if @corretor_id.present?
     @intake_review = params[:intake_review].presence_in(INTAKE_REVIEW_LABELS.keys)
     @captacao_inicio = params[:captacao_inicio]
@@ -1561,6 +1569,10 @@ class Admin::HabitationsController < Admin::BaseController
       @atualizacao_inicio = nil
       @atualizacao_fim = nil
     end
+  end
+
+  def direct_catalog_search?
+    params[:q].to_s.squish.present? || params[:codigo].to_s.squish.present?
   end
 
   def filtered_habitations_scope
@@ -2472,7 +2484,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def normalize_registration_profile_selection!(attributes)
-    profile = attributes[:registration_profile].to_s.presence_in(Habitation::REGISTRATION_PROFILE_KEYS)
+    profile = Habitation.normalize_registration_profile(attributes[:registration_profile]).presence_in(Habitation::REGISTRATION_PROFILE_KEYS)
 
     if profile.blank?
       attributes.delete(:registration_profile)
@@ -2481,11 +2493,18 @@ class Admin::HabitationsController < Admin::BaseController
 
     config = Habitation::REGISTRATION_PROFILES.fetch(profile)
     categories = config.fetch(:categories)
-    attributes[:categoria] = Habitation.normalize_registration_category(attributes[:categoria])
+    attributes[:categoria] = Habitation.normalize_registration_category(attributes.fetch(:categoria, @habitation&.categoria))
 
-    attributes[:registration_profile] = profile
+    # Mantém a chave armazenada dos imóveis antigos; a interface usa o grupo atual.
+    attributes[:registration_profile] = if @habitation&.persisted? && @habitation.registration_group == profile
+      @habitation.registration_profile.presence || profile
+    else
+      profile
+    end
     attributes[:tipo] = config.fetch(:tipo)
-    attributes[:categoria] = categories.first unless attributes[:categoria].to_s.in?(categories)
+    unchanged_legacy_category = @habitation&.persisted? && @habitation.registration_group == profile &&
+      attributes[:categoria] == Habitation.normalize_registration_category(@habitation.categoria)
+    attributes[:categoria] = categories.first unless attributes[:categoria].to_s.in?(categories) || unchanged_legacy_category
     attributes
   end
 
@@ -2847,7 +2866,7 @@ class Admin::HabitationsController < Admin::BaseController
       request: request,
       source: habitation_audit_source(habitation),
       before_snapshot: before_snapshot,
-      ignored_fields: Habitations::AuditChangeRecorder::ADMIN_NOISE_FIELDS
+      ignored_fields: Habitations::AuditChangeRecorder::ADMIN_NOISE_FIELDS - (habitation.saved_change_to_categoria? ? ["tipo_vaga"] : [])
     ).record_update!
   end
 
@@ -3048,7 +3067,8 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def permitted_habitation_fields
-    [
+    [*Habitation::CategoryDetails::DETAIL_FIELDS.keys, :confirm_category_change, :frente_terreno_m, :fundo_terreno_m, :quadra,
+
       :slug, :registration_profile, :categoria, :status, :situacao, :tipo, :codigo_empreendimento,
       :nome_empreendimento,
       :dormitorios_qtd, :suites_qtd, :salas_qtd, :varandas_qtd, :banheiros_qtd, :hidromassagem_qtd, :vagas_qtd, :elevadores_qtd, 

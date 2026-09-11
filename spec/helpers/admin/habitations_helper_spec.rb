@@ -68,6 +68,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
         bairro: "Centro",
         bairro_comercial: "Meia Praia",
         nome_empreendimento: "Residencial Atlântico",
+        status: "Aluguel",
         titulo_anuncio: "Apartamento aluguel anual 3 suítes"
       )
 
@@ -81,6 +82,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
         bairro: "Centro",
         bairro_comercial: nil,
         nome_empreendimento: nil,
+        status: "Aluguel",
         titulo_anuncio: "Apartamento aluguel anual"
       )
 
@@ -120,6 +122,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
         bairro: nil,
         bairro_comercial: nil,
         nome_empreendimento: nil,
+        status: "Aluguel",
         titulo_anuncio: "Apartamento aluguel anual"
       )
       habitation.address.bairro = nil

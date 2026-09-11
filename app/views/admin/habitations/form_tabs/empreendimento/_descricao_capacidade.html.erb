@@ -13,7 +13,7 @@
     </div>
     <div class="ax-span-5">
       <%= ax_field_grid(class_name: "ax-field-grid--nested") do %>
-        <div class="ax-span-4">
+        <div class="ax-span-4" data-category-floors>
           <%= ax_number_field(form: f, method: :andares_qtd, label: "Nº andares", min: 0, data: { habitation_form_target: "buildingFloors" }) %>
         </div>
         <div class="ax-span-4">

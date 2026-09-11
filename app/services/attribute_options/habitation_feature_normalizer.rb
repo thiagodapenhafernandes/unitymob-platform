@@ -23,6 +23,8 @@ module AttributeOptions
       "banho social" => "Banheiro social",
       "bar" => "Bar",
       "bicicletario" => "Bicicletário",
+      "barracao simples" => "Barracão Simples de Madeira",
+      "barracao simples de madeira" => "Barracão Simples de Madeira",
       "canaletas no rodape" => "Canaletas no rodapé",
       "churrasqueira" => "Churrasqueira",
       "churrasqueira a carvao" => "Churrasqueira a carvão",
@@ -52,6 +54,16 @@ module AttributeOptions
       "forro" => "Forro",
       "frente mar" => "Frente mar",
       "garden" => "Garden",
+      "galpao autoportante" => "Galpão Autoportantes",
+      "galpao autoportantes" => "Galpão Autoportantes",
+      "galpao cross docking" => "Galpão Cross-Docking",
+      "galpao de alvenaria tradicional" => "Galpão de Alvenaria Tradicional",
+      "galpao de estrutura metalica" => "Galpão de Estrutura Metálica com Telhas de Zinco",
+      "galpao de estrutura metalica com telhas de zinco" => "Galpão de Estrutura Metálica com Telhas de Zinco",
+      "galpao logistico industrial em condominio" => "Galpão Logístico/Industrial em Condomínio",
+      "galpao lonado ou sanfonado" => "Galpão Lonado (ou Sanfonado)",
+      "galpao lonado sanfonado" => "Galpão Lonado (ou Sanfonado)",
+      "galpao pre moldado comum" => "Galpão Pré-moldado Comum",
       "gas central" => "Gás central",
       "gradeado" => "Gradeado",
       "hall entrada" => "Hall de entrada",
@@ -115,7 +127,10 @@ module AttributeOptions
       "aquecimento central" => "Aquecimento central",
       "box de praia" => "Box de praia",
       "brinquedoteca" => "Brinquedoteca",
+      "cabine primaria" => "Disponibilidade de cabine primária",
       "churrasqueira condominio" => "Churrasqueira condomínio",
+      "cobertura com previsao fotovoltaica" => "Cobertura com previsão para Placas Fotovoltaicas",
+      "cobertura com previsao para placas fotovoltaicas" => "Cobertura com previsão para Placas Fotovoltaicas",
       "circuito fechado t v" => "Circuito fechado TV",
       "circuito fechado tv" => "Circuito fechado TV",
       "circuito interno tv" => "Circuito interno TV",
@@ -131,6 +146,8 @@ module AttributeOptions
       "estacionamento" => "Estacionamento",
       "estacionamento visitantes" => "Estacionamento visitantes",
       "gerador energia" => "Gerador de energia",
+      "gerador diesel" => "Gerador a Diesel",
+      "gerador a diesel" => "Gerador a Diesel",
       "guarita" => "Guarita",
       "heliponto" => "Heliponto",
       "interfone" => "Interfone",
@@ -140,6 +157,7 @@ module AttributeOptions
       "pilotis" => "Pilotis",
       "piscina aquecida" => "Piscina aquecida",
       "piscina infantil" => "Piscina infantil",
+      "placas fotovoltaicas" => "Cobertura com previsão para Placas Fotovoltaicas",
       "playground" => "Playground",
       "poco artesiano" => "Poço artesiano",
       "portaria" => "Portaria",
@@ -178,6 +196,8 @@ module AttributeOptions
     end
 
     def key(value)
+      return "classe a plus" if value.to_s.strip.match?(/\Aclasse\s+a\+\z/i)
+
       I18n.transliterate(value.to_s.tr("_", " "))
           .downcase
           .gsub(/[^a-z0-9]+/, " ")

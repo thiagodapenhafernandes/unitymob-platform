@@ -269,13 +269,41 @@ module Admin::HabitationsHelper
 
   def habitation_feature_options(habitation, category:, catalog:)
     selected = category == "feature" ? habitation.property_features_for_display : habitation.leisure_features_for_display
+    standard = habitation.category_checklist_options(category)
+    unless standard.nil?
+      normalizer = AttributeOptions::HabitationFeatureNormalizer
+      known = habitation.category_known_checklist_options + normalizer::FEATURE_LABELS.values + normalizer::INFRASTRUCTURE_LABELS.values
+      custom = normalizer.normalize_list(catalog, category: category) - normalizer.normalize_list(known, category: category)
+      return (standard + custom + selected).compact_blank.uniq.sort_by { |value| I18n.transliterate(value.to_s).downcase }
+    end
     standard = category == "feature" ? habitation.standard_feature_options : habitation.standard_infrastructure_options
     known_labels = AttributeOptions::HabitationFeatureNormalizer::INFRASTRUCTURE_LABELS.values +
       Habitation::CORPORATE_FEATURE_OPTIONS + Habitation::CORPORATE_INFRASTRUCTURE_OPTIONS +
       Habitation::COMMERCIAL_FEATURE_OPTIONS + Habitation::COMMERCIAL_INFRASTRUCTURE_OPTIONS +
       Habitation::LAND_FEATURE_OPTIONS + Habitation::LAND_INFRASTRUCTURE_OPTIONS
-    options = standard.present? ? standard + (Array(catalog) - known_labels) : Array(catalog)
-    (options + selected).compact_blank.uniq.sort_by { |value| I18n.transliterate(value.to_s).downcase }
+    options = standard.present? && habitation.registration_group != "imoveis_residenciais" ? standard + (Array(catalog) - known_labels) : standard + Array(catalog)
+    AttributeOptions::HabitationFeatureNormalizer.normalize_list(options + selected, category: category).sort_by { |value| I18n.transliterate(value.to_s).downcase }
+  end
+
+  def habitation_category_checklist(habitation, kind, catalog)
+    categories = Habitation::REGISTRATION_PROFILES.dig(habitation.registration_group, :categories) || [habitation.categoria]
+    options = categories.to_h do |category|
+      candidate = Habitation.new(categoria: category, registration_profile: habitation.registration_group)
+      [category, habitation_feature_options(candidate, category: kind, catalog: catalog)]
+    end
+    selected = kind == "feature" ? habitation.property_features_for_display : habitation.leisure_features_for_display
+    if kind == "infrastructure"
+      inherited = Array(@developments).flat_map(&:caracteristicas_predio)
+      options.each_value { |values| values.concat(inherited).uniq! }
+    end
+    categories.each do |category|
+      candidate = Habitation.new(categoria: category, registration_profile: habitation.registration_group)
+      if candidate.category_checklist_options(kind) == habitation.category_checklist_options(kind)
+        options[category].concat(selected).uniq!
+      end
+    end
+    selected.each { |value| (options[habitation.categoria] ||= []) << value }
+    options
   end
 
   def admin_habitation_editor_tab_missing_counts(habitation, property_setting: nil)

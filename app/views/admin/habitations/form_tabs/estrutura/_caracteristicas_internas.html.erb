@@ -13,14 +13,18 @@
 <% end %>
 
 <%= ax_form_section(title: "Características internas", eyebrow: "Checklist", icon: "stars", actions: feature_actions) do %>
-  <% current_chars = f.object.caracteristicas.is_a?(Hash) ? f.object.caracteristicas.keys : Array(f.object.caracteristicas) %>
+  <% current_chars = f.object.caracteristicas_imovel %>
   <% standard_feature_options = local_assigns[:standard_feature_options].presence || f.object.standard_feature_options %>
-  <% internal_feature_options = habitation_feature_options(f.object, category: "feature", catalog: @internal_features) %>
+  <% category_options = habitation_category_checklist(f.object, "feature", @internal_features) %>
+  <% warehouse_type_values = AttributeOptions::HabitationFeatureNormalizer.normalize_list(Habitation::CategoryDetails::WAREHOUSE_TYPE_CHOICE_VALUES) %>
+  <% category_options = category_options.transform_values { |values| values - warehouse_type_values } %>
+  <% internal_feature_options = category_options.values.flatten.uniq.sort %>
+  <%= hidden_field_tag "habitation[caracteristicas][]", "" %>
   <%= ax_chip_grid(id: "features-checkbox-list", class_name: "ax-chip-grid--columns") do %>
     <% internal_feature_options.each do |feature| %>
       <% checked = current_chars.include?(feature) %>
-      <label class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
-        <input type="checkbox" name="habitation[caracteristicas][]" value="<%= feature %>" <%= 'checked' if checked %>>
+      <label data-category-options="<%= json_escape(category_options.select { |_, values| values.include?(feature) }.keys.to_json) %>" class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
+        <input type="checkbox" name="habitation[caracteristicas][]" value="<%= feature %>" data-exclusive-choice-group="<%= f.object.warehouse_exclusive_choice_group(feature) %>" <%= 'checked' if checked %>>
         <span title="<%= feature %>"><%= feature %></span>
       </label>
     <% end %>

@@ -133,4 +133,17 @@ RSpec.describe Habitations::Duplicator do
     expect(duplicate.photos.attachments.size).to eq(1)
     expect(duplicate.autorizacoes_venda.attachments).to be_empty
   end
+  it "copia os detalhes novos junto com os campos antigos sem outro armazenamento para seleções" do
+    ["Galpão", "Terreno"].each do |category|
+      fields = Habitation::CategoryDetails::DETAIL_FIELDS.select { |_, config| (config[:group] == :warehouse) == (category == "Galpão") }
+      details = fields.transform_values { |config| config[:measure] || config[:count] ? 12 : "Complemento" }
+      source = create(:habitation, tenant: tenant, categoria: category, **details,
+        caracteristicas: category == "Galpão" ? ["Outra operação", "Classe A+", "Layout automatizado"] : ["Rede de água"],
+        infra_estrutura: ["Energia trifásica"], area_util_m2: 300, frente_terreno_m: 20)
+      duplicate = described_class.new(source, actor: actor, tenant: tenant).call!.habitation.reload
+      expect(duplicate.attributes.slice(*fields.keys.map(&:to_s), "caracteristicas", "infra_estrutura", "area_util_m2", "frente_terreno_m")).to eq(
+        source.attributes.slice(*fields.keys.map(&:to_s), "caracteristicas", "infra_estrutura", "area_util_m2", "frente_terreno_m"))
+    end
+  end
+
 end

@@ -1,7 +1,7 @@
 <%
   profiles = registration_profiles.presence || Habitation::REGISTRATION_PROFILES
-  selected_profile = habitation.registration_profile.presence || "apartamentos"
-  selected_config = profiles.fetch(selected_profile, profiles.fetch("apartamentos"))
+  selected_profile = habitation.registration_group
+  selected_config = profiles.fetch(selected_profile, profiles.fetch("imoveis_residenciais"))
   selected_category = habitation.categoria.presence || selected_config.fetch(:categories).first
   start_status_options = Habitation::STATUS_OPTIONS - ["Pendente", "Suspenso", "Alugado imobiliária", "Alugado terceiros", "Vendido imobiliária", "Vendido terceiros"]
   selected_status = start_status_options.include?(habitation.status) ? habitation.status : "Venda"

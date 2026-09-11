@@ -14,7 +14,15 @@ export default class extends Controller {
     this.setFieldsLoading(loadingFields, true)
 
     try {
+      const form = button.closest("form")
+      const body = form ? new FormData(form) : null
+      if (body) {
+        for (const key of [...body.keys()]) {
+          if (body.getAll(key).some((value) => value instanceof File)) body.delete(key)
+        }
+      }
       const response = await fetch(button.href, {
+        body,
         method: button.dataset.aiPreviewMethod || "POST",
         credentials: "same-origin",
         headers: {
@@ -26,7 +34,6 @@ export default class extends Controller {
       const html = await response.text()
 
       this.replaceFrame(button.dataset.turboFrame, html)
-      this.fillEditableFields(button.dataset.turboFrame)
 
       if (!response.ok) throw new Error(`AI preview request failed with status ${response.status}`)
     } catch (error) {
@@ -38,6 +45,17 @@ export default class extends Controller {
       button.removeAttribute("aria-disabled")
       this.setFieldsLoading(loadingFields, false)
     }
+  }
+
+  apply(event) {
+    event.preventDefault()
+    this.fillEditableFields(this.element.closest("turbo-frame")?.id)
+    this.element.querySelector("[data-ai-suggestion-review]")?.remove()
+  }
+
+  discard(event) {
+    event.preventDefault()
+    this.element.querySelector("[data-ai-suggestion-review]")?.remove()
   }
 
   loading(event) {

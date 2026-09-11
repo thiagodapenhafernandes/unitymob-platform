@@ -16,6 +16,7 @@
       <%
         profile_categories = Habitation::REGISTRATION_PROFILES.dig(inferred_cadastro_type, :categories)
         category_choices = profile_categories.presence || @categories.presence || Habitation::CATEGORIES
+        category_choices = (category_choices + [f.object.categoria]).compact_blank.uniq if f.object.persisted?
       %>
       <%= ax_select_field(
             form: f,
@@ -26,11 +27,11 @@
             html_options: {
               data: {
                 controller: "tom-select",
-                tom_select_create_value: true,
+                tom_select_create_value: false,
                 placeholder: "Selecione...",
                 habitation_form_target: "category",
                 habitation_duplicate_check_target: "category",
-                action: "change->habitation-duplicate-check#check"
+                action: "change->habitation-form#categoryChanged change->habitation-duplicate-check#check"
               }
             }
           ) %>
