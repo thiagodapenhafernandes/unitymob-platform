@@ -233,6 +233,30 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
         .with(have_attributes(id: msg.id, status: "delivered"))
     end
 
+    it "atualiza status de aviso WhatsApp do lead sem mensagem no inbox" do
+      lead = create(:lead, tenant: integration.tenant)
+      activity = LeadActivity.create!(
+        lead: lead,
+        kind: "notification_sent",
+        metadata: {
+          channel: "whatsapp",
+          message_id: "wamid.LEAD-NOTIFY",
+          admin_user_name: "Renata Santos",
+          notification_context: "distribution"
+        }
+      )
+
+      post "/webhooks/whatsapp", params: {
+        entry: [{ changes: [{ value: { statuses: [{ id: "wamid.LEAD-NOTIFY", status: "delivered", timestamp: "1700000500" }] } }] }]
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(activity.reload.metadata).to include(
+        "whatsapp_status" => "delivered",
+        "whatsapp_delivered_at" => Time.zone.at(1_700_000_500).iso8601
+      )
+    end
+
     it "registra aceite Meta em mensagem de campanha quando chega status sent" do
       admin = create(:admin_user, :admin)
       template = WhatsappTemplate.create!(tenant: admin.tenant, name: "campanha_status", language: "pt_BR", status: "APPROVED", body: "Oi")
