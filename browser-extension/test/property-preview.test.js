@@ -1,6 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {preparePropertyPhoto} from '../src/property-preview.js';
+import {preparePropertyPhoto, requestPropertyPhotoAccess} from '../src/property-preview.js';
+
+test('requests only selected photo hosts synchronously and stops when access is denied', async () => {
+  const previous = globalThis.chrome;
+  let requested;
+  globalThis.chrome = {permissions: {request(options) { requested = options; return Promise.resolve(true); }}};
+  try {
+    const pending = requestPropertyPhotoAccess(['https://cdn.saluteimoveis.com.br/a', 'https://cdn.saluteimoveis.com.br/b', '']);
+    assert.deepEqual(requested, {origins: ['https://cdn.saluteimoveis.com.br/*']});
+    await pending;
+    requested = null;
+    await requestPropertyPhotoAccess([]);
+    assert.equal(requested, null);
+    globalThis.chrome.permissions.request = async () => false;
+    await assert.rejects(requestPropertyPhotoAccess(['https://cdn.example.com/a']), /preview_permission_required/);
+    await assert.rejects(requestPropertyPhotoAccess(['http://cdn.example.com/a']), /preview_image_invalid/);
+  } finally { globalThis.chrome = previous; }
+});
 
 test('prepares a JPEG thumbnail without credentials and closes the bitmap', async t => {
   let closed = false;

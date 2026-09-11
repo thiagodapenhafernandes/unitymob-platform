@@ -1110,6 +1110,14 @@ RSpec.describe "Admin::Leads", type: :request do
       document = Nokogiri::HTML(response.body)
       pwa_detail = document.at_css(".lead-pwa-detail")
       expect(pwa_detail).to be_present
+      notes = pwa_detail.at_css('textarea[name="lead[notes]"]')
+      expect(notes.text.strip).to eq("Preferência por vista mar.")
+      expect(pwa_detail.at_css("label[for='#{notes['id']}']").text).to include("Observações internas")
+      notes_form = notes.ancestors("form").first
+      expect(notes_form["action"]).to eq(admin_lead_path(lead))
+      expect(notes_form.at_css('input[name="_method"]')["value"]).to eq("patch")
+      expect(notes_form.at_css('input[type="submit"]')["value"]).to eq("Salvar observações")
+      expect(document.css('textarea[name="lead[notes]"]').map { |field| field["id"] }).to eq(["mobile_lead_notes", "lead_notes"])
       expect(pwa_detail.text).to include("Lead Detalhe PWA", "Ações do lead", "Retornar para o cliente", "Imóveis de interesse", "PWA-001", "Links gerados")
       expect(pwa_detail.text).to include("Histórico de contatos", "Registrar contato", "Anotação interna", "Cliente pediu retorno no fim da tarde.", "Etiquetas", "Contato")
       expect(pwa_detail.text).not_to include("Inteligência de Interesse")
@@ -1150,7 +1158,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(operation_card).to be_present
       expect(action_hub).to be_present
       expect(operation_card.text).to include("Ações do lead", "Tarefa", "Agendar", "Proposta")
-      expect(action_hub.text).not_to include("Contato")
+      expect(action_hub.css(".lead-pwa-next-actions__btn").map(&:text).join(" ")).not_to include("Contato")
       expect(operation_card.css(".lead-operational-section__title").map(&:text).join(" ")).to include("Agenda", "Tarefas", "Etiquetas", "Histórico de contatos", "Propostas")
       expect(operation_card.to_html).to include("Visita marcada", "Ligar para cliente", "Urgente", "R$ 850.000,00")
       expect(operation_card.text.index("Histórico de contatos")).to be < operation_card.text.index("Propostas")

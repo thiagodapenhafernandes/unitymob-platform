@@ -28,7 +28,7 @@ await writeFile(resolve(dist, "manifest.json"), JSON.stringify({
   description: "Consulte e crie leads, registre notas e agende tarefas durante o atendimento no WhatsApp Web.",
   permissions: ["sidePanel", "storage", "scripting", "identity"],
   host_permissions: ["https://web.whatsapp.com/*", `https://${extensionId}.chromiumapp.org/*`, ...(discoveryOrigin ? [`${discoveryOrigin}/*`] : [])],
-  optional_host_permissions: discoveryOrigin ? ["https://*/*"] : crmOrigins.map(origin => `${origin}/*`),
+  optional_host_permissions: ["https://*/*"],
   icons,
   action: { default_title: "Abrir Unitymob", default_icon: icons }, side_panel: { default_path: "panel.html" },
   background: { service_worker: "background.js", type: "module" },

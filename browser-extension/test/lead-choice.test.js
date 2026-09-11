@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+const source = readFileSync(new URL('../src/panel.js', import.meta.url), 'utf8');
+const document = { createElement(tag) { return {tag, dataset: {}, attributes: {}, children: [], setAttribute(k,v) { this.attributes[k]=v; }, append(...nodes) {this.children.push(...nodes);} }; } };
+const context = vm.createContext({document});
+vm.runInContext(source.slice(source.indexOf('function leadChoice('), source.indexOf('function leadContext(')), context);
+test('candidate keeps identity, metadata and selection semantics without rendering names as HTML', () => {
+  const lead = {id: 123, name: '<img onerror=alert(1)>', status: 'Descartado', owner_name: 'Ana', origin: 'Site', created_at: '2026-08-01T12:00:00Z'};
+  const button = context.leadChoice(lead);
+  assert.equal(button.type, 'button');
+  assert.equal(button.dataset.leadId, '123');
+  assert.equal(button.attributes['aria-pressed'], 'false');
+  assert.equal(button.children[0].children[0].textContent, lead.name);
+  assert.equal(button.children[0].children[1].textContent, '#123');
+  assert.equal(button.children[1].textContent, 'Descartado');
+  assert.equal(button.children[2].textContent, 'Responsável: Ana');
+  assert.match(button.children[3].textContent, /Origem: Site.*Cadastro: 01\/08\/2026/);
+  const missing = context.leadChoice({id: 124, name: 'Outro', status: 'Novo'});
+  assert.equal(missing.children[2].textContent, 'Responsável: Sem responsável');
+  assert.equal(missing.children[3].textContent, '');
+});
