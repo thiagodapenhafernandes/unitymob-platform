@@ -1,0 +1,93 @@
+/*
+ * Shared platform theme contract.
+ *
+ * Keep only semantic tokens here. Component and screen selectors belong in
+ * their respective stylesheets so light and dark variants remain colocated.
+ * Account-specific values injected by the layouts intentionally override
+ * these safe fallbacks later in the cascade.
+ */
+:root {
+  --admin-surface: #ffffff;
+  --admin-surface-header: #eef2f7;
+  --admin-workspace-bg: #eef2f7;
+  --admin-sidebar-bg: #ffffff;
+  --admin-primary: #365f8f;
+  --admin-ink: #1f2733;
+  --admin-primary-fg: #ffffff;
+  --admin-primary-hover: color-mix(in srgb, var(--admin-primary) 86%, #000);
+  --admin-primary-soft: color-mix(in srgb, var(--admin-primary) 12%, #fff);
+  --admin-primary-softer: color-mix(in srgb, var(--admin-primary) 7%, #fff);
+  --admin-primary-ring: color-mix(in srgb, var(--admin-primary) 35%, #fff);
+  --ab-page: var(--admin-workspace-bg);
+  --ab-panel: var(--admin-surface);
+  --ab-panel-soft: color-mix(in srgb, var(--admin-surface-header) 58%, var(--admin-surface));
+  --ab-panel-header: var(--admin-surface-header);
+  --ab-line: color-mix(in srgb, var(--admin-ink) 15%, var(--admin-surface-header));
+  --ab-line-soft: color-mix(in srgb, var(--admin-ink) 9%, var(--admin-surface-header));
+  --ab-ink: var(--admin-ink);
+  --ab-muted: color-mix(in srgb, var(--admin-ink) 68%, var(--admin-surface));
+  --ab-field-border: color-mix(in srgb, var(--admin-ink) 18%, var(--admin-surface-header));
+  --ab-field-hover: color-mix(in srgb, var(--admin-primary) 28%, var(--admin-surface-header));
+  --ab-field-focus: color-mix(in srgb, var(--admin-primary) 54%, var(--admin-surface-header));
+  --ab-control-bg: var(--admin-surface);
+  --ab-control-hover: color-mix(in srgb, var(--admin-surface-header) 46%, var(--admin-surface));
+  --ax-page-bg: var(--ab-page);
+  --ax-panel-bg: var(--ab-panel);
+  --ax-panel-soft: var(--ab-panel-soft);
+  --ax-panel-header: var(--ab-panel-header);
+  --ax-border: var(--ab-line);
+  --ax-border-soft: var(--ab-line-soft);
+  --ax-field-border: var(--ab-field-border);
+  --ax-field-hover: var(--ab-field-hover);
+  --ax-field-focus: var(--ab-field-focus);
+  --ax-control-bg: var(--ab-control-bg);
+  --ax-control-hover: var(--ab-control-hover);
+  --ax-btn-h: 30px;
+  --ax-btn-h-sm: 28px;
+  --ax-btn-radius: 6px;
+  --ax-btn-px: 10px;
+  --ax-btn-px-sm: 9px;
+  --ax-btn-font: 12.5px;
+  --ax-btn-font-sm: 12px;
+  --ax-btn-icon: 30px;
+  --ax-btn-icon-sm: 28px;
+  --ax-motion-fast: 120ms;
+  --ax-motion-base: 180ms;
+  --ax-motion-slow: 240ms;
+  --ax-motion-ease: cubic-bezier(.2, .8, .2, 1);
+  --ax-shell-gutter: 12px;
+  --ax-shell-gutter-sm: 8px;
+  --ax-shell-gutter-lg: 12px;
+}
+
+[data-admin-theme="dark"] {
+  --ax-dark-workspace: #0f1726;
+  --ax-dark-shell: var(--ax-dark-workspace);
+  --ax-dark-context: color-mix(in srgb, var(--admin-workspace-bg) 72%, var(--admin-surface));
+  --ax-dark-surface: #172238;
+  --ax-dark-surface-raised: #202d43;
+  --ax-dark-surface-hover: #24344e;
+  --ax-dark-border: #3b4d68;
+  --ax-dark-border-soft: #33445d;
+  --ax-dark-divider: var(--ax-dark-border);
+  --ax-dark-divider-soft: var(--ax-dark-border-soft);
+  --ax-dark-text: #e8eef7;
+  --ax-dark-text-muted: #9eabc0;
+  --ax-dark-placeholder: #8391a7;
+  --ax-dark-text-soft: #b8c5d8;
+  --ax-dark-focus-border: #6294cc;
+  --ax-dark-focus-surface: #294363;
+  --ax-dark-link: #9bc5ef;
+  --ax-dark-danger-border: #8d4450;
+  --ax-dark-danger-surface: #35222a;
+  --ax-dark-danger-text: #f2a7b3;
+  --ax-dark-warning-border: #806027;
+  --ax-dark-warning-surface: #392d17;
+  --ax-dark-warning-text: #f3c96b;
+  --ax-dark-success-border: #2f7055;
+  --ax-dark-success-surface: #17372b;
+  --ax-dark-success-text: #7ee2ad;
+  --ax-dark-info-border: #3d638e;
+  --ax-dark-info-surface: #192d45;
+  --ax-dark-info-text: #9bc7f2;
+}
