@@ -16,9 +16,13 @@
         <% if e[:whatsapp_status_events].present? %>
           <details class="ax-page-subtitle">
             <summary><%= e[:detail] %></summary>
-            <div class="tw-mt-1 tw-grid tw-gap-1">
-              <% e[:whatsapp_status_events].each do |label, occurred_at, extra| %>
-                <div><%= label %>: <%= l(occurred_at, format: "%d/%m/%Y %H:%M") %><%= " · #{extra}" if extra.present? %></div>
+            <div class="tw-mt-2 tw-grid tw-gap-1.5">
+              <% e[:whatsapp_status_events].each do |label, occurred_at, extra, tone| %>
+                <div class="tw-flex tw-items-center tw-gap-2">
+                  <%= ax_badge(label, tone: tone) %>
+                  <span><%= l(occurred_at, format: "%d/%m/%Y %H:%M") %></span>
+                  <% if extra.present? %><span>· <%= extra %></span><% end %>
+                </div>
               <% end %>
             </div>
           </details>
