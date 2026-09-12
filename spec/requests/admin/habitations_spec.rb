@@ -3414,6 +3414,28 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(rental.codigo)
   end
 
+  it "não carrega Venda da sessão ao aplicar outro filtro sem status" do
+    agent = create(:admin_user, email: "agent-clear-filter-status-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    sale = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Venda", codigo: "PWA-FILTER-VENDA", nome_empreendimento: "Vermont")
+    rental = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Aluguel", codigo: "PWA-FILTER-ALUGUEL", nome_empreendimento: "Vermont")
+    sign_out admin
+    sign_in agent
+
+    get admin_habitations_path(ownership: "all", status: "Venda", q: "PWA-FILTER")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(sale.codigo)
+    expect(response.body).not_to include(rental.codigo)
+
+    get admin_habitations_path(ownership: "all", empreendimento_codigo: "name:Vermont")
+
+    expect(response).to have_http_status(:ok)
+    expect(response).not_to redirect_to(admin_habitations_path(ownership: "all", empreendimento_codigo: "name:Vermont", status: "Venda"))
+    expect(response.body).to include(sale.codigo)
+    expect(response.body).to include(rental.codigo)
+    expect(response.body).not_to include("Status: Venda")
+  end
+
   it "busca direta de corretor encontra imóvel do catálogo mesmo vindo de Meus imóveis" do
     broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile, name: "Corretor Busca")
@@ -3694,13 +3716,11 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
 
     get admin_habitations_path(q: "Aurora")
-    expect(response).to redirect_to(admin_habitations_path(q: "Aurora", status: "Venda"))
-    follow_redirect!
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(sale.codigo)
     expect(response.body).not_to include(sold.codigo)
-    expect(response.body).to include("Status: Venda")
+    expect(response.body).not_to include("Status: Venda")
   end
 
   it "não aplica a restrição padrão de disponibilidade do corretor para administradores" do
