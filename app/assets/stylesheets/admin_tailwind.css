@@ -19280,6 +19280,21 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
   padding-top: 12px;
 }
 
+.lead-interest-gradient-title {
+  color: #a21caf;
+  background: linear-gradient(120deg, #6d28d9, #d6249f, #f59e0b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lead-interest-gradient-title .bi-stars {
+  background: linear-gradient(120deg, #6d28d9, #d6249f, #f59e0b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .lead-interest-notice,
 .lead-interest-empty {
   display: grid;

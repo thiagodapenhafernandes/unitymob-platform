@@ -9,7 +9,7 @@
 <div class="<%= embedded ? 'lead-interest-card' : 'ax-card tw-mb-4 lead-interest-card' %>">
   <% unless embedded %>
     <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
-      <span class="ax-card__title"><i class="bi bi-stars ax-ico"></i> Inteligência de Interesse</span>
+      <span class="ax-card__title lead-interest-gradient-title"><i class="bi bi-stars ax-ico"></i> Inteligência de Interesse</span>
       <% if enabled %>
         <span class="ax-badge ax-badge--blue"><%= profile[:confidence].to_i %>% confiança</span>
       <% else %>
@@ -89,6 +89,7 @@
                   <div class="tw-flex tw-items-center tw-gap-2">
                     <span class="ax-strong"><%= entry[:label] %></span>
                     <% if entry[:conversion] %><span class="ax-badge ax-badge--green">Conversão</span><% end %>
+                    <% if entry[:no_site_navigation] %><span class="ax-badge ax-badge--gray">Sem navegação no site</span><% end %>
                     <% if entry[:count].to_i > 1 %><span class="ax-badge ax-badge--gray">×<%= entry[:count] %></span><% end %>
                     <span class="ax-page-subtitle"><%= l(entry[:at], format: "%d/%m/%Y %H:%M") %></span>
                     <% if entry[:duration_label].present? %>

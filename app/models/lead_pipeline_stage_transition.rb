@@ -1,8 +1,8 @@
 class LeadPipelineStageTransition < ApplicationRecord
   include TenantScoped
 
-  belongs_to :lead_pipeline_stage
-  belongs_to :next_stage, class_name: "LeadPipelineStage"
+  belongs_to :lead_pipeline_stage, inverse_of: :transitions
+  belongs_to :next_stage, class_name: "LeadPipelineStage", inverse_of: :incoming_transitions
 
   validates :next_stage_id, uniqueness: { scope: [:tenant_id, :lead_pipeline_stage_id] }
   validate :records_must_belong_to_tenant

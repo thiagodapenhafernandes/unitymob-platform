@@ -915,14 +915,21 @@ module Admin::ComercialHelper
     end
 
     if lead&.created_at
+      # "Virou lead" sozinho, sem nenhum sinal antes dele, pode ler como "não
+      # tem dado" — mas o correto é dizer que essa conversão não veio (ou
+      # ainda não veio) do site: WhatsApp direto, indicação, import de CRM
+      # etc. Navegação de outro canal continua sendo rastreada e some daqui
+      # sozinha assim que existir (ver interest_noise_event? / ReprocessJob).
+      no_prior_site_navigation = entries.none? { |entry| entry[:at] <= lead.created_at }
       entries << {
         at: lead.created_at,
-        icon: "bi-flag-fill",
+        icon: lead_conversion_summary(lead)[:icon].presence || "bi-flag-fill",
         label: "Virou lead",
-        detail: nil,
+        detail: no_prior_site_navigation ? "Sem navegação registrada no site até aqui — pode ter vindo de outro canal (WhatsApp, indicação, importação...)." : nil,
         search_items: nil,
         duration_seconds: 0,
-        conversion: true
+        conversion: true,
+        no_site_navigation: no_prior_site_navigation
       }
     end
 

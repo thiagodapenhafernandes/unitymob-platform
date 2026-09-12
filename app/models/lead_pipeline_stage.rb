@@ -24,6 +24,11 @@ class LeadPipelineStage < ApplicationRecord
            class_name: "LeadPipelineStageTransition",
            dependent: :destroy,
            inverse_of: :lead_pipeline_stage
+  has_many :incoming_transitions,
+           class_name: "LeadPipelineStageTransition",
+           foreign_key: :next_stage_id,
+           dependent: :destroy,
+           inverse_of: :next_stage
   has_many :automation_executions,
            class_name: "LeadPipelineStageAutomationExecution",
            dependent: :destroy,
