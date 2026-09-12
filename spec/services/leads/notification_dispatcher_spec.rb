@@ -327,4 +327,18 @@ RSpec.describe Leads::NotificationDispatcher do
     end
     expect(SecureLink.where(lead: pool_lead, issued_to_admin_user: corretor).pluck(:action_type)).to contain_exactly("phone", "email", "view")
   end
+  it "usa som de atribuição nos eventos diretos e aviso geral ao perder a vez" do
+    LeadSetting.instance.update!(notify_on_direct_assignment: true, notify_on_reassignment: true, notify_on_lost_turn: true)
+    described_class.notify_direct_assignment(lead)
+    described_class.notify_reassignment(lead, corretor)
+    described_class.notify_lost_turn(lead, corretor)
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(
+      hash_including(admin_user_id: corretor.id, metadata: { notification_context: "distribution" })
+    ).twice
+    expect(Notifications::PushDispatcher).to have_received(:deliver).with(
+      hash_including(admin_user_id: corretor.id, metadata: { notification_context: "general" })
+    ).once
+  end
+
 end

@@ -819,4 +819,33 @@ module Admin::ComercialHelper
       "property_search" => "Busca de imóveis"
     }[name.to_s] || name.to_s.humanize
   end
+
+  # Sinais de navegação (antes de virar lead) + o próprio lead, em ordem
+  # cronológica, para renderizar como uma única timeline. A sessão anônima não
+  # grava quando o match aconteceu, então usamos a criação do lead como o
+  # instante da conversão — é o mesmo momento na prática (o lead nasce já
+  # vinculado à sessão, ver InterestIntelligence::SessionLinker).
+  def interest_timeline_entries(lead, navigation_events)
+    entries = navigation_events.to_a.map do |event|
+      {
+        at: event.occurred_at,
+        icon: event.property_signal? ? "bi-house-heart" : "bi-compass",
+        label: interest_event_label(event.name),
+        detail: [event.habitation&.codigo, event.path].compact_blank.join(" · "),
+        conversion: false
+      }
+    end
+
+    if lead&.created_at
+      entries << {
+        at: lead.created_at,
+        icon: "bi-flag-fill",
+        label: "Virou lead",
+        detail: nil,
+        conversion: true
+      }
+    end
+
+    entries.sort_by { |entry| entry[:at] }.reverse
+  end
 end

@@ -21,18 +21,21 @@ module Notifications
       new.configured?
     end
 
-    def self.deliver(token:, title:, body:, data: {})
-      new.deliver(token: token, title: title, body: body, data: data)
+    def self.deliver(token:, title:, body:, data: {}, category: "general")
+      new.deliver(token: token, title: title, body: body, data: data, category: category)
     end
 
     def configured?
       project_id.present? && service_account_json.present?
     end
 
-    def deliver(token:, title:, body:, data: {})
+    def deliver(token:, title:, body:, data: {}, category: "general")
       unless configured?
         return Result.new(success?: false, status: nil, body: "FCM não configurado (defina FCM_PROJECT_ID e FCM_SERVICE_ACCOUNT_JSON)")
       end
+
+      category = "general" unless %w[distribution pool reminder general].include?(category)
+      sound = "unitymob_#{category}_v1"
 
       response = connection.post("/v1/projects/#{project_id}/messages:send") do |req|
         req.headers["Authorization"] = "Bearer #{access_token}"
@@ -45,8 +48,8 @@ module Notifications
             # FCM não ativa som/alerta no iOS só por ter "notification" — sem
             # isso a notificação chega "silenciosa" (sem tocar som nem acender
             # a tela quando o app está em segundo plano).
-            apns: { payload: { aps: { sound: "default", badge: 1 } } },
-            android: { priority: "high", notification: { sound: "default" } }
+            apns: { payload: { aps: { sound: "#{sound}.wav", badge: 1 } } },
+            android: { priority: "high", notification: { sound: sound, channel_id: sound } }
           }.compact
         }.to_json
       end

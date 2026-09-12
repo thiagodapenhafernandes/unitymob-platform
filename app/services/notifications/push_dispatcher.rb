@@ -110,7 +110,7 @@ module Notifications
     # de tentar enviar, para não mascarar o gap como falha de rede.
     def deliver_native(sub, title:, body:, url:, accept_url:, tag:, lead_id:, metadata:)
       result = Notifications::FcmSender.deliver(
-        token: sub.endpoint, title: title, body: body,
+        token: sub.endpoint, title: title, body: body, category: native_category(metadata),
         data: { url: url, accept_url: accept_url.to_s, tag: tag.to_s }
       )
 
@@ -131,6 +131,17 @@ module Notifications
       sub.update_column(:active, false) if result.status == 404
       Rails.logger.warn("[PushDispatcher] FCM falhou sub=#{sub.id} status=#{result.status} body=#{result.body}")
       false
+    end
+
+    def native_category(metadata)
+      context = metadata.with_indifferent_access
+      return "reminder" if %w[task_due_reminder appointment_due_reminder].include?(context[:source])
+
+      case context[:notification_context]
+      when "pool", "shark_tank", "pool_renotify" then "pool"
+      when "distribution" then "distribution"
+      else "general"
+      end
     end
 
     def push_setting

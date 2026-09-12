@@ -39,7 +39,7 @@ module Leads
       push_to(lead.admin_user,
               title: "Novo lead: #{lead.display_name}",
               body:  push_body_for(lead, secure: false),
-              url:   "/admin/leads/#{lead.id}/attend")
+              url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
     end
 
     # Reatribuição manual do corretor pelo admin.
@@ -49,7 +49,7 @@ module Leads
       push_to(new_corretor,
               title: "Lead atribuído a você: #{lead.display_name}",
               body:  push_body_for(lead, secure: false),
-              url:   "/admin/leads/#{lead.id}/attend")
+              url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
     end
 
     # Avisa o corretor que perdeu o lead por não atender no prazo (pocket).
@@ -62,12 +62,12 @@ module Leads
               url:   "/admin/leads")
     end
 
-    def self.push_to(corretor, title:, body:, url:)
+    def self.push_to(corretor, title:, body:, url:, notification_context: "general")
       return unless corretor
 
       # high: com urgency normal o Android em Doze (aparelho parado) segura a
       # entrega — exatamente o "push parou de chegar" com o celular na mesa.
-      Notifications::PushDispatcher.deliver(admin_user_id: corretor.id, title: title, body: body, url: url, urgency: "high", ttl: 3600)
+      Notifications::PushDispatcher.deliver(admin_user_id: corretor.id, title: title, body: body, url: url, urgency: "high", ttl: 3600, metadata: { notification_context: notification_context })
     rescue => e
       Rails.logger.warn("[LeadNotify] push de evento falhou pro corretor #{corretor&.id}: #{e.message}")
     end
