@@ -44,7 +44,7 @@ RSpec.describe "Admin::Leads", type: :request do
 
     it "exibe o kanban como visualizacao padrao" do
       create(:lead, name: "Cliente Kanban", phone: "11999999999", status: "Novo")
-      create(:lead, name: "Cliente Atendimento", phone: "11888888888", status: "Em Atendimento")
+      create(:lead, name: "Cliente Atendimento", phone: "11888888888", status: "Em Atendimento", admin_user: admin)
 
       get admin_leads_path
 
@@ -1676,7 +1676,7 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "atualiza status dinamico via json" do
-      lead = create(:lead, status: "Novo")
+      lead = create(:lead, status: "Novo", admin_user: admin)
 
       expect {
         patch admin_lead_path(lead),
@@ -2204,7 +2204,7 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "nao exibe falha antiga de setup no painel do lead quando ja houve envio aceito" do
-      lead = create(:lead, status: "Em Atendimento", phone: "47999990010")
+      lead = create(:lead, status: "Em Atendimento", phone: "47999990010", admin_user: admin)
       conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990010", contact_name: "Lead WhatsApp", status: "open", last_message_at: Time.current, last_message_preview: "Tudo certo")
       conversation.messages.create!(
         tenant: admin.tenant,
@@ -2248,7 +2248,7 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "nao reassocia conversa de outro lead ao abrir o detalhe" do
-      lead_original = create(:lead, status: "Em Atendimento", phone: "47999990032")
+      lead_original = create(:lead, status: "Em Atendimento", phone: "47999990032", admin_user: admin)
       lead_atual = create(:lead, status: "Novo", phone: "47999990032")
       integration = WhatsappBusinessIntegration.current(admin.tenant)
       integration.update!(status: "connected", waba_id: "waba-reuso", phone_number_id: "phone-reuso", access_token: "token-reuso", presentation_enabled: true)
