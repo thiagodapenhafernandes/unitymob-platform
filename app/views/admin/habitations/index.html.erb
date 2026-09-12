@@ -76,7 +76,7 @@
          data-bulk-publish-filters-json-value='<%= filters_json %>'<% end %>>
 <%
   pwa_habitation_nav_counts = @pwa_habitation_nav_counts || {}
-  pwa_habitation_base_params = request.query_parameters.except("page", "status", "scope", "ownership", "intake_review", "clear_filters")
+  pwa_habitation_tab_params = request.query_parameters.slice("visualizacao")
   pwa_habitation_search_params = request.query_parameters.slice("visualizacao")
   pwa_habitation_status_values = selected_status_filter_values.map { |status| Habitation.normalize_status(status) }
   pwa_habitation_active_tab =
@@ -92,18 +92,18 @@
       "all"
     end
   pwa_habitation_tabs = [
-    { key: "mine", label: "Meus", icon: "house-door", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "mine")), count: pwa_habitation_nav_counts[:mine].to_i },
-    { key: "sale", label: "Venda", icon: "tag", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "all", status: "Venda")), count: pwa_habitation_nav_counts[:sale].to_i },
-    { key: "rent", label: "Locação", icon: "key", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "all", status: "Aluguel")), count: pwa_habitation_nav_counts[:rent].to_i },
-    { key: "opportunity", label: "Oportunidades", icon: "star", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "all", scope: "oportunidade")), count: pwa_habitation_nav_counts[:opportunity].to_i },
-    { key: "all", label: "Todos", icon: "archive", path: admin_habitations_path(pwa_habitation_base_params.merge(ownership: "all")), count: pwa_habitation_nav_counts[:all].to_i }
+    { key: "mine", label: "Meus", icon: "house-door", path: admin_habitations_path(pwa_habitation_tab_params.merge(ownership: "mine", status: "")), count: pwa_habitation_nav_counts[:mine].to_i },
+    { key: "sale", label: "Venda", icon: "tag", path: admin_habitations_path(pwa_habitation_tab_params.merge(ownership: "all", status: "Venda")), count: pwa_habitation_nav_counts[:sale].to_i },
+    { key: "rent", label: "Locação", icon: "key", path: admin_habitations_path(pwa_habitation_tab_params.merge(ownership: "all", status: "Aluguel")), count: pwa_habitation_nav_counts[:rent].to_i },
+    { key: "opportunity", label: "Oportunidades", icon: "star", path: admin_habitations_path(pwa_habitation_tab_params.merge(ownership: "all", status: "", scope: "oportunidade")), count: pwa_habitation_nav_counts[:opportunity].to_i },
+    { key: "all", label: "Todos", icon: "archive", path: admin_habitations_path(pwa_habitation_tab_params.merge(ownership: "all", status: "")), count: pwa_habitation_nav_counts[:all].to_i }
   ]
   pwa_habitation_sort_options = sort_options
   pwa_habitation_sort_active = pwa_habitation_sort_options.key?(current_sort_key)
 %>
 <section class="habitations-pwa-header" aria-label="Navegação do catálogo no PWA">
   <div class="habitations-pwa-topbar">
-    <%= link_to admin_habitations_path(pwa_habitation_base_params.merge(ownership: "mine")),
+    <%= link_to admin_habitations_path(pwa_habitation_tab_params.merge(ownership: "mine", status: "")),
                 class: "habitations-pwa-queue",
                 aria: { label: "Ver meus imóveis" } do %>
       <strong><%= number_with_delimiter(pwa_habitation_nav_counts[:mine].to_i) %></strong>
@@ -115,6 +115,7 @@
                   local: true,
                   class: "habitations-pwa-search" do %>
       <%= hidden_field_tag :ownership, "all" %>
+      <%= hidden_field_tag :status, "" %>
       <% pwa_habitation_search_params.each do |param_key, param_value| %>
         <% Array(param_value).reject(&:blank?).each do |hidden_value| %>
           <%= hidden_field_tag(param_value.is_a?(Array) ? "#{param_key}[]" : param_key, hidden_value) %>
@@ -735,7 +736,7 @@
     <div class="ax-property-empty__icon"><i class="bi bi-search"></i></div>
     <h5>Nenhum imóvel encontrado</h5>
     <p>Tente ajustar seus filtros ou buscar por outro termo.</p>
-    <%= link_to "Limpar filtros", admin_habitations_path(ownership: "all"), class: "ax-btn" %>
+    <%= link_to "Limpar filtros", admin_habitations_path(ownership: "all", clear_filters: "1"), class: "ax-btn" %>
   </div>
 <% end %>
 

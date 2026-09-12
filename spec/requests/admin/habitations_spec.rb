@@ -3238,7 +3238,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response.body).to include("Nenhum imóvel encontrado")
     expect(clear_link.text).to include("Limpar filtros")
-    expect(clear_link["href"]).to eq(admin_habitations_path(ownership: "all"))
+    expect(clear_link["href"]).to eq(admin_habitations_path(ownership: "all", clear_filters: "1"))
   end
 
   it "renderiza controles compactos do catálogo para mobile sem remover o bloco desktop" do
@@ -3307,6 +3307,35 @@ RSpec.describe "Admin::Habitations", type: :request do
     end
   end
 
+  it "mantém as abas PWA livres dos filtros aplicados" do
+    get admin_habitations_path(
+      ownership: "all",
+      status: "Venda",
+      q: "termo antigo",
+      empreendimento_codigo: ["name:Vermont"],
+      min_price: "1400000",
+      visualizacao: "cards"
+    )
+
+    expect(response).to have_http_status(:ok)
+
+    tabs = Nokogiri::HTML(response.body).css(".habitations-pwa-tab").each_with_object({}) do |link, memo|
+      memo[link.at_css(".habitations-pwa-tab__label").text.squish] = link["href"]
+    end
+
+    expect(tabs.fetch("Venda")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: "Venda"))
+    expect(tabs.fetch("Locação")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: "Aluguel"))
+    expect(tabs.fetch("Todos")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: ""))
+    expect(tabs.fetch("Meus")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "mine", status: ""))
+    expect(tabs.fetch("Oportunidades")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: "", scope: "oportunidade"))
+
+    tabs.values.each do |href|
+      expect(href).not_to include("q=")
+      expect(href).not_to include("min_price")
+      expect(href).not_to include("empreendimento_codigo")
+    end
+  end
+
   it "renderiza o catálogo em workspace com sidebar global e filtros no inspector" do
     create(:habitation, codigo: "LAYOUT-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel para layout master detail")
 
@@ -3358,10 +3387,31 @@ RSpec.describe "Admin::Habitations", type: :request do
     hidden_fields = form.css("input[type='hidden']").map { |input| [input["name"], input["value"]] }
 
     expect(hidden_fields).to include(["ownership", "all"])
+    expect(hidden_fields).to include(["status", ""])
     expect(hidden_fields).to include(["visualizacao", "grade"])
-    expect(hidden_fields.map(&:first)).not_to include("status")
     expect(hidden_fields.map(&:first)).not_to include("empreendimento_codigo[]")
     expect(hidden_fields.map(&:first)).not_to include("min_price")
+  end
+
+  it "não carrega Venda da sessão quando a navegação PWA pede status limpo" do
+    agent = create(:admin_user, email: "agent-clear-status-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    sale = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Venda", codigo: "PWA-SESSION-VENDA")
+    rental = create(:habitation, tenant: agent.tenant, admin_user: agent, status: "Aluguel", codigo: "PWA-SESSION-ALUGUEL")
+    sign_out admin
+    sign_in agent
+
+    get admin_habitations_path(ownership: "all", status: "Venda", q: "PWA-SESSION")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(sale.codigo)
+    expect(response.body).not_to include(rental.codigo)
+
+    get admin_habitations_path(ownership: "all", status: "")
+
+    expect(response).to have_http_status(:ok)
+    expect(response).not_to redirect_to(admin_habitations_path(ownership: "all", status: "Venda", q: "PWA-SESSION"))
+    expect(response.body).to include(sale.codigo)
+    expect(response.body).to include(rental.codigo)
   end
 
   it "busca direta de corretor encontra imóvel do catálogo mesmo vindo de Meus imóveis" do

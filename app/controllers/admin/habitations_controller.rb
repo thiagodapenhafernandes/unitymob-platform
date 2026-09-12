@@ -1334,6 +1334,7 @@ class Admin::HabitationsController < Admin::BaseController
   def should_restore_habitations_filter_session?
     request.get? &&
       params[:page].blank? &&
+      !explicit_habitation_status_filter? &&
       habitations_filter_session_params.present? &&
       meaningful_habitations_filter_params(request.query_parameters).blank?
   end
@@ -1382,7 +1383,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def explicit_habitation_status_filter?(source_params = request.query_parameters)
-    Array(source_params.to_h["status"]).flatten.map(&:to_s).any?(&:present?)
+    source_params.to_h.key?("status")
   end
 
   def should_redirect_to_effective_habitations_filter_params?
