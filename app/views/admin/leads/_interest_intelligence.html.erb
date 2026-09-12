@@ -112,6 +112,7 @@
                   <div class="tw-flex tw-items-center tw-gap-2">
                     <span class="ax-strong"><%= entry[:label] %></span>
                     <% if entry[:conversion] %><span class="ax-badge ax-badge--green">Conversão</span><% end %>
+                    <% if entry[:count].to_i > 1 %><span class="ax-badge ax-badge--gray">×<%= entry[:count] %></span><% end %>
                     <span class="ax-page-subtitle"><%= l(entry[:at], format: "%d/%m/%Y %H:%M") %></span>
                   </div>
                   <% if entry[:detail].present? %>

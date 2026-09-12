@@ -1781,6 +1781,32 @@
     </section>
   <% end %>
 
+  <section class="lead-pwa-detail__panel">
+    <div class="lead-pwa-detail__section-title">
+      <span>Inteligência de Interesse</span>
+      <small><%= @interest_profile ? "#{@interest_profile[:confidence].to_i}%" : "" %></small>
+    </div>
+    <% if @interest_simulation %>
+      <%= render "admin/leads/interest_intelligence",
+            lead: @lead,
+            profile: @interest_profile,
+            profile_incomplete: @interest_profile_incomplete,
+            matches: @interest_matches,
+            navigation_events: @interest_navigation_events,
+            property_interests: @interest_property_interests,
+            settings: @interest_settings,
+            simulation: true,
+            embedded: true %>
+    <% else %>
+      <%= turbo_frame_tag dom_id(@lead, :interest_intelligence_mobile),
+            src: interest_intelligence_admin_lead_path(@lead, embedded: true),
+            loading: :lazy,
+            class: "tw-block" do %>
+        <span class="ax-page-subtitle">Carregando…</span>
+      <% end %>
+    <% end %>
+  </section>
+
 </section>
 
 <% @lead_heading_actions = capture do %>

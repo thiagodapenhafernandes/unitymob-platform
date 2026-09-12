@@ -814,10 +814,50 @@ module Admin::ComercialHelper
     {
       "page_view" => "Página visitada",
       "property_view" => "Imóvel visualizado",
+      "property_engaged" => "Ficou vendo o imóvel",
       "property_whatsapp_click" => "Clique de WhatsApp",
+      "property_phone_click" => "Clique de telefone",
       "property_share" => "Compartilhamento",
-      "property_search" => "Busca de imóveis"
+      "property_search" => "Busca de imóveis",
+      "search_no_results" => "Busca sem resultado",
+      "home_section_click" => "Clique na home",
+      "lead_form_started" => "Começou a preencher o formulário",
+      "lead_form_submitted" => "Formulário enviado"
     }[name.to_s] || name.to_s.humanize
+  end
+
+  # Path bruto ("/", "/imoveis?cidade=...") não diz nada pra quem lê a
+  # timeline. Preferimos o que o próprio evento já carrega de mais específico
+  # (título da seção clicada, do formulário, do imóvel) e só caímos pro título
+  # da página / path como último recurso.
+  def interest_event_detail(event)
+    meta = event.metadata.to_h
+    descriptor = meta["home_section_title"].presence ||
+      meta["form_title"].presence ||
+      meta["property_title"].presence ||
+      meta["title"].presence ||
+      interest_friendly_path(event.path)
+
+    [event.habitation&.codigo, descriptor].compact_blank.join(" · ")
+  end
+
+  def interest_friendly_path(path)
+    value = path.to_s.strip
+    return "Página inicial" if value.blank? || value == "/"
+
+    value
+  end
+
+  # Um "page_view" sem título de página e sem path específico não conta nada
+  # que o broker consiga usar — é ruído puro (visita à home sem nenhum
+  # contexto capturado). Todo o resto (busca, imóvel, clique, formulário)
+  # sempre carrega algo específico, então nunca é descartado aqui.
+  def interest_noise_event?(event)
+    return false unless event.name.to_s == "page_view"
+
+    meta = event.metadata.to_h
+    path = event.path.to_s.strip
+    meta["title"].to_s.strip.blank? && (path.blank? || path == "/")
   end
 
   # Sinais de navegação (antes de virar lead) + o próprio lead, em ordem
@@ -825,13 +865,18 @@ module Admin::ComercialHelper
   # grava quando o match aconteceu, então usamos a criação do lead como o
   # instante da conversão — é o mesmo momento na prática (o lead nasce já
   # vinculado à sessão, ver InterestIntelligence::SessionLinker).
+  #
+  # O tracker do site dispara o mesmo evento na entrada e na saída da página
+  # (visualizado + engajado), então é comum duas ou mais linhas idênticas
+  # caírem no mesmo minuto sem acrescentar nada — colapsamos essas repetições
+  # consecutivas numa só, com a contagem.
   def interest_timeline_entries(lead, navigation_events)
-    entries = navigation_events.to_a.map do |event|
+    entries = navigation_events.to_a.reject { |event| interest_noise_event?(event) }.map do |event|
       {
         at: event.occurred_at,
         icon: event.property_signal? ? "bi-house-heart" : "bi-compass",
         label: interest_event_label(event.name),
-        detail: [event.habitation&.codigo, event.path].compact_blank.join(" · "),
+        detail: interest_event_detail(event),
         conversion: false
       }
     end
@@ -846,6 +891,18 @@ module Admin::ComercialHelper
       }
     end
 
-    entries.sort_by { |entry| entry[:at] }.reverse
+    collapse_consecutive_interest_entries(entries.sort_by { |entry| entry[:at] }.reverse)
+  end
+
+  def collapse_consecutive_interest_entries(entries)
+    entries.each_with_object([]) do |entry, collapsed|
+      previous = collapsed.last
+      if previous && !previous[:conversion] && !entry[:conversion] &&
+         previous[:label] == entry[:label] && previous[:detail] == entry[:detail]
+        previous[:count] += 1
+      else
+        collapsed << entry.merge(count: 1)
+      end
+    end
   end
 end
