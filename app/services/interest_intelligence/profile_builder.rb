@@ -78,6 +78,7 @@ module InterestIntelligence
       ids += manual_interests.pluck(:habitation_id)
       ids += explicit_interests.pluck(:habitation_id)
       ids += shared_property_view_ids
+      ids += favorite_habitations.map(&:id)
       ids << @lead.property_id if @lead.respond_to?(:property_id) && @lead.property_id.present?
       ids.compact.uniq
     end
@@ -88,6 +89,7 @@ module InterestIntelligence
         manual_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
           explicit_interests.includes(:habitation).filter_map { |interest| snapshot_for(interest.habitation) } +
           shared_habitations.filter_map { |habitation| snapshot_for(habitation) } +
+          favorite_habitations.filter_map { |habitation| snapshot_for(habitation) } +
           snapshots
       end
     end
@@ -191,6 +193,10 @@ module InterestIntelligence
         manual_interests.pluck(:habitation_id) +
         shared_interest_habitation_ids
       ).map(&:to_i).reject(&:zero?).uniq
+    end
+
+    def favorite_habitations
+      @favorite_habitations ||= Habitation.for_tenant(@lead.tenant_id).where(id: FavoriteSync.property_ids_for(@lead)).to_a
     end
 
     def shared_habitations

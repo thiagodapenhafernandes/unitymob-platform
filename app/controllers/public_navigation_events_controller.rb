@@ -20,6 +20,11 @@ class PublicNavigationEventsController < ApplicationController
     end
 
     session = public_navigation_session
+    if normalized_event_name == "favorites_sync"
+      changed = InterestIntelligence::FavoriteSync.call(session: session, ids: navigation_event_params[:favorite_ids])
+      InterestIntelligence::ReprocessJob.perform_later(session.lead_id) if changed && session.lead_id.present?
+      return render json: { ok: true }
+    end
     habitation = find_habitation
     event = session.events.create!(
       tenant: public_tenant,
@@ -37,7 +42,7 @@ class PublicNavigationEventsController < ApplicationController
     reprocess_lead_interest_async(event)
 
     render json: { ok: true, token: session.token, event_id: event.id }
-  rescue ActionController::ParameterMissing, ActiveRecord::RecordInvalid => e
+  rescue ActionController::ParameterMissing, ActiveRecord::RecordInvalid, ArgumentError => e
     Rails.logger.warn("[public navigation] #{e.class}: #{e.message}")
     render json: { ok: false }, status: :unprocessable_content
   end
@@ -83,6 +88,7 @@ class PublicNavigationEventsController < ApplicationController
       :path,
       :habitation_id,
       :duration_seconds,
+      favorite_ids: [],
       search_params: {},
       property_snapshot: {},
       metadata: {}
@@ -91,7 +97,7 @@ class PublicNavigationEventsController < ApplicationController
 
   def event_name
     name = navigation_event_params[:name].to_s.presence || "page_view"
-    allowed = PublicNavigationEvent::PROPERTY_EVENT_NAMES + PublicNavigationEvent::SEARCH_EVENT_NAMES
+    allowed = PublicNavigationEvent::PROPERTY_EVENT_NAMES + PublicNavigationEvent::SEARCH_EVENT_NAMES + ["favorites_sync"]
     allowed.include?(name) ? name : nil
   end
 

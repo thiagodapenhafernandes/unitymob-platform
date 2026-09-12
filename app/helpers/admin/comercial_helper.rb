@@ -810,10 +810,44 @@ module Admin::ComercialHelper
     items.presence || ["Sem critérios suficientes"]
   end
 
+  def interest_journey_origins(lead, journey)
+    attribution = lead.attribution_data.to_h
+    first = attribution["first_touch"].to_h
+    first = interest_navigation_origin(journey[:first_navigation]) if first.empty?
+    conversion = attribution["conversion_touch"].presence || attribution
+    rows = [{ label: "Primeira origem registrada", text: first["label"].presence || "Origem anterior não identificada" },
+      { label: "Conversão em lead", text: lead_conversion_summary(lead)[:headline] }]
+    [first, conversion].each_with_index do |touch, index|
+      campaign = touch["utm_campaign"].presence || touch["campaign_name"].presence
+      rows << { label: index.zero? ? "Campanha inicial" : "Campanha de conversão", text: campaign } if campaign
+    end
+    if (event = journey[:last_navigation])
+      rows << { label: "Última navegação registrada", text: "#{l(event.occurred_at, format: '%d/%m/%Y %H:%M')} · #{interest_event_label(event.name)}" }
+      touch = interest_navigation_origin(event)
+      rows << { label: "Origem desse acesso", text: touch["label"] } if touch["label"].present?
+      rows << { label: "Campanha desse acesso", text: touch["utm_campaign"] } if touch["utm_campaign"].present?
+      rows << { label: "Referência desse acesso", text: touch["referrer_url"] } if touch["referrer_url"].present?
+    end
+    rows
+  end
+
+  def interest_navigation_origin(event)
+    return {} unless event
+
+    meta = event.metadata.to_h
+    url = meta["url"].presence
+    query = url ? Rack::Utils.parse_query(URI.parse(url).query) : {}
+    Leads::Attribution.new(raw: query.slice(*Leads::Attribution::TRACKING_KEYS).merge("landing_url" => url, "referrer_url" => meta["referrer"])).result.data
+  rescue URI::InvalidURIError, ArgumentError
+    {}
+  end
+
   def interest_event_label(name)
     {
       "page_view" => "Página visitada",
       "property_view" => "Imóvel visualizado",
+      "property_favorite_added" => "Adicionado aos favoritos",
+      "property_favorite_removed" => "Removido dos favoritos",
       "property_engaged" => "Ficou vendo o imóvel",
       "property_whatsapp_click" => "Clique de WhatsApp",
       "property_phone_click" => "Clique de telefone",
@@ -900,18 +934,27 @@ module Admin::ComercialHelper
   # (visualizado + engajado), então é comum duas ou mais linhas idênticas
   # caírem no mesmo minuto sem acrescentar nada — colapsamos essas repetições
   # consecutivas numa só, com a contagem.
-  def interest_timeline_entries(lead, navigation_events)
+  def interest_timeline_entries(lead, navigation_events, share_events: [])
     entries = navigation_events.to_a.reject { |event| interest_noise_event?(event) }.map do |event|
       search_items = interest_search_items(event.search_params) if %w[property_search search_no_results].include?(event.name.to_s)
       {
         at: event.occurred_at,
-        icon: event.property_signal? ? "bi-house-heart" : "bi-compass",
-        label: interest_event_label(event.name),
+        icon: event.name.start_with?("property_favorite") ? "bi-heart" : event.property_signal? ? "bi-house-heart" : "bi-compass",
+        label: event.name == "property_favorite_added" && event.metadata["initially_observed"] ? "Favorito identificado no navegador" : interest_event_label(event.name),
         detail: search_items.present? ? nil : interest_event_detail(event),
         search_items: search_items.presence,
         duration_seconds: event.duration_seconds.to_i,
         conversion: false
       }
+    end
+
+    Array(share_events).each do |event|
+      label = { "collection_opened" => "Abriu a seleção compartilhada", "property_opened" => "Imóvel visualizado pelo link", "interest_created" => "Demonstrou interesse", "interest_repeated" => "Reafirmou interesse" }[event.event_type]
+      next unless label
+
+      entries << { at: event.created_at, icon: event.event_type.start_with?("interest") ? "bi-heart" : "bi-link-45deg", label: label,
+        detail: [event.habitation&.codigo, event.habitation&.display_title, "Acesso atribuído ao link compartilhado"].compact_blank.join(" · "),
+        duration_seconds: 0, conversion: false }
     end
 
     if lead&.created_at
@@ -920,12 +963,14 @@ module Admin::ComercialHelper
       # ainda não veio) do site: WhatsApp direto, indicação, import de CRM
       # etc. Navegação de outro canal continua sendo rastreada e some daqui
       # sozinha assim que existir (ver interest_noise_event? / ReprocessJob).
-      no_prior_site_navigation = entries.none? { |entry| entry[:at] <= lead.created_at }
+      no_prior_site_navigation = !lead.public_navigation_events.where(tenant_id: lead.tenant_id).where("occurred_at <= ?", lead.created_at).exists?
+      conversion = lead_conversion_summary(lead)
       entries << {
         at: lead.created_at,
-        icon: lead_conversion_summary(lead)[:icon].presence || "bi-flag-fill",
+        icon: conversion[:icon].presence || "bi-flag-fill",
         label: "Virou lead",
-        detail: no_prior_site_navigation ? "Sem navegação registrada no site até aqui — pode ter vindo de outro canal (WhatsApp, indicação, importação...)." : nil,
+        detail: conversion[:headline],
+        origin_facts: interest_conversion_origin_facts(lead, conversion),
         search_items: nil,
         duration_seconds: 0,
         conversion: true,
@@ -936,6 +981,20 @@ module Admin::ComercialHelper
     collapse_consecutive_interest_entries(entries.sort_by { |entry| entry[:at] }.reverse).map do |entry|
       entry.merge(duration_label: interest_duration_label(entry[:duration_seconds]))
     end
+  end
+
+  # Mesmos fatos de origem que o cabeçalho do lead (_origin_line) e a listagem
+  # (lead_table_conversion) mostram — fonte única, nada de "pode ter vindo de".
+  def interest_conversion_origin_facts(lead, conversion)
+    form_name = lead_table_meta_form_names([lead], tenant: lead.tenant)[lead.id] if lead.tenant
+    table = lead_table_conversion(lead, conversion, form_name: form_name)
+
+    facts = [
+      { label: lead_tracking_origin_text(conversion), icon: conversion[:icon].delete_prefix("bi-"), tone: conversion[:color].to_sym },
+      { label: table[:label], icon: table[:icon], tone: table[:tone] }
+    ]
+    facts << { label: "Campanha: #{table[:campaign]}", icon: "megaphone", tone: :amber } if table[:campaign].present?
+    facts.uniq { |fact| fact[:label] }
   end
 
   def collapse_consecutive_interest_entries(entries)

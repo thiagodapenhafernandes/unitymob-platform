@@ -1,0 +1,40 @@
+<% entries.each_with_index do |entry, index| %>
+  <div class="tw-flex tw-gap-3">
+    <div class="tw-flex tw-flex-col tw-items-center">
+      <span class="lead-timeline-marker"><i class="bi <%= entry[:icon] %>"></i></span>
+      <% unless index == entries.size - 1 %><span class="lead-timeline-rail"></span><% end %>
+    </div>
+    <div class="tw-pb-3 tw-flex-1">
+      <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+        <span class="ax-strong"><%= entry[:label] %></span>
+        <% if entry[:conversion] %><span class="ax-badge ax-badge--green">Conversão</span><% end %>
+        <% if entry[:no_site_navigation] %><span class="ax-badge ax-badge--gray">Sem navegação no site</span><% end %>
+        <% if entry[:count].to_i > 1 %><span class="ax-badge ax-badge--gray">×<%= entry[:count] %></span><% end %>
+        <span class="ax-page-subtitle"><%= l(entry[:at], format: "%d/%m/%Y %H:%M") %></span>
+        <% if entry[:duration_label].present? %>
+          <span class="ax-page-subtitle">· <i class="bi bi-stopwatch"></i> <%= entry[:duration_label] %></span>
+        <% end %>
+      </div>
+      <% if entry[:origin_facts].present? %>
+        <div class="ax-page-subtitle"><%= entry[:detail] %></div>
+        <div class="tw-flex tw-flex-wrap tw-gap-1 tw-mt-1">
+          <% entry[:origin_facts].each do |fact| %>
+            <span class="ax-badge <%= Admin::UiHelper::AX_BADGE_TONES.fetch(fact[:tone], Admin::UiHelper::AX_BADGE_TONES[:gray]) %>"><i class="bi bi-<%= fact[:icon] %>"></i> <%= fact[:label] %></span>
+          <% end %>
+        </div>
+      <% elsif entry[:detail].present? %>
+        <div class="ax-page-subtitle"><%= entry[:detail] %></div>
+      <% elsif entry[:search_items].present? %>
+        <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+          <button type="button" class="ax-page-subtitle lead-interest-search-toggle" data-action="ax-disclosure#toggle" aria-expanded="false">
+            <i class="bi bi-chevron-right"></i>
+            <%= pluralize(entry[:search_items].size, "filtro aplicado", "filtros aplicados") %>
+          </button>
+          <div hidden data-ax-disclosure-target="content" class="ax-page-subtitle lead-interest-search-items">
+            <% entry[:search_items].each do |item| %><span><%= item %></span><% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

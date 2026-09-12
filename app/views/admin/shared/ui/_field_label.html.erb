@@ -31,13 +31,7 @@
 <% if tooltip.present? %>
   <span class="ax-field-label-wrap">
     <%= label_element %>
-    <button type="button"
-            class="ax-field-label__info"
-            aria-label="Ajuda: <%= text %>"
-            data-controller="ax-tooltip"
-            data-ax-tooltip-text-value="<%= tooltip %>">
-      <i class="bi bi-info-circle" aria-hidden="true"></i>
-    </button>
+    <%= ax_help_tooltip(text: tooltip, label: "Ajuda: #{text}") %>
   </span>
 <% else %>
   <%= label_element %>

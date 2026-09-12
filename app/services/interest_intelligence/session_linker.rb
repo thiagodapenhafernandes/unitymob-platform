@@ -15,7 +15,7 @@ module InterestIntelligence
       session = PublicNavigationSession.find_by(token: @token)
       return unless session
 
-      session.link_to_lead!(@lead)
+      return unless session.link_to_lead!(@lead)
       InterestIntelligence::Reprocessor.call(
         lead: @lead,
         idempotency_scope: "auto"

@@ -546,6 +546,7 @@ class Admin::LeadsController < Admin::BaseController
       locals: {
         lead: @lead,
         profile: @interest_profile,
+        journey: @interest_journey,
         profile_incomplete: @interest_profile_incomplete,
         matches: @interest_matches,
         navigation_events: @interest_navigation_events,
@@ -2947,7 +2948,8 @@ class Admin::LeadsController < Admin::BaseController
     @interest_profile = matcher.profile
     @interest_profile_incomplete = matcher.profile_incomplete?
     @interest_matches = matcher.call
-    @interest_navigation_events = @lead.public_navigation_events.includes(:habitation).recent.limit(12)
+    @interest_journey = InterestIntelligence::Journey.call(@lead) if @interest_settings.enabled?
+    @interest_navigation_events = @lead.public_navigation_events.where(tenant_id: @lead.tenant_id).includes(:habitation).recent.limit(100)
     @interest_property_interests = @lead.client_property_interests.includes(:habitation).order(Arel.sql("COALESCE(last_search_at, created_at) DESC")).limit(8)
   end
 end

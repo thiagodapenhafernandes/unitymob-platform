@@ -271,9 +271,10 @@ module Admin::UiHelper
 
   # Card padrão com header colapsável (chevron) — para telas de trabalho, onde
   # o ax_form_section (contexto de formulário) ficaria sem o chrome de card.
-  def ax_collapsible_card(title:, collapse_id:, icon: nil, badge: nil, actions: nil, collapsed: false, class_name: nil, body: nil, &block)
+  def ax_collapsible_card(title:, collapse_id:, icon: nil, badge: nil, actions: nil, collapsed: false, class_name: nil, variant: nil, body: nil, &block)
     render(
       "admin/shared/ui/collapsible_card",
+      variant:,
       title:,
       collapse_id:,
       icon:,
@@ -562,6 +563,13 @@ module Admin::UiHelper
       tooltip:,
       data:
     )
+  end
+
+  def ax_help_tooltip(text:, label: "Entenda esta informação")
+    tag.button(type: "button", class: "ax-field-label__info", aria: { label: label },
+      data: { controller: "ax-tooltip", ax_tooltip_text_value: text, action: "click->ax-tooltip#show" }) do
+      tag.i(class: "bi bi-info-circle", aria: { hidden: true })
+    end
   end
 
   def ax_info_badge(label:, value:, tooltip: nil, tone: :default, class_name: nil)
