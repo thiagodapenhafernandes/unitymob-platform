@@ -2058,6 +2058,28 @@
 
   <%# ===== Coluna direita ===== %>
   <div>
+    <%# ===== Bloco: Inteligência de Interesse (navegação anterior à conversão) ===== %>
+    <% if @interest_simulation %>
+      <%= render "admin/leads/interest_intelligence",
+            lead: @lead,
+            profile: @interest_profile,
+            profile_incomplete: @interest_profile_incomplete,
+            matches: @interest_matches,
+            navigation_events: @interest_navigation_events,
+            property_interests: @interest_property_interests,
+            settings: @interest_settings,
+            simulation: true %>
+    <% else %>
+      <%= turbo_frame_tag dom_id(@lead, :interest_intelligence),
+            src: interest_intelligence_admin_lead_path(@lead),
+            loading: :lazy,
+            class: "tw-block tw-mb-4" do %>
+        <div class="ax-card lead-interest-card">
+          <div class="ax-card__body ax-page-subtitle">Carregando inteligência de interesse…</div>
+        </div>
+      <% end %>
+    <% end %>
+
     <%# ===== Bloco: Operação do lead ===== %>
     <div class="ax-card lead-next-action-card tw-mb-4">
       <div class="ax-card__header">

@@ -37,30 +37,35 @@ RSpec.describe Notifications::FcmSender do
       expect(result.body).to match(/não configurado/)
     end
 
-    it "posts to the FCM v1 endpoint with a bearer token from the service account" do
-      ENV["FCM_PROJECT_ID"] = "unitymob-field"
-      ENV["FCM_SERVICE_ACCOUNT_JSON"] = '{"type":"service_account"}'
+    %w[distribution pool reminder general unknown].each do |category|
+      it "sends the sound and Android channel for #{category}, preserving navigation data" do
+        sound = "unitymob_#{category == 'unknown' ? 'general' : category}_v1"
+        ENV["FCM_PROJECT_ID"] = "unitymob-field"
+        ENV["FCM_SERVICE_ACCOUNT_JSON"] = '{"type":"service_account"}'
 
-      fake_credentials = instance_double(Google::Auth::ServiceAccountCredentials, fetch_access_token!: { "access_token" => "fake-token" })
-      allow(Google::Auth::ServiceAccountCredentials).to receive(:make_creds).and_return(fake_credentials)
+        fake_credentials = instance_double(Google::Auth::ServiceAccountCredentials, fetch_access_token!: { "access_token" => "fake-token" })
+        allow(Google::Auth::ServiceAccountCredentials).to receive(:make_creds).and_return(fake_credentials)
 
-      stubs = Faraday::Adapter::Test::Stubs.new do |stub|
-        stub.post("/v1/projects/unitymob-field/messages:send") do |env|
-          expect(env.request_headers["Authorization"]).to eq("Bearer fake-token")
-          body = JSON.parse(env.body)
-          expect(body.dig("message", "token")).to eq("device-token")
-          expect(body.dig("message", "notification")).to eq("title" => "Novo lead", "body" => "Corretor, atenda rápido")
-          expect(body.dig("message", "apns", "payload", "aps", "sound")).to eq("default")
-          [200, { "Content-Type" => "application/json" }, "{}"]
+        stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+          stub.post("/v1/projects/unitymob-field/messages:send") do |env|
+            expect(env.request_headers["Authorization"]).to eq("Bearer fake-token")
+            body = JSON.parse(env.body)
+            expect(body.dig("message", "token")).to eq("device-token")
+            expect(body.dig("message", "notification")).to eq("title" => "Novo lead", "body" => "Corretor, atenda rápido")
+            expect(body.dig("message", "apns", "payload", "aps", "sound")).to eq("#{sound}.wav")
+            expect(body.dig("message", "android", "notification")).to eq("sound" => sound, "channel_id" => sound)
+            expect(body.dig("message", "data")).to eq("url" => "/field")
+            [200, { "Content-Type" => "application/json" }, "{}"]
+          end
         end
+        fake_connection = Faraday.new { |b| b.adapter(:test, stubs) }
+        allow_any_instance_of(described_class).to receive(:connection).and_return(fake_connection)
+
+        result = described_class.deliver(token: "device-token", title: "Novo lead", body: "Corretor, atenda rápido", data: { url: "/field" }, category: category)
+
+        expect(result.success?).to be(true)
+        stubs.verify_stubbed_calls
       end
-      fake_connection = Faraday.new { |b| b.adapter(:test, stubs) }
-      allow_any_instance_of(described_class).to receive(:connection).and_return(fake_connection)
-
-      result = described_class.deliver(token: "device-token", title: "Novo lead", body: "Corretor, atenda rápido", data: { url: "/field" })
-
-      expect(result.success?).to be(true)
-      stubs.verify_stubbed_calls
     end
   end
 end

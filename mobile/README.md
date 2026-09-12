@@ -108,3 +108,27 @@ Ainda não adicionada neste checkout — o ambiente usado não tinha Android
 SDK/emulador disponível pra build e verificação real. `npx cap add android`
 adiciona o projeto; precisa validar em Android Studio antes de considerar
 pronto (não faça isso sem poder testar de verdade).
+
+## Sons por tipo de notificação
+
+O envio FCM usa quatro sons originais, PCM WAV mono, com menos de dois segundos:
+rodízio/atribuição (`distribution`), Bolsão/Shark Tank/reaviso (`pool`),
+tarefas/compromissos (`reminder`) e demais avisos (`general`). O contexto já
+usado na auditoria do envio determina o grupo; Web Push permanece igual.
+
+Prévia: abra `notification-sounds/index.html`. Os WAV dessa pasta são os
+recursos do bundle iOS; Android tem cópias em `app/src/main/res/raw`.
+`python3 notification-sounds/generate.py` regenera ambos a partir da composição
+original, sem dependências ou áudios de terceiros.
+
+Android cria os canais `unitymob_<grupo>_v1` na abertura do app, antes do login.
+O serviço mantém os eventos do plugin e apresenta também o push em primeiro
+plano, com o mesmo fluxo de toque (`url`/`accept_url`). iOS usa a apresentação
+nativa do plugin, que já habilita som em primeiro plano. Preferências do
+sistema, silêncio e permissões continuam valendo; canais existentes preservam
+as escolhas do usuário. Para mudar o som padrão de um canal, versione o ID.
+
+Publicação exige novo build iOS/Android e deploy Rails. Apps anteriores sem os
+recursos/canais usam o fallback do sistema. Validar em aparelhos: os quatro
+sons com app aberto, em segundo plano e tela bloqueada; toque/aceite; silêncio,
+permissão negada e preferências de canal. Não basta validar apenas o payload FCM.

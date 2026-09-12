@@ -149,7 +149,7 @@ RSpec.describe Notifications::PushDispatcher do
 
     expect(result).to eq(1)
     expect(Notifications::FcmSender).to have_received(:deliver).with(
-      token: "fcm-device-token-abc", title: "Novo lead", body: "Teste", data: hash_including(url: "/admin/leads/#{lead.id}/attend")
+      token: "fcm-device-token-abc", category: "general", title: "Novo lead", body: "Teste", data: hash_including(url: "/admin/leads/#{lead.id}/attend")
     )
     expect(WebPush).not_to have_received(:payload_send)
     expect(subscription.reload.active).to be(true)
@@ -183,4 +183,23 @@ RSpec.describe Notifications::PushDispatcher do
     expect(result).to eq(0)
     expect(subscription.reload.active).to be(false)
   end
+  {
+    { notification_context: "distribution" } => "distribution",
+    { notification_context: "pool" } => "pool",
+    { notification_context: "shark_tank" } => "pool",
+    { notification_context: "pool_renotify" } => "pool",
+    { source: "task_due_reminder" } => "reminder",
+    { "source" => "appointment_due_reminder" } => "reminder",
+    { notification_context: "lost_turn" } => "general"
+  }.each do |metadata, category|
+    it "routes #{metadata} to the #{category} native sound" do
+      PushSubscription.create!(admin_user: admin_user, endpoint: "category-token", platform: "ios", active: true)
+      allow(Notifications::FcmSender).to receive(:deliver).and_return(
+        Notifications::FcmSender::Result.new(success?: true, status: 200, body: "{}")
+      )
+      described_class.deliver(admin_user_id: admin_user.id, title: "Aviso", body: "Teste", metadata: metadata)
+      expect(Notifications::FcmSender).to have_received(:deliver).with(hash_including(category: category))
+    end
+  end
+
 end
