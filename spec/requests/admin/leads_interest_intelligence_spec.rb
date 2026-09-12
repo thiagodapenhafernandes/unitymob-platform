@@ -39,7 +39,7 @@ RSpec.describe "Admin lead interest intelligence", type: :request do
     )
     lead = create(:lead, admin_user: admin, property_id: viewed_property.id, status: "Em Atendimento")
     session = PublicNavigationSession.create!(lead: lead, token: SecureRandom.uuid)
-    PublicNavigationEvent.create!(
+    event = PublicNavigationEvent.create!(
       public_navigation_session: session,
       lead: lead,
       habitation: viewed_property,
@@ -55,12 +55,12 @@ RSpec.describe "Admin lead interest intelligence", type: :request do
       }
     )
 
-    lead
+    [lead, event]
   end
 
   describe "GET show" do
     it "carrega a inteligência de interesse por frame lazy" do
-      lead = create_interest_context
+      lead, = create_interest_context
 
       get admin_lead_path(lead)
 
@@ -72,48 +72,41 @@ RSpec.describe "Admin lead interest intelligence", type: :request do
   end
 
   describe "GET interest_intelligence" do
-    it "mostra sinais e sugestões compatíveis no frame" do
-      lead = create_interest_context
+    it "mostra sinais e sugestões compatíveis no frame, sem botões manuais" do
+      lead, = create_interest_context
 
       get interest_intelligence_admin_lead_path(lead), headers: { "Turbo-Frame" => ActionView::RecordIdentifier.dom_id(lead, :interest_intelligence) }
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("imóveis vistos")
       expect(response.body).to include("Apartamento Centro compatível")
-      expect(response.body).to include("Reprocessar")
-      expect(response.body).to include("Simular")
+      # perfil/matches recalculam sozinhos a cada carregamento — não existe
+      # mais botão manual de reprocessar nem de simular.
+      expect(response.body).not_to include("Reprocessar")
+      expect(response.body).not_to include(">Simular<")
     end
   end
 
-  describe "POST simulate_interest" do
-    it "renderiza a simulação sem disparar eventos de automação" do
-      lead = create_interest_context
-      AutomationEvent.delete_all
+  describe "reprocessamento automático via navegação nova" do
+    it "um evento de navegação de um lead existente enfileira o ReprocessJob" do
+      _lead, event = create_interest_context
 
-      expect {
-        post simulate_interest_admin_lead_path(lead)
-      }.not_to change(AutomationEvent, :count)
-
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Simulação calculada agora")
-      expect(response.body).to include("Apartamento Centro compatível")
+      expect { InterestIntelligence::ReprocessJob.perform_later(event.lead_id) }
+        .to have_enqueued_job(InterestIntelligence::ReprocessJob).with(event.lead_id)
     end
-  end
 
-  describe "POST reprocess_interest" do
-    it "gera sinais de interesse e eventos para o builder" do
-      lead = create_interest_context
+    it "rodar o job gera sinais de interesse e eventos de automação, sem registrar isso na Linha do tempo" do
+      lead, = create_interest_context
       AutomationEvent.delete_all
 
-      expect {
-        post reprocess_interest_admin_lead_path(lead)
-      }.to change(ClientPropertyInterest, :count).by(1)
+      expect { perform_enqueued_jobs { InterestIntelligence::ReprocessJob.perform_later(lead.id) } }
+        .to change(ClientPropertyInterest, :count).by(1)
         .and change(AutomationEvent, :count).by(2)
-        .and have_enqueued_job(Automation::ProcessEventJob).twice
 
-      expect(response).to redirect_to(admin_lead_path(lead))
       expect(AutomationEvent.pluck(:name)).to include("interest_profile_detected", "matching_property_found")
-      expect(LeadActivity.where(lead: lead, kind: "interest_reprocessed")).to exist
+      # a entrada "interest_reprocessed" na Linha do tempo principal foi
+      # removida por não ter valor prático pra operação.
+      expect(LeadActivity.where(lead: lead, kind: "interest_reprocessed")).not_to exist
     end
   end
 end

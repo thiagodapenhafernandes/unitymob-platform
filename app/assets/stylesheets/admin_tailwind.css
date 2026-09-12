@@ -19425,6 +19425,39 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
   line-height: 1.25;
 }
 
+.lead-interest-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lead-interest-search-toggle i {
+  font-size: 10px;
+  transition: transform .15s ease;
+}
+
+.lead-interest-search-toggle[aria-expanded="true"] i {
+  transform: rotate(90deg);
+}
+
+.lead-interest-search-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+.lead-interest-search-items span:not(:last-child)::after {
+  content: "·";
+  margin-left: 8px;
+  color: var(--ax-form-border, #e6e8eb);
+}
+
 .lead-interest-signal span {
   display: block;
   color: var(--admin-ink, #1f2733);

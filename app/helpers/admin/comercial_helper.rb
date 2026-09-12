@@ -826,10 +826,30 @@ module Admin::ComercialHelper
     }[name.to_s] || name.to_s.humanize
   end
 
+  SEARCH_PARAM_LABELS = {
+    "city" => "Cidade", "city[]" => "Cidade",
+    "bairro" => "Bairro",
+    "category" => "Tipo", "category[]" => "Tipo",
+    "transaction_type" => "Transação",
+    "q" => "Busca",
+    "development" => "Empreendimento",
+    "min_price" => "A partir de",
+    "max_price" => "Até",
+    "min_bedrooms" => "Dormitórios",
+    "min_suites" => "Suítes",
+    "min_parking" => "Vagas",
+    "min_area" => "Área mín.",
+    "max_area" => "Área máx.",
+    "characteristics" => "Características", "characteristics[]" => "Características"
+  }.freeze
+  SEARCH_PARAM_PRICE_KEYS = %w[min_price max_price].freeze
+  SEARCH_PARAM_IGNORED_KEYS = %w[page per_page sort view mobile_tab format].freeze
+
   # Path bruto ("/", "/imoveis?cidade=...") não diz nada pra quem lê a
   # timeline. Preferimos o que o próprio evento já carrega de mais específico
   # (título da seção clicada, do formulário, do imóvel) e só caímos pro título
-  # da página / path como último recurso.
+  # da página / path como último recurso. Buscas com filtro têm o próprio
+  # tratamento (interest_search_items), pois viram disclosure, não texto solto.
   def interest_event_detail(event)
     meta = event.metadata.to_h
     descriptor = meta["home_section_title"].presence ||
@@ -839,6 +859,16 @@ module Admin::ComercialHelper
       interest_friendly_path(event.path)
 
     [event.habitation&.codigo, descriptor].compact_blank.join(" · ")
+  end
+
+  def interest_search_items(search_params)
+    search_params.to_h.filter_map do |key, value|
+      next if value.blank? || SEARCH_PARAM_IGNORED_KEYS.include?(key.to_s)
+
+      label = SEARCH_PARAM_LABELS[key.to_s] || key.to_s.humanize
+      formatted = SEARCH_PARAM_PRICE_KEYS.include?(key.to_s) && value.to_s.match?(/\A\d+\z/) ? brl(value.to_f) : value.to_s
+      "#{label}: #{formatted}"
+    end
   end
 
   def interest_friendly_path(path)
@@ -872,11 +902,14 @@ module Admin::ComercialHelper
   # consecutivas numa só, com a contagem.
   def interest_timeline_entries(lead, navigation_events)
     entries = navigation_events.to_a.reject { |event| interest_noise_event?(event) }.map do |event|
+      search_items = interest_search_items(event.search_params) if %w[property_search search_no_results].include?(event.name.to_s)
       {
         at: event.occurred_at,
         icon: event.property_signal? ? "bi-house-heart" : "bi-compass",
         label: interest_event_label(event.name),
-        detail: interest_event_detail(event),
+        detail: search_items.present? ? nil : interest_event_detail(event),
+        search_items: search_items.presence,
+        duration_seconds: event.duration_seconds.to_i,
         conversion: false
       }
     end
@@ -887,22 +920,43 @@ module Admin::ComercialHelper
         icon: "bi-flag-fill",
         label: "Virou lead",
         detail: nil,
+        search_items: nil,
+        duration_seconds: 0,
         conversion: true
       }
     end
 
-    collapse_consecutive_interest_entries(entries.sort_by { |entry| entry[:at] }.reverse)
+    collapse_consecutive_interest_entries(entries.sort_by { |entry| entry[:at] }.reverse).map do |entry|
+      entry.merge(duration_label: interest_duration_label(entry[:duration_seconds]))
+    end
   end
 
   def collapse_consecutive_interest_entries(entries)
     entries.each_with_object([]) do |entry, collapsed|
       previous = collapsed.last
       if previous && !previous[:conversion] && !entry[:conversion] &&
-         previous[:label] == entry[:label] && previous[:detail] == entry[:detail]
+         previous[:label] == entry[:label] && previous[:detail] == entry[:detail] &&
+         previous[:search_items] == entry[:search_items]
         previous[:count] += 1
+        previous[:duration_seconds] = [previous[:duration_seconds], entry[:duration_seconds]].max
       else
         collapsed << entry.merge(count: 1)
       end
     end
+  end
+
+  # duration_seconds é "tempo desde que a página abriu até este evento" — só
+  # vira sinal de "quanto tempo ficou na página" no evento de saída/engajamento
+  # (os demais disparam quase na hora, duration ~0 e por isso somem sozinhos).
+  def interest_duration_label(seconds)
+    total = seconds.to_i
+    return nil if total <= 0
+
+    minutes = total / 60
+    secs = total % 60
+    return "#{minutes}min #{secs}s" if minutes.positive? && secs.positive?
+    return "#{minutes}min" if minutes.positive?
+
+    "#{secs}s"
   end
 end

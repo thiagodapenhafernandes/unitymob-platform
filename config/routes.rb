@@ -262,8 +262,6 @@ Rails.application.routes.draw do
       get :attend, on: :member
       patch :toggle_favorite, on: :member
       post :log_contact, on: :member
-      post :reprocess_interest, on: :member
-      post :simulate_interest, on: :member
       get :interest_intelligence, on: :member
       post :open_whatsapp_conversation, on: :member
       post :activate_whatsapp_template, on: :member

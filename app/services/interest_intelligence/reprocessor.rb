@@ -32,7 +32,6 @@ module InterestIntelligence
       profile_event = emit_profile_event(profile)
       outcome_event = emit_outcome_event(profile, matches, matcher.profile_incomplete?)
       repeated_event = emit_repeated_interest_event(profile)
-      record_timeline(profile, matches, created_count)
 
       Result.new(
         profile: profile,
@@ -154,21 +153,6 @@ module InterestIntelligence
         actor_name: @actor&.name,
         reprocessed_at: Time.current.iso8601
       }.compact
-    end
-
-    def record_timeline(profile, matches, created_count)
-      return unless @actor
-
-      LeadActivity.log!(
-        lead: @lead,
-        kind: "interest_reprocessed",
-        metadata: {
-          by: @actor&.name,
-          confidence: profile.with_indifferent_access.dig(:confidence),
-          matches_count: matches.size,
-          created_interests_count: created_count
-        }.compact
-      )
     end
 
     def match_payload(result)

@@ -120,8 +120,8 @@ class Admin::LeadsController < Admin::BaseController
   before_action -> { check_permission!(:edit, :leads) }, only: [:update]
   before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :reprocess_interest, :simulate_interest, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
@@ -535,29 +535,6 @@ class Admin::LeadsController < Admin::BaseController
         format.json { render json: { errors: @lead.errors.full_messages }, status: :unprocessable_entity }
       end
     end
-  end
-
-  def reprocess_interest
-    unless can?(:edit, :leads) || can?(:manage, :comercial) || owns_all_resource?(:leads)
-      redirect_to admin_lead_path(@lead), alert: "Você não tem permissão para reprocessar a inteligência deste lead."
-      return
-    end
-
-    result = InterestIntelligence::Reprocessor.call(lead: @lead, actor: current_admin_user)
-    message = if result.profile_incomplete
-                "Interesse reprocessado. Ainda faltam sinais suficientes para sugerir imóveis com segurança."
-              else
-                "Interesse reprocessado. #{result.matches.size} imóvel(is) compatível(is) encontrado(s)."
-              end
-
-    redirect_to admin_lead_path(@lead), notice: message
-  end
-
-  def simulate_interest
-    load_show_context
-    load_interest_intelligence
-    @interest_simulation = true
-    render :show
   end
 
   def interest_intelligence

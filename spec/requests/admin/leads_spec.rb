@@ -1120,7 +1120,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.css('textarea[name="lead[notes]"]').map { |field| field["id"] }).to eq(["mobile_lead_notes", "lead_notes"])
       expect(pwa_detail.text).to include("Lead Detalhe PWA", "Ações do lead", "Retornar para o cliente", "Imóveis de interesse", "PWA-001", "Links gerados")
       expect(pwa_detail.text).to include("Histórico de contatos", "Registrar contato", "Anotação interna", "Cliente pediu retorno no fim da tarde.", "Etiquetas", "Contato")
-      expect(pwa_detail.text).not_to include("Inteligência de Interesse")
+      expect(pwa_detail.text).to include("Inteligência de Interesse")
       expect(pwa_detail.text).not_to include("Adicionar anotação")
       expect(pwa_detail.text).not_to include("Conversa")
       expect(pwa_detail.at_css(".lead-pwa-chat-dialog")).to be_nil
@@ -1316,10 +1316,16 @@ RSpec.describe "Admin::Leads", type: :request do
       timeline = Nokogiri::HTML(response.body).at_css("#leadTimelineSection")
 
       expect(timeline.text).to include("WhatsApp · pela conta · para #{admin.name}")
-      expect(timeline.text).to include("Aceito pela Meta: 11/09/2026 08:00")
-      expect(timeline.text).to include("Enviado pelo WhatsApp: 11/09/2026 08:01")
-      expect(timeline.text).to include("Entregue no WhatsApp: 11/09/2026 08:02")
-      expect(timeline.text).to include("Lido no WhatsApp: 11/09/2026 08:03")
+      # status vira badge colorido (ax-badge) + horário ao lado, não mais
+      # "Label: data" corrido — checa label e data separadamente.
+      expect(timeline.text).to include("Aceito pela Meta")
+      expect(timeline.text).to include("Enviado pelo WhatsApp")
+      expect(timeline.text).to include("Entregue no WhatsApp")
+      expect(timeline.text).to include("Lido no WhatsApp")
+      expect(timeline.text).to include("11/09/2026 08:00")
+      expect(timeline.text).to include("11/09/2026 08:01")
+      expect(timeline.text).to include("11/09/2026 08:02")
+      expect(timeline.text).to include("11/09/2026 08:03")
     end
 
     it "mostra redistribuicao de forma resumida para o usuario comum" do
@@ -2523,7 +2529,7 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/:id" do
-    it "preserva status de compartilhamento dos imoveis sem renderizar inteligencia no detalhe" do
+    it "preserva status de compartilhamento dos imoveis e carrega inteligencia via frame lazy" do
       property = create(:habitation, tenant: admin.tenant, codigo: "SENT-001")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin)
       lead.property_interests.create!(tenant: admin.tenant, habitation: property)
@@ -2533,14 +2539,16 @@ RSpec.describe "Admin::Leads", type: :request do
         collection.record!("property_opened", habitation: property)
         collection.record!("interest_created", lead: lead, habitation: property, admin_user: admin)
       end
+      # O bloco aparece na tela (turbo-frame com src), mas o Matcher só roda
+      # quando o browser busca esse src depois — não durante esta página.
       allow(InterestIntelligence::Matcher).to receive(:new).and_raise("matching should be lazy")
 
       get admin_lead_path(lead)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("SENT-001", "Interessado")
-      expect(response.body).not_to include("Carregando sinais")
-      expect(response.body).not_to include(interest_intelligence_admin_lead_path(lead))
+      expect(response.body).to include("Carregando sinais")
+      expect(response.body).to include(interest_intelligence_admin_lead_path(lead))
     end
 
     it "renderiza a inteligencia de interesse no endpoint lazy" do
