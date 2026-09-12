@@ -1,39 +1,46 @@
 <%
   profile = (profile || {}).with_indifferent_access
-  criteria = (profile[:criteria] || {}).with_indifferent_access
   signals = (profile[:signals] || {}).with_indifferent_access
   enabled = settings&.enabled?
   embedded = local_assigns.fetch(:embedded, false)
+  journey = local_assigns[:journey] || (enabled ? InterestIntelligence::Journey.call(lead) : {})
+  section_prefix = "#{dom_id(lead)}_interest_#{embedded ? 'mobile' : 'desktop'}"
 %>
 
 <div class="<%= embedded ? 'lead-interest-card' : 'ax-card tw-mb-4 lead-interest-card' %>">
-  <% unless embedded %>
-    <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+  <div class="ax-card__header tw-flex tw-flex-wrap tw-gap-2 tw-items-center tw-justify-between">
+    <div class="tw-flex tw-items-center tw-gap-2">
       <span class="ax-card__title lead-interest-gradient-title"><i class="bi bi-stars ax-ico"></i> Inteligência de Interesse</span>
+      <%= ax_help_tooltip(text: "Reúne a navegação vinculada ao lead, os favoritos observados e os registros do atendimento para entender suas preferências. O histórico abaixo permite conferir os fatos. A leitura apoia o corretor; não prevê a compra.") %>
+    </div>
+    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
       <% if enabled %>
+        <span class="ax-badge <%= Admin::UiHelper::AX_BADGE_TONES.fetch(journey[:tone], Admin::UiHelper::AX_BADGE_TONES[:gray]) %>"><%= journey[:label] %></span>
+        <%= ax_help_tooltip(text: journey[:method], label: "Como a leitura foi definida") %>
         <span class="ax-badge ax-badge--blue"><%= profile[:confidence].to_i %>% confiança</span>
+        <%= ax_help_tooltip(text: "Mede a clareza do perfil pelas características dos imóveis e sinais disponíveis. Não é probabilidade de compra, capacidade financeira ou urgência.", label: "O que significa confiança") %>
       <% else %>
         <span class="ax-badge ax-badge--gray">Desativada</span>
       <% end %>
     </div>
-  <% end %>
+  </div>
 
   <div class="<%= embedded ? 'tw-grid tw-gap-3' : 'ax-card__body tw-grid tw-gap-3' %>">
     <% unless enabled %>
       <p class="ax-page-subtitle">A leitura de interesse está desativada em Identidade e Marca.</p>
     <% else %>
       <div class="lead-interest-metrics">
-        <span><strong><%= signals[:property_views].to_i %></strong><small>imóveis vistos</small></span>
-        <span><strong><%= signals[:searches].to_i %></strong><small>buscas/páginas</small></span>
-        <span><strong><%= signals[:explicit_interests].to_i %></strong><small>sinais salvos</small></span>
+        <span><strong><%= journey[:viewed_count] %></strong><small>imóveis vistos <%= ax_help_tooltip(text: "Imóveis distintos abertos no site ou em seleções compartilhadas. Repetições não aumentam esta quantidade.") %></small></span>
+        <span><strong><%= signals[:searches].to_i %></strong><small>buscas/páginas <%= ax_help_tooltip(text: "Buscas e páginas registradas na amostra de até 100 eventos usada para construir o perfil.") %></small></span>
+        <span><strong><%= journey[:declared_count] %></strong><small>interesses declarados <%= ax_help_tooltip(text: "Imóveis marcados com interesse em seleções compartilhadas. Aberturas, favoritos e sugestões automáticas não contam como declaração.") %></small></span>
       </div>
 
       <% if profile_incomplete %>
         <div class="lead-interest-empty">
           <i class="bi bi-search"></i>
           <div>
-            <strong>Perfil ainda incompleto</strong>
-            <p>Faltam sinais suficientes de navegação, filtros ou imóveis vistos para sugerir opções com segurança.</p>
+            <strong>Ainda estamos reunindo preferências</strong>
+            <p>Compartilhe imóveis pelo sistema para reunir sinais vinculados ao lead. Confira também os registros do atendimento.</p>
           </div>
         </div>
       <% else %>
@@ -44,9 +51,35 @@
         </div>
       <% end %>
 
+      <%= ax_collapsible_card(title: "O que sustenta esta leitura", collapse_id: "#{section_prefix}_reading", variant: :section, collapsed: true, badge: "Navegação + atendimento") do %>
+        <strong><%= journey[:headline] %></strong>
+        <p class="ax-page-subtitle"><%= journey[:description] %></p>
+        <% if journey[:last_navigation_at] %>
+          <p class="ax-page-subtitle">Última atividade no site: <%= l(journey[:last_navigation_at], format: "%d/%m/%Y %H:%M") %>.</p>
+        <% end %>
+        <% if journey[:next_activity] %>
+          <% activity = journey[:next_activity] %>
+          <p class="ax-page-subtitle">Compromisso registrado: <%= activity[:title] %> · <%= l(activity[:at], format: "%d/%m/%Y %H:%M") %> · <%= activity[:owner] %><%= " · prazo vencido" if activity[:at] < Time.current %></p>
+        <% end %>
+        <% journey[:activities].each do |activity| %>
+          <% entry = timeline_entry(activity) %>
+          <div class="lead-interest-signal tw-mt-2">
+            <i class="bi <%= entry[:icon] %>" aria-hidden="true"></i>
+            <div><strong><%= entry[:label] %></strong> <small><%= l(entry[:at], format: "%d/%m/%Y %H:%M") %> · <%= activity.source_category == "external_sync" ? "Registro importado" : "Atendimento" %></small><small><%= entry[:detail] %></small></div>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= ax_collapsible_card(title: "Origem e jornada", collapse_id: "#{section_prefix}_origin", variant: :section, collapsed: true, badge: lead_tracking_origin_text(lead_conversion_summary(lead))) do %>
+        <% interest_journey_origins(lead, journey).each do |item| %>
+          <p class="ax-page-subtitle"><strong><%= item[:label] %>:</strong> <%= item[:text] %></p>
+        <% end %>
+      <% end %>
+
+      <%= ax_collapsible_card(title: "Imóveis compatíveis", collapse_id: "#{section_prefix}_matches", variant: :section, collapsed: true, badge: "#{matches.first(settings['max_suggestions'].to_i).size} sugestão(ões)") do %>
+        <% if matches.empty? %><p class="ax-page-subtitle">Nenhum imóvel atingiu a compatibilidade mínima com os dados disponíveis. Isso não indica desinteresse do cliente.</p><% end %>
       <% if matches.any? %>
-        <div class="lead-interest-section">
-          <strong>Imóveis compatíveis</strong>
+        <div>
           <div class="tw-grid tw-gap-2">
             <% matches.first(settings["max_suggestions"].to_i).each do |match| %>
               <% habitation = match.habitation %>
@@ -74,43 +107,28 @@
         </div>
       <% end %>
 
-      <% timeline_entries = interest_timeline_entries(lead, navigation_events) %>
+      <% end %>
+
+      <%= ax_collapsible_card(title: "Favoritos no site", collapse_id: "#{section_prefix}_favorites", variant: :section, collapsed: true, badge: journey[:favorite_observed] ? "#{journey[:favorite_properties].size} imóvel(is)" : "Ainda não observado") do %>
+        <p class="ax-page-subtitle">Favoritos observados nos navegadores vinculados ao lead. A lista é atualizada quando o cliente volta ao site com rastreamento permitido; não confirma intenção de compra.</p>
+        <% if journey[:favorite_properties].empty? %>
+          <p class="ax-page-subtitle"><%= journey[:favorite_observed] ? "Nenhum favorito na última lista recebida." : "Ainda não recebemos a lista de favoritos deste lead." %></p>
+        <% end %>
+        <% journey[:favorite_properties].each do |property| %>
+          <div class="lead-interest-signal tw-mt-2"><i class="bi bi-heart" aria-hidden="true"></i><div><%= link_to "#{property.codigo} · #{property.display_title}", admin_habitation_path(property), target: "_blank", rel: "noopener", class: "lead-interest-match__title" %><small><%= [property.bairro, property.cidade].compact_blank.join(", ") %></small></div></div>
+        <% end %>
+      <% end %>
+
+      <% timeline_entries = interest_timeline_entries(lead, navigation_events, share_events: journey[:share_events]) %>
       <% if timeline_entries.any? %>
         <div class="lead-interest-section">
           <strong>Navegação do usuário</strong>
           <div class="tw-grid tw-gap-0">
-            <% timeline_entries.each_with_index do |entry, index| %>
-              <div class="tw-flex tw-gap-3">
-                <div class="tw-flex tw-flex-col tw-items-center">
-                  <span class="lead-timeline-marker"><i class="bi <%= entry[:icon] %>"></i></span>
-                  <% unless index == timeline_entries.size - 1 %><span class="lead-timeline-rail"></span><% end %>
-                </div>
-                <div class="tw-pb-3 tw-flex-1">
-                  <div class="tw-flex tw-items-center tw-gap-2">
-                    <span class="ax-strong"><%= entry[:label] %></span>
-                    <% if entry[:conversion] %><span class="ax-badge ax-badge--green">Conversão</span><% end %>
-                    <% if entry[:no_site_navigation] %><span class="ax-badge ax-badge--gray">Sem navegação no site</span><% end %>
-                    <% if entry[:count].to_i > 1 %><span class="ax-badge ax-badge--gray">×<%= entry[:count] %></span><% end %>
-                    <span class="ax-page-subtitle"><%= l(entry[:at], format: "%d/%m/%Y %H:%M") %></span>
-                    <% if entry[:duration_label].present? %>
-                      <span class="ax-page-subtitle">· <i class="bi bi-stopwatch"></i> <%= entry[:duration_label] %></span>
-                    <% end %>
-                  </div>
-                  <% if entry[:detail].present? %>
-                    <div class="ax-page-subtitle"><%= entry[:detail] %></div>
-                  <% elsif entry[:search_items].present? %>
-                    <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
-                      <button type="button" class="ax-page-subtitle lead-interest-search-toggle" data-action="ax-disclosure#toggle" aria-expanded="false">
-                        <i class="bi bi-chevron-right"></i>
-                        <%= pluralize(entry[:search_items].size, "filtro aplicado", "filtros aplicados") %>
-                      </button>
-                      <div hidden data-ax-disclosure-target="content" class="ax-page-subtitle lead-interest-search-items">
-                        <% entry[:search_items].each do |item| %><span><%= item %></span><% end %>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              </div>
+            <%= render "admin/leads/interest_navigation", entries: timeline_entries.first(7) %>
+            <% if timeline_entries.size > 7 %>
+              <%= ax_collapsible_card(title: "Mostrar histórico anterior (#{timeline_entries.size - 7})", collapse_id: "#{section_prefix}_history", variant: :section, collapsed: true) do %>
+                <%= render "admin/leads/interest_navigation", entries: timeline_entries.drop(7) %>
+              <% end %>
             <% end %>
           </div>
         </div>

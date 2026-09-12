@@ -21,24 +21,33 @@ class PublicNavigationSession < ApplicationRecord
     end
 
     (session || new(token: clean_token)).tap do |session|
-      session.tenant ||= tenant || session.lead&.tenant
-      session.first_seen_at ||= Time.current
-      session.last_seen_at = Time.current
-      session.user_agent_digest ||= Digest::SHA256.hexdigest(request.user_agent.to_s).first(64)
-      session.landing_url ||= request.referer.presence || request.original_url
-      session.referrer_url ||= request.referer
-      session.metadata = session.metadata.to_h.merge(
-        "ip_hint" => Digest::SHA256.hexdigest(request.remote_ip.to_s).first(16)
-      )
-      session.save!
+      session.with_lock do
+        session.tenant ||= tenant || session.lead&.tenant
+        session.first_seen_at ||= Time.current
+        session.last_seen_at = Time.current
+        session.user_agent_digest ||= Digest::SHA256.hexdigest(request.user_agent.to_s).first(64)
+        session.landing_url ||= request.referer.presence || request.original_url
+        session.referrer_url ||= request.referer
+        session.metadata = session.metadata.to_h.merge(
+          "ip_hint" => Digest::SHA256.hexdigest(request.remote_ip.to_s).first(16)
+        )
+        session.save!
+      end
     end
   end
 
   def link_to_lead!(lead)
-    return unless lead
+    return false unless lead
 
-    update!(lead: lead, tenant: tenant || lead.tenant, last_seen_at: Time.current)
-    events.where(lead_id: nil).update_all(lead_id: lead.id, tenant_id: lead.tenant_id, updated_at: Time.current)
+    with_lock do
+      return false if tenant_id.present? && tenant_id != lead.tenant_id
+      return false if lead_id.present? && lead_id != lead.id
+      return false if events.where.not(tenant_id: [nil, lead.tenant_id]).exists?
+
+      update!(lead: lead, tenant: tenant || lead.tenant, last_seen_at: Time.current)
+      events.where(lead_id: nil).update_all(lead_id: lead.id, tenant_id: lead.tenant_id, updated_at: Time.current)
+      true
+    end
   end
 
   private

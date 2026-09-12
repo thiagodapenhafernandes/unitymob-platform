@@ -19787,7 +19787,6 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
     gap: .55rem;
   }
 
-  .lead-show-workspace .lead-interest-card .lead-interest-section,
   .lead-show-workspace .lead-interest-card .lead-interest-notice {
     display: none;
   }

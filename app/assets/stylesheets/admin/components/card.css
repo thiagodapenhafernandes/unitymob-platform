@@ -95,3 +95,13 @@
     transition: none;
   }
 }
+
+/* Seção colapsável plana dentro de um card existente. */
+.ax-card.ax-collapse-card--section { border: 0; border-top: 1px solid var(--admin-border, #dfe4ec); border-radius: 0; box-shadow: none; margin: 0; }
+.ax-collapse-card--section > .ax-card__header { padding: 16px 0; border-bottom: 0; }
+.ax-collapse-card--section > .ax-card__body { padding: 0 0 16px; }
+.ax-collapse-card--section .ax-collapse-card__trigger { gap: 10px; flex-wrap: wrap; }
+.ax-collapse-card--section .ax-collapse-card__chevron { order: -1; margin-left: 0; transform: rotate(-90deg); }
+.ax-collapse-card--section.is-open .ax-collapse-card__chevron { transform: rotate(0); }
+.ax-collapse-card--section .ax-card__title { flex: 1; font-size: 12px; text-transform: uppercase; color: var(--admin-muted, #68778e); }
+.ax-collapse-card--section .ax-badge { background: transparent; color: var(--admin-muted, #68778e); white-space: normal; text-align: right; }

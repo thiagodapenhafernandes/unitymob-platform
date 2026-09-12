@@ -125,6 +125,22 @@ RSpec.describe "Public navigation events", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "sincroniza favoritos pelo cookie, permite remover e respeita recusa de consentimento" do
+      property = create(:habitation)
+      post "/navigation_events", params: { navigation_event: { name: "favorites_sync", favorite_ids: [property.id] } }, as: :json
+      expect(response).to have_http_status(:ok)
+      session = PublicNavigationSession.last
+      expect(session.metadata["favorite_property_ids"]).to eq([property.id])
+      post "/navigation_events", params: { navigation_event: { name: "favorites_sync", favorite_ids: [] } }, as: :json
+      expect(PublicNavigationSession.count).to eq(1)
+      expect(session.reload.metadata["favorite_property_ids"]).to eq([])
+      cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "rejected"
+      expect {
+        post "/navigation_events", params: { navigation_event: { name: "favorites_sync", favorite_ids: [property.id] } }, as: :json
+      }.not_to change(PublicNavigationEvent, :count)
+      expect(session.reload.metadata["favorite_property_ids"]).to eq([])
+    end
+
     it "rejects unknown event names" do
       expect do
         post "/navigation_events",

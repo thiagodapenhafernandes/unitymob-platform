@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { readFavorites, favoritesStorageKey } from "controllers/public_favorites_storage"
 
 export default class extends Controller {
   static targets = ["consentBanner"]
@@ -19,6 +20,7 @@ export default class extends Controller {
     this.startedAt = Date.now()
     this.tracked = new Set()
     this.startedForms = new Set()
+    this.requestQueue = Promise.resolve()
     this.trackPage()
     this.boundClick = this.trackClick.bind(this)
     this.boundFocusIn = this.trackFocusIn.bind(this)
@@ -29,6 +31,10 @@ export default class extends Controller {
       this.renderConsentState()
       this.trackPage()
     }
+    this.boundFavoritesChange = () => this.trackFavorites()
+    this.boundStorageChange = event => { if (event.key === null || event.key === favoritesStorageKey()) this.trackFavorites() }
+    window.addEventListener("storage", this.boundStorageChange)
+    window.addEventListener("unitymob:favorites-changed", this.boundFavoritesChange)
     window.addEventListener("unitymob:lgpd-consent-accepted", this.boundConsentChange)
     window.addEventListener("unitymob:lgpd-consent-rejected", this.boundConsentChange)
     document.addEventListener("click", this.boundClick, { capture: true })
@@ -40,6 +46,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    window.removeEventListener("storage", this.boundStorageChange)
+    window.removeEventListener("unitymob:favorites-changed", this.boundFavoritesChange)
     window.removeEventListener("unitymob:lgpd-consent-accepted", this.boundConsentChange)
     window.removeEventListener("unitymob:lgpd-consent-rejected", this.boundConsentChange)
     if (this.boundClick) document.removeEventListener("click", this.boundClick, { capture: true })
@@ -54,10 +62,17 @@ export default class extends Controller {
 
     const eventName = this.hasPropertyIdValue && this.propertyIdValue ? "property_view" : "page_view"
     this.enqueue(eventName)
+    this.trackFavorites()
     if (!this.hasPropertyIdValue && Object.keys(this.searchParams()).length > 0) {
       this.enqueue("property_search")
       window.setTimeout(() => this.trackSearchOutcome(), 800)
     }
+  }
+
+  trackFavorites() {
+    if (!this.canTrack()) return
+    const ids = [...new Set(readFavorites().map(favorite => String(favorite.id)).filter(id => /^\d+$/.test(id)))].sort()
+    this.track("favorites_sync", { favorite_ids: ids, dedupe_key: `favorites:${JSON.stringify(ids)}` })
   }
 
   trackSearchOutcome() {
@@ -172,12 +187,13 @@ export default class extends Controller {
 
     const csrfToken = document.querySelector("[name='csrf-token']")?.content
     const dedupeKey = `${name}:${overrides.dedupe_key || overrides.habitation_id || this.propertyIdValue || ""}:${Math.floor((Date.now() - this.startedAt) / 5000)}`
-    if (this.tracked.has(dedupeKey) && !overrides.beacon) return
+    if (name !== "favorites_sync" && this.tracked.has(dedupeKey) && !overrides.beacon) return
     this.tracked.add(dedupeKey)
 
     const body = JSON.stringify({
       navigation_event: {
         name,
+        ...(overrides.favorite_ids ? { favorite_ids: overrides.favorite_ids } : {}),
         path: window.location.pathname,
         habitation_id: overrides.habitation_id || this.propertyIdValue || "",
         duration_seconds: Math.max(Math.round((Date.now() - this.startedAt) / 1000), 0),
@@ -198,15 +214,20 @@ export default class extends Controller {
       return
     }
 
-    fetch("/navigation_events", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
-        "Accept": "application/json"
-      },
-      body
-    }).catch(() => {})
+    this.requestQueue = (this.requestQueue || Promise.resolve()).then(() => {
+      if (!this.canTrack()) return
+      return fetch("/navigation_events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+          "Accept": "application/json"
+        },
+        body
+      }).then(response => {
+        if (!response.ok) this.tracked.delete(dedupeKey)
+      })
+    }).catch(() => { this.tracked.delete(dedupeKey) })
   }
 
   canTrack() {

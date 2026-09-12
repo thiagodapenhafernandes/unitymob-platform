@@ -8,7 +8,7 @@
   badge = local_assigns[:badge]
   actions = local_assigns[:actions]
 %>
-<section class="ax-card ax-collapse-card <%= 'is-open' unless collapsed %> <%= local_assigns[:class_name] %>"
+<section class="ax-card ax-collapse-card <%= "ax-collapse-card--section" if local_assigns[:variant] == :section %> <%= 'is-open' unless collapsed %> <%= local_assigns[:class_name] %>"
          data-controller="ax-disclosure"
          data-ax-disclosure-open-value="<%= !collapsed %>"
          aria-labelledby="<%= collapse_id %>_trigger">

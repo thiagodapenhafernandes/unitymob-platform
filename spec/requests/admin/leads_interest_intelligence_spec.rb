@@ -87,6 +87,23 @@ RSpec.describe "Admin lead interest intelligence", type: :request do
     end
   end
 
+  it "mantém seções fechadas em desktop/mobile e favoritos distintos da navegação" do
+    lead, event = create_interest_context
+    event.public_navigation_session.update!(tenant: lead.tenant)
+    InterestIntelligence::FavoriteSync.call(session: event.public_navigation_session, ids: [event.habitation_id])
+    [false, true].each do |embedded|
+      get interest_intelligence_admin_lead_path(lead, embedded: embedded)
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      sections = html.css(".ax-collapse-card--section")
+      expect(sections.size).to eq(4)
+      expect(sections.all? { |section| section.at_css("button")['aria-expanded'] == "false" && section.at_css('[data-ax-disclosure-target="content"]')['hidden'] }).to eq(true)
+      expect(html.text).to include("Favorito identificado no navegador", "Favoritos no site", "Navegação do usuário")
+      expect(html.css("button").map(&:text).join).not_to match(/Agendar próximo passo|Registrar contato|Preparar seleção/)
+      File.write(ENV['INTEREST_FRAME_OUTPUT'], response.body) if ENV['INTEREST_FRAME_OUTPUT'] && !embedded
+    end
+  end
+
   describe "reprocessamento automático via navegação nova" do
     it "um evento de navegação de um lead existente enfileira o ReprocessJob" do
       _lead, event = create_interest_context

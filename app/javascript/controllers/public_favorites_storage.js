@@ -28,7 +28,7 @@ export function readFavorites() {
       return Array.isArray(legacy) ? legacy : []
     }
 
-    return Array.isArray(current) ? current : []
+    return []
   } catch (_error) {
     return []
   }

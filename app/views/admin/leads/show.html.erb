@@ -1781,14 +1781,11 @@
   <% end %>
 
   <section class="lead-pwa-detail__panel">
-    <div class="lead-pwa-detail__section-title">
-      <span>Inteligência de Interesse</span>
-    </div>
     <%= turbo_frame_tag dom_id(@lead, :interest_intelligence_mobile),
           src: interest_intelligence_admin_lead_path(@lead, embedded: true),
           loading: :lazy,
           class: "tw-block" do %>
-      <span class="ax-page-subtitle">Carregando…</span>
+      <span class="ax-page-subtitle">Inteligência de Interesse · Carregando…</span>
     <% end %>
   </section>
 

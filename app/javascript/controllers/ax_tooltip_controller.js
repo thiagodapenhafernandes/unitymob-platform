@@ -11,6 +11,7 @@ export default class extends Controller {
 
   connect() {
     this.prepareHost()
+    this.hideOutside = event => { if (!this.element.contains(event.target) && !this.tip?.contains(event.target)) this.hide() }
     this.show = this.show.bind(this)
     this.hide = this.hide.bind(this)
     this.position = this.position.bind(this)
@@ -46,6 +47,7 @@ export default class extends Controller {
     tip.setAttribute("role", "tooltip")
     tip.textContent = this.tooltipText
     document.body.appendChild(tip)
+    document.addEventListener("pointerdown", this.hideOutside)
     this.tip = tip
     this.previousDescribedBy = this.element.getAttribute("aria-describedby")
     const describedBy = [this.previousDescribedBy, tip.id].filter(Boolean).join(" ")
@@ -58,6 +60,7 @@ export default class extends Controller {
   hide() {
     if (!this.tip) return
 
+    document.removeEventListener("pointerdown", this.hideOutside)
     this.tip.remove()
     this.tip = null
     window.removeEventListener("resize", this.position)
