@@ -1369,17 +1369,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def effective_habitations_filter_params
-    @effective_habitations_filter_params ||= begin
-      filter_params = request.query_parameters.to_h
-      if broker_catalog_user? &&
-         !explicit_habitation_status_filter?(filter_params) &&
-         meaningful_habitations_filter_params(filter_params).present?
-        carried_status = habitations_filter_session_params["status"]
-        carried_status.present? ? filter_params.merge("status" => carried_status) : filter_params
-      else
-        filter_params
-      end
-    end
+    @effective_habitations_filter_params ||= request.query_parameters.to_h
   end
 
   def explicit_habitation_status_filter?(source_params = request.query_parameters)
@@ -1387,12 +1377,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def should_redirect_to_effective_habitations_filter_params?
-    return false unless request.get?
-    return false unless broker_catalog_user?
-    return false if explicit_habitation_status_filter?
-    return false if meaningful_habitations_filter_params(request.query_parameters).blank?
-
-    effective_habitations_filter_params["status"].present?
+    false
   end
 
   def compact_habitations_filter_session_payload(value)
