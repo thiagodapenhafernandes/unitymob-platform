@@ -575,7 +575,7 @@ class Admin::LeadsController < Admin::BaseController
         property_interests: @interest_property_interests,
         settings: @interest_settings,
         simulation: false,
-        embedded: true
+        embedded: false
       }
     )
 
