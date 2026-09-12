@@ -339,6 +339,7 @@ module Admin::ComercialHelper
   end
 
   def lead_origin_label_for(channel, channel_label, display_origin)
+    return display_origin.presence || channel_label if channel == :external_migration
     return channel_label if %i[organic_social organic_search google_ads meta meta_ads microsoft_ads tiktok_ads linkedin_ads pinterest_ads x_ads youtube_ads paid_campaign social messaging email campaign external_migration].include?(channel)
 
     origin = tracked_origin_label(display_origin, channel_label)

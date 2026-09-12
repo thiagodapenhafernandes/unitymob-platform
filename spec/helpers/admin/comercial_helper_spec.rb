@@ -180,8 +180,15 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
       summary = helper.lead_conversion_summary(lead)
 
       expect(summary[:origin]).to eq("Instagram Leads")
+      expect(summary[:lead_origin_label]).to eq("Instagram Leads")
       expect(summary[:channel_label]).to eq("Internet")
     end
+  end
+
+  it "mantém o canal importado como fallback quando não há origem específica" do
+    lead = build_stubbed(:lead, origin: "Migração externa", attribution_channel: "Internet",
+      attribution_data: { "provider" => "external_lead_migration", "channel" => { "name" => "Internet" } })
+    expect(helper.lead_conversion_summary(lead)[:lead_origin_label]).to eq("Internet")
   end
 
   describe "#lead_card_business_label" do
