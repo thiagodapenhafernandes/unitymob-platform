@@ -104,6 +104,17 @@ RSpec.describe "Admin lead interest intelligence", type: :request do
     end
   end
 
+  it "mostra a origem específica e o formulário importado também na navegação" do
+    lead, = create_interest_context
+    lead.update!(origin: "Migração externa", attribution_source: "Instagram Leads", attribution_channel: "Internet",
+      attribution_data: { "provider" => "external_lead_migration", "channel" => { "name" => "Internet" },
+        "facebook" => { "form_id" => "1580734283657978" } })
+    get interest_intelligence_admin_lead_path(lead)
+    expect(response).to have_http_status(:ok)
+    text = Nokogiri::HTML(response.body).text
+    expect(text).to include("Origem: Instagram Leads", "Formulário: 1580734283657978")
+  end
+
   describe "reprocessamento automático via navegação nova" do
     it "um evento de navegação de um lead existente enfileira o ReprocessJob" do
       _lead, event = create_interest_context

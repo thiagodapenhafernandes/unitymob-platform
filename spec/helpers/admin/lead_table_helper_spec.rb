@@ -78,4 +78,33 @@ RSpec.describe Admin::LeadTableHelper, type: :helper do
     })
     expect(detail).to include(label: "Canal: Origem não informada", campaign: nil)
   end
+  it "resolve formulário importado pela conta e página sem usar o imóvel como nome" do
+    integration = create(:user_meta_integration)
+    page = create(:meta_facebook_page, user_meta_integration: integration)
+    create(:meta_lead_form, meta_facebook_page: page, form_id: "imported-123", name: "Formulário 6953")
+    other = Tenant.create!(name: "Outra conta", slug: "imported-form-other")
+    foreign_page = create(:meta_facebook_page, user_meta_integration: create(:user_meta_integration, tenant: other))
+    create(:meta_lead_form, meta_facebook_page: foreign_page, form_id: "imported-123", name: "Não pode aparecer")
+    lead = build_stubbed(:lead, tenant: integration.tenant, product: "Título do imóvel",
+      attribution_data: { "facebook" => { "form_id" => "imported-123", "page_id" => page.page_id } })
+    foreign_lead = build_stubbed(:lead, tenant: other, attribution_data: lead.attribution_data)
+    names = helper.lead_table_meta_form_names([lead, foreign_lead], tenant: integration.tenant)
+    expect(names).to eq(lead.id => "Formulário 6953")
+    expect(helper.lead_table_conversion(lead, {}, form_name: names[lead.id])).to include(label: "Formulário: Formulário 6953", campaign: nil)
+    lead.attribution_data["facebook"]["page_id"] = "unavailable-page"
+    expect(helper.lead_table_meta_form_names([lead], tenant: integration.tenant)[lead.id]).to be_nil
+    expect(helper.lead_table_conversion(lead, {})[:label]).to eq("Formulário: imported-123")
+  end
+
+  it "preserva a referência direta quando também há dados importados e lê payload legado" do
+    lead = build_stubbed(:lead, product: "Form direto", other_information: { "meta_form_id" => "direct", "meta_page_id" => "direct-page" },
+      attribution_data: { "facebook" => { "form_id" => "imported", "page_id" => "imported-page" } })
+    expect(helper.lead_meta_form_reference(lead)).to eq("form_id" => "direct", "page_id" => "direct-page")
+    expect(helper.lead_table_conversion(lead, {})[:label]).to eq("Formulário: Form direto")
+    lead.attribution_data = {}
+    lead.other_information = { "external_lead_payload" => { "facebook_attributes" => { "form_id" => "legacy", "page_id" => "legacy-page" } } }
+    expect(helper.lead_meta_form_reference(lead)).to eq("form_id" => "legacy", "page_id" => "legacy-page")
+    expect(helper.lead_table_conversion(lead, {})[:label]).to eq("Formulário: legacy")
+  end
+
 end

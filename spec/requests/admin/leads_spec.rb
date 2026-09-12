@@ -2566,7 +2566,7 @@ RSpec.describe "Admin::Leads", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(%(id="#{frame_id}"))
-      expect(response.body).to include("Perfil ainda incompleto")
+      expect(response.body).to include("Aguardando sinais")
     end
   end
 
