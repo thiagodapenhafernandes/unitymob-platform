@@ -19,13 +19,6 @@
   <% end %>
 
   <div class="<%= embedded ? 'tw-grid tw-gap-3' : 'ax-card__body tw-grid tw-gap-3' %>">
-    <% if simulation %>
-      <div class="lead-interest-notice">
-        <i class="bi bi-beaker"></i>
-        <span>Simulação calculada agora. Nenhum evento foi disparado e nenhuma tarefa foi criada.</span>
-      </div>
-    <% end %>
-
     <% unless enabled %>
       <p class="ax-page-subtitle">A leitura de interesse está desativada em Identidade e Marca.</p>
     <% else %>
@@ -50,22 +43,6 @@
           <% end %>
         </div>
       <% end %>
-
-      <div class="tw-flex tw-flex-wrap tw-gap-2">
-        <%= button_to reprocess_interest_admin_lead_path(lead),
-              method: :post,
-              form_class: "tw-inline",
-              class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-          <i class="bi bi-arrow-repeat ax-ico"></i><span>Reprocessar</span>
-        <% end %>
-
-        <%= button_to simulate_interest_admin_lead_path(lead),
-              method: :post,
-              form_class: "tw-inline",
-              class: "ax-btn ax-btn--sm" do %>
-          <i class="bi bi-beaker ax-ico"></i><span>Simular</span>
-        <% end %>
-      </div>
 
       <% if matches.any? %>
         <div class="lead-interest-section">
@@ -100,7 +77,7 @@
       <% timeline_entries = interest_timeline_entries(lead, navigation_events) %>
       <% if timeline_entries.any? %>
         <div class="lead-interest-section">
-          <strong>Navegação até virar lead</strong>
+          <strong>Navegação do usuário</strong>
           <div class="tw-grid tw-gap-0">
             <% timeline_entries.each_with_index do |entry, index| %>
               <div class="tw-flex tw-gap-3">
@@ -114,9 +91,22 @@
                     <% if entry[:conversion] %><span class="ax-badge ax-badge--green">Conversão</span><% end %>
                     <% if entry[:count].to_i > 1 %><span class="ax-badge ax-badge--gray">×<%= entry[:count] %></span><% end %>
                     <span class="ax-page-subtitle"><%= l(entry[:at], format: "%d/%m/%Y %H:%M") %></span>
+                    <% if entry[:duration_label].present? %>
+                      <span class="ax-page-subtitle">· <i class="bi bi-stopwatch"></i> <%= entry[:duration_label] %></span>
+                    <% end %>
                   </div>
                   <% if entry[:detail].present? %>
                     <div class="ax-page-subtitle"><%= entry[:detail] %></div>
+                  <% elsif entry[:search_items].present? %>
+                    <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+                      <button type="button" class="ax-page-subtitle lead-interest-search-toggle" data-action="ax-disclosure#toggle" aria-expanded="false">
+                        <i class="bi bi-chevron-right"></i>
+                        <%= pluralize(entry[:search_items].size, "filtro aplicado", "filtros aplicados") %>
+                      </button>
+                      <div hidden data-ax-disclosure-target="content" class="ax-page-subtitle lead-interest-search-items">
+                        <% entry[:search_items].each do |item| %><span><%= item %></span><% end %>
+                      </div>
+                    </div>
                   <% end %>
                 </div>
               </div>

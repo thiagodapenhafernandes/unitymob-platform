@@ -34,6 +34,8 @@ class PublicNavigationEventsController < ApplicationController
       metadata: metadata_payload
     )
 
+    reprocess_lead_interest_async(event)
+
     render json: { ok: true, token: session.token, event_id: event.id }
   rescue ActionController::ParameterMissing, ActiveRecord::RecordInvalid => e
     Rails.logger.warn("[public navigation] #{e.class}: #{e.message}")
@@ -41,6 +43,18 @@ class PublicNavigationEventsController < ApplicationController
   end
 
   private
+
+  # Navegação que chega depois da conversão (lead já existe) precisa refletir
+  # sozinha nos "sinais salvos"/imóveis compatíveis e nas automações — sem
+  # depender de alguém clicar em "Reprocessar". page_view/search_no_results
+  # ficam de fora por não serem, sozinhos, sinal de interesse acionável.
+  RELEVANT_REPROCESS_EVENT_NAMES = (PublicNavigationEvent::PROPERTY_EVENT_NAMES + %w[property_search]).freeze
+
+  def reprocess_lead_interest_async(event)
+    return unless event.lead_id.present? && RELEVANT_REPROCESS_EVENT_NAMES.include?(event.name.to_s)
+
+    InterestIntelligence::ReprocessJob.perform_later(event.lead_id)
+  end
 
   def public_tracking_consent_rejected?
     cookies[ApplicationController::LGPD_CONSENT_COOKIE] == "rejected" || cookies[:unitymob_interest_consent] == "rejected"
