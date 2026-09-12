@@ -17,6 +17,7 @@ export default class extends Controller {
       const form = button.closest("form")
       const body = form ? new FormData(form) : null
       if (body) {
+        body.delete("_method")
         for (const key of [...body.keys()]) {
           if (body.getAll(key).some((value) => value instanceof File)) body.delete(key)
         }

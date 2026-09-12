@@ -46,7 +46,10 @@ RSpec.describe "Admin::Habitations conteúdo IA x corretor", type: :request do
     service = instance_double(Ai::PropertyContentService, generate_suggestion!: suggestion)
 
     allow(Ai::PropertyContentService).to receive(:connected?).and_return(true)
-    allow(Ai::PropertyContentService).to receive(:new).with(habitation, admin_user: admin).and_return(service)
+    allow(Ai::PropertyContentService)
+      .to receive(:new)
+      .with(habitation, admin_user: admin, context_attributes: {})
+      .and_return(service)
 
     sign_in admin
     post generate_ai_preview_admin_habitation_path(habitation),
@@ -62,7 +65,7 @@ RSpec.describe "Admin::Habitations conteúdo IA x corretor", type: :request do
     expect(payload["data-ai-preview-fill-title"]).to eq("Apartamento frente mar pronto para morar")
     expect(payload["data-ai-preview-fill-description-html"]).to include("<p>Primeiro parágrafo da descrição.")
     expect(payload["data-ai-preview-fill-seo-keywords"]).to eq("frente mar, apartamento")
-    expect(response.body).to include("Sugestão gerada e carregada nos campos para revisão.")
+    expect(response.body).to include("Sugestão gerada para revisão.")
     expect(response.body).not_to include("Título sugerido")
     expect(response.body).not_to include("Aplicar sugestão")
   end
