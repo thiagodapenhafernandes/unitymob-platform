@@ -563,7 +563,7 @@ module Admin::ComercialHelper
     {
       "whatsapp_sent_at" => ["Enviado pelo WhatsApp", :purple],
       "whatsapp_delivered_at" => ["Entregue no WhatsApp", :cyan],
-      "whatsapp_read_at" => ["Lido no WhatsApp", :blue],
+      "whatsapp_read_at" => ["Lido no WhatsApp", :green],
       "whatsapp_failed_at" => ["Falhou no WhatsApp", :red]
     }.each do |key, (label, tone)|
       occurred_at = notification_whatsapp_time(meta[key])
