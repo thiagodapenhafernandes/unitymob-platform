@@ -62,7 +62,6 @@ class Admin::HabitationsController < Admin::BaseController
   DEFAULT_INDEX_PAGE_SIZE = 10
   DASHBOARD_QUALITY_FILTERS = %w[missing_address missing_photos missing_price stale].freeze
   REPORT_MAX_PAGES = 100
-  DEFAULT_CATALOG_STATUSES = ["Venda", "Aluguel", "Venda e Aluguel", "Diária"].freeze
   INTAKE_REVIEW_LABELS = { "pending" => "Pendente de revisão", "administrative" => "Revisão administrativa" }.freeze
   DEFAULT_CODIGO_SORT_SQL = "CASE WHEN (habitations.codigo ~ '^[0-9]+$') THEN habitations.codigo::bigint ELSE 0 END".freeze
   # Fonte única dos campos de exportação vive no service (reusado pelo job async).
@@ -1427,7 +1426,7 @@ class Admin::HabitationsController < Admin::BaseController
     if permitted_habitation_filter_statuses.present?
       @statuses &= (["Todos"] + permitted_habitation_filter_statuses)
     end
-    @statuses = DEFAULT_CATALOG_STATUSES.dup if @statuses.empty?
+    @statuses = ["Todos"] if @statuses.empty?
     @status = @statuses.first
     @categorias = filter_values([params[:categoria], params[:category]], except: "Todas")
     @categoria = @categorias.first

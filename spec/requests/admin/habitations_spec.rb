@@ -3538,8 +3538,12 @@ RSpec.describe "Admin::Habitations", type: :request do
       expect(response.body).to include(status)
     end
     expect(response.body).not_to include("Status operacional personalizado")
-    status_options = Nokogiri::HTML.fragment(response.body).css("select[name='status[]'] option").map(&:text)
+    status_select = Nokogiri::HTML.fragment(response.body).at_css("select[name='status[]']")
+    status_options = status_select.css("option").map(&:text)
+    selected_status_options = status_select.css("option[selected]").map(&:text)
+
     expect(status_options).to eq(expected_statuses)
+    expect(selected_status_options).to eq(["Todos"])
   end
 
   it "permite corretor filtrar status comercial inativo canônico no catálogo" do
@@ -3690,7 +3694,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Status: Venda, Suspenso")
   end
 
-  it "mantém o último filtro de status ao corretor trocar o texto da busca" do
+  it "não mantém filtro de status antigo quando corretor troca o texto da busca" do
     broker = create(:admin_user, profile: default_agent_profile, name: "Corretor Busca")
     sale = create(
       :habitation,
@@ -3719,7 +3723,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(sale.codigo)
-    expect(response.body).not_to include(sold.codigo)
+    expect(response.body).to include(sold.codigo)
     expect(response.body).not_to include("Status: Venda")
   end
 
