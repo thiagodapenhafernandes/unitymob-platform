@@ -66,7 +66,7 @@ module Admin::LeadOriginHelper
       page = lead_origin_page(site_event&.source_path.presence || lead.source_url)
       property = site_event&.habitation
       property = nil unless property&.tenant_id == tenant.id
-      context = [property ? "Imóvel ##{property.codigo} · #{property.display_title}" : page && "Página: #{page}"].compact
+      context = [property ? "Imóvel ##{property.codigo}" : page && "Página: #{page}"].compact
       details << ["Página", page] if page
       details << ["Ação", lead.lead_type] if lead.lead_type.present?
       details << ["Conversão registrada em", l(site_event.occurred_at, format: "%d/%m/%Y %H:%M")] if site_event

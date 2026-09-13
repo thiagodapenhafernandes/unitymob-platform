@@ -13,3 +13,12 @@
   .ax-integration-layout .ax-operational-panel__actions { justify-content: flex-start; }
   .ax-integration-layout .ax-disclosure-card__summary { flex-wrap: wrap; }
 }
+.ax-integration-onboarding { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 32px; padding: 16px 0; }
+.ax-integration-onboarding > * { min-width: 0; }
+.ax-integration-onboarding h3 { margin: 0 0 8px; font-size: 1.25rem; font-weight: 700; }
+.ax-integration-onboarding p,
+.ax-integration-onboarding dd { margin: 0; max-width: 65ch; line-height: 1.6; }
+.ax-integration-onboarding__action { display: grid; justify-items: start; gap: 12px; margin-top: 24px; }
+.ax-integration-onboarding__features { display: grid; gap: 16px; margin: 0 0 20px; }
+.ax-integration-onboarding dt { font-weight: 600; margin-bottom: 4px; }
+.ax-integration-onboarding__hint { font-size: .875rem; }

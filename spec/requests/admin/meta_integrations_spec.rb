@@ -12,6 +12,16 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
+  it "apresenta os recursos da conexão e preserva o login por POST" do
+    get admin_meta_integrations_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Instagram Direct", "Formulários de anúncios", "Campanhas e anúncios", "O WhatsApp exige conexão própria")
+    document = Nokogiri::HTML(response.body)
+    form = document.at_css(".ax-integration-onboarding form")
+    expect(form["method"]).to eq("post")
+    expect(form["action"]).to eq(admin_user_facebook_omniauth_authorize_path)
+  end
+
   it "consulta somente a integração do usuário e renderiza instruções sem expor token" do
     integration
     expect(Facebook::PermissionCheck).to receive(:call).with(integration).and_return({error: "Consulta indisponível"})

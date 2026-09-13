@@ -48,7 +48,7 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     lead.update_column(:property_id, create(:habitation, tenant: tenant).id)
     data = origin(lead, site_event: helper.lead_origin_site_events([lead], tenant: tenant)[lead.id])
     expect(data[:brand]).to eq("site")
-    expect(data[:complements].first).to start_with("Imóvel #4148")
+    expect(data[:complements]).to eq(["Imóvel #4148"])
     expect(data[:details]).to include(["Origem registrada", "Google Ads"], ["Página", "/imovel/4148"])
     expect(data.to_s).not_to include("secret")
     expect(event.reload.habitation_id).to eq(original.id)

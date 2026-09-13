@@ -1,0 +1,15 @@
+<div class="ax-integration-onboarding">
+  <div class="ax-integration-onboarding__intro">
+    <h3><%= title %></h3>
+    <p><%= description %></p>
+    <div class="ax-integration-onboarding__action"><%= action %></div>
+  </div>
+  <div>
+    <dl class="ax-integration-onboarding__features">
+      <% features.each do |name, description| %>
+        <div><dt><%= name %></dt><dd><%= description %></dd></div>
+      <% end %>
+    </dl>
+    <p class="ax-integration-onboarding__hint"><%= note %></p>
+  </div>
+</div>
