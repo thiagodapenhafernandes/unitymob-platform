@@ -1,9 +1,9 @@
 <div class="ax-integration-layout">
 <div class="integration-workspace meta-integration-workspace">
-<%= ax_workspace_heading(icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", actions: capture do %>
+<%= ax_workspace_heading(icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Gerencie formulários, Instagram Direct e a identificação de campanhas.", actions: capture do %>
   <% if @integration %>
     <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
-    <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Tem certeza? Isso irá parar a importação de leads." } do %>
+    <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Desconectar esta conta da Meta?\n\nO CRM removerá a conexão, o token, as páginas e formulários sincronizados, os vínculos de Instagram e conta de anúncios e os avisos de falha desta integração. O recebimento por esta conexão será interrompido.\n\nOs leads e as mensagens já recebidos serão preservados. A autorização e as inscrições na Meta não serão removidas.\n\nAo reconectar, será necessário sincronizar e configurar os vínculos novamente." } do %>
       <i class="bi bi-box-arrow-right ax-ico" aria-hidden="true"></i><span>Desconectar conta</span>
     <% end %>
   <% end %>
@@ -12,7 +12,7 @@
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
   <div class="lg:tw-col-span-12">
     <%= render "sync_status", integration: @integration %>
-    <%= ax_operational_panel(title: @integration ? "Conta conectada" : "Conexão Facebook") do %>
+    <%= ax_operational_panel(title: @integration ? "Conta conectada" : "Conexão com a Meta") do %>
         <% if @integration %>
           <%= ax_record_item(
                 title: "Conectado como #{@integration.name}",
@@ -43,14 +43,21 @@
 
           <%= render "pages", pages: @pages %>
         <% else %>
-          <div class="tw-text-center tw-py-8">
-            <i class="bi bi-facebook tw-text-blue-600 meta-integration-connect-icon" aria-hidden="true"></i>
-            <h2 class="ax-page-title tw-mt-3 tw-mb-2">Conecte sua conta do Facebook</h2>
-            <p class="ax-page-subtitle tw-max-w-md tw-mx-auto tw-mb-4">Integre suas Páginas e Formulários de Lead Ads para receber leads automaticamente no CRM.</p>
-            <%= button_to admin_user_facebook_omniauth_authorize_path, method: :post, data: { turbo: false }, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
+          <%= render("admin/shared/ui/integration_onboarding",
+                title: "Conecte Facebook e Instagram ao CRM",
+                description: "Use seu login do Facebook para autorizar os recursos da Meta que sua empresa utiliza.",
+                features: [
+                  ["Formulários de anúncios", "Receba no CRM os leads enviados pelos formulários das páginas autorizadas."],
+                  ["Instagram Direct", "Identifique o perfil profissional vinculado à página e ative o recebimento de mensagens como leads."],
+                  ["Campanhas e anúncios", "Selecione uma conta de anúncios para identificar campanhas dos leads, inclusive de anúncios que abrem o WhatsApp (CTWA)."]
+                ],
+                note: "O WhatsApp exige conexão própria em Integrações → WhatsApp.",
+                action: capture do %>
+            <%= button_to admin_user_facebook_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "ax-btn ax-btn--primary" do %>
               <i class="bi bi-facebook ax-ico" aria-hidden="true"></i> Continuar com Facebook
             <% end %>
-          </div>
+            <p class="ax-integration-onboarding__hint">Após autorizar, confira as páginas e os recursos disponíveis. O sistema mostra as permissões pendentes e como liberá-las.</p>
+          <% end) %>
         <% end %>
     <% end %>
   </div>
