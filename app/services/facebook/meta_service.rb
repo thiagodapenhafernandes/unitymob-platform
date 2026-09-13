@@ -8,7 +8,6 @@ module Facebook
 
     def get_user_pages
       pages = paginated_connections(@graph, "me", "accounts", fields: page_fields)
-      pages.concat(business_pages)
       dedupe_pages(pages)
     rescue Koala::Facebook::APIError => e
       Rails.logger.error "MetaService Error: Failed to get Facebook pages: #{e.message}"
@@ -16,6 +15,7 @@ module Facebook
     end
 
     def get_page_lead_forms(page_id, page_access_token)
+      raise MetaAPIError, "Página sem autorização. Atualize a conexão Meta selecionando esta página." if page_access_token.blank?
       page_graph = Koala::Facebook::API.new(page_access_token)
       all_forms = []
       response = page_graph.get_connections(page_id, "leadgen_forms", fields: "id,name,status,created_time")
@@ -30,6 +30,7 @@ module Facebook
     end
 
     def subscribe_page_to_app(page_id, page_access_token, subscribed_fields: [ "leadgen" ])
+      raise MetaAPIError, "Página sem autorização. Atualize a conexão Meta selecionando esta página." if page_access_token.blank?
       page_graph = Koala::Facebook::API.new(page_access_token)
       raise MetaAPIError, "Configure o App ID da Meta antes de assinar eventos." if ENV["FACEBOOK_APP_ID"].blank?
       subscriptions = page_graph.get_connections(page_id, "subscribed_apps", fields: "id,subscribed_fields")
@@ -53,8 +54,16 @@ module Facebook
       raise MetaAPIError.new("Não foi possível subscrever a página para webhooks.")
     end
 
-    def ad_accounts
-      paginated_connections(@graph, "me", "adaccounts", fields: "account_id,name").uniq { |account| account["account_id"] }
+    def ad_accounts(all: false)
+      return paginated_connections(@graph, "me", "adaccounts", fields: "account_id,name").uniq { |account| account["account_id"] } if all
+
+      pages = paginated_connections(@graph, "me", "accounts", fields: "id,business")
+      business_ids = pages.filter_map { |page| page.dig("business", "id") }.uniq
+      business_ids.flat_map do |id|
+        %w[owned_ad_accounts client_ad_accounts].flat_map do |edge|
+          paginated_connections(@graph, id, edge, fields: "account_id,name")
+        end
+      end.uniq { |account| account["account_id"] }
     end
 
     def ad_account(account_id)
@@ -88,28 +97,6 @@ module Facebook
 
     def page_fields
       "id,name,access_token,category"
-    end
-
-    def business_pages
-      businesses = paginated_connections(@graph, "me", "businesses", fields: "id,name")
-      businesses.flat_map do |business|
-        business_id = object_value(business, "id")
-        next [] if business_id.blank?
-
-        business_page_connections(business_id)
-      end
-    rescue Koala::Facebook::APIError => e
-      Rails.logger.warn "MetaService Warning: Failed to get business pages: #{e.message}"
-      []
-    end
-
-    def business_page_connections(business_id)
-      %w[owned_pages client_pages].flat_map do |connection|
-        paginated_connections(@graph, business_id, connection, fields: page_fields)
-      rescue Koala::Facebook::APIError => e
-        Rails.logger.warn "MetaService Warning: Failed to get #{connection} for business #{business_id}: #{e.message}"
-        []
-      end
     end
 
     def paginated_connections(graph, object, connection, **options)

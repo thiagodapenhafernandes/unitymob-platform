@@ -23,6 +23,9 @@ class UserMetaIntegration < ApplicationRecord
 
   # Do not expose provider messages: they can contain tokens or request URLs.
   def self.sync_failure_reason(error)
+    return sync_failure_reason(error.cause) if error.is_a?(Facebook::MetaService::MetaAPIError) && error.cause
+    return error.message if error.is_a?(Facebook::MetaService::MetaAPIError)
+
     case error
     when Koala::Facebook::APIError
       case error.fb_error_code.to_i

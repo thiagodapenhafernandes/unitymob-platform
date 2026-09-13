@@ -1,0 +1,11 @@
+<%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
+  <div class="tw-text-sm tw-font-bold"><%= title %></div>
+  <details>
+    <summary><%= messages.size %> pendências · Ver motivos e orientações</summary>
+    <ul class="tw-text-sm tw-space-y-2 tw-mt-2">
+      <% messages.uniq.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </details>
+<% end %>

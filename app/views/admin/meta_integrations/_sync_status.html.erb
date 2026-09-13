@@ -1,10 +1,8 @@
 <div id="meta_sync_status" class="tw-w-full">
   <% if integration&.last_sync_error.present? %>
-    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
-      <div class="tw-text-sm tw-font-bold">Sincronização com falha ou pendências</div>
-      <p class="tw-text-sm"><%= integration.last_sync_error %></p>
-    <% end %>
+    <%= render "admin/shared/ui/issue_summary", title: "Sincronização com pendências", messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
   <% end %>
+
   <% if integration&.sync_status == 'processing' %>
     <div class="tw-mb-4" role="status" aria-live="polite" aria-atomic="true">
       <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
