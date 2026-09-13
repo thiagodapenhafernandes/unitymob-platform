@@ -40,6 +40,13 @@ module Gateway
     attr_reader :event, :raw_body, :route
 
     def perform_request
+      if event.provider == "meta"
+        contexts = MetaLeadPayload.extract_event_contexts(JSON.parse(raw_body))
+        matching = contexts.select { |context| context[:page_id].to_s == event.page_id.to_s && context[:external_id].to_s == event.external_id.to_s && context[:form_id].to_s == event.form_id.to_s }
+        raise "Meta event cannot be isolated" unless matching.one? && matching.first[:payload]
+        raise "Meta route does not match event" unless route.active? && route.page_id.to_s == event.page_id.to_s
+        @raw_body = JSON.generate(matching.first[:payload])
+      end
       uri = URI(route.target_url)
       request = Net::HTTP::Post.new(uri)
       request["Content-Type"] = "application/json"

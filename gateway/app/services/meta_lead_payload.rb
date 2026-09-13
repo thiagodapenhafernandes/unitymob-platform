@@ -26,7 +26,8 @@ module Gateway
             external_id: leadgen_id,
             event_type: "leadgen",
             page_id:,
-            form_id:
+            form_id:,
+            payload: {"object" => payload["object"], "entry" => [entry.slice("id", "time").merge("changes" => [change])]}
           }
         end
       end
