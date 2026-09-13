@@ -19628,8 +19628,7 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
   }
 
   .lead-desktop-hint,
-  .lead-next-action-card,
-  .lead-timeline-card {
+  .lead-next-action-card {
     display: none !important;
   }
 

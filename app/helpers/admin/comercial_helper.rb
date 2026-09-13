@@ -103,6 +103,19 @@ module Admin::ComercialHelper
     )
   end
 
+  def lead_timeline_for_channel(entries, channel:)
+    entries.select do |activity|
+      if activity.is_a?(PushDeliveryEvent)
+        channel == "push"
+      elsif %w[notification_sent notification_failed notification_skipped].include?(activity.kind.to_s)
+        notification_channel = activity.metadata.to_h["channel"].to_s
+        !%w[whatsapp push].include?(notification_channel) || notification_channel == channel
+      else
+        true
+      end
+    end
+  end
+
   def lead_timeline_event_visible?(activity, detailed: true)
     return SUMMARY_PUSH_EVENT_TYPES.include?(activity.event_type.to_s) if activity.is_a?(PushDeliveryEvent)
     return false unless OPERATIONAL_TIMELINE_KINDS.include?(activity.kind.to_s)

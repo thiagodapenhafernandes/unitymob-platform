@@ -1121,6 +1121,8 @@ RSpec.describe "Admin::Leads", type: :request do
         admin_user_id: agent.id, admin_user_name: agent.name,
         whatsapp_delivered_at: Time.current.iso8601
       })
+      lead.activities.create!(kind: "notification_sent", metadata: { channel: "push", admin_user_name: "Destinatário do aplicativo" })
+      lead.activities.create!(kind: "pocket_expired")
       65.times do
         lead.activities.create!(kind: "automation_event", metadata: { event: "observed" })
       end
@@ -1129,6 +1131,12 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("Evento observado", "Secure link accessed", "Pocket pool ready")
       expect(response.body).to include("Aviso enviado ao corretor")
       expect(response.body).to include('class="ax-event-race"', 'data-race-delivered>1</strong>')
+      document = Nokogiri::HTML(response.body)
+      channels = document.css("[data-timeline-channel]")
+      expect(channels.map { |node| node["data-timeline-channel"] }).to eq(%w[whatsapp push])
+      expect(channels.first.text).not_to include("Destinatário do aplicativo")
+      expect(channels.last.text).to include("Destinatário do aplicativo")
+      channels.each { |node| expect(node.text).to include("Corretor não atendeu no prazo", "Lead chegou") }
       expect(response.body.index('id="leadPoolTimeline"')).to be < response.body.index('id="leadTimelineSection"')
 
       sign_out admin
