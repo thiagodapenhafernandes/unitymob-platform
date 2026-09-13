@@ -284,11 +284,11 @@
 .ax-origin__cycle dl { margin: 8px 0 0; overflow-wrap: anywhere; }
 .ax-origin__cycle dt { font-weight: 600; }
 .ax-origin__cycle dd { margin: 0 0 6px; }
-.ax-origin [data-brand="meta"], .ax-origin [data-brand="facebook"] { color: #0866ff; }
-.ax-origin [data-brand="instagram"] { color: #b52d78; }
-.ax-origin [data-brand="whatsapp"] { color: #128c7e; }
-.ax-origin [data-brand="zap"] { color: #7134ad; }
-.ax-origin [data-brand="imovelweb"] { color: #b94808; }
-.ax-origin [data-brand="vivareal"] { color: #117daf; }
+:is(.ax-origin [data-brand="meta"], .ax-timeline-marker[data-brand="meta"]), :is(.ax-origin [data-brand="facebook"], .ax-timeline-marker[data-brand="facebook"]) { color: #0866ff; }
+:is(.ax-origin [data-brand="instagram"], .ax-timeline-marker[data-brand="instagram"]) { color: #b52d78; }
+:is(.ax-origin [data-brand="whatsapp"], .ax-timeline-marker[data-brand="whatsapp"]) { color: #128c7e; }
+:is(.ax-origin [data-brand="zap"], .ax-timeline-marker[data-brand="zap"]) { color: #7134ad; }
+:is(.ax-origin [data-brand="imovelweb"], .ax-timeline-marker[data-brand="imovelweb"]) { color: #b94808; }
+:is(.ax-origin [data-brand="vivareal"], .ax-timeline-marker[data-brand="vivareal"]) { color: #117daf; }
 /* Let this column's disclosure grow inside its row without covering neighbors. */
 .ax-record-list__row:has(.ax-origin) { height: auto; min-height: 76px; }

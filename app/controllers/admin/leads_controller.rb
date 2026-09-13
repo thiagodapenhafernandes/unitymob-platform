@@ -342,6 +342,7 @@ class Admin::LeadsController < Admin::BaseController
     # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
     @push_delivery_events = push_delivery_events_for(@lead)
     @timeline = lead_timeline_events_for(@lead, @push_delivery_events)
+    @pool_timeline = Leads::PoolTimeline.for(@lead, viewer: current_admin_user)
     @contact_history_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)
@@ -393,7 +394,7 @@ class Admin::LeadsController < Admin::BaseController
       @lead.reload
       if claimed
         @lead.distribution_rule&.mark_agent_served!(current_admin_user.id)
-        @lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name, shark_tank: true }.compact)
+        @lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name, admin_user_id: current_admin_user&.id, shark_tank: true }.compact)
       end
 
       unless @lead.admin_user_id == current_admin_user&.id
@@ -2897,6 +2898,7 @@ class Admin::LeadsController < Admin::BaseController
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
     @push_delivery_events = push_delivery_events_for(@lead)
     @timeline = lead_timeline_events_for(@lead, @push_delivery_events)
+    @pool_timeline = Leads::PoolTimeline.for(@lead, viewer: current_admin_user)
     @contact_history_activities = @lead.activities.where(kind: "note").recent.limit(40)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
     @actionable_tasks = actionable_lead_tasks(@tasks)

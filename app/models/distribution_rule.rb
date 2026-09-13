@@ -44,6 +44,12 @@ class DistributionRule < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  def pool_timeline_participants
+    admin_users.where(tenant_id: tenant_id).distinct.order(:name, :id).pluck(:id, :name).map do |id, name|
+      { id: id, name: name }
+    end
+  end
+
   def eligible_admin_users_scope
     tenant.admin_users.active.where.not(profile_id: nil)
   end

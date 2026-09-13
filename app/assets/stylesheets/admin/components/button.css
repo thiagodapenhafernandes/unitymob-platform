@@ -116,3 +116,7 @@ a.ax-btn.ax-btn--primary[aria-disabled="true"] {
 
 [data-admin-theme="dark"] .ax-btn:not(.ax-btn--primary):not(.ax-btn--danger):not(.ax-btn--success):not(.ax-btn--warning):not(.ax-btn--info):hover,
 [data-admin-theme="dark"] .ax-btn:not(.ax-btn--primary):not(.ax-btn--danger):not(.ax-btn--success):not(.ax-btn--warning):not(.ax-btn--info):focus-visible { border-color: #526b8c; background: #24344e; color: var(--ax-dark-text); }
+
+/* Shared exclusive-choice button group. */
+.ax-segmented { display:inline-flex; gap:3px; padding:3px; border:1px solid var(--ax-border-soft, #dce4ed); border-radius:7px; background:var(--ax-surface-muted, #f8fafc); }
+.ax-segmented .ax-btn[aria-pressed="true"] { background:var(--ax-surface, white); color:var(--admin-primary, #244e7c); box-shadow:0 1px 4px #23395822; }

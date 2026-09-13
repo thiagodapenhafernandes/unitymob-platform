@@ -158,7 +158,7 @@ class SecureLinksController < ApplicationController
         @lead.distribution_rule&.mark_agent_served!(claimer.id)
         @lead.activities.create(
           kind: "accepted",
-          metadata: { by: claimer.name, via: via, secure_link: true, shark_tank: true }.compact
+          metadata: { by: claimer.name, admin_user_id: claimer.id, via: via, secure_link: true, shark_tank: true }.compact
         )
       else
         @lead.reload

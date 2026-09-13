@@ -20,7 +20,9 @@ module Admin::UiHelper
     red: "ax-badge--red",
     blue: "ax-badge--blue",
     purple: "ax-badge--purple",
-    cyan: "ax-badge--cyan"
+    cyan: "ax-badge--cyan",
+    info: "ax-badge--info",
+    success: "ax-badge--success"
   }.freeze
 
   AX_BUTTON_VARIANTS = {

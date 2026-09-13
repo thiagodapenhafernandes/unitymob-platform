@@ -1111,6 +1111,29 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads/:id" do
+    it "exibe a corrida do Bolsão apenas ao dono da conta e acima da timeline" do
+      profile = Profile.create!(name: "Pool Agent", axis: "vertical", tenant: admin.tenant, key: "pool_agent", permissions: { "leads" => { "view" => true, "scope" => "all" } })
+      agent = create(:admin_user, tenant: admin.tenant, profile: profile)
+      lead = create(:lead, tenant: admin.tenant, admin_user: agent)
+      lead.activities.create!(kind: "shark_tank_ready")
+      lead.activities.create!(kind: "notification_sent", metadata: {
+        notification_context: "pool", channel: "whatsapp",
+        admin_user_id: agent.id, admin_user_name: agent.name,
+        whatsapp_delivered_at: Time.current.iso8601
+      })
+      get admin_lead_path(lead)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('class="ax-event-race"', 'data-race-delivered>1</strong>')
+      expect(response.body.index('id="leadPoolTimeline"')).to be < response.body.index('id="leadTimelineSection"')
+
+      sign_out admin
+      sign_in agent
+      get admin_lead_path(lead)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include('class="ax-event-race"')
+    end
+
+
     it "renderiza o detalhe PWA preservando a tela completa do desktop" do
       property = create(:habitation, tenant: admin.tenant, codigo: "PWA-001")
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Detalhe PWA", phone: "11999999999", status: "Em Atendimento", notes: "Preferência por vista mar.")

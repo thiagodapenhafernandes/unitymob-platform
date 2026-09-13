@@ -2028,6 +2028,12 @@
       </section>
     <% end %>
 
+    <% if @pool_timeline.present? && tenant_owner? %>
+      <%= ax_collapsible_card(title: "Bolsão — acompanhamento", icon: "stopwatch", collapsed: false, collapse_id: "leadPoolTimeline") do %>
+        <%= render "admin/shared/ui/event_race", cycles: @pool_timeline %>
+      <% end %>
+    <% end %>
+
     <%# Linha do tempo aberta por padrão para manter o histórico visível no lead. %>
     <%= ax_collapsible_card(
           title: "Linha do tempo",

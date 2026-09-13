@@ -1,0 +1,48 @@
+<% cycles.each do |cycle| %>
+  <section class="ax-event-race" aria-label="Ciclo do Bolsão <%= cycle[:id] %>"
+           data-controller="ax-event-race"
+           data-ax-event-race-cycle-value="<%= cycle.to_json %>"
+           data-ax-event-race-time-zone-value="<%= Time.zone.tzinfo.name %>"
+           data-ax-event-race-chart-url-value="<%= asset_path("chart.umd.min.js") %>">
+    <div class="ax-event-race__heading">
+      <strong>Ciclo #<%= cycle[:id] %> · <%= cycle[:rows].length %> participantes</strong>
+      <span>Disparo em <%= l(cycle[:start], format: "%d/%m/%Y às %H:%M:%S") %></span>
+    </div>
+    <div class="ax-event-race__metrics">
+      <span><strong><%= cycle[:notified] %></strong> Notificados</span>
+      <span><strong data-race-delivered><%= cycle[:delivered] %></strong> Receberam</span>
+      <span><strong data-race-read><%= cycle[:read] %></strong> <span data-race-readlabel>Leram no WhatsApp</span></span>
+      <span><strong><%= cycle[:accepted] %></strong> Atendeu ao lead</span>
+    </div>
+    <div class="ax-event-race__toolbar">
+      <div class="ax-segmented" aria-label="Canal">
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-channel="whatsapp" aria-pressed="true">WhatsApp</button>
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-channel="push" aria-pressed="false">App</button>
+      </div>
+      <div class="ax-event-race__legend"><span>● Recebeu</span><span>◉ Leu</span><span>✓ Atendeu</span></div>
+      <div class="ax-segmented" aria-label="Período">
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-window="300" aria-pressed="true">Primeiros 5 min</button>
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-window="all" aria-pressed="false">Período completo</button>
+      </div>
+    </div>
+    <p data-race-error hidden>Não foi possível carregar o gráfico. Atualize a página para tentar novamente.</p>
+    <div class="ax-event-race__scroll" tabindex="0" role="region" aria-label="Sequência de eventos por corretor">
+      <div class="ax-event-race__chart" data-race-chart>
+        <canvas role="img" aria-label="Recebimento, leitura e atendimento dos <%= cycle[:rows].length %> participantes do bolsão">
+          <% cycle[:rows].each do |row| %>
+            <p><%= row[:name] %>: <%= row[:points].map { |point| "#{point[:state]} · #{point[:channel]} · #{l(point[:at], format: "%H:%M")}" }.presence&.join("; ") || "Sem eventos registrados" %></p>
+          <% end %>
+        </canvas>
+      </div>
+    </div>
+    <div class="ax-event-race__footer">
+      <% if cycle[:response_seconds] %>
+        <% winner = cycle[:rows].find { |row| row[:points].any? { |point| point[:state] == "Atendeu" } } %>
+        <strong>✓ <%= winner[:name] %> atendeu em <%= cycle[:response_seconds] / 60 %>m<%= cycle[:response_seconds] % 60 %>s após o disparo</strong>
+      <% else %>
+        <span>Ainda sem atendimento registrado</span>
+      <% end %>
+      <span data-race-windownote aria-live="polite"></span>
+    </div>
+  </section>
+<% end %>
