@@ -41,7 +41,7 @@ module Leads
           status: :aguardando_aceite,
           distribution_rule_id: rule.id
         )
-        @lead.activities.create(kind: "shark_tank_ready", metadata: { rule_id: rule.id, rule_name: rule.name })
+        @lead.activities.create(kind: "shark_tank_ready", metadata: { rule_id: rule.id, rule_name: rule.name, participants: rule.pool_timeline_participants })
         # Notifica TODOS os corretores da regra; o 1º que aceitar vira dono.
         Leads::NotificationDispatcher.notify_shark_tank(@lead.reload, rule, candidates: candidates)
         return rule

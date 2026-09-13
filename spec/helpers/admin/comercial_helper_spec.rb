@@ -1,6 +1,40 @@
 require "rails_helper"
 
 RSpec.describe Admin::ComercialHelper, type: :helper do
+  describe "avisos na linha do tempo" do
+    it "identifica o canal e o contexto registrado sem inferir a regra atual do lead" do
+      [
+        ["pool", nil, "whatsapp", "Bolsão", :info, "bi-whatsapp", "green"],
+        ["shark_tank", 22, "push", "Bolsão", :info, "bi-bell-fill", "purple"],
+        ["distribution", 22, "email", "Rodízio", :success, "bi-envelope-fill", "cyan"],
+        ["distribution", nil, "push", nil, nil, "bi-bell-fill", "purple"],
+        [nil, 22, "whatsapp", nil, nil, "bi-whatsapp", "green"]
+      ].each do |context, rule_id, channel, label, tone, icon, color|
+        activity = LeadActivity.new(kind: "notification_sent", metadata: {
+          notification_context: context, rule_id: rule_id, channel: channel
+        })
+        [true, false].each do |detailed|
+          entry = helper.timeline_entry(activity, detailed: detailed)
+          expect(entry[:label]).to eq("Aviso enviado ao corretor")
+          expect(entry[:notification_mode]).to eq(label ? { label: label, tone: tone } : nil)
+          expect(entry.values_at(:icon, :color)).to eq([icon, color])
+        end
+      end
+    end
+
+    it "renderiza segundos no evento e nos status do WhatsApp com badge e ícone do canal" do
+      helper.extend Admin::UiHelper
+      activity = LeadActivity.new(kind: "notification_sent", created_at: Time.zone.local(2026, 9, 13, 11, 0, 37))
+      allow(helper).to receive(:timeline_entry).with(activity, detailed: true).and_return(
+        icon: "bi-whatsapp", color: "green", label: "Aviso enviado ao corretor",
+        notification_mode: { label: "Bolsão", tone: :info }, detail: "WhatsApp",
+        whatsapp_status_events: [["Lido no WhatsApp", activity.created_at + 5.seconds, nil, :green]]
+      )
+      html = helper.render(partial: "admin/leads/timeline_entries", locals: { entries: [activity] })
+      expect(html).to include("13/09/2026 11:00:37", "13/09/2026 11:00:42", "ax-badge--info", "Bolsão", 'data-brand="whatsapp"', 'aria-hidden="true"')
+    end
+  end
+
   describe "fidelização na linha do tempo" do
     it "explica a fidelização nos modos resumido e detalhado usando o nome registrado no evento" do
       activity = LeadActivity.new(kind: "distributed", created_at: Time.current, metadata: {

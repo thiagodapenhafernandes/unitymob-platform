@@ -411,6 +411,7 @@ RSpec.describe Leads::DistributorService do
       expect(lead.admin_user_id).to be_nil
       expect(lead.status).to eq(Lead.status_value(:waiting_acceptance))
       expect(lead.activities.where(kind: "shark_tank_ready")).to exist
+    expect(lead.activities.find_by!(kind: "shark_tank_ready").meta("participants").map { |person| person["id"] }).to match_array([agent_with_checkin.id, agent_without_checkin.id])
       expect(Leads::NotificationDispatcher).to have_received(:notify_shark_tank) do |notified_lead, notified_rule, candidates:|
         expect(notified_lead.id).to eq(lead.id)
         expect(notified_rule.id).to eq(rule.id)

@@ -75,6 +75,22 @@ module Admin::ComercialHelper
       label = detailed ? conv[:label] : "Lead chegou"
       base = base.merge(icon: conv[:icon], color: conv[:color], label: label)
     end
+    if activity.kind.to_s.start_with?("notification_")
+      meta = (activity.metadata || {}).stringify_keys
+      channel_style = {
+        "whatsapp" => { icon: "bi-whatsapp", color: "green" },
+        "push" => { icon: "bi-bell-fill", color: "purple" },
+        "email" => { icon: "bi-envelope-fill", color: "cyan" }
+      }[meta["channel"].to_s]
+      base = base.merge(channel_style) if channel_style
+      if activity.kind.to_s == "notification_sent"
+        mode = case meta["notification_context"]
+               when "pool", "shark_tank", "pocket_pool", "pool_renotify" then { label: "Bolsão", tone: :info }
+               when "distribution" then { label: "Rodízio", tone: :success } if meta["rule_id"].present?
+               end
+        base = base.merge(label: "Aviso enviado ao corretor", notification_mode: mode)
+      end
+    end
     detail = timeline_detail(activity, detailed: detailed)
     base.merge(
       detail: detail,

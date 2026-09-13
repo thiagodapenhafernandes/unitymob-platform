@@ -44,6 +44,7 @@ module Leads
               metadata: {
                 rule_id: @lead.distribution_rule_id,
                 rule_name: @lead.distribution_rule&.name,
+                participants: @lead.distribution_rule.pool_timeline_participants,
                 previous_admin_user_id: previous_admin_user_id,
                 previous_admin_user_name: previous_corretor&.name,
                 source: @source,

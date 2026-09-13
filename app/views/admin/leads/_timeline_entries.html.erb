@@ -5,22 +5,22 @@
     <% e = timeline_entry(act, detailed: detailed) %>
     <div class="tw-flex tw-gap-3">
       <div class="tw-flex tw-flex-col tw-items-center">
-        <span class="lead-timeline-marker"><i class="bi <%= e[:icon] %>"></i></span>
+        <span class="ax-timeline-marker <%= Admin::UiHelper::AX_BADGE_TONES.fetch(e[:color].to_s.to_sym, "ax-badge--gray") %>" data-brand="<%= e[:icon].to_s.delete_prefix("bi-") %>" aria-hidden="true"><i class="bi <%= e[:icon] %>"></i></span>
         <% unless i == entries.size - 1 %><span class="lead-timeline-rail"></span><% end %>
       </div>
       <div class="tw-pb-4 tw-flex-1">
-        <div class="tw-flex tw-items-center tw-gap-2">
-          <span class="ax-strong"><%= e[:label] %></span>
-          <span class="ax-page-subtitle"><%= l(act.created_at, format: "%d/%m/%Y %H:%M") %></span>
+        <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+          <span class="ax-strong"><%= e[:label] %><% if e[:notification_mode] %> pelo <%= ax_badge(e[:notification_mode][:label], tone: e[:notification_mode][:tone]) %><% end %></span>
+          <span class="ax-page-subtitle"><%= l(act.created_at, format: "%d/%m/%Y %H:%M:%S") %></span>
         </div>
         <% if e[:whatsapp_status_events].present? %>
           <details class="ax-page-subtitle">
             <summary><%= e[:detail] %></summary>
             <div class="tw-mt-2 tw-grid tw-gap-1.5">
               <% e[:whatsapp_status_events].each do |label, occurred_at, extra, tone| %>
-                <div class="tw-flex tw-items-center tw-gap-2">
+                <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
                   <%= ax_badge(label, tone: tone) %>
-                  <span><%= l(occurred_at, format: "%d/%m/%Y %H:%M") %></span>
+                  <span><%= l(occurred_at, format: "%d/%m/%Y %H:%M:%S") %></span>
                   <% if extra.present? %><span>· <%= extra %></span><% end %>
                 </div>
               <% end %>

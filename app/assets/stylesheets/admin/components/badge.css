@@ -74,3 +74,10 @@
 /* Status lists with complete labels, including long validation names. */
 .ax-badge-list { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .ax-badge--wrap { height: auto; min-height: 24px; max-width: 100%; padding-block: 4px; white-space: normal; line-height: 1.4; overflow-wrap: anywhere; }
+
+/* Circular event markers reuse the semantic badge palette. */
+.ax-timeline-marker { display: inline-flex; width: 28px; height: 28px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 9999px; }
+.ax-badge--info { background: color-mix(in srgb, #0ea5e9 12%, var(--admin-surface, #fff)); color: #0369a1; }
+.ax-badge--success { background: color-mix(in srgb, #22c55e 14%, var(--admin-surface, #fff)); color: #047857; }
+[data-admin-theme="dark"] .ax-badge--info { color: #7dd3fc; }
+[data-admin-theme="dark"] .ax-badge--success { color: #86efac; }
