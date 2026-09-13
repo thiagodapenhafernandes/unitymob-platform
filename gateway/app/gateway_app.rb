@@ -108,14 +108,22 @@ module Gateway
       require_internal_token!
 
       attributes = meta_route_attributes(parse_json(request.body.read))
-      route = WebhookRoute.find_or_initialize_by(
-        provider: attributes[:provider],
-        page_id: attributes[:page_id],
-        form_id: attributes[:form_id].presence
-      )
-      route.assign_attributes(attributes)
-      route.active = true if route.active.nil?
-      route.save!
+      route = nil
+      WebhookRoute.transaction do
+        # Serialize registrations for all forms of this page, including first registration.
+        lock_key = WebhookRoute.connection.quote("meta-page:#{attributes[:page_id]}")
+        WebhookRoute.connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(#{lock_key}, 0))")
+        siblings = WebhookRoute.where(provider: "meta", page_id: attributes[:page_id])
+        if siblings.where.not(client_key: attributes[:client_key]).or(siblings.where.not(target_url: attributes[:target_url])).exists?
+          halt 409, json(error: "page_destination_conflict", details: ["Esta página já possui outro destino. Contate o suporte para revisar o vínculo."])
+        end
+        route = WebhookRoute.find_or_initialize_by(
+          provider: attributes[:provider], page_id: attributes[:page_id], form_id: attributes[:form_id].presence
+        )
+        route.assign_attributes(attributes)
+        route.active = true if route.active.nil?
+        route.save!
+      end
 
       status route.previously_new_record? ? 201 : 200
       json(route: route_payload(route))
