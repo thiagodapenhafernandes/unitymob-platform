@@ -99,9 +99,13 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(lead.origin).to eq("C2S")
   end
 
-  it "preserva nome de formulário conhecido e usa ID na ausência de nome" do
-    lead = build_stubbed(:lead, tenant: tenant, origin: "Meta Ads", other_information: {"meta_form_id" => "123456"})
-    expect(origin(lead)[:complements]).to eq(["Formulário: 123456"])
-    expect(origin(lead, form_name: "Form Solar Elisa")[:complements]).to eq(["Formulário: Form Solar Elisa"])
+  it "mantém Meta compacto e preserva formulário, campanha e anúncio nos detalhes" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Meta Ads", other_information: {
+      "meta_form_id" => "123456", "meta_campaign_name" => "Solar Elisa", "meta_ad_name" => "Apartamento"
+    })
+    data = origin(lead)
+    expect(data).to include(label: "Meta Ads", brand: "meta", subtype: "Formulários", complements: [])
+    expect(data[:details]).to include(["Formulário", "123456"], ["Campanha", "Solar Elisa"], ["Anúncio", "Apartamento"])
+    expect(origin(lead, form_name: "Form Solar Elisa")[:details]).to include(["Formulário", "Form Solar Elisa"])
   end
 end
