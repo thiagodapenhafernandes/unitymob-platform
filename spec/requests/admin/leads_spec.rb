@@ -12,6 +12,23 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "GET /admin/leads" do
+    it "limita a nova identidade à coluna de origens e mantém detalhes fechados" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, origin: "C2S", attribution_source: "WhatsApp Orgânico",
+        attribution_data: {"provider" => "external_lead_migration"}, other_information: {"campaign_name" => "Campanha C2S"})
+      get admin_leads_path(view: "list")
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      row = document.at_css(".ax-record-list #lead_#{lead.id}")
+      expect(row.css("[role=cell]").size).to eq(6)
+      column = row.css("[role=cell]")[2]
+      expect(column.at_css(".ax-record-origin").text).to include("WhatsApp", "Orgânico")
+      expect(column.text).to include("Campanha: Campanha Importação")
+      expect(column.text).not_to match(/c2s/i)
+      expect(column.css("details[open]")).to be_empty
+      expect(column.css(".ax-record-conversion")).to be_empty
+      expect(row.css(".ax-origin").size).to eq(1)
+    end
+
     it "mantém no kanban desktop e mobile a ordem salva no modal, inclusive com filtros" do
       pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
       stages = %w[Triagem Contato Negociação].map do |name|

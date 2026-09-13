@@ -43,7 +43,11 @@ module Admin::UiHelper
   # Bootstrap Icons assets retain the approved brand palette.
   def ax_brand_icon(name)
     key = name.to_s.delete_prefix("bi-")
-    if %w[meta google microsoft instagram whatsapp tiktok linkedin pinterest twitter-x youtube facebook bing telegram].include?(key)
+    origin_assets = { "zap" => "zap.png", "imovelweb" => "imovelweb.png", "vivareal" => "vivareal.png",
+      "rdstation" => "rdstation.ico", "chaves" => "chaves.ico" }
+    if origin_assets.key?(key)
+      image_tag("lead-origins/#{origin_assets.fetch(key)}", class: "ax-brand-icon", alt: "", aria: { hidden: true })
+    elsif %w[meta google microsoft instagram whatsapp tiktok linkedin pinterest twitter-x youtube facebook bing telegram].include?(key)
       image_tag("bootstrap-brands/#{key}.svg", class: "ax-brand-icon", alt: "", aria: { hidden: true })
     else
       ax_icon(key, class_name: "ax-brand-icon")

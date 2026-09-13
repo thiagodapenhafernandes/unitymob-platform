@@ -62,4 +62,14 @@ RSpec.describe MetaLeadEnrichmentJob, type: :job do
   it "enfileira o trabalho para o novo lead" do
     expect { lead }.to have_enqueued_job(described_class).with(tenant.id, anything)
   end
+  it "enriquece o anúncio CTWA original sem mudar classificação ou presumir plataforma" do
+    lead.update_columns(origin: "whatsapp", attribution_channel: nil, attribution_data: {}, other_information: {
+      "whatsapp_entry" => {"referral" => {"source_type" => "ad", "source_id" => "987654"}}
+    })
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information["meta_campaign_name"]).to eq("Campanha oficial")
+    expect(lead.origin).to eq("whatsapp")
+    expect(lead.attribution_source).to be_blank
+  end
+
 end

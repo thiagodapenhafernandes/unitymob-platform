@@ -21,6 +21,15 @@ module Webhooks
           return head :forbidden
         end
 
+        if params[:object] == "instagram"
+          Array(params[:entry]).each do |entry|
+            Array(entry["messaging"]).each do |event|
+              InstagramDirectJob.perform_later(entry["id"].to_s, event.to_unsafe_h)
+            end
+          end
+          return head :ok
+        end
+
         Array(params[:entry]).each do |entry|
           Array(entry["changes"]).each do |change|
             next unless change["field"] == "leadgen"
@@ -38,6 +47,7 @@ module Webhooks
       end
     rescue => e
       Rails.logger.error "Meta Webhook Error: #{e.class}: #{e.message}\n#{Array(e.backtrace).first(10).join("\n")}"
+      return head :service_unavailable if params[:object] == "instagram"
       head :ok # não-2xx faz a Meta reentregar em loop e pode desativar a subscription; o retry real fica no job
     end
   end

@@ -401,9 +401,12 @@ Rails.application.routes.draw do
       collection do
         post :sync_pages
         post :sync_forms
+        get :ad_accounts
         patch :ad_account
         delete :disconnect
         get :list_forms
+        get :permissions
+        post :instagram
       end
     end
     resource :whatsapp_integration, only: [:show] do

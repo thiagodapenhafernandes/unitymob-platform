@@ -25,12 +25,11 @@
                 ], " ")
               ) %>
 
+          <%= render "admin/meta_integrations/permissions", check: nil %>
+
           <%= ax_form_section(title: "Conta de anúncios", tooltip: "Usada para buscar informações de anúncios e campanhas dos leads.") do %>
-            <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch do |form| %>
-              <%= ax_text_field(form: form, method: :ad_account_id, label: "ID da conta de anúncios",
-                    value: @integration.ad_account_id, placeholder: "ID da conta de anúncios", inputmode: "numeric") %>
-              <% if @integration.ad_account_name.present? %><p class="ax-stat-label"><%= @integration.ad_account_name %></p><% end %>
-              <div class="ax-form-actions"><%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %></div>
+            <%= turbo_frame_tag "meta_ad_accounts", src: ad_accounts_admin_meta_integrations_path do %>
+              <p class="ax-stat-label" role="status">Consultando contas de anúncios na Meta...</p>
             <% end %>
           <% end %>
 
@@ -65,6 +64,7 @@
                   </span>
                 </summary>
                 <div class="ax-disclosure-card__body">
+                  <%= render "instagram", page: page %>
                   <div class="ax-stat-label tw-mt-3 tw-mb-2"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
                   <turbo-frame id="page_forms_<%= page.id %>" src="<%= list_forms_admin_meta_integrations_path(page_id: page.id) %>" loading="lazy">
                     <div class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-py-3 tw-text-ink-faint tw-text-2xs" role="status" aria-live="polite">

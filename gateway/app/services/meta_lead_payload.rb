@@ -5,6 +5,13 @@ module Gateway
     module_function
 
     def extract_event_contexts(payload)
+      if payload["object"] == "instagram"
+        return Array(payload["entry"]).flat_map do |entry|
+          Array(entry["messaging"]).map do |event|
+            { external_id: event.dig("message", "mid"), event_type: "instagram", page_id: entry["id"], form_id: nil, payload: {"object" => "instagram", "entry" => [{"id" => entry["id"], "messaging" => [event]}]} }
+          end
+        end
+      end
       contexts = Array(payload["entry"]).flat_map do |entry|
         Array(entry["changes"]).filter_map do |change|
           next unless change["field"].to_s == "leadgen"

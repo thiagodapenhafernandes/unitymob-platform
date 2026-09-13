@@ -9,7 +9,10 @@ class MetaLeadEnrichmentJob < ApplicationJob
     return unless lead
     info = lead.other_information.to_h
     return if info["meta_enriched_at"].present?
-    return unless lead.attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
+    entry = info["whatsapp_entry"].is_a?(Hash) ? info["whatsapp_entry"] : {}
+    referral = entry["referral"].is_a?(Hash) ? entry["referral"] : {}
+    ctwa = referral["source_type"] == "ad"
+    return unless ctwa || lead.attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
 
     integrations = UserMetaIntegration.where(tenant_id: tenant.id)
       .where.not(ad_account_id: [nil, ""]).select do |candidate|
@@ -21,7 +24,7 @@ class MetaLeadEnrichmentJob < ApplicationJob
 
     tracking = lead.attribution_data.to_h
     # No guessing from utm_campaign/fbclid: these are not Graph object IDs.
-    ad_id = graph_id(info["ad_id"] || tracking["ad_id"])
+    ad_id = graph_id(ctwa ? referral["source_id"] : (info["ad_id"] || tracking["ad_id"]))
     campaign_id = graph_id(info["campaign_id"] || tracking["campaign_id"])
     form = integration.meta_lead_forms.find_by(form_id: info["meta_form_id"].to_s) if info["meta_form_id"].present?
     if ad_id.nil? && form && graph_id(info["meta_leadgen_id"])

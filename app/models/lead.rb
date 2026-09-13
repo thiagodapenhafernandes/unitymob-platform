@@ -218,7 +218,8 @@ class Lead < ApplicationRecord
   validates :name, presence: true
   # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
-  validates :phone, presence: true, unless: -> { business_scoped_user_id.present? }
+  has_many :instagram_messages, dependent: :destroy
+  validates :phone, presence: true, unless: -> { business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) }
   validate :associated_records_must_belong_to_tenant
   validate :in_service_requires_owner
 

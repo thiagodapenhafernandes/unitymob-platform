@@ -275,11 +275,16 @@ Devise.setup do |config|
   # ==> OmniAuth
   # Add a new OmniAuth provider. Check the wiki for more information on setting
   # up on your models and hooks.
+  meta_api_version = ENV['META_API_VERSION'] || 'v24.0'
   config.omniauth :facebook, ENV['FACEBOOK_APP_ID'], ENV['FACEBOOK_APP_SECRET'],
-                  scope: 'email,pages_show_list,pages_read_engagement,pages_manage_ads,pages_manage_metadata,ads_management,leads_retrieval,business_management',
+                  scope: 'email,pages_show_list,pages_read_engagement,pages_manage_ads,pages_manage_metadata,ads_management,leads_retrieval,business_management,instagram_basic,instagram_manage_messages',
                   info_fields: 'email,name',
                   callback_url: (ENV['APP_HOST'] + ENV['FACEBOOK_REDIRECT_URI'] if ENV['FACEBOOK_REDIRECT_URI']),
-                  api_version: ENV['META_API_VERSION'] || 'v24.0'
+                  client_options: {
+                    site: "https://graph.facebook.com/#{meta_api_version}",
+                    authorize_url: "https://www.facebook.com/#{meta_api_version}/dialog/oauth",
+                    token_url: 'oauth/access_token'
+                  }
 
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or

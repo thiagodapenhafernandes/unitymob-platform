@@ -3741,6 +3741,41 @@ ALTER SEQUENCE public.inbound_webhook_tokens_id_seq OWNED BY public.inbound_webh
 
 
 --
+-- Name: instagram_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.instagram_messages (
+    id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    message_id character varying NOT NULL,
+    body text,
+    context jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: instagram_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.instagram_messages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: instagram_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.instagram_messages_id_seq OWNED BY public.instagram_messages.id;
+
+
+--
 -- Name: landing_pages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4390,7 +4425,9 @@ CREATE TABLE public.leads (
     closed_at timestamp(6) without time zone,
     broker_qualification_status character varying,
     manager_qualification_status character varying,
-    qualification_note text
+    qualification_note text,
+    instagram_account_id character varying,
+    instagram_scoped_id character varying
 );
 
 
@@ -4559,7 +4596,11 @@ CREATE TABLE public.meta_facebook_pages (
     active boolean DEFAULT true,
     category character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    instagram_id character varying,
+    instagram_username character varying,
+    instagram_enabled boolean DEFAULT false NOT NULL,
+    instagram_received_at timestamp(6) without time zone
 );
 
 
@@ -7048,7 +7089,8 @@ CREATE TABLE public.user_meta_integrations (
     sync_message character varying,
     tenant_id bigint,
     ad_account_id character varying,
-    ad_account_name character varying
+    ad_account_name character varying,
+    last_sync_error text
 );
 
 
@@ -7580,7 +7622,8 @@ CREATE TABLE public.whatsapp_messages (
     pinned_at timestamp(6) without time zone,
     starred_at timestamp(6) without time zone,
     hidden_at timestamp(6) without time zone,
-    template_components jsonb DEFAULT '[]'::jsonb NOT NULL
+    template_components jsonb DEFAULT '[]'::jsonb NOT NULL,
+    referral jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -8193,6 +8236,13 @@ ALTER TABLE ONLY public.home_settings ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.inbound_webhook_tokens ALTER COLUMN id SET DEFAULT nextval('public.inbound_webhook_tokens_id_seq'::regclass);
+
+
+--
+-- Name: instagram_messages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instagram_messages ALTER COLUMN id SET DEFAULT nextval('public.instagram_messages_id_seq'::regclass);
 
 
 --
@@ -9435,6 +9485,14 @@ ALTER TABLE ONLY public.home_settings
 
 ALTER TABLE ONLY public.inbound_webhook_tokens
     ADD CONSTRAINT inbound_webhook_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: instagram_messages instagram_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instagram_messages
+    ADD CONSTRAINT instagram_messages_pkey PRIMARY KEY (id);
 
 
 --
@@ -11404,6 +11462,13 @@ CREATE INDEX index_account_memberships_on_tenant_id ON public.account_membership
 --
 
 CREATE UNIQUE INDEX index_action_text_rich_texts_uniqueness ON public.action_text_rich_texts USING btree (record_type, record_id, name);
+
+
+--
+-- Name: index_active_instagram_profile; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_active_instagram_profile ON public.meta_facebook_pages USING btree (instagram_id) WHERE (instagram_enabled = true);
 
 
 --
@@ -13584,6 +13649,20 @@ CREATE UNIQUE INDEX index_inbound_webhook_tokens_on_token ON public.inbound_webh
 
 
 --
+-- Name: index_instagram_messages_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_instagram_messages_on_lead_id ON public.instagram_messages USING btree (lead_id);
+
+
+--
+-- Name: index_instagram_messages_on_lead_id_and_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_instagram_messages_on_lead_id_and_message_id ON public.instagram_messages USING btree (lead_id, message_id);
+
+
+--
 -- Name: index_landing_pages_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13889,6 +13968,13 @@ CREATE INDEX index_lead_settings_on_tenant_id ON public.lead_settings USING btre
 --
 
 CREATE UNIQUE INDEX index_lead_settings_on_unique_tenant_id ON public.lead_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_leads_instagram_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_instagram_identity ON public.leads USING btree (tenant_id, instagram_account_id, instagram_scoped_id);
 
 
 --
@@ -17798,6 +17884,14 @@ ALTER TABLE ONLY public.ai_property_share_collections
 
 
 --
+-- Name: instagram_messages fk_rails_8a1fc8dec3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instagram_messages
+    ADD CONSTRAINT fk_rails_8a1fc8dec3 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: manual_checkin_requests fk_rails_8ae7061d93; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19078,6 +19172,9 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260912220000'),
+('20260912210000'),
+('20260912180000'),
 ('20260911203000'),
 ('20260911194000'),
 ('20260911120000'),
