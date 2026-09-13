@@ -90,7 +90,7 @@ module Admin::LeadOriginHelper
 
     {
       label: lead_origin_public_text(label), brand: brand, icon_url: site ? lead_origin_site_icon(tenant) : nil, subtype: lead_origin_public_text(subtype),
-      complements: context.map { |text| lead_origin_public_text(text) }.compact_blank.uniq,
+      complements: brand == "meta" ? [] : context.map { |text| lead_origin_public_text(text) }.compact_blank.uniq,
       details: details.filter_map { |key, value| [key, lead_origin_public_text(value)] if value.present? }.uniq
     }
   end
