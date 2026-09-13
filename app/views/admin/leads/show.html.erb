@@ -1866,8 +1866,6 @@
   end
   timeline_milestones = timeline_milestones.select { |act| lead_timeline_event_visible?(act, detailed: timeline_detailed) }
   timeline_wa_events = @timeline.select { |act| act.respond_to?(:kind) && wa_timeline_kinds.include?(act.kind.to_s) }
-  timeline_visible = timeline_milestones.first(15)
-  timeline_rest = timeline_milestones.drop(15)
 %>
 
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-[minmax(0,1fr)_380px] tw-gap-4">
@@ -2029,7 +2027,7 @@
     <% end %>
 
     <% if @pool_timeline.present? && tenant_owner? %>
-      <%= ax_collapsible_card(title: "Bolsão — acompanhamento", icon: "stopwatch", collapsed: false, collapse_id: "leadPoolTimeline") do %>
+      <%= ax_collapsible_card(title: "Bolsão — acompanhamento", icon: "stopwatch", collapsed: false, collapse_id: "leadPoolTimeline", class_name: "tw-mb-4") do %>
         <%= render "admin/shared/ui/event_race", cycles: @pool_timeline %>
       <% end %>
     <% end %>
@@ -2043,39 +2041,48 @@
           collapse_id: "leadTimelineSection",
           class_name: "lead-timeline-card"
         ) do %>
-      <% if timeline_milestones.any? %>
-        <%= render "admin/leads/timeline_entries", entries: timeline_visible, detailed: timeline_detailed %>
+      <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-4">
+        <% [["whatsapp", "WhatsApp", "whatsapp"], ["push", "Notificações do aplicativo", "bell"]].each do |channel, title, icon| %>
+          <% entries = lead_timeline_for_channel(timeline_milestones, channel: channel) %>
+          <% timeline_rest = entries.drop(15) %>
+          <section class="tw-min-w-0" data-timeline-channel="<%= channel %>" aria-label="<%= title %>">
+            <h3 class="ax-card__title tw-mb-4"><i class="bi bi-<%= icon %> ax-ico" aria-hidden="true"></i> <%= title %></h3>
+            <% if entries.any? %>
+              <%= render "admin/leads/timeline_entries", entries: entries.first(15), detailed: timeline_detailed %>
 
-        <% if timeline_rest.any? %>
-          <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
-            <div hidden data-ax-disclosure-target="content">
-              <%= render "admin/leads/timeline_entries", entries: timeline_rest, detailed: timeline_detailed %>
-            </div>
-            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
-                    data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
-              <i class="bi bi-chevron-expand ax-ico"></i><span>Ver mais (<%= timeline_rest.size %>)</span>
-            </button>
-          </div>
+              <% if timeline_rest.any? %>
+                <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+                  <div hidden data-ax-disclosure-target="content">
+                    <%= render "admin/leads/timeline_entries", entries: timeline_rest, detailed: timeline_detailed %>
+                  </div>
+                  <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
+                          data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
+                    <i class="bi bi-chevron-expand ax-ico"></i><span>Ver mais (<%= timeline_rest.size %>)</span>
+                  </button>
+                </div>
+              <% end %>
+            <% else %>
+              <%= ax_empty_state(
+                    title: "Sem atividades ainda",
+                    description: "Registre um contato, crie uma tarefa ou envie uma proposta — tudo aparece aqui.",
+                    icon: "activity"
+                  ) %>
+            <% end %>
+
+            <% if channel == "whatsapp" && timeline_wa_events.any? %>
+              <div class="ax-disclosure-divider tw-mt-2" data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+                <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
+                        data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
+                  <i class="bi bi-whatsapp ax-ico"></i><span>Mostrar mensagens do WhatsApp (<%= timeline_wa_events.size %>)</span>
+                </button>
+                <div hidden data-ax-disclosure-target="content" class="tw-mt-3">
+                  <%= render "admin/leads/timeline_entries", entries: timeline_wa_events, detailed: timeline_detailed %>
+                </div>
+              </div>
+            <% end %>
+          </section>
         <% end %>
-      <% else %>
-        <%= ax_empty_state(
-              title: "Sem atividades ainda",
-              description: "Registre um contato, crie uma tarefa ou envie uma proposta — tudo aparece aqui.",
-              icon: "activity"
-            ) %>
-      <% end %>
-
-      <% if timeline_wa_events.any? %>
-        <div class="ax-disclosure-divider tw-mt-2" data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
-          <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
-                  data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
-            <i class="bi bi-whatsapp ax-ico"></i><span>Mostrar mensagens do WhatsApp (<%= timeline_wa_events.size %>)</span>
-          </button>
-          <div hidden data-ax-disclosure-target="content" class="tw-mt-3">
-            <%= render "admin/leads/timeline_entries", entries: timeline_wa_events, detailed: timeline_detailed %>
-          </div>
-        </div>
-      <% end %>
+      </div>
     <% end %>
   </div>
 

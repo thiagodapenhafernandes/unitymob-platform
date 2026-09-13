@@ -15,6 +15,17 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
     end
     expect(helper.lead_timeline_event_visible?(LeadActivity.new(kind: "task_completed"))).to eq(true)
   end
+  it "separa avisos por canal e preserva os marcos comuns nas duas trajetórias" do
+    common = %w[received distributed pocket_expired accepted].map { |kind| LeadActivity.new(kind: kind, metadata: { channel: "whatsapp" }) }
+    whatsapp = LeadActivity.new(kind: "notification_sent", metadata: { channel: "whatsapp" })
+    push = LeadActivity.new(kind: "notification_failed", metadata: { channel: "push" })
+    device = PushDeliveryEvent.new(event_type: "device_received")
+    email = LeadActivity.new(kind: "notification_sent", metadata: { channel: "email" })
+    entries = [whatsapp, push, device, email, *common]
+    expect(helper.lead_timeline_for_channel(entries, channel: "whatsapp")).to eq([whatsapp, email, *common])
+    expect(helper.lead_timeline_for_channel(entries, channel: "push")).to eq([push, device, email, *common])
+  end
+
   describe "avisos na linha do tempo" do
     it "identifica o canal e o contexto registrado sem inferir a regra atual do lead" do
       [
