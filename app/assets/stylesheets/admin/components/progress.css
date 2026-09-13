@@ -21,6 +21,8 @@
   appearance: none;
 }
 
+.ax-progress__bar { background: transparent; }
+
 .ax-progress__bar::-webkit-progress-bar {
   border-radius: inherit;
   background: transparent;
@@ -90,3 +92,10 @@
     background: Highlight;
   }
 }
+
+.ax-progress-panel { display: grid; gap: 12px; padding: 16px; }
+.ax-progress-panel__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ax-progress-panel__title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; }
+.ax-progress-panel__value { flex: none; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ax-progress-panel .ax-progress { margin: 0; height: 8px; }
+.ax-progress-panel__description { margin: 0; font-size: 12px; line-height: 1.5; color: var(--admin-text-muted, #64748b); }

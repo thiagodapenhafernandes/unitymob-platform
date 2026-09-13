@@ -7093,7 +7093,8 @@ CREATE TABLE public.user_meta_integrations (
     ad_account_id character varying,
     ad_account_name character varying,
     last_sync_error text,
-    selected_page_ids jsonb DEFAULT '[]'::jsonb NOT NULL
+    selected_page_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    ad_accounts jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -19175,6 +19176,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260913100000'),
 ('20260913050000'),
 ('20260913040000'),
 ('20260912220000'),

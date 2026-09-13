@@ -19,6 +19,26 @@ RSpec.describe MetaLeadEnrichmentJob, type: :job do
     expect(service).to have_received(:ad_details).once
   end
 
+  it "enriquece anúncio da segunda conta e registra a conta efetiva" do
+    integration.update!(ad_accounts: {"654321" => "Primeira", "123456" => "Segunda"}, ad_account_id: "654321")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information).to include("meta_ad_account_id" => "123456", "meta_ad_name" => "Anúncio")
+  end
+
+  it "enriquece campanha de qualquer conta selecionada" do
+    integration.update!(ad_accounts: {"654321" => "Primeira", "123456" => "Segunda"}, ad_account_id: "654321")
+    lead.update_columns(attribution_data: {"campaign_id" => "234567"})
+    allow(service).to receive(:campaign_details).with("234567").and_return({"id" => "234567", "account_id" => "123456", "name" => "Campanha"})
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information).to include("meta_ad_account_id" => "123456", "meta_campaign_name" => "Campanha")
+  end
+
+  it "não usa conta removida da seleção" do
+    integration.update!(ad_accounts: {"654321" => "Única"}, ad_account_id: "654321")
+    described_class.perform_now(tenant.id, lead.id)
+    expect(lead.reload.other_information).not_to have_key("meta_enriched_at")
+  end
+
   it "não grava anúncio de outra conta" do
     allow(service).to receive(:ad_details).and_return({"id" => "987654", "account_id" => "999999"})
     described_class.perform_now(tenant.id, lead.id)

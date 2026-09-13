@@ -15,8 +15,8 @@ class MetaLeadEnrichmentJob < ApplicationJob
     return unless ctwa || lead.attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
 
     integrations = UserMetaIntegration.where(tenant_id: tenant.id)
-      .where.not(ad_account_id: [nil, ""]).select do |candidate|
-        !candidate.expired? && candidate.access_token.present? &&
+      .select do |candidate|
+        candidate.ad_account_ids.any? && !candidate.expired? && candidate.access_token.present? &&
           (info["meta_integration_user_id"].blank? || candidate.admin_user_id.to_s == info["meta_integration_user_id"].to_s)
       end
     return unless integrations.one?
@@ -39,20 +39,22 @@ class MetaLeadEnrichmentJob < ApplicationJob
     data = {}
     if ad_id
       ad = service.ad_details(ad_id)
-      return unless ad["account_id"].to_s == integration.ad_account_id && ad["id"].to_s == ad_id
+      return unless integration.ad_account_ids.include?(ad["account_id"].to_s) && ad["id"].to_s == ad_id
+      data["meta_ad_account_id"] = ad["account_id"].to_s
       data.merge!("meta_ad_id" => ad_id, "meta_ad_name" => ad["name"],
         "meta_campaign_id" => ad.dig("campaign", "id"), "meta_campaign_name" => ad.dig("campaign", "name"),
         "meta_adset_id" => ad.dig("adset", "id"), "meta_adset_name" => ad.dig("adset", "name"))
     elsif campaign_id
       campaign = service.campaign_details(campaign_id)
-      return unless campaign["account_id"].to_s == integration.ad_account_id && campaign["id"].to_s == campaign_id
+      return unless integration.ad_account_ids.include?(campaign["account_id"].to_s) && campaign["id"].to_s == campaign_id
+      data["meta_ad_account_id"] = campaign["account_id"].to_s
       data.merge!("meta_campaign_id" => campaign_id, "meta_campaign_name" => campaign["name"])
     end
     data["meta_form_name"] = form.name if form
     lead.with_lock do
       # Merge only enrichment keys so another operation cannot lose its data.
       lead.update_columns(other_information: lead.other_information.to_h.merge(data.compact).merge(
-        "meta_enriched_at" => Time.current.iso8601, "meta_ad_account_id" => integration.ad_account_id))
+        "meta_enriched_at" => Time.current.iso8601))
     end
   end
 

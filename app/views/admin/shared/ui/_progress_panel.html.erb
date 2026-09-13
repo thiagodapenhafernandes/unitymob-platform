@@ -1,0 +1,8 @@
+<div class="ax-card ax-progress-panel" role="status" aria-live="polite" aria-atomic="true">
+  <div class="ax-progress-panel__header">
+    <div class="ax-progress-panel__title"><span class="ax-spinner" aria-hidden="true"></span><span><%= title %></span></div>
+    <span class="ax-progress-panel__value"><%= value.to_i %>%</span>
+  </div>
+  <%= ax_progress(value: value, tone: :blue, label: title) %>
+  <p class="ax-progress-panel__description"><%= description %></p>
+</div>

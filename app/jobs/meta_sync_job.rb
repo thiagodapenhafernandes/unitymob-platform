@@ -7,7 +7,7 @@ class MetaSyncJob < ApplicationJob
     pending = []
     
     # Marcamos como 5% para indicar que o Job realmente começou
-    integration.update!(sync_status: 'processing', sync_progress: 5, sync_message: "Iniciando conexão com a Meta...")
+    integration.update!(sync_status: 'processing', sync_progress: 5, last_sync_error: nil, sync_message: "Iniciando conexão com a Meta...")
     broadcast_status(integration)
 
     service = Facebook::MetaService.new(integration.access_token)
@@ -93,7 +93,7 @@ class MetaSyncJob < ApplicationJob
         integration.update!(sync_message: "Sincronizando #{forms_data.size} formulários de #{page.name}...")
         broadcast_status(integration)
 
-        forms_data.each do |form_data|
+        forms_data.each_with_index do |form_data, form_index|
           form = page.meta_lead_forms.find_or_initialize_by(form_id: form_data["id"])
           is_new = form.new_record?
           
@@ -119,6 +119,13 @@ class MetaSyncJob < ApplicationJob
                 end
               end
             end
+          end
+          completed = form_index + 1
+          if completed % 10 == 0 || completed == forms_data.size
+            progress = 50 + (45.0 * (index + completed.to_f / forms_data.size) / total_synced_pages).to_i
+            integration.update!(sync_progress: progress,
+              sync_message: "Sincronizando formulários de #{page.name}: #{completed} de #{forms_data.size}")
+            broadcast_status(integration)
           end
         end
         

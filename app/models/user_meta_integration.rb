@@ -17,6 +17,14 @@ class UserMetaIntegration < ApplicationRecord
     (tenant_id if has_attribute?(:tenant_id)) || admin_user&.tenant_id
   end
 
+  def selected_ad_accounts
+    ad_accounts.presence || (ad_account_id.present? ? {ad_account_id => ad_account_name} : {})
+  end
+
+  def ad_account_ids
+    selected_ad_accounts.keys
+  end
+
   def expired?
     token_expires_at.present? && token_expires_at < Time.current
   end

@@ -14,8 +14,8 @@
 
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
   <div class="lg:tw-col-span-12">
-    <%= render "sync_status", integration: @integration %>
     <div class="ax-integration-sections">
+    <%= render "sync_status", integration: @integration %>
         <% if @integration %>
           <%= ax_record_item(
                 title: "Conectado como #{@integration.name}",
@@ -33,7 +33,7 @@
           <% end %>
           <%= render "pages", pages: @pages %>
 
-          <%= ax_form_section(title: "Conta de anúncios", tooltip: "Usada para buscar informações de anúncios e campanhas dos leads.") do %>
+          <%= ax_form_section(title: "Contas de anúncios", tooltip: "Usadas para buscar informações de anúncios e campanhas dos leads.") do %>
             <%= turbo_frame_tag "meta_ad_accounts", src: ad_accounts_admin_meta_integrations_path do %>
               <p class="tw-text-sm tw-text-ink-muted" role="status">Consultando contas de anúncios na Meta...</p>
             <% end %>

@@ -83,23 +83,28 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   def ad_account
     raise ActiveRecord::RecordNotFound unless @integration
 
-    account_id = params.require(:meta_integration).permit(:ad_account_id)[:ad_account_id].to_s.delete_prefix("act_")
-    if account_id.blank?
-      @integration.update!(ad_account_id: nil, ad_account_name: nil)
-    else
-      raise ArgumentError unless account_id.match?(/\A[0-9]{5,30}\z/)
+    permitted = params.require(:meta_integration).permit(:ad_account_id, ad_account_ids: [])
+    ids = Array(permitted.key?(:ad_account_ids) ? permitted[:ad_account_ids] : permitted[:ad_account_id])
+      .map { |id| id.to_s.delete_prefix("act_") }.reject(&:blank?).uniq
+    raise ArgumentError unless ids.all? { |id| id.match?(/\A[0-9]{5,30}\z/) }
+
+    accounts = {}
+    if ids.any?
       service = Facebook::MetaService.new(@integration.access_token)
       unless impersonating_admin_user?
-        allowed = service.ad_accounts(page_ids: @integration.selected_page_ids)
-        return head :forbidden unless allowed.any? { |item| item["account_id"].to_s == account_id }
+        allowed = service.ad_accounts(page_ids: @integration.selected_page_ids).map { |item| item["account_id"].to_s }
+        return head :forbidden unless (ids - allowed).empty?
       end
-      account = service.ad_account(account_id)
-      raise ArgumentError unless account["account_id"].to_s == account_id
-      @integration.update!(ad_account_id: account_id, ad_account_name: account["name"])
+      ids.each do |id|
+        account = service.ad_account(id)
+        raise ArgumentError unless account["account_id"].to_s == id
+        accounts[id] = account["name"]
+      end
     end
-    redirect_to admin_meta_integrations_path, notice: "Conta de anúncios atualizada."
-  rescue Koala::Facebook::APIError, ArgumentError
-    redirect_to admin_meta_integrations_path, alert: "Não foi possível validar essa conta de anúncios. Confira o ID no Gerenciador de Anúncios e o acesso do usuário conectado à conta na Meta. Se necessário, solicite acesso ao administrador do negócio e atualize a autorização."
+    @integration.update!(ad_accounts: accounts, ad_account_id: ids.first, ad_account_name: accounts[ids.first])
+    redirect_to admin_meta_integrations_path, notice: "Contas de anúncios atualizadas."
+  rescue Koala::Facebook::APIError, Facebook::MetaService::MetaAPIError, Faraday::Error, Timeout::Error, SocketError, ArgumentError
+    redirect_to admin_meta_integrations_path, alert: "Não foi possível validar as contas de anúncios. Confira os IDs no Gerenciador de Anúncios e o acesso do usuário conectado à conta na Meta. Se necessário, solicite acesso ao administrador do negócio e atualize a autorização."
   end
 
   def disconnect
@@ -125,7 +130,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
       return
     end
 
-    integration.update!(sync_status: "processing", sync_progress: 0)
+    integration.update!(sync_status: "processing", sync_progress: 0, sync_message: "Aguardando início da sincronização…", last_sync_error: nil)
     MetaSyncJob.perform_later(integration.id)
     respond_to do |format|
       format.json { render json: { ok: true, message: notice } }
