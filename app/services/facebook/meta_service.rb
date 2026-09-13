@@ -54,10 +54,13 @@ module Facebook
       raise MetaAPIError.new("Não foi possível subscrever a página para webhooks.")
     end
 
-    def ad_accounts(all: false)
+    def ad_accounts(all: false, page_ids: nil)
       return paginated_connections(@graph, "me", "adaccounts", fields: "account_id,name").uniq { |account| account["account_id"] } if all
 
+      return [] if page_ids == []
+
       pages = paginated_connections(@graph, "me", "accounts", fields: "id,business")
+      pages.select! { |page| page_ids.include?(page["id"].to_s) } unless page_ids.nil?
       business_ids = pages.filter_map { |page| page.dig("business", "id") }.uniq
       business_ids.flat_map do |id|
         %w[owned_ad_accounts client_ad_accounts].flat_map do |edge|

@@ -1,5 +1,5 @@
 <%= turbo_frame_tag "meta_permissions" do %>
-  <%= ax_form_section(title: "Permissões da Meta") do %>
+  <%= ax_form_section(title: "Acesso e permissões", collapse_id: "meta-access-settings", collapsed: check.nil?) do %>
     <% if check && check[:error] %>
       <p role="alert"><%= check[:error] %></p>
     <% elsif check %>
@@ -17,22 +17,22 @@
         </div>
       </details>
     <% else %>
-      <p class="tw-text-sm tw-text-ink-muted">Confira o acesso concedido ao Facebook e ao Instagram nesta conexão.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Consulte as permissões ou renove o acesso desta conexão.</p>
     <% end %>
-    <div class="ax-form-actions">
+    <div class="ax-integration-actions">
       <%= link_to "Verificar permissões", permissions_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>
       <%= button_to "Atualizar autorização", admin_user_facebook_omniauth_authorize_path, method: :post, params: {auth_type: "rerequest"}, data: {turbo: false}, class: "ax-btn ax-btn--sm ax-btn--primary" %>
     </div>
-    <details class="ax-disclosure-card">
-      <summary class="ax-disclosure-card__summary">Como liberar o acesso</summary>
-      <div class="ax-disclosure-card__body">
+    <details class="ax-integration-help">
+      <summary>Como liberar o acesso</summary>
+      <div class="ax-integration-help__content">
         <ol>
-          <li>Clique em Atualizar autorização e entre com o Facebook que administra a página.</li>
-          <li>Autorize os acessos solicitados e selecione as páginas da sua empresa. Para Direct, use um Instagram profissional vinculado à página e um usuário com acesso às mensagens.</li>
-          <li>Volte e clique em Verificar permissões. Se o acesso continuar ausente, peça ao administrador da página para conferir suas atribuições.</li>
+          <li>Use <strong>Atualizar autorização</strong> e entre com o Facebook que administra as páginas.</li>
+          <li>Mantenha autorizadas todas as empresas conectadas. Escolha as páginas de cada conta em <strong>Páginas desta conta</strong>.</li>
+          <li>Volte e use <strong>Verificar permissões</strong>. Se faltar acesso, confira suas atribuições com o administrador da página.</li>
         </ol>
-        <p>Se a Meta não oferecer a permissão ou informar que o aplicativo não foi aprovado, o responsável técnico precisa conferir o App Review e o acesso avançado no painel Meta. Reautorizar não substitui essa aprovação.</p>
-        <p>As permissões de Instagram preparam a conexão. Para receber Direct, verifique o perfil na página abaixo e ative o recebimento. O webhook Instagram também precisa estar configurado no aplicativo Meta. Este diagnóstico não ativa nem altera webhooks.</p>
+        <p>O Direct é preparado automaticamente para o Instagram profissional vinculado à página. Acompanhe o resultado em <strong>Recursos das páginas</strong>.</p>
+        <p>Permissão indisponível ou aplicativo sem aprovação? Contate o suporte para conferir a configuração na Meta.</p>
         <%= link_to "Requisitos oficiais da Meta", "https://www.postman.com/meta/messenger-platform-api/folder/22794852-255610cd-47f5-4f4d-b3fa-71aec360be9a", target: "_blank", rel: "noopener noreferrer" %>
       </div>
     </details>

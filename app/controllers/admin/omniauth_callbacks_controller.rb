@@ -1,10 +1,11 @@
 class Admin::OmniauthCallbacksController < Devise::OmniauthCallbacksController
+  before_action :authenticate_admin_user!
+
   def facebook
     auth = request.env["omniauth.auth"]
     
-    # Busca ou cria a integração para o AdminUser atual (uma por usuário/conta;
-    # o tenant_id entra pelo before_validation do model quando a coluna existir)
-    integration = UserMetaIntegration.find_or_initialize_by(admin_user: current_admin_user)
+    # A reconexão mantém a seleção local da conta do usuário autenticado.
+    integration = UserMetaIntegration.find_or_initialize_by(admin_user: current_admin_user, tenant_id: current_admin_user.tenant_id)
     
     # Trocar token de curto prazo por longo prazo (opcional, mas recomendado)
     token_info = Facebook::MetaService.exchange_access_token(auth.credentials.token)
@@ -17,10 +18,13 @@ class Admin::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       token_expires_at: token_info&.fetch("expires_in", nil) ? Time.current + token_info["expires_in"].to_i.seconds : nil
     )
 
-    redirect_to admin_meta_integrations_path, notice: "Facebook conectado com sucesso! Agora sincronize suas páginas."
+    MetaSyncJob.perform_later(integration.id)
+    redirect_to admin_meta_integrations_path, notice: "Facebook conectado. Estamos preparando os recursos em segundo plano."
   rescue => e
-    Rails.logger.error "Omniauth Error: #{e.message}"
-    redirect_to admin_meta_integrations_path, alert: "Erro ao conectar com Facebook: #{e.message}"
+    reason = UserMetaIntegration.sync_failure_reason(e)
+    integration.update!(sync_status: "failed", sync_message: reason, last_sync_error: reason) if integration&.persisted?
+    Rails.logger.error "Omniauth Error: #{e.class}"
+    redirect_to admin_meta_integrations_path, alert: "Não foi possível concluir a conexão. #{reason}"
   end
 
   def failure

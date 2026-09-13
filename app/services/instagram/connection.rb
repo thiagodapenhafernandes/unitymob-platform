@@ -14,7 +14,9 @@ module Instagram
       raise Error, "Descubra o perfil e atualize a autorização da página antes de ativar." if page.instagram_id.blank? || page.access_token.blank?
       discover(page)
       raise Error, "Nenhum Instagram profissional acessível nesta página." if page.instagram_id.blank?
+      verify_app_subscription!
       page.with_lock do
+        raise Error, "Página removida da seleção desta conta." unless page.active? && page.user_meta_integration.reload.selected_page_ids.include?(page.page_id)
         page.update!(instagram_enabled: true) # Unique index prevents ambiguous routing.
         if Meta::WebhookConfiguration.gateway?
           route_page = Struct.new(:page_id, :active?).new(page.instagram_id, true)
@@ -29,7 +31,31 @@ module Instagram
           apps = apps.respond_to?(:next_page) ? apps.next_page : nil
         end
         raise Error, "A Meta ainda não confirmou a inscrição de mensagens." unless confirmed
+        page.update!(instagram_checked_at: Time.current, instagram_sync_error: nil)
       end
+    rescue StandardError => error
+      reason = error.is_a?(Error) ? error.message : UserMetaIntegration.sync_failure_reason(error)
+      page.update!(instagram_enabled: false, instagram_checked_at: Time.current, instagram_sync_error: reason)
+      raise
+    end
+
+    def self.verify_app_subscription!
+      app_id = ENV["FACEBOOK_APP_ID"].presence
+      secret = ENV["FACEBOOK_APP_SECRET"].presence
+      raise Error, "A configuração do Instagram no sistema está pendente. Contate o suporte." unless app_id && secret
+
+      graph = Koala::Facebook::API.new("#{app_id}|#{secret}")
+      subscriptions = graph.get_connections(app_id, "subscriptions")
+      while subscriptions.present?
+        confirmed = subscriptions.any? do |subscription|
+          subscription["object"] == "instagram" && subscription["active"] == true &&
+            subscription["callback_url"] == Meta::WebhookConfiguration.callback_url &&
+            Array(subscription["fields"]).any? { |field| field["name"] == "messages" }
+        end
+        return if confirmed
+        subscriptions = subscriptions.respond_to?(:next_page) ? subscriptions.next_page : nil
+      end
+      raise Error, "O recebimento do Instagram ainda não foi confirmado na configuração do sistema. Contate o suporte."
     end
   end
 end

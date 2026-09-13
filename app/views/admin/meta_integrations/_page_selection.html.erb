@@ -1,0 +1,29 @@
+<div id="meta_page_selection">
+  <%= ax_form_section(title: "Páginas desta conta") do %>
+    <p class="tw-text-sm tw-text-ink-muted">Escolha as páginas desta imobiliária. Formulários e Instagram acompanham a seleção.</p>
+    <% pages = integration.meta_facebook_pages.order(:name) %>
+    <% if pages.any? %>
+      <%= form_with url: selected_pages_admin_meta_integrations_path, scope: :meta_integration, method: :patch, id: "meta-page-selection-form" do |form| %>
+        <%= hidden_field_tag "meta_integration[selected_page_ids][]", "" %>
+        <div class="ax-selection-list" role="group" aria-label="Páginas disponíveis">
+          <% pages.each do |page| %>
+            <% label = safe_join([tag.span(page.name, class: "ax-selection-list__title"), tag.span("ID #{page.page_id}", class: "ax-selection-list__meta")]) %>
+            <%= ax_check_field(label: label, name: "meta_integration[selected_page_ids][]", value: page.page_id, checked: integration.selected_page_ids.include?(page.page_id), id: "meta_selection_#{page.id}") %>
+          <% end %>
+        </div>
+      <% end %>
+    <% else %>
+      <p>Atualize as páginas disponíveis para escolher quais deseja conectar.</p>
+    <% end %>
+    <div class="ax-integration-actions">
+      <% if pages.any? %><%= button_tag "Salvar seleção", type: "submit", form: "meta-page-selection-form", class: "ax-btn ax-btn--sm ax-btn--primary" %><% end %>
+      <%= button_to sync_pages_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Atualizar lista
+      <% end %>
+    </div>
+    <details class="ax-integration-help">
+      <summary>Usa o mesmo Facebook em mais de uma empresa?</summary>
+      <p>Na autorização da Meta, mantenha os ativos de todas as empresas marcados. Aqui, selecione apenas as páginas que devem entregar leads nesta conta do CRM.</p>
+    </details>
+  <% end %>
+</div>

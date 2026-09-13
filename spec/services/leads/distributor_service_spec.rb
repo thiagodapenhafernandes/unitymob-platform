@@ -1,6 +1,22 @@
 require 'rails_helper'
 
 RSpec.describe Leads::DistributorService do
+  it "não casa uma regra antiga com página Meta desmarcada, mesmo ainda ativa" do
+    integration = create(:user_meta_integration, selected_page_ids: ["selected"])
+    page = create(:meta_facebook_page, user_meta_integration: integration, page_id: "selected")
+    rule = create(:distribution_rule, tenant: integration.tenant, source_meta: true, meta_page_ids: [page.page_id])
+    lead = build(:lead, tenant: integration.tenant, origin: "Facebook Lead Ads", other_information: {"meta_page_id" => page.page_id})
+    service = described_class.new(lead)
+    expect(service.send(:matches_meta_scope?, rule)).to eq(true)
+    form = create(:meta_lead_form, meta_facebook_page: page)
+    integration.update!(selected_page_ids: [])
+    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(false)
+    lead.other_information = {"meta_form_id" => form.form_id}
+    rule.meta_page_ids = []
+    rule.meta_forms = [form.form_id]
+    expect(described_class.new(lead).send(:matches_meta_scope?, rule)).to eq(false)
+  end
+
   include ActiveJob::TestHelper
   include ActiveSupport::Testing::TimeHelpers
 

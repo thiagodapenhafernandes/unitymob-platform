@@ -32,7 +32,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     @distribution_rule = current_tenant.distribution_rules.new(rule_params)
     sync_agents
     populate_meta_forms_if_auto
-    if @distribution_rule.save
+    if valid_meta_selection? && @distribution_rule.save
       redirect_to admin_distribution_rule_path(@distribution_rule), notice: "Regra criada com sucesso."
     else
       render :new, status: :unprocessable_entity
@@ -46,7 +46,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     @distribution_rule.assign_attributes(rule_params)
     sync_agents
     populate_meta_forms_if_auto
-    if @distribution_rule.save
+    if valid_meta_selection? && @distribution_rule.save
       redirect_to admin_distribution_rule_path(@distribution_rule), notice: "Regra atualizada com sucesso."
     else
       render :edit, status: :unprocessable_entity
@@ -159,7 +159,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     @meta_structure = {}
     @meta_form_options_by_page = {}
 
-    active_pages = tenant_meta_pages.where(active: true).includes(:meta_lead_forms).order(:name)
+    active_pages = tenant_meta_pages.includes(:meta_lead_forms).order(:name)
     active_pages.each do |page|
       forms = page.meta_lead_forms.sort_by { |form| form.name.to_s.downcase }
       forms_list = forms.map { |form| { id: form.form_id, name: form.name } }
@@ -182,6 +182,19 @@ class Admin::DistributionRulesController < Admin::BaseController
     # folha ("Corretor") duplicaria o próprio campo "Corretores na regra".
     @distribution_hierarchy_profiles = distribution_hierarchy_profiles.reject { |p| p.tenant_owner? || p.agent? }
     @distribution_hierarchy_locked_user_id = tenant_owner? ? nil : current_admin_user.id
+  end
+
+  def valid_meta_selection?
+    page_ids = Array(@distribution_rule.meta_page_ids).compact_blank.map(&:to_s)
+    form_ids = Array(@distribution_rule.meta_forms).compact_blank.map(&:to_s)
+    pages = tenant_meta_pages
+    valid_pages = (page_ids - pages.pluck(:page_id)).empty?
+    pages = pages.where(page_id: page_ids) if page_ids.any?
+    valid_forms = (form_ids - MetaLeadForm.where(meta_facebook_page_id: pages.select(:id)).pluck(:form_id)).empty?
+    return true if valid_pages && valid_forms
+
+    @distribution_rule.errors.add(:base, "Selecione somente páginas e formulários vinculados a esta conta na integração Meta.")
+    false
   end
 
   def populate_meta_forms_if_auto
@@ -255,12 +268,9 @@ class Admin::DistributionRulesController < Admin::BaseController
     params.dig(:distribution_rule, :business_type).presence || @distribution_rule&.business_type
   end
 
-  # Páginas Meta pertencem à integração de um admin (UserMetaIntegration) —
-  # o escopo da conta vem do tenant desse admin. Sem isso, o select de páginas
-  # vazava páginas de OUTRAS contas.
+  # A seleção de cada integração delimita as páginas disponíveis nesta conta.
   def tenant_meta_pages
-    MetaFacebookPage.joins(user_meta_integration: :admin_user)
-                    .where(admin_users: { tenant_id: current_tenant.id })
+    MetaFacebookPage.available_for_distribution(current_tenant.id)
   end
 
   def distribution_hierarchy_profiles

@@ -1,11 +1,22 @@
-<%= ax_form_section(title: "Instagram Direct") do %>
-  <% if page.instagram_id.present? %>
-    <p><strong><%= page.instagram_username.presence || "Perfil Instagram" %></strong> · <%= page.instagram_enabled? ? (page.instagram_received_at ? "Recebendo mensagens" : "Ativado · aguardando mensagem") : "Disponível para ativar" %></p>
-    <% if page.instagram_received_at %><p class="ax-stat-label">Última mensagem: <%= l(page.instagram_received_at, format: "%d/%m/%Y %H:%M") %></p><% end %>
-    <%= button_to(page.instagram_enabled? ? "Desativar recebimento" : "Receber leads do Direct", instagram_admin_meta_integrations_path(page_id: page.id, operation: page.instagram_enabled? ? "deactivate" : "activate"), class: "ax-btn ax-btn--sm") %>
-  <% else %>
-    <p class="ax-stat-label">Perfil ainda não identificado. Confira as permissões e o vínculo do Instagram profissional com esta página.</p>
-  <% end %>
-  <%= button_to "Verificar perfil Instagram", instagram_admin_meta_integrations_path(page_id: page.id, operation: "discover"), class: "ax-btn ax-btn--sm" %>
-  <p class="ax-stat-label">Ative somente o perfil desta empresa. O aplicativo Meta precisa ter o webhook Instagram configurado para mensagens. A desativação interrompe o recebimento no CRM e preserva os formulários.</p>
+<% ready = page.active? && page.instagram_enabled? && page.instagram_checked_at.present? && page.instagram_sync_error.blank? %>
+<% state, tone = if page.instagram_sync_error.present?
+  ["Pendente", :amber]
+elsif ready
+  [page.instagram_received_at.present? ? "Recebendo mensagens" : "Pronto para receber", :green]
+elsif page.instagram_checked_at.present? && page.instagram_id.blank?
+  ["Sem perfil vinculado", :gray]
+else
+  ["Aguardando verificação", :gray]
+end %>
+<%= ax_record_item(title: "Instagram Direct", icon: "instagram", meta: page.instagram_username.presence || "Perfil profissional vinculado à página", actions: ax_badge(state, tone: tone, dot: ready)) %>
+<% if page.instagram_sync_error.present? %>
+  <p class="tw-text-sm tw-text-ink-muted" role="status"><%= page.instagram_sync_error %></p>
+<% elsif ready && page.instagram_received_at.present? %>
+  <p class="tw-text-sm tw-text-ink-muted">Última mensagem recebida em <%= l(page.instagram_received_at, format: "%d/%m/%Y %H:%M") %>.</p>
+<% elsif ready %>
+  <p class="tw-text-sm tw-text-ink-muted">Configuração confirmada. Aguardando a primeira mensagem.</p>
+<% elsif page.instagram_checked_at.present? && page.instagram_id.blank? %>
+  <p class="tw-text-sm tw-text-ink-muted">A Meta não retornou um Instagram profissional vinculado a esta página.</p>
+<% else %>
+  <p class="tw-text-sm tw-text-ink-muted">O sistema verifica e prepara o recebimento automaticamente em segundo plano.</p>
 <% end %>

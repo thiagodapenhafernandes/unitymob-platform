@@ -1,33 +1,17 @@
 class Admin::MetaIntegrationsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :integracoes) }
   before_action :set_integration
+  before_action :require_meta_impersonation!, only: [:selected_pages]
   before_action :set_page, only: [:list_forms]
   FORMS_PER_PAGE = 25
 
   def index
     # Show status and link to Facebook Login if not integrated
-    @pages = @integration&.meta_facebook_pages&.enabled || []
+    @pages = @integration ? @integration.meta_facebook_pages.enabled.where(page_id: @integration.selected_page_ids) : []
     @meta_webhook_mode = Meta::WebhookConfiguration.mode
-    @meta_webhook_mode_label = Meta::WebhookConfiguration.label
     @meta_webhook_mode_description = Meta::WebhookConfiguration.description
     @meta_webhook_callback_url = Meta::WebhookConfiguration.callback_url
     @meta_webhook_verify_token = Meta::WebhookConfiguration.verify_token
-  end
-
-  def instagram
-    raise ActiveRecord::RecordNotFound unless @integration
-    page = @integration.meta_facebook_pages.find(params[:page_id])
-    case params[:operation]
-    when "discover" then Instagram::Connection.discover(page)
-    when "activate" then Instagram::Connection.activate(page)
-    when "deactivate" then page.update!(instagram_enabled: false)
-    else return head :bad_request
-    end
-    redirect_to admin_meta_integrations_path, notice: "Configuração do Instagram atualizada."
-  rescue Instagram::Connection::Error => error
-    redirect_to admin_meta_integrations_path, alert: error.message
-  rescue Koala::Facebook::APIError, Facebook::MetaService::MetaAPIError, ActiveRecord::RecordNotUnique
-    redirect_to admin_meta_integrations_path, alert: "Não foi possível concluir. Verifique as permissões, o token da página e se o perfil já está ativado em outra conexão."
   end
 
   def permissions
@@ -56,6 +40,19 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     render layout: false
   end
 
+  def selected_pages
+    raise ActiveRecord::RecordNotFound unless @integration
+    ids = Array(params.require(:meta_integration).permit(selected_page_ids: [])[:selected_page_ids]).reject(&:blank?).uniq
+    known = @integration.meta_facebook_pages.where(page_id: ids).pluck(:page_id)
+    return head :unprocessable_entity unless (ids - known).empty?
+
+    @integration.with_lock do
+      @integration.update!(selected_page_ids: ids)
+      @integration.meta_facebook_pages.where.not(page_id: ids).update_all(active: false, instagram_enabled: false)
+    end
+    trigger_sync(notice: "Seleção salva para esta conta. Sincronização iniciada em segundo plano.")
+  end
+
   def sync_pages
     trigger_sync(notice: "A sincronização foi iniciada em segundo plano.")
   end
@@ -65,12 +62,13 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def ad_accounts
+    return head :forbidden if params[:all] == "1" && !impersonating_admin_user?
     raise ActiveRecord::RecordNotFound unless @integration
 
     if @integration.expired? || @integration.access_token.blank?
       @ad_accounts_error = "Conexão expirada. Atualize a autorização com o Facebook acima."
     else
-      @ad_accounts = Facebook::MetaService.new(@integration.access_token).ad_accounts(all: params[:all] == "1")
+      @ad_accounts = Facebook::MetaService.new(@integration.access_token).ad_accounts(all: params[:all] == "1", page_ids: @integration.selected_page_ids)
     end
   rescue Koala::Facebook::APIError => error
     @ad_accounts_error = case error.fb_error_code.to_i
@@ -90,7 +88,12 @@ class Admin::MetaIntegrationsController < Admin::BaseController
       @integration.update!(ad_account_id: nil, ad_account_name: nil)
     else
       raise ArgumentError unless account_id.match?(/\A[0-9]{5,30}\z/)
-      account = Facebook::MetaService.new(@integration.access_token).ad_account(account_id)
+      service = Facebook::MetaService.new(@integration.access_token)
+      unless impersonating_admin_user?
+        allowed = service.ad_accounts(page_ids: @integration.selected_page_ids)
+        return head :forbidden unless allowed.any? { |item| item["account_id"].to_s == account_id }
+      end
+      account = service.ad_account(account_id)
       raise ArgumentError unless account["account_id"].to_s == account_id
       @integration.update!(ad_account_id: account_id, ad_account_name: account["name"])
     end
@@ -139,6 +142,10 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     end
   end
 
+  def require_meta_impersonation!
+    head :forbidden unless impersonating_admin_user?
+  end
+
   def set_integration
     @integration = UserMetaIntegration.find_by(admin_user: current_admin_user, tenant_id: current_tenant.id)
   end
@@ -146,6 +153,6 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   def set_page
     raise ActiveRecord::RecordNotFound, "Integração Meta não encontrada" unless @integration
 
-    @page = @integration.meta_facebook_pages.find(params[:page_id])
+    @page = @integration.meta_facebook_pages.where(page_id: @integration.selected_page_ids).find(params[:page_id])
   end
 end

@@ -5,11 +5,61 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
   let(:admin) { create(:admin_user, :admin) }
   let(:integration) { create(:user_meta_integration, admin_user: admin) }
-  let(:page) { create(:meta_facebook_page, user_meta_integration: integration) }
+  let(:page) do
+    create(:meta_facebook_page, user_meta_integration: integration).tap do |record|
+      integration.update!(selected_page_ids: [record.page_id])
+    end
+  end
+
+  def impersonate_admin
+    sign_in create(:admin_user, super_admin: true)
+    post admin_system_user_impersonation_path(admin)
+    expect(response).to redirect_to(admin_root_path)
+  end
 
   before do
     host! "localhost"
     sign_in admin
+  end
+
+  it "oculta o catálogo e bloqueia seleção e consultas amplas fora da impersonação" do
+    page
+    other = create(:meta_facebook_page, user_meta_integration: integration, name: "Outra imobiliária", active: true)
+    get admin_meta_integrations_path
+    expect(response.body).to include(page.name)
+    expect(response.body).not_to include(other.name, "meta_page_selection")
+    streams = Nokogiri::HTML(response.body).css("turbo-cable-stream-source").map { |node| Turbo::StreamsChannel.verified_stream_name(node["signed-stream-name"]) }
+    expect(streams).not_to include("meta_selection_#{integration.id}")
+
+    patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: [other.page_id]}}
+    expect(response).to have_http_status(:forbidden)
+    expect(integration.reload.selected_page_ids).to eq([page.page_id])
+    expect(MetaSyncJob).not_to have_been_enqueued
+    get list_forms_admin_meta_integrations_path(page_id: other.id)
+    expect(response).to have_http_status(:not_found)
+    expect(Facebook::MetaService).not_to receive(:new)
+    get ad_accounts_admin_meta_integrations_path(all: "1")
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "permite o catálogo e seu canal privado apenas na impersonação" do
+    page
+    other = create(:meta_facebook_page, user_meta_integration: integration, name: "Página disponível")
+    impersonate_admin
+    get admin_meta_integrations_path
+    expect(response.body).to include("meta_page_selection", other.name)
+    streams = Nokogiri::HTML(response.body).css("turbo-cable-stream-source").map { |node| Turbo::StreamsChannel.verified_stream_name(node["signed-stream-name"]) }
+    expect(streams).to include("meta_selection_#{integration.id}")
+  end
+
+  it "recusa vincular anúncio fora das páginas selecionadas sem impersonação" do
+    service = instance_double(Facebook::MetaService)
+    allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
+    expect(service).to receive(:ad_accounts).with(page_ids: []).and_return([])
+    expect(service).not_to receive(:ad_account)
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_id: "123456"}}
+    expect(response).to have_http_status(:forbidden)
+    expect(integration.reload.ad_account_id).to be_nil
   end
 
   it "apresenta os recursos da conexão e preserva o login por POST" do
@@ -20,6 +70,42 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     form = document.at_css(".ax-integration-onboarding form")
     expect(form["method"]).to eq("post")
     expect(form["action"]).to eq(admin_user_facebook_omniauth_authorize_path)
+  end
+
+  it "mostra o estado do Direct sem comandos manuais de ativação" do
+    page.update!(instagram_id: "ig", instagram_username: "empresa", instagram_enabled: true, instagram_checked_at: Time.current)
+    get admin_meta_integrations_path
+    expect(response.body).to include("Pronto para receber", "empresa")
+    expect(response.body).not_to include("Receber leads do Direct", "Verificar perfil Instagram", "Webhook Ativo")
+    page.update!(instagram_enabled: false, instagram_sync_error: "Inscrição de mensagens pendente")
+    get admin_meta_integrations_path
+    expect(response.body).to include("Inscrição de mensagens pendente")
+    expect(response.body).not_to include("Pronto para receber")
+  end
+
+  it "salva a seleção local sem alterar outra integração e agenda a sincronização" do
+    impersonate_admin
+    page
+    other = create(:user_meta_integration, admin_user: create(:admin_user, :admin), selected_page_ids: ["99999"])
+    patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: [page.page_id]}}
+    expect(response).to redirect_to(admin_meta_integrations_path)
+    expect(integration.reload.selected_page_ids).to eq([page.page_id])
+    expect(other.reload.selected_page_ids).to eq(["99999"])
+    expect(MetaSyncJob).to have_been_enqueued.with(integration.id)
+    patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: ["99999"]}}
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(integration.reload.selected_page_ids).to eq([page.page_id])
+  end
+
+  it "desativa imediatamente páginas e Instagram removidos da seleção" do
+    impersonate_admin
+    page.update!(active: true, instagram_enabled: true)
+    integration.update!(selected_page_ids: [page.page_id])
+    patch selected_pages_admin_meta_integrations_path, params: {meta_integration: {selected_page_ids: [""]}}
+    expect(response).to redirect_to(admin_meta_integrations_path)
+    expect(integration.reload.selected_page_ids).to eq([])
+    expect(page.reload).not_to be_active
+    expect(page).not_to be_instagram_enabled
   end
 
   it "consulta somente a integração do usuário e renderiza instruções sem expor token" do
@@ -41,6 +127,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
   it "valida a conta de anúncios antes de vinculá-la" do
     service = instance_double(Facebook::MetaService)
     allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
+    allow(service).to receive(:ad_accounts).with(page_ids: integration.selected_page_ids).and_return([{"account_id" => "123456"}])
     allow(service).to receive(:ad_account).with("123456").and_return({"account_id" => "123456", "name" => "Conta correta"})
     patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_id: "act_123456"}}
     expect(response).to redirect_to(admin_meta_integrations_path)
@@ -101,11 +188,11 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     get admin_meta_integrations_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("ax-operational-panel", "meta-integration-avatar--page")
+    expect(response.body).to include("ax-integration-sections", "meta-integration-avatar--page")
     expect(response.body).to include("ax-record-item", "meta-integration-account", "ax-disclosure-card")
     expect(response.body).to include("Sincronizar Páginas", "Desconectar conta", page.name)
-    expect(response.body).to include("Configuração do webhook", "App próprio", "https://app.saluteimoveis.com.br/webhooks/meta")
-    expect(response.body).to include("Webhook Ativo") if page.active?
+    expect(response.body).to include("Configuração técnica", "https://app.saluteimoveis.com.br/webhooks/meta")
+    expect(response.body).to include("Página selecionada") if page.active?
     expect(Nokogiri::HTML(response.body).at_css(".meta-integration-workspace").to_html).not_to match(/\bstyle\s*=/i)
   end
 

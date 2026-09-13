@@ -400,13 +400,13 @@ Rails.application.routes.draw do
     resources :meta_integrations, only: [:index] do
       collection do
         post :sync_pages
+        patch :selected_pages
         post :sync_forms
         get :ad_accounts
         patch :ad_account
         delete :disconnect
         get :list_forms
         get :permissions
-        post :instagram
       end
     end
     resource :whatsapp_integration, only: [:show] do

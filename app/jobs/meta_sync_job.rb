@@ -18,7 +18,9 @@ class MetaSyncJob < ApplicationJob
     
     pages_data = service.get_user_pages
     # Preserve history, but stop synchronizing pages no longer authorized by Meta.
-    integration.meta_facebook_pages.where.not(page_id: pages_data.map { |page| page["id"] }).update_all(active: false)
+    integration.meta_facebook_pages.where.not(page_id: pages_data.map { |page| page["id"] }).update_all(active: false, instagram_enabled: false)
+    missing_ids = integration.selected_page_ids - pages_data.map { |data| data["id"].to_s }
+    pending << "A Meta não retornou páginas selecionadas (#{missing_ids.join(', ')}). Atualize a autorização mantendo os ativos das outras empresas selecionados. Sua seleção neste CRM foi preservada." if missing_ids.any?
     total_pages = pages_data.size
     
     integration.update!(sync_progress: 20, sync_message: "Encontradas #{total_pages} páginas. Sincronizando...")
@@ -26,23 +28,47 @@ class MetaSyncJob < ApplicationJob
 
     synced_pages = []
     pages_data.each_with_index do |page_data, index|
-      integration.update!(sync_message: "Sincronizando página: #{page_data['name']} (#{index + 1}/#{total_pages})")
+      integration.update!(sync_message: "Sincronizando páginas (#{index + 1}/#{total_pages})")
       broadcast_status(integration)
 
       page = integration.meta_facebook_pages.find_or_initialize_by(page_id: page_data["id"])
-      page.update!(
-        name: page_data["name"],
-        access_token: page_data["access_token"],
-        category: page_data["category"],
-        active: true
-      )
+      selected = false
+      integration.with_lock do
+        selected = integration.selected_page_ids.include?(page_data["id"].to_s)
+        page.update!(
+          name: page_data["name"],
+          access_token: page_data["access_token"],
+          category: page_data["category"],
+          active: selected && page.persisted? && page.active?
+        )
+      end
+      next unless selected
+
+      # Proposta de ativação: só persiste depois de confirmar o destino.
+      page.active = true
+      unless register_meta_gateway_route(page, integration)
+        page.update!(active: false, instagram_enabled: false)
+        pending << "Gateway da página #{page.name}: registro pendente. O recebimento foi desativado até confirmar o destino."
+        next
+      end
+      integration.with_lock do
+        page.update!(active: integration.selected_page_ids.include?(page.page_id))
+      end
+      next unless page.active?
+
       begin
         Instagram::Connection.discover(page)
+        if page.instagram_id.present?
+          Instagram::Connection.activate(page)
+        else
+          page.update!(instagram_enabled: false, instagram_sync_error: nil, instagram_checked_at: Time.current)
+        end
       rescue StandardError => error
-        pending << "Instagram da página #{page.name}: #{UserMetaIntegration.sync_failure_reason(error)}"
+        reason = error.is_a?(Instagram::Connection::Error) ? error.message : UserMetaIntegration.sync_failure_reason(error)
+        page.update!(instagram_enabled: false, instagram_sync_error: reason, instagram_checked_at: Time.current)
+        pending << "Instagram da página #{page.name}: #{reason}"
         Rails.logger.warn("[Instagram] descoberta pendente page_id=#{page.id} error=#{error.class}")
       end
-      pending << "Gateway da página #{page.name}: registro pendente." unless register_meta_gateway_route(page, integration)
       synced_pages << page
       
       # Progress for pages (up to 50%)
@@ -56,6 +82,7 @@ class MetaSyncJob < ApplicationJob
     # 2. Sync Forms for each page
     total_synced_pages = synced_pages.size
     synced_pages.each_with_index do |page, index|
+      next unless integration.reload.selected_page_ids.include?(page.page_id)
       begin
         integration.update!(sync_message: "Buscando formulários da página: #{page.name} (#{index + 1}/#{total_synced_pages})")
         broadcast_status(integration)
@@ -122,7 +149,10 @@ class MetaSyncJob < ApplicationJob
     broadcast_status(integration)
     
     Turbo::StreamsChannel.broadcast_replace_to("meta_sync_#{integration.id}", target: "meta_pages",
-      partial: "admin/meta_integrations/pages", locals: { pages: integration.meta_facebook_pages.enabled })
+      partial: "admin/meta_integrations/pages", locals: { pages: integration.meta_facebook_pages.enabled.where(page_id: integration.selected_page_ids) })
+
+    Turbo::StreamsChannel.broadcast_replace_to("meta_selection_#{integration.id}", target: "meta_page_selection",
+      partial: "admin/meta_integrations/page_selection", locals: { integration: integration })
 
     # Reset status after 5 seconds
     ResetSyncStatusJob.set(wait: 5.seconds).perform_later(integration.id, integration.updated_at.iso8601(6)) if pending.empty?
@@ -150,7 +180,7 @@ class MetaSyncJob < ApplicationJob
     return false unless tenant
 
     result = Meta::WebhookGatewayClient.new(page: page, tenant: tenant, form: form).register_route
-    return true if result.ok? || result.skipped?
+    return true if result.ok? || (result.skipped? && !Meta::WebhookConfiguration.gateway?)
 
     Rails.logger.warn(
       "[MetaSyncJob] Nao foi possivel registrar rota Meta no gateway " \
