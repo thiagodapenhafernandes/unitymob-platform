@@ -103,6 +103,22 @@ module Admin::ComercialHelper
     )
   end
 
+  def lead_timeline_push_receipts(entries)
+    sends = entries.select { |entry| entry.is_a?(LeadActivity) && entry.kind == "notification_sent" && entry.meta("channel") == "push" }
+    entries.each_with_object({}) do |event, grouped|
+      next unless event.is_a?(PushDeliveryEvent) && event.event_type == "device_received"
+
+      # ponytail: histórico sem ID de envio usa horário/TTL; correlação exata exige ID no recibo.
+      next if event.tag.present? && event.tag != "lead-#{event.lead_id}-#{event.admin_user_id}"
+
+      send = sends.select do |entry|
+        entry.lead_id == event.lead_id && entry.meta("admin_user_id").to_s == event.admin_user_id.to_s &&
+          event.created_at.between?(entry.created_at - 2.seconds, entry.created_at + 15.minutes)
+      end.min_by { |entry| (event.created_at - entry.created_at).abs }
+      (grouped[send] ||= []) << event if send
+    end
+  end
+
   def lead_timeline_for_channel(entries, channel:)
     entries.select do |activity|
       if activity.is_a?(PushDeliveryEvent)

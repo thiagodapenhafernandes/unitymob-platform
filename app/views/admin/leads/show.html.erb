@@ -1865,6 +1865,8 @@
       (activity_kind == "automation_event" && act.metadata.to_h["event"].to_s == "lead_assigned")
   end
   timeline_milestones = timeline_milestones.select { |act| lead_timeline_event_visible?(act, detailed: timeline_detailed) }
+  timeline_push_receipts = lead_timeline_push_receipts(timeline_milestones)
+  timeline_milestones -= timeline_push_receipts.values.flatten
   timeline_wa_events = @timeline.select { |act| act.respond_to?(:kind) && wa_timeline_kinds.include?(act.kind.to_s) }
 %>
 
@@ -2048,12 +2050,12 @@
           <section class="tw-min-w-0" data-timeline-channel="<%= channel %>" aria-label="<%= title %>">
             <h3 class="ax-card__title tw-mb-4"><i class="bi bi-<%= icon %> ax-ico" aria-hidden="true"></i> <%= title %></h3>
             <% if entries.any? %>
-              <%= render "admin/leads/timeline_entries", entries: entries.first(15), detailed: timeline_detailed %>
+              <%= render "admin/leads/timeline_entries", entries: entries.first(15), detailed: timeline_detailed, push_receipts: timeline_push_receipts %>
 
               <% if timeline_rest.any? %>
                 <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
                   <div hidden data-ax-disclosure-target="content">
-                    <%= render "admin/leads/timeline_entries", entries: timeline_rest, detailed: timeline_detailed %>
+                    <%= render "admin/leads/timeline_entries", entries: timeline_rest, detailed: timeline_detailed, push_receipts: timeline_push_receipts %>
                   </div>
                   <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
                           data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
