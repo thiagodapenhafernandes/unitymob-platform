@@ -89,6 +89,29 @@ RSpec.describe Whatsapp::InboundProcessor do
 
     expect(conv.reload.business_scoped_user_id).to eq("US.NEW")
   end
+  it "preserva referral por mensagem, não duplica e não troca a entrada inicial" do
+    first = {"id" => "wamid.ctwa.first", "from" => "5547999018877", "type" => "text", "text" => {"body" => "oi"},
+      "referral" => {"source_type" => "ad", "source_id" => "987654", "headline" => "Imóvel", "ctwa_clid" => "click-1", "unknown" => "ignored"}}
+    body = payload(contacts: [], messages: [first])
+    expect { described_class.call(body) }.to have_enqueued_job(MetaLeadEnrichmentJob)
+    message = integration.tenant.whatsapp_messages.find_by!(wa_message_id: first["id"])
+    lead = message.whatsapp_conversation.lead
+    initial = lead.other_information.deep_dup
+    expect(message.referral).to include("source_id" => "987654", "ctwa_clid" => "click-1")
+    expect(message.referral).not_to have_key("unknown")
+    expect { described_class.call(body) }.not_to change(WhatsappMessage, :count)
+    described_class.call(payload(contacts: [], messages: [first.merge("id" => "wamid.ctwa.second", "referral" => {"source_type" => "ad", "source_id" => "111111"})]))
+    expect(lead.reload.other_information).to eq(initial)
+    expect(integration.tenant.whatsapp_messages.find_by!(wa_message_id: "wamid.ctwa.second").referral["source_id"]).to eq("111111")
+  end
+
+  it "preserva origem de lead existente quando chega mensagem CTWA" do
+    lead = create(:lead, tenant: integration.tenant, phone: "5547999028877", origin: "Site", other_information: {"keep" => true})
+    described_class.call(payload(contacts: [], messages: [{"id" => "wamid.existing", "from" => lead.phone, "type" => "text", "text" => {"body" => "oi"}, "referral" => {"source_type" => "ad", "source_id" => "987654"}}]))
+    expect(lead.reload.origin).to eq("Site")
+    expect(lead.other_information).to eq("keep" => true)
+  end
+
 end
 
 RSpec.describe Whatsapp::CloudClient do
@@ -197,4 +220,5 @@ RSpec.describe Lead do
     only_bsuid = build(:lead, phone: nil, business_scoped_user_id: "US.Q")
     expect(only_bsuid.whatsapp_recipient).to eq({ user_id: "US.Q" })
   end
+
 end

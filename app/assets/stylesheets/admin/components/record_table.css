@@ -272,3 +272,23 @@
 .ax-record-list .ax-record-contact-details { display:flex; gap:4px; align-items:center; min-width:0; }
 .ax-record-list .ax-record-contact-details .ax-record-email { min-width:0; }
 .ax-record-list .lead-labels-chips { flex:none; max-width:50%; overflow-x:auto; white-space:nowrap; }
+
+/* Shared origin identity: scoped to the origin component, not the record row. */
+.ax-origin .ax-record-origin { flex-wrap: wrap; align-items: center; color: var(--ax-primary, #315d8b); }
+.ax-origin__subtype { color: var(--ax-text-muted, #68768a); font-size: .8em; font-weight: 600; }
+.ax-origin .ax-origin__site-icon { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.ax-origin__complement { color: var(--ax-text-muted, #68768a); margin-top: 4px; overflow-wrap: anywhere; }
+.ax-origin__cycle { margin-top: 6px; color: var(--ax-text-muted, #68768a); font-size: 12px; }
+.ax-origin__cycle summary { cursor: pointer; width: fit-content; }
+.ax-origin__cycle summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.ax-origin__cycle dl { margin: 8px 0 0; overflow-wrap: anywhere; }
+.ax-origin__cycle dt { font-weight: 600; }
+.ax-origin__cycle dd { margin: 0 0 6px; }
+.ax-origin [data-brand="meta"], .ax-origin [data-brand="facebook"] { color: #0866ff; }
+.ax-origin [data-brand="instagram"] { color: #b52d78; }
+.ax-origin [data-brand="whatsapp"] { color: #128c7e; }
+.ax-origin [data-brand="zap"] { color: #7134ad; }
+.ax-origin [data-brand="imovelweb"] { color: #b94808; }
+.ax-origin [data-brand="vivareal"] { color: #117daf; }
+/* Let this column's disclosure grow inside its row without covering neighbors. */
+.ax-record-list__row:has(.ax-origin) { height: auto; min-height: 76px; }

@@ -70,10 +70,10 @@ module Gateway
 
       payload = parse_json(raw_body)
       event_contexts = MetaLeadPayload.extract_event_contexts(payload)
-      events = event_contexts.map { |context| persist_meta_event(context, payload, raw_body) }
+      events = event_contexts.map { |context| persist_meta_event(context, context[:payload] || payload, context[:payload] ? JSON.generate(context[:payload]) : raw_body) }
 
       alert_unrouted_events(events)
-      events.each { |event| forward_event(event, raw_body) }
+      events.each { |event| forward_event(event, event.raw_body) }
 
       status 200
       json(ok: true, events: events.map { |event| event_response(event) })

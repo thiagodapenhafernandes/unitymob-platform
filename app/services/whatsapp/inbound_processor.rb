@@ -90,7 +90,7 @@ module Whatsapp
       contact = contacts[phone.to_s] || contacts[bsuid.to_s] || {}
       name = contact[:name]
 
-      conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name)
+      conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name, entry_message: msg)
       extend_free_entry_point_window(conversation, msg)
       type = msg["type"].to_s
 
@@ -109,6 +109,7 @@ module Whatsapp
           wa_message_id: msg["id"],
           msg_type: type.presence || "text",
           body: body,
+          referral: referral_data(msg),
           media_url: media_url,
           **(WhatsappMessage.column_names.include?("context_wa_message_id") ? { context_wa_message_id: msg.dig("context", "id") } : {}),
           status: "delivered",
@@ -131,6 +132,7 @@ module Whatsapp
       Whatsapp::ThreadBroadcaster.message_created(message)
 
       campaign_message = mark_campaign_reply!(conversation, message, raw_message: msg)
+      enqueue_entry_enrichment(conversation, message)
 
       if conversation.lead_id
         meta = { body: message.preview, phone: phone, bsuid: bsuid }.compact
@@ -215,6 +217,24 @@ module Whatsapp
       return nil if event.blank? || event == "NONE" || event == "PENDING"
 
       "Status retornado pela Meta: #{event}"
+    end
+
+    # Preserve attribution on each message, including returns/reconversions. Only
+    # a newly created lead receives an initial entry; existing acquisition stays intact.
+    def enqueue_entry_enrichment(conversation, message)
+      entry = (conversation.lead&.other_information || {}).to_h.fetch("whatsapp_entry", {})
+      return unless entry["message_id"] == message.wa_message_id && message.referral["source_type"] == "ad"
+
+      MetaLeadEnrichmentJob.perform_later(tenant.id, conversation.lead_id)
+    rescue StandardError => error
+      Rails.logger.warn("[wa attribution] enrichment enqueue failed message_id=#{message.id} error=#{error.class}")
+    end
+
+    def referral_data(msg)
+      return {} unless msg["referral"].is_a?(Hash)
+
+      msg["referral"].slice("source_type", "source_id", "source_url", "headline", "body", "ctwa_clid")
+        .select { |_, value| value.is_a?(String) }.transform_values { |value| value.first(2000) }
     end
 
     def extend_free_entry_point_window(conversation, msg)
@@ -473,7 +493,7 @@ module Whatsapp
       conversation.update_columns(contact_phone: recipient_phone, updated_at: Time.current)
     end
 
-    def find_or_create_conversation(phone:, bsuid:, name:)
+    def find_or_create_conversation(phone:, bsuid:, name:, entry_message:)
       phone = Phones::Normalizer.call(phone).to_s.presence
       conversation =
         (phone.present? && tenant.whatsapp_conversations.find_by(contact_phone: phone)) ||
@@ -487,14 +507,14 @@ module Whatsapp
       conversation.status = "open"
 
       if conversation.lead_id.blank? && campaign_reply_candidate(phone).blank?
-        conversation.lead = link_or_create_lead(phone: phone, bsuid: bsuid, name: name)
+        conversation.lead = link_or_create_lead(phone: phone, bsuid: bsuid, name: name, entry_message: entry_message)
       end
 
       conversation.save!
       conversation
     end
 
-    def link_or_create_lead(phone:, bsuid:, name:)
+    def link_or_create_lead(phone:, bsuid:, name:, entry_message:)
       # 1) Por BSUID (identidade estável).
       if bsuid.present?
         lead = tenant.leads.find_by(business_scoped_user_id: bsuid)
@@ -516,6 +536,10 @@ module Whatsapp
         phone: phone,
         business_scoped_user_id: bsuid,
         origin: "whatsapp",
+        other_information: { "whatsapp_entry" => {
+          "message_id" => entry_message["id"], "occurred_at" => message_time(entry_message).iso8601,
+          "referral" => referral_data(entry_message)
+        } },
         status: Lead.default_status
       )
     rescue => e

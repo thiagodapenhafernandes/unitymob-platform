@@ -1,0 +1,11 @@
+<%= ax_form_section(title: "Instagram Direct") do %>
+  <% if page.instagram_id.present? %>
+    <p><strong><%= page.instagram_username.presence || "Perfil Instagram" %></strong> · <%= page.instagram_enabled? ? (page.instagram_received_at ? "Recebendo mensagens" : "Ativado · aguardando mensagem") : "Disponível para ativar" %></p>
+    <% if page.instagram_received_at %><p class="ax-stat-label">Última mensagem: <%= l(page.instagram_received_at, format: "%d/%m/%Y %H:%M") %></p><% end %>
+    <%= button_to(page.instagram_enabled? ? "Desativar recebimento" : "Receber leads do Direct", instagram_admin_meta_integrations_path(page_id: page.id, operation: page.instagram_enabled? ? "deactivate" : "activate"), class: "ax-btn ax-btn--sm") %>
+  <% else %>
+    <p class="ax-stat-label">Perfil ainda não identificado. Confira as permissões e o vínculo do Instagram profissional com esta página.</p>
+  <% end %>
+  <%= button_to "Verificar perfil Instagram", instagram_admin_meta_integrations_path(page_id: page.id, operation: "discover"), class: "ax-btn ax-btn--sm" %>
+  <p class="ax-stat-label">Ative somente o perfil desta empresa. O aplicativo Meta precisa ter o webhook Instagram configurado para mensagens. A desativação interrompe o recebimento no CRM e preserva os formulários.</p>
+<% end %>

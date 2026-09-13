@@ -31,16 +31,30 @@ module Facebook
 
     def subscribe_page_to_app(page_id, page_access_token, subscribed_fields: [ "leadgen" ])
       page_graph = Koala::Facebook::API.new(page_access_token)
+      raise MetaAPIError, "Configure o App ID da Meta antes de assinar eventos." if ENV["FACEBOOK_APP_ID"].blank?
+      subscriptions = page_graph.get_connections(page_id, "subscribed_apps", fields: "id,subscribed_fields")
+      all_subscriptions = []
+      while subscriptions.present?
+        all_subscriptions.concat(subscriptions)
+        subscriptions = subscriptions.respond_to?(:next_page) ? subscriptions.next_page : nil
+      end
+      existing = all_subscriptions.find { |app| app["id"].to_s == ENV["FACEBOOK_APP_ID"].to_s }
+      fields = (Array(existing&.dig("subscribed_fields")) + subscribed_fields).uniq
       result = page_graph.put_connections(
         page_id,
         "subscribed_apps",
-        subscribed_fields: subscribed_fields.join(",")
+        subscribed_fields: fields.join(",")
       )
+      raise MetaAPIError, "A Meta não confirmou a inscrição." unless result == true || result.is_a?(Hash) && result["success"] == true
       Rails.logger.info "MetaService: Página #{page_id} subscrita para webhooks."
       result
     rescue Koala::Facebook::APIError => e
       Rails.logger.error "MetaService Error: Failed to subscribe page #{page_id}: #{e.message}"
       raise MetaAPIError.new("Não foi possível subscrever a página para webhooks.")
+    end
+
+    def ad_accounts
+      paginated_connections(@graph, "me", "adaccounts", fields: "account_id,name").uniq { |account| account["account_id"] }
     end
 
     def ad_account(account_id)

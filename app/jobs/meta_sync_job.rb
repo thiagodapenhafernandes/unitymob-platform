@@ -2,7 +2,9 @@ class MetaSyncJob < ApplicationJob
   queue_as :sync
 
   def perform(integration_id)
-    integration = UserMetaIntegration.find(integration_id)
+    integration = UserMetaIntegration.find_by(id: integration_id)
+    return unless integration
+    pending = []
     
     # Marcamos como 5% para indicar que o Job realmente começou
     integration.update!(sync_status: 'processing', sync_progress: 5, sync_message: "Iniciando conexão com a Meta...")
@@ -32,7 +34,13 @@ class MetaSyncJob < ApplicationJob
         category: page_data["category"],
         active: true
       )
-      register_meta_gateway_route(page, integration)
+      begin
+        Instagram::Connection.discover(page)
+      rescue StandardError => error
+        pending << "Instagram da página #{page.name}: #{UserMetaIntegration.sync_failure_reason(error)}"
+        Rails.logger.warn("[Instagram] descoberta pendente page_id=#{page.id} error=#{error.class}")
+      end
+      pending << "Gateway da página #{page.name}: registro pendente." unless register_meta_gateway_route(page, integration)
       synced_pages << page
       
       # Progress for pages (up to 50%)
@@ -65,7 +73,7 @@ class MetaSyncJob < ApplicationJob
             active: form_data["status"] == "ACTIVE",
             facebook_created_at: form_data["created_time"]
           )
-          register_meta_gateway_route(page, integration, form: form)
+          pending << "Gateway do formulário #{form.name}: registro pendente." unless register_meta_gateway_route(page, integration, form: form)
 
           # Auto-add to Distribution Rules if enabled — SÓ do tenant desta
           # integração (antes varria todos; com páginas duplicadas entre
@@ -85,10 +93,17 @@ class MetaSyncJob < ApplicationJob
           end
         end
         
-        # Subscribe for webhooks
-        page_service.subscribe_page_to_app(page.page_id, page.access_token)
-      rescue => e
-        Rails.logger.error "MetaSyncJob Error for page #{page.id}: #{e.message}"
+      rescue StandardError => e
+        pending << "Formulários da página #{page.name}: #{UserMetaIntegration.sync_failure_reason(e)}"
+        Rails.logger.error "MetaSyncJob forms page_id=#{page.id} error=#{e.class}"
+      end
+
+      # A consulta dos formulários não deve impedir a inscrição da página.
+      begin
+        Facebook::MetaService.new(page.access_token || integration.access_token).subscribe_page_to_app(page.page_id, page.access_token)
+      rescue StandardError => e
+        pending << "Webhook da página #{page.name}: #{UserMetaIntegration.sync_failure_reason(e)}"
+        Rails.logger.error "MetaSyncJob subscription page_id=#{page.id} error=#{e.class}"
       end
       
       # Progress for forms (50% to 95%)
@@ -99,15 +114,18 @@ class MetaSyncJob < ApplicationJob
       sleep(1.0) # Cadência maior entre páginas
     end
 
-    integration.update!(sync_status: 'completed', sync_progress: 100, sync_message: "Sincronização finalizada!", last_synced_at: Time.current)
+    integration.update!(sync_status: pending.empty? ? 'completed' : 'partial', sync_progress: 100,
+      sync_message: pending.empty? ? "Sincronização finalizada!" : pending.uniq.join(" "),
+      last_sync_error: pending.empty? ? nil : pending.uniq.join(" "), last_synced_at: Time.current)
     broadcast_status(integration)
     
     # Reset status after 5 seconds
-    ResetSyncStatusJob.set(wait: 5.seconds).perform_later(integration.id)
+    ResetSyncStatusJob.set(wait: 5.seconds).perform_later(integration.id, integration.updated_at.iso8601(6)) if pending.empty?
   rescue => e
-    integration.update!(sync_status: 'failed', sync_progress: 0)
-    broadcast_status(integration)
-    Rails.logger.error "MetaSyncJob Fatal Error: #{e.message}"
+    reason = [*pending, integration&.sync_message, UserMetaIntegration.sync_failure_reason(e)].compact.join(" ")
+    integration&.update!(sync_status: 'failed', sync_progress: 0, sync_message: reason, last_sync_error: reason)
+    broadcast_status(integration) if integration
+    Rails.logger.error "MetaSyncJob Fatal Error: #{e.class}"
     raise e
   end
 
@@ -124,20 +142,22 @@ class MetaSyncJob < ApplicationJob
 
   def register_meta_gateway_route(page, integration, form: nil)
     tenant = Tenant.find_by(id: integration.owner_tenant_id)
-    return unless tenant
+    return false unless tenant
 
     result = Meta::WebhookGatewayClient.new(page: page, tenant: tenant, form: form).register_route
-    return if result.ok? || result.skipped?
+    return true if result.ok? || result.skipped?
 
     Rails.logger.warn(
       "[MetaSyncJob] Nao foi possivel registrar rota Meta no gateway " \
       "page_id=#{page.page_id} form_id=#{form&.form_id} tenant_id=#{tenant.id} " \
-      "status=#{result.status} error=#{result.error}"
+      "status=#{result.status}"
     )
+    false
   rescue => e
     Rails.logger.warn(
       "[MetaSyncJob] Erro ao registrar rota Meta no gateway " \
-      "page_id=#{page.page_id} form_id=#{form&.form_id} error=#{e.class}: #{e.message}"
+      "page_id=#{page.page_id} form_id=#{form&.form_id} error=#{e.class}"
     )
+    false
   end
 end

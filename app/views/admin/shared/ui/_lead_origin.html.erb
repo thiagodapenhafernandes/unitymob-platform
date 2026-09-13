@@ -1,0 +1,20 @@
+<% if origin %>
+  <div class="ax-origin">
+    <span class="ax-record-origin" data-brand="<%= origin[:brand] %>">
+      <% if origin[:icon_url].present? %>
+        <%= image_tag(origin[:icon_url], class: "ax-brand-icon ax-origin__site-icon", alt: "", aria: { hidden: true }, width: 24, height: 24) %>
+      <% else %>
+        <%= ax_brand_icon(origin[:brand] == "site" ? "globe2" : origin[:brand]) %>
+      <% end %>
+      <span><%= origin[:label] %></span>
+      <% if origin[:subtype].present? %><small class="ax-origin__subtype"><%= origin[:subtype] %></small><% end %>
+    </span>
+    <% origin[:complements].each do |text| %>
+      <div class="ax-origin__complement" title="<%= text %>"><%= text %></div>
+    <% end %>
+    <details class="ax-origin__cycle">
+      <summary>Detalhes do ciclo</summary>
+      <dl><% origin[:details].each do |label, value| %><dt><%= label %></dt><dd><%= value %></dd><% end %></dl>
+    </details>
+  </div>
+<% end %>

@@ -1,0 +1,23 @@
+<%= turbo_frame_tag "meta_ad_accounts" do %>
+  <% if @ad_accounts_error %>
+    <p class="ax-stat-label" role="alert"><%= @ad_accounts_error %></p>
+  <% else %>
+    <% choices = @ad_accounts.map { |account| ["#{account['name']} (#{account['account_id']})", account['account_id']] } %>
+    <% if @integration.ad_account_id.present? && choices.none? { |_, id| id == @integration.ad_account_id } %>
+      <% choices.unshift(["#{@integration.ad_account_name.presence || @integration.ad_account_id} — vínculo atual, não retornado pela Meta", @integration.ad_account_id]) %>
+      <p class="ax-stat-label">A conta vinculada não apareceu nesta consulta. O vínculo foi preservado; confira seu acesso na Meta antes de alterá-lo.</p>
+    <% end %>
+    <% if @ad_accounts.empty? %>
+      <p class="ax-stat-label">A Meta não retornou contas de anúncios acessíveis. Solicite acesso à conta da empresa ao administrador do negócio e atualize a autorização acima.</p>
+    <% else %>
+      <p class="ax-stat-label">Selecione a conta que veicula as campanhas CTWA da empresa. O recebimento de mensagens depende da conexão própria do WhatsApp.</p>
+    <% end %>
+    <% if choices.any? %>
+      <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch, data: { turbo_frame: "_top" } do |form| %>
+        <%= ax_select_field(form: form, method: :ad_account_id, label: "Conta de anúncios", choices: choices, select_options: { selected: @integration.ad_account_id, include_blank: "Sem vínculo" }) %>
+        <div class="ax-form-actions"><%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %></div>
+      <% end %>
+    <% end %>
+  <% end %>
+  <%= link_to "Atualizar contas", ad_accounts_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>
+<% end %>

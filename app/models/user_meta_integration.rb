@@ -20,4 +20,20 @@ class UserMetaIntegration < ApplicationRecord
   def expired?
     token_expires_at.present? && token_expires_at < Time.current
   end
+
+  # Do not expose provider messages: they can contain tokens or request URLs.
+  def self.sync_failure_reason(error)
+    case error
+    when Koala::Facebook::APIError
+      case error.fb_error_code.to_i
+      when 190 then "A Meta recusou a autorização. Reconecte sua conta."
+      when 10, 200 then "A Meta recusou o acesso. Confira as permissões e o acesso à página no negócio."
+      else "A Meta não concluiu a consulta (código #{error.fb_error_code.to_i}). Tente novamente; se persistir, contate o suporte."
+      end
+    when Faraday::Error, Timeout::Error, SocketError
+      "Falha de comunicação com a Meta. Tente novamente em instantes."
+    else
+      "Falha interna ao executar esta etapa. Tente novamente; se persistir, contate o suporte."
+    end
+  end
 end

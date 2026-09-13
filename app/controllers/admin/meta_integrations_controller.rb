@@ -14,6 +14,29 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     @meta_webhook_verify_token = Meta::WebhookConfiguration.verify_token
   end
 
+  def instagram
+    raise ActiveRecord::RecordNotFound unless @integration
+    page = @integration.meta_facebook_pages.find(params[:page_id])
+    case params[:operation]
+    when "discover" then Instagram::Connection.discover(page)
+    when "activate" then Instagram::Connection.activate(page)
+    when "deactivate" then page.update!(instagram_enabled: false)
+    else return head :bad_request
+    end
+    redirect_to admin_meta_integrations_path, notice: "Configuração do Instagram atualizada."
+  rescue Instagram::Connection::Error => error
+    redirect_to admin_meta_integrations_path, alert: error.message
+  rescue Koala::Facebook::APIError, Facebook::MetaService::MetaAPIError, ActiveRecord::RecordNotUnique
+    redirect_to admin_meta_integrations_path, alert: "Não foi possível concluir. Verifique as permissões, o token da página e se o perfil já está ativado em outra conexão."
+  end
+
+  def permissions
+    raise ActiveRecord::RecordNotFound unless @integration
+
+    @permission_check = Facebook::PermissionCheck.call(@integration)
+    render :permissions
+  end
+
   def list_forms
     @forms_per_page = FORMS_PER_PAGE
     @forms_total_count = @page.meta_lead_forms.count
@@ -41,6 +64,24 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     trigger_sync(notice: "A sincronização dos formulários foi iniciada.")
   end
 
+  def ad_accounts
+    raise ActiveRecord::RecordNotFound unless @integration
+
+    if @integration.expired? || @integration.access_token.blank?
+      @ad_accounts_error = "Conexão expirada. Atualize a autorização com o Facebook acima."
+    else
+      @ad_accounts = Facebook::MetaService.new(@integration.access_token).ad_accounts
+    end
+  rescue Koala::Facebook::APIError => error
+    @ad_accounts_error = case error.fb_error_code.to_i
+    when 190 then "A Meta recusou o token. Atualize a autorização com o Facebook acima."
+    when 10, 200 then "A Meta recusou o acesso às contas de anúncios. Verifique as permissões acima e solicite acesso ao administrador do negócio."
+    else "Não foi possível consultar as contas na Meta. Tente novamente; isso não significa que não existem contas disponíveis."
+    end
+  rescue Faraday::Error, Timeout::Error, SocketError
+    @ad_accounts_error = "A consulta à Meta está indisponível. Tente novamente em instantes."
+  end
+
   def ad_account
     raise ActiveRecord::RecordNotFound unless @integration
 
@@ -55,7 +96,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     end
     redirect_to admin_meta_integrations_path, notice: "Conta de anúncios atualizada."
   rescue Koala::Facebook::APIError, ArgumentError
-    redirect_to admin_meta_integrations_path, alert: "Não foi possível validar essa conta de anúncios na conexão Meta."
+    redirect_to admin_meta_integrations_path, alert: "Não foi possível validar essa conta de anúncios. Confira o ID no Gerenciador de Anúncios e o acesso do usuário conectado à conta na Meta. Se necessário, solicite acesso ao administrador do negócio e atualize a autorização."
   end
 
   def disconnect
@@ -90,6 +131,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   rescue StandardError => e
     Rails.logger.error("[MetaSync] enqueue failed integration_id=#{integration&.id} error=#{e.class}")
     message = "Não foi possível iniciar a sincronização. Tente novamente em instantes."
+    integration&.update_columns(sync_status: "failed", sync_message: message, last_sync_error: "Falha ao colocar a sincronização na fila. Tente novamente; se persistir, contate o suporte.")
 
     respond_to do |format|
       format.json { render json: { ok: false, message: message }, status: :internal_server_error }

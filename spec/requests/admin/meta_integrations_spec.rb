@@ -12,6 +12,22 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
+  it "consulta somente a integração do usuário e renderiza instruções sem expor token" do
+    integration
+    expect(Facebook::PermissionCheck).to receive(:call).with(integration).and_return({error: "Consulta indisponível"})
+    get permissions_admin_meta_integrations_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("meta_permissions", "Como liberar o acesso", "Atualizar autorização", "rerequest")
+    expect(response.body).not_to include(integration.access_token)
+  end
+
+  it "não usa integração de outro usuário" do
+    create(:user_meta_integration, admin_user: create(:admin_user, :admin))
+    expect(Facebook::PermissionCheck).not_to receive(:call)
+    get permissions_admin_meta_integrations_path
+    expect(response).to have_http_status(:not_found)
+  end
+
   it "valida a conta de anúncios antes de vinculá-la" do
     service = instance_double(Facebook::MetaService)
     allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
@@ -27,7 +43,42 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(Facebook::MetaService).not_to receive(:new)
     patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_id: "../me"}}
     expect(integration.reload.ad_account_id).to eq("123456")
-    expect(flash[:alert]).to be_present
+    expect(flash[:alert]).to include("Gerenciador de Anúncios", "administrador do negócio", "atualize a autorização")
+  end
+
+  it "carrega contas em frame sem bloquear a página principal nem escolher pela empresa" do
+    integration.update!(ad_account_id: nil)
+    service = instance_double(Facebook::MetaService)
+    get admin_meta_integrations_path
+    expect(response.body).to include(ad_accounts_admin_meta_integrations_path, "Consultando contas")
+    allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
+    allow(service).to receive(:ad_accounts).and_return([{"account_id" => "123456", "name" => "Empresa"}])
+    get ad_accounts_admin_meta_integrations_path
+    expect(response.body).to include("Empresa (123456)", "meta_integration[ad_account_id]")
+    expect(integration.reload.ad_account_id).to be_nil
+  end
+
+  it "preserva vínculo que não aparece na consulta e orienta ausência de contas" do
+    integration.update!(ad_account_id: "123456", ad_account_name: "Atual")
+    allow_any_instance_of(Facebook::MetaService).to receive(:ad_accounts).and_return([])
+    get ad_accounts_admin_meta_integrations_path
+    expect(response.body).to include("vínculo atual", "administrador do negócio")
+    expect(integration.reload.ad_account_id).to eq("123456")
+  end
+
+  it "distingue falha de consulta de lista vazia sem expor detalhes internos" do
+    integration
+    allow_any_instance_of(Facebook::MetaService).to receive(:ad_accounts).and_raise(Timeout::Error, "segredo")
+    get ad_accounts_admin_meta_integrations_path
+    expect(response.body).to include("indisponível", "Atualizar contas")
+    expect(response.body).not_to include("segredo", "não retornou contas")
+  end
+
+  it "não consulta contas de outra conexão" do
+    create(:user_meta_integration, admin_user: create(:admin_user, :admin))
+    expect(Facebook::MetaService).not_to receive(:new)
+    get ad_accounts_admin_meta_integrations_path
+    expect(response).to have_http_status(:not_found)
   end
 
   it "renderiza a conta conectada com páginas no workspace compartilhado" do
@@ -107,6 +158,31 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response).to have_http_status(:internal_server_error)
     expect(response.parsed_body.fetch("message")).to eq("Não foi possível iniciar a sincronização. Tente novamente em instantes.")
     expect(response.body).not_to include("token-secreto")
+    expect(integration.reload.sync_status).to eq("failed")
+    get admin_meta_integrations_path
+    expect(response.body).to include("Falha ao colocar a sincronização na fila")
+  end
+
+  it "enfileira sincronização sem chamar a Meta durante a requisição" do
+    integration
+    expect(Facebook::MetaService).not_to receive(:new)
+    expect { post sync_pages_admin_meta_integrations_path, as: :json }.to have_enqueued_job(MetaSyncJob).with(integration.id)
+    expect(response).to have_http_status(:ok)
+  end
+
+  it "mantém o motivo anterior visível ao retornar durante uma nova tentativa" do
+    integration.update!(sync_status: "processing", last_sync_error: "A Meta recusou a autorização. Reconecte sua conta.")
+    2.times do
+      get admin_meta_integrations_path
+      expect(response.body).to include("A Meta recusou a autorização", "Reconecte sua conta")
+    end
+  end
+
+  it "exibe pendências sem anunciar sucesso completo" do
+    integration.update!(sync_status: "partial", sync_message: "Webhook da página: inscrição pendente.")
+    get admin_meta_integrations_path
+    expect(response.body).to include("Sincronização concluída com pendências", "inscrição pendente")
+    expect(response.body).not_to include("Sincronização concluída com sucesso!")
   end
 
   it "anuncia o progresso da sincronizacao sem spinner legado" do

@@ -1,9 +1,10 @@
 class ResetSyncStatusJob < ApplicationJob
   queue_as :default
 
-  def perform(integration_id)
+  def perform(integration_id, completed_at = nil)
     integration = UserMetaIntegration.find_by(id: integration_id)
-    return unless integration
+    return unless integration&.sync_status == "completed"
+    return if completed_at && integration.updated_at.iso8601(6) != completed_at
     
     integration.update!(sync_status: nil, sync_progress: 0, sync_message: nil)
     

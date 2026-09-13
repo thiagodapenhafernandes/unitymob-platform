@@ -1,4 +1,10 @@
 <div id="meta_sync_status" class="tw-w-full">
+  <% if integration&.last_sync_error.present? %>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
+      <div class="tw-text-sm tw-font-bold">Sincronização com falha ou pendências</div>
+      <p class="tw-text-sm"><%= integration.last_sync_error %></p>
+    <% end %>
+  <% end %>
   <% if integration&.sync_status == 'processing' %>
     <div class="tw-mb-4" role="status" aria-live="polite" aria-atomic="true">
       <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
@@ -13,15 +19,21 @@
             tone: :blue,
             label: "Sincronização Meta: #{integration.sync_progress || 0}%"
           ) %>
-      <p class="extra-small tw-text-ink-muted tw-mt-2">Esta operação pode levar alguns minutos. Não feche esta página para acompanhar o progresso.</p>
+      <p class="extra-small tw-text-ink-muted tw-mt-2">Esta operação pode levar alguns minutos. Você pode sair desta página; a sincronização continua em segundo plano.</p>
     </div>
   <% elsif integration&.sync_status == 'completed' %>
     <%= ax_inline_notice(tone: :success, icon: "check-circle-fill") do %>
       <div class="tw-text-sm tw-font-bold">Sincronização concluída com sucesso!</div>
     <% end %>
-  <% elsif integration&.sync_status == 'failed' %>
+  <% elsif integration&.sync_status == 'partial' && integration.last_sync_error.blank? %>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
+      <div class="tw-text-sm tw-font-bold">Sincronização concluída com pendências</div>
+      <p class="tw-text-sm"><%= integration.sync_message %></p>
+    <% end %>
+  <% elsif integration&.sync_status == 'failed' && integration.last_sync_error.blank? %>
     <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle-fill") do %>
       <div class="tw-text-sm tw-font-bold">Erro na sincronização. Tente novamente em instantes.</div>
+      <p class="tw-text-sm"><%= integration.sync_message %></p>
     <% end %>
   <% end %>
 </div>
