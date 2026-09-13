@@ -4,7 +4,7 @@
               <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Sincronizar Páginas
             <% end %>
           <% end %>
-          <%= ax_form_section(title: "Páginas e formulários", actions: pages_actions) do %>
+          <%= ax_form_section(title: "Recursos das páginas", actions: pages_actions) do %>
           <div class="tw-flex tw-flex-col tw-gap-3">
             <% pages.each do |page| %>
               <details class="ax-disclosure-card meta-integration-page">
@@ -17,13 +17,13 @@
                     </span>
                   </span>
                   <span class="tw-flex tw-items-center tw-gap-2">
-                    <% if page.active %><span class="ax-badge ax-badge--green ax-badge--dot">Webhook Ativo</span><% end %>
+                    <% if page.active %><span class="ax-badge ax-badge--green ax-badge--dot">Página selecionada</span><% end %>
                     <i class="bi bi-chevron-down ax-disclosure-card__chevron" aria-hidden="true"></i>
                   </span>
                 </summary>
                 <div class="ax-disclosure-card__body">
                   <%= render "admin/meta_integrations/instagram", page: page %>
-                  <div class="ax-stat-label tw-mt-3 tw-mb-2"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
+                  <div class="ax-stat-label"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
                   <turbo-frame id="page_forms_<%= page.id %>" src="<%= list_forms_admin_meta_integrations_path(page_id: page.id) %>" loading="lazy">
                     <div class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-py-3 tw-text-ink-faint tw-text-2xs" role="status" aria-live="polite">
                       <span class="ax-spinner" aria-hidden="true"></span><span>Carregando formulários...</span>
@@ -35,8 +35,8 @@
             <% if pages.empty? %>
               <%= ax_empty_state(
                     icon: "journal-x",
-                    title: "Nenhuma página sincronizada",
-                    description: 'Clique em "Sincronizar Páginas" para carregar as páginas disponíveis.'
+                    title: "Nenhuma página preparada",
+                    description: 'O sistema prepara os recursos das páginas vinculadas. Se ainda não houver vínculos, solicite a configuração ao suporte.'
                   ) %>
             <% end %>
           </div>

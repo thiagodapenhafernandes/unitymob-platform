@@ -19,4 +19,15 @@ RSpec.describe Facebook::MetaService do
     expect(described_class.new("token").ad_accounts).to eq([{"account_id" => "123"}])
   end
 
+  it "não consulta negócios de outras páginas autorizadas no mesmo login" do
+    graph = instance_double(Koala::Facebook::API)
+    allow(Koala::Facebook::API).to receive(:new).and_return(graph)
+    expect(graph).to receive(:get_connections).with("me", "accounts", fields: "id,business").and_return([
+      {"id" => "1", "business" => {"id" => "salute"}}, {"id" => "2", "business" => {"id" => "conexao"}}
+    ])
+    expect(graph).to receive(:get_connections).with("salute", "owned_ad_accounts", fields: "account_id,name").and_return([{"account_id" => "123"}])
+    expect(graph).to receive(:get_connections).with("salute", "client_ad_accounts", fields: "account_id,name").and_return([])
+    expect(described_class.new("token").ad_accounts(page_ids: ["1"])).to eq([{"account_id" => "123"}])
+  end
+
 end

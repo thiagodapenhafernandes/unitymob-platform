@@ -49,16 +49,13 @@ module Admin::DistributionRulesHelper
     ].select(&:second).map(&:first)
   end
 
-  # Páginas Meta pertencem a UserMetaIntegration (de um admin); o escopo da conta
-  # vem do tenant desse admin. Sem o join a lista vazava páginas de OUTRAS contas.
+  # Nomes de vínculos antigos também respeitam a seleção atual da integração.
   def tenant_scoped_meta_pages(tenant)
-    MetaFacebookPage.joins(user_meta_integration: :admin_user)
-                    .where(admin_users: { tenant_id: tenant&.id })
+    MetaFacebookPage.available_for_distribution(tenant&.id)
   end
 
   def tenant_scoped_meta_forms(tenant)
-    MetaLeadForm.joins(meta_facebook_page: { user_meta_integration: :admin_user })
-                .where(admin_users: { tenant_id: tenant&.id })
+    MetaLeadForm.where(meta_facebook_page_id: tenant_scoped_meta_pages(tenant).select(:id))
   end
 
   def distribution_rule_meta_pages(rule)

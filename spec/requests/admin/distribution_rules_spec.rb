@@ -10,6 +10,29 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "exclui páginas não selecionadas mesmo ativas e rejeita vínculos por requisição direta" do
+    integration = create(:user_meta_integration, admin_user: admin, tenant: admin.tenant, selected_page_ids: ["allowed"])
+    allowed = create(:meta_facebook_page, user_meta_integration: integration, page_id: "allowed", name: "Página permitida")
+    hidden = create(:meta_facebook_page, user_meta_integration: integration, name: "Página de outra empresa", active: true)
+    form = create(:meta_lead_form, meta_facebook_page: hidden, name: "Formulário externo")
+    rule = create(:distribution_rule, tenant: admin.tenant, source_meta: true, meta_page_ids: [hidden.page_id], meta_forms: [form.form_id])
+
+    get new_admin_distribution_rule_path
+    expect(response.body).to include(allowed.name)
+    expect(response.body).not_to include(hidden.name, form.name)
+    get admin_distribution_rule_path(rule)
+    expect(response.body).not_to include(hidden.name, form.name)
+
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {meta_page_ids: [hidden.page_id], meta_forms: [form.form_id], name: "Não salvar"}}
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(rule.reload.name).not_to eq("Não salvar")
+    expect(response.body).not_to include(hidden.name, form.name)
+
+    patch admin_distribution_rule_path(rule), params: {distribution_rule: {meta_page_ids: [allowed.page_id], meta_forms: [""]}}
+    expect(response).to redirect_to(admin_distribution_rule_path(rule))
+    expect(rule.reload.meta_page_ids).to eq([allowed.page_id])
+  end
+
   it "carrega o layout para System Admin sem tenant sem erro interno" do
     sign_out admin
     sign_in create(:admin_user, super_admin: true)
@@ -209,7 +232,9 @@ RSpec.describe "Admin::DistributionRules", type: :request do
 
   it "mantem formularios da Meta em cascata pelas paginas selecionadas" do
     page_a = create(:meta_facebook_page, name: "Página A", page_id: "page-a")
+    page_a.user_meta_integration.update!(selected_page_ids: [page_a.page_id])
     page_b = create(:meta_facebook_page, name: "Página B", page_id: "page-b")
+    page_b.user_meta_integration.update!(selected_page_ids: [page_b.page_id])
     form_a = create(:meta_lead_form, meta_facebook_page: page_a, name: "Form Página A", form_id: "form-a")
     form_b = create(:meta_lead_form, meta_facebook_page: page_b, name: "Form Página B", form_id: "form-b")
 
@@ -491,6 +516,7 @@ RSpec.describe "Admin::DistributionRules", type: :request do
 
   it "mostra as configuracoes principais da regra no detalhe" do
     meta_page = create(:meta_facebook_page, name: "Salute Imóveis", page_id: "page-1")
+    meta_page.user_meta_integration.update!(selected_page_ids: [meta_page.page_id])
     meta_form = create(:meta_lead_form, meta_facebook_page: meta_page, name: "Captação Praia Brava", form_id: "form-1")
     rule = create(
       :distribution_rule,

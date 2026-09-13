@@ -30,6 +30,7 @@ class MetaSyncEnabledIntegrationsJob < ApplicationJob
   def reconcile_observed_lead_forms
     DistributionRule.where(auto_add_forms: true, source_meta: true).find_each do |rule|
       page_ids = Array(rule.meta_page_ids).compact_blank.map(&:to_s)
+      page_ids = MetaFacebookPage.available_for_distribution(rule.tenant_id).where(page_id: page_ids).pluck(:page_id)
       next if page_ids.empty?
 
       observed_pairs = rule.tenant.leads
@@ -43,7 +44,7 @@ class MetaSyncEnabledIntegrationsJob < ApplicationJob
       observed_forms = observed_pairs.map(&:second).compact_blank.map(&:to_s).uniq
 
       add_forms_to_rule(rule, observed_forms)
-      ensure_observed_form_records(observed_pairs)
+      ensure_observed_form_records(observed_pairs, rule.tenant_id)
     end
   end
 
@@ -55,15 +56,15 @@ class MetaSyncEnabledIntegrationsJob < ApplicationJob
     rule.update!(meta_forms: current_forms + missing_forms)
   end
 
-  def ensure_observed_form_records(observed_pairs)
+  def ensure_observed_form_records(observed_pairs, tenant_id)
     observed_pairs.each do |page_id, form_id|
       form_id = form_id.to_s.presence
       page_id = page_id.to_s.presence
       next if page_id.blank? || form_id.blank?
-      next if MetaLeadForm.exists?(form_id: form_id)
-
-      page = MetaFacebookPage.find_by(page_id: page_id)
+      page = MetaFacebookPage.available_for_distribution(tenant_id)
+        .find_by(page_id: page_id)
       next unless page
+      next if page.meta_lead_forms.exists?(form_id: form_id)
 
       page.meta_lead_forms.create!(
         form_id: form_id,

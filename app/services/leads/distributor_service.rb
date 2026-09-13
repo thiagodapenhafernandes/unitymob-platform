@@ -218,9 +218,21 @@ module Leads
 
       page_ids = Array(rule.meta_page_ids).compact_blank.map(&:to_s)
       form_ids = Array(rule.meta_forms).compact_blank.map(&:to_s)
+      info = @lead.other_information.is_a?(Hash) ? @lead.other_information : {}
+      if info["meta_page_id"].present?
+        unless defined?(@meta_page_available)
+          @meta_page_available = MetaFacebookPage.available_for_distribution(tenant.id).exists?(page_id: info["meta_page_id"].to_s)
+        end
+        return false unless @meta_page_available
+      elsif info["meta_form_id"].present?
+        unless defined?(@meta_form_available)
+          pages = MetaFacebookPage.available_for_distribution(tenant.id)
+          @meta_form_available = MetaLeadForm.where(meta_facebook_page_id: pages.select(:id)).exists?(form_id: info["meta_form_id"].to_s)
+        end
+        return false unless @meta_form_available
+      end
       return true if page_ids.empty? && form_ids.empty?
 
-      info = @lead.other_information.is_a?(Hash) ? @lead.other_information : {}
       page_ok = page_ids.empty? || page_ids.include?(info["meta_page_id"].to_s)
       form_ok = form_ids.empty? || form_ids.include?(info["meta_form_id"].to_s)
       page_ok && form_ok

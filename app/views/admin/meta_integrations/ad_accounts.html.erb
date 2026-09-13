@@ -1,26 +1,31 @@
 <%= turbo_frame_tag "meta_ad_accounts" do %>
   <% if @ad_accounts_error %>
-    <p class="tw-text-sm tw-text-ink-muted" role="alert"><%= @ad_accounts_error %></p>
+    <div class="ax-integration-message" role="alert"><strong>Não foi possível consultar as contas</strong><p><%= @ad_accounts_error %></p></div>
   <% else %>
     <% choices = @ad_accounts.map { |account| ["#{account['name']} (#{account['account_id']})", account['account_id']] } %>
     <% if @integration.ad_account_id.present? && choices.none? { |_, id| id == @integration.ad_account_id } %>
       <% choices.unshift(["#{@integration.ad_account_name.presence || @integration.ad_account_id} — vínculo atual, não retornado pela Meta", @integration.ad_account_id]) %>
-      <p class="tw-text-sm tw-text-ink-muted">A conta vinculada não apareceu nesta consulta. O vínculo foi preservado; confira seu acesso na Meta antes de alterá-lo.</p>
+      <p class="tw-text-sm tw-text-ink-muted">A conta vinculada não apareceu nesta consulta. O vínculo foi preservado; confira seu acesso com o administrador do negócio antes de alterá-lo.</p>
     <% end %>
     <% if @ad_accounts.empty? %>
-      <p class="tw-text-sm tw-text-ink-muted">A Meta não retornou contas de anúncios vinculadas aos negócios das páginas autorizadas. Confira com o administrador do negócio se a conta está vinculada ou compartilhada com ele.</p>
+      <div class="ax-integration-message">
+        <strong>Nenhuma conta de anúncios encontrada</strong>
+        <p><%= params[:all] == "1" ? "A Meta não retornou contas acessíveis para este login." : "Não encontramos contas nos negócios das páginas selecionadas. Solicite ao suporte a conferência dos vínculos desta imobiliária." %></p>
+      </div>
     <% else %>
-      <p class="tw-text-sm tw-text-ink-muted">Selecione a conta que veicula as campanhas CTWA da empresa. O recebimento de mensagens depende da conexão própria do WhatsApp.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Escolha a conta usada nas campanhas desta imobiliária. O WhatsApp mantém sua conexão própria.</p>
     <% end %>
     <% if choices.any? %>
       <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch, data: { turbo_frame: "_top" } do |form| %>
         <%= ax_autocomplete_select_field(form: form, method: :ad_account_id, label: "Conta de anúncios", choices: choices, select_options: { selected: @integration.ad_account_id, include_blank: "Sem vínculo" }) %>
-        <div class="ax-form-actions"><%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %></div>
+        <div class="ax-integration-actions"><%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %></div>
       <% end %>
     <% end %>
   <% end %>
-  <% unless params[:all] == "1" %>
-    <%= link_to "Consultar outras contas do meu usuário", ad_accounts_admin_meta_integrations_path(all: "1"), class: "ax-btn ax-btn--sm" %>
+  <div class="ax-integration-actions">
+  <% if impersonating_admin_user? && params[:all] != "1" %>
+    <%= link_to "Buscar outras contas", ad_accounts_admin_meta_integrations_path(all: "1"), class: "ax-btn ax-btn--sm" %>
   <% end %>
   <%= link_to "Atualizar contas", ad_accounts_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>
+  </div>
 <% end %>

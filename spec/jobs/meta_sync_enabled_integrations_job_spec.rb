@@ -22,7 +22,9 @@ RSpec.describe MetaSyncEnabledIntegrationsJob, type: :job do
   it "inclui na regra forms observados em leads antes da sincronizacao da Meta" do
     tenant = Tenant.create!(name: "Conta Meta Observada #{SecureRandom.hex(3)}", slug: "conta-meta-observada-#{SecureRandom.hex(3)}")
     admin = create(:admin_user, :admin, tenant: tenant)
-    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "token-ok")
+    foreign_page = create(:meta_facebook_page, page_id: "page-observed")
+    create(:meta_lead_form, meta_facebook_page: foreign_page, form_id: "form-observed")
+    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "token-ok", selected_page_ids: ["page-observed"])
     create(:meta_facebook_page, user_meta_integration: integration, page_id: "page-observed", access_token: "page-token")
     rule = create(
       :distribution_rule,
@@ -48,6 +50,10 @@ RSpec.describe MetaSyncEnabledIntegrationsJob, type: :job do
     described_class.perform_now
 
     expect(rule.reload.meta_forms).to include("form-observed")
+    integration.update!(selected_page_ids: [])
+    rule.update!(meta_forms: [])
+    described_class.perform_now
+    expect(rule.reload.meta_forms).to be_empty
     expect(MetaLeadForm.find_by(form_id: "form-observed", meta_facebook_page_id: integration.meta_facebook_pages.first.id)).to be_present
   end
 end
