@@ -53,6 +53,9 @@ RSpec.describe MetaSyncJob, type: :job do
     integration.update!(selected_page_ids: [])
     job.perform(integration.id)
     expect(integration.meta_facebook_pages.enabled).to be_empty
+    expect(integration.reload.sync_status).to eq("partial")
+    expect(integration.last_sync_error).to include("Nenhuma página foi vinculada", "salvar a seleção")
+    expect(ResetSyncStatusJob).not_to have_been_enqueued.with(integration.id, anything)
     expect(service).not_to have_received(:get_page_lead_forms)
     expect(job).not_to have_received(:register_meta_gateway_route)
   end

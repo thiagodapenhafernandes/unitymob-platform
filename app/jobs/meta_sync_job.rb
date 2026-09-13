@@ -143,6 +143,10 @@ class MetaSyncJob < ApplicationJob
       sleep(1.0) # Cadência maior entre páginas
     end
 
+    if integration.reload.selected_page_ids.empty?
+      pending << "Nenhuma página foi vinculada a esta conta. O suporte deve selecionar as páginas desta imobiliária em Páginas desta conta e salvar a seleção para iniciar a sincronização dos recursos."
+    end
+
     integration.update!(sync_status: pending.empty? ? 'completed' : 'partial', sync_progress: 100,
       sync_message: pending.empty? ? "Sincronização finalizada!" : pending.uniq.join(" "),
       last_sync_error: pending.empty? ? nil : pending.uniq.join(" "), last_synced_at: Time.current)

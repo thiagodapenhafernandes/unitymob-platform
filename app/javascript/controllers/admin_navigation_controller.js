@@ -216,15 +216,19 @@ export default class extends Controller {
   }
 
   armFailsafe() {
+    if (!this.hasOverlayTarget) return this.hideNow()
+
     window.clearTimeout(this.failsafeTimer)
 
-    const shownAt = Number(this.overlayTarget?.dataset?.shownAt || performance.now())
+    const shownAt = Number(this.overlayTarget.dataset.shownAt || performance.now())
     const remainingMs = Math.max(0, this.constructor.FAILSAFE_MS - (performance.now() - shownAt))
     this.failsafeTimer = window.setTimeout(() => this.hideNow(), remainingMs)
   }
 
   failsafeElapsed() {
-    const shownAt = Number(this.overlayTarget?.dataset?.shownAt || 0)
+    if (!this.hasOverlayTarget) return true
+
+    const shownAt = Number(this.overlayTarget.dataset.shownAt || 0)
     return shownAt > 0 && performance.now() - shownAt >= this.constructor.FAILSAFE_MS
   }
 
