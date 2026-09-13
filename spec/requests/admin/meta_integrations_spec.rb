@@ -135,6 +135,47 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(integration.ad_account_name).to eq("Conta correta")
   end
 
+  it "salva várias contas, renderiza o multiselect e permite limpar os vínculos" do
+    integration.update!(ad_account_id: "123456", ad_account_name: "Anterior")
+    other = create(:user_meta_integration, ad_account_id: "777777")
+    accounts = [{"account_id" => "123456", "name" => "Primeira"}, {"account_id" => "654321", "name" => "Segunda"}]
+    service = instance_double(Facebook::MetaService)
+    allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
+    allow(service).to receive(:ad_accounts).and_return(accounts)
+    accounts.each { |account| allow(service).to receive(:ad_account).with(account["account_id"]).and_return(account) }
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_ids: ["", "act_123456", "654321", "654321"]}}
+    expect(integration.reload.selected_ad_accounts).to eq("123456" => "Primeira", "654321" => "Segunda")
+    expect(other.reload.ad_account_ids).to eq(["777777"])
+    get ad_accounts_admin_meta_integrations_path
+    select = Nokogiri::HTML(response.body).at_css('select[name="meta_integration[ad_account_ids][]"]')
+    expect(select["multiple"]).not_to be_nil
+    expect(select["data-controller"]).to include("tom-select")
+    expect(select.css("option[selected]").map { |option| option["value"] }).to contain_exactly("123456", "654321")
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_ids: [""]}}
+    expect(integration.reload.ad_account_ids).to eq([])
+    expect(integration.ad_account_id).to be_nil
+  end
+
+  it "recusa todo o conjunto quando uma das contas não é autorizada" do
+    integration.update!(ad_account_id: "123456")
+    allow_any_instance_of(Facebook::MetaService).to receive(:ad_accounts).and_return([{"account_id" => "123456"}])
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_ids: ["123456", "999999"]}}
+    expect(response).to have_http_status(:forbidden)
+    expect(integration.reload.ad_account_ids).to eq(["123456"])
+  end
+
+  it "preserva o conjunto anterior quando a segunda consulta falha" do
+    integration.update!(ad_account_id: "123456")
+    service = instance_double(Facebook::MetaService)
+    allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
+    allow(service).to receive(:ad_accounts).and_return([{"account_id" => "123456"}, {"account_id" => "654321"}])
+    allow(service).to receive(:ad_account).with("123456").and_return({"account_id" => "123456", "name" => "Primeira"})
+    allow(service).to receive(:ad_account).with("654321").and_raise(Timeout::Error)
+    patch ad_account_admin_meta_integrations_path, params: {meta_integration: {ad_account_ids: ["123456", "654321"]}}
+    expect(flash[:alert]).to be_present
+    expect(integration.reload.ad_account_ids).to eq(["123456"])
+  end
+
   it "recusa ID inválido sem substituir a configuração" do
     integration.update!(ad_account_id: "123456")
     expect(Facebook::MetaService).not_to receive(:new)
@@ -151,7 +192,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
     allow(service).to receive(:ad_accounts).and_return([{"account_id" => "123456", "name" => "Empresa"}])
     get ad_accounts_admin_meta_integrations_path
-    expect(response.body).to include("Empresa (123456)", "meta_integration[ad_account_id]")
+    expect(response.body).to include("Empresa (123456)", "meta_integration[ad_account_ids][]")
     expect(integration.reload.ad_account_id).to be_nil
   end
 
@@ -267,11 +308,12 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
-  it "mantém o motivo anterior visível ao retornar durante uma nova tentativa" do
+  it "exibe o andamento sem repetir a falha da tentativa anterior" do
     integration.update!(sync_status: "processing", last_sync_error: "A Meta recusou a autorização. Reconecte sua conta.")
     2.times do
       get admin_meta_integrations_path
-      expect(response.body).to include("A Meta recusou a autorização", "Reconecte sua conta")
+      expect(response.body).not_to include("A Meta recusou a autorização", "Reconecte sua conta")
+      expect(response.body).to include("ax-progress-panel")
     end
   end
 
@@ -289,7 +331,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('[role="status"] .ax-spinner')).to be_present
-    expect(document.at_css('progress[aria-label="Sincronização Meta: 37%"]')).to be_present
+    expect(document.at_css('progress[value="37.0"][max="100"][aria-label]')).to be_present
     expect(response.body).not_to include("fa-spin")
   end
 end

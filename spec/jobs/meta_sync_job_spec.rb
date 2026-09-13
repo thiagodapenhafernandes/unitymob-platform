@@ -106,6 +106,20 @@ RSpec.describe MetaSyncJob, type: :job do
     expect(integration.sync_message).to include("Formulários da página Primeira")
   end
 
+  it "atualiza o progresso durante os formulários e limpa a falha anterior" do
+    integration.update!(selected_page_ids: ["11111"], last_sync_error: "Falha anterior")
+    allow(service).to receive(:get_page_lead_forms).and_return(
+      21.times.map { |n| {"id" => "form-#{n}", "name" => "Formulário #{n}", "status" => "ACTIVE"} }
+    )
+    statuses = []
+    allow(job).to receive(:broadcast_status) { |record| statuses << [record.sync_progress, record.sync_message, record.last_sync_error] }
+    job.perform(integration.id)
+    expect(statuses.first.last).to be_nil
+    expect(statuses).to include([71, "Sincronizando formulários de Primeira: 10 de 21", nil])
+    expect(statuses).to include([95, "Sincronizando formulários de Primeira: 21 de 21", nil])
+    expect(integration.meta_facebook_pages.find_by!(page_id: "11111").meta_lead_forms.count).to eq(21)
+  end
+
   it "só indica sucesso completo quando todas as etapas passam" do
     integration.update!(last_sync_error: "Falha anterior")
     job.perform(integration.id)

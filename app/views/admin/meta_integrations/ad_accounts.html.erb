@@ -3,9 +3,12 @@
     <div class="ax-integration-message" role="alert"><strong>Não foi possível consultar as contas</strong><p><%= @ad_accounts_error %></p></div>
   <% else %>
     <% choices = @ad_accounts.map { |account| ["#{account['name']} (#{account['account_id']})", account['account_id']] } %>
-    <% if @integration.ad_account_id.present? && choices.none? { |_, id| id == @integration.ad_account_id } %>
-      <% choices.unshift(["#{@integration.ad_account_name.presence || @integration.ad_account_id} — vínculo atual, não retornado pela Meta", @integration.ad_account_id]) %>
-      <p class="tw-text-sm tw-text-ink-muted">A conta vinculada não apareceu nesta consulta. O vínculo foi preservado; confira seu acesso com o administrador do negócio antes de alterá-lo.</p>
+    <% missing = @integration.selected_ad_accounts.reject { |id, _| choices.any? { |_, choice_id| choice_id.to_s == id } } %>
+    <% missing.each do |id, name| %>
+      <% choices.unshift(["#{name.presence || id} — vínculo atual, não retornado pela Meta", id]) %>
+    <% end %>
+    <% if missing.any? %>
+      <p class="tw-text-sm tw-text-ink-muted">Há contas vinculadas que não apareceram nesta consulta. Os vínculos foram preservados; confira seu acesso com o administrador do negócio antes de alterá-los.</p>
     <% end %>
     <% if @ad_accounts.empty? %>
       <div class="ax-integration-message">
@@ -13,11 +16,11 @@
         <p><%= params[:all] == "1" ? "A Meta não retornou contas acessíveis para este login." : "Não encontramos contas nos negócios das páginas selecionadas. Solicite ao suporte a conferência dos vínculos desta imobiliária." %></p>
       </div>
     <% else %>
-      <p class="tw-text-sm tw-text-ink-muted">Escolha a conta usada nas campanhas desta imobiliária. O WhatsApp mantém sua conexão própria.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Escolha as contas usadas nas campanhas desta imobiliária. O WhatsApp mantém sua conexão própria.</p>
     <% end %>
     <% if choices.any? %>
       <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch, data: { turbo_frame: "_top" } do |form| %>
-        <%= ax_autocomplete_select_field(form: form, method: :ad_account_id, label: "Conta de anúncios", choices: choices, select_options: { selected: @integration.ad_account_id, include_blank: "Sem vínculo" }) %>
+        <%= ax_autocomplete_select_field(form: form, method: :ad_account_ids, label: "Contas de anúncios", multiple: true, choices: choices, select_options: { selected: @integration.ad_account_ids }) %>
         <div class="ax-integration-actions"><%= form.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %></div>
       <% end %>
     <% end %>

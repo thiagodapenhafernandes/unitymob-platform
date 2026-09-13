@@ -1,24 +1,13 @@
 <div id="meta_sync_status" class="tw-w-full">
-  <% if integration&.last_sync_error.present? %>
+  <% if integration&.last_sync_error.present? && integration.sync_status != "processing" %>
     <%= render "admin/shared/ui/issue_summary", title: "Sincronização com pendências", messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
   <% end %>
 
   <% if integration&.sync_status == 'processing' %>
-    <div class="tw-mb-4" role="status" aria-live="polite" aria-atomic="true">
-      <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
-        <span class="tw-text-sm tw-font-bold tw-text-primary tw-gap-1 tw-inline-flex tw-items-center">
-          <span class="ax-spinner" aria-hidden="true"></span>
-          <%= integration.sync_message || "Sincronizando Páginas e Formulários..." %>
-        </span>
-        <span class="ax-badge ax-badge--blue"><%= integration.sync_progress || 0 %>%</span>
-      </div>
-      <%= ax_progress(
-            value: integration.sync_progress || 0,
-            tone: :blue,
-            label: "Sincronização Meta: #{integration.sync_progress || 0}%"
-          ) %>
-      <p class="extra-small tw-text-ink-muted tw-mt-2">Esta operação pode levar alguns minutos. Você pode sair desta página; a sincronização continua em segundo plano.</p>
-    </div>
+    <%= render "admin/shared/ui/progress_panel",
+          title: integration.sync_message.presence || "Aguardando início da sincronização…",
+          value: integration.sync_progress || 0,
+          description: "Você pode sair desta tela. A sincronização continua em segundo plano." %>
   <% elsif integration&.sync_status == 'completed' %>
     <%= ax_inline_notice(tone: :success, icon: "check-circle-fill") do %>
       <div class="tw-text-sm tw-font-bold">Sincronização concluída com sucesso!</div>
