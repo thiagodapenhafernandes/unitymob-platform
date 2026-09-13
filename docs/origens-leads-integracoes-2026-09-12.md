@@ -110,3 +110,9 @@ A requisição continua apenas enfileirando `MetaSyncJob`. Falhas na descoberta 
 ### Aviso persistente ao retornar à integração
 
 `last_sync_error` conserva o motivo seguro da falha de sincronização, incluindo falha no enfileiramento, falha fatal e pendências parciais. É renderizado a partir do banco ao abrir a tela, inclusive durante nova tentativa. Só uma sincronização sem pendências limpa o campo; o reset do aviso de sucesso não o modifica. Não são exibidas mensagens brutas da API, tokens ou URLs internas. Migração aplicada apenas nos bancos locais de desenvolvimento e teste. Validação: 23 exemplos e `zeitwerk:check` passaram.
+
+### Correção do escopo e leitura da tela — 13/09
+
+Consulta de produção somente leitura confirmou que `me/accounts` retorna apenas Salute Imóveis com token, enquanto a expansão antiga por negócios acrescentava sete páginas sem token. Essas páginas geravam recusas 200/104 nas consultas de formulários/inscrições, encapsuladas como falha interna. O código local remove a expansão, marca páginas antigas fora da autorização como inativas na próxima sincronização (sem apagar histórico) e mantém o motivo seguro da exceção original. A lista é atualizada via Turbo ao concluir.
+
+As contas sugeridas vêm de `owned_ad_accounts` e `client_ad_accounts` dos negócios das páginas autorizadas. Na auditoria, o negócio Salute não retornou contas em nenhuma dessas conexões. Não se deduz vínculo pelo nome. A consulta global fica acessível somente por ação explícita, com seleção pesquisável. Avisos persistentes passam a resumo expansível e permissões concedidas ficam recolhidas. Alterações desta seção ainda locais, sem novo deploy ou mutação de configurações na Meta.

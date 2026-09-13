@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe Facebook::MetaService do
   describe "#get_user_pages" do
-    it "includes pages connected through business assets" do
+    it "limits pages to the current authorization" do
       graph = fake_graph(
         ["me", "accounts"] => connection([
           page("page-1", "Página direta")
@@ -22,7 +22,7 @@ RSpec.describe Facebook::MetaService do
 
       pages = described_class.new("token").get_user_pages
 
-      expect(pages.map { |page| page["id"] }).to contain_exactly("page-1", "page-2", "page-3")
+      expect(pages.map { |page| page["id"] }).to contain_exactly("page-1")
     end
 
     it "deduplicates pages returned by more than one Meta connection" do
@@ -45,7 +45,7 @@ RSpec.describe Facebook::MetaService do
 
       pages = described_class.new("token").get_user_pages
 
-      expect(pages.map { |page| page["id"] }).to contain_exactly("page-1", "page-2")
+      expect(pages.map { |page| page["id"] }).to contain_exactly("page-1")
       expect(pages.count { |page| page["id"] == "page-1" }).to eq(1)
     end
   end

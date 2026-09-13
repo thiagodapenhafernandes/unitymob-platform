@@ -17,6 +17,8 @@ class MetaSyncJob < ApplicationJob
     broadcast_status(integration)
     
     pages_data = service.get_user_pages
+    # Preserve history, but stop synchronizing pages no longer authorized by Meta.
+    integration.meta_facebook_pages.where.not(page_id: pages_data.map { |page| page["id"] }).update_all(active: false)
     total_pages = pages_data.size
     
     integration.update!(sync_progress: 20, sync_message: "Encontradas #{total_pages} páginas. Sincronizando...")
@@ -119,6 +121,9 @@ class MetaSyncJob < ApplicationJob
       last_sync_error: pending.empty? ? nil : pending.uniq.join(" "), last_synced_at: Time.current)
     broadcast_status(integration)
     
+    Turbo::StreamsChannel.broadcast_replace_to("meta_sync_#{integration.id}", target: "meta_pages",
+      partial: "admin/meta_integrations/pages", locals: { pages: integration.meta_facebook_pages.enabled })
+
     # Reset status after 5 seconds
     ResetSyncStatusJob.set(wait: 5.seconds).perform_later(integration.id, integration.updated_at.iso8601(6)) if pending.empty?
   rescue => e

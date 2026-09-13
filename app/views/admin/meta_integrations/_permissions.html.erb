@@ -3,12 +3,21 @@
     <% if check && check[:error] %>
       <p role="alert"><%= check[:error] %></p>
     <% elsif check %>
-      <p class="ax-stat-label">Verificado em <%= l(check[:checked_at], format: "%d/%m/%Y %H:%M") %>. O resultado confirma permissões do token, não a ativação dos canais.</p>
-      <% check[:permissions].each do |permission| %>
-        <%= ax_record_item(title: permission[:label], meta: permission[:description], actions: ax_badge({"granted" => "Concedida", "declined" => "Recusada", "expired" => "Expirada"}.fetch(permission[:status], "Não concedida"), tone: permission[:status] == "granted" ? :green : :amber)) %>
+      <p class="tw-text-sm tw-text-ink-muted">Verificado em <%= l(check[:checked_at], format: "%d/%m/%Y %H:%M") %>. O resultado confirma permissões do token, não a ativação dos canais.</p>
+      <% pending, granted = check[:permissions].partition { |permission| permission[:status] != "granted" } %>
+      <% pending.each do |permission| %>
+        <%= ax_record_item(title: permission[:label], meta: permission[:description], actions: ax_badge("Pendente", tone: :amber)) %>
       <% end %>
+      <details class="ax-disclosure-card">
+        <summary class="ax-disclosure-card__summary"><%= granted.size %> permissões concedidas · Ver detalhes</summary>
+        <div class="ax-disclosure-card__body">
+          <% granted.each do |permission| %>
+            <%= ax_record_item(title: permission[:label], meta: permission[:description], actions: ax_badge("Concedida", tone: :green)) %>
+          <% end %>
+        </div>
+      </details>
     <% else %>
-      <p class="ax-stat-label">Confira o acesso concedido ao Facebook e ao Instagram nesta conexão.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Confira o acesso concedido ao Facebook e ao Instagram nesta conexão.</p>
     <% end %>
     <div class="ax-form-actions">
       <%= link_to "Verificar permissões", permissions_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>

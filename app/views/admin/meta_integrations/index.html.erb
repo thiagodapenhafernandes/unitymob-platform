@@ -1,6 +1,6 @@
 <div class="ax-integration-layout">
 <div class="integration-workspace meta-integration-workspace">
-<%= ax_workspace_heading(icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", metrics: [{ value: @pages.size, label: "páginas" }], actions: capture do %>
+<%= ax_workspace_heading(icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", actions: capture do %>
   <% if @integration %>
     <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
     <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Tem certeza? Isso irá parar a importação de leads." } do %>
@@ -29,7 +29,7 @@
 
           <%= ax_form_section(title: "Conta de anúncios", tooltip: "Usada para buscar informações de anúncios e campanhas dos leads.") do %>
             <%= turbo_frame_tag "meta_ad_accounts", src: ad_accounts_admin_meta_integrations_path do %>
-              <p class="ax-stat-label" role="status">Consultando contas de anúncios na Meta...</p>
+              <p class="tw-text-sm tw-text-ink-muted" role="status">Consultando contas de anúncios na Meta...</p>
             <% end %>
           <% end %>
 
@@ -41,48 +41,7 @@
             <% end %>
           <% end %>
 
-          <% pages_actions = capture do %>
-            <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Sincronizar Páginas
-            <% end %>
-          <% end %>
-          <%= ax_form_section(title: "Páginas e formulários", actions: pages_actions) do %>
-          <div class="tw-flex tw-flex-col tw-gap-3">
-            <% @pages.each do |page| %>
-              <details class="ax-disclosure-card meta-integration-page">
-                <summary class="ax-disclosure-card__summary">
-                  <span class="tw-flex tw-items-center tw-gap-3 tw-min-w-0">
-                    <span class="ax-navbar__avatar meta-integration-avatar meta-integration-avatar--page" aria-hidden="true"><i class="bi bi-facebook tw-text-blue-600"></i></span>
-                    <span>
-                      <span class="ax-strong tw-block tw-break-words"><%= page.name %></span>
-                      <span class="tw-text-2xs tw-text-ink-faint"><%= page.category %></span>
-                    </span>
-                  </span>
-                  <span class="tw-flex tw-items-center tw-gap-2">
-                    <% if page.active %><span class="ax-badge ax-badge--green ax-badge--dot">Webhook Ativo</span><% end %>
-                    <i class="bi bi-chevron-down ax-disclosure-card__chevron" aria-hidden="true"></i>
-                  </span>
-                </summary>
-                <div class="ax-disclosure-card__body">
-                  <%= render "instagram", page: page %>
-                  <div class="ax-stat-label tw-mt-3 tw-mb-2"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
-                  <turbo-frame id="page_forms_<%= page.id %>" src="<%= list_forms_admin_meta_integrations_path(page_id: page.id) %>" loading="lazy">
-                    <div class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-py-3 tw-text-ink-faint tw-text-2xs" role="status" aria-live="polite">
-                      <span class="ax-spinner" aria-hidden="true"></span><span>Carregando formulários...</span>
-                    </div>
-                  </turbo-frame>
-                </div>
-              </details>
-            <% end %>
-            <% if @pages.empty? %>
-              <%= ax_empty_state(
-                    icon: "journal-x",
-                    title: "Nenhuma página sincronizada",
-                    description: 'Clique em "Sincronizar Páginas" para carregar as páginas disponíveis.'
-                  ) %>
-            <% end %>
-          </div>
-          <% end %>
+          <%= render "pages", pages: @pages %>
         <% else %>
           <div class="tw-text-center tw-py-8">
             <i class="bi bi-facebook tw-text-blue-600 meta-integration-connect-icon" aria-hidden="true"></i>

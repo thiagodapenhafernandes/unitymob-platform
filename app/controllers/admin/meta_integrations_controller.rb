@@ -6,7 +6,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
   def index
     # Show status and link to Facebook Login if not integrated
-    @pages = @integration&.meta_facebook_pages || []
+    @pages = @integration&.meta_facebook_pages&.enabled || []
     @meta_webhook_mode = Meta::WebhookConfiguration.mode
     @meta_webhook_mode_label = Meta::WebhookConfiguration.label
     @meta_webhook_mode_description = Meta::WebhookConfiguration.description
@@ -70,7 +70,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     if @integration.expired? || @integration.access_token.blank?
       @ad_accounts_error = "Conexão expirada. Atualize a autorização com o Facebook acima."
     else
-      @ad_accounts = Facebook::MetaService.new(@integration.access_token).ad_accounts
+      @ad_accounts = Facebook::MetaService.new(@integration.access_token).ad_accounts(all: params[:all] == "1")
     end
   rescue Koala::Facebook::APIError => error
     @ad_accounts_error = case error.fb_error_code.to_i
