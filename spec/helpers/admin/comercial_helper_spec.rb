@@ -26,6 +26,24 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
     expect(helper.lead_timeline_for_channel(entries, channel: "push")).to eq([push, device, email, *common])
   end
 
+  it "agrupa recebimentos do aparelho pelo corretor e envio, mantendo segundos no detalhe" do
+    helper.extend Admin::UiHelper
+    at = Time.zone.local(2026, 9, 13, 11, 0, 13)
+    send = LeadActivity.new(lead_id: 1, kind: "notification_sent", created_at: at, metadata: { channel: "push", admin_user_id: 7, notification_context: "pool" })
+    previous = LeadActivity.new(lead_id: 1, kind: "notification_sent", created_at: at - 10.minutes, metadata: send.metadata)
+    receipt = PushDeliveryEvent.new(lead_id: 1, admin_user_id: 7, event_type: "device_received", created_at: at + 4.seconds)
+    other = PushDeliveryEvent.new(lead_id: 1, admin_user_id: 8, event_type: "device_received", created_at: at + 4.seconds)
+    orphan = PushDeliveryEvent.new(lead_id: 2, admin_user_id: 7, event_type: "device_received", created_at: at + 4.seconds)
+    groups = helper.lead_timeline_push_receipts([previous, send, receipt, other, orphan])
+    expect(groups).to eq(send => [receipt])
+    allow(helper).to receive(:push_delivery_timeline_detail).and_return("Aplicativo")
+    html = helper.render(partial: "admin/leads/timeline_entries", locals: { entries: [send], push_receipts: groups })
+    document = Nokogiri::HTML.fragment(html)
+    expect(document.at_css("details[open]")).to be_nil
+    expect(document.at_css("details").text).to include("Notificação recebida no aparelho", "13/09/2026 11:00:17")
+    expect(html).not_to include("13/09/2026 11:00:13")
+  end
+
   describe "avisos na linha do tempo" do
     it "identifica o canal e o contexto registrado sem inferir a regra atual do lead" do
       [
@@ -47,7 +65,7 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
       end
     end
 
-    it "renderiza segundos no evento e nos status do WhatsApp com badge e ícone do canal" do
+    it "omite segundos no aviso inicial e preserva segundos nos status do WhatsApp" do
       helper.extend Admin::UiHelper
       activity = LeadActivity.new(kind: "notification_sent", created_at: Time.zone.local(2026, 9, 13, 11, 0, 37))
       allow(helper).to receive(:timeline_entry).with(activity, detailed: true).and_return(
@@ -56,7 +74,8 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
         whatsapp_status_events: [["Lido no WhatsApp", activity.created_at + 5.seconds, nil, :green]]
       )
       html = helper.render(partial: "admin/leads/timeline_entries", locals: { entries: [activity] })
-      expect(html).to include("13/09/2026 11:00:37", "13/09/2026 11:00:42", "ax-badge--info", "Bolsão", 'data-brand="whatsapp"', 'aria-hidden="true"')
+      expect(html).not_to include("13/09/2026 11:00:37")
+      expect(html).to include("13/09/2026 11:00", "13/09/2026 11:00:42", "ax-badge--info", "Bolsão", 'data-brand="whatsapp"', 'aria-hidden="true"')
     end
   end
 
