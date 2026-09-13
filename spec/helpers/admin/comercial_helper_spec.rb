@@ -1,6 +1,20 @@
 require "rails_helper"
 
 RSpec.describe Admin::ComercialHelper, type: :helper do
+
+  it "mantém eventos práticos e oculta telemetria para qualquer nível de detalhe" do
+    [true, false].each do |detailed|
+      %w[automation_event pocket_pool_ready secure_link_accessed unknown_event].each do |kind|
+        expect(helper.lead_timeline_event_visible?(LeadActivity.new(kind: kind), detailed: detailed)).to eq(false)
+      end
+      %w[received distributed pocket_expired accepted notification_sent notification_failed].each do |kind|
+        expect(helper.lead_timeline_event_visible?(LeadActivity.new(kind: kind), detailed: detailed)).to eq(true)
+      end
+      expect(helper.lead_timeline_event_visible?(PushDeliveryEvent.new(event_type: "provider_accepted"), detailed: detailed)).to eq(false)
+      expect(helper.lead_timeline_event_visible?(PushDeliveryEvent.new(event_type: "device_received"), detailed: detailed)).to eq(true)
+    end
+    expect(helper.lead_timeline_event_visible?(LeadActivity.new(kind: "task_completed"))).to eq(true)
+  end
   describe "avisos na linha do tempo" do
     it "identifica o canal e o contexto registrado sem inferir a regra atual do lead" do
       [

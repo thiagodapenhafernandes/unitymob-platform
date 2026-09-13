@@ -2920,14 +2920,14 @@ class Admin::LeadsController < Admin::BaseController
 
   def push_delivery_events_for(lead)
     PushDeliveryEvent
-      .where(lead_id: lead.id)
+      .where(lead_id: lead.id, event_type: Admin::ComercialHelper::SUMMARY_PUSH_EVENT_TYPES)
       .includes(:admin_user, :push_subscription)
       .order(created_at: :desc)
       .limit(20)
   end
 
   def lead_timeline_events_for(lead, push_delivery_events)
-    (lead.activities.recent.limit(60).to_a + push_delivery_events.to_a)
+    (lead.activities.where(kind: Admin::ComercialHelper::OPERATIONAL_TIMELINE_KINDS).recent.limit(60).to_a + push_delivery_events.to_a)
       .sort_by(&:created_at)
       .reverse
       .first(80)

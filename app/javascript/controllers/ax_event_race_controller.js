@@ -218,7 +218,7 @@ function drawRace(element, cycle, timeZone) {
                     ? "App"
                     : "WhatsApp") +
                 " · " +
-                clock(p.s).slice(0, 5)
+                (p.k === "Recebeu" ? clock(p.s).slice(0, 5) : clock(p.s))
               );
             },
           },

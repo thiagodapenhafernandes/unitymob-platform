@@ -34,6 +34,8 @@ test("todos os participantes, ausência de entrega e canais independentes", () =
   assert.deepEqual(received.map(p => p.x), [0,0])
   assert.match(chart.options.plugins.tooltip.callbacks.label({raw:received[0]}), /11:00$/)
   assert.equal(received[0].s, 4)
+  assert.match(chart.options.plugins.tooltip.callbacks.label({raw:{k:"Leu",channel:"whatsapp",s:61}}), /11:01:01$/)
+  assert.match(chart.options.plugins.tooltip.callbacks.label({raw:{k:"Atendeu",channel:"attendance",s:75}}), /11:01:15$/)
   channels[1].onclick()
   assert.equal(nodes.get("[data-race-delivered]").textContent, 0)
   assert.equal(nodes.get("[data-race-read]").textContent, "—")

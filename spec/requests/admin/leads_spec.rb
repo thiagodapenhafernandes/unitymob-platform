@@ -1121,8 +1121,13 @@ RSpec.describe "Admin::Leads", type: :request do
         admin_user_id: agent.id, admin_user_name: agent.name,
         whatsapp_delivered_at: Time.current.iso8601
       })
+      65.times do
+        lead.activities.create!(kind: "automation_event", metadata: { event: "observed" })
+      end
       get admin_lead_path(lead)
       expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Evento observado", "Secure link accessed", "Pocket pool ready")
+      expect(response.body).to include("Aviso enviado ao corretor")
       expect(response.body).to include('class="ax-event-race"', 'data-race-delivered>1</strong>')
       expect(response.body.index('id="leadPoolTimeline"')).to be < response.body.index('id="leadTimelineSection"')
 
