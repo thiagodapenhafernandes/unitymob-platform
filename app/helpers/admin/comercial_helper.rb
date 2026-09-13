@@ -37,6 +37,10 @@ module Admin::ComercialHelper
     "interest_reprocessed" => { icon: "bi-stars",          color: "blue",  label: "Interesse reprocessado" }
   }.freeze
 
+  OPERATIONAL_TIMELINE_KINDS = (TIMELINE_MAP.keys - %w[
+    automation_event interest_reprocessed shark_tank_ready
+  ]).freeze
+
   SUMMARY_TIMELINE_KINDS = %w[
     created
     received
@@ -100,8 +104,9 @@ module Admin::ComercialHelper
   end
 
   def lead_timeline_event_visible?(activity, detailed: true)
-    return true if detailed
     return SUMMARY_PUSH_EVENT_TYPES.include?(activity.event_type.to_s) if activity.is_a?(PushDeliveryEvent)
+    return false unless OPERATIONAL_TIMELINE_KINDS.include?(activity.kind.to_s)
+    return true if detailed
 
     SUMMARY_TIMELINE_KINDS.include?(activity.kind.to_s)
   end
