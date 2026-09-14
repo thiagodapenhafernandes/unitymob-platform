@@ -13,6 +13,15 @@ class HomeSetting < ApplicationRecord
     ["Hero + botão flutuante", "both"]
   ].freeze
 
+  HEADER_COLOR_FIELDS = {
+    header_menu_color: "Texto e ícones",
+    header_menu_hover_color: "Texto e ícones — hover e foco",
+    header_cta_background: "Botão Fale Conosco — fundo",
+    header_cta_hover_background: "Botão Fale Conosco — fundo no hover"
+  }.freeze
+  store_accessor :header_colors, *HEADER_COLOR_FIELDS.keys
+  validates(*HEADER_COLOR_FIELDS.keys, format: { with: /\A#[0-9a-f]{6}(?:[0-9a-f]{2})?\z/i }, allow_blank: true)
+
   # ActiveStorage attachments
   has_one_attached :hero_background_desktop
   has_one_attached :hero_background_mobile

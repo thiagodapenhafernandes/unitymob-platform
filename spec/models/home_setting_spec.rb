@@ -1,6 +1,16 @@
 require "rails_helper"
 
 RSpec.describe HomeSetting, type: :model do
+  it "valida e persiste cores opcionais do header" do
+    setting = described_class.instance(tenant: Tenant.default)
+    setting.update!(header_menu_color: "#123456", header_menu_hover_color: "#AABBCC", header_cta_background: "#06121AC7")
+    expect(setting.reload.header_menu_color).to eq("#123456")
+    setting.header_menu_color = "red; background:url(evil)"
+    expect(setting).not_to be_valid
+    setting.header_menu_color = ""
+    expect(setting).to be_valid
+  end
+
   it "aceita declarações CSS para o header público" do
     tenant = Tenant.create!(name: "Conta CSS #{SecureRandom.hex(3)}", slug: "conta-css-#{SecureRandom.hex(3)}")
     setting = described_class.instance(tenant: tenant)

@@ -215,6 +215,8 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(html.at_css('input[type="file"][name="home_setting[hero_slide_images][]"][multiple]')).to be_present
     expect(html.at_css('#input-overlay-opacity[type="number"]')).to be_present
     expect(html.at_css('textarea[name="home_setting[public_header_css]"].ax-control--code')).to be_present
+    expect(html.css('input[type="text"][name^="home_setting[header_"]').size).to eq(4)
+    expect(html.at_css('input[name="home_setting[header_menu_color]"][type="text"]')["placeholder"]).to be_present
     expect(html.css(".ax-number-field .ax-field__hint").map(&:text)).to include("Use um valor entre 0,0 e 1,0.")
     expect(html.css(".tab-content, .tab-pane, .card, .form-control, .alert-link")).to be_empty
     expect(response.body).to include("Nenhuma imagem desktop carregada", "Nenhuma imagem mobile carregada", "ax-sticky-action-footer")
@@ -229,6 +231,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     patch admin_home_setting_path, params: {
       home_setting: {
         hero_title: "Hero exclusivo da conta atual",
+        header_menu_color: "#123456",
         public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
       }
     }
@@ -239,6 +242,8 @@ RSpec.describe "Admin public site workspace", type: :request do
       public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
     )
     expect(other_setting.reload.hero_title).to eq("Hero de outra conta")
+    expect(HomeSetting.instance(tenant: admin.tenant).header_menu_color).to eq("#123456")
+    expect(other_setting.header_menu_color).to be_blank
     expect(other_setting.public_header_css).to be_blank
   end
 

@@ -29,7 +29,7 @@
   <div class="ax-color-control" data-controller="ax-color-pair">
     <%= form.color_field method,
           color_options.merge(
-            value: value,
+            value: (value.presence || local_assigns[:default_value]).to_s[0, 7],
             class: color_class,
             title: swatch_title.presence || "Escolha a cor de #{label}",
             aria: { label: swatch_title.presence || "Escolha a cor de #{label}" },
