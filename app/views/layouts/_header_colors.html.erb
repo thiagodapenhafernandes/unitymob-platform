@@ -1,0 +1,16 @@
+<%# Campos vazios mantêm as cores e transparências originais do tema. %>
+<% if setting.present? %>
+  <style>
+    <% {
+      menu_color: ['[data-header-part="links"] a, [data-header-part="search"], [data-header-part="toggle"], [data-header-part="panel"] a, [data-header-part="cta"]', "color"],
+      menu_hover_color: ['[data-header-part="links"] a:is(:hover, :focus-visible), [data-header-part="search"]:is(:hover, :focus-visible), [data-header-part="toggle"]:is(:hover, :focus-visible), [data-header-part="panel"] a:is(:hover, :focus-visible), [data-header-part="cta"]:is(:hover, :focus-visible)', "color"],
+      cta_background: ['[data-header-part="cta"]', "background-color"],
+      cta_hover_background: ['[data-header-part="cta"]:is(:hover, :focus-visible)', "background-color"]
+    }.each do |key, (selector, property)| %>
+      <% color = setting.public_send("header_#{key}").to_s %>
+      <% if color.match?(/\A#[0-9a-f]{6}(?:[0-9a-f]{2})?\z/i) %>
+        <%= raw "header[data-public-header][data-controller].fixed :is(#{selector})" %> { <%= property %>: <%= color %> !important; }
+      <% end %>
+    <% end %>
+  </style>
+<% end %>

@@ -4622,12 +4622,12 @@ html[data-admin-theme="dark"] .ax-nav__impersonation-exit {
 }
 
 .layout-settings-css-editor.is-enhanced .layout-settings-css-editor__input {
-  color: transparent;
+  color: black;
 }
 
 .layout-settings-css-editor__input::selection {
   background: rgba(125, 211, 252, .28);
-  color: transparent;
+  color: #94a3b8;
 }
 
 .layout-settings-css-editor .cm-selector { color: #7dd3fc; }

@@ -55,6 +55,7 @@ class Admin::HomeSettingsController < Admin::BaseController
       :search_filter_display_mode,
       :mobile_search_filter_display_mode,
       :public_header_css,
+      *HomeSetting::HEADER_COLOR_FIELDS.keys,
       hero_slide_images: [],
       hero_slides_attributes: [:id, :position, :active, :alt_text, :_destroy]
     )

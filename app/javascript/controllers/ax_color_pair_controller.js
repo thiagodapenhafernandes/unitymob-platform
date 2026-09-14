@@ -12,6 +12,6 @@ export default class extends Controller {
     }
 
     const value = this.textTarget.value.trim()
-    if (/^#[0-9a-f]{6}$/i.test(value)) this.swatchTarget.value = value
+    if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)) this.swatchTarget.value = value.slice(0, 7)
   }
 }

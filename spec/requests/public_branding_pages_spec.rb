@@ -156,6 +156,7 @@ RSpec.describe "Public branding pages", type: :request do
 
   it "aplica o CSS de header somente a partir da configuração da Home do tenant público" do
     HomeSetting.instance(tenant: Tenant.default).update!(
+      header_menu_color: "#123456", header_menu_hover_color: "#ABCDEF",
       public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
     )
 
@@ -165,6 +166,9 @@ RSpec.describe "Public branding pages", type: :request do
     header = Nokogiri::HTML(response.body).at_css("header[data-controller='navbar']")
     expect(header["style"]).to include("background-color: rgba(0,9,16,0.4);")
     expect(header["style"]).to include("backdrop-filter: blur(15px);")
+    expect(response.body).to include('color: #123456 !important', 'color: #ABCDEF !important')
+    expect(header.css('[data-header-part="toggle"]').size).to eq(2)
+    expect(header.css('[data-header-part="panel"]').size).to eq(2)
   end
 
   it "oculta somente o telefone do header quando configurado" do

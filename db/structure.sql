@@ -3683,7 +3683,8 @@ CREATE TABLE public.home_settings (
     tenant_id bigint NOT NULL,
     public_header_css text,
     search_filter_display_mode character varying DEFAULT 'hero'::character varying NOT NULL,
-    mobile_search_filter_display_mode character varying DEFAULT 'hero'::character varying NOT NULL
+    mobile_search_filter_display_mode character varying DEFAULT 'hero'::character varying NOT NULL,
+    header_colors jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -19176,6 +19177,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260914010000'),
 ('20260913100000'),
 ('20260913050000'),
 ('20260913040000'),
