@@ -12,8 +12,8 @@
     <button type="button" class="ax-btn ax-btn--sm" aria-label="Mais ações para <%= lead.display_name %>"
             data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger"><%= ax_icon("three-dots") %></button>
     <div class="ax-menu ax-menu--end" data-ax-dropdown-target="menu" hidden>
-      <% if phone_digits.present? %>
-        <%= link_to "tel:#{phone_digits}", class: "ax-menu__item" do %>
+      <% if phone_href.present? %>
+        <%= link_to phone_href, class: "ax-menu__item" do %>
           <%= ax_icon("telephone") %><span>Ligar</span>
         <% end %>
       <% end %>

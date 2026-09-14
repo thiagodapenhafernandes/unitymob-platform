@@ -1607,7 +1607,7 @@
 <% open_tasks = (@actionable_tasks || @tasks).reject(&:concluida?) %>
 <%
   detail_conversion = lead_conversion_summary(@lead)
-  detail_phone = @lead.display_phone.to_s.gsub(/[^0-9+]/, "")
+  detail_phone_href = Phones::Normalizer.tel_href(@lead.display_phone)
   detail_whatsapp_url = @lead.direct_whatsapp_url
 %>
 
@@ -1663,8 +1663,8 @@
           <i class="bi bi-whatsapp"></i><span>WhatsApp</span>
         <% end %>
       <% end %>
-      <% if detail_phone.present? %>
-        <%= link_to "tel:#{detail_phone}", class: "lead-pwa-detail__action" do %>
+      <% if detail_phone_href.present? %>
+        <%= link_to detail_phone_href, class: "lead-pwa-detail__action" do %>
           <i class="bi bi-telephone"></i><span>Ligar</span>
         <% end %>
       <% end %>

@@ -291,6 +291,7 @@ RSpec.describe "Admin::Leads", type: :request do
       whatsapp = table.at_css("#lead_#{lead.id} a.ax-record-actions__whatsapp")
       expect(whatsapp["href"]).to eq(lead.direct_whatsapp_url)
       expect(whatsapp["target"]).to eq("_blank")
+      expect(table.at_css("#lead_#{lead.id} a.ax-menu__item[href='tel:+5511999999999']")).to be_present
       expect(table.at_css("form[action='#{open_whatsapp_conversation_admin_lead_path(lead)}']")).to be_nil
       expect(table.at_css(".ax-record-list__header")).to be_nil
       expect(table.at_css("#lead_#{lead.id} .ax-badge--cyan").text).to eq(lead.reload.status)
