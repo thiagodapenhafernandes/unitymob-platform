@@ -42,4 +42,11 @@ RSpec.describe Phones::Normalizer do
       expect(described_class.display("5547996158980")).to eq("55 (47) 99615-8980")
     end
   end
+
+  describe ".tel_href" do
+    it "gera link de chamada com + para discagem internacional" do
+      expect(described_class.tel_href("5542999815188")).to eq("tel:+5542999815188")
+      expect(described_class.tel_href("(42) 99981-5188")).to eq("tel:+5542999815188")
+    end
+  end
 end

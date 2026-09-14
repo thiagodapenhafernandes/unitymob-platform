@@ -507,7 +507,7 @@
         <% @recent_my_leads.each do |lead| %>
           <%
             property = @lead_properties_by_id[lead.property_id]
-            phone_digits = lead.display_phone.to_s.gsub(/[^0-9+]/, "")
+            phone_href = Phones::Normalizer.tel_href(lead.display_phone)
           %>
           <article class="field-lead">
             <div class="field-lead__main">
@@ -536,8 +536,8 @@
                   <i class="bi bi-whatsapp"></i>WhatsApp
                 <% end %>
               <% end %>
-              <% if phone_digits.present? %>
-                <%= link_to "tel:#{phone_digits}", class: "field-contact-btn" do %>
+              <% if phone_href.present? %>
+                <%= link_to phone_href, class: "field-contact-btn" do %>
                   <i class="bi bi-telephone"></i>Ligar
                 <% end %>
               <% end %>

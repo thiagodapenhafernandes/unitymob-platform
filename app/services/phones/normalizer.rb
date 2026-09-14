@@ -20,6 +20,13 @@ module Phones
         "+#{digits}"
       end
 
+      def tel_href(value, default_country: "BR")
+        digits = call(value, default_country:)
+        return if digits.blank?
+
+        "tel:+#{digits}"
+      end
+
       def valid?(value, default_country: "BR")
         call(value, default_country:).present?
       end

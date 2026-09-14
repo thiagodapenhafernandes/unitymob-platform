@@ -122,7 +122,7 @@ RSpec.describe "Field::Home", type: :request do
     expect(response.body).to include("Leads a atender")
     expect(response.body).to include("Meta Ads")
     expect(response.body).to include("WhatsApp")
-    expect(response.body).to include("tel:5521990872427")
+    expect(response.body).to include("tel:+5521990872427")
     expect(response.body).to include("Captações abertas")
     expect(response.body).to include("Apartamento Centro")
   end
