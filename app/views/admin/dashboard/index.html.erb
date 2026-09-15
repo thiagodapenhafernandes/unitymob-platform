@@ -130,7 +130,7 @@
                       class: "ax-control",
                       aria: { label: "Tipo de negócio do dashboard" },
                       data: { action: "change->auto-submit#submit" } %>
-      <% if @is_admin_view %>
+      <% if @dashboard_can_filter_brokers %>
         <%= ax_multiselect_field(
               form: form,
               method: :broker_ids,
@@ -253,12 +253,16 @@
   <% end %>
 
   <% if @dashboard_tab == "leads" %>
-  <%= turbo_frame_tag "admin_dashboard_broker_performance", src: admin_dashboard_section_path("broker_performance", dashboard_filter_params), loading: "lazy" do %>
-    <%= render "admin/dashboard/sections/loading_panel", title: "Performance dos Corretores", eyebrow: "Inteligência comercial", rows: 6, compact: true %>
+  <% if @can_view_broker_performance %>
+    <%= turbo_frame_tag "admin_dashboard_broker_performance", src: admin_dashboard_section_path("broker_performance", dashboard_filter_params), loading: "lazy" do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Performance dos Corretores", eyebrow: "Inteligência comercial", rows: 6, compact: true %>
+    <% end %>
   <% end %>
 
-  <%= turbo_frame_tag "admin_dashboard_campaign_performance", src: admin_dashboard_section_path("campaign_performance", dashboard_filter_params), loading: "lazy" do %>
-    <%= render "admin/dashboard/sections/loading_panel", title: "Performance de Campanhas e Canais", eyebrow: "Aquisição inteligente", rows: 6, compact: true %>
+  <% if @can_view_campaign_performance %>
+    <%= turbo_frame_tag "admin_dashboard_campaign_performance", src: admin_dashboard_section_path("campaign_performance", dashboard_filter_params), loading: "lazy" do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Performance de Campanhas e Canais", eyebrow: "Aquisição inteligente", rows: 6, compact: true %>
+    <% end %>
   <% end %>
 
   <%= turbo_frame_tag "admin_dashboard_acquisition", src: admin_dashboard_section_path("acquisition", dashboard_filter_params) do %>

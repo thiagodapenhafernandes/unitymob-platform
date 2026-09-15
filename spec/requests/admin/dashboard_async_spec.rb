@@ -393,7 +393,108 @@ RSpec.describe "Admin dashboard async slices", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Visão geral", "Leads", "Imóveis", "Site público")
+    expect(response.body).not_to include('id="admin_dashboard_broker_performance"')
+    expect(response.body).not_to include('id="admin_dashboard_campaign_performance"')
     expect(response.body).not_to include(admin_profiles_path)
+
+    get admin_dashboard_section_path("broker_performance", tab: "leads"),
+        headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
+
+    expect(response).to have_http_status(:forbidden)
+
+    get admin_dashboard_broker_performance_report_path(period_preset: "last_7")
+
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "aplica escopo proprio na performance dos corretores" do
+    travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant dashboard report #{SecureRandom.hex(3)}", slug: "tenant-dashboard-report-#{SecureRandom.hex(3)}")
+      profile = Profile.create!(
+        tenant: tenant,
+        name: "Analista report #{SecureRandom.hex(3)}",
+        axis: "vertical",
+        position: 600,
+        permissions: {
+          "dashboard" => { "view" => true },
+          "leads" => { "view" => true, "scope" => "own" },
+          "dashboard_broker_performance" => { "view" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: tenant, profile: profile, role: :editor, name: "Corretor do próprio relatório")
+      other = create(:admin_user, tenant: tenant, name: "Corretor fora do relatório")
+      create(:lead, tenant: tenant, admin_user: user, name: "Lead visível do relatório", status: Lead.status_value(:em_atendimento), created_at: 1.day.ago)
+      create(:lead, tenant: tenant, admin_user: other, name: "Lead fora do relatório", status: Lead.status_value(:em_atendimento), created_at: 1.day.ago)
+
+      sign_out admin
+      sign_in user
+
+      get admin_root_path(tab: "leads", period_preset: "last_7")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('id="admin_dashboard_broker_performance"')
+      expect(response.body).not_to include('id="admin_dashboard_campaign_performance"')
+
+      get admin_dashboard_section_path("broker_performance", tab: "leads", period_preset: "last_7"),
+          headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Performance dos Corretores")
+      expect(response.body).to include("Corretor do próprio relatório")
+      expect(response.body).to include("Lead visível do relatório")
+      expect(response.body).not_to include("Corretor fora do relatório")
+      expect(response.body).not_to include("Lead fora do relatório")
+    end
+  end
+
+  it "aplica escopo global na performance de campanhas e libera o CSV" do
+    travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant campaign report #{SecureRandom.hex(3)}", slug: "tenant-campaign-report-#{SecureRandom.hex(3)}")
+      profile = Profile.create!(
+        tenant: tenant,
+        name: "Gestor campaign report #{SecureRandom.hex(3)}",
+        axis: "vertical",
+        position: 600,
+        permissions: {
+          "dashboard" => { "view" => true },
+          "leads" => { "view" => true, "scope" => "own" },
+          "dashboard_campaign_performance" => { "view" => true, "scope" => "all" }
+        }
+      )
+      user = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+      other = create(:admin_user, tenant: tenant, name: "Corretor campanha global")
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: other,
+        name: "Lead campanha global",
+        origin: "Facebook Lead Ads",
+        status: Lead.status_value(:em_atendimento),
+        product: "Form Global",
+        other_information: {
+          "meta_campaign_name" => "Campanha Global",
+          "meta_form_name" => "Form Global"
+        },
+        created_at: 1.day.ago
+      )
+
+      sign_out admin
+      sign_in user
+
+      get admin_dashboard_section_path("campaign_performance", tab: "leads", period_preset: "last_7"),
+          headers: { "Turbo-Frame" => "admin_dashboard_campaign_performance" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Performance de Campanhas e Canais")
+      expect(response.body).to include("Campanha Global")
+      expect(response.body).to include("Lead campanha global")
+
+      get admin_dashboard_campaign_performance_report_path(period_preset: "last_7")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Campanha Global")
+      expect(response.body).to include("Lead campanha global")
+    end
   end
 
   it "mantém usuário desktop sem permissão no workspace administrativo" do

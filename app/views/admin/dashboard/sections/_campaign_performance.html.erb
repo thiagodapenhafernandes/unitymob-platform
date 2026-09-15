@@ -1,5 +1,5 @@
 <%= turbo_frame_tag "admin_dashboard_campaign_performance" do %>
-  <% if @is_admin_view && %w[all leads].include?(@dashboard_tab) %>
+  <% if @can_view_campaign_performance && %w[all leads].include?(@dashboard_tab) %>
     <article class="ax-dashboard-panel">
       <div class="ax-dashboard-panel__header">
         <div>
