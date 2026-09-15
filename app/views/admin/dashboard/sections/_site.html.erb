@@ -26,7 +26,7 @@
           <span>buscas</span>
           <small><%= number_with_delimiter(@site_kpis[:no_results]) %> sem resultado</small>
         <% end %>
-        <%= link_to admin_leads_path(start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601), class: "ax-dashboard-site-kpi ax-dashboard-site-kpi--red", data: { turbo_frame: "_top" } do %>
+        <%= link_to admin_leads_path(start_date: @dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601), class: "ax-dashboard-site-kpi ax-dashboard-site-kpi--red", data: { turbo_frame: "_top" } do %>
           <strong><%= number_with_delimiter(@site_kpis[:whatsapp_clicks] + @site_kpis[:phone_clicks] + @site_kpis[:form_submissions]) %></strong>
           <span>ações de contato</span>
           <small>WhatsApp, telefone e formulário</small>

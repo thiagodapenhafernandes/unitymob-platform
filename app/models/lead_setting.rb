@@ -6,9 +6,19 @@ class LeadSetting < ApplicationRecord
   # Destino do clique na notificação de novo lead (dentro do prazo do pocket).
   PUSH_CLICK_ACTIONS = %w[system whatsapp].freeze
   DEFAULT_FIRST_CONTACT_SLA_HOURS = 4
+  DEFAULT_FIRST_CONTACT_SLA_MINUTES = DEFAULT_FIRST_CONTACT_SLA_HOURS * 60
+  FIRST_CONTACT_SLA_UNITS = {
+    "minutes" => { label: "minutos", multiplier: 1, max: 43_200 },
+    "hours" => { label: "horas", multiplier: 60, max: 720 },
+    "days" => { label: "dias", multiplier: 1_440, max: 30 }
+  }.freeze
   DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 15
   MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 5
   MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES = 1440
+
+  attr_accessor :first_contact_sla_duration_value, :first_contact_sla_duration_unit
+
+  before_validation :assign_first_contact_sla_minutes_from_duration
 
   REMINDER_MINUTE_FIELDS = %i[reminder_first_minutes reminder_second_minutes reminder_third_minutes
                              reminder_overdue_minutes reminder_retry_minutes].freeze
@@ -52,6 +62,8 @@ class LeadSetting < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :first_contact_sla_hours,
             numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 168 }
+  validates :first_contact_sla_minutes,
+            numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 43_200 }
   validates :stage_automation_sweep_interval_minutes,
             numericality: {
               only_integer: true,
@@ -96,7 +108,35 @@ class LeadSetting < ApplicationRecord
   end
 
   def first_contact_sla_hours_value
-    first_contact_sla_hours.presence || DEFAULT_FIRST_CONTACT_SLA_HOURS
+    hours = first_contact_sla_minutes_value / 60.0
+    hours == hours.to_i ? hours.to_i : hours
+  end
+
+  def first_contact_sla_hours=(value)
+    super
+    self.first_contact_sla_minutes = value.to_i * 60 if value.present? && @first_contact_sla_duration_value.blank?
+  end
+
+  def first_contact_sla_minutes_value
+    first_contact_sla_minutes.presence || first_contact_sla_hours.to_i.presence&.*(60) || DEFAULT_FIRST_CONTACT_SLA_MINUTES
+  end
+
+  def first_contact_sla_duration_unit
+    @first_contact_sla_duration_unit.presence || best_first_contact_sla_unit
+  end
+
+  def first_contact_sla_duration_value
+    return @first_contact_sla_duration_value if @first_contact_sla_duration_value.present?
+
+    (first_contact_sla_minutes_value / FIRST_CONTACT_SLA_UNITS.fetch(first_contact_sla_duration_unit)[:multiplier]).to_i
+  end
+
+  def first_contact_sla_duration_label
+    unit = best_first_contact_sla_unit
+    value = first_contact_sla_minutes_value / FIRST_CONTACT_SLA_UNITS.fetch(unit)[:multiplier]
+    label = FIRST_CONTACT_SLA_UNITS.fetch(unit)[:label]
+    label = label.delete_suffix("s") if value == 1
+    "#{value} #{label}"
   end
 
   def stage_automation_sweep_interval_minutes_value
@@ -114,5 +154,22 @@ class LeadSetting < ApplicationRecord
 
   def open_whatsapp_on_click?
     push_lead_click_action_value == "whatsapp"
+  end
+
+  private
+
+  def assign_first_contact_sla_minutes_from_duration
+    return if first_contact_sla_duration_value.blank?
+
+    unit = first_contact_sla_duration_unit.presence_in(FIRST_CONTACT_SLA_UNITS.keys) || "hours"
+    self.first_contact_sla_minutes = first_contact_sla_duration_value.to_i * FIRST_CONTACT_SLA_UNITS.fetch(unit)[:multiplier]
+  end
+
+  def best_first_contact_sla_unit
+    minutes = first_contact_sla_minutes_value
+    return "days" if (minutes % 1_440).zero?
+    return "hours" if (minutes % 60).zero?
+
+    "minutes"
   end
 end

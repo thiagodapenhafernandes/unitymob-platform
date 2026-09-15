@@ -7,24 +7,18 @@
            data-dashboard-charts-acquisition-channels-value="<%= json_escape(@acquisition_channels.to_json) %>"
            data-dashboard-charts-acquisition-trend-value="<%= json_escape(@acquisition_trend.to_json) %>">
     <div class="ax-dashboard-panel__header">
-      <div><span class="ax-dashboard-panel__eyebrow">Aquisição</span><h2>Origem dos leads</h2></div>
+      <div><span class="ax-dashboard-panel__eyebrow">Aquisição</span><h2>Campanhas e origens que performam</h2></div>
       <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
     </div>
 
     <div class="ax-dashboard-acquisition__kpis">
-      <div><span>Total</span><strong><%= @acquisition_total %></strong></div>
       <div><span>Origem identificada</span><strong><%= @acquisition_attributed %></strong></div>
       <div><span>Direto / desconhecido</span><strong><%= @acquisition_unknown %></strong></div>
       <div><span>Taxa de atribuição</span><strong><%= number_with_precision(@acquisition_attribution_rate, precision: 1) %>%</strong></div>
     </div>
 
-    <div class="ax-dashboard-acquisition__grid">
-      <section><h3>Leads por canal</h3><div class="ax-dashboard-chart ax-dashboard-chart--acquisition"><canvas id="leadsAcquisitionChart"></canvas></div></section>
-      <section><h3>Evolução por canal</h3><div class="ax-dashboard-chart ax-dashboard-chart--acquisition"><canvas id="leadsAcquisitionTrendChart"></canvas></div></section>
-    </div>
-
     <section class="ax-dashboard-acquisition__campaigns">
-      <div class="ax-dashboard-acquisition__title"><h3>Campanhas pagas recebidas</h3><small>Nome UTM ou campanha cadastrada no CRM</small></div>
+      <div class="ax-dashboard-acquisition__title"><h3>Campanhas que geram resultado</h3><small>Leads, visitas, propostas e avanço por campanha</small></div>
       <% if @acquisition_campaigns.any? %>
         <div class="ax-dashboard-campaign-grid">
           <% @acquisition_campaigns.each do |campaign| %>
@@ -34,6 +28,10 @@
                 <small><%= campaign[:channel_label] %><%= " · ID #{campaign[:external_id]}" if campaign[:external_id].present? %></small>
               </span>
               <span class="ax-dashboard-campaign-row__count"><strong><%= campaign[:count] %></strong><small>leads</small></span>
+              <% if campaign[:visits].to_i.positive? %><span class="ax-dashboard-campaign-row__count"><strong><%= campaign[:visits] %></strong><small>visitas</small></span><% end %>
+              <% if campaign[:proposals].to_i.positive? %><span class="ax-dashboard-campaign-row__count"><strong><%= campaign[:proposals] %></strong><small>propostas</small></span><% end %>
+              <% if campaign[:closed].to_i.positive? %><span class="ax-dashboard-campaign-row__count"><strong><%= campaign[:closed] %></strong><small>concluídos</small></span><% end %>
+              <span class="ax-dashboard-campaign-row__count"><strong><%= number_to_percentage(campaign[:opportunity_rate], precision: 1, strip_insignificant_zeros: true) %></strong><small>avanço</small></span>
             </div>
           <% end %>
         </div>
@@ -44,14 +42,14 @@
 
     <section class="ax-dashboard-channel-quality">
       <div class="ax-dashboard-acquisition__title">
-        <h3>Qual canal está gerando oportunidade?</h3>
+        <h3>Origens que viram oportunidade</h3>
         <small>Avanço considera leads que chegaram a visita, proposta ou conclusão</small>
       </div>
 
       <% if @acquisition_channel_quality.any? %>
         <div class="ax-dashboard-channel-quality__rows">
           <% @acquisition_channel_quality.each do |row| %>
-            <%= link_to admin_leads_path(attribution_channel: row[:key], start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601),
+            <%= link_to admin_leads_path(row[:filter_params].merge(start_date: @dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601)),
                         class: "ax-dashboard-channel-quality__row",
                         data: { turbo_frame: "_top" } do %>
               <span class="ax-dashboard-channel-quality__identity">
@@ -69,6 +67,11 @@
         <div class="ax-dashboard-empty-row">Sem canais com leads no período.</div>
       <% end %>
     </section>
+
+    <div class="ax-dashboard-acquisition__grid">
+      <section><h3>Leads por origem</h3><div class="ax-dashboard-chart ax-dashboard-chart--acquisition"><canvas id="leadsAcquisitionChart"></canvas></div></section>
+      <section><h3>Evolução por origem</h3><div class="ax-dashboard-chart ax-dashboard-chart--acquisition"><canvas id="leadsAcquisitionTrendChart"></canvas></div></section>
+    </div>
 
     <section class="ax-dashboard-channel-quality">
       <div class="ax-dashboard-acquisition__title">

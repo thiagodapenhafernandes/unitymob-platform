@@ -11,30 +11,22 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     sign_in admin
   end
 
-  it "renderiza a visão geral sem carregar slices de outras áreas" do
+  it "abre a aba Leads como principal sem carregar slices de outras áreas" do
     get admin_root_path
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Visão geral", "Leads", "Imóveis", "Site público")
     expect(response.body).to include('aria-current="page"')
     document = Nokogiri::HTML(response.body)
-    expect(document.css(".ax-dashboard-tabs__badge").size).to be >= 9
-    expect(response.body).to include("Total geral de leads visíveis no escopo atual do dashboard.")
-    expect(response.body).to include("Leads abertos que ainda não têm corretor responsável.")
-    expect(response.body).to include("Tarefas vencidas em leads abertos do escopo atual.")
-    expect(response.body).to include("Leads sem registro de primeiro contato há mais de 4 horas.")
-    expect(response.body).to include("Total geral de imóveis ativos visíveis no escopo atual do dashboard.")
-    expect(response.body).to include("Imóveis do catálogo operacional sem preço de venda e locação, excluindo empreendimentos.")
-    expect(response.body).to include("Imóveis publicáveis sem atualização há mais de 90 dias.")
-    expect(response.body).to include("Páginas públicas vistas no período, geradas pelo rastreamento próprio do site.")
-    expect(response.body).to include("Aberturas reais de páginas de imóveis no site público.")
-    expect(response.body).to include("Cliques reais em chamadas de WhatsApp capturados no site público.")
-    expect(response.body).not_to include('id="admin_dashboard_charts"')
-    expect(response.body).to include("Decisão operacional")
+    expect(document.at_css(".ax-dashboard-tabs__item.is-active").text).to include("Leads")
+    expect(document.css(".ax-dashboard-tabs__badge")).to be_empty
+    expect(response.body).to include('id="admin_dashboard_charts"')
+    expect(response.body).to include('id="admin_dashboard_broker_performance"')
+    expect(response.body).not_to include("Decisão operacional")
     expect(response.body).not_to include("IA textual")
     expect(response.body).not_to include("Diagnóstico da semana")
     expect(response.body).not_to include("diagnóstico(s) IA na semana")
-    expect(response.body).to include("Mapa de investigação operacional")
+    expect(response.body).not_to include("Mapa de investigação operacional")
     expect(response.body).not_to include("Resumo operacional")
     expect(response.body).not_to include("Hoje e próximos passos")
     expect(response.body).not_to include("Imóveis no catálogo")
@@ -46,7 +38,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   it "redireciona acesso direto ao slice do site para o dashboard completo" do
     get admin_dashboard_section_path("site")
 
-    expect(response).to redirect_to(admin_root_path(period: 30, tab: "site"))
+    expect(response).to redirect_to(admin_root_path(period_preset: "last_7", start_date: "2026-09-08", end_date: "2026-09-14", tab: "site"))
   end
 
   it "responde perguntas operacionais com dados acionáveis na visão geral" do
@@ -178,7 +170,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         updated_at: 20.minutes.ago
       )
 
-      get admin_root_path
+      get admin_root_path(tab: "overview")
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Ações recomendadas")
@@ -215,8 +207,8 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       expect(response.body).to include("dashboard_quality=missing_price")
       expect(response.body).to include("Sem valor de venda/locação")
       expect(response.body).to include("De onde vem a demanda útil?")
-      expect(response.body).to include("Direto / desconhecido")
-      expect(response.body).to include("attribution_channel=direct")
+      expect(response.body).to include("Site")
+      expect(response.body).to include("source_filter=site")
       expect(response.body).to include("A carteira está pronta para vender?")
       expect(response.body).to include("principal gargalo: sem preço")
       expect(response.body).to include("Os leads estão sendo distribuídos?")
@@ -237,7 +229,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       create(:habitation, tenant: tenant, codigo: "dashboard-sem-preco", imovel_dwv: "Sim", valor_venda_cents: 0, valor_locacao_cents: 0)
       create(:habitation, tenant: tenant, codigo: "dashboard-empreendimento-sem-preco", imovel_dwv: "Sim", tipo: "Empreendimento", valor_venda_cents: 0, valor_locacao_cents: 0)
 
-      get admin_root_path
+      get admin_root_path(tab: "overview")
 
       document = Nokogiri::HTML(response.body)
       catalog_card = document.css(".ax-dashboard-question").find { |node| node.text.include?("A carteira está pronta para vender?") }
@@ -431,7 +423,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
     expect(document.css(".ax-dashboard-skeleton")).not_to be_empty
-    expect(document.css(".ax-skeleton-chart span").size).to eq(21)
+    expect(document.css(".ax-skeleton-chart span").size).to eq(14)
     expect(document.css(".ax-skeleton-row b[class^='ax-skeleton-row__line--']")).not_to be_empty
     expect(document.css(".ax-dashboard-skeleton [style]")).to be_empty
     expect(document.css(".ax-dashboard-skeleton[role='status'][aria-live='polite'][aria-busy='true']")).not_to be_empty
@@ -442,10 +434,10 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include('id="admin_dashboard_funnel"')
     expect(response.body).to include('id="admin_dashboard_status"')
     expect(response.body).to include('id="admin_dashboard_acquisition"')
-    expect(response.body).to include('id="admin_dashboard_service"')
-    expect(response.body).to include('id="admin_dashboard_rankings"')
-    expect(response.body).to include("Performance e gargalo por corretor")
-    expect(response.body).not_to include('aria-label="Carregando Performance e gargalo por corretor"')
+    expect(response.body).not_to include('id="admin_dashboard_service"')
+    expect(response.body).to include('id="admin_dashboard_broker_performance"')
+    expect(response.body).to include("Performance dos Corretores")
+    expect(response.body).to include('aria-label="Carregando Performance dos Corretores"')
     expect(response.body).to include("tab=leads")
     expect(response.body).to include("period=7")
     expect(response.body).not_to include('id="admin_dashboard_operations"')
@@ -557,7 +549,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include('<span class="ax-dashboard-tabs__label">Campo</span>')
     expect(response.body).to include("Campo pausado")
-    expect(response.body).to include("Decisão operacional")
+    expect(response.body).to include("Leads")
     expect(response.body).not_to include("Pedidos manuais pendentes")
     expect(response.body).not_to include('id="admin_dashboard_operations"')
   end
@@ -576,13 +568,13 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   it "não mistura domínios dentro dos slices compartilhados" do
     allow(FieldFeatureGate).to receive(:field_checkin_enabled?).and_return(true)
 
-    get admin_dashboard_section_path("rankings", tab: "leads"), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
-    expect(response.body).to include("Performance e gargalo por corretor")
+    get admin_dashboard_section_path("broker_performance", tab: "leads"), headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
+    expect(response.body).to include("Performance dos Corretores")
     expect(response.body).not_to include("Carteira de imóveis por corretor", "Top lojas por check-ins")
 
     get admin_dashboard_section_path("rankings", tab: "properties"), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
     expect(response.body).to include("Carteira de imóveis por corretor")
-    expect(response.body).not_to include("Performance e gargalo por corretor", "Top lojas por check-ins")
+    expect(response.body).not_to include("Performance dos Corretores", "Top lojas por check-ins")
 
     get admin_dashboard_section_path("operations", tab: "field"), headers: { "Turbo-Frame" => "admin_dashboard_operations" }
     expect(response.body).to include("Atividade recente")
@@ -602,7 +594,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "renderiza cada slice em seu turbo frame" do
-    %w[charts acquisition funnel status service rankings operations support site].each do |section|
+    %w[charts acquisition funnel status service broker_performance rankings operations support site].each do |section|
       get admin_dashboard_section_path(section), headers: { "Turbo-Frame" => "admin_dashboard_#{section}" }
 
       expect(response).to have_http_status(:ok)
@@ -610,60 +602,29 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     end
   end
 
-  it "mostra atendimento e WhatsApp na aba de Leads com links filtrados" do
+  it "mostra somente atendimento da aba Leads com links filtrados" do
     travel_to Time.zone.local(2026, 8, 8, 10, 0, 0) do
-      lead = create(:lead, tenant: admin.tenant, admin_user: nil, status: Lead.status_value(:novo), created_at: 6.hours.ago, updated_at: 5.hours.ago)
-      conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999996600", contact_name: "Cliente SLA", status: "open", unread_count: 1)
-      conversation.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Ainda está disponível?", created_at: 30.minutes.ago, updated_at: 30.minutes.ago)
-      template = WhatsappTemplate.create!(tenant: admin.tenant, name: "campanha_bi", language: "pt_BR", status: "APPROVED", body: "Oi {{1}}")
-      sender_number = create(:whatsapp_sender_number, tenant: admin.tenant)
-      campaign = WhatsappCampaign.create!(
-        tenant: admin.tenant,
-        whatsapp_template: template,
-        whatsapp_sender_number: sender_number,
-        created_by: admin,
-        name: "Campanha BI",
-        status: "completed",
-        total_recipients: 2,
-        sent_count: 1,
-        failed_count: 1,
-        replied_count: 1
-      )
-      WhatsappCampaignMessage.create!(tenant: admin.tenant, whatsapp_campaign: campaign, phone_number: "5547999996610", status: "replied", replied_at: 20.minutes.ago)
-      handled_reply = WhatsappCampaignMessage.create!(tenant: admin.tenant, whatsapp_campaign: campaign, phone_number: "5547999996613", status: "replied", replied_at: 30.minutes.ago)
-      handled_conversation = WhatsappConversation.create!(tenant: admin.tenant, contact_phone: handled_reply.phone_number, contact_name: "Cliente tratado", status: "open")
-      handled_conversation.messages.create!(tenant: admin.tenant, direction: "outbound", body: "Vou te chamar agora.", created_at: 10.minutes.ago, updated_at: 10.minutes.ago)
-      WhatsappCampaignMessage.create!(tenant: admin.tenant, whatsapp_campaign: campaign, phone_number: "5547999996611", status: "failed", failed_at: 15.minutes.ago, failure_reason: "Erro Meta")
-      create(:whatsapp_campaign_unsubscribe, tenant: admin.tenant, whatsapp_sender_number: sender_number, whatsapp_campaign: campaign, phone_number: "5547999996612")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: Lead.status_value(:novo), created_at: 6.hours.ago, updated_at: 5.hours.ago)
+      create(:lead, tenant: admin.tenant, admin_user: nil, status: Lead.status_value(:novo), created_at: 2.hours.ago)
       create(:task, tenant: admin.tenant, lead: lead, admin_user: admin, title: "Retornar cliente SLA", due_at: 1.hour.ago)
 
       get admin_dashboard_section_path("service"), headers: { "Turbo-Frame" => "admin_dashboard_service" }
 
       expect(response).to have_http_status(:ok)
 
-      expect(response.body).to include("Atendimento e próximas ações")
+      expect(response.body).to include("SLA e ações urgentes")
       expect(response.body).to include("Tarefas vencidas")
       expect(response.body).to include("attention_filter=task_overdue")
       expect(response.body).to include("Sem primeiro contato")
       expect(response.body).to include("attention_filter=no_first_contact")
+      expect(response.body).to include("start_date=2026-08-02")
+      expect(response.body).to include("end_date=2026-08-08")
       expect(response.body).to include("SLA 4h vencido")
       expect(response.body).to include("attention_filter=sla_overdue")
-      expect(response.body).to include("Atendimento pelo inbox")
-      expect(response.body).to include("Aguardando resposta")
-      expect(response.body).to include("filter=pending_reply")
-      expect(response.body).to include("Não lidas")
-      expect(response.body).to include("filter=unread")
-      expect(response.body).to include("Disparos e retornos")
-      expect(response.body).to include("Campanhas com retorno")
-      expect(response.body).to include("Falhas de disparo")
-      expect(response.body).to include("Descadastros")
-      expect(response.body).to include("Respostas não tratadas")
-      expect(response.body).to include("status=failed")
-      document = Nokogiri::HTML(response.body)
-      campaign_return = document.css(".ax-dashboard-service-row").find { |node| node.text.include?("Campanhas com retorno") }
-      unhandled_reply = document.css(".ax-dashboard-service-row").find { |node| node.text.include?("Respostas não tratadas") }
-      expect(campaign_return.text).to include("1")
-      expect(unhandled_reply.text).to include("1")
+      expect(response.body).to include("Sem responsável")
+      expect(response.body).to include("attention_filter=unassigned")
+      expect(response.body).not_to include("Atendimento pelo inbox")
+      expect(response.body).not_to include("Disparos e retornos")
     end
   end
 
@@ -671,24 +632,29 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     meta_lead = create(:lead, tenant: admin.tenant, admin_user: admin, attribution_channel: "meta_ads", attribution_data: { "utm_campaign" => "verao", "utm_id" => "123" }, created_at: 2.days.ago)
     create(:lead, tenant: admin.tenant, admin_user: admin, attribution_channel: "meta_ads", attribution_data: { "utm_campaign" => "verao" }, created_at: 1.day.ago)
     create(:lead, tenant: admin.tenant, attribution_channel: "direct", attribution_data: {}, created_at: 2.days.ago)
+    showroom_lead = create(:lead, tenant: admin.tenant, admin_user: admin, origin: "Showroom", attribution_channel: nil, created_at: 1.day.ago)
     property = create(:habitation, tenant: admin.tenant, codigo: "money-loss-101", titulo_anuncio: "Apartamento sem evolução")
     create(:lead, tenant: admin.tenant, property_id: property.id, attribution_channel: "meta_ads", created_at: 1.day.ago)
     create(:lead, tenant: admin.tenant, property_id: property.id, attribution_channel: "google_ads", created_at: 1.day.ago)
     MarketingCampaign.create!(tenant: admin.tenant, name: "Campanha cara sem retorno", channel: "meta_ads", status: "active", budget_cents: 1_500_00, conversions_count: 0, starts_on: 1.day.ago.to_date)
     Appointment.create!(tenant: admin.tenant, lead: meta_lead, admin_user: admin, title: "Visita BI", kind: "visita", starts_at: 1.day.from_now, status: "agendado")
+    Appointment.create!(tenant: admin.tenant, lead: showroom_lead, admin_user: admin, title: "Visita showroom", kind: "visita", starts_at: 1.day.from_now, status: "agendado")
     Proposal.create!(lead: meta_lead, admin_user: admin, status: "enviada", title: "Proposta BI")
 
     get admin_dashboard_section_path("acquisition", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_acquisition" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Origem dos leads")
+    expect(response.body).to include("Campanhas e origens que performam")
     expect(response.body).to include("Taxa de atribuição")
     expect(response.body).to include("Meta Ads")
+    expect(response.body).to include("Showroom")
+    expect(response.body).to include("source_filter=Showroom")
     expect(response.body).to include("verao")
     expect(response.body).to include("ID 123")
     expect(response.body).to include("ax-dashboard-campaign-grid")
     expect(response.body).to include("ax-dashboard-campaign-row__count")
-    expect(response.body).to include("Qual canal está gerando oportunidade?")
+    expect(response.body).to include("Campanhas que geram resultado")
+    expect(response.body).to include("Origens que viram oportunidade")
     expect(response.body).to include("Avanço considera leads que chegaram a visita, proposta ou conclusão")
     expect(response.body).to include("visitas")
     expect(response.body).to include("propostas")
@@ -761,9 +727,11 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "inclui o funil comercial em slice dedicado" do
-    lead = create(:lead, tenant: admin.tenant, status: Lead.status_value(:em_atendimento), created_at: 3.days.ago, updated_at: 3.days.ago)
-    hot_lead = create(:lead, tenant: admin.tenant, status: Lead.status_value(:em_atendimento), tags: ["quente"], created_at: 3.days.ago, updated_at: 2.days.ago)
-    warm_lead = create(:lead, tenant: admin.tenant, status: Lead.status_value(:novo), tags: ["morno"], created_at: 5.days.ago, updated_at: 4.days.ago)
+    lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: Lead.status_value(:em_atendimento), created_at: 3.days.ago, updated_at: 3.days.ago)
+    hot_lead = create(:lead, tenant: admin.tenant, admin_user: admin, status: Lead.status_value(:em_atendimento), created_at: 3.days.ago, updated_at: 2.days.ago)
+    warm_lead = create(:lead, tenant: admin.tenant, status: Lead.status_value(:novo), created_at: 5.days.ago, updated_at: 4.days.ago)
+    Proposal.create!(lead: hot_lead, admin_user: admin, status: "enviada", title: "Proposta quente")
+    LeadActivity.create!(tenant: admin.tenant, lead: warm_lead, kind: "note", metadata: { contact_kind: "whatsapp", contact_result: "falou_com_cliente" }, created_at: 2.days.ago, updated_at: 2.days.ago)
     LeadAuditLog.create!(
       tenant: admin.tenant,
       lead: lead,
@@ -791,14 +759,15 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Leads interessados")
     expect(response.body).to include("Oportunidades")
     expect(response.body).to include("Vendas")
-    expect(response.body).to include("Referência:")
     expect(response.body).to include("ax-dashboard-funnel-layout")
-    expect(response.body).to include("Tempo médio em cada etapa")
-    expect(response.body).to include("Perdas e reaberturas")
+    expect(response.body).to include("Gargalos do funil")
+    expect(response.body).not_to include("Tempo médio em cada etapa")
+    expect(response.body).not_to include("Referência:")
     expect(response.body).to include("Leads quentes/mornos sem ação")
     expect(response.body).to include("Leads quentes sem ação")
     expect(response.body).to include("Leads mornos sem ação")
-    expect(response.body).to include("voltaram")
+    expect(response.body).to include("interest_quente_stalled")
+    expect(response.body).to include("interest_morno_stalled")
     expect(response.body).to include("%")
     expect(Nokogiri::HTML(response.body).css(".ax-dashboard-funnel [style]")).to be_empty
   end
@@ -824,7 +793,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "mantém a visão geral focada em decisão e investigação" do
-    get admin_root_path
+    get admin_root_path(tab: "overview")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Decisão operacional")
@@ -850,21 +819,72 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   it "renderiza desempenho comercial no período selecionado" do
     broker = create(:admin_user, tenant: admin.tenant)
     lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: "Concluido", created_at: 2.days.ago)
-    create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:novo), created_at: 4.days.ago, updated_at: 3.days.ago)
+    open_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:novo), created_at: 4.days.ago, updated_at: 3.days.ago)
+    in_service_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:em_atendimento), created_at: 3.days.ago)
+    fast_pool_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:em_atendimento), created_at: 8.hours.ago)
+    fast_rotary_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:em_atendimento), created_at: 8.hours.ago)
+    seconds_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:em_atendimento), created_at: 1.hour.ago)
+    untouched_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:novo), created_at: 3.hours.ago)
+    no_open_response_lead = create(:lead, tenant: admin.tenant, admin_user: broker, status: Lead.status_value(:novo), created_at: 5.hours.ago)
     Appointment.create!(tenant: admin.tenant, lead: lead, admin_user: broker, title: "Visita realizada", kind: "visita", starts_at: 1.day.ago, status: "realizado")
     Proposal.create!(lead: lead, admin_user: broker, status: "enviada", title: "Proposta enviada")
+    open_lead.activities.create!(tenant: admin.tenant, kind: "pocket_pool_ready")
+    open_lead.activities.create!(tenant: admin.tenant, kind: "note", metadata: { contact_kind: "whatsapp", contact_result: "nao_respondeu", body: "Chamou no WhatsApp e não retornou." })
+    in_service_lead.activities.create!(tenant: admin.tenant, kind: "whatsapp_in")
+    no_open_response_lead.activities.create!(tenant: admin.tenant, kind: "whatsapp_in")
+    fast_pool_lead.activities.create!(tenant: admin.tenant, kind: "pocket_pool_ready", created_at: 15.minutes.ago)
+    fast_pool_lead.activities.create!(tenant: admin.tenant, kind: "accepted", metadata: { shark_tank: true }, created_at: 5.minutes.ago)
+    fast_rotary_lead.activities.create!(tenant: admin.tenant, kind: "distributed", metadata: { admin_user_id: broker.id }, created_at: 12.minutes.ago)
+    fast_rotary_lead.activities.create!(tenant: admin.tenant, kind: "accepted", created_at: 2.minutes.ago)
+    seconds_lead.activities.create!(tenant: admin.tenant, kind: "distributed", metadata: { admin_user_id: broker.id }, created_at: 40.seconds.ago)
+    seconds_lead.activities.create!(tenant: admin.tenant, kind: "accepted", created_at: 20.seconds.ago)
 
-    get admin_dashboard_section_path("rankings", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
+    get admin_dashboard_section_path("broker_performance", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Performance e gargalo por corretor")
+    document = Nokogiri::HTML(response.body)
+    expect(response.body).to include("Performance dos Corretores")
+    expect(response.body).to include("Entenda o ciclo do lead com cada corretor")
+    expect(response.body).to include('data-ax-modal-open="#brokerPerformanceSourcesModal"')
+    expect(response.body).to include('id="brokerPerformanceSourcesModal"')
+    expect(response.body).to include("Origem dos dados da Performance dos Corretores")
     expect(response.body).to include(broker.name)
-    expect(response.body).to include("visitas")
-    expect(response.body).to include("propostas")
-    expect(response.body).to include("concluídos")
-    expect(response.body).to include("avanço")
-    expect(response.body).to include("agir")
-    expect(response.body).to include("attention_filter=requires_action")
+    expect(response.body).to include("ax-dashboard-performance__details")
+    expect(response.body).to include("Total")
+    expect(response.body).to include("7</b> leads")
+    expect(response.body).to include("Recebidos")
+    expect(response.body).to include("Atendidos")
+    expect(response.body).to include("4</b> atendidos")
+    expect(response.body).not_to include("Último movimento")
+    expect(response.body).to include("Recebeu")
+    expect(response.body).to include("Abriu")
+    expect(response.body).to include("Tentou contato")
+    expect(response.body).to include("Situação")
+    expect(response.body).to include("Tentativas registradas no histórico")
+    expect(response.body).to include("WhatsApp · Não respondeu")
+    expect(response.body).to include("Chamou no WhatsApp e não retornou.")
+    expect(response.body).to include("rodízio")
+    expect(response.body).to include("bolsão")
+    expect(response.body).to include("20 seg")
+    expect(response.body).to include("10 min")
+    expect(response.body).not_to include("8.0 h")
+    expect(response.body).to include("aguardando abertura do corretor")
+    expect(response.body).to include("cliente respondeu, mas sem abertura registrada")
+    expect(response.body).to include("tentativa registrada, mas sem abertura")
+    expect(response.body).not_to include("sem contato")
+    expect(response.body).not_to include("sem retorno")
+    expect(response.body).not_to include("SLA e perdas")
+    expect(response.body).not_to include("passou do prazo configurado")
+    expect(response.body).to include(open_lead.name)
+    expect(response.body).to include(admin_lead_path(open_lead))
+    pool_lead_details = document.at_xpath("//details[contains(@class, 'ax-dashboard-performance__lead-details')][.//a[@href='#{admin_lead_path(open_lead)}']]")
+    expect(pool_lead_details.text).to include("Bolsão", "não abriu", "1 tentativa", "tentativa registrada, mas sem abertura")
+    expect(pool_lead_details.text).not_to include("vencido")
+    in_service_details = document.at_xpath("//details[contains(@class, 'ax-dashboard-performance__lead-details')][.//a[@href='#{admin_lead_path(in_service_lead)}']]")
+    expect(in_service_details.text).to include("Rodízio", "em atendimento sem registro", "cliente respondeu")
+    expect(in_service_details.text).not_to include("sem contato", "sem retorno", "vencido")
+    no_open_response_details = document.at_xpath("//details[contains(@class, 'ax-dashboard-performance__lead-details')][.//a[@href='#{admin_lead_path(no_open_response_lead)}']]")
+    expect(no_open_response_details.text).to include("não abriu", "cliente respondeu, mas sem abertura registrada")
   end
 
   it "renderiza oferta versus demanda usando leads vinculados a imóveis" do
@@ -880,7 +900,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(Nokogiri::HTML(response.body).css("progress.ax-progress__bar")).not_to be_empty
   end
 
-  it "gera a serie de leads dos ultimos 30 dias incluindo o dia atual" do
+  it "gera a serie de leads dos ultimos 7 dias incluindo o dia atual" do
     isolated_tenant = Tenant.create!(name: "Tenant dashboard serie #{SecureRandom.hex(3)}", slug: "tenant-dashboard-serie-#{SecureRandom.hex(3)}")
     isolated_admin = create(:admin_user, :admin, tenant: isolated_tenant)
     sign_out admin
@@ -895,40 +915,36 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     end
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("&quot;2026-05-18&quot;")
     expect(response.body).to include("&quot;2026-06-16&quot;")
-    expect(response.body).not_to include("&quot;2026-05-17&quot;")
-    expect(response.body).to include("2 total")
+    expect(response.body).not_to include("&quot;2026-06-09&quot;")
+    expect(response.body).not_to include("&quot;2026-05-18&quot;")
+    expect(response.body).to include("1 total")
   end
 
-  it "permite selecionar um dia e agrupa as conversões pela hora de entrada do lead" do
+  it "faz aquisição acompanhar o período principal sem filtro de data próprio" do
     travel_to Time.zone.local(2026, 6, 16, 18, 0, 0) do
       create(:lead, created_at: Time.zone.local(2026, 6, 15, 9, 10, 0))
       create(:lead, created_at: Time.zone.local(2026, 6, 15, 9, 55, 0))
       create(:lead, created_at: Time.zone.local(2026, 6, 15, 17, 20, 0))
       create(:lead, created_at: Time.zone.local(2026, 6, 16, 9, 0, 0))
 
-      get admin_dashboard_section_path("charts", lead_date: "2026-06-15"),
+      get admin_dashboard_section_path("charts", start_date: "2026-06-15", end_date: "2026-06-15"),
           headers: { "Turbo-Frame" => "admin_dashboard_charts" }
     end
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Leads por hora")
     expect(response.body).to include("3 total")
-    expect(response.body).to include("&quot;09h&quot;,2")
-    expect(response.body).to include("&quot;17h&quot;,1")
-    expect(response.body).to include('data-dashboard-charts-leads-mode-value="hourly"')
-    expect(response.body).to include('type="date"')
-    expect(response.body).to include('value="2026-06-15"')
-    expect(response.body).to include("30 dias")
+    expect(response.body).to include("&quot;2026-06-15&quot;,3")
+    expect(response.body).to include('data-dashboard-charts-leads-mode-value="daily"')
+    expect(response.body).not_to include('type="date"')
   end
 
-  it "ignora data horária fora da janela de 30 dias" do
+  it "ignora lead_date antigo e mantém o período principal" do
     get admin_dashboard_section_path("charts", lead_date: 31.days.ago.to_date.iso8601),
         headers: { "Turbo-Frame" => "admin_dashboard_charts" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Leads — últimos 30 dias")
+    expect(response.body).to include("Leads —")
     expect(response.body).to include('data-dashboard-charts-leads-mode-value="daily"')
   end
 end

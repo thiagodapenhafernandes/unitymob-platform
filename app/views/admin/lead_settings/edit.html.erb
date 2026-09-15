@@ -92,11 +92,27 @@
         <%# ===== SLA ===== %>
         <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Atendimento", title: "SLA de primeiro contato") do %>
           <div class="ax-panel-body">
-            <%= ax_number_field(form: f, method: :first_contact_sla_hours, label: "Prazo em horas",
-                  min: 1,
-                  max: 168,
-                  placeholder: LeadSetting::DEFAULT_FIRST_CONTACT_SLA_HOURS,
-                  hint: "Usado no dashboard e nos filtros de leads para apontar quem passou do prazo sem primeiro atendimento.") %>
+            <div class="tw-grid tw-gap-3 md:tw-grid-cols-[220px_1fr]">
+              <%= ax_select_field(form: f, method: :first_contact_sla_duration_unit, label: "Unidade",
+                    choices: [["Minutos", "minutes"], ["Horas", "hours"], ["Dias", "days"]],
+                    html_options: {
+                      data: {
+                        lead_settings_target: "slaUnit",
+                        action: "change->lead-settings#syncSlaDuration"
+                      }
+                    }) %>
+              <%= ax_number_field(form: f, method: :first_contact_sla_duration_value, label: "Prazo",
+                    min: 1,
+                    max: LeadSetting::FIRST_CONTACT_SLA_UNITS.dig(@lead_setting.first_contact_sla_duration_unit, :max),
+                    placeholder: @lead_setting.first_contact_sla_duration_value,
+                    data: {
+                      lead_settings_target: "slaValue",
+                      action: "input->lead-settings#limitSlaDuration change->lead-settings#clampSlaDuration blur->lead-settings#clampSlaDuration"
+                    }) %>
+            </div>
+            <p class="ax-field__hint" data-lead-settings-target="slaHint">
+              Usado no dashboard e nos filtros de leads para apontar quem passou de <%= @lead_setting.first_contact_sla_duration_label %> sem primeiro atendimento.
+            </p>
           </div>
         <% end %>
 
@@ -187,7 +203,7 @@
             <% lead_status_rows << { label: "Janela", value: ax_badge(@lead_setting.window_forever? ? "Para sempre" : "#{@lead_setting.stickiness_window_days} dias", tone: :blue) } %>
           <% end %>
           <% lead_status_rows.concat([
-            { label: "SLA 1º contato", value: ax_badge("#{@lead_setting.first_contact_sla_hours_value}h", tone: :blue) },
+            { label: "SLA 1º contato", value: ax_badge(@lead_setting.first_contact_sla_duration_label, tone: :blue) },
             { label: "Automação de etapas", value: ax_badge("a cada #{@lead_setting.stage_automation_sweep_interval_minutes_value} min", tone: :blue) },
             { label: "Conversa no lead", value: ax_badge(@lead_setting.lead_whatsapp_conversation_enabled? ? "Ligada" : "Desligada", tone: @lead_setting.lead_whatsapp_conversation_enabled? ? :green : :gray, dot: true) },
             { label: "Link seguro", value: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) },

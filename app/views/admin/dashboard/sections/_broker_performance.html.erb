@@ -1,0 +1,144 @@
+<%= turbo_frame_tag "admin_dashboard_broker_performance" do %>
+  <% if @is_admin_view && %w[all leads].include?(@dashboard_tab) %>
+    <article class="ax-dashboard-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Inteligência comercial · <%= @dashboard_period %> dias</span>
+          <div class="ax-dashboard-performance__title-row">
+            <h2>Performance dos Corretores</h2>
+            <button type="button"
+                    class="ax-dashboard-performance__info"
+                    data-ax-modal-open="#brokerPerformanceSourcesModal"
+                    aria-label="Ver origem dos dados da performance dos corretores">i</button>
+          </div>
+          <p class="ax-dashboard-performance__subtitle">Entenda o ciclo do lead com cada corretor: recebeu, abriu, tentou contato e onde parou.</p>
+        </div>
+        <%= link_to "Gerar relatório",
+                    admin_dashboard_broker_performance_report_path(request.query_parameters.slice("period_preset", "period", "start_date", "end_date", "broker_id")),
+                    class: "ax-dashboard-panel__link",
+                    data: { turbo_frame: "_top" } %>
+      </div>
+      <div class="ax-dashboard-performance ax-dashboard-performance--report">
+        <div class="ax-dashboard-performance__head" aria-hidden="true">
+          <span>Corretor <i title="Corretor responsável pelos leads no período filtrado.">i</i></span>
+          <span>Total <i title="Total de leads atribuídos ao corretor dentro do período filtrado.">i</i></span>
+          <span>Recebidos <i title="Separação entre leads enviados por rodízio e leads assumidos no bolsão.">i</i></span>
+          <span>Atendidos <i title="Leads que tiveram clique, aceite ou atendimento registrado no sistema.">i</i></span>
+          <span>Tentativas <i title="Tentativas registradas no histórico do lead: ligação, WhatsApp, e-mail ou visita.">i</i></span>
+        </div>
+        <% @broker_performance.each do |row| %>
+          <details class="ax-dashboard-performance__details">
+            <summary class="ax-dashboard-performance__row">
+              <span class="ax-dashboard-performance__identity">
+                <strong><%= row[:name] %></strong>
+              </span>
+              <span class="ax-dashboard-performance__badges ax-dashboard-performance__badges--total">
+                <em class="is-total"><b><%= row[:total] %></b> leads</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-rotary"><b><%= row[:rotary_count] %></b> rodízio</em>
+                <em class="is-pool"><b><%= row[:pool_count] %></b> bolsão</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-<%= row[:opened_count].to_i.positive? ? "green" : "gray" %>"><b><%= row[:opened_count] %></b> atendidos</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-<%= row[:contact_attempts_count].to_i.positive? ? "amber" : "gray" %>"><b><%= row[:contact_attempts_count] %></b> registradas</em>
+              </span>
+            </summary>
+            <div class="ax-dashboard-performance__leads">
+              <% if row[:leads].any? %>
+                <div class="ax-dashboard-performance__lead-head" aria-hidden="true">
+                  <span>Lead</span>
+                  <span>Recebeu</span>
+                  <span>Abriu</span>
+                  <span>Tentou contato</span>
+                  <span>Situação</span>
+                  <span>Recebido</span>
+                </div>
+                <% row[:leads].each do |item| %>
+                  <details class="ax-dashboard-performance__lead-details">
+                    <summary class="ax-dashboard-performance__lead">
+                      <strong><%= item[:name] %></strong>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:entry_tone] %>"><%= item[:entry_label] %></em>
+                      </span>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:opened_tone] %>"><%= item[:opened_label] %></em>
+                      </span>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:contact_tone] %>"><%= item[:contact_label] %></em>
+                      </span>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:story_tone] %>"><%= item[:story_label] %></em>
+                      </span>
+                      <time datetime="<%= item[:created_at].iso8601 %>"><%= l(item[:created_at], format: :short) %></time>
+                    </summary>
+                    <div class="ax-dashboard-performance__lead-history">
+                      <div class="ax-dashboard-performance__lead-history-head">
+                        <strong>Tentativas registradas no histórico</strong>
+                        <%= link_to "Abrir lead", admin_lead_path(item[:lead]), data: { turbo_frame: "_top" } %>
+                      </div>
+                      <% if item[:contact_attempts].any? %>
+                        <% item[:contact_attempts].each do |attempt| %>
+                          <div class="ax-dashboard-performance__attempt">
+                            <span>
+                              <strong><%= attempt[:kind] %> · <%= attempt[:result] %></strong>
+                              <time datetime="<%= attempt[:created_at].iso8601 %>"><%= l(attempt[:created_at], format: :short) %></time>
+                            </span>
+                            <p><%= truncate(attempt[:body], length: 150) %></p>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <p class="ax-dashboard-performance__lead-empty">Nenhuma tentativa registrada no histórico deste lead.</p>
+                      <% end %>
+                    </div>
+                  </details>
+                <% end %>
+              <% else %>
+                <div class="ax-dashboard-empty-row">Sem leads para este corretor no período.</div>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+        <% if @broker_performance.empty? %>
+          <div class="ax-dashboard-empty-row">Sem leads atribuídos no período.</div>
+        <% end %>
+        <footer class="ax-dashboard-performance__legend">
+          <span>Recebeu: lead enviado por rodízio ou assumido no bolsão</span>
+          <span>Abriu: clique/aceite registrado no sistema</span>
+          <span>Tentou contato: ligação, WhatsApp, e-mail ou visita registrados no histórico</span>
+          <span>Situação: leitura prática do ponto em que o lead parou</span>
+        </footer>
+      </div>
+    </article>
+
+    <%= ax_quick_modal(id: "brokerPerformanceSourcesModal", title: "Origem dos dados da Performance dos Corretores", size: :md, class_name: "ax-dashboard-performance-modal") do %>
+      <div class="ax-dashboard-performance-sources">
+        <p>Este bloco consolida eventos reais dos leads dentro do escopo selecionado no painel.</p>
+        <dl>
+          <div>
+            <dt>Rodízio</dt>
+            <dd>Leads enviados automaticamente para um corretor pela regra de distribuição.</dd>
+          </div>
+          <div>
+            <dt>Bolsão</dt>
+            <dd>Leads que ficaram disponíveis para a equipe assumir, incluindo bolsão/Shark Tank.</dd>
+          </div>
+          <div>
+            <dt>Tempo médio</dt>
+            <dd>Tempo entre a entrada naquele canal, rodízio ou bolsão, e o clique/aceite registrado pelo sistema.</dd>
+          </div>
+          <div>
+            <dt>Situação do lead</dt>
+            <dd>Leitura operacional do ciclo: se abriu, se registrou tentativa, se o cliente respondeu ou se o lead voltou para redistribuição.</dd>
+          </div>
+          <div>
+            <dt>Tentativas de contato</dt>
+            <dd>Registros manuais do histórico do lead: ligação, WhatsApp, e-mail ou visita, com resultado e observação.</dd>
+          </div>
+        </dl>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>
