@@ -502,6 +502,7 @@ class HabitationsController < ApplicationController
   def search_params
     permitted = params.permit(
       :page,
+      :seo_slug,
       :transaction_type,
       :finalidade,
       :category,
@@ -534,6 +535,7 @@ class HabitationsController < ApplicationController
       characteristics: []
     )
     permitted.delete(:page)
+    permitted.delete(:seo_slug)
 
     permitted[:transaction_type] = normalize_transaction_type(permitted[:transaction_type].presence || permitted[:finalidade])
     permitted[:category] = permitted[:category].presence || permitted[:tipo]

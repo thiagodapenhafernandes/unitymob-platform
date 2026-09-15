@@ -41,6 +41,8 @@ module Admin
         :stickiness_fallback,
         :stickiness_window_days,
         :first_contact_sla_hours,
+        :first_contact_sla_duration_value,
+        :first_contact_sla_duration_unit,
         :stage_automation_sweep_interval_minutes,
         :lead_whatsapp_conversation_enabled,
         :secure_links_enabled,

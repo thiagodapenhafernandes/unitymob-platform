@@ -10,33 +10,9 @@
     <div class="ax-dashboard-panel__header">
       <div>
         <span class="ax-dashboard-panel__eyebrow">Aquisição</span>
-        <h2>
-          <% if @selected_lead_date %>
-            <%= @is_admin_view ? "Leads por hora" : "Meus leads por hora" %> — <%= l(@selected_lead_date, format: :short) %>
-          <% else %>
-            <%= @is_admin_view ? "Leads — últimos #{@dashboard_period} dias" : "Meus leads — últimos #{@dashboard_period} dias" %>
-          <% end %>
-        </h2>
+        <h2><%= @is_admin_view ? "Leads" : "Meus leads" %> — <%= @dashboard_period_label %></h2>
       </div>
       <div class="ax-dashboard-panel__actions">
-        <%= form_with url: admin_dashboard_section_path("charts"), method: :get, class: "ax-dashboard-hour-filter", data: { turbo_frame: "admin_dashboard_charts" } do %>
-          <%= hidden_field_tag :period, @dashboard_period %>
-          <%= hidden_field_tag :broker_id, @dashboard_broker_id if @dashboard_broker_id.present? %>
-          <i class="bi bi-calendar3" aria-hidden="true"></i>
-          <%= date_field_tag :lead_date,
-                @selected_lead_date&.iso8601,
-                class: "ax-control",
-                min: @lead_date_min.iso8601,
-                max: @lead_date_max.iso8601,
-                aria: { label: "Selecionar dia para visualizar conversões por hora" },
-                onchange: "this.form.requestSubmit()" %>
-        <% end %>
-        <% if @selected_lead_date %>
-          <%= link_to "#{@dashboard_period} dias",
-                admin_dashboard_section_path("charts", period: @dashboard_period, broker_id: @dashboard_broker_id),
-                class: "ax-btn ax-btn--sm",
-                data: { turbo_frame: "admin_dashboard_charts" } %>
-        <% end %>
         <%= ax_badge("#{@leads_total} total", tone: :blue) %>
       </div>
     </div>

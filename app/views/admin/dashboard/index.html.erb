@@ -3,8 +3,26 @@
   hour = Time.current.hour
   greeting = hour < 12 ? "Bom dia" : (hour < 18 ? "Boa tarde" : "Boa noite")
   first_name = current_admin_user.name.to_s.split.first.presence || current_admin_user.email
-  dashboard_filter_params = { period: @dashboard_period, tab: @dashboard_tab }
+  dashboard_filter_params = {
+    period_preset: @dashboard_period_preset,
+    period: @dashboard_period,
+    start_date: @dashboard_start_date.iso8601,
+    end_date: @dashboard_end_date.iso8601,
+    tab: @dashboard_tab
+  }
   dashboard_filter_params[:broker_id] = @dashboard_broker_id if @dashboard_broker_id.present?
+  dashboard_preset_range = lambda do |preset|
+    today = Date.current
+    case preset
+    when "yesterday" then [today.yesterday, today.yesterday]
+    when "this_week" then [today.beginning_of_week, today]
+    when "this_month" then [today.beginning_of_month, today]
+    when "last_7" then [today - 6.days, today]
+    when "last_14" then [today - 13.days, today]
+    when "last_6_months" then [today - 6.months + 1.day, today]
+    else [today - 29.days, today]
+    end
+  end
 
   dashboard_subtitle =
     if @is_admin_view && @field_feature_enabled
@@ -42,40 +60,71 @@
   </header>
 
   <nav class="ax-dashboard-tabs" aria-label="Áreas do dashboard">
-    <% dashboard_tabs = [["overview", "Visão geral", "grid-1x2"], ["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"], ["site", "Site público", "globe2"]] %>
+    <% dashboard_tabs = [["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"], ["site", "Site público", "globe2"], ["overview", "Visão geral", "grid-1x2"]] %>
     <% dashboard_tabs << ["field", "Campo", "geo-alt"] if @field_feature_enabled %>
     <% dashboard_tabs.each do |key, label, icon| %>
-      <%= link_to admin_root_path(tab: key, period: @dashboard_period, broker_id: @dashboard_broker_id),
+      <%= link_to admin_root_path(dashboard_filter_params.merge(tab: key)),
                   class: "ax-dashboard-tabs__item #{'is-active' if @dashboard_tab == key}",
                   aria: { current: (@dashboard_tab == key ? "page" : nil) } do %>
         <span class="ax-dashboard-tabs__main">
           <i class="bi bi-<%= icon %>"></i>
           <span class="ax-dashboard-tabs__label"><%= label %></span>
         </span>
-        <% if (badges = @dashboard_tab_badges[key]).present? %>
-          <span class="ax-dashboard-tabs__badges" aria-label="Indicadores de <%= label %>">
-            <% badges.each do |badge| %>
-              <span class="ax-dashboard-tabs__badge ax-dashboard-tabs__badge--<%= badge[:tone] %>"
-                    title="<%= badge[:title] %>"
-                    aria-label="<%= "#{badge[:label]}: #{number_with_delimiter(badge[:value])}. #{badge[:title]}" %>">
-                <span class="ax-dashboard-tabs__badge-value"><%= number_with_delimiter(badge[:value]) %></span>
-                <span class="ax-dashboard-tabs__badge-label"><%= badge[:label] %></span>
-              </span>
-            <% end %>
-          </span>
-        <% end %>
       <% end %>
     <% end %>
   </nav>
 
-  <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-filters", data: { turbo: false } do |form| %>
-    <%= form.hidden_field :tab, value: @dashboard_tab %>
+  <div class="ax-dashboard-filters">
     <span><i class="bi bi-funnel"></i> Escopo do painel</span>
-    <%= form.select :period, [["7 dias", 7], ["30 dias", 30], ["90 dias", 90]], { selected: @dashboard_period }, class: "ax-control", aria: { label: "Período do dashboard" }, onchange: "this.form.requestSubmit()" %>
+    <details class="ax-dashboard-period">
+      <summary class="ax-dashboard-period__summary">
+        <i class="bi bi-calendar3"></i>
+        <strong><%= @dashboard_period_label %></strong>
+        <i class="bi bi-chevron-down"></i>
+      </summary>
+      <div class="ax-dashboard-period__menu">
+        <% preset_options = [
+          ["Ontem", "yesterday"],
+          ["Esta semana", "this_week"],
+          ["Este mês", "this_month"],
+          ["Últimos 7 dias", "last_7"],
+          ["Últimos 14 dias", "last_14"],
+          ["Últimos 30 dias", "last_30"],
+          ["Últimos 6 meses", "last_6_months"]
+        ] %>
+        <% preset_options.each_with_index do |(label, preset), index| %>
+          <% preset_start, preset_end = dashboard_preset_range.call(preset) %>
+          <%= link_to label,
+                admin_root_path(dashboard_filter_params.merge(period_preset: preset, start_date: preset_start.iso8601, end_date: preset_end.iso8601)),
+                class: "ax-dashboard-period__option #{'is-active' if @dashboard_period_preset == preset}" %>
+          <% if [2].include?(index) %>
+            <hr class="ax-dashboard-period__divider" aria-hidden="true" />
+          <% end %>
+        <% end %>
+        <hr class="ax-dashboard-period__divider" aria-hidden="true" />
+        <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-period__custom", data: { turbo: false } do |form| %>
+          <strong>Período personalizado</strong>
+          <%= form.hidden_field :tab, value: @dashboard_tab %>
+          <%= form.hidden_field :period_preset, value: "custom" %>
+          <%= form.hidden_field :broker_id, value: @dashboard_broker_id if @dashboard_broker_id.present? %>
+          <div>
+            <%= form.date_field :start_date, value: @dashboard_start_date.iso8601, class: "ax-control", aria: { label: "Data inicial" } %>
+            <%= form.date_field :end_date, value: @dashboard_end_date.iso8601, class: "ax-control", aria: { label: "Data final" } %>
+          </div>
+          <%= form.submit "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+        <% end %>
+      </div>
+    </details>
     <% if @is_admin_view %>
-      <%= form.select :broker_id, [["Todos os corretores", ""]] + @dashboard_brokers.map { |broker| [broker.name, broker.id] }, { selected: @dashboard_broker_id }, class: "ax-control", aria: { label: "Corretor do dashboard" }, onchange: "this.form.requestSubmit()" %>
+      <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-broker-filter", data: { turbo: false } do |form| %>
+        <%= form.hidden_field :tab, value: @dashboard_tab %>
+        <%= form.hidden_field :period_preset, value: @dashboard_period_preset %>
+        <%= form.hidden_field :start_date, value: @dashboard_start_date.iso8601 %>
+        <%= form.hidden_field :end_date, value: @dashboard_end_date.iso8601 %>
+        <%= form.select :broker_id, [["Todos os corretores", ""]] + @dashboard_brokers.map { |broker| [broker.name, broker.id] }, { selected: @dashboard_broker_id }, class: "ax-control", aria: { label: "Corretor do dashboard" }, onchange: "this.form.requestSubmit()" %>
+      <% end %>
     <% end %>
-  <% end %>
+  </div>
 
   <% if @dashboard_tab == "overview" %>
   <section class="ax-dashboard-panel ax-dashboard-actions" aria-labelledby="dashboard-actions-title">
@@ -176,10 +225,18 @@
   <% end %>
 
   <% if @dashboard_tab == "leads" %>
+  <%= turbo_frame_tag "admin_dashboard_broker_performance", src: admin_dashboard_section_path("broker_performance", dashboard_filter_params), loading: "lazy" do %>
+    <%= render "admin/dashboard/sections/loading_panel", title: "Performance dos Corretores", eyebrow: "Inteligência comercial", rows: 6, compact: true %>
+  <% end %>
+
+  <%= turbo_frame_tag "admin_dashboard_acquisition", src: admin_dashboard_section_path("acquisition", dashboard_filter_params) do %>
+    <%= render "admin/dashboard/sections/loading_panel", title: "Campanhas e origens que performam", eyebrow: "Aquisição", rows: 4 %>
+  <% end %>
+
   <div class="ax-dashboard-grid ax-dashboard-grid--primary ax-dashboard-grid--lead-top">
     <%= turbo_frame_tag "admin_dashboard_charts", src: admin_dashboard_section_path("charts", dashboard_filter_params) do %>
       <%= render "admin/dashboard/sections/loading_panel",
-                 title: "Leads - últimos 30 dias",
+                 title: "Leads",
                  eyebrow: "Aquisição",
                  chart: true %>
     <% end %>
@@ -192,19 +249,6 @@
   <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel", dashboard_filter_params) do %>
     <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", rows: 4 %>
   <% end %>
-
-  <%= turbo_frame_tag "admin_dashboard_acquisition", src: admin_dashboard_section_path("acquisition", dashboard_filter_params), loading: "lazy" do %>
-    <%= render "admin/dashboard/sections/loading_panel", title: "Origem dos leads", eyebrow: "Aquisição", chart: true %>
-  <% end %>
-
-  <%= turbo_frame_tag "admin_dashboard_service", src: admin_dashboard_section_path("service", dashboard_filter_params), loading: "lazy" do %>
-    <div class="ax-dashboard-grid ax-dashboard-grid--service">
-      <%= render "admin/dashboard/sections/loading_panel", title: "SLA e fila de leads", eyebrow: "Atendimento", rows: 4 %>
-      <%= render "admin/dashboard/sections/loading_panel", title: "Atendimento pelo inbox", eyebrow: "WhatsApp", rows: 3 %>
-    </div>
-  <% end %>
-
-  <%= render "admin/dashboard/sections/rankings" %>
   <% end %>
 
   <% if @dashboard_tab == "properties" %>

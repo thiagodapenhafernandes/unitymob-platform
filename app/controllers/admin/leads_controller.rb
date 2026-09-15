@@ -873,6 +873,7 @@ class Admin::LeadsController < Admin::BaseController
     @lead_pipeline_stage_id = params[:lead_pipeline_stage_id].to_s
     @origin = params[:origin]
     @attribution_channel = params[:attribution_channel]
+    @source_filter = params[:source_filter].to_s.strip
     @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
     @only_mine = params[:only_mine].to_s == "1"
     @broker_id = @only_mine ? current_admin_user&.id.to_s : params[:broker_id]
@@ -907,6 +908,7 @@ class Admin::LeadsController < Admin::BaseController
     scope = scope.where(leads: { lead_pipeline_id: @selected_pipeline.id }) if @selected_pipeline.present?
     scope = apply_status_filter(scope)
     scope = apply_pipeline_stage_filter(scope)
+    scope = apply_source_filter(scope)
     scope = scope.by_origin(@origin)
     scope = apply_attribution_channel_filter(scope)
     scope = scope.with_any_tags(@tags)
@@ -963,7 +965,14 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def hide_waiting_acceptance_from_common_scope(scope)
+    return scope if explicit_waiting_acceptance_filter?
+
     scope.where("leads.status IS NULL OR leads.status <> ?", Lead.status_value(:waiting_acceptance, tenant: current_tenant))
+  end
+
+  def explicit_waiting_acceptance_filter?
+    waiting_status = Lead.status_value(:waiting_acceptance, tenant: current_tenant)
+    @status_filters.any? { |status| Lead.status_value(status, tenant: current_tenant) == waiting_status }
   end
 
   def kanban_status_tone
@@ -1040,6 +1049,21 @@ class Admin::LeadsController < Admin::BaseController
     else
       scope.where(attribution_channel: @attribution_channel)
     end
+  end
+
+  def apply_source_filter(scope)
+    return scope if @source_filter.blank?
+
+    source_sql = <<~SQL.squish
+      COALESCE(
+        NULLIF(TRIM(leads.origin), ''),
+        NULLIF(TRIM(leads.attribution_data ->> 'label'), ''),
+        NULLIF(TRIM(leads.attribution_source), ''),
+        NULLIF(TRIM(leads.attribution_channel), ''),
+        'direct'
+      ) = ?
+    SQL
+    scope.where(source_sql, @source_filter)
   end
 
   def apply_business_filter(scope)
@@ -1150,6 +1174,10 @@ class Admin::LeadsController < Admin::BaseController
       scope.where(status: active_lead_status_values_with_blank).where(id: operational_task_scope.hoje.select(:lead_id))
     when "stalled"
       scope.where(status: active_lead_status_values_with_blank).where("leads.updated_at < ?", 2.days.ago)
+    when "interest_quente_stalled"
+      scope.where(id: interest_classification_ids(scope, "quente", 1.day.ago))
+    when "interest_morno_stalled"
+      scope.where(id: interest_classification_ids(scope, "morno", 3.days.ago))
     when "unassigned"
       scope.where(admin_user_id: nil, status: active_lead_status_values_with_blank)
     when "holding"
@@ -1184,6 +1212,14 @@ class Admin::LeadsController < Admin::BaseController
     else
       scope
     end
+  end
+
+  def interest_classification_ids(scope, classification, stale_before)
+    scope
+      .where(status: active_lead_status_values_with_blank)
+      .where("leads.updated_at < ?", stale_before)
+      .includes(:lead_pipeline_stage, :archive_reason, :activities, :appointments, :proposals, :public_navigation_events, :ai_property_share_collections)
+      .filter_map { |lead| lead.id if InterestIntelligence::Journey.call(lead)[:classification] == classification }
   end
 
   def eligible_automation_lead_ids(action_type:)

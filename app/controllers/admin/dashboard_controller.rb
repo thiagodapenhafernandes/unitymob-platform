@@ -1,9 +1,12 @@
+require "csv"
+
 class Admin::DashboardController < Admin::BaseController
   include DeviceRequest
 
-  DASHBOARD_SECTIONS = %w[charts acquisition funnel status service rankings operations support site].freeze
-  DASHBOARD_TABS = %w[overview leads properties site field].freeze
-  DASHBOARD_PERIODS = [7, 30, 90].freeze
+  DASHBOARD_SECTIONS = %w[charts acquisition funnel status service broker_performance rankings operations support site].freeze
+  DASHBOARD_TABS = %w[leads overview properties site field].freeze
+  DASHBOARD_PERIODS = [7, 14, 30, 90, 180].freeze
+  DASHBOARD_PERIOD_PRESETS = %w[yesterday this_week this_month last_7 last_14 last_30 last_6_months custom].freeze
   OVERVIEW_CACHE_EXPIRATION = 2.minutes
   DASHBOARD_AGGREGATE_CACHE_EXPIRATION = 5.minutes
   CONTACT_ACTIVITY_KINDS = %w[
@@ -15,8 +18,7 @@ class Admin::DashboardController < Admin::BaseController
   before_action :set_dashboard_context
 
   def index
-    load_overview_slice
-    load_rankings_slice if @dashboard_tab == "leads"
+    load_overview_slice if @dashboard_tab == "overview"
   end
 
   def section
@@ -33,10 +35,18 @@ class Admin::DashboardController < Admin::BaseController
     render partial: "admin/dashboard/sections/#{section_name}", layout: false
   end
 
+  def broker_performance_report
+    return head :forbidden unless @is_admin_view
+
+    send_data broker_performance_report_csv,
+              filename: "performance_corretores_#{@dashboard_start_date.iso8601}_#{@dashboard_end_date.iso8601}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
   private
 
   def dashboard_section_redirect_params(section_name)
-    redirect_params = { period: @dashboard_period }
+    redirect_params = dashboard_date_params
     redirect_params[:tab] = section_name if DASHBOARD_TABS.include?(section_name)
     redirect_params[:tab] ||= params[:tab].to_s.presence_in(DASHBOARD_TABS)
     redirect_params[:broker_id] = @dashboard_broker_id if @dashboard_broker_id.present?
@@ -52,18 +62,21 @@ class Admin::DashboardController < Admin::BaseController
 
   def set_dashboard_context
     @is_admin_view = tenant_owner?
-    @dashboard_period = params[:period].to_i.presence_in(DASHBOARD_PERIODS) || 30
+    resolve_dashboard_period!
     @dashboard_broker_id = @is_admin_view ? params[:broker_id].presence&.to_i : current_admin_user.id
     @dashboard_brokers = @is_admin_view ? current_tenant.admin_users.active.order(:name).select(:id, :name) : []
     @habitation_scope = scoped_dashboard_habitations
     @lead_scope = scoped_dashboard_leads
     @captacao_scope = scoped_dashboard_captacoes
     @field_feature_enabled = FieldFeatureGate.field_checkin_enabled?(tenant: current_tenant)
-    requested_tab = params[:tab].to_s.presence_in(DASHBOARD_TABS) || "overview"
-    @dashboard_tab = requested_tab == "field" && !@field_feature_enabled ? "overview" : requested_tab
+    requested_tab = params[:tab].to_s.presence_in(DASHBOARD_TABS) || "leads"
+    @dashboard_tab = requested_tab == "field" && !@field_feature_enabled ? "leads" : requested_tab
     @dashboard_updated_at = Time.current
     @dashboard_window_start = dashboard_window_start
-    @first_contact_sla_hours = LeadSetting.instance(tenant: current_tenant).first_contact_sla_hours_value
+    @dashboard_window_end = dashboard_window_end
+    lead_setting = LeadSetting.instance(tenant: current_tenant)
+    @first_contact_sla_hours = lead_setting.first_contact_sla_hours_value
+    @first_contact_sla_label = lead_setting.first_contact_sla_duration_label
   end
 
   # Os ~18 counts do overview rodavam em TODA visita ao dashboard. KPIs de
@@ -149,23 +162,12 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def load_charts_slice
-    @lead_date_min = dashboard_window_start.to_date
-    @lead_date_max = Date.current
-    @selected_lead_date = selected_lead_date
-    chart_scope = valid_dashboard_leads_scope
+    chart_scope = valid_dashboard_leads_scope.where(created_at: dashboard_window_start..dashboard_window_end)
     @leads_by_status = chart_scope.group(:status).count
-
-    if @selected_lead_date
-      @leads_series = leads_hourly_series(@selected_lead_date, chart_scope)
-      @leads_total = @leads_series.sum { |_, count| count }
-      @leads_chart_mode = "hourly"
-      @leads_drilldown_urls = Array.new(24) { admin_leads_path(start_date: @selected_lead_date.iso8601, end_date: @selected_lead_date.iso8601, broker_id: @dashboard_broker_id) }
-    else
-      @leads_series = leads_time_series(30, chart_scope)
-      @leads_total = chart_scope.where("created_at >= ?", dashboard_window_start).count
-      @leads_chart_mode = "daily"
-      @leads_drilldown_urls = @leads_series.map { |date, _| admin_leads_path(start_date: date.iso8601, end_date: date.iso8601, broker_id: @dashboard_broker_id) }
-    end
+    @leads_series = leads_time_series(@dashboard_start_date, @dashboard_end_date, chart_scope)
+    @leads_total = chart_scope.count
+    @leads_chart_mode = "daily"
+    @leads_drilldown_urls = @leads_series.map { |date, _| admin_leads_path(start_date: date.iso8601, end_date: date.iso8601, broker_id: @dashboard_broker_id) }
   end
 
   def load_acquisition_slice
@@ -176,14 +178,13 @@ class Admin::DashboardController < Admin::BaseController
 
   def load_funnel_slice
     @commercial_funnel_rows = commercial_funnel_rows
-    @stage_time_rows = stage_time_rows
     @stage_loss_rows = stage_loss_rows
     @lead_temperature_rows = lead_temperature_rows
     @stage_reopen_rows = stage_reopen_rows
   end
 
   def load_status_slice
-    @leads_by_status = valid_dashboard_leads_scope.where("created_at >= ?", dashboard_window_start).group(:status).count
+    @leads_by_status = valid_dashboard_leads_scope.where(created_at: dashboard_window_start..dashboard_window_end).group(:status).count
     @lead_status_rows = @leads_by_status.map do |status, count|
       canonical_status = Lead.status_value(status.presence || Lead.default_status)
       {
@@ -192,21 +193,15 @@ class Admin::DashboardController < Admin::BaseController
         path: admin_leads_path(
           status: canonical_status,
           start_date: dashboard_window_start.to_date.iso8601,
-          end_date: Date.current.iso8601
+          end_date: @dashboard_end_date.iso8601
         )
       }
     end.sort_by { |row| -row[:count] }
   end
 
   def load_service_slice
-    @service_whatsapp_kpis = {
-      pending_reply: pending_whatsapp_reply_scope.count,
-      unread: dashboard_whatsapp_conversation_scope.unread.count,
-      avg_response_minutes: average_whatsapp_response_minutes
-    }
+    load_service_sla_metrics
     @service_sla_rows = service_sla_rows
-    @service_whatsapp_rows = service_whatsapp_rows
-    @service_campaign_rows = service_campaign_rows
   end
 
   def load_rankings_slice
@@ -222,8 +217,6 @@ class Admin::DashboardController < Admin::BaseController
                      []
                    end
 
-    @broker_performance = broker_performance_rows
-
     @top_stores = if @is_admin_view
                     CheckIn
                       .where(tenant: current_tenant)
@@ -236,6 +229,10 @@ class Admin::DashboardController < Admin::BaseController
                   else
                     []
                   end
+  end
+
+  def load_broker_performance_slice
+    @broker_performance = @is_admin_view ? broker_performance_rows : []
   end
 
   def load_operations_slice
@@ -286,13 +283,12 @@ class Admin::DashboardController < Admin::BaseController
     @site_home_section_clicks = site_home_section_clicks(site_events)
   end
 
-  def leads_time_series(days, scope = Lead)
-    start_date = (days - 1).days.ago.to_date
+  def leads_time_series(start_date, end_date, scope = Lead)
     rows = scope
-      .where("created_at >= ?", start_date.beginning_of_day)
+      .where(created_at: start_date.beginning_of_day..end_date.end_of_day)
       .group("DATE(created_at)")
       .count
-    (0...days).map do |i|
+    (0...((end_date - start_date).to_i + 1)).map do |i|
       d = start_date + i
       [d, rows[d] || 0]
     end
@@ -307,15 +303,12 @@ class Admin::DashboardController < Admin::BaseController
     (0..23).map { |hour| [format("%02dh", hour), counts[hour]] }
   end
 
-  def selected_lead_date
-    candidate = Date.iso8601(params[:lead_date].to_s)
-    return candidate if candidate.between?(dashboard_window_start.to_date, Date.current)
-  rescue Date::Error
-    nil
+  def dashboard_window_start
+    @dashboard_start_date.beginning_of_day
   end
 
-  def dashboard_window_start
-    (@dashboard_period - 1).days.ago.to_date.beginning_of_day
+  def dashboard_window_end
+    @dashboard_end_date.end_of_day
   end
 
   def first_contact_sla_hours
@@ -325,6 +318,54 @@ class Admin::DashboardController < Admin::BaseController
   def previous_dashboard_window
     current_start = dashboard_window_start
     (current_start - @dashboard_period.days)...current_start
+  end
+
+  def resolve_dashboard_period!
+    today = Date.current
+    preset = params[:period_preset].to_s.presence_in(DASHBOARD_PERIOD_PRESETS)
+    start_date = parse_dashboard_date(params[:start_date])
+    end_date = parse_dashboard_date(params[:end_date])
+
+    if start_date && end_date
+      preset ||= "custom"
+    else
+      preset ||= "last_#{params[:period].to_i}" if params[:period].to_i.presence_in(DASHBOARD_PERIODS)
+      preset ||= "last_7"
+      start_date, end_date = dashboard_preset_range(preset, today)
+    end
+
+    start_date, end_date = end_date, start_date if start_date > end_date
+    @dashboard_period_preset = preset
+    @dashboard_start_date = start_date
+    @dashboard_end_date = end_date
+    @dashboard_period = (end_date - start_date).to_i + 1
+    @dashboard_period_label = "#{I18n.l(start_date, format: :short)} – #{I18n.l(end_date, format: :short)}"
+  end
+
+  def dashboard_preset_range(preset, today)
+    case preset
+    when "yesterday" then [today.yesterday, today.yesterday]
+    when "this_week" then [today.beginning_of_week, today]
+    when "this_month" then [today.beginning_of_month, today]
+    when "last_7" then [today - 6.days, today]
+    when "last_14" then [today - 13.days, today]
+    when "last_6_months" then [today - 6.months + 1.day, today]
+    else [today - 29.days, today]
+    end
+  end
+
+  def parse_dashboard_date(value)
+    Date.iso8601(value.to_s)
+  rescue Date::Error
+    nil
+  end
+
+  def dashboard_date_params(extra = {})
+    {
+      period_preset: @dashboard_period_preset,
+      start_date: @dashboard_start_date.iso8601,
+      end_date: @dashboard_end_date.iso8601
+    }.merge(extra).compact_blank
   end
 
   def scoped_dashboard_habitations
@@ -430,7 +471,7 @@ class Admin::DashboardController < Admin::BaseController
           value: paid_without_contact.count,
           detail: "Meta/Google/Microsoft sem primeiro contato registrado",
           tone: paid_without_contact.exists? ? "red" : "green",
-          path: admin_leads_path(attention_filter: "no_first_contact", start_date: dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601)
+          path: admin_leads_path(attention_filter: "no_first_contact", start_date: dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601)
         }
       ]
 
@@ -442,7 +483,7 @@ class Admin::DashboardController < Admin::BaseController
           value: weak_paid_channel[:total],
           detail: "#{weak_paid_channel[:label]} com #{weak_paid_channel[:opportunity_rate]}% de avanço",
           tone: weak_paid_channel[:opportunity_rate].to_f < 10 ? "red" : "amber",
-          path: admin_leads_path(attribution_channel: weak_paid_channel[:key], start_date: dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601)
+          path: admin_leads_path(attribution_channel: weak_paid_channel[:key], start_date: dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601)
         }
       end
 
@@ -535,7 +576,7 @@ class Admin::DashboardController < Admin::BaseController
             value: average_hours,
             detail: "#{values[:count]} lead(s) abertos nesta etapa",
             tone: average_hours > 48 ? "amber" : "blue",
-            path: admin_leads_path(status: label, start_date: dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601)
+            path: admin_leads_path(status: label)
           }
         end.sort_by { |row| [-row[:value].to_f, row[:label].to_s] }.first(6)
       end
@@ -560,7 +601,7 @@ class Admin::DashboardController < Admin::BaseController
           value: count,
           detail: "oportunidade perdida a partir desta etapa",
           tone: "red",
-          path: admin_leads_path(status: label, start_date: dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601)
+          path: admin_leads_path(status: label)
         }
       end.sort_by { |row| [-row[:value].to_i, row[:label].to_s] }.first(6)
     end
@@ -592,7 +633,7 @@ class Admin::DashboardController < Admin::BaseController
           value: count,
           detail: "voltas de etapa no período",
           tone: count.positive? ? "amber" : "green",
-          path: admin_leads_path(status: label, start_date: dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601)
+          path: admin_leads_path(status: label)
         }
       end.sort_by { |row| [-row[:value].to_i, row[:label].to_s] }.first(6)
     end
@@ -809,7 +850,7 @@ class Admin::DashboardController < Admin::BaseController
         path: admin_leads_path(
           attribution_channel: "direct",
           start_date: dashboard_window_start.to_date.iso8601,
-          end_date: Date.current.iso8601,
+          end_date: @dashboard_end_date.iso8601,
           broker_id: @dashboard_broker_id
         )
       )
@@ -878,7 +919,7 @@ class Admin::DashboardController < Admin::BaseController
         value: @avg_first_contact_minutes,
         detail: @avg_first_contact_minutes.to_i.positive? ? "minutos nos leads com atendimento registrado" : "sem base suficiente no período",
         tone: @avg_first_contact_minutes.to_i > 240 ? "amber" : "blue",
-        path: admin_leads_path(start_date: dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601)
+        path: admin_leads_path(start_date: dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601)
       }
     ]
 
@@ -935,7 +976,7 @@ class Admin::DashboardController < Admin::BaseController
       answer: rows.any? ? "Etapas abertas com maior volume parado há mais de 48h." : "Nenhum gargalo de etapa aberto agora.",
       tone: rows.any? ? "amber" : "green",
       icon: "filter-circle",
-      path: admin_root_path(tab: "leads", period: @dashboard_period, broker_id: @dashboard_broker_id),
+      path: admin_root_path(dashboard_date_params(tab: "leads", broker_id: @dashboard_broker_id)),
       rows: rows,
       empty: "Sem etapa travada no período."
     }
@@ -949,7 +990,7 @@ class Admin::DashboardController < Admin::BaseController
       answer: rows.any? ? "Imóveis com leads no período e nenhuma visita registrada." : "Nenhum imóvel com demanda travada no período.",
       tone: rows.any? ? "amber" : "green",
       icon: "buildings",
-      path: admin_root_path(tab: "properties", period: @dashboard_period, broker_id: @dashboard_broker_id),
+      path: admin_root_path(dashboard_date_params(tab: "properties", broker_id: @dashboard_broker_id)),
       rows: rows,
       empty: "Sem imóvel com lead sem visita no período."
     }
@@ -991,10 +1032,11 @@ class Admin::DashboardController < Admin::BaseController
         detail: "#{channel[:percentage]}% dos leads",
         tone: channel[:key] == "direct" ? "amber" : "blue",
         path: admin_leads_path(
-          attribution_channel: channel[:key],
-          start_date: dashboard_window_start.to_date.iso8601,
-          end_date: Date.current.iso8601,
-          broker_id: @dashboard_broker_id
+          channel.fetch(:filter_params, { attribution_channel: channel[:key] }).merge(
+            start_date: dashboard_window_start.to_date.iso8601,
+            end_date: @dashboard_end_date.iso8601,
+            broker_id: @dashboard_broker_id
+          )
         )
       }
     end
@@ -1004,7 +1046,7 @@ class Admin::DashboardController < Admin::BaseController
       answer: acquisition[:attribution_rate].to_f.positive? ? "#{acquisition[:attribution_rate]}% dos leads têm origem identificada." : "Origem ainda pouco rastreada neste período.",
       tone: acquisition[:unknown].to_i.positive? ? "amber" : "blue",
       icon: "signpost-split",
-      path: admin_root_path(tab: "leads", period: @dashboard_period, broker_id: @dashboard_broker_id),
+      path: admin_root_path(dashboard_date_params(tab: "leads", broker_id: @dashboard_broker_id)),
       rows: rows,
       empty: "Sem leads no período para comparar canais."
     }
@@ -1031,118 +1073,32 @@ class Admin::DashboardController < Admin::BaseController
         value: @no_first_contact_leads,
         detail: "Leads sem registro de atendimento no histórico",
         tone: @no_first_contact_leads.to_i.positive? ? "red" : "green",
-        path: admin_leads_path(attention_filter: "no_first_contact")
+        path: admin_leads_path(attention_filter: "no_first_contact", start_date: dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601)
       },
       {
         label: "SLA #{first_contact_sla_hours}h vencido",
         value: @sla_overdue_leads,
         detail: "Entraram há mais de #{first_contact_sla_hours}h e ainda não receberam atendimento",
         tone: @sla_overdue_leads.to_i.positive? ? "red" : "green",
-        path: admin_leads_path(attention_filter: "sla_overdue")
+        path: admin_leads_path(attention_filter: "sla_overdue", start_date: dashboard_window_start.to_date.iso8601, end_date: @dashboard_end_date.iso8601)
       },
       {
         label: "Sem responsável",
         value: @unassigned_open_leads,
         detail: "Leads abertos sem corretor responsável",
         tone: @unassigned_open_leads.to_i.positive? ? "red" : "green",
-        path: admin_leads_path(broker_id: "unassigned", attention_filter: "requires_action")
+        path: admin_leads_path(broker_id: "unassigned", attention_filter: "unassigned")
       }
     ]
   end
 
-  def service_whatsapp_rows
-    [
-      {
-        label: "Aguardando resposta",
-        value: @service_whatsapp_kpis[:pending_reply],
-        detail: "Última mensagem é do cliente e a conversa segue aberta",
-        tone: @service_whatsapp_kpis[:pending_reply].to_i.positive? ? "red" : "green",
-        path: admin_whatsapp_conversations_path(filter: "pending_reply")
-      },
-      {
-        label: "Não lidas",
-        value: @service_whatsapp_kpis[:unread],
-        detail: "Conversas com mensagens ainda não lidas pela equipe",
-        tone: @service_whatsapp_kpis[:unread].to_i.positive? ? "amber" : "green",
-        path: admin_whatsapp_conversations_path(filter: "unread")
-      },
-      {
-        label: "Tempo médio de resposta",
-        value: @service_whatsapp_kpis[:avg_response_minutes],
-        detail: "Minutos entre mensagem recebida e primeira resposta enviada",
-        tone: @service_whatsapp_kpis[:avg_response_minutes].to_i > 60 ? "amber" : "blue",
-        path: admin_whatsapp_conversations_path
-      }
-    ]
-  end
-
-  def service_campaign_rows
-    campaigns = current_tenant.whatsapp_campaigns.where("whatsapp_campaigns.created_at >= ?", dashboard_window_start)
-    messages = current_tenant.whatsapp_campaign_messages
-      .joins(:whatsapp_campaign)
-      .where(whatsapp_campaigns: { id: campaigns.select(:id) })
-    replied_campaigns_count = messages.where(status: "replied").distinct.count(:whatsapp_campaign_id)
-    failed_count = messages.failed.count
-    unhandled_replies = unhandled_campaign_replies_count(messages)
-    unsubscribes = current_tenant.whatsapp_campaign_unsubscribes
-      .where(whatsapp_campaign_id: campaigns.select(:id))
-      .active
-      .count
-
-    [
-      {
-        label: "Campanhas com retorno",
-        value: replied_campaigns_count,
-        detail: "Campanhas do período com pelo menos uma resposta recebida",
-        tone: replied_campaigns_count.positive? ? "blue" : "gray",
-        path: admin_whatsapp_campaigns_path(started_on: dashboard_window_start.to_date.iso8601, ended_on: Date.current.iso8601)
-      },
-      {
-        label: "Falhas de disparo",
-        value: failed_count,
-        detail: "Mensagens com falha em campanhas do período",
-        tone: failed_count.positive? ? "red" : "green",
-        path: admin_whatsapp_campaigns_path(status: "failed", started_on: dashboard_window_start.to_date.iso8601, ended_on: Date.current.iso8601)
-      },
-      {
-        label: "Descadastros",
-        value: unsubscribes,
-        detail: "Contatos ativos fora das próximas campanhas",
-        tone: unsubscribes.positive? ? "amber" : "green",
-        path: admin_whatsapp_campaign_unsubscribes_path
-      },
-      {
-        label: "Respostas não tratadas",
-        value: unhandled_replies,
-        detail: "Respostas que ainda não viraram atendimento/conversão",
-        tone: unhandled_replies.positive? ? "red" : "green",
-        path: admin_whatsapp_campaigns_path(started_on: dashboard_window_start.to_date.iso8601, ended_on: Date.current.iso8601)
-      }
-    ]
-  end
-
-  def unhandled_campaign_replies_count(messages)
-    messages.where(status: "replied").where(
-      <<~SQL.squish
-        NOT EXISTS (
-          SELECT 1
-          FROM whatsapp_conversations conversations
-          INNER JOIN whatsapp_messages outbound_messages
-            ON outbound_messages.whatsapp_conversation_id = conversations.id
-           AND outbound_messages.tenant_id = conversations.tenant_id
-          WHERE conversations.tenant_id = whatsapp_campaign_messages.tenant_id
-            AND outbound_messages.direction = 'outbound'
-            AND outbound_messages.created_at > COALESCE(whatsapp_campaign_messages.replied_at, whatsapp_campaign_messages.updated_at)
-            AND (
-              (whatsapp_campaign_messages.lead_id IS NOT NULL AND conversations.lead_id = whatsapp_campaign_messages.lead_id)
-              OR (
-                NULLIF(whatsapp_campaign_messages.phone_number, '') IS NOT NULL
-                AND conversations.contact_phone = whatsapp_campaign_messages.phone_number
-              )
-            )
-        )
-      SQL
-    ).count
+  def load_service_sla_metrics
+    active_lead_statuses_with_blank = active_lead_status_values_with_blank
+    @lead_overdue_tasks = dashboard_task_scope.atrasadas.count
+    @lead_tasks_due_today = dashboard_task_scope.hoje.count
+    @unassigned_open_leads = @lead_scope.where(admin_user_id: nil, status: active_lead_statuses_with_blank).count
+    @no_first_contact_leads = no_first_contact_scope.count
+    @sla_overdue_leads = no_first_contact_scope.where("leads.created_at < ?", first_contact_sla_hours.hours.ago).count
   end
 
   def broker_attention_rows
@@ -1221,7 +1177,7 @@ class Admin::DashboardController < Admin::BaseController
         path: admin_leads_path(
           property_q: codigo,
           start_date: dashboard_window_start.to_date.iso8601,
-          end_date: Date.current.iso8601
+          end_date: @dashboard_end_date.iso8601
         )
       }
     end.compact.sort_by { |row| [-row[:value].to_i, row[:label].to_s] }.first(5)
@@ -1281,7 +1237,7 @@ class Admin::DashboardController < Admin::BaseController
               path: admin_leads_path(
                 property_q: codigo,
                 start_date: dashboard_window_start.to_date.iso8601,
-                end_date: Date.current.iso8601
+                end_date: @dashboard_end_date.iso8601
               )
             }
           end.compact.sort_by { |row| [-row[:value].to_i, row[:label].to_s] }.first(6)
@@ -1348,7 +1304,7 @@ class Admin::DashboardController < Admin::BaseController
       tone: tone,
       icon: "graph-up-arrow",
       action: "Analisar origem",
-      path: admin_root_path(tab: "leads", period: @dashboard_period, broker_id: @dashboard_broker_id),
+      path: admin_root_path(dashboard_date_params(tab: "leads", broker_id: @dashboard_broker_id)),
       priority: attention ? 30 : 80,
       attention: attention
     }
@@ -1510,18 +1466,79 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def temperature_row(label, tag, stale_before, tone)
-    count = @lead_scope
-      .where(status: active_lead_status_values_with_blank)
-      .where("leads.tags @> ?", [tag].to_json)
-      .where("leads.updated_at < ?", stale_before)
-      .count
+    ids = interest_classification_ids(tag, stale_before)
     {
       label: label,
-      value: count,
-      detail: "tag #{tag} sem atualização desde #{I18n.l(stale_before.to_date)}",
-      tone: count.positive? ? tone : "green",
-      path: admin_leads_path(tags: [tag], attention_filter: "stalled")
+      value: ids.size,
+      detail: "interpretação #{tag} sem atualização desde #{I18n.l(stale_before.to_date)}",
+      tone: ids.any? ? tone : "green",
+      path: admin_leads_path(attention_filter: "interest_#{tag}_stalled")
     }
+  end
+
+  def interest_classification_ids(classification, stale_before)
+    @interest_classification_ids ||= {}
+    @interest_classification_ids[[classification, stale_before.to_i]] ||= begin
+      scope = @lead_scope
+        .where(status: active_lead_status_values_with_blank)
+        .where("leads.updated_at < ?", stale_before)
+      hot_ids = hot_interest_lead_ids(scope)
+
+      case classification
+      when "quente" then hot_ids
+      when "morno" then warm_interest_lead_ids(scope) - hot_ids
+      else []
+      end
+    end
+  end
+
+  def hot_interest_lead_ids(scope)
+    lead_ids = scope.select(:id)
+    direct_share_ids, collection_share_ids = share_event_lead_ids(scope, %w[interest_created interest_repeated], 7.days.ago)
+
+    [
+      Proposal.where(lead_id: lead_ids, status: %w[enviada visualizada aceita])
+        .where("validade IS NULL OR validade >= ?", Date.current)
+        .distinct.pluck(:lead_id),
+      current_tenant.appointments.where(lead_id: lead_ids, kind: "visita", status: "agendado")
+        .where("starts_at >= ?", Time.current)
+        .distinct.pluck(:lead_id),
+      current_tenant.appointments.where(lead_id: lead_ids, kind: "visita", status: "realizado")
+        .where("starts_at >= ?", 14.days.ago)
+        .distinct.pluck(:lead_id),
+      direct_share_ids,
+      collection_share_ids
+    ].flatten.compact.uniq
+  end
+
+  def warm_interest_lead_ids(scope)
+    lead_ids = scope.select(:id)
+    direct_share_ids, collection_share_ids = share_event_lead_ids(scope, %w[property_opened collection_opened], 14.days.ago)
+
+    [
+      LeadActivity.where(lead_id: lead_ids).contact_attempts
+        .where("lead_activities.metadata ->> 'contact_result' = ?", "falou_com_cliente")
+        .where("lead_activities.created_at >= ?", 14.days.ago)
+        .distinct.pluck(:lead_id),
+      current_tenant.public_navigation_events.where(lead_id: lead_ids, name: %w[property_view property_search property_favorite_added])
+        .where("occurred_at >= ?", 14.days.ago)
+        .distinct.pluck(:lead_id),
+      direct_share_ids,
+      collection_share_ids
+    ].flatten.compact.uniq
+  end
+
+  def share_event_lead_ids(scope, event_types, since)
+    lead_ids = scope.select(:id)
+    matching_collections = current_tenant.ai_property_share_collections.where(lead_id: lead_ids)
+    events = current_tenant.ai_property_share_audit_events.where(event_type: event_types).where("ai_property_share_audit_events.created_at >= ?", since)
+
+    [
+      events.where(lead_id: lead_ids).distinct.pluck(:lead_id),
+      matching_collections.joins(:audit_events)
+        .merge(events)
+        .distinct.pluck(:lead_id)
+    ]
   end
 
   def formatted_currency(value)
@@ -1551,12 +1568,13 @@ class Admin::DashboardController < Admin::BaseController
 
   def lead_acquisition_result
     @lead_acquisition_result ||= Rails.cache.fetch(
-      ["dashboard-lead-acquisition-v3", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      ["dashboard-lead-acquisition-v4", current_tenant.id, current_admin_user.id, @dashboard_start_date, @dashboard_end_date, @dashboard_broker_id],
       expires_in: DASHBOARD_AGGREGATE_CACHE_EXPIRATION
     ) do
       Dashboard::LeadAcquisitionQuery.new(
         scope: valid_dashboard_leads_scope,
         starts_at: dashboard_window_start,
+        ends_at: dashboard_window_end,
         tenant: current_tenant
       ).call
     end
@@ -1620,55 +1638,252 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def broker_performance_rows
-    period_scope = @lead_scope.where("leads.created_at >= ?", dashboard_window_start)
-    counts = period_scope
-      .where.not(admin_user_id: nil).group(:admin_user_id).count
-    closed_status = Lead.status_value(:concluido)
-    closed_counts = period_scope
-      .where(status: closed_status).where.not(admin_user_id: nil).group(:admin_user_id).count
-    attention_counts = @lead_scope
-      .where(status: active_lead_status_values_with_blank)
-      .then { |scope| attention_leads(scope) }
+    period_scope = valid_dashboard_leads_scope
+      .where(created_at: dashboard_window_start..dashboard_window_end)
       .where.not(admin_user_id: nil)
-      .group(:admin_user_id)
-      .count
-    visit_counts = Appointment
-      .joins(:lead)
-      .merge(period_scope)
-      .where(kind: "visita")
-      .where.not(leads: { admin_user_id: nil })
-      .group("leads.admin_user_id")
+      .includes(:distribution_rule)
+    leads = period_scope.order(created_at: :desc).to_a
+    lead_ids = leads.map(&:id)
+    responded_ids = LeadActivity.human_operational
+      .where(lead_id: lead_ids)
+      .where("lead_activities.metadata ->> 'contact_result' = ?", "falou_com_cliente")
       .distinct
-      .count("appointments.lead_id")
-    proposal_counts = Proposal
-      .joins(:lead)
-      .merge(period_scope)
-      .where.not(status: "rascunho")
-      .where.not(leads: { admin_user_id: nil })
-      .group("leads.admin_user_id")
+      .pluck(:lead_id)
+    responded_ids |= LeadActivity
+      .where(lead_id: lead_ids, kind: "whatsapp_in")
       .distinct
-      .count("proposals.lead_id")
-    broker_ids = (counts.keys | attention_counts.keys).compact
+      .pluck(:lead_id)
+    pool_ids = LeadActivity
+      .where(lead_id: lead_ids, kind: %w[pocket_pool_ready accepted])
+      .where("lead_activities.kind = ? OR lead_activities.metadata ->> 'shark_tank' = ?", "pocket_pool_ready", "true")
+      .distinct
+      .pluck(:lead_id)
+    performance_events = LeadActivity
+      .where(lead_id: lead_ids, kind: %w[distributed pocket_pool_ready shark_tank_ready accepted secure_link_accessed])
+      .order(:created_at)
+      .to_a
+    entry_started_at_by_lead = broker_performance_entry_starts(leads, pool_ids, performance_events)
+    attended_at_by_lead = broker_performance_attended_at(leads, performance_events, entry_started_at_by_lead)
+    expired_ids = LeadActivity.where(lead_id: lead_ids, kind: "pocket_expired").distinct.pluck(:lead_id)
+    contact_attempts_by_lead = LeadActivity.contact_attempts
+      .where(lead_id: lead_ids)
+      .order(created_at: :desc)
+      .group_by(&:lead_id)
+
+    leads_by_broker = leads.group_by(&:admin_user_id)
+    broker_ids = leads_by_broker.keys.compact
     names = current_tenant.admin_users.where(id: broker_ids).pluck(:id, :name).to_h
 
     broker_ids.map do |broker_id|
-      total = counts[broker_id].to_i
-      closed = closed_counts[broker_id].to_i
-      visits = visit_counts[broker_id].to_i
-      proposals = proposal_counts[broker_id].to_i
-      attention = attention_counts[broker_id].to_i
+      row_leads = leads_by_broker[broker_id] || []
+      pool_leads, rotary_leads = row_leads.partition { |lead| pool_ids.include?(lead.id) }
+      no_first_contact_count = row_leads.count { |lead| !lead_attended?(lead, attended_at_by_lead) }
+      opened_count = row_leads.size - no_first_contact_count
+      contact_attempts_count = row_leads.sum { |lead| contact_attempts_by_lead[lead.id].to_a.size }
       {
         id: broker_id,
         name: names[broker_id] || "Corretor",
-        total: total,
-        visits: visits,
-        proposals: proposals,
-        closed: closed,
-        attention: attention,
-        conversion: percentage(closed, total),
-        opportunity_rate: percentage([visits, proposals, closed].max, total)
+        total: row_leads.size,
+        rotary_count: rotary_leads.size,
+        rotary_avg_label: average_first_contact_label(rotary_leads, attended_at_by_lead, entry_started_at_by_lead),
+        pool_count: pool_leads.size,
+        pool_avg_label: average_first_contact_label(pool_leads, attended_at_by_lead, entry_started_at_by_lead),
+        opened_count: opened_count,
+        not_opened_count: row_leads.size - opened_count,
+        contact_attempts_count: contact_attempts_count,
+        no_first_contact_count: no_first_contact_count,
+        expired_count: row_leads.count { |lead| expired_ids.include?(lead.id) },
+        leads: broker_performance_lead_rows(row_leads, pool_ids, responded_ids, attended_at_by_lead, entry_started_at_by_lead, expired_ids, contact_attempts_by_lead)
       }
-    end.sort_by { |row| [-row[:attention], -row[:closed], -row[:proposals], -row[:visits], -row[:total]] }.first(6)
+    end.sort_by { |row| [-row[:not_opened_count], -row[:expired_count], -row[:total]] }.first(6)
+  end
+
+  def broker_performance_report_csv
+    CSV.generate(headers: false, col_sep: ";") do |csv|
+      csv << ["Performance dos Corretores"]
+      csv << ["Período", @dashboard_period_label]
+      csv << []
+
+      broker_performance_rows.each do |row|
+        csv << ["Corretor", "Total", "Rodízio", "Bolsão", "Atendidos", "Tentativas"]
+        csv << [
+          row[:name],
+          "#{row[:total]} leads",
+          row[:rotary_count],
+          row[:pool_count],
+          row[:opened_count],
+          row[:contact_attempts_count]
+        ]
+        csv << ["Lead", "Recebeu", "Abriu", "Tentou contato", "Situação", "Recebido"]
+        row[:leads].each do |lead|
+          csv << [
+            lead[:name],
+            lead[:entry_label],
+            lead[:opened_label],
+            lead[:contact_label],
+            lead[:story_label],
+            I18n.l(lead[:created_at], format: :short)
+          ]
+        end
+        csv << []
+      end
+    end
+  end
+
+  def broker_performance_lead_rows(leads, pool_ids, responded_ids, attended_at_by_lead, entry_started_at_by_lead, expired_ids, contact_attempts_by_lead)
+    leads.map do |lead|
+      pool = pool_ids.include?(lead.id)
+      attended_at = attended_at_by_lead[lead.id]
+      entry_started_at = entry_started_at_by_lead[lead.id] || lead.created_at
+      attended = lead_attended?(lead, attended_at_by_lead)
+      attempts = contact_attempts_by_lead[lead.id] || []
+      responded = responded_ids.include?(lead.id)
+
+      {
+        lead: lead,
+        name: lead.name.presence || "Lead ##{lead.id}",
+        entry_label: pool ? "Bolsão" : "Rodízio",
+        entry_tone: pool ? "pool" : "rotary",
+        first_contact_label: broker_performance_attendance_label(lead, attended_at, entry_started_at),
+        opened_label: broker_performance_opened_label(lead, attended_at, entry_started_at, attended),
+        opened_tone: attended ? "green" : "red",
+        contact_label: broker_performance_contact_label(attempts),
+        contact_tone: attempts.any? ? "amber" : "gray",
+        story_label: broker_performance_story_label(attended: attended, attempts: attempts, responded: responded, expired: expired_ids.include?(lead.id)),
+        story_tone: broker_performance_story_tone(attended: attended, attempts: attempts, responded: responded, expired: expired_ids.include?(lead.id)),
+        contact_attempts: broker_performance_contact_attempt_rows(attempts),
+        status: lead.status.presence || Lead.default_status,
+        origin: lead.origin.presence || "Origem não informada",
+        created_at: lead.created_at
+      }
+    end
+  end
+
+  def lead_attended?(lead, attended_at_by_lead)
+    attended_at_by_lead[lead.id].present? || Lead.status_value(lead.status) == Lead.status_value(:em_atendimento)
+  end
+
+  def broker_performance_attendance_label(lead, attended_at, entry_started_at)
+    return first_contact_delay_label(entry_started_at, attended_at) if attended_at.present?
+    return "em atendimento sem registro" if Lead.status_value(lead.status) == Lead.status_value(:em_atendimento)
+
+    "não abriu"
+  end
+
+  def broker_performance_opened_label(lead, attended_at, entry_started_at, attended)
+    return "não abriu" unless attended
+    return "abriu em #{first_contact_delay_label(entry_started_at, attended_at)}" if attended_at.present?
+
+    broker_performance_attendance_label(lead, attended_at, entry_started_at)
+  end
+
+  def broker_performance_contact_label(attempts)
+    count = attempts.size
+    return "nenhuma tentativa" if count.zero?
+
+    "#{count} #{'tentativa'.pluralize(count)}"
+  end
+
+  def broker_performance_story_label(attended:, attempts:, responded:, expired:)
+    unless attended
+      return "cliente respondeu, mas sem abertura registrada" if responded
+      return "tentativa registrada, mas sem abertura" if attempts.any?
+      return "voltou para redistribuição" if expired
+
+      return "aguardando abertura do corretor"
+    end
+
+    return "cliente respondeu" if responded
+    return "tentou contato, aguardando cliente" if attempts.any?
+
+    "corretor abriu, falta registrar tentativa"
+  end
+
+  def broker_performance_story_tone(attended:, attempts:, responded:, expired:)
+    return "amber" unless attended
+
+    return "green" if responded
+    return "blue" if attempts.any?
+
+    "amber"
+  end
+
+  def broker_performance_contact_attempt_rows(attempts)
+    attempts.first(4).map do |activity|
+      {
+        kind: LeadActivity::CONTACT_KIND_LABELS[activity.meta("contact_kind").to_s] || "Contato",
+        result: LeadActivity::CONTACT_RESULT_LABELS[activity.meta("contact_result").to_s] || "Sem resultado",
+        body: activity.meta("body").to_s.strip.presence || "Sem observação registrada.",
+        created_at: activity.created_at
+      }
+    end
+  end
+
+  def broker_performance_entry_starts(leads, pool_ids, events)
+    events_by_lead = events.group_by(&:lead_id)
+
+    leads.each_with_object({}) do |lead, starts|
+      lead_events = events_by_lead[lead.id] || []
+      starts[lead.id] = if pool_ids.include?(lead.id)
+        lead_events.select { |activity| activity.kind.in?(%w[pocket_pool_ready shark_tank_ready]) }.map(&:created_at).max ||
+          broker_performance_distribution_at(lead, lead_events) ||
+          lead.created_at
+      else
+        broker_performance_distribution_at(lead, lead_events) || lead.created_at
+      end
+    end
+  end
+
+  def broker_performance_distribution_at(lead, events)
+    events
+      .select { |activity| activity.kind == "distributed" && activity.meta("admin_user_id").to_i == lead.admin_user_id.to_i }
+      .map(&:created_at)
+      .max
+  end
+
+  def broker_performance_attended_at(leads, events, entry_starts)
+    events_by_lead = events.group_by(&:lead_id)
+
+    leads.each_with_object({}) do |lead, attended|
+      entry_started_at = entry_starts[lead.id] || lead.created_at
+      attended_at = (events_by_lead[lead.id] || [])
+        .select { |activity| broker_performance_attendance_event?(activity) && activity.created_at >= entry_started_at }
+        .map(&:created_at)
+        .min
+      attended[lead.id] = attended_at if attended_at.present?
+    end
+  end
+
+  def broker_performance_attendance_event?(activity)
+    return true if activity.kind == "accepted"
+
+    activity.kind == "secure_link_accessed" &&
+      (activity.meta("contact").to_s.in?(%w[attend whatsapp]) || activity.meta("action_type").to_s.in?(%w[attend phone]))
+  end
+
+  def first_contact_delay_label(entry_started_at, first_contact_at)
+    duration_label(first_contact_at - entry_started_at)
+  end
+
+  def average_first_contact_label(leads, first_contacts, entry_starts)
+    seconds = leads.filter_map do |lead|
+      first_contact_at = first_contacts[lead.id]
+      entry_started_at = entry_starts[lead.id] || lead.created_at
+      next if first_contact_at.blank?
+
+      first_contact_at - entry_started_at
+    end
+    return "sem tempo médio" if seconds.empty?
+
+    duration_label(seconds.sum.to_f / seconds.size)
+  end
+
+  def duration_label(seconds)
+    seconds = seconds.to_f.round
+    return "#{seconds} seg" if seconds < 60
+
+    minutes = (seconds / 60.0).round
+    minutes < 60 ? "#{minutes} min" : "#{(minutes / 60.0).round(1)} h"
   end
 
   def supply_demand_rows(active_habitations)
