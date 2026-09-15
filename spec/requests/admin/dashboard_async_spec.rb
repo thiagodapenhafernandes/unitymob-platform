@@ -583,6 +583,87 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     end
   end
 
+  it "agrupa canais legados iguais e concatena evidências da origem" do
+    travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant canais agrupados #{SecureRandom.hex(3)}", slug: "tenant-canais-agrupados-#{SecureRandom.hex(3)}")
+      owner = create(:admin_user, :admin, tenant: tenant)
+      broker = create(:admin_user, tenant: tenant, name: "Corretor Origem")
+      sign_out admin
+      sign_in owner
+
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Internet Pago",
+        origin: "Migração externa",
+        lead_type: "webhook",
+        attribution_channel: "Internet",
+        attribution_source: "WhatsApp",
+        status: Lead.status_value(:em_atendimento),
+        product: "Google Ads | Whatsapp | Compra | Atendimento · Compra",
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Internet Orgânico",
+        origin: "Migração externa",
+        lead_type: "webhook",
+        attribution_channel: "Internet",
+        attribution_source: "WhatsApp Orgânico",
+        status: Lead.status_value(:em_atendimento),
+        product: "Orgânico | WhatsApp Orgânico | Aluguel · Aluguel",
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Rede Social Um",
+        origin: "Migração externa",
+        lead_type: "webhook",
+        attribution_channel: "Rede Social",
+        attribution_source: "Instagram Ads",
+        status: Lead.status_value(:em_atendimento),
+        product: "[6953] Compra Antonio Bastos · Compra",
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Rede Social Dois",
+        origin: "Migração externa",
+        lead_type: "webhook",
+        attribution_channel: "Rede Social",
+        attribution_source: "Cliente de Carteira",
+        status: Lead.status_value(:em_atendimento),
+        product: "4mil · Aluguel",
+        created_at: 1.day.ago
+      )
+
+      get admin_dashboard_section_path("campaign_performance", tab: "leads", period_preset: "last_7"),
+          headers: { "Turbo-Frame" => "admin_dashboard_campaign_performance" }
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      titles = document.css(".ax-dashboard-performance__details > summary .ax-dashboard-performance__identity strong").map { |node| node.text.squish }
+      internet_row = document.css(".ax-dashboard-performance__details").find { |row| row.at_css(".ax-dashboard-performance__identity strong")&.text&.squish == "Internet" }
+      social_row = document.css(".ax-dashboard-performance__details").find { |row| row.at_css(".ax-dashboard-performance__identity strong")&.text&.squish == "Rede Social" }
+
+      expect(titles.count("Internet")).to eq(1)
+      expect(titles.count("Rede Social")).to eq(1)
+      expect(internet_row.text.squish).to include("2 leads")
+      expect(internet_row.text.squish).to include("Google Ads")
+      expect(internet_row.text.squish).to include("WhatsApp Orgânico")
+      expect(social_row.text.squish).to include("2 leads")
+      expect(social_row.text.squish).to include("Instagram Ads")
+      expect(social_row.text.squish).to include("Cliente de Carteira")
+    end
+  end
+
   it "separa os painéis de Imóveis" do
     get admin_root_path(tab: "properties")
 

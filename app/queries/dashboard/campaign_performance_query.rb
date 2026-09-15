@@ -134,6 +134,8 @@ module Dashboard
         ["meta", campaign.presence || "Meta Ads sem campanha", form.presence || "Formulário não identificado"]
       elsif site_lead?(lead, channel, context[:site_events][lead.id])
         site_key(lead, channel, context[:site_events][lead.id])
+      elsif (family = channel_family_label(channel)).present?
+        ["channel_family", family, nil]
       elsif campaign.present?
         ["channel", campaign, form.presence || channel_label(channel)]
       elsif whatsapp_lead?(lead, channel)
@@ -156,7 +158,7 @@ module Dashboard
       {
         type: type,
         title: title,
-        detail: detail,
+        detail: detail.presence || grouped_channel_detail(type, title, leads, context),
         tone: row_tone(type),
         total: leads.size,
         attended_count: attended_count,
@@ -302,8 +304,97 @@ module Dashboard
       type, title, detail = campaign_key(lead, context)
       return [title, detail].compact_blank.join(" · ") if type == "meta"
       return ["Site", site_lead_detail(lead, normalized_channel(lead), context[:site_events][lead.id])].compact_blank.join(" · ") if type == "site"
+      return [title, lead_channel_detail(lead, context)].compact_blank.join(" · ") if type == "channel_family"
 
       title
+    end
+
+    def channel_family_label(channel)
+      normalized = channel.to_s.parameterize(separator: "_")
+
+      case normalized
+      when "internet"
+        "Internet"
+      when "rede_social"
+        "Rede Social"
+      end
+    end
+
+    def grouped_channel_detail(type, title, leads, context)
+      return "Origem agrupada por canal" unless type == "channel_family"
+
+      details = leads.flat_map { |lead| channel_detail_parts(lead, context) }
+        .map { |part| normalize_detail_part(part) }
+        .compact_blank
+        .reject { |part| generic_detail_part?(part, title) }
+        .uniq
+
+      return "Entradas agrupadas por #{title}" if details.empty?
+
+      summarize_detail_parts(details)
+    end
+
+    def lead_channel_detail(lead, context)
+      details = channel_detail_parts(lead, context)
+        .map { |part| normalize_detail_part(part) }
+        .compact_blank
+        .reject { |part| generic_detail_part?(part, channel_family_label(normalized_channel(lead))) }
+        .uniq
+
+      summarize_detail_parts(details.presence || ["Origem registrada"])
+    end
+
+    def channel_detail_parts(lead, context)
+      info = lead.other_information.to_h
+      attribution = lead.attribution_data.to_h
+      parts = []
+      parts << source_detail_label(lead.attribution_source)
+      parts << campaign_name(info, attribution)
+      parts << form_name(lead, info, attribution, context)
+      parts.concat(split_detail_text(lead.product))
+      parts
+    end
+
+    def source_detail_label(value)
+      raw = value.to_s.strip
+      normalized = raw.parameterize(separator: "_")
+      return if raw.blank?
+      return "WhatsApp Orgânico" if normalized == "whatsapp_organico"
+      return "Orgânico" if normalized == "organico"
+      return channel_label(raw) if normalized.in?(%w[whatsapp google_ads instagram_ads facebook_leads instagram_leads grupo_zap chaves_na_mao organic_search organic_social])
+
+      raw.squish
+    end
+
+    def split_detail_text(value)
+      value.to_s.split(/\s*(?:\||·)\s*/)
+    end
+
+    def normalize_detail_part(value)
+      text = value.to_s.tr("\u00A0", " ").squish
+      return if text.blank?
+
+      text = text.sub(/\A\[[^\]]+\]\s*/, "").squish
+      text = text.sub(/\A(?:Venda|Locação)\s+/i, "").squish
+      return "WhatsApp Orgânico" if text.parameterize(separator: "_") == "whatsapp_organico"
+      return "Orgânico" if text.parameterize(separator: "_") == "organico"
+
+      text = channel_label(text) if text.parameterize(separator: "_").in?(%w[whatsapp whatsapp_organico google_ads instagram_ads facebook_leads instagram_leads grupo_zap chaves_na_mao organic])
+      text
+    end
+
+    def generic_detail_part?(part, title)
+      normalized = part.to_s.parameterize(separator: "_")
+      normalized.blank? ||
+        normalized == title.to_s.parameterize(separator: "_") ||
+        normalized.in?(%w[migracao_externa webhook sem_detalhe origem_registrada direto_desconhecido])
+    end
+
+    def summarize_detail_parts(parts)
+      visible = parts.first(6)
+      hidden_count = parts.size - visible.size
+      summary = visible.to_sentence(two_words_connector: " e ", last_word_connector: " e ")
+      hidden_count.positive? ? "#{summary} +#{hidden_count}" : summary
     end
 
     def property_label(lead, site_event)
