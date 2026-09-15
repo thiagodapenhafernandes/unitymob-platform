@@ -3,7 +3,7 @@
         eyebrow: "Site público · Estrutura",
         icon: "telephone",
         title: "Contato",
-        subtitle: "Gerencie canais de atendimento e redes sociais exibidos no site.",
+        subtitle: "Gerencie canais, redes sociais e mensagens usadas na captura de interessados em imóveis.",
         actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")
       ) %>
 
@@ -104,6 +104,69 @@
               <% end %>
               <p class="ax-field__hint">URL completa da página do LinkedIn.</p>
             </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="ax-span-12">
+        <%= ax_operational_panel(eyebrow: "Atendimento do imóvel", title: "Mensagens do modal e do WhatsApp") do %>
+          <div class="tw-grid tw-gap-5">
+            <div class="tw-flex tw-flex-col tw-gap-3 lg:tw-flex-row lg:tw-items-start lg:tw-justify-between">
+              <p class="tw-m-0 tw-max-w-3xl tw-text-sm tw-leading-6 tw-text-slate-600">
+                Personalize o retorno exibido após o envio do modal e a mensagem que abre no WhatsApp. Quando um campo ficar vazio, o sistema usa o texto padrão.
+              </p>
+              <div class="tw-flex tw-flex-wrap tw-gap-2" aria-label="Variáveis disponíveis para mensagens">
+                <% ContactSetting::PROPERTY_LEAD_VARIABLES.each do |token, description| %>
+                  <span class="tw-inline-flex tw-items-center tw-gap-1 tw-rounded-full tw-border tw-border-slate-200 tw-bg-white tw-px-3 tw-py-1 tw-text-xs tw-font-semibold tw-text-slate-600"
+                        title="<%= description %>">
+                    <code class="tw-font-mono tw-text-[11px] tw-text-primary"><%= token %></code>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="tw-grid tw-gap-5 xl:tw-grid-cols-3">
+              <% ContactSetting::PROPERTY_LEAD_MESSAGE_TYPES.each do |negotiation_type, config| %>
+                <% success_method = config.fetch(:success_attribute) %>
+                <% whatsapp_method = config.fetch(:whatsapp_attribute) %>
+                <% success_hint_id = "contact_setting_#{success_method}_hint" %>
+                <% whatsapp_hint_id = "contact_setting_#{whatsapp_method}_hint" %>
+
+                <fieldset class="tw-min-w-0 tw-rounded-xl tw-border tw-border-slate-200 tw-p-4">
+                  <legend class="tw-px-1 tw-text-sm tw-font-bold tw-text-slate-800"><%= config.fetch(:label) %></legend>
+
+                  <div class="tw-grid tw-gap-4">
+                    <div class="ax-field">
+                      <%= ax_field_label(f, success_method, text: "Mensagem de sucesso do modal") %>
+                      <p id="<%= success_hint_id %>" class="ax-field__hint tw-mb-2">
+                        Aparece quando o lead é salvo e a conta não redireciona automaticamente para o WhatsApp.
+                      </p>
+                      <%= f.text_area success_method,
+                                      class: "ax-control",
+                                      rows: 4,
+                                      placeholder: ContactSetting::DEFAULT_PROPERTY_LEAD_SUCCESS_MESSAGE,
+                                      aria: { describedby: success_hint_id } %>
+                    </div>
+
+                    <div class="ax-field">
+                      <%= ax_field_label(f, whatsapp_method, text: "Mensagem pré-preenchida do WhatsApp") %>
+                      <p id="<%= whatsapp_hint_id %>" class="ax-field__hint tw-mb-2">
+                        Usada no botão de WhatsApp do imóvel e no redirecionamento após o modal.
+                      </p>
+                      <%= f.text_area whatsapp_method,
+                                      class: "ax-control",
+                                      rows: 4,
+                                      placeholder: ContactSetting::DEFAULT_PROPERTY_WHATSAPP_MESSAGE,
+                                      aria: { describedby: whatsapp_hint_id } %>
+                    </div>
+                  </div>
+                </fieldset>
+              <% end %>
+            </div>
+
+            <p class="tw-m-0 tw-text-xs tw-leading-5 tw-text-slate-500">
+              Exemplo: <code class="tw-rounded tw-bg-slate-100 tw-px-1 tw-py-0.5">{nome}</code> vira o nome preenchido no modal e <code class="tw-rounded tw-bg-slate-100 tw-px-1 tw-py-0.5">{imovel}</code> vira o título do imóvel.
+            </p>
           </div>
         <% end %>
       </div>

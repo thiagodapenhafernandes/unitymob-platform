@@ -3374,10 +3374,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "compoe as configuracoes de contato com campos e paineis compartilhados" do
     expect(contact_settings_view).not_to match(/\bstyle\s*=/i)
     expect(contact_settings_view).to include("ax_workspace_heading(", "ax_field_grid do", "ax_sticky_action_footer(")
-    expect(contact_settings_view.scan(/ax_operational_panel\(/).size).to eq(2)
+    expect(contact_settings_view.scan(/ax_operational_panel\(/).size).to eq(3)
     expect(contact_settings_view.scan(/ax_input_group\(/).size).to eq(8)
-    expect(contact_settings_view.scan(/class: "ax-control"/).size).to eq(8)
+    expect(contact_settings_view.scan(/class: "ax-control"/).size).to eq(14)
     expect(contact_settings_view.scan(/data: \{ controller: "phone-input" \}/).size).to eq(3)
+    expect(contact_settings_view).to include("Mensagens do modal e do WhatsApp", "Mensagem pré-preenchida do WhatsApp")
     expect(contact_settings_view).not_to match(/\bbg-(?:primary|success|danger|info|light)\b/)
   end
 

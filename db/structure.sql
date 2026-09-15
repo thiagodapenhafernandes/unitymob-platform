@@ -1,4 +1,4 @@
-\restrict oA4AvsuUFwagmaHhXS5D9jlodKu9hYZBGdw43uLPJaWyjUod1F83fXjHj0hv0xb
+\restrict qku2kNg4qEN0W8mLFjiQWcKBLWFbfQdyS6VpJyyD3JxzRxSDl34P1ueZevM6ccI
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1491,8 +1491,8 @@ CREATE TABLE public.blog_articles (
     source_url character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT blog_article_publication_date CHECK ((((status)::text <> ALL ((ARRAY['published'::character varying, 'scheduled'::character varying])::text[])) OR (published_at IS NOT NULL))),
-    CONSTRAINT blog_article_status CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'scheduled'::character varying, 'published'::character varying, 'inactive'::character varying])::text[])))
+    CONSTRAINT blog_article_publication_date CHECK ((((status)::text <> ALL (ARRAY[('published'::character varying)::text, ('scheduled'::character varying)::text])) OR (published_at IS NOT NULL))),
+    CONSTRAINT blog_article_status CHECK (((status)::text = ANY (ARRAY[('draft'::character varying)::text, ('scheduled'::character varying)::text, ('published'::character varying)::text, ('inactive'::character varying)::text])))
 );
 
 
@@ -2218,7 +2218,13 @@ CREATE TABLE public.contact_settings (
     updated_at timestamp(6) without time zone NOT NULL,
     tenant_id bigint NOT NULL,
     blog_url character varying,
-    show_phone_in_header boolean DEFAULT true NOT NULL
+    show_phone_in_header boolean DEFAULT true NOT NULL,
+    sale_lead_success_message text,
+    rent_lead_success_message text,
+    sale_rent_lead_success_message text,
+    sale_whatsapp_message text,
+    rent_whatsapp_message text,
+    sale_rent_whatsapp_message text
 );
 
 
@@ -4342,6 +4348,8 @@ CREATE TABLE public.lead_settings (
     reminder_due_enabled boolean DEFAULT true NOT NULL,
     reminder_start_time character varying DEFAULT '08:00'::character varying NOT NULL,
     reminder_end_time character varying DEFAULT '18:00'::character varying NOT NULL,
+    first_contact_sla_minutes integer DEFAULT 240 NOT NULL,
+    CONSTRAINT lead_settings_first_contact_sla_minutes_range CHECK (((first_contact_sla_minutes >= 1) AND (first_contact_sla_minutes <= 43200))),
     CONSTRAINT lead_settings_reminder_first_minutes_range CHECK (((reminder_first_minutes >= 1) AND (reminder_first_minutes <= 10080))),
     CONSTRAINT lead_settings_reminder_hours CHECK ((((reminder_start_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_end_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_start_time)::text < (reminder_end_time)::text))),
     CONSTRAINT lead_settings_reminder_order CHECK (((reminder_first_minutes > reminder_second_minutes) AND (reminder_second_minutes > reminder_third_minutes))),
@@ -19172,11 +19180,14 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict oA4AvsuUFwagmaHhXS5D9jlodKu9hYZBGdw43uLPJaWyjUod1F83fXjHj0hv0xb
+\unrestrict qku2kNg4qEN0W8mLFjiQWcKBLWFbfQdyS6VpJyyD3JxzRxSDl34P1ueZevM6ccI
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260915172000'),
+('20260914162000'),
+('20260914143000'),
 ('20260914010000'),
 ('20260913100000'),
 ('20260913050000'),
