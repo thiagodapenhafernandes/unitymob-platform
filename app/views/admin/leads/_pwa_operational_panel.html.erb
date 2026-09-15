@@ -1,8 +1,10 @@
 <%# locals: lead %>
 <%
-  open_tasks = lead.tasks.includes(:admin_user).ordered.limit(50).reject do |task|
+  all_open_tasks = lead.tasks.includes(:admin_user).ordered.limit(50).reject do |task|
     task.concluida? || task.title.to_s.squish.match?(/\A(notificar corretor sobre oportunidade|oportunidade de interesse para)\b/i)
   end
+  scheduled_tasks = future_scheduled_tasks(all_open_tasks)
+  open_tasks = operational_tasks_without_future_schedule(all_open_tasks)
   next_task = open_tasks.select(&:pendente?).find { |task| task.due_at.present? } || open_tasks.find(&:pendente?)
   appointments = lead.appointments.upcoming.limit(20)
   proposals = lead.proposals.ordered.limit(20)
@@ -32,6 +34,7 @@
             lead: lead,
             open_tasks: open_tasks,
             appointments: appointments,
+            scheduled_tasks: scheduled_tasks,
             proposals: proposals,
             labels_count: lead_labels.size,
             next_task: next_task,
@@ -58,6 +61,7 @@
         open_tasks: open_tasks,
         next_task: next_task,
         appointments: appointments,
+        scheduled_tasks: scheduled_tasks,
         proposals: proposals,
         lead_labels: lead_labels,
         contact_history_activities: contact_history_activities,

@@ -20,7 +20,10 @@
   first_archive_automation = automations.find { |automation| automation.respond_to?(:action_type) && automation.action_type == "archive_lead" && automation.active? }
   if first_archive_automation
     attempt_limit = first_archive_automation.action_config.to_h["unsuccessful_attempt_limit"].to_i
+    archive_reason_id = first_archive_automation.action_config.to_h["archive_reason_id"].to_s
+    archive_reason = archive_reason_options.find { |reason| reason.id.to_s == archive_reason_id }
     archive_summary = "Arquiva em #{first_archive_automation.after_amount} #{LeadPipelineStageAutomation::UNITS[first_archive_automation.after_unit]}"
+    archive_summary += " para #{archive_reason.name}" if archive_reason
     archive_summary += " ou #{attempt_limit} tentativa(s)" if attempt_limit.positive?
     summary_parts << archive_summary
   end
@@ -55,7 +58,7 @@
   }
   action_tooltips = {
     "move_stage" => "Mover para etapa\n1. O gatilho precisa vencer.\n2. O lead muda para a etapa destino escolhida.\n3. O histórico recebe uma atividade de mudança de status feita pela automação.",
-    "archive_lead" => "Arquivar lead\n1. O gatilho precisa vencer.\n2. O lead é arquivado com o motivo configurado.\n3. Se não houver motivo configurado, usa o primeiro motivo permitido da etapa.\n4. O histórico registra o arquivamento automático.",
+    "archive_lead" => "Arquivar lead\n1. O gatilho precisa vencer.\n2. O lead é arquivado direto com o destino/motivo configurado.\n3. Se não houver destino configurado, usa o primeiro motivo permitido da etapa.\n4. O histórico registra o arquivamento automático.",
     "redistribute_lead" => "Redistribuir na fila\n1. O gatilho precisa vencer.\n2. O lead entra na fila escolhida.\n3. Se nenhuma fila for escolhida, mantém a fila atual do lead.\n4. Se não houver fila, remove o responsável e deixa o lead aguardando aceite.",
     "make_available_for_automation" => "Disponibilizar para automação\n1. O gatilho precisa vencer.\n2. O lead fica sem responsável.\n3. Ele pode ser capturado por uma régua, fila ou rotina operacional.\n4. O histórico registra essa liberação automática.",
     "create_task" => "Criar tarefa\n1. O lead precisa estar naquela etapa.\n2. A regra precisa estar ativa.\n3. O gatilho precisa vencer, por exemplo: Tempo na etapa + 2 dias.\n4. Quando vencer, o sistema cria uma Task vinculada ao próprio lead.\n5. A tarefa fica atribuída ao corretor responsável pelo lead.\n6. Se o lead estiver sem responsável, usa o primeiro admin ativo do tenant como fallback.\n7. Também registra uma atividade no histórico do lead com kind: task_created.",
@@ -120,6 +123,7 @@
               data-action-config-panel="move_stage"
               data-controller="ax-tooltip"
               data-ax-tooltip-text-value="Etapa de destino usada quando a ação final for mover o lead."
+              <%= "hidden" unless %w[move_stage redistribute_lead].include?(action_type) %>
               aria-label="Etapa de destino da automação">
         <option value="">Mover para...</option>
         <% stage_options.each do |stage| %>
@@ -157,9 +161,9 @@
         <select class="ax-control ax-control--sm"
                 data-lead-status-automation-config-field="archive_reason_id"
                 data-controller="ax-tooltip"
-                data-ax-tooltip-text-value="Motivo registrado quando a automação arquivar o lead."
-                aria-label="Motivo do arquivamento automático">
-          <option value="">Motivo padrão</option>
+                data-ax-tooltip-text-value="Destino/motivo final registrado quando a automação arquivar o lead, sem etapa intermediária."
+                aria-label="Destino do arquivamento automático">
+          <option value="">Destino padrão</option>
           <% archive_reason_options.each do |reason| %>
             <option value="<%= reason.id %>" <%= "selected" if action_config["archive_reason_id"].to_s == reason.id.to_s %>><%= reason.name %></option>
           <% end %>

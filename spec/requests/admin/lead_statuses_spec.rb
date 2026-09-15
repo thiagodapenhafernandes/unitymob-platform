@@ -266,6 +266,45 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     )
   end
 
+  it "arquiva direto pelo motivo configurado sem preservar etapa intermediaria de destino" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Tentativas")
+    stale_destination = pipeline.stages.create!(tenant: admin.tenant, name: "Desqualificado")
+    archive_reason = admin.tenant.attribute_options.create!(context: "lead", category: "archive_reason", name: "Desqualificado | Aluguel")
+
+    post bulk_update_admin_lead_statuses_path,
+         params: {
+           lead_pipeline_id: pipeline.id,
+           statuses: [
+             {
+               id: source_stage.id,
+               name: source_stage.name,
+               stage_type: "open",
+               automations: [
+                 {
+                   active: "1",
+                   trigger: "stage_duration",
+                   after_amount: "1",
+                   after_unit: "days",
+                   auto_advance_to_stage_id: stale_destination.id,
+                   action_type: "archive_lead",
+                   action_config: { archive_reason_id: archive_reason.id }
+                 }
+               ]
+             }
+           ]
+         },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    automation = source_stage.reload.automations.last
+    expect(automation).to have_attributes(
+      action_type: "archive_lead",
+      auto_advance_to_stage_id: nil,
+      action_config: hash_including("archive_reason_id" => archive_reason.id.to_s)
+    )
+  end
+
   it "bloqueia movimentacao fora das proximas etapas permitidas" do
     pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
     source_stage = pipeline.stages.create!(tenant: admin.tenant, name: "Triagem")

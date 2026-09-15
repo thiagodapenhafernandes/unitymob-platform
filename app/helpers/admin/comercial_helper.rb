@@ -810,6 +810,18 @@ module Admin::ComercialHelper
     end
   end
 
+  def future_scheduled_task?(task)
+    task.pendente? && task.due_at.present? && task.due_at > Time.current
+  end
+
+  def future_scheduled_tasks(tasks)
+    Array(tasks).select { |task| future_scheduled_task?(task) }
+  end
+
+  def operational_tasks_without_future_schedule(tasks)
+    Array(tasks).reject { |task| future_scheduled_task?(task) }
+  end
+
   def push_delivery_event_label(event_type)
     {
       "provider_accepted" => "Gateway aceitou",

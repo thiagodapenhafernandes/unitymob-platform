@@ -1604,7 +1604,10 @@
 
 <%# ===== Cabeçalho ===== %>
 <% sla = lead_sla(@lead) %>
-<% open_tasks = (@actionable_tasks || @tasks).reject(&:concluida?) %>
+<% all_open_tasks = (@actionable_tasks || @tasks).reject(&:concluida?) %>
+<% scheduled_tasks = future_scheduled_tasks(all_open_tasks) %>
+<% open_tasks = operational_tasks_without_future_schedule(all_open_tasks) %>
+<% next_task = open_tasks.select(&:pendente?).find { |task| task.due_at.present? } || open_tasks.find(&:pendente?) %>
 <%
   detail_conversion = lead_conversion_summary(@lead)
   detail_phone_href = Phones::Normalizer.tel_href(@lead.display_phone)
@@ -2110,9 +2113,10 @@
                 lead: @lead,
                 open_tasks: open_tasks,
                 appointments: @appointments,
+                scheduled_tasks: scheduled_tasks,
                 proposals: @proposals,
                 labels_count: @lead.labels_for(current_admin_user).size,
-                next_task: @next_task,
+                next_task: next_task,
                 new_proposal: @new_proposal,
                 proposal_habitations: @proposal_habitations,
                 archive_reason_options: @archive_reason_options,
@@ -2132,8 +2136,9 @@
               new_proposal_modal_id: "newProposalLeadSection#{@lead.id}",
               edit_proposal_modal_prefix: "editProposal",
               open_tasks: open_tasks,
-              next_task: @next_task,
+              next_task: next_task,
               appointments: @appointments,
+              scheduled_tasks: scheduled_tasks,
               proposals: @proposals,
               lead_labels: @lead.labels_for(current_admin_user),
               contact_history_activities: @contact_history_activities,

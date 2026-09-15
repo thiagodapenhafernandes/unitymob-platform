@@ -2,12 +2,14 @@
 <% next_task = local_assigns[:next_task] %>
 <% open_tasks = Array(local_assigns[:open_tasks]) %>
 <% appointments = Array(local_assigns[:appointments]) %>
+<% scheduled_tasks = Array(local_assigns[:scheduled_tasks]) %>
 <% proposals = Array(local_assigns[:proposals]) %>
 <% labels_count = local_assigns.fetch(:labels_count, 0).to_i %>
 <% namespace = local_assigns[:namespace].presence || "Hub#{lead.id}" %>
 <% anchor_prefix = local_assigns[:anchor_prefix].presence || "lead-pwa" %>
 <% show_tasks = local_assigns.fetch(:show_tasks, true) %>
 <% close_deal_form_id = local_assigns[:close_deal_form_id].presence || "lead_close_deal_#{lead.id}" %>
+<% agenda_count = appointments.size + scheduled_tasks.size %>
 
 <% if show_tasks && next_task %>
   <% next_badge = task_badge(next_task) %>
@@ -65,12 +67,12 @@
 
 <% if can?(:manage, :comercial) %>
   <div class="lead-pwa-next-actions" data-controller="lead-section-nav">
-    <% if appointments.any? %>
+    <% if agenda_count.positive? %>
       <%= link_to "##{anchor_prefix}-agenda", class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary", data: { turbo: false, action: "lead-section-nav#go" } do %>
-        <i class="bi bi-calendar-plus" aria-hidden="true"></i><span>Agenda</span><small><%= appointments.size %></small>
+        <i class="bi bi-calendar-plus" aria-hidden="true"></i><span>Agenda</span><small><%= agenda_count %></small>
       <% end %>
     <% else %>
-      <%= render "admin/leads/schedule_activity_modal", lead: lead, modal_id: "scheduleActivity#{namespace}", trigger_label: "Agenda", trigger_class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary", trigger_badge: appointments.size %>
+      <%= render "admin/leads/schedule_activity_modal", lead: lead, modal_id: "scheduleActivity#{namespace}", trigger_label: "Agenda", trigger_class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--primary", trigger_badge: agenda_count %>
     <% end %>
 
     <% if open_tasks.any? %>
