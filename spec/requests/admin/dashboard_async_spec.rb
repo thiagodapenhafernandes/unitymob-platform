@@ -444,10 +444,22 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       expect(response.body).to include("Lead visível do relatório")
       expect(response.body).not_to include("Corretor fora do relatório")
       expect(response.body).not_to include("Lead fora do relatório")
+
+      get admin_dashboard_broker_performance_report_path(period_preset: "last_7")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      expect(response.headers["Content-Disposition"]).to include(".xlsx")
+      expect(response.body).to start_with("PK")
+      xlsx_body = response.body.dup.force_encoding("UTF-8")
+      expect(xlsx_body).to include("Corretor do próprio relatório")
+      expect(xlsx_body).to include("Lead visível do relatório")
+      expect(xlsx_body).not_to include("Corretor fora do relatório")
+      expect(xlsx_body).not_to include("Lead fora do relatório")
     end
   end
 
-  it "aplica escopo global na performance de campanhas e libera o CSV" do
+  it "aplica escopo global na performance de campanhas e libera o XLSX" do
     travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
       tenant = Tenant.create!(name: "Tenant campaign report #{SecureRandom.hex(3)}", slug: "tenant-campaign-report-#{SecureRandom.hex(3)}")
       profile = Profile.create!(
@@ -492,8 +504,12 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       get admin_dashboard_campaign_performance_report_path(period_preset: "last_7")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Campanha Global")
-      expect(response.body).to include("Lead campanha global")
+      expect(response.media_type).to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      expect(response.headers["Content-Disposition"]).to include(".xlsx")
+      expect(response.body).to start_with("PK")
+      xlsx_body = response.body.dup.force_encoding("UTF-8")
+      expect(xlsx_body).to include("Campanha Global")
+      expect(xlsx_body).to include("Lead campanha global")
     end
   end
 
@@ -678,9 +694,13 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       get admin_dashboard_campaign_performance_report_path(period_preset: "last_7")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Performance de Campanhas e Canais")
-      expect(response.body).to include("Campanha CSV")
-      expect(response.body).to include("Lead CSV Campanha")
+      expect(response.media_type).to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      expect(response.headers["Content-Disposition"]).to include(".xlsx")
+      expect(response.body).to start_with("PK")
+      xlsx_body = response.body.dup.force_encoding("UTF-8")
+      expect(xlsx_body).to include("Performance de Campanhas e Canais")
+      expect(xlsx_body).to include("Campanha CSV")
+      expect(xlsx_body).to include("Lead CSV Campanha")
     end
   end
 

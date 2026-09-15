@@ -1242,18 +1242,14 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filter_status_options_for(scope)
-    return ["Todos"] + sorted_habitation_statuses(permitted_habitation_filter_statuses) if broker_catalog_user?
-
-    statuses = Habitation::STATUS_OPTIONS +
-      scope.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
-           .distinct
-           .pluck(:status)
+    allowed_statuses = permitted_habitation_filter_statuses
+    statuses = allowed_statuses.presence || []
 
     ["Todos"] + sorted_habitation_statuses(statuses)
   end
 
   def permitted_habitation_filter_statuses
-    broker_catalog_user? ? Habitation::STATUS_OPTIONS : nil
+    @permitted_habitation_filter_statuses ||= current_admin_user&.allowed_habitation_search_statuses || []
   end
 
   def sorted_habitation_statuses(statuses)
@@ -1422,11 +1418,14 @@ class Admin::HabitationsController < Admin::BaseController
   def load_index_filters
     @codigo = params[:codigo].to_s.strip
     @q = params[:q]
-    @statuses = Array(effective_habitations_filter_params["status"]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
+    requested_statuses = Array(effective_habitations_filter_params["status"]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
+    @invalid_habitation_status_filter = false
+    @statuses = requested_statuses
     if permitted_habitation_filter_statuses.present?
       @statuses &= (["Todos"] + permitted_habitation_filter_statuses)
+      @invalid_habitation_status_filter = explicit_habitation_status_filter? && requested_statuses.present? && @statuses.empty?
     end
-    @statuses = ["Todos"] if @statuses.empty?
+    @statuses = ["Todos"] if @statuses.empty? && !@invalid_habitation_status_filter
     @status = @statuses.first
     @categorias = filter_values([params[:categoria], params[:category]], except: "Todas")
     @categoria = @categorias.first
@@ -2587,13 +2586,18 @@ class Admin::HabitationsController < Admin::BaseController
 
   def apply_status_filter(scope, raw_statuses)
     statuses = Array(raw_statuses).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
-    return scope if statuses.blank?
-    return scope if statuses.any? { |status| I18n.transliterate(status).downcase == "todos" }
+    allowed_statuses = permitted_habitation_filter_statuses
+    return scope.none if allowed_statuses.blank?
+    return scope.none if @invalid_habitation_status_filter
+
+    statuses = ["Todos"] if statuses.blank?
+    statuses = allowed_statuses if statuses.any? { |status| I18n.transliterate(status).downcase == "todos" }
 
     normalized_statuses = statuses
       .map { |status| Habitation.normalize_status(status) }
       .compact_blank
-      .uniq
+      .uniq & allowed_statuses
+    return scope.none if normalized_statuses.blank?
 
     conditions = normalized_statuses.map { "unaccent(TRIM(habitations.status)) = unaccent(?)" }
     values = normalized_statuses.dup

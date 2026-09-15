@@ -1,0 +1,60 @@
+<%#
+  Status comerciais pesquisáveis no catálogo de imóveis.
+  Renderizado dentro do form do perfil; checked = permitido pesquisar.
+%>
+<%
+  available_statuses = Array(statuses).compact_blank
+  configured = profile.permissions&.dig("imoveis", Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY)
+  selected_statuses =
+    if configured.is_a?(Array)
+      Profile.normalize_habitation_search_statuses(configured, tenant: current_tenant)
+    else
+      available_statuses
+    end
+%>
+
+<style>
+  .prof-status-permissions__hint { margin:0 0 12px; color:#667085; font-size:13px; }
+  .prof-status-permissions__items { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:8px 14px; }
+  .prof-status-permissions__item { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--ax-border-soft,#e3e8f1); border-radius:10px; background:#f8fafd; color:#344054; font-size:13px; font-weight:700; cursor:pointer; }
+  .prof-status-permissions__checkbox { flex:0 0 auto; width:15px; height:15px; accent-color:var(--admin-primary,#365f8f); }
+</style>
+
+<% modal_body = capture do %>
+  <div class="prof-status-permissions">
+    <p class="prof-status-permissions__hint">
+      Marque quais status comerciais este perfil pode usar nas pesquisas do catálogo.
+      “Todos” no filtro respeita somente os status permitidos aqui.
+    </p>
+
+    <%= hidden_field_tag "profile[permissions][imoveis][#{Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY}][]", "" %>
+
+    <div class="prof-status-permissions__items">
+      <% available_statuses.each do |status| %>
+        <label class="prof-status-permissions__item">
+          <%= check_box_tag "profile[permissions][imoveis][#{Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY}][]",
+                            status,
+                            selected_statuses.include?(status),
+                            id: "profile_imoveis_search_status_#{status.parameterize(separator: '_')}",
+                            class: "prof-status-permissions__checkbox" %>
+          <span><%= status %></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% modal_footer = capture do %>
+  <button type="button" class="ax-btn" data-action="ax-modal#close">Fechar</button>
+  <button type="button" class="ax-btn ax-btn--primary" data-action="ax-modal#close">
+    <i class="bi bi-check-lg"></i> Aplicar (salvar no formulário)
+  </button>
+<% end %>
+
+<%= ax_quick_modal(
+      id: "imoveisSearchStatusesModal",
+      title: "Status comerciais pesquisáveis",
+      size: :lg,
+      body: modal_body,
+      footer: modal_footer
+    ) %>

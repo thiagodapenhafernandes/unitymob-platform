@@ -45,6 +45,44 @@ RSpec.describe "Admin profile permissions", type: :request do
     expect(response).to redirect_to(admin_habitations_path)
   end
 
+  it "permite definir status comerciais pesquisáveis por perfil usando os status da conta" do
+    admin = create(:admin_user, :admin)
+    profile = agent_profile
+    custom_status = "Reserva interna #{SecureRandom.hex(3)}"
+    other_tenant = Tenant.create!(name: "Outra conta #{SecureRandom.hex(3)}", slug: "outra-conta-#{SecureRandom.hex(3)}", active: true)
+    create(:habitation, tenant: admin.tenant, status: custom_status)
+    create(:habitation, tenant: other_tenant, status: "Status de outra conta")
+    sign_in admin
+
+    get edit_admin_profile_path(profile)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Status comerciais pesquisáveis")
+    expect(response.body).to include(custom_status)
+    expect(response.body).not_to include("Status de outra conta")
+
+    patch admin_profile_path(profile), params: {
+      profile: {
+        name: profile.name,
+        axis: profile.axis,
+        position: profile.position,
+        permissions: {
+          admin: "0",
+          imoveis: {
+            view: "1",
+            scope: "own",
+            Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY => ["", "Venda", custom_status, "Status de outra conta"],
+            locked_fields: [""]
+          }
+        }
+      },
+      save_navigation: "stay"
+    }
+
+    expect(response).to redirect_to(edit_admin_profile_path(profile))
+    expect(profile.reload.permissions.dig("imoveis", Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY)).to contain_exactly("Venda", custom_status)
+  end
+
   it "permite gerente editar pendência de revisão apenas do próprio time" do
     manager_profile = build_manager_profile(name: "Gerente revisão #{SecureRandom.hex(6)}", position: 750)
     manager = create(:admin_user, profile: manager_profile, acting_type: :sales)
@@ -99,8 +137,8 @@ RSpec.describe "Admin profile permissions", type: :request do
 
     get admin_captacoes_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(team_intake.intake_display_title)
-    expect(response.body).not_to include(outside_intake.intake_display_title)
+    expect(response.body).to include(team_intake.codigo)
+    expect(response.body).not_to include(outside_intake.codigo)
 
     get admin_habitations_path(team: "0")
     expect(response).to have_http_status(:ok)
