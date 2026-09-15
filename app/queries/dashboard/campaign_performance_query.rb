@@ -350,7 +350,6 @@ module Dashboard
       parts = []
       parts << source_detail_label(lead.attribution_source)
       parts << campaign_name(info, attribution)
-      parts << form_name(lead, info, attribution, context)
       parts.concat(split_detail_text(lead.product))
       parts
     end
@@ -387,7 +386,7 @@ module Dashboard
       normalized = part.to_s.parameterize(separator: "_")
       normalized.blank? ||
         normalized == title.to_s.parameterize(separator: "_") ||
-        normalized.in?(%w[migracao_externa webhook sem_detalhe origem_registrada direto_desconhecido])
+        normalized.in?(%w[migracao_externa webhook sem_detalhe origem_registrada direto_desconhecido atendimento])
     end
 
     def summarize_detail_parts(parts)
