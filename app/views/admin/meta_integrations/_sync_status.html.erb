@@ -1,5 +1,5 @@
 <div id="meta_sync_status" class="tw-w-full">
-  <% if integration&.last_sync_error.present? && integration.sync_status != "processing" %>
+  <% if integration&.last_sync_error.present? && integration.sync_status.in?(%w[partial failed]) %>
     <%= render "admin/shared/ui/issue_summary", title: "Sincronização com pendências", messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
   <% end %>
 

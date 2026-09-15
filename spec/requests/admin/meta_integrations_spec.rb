@@ -317,6 +317,19 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     end
   end
 
+  it "não mantém pendência visual quando a sincronização foi concluída" do
+    integration.update!(
+      sync_status: "completed",
+      sync_message: "Sincronização finalizada!",
+      last_sync_error: "Gateway da página Salute Negócios Imobiliários: registro pendente."
+    )
+
+    get admin_meta_integrations_path
+
+    expect(response.body).to include("Sincronização concluída com sucesso!")
+    expect(response.body).not_to include("Sincronização com pendências", "registro pendente")
+  end
+
   it "exibe pendências sem anunciar sucesso completo" do
     integration.update!(sync_status: "partial", sync_message: "Webhook da página: inscrição pendente.")
     get admin_meta_integrations_path

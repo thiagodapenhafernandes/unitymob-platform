@@ -25,12 +25,17 @@ RSpec.describe Whatsapp::SiteRouting do
 
     it "routes rent properties to the rent number without intermediate capture when disabled" do
       habitation = create(:habitation, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 8_000_00)
+      ContactSetting.instance(tenant: Tenant.default).update!(
+        rent_whatsapp_message: "Olá, quero locar {imovel} código {codigo}."
+      )
 
       routing = described_class.for_habitation(habitation, message: "Quero alugar")
 
       expect(routing[:negotiation_type]).to eq("rent")
       expect(routing[:capture_required]).to be(false)
       expect(routing[:whatsapp_url]).to include("wa.me/5547999990002")
+      expect(CGI.unescape(routing[:whatsapp_url])).to include("quero locar")
+      expect(CGI.unescape(routing[:whatsapp_url])).to include("código #{habitation.codigo}")
     end
 
     it "routes sale and rent properties to the combined number" do

@@ -64,6 +64,21 @@ RSpec.describe "Leads", type: :request do
 
     it "usa tenant_slug para resolver imóvel do tenant público solicitado" do
       tenant = Tenant.create!(name: "Tenant publico leads #{SecureRandom.hex(3)}", slug: "tenant-publico-leads-#{SecureRandom.hex(3)}")
+      create(
+        :whatsapp_business_integration,
+        tenant: tenant,
+        connected_by_admin_user: create(:admin_user, tenant: tenant),
+        default_whatsapp_number: "47 3311-1067",
+        sale_whatsapp_number: "47 99999-0001",
+        rent_whatsapp_number: "47 99999-0002",
+        sale_rent_whatsapp_number: "47 99999-0003",
+        sale_requires_lead_form: true,
+        rent_requires_lead_form: false,
+        sale_rent_requires_lead_form: true,
+        sale_redirect_after_capture: true,
+        rent_redirect_after_capture: true,
+        sale_rent_redirect_after_capture: true
+      )
       habitation = create(:habitation, tenant: tenant, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 4_500_00)
 
       get whatsapp_url_leads_path, params: { tenant_slug: tenant.slug, property_id: habitation.id, message: "Quero alugar" }
@@ -115,6 +130,9 @@ RSpec.describe "Leads", type: :request do
 
     it "creates the lead and returns the configured WhatsApp URL" do
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+      ContactSetting.instance(tenant: Tenant.default).update!(
+        sale_whatsapp_message: "Olá, sou {nome} e quero detalhes do imóvel {imovel} código {codigo}."
+      )
 
       expect(WebhookService).to receive(:send_form_data).with(
         "whatsapp_lead",
@@ -149,6 +167,8 @@ RSpec.describe "Leads", type: :request do
       body = JSON.parse(response.body)
       expect(body["success"]).to be(true)
       expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
+      expect(CGI.unescape(body["whatsapp_url"])).to include("sou Cliente Teste")
+      expect(CGI.unescape(body["whatsapp_url"])).to include("código #{habitation.codigo}")
     end
 
     it "reaproveita lead whatsapp_modal recente em duplo envio do formulário" do
@@ -203,6 +223,9 @@ RSpec.describe "Leads", type: :request do
     it "creates the lead and returns a confirmation message when WhatsApp redirect is disabled" do
       WhatsappBusinessIntegration.current(Tenant.default).update!(sale_redirect_after_capture: false)
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+      ContactSetting.instance(tenant: Tenant.default).update!(
+        sale_lead_success_message: "Obrigado, {nome}. Recebemos seu interesse em {imovel} (cód. {codigo})."
+      )
 
       expect {
         post leads_path, params: {
@@ -220,12 +243,12 @@ RSpec.describe "Leads", type: :request do
       expect(response).to have_http_status(:ok)
       body = JSON.parse(response.body)
       expect(body["success"]).to be(true)
-      expect(body["message"]).to include("Um corretor da nossa equipe")
+      expect(body["message"]).to include("Obrigado, Cliente Sem Redirecionamento")
+      expect(body["message"]).to include("(cód. #{habitation.codigo})")
       expect(body).not_to have_key("whatsapp_url")
     end
 
     it "classifica como Site quando o lead veio do proprio site sem origem explicita" do
-      host! "site.example"
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
 
       post leads_path, params: {
@@ -236,7 +259,7 @@ RSpec.describe "Leads", type: :request do
           lead_type: "whatsapp_modal",
           whatsapp_message: "Tenho interesse",
           business_type: "sale",
-          page_url: "https://site.example/imoveis/#{habitation.id}"
+          page_url: "http://localhost/imoveis/#{habitation.id}"
         }
       }, as: :json
 
@@ -245,7 +268,6 @@ RSpec.describe "Leads", type: :request do
     end
 
     it "preserva origem explicita mesmo quando o lead veio do proprio site" do
-      host! "site.example"
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
 
       post leads_path, params: {
@@ -257,7 +279,7 @@ RSpec.describe "Leads", type: :request do
           origin: "Compartilhamento Corretor",
           whatsapp_message: "Tenho interesse",
           business_type: "sale",
-          page_url: "https://site.example/imoveis/#{habitation.id}"
+          page_url: "http://localhost/imoveis/#{habitation.id}"
         }
       }, as: :json
 

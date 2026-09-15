@@ -37,7 +37,12 @@ module ExternalLeadMigration
       name = normalize_status_name(raw_name)
       return Lead.default_status(tenant:) if name.blank?
 
-      ensure_stage!(pipeline: pipeline || LeadPipeline.default_for(tenant:), name: name).name
+      pipeline ||= LeadPipeline.default_for(tenant:)
+      existing_stage = LeadPipelineStage.matching_name(tenant:, pipeline:, name:)
+      return existing_stage.name if existing_stage
+      return name if mapped_legacy_status?(raw_name, name)
+
+      ensure_stage!(pipeline:, name: name).name
     end
 
     def ensure_option!(category:, name:)
@@ -101,6 +106,11 @@ module ExternalLeadMigration
 
     def initial_status?(value)
       value.to_s.parameterize(separator: "_").in?(Lead::INITIAL_STATUS_KEYS)
+    end
+
+    def mapped_legacy_status?(raw_name, normalized_name)
+      key = raw_name.to_s.parameterize(separator: "_")
+      STATUS_ALIASES.key?(key) || normalized_name.in?(Lead::LEGACY_STATUSES)
     end
   end
 end

@@ -33,7 +33,13 @@ class Admin::ContactSettingsController < Admin::BaseController
       :instagram_url,
       :youtube_url,
       :blog_url,
-      :linkedin_url
+      :linkedin_url,
+      :sale_lead_success_message,
+      :rent_lead_success_message,
+      :sale_rent_lead_success_message,
+      :sale_whatsapp_message,
+      :rent_whatsapp_message,
+      :sale_rent_whatsapp_message
     )
   end
 end

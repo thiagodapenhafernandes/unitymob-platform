@@ -88,16 +88,21 @@ RSpec.describe "Admin public site workspace", type: :request do
     patch admin_contact_setting_path, params: {
       contact_setting: {
         phone: "(47) 3515-4920",
-        show_phone_in_header: "0"
+        show_phone_in_header: "0",
+        sale_lead_success_message: "Obrigado, {nome}. Recebemos seu interesse no imóvel {codigo}.",
+        rent_whatsapp_message: "Olá, sou {nome} e quero alugar {imovel}."
       }
     }
 
     expect(response).to redirect_to(edit_admin_contact_setting_path)
     expect(ContactSetting.instance(tenant: admin.tenant)).to have_attributes(
       phone: "554735154920",
-      show_phone_in_header: false
+      show_phone_in_header: false,
+      sale_lead_success_message: "Obrigado, {nome}. Recebemos seu interesse no imóvel {codigo}.",
+      rent_whatsapp_message: "Olá, sou {nome} e quero alugar {imovel}."
     )
     expect(other_setting.reload.show_phone_in_header).to be(true)
+    expect(other_setting.rent_whatsapp_message).to be_blank
   end
 
   it "organiza e salva o rodapé somente no tenant autenticado" do

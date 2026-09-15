@@ -16,8 +16,12 @@ module Whatsapp
       new.update!(params)
     end
 
-    def self.for_habitation(habitation, message: nil)
-      new.for_habitation(habitation, message: message)
+    def self.for_habitation(habitation, message: nil, lead: nil, tenant: Current.tenant)
+      new(tenant: tenant).for_habitation(habitation, message: message, lead: lead)
+    end
+
+    def initialize(tenant: Current.tenant)
+      @tenant = tenant
     end
 
     def config
@@ -38,28 +42,29 @@ module Whatsapp
         }
       end
 
-      Setting.set(SETTING_KEY, payload.to_json, "Configuração dos botões de WhatsApp do site por tipo de negociação", tenant: Current.tenant)
+      Setting.set(SETTING_KEY, payload.to_json, "Configuração dos botões de WhatsApp do site por tipo de negociação", tenant: tenant)
     end
 
-    def for_habitation(habitation, message: nil)
+    def for_habitation(habitation, message: nil, lead: nil)
       type = negotiation_type_for(habitation)
-      rules = config.fetch("rules")
-      rule = rules.fetch(type, {})
-      number = rule["number"].presence || config["default_number"].presence || fallback_number
+      rule = routing_rule_for(type)
+      number = rule.fetch("number")
+      whatsapp_message = ContactSetting.instance(tenant: tenant).property_whatsapp_message_for(type, lead:, habitation:, fallback: message.presence || default_message_for(habitation))
 
       {
         negotiation_type: type,
         negotiation_label: NEGOTIATION_TYPES.fetch(type),
         capture_required: rule.fetch("capture_enabled", true),
         phone_number: number,
-        whatsapp_url: build_url(number, message.presence || default_message_for(habitation))
+        whatsapp_message: whatsapp_message,
+        whatsapp_url: build_url(number, whatsapp_message)
       }
     end
 
     private
 
     def persisted_config
-      raw = Setting.tenant_get(SETTING_KEY, "{}", tenant: Current.tenant).to_s
+      raw = Setting.tenant_get(SETTING_KEY, "{}", tenant: tenant).to_s
       JSON.parse(raw)
     rescue JSON::ParserError
       {}
@@ -77,8 +82,27 @@ module Whatsapp
       }
     end
 
+    def routing_rule_for(type)
+      integration = WhatsappBusinessIntegration.current(tenant)
+      return integration_routing_rule_for(integration, type) if integration.persisted?
+
+      rules = config.fetch("rules")
+      legacy_rule = rules.fetch(type, {})
+      {
+        "number" => legacy_rule["number"].presence || config["default_number"].presence || fallback_number,
+        "capture_enabled" => legacy_rule.fetch("capture_enabled", true)
+      }
+    end
+
+    def integration_routing_rule_for(integration, type)
+      {
+        "number" => integration.phone_for(type).presence || fallback_number,
+        "capture_enabled" => integration.requires_form_for?(type)
+      }
+    end
+
     def fallback_number
-      Phones::Normalizer.call(ContactSetting.instance.whatsapp_primary).to_s.presence || DEFAULT_PHONE
+      Phones::Normalizer.call(ContactSetting.instance(tenant: tenant).whatsapp_primary).to_s.presence || DEFAULT_PHONE
     rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError
       DEFAULT_PHONE
     end
@@ -116,5 +140,7 @@ module Whatsapp
         new_value.nil? ? old_value : new_value
       end
     end
+
+    attr_reader :tenant
   end
 end

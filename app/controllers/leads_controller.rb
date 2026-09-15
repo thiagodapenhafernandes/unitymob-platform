@@ -6,9 +6,9 @@ class LeadsController < ApplicationController
 
   def whatsapp_url
     habitation = public_tenant.habitations.find_by(id: params[:property_id])
-    routing = Whatsapp::SiteRouting.for_habitation(habitation, message: params[:message])
+    routing = Whatsapp::SiteRouting.for_habitation(habitation, message: params[:message], tenant: public_tenant)
 
-    render json: routing.slice(:capture_required, :whatsapp_url, :negotiation_type, :negotiation_label)
+    render json: routing.slice(:capture_required, :whatsapp_url, :whatsapp_message, :negotiation_type, :negotiation_label)
   end
 
   def create
@@ -24,7 +24,7 @@ class LeadsController < ApplicationController
 
     if internal_contact = internal_contact_for(@lead.phone)
       Rails.logger.info("[lead capture] contato interno ignorado tenant_id=#{public_tenant.id} admin_user_id=#{internal_contact.id}")
-      return render json: lead_success_response(lead_business_type(habitation))
+      return render json: lead_success_response(lead_business_type(habitation), habitation:)
     end
 
     saved_new_lead = false
@@ -42,7 +42,7 @@ class LeadsController < ApplicationController
       business_type = lead_business_type(habitation)
       after_lead_created(habitation, business_type) if saved_new_lead
 
-      render json: lead_success_response(business_type)
+      render json: lead_success_response(business_type, habitation:)
     else
       render json: {
         success: false,
@@ -78,15 +78,17 @@ class LeadsController < ApplicationController
     params.dig(:lead, :whatsapp_message).to_s
   end
 
-  def lead_success_response(business_type)
+  def lead_success_response(business_type, habitation: nil)
     integration = WhatsappBusinessIntegration.current(public_tenant)
+    contact_setting = ContactSetting.instance(tenant: public_tenant)
     response = {
       success: true,
-      message: "Recebemos seu contato. Um corretor da nossa equipe irá falar com você em breve."
+      message: contact_setting.property_lead_success_message_for(business_type, lead: @lead, habitation:)
     }
     return response unless integration.redirect_after_capture_for?(business_type)
 
-    response.merge(whatsapp_url: @lead.whatsapp_url(message: lead_whatsapp_message))
+    whatsapp_message = contact_setting.property_whatsapp_message_for(business_type, lead: @lead, habitation:, fallback: lead_whatsapp_message)
+    response.merge(whatsapp_url: @lead.whatsapp_url(message: whatsapp_message), whatsapp_message:)
   end
 
   def after_lead_created(habitation, business_type)
