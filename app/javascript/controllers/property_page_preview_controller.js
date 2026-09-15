@@ -27,7 +27,7 @@ export default class extends Controller {
         // Handle array fields
         if (fieldName.endsWith('[]')) {
           params.append(fieldName, value)
-        } else if (['neighborhood', 'characteristics', 'category', 'city'].includes(fieldName)) {
+        } else if (['neighborhood', 'characteristics', 'category', 'city', 'development', 'property_codes'].includes(fieldName)) {
           // Force array format if it's one of these fields
           params.append(fieldName + "[]", value)
         } else {

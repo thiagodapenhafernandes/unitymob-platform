@@ -517,10 +517,15 @@ RSpec.describe "Habitation details", type: :request do
       document = Nokogiri::HTML(response.body)
       description_section = document.css("section").detect { |section| section.text.include?("Descrição") && section.text.include?("Este apartamento localizado") }
       paragraphs = description_section.css("p").map { |paragraph| paragraph.text.squish }
+      collapsible_description = description_section.at_css("[data-controller='collapsible-text']")
+      toggle = collapsible_description.at_css("button.public-collapsible-text__toggle")
 
       expect(paragraphs.size).to be >= 2
       expect(paragraphs.join(" ")).to include("Este apartamento localizado em Barra Norte")
       expect(paragraphs.join(" ")).to include("A Salute Imóveis está localizada em Balneário Camboriú")
+      expect(collapsible_description.at_css(".public-collapsible-text__content")["id"]).to be_present
+      expect(toggle.text.squish).to eq("Exibir mais +")
+      expect(toggle["aria-controls"]).to eq(collapsible_description.at_css(".public-collapsible-text__content")["id"])
     end
 
     it "does not show the development name in unit details" do
@@ -1007,6 +1012,30 @@ RSpec.describe "Habitation details", type: :request do
         "Unidades disponíveis com 298 m², 4 suítes e 4 vagas.",
         "Perguntas frequentes sobre Epic Tower"
       )
+    end
+
+    it "renders the development description collapsed with an expandable trigger" do
+      development = create(
+        :habitation,
+        codigo: "DEV-DESC",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Residencial Descrição",
+        valor_venda_cents: 0,
+        descricao_web: "Empreendimento com lazer completo, localização estratégica e plantas pensadas para conforto."
+      )
+
+      get empreendimento_details_path(development)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      about_section = document.css("section").detect { |section| section.text.include?("Sobre o Empreendimento") }
+      collapsible_description = about_section.at_css("[data-controller='collapsible-text']")
+      toggle = collapsible_description.at_css("button.public-collapsible-text__toggle")
+
+      expect(collapsible_description).to be_present
+      expect(collapsible_description.at_css(".public-collapsible-text__content").text.squish).to include("Empreendimento com lazer completo")
+      expect(toggle.text.squish).to eq("Exibir mais +")
+      expect(toggle["aria-controls"]).to eq(collapsible_description.at_css(".public-collapsible-text__content")["id"])
     end
 
     it "redirects the property URL for developments to the canonical development URL" do

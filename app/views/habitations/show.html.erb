@@ -287,13 +287,26 @@
 
         <section class="public-habitations-show__description">
           <h2 class="public-habitations-show__section-title mb-4 text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Descrição</h2>
-          <div class="public-habitations-show__description-card prose prose-gray max-w-none text-gray-600">
-            <% description_content = @habitation.display_description %>
-            <% if description_content.present? %>
-              <%= formatted_habitation_description(description_content) %>
-            <% else %>
-              <p>Sem descrição disponível.</p>
-            <% end %>
+          <% description_content = @habitation.display_description %>
+          <% description_id = dom_id(@habitation, :public_description) %>
+          <div class="public-collapsible-text public-habitations-show__description-card prose prose-gray max-w-none text-gray-600"
+               data-controller="collapsible-text"
+               data-collapsible-text-collapsed-height-value="190">
+            <div id="<%= description_id %>" class="public-collapsible-text__content" data-collapsible-text-target="content">
+              <% if description_content.present? %>
+                <%= formatted_habitation_description(description_content) %>
+              <% else %>
+                <p>Sem descrição disponível.</p>
+              <% end %>
+            </div>
+            <button type="button"
+                    class="public-collapsible-text__toggle"
+                    data-collapsible-text-target="toggle"
+                    data-action="collapsible-text#toggle"
+                    aria-controls="<%= description_id %>"
+                    hidden>
+              Exibir mais +
+            </button>
           </div>
         </section>
 

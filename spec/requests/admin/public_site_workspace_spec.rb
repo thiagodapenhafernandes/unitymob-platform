@@ -266,6 +266,7 @@ RSpec.describe "Admin public site workspace", type: :request do
   it "não oferece localidades de outro tenant no editor de landing pages" do
     other_tenant = Tenant.create!(name: "Outra conta", slug: "outra-#{SecureRandom.hex(4)}")
     create(:habitation, tenant: other_tenant, cidade: "Cidade Exclusiva Outro Tenant", exibir_no_site_flag: true)
+    property = create(:habitation, tenant: admin.tenant, codigo: "LP-#{SecureRandom.hex(3).upcase}", nome_empreendimento: "Residencial Landing", exibir_no_site_flag: true)
 
     get new_admin_landing_page_path
 
@@ -280,18 +281,27 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(html.at_css('.ax-field input[name="landing_page[filter_params][q]"]')).to be_present
     expect(html.at_css('.ax-input-group input[name="landing_page[slug]"]')).to be_present
     expect(html.css('select.ax-autocomplete-select[multiple]').map { |select| select["name"] }).to contain_exactly(
+      "landing_page[filter_params][property_codes][]",
       "landing_page[filter_params][category][]",
       "landing_page[filter_params][city][]",
-      "landing_page[filter_params][neighborhood][]"
+      "landing_page[filter_params][neighborhood][]",
+      "landing_page[filter_params][development][]"
     )
     expect(html.at_css('.ax-measure-field input[name="landing_page[filter_params][min_area]"]')).to be_present
     expect(html.at_css(".ax-form-actions--static")).to be_present
     expect(html.css(".form-group, .form-control, .tab-pane, .card")).to be_empty
+
+    get filter_options_admin_landing_pages_path, params: { type: "property_codes", q: property.codigo }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    options = JSON.parse(response.body)
+    expect(options).to include(hash_including("value" => property.codigo))
   end
 
   it "cria landing page somente no tenant autenticado e preserva os filtros" do
     other_tenant = Tenant.create!(name: "Outra conta de landing pages #{SecureRandom.hex(3)}", slug: "outra-landing-#{SecureRandom.hex(4)}")
     foreign_page = other_tenant.landing_pages.create!(title: "Landing externa", slug: "landing-externa", active: true)
+    property = create(:habitation, tenant: admin.tenant, codigo: "SEL-#{SecureRandom.hex(3).upcase}", nome_empreendimento: "Império do Sol", exibir_no_site_flag: true)
     slug = "apartamentos-#{SecureRandom.hex(4)}"
 
     expect do
@@ -308,6 +318,8 @@ RSpec.describe "Admin public site workspace", type: :request do
             category: ["Apartamento"],
             city: ["Balneário Camboriú"],
             neighborhood: ["Centro"],
+            development: ["Império do Sol"],
+            property_codes: [property.codigo],
             transaction_type: "venda",
             q: "Centro",
             target_price: "1500000",
@@ -329,6 +341,8 @@ RSpec.describe "Admin public site workspace", type: :request do
       "category" => ["Apartamento"],
       "city" => ["Balneário Camboriú"],
       "neighborhood" => ["Centro"],
+      "development" => ["Império do Sol"],
+      "property_codes" => [property.codigo],
       "transaction_type" => "venda",
       "q" => "Centro",
       "characteristics" => %w[frente_mar piscina]

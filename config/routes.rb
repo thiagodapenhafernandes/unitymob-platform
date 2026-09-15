@@ -460,6 +460,7 @@ Rails.application.routes.draw do
 
     resources :landing_pages do
       get :preview, on: :collection
+      get :filter_options, on: :collection
     end
 
     # === Lojas físicas (módulo field) ===
