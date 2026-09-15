@@ -14,6 +14,9 @@ export default class extends Controller {
       handle: ".lead-status-row__handle",
       draggable: ".lead-status-row"
     })
+    this.listTarget.querySelectorAll(".lead-status-row__automation-rule").forEach((rule) => {
+      this.refreshAutomationAction(rule)
+    })
   }
 
   disconnect() {
@@ -121,7 +124,7 @@ export default class extends Controller {
     const actionType = rule.querySelector('[data-lead-status-automation-field="action_type"]')?.value || "move_stage"
     rule.querySelectorAll("[data-action-config-panel]").forEach((panel) => {
       const panelType = panel.dataset.actionConfigPanel
-      panel.hidden = !(panelType === actionType || (panelType === "move_stage" && actionType === "redistribute_lead"))
+      panel.hidden = panelType !== actionType
     })
   }
 

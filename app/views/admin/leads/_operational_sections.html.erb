@@ -12,6 +12,8 @@
   edit_proposal_modal_prefix = local_assigns[:edit_proposal_modal_prefix].presence || "editProposal#{namespace}"
   contact_history_activities = Array(local_assigns[:contact_history_activities])
   contact_history_modal_id = local_assigns[:contact_history_modal_id].presence || "leadLogContactHistory#{namespace}"
+  scheduled_tasks = Array(local_assigns[:scheduled_tasks])
+  agenda_count = Array(appointments).size + scheduled_tasks.size
   sections = [
     ["agenda", "agenda"],
     ["tarefas", "tasks"],
@@ -30,7 +32,7 @@
       <div class="lead-operational-section__header">
         <span class="lead-operational-section__title"><i class="bi bi-calendar-event ax-ico"></i> Agenda</span>
         <span class="lead-operational-section__actions">
-          <span class="ax-badge ax-badge--gray"><%= appointments.size %></span>
+          <span class="ax-badge ax-badge--gray"><%= agenda_count %></span>
           <% if can?(:manage, :comercial) %>
             <%= render "admin/leads/schedule_activity_modal",
                   lead: lead,
@@ -43,7 +45,7 @@
         </span>
       </div>
       <div class="tw-grid tw-gap-2">
-        <% if appointments.any? %>
+        <% if appointments.any? || scheduled_tasks.any? %>
           <% appointments.first(6).each do |appointment| %>
             <div class="lead-operational-row">
               <span class="lead-operational-row__body">
@@ -59,6 +61,28 @@
                       trigger_class: "ax-ico-btn",
                       trigger_icon: "pencil",
                       trigger_title: "Editar agenda" %>
+              <% end %>
+            </div>
+          <% end %>
+          <% scheduled_tasks.first([6 - appointments.first(6).size, 0].max).each do |task| %>
+            <div class="lead-operational-row">
+              <% if can?(:manage, :comercial) && task.pendente? %>
+                <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir", aria: { label: "Concluir tarefa #{task.title}" } do %>
+                  <i class="bi bi-circle" aria-hidden="true"></i>
+                <% end %>
+              <% end %>
+              <span class="lead-operational-row__body">
+                <strong><%= task.title %></strong>
+                <span><%= task.kind == "visita" ? "Visita" : "Retorno ao cliente" %> · <%= l(task.due_at, format: :short) %></span>
+              </span>
+              <% if can?(:manage, :comercial) %>
+                <%= render "admin/tasks/form_modal",
+                      modal_id: "#{edit_task_modal_prefix}Schedule#{task.id}",
+                      lead: lead,
+                      task: task,
+                      trigger_label: nil,
+                      trigger_class: "ax-ico-btn",
+                      trigger_title: "Editar tarefa agendada" %>
               <% end %>
             </div>
           <% end %>

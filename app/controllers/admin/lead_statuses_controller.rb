@@ -206,7 +206,9 @@ module Admin
 
         amount = row[:after_amount].to_i
         action_type = row[:action_type].presence_in(LeadPipelineStageAutomation::ACTION_TYPES.keys) || "move_stage"
-        destination = current_tenant.lead_pipeline_stages.find_by(id: row[:auto_advance_to_stage_id].presence)
+        destination = if %w[move_stage redistribute_lead].include?(action_type)
+                        current_tenant.lead_pipeline_stages.find_by(id: row[:auto_advance_to_stage_id].presence)
+                      end
         next if amount <= 0 && destination.blank? && action_type == "move_stage"
         next if amount <= 0 && action_type != "move_stage"
 

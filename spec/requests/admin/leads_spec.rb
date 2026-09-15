@@ -1198,6 +1198,7 @@ RSpec.describe "Admin::Leads", type: :request do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Operacional", phone: "11999990000", status: "Em Atendimento", property_id: property.id)
       create(:appointment, tenant: admin.tenant, lead:, admin_user: admin, title: "Visita marcada", starts_at: 1.day.from_now, location: "Imóvel")
       create(:task, tenant: admin.tenant, lead:, admin_user: admin, title: "Ligar para cliente", due_at: 2.hours.from_now)
+      create(:task, tenant: admin.tenant, lead:, admin_user: admin, title: "Conferir documentação", due_at: nil)
       label = create(:lead_label, tenant: admin.tenant, admin_user: admin, name: "Urgente")
       lead.lead_labelings.create!(tenant: admin.tenant, lead_label: label)
       Proposal.create!(lead:, admin_user: admin, status: "rascunho", title: "Proposta inicial", validade: 5.days.from_now.to_date, valor_cents: 850_000_00)
@@ -1222,6 +1223,9 @@ RSpec.describe "Admin::Leads", type: :request do
       proposals_section = operation_card.css(".lead-operational-section").find { |section| section.text.include?("Propostas") }
       expect(agenda_section.to_html).to include("bi-plus-lg")
       expect(tasks_section.to_html).to include("bi-plus-lg")
+      expect(agenda_section.text).to include("Ligar para cliente")
+      expect(tasks_section.text).not_to include("Ligar para cliente")
+      expect(tasks_section.text).to include("Conferir documentação")
       expect(labels_section.to_html).to include("bi-plus-lg")
       expect(proposals_section.to_html).to include("bi-plus-lg")
       reactive_form_actions = [
