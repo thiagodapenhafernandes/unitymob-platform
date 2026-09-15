@@ -9,6 +9,7 @@ class Profile < ApplicationRecord
     "team" => 1,
     "all" => 2
   }.freeze
+  HABITATION_SEARCH_STATUSES_PERMISSION_KEY = "search_statuses".freeze
 
   belongs_to :tenant
   belongs_to :vertical_profile, class_name: "Profile", optional: true
@@ -232,6 +233,33 @@ class Profile < ApplicationRecord
     permissions
   end
 
+  def self.habitation_search_status_options_for(tenant)
+    statuses = Habitation::STATUS_OPTIONS
+    if tenant.present?
+      statuses += tenant.habitations
+        .where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
+        .distinct
+        .pluck(:status)
+    end
+
+    statuses
+      .map { |status| Habitation.normalize_status(status) }
+      .compact_blank
+      .uniq
+      .sort_by { |status| I18n.transliterate(status).downcase }
+  end
+
+  def self.normalize_habitation_search_statuses(values, tenant:)
+    available = habitation_search_status_options_for(tenant)
+    normalized = Array(values)
+      .flatten
+      .map { |status| Habitation.normalize_status(status.to_s.squish) }
+      .compact_blank
+      .uniq
+
+    normalized & available
+  end
+
   # Pode fazer `action` sobre `resource`?
   # Ex: profile.can?(:view, :leads) / profile.can?("manage", "imoveis")
   def can?(action, resource)
@@ -256,6 +284,20 @@ class Profile < ApplicationRecord
     return nil if horizontal? && configured == "team"
 
     configured
+  end
+
+  def habitation_search_statuses_configured?
+    permissions_hash.dig("imoveis", HABITATION_SEARCH_STATUSES_PERMISSION_KEY).is_a?(Array)
+  end
+
+  def habitation_search_statuses_for(tenant)
+    available = self.class.habitation_search_status_options_for(tenant)
+    return available if admin? || full_access?
+
+    configured = permissions_hash.dig("imoveis", HABITATION_SEARCH_STATUSES_PERMISSION_KEY)
+    return available unless configured.is_a?(Array)
+
+    self.class.normalize_habitation_search_statuses(configured, tenant: tenant)
   end
 
   def self.restricted_scope(primary_scope, overlay_scope)

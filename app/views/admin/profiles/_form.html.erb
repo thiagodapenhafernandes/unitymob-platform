@@ -40,6 +40,11 @@
                                     title="Configurar quais campos do cadastro este perfil pode editar">
                               <i class="bi bi-sliders" aria-hidden="true"></i> Campos do cadastro
                             </button>
+                            <button type="button" class="ax-btn ax-btn--sm prof-res__field-locks"
+                                    data-ax-modal-open="#imoveisSearchStatusesModal"
+                                    title="Configurar quais status comerciais este perfil pode pesquisar">
+                              <i class="bi bi-search" aria-hidden="true"></i> Status de pesquisa
+                            </button>
                           <% end %>
                       </div>
                     </th>
@@ -173,6 +178,7 @@
   <%# Modal de travas de campos do cadastro (card #1 / Opção B). Fica DENTRO do
       form para os checkboxes submeterem em profile[permissions][imoveis][locked_fields]. %>
   <%= render "admin/profiles/field_locks_modal", profile: profile %>
+  <%= render "admin/profiles/habitation_status_permissions_modal", profile: profile, statuses: @habitation_search_status_options %>
 
   <%= ax_sticky_action_footer do %>
     <%= link_to "Cancelar", admin_profiles_path, class: "ax-btn" %>

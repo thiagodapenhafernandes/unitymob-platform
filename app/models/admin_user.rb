@@ -313,6 +313,17 @@ class AdminUser < ApplicationRecord
     Profile.restricted_scope(vertical_scope, horizontal_scope)
   end
 
+  def allowed_habitation_search_statuses
+    return Profile.habitation_search_status_options_for(tenant) if admin?
+    return [] if tenant.blank? || vertical_profile.blank?
+
+    vertical_statuses = vertical_profile.habitation_search_statuses_for(tenant)
+    horizontal = horizontal_profile
+    return vertical_statuses unless horizontal&.habitation_search_statuses_configured?
+
+    vertical_statuses & horizontal.habitation_search_statuses_for(tenant)
+  end
+
   def can_manage_user?(other_user)
     return true if system_admin?
     return false unless other_user&.tenant_id == tenant_id

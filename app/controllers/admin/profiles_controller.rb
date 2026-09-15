@@ -2,6 +2,7 @@ module Admin
   class ProfilesController < BaseController
     before_action :require_profile_governance_admin!
     before_action :set_profile, only: %i[show edit update destroy]
+    before_action :set_habitation_search_status_options, only: %i[new edit create update]
 
     def index
       @vertical_profiles = current_tenant.profiles.ordered_vertical.includes(:horizontal_profiles)
@@ -154,6 +155,8 @@ module Admin
           submitted = Array(entry[:locked_fields]).map(&:to_s).reject(&:blank?)
           res_perms["locked_fields"] = submitted & Habitations::CadastroFieldRegistry.all_keys
           res_perms["category_fields_version"] = 1
+          res_perms[Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY] =
+            Profile.normalize_habitation_search_statuses(entry[Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY], tenant: current_tenant)
         end
 
         perms[key] = res_perms
@@ -173,7 +176,12 @@ module Admin
       # Card #1: perfil novo nasce com TODOS os campos do cadastro travados.
       base["imoveis"] ||= {}
       base["imoveis"]["locked_fields"] = Habitations::CadastroFieldRegistry.all_keys
+      base["imoveis"][Profile::HABITATION_SEARCH_STATUSES_PERMISSION_KEY] = Profile.habitation_search_status_options_for(current_tenant)
       base
+    end
+
+    def set_habitation_search_status_options
+      @habitation_search_status_options = Profile.habitation_search_status_options_for(current_tenant)
     end
 
     def vertical_position_after(profile_id)
