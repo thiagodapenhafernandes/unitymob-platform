@@ -519,6 +519,57 @@
   margin-bottom: 0;
 }
 
+.public-collapsible-text {
+  position: relative;
+}
+
+.public-collapsible-text__content {
+  position: relative;
+  overflow: hidden;
+  transition: max-height 180ms ease;
+}
+
+.public-collapsible-text.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 72px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 82%);
+  pointer-events: none;
+}
+
+.public-habitations-show__description-card.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 82%);
+}
+
+.public-collapsible-text__toggle {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  margin-top: 14px;
+  padding: 0;
+  color: var(--public-show-primary);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.public-collapsible-text__toggle:hover,
+.public-collapsible-text__toggle:focus-visible {
+  color: var(--public-show-accent);
+}
+
+.public-collapsible-text__toggle:focus-visible {
+  outline: 3px solid rgba(191, 171, 37, 0.38);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .public-habitations-show__chip-list {
   gap: 10px;
 }

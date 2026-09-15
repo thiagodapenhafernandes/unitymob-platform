@@ -29,9 +29,23 @@
               <%= ax_text_field(
                     form: fp,
                     method: :q,
-                    label: "Código, bairro ou empreendimento",
-                    placeholder: "Digite código, bairro, título ou nome do empreendimento",
+                    label: "Texto livre",
+                    placeholder: "Digite código, bairro, título ou característica",
                     data: { action: "input->property-page-preview#refresh" }
+                  ) %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_autocomplete_select_field(
+                    form: fp,
+                    method: :property_codes,
+                    label: "Códigos dos imóveis",
+                    choices: @selected_property_code_options || [],
+                    multiple: true,
+                    placeholder: "Digite o código ou título do imóvel",
+                    url: filter_options_admin_landing_pages_path(type: "property_codes"),
+                    min_length: 2,
+                    select_options: { selected: Array((@landing_page.filter_params || {})["property_codes"]).compact_blank },
+                    html_options: { data: { action: "change->property-page-preview#refresh" } }
                   ) %>
             </div>
             <div class="ax-span-6">
@@ -42,6 +56,20 @@
             </div>
             <div class="ax-span-6">
               <%= ax_autocomplete_select_field(form: fp, method: :neighborhood, label: "Bairro(s)", choices: @property_neighborhoods, multiple: true, placeholder: "Selecione bairros", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_autocomplete_select_field(
+                    form: fp,
+                    method: :development,
+                    label: "Empreendimento(s)",
+                    choices: @selected_development_options || [],
+                    multiple: true,
+                    placeholder: "Digite o nome do empreendimento",
+                    url: filter_options_admin_landing_pages_path(type: "developments"),
+                    min_length: 2,
+                    select_options: { selected: Array((@landing_page.filter_params || {})["development"]).compact_blank },
+                    html_options: { data: { action: "change->property-page-preview#refresh" } }
+                  ) %>
             </div>
             <div class="ax-span-6">
               <%= ax_select_field(form: fp, method: :transaction_type, label: "Transação", choices: [['Venda', 'venda'], ['Aluguel', 'aluguel']], select_options: { include_blank: "Todas" }, html_options: { data: { action: "change->property-page-preview#refresh" } }) %>

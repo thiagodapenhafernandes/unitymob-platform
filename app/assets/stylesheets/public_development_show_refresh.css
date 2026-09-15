@@ -150,6 +150,19 @@
   line-height: 1.76;
 }
 
+.public-development-show__prose.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 78%);
+}
+
+.public-development-show__prose .public-collapsible-text__toggle {
+  color: var(--public-development-primary);
+}
+
+.public-development-show__prose .public-collapsible-text__toggle:hover,
+.public-development-show__prose .public-collapsible-text__toggle:focus-visible {
+  color: var(--public-development-accent);
+}
+
 .public-development-show__gallery-grid {
   gap: 14px;
 }

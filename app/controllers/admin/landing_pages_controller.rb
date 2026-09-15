@@ -19,6 +19,7 @@ class Admin::LandingPagesController < Admin::BaseController
     if @landing_page.save
       redirect_to admin_landing_pages_path, notice: "Página criada com sucesso!"
     else
+      load_filter_options
       render :new, status: :unprocessable_entity
     end
   end
@@ -31,6 +32,7 @@ class Admin::LandingPagesController < Admin::BaseController
     if @landing_page.update(landing_page_params)
       redirect_to admin_landing_pages_path, notice: "Página atualizada com sucesso!"
     else
+      load_filter_options
       render :edit, status: :unprocessable_entity
     end
   end
@@ -74,6 +76,10 @@ class Admin::LandingPagesController < Admin::BaseController
     render json: { count: 0, items: [], metrics: { avg_price: "R$ 0,00", min_price: "R$ 0,00", max_price: "R$ 0,00", distribution: {} } }
   end
 
+  def filter_options
+    render json: landing_page_filter_options
+  end
+
   private
 
   def set_landing_page
@@ -83,14 +89,14 @@ class Admin::LandingPagesController < Admin::BaseController
   def landing_page_params
     params.require(:landing_page).permit(
       :title, :slug, :description, :content, :meta_title, :meta_description, :active, 
-      filter_params: [:q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status, category: [], city: [], neighborhood: [], characteristics: []]
+      filter_params: [:q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status, category: [], city: [], neighborhood: [], development: [], property_codes: [], characteristics: []]
     )
   end
 
   def preview_params
     params.permit(
       :q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status,
-      category: [], city: [], neighborhood: [], characteristics: []
+      category: [], city: [], neighborhood: [], development: [], property_codes: [], characteristics: []
     )
   end
 
@@ -121,5 +127,68 @@ class Admin::LandingPagesController < Admin::BaseController
     @property_categories = scope.distinct.pluck(:categoria).compact.sort
     @property_cities = scope.distinct.pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)")).compact.sort
     @property_neighborhoods = scope.distinct.pluck(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)")).compact.uniq.sort
+    @selected_property_code_options = property_code_options_for(selected_filter_values("property_codes"), exact: true)
+    @selected_development_options = selected_filter_values("development").map { |name| [name, name] }
+  end
+
+  def landing_page_filter_options
+    term = params[:q].to_s.strip
+    return [] if term.length < 2
+
+    case params[:type].to_s
+    when "property_codes"
+      option_payload(property_code_options_for(term))
+    when "developments"
+      option_payload(development_options_for(term))
+    else
+      []
+    end
+  end
+
+  def property_code_options_for(value, exact: false)
+    values = Array(value).compact_blank.map(&:to_s)
+    scope = current_tenant.habitations.active
+
+    if !exact && values.one? && values.first.length >= 2
+      term = "%#{ActiveRecord::Base.sanitize_sql_like(values.first)}%"
+      scope = scope.where(
+        "habitations.codigo ILIKE :term OR unaccent(habitations.titulo_anuncio) ILIKE unaccent(:term) OR unaccent(habitations.nome_empreendimento) ILIKE unaccent(:term)",
+        term:
+      )
+    elsif values.any?
+      scope = scope.where(codigo: values)
+    else
+      return []
+    end
+
+    scope.order(Arel.sql("habitations.codigo ASC NULLS LAST")).limit(30).map do |habitation|
+      [property_code_option_label(habitation), habitation.codigo.to_s]
+    end
+  end
+
+  def development_options_for(term)
+    pattern = "%#{ActiveRecord::Base.sanitize_sql_like(term)}%"
+    current_tenant.habitations.active
+      .where("nome_empreendimento IS NOT NULL AND nome_empreendimento <> ''")
+      .where("unaccent(nome_empreendimento) ILIKE unaccent(?)", pattern)
+      .distinct
+      .order(:nome_empreendimento)
+      .limit(30)
+      .pluck(:nome_empreendimento)
+      .compact_blank
+      .uniq
+      .map { |name| [name, name] }
+  end
+
+  def property_code_option_label(habitation)
+    ["##{habitation.codigo}", habitation.display_title, habitation.nome_empreendimento].compact_blank.join(" · ")
+  end
+
+  def selected_filter_values(key)
+    Array(@landing_page&.filter_params&.[](key)).compact_blank.map(&:to_s)
+  end
+
+  def option_payload(options)
+    options.map { |label, value| { value:, text: label } }
   end
 end

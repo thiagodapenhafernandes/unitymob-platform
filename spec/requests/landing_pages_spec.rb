@@ -25,4 +25,21 @@ RSpec.describe "LandingPages", type: :request do
     expect(response.body).to include('/apartamentos?page=2&amp;sort=price_asc')
     expect(response.body).not_to include('/landing_pages/')
   end
+
+  it "limits public listing to selected property codes" do
+    included = create(:habitation, codigo: "LP-CODE-1", titulo_anuncio: "Imóvel escolhido para landing", exibir_no_site_flag: true)
+    excluded = create(:habitation, codigo: "LP-CODE-2", titulo_anuncio: "Imóvel fora da landing", exibir_no_site_flag: true)
+    landing_page = LandingPage.create!(
+      title: "Seleção por código",
+      slug: "selecao-por-codigo",
+      active: true,
+      filter_params: { "property_codes" => [included.codigo] }
+    )
+
+    get public_landing_page_path(landing_page.slug)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(included.titulo_anuncio)
+    expect(response.body).not_to include(excluded.titulo_anuncio)
+  end
 end

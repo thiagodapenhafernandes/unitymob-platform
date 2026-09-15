@@ -776,6 +776,7 @@ module Habitation::SearchScopes
         query = query.by_neighborhood(params[:neighborhood])
       end
       query = query.by_development(params[:development]) if params[:development].present?
+      query = query.where(codigo: Array(params[:property_codes]).compact_blank.map(&:to_s)) if params[:property_codes].present?
       query = query.by_state(params[:state]) if params[:state].present?
       
       # Características numéricas

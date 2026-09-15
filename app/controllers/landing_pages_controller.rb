@@ -17,6 +17,8 @@ class LandingPagesController < ApplicationController
       category: filters['category'],
       city: filters['city'],
       neighborhood: filters['neighborhood'],
+      development: filters['development'],
+      property_codes: filters['property_codes'],
       transaction_type: filters['transaction_type'],
       min_bedrooms: filters['min_bedrooms'],
       min_suites: filters['min_suites'],
