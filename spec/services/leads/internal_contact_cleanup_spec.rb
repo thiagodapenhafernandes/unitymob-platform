@@ -6,6 +6,8 @@ RSpec.describe Leads::InternalContactCleanup do
     internal_user = create(:admin_user, tenant: tenant, phone: "(47) 98489-5559")
     internal_lead = create(:lead, tenant: tenant, phone: "5547984895559", name: internal_user.name)
     client_lead = create(:lead, tenant: tenant, phone: "5547999998888", name: "Cliente Real")
+    collection = AiPropertyShareCollection.create!(tenant: tenant, admin_user: internal_user, token: SecureRandom.hex(12), expires_at: 1.day.from_now, lead: internal_lead)
+    audit_event = AiPropertyShareAuditEvent.create!(tenant: tenant, ai_property_share_collection: collection, admin_user: internal_user, lead: internal_lead, event_type: "view")
 
     dry_run = described_class.call(tenant: tenant, execute: false)
 
@@ -19,6 +21,8 @@ RSpec.describe Leads::InternalContactCleanup do
     expect(execute.first.removed_count).to eq(1)
     expect(Lead.exists?(internal_lead.id)).to be(false)
     expect(Lead.exists?(client_lead.id)).to be(true)
+    expect(collection.reload.lead_id).to be_nil
+    expect(audit_event.reload.lead_id).to be_nil
   end
 
   it "respeita o tenant ao comparar telefones" do
