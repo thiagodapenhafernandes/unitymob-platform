@@ -90,6 +90,33 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       expect(conv.lead.activities.where(kind: "whatsapp_in").count).to eq(1)
     end
 
+    it "não transforma conversa de usuário interno em lead" do
+      internal_phone = "5547984895559"
+      create(:admin_user, tenant: integration.tenant, phone: internal_phone, name: "Karla Barcelos")
+      internal_payload = payload.deep_dup
+      value = internal_payload[:entry][0][:changes][0][:value]
+      value[:contacts] = [{ profile: { name: "Karla Barcelos" }, wa_id: internal_phone }]
+      value[:messages] = [{
+        from: internal_phone,
+        id: "wamid.INTERNAL#{SecureRandom.hex(4)}",
+        timestamp: "1700000000",
+        type: "text",
+        text: { body: "teste interno" }
+      }]
+
+      leads_before = Lead.count
+      expect {
+        post "/webhooks/whatsapp", params: internal_payload, as: :json
+      }.to change(WhatsappConversation, :count).by(1)
+       .and change(WhatsappMessage, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(Lead.count).to eq(leads_before)
+      conv = WhatsappConversation.find_by!(tenant: integration.tenant, contact_phone: internal_phone)
+      expect(conv.lead).to be_nil
+      expect(conv.messages.last.body).to eq("teste interno")
+    end
+
     it "aceita payload encaminhado pelo gateway central com assinatura interna" do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return("forward-secret")

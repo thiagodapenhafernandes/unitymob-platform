@@ -88,6 +88,7 @@ Rails.application.routes.draw do
 
     root to: 'dashboard#index'
     get "dashboard/broker_performance_report", to: "dashboard#broker_performance_report", as: :dashboard_broker_performance_report
+    get "dashboard/campaign_performance_report", to: "dashboard#campaign_performance_report", as: :dashboard_campaign_performance_report
     get "dashboard/:section", to: "dashboard#section", as: :dashboard_section
 
     # Painel do Admin do Sistema (operador da aplicação) — acima da conta.

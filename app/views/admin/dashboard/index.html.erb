@@ -10,7 +10,8 @@
     end_date: @dashboard_end_date.iso8601,
     tab: @dashboard_tab
   }
-  dashboard_filter_params[:broker_id] = @dashboard_broker_id if @dashboard_broker_id.present?
+  dashboard_filter_params[:business_type] = @dashboard_business_type if @dashboard_business_type.present?
+  dashboard_filter_params[:broker_ids] = @dashboard_broker_ids if @dashboard_broker_ids.present?
   dashboard_preset_range = lambda do |preset|
     today = Date.current
     case preset
@@ -106,7 +107,10 @@
           <strong>Período personalizado</strong>
           <%= form.hidden_field :tab, value: @dashboard_tab %>
           <%= form.hidden_field :period_preset, value: "custom" %>
-          <%= form.hidden_field :broker_id, value: @dashboard_broker_id if @dashboard_broker_id.present? %>
+          <%= form.hidden_field :business_type, value: @dashboard_business_type if @dashboard_business_type.present? %>
+          <% @dashboard_broker_ids.each do |broker_id| %>
+            <%= hidden_field_tag "broker_ids[]", broker_id %>
+          <% end %>
           <div>
             <%= form.date_field :start_date, value: @dashboard_start_date.iso8601, class: "ax-control", aria: { label: "Data inicial" } %>
             <%= form.date_field :end_date, value: @dashboard_end_date.iso8601, class: "ax-control", aria: { label: "Data final" } %>
@@ -115,13 +119,37 @@
         <% end %>
       </div>
     </details>
-    <% if @is_admin_view %>
-      <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-broker-filter", data: { turbo: false } do |form| %>
-        <%= form.hidden_field :tab, value: @dashboard_tab %>
-        <%= form.hidden_field :period_preset, value: @dashboard_period_preset %>
-        <%= form.hidden_field :start_date, value: @dashboard_start_date.iso8601 %>
-        <%= form.hidden_field :end_date, value: @dashboard_end_date.iso8601 %>
-        <%= form.select :broker_id, [["Todos os corretores", ""]] + @dashboard_brokers.map { |broker| [broker.name, broker.id] }, { selected: @dashboard_broker_id }, class: "ax-control", aria: { label: "Corretor do dashboard" }, onchange: "this.form.requestSubmit()" %>
+    <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-scope-filter", data: { turbo: false, controller: "auto-submit" } do |form| %>
+      <%= form.hidden_field :tab, value: @dashboard_tab %>
+      <%= form.hidden_field :period_preset, value: @dashboard_period_preset %>
+      <%= form.hidden_field :start_date, value: @dashboard_start_date.iso8601 %>
+      <%= form.hidden_field :end_date, value: @dashboard_end_date.iso8601 %>
+      <%= form.select :business_type,
+                      [["Venda e locação", ""], ["Venda", "sale"], ["Locação", "rental"]],
+                      { selected: @dashboard_business_type },
+                      class: "ax-control",
+                      aria: { label: "Tipo de negócio do dashboard" },
+                      data: { action: "change->auto-submit#submit" } %>
+      <% if @is_admin_view %>
+        <%= ax_multiselect_field(
+              form: form,
+              method: :broker_ids,
+              label: "Corretores",
+              choices: @dashboard_brokers.map { |broker| [broker.name, broker.id] },
+              selected: @dashboard_broker_ids,
+              placeholder: "Todos os corretores",
+              data: {
+                action: "change->auto-submit#submit",
+                tom_select_tags_value: false,
+                tom_select_options_value: {
+                  create: false,
+                  closeAfterSelect: false,
+                  hideSelected: true,
+                  maxOptions: nil,
+                  plugins: { remove_button: { title: "" } }
+                }.to_json
+              }
+            ) %>
       <% end %>
     <% end %>
   </div>
@@ -227,6 +255,10 @@
   <% if @dashboard_tab == "leads" %>
   <%= turbo_frame_tag "admin_dashboard_broker_performance", src: admin_dashboard_section_path("broker_performance", dashboard_filter_params), loading: "lazy" do %>
     <%= render "admin/dashboard/sections/loading_panel", title: "Performance dos Corretores", eyebrow: "Inteligência comercial", rows: 6, compact: true %>
+  <% end %>
+
+  <%= turbo_frame_tag "admin_dashboard_campaign_performance", src: admin_dashboard_section_path("campaign_performance", dashboard_filter_params), loading: "lazy" do %>
+    <%= render "admin/dashboard/sections/loading_panel", title: "Performance de Campanhas e Canais", eyebrow: "Aquisição inteligente", rows: 6, compact: true %>
   <% end %>
 
   <%= turbo_frame_tag "admin_dashboard_acquisition", src: admin_dashboard_section_path("acquisition", dashboard_filter_params) do %>

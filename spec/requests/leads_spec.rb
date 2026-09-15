@@ -175,6 +175,31 @@ RSpec.describe "Leads", type: :request do
       expect(Lead.order(:created_at).last.phone).to eq("5547988880000")
     end
 
+    it "não cria lead quando o telefone informado pertence a um usuário interno" do
+      create(:admin_user, tenant: Tenant.default, phone: "(47) 98489-5559", name: "Karla Barcelos")
+      habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+
+      expect {
+        post leads_path, params: {
+          lead: {
+            name: "Karla Barcelos",
+            phone: "(47) 98489-5559",
+            property_id: habitation.id,
+            lead_type: "whatsapp_modal",
+            whatsapp_message: "Tenho interesse",
+            business_type: "sale",
+            page_url: "https://site.example/imoveis/#{habitation.id}"
+          }
+        }, as: :json
+      }.not_to change(Lead, :count)
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["success"]).to be(true)
+      expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
+      expect(WebhookService).not_to have_received(:send_form_data)
+    end
+
     it "creates the lead and returns a confirmation message when WhatsApp redirect is disabled" do
       WhatsappBusinessIntegration.current(Tenant.default).update!(sale_redirect_after_capture: false)
       habitation = create(:habitation, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)

@@ -1,0 +1,185 @@
+<%= turbo_frame_tag "admin_dashboard_campaign_performance" do %>
+  <% if @is_admin_view && %w[all leads].include?(@dashboard_tab) %>
+    <article class="ax-dashboard-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Aquisição inteligente · <%= @dashboard_period %> dias</span>
+          <div class="ax-dashboard-performance__title-row">
+            <h2>Performance de Campanhas e Canais</h2>
+            <button type="button"
+                    class="ax-dashboard-performance__info"
+                    data-ax-modal-open="#campaignPerformanceSourcesModal"
+                    aria-label="Ver origem dos dados da performance de campanhas e canais">i</button>
+          </div>
+          <p class="ax-dashboard-performance__subtitle">Entenda quais campanhas, formulários e canais geraram atendimento, contato registrado, oportunidade e negócio fechado.</p>
+        </div>
+        <%= link_to "Gerar relatório",
+                    admin_dashboard_campaign_performance_report_path(request.query_parameters.slice("period_preset", "period", "start_date", "end_date", "broker_id", "broker_ids", "business_type")),
+                    class: "ax-dashboard-panel__link",
+                    data: { turbo_frame: "_top" } %>
+      </div>
+
+      <div class="ax-dashboard-performance ax-dashboard-performance--campaign ax-dashboard-performance--report">
+        <div class="ax-dashboard-performance__head">
+          <span>
+            Campanha / canal
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Mostra Meta Ads por campanha/formulário, Site somente com evidência de página, imóvel, modal ou URL, e origem sem detalhe quando o lead não trouxe rastreio suficiente."
+               aria-label="Mostra Meta Ads por campanha/formulário, Site somente com evidência de página, imóvel, modal ou URL, e origem sem detalhe quando o lead não trouxe rastreio suficiente.">i</i>
+          </span>
+          <span>
+            Leads
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Total de leads recebidos por esta campanha ou canal dentro do Escopo do painel."
+               aria-label="Total de leads recebidos por esta campanha ou canal dentro do Escopo do painel.">i</i>
+          </span>
+          <span>
+            Atendidos
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Conta quando o sistema registra aceite, clique no link de atendimento ou status em atendimento."
+               aria-label="Conta quando o sistema registra aceite, clique no link de atendimento ou status em atendimento.">i</i>
+          </span>
+          <span>
+            Tentou contato
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Conta somente leads com tentativa salva pelo corretor no Histórico de contatos."
+               aria-label="Conta somente leads com tentativa salva pelo corretor no Histórico de contatos.">i</i>
+          </span>
+          <span>
+            Oportunidades
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Leads que avançaram para visita ou proposta registrada no sistema."
+               aria-label="Leads que avançaram para visita ou proposta registrada no sistema.">i</i>
+          </span>
+          <span>
+            Fechados
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Leads marcados como negócio concluído no período analisado."
+               aria-label="Leads marcados como negócio concluído no período analisado.">i</i>
+          </span>
+        </div>
+
+        <% @campaign_performance.each do |row| %>
+          <details class="ax-dashboard-performance__details">
+            <summary class="ax-dashboard-performance__row">
+              <span class="ax-dashboard-performance__identity ax-dashboard-performance__identity--stacked">
+                <strong><%= row[:title] %></strong>
+                <small><%= row[:detail] %></small>
+              </span>
+              <span class="ax-dashboard-performance__badges ax-dashboard-performance__badges--total">
+                <em class="is-<%= row[:tone] %>"><b><%= row[:total] %></b> leads</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-<%= row[:attended_count].to_i.positive? ? "green" : "gray" %>"><b><%= row[:attended_count] %></b> atendidos</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-<%= row[:contacted_count].to_i.positive? ? "amber" : "gray" %>"><b><%= row[:contacted_count] %></b> tentou contato</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-<%= row[:opportunity_count].to_i.positive? ? "blue" : "gray" %>"><b><%= row[:opportunity_count] %></b> oportunidades</em>
+              </span>
+              <span class="ax-dashboard-performance__badges">
+                <em class="is-<%= row[:closed_count].to_i.positive? ? "green" : "gray" %>"><b><%= row[:closed_count] %></b> fechados</em>
+                <em class="is-gray"><%= row[:conversion_rate] %>%</em>
+              </span>
+            </summary>
+
+            <div class="ax-dashboard-performance__leads">
+              <% if row[:leads].any? %>
+                <div class="ax-dashboard-performance__lead-head ax-dashboard-performance__lead-head--campaign" aria-hidden="true">
+                  <span>Lead</span>
+                  <span>Origem</span>
+                  <span>Corretor</span>
+                  <span>Atendeu</span>
+                  <span>Tentou contato</span>
+                  <span>Resultado</span>
+                  <span>Recebido</span>
+                </div>
+                <% row[:leads].each do |item| %>
+                  <details class="ax-dashboard-performance__lead-details">
+                    <summary class="ax-dashboard-performance__lead ax-dashboard-performance__lead--campaign">
+                      <strong><%= item[:name] %></strong>
+                      <span><%= item[:source_label] %></span>
+                      <span><%= item[:broker_name] %></span>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:opened_tone] %>"><%= item[:opened_label] %></em>
+                      </span>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:contact_tone] %>"><%= item[:contact_label] %></em>
+                      </span>
+                      <span class="ax-dashboard-performance__lead-badges">
+                        <em class="is-<%= item[:result_tone] %>"><%= item[:result_label] %></em>
+                      </span>
+                      <time datetime="<%= item[:created_at].iso8601 %>"><%= l(item[:created_at], format: :short) %></time>
+                    </summary>
+                    <div class="ax-dashboard-performance__lead-history">
+                      <div class="ax-dashboard-performance__lead-history-head">
+                        <strong><%= item[:property_label] %></strong>
+                        <%= link_to "Abrir lead", admin_lead_path(item[:lead]), data: { turbo_frame: "_top" } %>
+                      </div>
+                      <p class="ax-dashboard-performance__lead-empty">
+                        Campanha/anúncio: <%= item[:campaign_label] %>
+                      </p>
+                    </div>
+                  </details>
+                <% end %>
+              <% else %>
+                <div class="ax-dashboard-empty-row">Sem leads para esta campanha ou canal no período.</div>
+              <% end %>
+            </div>
+          </details>
+        <% end %>
+
+        <% if @campaign_performance.empty? %>
+          <div class="ax-dashboard-empty-row">Sem campanhas ou canais com leads no período.</div>
+        <% end %>
+
+        <footer class="ax-dashboard-performance__legend">
+          <span>Site: página, imóvel ou modal do site; se clicou WhatsApp no site, continua sendo Site</span>
+          <span>Atendidos: aceite, clique no atendimento ou status em atendimento</span>
+          <span>Tentou contato: somente Histórico de contatos</span>
+          <span>Oportunidades: visita ou proposta</span>
+          <span>Fechados: negócio concluído</span>
+        </footer>
+      </div>
+    </article>
+
+    <%= ax_quick_modal(id: "campaignPerformanceSourcesModal", title: "Origem dos dados da Performance de Campanhas e Canais", size: :md, class_name: "ax-dashboard-performance-modal") do %>
+      <div class="ax-dashboard-performance-sources">
+        <p>Este bloco segue o ciclo comercial do lead dentro do Escopo do painel: entrada, atendimento, contato registrado, oportunidade e fechamento.</p>
+        <dl>
+          <div>
+            <dt>Meta Ads</dt>
+            <dd>Usa campanha, anúncio e formulário registrados no lead quando esses dados vêm da integração Meta.</dd>
+          </div>
+          <div>
+            <dt>Site</dt>
+            <dd>Usa eventos de conversão, página, imóvel, modal ou URL do site. Quando o cliente clicou no WhatsApp dentro do site, a origem principal continua sendo Site e a ação aparece como WhatsApp.</dd>
+          </div>
+          <div>
+            <dt>Origem sem detalhe</dt>
+            <dd>Mostra leads que chegaram sem página, campanha, formulário ou referral de anúncio gravado. Eles entram no relatório para evidenciar perda de rastreio.</dd>
+          </div>
+          <div>
+            <dt>Atendimento</dt>
+            <dd>Considera aceite, clique no link de atendimento ou lead marcado como em atendimento.</dd>
+          </div>
+          <div>
+            <dt>Tentou contato</dt>
+            <dd>Conta somente tentativas salvas pelo corretor no Histórico de contatos do lead. Respostas automáticas ou mensagens recebidas sem registro manual não entram aqui.</dd>
+          </div>
+          <div>
+            <dt>Resultado</dt>
+            <dd>Oportunidade é visita ou proposta. Fechado é lead concluído como negócio.</dd>
+          </div>
+        </dl>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

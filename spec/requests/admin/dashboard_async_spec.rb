@@ -22,6 +22,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(document.css(".ax-dashboard-tabs__badge")).to be_empty
     expect(response.body).to include('id="admin_dashboard_charts"')
     expect(response.body).to include('id="admin_dashboard_broker_performance"')
+    expect(response.body).to include('id="admin_dashboard_campaign_performance"')
     expect(response.body).not_to include("Decisão operacional")
     expect(response.body).not_to include("IA textual")
     expect(response.body).not_to include("Diagnóstico da semana")
@@ -38,7 +39,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   it "redireciona acesso direto ao slice do site para o dashboard completo" do
     get admin_dashboard_section_path("site")
 
-    expect(response).to redirect_to(admin_root_path(period_preset: "last_7", start_date: "2026-09-08", end_date: "2026-09-14", tab: "site"))
+    expect(response).to redirect_to(admin_root_path(period_preset: "last_7", start_date: "2026-09-09", end_date: "2026-09-15", tab: "site"))
   end
 
   it "responde perguntas operacionais com dados acionáveis na visão geral" do
@@ -436,13 +437,150 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include('id="admin_dashboard_acquisition"')
     expect(response.body).not_to include('id="admin_dashboard_service"')
     expect(response.body).to include('id="admin_dashboard_broker_performance"')
+    expect(response.body).to include('id="admin_dashboard_campaign_performance"')
     expect(response.body).to include("Performance dos Corretores")
+    expect(response.body).to include("Performance de Campanhas e Canais")
     expect(response.body).to include('aria-label="Carregando Performance dos Corretores"')
+    expect(response.body).to include('aria-label="Carregando Performance de Campanhas e Canais"')
     expect(response.body).to include("tab=leads")
     expect(response.body).to include("period=7")
     expect(response.body).not_to include('id="admin_dashboard_operations"')
     expect(response.body).not_to include('id="admin_dashboard_support"')
     expect(response.body).not_to include("Atenção necessária")
+  end
+
+  it "consolida performance de campanhas e canais com dados do lead" do
+    travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant campanhas BI #{SecureRandom.hex(3)}", slug: "tenant-campanhas-bi-#{SecureRandom.hex(3)}")
+      owner = create(:admin_user, :admin, tenant: tenant)
+      broker = create(:admin_user, tenant: tenant, name: "Corretor Campanha")
+      sign_out admin
+      sign_in owner
+
+      meta_one = create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Meta Atendido",
+        origin: "Facebook Lead Ads",
+        status: Lead.status_value(:em_atendimento),
+        product: "Form Notre Dame - Cód. 4195",
+        other_information: {
+          "meta_campaign_name" => "[KD] [Notre Dame] [Leads] [Form] - 01/09/26",
+          "meta_ad_name" => "Ads01 - Vídeo",
+          "meta_form_name" => "Form Notre Dame - Cód. 4195"
+        },
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Meta Aguardando",
+        origin: "Facebook Lead Ads",
+        product: "Form Notre Dame - Cód. 4195",
+        other_information: {
+          "meta_campaign_name" => "[KD] [Notre Dame] [Leads] [Form] - 01/09/26",
+          "meta_form_name" => "Form Notre Dame - Cód. 4195"
+        },
+        created_at: 2.days.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead Site WhatsApp",
+        origin: "whatsapp",
+        lead_type: "whatsapp_modal",
+        source_url: "https://conexaobc.test/imoveis/4355",
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead WhatsApp Sem Rastreio",
+        origin: "whatsapp",
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
+        name: "Lead WhatsApp Anúncio",
+        origin: "whatsapp",
+        other_information: {
+          "whatsapp_entry" => {
+            "referral" => {
+              "source_type" => "ad",
+              "source_id" => "123456789",
+              "headline" => "Anúncio WhatsApp Click"
+            }
+          }
+        },
+        created_at: 1.day.ago
+      )
+      LeadActivity.create!(
+        lead: meta_one,
+        kind: "note",
+        source_category: "human",
+        metadata: { "contact_kind" => "whatsapp", "contact_result" => "falou_com_cliente" },
+        created_at: 20.hours.ago
+      )
+      create(:appointment, tenant: tenant, lead: meta_one, admin_user: broker, kind: "visita", starts_at: 1.day.from_now)
+
+      get admin_dashboard_section_path("campaign_performance", tab: "leads", period_preset: "last_7"),
+          headers: { "Turbo-Frame" => "admin_dashboard_campaign_performance" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Performance de Campanhas e Canais")
+      expect(response.body).to include("[KD] [Notre Dame] [Leads] [Form] - 01/09/26")
+      expect(response.body).to include("Form Notre Dame - Cód. 4195")
+      expect(response.body).to include("2</b> leads")
+      expect(response.body).to include("1</b> atendidos")
+      expect(response.body).to include("1</b> tentou contato")
+      expect(response.body).to include("1</b> oportunidades")
+      expect(response.body).to include("0</b> fechados")
+      expect(response.body).to include("Lead Meta Atendido")
+      expect(response.body).to include("Lead Meta Aguardando")
+      expect(response.body).to include("Site")
+      expect(response.body).to include("Página /imoveis/4355 · Ação WhatsApp")
+      expect(response.body).to include("Origem sem detalhe")
+      expect(response.body).to include("Entrada sem página, campanha ou formulário registrado")
+      expect(response.body).to include("Lead WhatsApp Sem Rastreio")
+      expect(response.body).to include("Anúncio WhatsApp Click")
+      expect(response.body).to include("Lead WhatsApp Anúncio")
+      expect(response.body).to include("Tentou contato: somente Histórico de contatos")
+    end
+  end
+
+  it "gera relatório CSV da performance de campanhas" do
+    travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant csv campanhas #{SecureRandom.hex(3)}", slug: "tenant-csv-campanhas-#{SecureRandom.hex(3)}")
+      owner = create(:admin_user, :admin, tenant: tenant)
+      sign_out admin
+      sign_in owner
+
+      create(
+        :lead,
+        tenant: tenant,
+        name: "Lead CSV Campanha",
+        origin: "Facebook Lead Ads",
+        product: "Form CSV",
+        other_information: {
+          "meta_campaign_name" => "Campanha CSV",
+          "meta_form_name" => "Form CSV"
+        },
+        created_at: 1.day.ago
+      )
+
+      get admin_dashboard_campaign_performance_report_path(period_preset: "last_7")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Performance de Campanhas e Canais")
+      expect(response.body).to include("Campanha CSV")
+      expect(response.body).to include("Lead CSV Campanha")
+    end
   end
 
   it "separa os painéis de Imóveis" do
@@ -813,7 +951,55 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Escopo do painel")
     expect(response.body).to include("period=7")
-    expect(response.body).to include("broker_id=#{broker.id}")
+    expect(response.body).to include("broker_ids%5B%5D=#{broker.id}")
+  end
+
+  it "filtra performance por tipo de negócio e múltiplos corretores" do
+    travel_to Time.zone.local(2026, 9, 14, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant dashboard filtros #{SecureRandom.hex(3)}", slug: "tenant-dashboard-filtros-#{SecureRandom.hex(3)}")
+      owner = create(:admin_user, :admin, tenant: tenant)
+      broker_one = create(:admin_user, tenant: tenant, name: "Corretor Venda")
+      broker_two = create(:admin_user, tenant: tenant, name: "Corretor Locação")
+      other_broker = create(:admin_user, tenant: tenant, name: "Corretor Fora")
+      sale_property = create(:habitation, tenant: tenant, valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+      rental_property = create(:habitation, tenant: tenant, valor_venda_cents: 0, valor_locacao_cents: 4_500_00)
+
+      sign_out admin
+      sign_in owner
+
+      create(:lead, tenant: tenant, admin_user: broker_one, name: "Lead Venda", origin: "Site", source_url: "https://site.test/venda", property_id: sale_property.id, created_at: 1.day.ago)
+      create(:lead, tenant: tenant, admin_user: broker_two, name: "Lead Locação", origin: "Site", source_url: "https://site.test/aluguel", property_id: rental_property.id, created_at: 1.day.ago)
+      create(:lead, tenant: tenant, admin_user: other_broker, name: "Lead Fora", origin: "Site", source_url: "https://site.test/aluguel-fora", property_id: rental_property.id, created_at: 1.day.ago)
+
+      get admin_dashboard_section_path(
+            "campaign_performance",
+            tab: "leads",
+            period_preset: "last_7",
+            business_type: "rental",
+            broker_ids: [broker_one.id, broker_two.id]
+          ),
+          headers: { "Turbo-Frame" => "admin_dashboard_campaign_performance" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Locação")
+      expect(response.body).not_to include("Lead Venda")
+      expect(response.body).not_to include("Lead Fora")
+    end
+  end
+
+  it "remove contatos internos das métricas de performance" do
+    broker = create(:admin_user, tenant: admin.tenant, phone: "(47) 98489-5559", name: "Karla Barcelos")
+    create(:lead, tenant: admin.tenant, admin_user: broker, name: "Karla Barcelos", phone: "(47) 98489-5559", origin: "whatsapp", created_at: 1.day.ago)
+
+    get admin_dashboard_section_path("broker_performance", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Karla Barcelos")
+
+    get admin_dashboard_section_path("campaign_performance", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_campaign_performance" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Karla Barcelos")
   end
 
   it "renderiza desempenho comercial no período selecionado" do

@@ -14693,8 +14693,45 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
   gap: 8px;
 }
 
-.ax-dashboard-broker-filter {
+.ax-dashboard-broker-filter,
+.ax-dashboard-scope-filter {
   margin: 0;
+}
+
+.ax-dashboard-scope-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ax-dashboard-scope-filter .ax-multiselect {
+  width: clamp(220px, 22vw, 360px);
+  min-width: 0;
+}
+
+.ax-dashboard-scope-filter .ax-field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.ax-dashboard-scope-filter .ax-multiselect__frame,
+.ax-dashboard-scope-filter .ts-wrapper,
+.ax-dashboard-scope-filter .ts-control {
+  min-height: 30px;
+}
+
+.ax-dashboard-scope-filter .ts-control {
+  padding-block: 2px !important;
+  border-color: #b8c4d0;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 750;
 }
 
 .ax-dashboard-tabs {
@@ -15945,6 +15982,11 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   min-width: 0;
 }
 
+.ax-dashboard-performance--campaign .ax-dashboard-performance__head,
+.ax-dashboard-performance--campaign .ax-dashboard-performance__row {
+  grid-template-columns: minmax(250px, 1.25fr) minmax(84px, .3fr) minmax(120px, .43fr) minmax(128px, .46fr) minmax(150px, .54fr) minmax(135px, .48fr);
+}
+
 .ax-dashboard-performance__tooltip {
   position: relative;
   display: inline-grid;
@@ -16079,6 +16121,20 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   min-width: 0;
 }
 
+.ax-dashboard-performance__identity--stacked {
+  display: grid;
+  gap: 2px;
+}
+
+.ax-dashboard-performance__identity--stacked small {
+  overflow: hidden;
+  color: #667085;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .ax-dashboard-performance__badges {
   display: flex;
   align-items: center;
@@ -16130,6 +16186,11 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   color: #18794e;
 }
 
+.ax-dashboard-performance__badges .is-blue {
+  background: #eef6ff;
+  color: #365f8f;
+}
+
 .ax-dashboard-performance__badges .is-total {
   background: #eef6ff;
   color: #365f8f;
@@ -16145,6 +16206,31 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
 .ax-dashboard-performance__lead-badges .is-pool {
   background: #f4edff;
   color: #6941c6;
+}
+
+.ax-dashboard-performance__badges .is-meta {
+  background: #eef4ff;
+  color: #155eef;
+}
+
+.ax-dashboard-performance__badges .is-site {
+  background: #eefdf8;
+  color: #087443;
+}
+
+.ax-dashboard-performance__badges .is-whatsapp {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.ax-dashboard-performance__badges .is-manual {
+  background: #fff6ed;
+  color: #b54708;
+}
+
+.ax-dashboard-performance__badges .is-channel {
+  background: #f4f3ff;
+  color: #5925dc;
 }
 
 .ax-dashboard-performance__badges .is-amber {
@@ -16163,11 +16249,17 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
 }
 
 .ax-dashboard-performance__badges .is-green b,
+.ax-dashboard-performance__badges .is-blue b,
 .ax-dashboard-performance__badges .is-amber b,
 .ax-dashboard-performance__badges .is-red b,
 .ax-dashboard-performance__badges .is-total b,
 .ax-dashboard-performance__badges .is-rotary b,
 .ax-dashboard-performance__badges .is-pool b,
+.ax-dashboard-performance__badges .is-meta b,
+.ax-dashboard-performance__badges .is-site b,
+.ax-dashboard-performance__badges .is-whatsapp b,
+.ax-dashboard-performance__badges .is-manual b,
+.ax-dashboard-performance__badges .is-channel b,
 .ax-dashboard-performance__badges .is-gray b {
   color: inherit;
 }
@@ -16232,6 +16324,11 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   grid-template-columns: minmax(180px, 1fr) minmax(100px, .38fr) minmax(150px, .52fr) minmax(150px, .52fr) minmax(260px, .95fr) minmax(92px, auto);
   gap: 8px;
   align-items: center;
+}
+
+.ax-dashboard-performance__lead-head--campaign,
+.ax-dashboard-performance__lead--campaign {
+  grid-template-columns: minmax(170px, .8fr) minmax(230px, 1.1fr) minmax(130px, .55fr) minmax(90px, .38fr) minmax(145px, .55fr) minmax(235px, .9fr) minmax(92px, auto);
 }
 
 .ax-dashboard-performance__lead-head {
@@ -16697,6 +16794,15 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   .ax-dashboard-filters {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .ax-dashboard-scope-filter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ax-dashboard-scope-filter .ax-multiselect {
+    width: 100%;
   }
 
   .ax-dashboard-filters .ax-control { width: 100%; }
@@ -26314,10 +26420,33 @@ html[data-admin-theme="dark"] .ax-dashboard-performance__lead-badges .is-pool {
   color: #ddd6fe;
 }
 
+html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-meta,
+html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-channel {
+  background: color-mix(in srgb, #818cf8 18%, var(--admin-surface));
+  color: #c7d2fe;
+}
+
+html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-site,
+html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-whatsapp {
+  background: color-mix(in srgb, #34d399 16%, var(--admin-surface));
+  color: #bbf7d0;
+}
+
+html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-manual {
+  background: color-mix(in srgb, #fb923c 18%, var(--admin-surface));
+  color: #fed7aa;
+}
+
 html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-green,
 html[data-admin-theme="dark"] .ax-dashboard-performance__lead-badges .is-green {
   background: color-mix(in srgb, #34d399 16%, var(--admin-surface));
   color: #bbf7d0;
+}
+
+html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-blue,
+html[data-admin-theme="dark"] .ax-dashboard-performance__lead-badges .is-blue {
+  background: color-mix(in srgb, #60a5fa 18%, var(--admin-surface));
+  color: #bfdbfe;
 }
 
 html[data-admin-theme="dark"] .ax-dashboard-performance__badges .is-amber,

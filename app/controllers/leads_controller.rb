@@ -22,6 +22,11 @@ class LeadsController < ApplicationController
     Leads::Attribution.apply!(@lead, raw: attribution_params, request: request)
     normalize_site_origin(@lead)
 
+    if internal_contact = internal_contact_for(@lead.phone)
+      Rails.logger.info("[lead capture] contato interno ignorado tenant_id=#{public_tenant.id} admin_user_id=#{internal_contact.id}")
+      return render json: lead_success_response(lead_business_type(habitation))
+    end
+
     saved_new_lead = false
     public_tenant.with_lock do
       duplicate = recent_whatsapp_modal_duplicate(@lead)
@@ -169,6 +174,10 @@ class LeadsController < ApplicationController
 
   def normalized_host(host)
     host.to_s.downcase.sub(/\Awww\./, "")
+  end
+
+  def internal_contact_for(phone)
+    Leads::InternalContactMatcher.call(tenant: public_tenant, phone: phone)
   end
 
 end

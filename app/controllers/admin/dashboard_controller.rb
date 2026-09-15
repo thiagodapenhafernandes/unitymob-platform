@@ -3,12 +3,29 @@ require "csv"
 class Admin::DashboardController < Admin::BaseController
   include DeviceRequest
 
-  DASHBOARD_SECTIONS = %w[charts acquisition funnel status service broker_performance rankings operations support site].freeze
+  DASHBOARD_SECTIONS = %w[charts acquisition funnel status service broker_performance campaign_performance rankings operations support site].freeze
   DASHBOARD_TABS = %w[leads overview properties site field].freeze
   DASHBOARD_PERIODS = [7, 14, 30, 90, 180].freeze
   DASHBOARD_PERIOD_PRESETS = %w[yesterday this_week this_month last_7 last_14 last_30 last_6_months custom].freeze
+  DASHBOARD_BUSINESS_TYPES = %w[sale rental].freeze
   OVERVIEW_CACHE_EXPIRATION = 2.minutes
   DASHBOARD_AGGREGATE_CACHE_EXPIRATION = 5.minutes
+  DASHBOARD_LEAD_FILTER_TEXT_SQL = <<~SQL.squish.freeze
+    LOWER(CONCAT_WS(' ',
+      leads.origin,
+      leads.lead_type,
+      leads.product,
+      leads.notes,
+      leads.status,
+      leads.source_url,
+      leads.other_information::text,
+      leads.attribution_data::text
+    ))
+  SQL
+  DASHBOARD_BUSINESS_FILTERS = {
+    "sale" => "(#{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%venda%' OR #{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%compra%' OR #{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%comprar%' OR #{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%sale%')",
+    "rental" => "(#{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%loca%' OR #{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%aluguel%' OR #{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%alugar%' OR #{DASHBOARD_LEAD_FILTER_TEXT_SQL} LIKE '%rental%')"
+  }.freeze
   CONTACT_ACTIVITY_KINDS = %w[
     accepted note whatsapp_out appointment_created appointment_done
     proposal_created proposal_sent proposal_viewed proposal_aceita proposal_recusada
@@ -43,13 +60,21 @@ class Admin::DashboardController < Admin::BaseController
               type: "text/csv; charset=utf-8"
   end
 
+  def campaign_performance_report
+    return head :forbidden unless @is_admin_view
+
+    send_data campaign_performance_report_csv,
+              filename: "performance_campanhas_#{@dashboard_start_date.iso8601}_#{@dashboard_end_date.iso8601}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
   private
 
   def dashboard_section_redirect_params(section_name)
     redirect_params = dashboard_date_params
     redirect_params[:tab] = section_name if DASHBOARD_TABS.include?(section_name)
     redirect_params[:tab] ||= params[:tab].to_s.presence_in(DASHBOARD_TABS)
-    redirect_params[:broker_id] = @dashboard_broker_id if @dashboard_broker_id.present?
+    redirect_params[:broker_ids] = @dashboard_broker_ids if @dashboard_broker_ids.present?
     redirect_params
   end
 
@@ -63,8 +88,10 @@ class Admin::DashboardController < Admin::BaseController
   def set_dashboard_context
     @is_admin_view = tenant_owner?
     resolve_dashboard_period!
-    @dashboard_broker_id = @is_admin_view ? params[:broker_id].presence&.to_i : current_admin_user.id
     @dashboard_brokers = @is_admin_view ? current_tenant.admin_users.active.order(:name).select(:id, :name) : []
+    @dashboard_broker_ids = resolve_dashboard_broker_ids
+    @dashboard_broker_id = @dashboard_broker_ids.one? ? @dashboard_broker_ids.first : nil
+    @dashboard_business_type = params[:business_type].to_s.presence_in(DASHBOARD_BUSINESS_TYPES)
     @habitation_scope = scoped_dashboard_habitations
     @lead_scope = scoped_dashboard_leads
     @captacao_scope = scoped_dashboard_captacoes
@@ -84,7 +111,7 @@ class Admin::DashboardController < Admin::BaseController
   # visível depende do usuário). As seções (charts/funnel/...) seguem ao vivo.
   def load_overview_slice
     metrics = Rails.cache.fetch(
-      ["dashboard-overview-v7", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_id],
+      ["dashboard-overview-v7", current_tenant.id, current_admin_user.id, @dashboard_period, @dashboard_broker_ids, @dashboard_business_type],
       expires_in: OVERVIEW_CACHE_EXPIRATION
     ) { compute_overview_metrics }
     metrics.each { |name, value| instance_variable_set("@#{name}", value) }
@@ -114,9 +141,9 @@ class Admin::DashboardController < Admin::BaseController
 
     @leads_total = valid_leads.count
     @new_leads = valid_leads.where(status: [Lead.default_status, nil]).count
-    @leads_today = valid_leads.where("created_at >= ?", beginning).count
-    @leads_last_7_days = valid_leads.where("created_at >= ?", 7.days.ago).count
-    @current_period_leads = valid_leads.where("created_at >= ?", dashboard_window_start).count
+    @leads_today = valid_leads.where("leads.created_at >= ?", beginning).count
+    @leads_last_7_days = valid_leads.where("leads.created_at >= ?", 7.days.ago).count
+    @current_period_leads = valid_leads.where("leads.created_at >= ?", dashboard_window_start).count
     @previous_period_leads = valid_leads.where(created_at: previous_dashboard_window).count
     @leads_period_change = percentage_change(@current_period_leads, @previous_period_leads)
     @holding_leads = @is_admin_view ? @lead_scope.holding.count : 0
@@ -142,8 +169,8 @@ class Admin::DashboardController < Admin::BaseController
     @rules_with_checkin = @is_admin_view ? current_tenant.distribution_rules.where(require_active_checkin: true).count : 0
 
     @sync_errors_count = @is_admin_view ? scoped_dashboard_catalog_habitations.where(last_sync_status: "error").count : 0
-    @today_captacoes = @captacao_scope.where(created_at: beginning..).count
-    @today_new_habitations = scoped_dashboard_catalog_habitations.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
+    @today_captacoes = @captacao_scope.where(habitations: { created_at: beginning.. }).count
+    @today_new_habitations = scoped_dashboard_catalog_habitations.where("COALESCE(habitations.data_atualizacao_crm, habitations.created_at) >= ?", beginning).count
     draft_captacoes = @captacao_scope.where(intake_status: [nil, "draft"])
     @drafts_count = draft_captacoes.count
     @stale_drafts_count = draft_captacoes.where("habitations.updated_at < ?", 30.days.ago).count
@@ -167,7 +194,8 @@ class Admin::DashboardController < Admin::BaseController
     @leads_series = leads_time_series(@dashboard_start_date, @dashboard_end_date, chart_scope)
     @leads_total = chart_scope.count
     @leads_chart_mode = "daily"
-    @leads_drilldown_urls = @leads_series.map { |date, _| admin_leads_path(start_date: date.iso8601, end_date: date.iso8601, broker_id: @dashboard_broker_id) }
+    lead_drilldown_filter = @dashboard_broker_id.present? ? { broker_id: @dashboard_broker_id } : {}
+    @leads_drilldown_urls = @leads_series.map { |date, _| admin_leads_path(lead_drilldown_filter.merge(start_date: date.iso8601, end_date: date.iso8601)) }
   end
 
   def load_acquisition_slice
@@ -202,6 +230,10 @@ class Admin::DashboardController < Admin::BaseController
   def load_service_slice
     load_service_sla_metrics
     @service_sla_rows = service_sla_rows
+  end
+
+  def load_campaign_performance_slice
+    @campaign_performance = campaign_performance_result.rows
   end
 
   def load_rankings_slice
@@ -361,18 +393,34 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def dashboard_date_params(extra = {})
-    {
+    params = {
       period_preset: @dashboard_period_preset,
       start_date: @dashboard_start_date.iso8601,
       end_date: @dashboard_end_date.iso8601
-    }.merge(extra).compact_blank
+    }
+    params[:business_type] = @dashboard_business_type if @dashboard_business_type.present?
+    params[:broker_ids] = @dashboard_broker_ids if @dashboard_broker_ids.present?
+    params.merge(extra).compact_blank
+  end
+
+  def resolve_dashboard_broker_ids
+    return [current_admin_user.id] unless @is_admin_view
+
+    ids = Array(params[:broker_ids]).flat_map { |value| value.to_s.split(",") }
+    ids << params[:broker_id] if ids.blank? && params[:broker_id].present?
+    ids = ids.filter_map { |value| Integer(value, exception: false) }.uniq
+    return [] if ids.blank?
+
+    allowed_ids = @dashboard_brokers.map(&:id)
+    ids & allowed_ids
   end
 
   def scoped_dashboard_habitations
     scope = current_tenant.habitations
     owner_ids = visible_owner_ids(:imoveis)
     scope = owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
-    @dashboard_broker_id ? scope.where(admin_user_id: @dashboard_broker_id) : scope
+    scope = scope.where(admin_user_id: @dashboard_broker_ids) if @dashboard_broker_ids.present?
+    apply_dashboard_habitation_business_filter(scope)
   end
 
   def scoped_dashboard_catalog_habitations
@@ -387,7 +435,9 @@ class Admin::DashboardController < Admin::BaseController
     scope = current_tenant.leads
     owner_ids = visible_owner_ids(:leads)
     scope = owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
-    @dashboard_broker_id ? scope.where(admin_user_id: @dashboard_broker_id) : scope
+    scope = scope.where(admin_user_id: @dashboard_broker_ids) if @dashboard_broker_ids.present?
+    scope = apply_dashboard_lead_business_filter(scope)
+    exclude_internal_contact_leads(scope)
   end
 
   def valid_dashboard_leads_scope
@@ -411,11 +461,56 @@ class Admin::DashboardController < Admin::BaseController
     scope = current_tenant.habitations.broker_intakes
     owner_ids = visible_owner_ids(:captacoes)
     scope = owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
-    @dashboard_broker_id ? scope.where(admin_user_id: @dashboard_broker_id) : scope
+    scope = scope.where(admin_user_id: @dashboard_broker_ids) if @dashboard_broker_ids.present?
+    apply_dashboard_habitation_business_filter(scope)
+  end
+
+  def apply_dashboard_habitation_business_filter(scope)
+    case @dashboard_business_type
+    when "sale"
+      scope.where("COALESCE(habitations.valor_venda_cents, 0) > 0 OR habitations.status ILIKE ?", "%venda%")
+    when "rental"
+      scope.where("COALESCE(habitations.valor_locacao_cents, 0) > 0 OR habitations.status ILIKE ? OR habitations.status ILIKE ?", "%aluguel%", "%loca%")
+    else
+      scope
+    end
+  end
+
+  def apply_dashboard_lead_business_filter(scope)
+    return scope if @dashboard_business_type.blank?
+
+    scope = scope.joins("LEFT OUTER JOIN habitations ON habitations.id = leads.property_id AND habitations.tenant_id = leads.tenant_id")
+    case @dashboard_business_type
+    when "sale"
+      scope.where("(COALESCE(habitations.valor_venda_cents, 0) > 0 OR #{DASHBOARD_BUSINESS_FILTERS.fetch("sale")})")
+    when "rental"
+      scope.where("(COALESCE(habitations.valor_locacao_cents, 0) > 0 OR #{DASHBOARD_BUSINESS_FILTERS.fetch("rental")})")
+    else
+      scope
+    end
+  end
+
+  def exclude_internal_contact_leads(scope)
+    phones = internal_contact_phones
+    return scope if phones.empty?
+
+    scope.where.not(
+      "regexp_replace(coalesce(leads.phone, ''), '\\D', '', 'g') IN (:phones) OR regexp_replace(coalesce(leads.client_phone, ''), '\\D', '', 'g') IN (:phones)",
+      phones: phones
+    )
+  end
+
+  def internal_contact_phones
+    @internal_contact_phones ||= current_tenant.admin_users
+      .account_members
+      .pluck(:phone, :secondary_phone)
+      .flatten
+      .filter_map { |phone| Phones::Normalizer.call(phone).to_s.presence }
+      .uniq
   end
 
   def commercial_funnel_rows
-    recent_scope = valid_dashboard_leads_scope.where("created_at >= ?", dashboard_window_start)
+    recent_scope = valid_dashboard_leads_scope.where("leads.created_at >= ?", dashboard_window_start)
     status_counts = recent_scope.group(:status).count
     total_leads = status_counts.values.sum
 
@@ -976,7 +1071,7 @@ class Admin::DashboardController < Admin::BaseController
       answer: rows.any? ? "Etapas abertas com maior volume parado há mais de 48h." : "Nenhum gargalo de etapa aberto agora.",
       tone: rows.any? ? "amber" : "green",
       icon: "filter-circle",
-      path: admin_root_path(dashboard_date_params(tab: "leads", broker_id: @dashboard_broker_id)),
+      path: admin_root_path(dashboard_date_params(tab: "leads")),
       rows: rows,
       empty: "Sem etapa travada no período."
     }
@@ -990,7 +1085,7 @@ class Admin::DashboardController < Admin::BaseController
       answer: rows.any? ? "Imóveis com leads no período e nenhuma visita registrada." : "Nenhum imóvel com demanda travada no período.",
       tone: rows.any? ? "amber" : "green",
       icon: "buildings",
-      path: admin_root_path(dashboard_date_params(tab: "properties", broker_id: @dashboard_broker_id)),
+      path: admin_root_path(dashboard_date_params(tab: "properties")),
       rows: rows,
       empty: "Sem imóvel com lead sem visita no período."
     }
@@ -1046,7 +1141,7 @@ class Admin::DashboardController < Admin::BaseController
       answer: acquisition[:attribution_rate].to_f.positive? ? "#{acquisition[:attribution_rate]}% dos leads têm origem identificada." : "Origem ainda pouco rastreada neste período.",
       tone: acquisition[:unknown].to_i.positive? ? "amber" : "blue",
       icon: "signpost-split",
-      path: admin_root_path(dashboard_date_params(tab: "leads", broker_id: @dashboard_broker_id)),
+      path: admin_root_path(dashboard_date_params(tab: "leads")),
       rows: rows,
       empty: "Sem leads no período para comparar canais."
     }
@@ -1304,7 +1399,7 @@ class Admin::DashboardController < Admin::BaseController
       tone: tone,
       icon: "graph-up-arrow",
       action: "Analisar origem",
-      path: admin_root_path(dashboard_date_params(tab: "leads", broker_id: @dashboard_broker_id)),
+      path: admin_root_path(dashboard_date_params(tab: "leads")),
       priority: attention ? 30 : 80,
       attention: attention
     }
@@ -1568,7 +1663,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def lead_acquisition_result
     @lead_acquisition_result ||= Rails.cache.fetch(
-      ["dashboard-lead-acquisition-v4", current_tenant.id, current_admin_user.id, @dashboard_start_date, @dashboard_end_date, @dashboard_broker_id],
+      ["dashboard-lead-acquisition-v4", current_tenant.id, current_admin_user.id, @dashboard_start_date, @dashboard_end_date, @dashboard_broker_ids, @dashboard_business_type],
       expires_in: DASHBOARD_AGGREGATE_CACHE_EXPIRATION
     ) do
       Dashboard::LeadAcquisitionQuery.new(
@@ -1639,10 +1734,10 @@ class Admin::DashboardController < Admin::BaseController
 
   def broker_performance_rows
     period_scope = valid_dashboard_leads_scope
-      .where(created_at: dashboard_window_start..dashboard_window_end)
+      .where(leads: { created_at: dashboard_window_start..dashboard_window_end })
       .where.not(admin_user_id: nil)
       .includes(:distribution_rule)
-    leads = period_scope.order(created_at: :desc).to_a
+    leads = period_scope.order("leads.created_at DESC").to_a
     lead_ids = leads.map(&:id)
     responded_ids = LeadActivity.human_operational
       .where(lead_id: lead_ids)
@@ -1705,7 +1800,7 @@ class Admin::DashboardController < Admin::BaseController
       csv << []
 
       broker_performance_rows.each do |row|
-        csv << ["Corretor", "Total", "Rodízio", "Bolsão", "Atendidos", "Tentativas"]
+        csv << ["Corretor", "Total", "Rodízio", "Bolsão", "Atendidos", "Tentou contato"]
         csv << [
           row[:name],
           "#{row[:total]} leads",
@@ -1722,6 +1817,52 @@ class Admin::DashboardController < Admin::BaseController
             lead[:opened_label],
             lead[:contact_label],
             lead[:story_label],
+            I18n.l(lead[:created_at], format: :short)
+          ]
+        end
+        csv << []
+      end
+    end
+  end
+
+  def campaign_performance_result
+    @campaign_performance_result ||= Dashboard::CampaignPerformanceQuery.new(
+      scope: valid_dashboard_leads_scope,
+      tenant: current_tenant,
+      starts_at: dashboard_window_start,
+      ends_at: dashboard_window_end,
+      period_label: @dashboard_period_label
+    ).call
+  end
+
+  def campaign_performance_report_csv
+    CSV.generate(headers: false, col_sep: ";") do |csv|
+      csv << ["Performance de Campanhas e Canais"]
+      csv << ["Período", @dashboard_period_label]
+      csv << []
+
+      campaign_performance_result.rows.each do |row|
+        csv << ["Campanha/canal", "Detalhe", "Leads", "Atendidos", "Tentou contato", "Oportunidades", "Fechados", "Taxa de fechamento"]
+        csv << [
+          row[:title],
+          row[:detail],
+          row[:total],
+          row[:attended_count],
+          row[:contacted_count],
+          row[:opportunity_count],
+          row[:closed_count],
+          "#{row[:conversion_rate]}%"
+        ]
+        csv << ["Lead", "Origem", "Corretor", "Atendimento", "Tentou contato", "Resultado", "Imóvel", "Recebido"]
+        row[:leads].each do |lead|
+          csv << [
+            lead[:name],
+            lead[:source_label],
+            lead[:broker_name],
+            lead[:opened_label],
+            lead[:contact_label],
+            lead[:result_label],
+            lead[:property_label],
             I18n.l(lead[:created_at], format: :short)
           ]
         end
