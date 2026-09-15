@@ -8,6 +8,10 @@ class Admin::DashboardController < Admin::BaseController
   DASHBOARD_PERIODS = [7, 14, 30, 90, 180].freeze
   DASHBOARD_PERIOD_PRESETS = %w[yesterday this_week this_month last_7 last_14 last_30 last_6_months custom].freeze
   DASHBOARD_BUSINESS_TYPES = %w[sale rental].freeze
+  DASHBOARD_REPORT_SECTION_RESOURCES = {
+    "broker_performance" => :dashboard_broker_performance,
+    "campaign_performance" => :dashboard_campaign_performance
+  }.freeze
   OVERVIEW_CACHE_EXPIRATION = 2.minutes
   DASHBOARD_AGGREGATE_CACHE_EXPIRATION = 5.minutes
   DASHBOARD_LEAD_FILTER_TEXT_SQL = <<~SQL.squish.freeze
@@ -41,6 +45,7 @@ class Admin::DashboardController < Admin::BaseController
   def section
     section_name = params[:section].to_s
     raise ActiveRecord::RecordNotFound unless DASHBOARD_SECTIONS.include?(section_name)
+    return head :forbidden unless dashboard_section_allowed?(section_name)
 
     unless turbo_frame_request?
       redirect_to admin_root_path(dashboard_section_redirect_params(section_name))
@@ -53,7 +58,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def broker_performance_report
-    return head :forbidden unless @is_admin_view
+    return head :forbidden unless can_view_dashboard_report?(:dashboard_broker_performance)
 
     send_data broker_performance_report_csv,
               filename: "performance_corretores_#{@dashboard_start_date.iso8601}_#{@dashboard_end_date.iso8601}.csv",
@@ -61,7 +66,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def campaign_performance_report
-    return head :forbidden unless @is_admin_view
+    return head :forbidden unless can_view_dashboard_report?(:dashboard_campaign_performance)
 
     send_data campaign_performance_report_csv,
               filename: "performance_campanhas_#{@dashboard_start_date.iso8601}_#{@dashboard_end_date.iso8601}.csv",
@@ -87,8 +92,12 @@ class Admin::DashboardController < Admin::BaseController
 
   def set_dashboard_context
     @is_admin_view = tenant_owner?
+    @can_view_broker_performance = can_view_dashboard_report?(:dashboard_broker_performance)
+    @can_view_campaign_performance = can_view_dashboard_report?(:dashboard_campaign_performance)
     resolve_dashboard_period!
-    @dashboard_brokers = @is_admin_view ? current_tenant.admin_users.active.order(:name).select(:id, :name) : []
+    @dashboard_broker_filter_owner_ids = dashboard_broker_filter_owner_ids
+    @dashboard_brokers = dashboard_broker_filter_scope.order(:name).select(:id, :name)
+    @dashboard_can_filter_brokers = @dashboard_broker_filter_owner_ids.nil? || @dashboard_brokers.size > 1
     @dashboard_broker_ids = resolve_dashboard_broker_ids
     @dashboard_broker_id = @dashboard_broker_ids.one? ? @dashboard_broker_ids.first : nil
     @dashboard_business_type = params[:business_type].to_s.presence_in(DASHBOARD_BUSINESS_TYPES)
@@ -264,7 +273,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def load_broker_performance_slice
-    @broker_performance = @is_admin_view ? broker_performance_rows : []
+    @broker_performance = @can_view_broker_performance ? broker_performance_rows : []
   end
 
   def load_operations_slice
@@ -404,7 +413,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def resolve_dashboard_broker_ids
-    return [current_admin_user.id] unless @is_admin_view
+    return [] unless @dashboard_can_filter_brokers
 
     ids = Array(params[:broker_ids]).flat_map { |value| value.to_s.split(",") }
     ids << params[:broker_id] if ids.blank? && params[:broker_id].present?
@@ -413,6 +422,41 @@ class Admin::DashboardController < Admin::BaseController
 
     allowed_ids = @dashboard_brokers.map(&:id)
     ids & allowed_ids
+  end
+
+  def dashboard_section_allowed?(section_name)
+    resource = DASHBOARD_REPORT_SECTION_RESOURCES[section_name]
+    return true if resource.blank?
+
+    can_view_dashboard_report?(resource)
+  end
+
+  def can_view_dashboard_report?(resource)
+    can?(:view, resource)
+  end
+
+  def dashboard_broker_filter_resources
+    resources = [:leads]
+    resources << :dashboard_broker_performance if can_view_dashboard_report?(:dashboard_broker_performance)
+    resources << :dashboard_campaign_performance if can_view_dashboard_report?(:dashboard_campaign_performance)
+    resources.select { |resource| can?(:view, resource) }
+  end
+
+  def dashboard_broker_filter_owner_ids
+    return nil if tenant_owner?
+
+    resources = dashboard_broker_filter_resources
+    return [current_admin_user.id] if resources.blank?
+    return nil if resources.any? { |resource| owns_all_resource?(resource) }
+
+    resources.flat_map do |resource|
+      current_admin_user&.can_view_team?(resource) ? team_scope_ids : [current_admin_user&.id].compact
+    end.uniq
+  end
+
+  def dashboard_broker_filter_scope
+    scope = current_tenant.admin_users.active
+    @dashboard_broker_filter_owner_ids.nil? ? scope : scope.where(id: @dashboard_broker_filter_owner_ids)
   end
 
   def scoped_dashboard_habitations
@@ -440,11 +484,20 @@ class Admin::DashboardController < Admin::BaseController
     exclude_internal_contact_leads(scope)
   end
 
-  def valid_dashboard_leads_scope
+  def valid_dashboard_leads_scope(scope = @lead_scope)
     invalid_statuses = invalid_operational_lead_status_values
-    return @lead_scope if invalid_statuses.empty?
+    return scope if invalid_statuses.empty?
 
-    @lead_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", invalid_statuses)
+    scope.where("leads.status IS NULL OR leads.status NOT IN (?)", invalid_statuses)
+  end
+
+  def scoped_dashboard_report_leads(resource)
+    scope = current_tenant.leads
+    owner_ids = visible_owner_ids(resource)
+    scope = owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
+    scope = scope.where(admin_user_id: @dashboard_broker_ids) if @dashboard_broker_ids.present?
+    scope = apply_dashboard_lead_business_filter(scope)
+    exclude_internal_contact_leads(scope)
   end
 
   def active_dashboard_leads_scope
@@ -1733,7 +1786,7 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def broker_performance_rows
-    period_scope = valid_dashboard_leads_scope
+    period_scope = valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_broker_performance))
       .where(leads: { created_at: dashboard_window_start..dashboard_window_end })
       .where.not(admin_user_id: nil)
       .includes(:distribution_rule)
@@ -1827,7 +1880,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def campaign_performance_result
     @campaign_performance_result ||= Dashboard::CampaignPerformanceQuery.new(
-      scope: valid_dashboard_leads_scope,
+      scope: valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_campaign_performance)),
       tenant: current_tenant,
       starts_at: dashboard_window_start,
       ends_at: dashboard_window_end,
