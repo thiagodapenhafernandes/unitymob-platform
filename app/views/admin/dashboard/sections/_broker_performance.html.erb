@@ -19,12 +19,42 @@
                     data: { turbo_frame: "_top" } %>
       </div>
       <div class="ax-dashboard-performance ax-dashboard-performance--report">
-        <div class="ax-dashboard-performance__head" aria-hidden="true">
-          <span>Corretor <i title="Corretor responsável pelos leads no período filtrado.">i</i></span>
-          <span>Total <i title="Total de leads atribuídos ao corretor dentro do período filtrado.">i</i></span>
-          <span>Recebidos <i title="Separação entre leads enviados por rodízio e leads assumidos no bolsão.">i</i></span>
-          <span>Atendidos <i title="Leads que tiveram clique, aceite ou atendimento registrado no sistema.">i</i></span>
-          <span>Tentativas <i title="Tentativas registradas no histórico do lead: ligação, WhatsApp, e-mail ou visita.">i</i></span>
+        <div class="ax-dashboard-performance__head">
+          <span>
+            Corretor
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Corretor responsável pelos leads recebidos no período do Escopo do painel."
+               aria-label="Corretor responsável pelos leads recebidos no período do Escopo do painel.">i</i>
+          </span>
+          <span>
+            Total
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Total de leads atribuídos ao corretor dentro do período do Escopo do painel."
+               aria-label="Total de leads atribuídos ao corretor dentro do período do Escopo do painel.">i</i>
+          </span>
+          <span>
+            Recebidos
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Rodízio vem da distribuição automática. Bolsão vem dos leads assumidos pela equipe, incluindo bolsão e Shark Tank."
+               aria-label="Rodízio vem da distribuição automática. Bolsão vem dos leads assumidos pela equipe, incluindo bolsão e Shark Tank.">i</i>
+          </span>
+          <span>
+            Atendidos
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Conta quando o sistema registra aceite, clique no link de atendimento ou status em atendimento."
+               aria-label="Conta quando o sistema registra aceite, clique no link de atendimento ou status em atendimento.">i</i>
+          </span>
+          <span>
+            Tentativas
+            <i class="ax-dashboard-performance__tooltip"
+               tabindex="0"
+               data-tooltip="Conta somente tentativas salvas no Histórico de contatos do lead: ligação, WhatsApp, e-mail ou visita."
+               aria-label="Conta somente tentativas salvas no Histórico de contatos do lead: ligação, WhatsApp, e-mail ou visita.">i</i>
+          </span>
         </div>
         <% @broker_performance.each do |row| %>
           <details class="ax-dashboard-performance__details">
@@ -107,7 +137,7 @@
         <footer class="ax-dashboard-performance__legend">
           <span>Recebeu: lead enviado por rodízio ou assumido no bolsão</span>
           <span>Abriu: clique/aceite registrado no sistema</span>
-          <span>Tentou contato: ligação, WhatsApp, e-mail ou visita registrados no histórico</span>
+          <span>Tentou contato: somente tentativas salvas no Histórico de contatos</span>
           <span>Situação: leitura prática do ponto em que o lead parou</span>
         </footer>
       </div>
@@ -131,11 +161,11 @@
           </div>
           <div>
             <dt>Situação do lead</dt>
-            <dd>Leitura operacional do ciclo: se abriu, se registrou tentativa, se o cliente respondeu ou se o lead voltou para redistribuição.</dd>
+            <dd>Leitura operacional do ciclo: se abriu, se existe tentativa no Histórico de contatos, se o cliente respondeu ou se o lead voltou para redistribuição.</dd>
           </div>
           <div>
             <dt>Tentativas de contato</dt>
-            <dd>Registros manuais do histórico do lead: ligação, WhatsApp, e-mail ou visita, com resultado e observação.</dd>
+            <dd>Somente registros salvos no Histórico de contatos do lead como ligação, WhatsApp, e-mail ou visita, com resultado e observação.</dd>
           </div>
         </dl>
       </div>

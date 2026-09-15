@@ -15945,7 +15945,8 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   min-width: 0;
 }
 
-.ax-dashboard-performance__head i {
+.ax-dashboard-performance__tooltip {
+  position: relative;
   display: inline-grid;
   width: 16px;
   height: 16px;
@@ -15960,6 +15961,58 @@ html[data-admin-theme="dark"] .ax-dashboard-tabs__badge--red { color: #ffaaa5; b
   line-height: 1;
   text-transform: none;
   cursor: help;
+}
+
+.ax-dashboard-performance__tooltip::before,
+.ax-dashboard-performance__tooltip::after {
+  position: absolute;
+  left: 50%;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+.ax-dashboard-performance__tooltip::before {
+  content: attr(data-tooltip);
+  bottom: calc(100% + 9px);
+  width: max-content;
+  max-width: min(280px, 70vw);
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #1f2937;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .18);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+}
+
+.ax-dashboard-performance__tooltip::after {
+  content: "";
+  bottom: calc(100% + 4px);
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+}
+
+.ax-dashboard-performance__tooltip:hover,
+.ax-dashboard-performance__tooltip:focus-visible {
+  border-color: var(--admin-primary, #365f8f);
+  background: #eef6ff;
+  outline: none;
+}
+
+.ax-dashboard-performance__tooltip:hover::before,
+.ax-dashboard-performance__tooltip:hover::after,
+.ax-dashboard-performance__tooltip:focus-visible::before,
+.ax-dashboard-performance__tooltip:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .ax-dashboard-performance__details {
@@ -26173,16 +26226,28 @@ html[data-admin-theme="dark"] .ax-dashboard-filters {
 }
 
 html[data-admin-theme="dark"] .ax-dashboard-performance__info,
-html[data-admin-theme="dark"] .ax-dashboard-performance__head i {
+html[data-admin-theme="dark"] .ax-dashboard-performance__tooltip {
   border-color: var(--ax-border-soft);
   background: var(--admin-surface);
   color: color-mix(in srgb, var(--admin-primary) 72%, var(--admin-ink));
 }
 
 html[data-admin-theme="dark"] .ax-dashboard-performance__info:hover,
-html[data-admin-theme="dark"] .ax-dashboard-performance__info:focus-visible {
+html[data-admin-theme="dark"] .ax-dashboard-performance__info:focus-visible,
+html[data-admin-theme="dark"] .ax-dashboard-performance__tooltip:hover,
+html[data-admin-theme="dark"] .ax-dashboard-performance__tooltip:focus-visible {
   border-color: color-mix(in srgb, var(--admin-primary) 52%, var(--admin-surface));
   background: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-surface));
+}
+
+html[data-admin-theme="dark"] .ax-dashboard-performance__tooltip::before {
+  background: #f8fafc;
+  color: #111827;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .32);
+}
+
+html[data-admin-theme="dark"] .ax-dashboard-performance__tooltip::after {
+  border-top-color: #f8fafc;
 }
 
 html[data-admin-theme="dark"] .ax-dashboard-performance-sources p,
