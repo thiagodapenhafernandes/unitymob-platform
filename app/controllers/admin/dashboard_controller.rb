@@ -1665,7 +1665,7 @@ class Admin::DashboardController < Admin::BaseController
     entry_started_at_by_lead = broker_performance_entry_starts(leads, pool_ids, performance_events)
     attended_at_by_lead = broker_performance_attended_at(leads, performance_events, entry_started_at_by_lead)
     expired_ids = LeadActivity.where(lead_id: lead_ids, kind: "pocket_expired").distinct.pluck(:lead_id)
-    contact_attempts_by_lead = LeadActivity.contact_attempts
+    contact_attempts_by_lead = broker_performance_contact_attempt_scope
       .where(lead_id: lead_ids)
       .order(created_at: :desc)
       .group_by(&:lead_id)
@@ -1782,6 +1782,11 @@ class Admin::DashboardController < Admin::BaseController
     return "nenhuma tentativa" if count.zero?
 
     "#{count} #{'tentativa'.pluralize(count)}"
+  end
+
+  def broker_performance_contact_attempt_scope
+    # Mesma origem do bloco "Histórico de contatos" do lead, limitada a tentativas reais.
+    LeadActivity.human_operational.contact_attempts
   end
 
   def broker_performance_story_label(attended:, attempts:, responded:, expired:)
