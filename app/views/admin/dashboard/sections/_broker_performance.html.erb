@@ -12,12 +12,12 @@
                     aria-label="Ver origem dos dados da performance dos corretores">i</button>
           </div>
           <p class="ax-dashboard-performance__subtitle">Entenda o ciclo do lead com cada corretor: recebeu, abriu, tentou contato e onde parou.</p>
-        </div>
-        <%= link_to "Gerar relatório",
-                    admin_dashboard_broker_performance_report_path(request.query_parameters.slice("period_preset", "period", "start_date", "end_date", "broker_id")),
+      </div>
+      <%= link_to "Gerar relatório",
+                    admin_dashboard_broker_performance_report_path(request.query_parameters.slice("period_preset", "period", "start_date", "end_date", "broker_id", "broker_ids", "business_type")),
                     class: "ax-dashboard-panel__link",
                     data: { turbo_frame: "_top" } %>
-      </div>
+    </div>
       <div class="ax-dashboard-performance ax-dashboard-performance--report">
         <div class="ax-dashboard-performance__head">
           <span>
@@ -38,8 +38,8 @@
             Recebidos
             <i class="ax-dashboard-performance__tooltip"
                tabindex="0"
-               data-tooltip="Rodízio vem da distribuição automática. Bolsão vem dos leads assumidos pela equipe, incluindo bolsão e Shark Tank."
-               aria-label="Rodízio vem da distribuição automática. Bolsão vem dos leads assumidos pela equipe, incluindo bolsão e Shark Tank.">i</i>
+               data-tooltip="Rodízio: enviado automaticamente ao corretor. Bolsão: assumido manualmente pela equipe."
+               aria-label="Rodízio: enviado automaticamente ao corretor. Bolsão: assumido manualmente pela equipe.">i</i>
           </span>
           <span>
             Atendidos
@@ -49,11 +49,11 @@
                aria-label="Conta quando o sistema registra aceite, clique no link de atendimento ou status em atendimento.">i</i>
           </span>
           <span>
-            Tentativas
+            Tentou contato
             <i class="ax-dashboard-performance__tooltip"
                tabindex="0"
-               data-tooltip="Conta somente tentativas salvas no Histórico de contatos do lead: ligação, WhatsApp, e-mail ou visita."
-               aria-label="Conta somente tentativas salvas no Histórico de contatos do lead: ligação, WhatsApp, e-mail ou visita.">i</i>
+               data-tooltip="Conta somente o que foi salvo pelo corretor no Histórico de contatos: ligação, WhatsApp, e-mail ou visita."
+               aria-label="Conta somente o que foi salvo pelo corretor no Histórico de contatos: ligação, WhatsApp, e-mail ou visita.">i</i>
           </span>
         </div>
         <% @broker_performance.each do |row| %>
@@ -73,7 +73,7 @@
                 <em class="is-<%= row[:opened_count].to_i.positive? ? "green" : "gray" %>"><b><%= row[:opened_count] %></b> atendidos</em>
               </span>
               <span class="ax-dashboard-performance__badges">
-                <em class="is-<%= row[:contact_attempts_count].to_i.positive? ? "amber" : "gray" %>"><b><%= row[:contact_attempts_count] %></b> registradas</em>
+                <em class="is-<%= row[:contact_attempts_count].to_i.positive? ? "amber" : "gray" %>"><b><%= row[:contact_attempts_count] %></b> no histórico</em>
               </span>
             </summary>
             <div class="ax-dashboard-performance__leads">
@@ -164,8 +164,8 @@
             <dd>Leitura operacional do ciclo: se abriu, se existe tentativa no Histórico de contatos, se o cliente respondeu ou se o lead voltou para redistribuição.</dd>
           </div>
           <div>
-            <dt>Tentativas de contato</dt>
-            <dd>Somente registros salvos no Histórico de contatos do lead como ligação, WhatsApp, e-mail ou visita, com resultado e observação.</dd>
+            <dt>Tentou contato</dt>
+            <dd>Somente registros feitos pelo corretor no Histórico de contatos do lead, como ligação, WhatsApp, e-mail ou visita, com resultado e observação.</dd>
           </div>
         </dl>
       </div>

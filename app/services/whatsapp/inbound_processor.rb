@@ -506,7 +506,9 @@ module Whatsapp
       conversation.contact_name = name if name.present? && conversation.contact_name.blank?
       conversation.status = "open"
 
-      if conversation.lead_id.blank? && campaign_reply_candidate(phone).blank?
+      if internal_contact_for(phone)
+        unlink_internal_whatsapp_lead(conversation, phone)
+      elsif conversation.lead_id.blank? && campaign_reply_candidate(phone).blank?
         conversation.lead = link_or_create_lead(phone: phone, bsuid: bsuid, name: name, entry_message: entry_message)
       end
 
@@ -545,6 +547,20 @@ module Whatsapp
     rescue => e
       Rails.logger.warn("[wa inbound] lead link failed: #{e.message}")
       nil
+    end
+
+    def internal_contact_for(phone)
+      Leads::InternalContactMatcher.call(tenant: tenant, phone: phone)
+    end
+
+    def unlink_internal_whatsapp_lead(conversation, phone)
+      return if conversation.lead.blank?
+
+      lead_phone = Phones::Normalizer.call(conversation.lead.display_phone).to_s.presence
+      return unless lead_phone == phone
+      return unless conversation.lead.origin.to_s.match?(/whatsapp/i)
+
+      conversation.lead = nil
     end
 
     def tenant
