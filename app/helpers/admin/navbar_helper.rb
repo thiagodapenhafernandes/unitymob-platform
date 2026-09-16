@@ -23,6 +23,7 @@ module Admin::NavbarHelper
     "seo_settings" => "Páginas SEO",
     "seo_redirects" => "Redirecionamentos SEO",
     "meta_integrations" => "Meta Leads",
+    "rd_station_integrations" => "RD Station",
     "whatsapp_integrations" => "WhatsApp",
     "portal_integrations" => "Portais",
     "loft_integrations" => "Loft Soft",

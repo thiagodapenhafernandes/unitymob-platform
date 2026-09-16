@@ -29,13 +29,22 @@ module ExternalLeadMigration
       if owner.blank? && status == Lead.status_value(:em_atendimento, tenant: integration.tenant)
         status = Lead.default_status(tenant: integration.tenant, pipeline: pipeline_for(tenant: integration.tenant, product:))
       end
-      pipeline = pipeline_for(tenant: integration.tenant, product:)
+      mapped_stage = integration.mapped_stage_for(external_status_key)
+      pipeline = mapped_stage&.lead_pipeline || pipeline_for(tenant: integration.tenant, product:)
       property_id = habitation_id_for(tenant: integration.tenant, product:)
+      status = mapped_stage&.name || ExternalLeadMigration::FunnelSync.status_for!(
+        tenant: integration.tenant,
+        payload: @payload,
+        fallback: status,
+        pipeline:,
+        auto_create: false
+      )
 
       attrs = {
         tenant: integration.tenant,
         external_lead_integration: integration,
         lead_pipeline: pipeline,
+        lead_pipeline_stage: mapped_stage,
         external_lead_id: external_lead_id,
         external_internal_id: external_internal_id,
         external_last_synced_at: Time.current,
@@ -58,7 +67,7 @@ module ExternalLeadMigration
         origin: ExternalLeadIntegration::LEAD_ORIGIN,
         source_url: @attributes["url"].presence || @attributes["source_url"],
         product: product_description(product),
-        status: ExternalLeadMigration::FunnelSync.status_for!(tenant: integration.tenant, payload: @payload, fallback: status, pipeline:),
+        status: status,
         attribution_channel: attribution_channel,
         attribution_source: attribution_source,
         attribution_data: attribution_data(product:),
@@ -82,8 +91,28 @@ module ExternalLeadMigration
       end
     end
 
+    def external_status_name
+      @attributes.dig("funnel_status", "name").presence ||
+        @attributes.dig("lead_status", "name").presence ||
+        @attributes.dig("lead_status", "alias").presence ||
+        @attributes["status"].presence ||
+        @payload["hook_action"].to_s.delete_prefix("on_").presence
+    end
+
+    def external_status_key
+      LeadPipelineStage.normalized_name_key(external_status_name)
+    end
+
+    def scheduled_actions_provided?
+      @entry.key?("schedulated_actions") || @attributes.key?("schedulated_actions")
+    end
+
     def favorite?
       ActiveModel::Type::Boolean.new.cast(@attributes["is_favorite"])
+    end
+
+    def favorite_provided?
+      @attributes.key?("is_favorite")
     end
 
     def seller
@@ -246,8 +275,11 @@ module ExternalLeadMigration
         @payload["hook_action"]
       ].compact.join(" ").parameterize(separator: "_")
 
-      return "rental" if text.match?(/locacao|aluguel|alugar|rental/)
-      return "sale" if text.match?(/venda|comprar|sale/)
+      rental = text.match?(/locacao|aluguel|alugar|rental/)
+      sale = text.match?(/venda|comprar|sale/)
+      return "mixed" if rental && sale
+      return "rental" if rental
+      return "sale" if sale
 
       nil
     end

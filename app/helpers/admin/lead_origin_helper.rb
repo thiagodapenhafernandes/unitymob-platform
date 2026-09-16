@@ -39,6 +39,11 @@ module Admin::LeadOriginHelper
       brand, label = "meta", "Meta Ads"
     end
     campaign = campaign_name.presence || info["meta_campaign_name"].presence || info["campaign_name"].presence || attribution["campaign_name"].presence || attribution["utm_campaign"].presence
+    rd_campaign = info["rd_station_campaign_name"].presence || campaign
+    rd_conversion = info["rd_station_conversion_identifier"].presence
+    rd_source = info["rd_station_source"].presence
+    rd_medium = info["rd_station_medium"].presence
+    rd_event_type = info["rd_station_event_type"].presence
     ad = info["meta_ad_name"].presence || referral["headline"].presence
     context = []
     instagram_entry = info["instagram_entry"].is_a?(Hash) ? info["instagram_entry"] : {}
@@ -81,6 +86,17 @@ module Admin::LeadOriginHelper
       end
     elsif ctwa
       details << ["Destino", "WhatsApp"]
+    elsif brand == "rdstation"
+      subtype = rd_event_type.to_s.include?("OPPORTUNITY") ? "Oportunidade" : "Conversão"
+      context = [
+        (rd_campaign && "Campanha: #{rd_campaign}"),
+        (rd_conversion && "Conversão: #{rd_conversion}"),
+        (rd_source && "Origem original: #{[rd_source, rd_medium].compact.join(' / ')}")
+      ].compact
+      details << ["Evento RD", rd_event_type]
+      details << ["Conversão RD", rd_conversion]
+      details << ["Campanha RD", rd_campaign]
+      details << ["Origem RD", [rd_source, rd_medium].compact.join(" / ").presence]
     elsif form
       context.unshift("Formulário: #{form}")
     elsif brand == "shop"

@@ -411,6 +411,12 @@ Rails.application.routes.draw do
         get :permissions
       end
     end
+    resource :rd_station_integration, only: [:show, :update] do
+      get :connect
+      get :callback
+      post :sync_webhooks
+      delete :disconnect
+    end
     resource :whatsapp_integration, only: [:show] do
       post :embedded_signup_callback
       delete :disconnect
@@ -705,6 +711,7 @@ Rails.application.routes.draw do
   namespace :webhooks do
     post "inbound/leads", to: "inbound#leads", as: :inbound_leads
     post "external_leads/:token", to: "external_leads#receive", as: :external_lead
+    post "rd_station/:token", to: "rd_station#receive", as: :rd_station
     post "meta", to: "meta#receive_leads"
     get "meta", to: "meta#receive_leads"
     get "whatsapp", to: "whatsapp#verify"

@@ -34,6 +34,7 @@ module Admin::DistributionRulesHelper
   def distribution_rule_enabled_sources(rule)
     [
       ["Meta Ads", rule.source_meta?],
+      ["RD Station", rule.source_rd_station?],
       ["Site/WhatsApp", rule.source_site?],
       ["Portais", rule.source_portal?],
       ["Webhook", rule.source_webhook?]

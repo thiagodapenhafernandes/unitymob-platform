@@ -26,6 +26,16 @@ RSpec.describe ExternalLeadMigration::IncrementalSyncJob, type: :job do
     )
   end
 
+  it "ressincroniza uma pequena janela para cobrir atraso de fila e diferenca de relogio" do
+    described_class.perform_now(integration.id)
+
+    expect(client).to have_received(:leads).with(
+      page: 1,
+      perpage: described_class::PER_PAGE,
+      params: { sort: "-updated_at", updated_gte: "2026-08-20T12:50:00Z" }
+    )
+  end
+
   it "permite ressincronizar uma janela antiga sem alterar o token" do
     described_class.perform_now(integration.id, "2026-08-12T00:00:00Z")
 

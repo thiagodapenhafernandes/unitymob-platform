@@ -23,6 +23,47 @@ class ExternalLeadIntegration < ApplicationRecord
 
   scope :enabled, -> { where(enabled: true, status: "connected") }
 
+  def stage_mapping_for(key)
+    operational_mappings.to_h.dig("stages", key.to_s).to_h
+  end
+
+  def mapped_stage_for(key)
+    mapping = stage_mapping_for(key)
+    stage_id = mapping["stage_id"].presence
+    return nil if stage_id.blank?
+
+    tenant.lead_pipeline_stages.active.find_by(id: stage_id)
+  end
+
+  def operational_stage_mappings=(value)
+    rows = value.to_h.values
+    stages = rows.each_with_object({}) do |row, acc|
+      key = row["key"].to_s.strip
+      next if key.blank?
+
+      stage_id = row["stage_id"].presence
+      stage = tenant&.lead_pipeline_stages&.find_by(id: stage_id) if stage_id
+      pipeline_id = stage&.lead_pipeline_id || row["pipeline_id"].presence
+      acc[key] = { "pipeline_id" => pipeline_id, "stage_id" => stage_id }.compact
+    end
+
+    self.operational_mappings = operational_mappings.to_h.merge("stages" => stages)
+  end
+
+  def operational_stage_targets=(value)
+    stages = value.to_h.values.each_with_object({}) do |row, acc|
+      stage_id = row["stage_id"].presence
+      stage = tenant&.lead_pipeline_stages&.active&.find_by(id: stage_id) if stage_id
+      next unless stage
+
+      Array(row["keys"]).reject(&:blank?).each do |key|
+        acc[key.to_s] = { "pipeline_id" => stage.lead_pipeline_id, "stage_id" => stage.id }
+      end
+    end
+
+    self.operational_mappings = operational_mappings.to_h.merge("stages" => stages)
+  end
+
   def self.current(tenant)
     raise ArgumentError, "Tenant obrigatório para integração de leads" if tenant.blank?
 

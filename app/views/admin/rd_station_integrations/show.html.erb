@@ -1,0 +1,210 @@
+<div class="ax-integration-layout">
+  <%= ax_workspace_heading(
+        eyebrow: "Integrações · Leads",
+        icon: "envelope-paper",
+        title: "RD Station",
+        pills: [@rd_station_setting.enabled? ? "Ativa" : "Inativa"],
+        subtitle: "Receba contatos qualificados pela RD Station como leads do CRM."
+      ) %>
+
+  <%= ax_error_summary(@rd_station_setting) %>
+
+  <%= ax_field_grid do %>
+    <div class="ax-span-12">
+      <%= ax_operational_panel(
+            eyebrow: "Entrada de leads",
+            title: "Canal RD Station",
+            actions: ax_badge(@rd_station_setting.connected? ? "Conectada" : "Aguardando OAuth", tone: @rd_station_setting.connected? ? :green : :gray)
+          ) do %>
+        <div class="ax-panel-body">
+          <%= ax_inline_notice(tone: :neutral, icon: "info-circle", compact: true, announce: false) do %>
+            A RD Station decide quando um contato deve ser enviado. A Unitymob recebe, cria ou atualiza o lead e aplica a distribuição configurada.
+          <% end %>
+
+          <%= form_with url: admin_rd_station_integration_path, method: :patch, scope: :rd_station, local: true, class: "tw-mt-4" do |f| %>
+            <%= ax_switch_field(
+                  form: f,
+                  method: :enabled,
+                  label: "Receber leads da RD Station automaticamente",
+                  checked: @rd_station_setting.enabled?,
+                  checked_value: "true",
+                  unchecked_value: "false",
+                  class_name: "tw-mb-3",
+                  input_html: { checked: @rd_station_setting.enabled? }
+                ) %>
+
+            <%= ax_field_grid do %>
+              <div class="ax-span-6">
+                <%= ax_text_field(
+                      form: f,
+                      method: :client_id,
+                      label: "Client ID",
+                      value: @rd_station_setting.client_id,
+                      autocomplete: "off",
+                      placeholder: "Client ID do app RD Station"
+                    ) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(
+                      form: f,
+                      method: :client_secret,
+                      label: "Client secret",
+                      type: :password,
+                      autocomplete: "off",
+                      placeholder: @rd_station_setting.client_secret_configured? ? "Client secret salvo. Preencha apenas para substituir." : "Client secret do app RD Station"
+                    ) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(
+                      form: f,
+                      method: :default_origin,
+                      label: "Origem padrão",
+                      value: @rd_station_setting.default_origin,
+                      placeholder: RdStationIntegrationSetting::DEFAULT_ORIGIN
+                    ) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_select_field(
+                      form: f,
+                      method: :default_business_type,
+                      label: "Tipo comercial padrão",
+                      choices: RdStationIntegrationSetting::BUSINESS_TYPES.map { |value, label| [label, value] },
+                      select_options: { selected: @rd_station_setting.default_business_type }
+                    ) %>
+              </div>
+            <% end %>
+
+            <%= ax_form_actions(sticky: false) do %>
+              <%= f.submit "Salvar RD Station", class: "ax-btn ax-btn--primary" %>
+            <% end %>
+          <% end %>
+
+          <hr class="tw-my-4">
+
+          <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-3 tw-mb-4">
+            <section class="ax-control tw-h-auto tw-p-3" data-controller="clipboard" data-clipboard-success-content-value="Callback copiado">
+              <p class="ax-field__label tw-mb-1">URL de callback OAuth</p>
+              <p class="ax-field__hint tw-mb-2">Use esta URL no aplicativo criado na RD Station para gerar o Client ID e o Client Secret.</p>
+              <div class="tw-flex tw-gap-2">
+                <code class="tw-flex-1 tw-overflow-auto" data-clipboard-target="source"><%= callback_admin_rd_station_integration_url %></code>
+                <button type="button"
+                        class="ax-btn ax-btn--sm"
+                        data-clipboard-target="button"
+                        data-action="clipboard#copy">
+                  <i class="bi bi-clipboard ax-ico"></i><span data-clipboard-target="content">Copiar</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="ax-control tw-h-auto tw-p-3" data-controller="clipboard" data-clipboard-success-content-value="Webhook copiado">
+              <p class="ax-field__label tw-mb-1">URL do webhook de leads</p>
+              <p class="ax-field__hint tw-mb-2">Use esta URL no webhook da RD Station para receber conversões como leads.</p>
+              <div class="tw-flex tw-gap-2">
+                <code class="tw-flex-1 tw-overflow-auto" data-clipboard-target="source"><%= webhooks_rd_station_url(token: @rd_station_setting.stored_webhook_secret) %></code>
+                <button type="button"
+                        class="ax-btn ax-btn--sm"
+                        data-clipboard-target="button"
+                        data-action="clipboard#copy">
+                  <i class="bi bi-clipboard ax-ico"></i><span data-clipboard-target="content">Copiar</span>
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
+            <button type="button"
+                    class="ax-btn"
+                    data-ax-modal-open="#rdStationWebhookInstructionsModal">
+              <i class="bi bi-info-circle ax-ico"></i><span>Instruções do webhook</span>
+            </button>
+
+            <%= link_to connect_admin_rd_station_integration_path, class: "ax-btn ax-btn--ghost", data: { turbo: false } do %>
+              <i class="bi bi-box-arrow-up-right ax-ico"></i><span><%= @rd_station_setting.connected? ? "Reconectar RD Station" : "Conectar RD Station" %></span>
+            <% end %>
+
+            <%= button_to sync_webhooks_admin_rd_station_integration_path,
+                  method: :post,
+                  class: "ax-btn ax-btn--ghost",
+                  disabled: !(@rd_station_setting.connected? && @rd_station_setting.webhook_secret_configured?) do %>
+              <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar webhooks</span>
+            <% end %>
+
+            <% if @rd_station_setting.connected? %>
+              <%= button_to disconnect_admin_rd_station_integration_path,
+                    method: :delete,
+                    class: "ax-btn ax-btn--ghost ax-btn--danger",
+                    data: { turbo_confirm: "Remover a conexão OAuth da RD Station?" } do %>
+                <i class="bi bi-x-circle ax-ico"></i><span>Desconectar</span>
+              <% end %>
+            <% end %>
+          </div>
+
+          <% if @rd_station_setting.webhook_message.present? %>
+            <%= ax_inline_notice(tone: @rd_station_setting.webhook_status == "ok" ? :success : :warning, icon: @rd_station_setting.webhook_status == "ok" ? "check-circle" : "exclamation-triangle", compact: true, announce: false, class_name: "tw-mt-3") do %>
+              <%= @rd_station_setting.webhook_message %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= ax_quick_modal(id: "rdStationWebhookInstructionsModal", title: "Webhook RD Station", size: :md) do %>
+    <div class="tw-space-y-4">
+      <%= ax_inline_notice(tone: :neutral, icon: "info-circle", compact: true, announce: false) do %>
+        A URL não vem da RD Station. Ela é gerada aqui pela Unitymob. Copie os campos abaixo e cole no formulário de Novo Webhook da RD.
+      <% end %>
+
+      <div>
+        <p class="ax-field__label">Antes do webhook: URL de callback do aplicativo RD</p>
+        <section data-controller="clipboard" data-clipboard-success-content-value="Callback copiado">
+          <div class="tw-flex tw-gap-2">
+            <code class="ax-control tw-flex-1 tw-overflow-auto" data-clipboard-target="source"><%= callback_admin_rd_station_integration_url %></code>
+            <button type="button"
+                    class="ax-btn"
+                    data-clipboard-target="button"
+                    data-action="clipboard#copy">
+              <i class="bi bi-clipboard ax-ico"></i><span data-clipboard-target="content">Copiar</span>
+            </button>
+          </div>
+        </section>
+        <p class="ax-field__hint tw-mt-1">Cole esta URL em URLs de Callback ao criar o aplicativo na RD. Depois copie o Client ID e o Client Secret para esta tela.</p>
+      </div>
+
+      <div>
+        <p class="ax-field__label">Nome</p>
+        <div class="ax-control tw-flex tw-items-center">Unitymob - Leads RD Station</div>
+      </div>
+
+      <div>
+        <p class="ax-field__label">URL</p>
+        <section data-controller="clipboard" data-clipboard-success-content-value="URL copiada">
+          <div class="tw-flex tw-gap-2">
+            <code class="ax-control tw-flex-1 tw-overflow-auto" data-clipboard-target="source"><%= webhooks_rd_station_url(token: @rd_station_setting.stored_webhook_secret) %></code>
+            <button type="button"
+                    class="ax-btn"
+                    data-clipboard-target="button"
+                    data-action="clipboard#copy">
+              <i class="bi bi-clipboard ax-ico"></i><span data-clipboard-target="content">Copiar</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-3">
+        <div>
+          <p class="ax-field__label">Gatilho</p>
+          <div class="ax-control tw-flex tw-items-center">Conversão</div>
+        </div>
+        <div>
+          <p class="ax-field__label">Eventos de conversão</p>
+          <div class="ax-control tw-flex tw-items-center">Deixe em branco</div>
+        </div>
+      </div>
+
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true, announce: false) do %>
+        No campo URL da RD, cole exatamente a URL exibida aqui. Para oportunidade, crie outro webhook na RD usando a mesma URL e o gatilho Oportunidade.
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -15,12 +15,15 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       Lead.none
     end
     @seller_rows = seller_rows
+    @external_stage_options = external_stage_options
+    @operational_mapping_rows = operational_mapping_rows
   end
 
   def update
     attrs = external_lead_params.to_h
     token = attrs.delete("access_token").to_s.strip
     enabled_requested = extract_enabled_request(attrs)
+    webhook_listening_param_present = attrs.key?("webhook_listening_enabled")
     webhook_listening_requested = extract_webhook_listening_request!(attrs)
 
     @integration.assign_attributes(attrs)
@@ -37,9 +40,9 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
     @integration.save!
 
     if @integration.access_token.present?
-      ExternalLeadMigration::SetupService.call(integration: @integration) if should_validate_external_connection?(token:, webhook_listening_requested:)
-      webhook_notice = sync_webhook_listening!(webhook_listening_requested)
-      redirect_to admin_external_lead_integration_path, notice: ["Integração de leads salva e validada.", webhook_notice].compact.join(" ")
+      ExternalLeadMigration::SetupService.call(integration: @integration) if should_validate_external_connection?(token:, webhook_listening_requested:, webhook_listening_param_present:)
+      webhook_notice = sync_webhook_listening!(webhook_listening_requested) if webhook_listening_param_present
+      redirect_to admin_external_lead_integration_path, notice: ["Integração de leads salva.", webhook_notice].compact.join(" ")
     else
       redirect_to admin_external_lead_integration_path, notice: "Configuração da integração salva."
     end
@@ -108,7 +111,13 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
   end
 
   def external_lead_params
-    params.require(:external_lead_integration).permit(:enabled, :access_token, :webhook_listening_enabled)
+    params.require(:external_lead_integration).permit(
+      :enabled,
+      :access_token,
+      :webhook_listening_enabled,
+      operational_stage_mappings: [:key, :stage_id],
+      operational_stage_targets: [:stage_id, { keys: [] }]
+    )
   end
 
   def extract_enabled_request(attrs)
@@ -138,8 +147,8 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
     end
   end
 
-  def should_validate_external_connection?(token:, webhook_listening_requested:)
-    token.present? || webhook_listening_requested
+  def should_validate_external_connection?(token:, webhook_listening_requested:, webhook_listening_param_present:)
+    token.present? || (webhook_listening_param_present && webhook_listening_requested)
   end
 
   def unsubscribe_webhook_best_effort
@@ -222,5 +231,69 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
         eligible:
       }
     end
+  end
+
+  def operational_mapping_rows
+    mappings = @integration.operational_mappings.to_h.fetch("stages", {})
+    discovered = discovered_external_stage_rows
+    mapped_by_stage = mappings.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |(key, mapping), acc|
+      acc[mapping.to_h["stage_id"].to_i] << key
+    end
+    suggested_by_stage = discovered.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |(key, data), acc|
+      next if mappings.key?(key)
+
+      stage = uniquely_matching_stage(data[:label])
+      acc[stage.id] << key if stage
+    end
+
+    current_tenant.lead_pipeline_stages.active.includes(:lead_pipeline).ordered.map do |stage|
+      selected_keys = (mapped_by_stage[stage.id] + suggested_by_stage[stage.id]).uniq
+      {
+        stage: stage,
+        selected_keys: selected_keys,
+        suggested_keys: suggested_by_stage[stage.id],
+        sample_count: selected_keys.sum { |key| discovered.dig(key, :count).to_i }
+      }
+    end
+  end
+
+  def external_stage_options
+    mappings = @integration.operational_mappings.to_h.fetch("stages", {})
+    discovered = discovered_external_stage_rows
+    keys = (discovered.keys + mappings.keys).uniq
+
+    keys.map do |key|
+      label = discovered.dig(key, :label).presence || key.to_s.tr("_", " ").humanize
+      count = discovered.dig(key, :count).to_i
+      option_label = count.positive? ? "#{label} (#{count})" : label
+      [option_label, key]
+    end.sort_by { |label, _key| label.to_s.downcase }
+  end
+
+  def discovered_external_stage_rows
+    return {} unless @integration.persisted?
+
+    current_tenant.leads
+                  .where(external_lead_integration: @integration)
+                  .order(external_last_synced_at: :desc, updated_at: :desc)
+                  .limit(250)
+                  .pluck(:other_information)
+                  .each_with_object({}) do |info, acc|
+      payload = info.to_h["external_lead_payload"].presence || info
+      mapper = ExternalLeadMigration::LeadMapper.new(payload)
+      key = mapper.external_status_key
+      next if key.blank?
+
+      acc[key] ||= { label: mapper.external_status_name, count: 0 }
+      acc[key][:count] += 1
+    end
+  end
+
+  def uniquely_matching_stage(label)
+    normalized = LeadPipelineStage.normalized_name_key(label)
+    matches = current_tenant.lead_pipeline_stages.active.select do |stage|
+      LeadPipelineStage.normalized_name_key(stage.name) == normalized
+    end
+    matches.one? ? matches.first : nil
   end
 end

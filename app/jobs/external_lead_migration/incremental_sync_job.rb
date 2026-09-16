@@ -5,6 +5,7 @@ module ExternalLeadMigration
     retry_on ExternalLeadMigration::Client::Error, Net::OpenTimeout, Net::ReadTimeout, Timeout::Error, wait: :polynomially_longer, attempts: 5
 
     PER_PAGE = 50
+    CURSOR_OVERLAP = 10.minutes
 
     def perform(integration_id, cursor_override = nil)
       integration = ExternalLeadIntegration.find(integration_id)
@@ -62,7 +63,7 @@ module ExternalLeadMigration
         if cursor_override.present?
           Time.zone.parse(cursor_override.to_s)
         else
-          integration.last_cursor_at || integration.last_backfill_at || 1.day.ago
+          (integration.last_cursor_at || integration.last_backfill_at || 1.day.ago) - CURSOR_OVERLAP
         end
 
       source.utc.strftime("%Y-%m-%dT%H:%M:%SZ")

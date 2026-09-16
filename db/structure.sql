@@ -2504,6 +2504,7 @@ CREATE TABLE public.distribution_rules (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     source_site boolean DEFAULT false,
+    source_rd_station boolean DEFAULT false,
     auto_add_forms boolean DEFAULT false,
     notify_whatsapp boolean DEFAULT false,
     notify_email boolean DEFAULT false,
@@ -2671,7 +2672,8 @@ CREATE TABLE public.external_lead_integrations (
     last_error_message text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    webhook_listening_enabled boolean DEFAULT false NOT NULL
+    webhook_listening_enabled boolean DEFAULT false NOT NULL,
+    operational_mappings jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -19186,6 +19188,8 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260916142000'),
+('20260916130000'),
 ('20260916010000'),
 ('20260915172000'),
 ('20260914162000'),

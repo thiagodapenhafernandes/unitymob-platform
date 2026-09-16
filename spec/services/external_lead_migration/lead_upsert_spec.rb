@@ -77,10 +77,12 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
   before { Current.tenant = tenant }
 
   it "cria o lead no tenant usando o funil local replicado da origem externa" do
+    stage_count = tenant.lead_pipeline_stages.where(name: "Visita agendada").count
+
     expect {
       described_class.call(integration:, payload:, historical: true)
     }.to change(Lead, :count).by(1)
-      .and change { tenant.lead_pipeline_stages.where(name: "Visita agendada").count }.by(1)
+    expect(tenant.lead_pipeline_stages.where(name: "Visita agendada").count).to eq(stage_count)
 
     lead = tenant.leads.find_by!(external_lead_id: "lead-lead-migration-1")
     expect(lead).to have_attributes(
@@ -88,7 +90,7 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
       email: "maria@example.test",
       origin: ExternalLeadIntegration::LEAD_ORIGIN,
       lead_type: "webhook",
-      status: "Visita agendada",
+      status: Lead.default_status(tenant:, pipeline: LeadPipeline.default_for(tenant:)),
       external_internal_id: 5533,
       distribution_rule: rule,
       admin_user: broker,
@@ -107,6 +109,29 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.tasks.where(title: "Retorno comercial", admin_user: broker, status: "pendente")).to exist
   end
 
+  it "usa o pareamento operacional salvo para escolher funil e etapa" do
+    rental_pipeline = create(:lead_pipeline, tenant:, name: "Locação", kind: "rental")
+    mapped_stage = create(:lead_pipeline_stage, tenant:, lead_pipeline: rental_pipeline, name: "Atendimento Locação")
+    integration.update!(
+      operational_mappings: {
+        "stages" => {
+          "visita_agendada" => {
+            "pipeline_id" => rental_pipeline.id,
+            "stage_id" => mapped_stage.id
+          }
+        }
+      }
+    )
+
+    lead = described_class.call(integration:, payload:, historical: true).lead
+
+    expect(lead).to have_attributes(
+      lead_pipeline: rental_pipeline,
+      lead_pipeline_stage: mapped_stage,
+      status: "Atendimento Locação"
+    )
+  end
+
   it "marca como favorito do corretor quando o C2S envia is_favorite" do
     favorite_payload = payload.deep_dup
     favorite_payload["id"] = "lead-c2s-favorito"
@@ -119,8 +144,23 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.lead_favorites.where(admin_user: broker)).to exist
   end
 
+  it "remove o favorito quando o C2S envia is_favorite falso" do
+    favorite_payload = payload.deep_dup
+    favorite_payload["id"] = "lead-c2s-favorito-removido"
+    favorite_payload["attributes"]["customer"]["id"] = "customer-c2s-favorito-removido"
+    favorite_payload["attributes"]["is_favorite"] = true
+
+    lead = described_class.call(integration:, payload: favorite_payload, historical: true).lead
+    favorite_payload["attributes"]["is_favorite"] = false
+    described_class.call(integration:, payload: favorite_payload, historical: false)
+
+    expect(lead.lead_favorites.where(admin_user: broker)).not_to exist
+  end
+
   it "atualiza o mesmo lead externo sem duplicar o registro" do
     described_class.call(integration:, payload:, historical: true)
+    pipeline = LeadPipeline.default_for(tenant: tenant)
+    create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Proposta enviada")
 
     updated_payload = payload.deep_dup
     updated_payload["attributes"]["customer"]["name"] = "Maria Atualizada"
@@ -300,6 +340,25 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     lead = described_class.call(integration:, payload: event, historical: true).lead
     described_class.call(integration:, payload: event, historical: false)
     expect(lead.tasks.reload.count).to eq(2)
+  end
+
+  it "cancela tarefas externas que deixam de vir no C2S" do
+    event = payload.deep_dup
+    event["id"] = "lead-c2s-tarefa-removida"
+    event["attributes"]["customer"]["id"] = "customer-c2s-tarefa-removida"
+    event["attributes"]["schedulated_actions"] = [
+      { "id" => "keep", "name" => "Retornar", "due_at" => "2026-09-29T09:00:00-03:00" },
+      { "id" => "remove", "name" => "Retornar", "due_at" => "2026-09-30T09:00:00-03:00" }
+    ]
+    lead = described_class.call(integration:, payload: event, historical: true).lead
+
+    event["attributes"]["schedulated_actions"] = [
+      { "id" => "keep", "name" => "Retornar", "due_at" => "2026-09-29T09:00:00-03:00" }
+    ]
+    described_class.call(integration:, payload: event, historical: false)
+
+    expect(lead.tasks.find_by!(due_at: Time.zone.parse("2026-09-29T09:00:00-03:00")).status).to eq("pendente")
+    expect(lead.tasks.find_by!(due_at: Time.zone.parse("2026-09-30T09:00:00-03:00")).status).to eq("cancelada")
   end
 
   it "nao atribui agenda C2S ao usuario conector quando o vendedor externo esta sem mapeamento" do
