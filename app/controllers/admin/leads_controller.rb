@@ -2556,15 +2556,32 @@ class Admin::LeadsController < Admin::BaseController
     imported_schedule_ids = current_tenant.lead_activities
       .where(lead_id: base_scope.select(:id), kind: EXTERNAL_SCHEDULE_KIND).select(:lead_id)
 
-    scope = base_scope
+    active_scope = base_scope
       .where(status: active_lead_status_values_with_blank)
       .where(status: pwa_priority_lead_status_values + [Lead.status_value(:em_atendimento, tenant: current_tenant)])
+
+    due_task_ids = Task
+      .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
+      .pendentes
+      .where("due_at IS NOT NULL AND due_at <= ?", Time.current.end_of_day)
+      .where("tasks.lead_id NOT IN (:scheduled_lead_ids)", scheduled_lead_ids: pwa_later_scheduled_lead_ids(base_scope))
+      .select(:lead_id)
+    due_external_ids = pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :due)
+
+    untouched_scope = active_scope
       .where.not(id: acted_ids)
       .where.not(id: imported_schedule_ids)
     [Task, Appointment].each do |model|
-      scope = scope.where.not(id: model.where(tenant_id: current_tenant.id, lead_id: base_scope.select(:id)).select(:lead_id))
+      untouched_scope = untouched_scope.where.not(id: model.where(tenant_id: current_tenant.id, lead_id: base_scope.select(:id)).select(:lead_id))
     end
-    scope.where.not(id: Proposal.where(lead_id: base_scope.select(:id)).select(:lead_id))
+    untouched_scope = untouched_scope.where.not(id: Proposal.where(lead_id: base_scope.select(:id)).select(:lead_id))
+
+    active_scope.where(
+      "leads.id IN (:untouched_ids) OR leads.id IN (:due_task_ids) OR leads.id IN (:due_external_ids)",
+      untouched_ids: untouched_scope.select(:id),
+      due_task_ids: due_task_ids,
+      due_external_ids: due_external_ids
+    )
   end
 
   def pwa_future_visit_lead_ids(base_scope)
@@ -2607,6 +2624,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
       .where.not(due_at: nil)
+      .where("due_at > ?", Time.current.end_of_day)
       .select(:lead_id)
 
     base_scope
@@ -2614,7 +2632,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(
         "leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
         task_ids: task_ids,
-        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :scheduled)
+        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :future)
       )
   end
 
@@ -2629,6 +2647,10 @@ class Admin::LeadsController < Admin::BaseController
       case timing
       when :upcoming
         scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} >= ?", Time.current.beginning_of_day)
+      when :future
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
+      when :due
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} <= ?", Time.current.end_of_day)
       when :scheduled
         scope
       else
