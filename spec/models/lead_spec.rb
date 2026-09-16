@@ -40,6 +40,21 @@ RSpec.describe Lead, type: :model do
         lead.send(:enqueue_meta_enrichment)
       }.to have_enqueued_job(MetaLeadEnrichmentJob)
     end
+
+    it "enfileira enriquecimento para lead C2S com IDs Facebook" do
+      lead = build(
+        :lead,
+        attribution_channel: "Internet",
+        attribution_data: {
+          "provider" => ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+          "facebook" => { "ad_id" => "987654", "leadgen_id" => "1234567890" }
+        }
+      )
+
+      expect {
+        lead.send(:enqueue_meta_enrichment)
+      }.to have_enqueued_job(MetaLeadEnrichmentJob)
+    end
   end
 
   describe "#unsuccessful_attempt_count" do

@@ -611,9 +611,12 @@ class Lead < ApplicationRecord
 
   def enqueue_meta_enrichment
     info = other_information.to_h
-    return unless attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
+    facebook = attribution_data.to_h["facebook"]
+    facebook = {} unless facebook.is_a?(Hash)
+    return unless attribution_channel == "meta_ads" || info["meta_leadgen_id"].present? || facebook.present?
     return unless info["meta_leadgen_id"].present? || info["ad_id"].present? || info["campaign_id"].present? ||
-      info["meta_form_id"].present? || attribution_data.to_h.values_at("ad_id", "campaign_id").any?(&:present?)
+      info["meta_form_id"].present? || attribution_data.to_h.values_at("ad_id", "campaign_id").any?(&:present?) ||
+      facebook.values_at("ad_id", "campaign_id", "leadgen_id", "form_id").any?(&:present?)
 
     MetaLeadEnrichmentJob.perform_later(tenant_id, id)
   rescue StandardError => error

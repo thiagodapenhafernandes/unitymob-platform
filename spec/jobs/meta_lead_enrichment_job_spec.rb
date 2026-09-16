@@ -33,6 +33,35 @@ RSpec.describe MetaLeadEnrichmentJob, type: :job do
     expect(lead.reload.other_information).to include("meta_ad_account_id" => "123456", "meta_campaign_name" => "Campanha")
   end
 
+  it "enriquece lead C2S com IDs Facebook preservados na atribuição" do
+    lead.update_columns(
+      origin: "Migração externa",
+      attribution_channel: "Internet",
+      attribution_source: "Instagram Leads",
+      attribution_data: {
+        "provider" => ExternalLeadMigration::LeadMapper::PROVIDER_KEY,
+        "facebook" => {
+          "ad_id" => "987654",
+          "form_id" => "form-c2s",
+          "page_id" => "page-c2s",
+          "leadgen_id" => "1234567890"
+        }
+      },
+      other_information: {"keep" => "original"}
+    )
+
+    described_class.perform_now(tenant.id, lead.id)
+
+    expect(lead.reload.other_information).to include(
+      "keep" => "original",
+      "meta_campaign_name" => "Campanha oficial",
+      "meta_ad_name" => "Anúncio",
+      "meta_leadgen_id" => "1234567890",
+      "meta_page_id" => "page-c2s",
+      "meta_form_id" => "form-c2s"
+    )
+  end
+
   it "não usa conta removida da seleção" do
     integration.update!(ad_accounts: {"654321" => "Única"}, ad_account_id: "654321")
     described_class.perform_now(tenant.id, lead.id)
