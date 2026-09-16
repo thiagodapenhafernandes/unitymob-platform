@@ -395,12 +395,14 @@ RSpec.describe "Admin::Leads", type: :request do
     it "preserva Futuras, Visitas e Favoritos ao incluir atendimentos intocados em A Fazer" do
       allow_any_instance_of(Lead).to receive(:route_lead)
       untouched = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Atendimento intocado", status: "Em Atendimento")
+      due = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno de hoje", status: "Em Atendimento")
+      create(:task, tenant: admin.tenant, admin_user: admin, lead: due, due_at: Time.current)
       future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno agendado", status: "Em Atendimento")
-      create(:task, tenant: admin.tenant, admin_user: admin, lead: future, due_at: 1.day.ago)
+      create(:task, tenant: admin.tenant, admin_user: admin, lead: future, due_at: 1.day.from_now)
       visit = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Visita agendada", status: "Em Atendimento")
       create(:appointment, tenant: admin.tenant, admin_user: admin, lead: visit, kind: "visita")
       create(:lead_favorite, tenant: admin.tenant, admin_user: admin, lead: future)
-      {"todo" => [untouched], "future" => [future], "visits" => [visit], "favorites" => [future], "all" => [untouched, future, visit]}.each do |tab, leads|
+      {"todo" => [untouched, due], "future" => [future], "visits" => [visit], "favorites" => [future], "all" => [untouched, due, future, visit]}.each do |tab, leads|
         get pwa_leads_page_admin_leads_path(mobile_tab: tab, offset: 0), headers: {"Accept" => "application/json"}
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body["total"]).to eq(leads.size)
@@ -515,13 +517,12 @@ RSpec.describe "Admin::Leads", type: :request do
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "2")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "1")
         expect(document.css(".lead-pwa-card").map(&:text).join).to include(
           "Retorno Futuro Importado",
-          "Retornar para o cliente - 20/08/2026 09:00",
-          "Retorno Hoje Importado"
+          "Retornar para o cliente - 20/08/2026 09:00"
         )
-        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Visita Importada")
+        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Retorno Hoje Importado", "Visita Importada")
 
         get admin_leads_path(view: "list", mobile_tab: "visits")
 
@@ -533,9 +534,9 @@ RSpec.describe "Admin::Leads", type: :request do
 
         document = Nokogiri::HTML(response.body)
         card_text = document.css(".lead-pwa-card").map(&:text).join
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "1")
-        expect(card_text).to include("Lead Novo Sem Agenda")
-        expect(card_text).not_to include("Retorno Futuro Importado", "Retorno Hoje Importado", "Visita Importada")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("A fazer", "2")
+        expect(card_text).to include("Lead Novo Sem Agenda", "Retorno Hoje Importado")
+        expect(card_text).not_to include("Retorno Futuro Importado", "Visita Importada")
         expect(card_text).not_to include("C2S")
       end
     end
