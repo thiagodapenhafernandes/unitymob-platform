@@ -97,7 +97,7 @@ module Meta
     end
 
     def gateway_error(response, parsed)
-      parsed["error"].presence || Array(parsed["details"]).presence&.join(", ") || "Erro #{response.code} ao registrar rota Meta no gateway."
+      Array(parsed["details"]).presence&.join(", ") || parsed["error"].presence || "Erro #{response.code} ao registrar rota Meta no gateway."
     end
 
     def skipped(message)
