@@ -31,6 +31,15 @@ module Meta
         ENV["APP_HOST"].presence&.delete_suffix("/")&.then { |host| "#{host}/webhooks/meta" }
     end
 
+    def self.client_key_for(tenant:, target_url:)
+      slug = tenant.slug.to_s
+      return slug if slug.present? && slug != Tenant::DEFAULT_SLUG
+
+      URI.parse(target_url.to_s).host.to_s.parameterize.presence || "tenant-#{tenant.id}"
+    rescue URI::InvalidURIError
+      "tenant-#{tenant.id}"
+    end
+
     def initialize(page:, tenant:, form: nil, target_url: self.class.target_url)
       @page = page
       @tenant = tenant
@@ -71,7 +80,7 @@ module Meta
 
     def route_payload
       {
-        client_key: tenant.slug.presence || "tenant-#{tenant.id}",
+        client_key: self.class.client_key_for(tenant: tenant, target_url: target_url),
         tenant_name: tenant.name,
         page_id: page.page_id,
         form_id: form&.form_id,

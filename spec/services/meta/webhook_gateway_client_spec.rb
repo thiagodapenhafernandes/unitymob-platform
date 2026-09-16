@@ -75,6 +75,24 @@ RSpec.describe Meta::WebhookGatewayClient do
     end
   end
 
+  it "usa o host de destino como client key quando o tenant ainda tem slug default" do
+    allow(tenant).to receive(:slug).and_return(Tenant::DEFAULT_SLUG)
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("gateway")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN").and_return("internal-token")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return("forward-secret")
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_TARGET_URL").and_return("https://saluteimoveis.com.br/webhooks/meta")
+    response = instance_double(HTTParty::Response, success?: true, code: 201, body: { route: { id: 1 } }.to_json)
+    allow(HTTParty).to receive(:post).and_return(response)
+
+    described_class.new(page: page, tenant: tenant).register_route
+
+    expect(HTTParty).to have_received(:post) do |_url, options|
+      body = JSON.parse(options[:body]).with_indifferent_access
+      expect(body[:client_key]).to eq("saluteimoveis-com-br")
+    end
+  end
+
   it "nao registra rota quando o modo Meta e app proprio" do
     allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("direct")
 

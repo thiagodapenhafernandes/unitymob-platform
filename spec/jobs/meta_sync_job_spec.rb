@@ -70,11 +70,14 @@ RSpec.describe MetaSyncJob, type: :job do
   end
 
   it "desativa o recebimento se o gateway não confirmar o destino" do
-    allow(job).to receive(:register_meta_gateway_route).and_return(false)
+    allow(job).to receive(:register_meta_gateway_route) do
+      job.instance_variable_set(:@last_gateway_route_error, "Esta página já possui outro destino")
+      false
+    end
     job.perform(integration.id)
     expect(integration.meta_facebook_pages.enabled).to be_empty
     expect(service).not_to have_received(:get_page_lead_forms)
-    expect(integration.reload.last_sync_error).to include("recebimento foi desativado")
+    expect(integration.reload.last_sync_error).to include("Esta página já possui outro destino", "recebimento foi desativado")
   end
 
   it "preserva seleção quando a autorização deixa de retornar uma página" do
