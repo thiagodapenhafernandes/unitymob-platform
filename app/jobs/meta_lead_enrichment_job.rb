@@ -11,8 +11,10 @@ class MetaLeadEnrichmentJob < ApplicationJob
     return if info["meta_enriched_at"].present?
     entry = info["whatsapp_entry"].is_a?(Hash) ? info["whatsapp_entry"] : {}
     referral = entry["referral"].is_a?(Hash) ? entry["referral"] : {}
+    tracking = lead.attribution_data.to_h
+    facebook = tracking["facebook"].is_a?(Hash) ? tracking["facebook"] : {}
     ctwa = referral["source_type"] == "ad"
-    return unless ctwa || lead.attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
+    return unless ctwa || lead.attribution_channel == "meta_ads" || info["meta_leadgen_id"].present? || facebook.present?
 
     integrations = UserMetaIntegration.where(tenant_id: tenant.id)
       .select do |candidate|
@@ -22,14 +24,15 @@ class MetaLeadEnrichmentJob < ApplicationJob
     return unless integrations.one?
     integration = integrations.first
 
-    tracking = lead.attribution_data.to_h
     # No guessing from utm_campaign/fbclid: these are not Graph object IDs.
-    ad_id = graph_id(ctwa ? referral["source_id"] : (info["ad_id"] || tracking["ad_id"]))
-    campaign_id = graph_id(info["campaign_id"] || tracking["campaign_id"])
-    form = integration.meta_lead_forms.find_by(form_id: info["meta_form_id"].to_s) if info["meta_form_id"].present?
-    if ad_id.nil? && form && graph_id(info["meta_leadgen_id"])
+    ad_id = graph_id(ctwa ? referral["source_id"] : (info["ad_id"] || tracking["ad_id"] || facebook["ad_id"]))
+    campaign_id = graph_id(info["campaign_id"] || tracking["campaign_id"] || facebook["campaign_id"])
+    form_id = info["meta_form_id"].presence || facebook["form_id"].presence
+    leadgen_id = info["meta_leadgen_id"].presence || facebook["leadgen_id"].presence
+    form = integration.meta_lead_forms.find_by(form_id: form_id.to_s) if form_id.present?
+    if ad_id.nil? && form && graph_id(leadgen_id)
       page = form.meta_facebook_page
-      details = Koala::Facebook::API.new(page.access_token).get_object(info["meta_leadgen_id"], fields: "id,ad_id,form_id")
+      details = Koala::Facebook::API.new(page.access_token).get_object(leadgen_id, fields: "id,ad_id,form_id")
       return unless details["form_id"].to_s == form.form_id
       ad_id = graph_id(details["ad_id"])
     end
@@ -51,6 +54,9 @@ class MetaLeadEnrichmentJob < ApplicationJob
       data.merge!("meta_campaign_id" => campaign_id, "meta_campaign_name" => campaign["name"])
     end
     data["meta_form_name"] = form.name if form
+    data["meta_leadgen_id"] = leadgen_id.to_s if leadgen_id.present?
+    data["meta_page_id"] = facebook["page_id"].to_s if facebook["page_id"].present?
+    data["meta_form_id"] = form_id.to_s if form_id.present?
     lead.with_lock do
       # Merge only enrichment keys so another operation cannot lose its data.
       lead.update_columns(other_information: lead.other_information.to_h.merge(data.compact).merge(
