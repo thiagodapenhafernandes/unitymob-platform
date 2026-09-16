@@ -1,7 +1,7 @@
 module Leads
   # Fidelização (lead stickiness): se a pessoa do lead já foi atendida por um
   # corretor, devolve esse corretor para a distribuição, respeitando a config
-  # global em LeadSetting (chave de match, dono anterior, fallback e janela).
+  # da conta em LeadSetting (chave de match, dono anterior, fallback e janela).
   # Retorna nil quando desligado, sem match ou corretor inelegível.
   class StickyAssignment
     def self.corretor_for(lead, rule, candidates:)
@@ -12,7 +12,7 @@ module Leads
       @lead = lead
       @rule = rule
       @candidates = candidates
-      @setting = LeadSetting.instance
+      @setting = LeadSetting.instance(tenant: lead.tenant)
     end
 
     def corretor
@@ -33,7 +33,11 @@ module Leads
       scope = base_scope
       return nil if scope.nil?
 
-      scope.reorder(updated_at: :desc).limit(1).pick(:admin_user_id)
+      previous_lead = scope.reorder(updated_at: :desc).select(:admin_user_id, :lead_pipeline_stage_id).first
+      return nil if previous_lead.blank?
+      return nil if @setting.non_fidelizing_stage_for_stickiness?(previous_lead.lead_pipeline_stage_id)
+
+      previous_lead.admin_user_id
     end
 
     # Leads anteriores (não o atual) com corretor atribuído, aplicando match,

@@ -59,6 +59,22 @@
                       placeholder: "vazio = para sempre", min: 0,
                       hint: "Vazio (ou 0) = para sempre. Ex.: 90 = só volta para o mesmo corretor se o atendimento foi nos últimos 90 dias.") %>
               <% end %>
+
+              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Quando redistribuir mesmo com histórico", token: "Exceções") do %>
+                <%= ax_multiselect_field(
+                      form: f,
+                      method: :stickiness_non_fidelizing_stage_ids,
+                      label: "Etapas que não mantêm fidelização",
+                      choices: @stickiness_stage_options,
+                      selected: @lead_setting.stickiness_non_fidelizing_stage_ids_value,
+                      placeholder: "Selecione as etapas",
+                      data: {
+                        tom_select_tags_value: false,
+                        tom_select_options_value: { plugins: ["remove_button"] }
+                      }
+                    ) %>
+                <p class="ax-field__hint">Se o último lead encontrado da pessoa estiver em uma dessas etapas, ele entra novamente na distribuição normal da regra.</p>
+              <% end %>
             </div>
           </div>
         <% end %>

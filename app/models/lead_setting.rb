@@ -55,6 +55,7 @@ class LeadSetting < ApplicationRecord
   validates :stickiness_match,    inclusion: { in: MATCHES }
   validates :stickiness_owner,    inclusion: { in: OWNERS }
   validates :stickiness_fallback, inclusion: { in: FALLBACKS }
+  validate :stickiness_non_fidelizing_stages_belong_to_tenant
   validates :stickiness_window_days,
             numericality: { only_integer: true, greater_than: 0 },
             allow_nil: true
@@ -105,6 +106,18 @@ class LeadSetting < ApplicationRecord
 
   def attended_status_values
     ATTENDED_STATUSES.map { |s| Lead.status_value(s) }.uniq
+  end
+
+  def stickiness_non_fidelizing_stage_ids=(values)
+    super(Array(values).compact_blank.map(&:to_i).select(&:positive?).uniq)
+  end
+
+  def stickiness_non_fidelizing_stage_ids_value
+    Array(stickiness_non_fidelizing_stage_ids).compact_blank.map(&:to_i).select(&:positive?).uniq
+  end
+
+  def non_fidelizing_stage_for_stickiness?(stage_id)
+    stage_id.present? && stickiness_non_fidelizing_stage_ids_value.include?(stage_id.to_i)
   end
 
   def first_contact_sla_hours_value
@@ -163,6 +176,15 @@ class LeadSetting < ApplicationRecord
 
     unit = first_contact_sla_duration_unit.presence_in(FIRST_CONTACT_SLA_UNITS.keys) || "hours"
     self.first_contact_sla_minutes = first_contact_sla_duration_value.to_i * FIRST_CONTACT_SLA_UNITS.fetch(unit)[:multiplier]
+  end
+
+  def stickiness_non_fidelizing_stages_belong_to_tenant
+    ids = stickiness_non_fidelizing_stage_ids_value
+    return if ids.blank? || tenant.blank?
+
+    existing_ids = tenant.lead_pipeline_stages.where(id: ids).pluck(:id)
+    invalid_ids = ids - existing_ids
+    errors.add(:stickiness_non_fidelizing_stage_ids, "contém etapas inválidas") if invalid_ids.any?
   end
 
   def best_first_contact_sla_unit

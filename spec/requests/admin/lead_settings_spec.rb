@@ -19,6 +19,9 @@ RSpec.describe "Admin::LeadSettings", type: :request do
   end
 
   it "exibe a escolha operacional do destino do push" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    archived_stage = pipeline.stages.find_by!(stage_type: "archived")
+
     get edit_admin_lead_setting_path
 
     expect(response).to have_http_status(:ok)
@@ -33,11 +36,29 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     expect(response.body).to include("Aceita apenas valores entre 5 e 1440 minutos")
     expect(response.body).to include("Detalhes do lead primeiro")
     expect(response.body).to include("WhatsApp do lead direto")
+    expect(response.body).to include("Etapas que não mantêm fidelização", "Arquivado", archived_stage.id.to_s)
     document = Nokogiri::HTML(response.body)
     expect(document.css("fieldset.ax-radio-group").size).to eq(4)
+    expect(document.at_css('select[name="lead_setting[stickiness_non_fidelizing_stage_ids][]"][multiple]')).to be_present
     expect(document.at_css('fieldset.ax-radio-group input[name="lead_setting[push_lead_click_action]"]')).to be_present
     expect(document.at_css('dl.ax-status-list[aria-label="Resumo das configurações de leads"]')).to be_present
     expect(document.at_css(".ax-form-actions--static")).to be_present
+  end
+
+  it "salva as etapas que deixam o lead voltar para a distribuição normal" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    archived_stage = pipeline.stages.find_by!(stage_type: "archived")
+    discarded_stage = pipeline.stages.find_by!(stage_type: "lost")
+
+    patch admin_lead_setting_path, params: {
+      lead_setting: {
+        stickiness_non_fidelizing_stage_ids: [archived_stage.id.to_s, discarded_stage.id.to_s]
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_lead_setting_path)
+    expect(LeadSetting.instance(tenant: admin.tenant).reload.stickiness_non_fidelizing_stage_ids_value)
+      .to contain_exactly(archived_stage.id, discarded_stage.id)
   end
 
   it "salva o destino operacional do clique no push pela tela de leads" do

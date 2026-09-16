@@ -4,6 +4,7 @@ module Admin
     before_action :set_lead_setting
 
     def edit
+      load_stickiness_stage_options
     end
 
     def update
@@ -19,6 +20,7 @@ module Admin
       if @lead_setting.save
         redirect_to edit_admin_lead_setting_path, notice: "Configurações de leads salvas com sucesso."
       else
+        load_stickiness_stage_options
         render :edit, status: :unprocessable_entity
       end
     end
@@ -27,6 +29,14 @@ module Admin
 
     def set_lead_setting
       @lead_setting = LeadSetting.instance
+    end
+
+    def load_stickiness_stage_options
+      @stickiness_stage_options = current_tenant.lead_pipeline_stages
+        .active
+        .includes(:lead_pipeline)
+        .ordered
+        .map { |stage| ["#{stage.lead_pipeline.name} · #{stage.name}", stage.id] }
     end
 
     def lead_setting_params
@@ -57,7 +67,8 @@ module Admin
         :notify_on_shark_tank,
         :notify_on_direct_assignment,
         :notify_on_reassignment,
-        :notify_on_lost_turn
+        :notify_on_lost_turn,
+        stickiness_non_fidelizing_stage_ids: []
       )
     end
   end
