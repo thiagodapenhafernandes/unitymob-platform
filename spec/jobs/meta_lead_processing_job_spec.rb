@@ -47,6 +47,13 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     expect(lead.client_name).to eq("Maria Meta")
     expect(lead.phone).to eq("5547999990000")
     expect(lead.product).to eq("Captação Meta Tenant")
+    expect(lead.attribution_channel).to eq("meta_ads")
+    expect(lead.attribution_source).to eq("meta")
+    expect(lead.attribution_data).to include(
+      "provider" => "facebook_lead_ads",
+      "page_id" => "page-meta-tenant",
+      "form_id" => "form-meta-tenant"
+    )
     expect(lead.other_information["meta_page_id"]).to eq("page-meta-tenant")
     expect(lead.other_information["meta_integration_user_id"]).to eq(admin.id)
   end
@@ -139,7 +146,7 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     tenant = Tenant.create!(name: "Conta Meta Auto #{SecureRandom.hex(3)}", slug: "conta-meta-auto-#{SecureRandom.hex(3)}")
     admin = create(:admin_user, :admin, tenant: tenant)
     broker = create(:admin_user, :field_agent, tenant: tenant)
-    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token")
+    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token", selected_page_ids: ["page-auto"])
     create(:meta_facebook_page, user_meta_integration: integration, page_id: "page-auto", access_token: "page-token")
     rule = create(
       :distribution_rule,

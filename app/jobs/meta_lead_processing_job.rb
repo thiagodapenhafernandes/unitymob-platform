@@ -179,6 +179,13 @@ class MetaLeadProcessingJob < ApplicationJob
           client_email: attributes[:email],
           client_phone: attributes[:phone],
           origin: "Facebook Lead Ads",
+          attribution_channel: "meta_ads",
+          attribution_source: "meta",
+          attribution_data: {
+            "page_id" => page_id.to_s,
+            "form_id" => form_id.to_s,
+            "provider" => "facebook_lead_ads"
+          },
           product: product_name,
           property_id: property&.id,
           custom_answers: map_to_custom_answers(attributes[:field_data]),

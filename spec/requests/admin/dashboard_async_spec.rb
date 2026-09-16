@@ -606,6 +606,18 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         :lead,
         tenant: tenant,
         admin_user: broker,
+        name: "Lead Meta Sem Campanha",
+        origin: "Facebook Lead Ads",
+        product: "Form Solar Elisa - Cód. 4148",
+        other_information: {
+          "meta_form_name" => "Form Solar Elisa - Cód. 4148"
+        },
+        created_at: 1.day.ago
+      )
+      create(
+        :lead,
+        tenant: tenant,
+        admin_user: broker,
         name: "Lead Site WhatsApp",
         origin: "whatsapp",
         lead_type: "whatsapp_modal",
@@ -660,6 +672,9 @@ RSpec.describe "Admin dashboard async slices", type: :request do
       expect(response.body).to include("0</b> fechados")
       expect(response.body).to include("Lead Meta Atendido")
       expect(response.body).to include("Lead Meta Aguardando")
+      expect(response.body).to include("Form Solar Elisa - Cód. 4148")
+      expect(response.body).to include("Meta Ads · campanha não identificada")
+      expect(response.body).to include("Lead Meta Sem Campanha")
       expect(response.body).to include("Site")
       expect(response.body).to include("Página /imoveis/4355 · Ação WhatsApp")
       expect(response.body).to include("Origem sem detalhe")
