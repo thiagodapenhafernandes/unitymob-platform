@@ -21,7 +21,7 @@ module Instagram
         if Meta::WebhookConfiguration.gateway?
           route_page = Struct.new(:page_id, :active?).new(page.instagram_id, true)
           result = Meta::WebhookGatewayClient.new(page: route_page, tenant: page.user_meta_integration.tenant).register_route
-          raise Error, "Não foi possível configurar a rota no gateway." unless result.ok?
+          raise Error, "Não foi possível configurar a rota no gateway: #{result.error}" unless result.ok?
         end
         Facebook::MetaService.new(page.access_token).subscribe_page_to_app(page.page_id, page.access_token, subscribed_fields: ["messages"])
         apps = Koala::Facebook::API.new(page.access_token).get_connections(page.page_id, "subscribed_apps", fields: "id,subscribed_fields")

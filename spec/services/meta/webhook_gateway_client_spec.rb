@@ -75,6 +75,26 @@ RSpec.describe Meta::WebhookGatewayClient do
     end
   end
 
+  it "prioriza detalhes legiveis quando o gateway recusa a rota" do
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("gateway")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_URL").and_return("https://webhooks.unitymob.com.br")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_INTERNAL_TOKEN").and_return("internal-token")
+    allow(ENV).to receive(:[]).with("WHATSAPP_WEBHOOK_GATEWAY_FORWARDING_SECRET").and_return("forward-secret")
+    allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_TARGET_URL").and_return("https://app.conexaobc.com/webhooks/meta")
+    response = instance_double(
+      HTTParty::Response,
+      success?: false,
+      code: 409,
+      body: { error: "page_destination_conflict", details: ["Esta página já possui outro destino."] }.to_json
+    )
+    allow(HTTParty).to receive(:post).and_return(response)
+
+    result = described_class.new(page: page, tenant: tenant).register_route
+
+    expect(result).not_to be_ok
+    expect(result.error).to eq("Esta página já possui outro destino.")
+  end
+
   it "usa o host de destino como client key quando o tenant ainda tem slug default" do
     allow(tenant).to receive(:slug).and_return(Tenant::DEFAULT_SLUG)
     allow(ENV).to receive(:[]).with("META_LEADS_WEBHOOK_MODE").and_return("gateway")

@@ -114,9 +114,12 @@ module Gateway
         lock_key = WebhookRoute.connection.quote("meta-page:#{attributes[:page_id]}")
         WebhookRoute.connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(#{lock_key}, 0))")
         siblings = WebhookRoute.where(provider: "meta", page_id: attributes[:page_id])
-        if siblings.where.not(client_key: attributes[:client_key]).or(siblings.where.not(target_url: attributes[:target_url])).exists?
+        if siblings.where.not(target_url: attributes[:target_url]).exists? ||
+            siblings.where.not(client_key: [attributes[:client_key], "default"]).exists?
           halt 409, json(error: "page_destination_conflict", details: ["Esta página já possui outro destino. Contate o suporte para revisar o vínculo."])
         end
+        siblings.where(client_key: "default", target_url: attributes[:target_url])
+          .update_all(client_key: attributes[:client_key], tenant_name: attributes[:tenant_name], updated_at: Time.now)
         route = WebhookRoute.find_or_initialize_by(
           provider: attributes[:provider], page_id: attributes[:page_id], form_id: attributes[:form_id].presence
         )

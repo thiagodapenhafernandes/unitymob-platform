@@ -17,6 +17,38 @@ RSpec.describe 'Meta destination isolation' do
     end
   end
 
+  it 'updates legacy default client key when the destination is unchanged' do
+    WebhookRoute.create!(provider: 'meta', client_key: 'default', page_id: '100', target_url: 'https://salute.test/webhooks/meta', forwarding_secret: 'secret')
+    WebhookRoute.create!(provider: 'meta', client_key: 'default', page_id: '100', form_id: '200', target_url: 'https://salute.test/webhooks/meta', forwarding_secret: 'secret')
+    payload = {
+      client_key: 'salute-test',
+      tenant_name: 'Salute',
+      page_id: '100',
+      target_url: 'https://salute.test/webhooks/meta',
+      forwarding_secret: 'secret'
+    }
+
+    post '/internal/meta/routes', payload.to_json, 'CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer internal-token'
+
+    expect(last_response.status).to eq(200)
+    expect(WebhookRoute.where(page_id: '100').pluck(:client_key).uniq).to eq(['salute-test'])
+  end
+
+  it 'keeps rejecting a non-legacy client key for the same page' do
+    WebhookRoute.create!(provider: 'meta', client_key: 'conexao', page_id: '100', target_url: 'https://salute.test/webhooks/meta', forwarding_secret: 'secret')
+    payload = {
+      client_key: 'salute-test',
+      page_id: '100',
+      target_url: 'https://salute.test/webhooks/meta',
+      forwarding_secret: 'secret'
+    }
+
+    post '/internal/meta/routes', payload.to_json, 'CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer internal-token'
+
+    expect(last_response.status).to eq(409)
+    expect(WebhookRoute.find_by!(page_id: '100').client_key).to eq('conexao')
+  end
+
   it 'forwards only the matching lead to each destination with a valid signature' do
     routes = %w[100 200].map do |id|
       WebhookRoute.create!(provider: 'meta', client_key: id, page_id: id, target_url: "https://client#{id}.test/webhooks/meta", forwarding_secret: "secret#{id}")
