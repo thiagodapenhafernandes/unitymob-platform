@@ -1,6 +1,9 @@
 module Meta
   class WebhookGatewayClient
     Result = Struct.new(:ok?, :skipped?, :status, :error, :data, keyword_init: true)
+    TRANSIENT_STATUSES = [502, 503, 504].freeze
+    MAX_ATTEMPTS = 3
+    RETRY_DELAY_SECONDS = 0.5
 
     def self.enabled?
       WebhookConfiguration.gateway? && gateway_url.present? && internal_token.present? && forwarding_secret.present? && target_url.present?
@@ -53,12 +56,7 @@ module Meta
       return skipped("Página Meta ainda não possui Page ID.") unless page.page_id.present?
       return skipped("Endpoint de destino Meta não configurado.") unless target_url.present?
 
-      response = HTTParty.post(
-        "#{self.class.gateway_url}/internal/meta/routes",
-        headers: headers,
-        body: route_payload.to_json,
-        timeout: 15
-      )
+      response = post_with_retry
       parsed = parse(response)
       return Result.new(ok?: true, skipped?: false, status: response.code, data: parsed) if response.success?
 
@@ -88,6 +86,36 @@ module Meta
         forwarding_secret: self.class.forwarding_secret,
         active: form ? page.active? && form.active? : page.active?
       }
+    end
+
+    def post_with_retry
+      attempts = 0
+      last_error = nil
+
+      while attempts < MAX_ATTEMPTS
+        attempts += 1
+        last_error = nil
+        response = nil
+
+        begin
+          response = post_route
+          return response unless TRANSIENT_STATUSES.include?(response.code.to_i) && attempts < MAX_ATTEMPTS
+        rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED, SocketError
+          last_error = $!
+          raise last_error if attempts >= MAX_ATTEMPTS
+        end
+
+        sleep(RETRY_DELAY_SECONDS) if attempts < MAX_ATTEMPTS && (last_error || TRANSIENT_STATUSES.include?(response&.code.to_i))
+      end
+    end
+
+    def post_route
+      HTTParty.post(
+        "#{self.class.gateway_url}/internal/meta/routes",
+        headers: headers,
+        body: route_payload.to_json,
+        timeout: 15
+      )
     end
 
     def parse(response)
