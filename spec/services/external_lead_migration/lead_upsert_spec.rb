@@ -107,6 +107,18 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.tasks.where(title: "Retorno comercial", admin_user: broker, status: "pendente")).to exist
   end
 
+  it "marca como favorito do corretor quando o C2S envia is_favorite" do
+    favorite_payload = payload.deep_dup
+    favorite_payload["id"] = "lead-c2s-favorito"
+    favorite_payload["attributes"]["customer"]["id"] = "customer-c2s-favorito"
+    favorite_payload["attributes"]["is_favorite"] = true
+
+    described_class.call(integration:, payload: favorite_payload, historical: true)
+
+    lead = tenant.leads.find_by!(external_lead_id: "lead-c2s-favorito")
+    expect(lead.lead_favorites.where(admin_user: broker)).to exist
+  end
+
   it "atualiza o mesmo lead externo sem duplicar o registro" do
     described_class.call(integration:, payload:, historical: true)
 

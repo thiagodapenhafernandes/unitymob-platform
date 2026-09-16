@@ -82,6 +82,10 @@ module ExternalLeadMigration
       end
     end
 
+    def favorite?
+      ActiveModel::Type::Boolean.new.cast(@attributes["is_favorite"])
+    end
+
     def seller
       hash_at("seller")
     end

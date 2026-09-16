@@ -16,6 +16,7 @@ module ExternalLeadMigration
     def call
       create_property_interest!
       sync_labels!
+      sync_favorite!
       log_first_message!
       log_messages!
       log_entries!
@@ -48,6 +49,17 @@ module ExternalLeadMigration
         lead.lead_labelings.find_or_create_by!(lead_label: label) do |labeling|
           labeling.tenant = lead.tenant
         end
+      end
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+      nil
+    end
+
+    def sync_favorite!
+      return unless mapper.favorite?
+      return if lead.admin_user_id.blank? || responsible_user.blank?
+
+      lead.lead_favorites.find_or_create_by!(admin_user: responsible_user) do |favorite|
+        favorite.tenant = lead.tenant
       end
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
       nil
