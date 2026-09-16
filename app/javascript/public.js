@@ -68,6 +68,7 @@ application.register("transaction-toggle", TransactionToggleController)
 // acordar controllers dormentes de proposito (ex.: public-interest-tracker).
 const pageScopedControllers = [
   ["advanced-filters", () => import("controllers/advanced_filters_controller")],
+  ["collapsible-text", () => import("controllers/collapsible_text_controller")],
   ["public-favorites", () => import("controllers/public_favorites_controller")],
   ["public-gallery-mobile", () => import("controllers/public_gallery_mobile_controller")],
   ["sidebar", () => import("controllers/sidebar_controller")]

@@ -559,6 +559,10 @@
   cursor: pointer;
 }
 
+.public-collapsible-text__toggle[hidden] {
+  display: none;
+}
+
 .public-collapsible-text__toggle:hover,
 .public-collapsible-text__toggle:focus-visible {
   color: var(--public-show-accent);
