@@ -13,8 +13,8 @@ module ExternalLeadMigration
       "closed" => "Concluido"
     }.freeze
 
-    def self.status_for!(tenant:, payload:, fallback: nil, pipeline: nil)
-      new(tenant:).status_for!(payload:, fallback:, pipeline:)
+    def self.status_for!(tenant:, payload:, fallback: nil, pipeline: nil, auto_create: true)
+      new(tenant:).status_for!(payload:, fallback:, pipeline:, auto_create:)
     end
 
     def self.ensure_source!(tenant:)
@@ -25,7 +25,7 @@ module ExternalLeadMigration
       @tenant = tenant
     end
 
-    def status_for!(payload:, fallback: nil, pipeline: nil)
+    def status_for!(payload:, fallback: nil, pipeline: nil, auto_create: true)
       attrs = extract_attributes(payload.to_h.deep_stringify_keys)
       candidate = attrs.dig("funnel_status", "name").presence ||
         attrs.dig("lead_status", "name").presence ||
@@ -41,6 +41,7 @@ module ExternalLeadMigration
       existing_stage = LeadPipelineStage.matching_name(tenant:, pipeline:, name:)
       return existing_stage.name if existing_stage
       return name if mapped_legacy_status?(raw_name, name)
+      return Lead.default_status(tenant:, pipeline:) unless auto_create
 
       ensure_stage!(pipeline:, name: name).name
     end

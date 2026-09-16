@@ -2549,15 +2549,25 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def pwa_actionable_leads(base_scope)
-    operational_scope = base_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values)
+    operational_scope = base_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values + closed_lead_status_values + ["Concluido"])
 
-    due_task_ids = Task
+    task_ids = Task
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
+      .where.not(due_at: nil)
       .where(lead_id: operational_scope.select(:id))
       .select(:lead_id)
 
-    base_scope.where(id: due_task_ids)
+    untouched_scope = operational_scope
+      .where.not(id: LeadActivity.where(kind: CONTACT_ACTIVITY_KINDS - ["accepted"]).select(:lead_id))
+      .where.not(id: Task.where(tenant_id: current_tenant.id).select(:lead_id))
+      .where.not(id: Appointment.where(tenant_id: current_tenant.id).select(:lead_id))
+      .where.not(id: Proposal.select(:lead_id))
+      .where(id: LeadActivity.where(kind: "accepted").select(:lead_id))
+
+    base_scope.where("leads.id IN (:task_ids) OR leads.id IN (:untouched_ids)",
+      task_ids: task_ids,
+      untouched_ids: untouched_scope.select(:id))
   end
 
   def pwa_future_visit_lead_ids(base_scope)
@@ -2600,7 +2610,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
       .where.not(due_at: nil)
-      .where("due_at > ?", Time.current.end_of_day)
+      .where("due_at > ?", Time.current)
       .select(:lead_id)
 
     base_scope
@@ -2608,7 +2618,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(
         "leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
         task_ids: task_ids,
-        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :future)
+        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :upcoming)
       )
   end
 
@@ -2622,7 +2632,7 @@ class Admin::LeadsController < Admin::BaseController
     scope =
       case timing
       when :upcoming
-        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} >= ?", Time.current.beginning_of_day)
+        scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current)
       when :future
         scope.where("#{EXTERNAL_SCHEDULE_DATE_SQL} > ?", Time.current.end_of_day)
       when :due
@@ -2954,7 +2964,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def push_delivery_events_for(lead)
     PushDeliveryEvent
-      .where(lead_id: lead.id, event_type: Admin::ComercialHelper::SUMMARY_PUSH_EVENT_TYPES)
+      .where(lead_id: lead.id, event_type: Admin::ComercialHelper::SUMMARY_PUSH_EVENT_TYPES + ["provider_accepted"])
       .includes(:admin_user, :push_subscription)
       .order(created_at: :desc)
       .limit(20)

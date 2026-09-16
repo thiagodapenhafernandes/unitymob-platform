@@ -133,7 +133,7 @@ module Admin::ComercialHelper
   end
 
   def lead_timeline_event_visible?(activity, detailed: true)
-    return SUMMARY_PUSH_EVENT_TYPES.include?(activity.event_type.to_s) if activity.is_a?(PushDeliveryEvent)
+    return detailed || SUMMARY_PUSH_EVENT_TYPES.include?(activity.event_type.to_s) if activity.is_a?(PushDeliveryEvent)
     return false unless OPERATIONAL_TIMELINE_KINDS.include?(activity.kind.to_s)
     return true if detailed
 

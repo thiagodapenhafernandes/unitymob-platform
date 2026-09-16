@@ -75,6 +75,7 @@
           <td>
             <span class="tw-inline-flex tw-gap-2 tw-text-base" aria-label="Fontes: <%= enabled_sources.presence&.to_sentence || 'nenhuma' %>">
               <% if rule.source_meta? %><i class="bi bi-facebook tw-text-blue-600" title="Meta" aria-hidden="true"></i><% end %>
+              <% if rule.source_rd_station? %><i class="bi bi-envelope-paper tw-text-green-600" title="RD Station" aria-hidden="true"></i><% end %>
               <% if rule.source_webhook? %><i class="bi bi-diagram-2 tw-text-ink-muted" title="Webhook" aria-hidden="true"></i><% end %>
               <% if rule.source_site? %><i class="bi bi-globe tw-text-cyan-600" title="Site" aria-hidden="true"></i><% end %>
               <% if rule.source_portal? %><i class="bi bi-building tw-text-green-600" title="Portais" aria-hidden="true"></i><% end %>

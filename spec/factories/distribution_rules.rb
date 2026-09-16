@@ -7,6 +7,7 @@ FactoryBot.define do
     active { true }
     source_site { true }
     source_meta { false }
+    source_rd_station { false }
     source_portal { false }
     source_webhook { false }
     pocket_active { false }

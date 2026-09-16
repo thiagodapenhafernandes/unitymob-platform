@@ -108,4 +108,20 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(data[:details]).to include(["Formulário", "123456"], ["Campanha", "Solar Elisa"], ["Anúncio", "Apartamento"])
     expect(origin(lead, form_name: "Form Solar Elisa")[:details]).to include(["Formulário", "Form Solar Elisa"])
   end
+
+  it "exibe RD Station com a ação original da conversão" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "RD Station", lead_type: "rd_station", other_information: {
+      "rd_station_event_type" => "WEBHOOK.CONVERTED",
+      "rd_station_conversion_identifier" => "Landing Praia",
+      "rd_station_campaign_name" => "Campanha Praia",
+      "rd_station_source" => "newsletter",
+      "rd_station_medium" => "email"
+    })
+
+    data = origin(lead)
+
+    expect(data).to include(label: "RD Station", brand: "rdstation", subtype: "Conversão")
+    expect(data[:complements]).to include("Campanha: Campanha Praia", "Conversão: Landing Praia", "Origem original: newsletter / email")
+    expect(data[:details]).to include(["Evento RD", "WEBHOOK.CONVERTED"], ["Conversão RD", "Landing Praia"], ["Campanha RD", "Campanha Praia"], ["Origem RD", "newsletter / email"])
+  end
 end

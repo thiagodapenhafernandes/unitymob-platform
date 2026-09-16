@@ -517,12 +517,13 @@ RSpec.describe "Admin::Leads", type: :request do
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
-        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "1")
+        expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "2")
         expect(document.css(".lead-pwa-card").map(&:text).join).to include(
           "Retorno Futuro Importado",
-          "Retornar para o cliente - 20/08/2026 09:00"
+          "Retornar para o cliente - 20/08/2026 09:00",
+          "Retorno Hoje Importado"
         )
-        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Retorno Hoje Importado", "Visita Importada")
+        expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Visita Importada")
 
         get admin_leads_path(view: "list", mobile_tab: "visits")
 
@@ -1693,7 +1694,8 @@ RSpec.describe "Admin::Leads", type: :request do
     it "pagina a lista PWA em lotes de 15 por aba" do
       default_status = Lead.default_status(tenant: admin.tenant)
       22.times do |i|
-        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Todo #{i}", phone: "1199999#{format('%04d', i)}", status: default_status)
+        lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Todo #{i}", phone: "1199999#{format('%04d', i)}", status: default_status)
+        create(:task, tenant: admin.tenant, admin_user: admin, lead: lead, due_at: Time.current)
       end
 
       get admin_leads_path(view: "list", mobile_tab: "todo")

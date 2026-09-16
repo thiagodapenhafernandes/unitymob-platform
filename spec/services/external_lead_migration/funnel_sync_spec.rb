@@ -25,5 +25,15 @@ RSpec.describe ExternalLeadMigration::FunnelSync do
         expect(status).to eq("Visita agendada")
       }.to change { tenant.lead_pipeline_stages.where(lead_pipeline: pipeline, name: "Visita agendada").count }.by(1)
     end
+
+    it "deixa etapa externa desconhecida cair no padrao quando criacao automatica esta desligada" do
+      default_stage = create(:lead_pipeline_stage, tenant: tenant, lead_pipeline: pipeline, name: "Novo Lead")
+      payload = { "attributes" => { "funnel_status" => { "name" => "Visita agendada" } } }
+
+      expect {
+        status = described_class.status_for!(tenant: tenant, payload: payload, pipeline: pipeline, auto_create: false)
+        expect(status).to eq(default_stage.name)
+      }.not_to change { tenant.lead_pipeline_stages.where(lead_pipeline: pipeline, name: "Visita agendada").count }
+    end
   end
 end

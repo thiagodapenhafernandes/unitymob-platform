@@ -188,6 +188,19 @@
             <div class="distribution-rule-source-grid">
               <section class="distribution-rule-source-card distribution-rule-source-card--compact">
                 <div class="distribution-rule-source__head">
+                  <span class="distribution-rule-source__icon"><i class="bi bi-envelope-paper"></i></span>
+                  <div class="distribution-rule-source__copy">
+                    <strong>RD Station</strong>
+                    <span>Contatos enviados pela integração RD Station.</span>
+                  </div>
+                  <div class="distribution-rule-source__actions">
+                    <%= ax_toggle_chip(f, :source_rd_station, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
+                  </div>
+                </div>
+              </section>
+
+              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
+                <div class="distribution-rule-source__head">
                   <span class="distribution-rule-source__icon"><i class="bi bi-globe2"></i></span>
                   <div class="distribution-rule-source__copy">
                     <strong>Site</strong>

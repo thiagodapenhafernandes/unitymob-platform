@@ -314,7 +314,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     # isso distribution_rule_agents_attributes NÃO é permitido aqui.
     params.require(:distribution_rule).permit(
       :name, :business_type, :active,
-      :source_meta, :source_webhook, :source_portal, :source_site,
+      :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station,
       :distribution_mode,
       :pocket_active, :pocket_time,
       :pocket_to_shark_tank, :pool_renotify_mode, :pool_renotify_minutes,

@@ -116,6 +116,77 @@
         </div>
       <% end %>
 
+      <%= ax_operational_panel(eyebrow: "Pareamento", title: "Etapas do Unitymob", actions: ax_badge("#{@external_stage_options.size} status recebidos", tone: :blue)) do %>
+        <% if @external_stage_options.any? && @operational_mapping_rows.any? %>
+          <%= form_with model: @integration, url: admin_external_lead_integration_path, method: :patch, local: true, class: "lead-migration-mapping-form" do |f| %>
+            <div class="lead-migration-pipeline-groups">
+              <% @operational_mapping_rows.group_by { |row| row[:stage].lead_pipeline }.each do |pipeline, rows| %>
+                <details class="lead-migration-pipeline-group">
+                  <summary class="lead-migration-pipeline-group__summary">
+                    <span>
+                      <strong><%= pipeline.name %></strong>
+                      <small><%= LeadPipeline::KINDS[pipeline.kind] || pipeline.kind %> · <%= rows.size %> etapa(s)</small>
+                    </span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                  </summary>
+
+                  <div class="ax-table-responsive">
+                    <table class="ax-table lead-migration-table">
+                      <thead>
+                        <tr>
+                          <th>Etapa local</th>
+                          <th>Status recebidos que caem aqui</th>
+                          <th>Amostra</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% rows.each_with_index do |row, row_index| %>
+                          <% field_index = "#{pipeline.id}_#{row_index}" %>
+                          <tr>
+                            <td>
+                              <strong><%= row[:stage].name %></strong>
+                              <% if row[:suggested_keys].any? %>
+                                <div class="tw-text-2xs tw-text-ink-muted">inclui match automático sugerido</div>
+                              <% end %>
+                              <%= hidden_field_tag "external_lead_integration[operational_stage_targets][#{field_index}][stage_id]", row[:stage].id %>
+                            </td>
+                            <td>
+                              <div class="ax-multiselect lead-migration-stage-source-select">
+                                <div class="ax-multiselect__frame" data-placeholder="Selecionar status recebidos">
+                                  <%= select_tag "external_lead_integration[operational_stage_targets][#{field_index}][keys][]",
+                                                 options_for_select(@external_stage_options, row[:selected_keys]),
+                                                 multiple: true,
+                                                 class: "ax-control ax-multiselect__select",
+                                                 data: {
+                                                   controller: "tom-select",
+                                                   tom_select_tags_value: true,
+                                                   tom_select_create_value: false,
+                                                   placeholder: "Selecionar status recebidos"
+                                                 } %>
+                                </div>
+                              </div>
+                            </td>
+                            <td><%= row[:sample_count].positive? ? "#{row[:sample_count]} lead(s)" : "—" %></td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              <% end %>
+            </div>
+            <div class="lead-migration-actions">
+              <%= f.submit "Salvar pareamento", class: "ax-btn ax-btn--primary" %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="lead-migration-empty-state">
+            <i class="bi bi-diagram-3"></i>
+            <span>Os status aparecem aqui depois que os primeiros leads forem sincronizados.</span>
+          </div>
+        <% end %>
+      <% end %>
+
       <%= ax_operational_panel(eyebrow: "Funil", title: "Etapas de Lead usadas na migração", actions: ax_badge("#{@lead_pipeline_stages.size} etapas", tone: :blue)) do %>
         <div class="lead-migration-funnel-list">
           <% if @lead_pipeline_stages.any? %>
@@ -126,7 +197,7 @@
             <span><%= Lead.default_status(tenant: current_tenant) %></span>
           <% end %>
         </div>
-        <p class="lead-migration-panel-hint">Quando a API externa enviar uma etapa nova, ela é criada no catálogo de status do Lead deste tenant e passa a aparecer no funil.</p>
+        <p class="lead-migration-panel-hint">Quando uma etapa recebida não tiver destino definido, o sistema tenta casar pelo nome. Se não houver match seguro, usa a etapa padrão do funil até o pareamento ser salvo.</p>
       <% end %>
 
       <%= ax_operational_panel(eyebrow: "Leads", title: "Últimos leads migrados") do %>

@@ -55,11 +55,15 @@ module ExternalLeadMigration
     end
 
     def sync_favorite!
-      return unless mapper.favorite?
+      return unless mapper.favorite_provided?
       return if lead.admin_user_id.blank? || responsible_user.blank?
 
-      lead.lead_favorites.find_or_create_by!(admin_user: responsible_user) do |favorite|
-        favorite.tenant = lead.tenant
+      if mapper.favorite?
+        lead.lead_favorites.find_or_create_by!(admin_user: responsible_user) do |favorite|
+          favorite.tenant = lead.tenant
+        end
+      else
+        lead.lead_favorites.where(admin_user: responsible_user).destroy_all
       end
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
       nil
@@ -111,21 +115,28 @@ module ExternalLeadMigration
     end
 
     def sync_scheduled_actions!
+      current_keys = []
+
       mapper.scheduled_actions.each_with_index do |action, index|
         due_at = action_due_at(action)
         next if due_at.blank?
+
+        appointment = appointment_action?(action)
+        current_keys << scheduled_action_key(action, index, due_at:, appointment:)
 
         if lead.admin_user_id.blank? || responsible_user.blank?
           log_unassigned_scheduled_action!(action, due_at, index)
           next
         end
 
-        if appointment_action?(action)
+        if appointment
           sync_appointment!(action, due_at)
         else
           sync_task!(action, due_at, index)
         end
       end
+
+      cancel_stale_scheduled_actions!(current_keys)
     end
 
     def sync_task!(action, due_at, index)
@@ -317,6 +328,40 @@ module ExternalLeadMigration
           .where("metadata @> ?", { source: SOURCE, external_key: key.to_s }.to_json)
           .order(id: :desc)
           .first
+    end
+
+    def scheduled_action_key(action, index, due_at:, appointment:)
+      action["id"].presence ||
+        (appointment ? "appointment:#{mapper.external_lead_id}:#{due_at.to_i}" : "scheduled:#{mapper.external_lead_id}:#{index}")
+    end
+
+    def cancel_stale_scheduled_actions!(current_keys)
+      return if historical || !mapper.scheduled_actions_provided?
+
+      lead.activities
+          .where(kind: %w[external_scheduled_action external_appointment])
+          .where("metadata @> ?", { source: SOURCE }.to_json)
+          .find_each do |activity|
+        next if current_keys.include?(activity.metadata.to_h["external_key"].to_s)
+
+        cancel_stale_task!(activity.metadata.to_h["task_id"])
+        cancel_stale_appointment!(activity.metadata.to_h["appointment_id"])
+        activity.update!(metadata: activity.metadata.to_h.merge("stale_from_external" => true, "stale_synced_at" => Time.current.iso8601))
+      end
+    end
+
+    def cancel_stale_task!(task_id)
+      task = lead.tasks.find_by(id: task_id)
+      return unless task&.external_legacy? && task.pendente?
+
+      task.update!(status: "cancelada")
+    end
+
+    def cancel_stale_appointment!(appointment_id)
+      appointment = lead.appointments.find_by(id: appointment_id)
+      return unless appointment&.agendado?
+
+      appointment.update!(status: "cancelado")
     end
 
     def task_status(action)
