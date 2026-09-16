@@ -125,10 +125,11 @@ module Dwv
       nil
     end
 
-    def initialize(payload, tenant: nil)
+    def initialize(payload, tenant: nil, refresh_media: false)
       @raw_payload = payload || {}
       @payload = self.class.unwrap_payload(@raw_payload)
       @tenant = tenant || Current.tenant
+      @refresh_media = refresh_media
       raise ArgumentError, "Tenant obrigatório para Dwv::PropertyImportService" if @tenant.blank?
     end
 
@@ -197,7 +198,7 @@ module Dwv
       effective_rent = rent_cents || habitation.valor_locacao_cents
 
       if existing_record
-        habitation.assign_attributes(
+        attrs = {
           codigo_dwv: dwv_id,
           imovel_dwv: "Sim",
           status: existing_record_dwv_status(habitation.status, effective_sale, effective_rent),
@@ -207,20 +208,12 @@ module Dwv
           last_sync_at: Time.current,
           last_sync_status: "success",
           last_sync_message: "Sincronizado via DWV (preço atualizado)"
-        )
+        }
+        refreshed_pictures = extract_pictures if @refresh_media
+        attrs[:pictures] = refreshed_pictures if refreshed_pictures.present? && refreshed_pictures.size > Array(habitation.pictures).size
+        habitation.assign_attributes(attrs)
         return
       end
-
-      raw_status = value(["status"], ["property_status"]).to_s.strip.downcase
-      raw_integration_status = value(["integration_status"]).to_s.strip.downcase
-      derived_status = derive_dwv_status(
-        raw_status: raw_status,
-        raw_integration_status: raw_integration_status,
-        raw_deleted: value(["deleted"]),
-        sale_cents: effective_sale,
-        rent_cents: effective_rent,
-        current_status: habitation.status
-      )
 
       pictures = extract_pictures
       videos = extract_videos
@@ -238,12 +231,12 @@ module Dwv
         codigo_dwv: dwv_id,
         imovel_dwv: "Sim",
         admin_user: habitation.admin_user || dwv_owner_user,
-        status: derived_status,
+        status: "Interno",
         valor_venda_cents: effective_sale,
         valor_locacao_cents: effective_rent,
         valor_condominio_cents: first_cents(value(["condominium_fee"], ["valor_condominio"], ["third_party_property", "administration_fee"])) || habitation.valor_condominio_cents,
         valor_iptu_cents: first_cents(value(["property_tax"], ["valor_iptu"], ["third_party_property", "property_tax"])) || habitation.valor_iptu_cents,
-        exibir_no_site_flag: active_on_site?,
+        exibir_no_site_flag: false,
         titulo_anuncio: text_value(["advertisement_title"], ["title"], ["name"], ["titulo"], ["third_party_property", "title"], ["unit", "title"]) || habitation.titulo_anuncio,
         categoria: category || habitation.categoria || DEFAULT_CATEGORY,
         categoria_grupo: text_value(["unit", "floor_plan", "category", "tag"], ["unit", "additional_category"], ["third_party_property", "additional_category"]) || habitation.categoria_grupo,
@@ -443,18 +436,18 @@ module Dwv
       address = value(["address"]) if !address.is_a?(Hash)
       address = {} unless address.is_a?(Hash)
 
-      @dwv_complement = (self.class.value(address, ["complement"]) || value(["third_party_property", "unit_info"])).to_s.strip.presence
+      @dwv_complement = (
+        self.class.value(address, ["complement"]) ||
+        value(["third_party_property", "unit_info"]) ||
+        dwv_unit_identifier
+      ).to_s.strip.presence
     end
 
-    def map_status(raw)
-      status = raw.to_s.strip.downcase
-      return nil if status.blank?
-      return "Venda" if status.include?("sale") || status.include?("venda")
-      return "Aluguel" if status.include?("rent") || status.include?("loca") || status.include?("alug")
-      return nil if status.include?("inactive") || status.include?("inativo")
-      return nil if status == "active"
+    def dwv_unit_identifier
+      raw = text_value(["unit", "title"], ["unit", "number"], ["unit", "reference"], ["unit_number"])
+      return nil unless raw.to_s.match?(/\A(?:ap(?:to)?\.?\s*)?[A-Za-z]?\d{1,6}[A-Za-z0-9-]*\z/i)
 
-      Habitation.normalize_status(raw)
+      raw
     end
 
     def infer_status_from_prices(sale_cents, rent_cents)
@@ -466,18 +459,6 @@ module Dwv
       return normalized_current if normalized_current.to_s.match?(Regexp.new(Habitation::INACTIVE_COMMERCIAL_STATUS_REGEX))
 
       infer_status_from_prices(sale_cents, rent_cents) || normalized_current || current_status
-    end
-
-    def derive_dwv_status(raw_status:, raw_integration_status:, raw_deleted:, sale_cents:, rent_cents:, current_status:)
-      fallback_status = infer_status_from_prices(sale_cents, rent_cents) || current_status || "Venda"
-      return fallback_status if raw_deleted == true || raw_deleted.to_s == "true"
-
-      [raw_status, raw_integration_status].each do |status|
-        next if status.blank?
-        return fallback_status if status == "auto_inactive" || status == "inactive"
-      end
-
-      map_status(raw_status) || fallback_status
     end
 
     def map_situation(raw)
@@ -563,7 +544,8 @@ module Dwv
       raw_sources += media_items(value(["images"]))
       raw_sources += media_items(value(["pictures"]))
       raw_sources += media_items(value(["photos"]))
-      raw_sources << value(["building", "cover"]) if raw_sources.compact.blank?
+      raw_sources << value(["building", "cover"])
+      raw_sources += media_items(value(["building", "gallery"]))
 
       normalize_media_payload(raw_sources, type: "Foto")
     end

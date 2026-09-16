@@ -631,6 +631,28 @@ RSpec.describe "Habitation details", type: :request do
       expect(page_text).to include("R$ 5.000")
     end
 
+    it "does not show a stale monthly total when reduced rent has no visible taxes" do
+      habitation = create(
+        :habitation,
+        codigo: "RENT-DISCOUNT-NO-TAXES",
+        slug: "locacao-reduzida-sem-taxas",
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_anterior_cents: 5_000_00,
+        valor_locacao_cents: 4_300_00,
+        valor_total_aluguel_cents: 5_000_00
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      page_text = Nokogiri::HTML(response.body).text.squish
+      expect(page_text).to include("Locação com preço reduzido")
+      expect(page_text).to include("R$ 4.300")
+      expect(page_text).not_to include("Total mensal")
+      expect(page_text).not_to include("R$ 5.000,00")
+    end
+
     it "shows recalculated monthly total when reduced rent has condominium and IPTU" do
       habitation = create(
         :habitation,
