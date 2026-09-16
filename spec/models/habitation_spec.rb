@@ -862,10 +862,10 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.displayable_rent_total_cents).to eq(5_699_25)
     end
 
-    it "uses the stored rent total when it is greater than the rent value" do
+    it "does not use a stored rent total without visible taxes" do
       habitation = build(:habitation, valor_locacao_cents: 4_900_00, valor_total_aluguel_cents: 5_700_00)
 
-      expect(habitation.displayable_rent_total_cents).to eq(5_700_00)
+      expect(habitation.displayable_rent_total_cents).to be_nil
     end
 
     it "recalculates total from current rent and visible taxes when rent was reduced" do
@@ -889,13 +889,11 @@ RSpec.describe Habitation, type: :model do
   end
 
   describe "#normalize_rent_total_cents" do
-    it "clears a stale stored rent total when it is lower than the current rent" do
+    it "clears a stale stored rent total without visible taxes" do
       habitation = create(
         :habitation,
         valor_venda_cents: 0,
-        valor_locacao_cents: 16_000_00,
-        valor_condominio_cents: 100,
-        valor_iptu_cents: 100,
+        valor_locacao_cents: 4_300_00,
         valor_total_aluguel_cents: 13_000_00
       )
 

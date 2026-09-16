@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Portal feeds", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   before { host! "localhost" }
 
   def create_integration(portal: "vivareal_vrsync", tenant: Current.tenant, feed_token: SecureRandom.hex(16))
@@ -64,6 +66,59 @@ RSpec.describe "Portal feeds", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("<Document>")
+  end
+
+  it "does not return 304 when a previously eligible property leaves the feed" do
+    tenant = Tenant.create!(name: "Feed stale #{SecureRandom.hex(3)}", slug: "feed-stale-#{SecureRandom.hex(4)}")
+    integration = create_integration(tenant: tenant).tap do |record|
+      record.update!(allowed_statuses: %w[Venda Aluguel], require_exibir_no_site: true)
+    end
+
+    first = create(
+      :habitation,
+      tenant: tenant,
+      codigo: "8436",
+      titulo_anuncio: "Apartamento para alugar",
+      descricao_web: "Descrição pronta para publicação.",
+      categoria: "Apartamento",
+      status: "Aluguel",
+      valor_locacao_cents: 4_200_00,
+      exibir_no_site_flag: true,
+      publicar_viva_real_vrsync: true,
+      pictures: [{ "url" => "https://cdn.test/8436.jpg" }]
+    )
+
+    travel_to 2.minutes.from_now do
+      create(
+        :habitation,
+        tenant: tenant,
+        codigo: "9999",
+        titulo_anuncio: "Outro apartamento",
+        descricao_web: "Descrição pronta para publicação.",
+        categoria: "Apartamento",
+        status: "Aluguel",
+        valor_locacao_cents: 5_000_00,
+        exibir_no_site_flag: true,
+        publicar_viva_real_vrsync: true,
+        pictures: [{ "url" => "https://cdn.test/9999.jpg" }]
+      )
+    end
+
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("8436")
+    stale_etag = response.headers.fetch("ETag")
+
+    travel_to 4.minutes.from_now do
+      first.update!(status: "Suspenso", exibir_no_site_flag: false, motivo_suspensao: "Fora de pauta DWV")
+    end
+
+    get integrations_portals_feed_token_path(portal: integration.portal, token: integration.feed_token),
+        headers: { "If-None-Match" => stale_etag }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("8436")
+    expect(response.body).to include("9999")
   end
 
   it "creates independent portal tokens for each tenant on the same portal" do

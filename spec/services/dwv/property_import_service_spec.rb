@@ -17,7 +17,8 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.codigo_dwv).to eq("632439")
       expect(habitation.imovel_dwv).to eq("Sim")
       expect(habitation.admin_user).to eq(dwv_user)
-      expect(habitation.status).to eq("Venda")
+      expect(habitation.status).to eq("Interno")
+      expect(habitation.exibir_no_site_flag).to eq(false)
       expect(habitation.titulo_anuncio).to eq("Apartamento com vista mar")
       expect(habitation.nome_empreendimento).to eq("Línea")
       expect(habitation.codigo_empreendimento).to be_nil
@@ -52,10 +53,11 @@ RSpec.describe Dwv::PropertyImportService do
       expect(address.cidade).to eq("Balneário Camboriú")
       expect(address.uf).to eq("SC")
       expect(address.cep).to eq("88330-410")
+      expect(address.complemento).to eq("901")
       expect(address.imediacoes).to eq(["A 30m da Av. Brasil"])
     end
 
-    it "não usa o número da unidade DWV como bloco quando o complemento vem vazio" do
+    it "usa o número da unidade DWV como complemento quando o complemento vem vazio" do
       payload = unit_payload.deep_dup
       payload["data"]["unit"]["title"] = "101"
       payload["data"]["building"]["address"]["complement"] = nil
@@ -63,7 +65,7 @@ RSpec.describe Dwv::PropertyImportService do
       habitation = described_class.new(payload, tenant: tenant).perform.fetch(:habitation)
 
       expect(habitation.bloco).to be_blank
-      expect(habitation.address.complemento).to be_blank
+      expect(habitation.address.complemento).to eq("101")
     end
 
     it "updates only prices and sync metadata on an existing DWV record" do
@@ -113,6 +115,36 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.proprietario).to eq("Proprietário local")
       expect(habitation.preco_atualizado_em).to be_present
       expect(habitation.last_sync_message).to eq("Sincronizado via DWV (preço atualizado)")
+    end
+
+    it "atualiza fotos de imóvel DWV existente somente quando refresh_media é explícito" do
+      habitation = create(
+        :habitation,
+        tenant: tenant,
+        codigo: "DWV-632439",
+        codigo_dwv: "632439",
+        imovel_dwv: "Sim",
+        pictures: [{ "url" => "https://cdn.dwv.test/old-cover.jpg" }],
+        status: "Venda"
+      )
+
+      payload = unit_payload.deep_dup
+      payload["data"]["unit"]["images"] = [
+        { "url" => "https://cdn.dwv.test/unit-2.jpg" },
+        { "url" => "https://cdn.dwv.test/unit-3.jpg" }
+      ]
+
+      described_class.new(payload, tenant: tenant).perform
+      expect(habitation.reload.pictures.map { |pic| pic["url"] }).to eq(["https://cdn.dwv.test/old-cover.jpg"])
+
+      described_class.new(payload, tenant: tenant, refresh_media: true).perform
+      expect(habitation.reload.pictures.map { |pic| pic["url"] }).to include(
+        "https://cdn.dwv.test/unit-cover.jpg",
+        "https://cdn.dwv.test/unit-2.jpg",
+        "https://cdn.dwv.test/unit-3.jpg",
+        "https://cdn.dwv.test/building-cover.jpg",
+        "https://cdn.dwv.test/building-gallery.jpg"
+      )
     end
 
     it "does not create a new habitation from a removed DWV payload" do
@@ -173,7 +205,7 @@ RSpec.describe Dwv::PropertyImportService do
       result = described_class.new(third_party_payload, tenant: tenant).perform
       habitation = result[:habitation]
 
-      expect(habitation.status).to eq("Aluguel")
+      expect(habitation.status).to eq("Interno")
       expect(habitation.categoria).to eq("Casa")
       expect(habitation.valor_locacao_cents).to eq(12_000_00)
       expect(habitation.valor_condominio_cents).to eq(450_00)

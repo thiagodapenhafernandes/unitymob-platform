@@ -16,9 +16,11 @@ module Integrations
 
         scope = Portal::EligibilityScope.new(@integration).eligible_scope.includes(:address)
         scope_last_update = scope.maximum(:updated_at)
+        tenant_last_update = @integration.tenant&.habitations&.maximum(:updated_at)
+        last_modified = [scope_last_update, tenant_last_update].compact.max
         should_render = stale?(
-          etag: [@portal, @integration.updated_at.to_i, scope_last_update&.to_i, feed_cache_version],
-          last_modified: scope_last_update,
+          etag: [@portal, @integration.updated_at.to_i, last_modified&.to_i, feed_cache_version],
+          last_modified: last_modified,
           public: false
         )
         @integration.update_column(:last_feed_at, Time.current)

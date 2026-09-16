@@ -1197,9 +1197,6 @@ class Habitation < ApplicationRecord
     taxes_total_cents = displayable_condominio_cents.to_i + displayable_iptu_cents.to_i
     return rent_cents + taxes_total_cents if taxes_total_cents.positive?
 
-    stored_total_cents = valor_total_aluguel_cents.to_i
-    return stored_total_cents if stored_total_cents > rent_cents
-
     nil
   end
 
@@ -1216,7 +1213,7 @@ class Habitation < ApplicationRecord
       return
     end
 
-    self.valor_total_aluguel_cents = nil if valor_total_aluguel_cents.to_i < rent_cents
+    self.valor_total_aluguel_cents = nil
   end
 
   def rent_discount?
