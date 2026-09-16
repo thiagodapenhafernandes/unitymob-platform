@@ -2549,16 +2549,6 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def pwa_actionable_leads(base_scope)
-    # Aceitar o lead ou abrir seu link não representa uma ação de atendimento.
-    action_kinds = (CONTACT_ACTIVITY_KINDS - ["accepted"]) + %w[task_created task_completed]
-    acted_ids = current_tenant.lead_activities.human_operational
-      .where(lead_id: base_scope.select(:id), kind: action_kinds).select(:lead_id)
-    imported_schedule_ids = current_tenant.lead_activities
-      .where(lead_id: base_scope.select(:id), kind: EXTERNAL_SCHEDULE_KIND).select(:lead_id)
-
-    active_scope = base_scope
-      .where(status: active_lead_status_values_with_blank)
-      .where(status: pwa_priority_lead_status_values + [Lead.status_value(:em_atendimento, tenant: current_tenant)])
     operational_scope = base_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values)
 
     due_task_ids = Task
@@ -2566,22 +2556,8 @@ class Admin::LeadsController < Admin::BaseController
       .pendentes
       .where(lead_id: operational_scope.select(:id))
       .select(:lead_id)
-    due_external_ids = pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :scheduled)
 
-    untouched_scope = active_scope
-      .where.not(id: acted_ids)
-      .where.not(id: imported_schedule_ids)
-    [Task, Appointment].each do |model|
-      untouched_scope = untouched_scope.where.not(id: model.where(tenant_id: current_tenant.id, lead_id: base_scope.select(:id)).select(:lead_id))
-    end
-    untouched_scope = untouched_scope.where.not(id: Proposal.where(lead_id: base_scope.select(:id)).select(:lead_id))
-
-    base_scope.where(
-      "leads.id IN (:untouched_ids) OR leads.id IN (:due_task_ids) OR leads.id IN (:due_external_ids)",
-      untouched_ids: untouched_scope.select(:id),
-      due_task_ids: due_task_ids,
-      due_external_ids: due_external_ids
-    )
+    base_scope.where(id: due_task_ids)
   end
 
   def pwa_future_visit_lead_ids(base_scope)
@@ -2624,7 +2600,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
       .where.not(due_at: nil)
-      .where("due_at >= ?", Time.current.beginning_of_day)
+      .where("due_at > ?", Time.current.end_of_day)
       .select(:lead_id)
 
     base_scope
@@ -2632,7 +2608,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(
         "leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
         task_ids: task_ids,
-        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :upcoming)
+        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :future)
       )
   end
 
