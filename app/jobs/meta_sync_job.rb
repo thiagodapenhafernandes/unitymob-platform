@@ -48,7 +48,7 @@ class MetaSyncJob < ApplicationJob
       page.active = true
       unless register_meta_gateway_route(page, integration)
         page.update!(active: false, instagram_enabled: false)
-        pending << "Gateway da página #{page.name}: registro pendente. O recebimento foi desativado até confirmar o destino."
+        pending << "Gateway da página #{page.name}: #{gateway_route_error}. O recebimento foi desativado até confirmar o destino."
         next
       end
       integration.with_lock do
@@ -102,7 +102,7 @@ class MetaSyncJob < ApplicationJob
             active: form_data["status"] == "ACTIVE",
             facebook_created_at: form_data["created_time"]
           )
-          pending << "Gateway do formulário #{form.name}: registro pendente." unless register_meta_gateway_route(page, integration, form: form)
+          pending << "Gateway do formulário #{form.name}: #{gateway_route_error}." unless register_meta_gateway_route(page, integration, form: form)
 
           # Auto-add to Distribution Rules if enabled — SÓ do tenant desta
           # integração (antes varria todos; com páginas duplicadas entre
@@ -191,6 +191,7 @@ class MetaSyncJob < ApplicationJob
     return false unless tenant
 
     result = Meta::WebhookGatewayClient.new(page: page, tenant: tenant, form: form).register_route
+    @last_gateway_route_error = result.error.presence || "registro pendente"
     return true if result.ok? || (result.skipped? && !Meta::WebhookConfiguration.gateway?)
 
     Rails.logger.warn(
@@ -200,10 +201,15 @@ class MetaSyncJob < ApplicationJob
     )
     false
   rescue => e
+    @last_gateway_route_error = "falha ao confirmar o destino"
     Rails.logger.warn(
       "[MetaSyncJob] Erro ao registrar rota Meta no gateway " \
       "page_id=#{page.page_id} form_id=#{form&.form_id} error=#{e.class}"
     )
     false
+  end
+
+  def gateway_route_error
+    @last_gateway_route_error.presence || "registro pendente"
   end
 end
