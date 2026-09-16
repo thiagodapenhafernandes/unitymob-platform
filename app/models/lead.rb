@@ -613,7 +613,7 @@ class Lead < ApplicationRecord
     info = other_information.to_h
     return unless attribution_channel == "meta_ads" || info["meta_leadgen_id"].present?
     return unless info["meta_leadgen_id"].present? || info["ad_id"].present? || info["campaign_id"].present? ||
-      attribution_data.to_h.values_at("ad_id", "campaign_id").any?(&:present?)
+      info["meta_form_id"].present? || attribution_data.to_h.values_at("ad_id", "campaign_id").any?(&:present?)
 
     MetaLeadEnrichmentJob.perform_later(tenant_id, id)
   rescue StandardError => error

@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe Lead, type: :model do
+  include ActiveJob::TestHelper
   include ActiveSupport::Testing::TimeHelpers
 
   around do |example|
@@ -24,6 +25,20 @@ RSpec.describe Lead, type: :model do
       expect(conversation.reload.lead_id).to be_nil
       expect(message.reload.whatsapp_conversation_id).to eq(conversation.id)
       expect(other_conversation.reload.lead_id).to eq(other_lead.id)
+    end
+  end
+
+  describe "#enqueue_meta_enrichment" do
+    it "enfileira enriquecimento para lead Meta identificado por formulario" do
+      lead = build(
+        :lead,
+        attribution_channel: "meta_ads",
+        other_information: { "meta_form_id" => "form-meta-123" }
+      )
+
+      expect {
+        lead.send(:enqueue_meta_enrichment)
+      }.to have_enqueued_job(MetaLeadEnrichmentJob)
     end
   end
 

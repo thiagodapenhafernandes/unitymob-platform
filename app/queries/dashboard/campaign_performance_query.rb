@@ -131,7 +131,15 @@ module Dashboard
       channel = normalized_channel(lead)
 
       if meta_lead?(lead, info, attribution)
-        ["meta", campaign.presence || "Meta Ads sem campanha", form.presence || "Formulário não identificado"]
+        meta_title = campaign.presence || form.presence || "Meta Ads sem campanha"
+        meta_detail = if campaign.present?
+          form.presence || ad_name(info, attribution).presence || "Meta Ads"
+        elsif form.present?
+          "Meta Ads · campanha não identificada"
+        else
+          "Formulário não identificado"
+        end
+        ["meta", meta_title, meta_detail]
       elsif site_lead?(lead, channel, context[:site_events][lead.id])
         site_key(lead, channel, context[:site_events][lead.id])
       elsif (family = channel_family_label(channel)).present?
@@ -184,7 +192,7 @@ module Dashboard
         lead: lead,
         name: lead.name.presence || "Lead ##{lead.id}",
         source_label: lead_source_label(lead, context),
-        campaign_label: campaign_name(info, attribution).presence || ad_name(info, attribution).presence || "sem campanha",
+        campaign_label: campaign_name(info, attribution).presence || ad_name(info, attribution).presence || form_name(lead, info, attribution, context).presence || "sem campanha",
         broker_name: lead.admin_user&.name.presence || "Sem corretor",
         opened_label: opened_label(lead, context[:attended_at]),
         opened_tone: attended ? "green" : "red",
