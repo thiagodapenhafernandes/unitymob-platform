@@ -2559,14 +2559,14 @@ class Admin::LeadsController < Admin::BaseController
     active_scope = base_scope
       .where(status: active_lead_status_values_with_blank)
       .where(status: pwa_priority_lead_status_values + [Lead.status_value(:em_atendimento, tenant: current_tenant)])
+    operational_scope = base_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values)
 
     due_task_ids = Task
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
-      .where("due_at IS NOT NULL AND due_at <= ?", Time.current.end_of_day)
-      .where("tasks.lead_id NOT IN (:scheduled_lead_ids)", scheduled_lead_ids: pwa_later_scheduled_lead_ids(base_scope))
+      .where(lead_id: operational_scope.select(:id))
       .select(:lead_id)
-    due_external_ids = pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :due)
+    due_external_ids = pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :scheduled)
 
     untouched_scope = active_scope
       .where.not(id: acted_ids)
@@ -2576,7 +2576,7 @@ class Admin::LeadsController < Admin::BaseController
     end
     untouched_scope = untouched_scope.where.not(id: Proposal.where(lead_id: base_scope.select(:id)).select(:lead_id))
 
-    active_scope.where(
+    base_scope.where(
       "leads.id IN (:untouched_ids) OR leads.id IN (:due_task_ids) OR leads.id IN (:due_external_ids)",
       untouched_ids: untouched_scope.select(:id),
       due_task_ids: due_task_ids,
@@ -2624,7 +2624,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
       .where.not(due_at: nil)
-      .where("due_at > ?", Time.current.end_of_day)
+      .where("due_at >= ?", Time.current.beginning_of_day)
       .select(:lead_id)
 
     base_scope
@@ -2632,7 +2632,7 @@ class Admin::LeadsController < Admin::BaseController
       .where(
         "leads.id IN (:task_ids) OR leads.id IN (:external_task_ids)",
         task_ids: task_ids,
-        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :future)
+        external_task_ids: pwa_external_schedule_lead_ids(base_scope, visits: false, timing: :upcoming)
       )
   end
 
