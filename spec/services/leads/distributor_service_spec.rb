@@ -153,6 +153,21 @@ RSpec.describe Leads::DistributorService do
     end
   end
 
+  describe "Lovers" do
+    it "distribui lead Lovers apenas para regra Lovers" do
+      site_rule = create(:distribution_rule, source_site: true, source_lovers: false)
+      lovers_rule = create(:distribution_rule, source_site: false, source_lovers: true)
+      create(:distribution_rule_agent, distribution_rule: site_rule, admin_user: agent_with_checkin)
+      create(:distribution_rule_agent, distribution_rule: lovers_rule, admin_user: agent_without_checkin)
+
+      lead = build_lead(origin: "Lovers", lead_type: "lovers")
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.distribution_rule_id).to eq(lovers_rule.id)
+      expect(lead.admin_user_id).to eq(agent_without_checkin.id)
+    end
+  end
+
   describe "filtro de origem" do
     it "procura regras apenas dentro do Tenant do lead" do
       other_tenant, other_profile = create_tenant_with_agent_profile("Outra conta")

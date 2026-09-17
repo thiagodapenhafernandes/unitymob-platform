@@ -24,6 +24,7 @@ module Admin::NavbarHelper
     "seo_redirects" => "Redirecionamentos SEO",
     "meta_integrations" => "Meta Leads",
     "rd_station_integrations" => "RD Station",
+    "lovers_integrations" => "Lovers",
     "whatsapp_integrations" => "WhatsApp",
     "portal_integrations" => "Portais",
     "loft_integrations" => "Loft Soft",

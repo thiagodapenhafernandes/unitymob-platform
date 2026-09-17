@@ -1,7 +1,8 @@
 # Release Android — Google Play
 
 Pacote: `br.com.unitymob.field`. Primeira versão: `1.0` (`versionCode 1`).
-Arquivo gerado: `output/google-play/unitymob-1.0-1.aab` (a partir da raiz do repositório).
+Versão atual: `1.1` (`versionCode 2`) — inclui timeline de interesse do lead e categorias de push nativas por contexto.
+Arquivo gerado: `output/google-play/unitymob-1.1-2.aab` (a partir da raiz do repositório).
 
 ## Assinatura
 
