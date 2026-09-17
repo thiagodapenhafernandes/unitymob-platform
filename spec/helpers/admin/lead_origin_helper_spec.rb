@@ -124,4 +124,20 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(data[:complements]).to include("Campanha: Campanha Praia", "Conversão: Landing Praia", "Origem original: newsletter / email")
     expect(data[:details]).to include(["Evento RD", "WEBHOOK.CONVERTED"], ["Conversão RD", "Landing Praia"], ["Campanha RD", "Campanha Praia"], ["Origem RD", "newsletter / email"])
   end
+
+  it "exibe Lovers como fonte reconhecida com dados da importação" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Lovers", lead_type: "lovers", other_information: {
+      "lovers_code" => "123",
+      "lovers_status" => "Ativo",
+      "lovers_score" => "10",
+      "lovers_source" => "Landing Praia",
+      "lovers_registration_date" => "2026-09-16T10:00:00"
+    })
+
+    data = origin(lead)
+
+    expect(data).to include(label: "Lovers", brand: "lovers", subtype: "Importação")
+    expect(data[:complements]).to include("Origem original: Landing Praia", "Status: Ativo", "Score: 10")
+    expect(data[:details]).to include(["Código Lovers", "123"], ["Status Lovers", "Ativo"], ["Score Lovers", "10"], ["Cadastro Lovers", "2026-09-16T10:00:00"])
+  end
 end

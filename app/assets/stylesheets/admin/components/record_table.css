@@ -290,5 +290,6 @@
 :is(.ax-origin [data-brand="zap"], .ax-timeline-marker[data-brand="zap"]) { color: #7134ad; }
 :is(.ax-origin [data-brand="imovelweb"], .ax-timeline-marker[data-brand="imovelweb"]) { color: #b94808; }
 :is(.ax-origin [data-brand="vivareal"], .ax-timeline-marker[data-brand="vivareal"]) { color: #117daf; }
+:is(.ax-origin [data-brand="lovers"], .ax-timeline-marker[data-brand="lovers"]) { color: #be185d; }
 /* Let this column's disclosure grow inside its row without covering neighbors. */
 .ax-record-list__row:has(.ax-origin) { height: auto; min-height: 76px; }

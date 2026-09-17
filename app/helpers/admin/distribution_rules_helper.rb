@@ -35,6 +35,7 @@ module Admin::DistributionRulesHelper
     [
       ["Meta Ads", rule.source_meta?],
       ["RD Station", rule.source_rd_station?],
+      ["Lovers", rule.source_lovers?],
       ["Site/WhatsApp", rule.source_site?],
       ["Portais", rule.source_portal?],
       ["Webhook", rule.source_webhook?]

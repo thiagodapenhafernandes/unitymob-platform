@@ -1,0 +1,115 @@
+<div class="ax-integration-layout">
+  <%= ax_workspace_heading(
+        eyebrow: "Integrações · Leads",
+        icon: "heart",
+        title: "Lovers",
+        pills: [@lovers_setting.enabled? ? "Ativa" : "Inativa"],
+        subtitle: "Importe leads da LeadLovers para o CRM usando o token da API."
+      ) %>
+
+  <%= ax_error_summary(@lovers_setting) %>
+
+  <%= ax_field_grid do %>
+    <div class="ax-span-8">
+      <%= ax_operational_panel(
+            eyebrow: "Entrada de leads",
+            title: "Canal Lovers",
+            actions: ax_badge(@lovers_setting.connected? ? "Token configurado" : "Aguardando token", tone: @lovers_setting.connected? ? :green : :gray)
+          ) do %>
+        <div class="ax-panel-body">
+          <%= form_with url: admin_lovers_integration_path, method: :patch, scope: :lovers, local: true, class: "tw-grid tw-gap-3" do |f| %>
+            <%= ax_switch_field(
+                  form: f,
+                  method: :enabled,
+                  label: "Ativar sincronização de leads Lovers",
+                  checked: @lovers_setting.enabled?,
+                  checked_value: "true",
+                  unchecked_value: "false",
+                  input_html: { checked: @lovers_setting.enabled? }
+                ) %>
+
+            <%= ax_field_grid do %>
+              <div class="ax-span-6">
+                <%= ax_text_field(
+                      form: f,
+                      method: :api_token,
+                      label: "Token da API",
+                      type: :password,
+                      autocomplete: "off",
+                      placeholder: @lovers_setting.api_token_configured? ? "Token salvo. Preencha apenas para substituir." : "ApiSecret da LeadLovers"
+                    ) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_text_field(
+                      form: f,
+                      method: :default_origin,
+                      label: "Origem padrão",
+                      value: @lovers_setting.default_origin,
+                      placeholder: LoversIntegrationSetting::DEFAULT_ORIGIN
+                    ) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_text_field(
+                      form: f,
+                      method: :sync_start_date,
+                      label: "Sincronizar desde",
+                      type: :date,
+                      value: @lovers_setting.sync_start_on
+                    ) %>
+              </div>
+            <% end %>
+
+            <%= ax_form_actions(sticky: false) do %>
+              <%= f.submit "Salvar Lovers", class: "ax-btn ax-btn--primary" %>
+            <% end %>
+          <% end %>
+
+          <hr class="tw-my-4">
+
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
+            <%= button_to test_connection_admin_lovers_integration_path,
+                  method: :post,
+                  class: "ax-btn ax-btn--ghost",
+                  disabled: !@lovers_setting.api_token_configured? do %>
+              <i class="bi bi-check-circle ax-ico"></i><span>Testar conexão</span>
+            <% end %>
+
+            <%= button_to sync_now_admin_lovers_integration_path,
+                  method: :post,
+                  class: "ax-btn ax-btn--ghost",
+                  disabled: !@lovers_setting.configured? do %>
+              <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar agora</span>
+            <% end %>
+
+            <% if @lovers_setting.connected? %>
+              <%= button_to disconnect_admin_lovers_integration_path,
+                    method: :delete,
+                    class: "ax-btn ax-btn--ghost ax-btn--danger",
+                    data: { turbo_confirm: "Remover o token da LeadLovers desta conta?" } do %>
+                <i class="bi bi-x-circle ax-ico"></i><span>Desconectar</span>
+              <% end %>
+            <% end %>
+          </div>
+
+          <% if @lovers_setting.last_sync_message.present? %>
+            <%= ax_inline_notice(tone: @lovers_setting.last_sync_status == "ok" ? :success : :warning, icon: @lovers_setting.last_sync_status == "ok" ? "check-circle" : "exclamation-triangle", compact: true, announce: false, class_name: "tw-mt-3") do %>
+              <%= @lovers_setting.last_sync_message %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="ax-span-4">
+      <%= ax_panel(title: "Eventos de interação", subtitle: "Disponível na API LeadLovers") do %>
+        <div class="tw-space-y-3">
+          <%= ax_metric_card(label: "Histórico de sequência", value: "Disponível", hint: "Endpoint /EmailSequence/GetLeadsHistory") %>
+          <%= ax_metric_card(label: "Cliques e aberturas", value: "Não exposto", hint: "Não apareceu como endpoint dedicado no swagger público.") %>
+          <% if @lovers_setting.last_sync_at.present? %>
+            <%= ax_metric_card(label: "Última sincronização", value: l(@lovers_setting.last_sync_at, format: :short)) %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

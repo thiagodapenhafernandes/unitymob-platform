@@ -44,6 +44,11 @@ module Admin::LeadOriginHelper
     rd_source = info["rd_station_source"].presence
     rd_medium = info["rd_station_medium"].presence
     rd_event_type = info["rd_station_event_type"].presence
+    lovers_code = info["lovers_code"].presence
+    lovers_status = info["lovers_status"].presence
+    lovers_score = info["lovers_score"].presence
+    lovers_registration = info["lovers_registration_date"].presence
+    lovers_source = info["lovers_source"].presence
     ad = info["meta_ad_name"].presence || referral["headline"].presence
     context = []
     instagram_entry = info["instagram_entry"].is_a?(Hash) ? info["instagram_entry"] : {}
@@ -97,6 +102,18 @@ module Admin::LeadOriginHelper
       details << ["Conversão RD", rd_conversion]
       details << ["Campanha RD", rd_campaign]
       details << ["Origem RD", [rd_source, rd_medium].compact.join(" / ").presence]
+    elsif brand == "lovers"
+      subtype = "Importação"
+      context = [
+        (lovers_source && "Origem original: #{lovers_source}"),
+        (lovers_status && "Status: #{lovers_status}"),
+        (lovers_score && "Score: #{lovers_score}")
+      ].compact
+      details << ["Código Lovers", lovers_code]
+      details << ["Status Lovers", lovers_status]
+      details << ["Score Lovers", lovers_score]
+      details << ["Cadastro Lovers", lovers_registration]
+      details << ["Origem Lovers", lovers_source]
     elsif form
       context.unshift("Formulário: #{form}")
     elsif brand == "shop"
@@ -136,6 +153,8 @@ module Admin::LeadOriginHelper
       ["buildings", "Grupo Zap", nil]
     elsif normalized.match?(/\Ard_?station(?:_api)?\z/)
       ["rdstation", "RD Station", nil]
+    elsif normalized.match?(/\A(?:lead_?)?lovers\z/)
+      ["lovers", "Lovers", nil]
     elsif normalized.match?(/showroom|vitrine/)
       ["shop", "Showroom", nil]
     elsif normalized == "cadastro_manual"

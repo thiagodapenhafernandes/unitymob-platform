@@ -285,6 +285,7 @@ module Leads
 
       return true if rule.source_meta? && meta_origin?(origin)
       return true if rule.source_rd_station? && rd_station_origin?(origin)
+      return true if rule.source_lovers? && lovers_origin?(origin)
       return true if rule.source_portal? && portal_origin?(origin)
       return true if rule.source_webhook? && webhook_origin?(origin)
       return true if rule.source_site? && site_origin?(origin)
@@ -309,6 +310,10 @@ module Leads
       origin.include?("rd station") || origin.include?("rdstation")
     end
 
+    def lovers_origin?(origin)
+      origin.include?("lovers") || origin.include?("leadlovers") || origin.include?("lead lovers")
+    end
+
     def webhook_origin?(origin)
       origin == "webhook" ||
         origin == ExternalLeadMigration::LeadMapper::PROVIDER_KEY ||
@@ -316,7 +321,7 @@ module Leads
     end
 
     def site_origin?(origin)
-      origin.blank? || (!meta_origin?(origin) && !rd_station_origin?(origin) && !portal_origin?(origin) && !webhook_origin?(origin))
+      origin.blank? || (!meta_origin?(origin) && !rd_station_origin?(origin) && !lovers_origin?(origin) && !portal_origin?(origin) && !webhook_origin?(origin))
     end
 
     def matches_business_type?(rule)
