@@ -1,0 +1,77 @@
+name: Perfis e permissões
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - "app/controllers/admin/**"
+      - "app/helpers/admin/**"
+      - "app/models/admin_user.rb"
+      - "app/models/profile.rb"
+      - "app/views/admin/**"
+      - "config/routes.rb"
+      - "db/migrate/**"
+      - "db/structure.sql"
+      - "spec/models/admin_user_profile_governance_spec.rb"
+      - "spec/models/profile_governance_spec.rb"
+      - "spec/requests/admin/**"
+      - ".github/workflows/profile-permissions.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: profile-permissions-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  profile-permissions:
+    name: Validar perfis, menus e autorização
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: unitymob_crm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d unitymob_crm_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME_TEST: unitymob_crm_test
+      SECRET_KEY_BASE: ci-profile-permissions-secret-key-base
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2.3"
+          bundler-cache: true
+
+      - name: Preparar banco de dados
+        run: bundle exec rails db:prepare
+
+      - name: Validar perfis e permissões
+        run: >
+          bundle exec rspec
+          spec/models/profile_governance_spec.rb
+          spec/models/admin_user_profile_governance_spec.rb
+          spec/requests/admin/permission_gate_coverage_spec.rb
+          spec/requests/admin/sidebar_spec.rb
+          spec/requests/admin/profiles_index_spec.rb
+          spec/requests/admin/dashboard_async_spec.rb
+          spec/requests/admin/whatsapp_campaigns_spec.rb
+
+      - name: Validar carregamento do Rails
+        run: bundle exec rails zeitwerk:check

@@ -467,7 +467,7 @@ class AdminUser < ApplicationRecord
   # quando a seção raiz estivesse negada.
   def permission_ancestors_allowed_by?(access_profile, resource)
     current_resource = resource.to_s
-    visited = Set.new
+    visited = []
 
     loop do
       parent = Profile.parent_section_for(current_resource)
