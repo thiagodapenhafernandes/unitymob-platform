@@ -55,6 +55,7 @@ RSpec.describe "Admin::Field::AuditLogs", type: :request do
       position: 700,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "field_audit" => { "view" => true, "scope" => "team" }
       }
     )
@@ -95,6 +96,7 @@ RSpec.describe "Admin::Field::AuditLogs", type: :request do
       position: 710,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "field_audit" => { "view" => true, "scope" => "team" }
       }
     )

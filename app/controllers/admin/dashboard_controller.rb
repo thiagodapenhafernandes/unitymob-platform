@@ -6,6 +6,24 @@ class Admin::DashboardController < Admin::BaseController
 
   DASHBOARD_SECTIONS = %w[charts acquisition funnel status service broker_performance campaign_performance rankings operations support site].freeze
   DASHBOARD_TABS = %w[leads overview properties site field].freeze
+  DASHBOARD_TAB_RESOURCES = {
+    "leads" => :dashboard_leads,
+    "overview" => :dashboard_overview,
+    "properties" => :dashboard_properties,
+    "site" => :dashboard_site,
+    "field" => :dashboard_field
+  }.freeze
+  DASHBOARD_SECTION_RESOURCES = {
+    "charts" => :dashboard_leads,
+    "acquisition" => :dashboard_leads,
+    "funnel" => :dashboard_leads,
+    "status" => :dashboard_leads,
+    "service" => :dashboard_leads,
+    "rankings" => :dashboard_properties,
+    "operations" => :dashboard_properties,
+    "support" => :dashboard_properties,
+    "site" => :dashboard_site
+  }.freeze
   DASHBOARD_PERIODS = [7, 14, 30, 90, 180].freeze
   DASHBOARD_PERIOD_PRESETS = %w[yesterday this_week this_month last_7 last_14 last_30 last_6_months custom].freeze
   DASHBOARD_BUSINESS_TYPES = %w[sale rental].freeze
@@ -87,8 +105,11 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def require_dashboard_admin!
-    return if tenant_owner? || can?(:view, :dashboard)
-    return if desktop_device_request?
+    return if tenant_owner? || can?(:view, :dashboard) || dashboard_access_resources.any? { |resource| dashboard_can_view?(resource) }
+    if desktop_device_request?
+      fallback_path = first_permitted_admin_path
+      return redirect_to fallback_path if fallback_path.present?
+    end
 
     redirect_to field_root_path
   end
@@ -108,8 +129,12 @@ class Admin::DashboardController < Admin::BaseController
     @lead_scope = scoped_dashboard_leads
     @captacao_scope = scoped_dashboard_captacoes
     @field_feature_enabled = FieldFeatureGate.field_checkin_enabled?(tenant: current_tenant)
+    @dashboard_allowed_tabs = dashboard_allowed_tabs
+    return redirect_to(first_permitted_admin_path || field_root_path) if @dashboard_allowed_tabs.empty?
+
     requested_tab = params[:tab].to_s.presence_in(DASHBOARD_TABS) || "leads"
-    @dashboard_tab = requested_tab == "field" && !@field_feature_enabled ? "leads" : requested_tab
+    requested_tab = "leads" if requested_tab == "field" && !@field_feature_enabled
+    @dashboard_tab = @dashboard_allowed_tabs.include?(requested_tab) ? requested_tab : @dashboard_allowed_tabs.first
     @dashboard_updated_at = Time.current
     @dashboard_window_start = dashboard_window_start
     @dashboard_window_end = dashboard_window_end
@@ -429,9 +454,45 @@ class Admin::DashboardController < Admin::BaseController
 
   def dashboard_section_allowed?(section_name)
     resource = DASHBOARD_REPORT_SECTION_RESOURCES[section_name]
+    resource ||= dashboard_section_resource(section_name)
     return true if resource.blank?
 
-    can_view_dashboard_report?(resource)
+    return can_view_dashboard_report?(resource) if DASHBOARD_REPORT_SECTION_RESOURCES.value?(resource)
+
+    dashboard_can_view?(resource)
+  end
+
+  def dashboard_section_resource(section_name)
+    return :dashboard_field if %w[rankings operations].include?(section_name) && params[:tab].to_s == "field"
+
+    DASHBOARD_SECTION_RESOURCES[section_name]
+  end
+
+  def dashboard_allowed_tabs
+    DASHBOARD_TABS.select do |tab|
+      next false if tab == "field" && !@field_feature_enabled
+
+      resource = DASHBOARD_TAB_RESOURCES.fetch(tab)
+      dashboard_can_view?(resource)
+    end
+  end
+
+  def dashboard_access_resources
+    [:dashboard, *DASHBOARD_TAB_RESOURCES.values, *DASHBOARD_REPORT_SECTION_RESOURCES.values]
+  end
+
+  def dashboard_can_view?(resource)
+    return true if can?(:view, resource)
+    return false unless DASHBOARD_TAB_RESOURCES.value?(resource) || DASHBOARD_SECTION_RESOURCES.value?(resource)
+    return false if dashboard_permission_configured?(resource)
+
+    can?(:view, :dashboard)
+  end
+
+  def dashboard_permission_configured?(resource)
+    [current_admin_user&.vertical_profile, current_admin_user&.horizontal_profile].compact.any? do |profile|
+      profile.permission_configured?(resource)
+    end
   end
 
   def can_view_dashboard_report?(resource)

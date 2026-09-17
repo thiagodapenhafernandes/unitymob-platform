@@ -1,5 +1,5 @@
 class Admin::GoogleIntegrationsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :integracoes) }
+  requires_permission :manage, :integracoes
 
   def show
     load_google_settings

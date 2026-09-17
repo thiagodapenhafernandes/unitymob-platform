@@ -165,6 +165,7 @@ RSpec.describe "Admin::AccessAuditLogs", type: :request do
       position: 700,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "access_audit" => { "view" => true, "scope" => "team" }
       }
     )

@@ -1,8 +1,8 @@
 module Admin
   class ProprietorsController < BaseController
     require "csv"
-    before_action -> { check_permission!(:view, :proprietarios) }, except: %i[quick_search quick_create quick_update]
-    before_action -> { check_permission!(:manage, :proprietarios) }, only: %i[new create edit update destroy]
+    requires_permission :view, :proprietarios, except: %i[quick_search quick_create quick_update]
+    requires_permission :manage, :proprietarios, only: %i[new create edit update destroy]
     before_action :authorize_quick_proprietor_access!, only: %i[quick_search quick_create quick_update]
     before_action :set_quick_proprietor, only: %i[quick_update]
 

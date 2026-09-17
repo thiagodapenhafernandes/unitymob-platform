@@ -1,5 +1,5 @@
 class Admin::AccessSecurityController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :access_security) }
+  requires_permission :manage, :access_security
 
   def show
     load_dashboard

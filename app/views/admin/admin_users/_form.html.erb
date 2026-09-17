@@ -41,7 +41,7 @@
             <% end %>
           <% end %>
 
-          <% if admin_user.persisted? && admin_user.respond_to?(:otp_enabled?) && admin_user.otp_enabled? && current_admin_user.tenant_owner? %>
+          <% if admin_user.persisted? && admin_user.respond_to?(:otp_enabled?) && admin_user.otp_enabled? && can_manage_login_security_for?(admin_user) %>
             <div class="tw-mt-2">
               <%= link_to reset_two_factor_admin_admin_user_path(admin_user),
                     data: { turbo_method: :post,
@@ -135,7 +135,7 @@
             </div>
           <% end %>
 
-          <% if current_admin_user&.tenant_owner? %>
+          <% if can_manage_login_security_for?(admin_user) %>
             <%= ax_field_group(title: "Segurança de login") do %>
               <%= ax_chip_grid do %>
                 <%= ax_toggle_chip(f, :require_ip_allowlist, label: "Exigir IP permitido", id: "admin_user_require_ip_allowlist") %>

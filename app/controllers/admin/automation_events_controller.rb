@@ -1,5 +1,5 @@
 class Admin::AutomationEventsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :automacoes) }
+  requires_permission :manage, :automacoes
   before_action :set_event, only: [:reprocess, :ignore]
 
   def index

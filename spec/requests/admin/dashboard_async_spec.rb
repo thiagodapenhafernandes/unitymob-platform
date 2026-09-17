@@ -39,7 +39,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   it "redireciona acesso direto ao slice do site para o dashboard completo" do
     get admin_dashboard_section_path("site")
 
-    expect(response).to redirect_to(admin_root_path(period_preset: "last_7", start_date: "2026-09-09", end_date: "2026-09-15", tab: "site"))
+    expect(response).to redirect_to(admin_root_path(period_preset: "last_7", start_date: 6.days.ago.to_date.iso8601, end_date: Date.current.iso8601, tab: "site"))
   end
 
   it "responde perguntas operacionais com dados acionáveis na visão geral" do
@@ -417,6 +417,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         position: 600,
         permissions: {
           "dashboard" => { "view" => true },
+          "dashboard_leads" => { "view" => true },
           "leads" => { "view" => true, "scope" => "own" },
           "dashboard_broker_performance" => { "view" => true, "scope" => "own" }
         }
@@ -469,6 +470,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
         position: 600,
         permissions: {
           "dashboard" => { "view" => true },
+          "dashboard_leads" => { "view" => true },
           "leads" => { "view" => true, "scope" => "own" },
           "dashboard_campaign_performance" => { "view" => true, "scope" => "all" }
         }
@@ -513,7 +515,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     end
   end
 
-  it "mantém usuário desktop sem permissão no workspace administrativo" do
+  it "envia usuário desktop sem dashboard para o primeiro módulo permitido" do
     tenant = Tenant.create!(name: "Tenant sem dashboard #{SecureRandom.hex(3)}", slug: "tenant-sem-dashboard-#{SecureRandom.hex(3)}")
     profile = Profile.create!(
       tenant: tenant,
@@ -531,8 +533,26 @@ RSpec.describe "Admin dashboard async slices", type: :request do
 
     get admin_root_path
 
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Visão geral", "Leads", "Imóveis")
+    expect(response).to redirect_to(admin_habitations_path(ownership: "all"))
+  end
+
+  it "envia usuário desktop sem módulos administrativos para o campo" do
+    tenant = Tenant.create!(name: "Tenant sem módulos #{SecureRandom.hex(3)}", slug: "tenant-sem-modulos-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Sem módulos #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 600,
+      permissions: {}
+    )
+    user = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+
+    sign_out admin
+    sign_in user
+
+    get admin_root_path
+
+    expect(response).to redirect_to(field_root_path)
   end
 
   it "carrega somente os painéis da aba Leads e preserva os filtros na URL" do

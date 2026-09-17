@@ -201,6 +201,19 @@
 
               <section class="distribution-rule-source-card distribution-rule-source-card--compact">
                 <div class="distribution-rule-source__head">
+                  <span class="distribution-rule-source__icon"><i class="bi bi-heart"></i></span>
+                  <div class="distribution-rule-source__copy">
+                    <strong>Lovers</strong>
+                    <span>Leads importados pela integração LeadLovers.</span>
+                  </div>
+                  <div class="distribution-rule-source__actions">
+                    <%= ax_toggle_chip(f, :source_lovers, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
+                  </div>
+                </div>
+              </section>
+
+              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
+                <div class="distribution-rule-source__head">
                   <span class="distribution-rule-source__icon"><i class="bi bi-globe2"></i></span>
                   <div class="distribution-rule-source__copy">
                     <strong>Site</strong>

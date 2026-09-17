@@ -1,6 +1,6 @@
 module Admin
   class LeadPipelinesController < Admin::BaseController
-    before_action -> { check_permission!(:manage, :catalogos) }
+    requires_permission :manage, :configuracoes
     before_action :load_pipeline, only: [:update]
 
     def create

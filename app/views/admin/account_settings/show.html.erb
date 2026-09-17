@@ -28,7 +28,7 @@
           </p>
         </div>
 
-        <% if current_admin_user.tenant_owner? %>
+        <% if can?(:manage, :conta) %>
           <div>
             <%= form_with url: admin_account_settings_path, method: :patch, class: "tw-flex tw-items-end tw-gap-2 tw-flex-wrap" do %>
               <div class="tw-flex-1 tw-min-w-0">
@@ -57,7 +57,7 @@
       <% end %>
     <% end %>
 
-    <% if can?(:view, :corretores) || current_admin_user.tenant_owner? %>
+    <% if can?(:view, :corretores) || can?(:manage, :conta) %>
       <%= ax_operational_panel(eyebrow: "Equipe", title: panel_title.call("bi-people", "Equipe & Permissões")) do %>
         <div class="ax-panel-body">
           <p class="ax-field__hint tw-mt-0">Usuários da conta, perfis de acesso e convites externos.</p>
@@ -67,7 +67,7 @@
                 <i class="bi bi-people ax-ico"></i><span>Usuários</span>
               <% end %>
             <% end %>
-            <% if current_admin_user.tenant_owner? %>
+            <% if can?(:manage, :conta) %>
               <%= link_to admin_profiles_path, class: "ax-btn ax-btn--sm" do %>
                 <i class="bi bi-shield-lock ax-ico"></i><span>Perfis de acesso</span>
               <% end %>
@@ -112,12 +112,12 @@
       <% end %>
     <% end %>
 
-    <% if tenant_owner? || can?(:view, :field_audit) || can?(:view, :access_audit) || can?(:view, :data_export_audit) %>
+    <% if can?(:manage, :conta) || can?(:view, :field_audit) || can?(:view, :access_audit) || can?(:view, :data_export_audit) %>
       <%= ax_operational_panel(eyebrow: "Compliance", title: panel_title.call("bi-clipboard-check", "Auditorias")) do %>
         <div class="ax-panel-body">
           <p class="ax-field__hint tw-mt-0">Trilhas de uso operacional, acesso, campo, apresentações e exportações de dados.</p>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <% if tenant_owner? %>
+            <% if can?(:manage, :conta) %>
               <%= link_to admin_user_activity_sessions_path, class: "ax-btn ax-btn--sm" do %>
                 <i class="bi bi-activity ax-ico"></i><span>Operacional</span>
               <% end %>

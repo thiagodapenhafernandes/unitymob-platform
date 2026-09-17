@@ -1,6 +1,6 @@
 class Admin::ProposalsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :comercial) }, only: [:new, :edit, :pdf]
-  before_action -> { check_permission!(:manage, :comercial) }, only: [:create, :update, :send_proposal, :destroy]
+  requires_permission :view, :comercial, only: [:new, :edit, :pdf]
+  requires_permission :manage, :comercial, only: [:create, :update, :send_proposal, :destroy]
   before_action :set_lead, only: [:new, :create]
   before_action :set_proposal, only: [:edit, :update, :send_proposal, :pdf, :destroy]
 

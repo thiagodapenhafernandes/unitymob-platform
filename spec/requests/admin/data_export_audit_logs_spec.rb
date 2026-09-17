@@ -92,6 +92,7 @@ RSpec.describe "Admin::DataExportAuditLogs", type: :request do
       position: 720,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "data_export_audit" => { "view" => true, "scope" => "team" }
       }
     )

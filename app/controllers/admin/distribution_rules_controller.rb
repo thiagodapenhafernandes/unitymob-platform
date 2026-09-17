@@ -1,5 +1,5 @@
 class Admin::DistributionRulesController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :distribution_rules) }
+  requires_permission :manage, :distribution_rules
   before_action :set_rule, only: [:show, :edit, :update, :destroy, :toggle_active, :reorder_agents]
   before_action :load_meta_options, only: [:new, :create, :edit, :update]
   before_action :load_team_structure, only: [:new, :create, :edit, :update]
@@ -314,7 +314,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     # isso distribution_rule_agents_attributes NÃO é permitido aqui.
     params.require(:distribution_rule).permit(
       :name, :business_type, :active,
-      :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station,
+      :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
       :distribution_mode,
       :pocket_active, :pocket_time,
       :pocket_to_shark_tank, :pool_renotify_mode, :pool_renotify_minutes,

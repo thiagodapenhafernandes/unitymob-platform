@@ -1,6 +1,6 @@
 module Admin
   class ProfilesController < BaseController
-    before_action :require_profile_governance_admin!
+    requires_permission :manage, :conta
     before_action :set_profile, only: %i[show edit update destroy]
     before_action :set_habitation_search_status_options, only: %i[new edit create update]
 
@@ -161,6 +161,8 @@ module Admin
 
         perms[key] = res_perms
       end
+      menu_order = Profile.normalize_menu_order(params.dig(:profile, :menu_order))
+      perms[Profile::MENU_ORDER_PERMISSION_KEY] = menu_order if menu_order.present?
 
       base.merge(permissions: perms)
     end
@@ -333,10 +335,5 @@ module Admin
       end
     end
 
-    def require_profile_governance_admin!
-      return if current_admin_user&.can_manage_profiles?
-
-      redirect_to admin_root_path, alert: "Acesso negado. Apenas o Tenant Owner pode gerenciar perfis."
-    end
   end
 end

@@ -163,6 +163,49 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include(admin_captacao_goals_path)
     expect(response.body).to include("Metas")
     expect(response.body).not_to include("dashboardTitleModal")
+
+    patch dashboard_title_admin_captacoes_path, params: {
+      dashboard: {
+        eyebrow: "Meta restrita",
+        title: "Captação restrita"
+      }
+    }
+
+    expect(response).to redirect_to(admin_root_path)
+    expect(Setting.get(Admin::CaptacoesController::DASHBOARD_TITLE_SETTING, nil, tenant: tenant, fallback_global: false)).to be_nil
+  end
+
+  it "permite editar o título do dashboard por permissão granular" do
+    tenant = Tenant.create!(name: "Tenant gestão dashboard #{SecureRandom.hex(3)}", slug: "tenant-gestao-dashboard-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Gestor dashboard #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 390,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "captacao_dashboard" => { "view" => true, "manage" => true }
+      }
+    )
+    manager = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+
+    sign_out admin
+    sign_in manager
+
+    get dashboard_admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("dashboardTitleModal")
+
+    patch dashboard_title_admin_captacoes_path, params: {
+      dashboard: {
+        eyebrow: "Meta operacional",
+        title: "Captação operacional"
+      }
+    }
+
+    expect(response).to redirect_to(dashboard_admin_captacoes_path)
+    expect(Setting.get(Admin::CaptacoesController::DASHBOARD_TITLE_SETTING, nil, tenant: tenant, fallback_global: false)).to eq("Captação operacional")
   end
 
   it "respeita escopo de equipe e Tenant no heatmap de leads" do

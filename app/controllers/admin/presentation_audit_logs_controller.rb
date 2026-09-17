@@ -2,7 +2,7 @@
 # Fonte unificada: WhatsappMessages carimbadas com presentation_card_id — cobre
 # envios COM e SEM lead, com formato (texto/imagem), corretor e conversa.
 class Admin::PresentationAuditLogsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :access_audit) }
+  requires_permission :view, :access_audit
 
   def index
     scope = WhatsappMessage.where(tenant_id: current_tenant.id)

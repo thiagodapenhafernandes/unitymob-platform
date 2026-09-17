@@ -1,5 +1,5 @@
 class Admin::WhatsappIntegrationsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :integracoes) }
+  requires_permission :manage, :integracoes
 
   DEFAULT_EMBEDDED_SIGNUP_CONFIG_ID = "1980983762681491".freeze
   META_LEADS_CONFIG_ID = "1330907151751153".freeze

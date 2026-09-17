@@ -1,5 +1,5 @@
 class Admin::PortalIntegrationsController < Admin::BaseController
-  before_action :require_admin!
+  requires_permission :manage, :integracoes
   before_action :set_portal, only: [:update, :test_feed, :preview_feed]
 
   def index

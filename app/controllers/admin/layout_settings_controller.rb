@@ -3,7 +3,7 @@ module Admin
   # current_tenant, can?) e as políticas padrão de acesso.
   class LayoutSettingsController < BaseController
     before_action :authenticate_admin_user!
-    before_action -> { check_permission!(:manage, :marketing) }
+    requires_permission :manage, :conta
     before_action :set_layout_setting
 
     def show

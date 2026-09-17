@@ -1,5 +1,5 @@
 class Admin::NotificationTemplateSettingsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :integracoes) }
+  requires_permission :manage, :integracoes
   before_action :set_notification_template_setting, only: [:update, :destroy]
 
   def create

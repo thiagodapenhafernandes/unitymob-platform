@@ -127,6 +127,7 @@ RSpec.describe "Admin::AccessSecurity", type: :request do
       position: 700,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "access_security" => { "manage" => true, "scope" => "team" }
       }
     )
@@ -169,6 +170,7 @@ RSpec.describe "Admin::AccessSecurity", type: :request do
       position: 710,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "access_security" => { "manage" => true, "scope" => "team" }
       }
     )
@@ -229,6 +231,7 @@ RSpec.describe "Admin::AccessSecurity", type: :request do
       position: 720,
       permissions: {
         "dashboard" => { "view" => true },
+        "conta" => { "manage" => true },
         "access_security" => { "manage" => true, "scope" => "team" }
       }
     )

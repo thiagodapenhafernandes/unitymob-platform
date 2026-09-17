@@ -1,7 +1,7 @@
 require "aws-sdk-s3"
 
 class Admin::BlogUploadsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
 
   def create
     file = params.require(:file)

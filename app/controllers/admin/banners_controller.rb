@@ -1,5 +1,5 @@
 class Admin::BannersController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
   before_action :set_banner, only: [:show, :edit, :update, :destroy]
   
   def index

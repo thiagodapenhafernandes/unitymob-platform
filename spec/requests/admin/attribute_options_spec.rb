@@ -124,6 +124,7 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
       position: 20,
       active: true,
       permissions: {
+        "configuracoes" => { "manage" => true },
         "catalogos" => { "manage" => true },
         "imoveis" => { "view" => true, "edit" => true, "scope" => "all", "locked_fields" => locked_fields }
       }
@@ -151,7 +152,10 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
       axis: Profile::AXES[:vertical],
       position: 20,
       active: true,
-      permissions: { "catalogos" => { "manage" => true } }
+      permissions: {
+        "configuracoes" => { "manage" => true },
+        "catalogos" => { "manage" => true }
+      }
     )
     manager = create(:admin_user, tenant: admin.tenant, profile: manager_profile, email: "catalog-manager-#{SecureRandom.hex(6)}@salute.test")
     sign_in manager

@@ -1,5 +1,5 @@
 class Admin::ImageMigrationStatusController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :integracoes) }
+  requires_permission :manage, :integracoes
 
   PUBLIC_STATUSES = Habitation::PUBLIC_STATUSES
   CONFIG_PREFIX = "image_migration.".freeze

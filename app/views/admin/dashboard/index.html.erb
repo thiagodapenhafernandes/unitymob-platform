@@ -63,6 +63,7 @@
   <nav class="ax-dashboard-tabs" aria-label="Áreas do dashboard">
     <% dashboard_tabs = [["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"], ["site", "Site público", "globe2"], ["overview", "Visão geral", "grid-1x2"]] %>
     <% dashboard_tabs << ["field", "Campo", "geo-alt"] if @field_feature_enabled %>
+    <% dashboard_tabs.select! { |key, _label, _icon| @dashboard_allowed_tabs.include?(key) } %>
     <% dashboard_tabs.each do |key, label, icon| %>
       <%= link_to admin_root_path(dashboard_filter_params.merge(tab: key)),
                   class: "ax-dashboard-tabs__item #{'is-active' if @dashboard_tab == key}",

@@ -1,5 +1,5 @@
 class Admin::BlogCategoriesController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
 
   def create
     category = current_tenant.blog_categories.new(params.require(:blog_category).permit(:name))

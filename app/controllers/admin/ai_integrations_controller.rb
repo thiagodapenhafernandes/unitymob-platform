@@ -1,5 +1,5 @@
 class Admin::AiIntegrationsController < Admin::BaseController
-  before_action :require_admin!
+  requires_permission :manage, :integracoes
   before_action :load_state
 
   def show

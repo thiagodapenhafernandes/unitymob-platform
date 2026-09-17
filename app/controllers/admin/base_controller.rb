@@ -23,6 +23,30 @@ class Admin::BaseController < ApplicationController
     admin/push_settings
     admin/theme_preferences
   ].freeze
+  ADMIN_LANDING_SECTIONS = %i[
+    product
+    operation
+    management
+    growth
+    public_site
+    integrations
+    settings
+    account
+  ].freeze
+  # Controllers admin que NÃO são módulos de conta/perfil:
+  # sessão, preferências pessoais, manifesto PWA, upload direto, contexto visual
+  # e troca/impersonação de identidade. Todo controller operacional fora desta
+  # lista deve declarar requires_permission ou um gate equivalente testável.
+  PERMISSION_GATE_EXEMPT_CONTROLLER_FILES = {
+    "app/controllers/admin/account_switches_controller.rb" => "troca de conta já valida owner/membership/política de acesso",
+    "app/controllers/admin/context_items_controller.rb" => "estado visual da sessão do próprio usuário",
+    "app/controllers/admin/impersonations_controller.rb" => "encerra sessão de impersonação já iniciada por Admin do Sistema",
+    "app/controllers/admin/manifests_controller.rb" => "manifesto PWA público/dinâmico sem operação de conta",
+    "app/controllers/admin/my_profiles_controller.rb" => "perfil pessoal do usuário autenticado",
+    "app/controllers/admin/sessions_controller.rb" => "login/logout/2FA do Devise",
+    "app/controllers/admin/tenant_direct_uploads_controller.rb" => "infra de upload direto com tenant metadata",
+    "app/controllers/admin/theme_preferences_controller.rb" => "preferência visual pessoal"
+  }.freeze
 
   before_action :authenticate_admin_user!
   before_action :set_current_admin_user
@@ -36,6 +60,14 @@ class Admin::BaseController < ApplicationController
   around_action :measure_admin_page_render
   after_action :record_allowed_admin_access
   layout 'admin'
+
+  # DSL padrão para proteger URLs administrativas pelo catálogo Profile::RESOURCES.
+  # Novo controller não deve chamar `check_permission!` em before_action manual:
+  # use `requires_permission :view, :leads` ou `requires_permission :manage, :conta`.
+  # A UI pode esconder menus, mas a URL direta continua bloqueada aqui no backend.
+  def self.requires_permission(action, resource, **options)
+    before_action(options) { check_permission!(action, resource) }
+  end
 
   private
   
@@ -318,12 +350,72 @@ class Admin::BaseController < ApplicationController
     end
   end
 
+  # Para telas que aceitam mais de uma permissão equivalente (ex: seção macro
+  # ou recurso granular). Mantém o OR no backend central, sem espalhar `can?`
+  # manual por controllers; se nenhuma passar, audita a primeira exigência.
+  def check_any_permission!(*requirements)
+    return if requirements.any? { |action, resource| current_admin_user&.can?(action, resource) }
+
+    check_permission!(*requirements.first)
+  end
+
   def render_permission_denied
     respond_to do |format|
       format.html { redirect_to admin_root_path, alert: "Você não tem permissão para acessar esta área." }
       format.json { render json: { error: "forbidden" }, status: :forbidden }
       format.any { head :forbidden }
     end
+  end
+
+  # Fallback abstrato da raiz do admin: usa o mesmo catálogo do sidebar para
+  # mandar usuários sem Dashboard para o primeiro módulo permitido. Não crie
+  # regra por nome de perfil aqui; novo módulo entra em Profile::RESOURCES.
+  def first_permitted_admin_path
+    ADMIN_LANDING_SECTIONS.each do |section|
+      Profile.sidebar_items_for(section).each do |item|
+        path = permitted_sidebar_item_path(item)
+        return path if path.present? && path != admin_root_path
+      end
+    end
+
+    nil
+  end
+
+  def permitted_sidebar_item_path(item)
+    return nil if item[:caption].present?
+    return nil if item[:dynamic].present?
+
+    if item[:group].present?
+      return nil unless sidebar_catalog_item_permitted?(item)
+
+      Array(item[:children]).each do |child|
+        path = permitted_sidebar_item_path(child)
+        return path if path.present?
+      end
+      return nil
+    end
+
+    return nil unless sidebar_catalog_item_permitted?(item)
+
+    public_send(item.fetch(:path), **item.fetch(:path_params, {}))
+  rescue NoMethodError, KeyError
+    nil
+  end
+
+  def sidebar_catalog_item_permitted?(item)
+    case item[:condition].to_s
+    when "whatsapp_service_ready"
+      return false unless current_tenant.present?
+      return false unless WhatsappBusinessIntegration.current(current_tenant)&.messaging_ready?
+    end
+
+    permission_any = Array(item[:permission_any])
+    return permission_any.any? { |action, resource| can?(action, resource) } if permission_any.any?
+
+    action, resource = item[:permission]
+    return can?(action, resource) if action.present?
+
+    true
   end
 
   def accessible_commercial_leads

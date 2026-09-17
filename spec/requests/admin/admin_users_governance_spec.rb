@@ -293,6 +293,100 @@ RSpec.describe "Admin user governance", type: :request do
     expect(doc.at_css(".ax-inline-notice--info")).to be_present
   end
 
+  it "permite configurar segurança de login por access_security no escopo da equipe" do
+    tenant = Tenant.create!(name: "Tenant segurança usuários #{SecureRandom.hex(3)}", slug: "tenant-seguranca-usuarios-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    manager_profile = create_vertical_profile(
+      tenant,
+      "Gestor Segurança",
+      450,
+      "corretores" => { "manage" => true },
+      "conta" => { "manage" => true },
+      "access_security" => { "manage" => true, "scope" => "team" }
+    )
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor)
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner, role: :editor)
+    subordinate = create(
+      :admin_user,
+      tenant: tenant,
+      profile: agent_profile,
+      manager: manager,
+      otp_secret: "secret",
+      otp_enabled_at: Time.current,
+      otp_backup_codes: ["backup"]
+    )
+
+    sign_in manager
+
+    get edit_admin_admin_user_path(subordinate)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Segurança de login")
+    expect(response.body).to include("Resetar 2FA")
+
+    patch admin_admin_user_path(subordinate), params: {
+      admin_user: {
+        name: subordinate.name,
+        email: subordinate.email,
+        access_profile_id: agent_profile.id,
+        acting_type: subordinate.acting_type,
+        active: "1",
+        require_ip_allowlist: "1",
+        require_trusted_device: "1"
+      }
+    }
+
+    expect(response).to redirect_to(admin_admin_users_path)
+    expect(subordinate.reload.require_ip_allowlist).to be(true)
+    expect(subordinate.require_trusted_device).to be(true)
+
+    post reset_two_factor_admin_admin_user_path(subordinate)
+
+    expect(response).to redirect_to(edit_admin_admin_user_path(subordinate))
+    expect(subordinate.reload.otp_enabled?).to be(false)
+    expect(subordinate.otp_backup_codes).to eq([])
+  end
+
+  it "bloqueia payload de segurança de login sem access_security" do
+    tenant = Tenant.create!(name: "Tenant segurança bloqueada #{SecureRandom.hex(3)}", slug: "tenant-seguranca-bloqueada-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    manager_profile = create_vertical_profile(
+      tenant,
+      "Gestor sem Segurança",
+      460,
+      "corretores" => { "manage" => true },
+      "conta" => { "manage" => true }
+    )
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor)
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner, role: :editor)
+    subordinate = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, require_ip_allowlist: false, require_trusted_device: false)
+
+    sign_in manager
+
+    get edit_admin_admin_user_path(subordinate)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Segurança de login")
+
+    patch admin_admin_user_path(subordinate), params: {
+      admin_user: {
+        name: subordinate.name,
+        email: subordinate.email,
+        access_profile_id: agent_profile.id,
+        acting_type: subordinate.acting_type,
+        active: "1",
+        require_ip_allowlist: "1",
+        require_trusted_device: "1"
+      }
+    }
+
+    expect(response).to redirect_to(admin_admin_users_path)
+    expect(subordinate.reload.require_ip_allowlist).to be(false)
+    expect(subordinate.require_trusted_device).to be(false)
+  end
+
   it "ignora tentativa de promover usuário da conta para Admin do Sistema pelo formulário operacional" do
     tenant = Tenant.create!(name: "Tenant sistema bloqueado #{SecureRandom.hex(3)}", slug: "tenant-sistema-bloqueado-#{SecureRandom.hex(3)}")
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")

@@ -1,6 +1,6 @@
 class Admin::LeadLabelsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :leads) }
-  before_action -> { check_permission!(:edit, :leads) }, except: %i[index]
+  requires_permission :view, :leads
+  requires_permission :edit, :leads, except: %i[index]
   before_action :set_lead
   before_action :set_label, only: [:update, :destroy, :toggle]
 

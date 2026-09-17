@@ -1,5 +1,5 @@
 class Admin::LandingPagesController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
   before_action :set_landing_page, only: [:edit, :update, :destroy]
   before_action :load_filter_options, only: [:new, :create, :edit, :update]
 

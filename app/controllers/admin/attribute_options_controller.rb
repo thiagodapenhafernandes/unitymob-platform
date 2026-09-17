@@ -1,6 +1,6 @@
 module Admin
   class AttributeOptionsController < Admin::BaseController
-    before_action -> { check_permission!(:manage, :catalogos) }
+    requires_permission :manage, :configuracoes
     before_action :require_tenant_owner_for_archive_reason!, only: [:index, :create]
     before_action :require_tenant_owner_for_existing_archive_reason!, only: [:update, :destroy]
     before_action :require_tenant_owner_for_address_catalog!, only: [:index, :create]

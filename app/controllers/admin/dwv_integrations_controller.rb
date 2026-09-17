@@ -1,5 +1,5 @@
 class Admin::DwvIntegrationsController < Admin::BaseController
-  before_action :require_admin!
+  requires_permission :manage, :integracoes
   before_action :load_dwv_state, only: [:show, :status]
 
   DEFAULT_BASE_URL = "https://agencies.dwvapp.com.br".freeze

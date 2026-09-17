@@ -31,7 +31,7 @@ RSpec.describe AdminUser, "perfis vertical e horizontal", type: :model do
     expect(user.scope_for(:leads)).to eq("team")
   end
 
-  it "permite que a função horizontal restrinja escopo sem conceder nova ação" do
+  it "permite que a função horizontal restrinja escopo próprio sem conceder nova ação" do
     vertical = Profile.create!(
       tenant: tenant,
       name: "Director",
@@ -47,25 +47,25 @@ RSpec.describe AdminUser, "perfis vertical e horizontal", type: :model do
       axis: "horizontal",
       vertical_profile: vertical,
       permissions: {
-        "leads" => { "scope" => "team" }
+        "leads" => { "scope" => "own" }
       }
     )
 
     user = build(:admin_user, tenant: tenant, profile: vertical, horizontal_profile: horizontal)
 
     expect(user.can?(:manage, :leads)).to be(true)
-    expect(user.scope_for(:leads)).to eq("team")
+    expect(user.scope_for(:leads)).to eq("own")
   end
 
-  it "bloqueia função horizontal anexada a outro perfil vertical" do
+  it "deriva o perfil vertical a partir da função horizontal" do
     manager = Profile.create!(tenant: tenant, name: "Manager", axis: "vertical", position: 200, permissions: {})
     director = Profile.create!(tenant: tenant, name: "Director", axis: "vertical", position: 150, permissions: {})
     support = Profile.create!(tenant: tenant, name: "Support", axis: "horizontal", vertical_profile: director, permissions: {})
 
     user = build(:admin_user, tenant: tenant, profile: manager, horizontal_profile: support)
 
-    expect(user).not_to be_valid
-    expect(user.errors[:horizontal_profile]).to be_present
+    expect(user).to be_valid
+    expect(user.profile).to eq(director)
   end
 
   it "não permite gestor de outro Tenant" do
@@ -308,6 +308,64 @@ RSpec.describe AdminUser, "perfis vertical e horizontal", type: :model do
     expect(user.can?(:manage, :whatsapp_campaigns)).to be(true)
     expect(user.can?(:manage, :integracoes)).to be(true)
     expect(user.scope_for(:whatsapp_campaigns)).to eq("team")
+  end
+
+  it "usa seção macro horizontal como trava de recursos filhos" do
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    horizontal = Profile.create!(
+      tenant: tenant,
+      name: "Sem integrações",
+      axis: "horizontal",
+      vertical_profile: owner_profile,
+      permissions: {
+        "integracoes" => { "manage" => false },
+        "agenda_fotografia" => { "view" => true, "manage" => true },
+        "inbound_webhooks" => { "manage" => true }
+      }
+    )
+    user = build(:admin_user, tenant: tenant, profile: owner_profile, horizontal_profile: horizontal)
+
+    expect(user.can?(:manage, :integracoes)).to be(false)
+    expect(user.can?(:view, :agenda_fotografia)).to be(false)
+    expect(user.can?(:manage, :agenda_fotografia)).to be(false)
+    expect(user.can?(:manage, :inbound_webhooks)).to be(false)
+  end
+
+  it "usa seção macro vertical como trava de recursos filhos" do
+    vertical = Profile.create!(
+      tenant: tenant,
+      name: "Vertical sem integrações",
+      axis: "vertical",
+      position: 600,
+      permissions: {
+        "agenda_fotografia" => { "view" => true, "manage" => true },
+        "inbound_webhooks" => { "manage" => true }
+      }
+    )
+    user = build(:admin_user, tenant: tenant, profile: vertical)
+
+    expect(user.can?(:manage, :integracoes)).to be(false)
+    expect(user.can?(:view, :agenda_fotografia)).to be(false)
+    expect(user.can?(:manage, :agenda_fotografia)).to be(false)
+    expect(user.can?(:manage, :inbound_webhooks)).to be(false)
+  end
+
+  it "usa permissão granular horizontal explícita quando a seção macro está liberada" do
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    horizontal = Profile.create!(
+      tenant: tenant,
+      name: "Conta sem segurança",
+      axis: "horizontal",
+      vertical_profile: owner_profile,
+      permissions: {
+        "conta" => { "manage" => true },
+        "access_security" => { "manage" => false, "scope" => "all" }
+      }
+    )
+    user = build(:admin_user, tenant: tenant, profile: owner_profile, horizontal_profile: horizontal)
+
+    expect(user.can?(:manage, :conta)).to be(true)
+    expect(user.can?(:manage, :access_security)).to be(false)
   end
 
   it "impede rebaixar ou inativar o último Tenant Owner ativo do Tenant" do

@@ -1,5 +1,5 @@
 class Admin::PublicSiteProfilesController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
 
   def edit
     @profile = PublicSiteProfile.current(tenant: current_tenant)

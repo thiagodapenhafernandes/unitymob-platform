@@ -1,6 +1,6 @@
 module Admin
   class DevelopmentAliasesController < BaseController
-    before_action :require_admin!
+    requires_permission :manage, :configuracoes
 
     def create
       if params[:development_id].blank? || params[:names].to_s.split(/[\n,;]+/).all?(&:blank?)

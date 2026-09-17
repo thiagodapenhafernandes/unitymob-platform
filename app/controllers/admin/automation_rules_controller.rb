@@ -1,5 +1,5 @@
 class Admin::AutomationRulesController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :automacoes) }
+  requires_permission :manage, :automacoes
   before_action :set_rule, only: [:edit, :update, :destroy, :toggle_active]
 
   def index

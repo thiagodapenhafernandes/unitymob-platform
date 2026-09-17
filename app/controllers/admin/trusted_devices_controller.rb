@@ -1,5 +1,5 @@
 class Admin::TrustedDevicesController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :access_security) }
+  requires_permission :manage, :access_security
   before_action :set_device
 
   def update
