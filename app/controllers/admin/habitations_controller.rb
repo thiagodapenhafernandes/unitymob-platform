@@ -9,9 +9,9 @@ class Admin::HabitationsController < Admin::BaseController
 
   include RentalGuaranteeParamNormalizer
 
-  before_action -> { check_permission!(:view, :imoveis) }
+  requires_permission :view, :imoveis
   before_action :authorize_administrative_review_filter!
-  before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create, :duplicate]
+  requires_permission :create, :imoveis, only: [:new, :create, :duplicate]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility, :share_selection]
   before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :duplicate, :operational_hub, :gallery, :confirm_owner_contact, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]

@@ -1,5 +1,5 @@
 class Admin::AccessAuditLogsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :access_audit) }
+  requires_permission :view, :access_audit
 
   def index
     scope = current_tenant.access_audit_logs.includes(:admin_user).recent

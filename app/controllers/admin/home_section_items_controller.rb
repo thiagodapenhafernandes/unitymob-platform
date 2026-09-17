@@ -1,5 +1,5 @@
 class Admin::HomeSectionItemsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
   before_action :set_home_section
   before_action :set_home_section_item, only: [:edit, :update, :destroy]
   

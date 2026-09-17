@@ -13,7 +13,7 @@ module Admin
       property-settings-ai-learning
     ].freeze
 
-    before_action :require_admin!
+    requires_permission :manage, :configuracoes
     before_action :set_property_setting
     before_action :set_broker_capture_fallback_users, only: %i[edit review_workflow update update_review_workflow]
     before_action :set_ai_development_alias_context, only: %i[edit update]

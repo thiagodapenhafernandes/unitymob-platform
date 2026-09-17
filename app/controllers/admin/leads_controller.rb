@@ -112,17 +112,19 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
-  before_action -> { check_permission!(:view, :leads) }
-  before_action -> { check_permission!(:view, :lead_reports) }, only: [:report]
+  requires_permission :view, :leads
+  requires_permission :view, :lead_pool, only: [:lead_pool]
+  requires_permission :view, :lead_reports, only: [:report]
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
   # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
-  before_action -> { check_permission!(:edit, :leads) }, only: [:update]
-  before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
+  requires_permission :edit, :leads, only: [:update]
+  requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
+  before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :pwa_leads_page, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
   def index
@@ -2400,6 +2402,17 @@ class Admin::LeadsController < Admin::BaseController
       @lead_pipelines = current_tenant.lead_pipelines.active.ordered.to_a
     end
     @pipeline_options = @lead_pipelines.map { |pipeline| [pipeline.name, pipeline.id] }
+  end
+
+  def authorize_lead_funnel_menu!
+    return if params[:lead_pipeline_id].blank?
+
+    resource = case @selected_pipeline&.kind
+               when "rental" then :lead_funnel_rental
+               when "sale" then :lead_funnel_sale
+               else :lead_funnels
+               end
+    check_permission!(:view, resource)
   end
 
   def normalize_pipeline_params!(attributes)

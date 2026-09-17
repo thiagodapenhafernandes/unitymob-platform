@@ -417,6 +417,11 @@ Rails.application.routes.draw do
       post :sync_webhooks
       delete :disconnect
     end
+    resource :lovers_integration, only: [:show, :update] do
+      post :test_connection
+      post :sync_now
+      delete :disconnect
+    end
     resource :whatsapp_integration, only: [:show] do
       post :embedded_signup_callback
       delete :disconnect

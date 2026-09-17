@@ -6,8 +6,9 @@ module Admin
     DEFAULT_DASHBOARD_TITLE = "Captação".freeze
     EFFECTIVE_CAPTURE_INTAKE_STATUSES = %w[admin_approved internal published].freeze
 
-    before_action -> { check_permission!(:view, :captacoes) }, except: [:dashboard]
-    before_action -> { check_permission!(:view, :captacao_dashboard) }, only: [:dashboard]
+    requires_permission :view, :captacoes, except: %i[dashboard update_dashboard_title]
+    requires_permission :view, :captacao_dashboard, only: [:dashboard]
+    requires_permission :manage, :captacao_dashboard, only: [:update_dashboard_title]
     before_action :set_captacao, only: [:edit, :update, :show, :destroy, :publish]
     before_action :authorize_access!, only: [:edit, :update, :show, :destroy, :publish]
 
@@ -109,9 +110,6 @@ module Admin
     end
 
     def update_dashboard_title
-      require_admin!
-      return if performed?
-
       attrs = dashboard_title_params
       Setting.set(DASHBOARD_EYEBROW_SETTING, attrs[:eyebrow].to_s.strip.presence || DEFAULT_DASHBOARD_EYEBROW, "Texto superior do dashboard de captação", tenant: current_tenant)
       Setting.set(DASHBOARD_TITLE_SETTING, attrs[:title].to_s.strip.presence || DEFAULT_DASHBOARD_TITLE, "Título principal do dashboard de captação", tenant: current_tenant)
@@ -233,12 +231,6 @@ module Admin
     def parse_month_filter(value)
       month = value.to_i
       month.between?(1, 12) ? month.to_s : nil
-    end
-
-    def require_admin!
-      return if tenant_owner?
-
-      redirect_to dashboard_admin_captacoes_path, alert: "Você não tem permissão para alterar o dashboard."
     end
 
     def captacao_habitation_scope

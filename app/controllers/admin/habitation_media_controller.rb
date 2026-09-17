@@ -8,7 +8,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     habitation save_anchor save_navigation save_context
   ].freeze
 
-  before_action -> { check_permission!(:view, :imoveis) }
+  requires_permission :view, :imoveis
   before_action :set_habitation
   before_action :scope_habitation_by_permission
   before_action :load_property_setting

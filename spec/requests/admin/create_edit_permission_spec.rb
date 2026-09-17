@@ -167,16 +167,15 @@ RSpec.describe "Admin create/edit permission", type: :request do
 
       get new_admin_profile_path(axis: "vertical")
 
-      matrix = Nokogiri::HTML(response.body).at_css("table.prof-matrix")
-      headers = matrix.css("thead th[scope='col']").map { |th| th.text.strip }
-      expect(headers).to include("Criar", "Editar")
+      form = Nokogiri::HTML(response.body).at_css(".prof-permissions")
+      expect(form.text).to include("Criar", "Editar")
 
-      expect(matrix.css("input[name='profile[permissions][imoveis][create]']")).to be_present
-      expect(matrix.css("input[name='profile[permissions][leads][create]']")).to be_present
-      expect(matrix.css("input[name='profile[permissions][leads][edit]']")).to be_present
+      expect(form.css("input[name='profile[permissions][imoveis][create]']")).to be_present
+      expect(form.css("input[name='profile[permissions][leads][create]']")).to be_present
+      expect(form.css("input[name='profile[permissions][leads][edit]']")).to be_present
       # Comercial ainda não foi desmembrado: segue com o balde legado.
-      expect(matrix.css("input[name='profile[permissions][comercial][manage]']")).to be_present
-      expect(matrix.css("input[name='profile[permissions][comercial][create]']")).to be_empty
+      expect(form.css("input[name='profile[permissions][comercial][manage]']")).to be_present
+      expect(form.css("input[name='profile[permissions][comercial][create]']")).to be_empty
     end
   end
 end

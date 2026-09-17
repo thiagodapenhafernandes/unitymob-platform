@@ -1,5 +1,5 @@
 class Admin::CommercialContractProposalsController < Admin::BaseController
-  before_action :require_admin_or_administrative_user!
+  requires_permission :manage, :commercial_contracts
   before_action :set_proposal, only: [:show, :edit, :update, :send_proposal, :cancel, :proposal_pdf, :contract_pdf, :certificate_pdf, :destroy]
 
   def index

@@ -54,11 +54,13 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
       position: 650,
       permissions: {
         "admin" => false,
+        "integracoes" => { "manage" => true },
         "agenda_fotografia" => { "view" => true, "manage" => false }
       }
     )
     photographer = create(:admin_user, profile: profile)
     habitation = create(:habitation, :broker_intake, titulo_anuncio: "Apartamento com fotos pendentes")
+    Tenant.default.photography_schedule_blocks.create!(date: Date.current.next_week, reason: "Agenda cheia")
 
     sign_out admin
     sign_in photographer
@@ -67,7 +69,10 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Apartamento com fotos pendentes")
+    expect(response.body).to include("Seu perfil pode consultar a fila")
+    expect(response.body).not_to include("Salvar configuração")
     expect(response.body).not_to include("Bloquear dia")
+    expect(response.body).not_to include("Remover")
 
     get pending_property_admin_scheduling_integration_path(habitation)
 

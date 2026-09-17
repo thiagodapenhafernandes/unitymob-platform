@@ -3,7 +3,7 @@
 module Admin
   module Field
     class AuditLogsController < Admin::BaseController
-      before_action -> { check_permission!(:view, :field_audit) }
+      requires_permission :view, :field_audit
 
       def index
         scope = current_tenant.checkin_audit_logs.order(created_at: :desc)

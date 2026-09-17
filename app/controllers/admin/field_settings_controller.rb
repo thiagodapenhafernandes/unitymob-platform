@@ -1,5 +1,5 @@
 class Admin::FieldSettingsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :field_settings) }
+  requires_permission :manage, :configuracoes
 
   def edit
     load_field_settings

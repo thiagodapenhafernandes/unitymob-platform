@@ -1,5 +1,5 @@
 class Admin::WhatsappCampaignRecipientsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :whatsapp_campaigns) }
+  requires_permission :manage, :conta
 
   def index
     @sender_numbers = current_tenant.whatsapp_sender_numbers.ordered

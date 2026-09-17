@@ -1,6 +1,6 @@
 class Admin::PropertyInterestsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :leads) }
-  before_action -> { check_permission!(:edit, :leads) }, except: %i[search]
+  requires_permission :view, :leads
+  requires_permission :edit, :leads, except: %i[search]
   before_action :set_lead
 
   # Autocomplete de imóveis para o vínculo de interesse. REUSA a busca textual

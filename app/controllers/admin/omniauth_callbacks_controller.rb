@@ -1,5 +1,6 @@
 class Admin::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   before_action :authenticate_admin_user!
+  before_action :require_meta_integration_permission!, only: :facebook
 
   def facebook
     auth = request.env["omniauth.auth"]
@@ -29,5 +30,13 @@ class Admin::OmniauthCallbacksController < Devise::OmniauthCallbacksController
 
   def failure
     redirect_to admin_meta_integrations_path, alert: "Falha na autenticação: #{failure_message}"
+  end
+
+  private
+
+  def require_meta_integration_permission!
+    return if current_admin_user&.can?(:manage, :integracoes)
+
+    redirect_to admin_root_path, alert: "Você não tem permissão para conectar integrações."
   end
 end

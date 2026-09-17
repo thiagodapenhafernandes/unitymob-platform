@@ -1,5 +1,5 @@
 class Admin::CommercialContractTermsVersionsController < Admin::BaseController
-  before_action :require_admin_or_administrative_user!
+  requires_permission :manage, :commercial_contracts
   before_action :set_terms_version, only: [:show, :edit, :update]
 
   def index

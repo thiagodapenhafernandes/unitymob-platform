@@ -43,14 +43,14 @@ module Admin
     private
 
     def authorize_view!
-      return if can?(:view, :agenda_fotografia) || can?(:manage, :agenda_fotografia) || can?(:manage, :integracoes)
-
-      check_permission!(:view, :agenda_fotografia)
+      check_any_permission!(
+        [:view, :agenda_fotografia],
+        [:manage, :agenda_fotografia],
+        [:manage, :integracoes]
+      )
     end
 
     def authorize_manage!
-      return if can?(:manage, :agenda_fotografia) || can?(:manage, :integracoes)
-
       check_permission!(:manage, :agenda_fotografia)
     end
 

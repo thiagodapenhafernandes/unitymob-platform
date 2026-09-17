@@ -1,6 +1,6 @@
 module Admin
   class LeadSettingsController < Admin::BaseController
-    before_action -> { check_permission!(:manage, :distribution_rules) }
+    requires_permission :manage, :configuracoes
     before_action :set_lead_setting
 
     def edit

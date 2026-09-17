@@ -1,6 +1,6 @@
 class Admin::AppointmentsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :comercial) }, only: [:index]
-  before_action -> { check_permission!(:manage, :comercial) }, only: [:create, :update, :destroy]
+  requires_permission :view, :comercial, only: [:index]
+  requires_permission :manage, :comercial, only: [:create, :update, :destroy]
   before_action :set_appointment, only: [:update, :destroy]
   before_action :authorize_linked_lead!, only: %i[create update destroy]
 

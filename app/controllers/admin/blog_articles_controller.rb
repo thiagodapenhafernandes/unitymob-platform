@@ -2,7 +2,7 @@ require "aws-sdk-s3"
 
 class Admin::BlogArticlesController < Admin::BaseController
   include BlogArticlePresentation
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
   before_action :set_article, only: %i[edit update destroy preview]
   before_action :load_categories, only: %i[new create edit update]
 

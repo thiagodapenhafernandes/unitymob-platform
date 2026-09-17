@@ -1,7 +1,7 @@
 module Admin
   class CaptacaoGoalsController < Admin::BaseController
-    before_action -> { check_permission!(:view, :metas_captacao) }
-    before_action -> { check_permission!(:manage, :metas_captacao) }, only: %i[new create edit update destroy]
+    requires_permission :view, :metas_captacao
+    requires_permission :manage, :metas_captacao, only: %i[new create edit update destroy]
     before_action :set_goal, only: [:edit, :update, :destroy]
 
     def index

@@ -1,5 +1,5 @@
 class Admin::ExternalLeadIntegrationsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :integracoes) }
+  requires_permission :manage, :integracoes
   before_action :load_integration
 
   def show

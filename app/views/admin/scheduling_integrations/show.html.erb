@@ -1,5 +1,5 @@
 <div class="ax-integration-layout">
-<% can_manage_schedule = can?(:manage, :agenda_fotografia) || can?(:manage, :integracoes) %>
+<% can_manage_schedule = can?(:manage, :agenda_fotografia) %>
 
 <% content_for :admin_contextbar_breadcrumb do %>
   <%= link_to "Plataforma", admin_root_path %>

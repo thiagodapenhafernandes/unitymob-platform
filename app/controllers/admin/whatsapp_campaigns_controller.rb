@@ -1,6 +1,6 @@
 class Admin::WhatsappCampaignsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :whatsapp_campaigns) }, only: [:index, :show, :status, :documentation]
-  before_action -> { check_permission!(:manage, :whatsapp_campaigns) }, except: [:index, :show, :status]
+  requires_permission :view, :whatsapp_campaigns, only: [:index, :show, :status, :documentation]
+  requires_permission :manage, :whatsapp_campaigns, except: [:index, :show, :status]
   before_action :set_campaign, only: [:show, :edit, :update, :destroy, :start, :pause, :resume, :cancel, :cancel_pending, :retry_failed, :status]
   before_action :load_options, only: [:new, :edit, :create, :update]
 

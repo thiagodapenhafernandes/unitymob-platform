@@ -87,4 +87,19 @@ RSpec.describe "Admin commercial contract proposals", type: :request do
     expect(response).to redirect_to(admin_commercial_contract_terms_version_path(terms))
     expect(terms.document_hash).to be_present
   end
+
+  it "permite acesso pelo recurso commercial_contracts do perfil" do
+    profile = admin.tenant.profiles.create!(
+      name: "Administrativo contratos #{SecureRandom.hex(3)}",
+      key: nil,
+      axis: "vertical",
+      permissions: Profile.default_permissions_for("Administrativo")
+    )
+    user = create(:admin_user, tenant: admin.tenant, profile: profile)
+    sign_in user
+
+    get admin_commercial_contract_proposals_path
+
+    expect(response).to have_http_status(:ok)
+  end
 end

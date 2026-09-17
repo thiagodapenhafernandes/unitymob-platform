@@ -1,5 +1,5 @@
 class Admin::SeoRedirectsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
   before_action :set_redirect, only: [:update, :destroy]
 
   def index

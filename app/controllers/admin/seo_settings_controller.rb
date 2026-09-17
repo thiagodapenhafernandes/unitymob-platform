@@ -1,5 +1,5 @@
 class Admin::SeoSettingsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :site_publico
   before_action :set_seo_setting, only: [:edit, :update, :destroy, :generate_ai, :toggle]
   before_action :load_editor_helpers, only: [:edit]
 

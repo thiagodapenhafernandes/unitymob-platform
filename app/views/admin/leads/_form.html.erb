@@ -10,6 +10,7 @@
                   else
                     @status_options.map { |status| [status, status] }
                   end
+  origin_options = ([lead.origin] + Array(@origin_options)).compact_blank.uniq.map { |origin| [origin, origin] }
 %>
 <%= form_with(model: [:admin, lead], local: true, class: "lead-form") do |f| %>
   <%= ax_error_summary(lead) %>
@@ -60,14 +61,9 @@
                               }) %>
         </div>
         <div class="ax-span-3">
-          <%= ax_text_field(form: f, method: :origin, label: "Origem",
-                            hint: "Ex.: indicação, telefone, plantão.",
-                            list: "lead-origin-options") %>
-          <datalist id="lead-origin-options">
-            <% Array(@origin_options).each do |origin| %>
-              <option value="<%= origin %>"></option>
-            <% end %>
-          </datalist>
+          <%= ax_select_field(form: f, method: :origin, label: "Origem",
+                              choices: origin_options,
+                              select_options: { selected: lead.origin }) %>
         </div>
         <div class="ax-span-3">
           <%= ax_text_field(form: f, method: :product, label: "Produto",

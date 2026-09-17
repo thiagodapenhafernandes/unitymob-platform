@@ -1,8 +1,8 @@
 module Admin
   class AdminUsersController < BaseController
-    before_action -> { check_permission!(:manage, :corretores) }
-    before_action :set_admin_user, only: %i[show edit update destroy inactivate]
-    before_action :authorize_admin_user_management!, only: %i[show edit update destroy inactivate]
+    requires_permission :manage, :corretores
+    before_action :set_admin_user, only: %i[show edit update destroy inactivate reset_two_factor]
+    before_action :authorize_admin_user_management!, only: %i[show edit update destroy inactivate reset_two_factor]
     before_action :authorize_hierarchy_management!, only: %i[new create move_hierarchy]
     before_action :load_access_options, only: %i[new edit create update]
 
@@ -373,21 +373,21 @@ module Admin
 
     public
 
-    # Dono da conta pode RESETAR o 2FA de um usuário que perdeu o aparelho e os
+    # Quem gerencia Segurança de Acesso pode RESETAR o 2FA de um usuário dentro
+    # do próprio escopo (all/team/own) quando ele perdeu o aparelho e os
     # backup codes (antes: só via console). O usuário volta a logar só com senha
     # e reativa o 2FA no perfil (ou é forçado, se a conta exigir).
     def reset_two_factor
-      unless tenant_owner?
-        redirect_to admin_admin_users_path, alert: "Apenas o Dono da conta pode resetar a verificação em duas etapas."
+      unless can_manage_login_security_for?(@admin_user)
+        redirect_to admin_admin_users_path, alert: "Você não tem permissão para resetar a verificação em duas etapas."
         return
       end
 
-      user = current_tenant.admin_users.find(params[:id])
-      user.update!(otp_secret: nil, otp_enabled_at: nil, otp_backup_codes: [], otp_consumed_timestep: nil)
+      @admin_user.update!(otp_secret: nil, otp_enabled_at: nil, otp_backup_codes: [], otp_consumed_timestep: nil)
       AccessAuditLog.log!(event_type: "two_factor_disabled", result: "allowed", request: request,
-                          admin_user: user, reason: "2FA resetado pelo Dono da conta",
+                          admin_user: @admin_user, reason: "2FA resetado pela Segurança de Acesso",
                           metadata: { reset_by: current_admin_user.id }) rescue nil
-      redirect_to edit_admin_admin_user_path(user), notice: "Verificação em duas etapas resetada — #{user.name} volta a entrar só com a senha."
+      redirect_to edit_admin_admin_user_path(@admin_user), notice: "Verificação em duas etapas resetada — #{@admin_user.name} volta a entrar só com a senha."
     end
 
     private
@@ -395,7 +395,7 @@ module Admin
     def admin_user_params
       permitted = [:email, :password, :password_confirmation, :name, :creci, :phone, :secondary_phone, :biography, :birth_date, :city, :avatar, :acting_type, :active, :display_on_site, :field_agent_enabled, :default_store_id]
       permitted.concat([:profile_id, :horizontal_profile_id, :access_profile_id, :manager_id, :rentals_manager_id]) if current_admin_user&.can?(:manage, :corretores)
-      permitted.concat([:require_ip_allowlist, :require_trusted_device]) if tenant_owner?
+      permitted.concat([:require_ip_allowlist, :require_trusted_device]) if can_manage_login_security_for?(@admin_user)
       attrs = params.require(:admin_user).permit(*permitted)
       # Usuário espelho (multi-conta): e-mail sintético e senha pertencem ao
       # primário — nunca editáveis por esta conta (UI esconde; aqui é a trava real).
@@ -472,6 +472,14 @@ module Admin
 
       attrs
     end
+
+    def can_manage_login_security_for?(user)
+      return false unless can?(:manage, :access_security)
+      return true if user.blank? || user.new_record?
+
+      owner_in_scope?(:access_security, user.id)
+    end
+    helper_method :can_manage_login_security_for?
 
   end
 end

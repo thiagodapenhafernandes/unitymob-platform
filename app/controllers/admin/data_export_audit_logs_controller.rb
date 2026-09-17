@@ -1,5 +1,5 @@
 class Admin::DataExportAuditLogsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :data_export_audit) }
+  requires_permission :view, :data_export_audit
 
   def index
     scope = current_tenant.data_export_audit_logs.includes(:admin_user).recent

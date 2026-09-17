@@ -1,5 +1,5 @@
 class Admin::UserActivitySessionsController < Admin::BaseController
-  before_action :require_admin!
+  requires_permission :manage, :conta
 
   def index
     scope = current_tenant.operational_user_sessions.includes(:admin_user).recent

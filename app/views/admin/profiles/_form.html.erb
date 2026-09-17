@@ -8,81 +8,318 @@
         <div class="prof-body">
           <p class="prof-hint">Marque o que este perfil pode fazer. O menu lateral esconde automaticamente o que não for permitido.</p>
 
-          <%# Colunas derivadas do catálogo: ação nova em Profile::ACTION_LABELS
-              entra na matriz sem editar esta view (a ordem do hash é a ordem das colunas). %>
-          <% all_actions = Profile::ACTION_LABELS.keys %>
-          <div class="prof-matrix-wrap">
-            <table class="ax-table prof-matrix">
-              <caption class="tw-sr-only">Permissões por recurso, ação e escopo deste perfil</caption>
-              <thead>
-                <tr>
-                  <th scope="col" class="prof-matrix__resource-col">Recurso</th>
-                  <% all_actions.each do |action| %>
-                    <th scope="col" class="ax-num prof-matrix__action-col"><%= Profile::ACTION_LABELS[action] || action.humanize %></th>
-                  <% end %>
-                  <th scope="col" class="prof-matrix__scope-col">Escopo</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% Profile::RESOURCES.each do |resource| %>
-                  <% existing = (profile.permissions || {})[resource[:key]] || {} %>
-                  <tr>
-                    <th scope="row">
-                      <div class="prof-res <%= 'prof-res--with-action' if resource[:key] == 'imoveis' %>">
-                          <span class="prof-res__icon"><i class="bi <%= resource[:icon] %>" aria-hidden="true"></i></span>
-                          <div class="prof-res__main">
-                            <strong><%= resource[:label] %></strong>
-                            <span title="<%= resource[:description] %>"><%= resource[:description] %></span>
-                          </div>
-                          <% if resource[:key] == "imoveis" %>
-                            <div class="prof-res__actions">
-                              <button type="button" class="ax-btn ax-btn--sm prof-res__action"
-                                      data-ax-modal-open="#imoveisFieldLocksModal"
-                                      title="Configurar quais campos do cadastro este perfil pode editar">
-                                <i class="bi bi-sliders" aria-hidden="true"></i> Campos
-                              </button>
-                              <button type="button" class="ax-btn ax-btn--sm prof-res__action"
-                                      data-ax-modal-open="#imoveisSearchStatusesModal"
-                                      title="Configurar quais status comerciais este perfil pode pesquisar">
-                                <i class="bi bi-search" aria-hidden="true"></i> Status
-                              </button>
-                            </div>
-                          <% end %>
-                      </div>
-                    </th>
+          <div class="prof-permissions prof-permissions--tree" aria-label="Permissões por seção do menu, tela e função deste perfil">
+            <% Profile.permission_tree_sections(profile: profile).each do |section| %>
+              <%
+                section_resource = section[:resource]
+                section_existing = section_resource ? (profile.permissions || {})[section_resource[:key]] || {} : {}
+                section_primary_action = section_resource&.fetch(:actions, [])&.include?("view") ? "view" : section_resource&.fetch(:actions, [])&.first
+                section_primary_label = section_primary_action ? (Profile::ACTION_LABELS[section_primary_action] || section_primary_action.humanize) : nil
+                section_actions_count = Array(section_resource&.fetch(:actions, []))
+                section_active_count = section_actions_count.count { |action| section_existing[action] == true } +
+                  section[:resources].sum { |resource| ((profile.permissions || {})[resource[:key]] || {}).slice(*resource[:actions]).values.count(true) }
+                section_total_count = section_actions_count.size + section[:resources].sum { |resource| resource[:actions].size }
+                section_menu_count = Profile.sidebar_menu_count_for(section[:key])
+              %>
+              <article class="prof-permission prof-permission--section">
+                <details class="prof-permission__drawer">
+                  <summary class="prof-permission__summary">
+                    <span class="prof-res prof-res--section">
+                      <span class="prof-res__icon"><i class="bi <%= section[:icon] %>" aria-hidden="true"></i></span>
+                      <span class="prof-res__main">
+                        <strong><%= section[:label] %></strong>
+                        <span><%= section_resource ? section_resource[:description] : "Menus e telas desta seção" %></span>
+                      </span>
+                    </span>
+                    <span class="prof-permission__meta">
+                      <span><%= section_active_count.positive? ? "#{section_active_count} ativa(s)" : "Nenhuma ação" %></span>
+                      <span><%= section_menu_count %> menu(s)</span>
+                    </span>
+                  </summary>
 
-                    <% all_actions.each do |action| %>
-                      <td class="ax-num">
-                        <% if resource[:actions].include?(action) %>
-                          <label class="ax-switch ax-switch--compact" title="<%= Profile::ACTION_LABELS[action] || action.humanize %>">
-                            <%= check_box_tag "profile[permissions][#{resource[:key]}][#{action}]",
-                                              "1",
-                                              existing[action] == true,
-                                              class: "ax-switch__input",
-                                              aria: { label: "#{resource[:label]}: #{Profile::ACTION_LABELS[action] || action.humanize}" } %>
-                            <span class="ax-switch__track"></span>
-                          </label>
-                        <% else %>
-                          <span class="prof-dash">—</span>
-                        <% end %>
-                      </td>
+                  <div class="prof-permission__details prof-permission__details--section">
+                    <% if section_resource && Array(section_resource[:included_items]).any? %>
+                      <div class="prof-menu-includes">
+                        <strong>Menus que herdam a seção</strong>
+                        <div>
+                          <% Array(section_resource[:included_items]).each do |item| %>
+                            <span><%= item %></span>
+                          <% end %>
+                        </div>
+                      </div>
                     <% end %>
 
-                    <td>
-                      <% if resource[:scopeable] %>
-                        <%= select_tag "profile[permissions][#{resource[:key]}][scope]",
-                                       options_for_select([["Apenas os próprios", "own"], ["Equipe (subárvore)", "team"], ["Todos", "all"]], existing["scope"] || "own"),
-                                       class: "ax-control ax-control--sm",
-                                       data: { profile_axis_context_target: "scope" },
-                                       aria: { label: "Escopo de #{resource[:label]}" } %>
-                      <% else %>
-                        <%= ax_badge("Global", tone: :gray) %>
+                    <div class="prof-permission__children" data-controller="sortable" data-sortable-handle-value=".prof-permission__drag">
+                      <% section[:resources].each do |resource| %>
+                        <%
+                          existing = (profile.permissions || {})[resource[:key]] || {}
+                          enabled_actions = resource[:actions].select { |action| existing[action] == true }
+                          scope_label = if resource[:scopeable]
+                            { "own" => "Apenas os próprios", "team" => "Equipe", "all" => "Todos" }[existing["scope"] || "own"]
+                          else
+                            "Global"
+                          end
+                          parent_section = Profile.parent_section_for(resource[:key])
+                          parent_section_label = Profile.resource_for(parent_section)&.fetch(:label, nil)
+                          includes = Array(resource[:included_items])
+                          permission_items = Array(resource[:permission_items])
+                          child_resources = Profile.permission_children_for(resource[:key])
+                          primary_action = resource[:actions].include?("view") ? "view" : resource[:actions].first
+                          granular_actions = resource[:actions] - [primary_action]
+                          primary_label = Profile::ACTION_LABELS[primary_action] || primary_action.humanize
+                        %>
+                        <article class="prof-permission prof-permission--item">
+                          <%= hidden_field_tag "profile[menu_order][#{section[:key]}][]", resource[:key] %>
+                          <details class="prof-permission__drawer">
+                            <summary class="prof-permission__summary">
+                              <span class="prof-res prof-res--draggable <%= 'prof-res--with-action' if resource[:key] == 'imoveis' %>">
+                                <span class="prof-permission__drag" title="Arrastar para reordenar menu"><i class="bi bi-grip-vertical" aria-hidden="true"></i></span>
+                                <span class="prof-res__icon"><i class="bi <%= resource[:icon] %>" aria-hidden="true"></i></span>
+                                <span class="prof-res__main">
+                                  <strong><%= resource[:label] %></strong>
+                                  <span title="<%= resource[:description] %>"><%= resource[:description] %></span>
+                                </span>
+                              </span>
+                              <span class="prof-permission__meta">
+                                <span><%= enabled_actions.any? ? "#{enabled_actions.size} ativa(s)" : "Nenhuma ação" %></span>
+                                <% if parent_section_label.present? %>
+                                  <span>Seção: <%= parent_section_label %></span>
+                                <% end %>
+                                <span><%= scope_label %></span>
+                              </span>
+                            </summary>
+
+                            <div class="prof-permission__details">
+                              <% if granular_actions.any? %>
+                                <div class="prof-permission__actions" aria-label="Ações granulares de <%= resource[:label] %>">
+                                  <% granular_actions.each do |action| %>
+                                    <label class="prof-permission__action <%= 'is-enabled' if existing[action] == true %>">
+                                      <strong><%= Profile::ACTION_LABELS[action] || action.humanize %></strong>
+                                      <span class="ax-switch ax-switch--compact">
+                                        <%= check_box_tag "profile[permissions][#{resource[:key]}][#{action}]",
+                                                          "1",
+                                                          existing[action] == true,
+                                                          class: "ax-switch__input",
+                                                          aria: { label: "#{resource[:label]}: #{Profile::ACTION_LABELS[action] || action.humanize}" } %>
+                                        <span class="ax-switch__track"></span>
+                                      </span>
+                                    </label>
+                                  <% end %>
+                                </div>
+                              <% else %>
+                                <div class="prof-permission__actions prof-permission__actions--empty">
+                                  <span>Sem ações granulares</span>
+                                </div>
+                              <% end %>
+
+                              <div class="prof-permission__scope">
+                                <% if resource[:scopeable] %>
+                                  <label>
+                                    <span>Escopo</span>
+                                    <%= select_tag "profile[permissions][#{resource[:key]}][scope]",
+                                                   options_for_select([["Apenas os próprios", "own"], ["Equipe (subárvore)", "team"], ["Todos", "all"]], existing["scope"] || "own"),
+                                                   class: "ax-control ax-control--sm",
+                                                   data: { profile_axis_context_target: "scope" },
+                                                   aria: { label: "Escopo de #{resource[:label]}" } %>
+                                  </label>
+                                <% else %>
+                                  <span>Escopo</span>
+                                  <%= ax_badge("Global", tone: :gray) %>
+                                <% end %>
+                              </div>
+
+                              <% if resource[:key] == "imoveis" %>
+                                <div class="prof-permission__tools">
+                                  <button type="button" class="ax-btn ax-btn--sm prof-res__action"
+                                          data-ax-modal-open="#imoveisFieldLocksModal"
+                                          aria-label="Configurar quais campos do cadastro este perfil pode editar">
+                                    <i class="bi bi-sliders" aria-hidden="true"></i> Campos
+                                  </button>
+                                  <button type="button" class="ax-btn ax-btn--sm prof-res__action"
+                                          data-ax-modal-open="#imoveisSearchStatusesModal"
+                                          aria-label="Configurar quais status comerciais este perfil pode pesquisar">
+                                    <i class="bi bi-search" aria-hidden="true"></i> Status
+                                  </button>
+                                </div>
+                              <% end %>
+
+                              <% if includes.any? %>
+                                <div class="prof-permission__includes">
+                                  <strong>Inclui</strong>
+                                  <p>
+                                    <% includes.each do |item| %>
+                                      <span><%= item %></span>
+                                    <% end %>
+                                  </p>
+                                </div>
+                              <% end %>
+
+                              <% if permission_items.any? %>
+                                <div class="prof-permission__subtree" aria-label="Abas e blocos de <%= resource[:label] %>">
+                                  <% permission_items.each do |group| %>
+                                    <section class="prof-permission__subgroup">
+                                      <header>
+                                        <strong><%= group[:label] %></strong>
+                                        <span><%= group[:description] %></span>
+                                      </header>
+                                      <div>
+                                        <% Array(group[:items]).each do |item| %>
+                                          <%
+                                            item_resource = Profile.resource_for(item[:resource])
+                                            inherited_resource = Profile.resource_for(item[:inherits])
+                                          %>
+                                          <span>
+                                            <%= item[:label] %>
+                                            <% if item_resource.present? %>
+                                              <em>controla <%= item_resource[:label] %></em>
+                                            <% elsif inherited_resource.present? %>
+                                              <em>herda <%= inherited_resource[:label] %></em>
+                                            <% end %>
+                                          </span>
+                                        <% end %>
+                                      </div>
+                                    </section>
+                                  <% end %>
+                                </div>
+                              <% end %>
+
+                              <% if child_resources.any? %>
+                                <div class="prof-permission__child-list" aria-label="Controles internos de <%= resource[:label] %>">
+                                  <% child_resources.each do |child| %>
+                                    <%
+                                      child_existing = (profile.permissions || {})[child[:key]] || {}
+                                      child_primary_action = child[:actions].include?("view") ? "view" : child[:actions].first
+                                      child_primary_label = Profile::ACTION_LABELS[child_primary_action] || child_primary_action.humanize
+                                      grandchild_resources = Profile.permission_children_for(child[:key])
+                                    %>
+                                    <div class="prof-permission__child">
+                                      <span class="prof-res">
+                                        <span class="prof-res__icon"><i class="bi <%= child[:icon] %>" aria-hidden="true"></i></span>
+                                        <span class="prof-res__main">
+                                          <strong><%= child[:label] %></strong>
+                                          <span title="<%= child[:description] %>"><%= child[:description] %></span>
+                                        </span>
+                                      </span>
+                                      <% if child[:scopeable] %>
+                                        <label class="prof-permission__scope prof-permission__scope--child">
+                                          <span>Escopo</span>
+                                          <%= select_tag "profile[permissions][#{child[:key]}][scope]",
+                                                         options_for_select([["Apenas os próprios", "own"], ["Equipe (subárvore)", "team"], ["Todos", "all"]], child_existing["scope"] || "own"),
+                                                         class: "ax-control ax-control--sm",
+                                                         data: { profile_axis_context_target: "scope" },
+                                                         aria: { label: "Escopo de #{child[:label]}" } %>
+                                        </label>
+                                      <% end %>
+                                      <label class="prof-permission__primary prof-permission__primary--child <%= 'is-enabled' if child_existing[child_primary_action] == true %>">
+                                        <span><%= child_primary_label %></span>
+                                        <span class="ax-switch ax-switch--compact">
+                                          <%= check_box_tag "profile[permissions][#{child[:key]}][#{child_primary_action}]",
+                                                            "1",
+                                                            child_existing[child_primary_action] == true,
+                                                            class: "ax-switch__input",
+                                                            aria: { label: "#{child[:label]}: #{child_primary_label}" } %>
+                                          <span class="ax-switch__track"></span>
+                                        </span>
+                                      </label>
+                                      <% if Array(child[:permission_items]).any? %>
+                                        <div class="prof-permission__child-items">
+                                          <% Array(child[:permission_items]).each do |group| %>
+                                            <% Array(group[:items]).each do |item| %>
+                                              <span>
+                                                <%= item[:label] %>
+                                                <% if item[:resource].present? && Profile.resource_for(item[:resource]).present? %>
+                                                  <em>controla <%= Profile.resource_for(item[:resource])[:label] %></em>
+                                                <% elsif item[:inherits].present? && Profile.resource_for(item[:inherits]).present? %>
+                                                  <em>herda <%= Profile.resource_for(item[:inherits])[:label] %></em>
+                                                <% end %>
+                                              </span>
+                                            <% end %>
+                                          <% end %>
+                                        </div>
+                                      <% end %>
+                                      <% if grandchild_resources.any? %>
+                                        <div class="prof-permission__grandchild-list" aria-label="Blocos de <%= child[:label] %>">
+                                          <% grandchild_resources.each do |grandchild| %>
+                                            <%
+                                              grandchild_existing = (profile.permissions || {})[grandchild[:key]] || {}
+                                              grandchild_primary_action = grandchild[:actions].include?("view") ? "view" : grandchild[:actions].first
+                                              grandchild_primary_label = Profile::ACTION_LABELS[grandchild_primary_action] || grandchild_primary_action.humanize
+                                            %>
+                                            <div class="prof-permission__grandchild">
+                                              <span class="prof-res">
+                                                <span class="prof-res__icon"><i class="bi <%= grandchild[:icon] %>" aria-hidden="true"></i></span>
+                                                <span class="prof-res__main">
+                                                  <strong><%= grandchild[:label] %></strong>
+                                                  <span title="<%= grandchild[:description] %>"><%= grandchild[:description] %></span>
+                                                </span>
+                                              </span>
+                                              <% if grandchild[:scopeable] %>
+                                                <label class="prof-permission__scope prof-permission__scope--child">
+                                                  <span>Escopo</span>
+                                                  <%= select_tag "profile[permissions][#{grandchild[:key]}][scope]",
+                                                                 options_for_select([["Apenas os próprios", "own"], ["Equipe (subárvore)", "team"], ["Todos", "all"]], grandchild_existing["scope"] || "own"),
+                                                                 class: "ax-control ax-control--sm",
+                                                                 data: { profile_axis_context_target: "scope" },
+                                                                 aria: { label: "Escopo de #{grandchild[:label]}" } %>
+                                                </label>
+                                              <% end %>
+                                              <label class="prof-permission__primary prof-permission__primary--child <%= 'is-enabled' if grandchild_existing[grandchild_primary_action] == true %>">
+                                                <span><%= grandchild_primary_label %></span>
+                                                <span class="ax-switch ax-switch--compact">
+                                                  <%= check_box_tag "profile[permissions][#{grandchild[:key]}][#{grandchild_primary_action}]",
+                                                                    "1",
+                                                                    grandchild_existing[grandchild_primary_action] == true,
+                                                                    class: "ax-switch__input",
+                                                                    aria: { label: "#{grandchild[:label]}: #{grandchild_primary_label}" } %>
+                                                  <span class="ax-switch__track"></span>
+                                                </span>
+                                              </label>
+                                            </div>
+                                          <% end %>
+                                        </div>
+                                      <% end %>
+                                    </div>
+                                  <% end %>
+                                </div>
+                              <% end %>
+                            </div>
+                          </details>
+
+                          <label class="prof-permission__primary <%= 'is-enabled' if existing[primary_action] == true %>">
+                            <span><%= primary_label %></span>
+                            <span class="ax-switch ax-switch--compact">
+                              <%= check_box_tag "profile[permissions][#{resource[:key]}][#{primary_action}]",
+                                                "1",
+                                                existing[primary_action] == true,
+                                                class: "ax-switch__input",
+                                                aria: { label: "#{resource[:label]}: #{primary_label}" } %>
+                              <span class="ax-switch__track"></span>
+                            </span>
+                          </label>
+                        </article>
                       <% end %>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
+                </details>
+
+                <% if section_resource && section_primary_action %>
+                  <%# Controle macro da seção fica fora do details para permanecer visível fechada. %>
+                  <label class="prof-permission__primary <%= 'is-enabled' if section_existing[section_primary_action] == true %>">
+                    <span><%= section_primary_label %></span>
+                    <span class="ax-switch ax-switch--compact">
+                      <%= check_box_tag "profile[permissions][#{section_resource[:key]}][#{section_primary_action}]",
+                                        "1",
+                                        section_existing[section_primary_action] == true,
+                                        class: "ax-switch__input",
+                                        aria: { label: "#{section[:label]}: #{section_primary_label}" } %>
+                      <span class="ax-switch__track"></span>
+                    </span>
+                  </label>
+                <% else %>
+                  <span class="prof-permission__primary prof-permission__primary--readonly">Menus</span>
                 <% end %>
-              </tbody>
-            </table>
+              </article>
+            <% end %>
           </div>
         </div>
       <% end %>

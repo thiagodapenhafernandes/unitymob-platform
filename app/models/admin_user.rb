@@ -4,7 +4,6 @@ class AdminUser < ApplicationRecord
 
   ADMIN_THEME_MODES = %w[light dark].freeze
   ADMIN_THEME_MODE_DEFAULT = "light".freeze
-
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   #
@@ -296,13 +295,41 @@ class AdminUser < ApplicationRecord
   end
 
   def can?(action, resource)
+    resource_key = resource.to_s
+    horizontal = horizontal_profile
+
+    # Ordem da autorização:
+    # 1. Perfil horizontal, quando presente, decide a seção macro (`conta`,
+    #    `integracoes`, `site_publico` etc.).
+    # 2. Se o recurso tem `parent_section`, a seção/tela pai precisa estar
+    #    liberada na ação primária dela (`manage` para macros administrativas,
+    #    `view` para telas como Dashboard). Isso faz "Aba Leads" cortar seus
+    #    blocos filhos sem depender de nome de perfil.
+    # 3. Se o horizontal configurou uma ação granular, ele decide aquela ação.
+    # 4. Se não configurou granularidade, cai para o perfil vertical.
+    #
+    # Isso mantém a regra abstrata: não importa quantos perfis existam em uma
+    # conta, o backend decide por permissões do catálogo, não por nomes/cargos.
     if resource.to_s == "proprietarios" && horizontal_profile && !system_admin?
-      return horizontal_profile.can?(action, resource)
+      return horizontal.can?(action, resource)
+    end
+    if horizontal && Profile.section_resource?(resource_key)
+      return horizontal.can?(action, resource)
+    end
+    if horizontal
+      parent_section = Profile.parent_section_for(resource_key)
+      parent_action = Profile.parent_section_action_for(resource_key)
+      return false if parent_section.present? && !horizontal.can?(parent_action, parent_section)
+      return horizontal.can?(action, resource) if horizontal.permission_action_configured?(action, resource_key)
     end
     return true if admin?
     return false unless vertical_profile
 
-    vertical_profile.can?(action, resource) || horizontal_profile&.can?(action, resource) == true
+    parent_section = Profile.parent_section_for(resource_key)
+    parent_action = Profile.parent_section_action_for(resource_key)
+    return false if parent_section.present? && !vertical_profile.can?(parent_action, parent_section)
+
+    vertical_profile.can?(action, resource) || horizontal&.can?(action, resource) == true
   end
 
   # "own" — só os próprios / "team" — próprios + subárvore de gestão / "all" — tudo

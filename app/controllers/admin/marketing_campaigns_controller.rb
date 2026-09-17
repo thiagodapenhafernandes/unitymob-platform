@@ -1,5 +1,5 @@
 class Admin::MarketingCampaignsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :marketing) }
+  requires_permission :manage, :marketing
   before_action :set_campaign, only: [:edit, :update, :destroy]
   before_action :load_seo_settings, only: [:new, :create, :edit, :update]
 

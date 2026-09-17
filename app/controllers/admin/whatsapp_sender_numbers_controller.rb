@@ -100,9 +100,10 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
   end
 
   def authorize_sender_number_management!
-    return if can?(:manage, :whatsapp_campaigns) || can?(:manage, :integracoes)
-
-    check_permission!(:manage, :whatsapp_campaigns)
+    check_any_permission!(
+      [:manage, :whatsapp_campaigns],
+      [:manage, :integracoes]
+    )
   end
 
   def sender_number_return_path(default_path)

@@ -1,5 +1,5 @@
 class Admin::TrackingIntegrationsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :integracoes) }
+  requires_permission :manage, :integracoes
 
   def show
     @tracking_setting = TrackingIntegrationSetting.current(tenant: current_tenant)

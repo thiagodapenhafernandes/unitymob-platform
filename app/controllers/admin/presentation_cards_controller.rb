@@ -3,8 +3,8 @@
 # visível para todos, editável só pelo admin da conta (tenant_owner) e nunca
 # excluível/desativável — garante que o seletor do inbox jamais fique vazio.
 class Admin::PresentationCardsController < Admin::BaseController
-  before_action -> { check_permission!(:view, :whatsapp_inbox) }
-  before_action -> { check_permission!(:manage, :whatsapp_inbox) }, except: %i[index]
+  requires_permission :view, :whatsapp_inbox
+  requires_permission :manage, :whatsapp_inbox, except: %i[index]
   before_action :set_card, only: [:edit, :update, :destroy]
 
   def index

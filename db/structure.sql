@@ -1,7 +1,7 @@
-\restrict qku2kNg4qEN0W8mLFjiQWcKBLWFbfQdyS6VpJyyD3JxzRxSDl34P1ueZevM6ccI
+\restrict ZFYFOHUugZIRthvwro6K49Qh7ARruGks2BtgqUda1ISMMpc8eLszu8NArPuZ6KR
 
--- Dumped from database version 17.9 (Homebrew)
--- Dumped by pg_dump version 17.9 (Homebrew)
+-- Dumped from database version 18.6 (Homebrew)
+-- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -882,7 +882,7 @@ ALTER SEQUENCE public.ai_property_search_histories_id_seq OWNED BY public.ai_pro
 CREATE TABLE public.ai_property_share_audit_events (
     id bigint NOT NULL,
     tenant_id bigint NOT NULL,
-    ai_property_share_collection_id bigint NOT NULL,
+    ai_property_share_collection_id bigint CONSTRAINT ai_property_share_audit_eve_ai_property_share_collecti_not_null NOT NULL,
     admin_user_id bigint,
     lead_id bigint,
     habitation_id bigint,
@@ -954,7 +954,7 @@ ALTER SEQUENCE public.ai_property_share_collections_id_seq OWNED BY public.ai_pr
 
 CREATE TABLE public.ai_property_share_items (
     id bigint NOT NULL,
-    ai_property_share_collection_id bigint NOT NULL,
+    ai_property_share_collection_id bigint CONSTRAINT ai_property_share_items_ai_property_share_collection_i_not_null NOT NULL,
     habitation_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -1627,7 +1627,7 @@ ALTER SEQUENCE public.browser_extension_grants_id_seq OWNED BY public.browser_ex
 
 CREATE TABLE public.browser_extension_operations (
     id bigint NOT NULL,
-    browser_extension_grant_id bigint NOT NULL,
+    browser_extension_grant_id bigint CONSTRAINT browser_extension_operation_browser_extension_grant_id_not_null NOT NULL,
     request_key uuid NOT NULL,
     request_digest character varying NOT NULL,
     result jsonb NOT NULL,
@@ -2504,7 +2504,6 @@ CREATE TABLE public.distribution_rules (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     source_site boolean DEFAULT false,
-    source_rd_station boolean DEFAULT false,
     auto_add_forms boolean DEFAULT false,
     notify_whatsapp boolean DEFAULT false,
     notify_email boolean DEFAULT false,
@@ -2527,7 +2526,9 @@ CREATE TABLE public.distribution_rules (
     auto_update_shuffle_agents boolean DEFAULT false NOT NULL,
     pocket_to_shark_tank boolean DEFAULT false NOT NULL,
     pool_renotify_mode character varying DEFAULT 'never'::character varying NOT NULL,
-    pool_renotify_minutes integer DEFAULT 30 NOT NULL
+    pool_renotify_minutes integer DEFAULT 30 NOT NULL,
+    source_rd_station boolean DEFAULT false,
+    source_lovers boolean DEFAULT false
 );
 
 
@@ -2952,18 +2953,8 @@ CREATE TABLE public.habitations (
     intake_review_policy_version integer,
     intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     registration_profile character varying,
-    tipo_galpao character varying,
     outra_operacao_galpao character varying,
-    classificacao_galpao character varying,
-    tipo_piso_galpao character varying,
-    alimentacao_eletrica character varying,
     setor_terreno character varying,
-    rua_interna_condominio character varying,
-    operacoes_galpao text[] DEFAULT '{}'::text[] NOT NULL,
-    layouts_galpao text[] DEFAULT '{}'::text[] NOT NULL,
-    zoneamentos_galpao text[] DEFAULT '{}'::text[] NOT NULL,
-    instalacoes_eletricas text[] DEFAULT '{}'::text[] NOT NULL,
-    area_total_construida_m2 numeric(14,2),
     area_armazenagem_m2 numeric(14,2),
     pe_direito_livre_m numeric(14,2),
     altura_armazenagem_m numeric(14,2),
@@ -2971,18 +2962,15 @@ CREATE TABLE public.habitations (
     capacidade_eletrica_kva numeric(14,2),
     lateral_1_terreno_m numeric(14,2),
     lateral_2_terreno_m numeric(14,2),
-    testada_terreno_m numeric(14,2),
     docas_qtd integer,
     CONSTRAINT habitations_altura_armazenagem_m_positive CHECK (((altura_armazenagem_m IS NULL) OR (altura_armazenagem_m > (0)::numeric))),
     CONSTRAINT habitations_area_armazenagem_m2_positive CHECK (((area_armazenagem_m2 IS NULL) OR (area_armazenagem_m2 > (0)::numeric))),
-    CONSTRAINT habitations_area_total_construida_m2_positive CHECK (((area_total_construida_m2 IS NULL) OR (area_total_construida_m2 > (0)::numeric))),
     CONSTRAINT habitations_capacidade_eletrica_kva_positive CHECK (((capacidade_eletrica_kva IS NULL) OR (capacidade_eletrica_kva > (0)::numeric))),
     CONSTRAINT habitations_capacidade_piso_ton_m2_positive CHECK (((capacidade_piso_ton_m2 IS NULL) OR (capacidade_piso_ton_m2 > (0)::numeric))),
     CONSTRAINT habitations_docas_qtd_nonnegative CHECK (((docas_qtd IS NULL) OR (docas_qtd >= 0))),
     CONSTRAINT habitations_lateral_1_terreno_m_positive CHECK (((lateral_1_terreno_m IS NULL) OR (lateral_1_terreno_m > (0)::numeric))),
     CONSTRAINT habitations_lateral_2_terreno_m_positive CHECK (((lateral_2_terreno_m IS NULL) OR (lateral_2_terreno_m > (0)::numeric))),
-    CONSTRAINT habitations_pe_direito_livre_m_positive CHECK (((pe_direito_livre_m IS NULL) OR (pe_direito_livre_m > (0)::numeric))),
-    CONSTRAINT habitations_testada_terreno_m_positive CHECK (((testada_terreno_m IS NULL) OR (testada_terreno_m > (0)::numeric)))
+    CONSTRAINT habitations_pe_direito_livre_m_positive CHECK (((pe_direito_livre_m IS NULL) OR (pe_direito_livre_m > (0)::numeric)))
 );
 
 
@@ -3205,7 +3193,7 @@ CREATE TABLE public.google_calendar_integration_settings (
     tenant_id bigint NOT NULL,
     enabled boolean DEFAULT false NOT NULL,
     calendar_id character varying,
-    default_duration_minutes integer DEFAULT 60 NOT NULL,
+    default_duration_minutes integer DEFAULT 60 CONSTRAINT google_calendar_integration_s_default_duration_minutes_not_null NOT NULL,
     service_account_json text,
     last_synced_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
@@ -3242,7 +3230,7 @@ CREATE TABLE public.google_maps_integration_settings (
     enabled boolean DEFAULT false NOT NULL,
     api_key text,
     default_display_mode character varying DEFAULT 'approximate'::character varying NOT NULL,
-    approximate_radius_meters integer DEFAULT 220 NOT NULL,
+    approximate_radius_meters integer DEFAULT 220 CONSTRAINT google_maps_integration_sett_approximate_radius_meters_not_null NOT NULL,
     default_zoom integer DEFAULT 15 NOT NULL,
     satellite_enabled boolean DEFAULT true NOT NULL,
     street_view_enabled boolean DEFAULT true NOT NULL,
@@ -4053,13 +4041,13 @@ ALTER SEQUENCE public.lead_labels_id_seq OWNED BY public.lead_labels.id;
 CREATE TABLE public.lead_pipeline_stage_automation_executions (
     id bigint NOT NULL,
     tenant_id bigint NOT NULL,
-    lead_pipeline_stage_automation_id bigint NOT NULL,
+    lead_pipeline_stage_automation_id bigint CONSTRAINT lead_pipeline_stage_automat_lead_pipeline_stage_automa_not_null NOT NULL,
     lead_id bigint NOT NULL,
-    lead_pipeline_stage_id bigint NOT NULL,
+    lead_pipeline_stage_id bigint CONSTRAINT lead_pipeline_stage_automation__lead_pipeline_stage_id_not_null NOT NULL,
     action_type character varying NOT NULL,
     trigger character varying NOT NULL,
     status character varying DEFAULT 'started'::character varying NOT NULL,
-    stage_entered_at timestamp(6) without time zone NOT NULL,
+    stage_entered_at timestamp(6) without time zone CONSTRAINT lead_pipeline_stage_automation_execut_stage_entered_at_not_null NOT NULL,
     started_at timestamp(6) without time zone NOT NULL,
     finished_at timestamp(6) without time zone,
     error_class character varying,
@@ -4142,7 +4130,7 @@ CREATE TABLE public.lead_pipeline_stage_policies (
     future_activity_limit_days integer,
     qualification_enabled boolean DEFAULT false NOT NULL,
     qualification_options jsonb DEFAULT '[]'::jsonb NOT NULL,
-    allowed_archive_reason_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    allowed_archive_reason_ids jsonb DEFAULT '[]'::jsonb CONSTRAINT lead_pipeline_stage_policie_allowed_archive_reason_ids_not_null NOT NULL,
     settings jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -5121,7 +5109,7 @@ CREATE TABLE public.property_review_policies (
     version integer DEFAULT 1 NOT NULL,
     broker_capture_layer_enabled boolean DEFAULT true NOT NULL,
     required_broker_intake_checks text[] DEFAULT '{}'::text[] NOT NULL,
-    returnable_intake_edit_sections text[] DEFAULT '{}'::text[] NOT NULL,
+    returnable_intake_edit_sections text[] DEFAULT '{}'::text[] CONSTRAINT property_review_policies_returnable_intake_edit_sectio_not_null NOT NULL,
     notify_internal_review_events boolean DEFAULT true NOT NULL,
     notify_email_review_events boolean DEFAULT false NOT NULL,
     review_notification_emails text,
@@ -5179,59 +5167,59 @@ CREATE TABLE public.property_settings (
     ai_property_search_result_fields text[] DEFAULT '{}'::text[] NOT NULL,
     ai_property_search_max_results integer DEFAULT 20 NOT NULL,
     ai_property_search_default_sort character varying DEFAULT 'relevance'::character varying NOT NULL,
-    ai_property_search_allow_flexible_results boolean DEFAULT true NOT NULL,
-    ai_property_search_price_tolerance_percentage integer DEFAULT 10 NOT NULL,
-    ai_property_search_allow_clarifying_questions boolean DEFAULT true NOT NULL,
-    ai_property_search_require_filter_confirmation boolean DEFAULT false NOT NULL,
-    ai_property_search_max_audio_duration_seconds integer DEFAULT 60 NOT NULL,
+    ai_property_search_allow_flexible_results boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_allow_flexible_re_not_null NOT NULL,
+    ai_property_search_price_tolerance_percentage integer DEFAULT 10 CONSTRAINT property_settings_ai_property_search_price_tolerance_p_not_null NOT NULL,
+    ai_property_search_allow_clarifying_questions boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_allow_clarifying__not_null NOT NULL,
+    ai_property_search_require_filter_confirmation boolean DEFAULT false CONSTRAINT property_settings_ai_property_search_require_filter_co_not_null NOT NULL,
+    ai_property_search_max_audio_duration_seconds integer DEFAULT 60 CONSTRAINT property_settings_ai_property_search_max_audio_duratio_not_null NOT NULL,
     ai_property_search_language character varying DEFAULT 'pt-BR'::character varying NOT NULL,
     ai_property_search_allowed_profiles text[] DEFAULT '{}'::text[] NOT NULL,
     ai_property_search_history_enabled boolean DEFAULT false NOT NULL,
-    ai_property_search_history_retention_days integer DEFAULT 30 NOT NULL,
-    ai_property_search_development_name_enabled boolean DEFAULT true NOT NULL,
-    ai_property_search_developer_name_enabled boolean DEFAULT true NOT NULL,
-    ai_property_search_fuzzy_matching_enabled boolean DEFAULT true NOT NULL,
-    ai_property_search_fuzzy_similarity_threshold numeric(3,2) DEFAULT 0.3 NOT NULL,
-    ai_property_search_development_aliases_enabled boolean DEFAULT true NOT NULL,
-    ai_property_search_search_by_characteristics_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_history_retention_days integer DEFAULT 30 CONSTRAINT property_settings_ai_property_search_history_retention_not_null NOT NULL,
+    ai_property_search_development_name_enabled boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_development_name__not_null NOT NULL,
+    ai_property_search_developer_name_enabled boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_developer_name_en_not_null NOT NULL,
+    ai_property_search_fuzzy_matching_enabled boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_fuzzy_matching_en_not_null NOT NULL,
+    ai_property_search_fuzzy_similarity_threshold numeric(3,2) DEFAULT 0.3 CONSTRAINT property_settings_ai_property_search_fuzzy_similarity__not_null NOT NULL,
+    ai_property_search_development_aliases_enabled boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_development_alias_not_null NOT NULL,
+    ai_property_search_search_by_characteristics_enabled boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_search_by_charact_not_null NOT NULL,
     ai_property_search_sharing_enabled boolean DEFAULT true NOT NULL,
-    ai_property_search_share_max_properties integer DEFAULT 20 NOT NULL,
-    ai_property_search_share_expiration_days integer DEFAULT 30 NOT NULL,
-    ai_property_search_visitor_recognition_days integer DEFAULT 365 NOT NULL,
+    ai_property_search_share_max_properties integer DEFAULT 20 CONSTRAINT property_settings_ai_property_search_share_max_propert_not_null NOT NULL,
+    ai_property_search_share_expiration_days integer DEFAULT 30 CONSTRAINT property_settings_ai_property_search_share_expiration__not_null NOT NULL,
+    ai_property_search_visitor_recognition_days integer DEFAULT 365 CONSTRAINT property_settings_ai_property_search_visitor_recogniti_not_null NOT NULL,
     ai_property_search_share_title character varying DEFAULT 'Imóveis selecionados'::character varying NOT NULL,
     ai_property_search_share_message character varying DEFAULT 'Separei %{count} imóveis para você.'::character varying NOT NULL,
     ai_property_search_public_eyebrow character varying DEFAULT 'Seleção preparada para você'::character varying NOT NULL,
     ai_property_search_public_title character varying DEFAULT '%{count} imóvel(is) selecionado(s)'::character varying NOT NULL,
-    ai_property_search_public_description character varying DEFAULT 'Veja os detalhes e marque os imóveis que realmente despertaram seu interesse.'::character varying NOT NULL,
-    ai_property_search_view_property_label character varying DEFAULT 'Ver imóvel'::character varying NOT NULL,
-    ai_property_search_interest_button_label character varying DEFAULT 'Tenho interesse'::character varying NOT NULL,
+    ai_property_search_public_description character varying DEFAULT 'Veja os detalhes e marque os imóveis que realmente despertaram seu interesse.'::character varying CONSTRAINT property_settings_ai_property_search_public_descriptio_not_null NOT NULL,
+    ai_property_search_view_property_label character varying DEFAULT 'Ver imóvel'::character varying CONSTRAINT property_settings_ai_property_search_view_property_lab_not_null NOT NULL,
+    ai_property_search_interest_button_label character varying DEFAULT 'Tenho interesse'::character varying CONSTRAINT property_settings_ai_property_search_interest_button_l_not_null NOT NULL,
     ai_property_search_identity_title character varying DEFAULT 'Como podemos identificar você?'::character varying NOT NULL,
-    ai_property_search_identity_description character varying DEFAULT 'Informe uma vez. Nos próximos imóveis, seu interesse será enviado diretamente ao corretor.'::character varying NOT NULL,
-    ai_property_search_identity_name_label character varying DEFAULT 'Nome'::character varying NOT NULL,
-    ai_property_search_identity_phone_label character varying DEFAULT 'WhatsApp'::character varying NOT NULL,
-    ai_property_search_identity_submit_label character varying DEFAULT 'Enviar interesse'::character varying NOT NULL,
-    ai_property_search_identity_cancel_label character varying DEFAULT 'Cancelar'::character varying NOT NULL,
-    ai_property_search_interest_success_message character varying DEFAULT 'Interesse enviado ao corretor.'::character varying NOT NULL,
+    ai_property_search_identity_description character varying DEFAULT 'Informe uma vez. Nos próximos imóveis, seu interesse será enviado diretamente ao corretor.'::character varying CONSTRAINT property_settings_ai_property_search_identity_descript_not_null NOT NULL,
+    ai_property_search_identity_name_label character varying DEFAULT 'Nome'::character varying CONSTRAINT property_settings_ai_property_search_identity_name_lab_not_null NOT NULL,
+    ai_property_search_identity_phone_label character varying DEFAULT 'WhatsApp'::character varying CONSTRAINT property_settings_ai_property_search_identity_phone_la_not_null NOT NULL,
+    ai_property_search_identity_submit_label character varying DEFAULT 'Enviar interesse'::character varying CONSTRAINT property_settings_ai_property_search_identity_submit_l_not_null NOT NULL,
+    ai_property_search_identity_cancel_label character varying DEFAULT 'Cancelar'::character varying CONSTRAINT property_settings_ai_property_search_identity_cancel_l_not_null NOT NULL,
+    ai_property_search_interest_success_message character varying DEFAULT 'Interesse enviado ao corretor.'::character varying CONSTRAINT property_settings_ai_property_search_interest_success__not_null NOT NULL,
     ai_property_search_lead_origin character varying DEFAULT 'Seleção compartilhada'::character varying NOT NULL,
-    ai_property_search_broker_panel_title character varying DEFAULT 'Interesses nas suas seleções'::character varying NOT NULL,
-    ai_property_search_broker_event_message character varying DEFAULT '%{name} demonstrou interesse'::character varying NOT NULL,
-    ai_property_search_selection_count_message character varying DEFAULT '%{count} selecionado(s)'::character varying NOT NULL,
-    ai_property_search_share_button_label character varying DEFAULT 'Compartilhar'::character varying NOT NULL,
-    ai_property_search_link_copied_message character varying DEFAULT 'Link copiado para compartilhar.'::character varying NOT NULL,
-    ai_property_search_share_error_message character varying DEFAULT 'Não foi possível compartilhar.'::character varying NOT NULL,
-    ai_property_search_interest_error_message character varying DEFAULT 'Não foi possível registrar o interesse.'::character varying NOT NULL,
+    ai_property_search_broker_panel_title character varying DEFAULT 'Interesses nas suas seleções'::character varying CONSTRAINT property_settings_ai_property_search_broker_panel_titl_not_null NOT NULL,
+    ai_property_search_broker_event_message character varying DEFAULT '%{name} demonstrou interesse'::character varying CONSTRAINT property_settings_ai_property_search_broker_event_mess_not_null NOT NULL,
+    ai_property_search_selection_count_message character varying DEFAULT '%{count} selecionado(s)'::character varying CONSTRAINT property_settings_ai_property_search_selection_count_m_not_null NOT NULL,
+    ai_property_search_share_button_label character varying DEFAULT 'Compartilhar'::character varying CONSTRAINT property_settings_ai_property_search_share_button_labe_not_null NOT NULL,
+    ai_property_search_link_copied_message character varying DEFAULT 'Link copiado para compartilhar.'::character varying CONSTRAINT property_settings_ai_property_search_link_copied_messa_not_null NOT NULL,
+    ai_property_search_share_error_message character varying DEFAULT 'Não foi possível compartilhar.'::character varying CONSTRAINT property_settings_ai_property_search_share_error_messa_not_null NOT NULL,
+    ai_property_search_interest_error_message character varying DEFAULT 'Não foi possível registrar o interesse.'::character varying CONSTRAINT property_settings_ai_property_search_interest_error_me_not_null NOT NULL,
     ai_property_search_broker_event_meta character varying DEFAULT '%{count} imóvel(is) agrupado(s)'::character varying NOT NULL,
-    ai_property_search_sharing_disabled_message character varying DEFAULT 'Compartilhamento de seleções desativado.'::character varying NOT NULL,
-    ai_property_search_broker_events_limit integer DEFAULT 3 NOT NULL,
-    ai_property_search_catalog_property_types_limit integer DEFAULT 12 NOT NULL,
-    ai_property_search_catalog_cities_limit integer DEFAULT 12 NOT NULL,
-    ai_property_search_catalog_neighborhoods_limit integer DEFAULT 18 NOT NULL,
-    ai_property_search_catalog_developments_limit integer DEFAULT 12 NOT NULL,
-    ai_property_search_catalog_feature_terms_limit integer DEFAULT 20 NOT NULL,
-    ai_property_search_catalog_alias_names_limit integer DEFAULT 5 NOT NULL,
-    ai_property_search_transcription_vocabulary_enabled boolean DEFAULT true NOT NULL,
-    ai_property_search_resilient_search_enabled boolean DEFAULT false NOT NULL,
-    ai_property_search_location_fuzzy_threshold numeric(3,2) DEFAULT 0.4 NOT NULL,
+    ai_property_search_sharing_disabled_message character varying DEFAULT 'Compartilhamento de seleções desativado.'::character varying CONSTRAINT property_settings_ai_property_search_sharing_disabled__not_null NOT NULL,
+    ai_property_search_broker_events_limit integer DEFAULT 3 CONSTRAINT property_settings_ai_property_search_broker_events_lim_not_null NOT NULL,
+    ai_property_search_catalog_property_types_limit integer DEFAULT 12 CONSTRAINT property_settings_ai_property_search_catalog_property__not_null NOT NULL,
+    ai_property_search_catalog_cities_limit integer DEFAULT 12 CONSTRAINT property_settings_ai_property_search_catalog_cities_li_not_null NOT NULL,
+    ai_property_search_catalog_neighborhoods_limit integer DEFAULT 18 CONSTRAINT property_settings_ai_property_search_catalog_neighborh_not_null NOT NULL,
+    ai_property_search_catalog_developments_limit integer DEFAULT 12 CONSTRAINT property_settings_ai_property_search_catalog_developme_not_null NOT NULL,
+    ai_property_search_catalog_feature_terms_limit integer DEFAULT 20 CONSTRAINT property_settings_ai_property_search_catalog_feature_t_not_null NOT NULL,
+    ai_property_search_catalog_alias_names_limit integer DEFAULT 5 CONSTRAINT property_settings_ai_property_search_catalog_alias_nam_not_null NOT NULL,
+    ai_property_search_transcription_vocabulary_enabled boolean DEFAULT true CONSTRAINT property_settings_ai_property_search_transcription_voc_not_null NOT NULL,
+    ai_property_search_resilient_search_enabled boolean DEFAULT false CONSTRAINT property_settings_ai_property_search_resilient_search__not_null NOT NULL,
+    ai_property_search_location_fuzzy_threshold numeric(3,2) DEFAULT 0.4 CONSTRAINT property_settings_ai_property_search_location_fuzzy_th_not_null NOT NULL,
     ai_property_search_temperature numeric(3,2) DEFAULT 0.2 NOT NULL,
     ai_property_search_top_p numeric(3,2) DEFAULT 0.8 NOT NULL,
     ai_property_search_frequency_penalty numeric(3,2) DEFAULT 0.5 NOT NULL,
@@ -6811,8 +6799,8 @@ ALTER SEQUENCE public.support_tickets_id_seq OWNED BY public.support_tickets.id;
 
 CREATE TABLE public.system_health_settings (
     id bigint NOT NULL,
-    memory_available_warning_percent numeric(5,2) DEFAULT 15.0 NOT NULL,
-    memory_available_critical_percent numeric(5,2) DEFAULT 8.0 NOT NULL,
+    memory_available_warning_percent numeric(5,2) DEFAULT 15.0 CONSTRAINT system_health_settings_memory_available_warning_percen_not_null NOT NULL,
+    memory_available_critical_percent numeric(5,2) DEFAULT 8.0 CONSTRAINT system_health_settings_memory_available_critical_perce_not_null NOT NULL,
     disk_warning_percent numeric(5,2) DEFAULT 80.0 NOT NULL,
     disk_critical_percent numeric(5,2) DEFAULT 90.0 NOT NULL,
     swap_warning_mb integer DEFAULT 512 NOT NULL,
@@ -7324,19 +7312,19 @@ CREATE TABLE public.whatsapp_business_integrations (
     sale_rent_whatsapp_number character varying,
     sale_requires_lead_form boolean DEFAULT true NOT NULL,
     rent_requires_lead_form boolean DEFAULT true NOT NULL,
-    sale_rent_requires_lead_form boolean DEFAULT true NOT NULL,
+    sale_rent_requires_lead_form boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_sale_rent_requires_lead_fo_not_null NOT NULL,
     webhook_verify_token character varying,
     app_secret character varying,
     webhook_callback_url character varying,
     tenant_id bigint NOT NULL,
-    allow_photo_presentation boolean DEFAULT false NOT NULL,
+    allow_photo_presentation boolean DEFAULT false CONSTRAINT whatsapp_business_integration_allow_photo_presentation_not_null NOT NULL,
     presentation_enabled boolean DEFAULT true NOT NULL,
     require_presentation boolean DEFAULT false NOT NULL,
     require_presentation_since timestamp(6) without time zone,
-    inbox_attendance_enabled boolean DEFAULT false NOT NULL,
-    sale_redirect_after_capture boolean DEFAULT true NOT NULL,
-    rent_redirect_after_capture boolean DEFAULT true NOT NULL,
-    sale_rent_redirect_after_capture boolean DEFAULT true NOT NULL
+    inbox_attendance_enabled boolean DEFAULT false CONSTRAINT whatsapp_business_integration_inbox_attendance_enabled_not_null NOT NULL,
+    sale_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_sale_redirect_after_captur_not_null NOT NULL,
+    rent_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_rent_redirect_after_captur_not_null NOT NULL,
+    sale_rent_redirect_after_capture boolean DEFAULT true CONSTRAINT whatsapp_business_integrati_sale_rent_redirect_after_c_not_null NOT NULL
 );
 
 
@@ -7463,7 +7451,7 @@ ALTER SEQUENCE public.whatsapp_campaign_recipients_id_seq OWNED BY public.whatsa
 
 CREATE TABLE public.whatsapp_campaign_unsubscribes (
     id bigint NOT NULL,
-    whatsapp_sender_number_id bigint NOT NULL,
+    whatsapp_sender_number_id bigint CONSTRAINT whatsapp_campaign_unsubscrib_whatsapp_sender_number_id_not_null NOT NULL,
     whatsapp_campaign_id bigint,
     whatsapp_campaign_message_id bigint,
     whatsapp_campaign_recipient_id bigint,
@@ -17068,14 +17056,6 @@ ALTER TABLE ONLY public.property_review_policies
 
 
 --
--- Name: external_lead_integrations fk_rails_3c3de6e62d; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_3c3de6e62d FOREIGN KEY (connected_by_admin_user_id) REFERENCES public.admin_users(id);
-
-
---
 -- Name: automation_webhook_deliveries fk_rails_3e8969d1cd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17097,14 +17077,6 @@ ALTER TABLE ONLY public.home_settings
 
 ALTER TABLE ONLY public.account_memberships
     ADD CONSTRAINT fk_rails_3fbff27fad FOREIGN KEY (member_admin_user_id) REFERENCES public.admin_users(id);
-
-
---
--- Name: external_lead_integrations fk_rails_40450c5c31; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_40450c5c31 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
 
 
 --
@@ -17617,6 +17589,14 @@ ALTER TABLE ONLY public.portal_integrations
 
 ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
     ADD CONSTRAINT fk_rails_70b31ebeab FOREIGN KEY (lead_pipeline_stage_id) REFERENCES public.lead_pipeline_stages(id);
+
+
+--
+-- Name: external_lead_integrations fk_rails_71a6693771; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_71a6693771 FOREIGN KEY (connected_by_admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -18244,6 +18224,14 @@ ALTER TABLE ONLY public.commercial_contract_events
 
 
 --
+-- Name: external_lead_integrations fk_rails_ade9cba0cf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_ade9cba0cf FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: public_navigation_events fk_rails_af97a57d80; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18385,6 +18373,14 @@ ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
 
 ALTER TABLE ONLY public.automation_workflows
     ADD CONSTRAINT fk_rails_bcad8004e0 FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: external_lead_integrations fk_rails_bd21fb50d6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_lead_integrations
+    ADD CONSTRAINT fk_rails_bd21fb50d6 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
 
 
 --
@@ -18556,14 +18552,6 @@ ALTER TABLE ONLY public.automation_execution_steps
 
 
 --
--- Name: external_lead_integrations fk_rails_c5c23f1945; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.external_lead_integrations
-    ADD CONSTRAINT fk_rails_c5c23f1945 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
 -- Name: ai_property_share_audit_events fk_rails_c5d6831be9; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18577,6 +18565,14 @@ ALTER TABLE ONLY public.ai_property_share_audit_events
 
 ALTER TABLE ONLY public.layout_settings
     ADD CONSTRAINT fk_rails_c760eaba29 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: leads fk_rails_c8056365d4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_c8056365d4 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id);
 
 
 --
@@ -18825,14 +18821,6 @@ ALTER TABLE ONLY public.habitation_broker_assignments
 
 ALTER TABLE ONLY public.support_access_sessions
     ADD CONSTRAINT fk_rails_dc3c7c1b90 FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id);
-
-
---
--- Name: leads fk_rails_dfa6ee8ee1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.leads
-    ADD CONSTRAINT fk_rails_dfa6ee8ee1 FOREIGN KEY (external_lead_integration_id) REFERENCES public.external_lead_integrations(id);
 
 
 --
@@ -19183,11 +19171,15 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict qku2kNg4qEN0W8mLFjiQWcKBLWFbfQdyS6VpJyyD3JxzRxSDl34P1ueZevM6ccI
+\unrestrict ZFYFOHUugZIRthvwro6K49Qh7ARruGks2BtgqUda1ISMMpc8eLszu8NArPuZ6KR
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260917124000'),
+('20260917123000'),
+('20260917120000'),
+('20260916183000'),
 ('20260916142000'),
 ('20260916130000'),
 ('20260916010000'),

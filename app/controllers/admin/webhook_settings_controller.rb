@@ -95,10 +95,10 @@ class Admin::WebhookSettingsController < Admin::BaseController
   def authorize_webhook_settings!
     # Saída = manage :integracoes (conta inteira). Entrada = token pessoal, com
     # permissão própria manage :inbound_webhooks (liberada por perfil).
-    return if current_admin_user&.can?(:manage, :integracoes)
-    return if current_admin_user&.can?(:manage, :inbound_webhooks)
-
-    check_permission!(:manage, :integracoes)
+    check_any_permission!(
+      [:manage, :integracoes],
+      [:manage, :inbound_webhooks]
+    )
   end
 
   def require_outbound_permission!

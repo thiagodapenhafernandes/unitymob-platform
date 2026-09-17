@@ -2,7 +2,7 @@ module Admin
   # Convites de acesso EXTERNO (multi-conta): quem gerencia usuários convida um
   # e-mail de fora; o convite escolhe o perfil que o convidado terá NESTA conta.
   class AccountMembershipsController < Admin::BaseController
-    before_action -> { check_permission!(:manage, :corretores) }
+    requires_permission :manage, :corretores
     before_action :ensure_feature_available!
 
     def index

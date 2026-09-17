@@ -1,5 +1,5 @@
 class Admin::WhatsappInboxController < Admin::BaseController
-  before_action -> { check_permission!(:view, :whatsapp_inbox) }
+  requires_permission :view, :whatsapp_inbox
   MESSAGE_TOOL_ACTIONS = %i[react toggle_pin toggle_star forward_message add_to_notes hide_message].freeze
   # Janela do thread: últimas N mensagens em ordem cronológica (conversas longas
   # não carregam o histórico inteiro a cada clique).
@@ -7,8 +7,8 @@ class Admin::WhatsappInboxController < Admin::BaseController
   # Fila é filtrada/buscada client-side (wa-queue opera sobre o DOM): reduzir o
   # limite esconde conversas da busca — por isso configurável, default 200.
   DEFAULT_QUEUE_LIMIT = 200
-  before_action -> { check_permission!(:manage, :whatsapp_inbox) }, only: [:send_message, *MESSAGE_TOOL_ACTIONS]
-  before_action -> { check_permission!(:manage, :integracoes) }, only: :sync_templates
+  requires_permission :manage, :whatsapp_inbox, only: [:send_message, *MESSAGE_TOOL_ACTIONS]
+  requires_permission :manage, :integracoes, only: :sync_templates
   before_action :set_conversation, only: [:show, *MESSAGE_TOOL_ACTIONS]
   before_action :set_conversation_for_send_message, only: [:send_message]
   before_action :set_message, only: [:media]

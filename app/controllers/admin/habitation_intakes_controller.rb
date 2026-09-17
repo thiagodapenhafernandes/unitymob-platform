@@ -2,8 +2,8 @@ module Admin
   class HabitationIntakesController < Admin::BaseController
     include RentalGuaranteeParamNormalizer
 
-    before_action -> { check_permission!(:view, :captacoes) }
-    before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish proprietor_lookup retry_watermark discard_watermark]
+    requires_permission :view, :captacoes
+    requires_permission :manage, :captacoes, only: %i[new create edit update destroy submit_for_review release_to_site publish proprietor_lookup retry_watermark discard_watermark]
     before_action :authorize_export!, only: %i[export]
     before_action :set_property_setting, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish retry_watermark discard_watermark]
     before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish retry_watermark discard_watermark]

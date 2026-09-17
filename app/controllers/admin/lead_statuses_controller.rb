@@ -1,7 +1,7 @@
 module Admin
   # Gerencia as etapas do funil de leads selecionado.
   class LeadStatusesController < Admin::BaseController
-    before_action -> { check_permission!(:manage, :catalogos) }
+    requires_permission :manage, :configuracoes
 
     def index
       render json: stages_scope.map { |stage|

@@ -53,7 +53,7 @@ RSpec.describe "Admin::UserActivitySessions", type: :request do
       tenant: admin.tenant,
       name: "Auditor operacional #{SecureRandom.hex(4)}",
       axis: "vertical",
-      position: 500,
+      position: 9_900,
       permissions: { "access_audit" => { "view" => true, "scope" => "all" } }
     )
     auditor = create(:admin_user, tenant: admin.tenant, profile: profile, role: :editor)
@@ -64,7 +64,7 @@ RSpec.describe "Admin::UserActivitySessions", type: :request do
 
     expect(response).to redirect_to(admin_root_path)
     follow_redirect!
-    expect(response.body).to include("Acesso negado. Apenas administradores.")
+    expect(response.body).to include("Você não tem permissão para acessar esta área.")
   end
 
   it "mantém as sessões isoladas por conta" do

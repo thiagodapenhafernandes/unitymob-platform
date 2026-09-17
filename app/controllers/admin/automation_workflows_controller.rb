@@ -1,5 +1,5 @@
 class Admin::AutomationWorkflowsController < Admin::BaseController
-  before_action -> { check_permission!(:manage, :automacoes) }
+  requires_permission :manage, :automacoes
   before_action :set_workflow, only: [:show, :builder, :destroy, :save_draft, :publish, :simulate]
   before_action :set_catalogs, only: [:new, :builder]
 

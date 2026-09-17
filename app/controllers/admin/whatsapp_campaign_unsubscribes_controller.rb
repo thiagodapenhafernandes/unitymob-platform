@@ -1,6 +1,5 @@
 class Admin::WhatsappCampaignUnsubscribesController < Admin::BaseController
-  before_action -> { check_permission!(:view, :whatsapp_campaigns) }, only: [:index]
-  before_action -> { check_permission!(:manage, :whatsapp_campaigns) }, only: [:reenable]
+  requires_permission :manage, :conta
   before_action :set_unsubscribe, only: [:reenable]
 
   def index

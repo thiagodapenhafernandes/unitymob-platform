@@ -1,6 +1,6 @@
 class Admin::WhatsappTemplatesController < Admin::BaseController
-  before_action -> { check_permission!(:view, :whatsapp_campaigns) }, only: [:index, :show]
-  before_action -> { check_permission!(:manage, :whatsapp_campaigns) }, except: [:index, :show]
+  requires_permission :view, :whatsapp_campaigns, only: [:index, :show]
+  requires_permission :manage, :whatsapp_campaigns, except: [:index, :show]
   before_action :set_template, only: [:show, :edit, :update, :destroy, :new_campaign]
 
   def index

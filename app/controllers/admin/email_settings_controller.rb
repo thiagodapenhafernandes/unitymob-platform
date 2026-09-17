@@ -1,6 +1,6 @@
 module Admin
   class EmailSettingsController < Admin::BaseController
-    before_action -> { check_permission!(:manage, :integracoes) }
+    requires_permission :manage, :conta
     before_action :set_email_setting
     before_action :set_effective_email_transport
 
