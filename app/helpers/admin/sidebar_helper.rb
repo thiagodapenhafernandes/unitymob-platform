@@ -10,7 +10,7 @@ module Admin::SidebarHelper
   end
 
   def admin_sidebar_section_items(section)
-    safe_join(Profile.sidebar_items_for(section, profile: current_admin_user&.access_profile).filter_map { |item| admin_sidebar_item_node(item) })
+    safe_join(Profile.sidebar_items_for(section, profile: admin_sidebar_order_profile(section)).filter_map { |item| admin_sidebar_item_node(item) })
   end
 
   def admin_sidebar_item_node(item)
@@ -161,5 +161,15 @@ module Admin::SidebarHelper
     return false if inactive_params.any? { |key| params[key].present? }
 
     controllers.any? || controller_paths.any?
+  end
+
+  def admin_sidebar_order_profile(section)
+    user = current_admin_user
+    return nil if user.blank?
+
+    horizontal = user.horizontal_profile
+    return horizontal if horizontal.present? && Profile.menu_order_for(horizontal, section).present?
+
+    user.profile
   end
 end

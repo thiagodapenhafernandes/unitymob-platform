@@ -123,6 +123,74 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(product_items.map { |link| link.text.squish }.first(3)).to eq(%w[Leads Painel Imóveis])
   end
 
+  it "herda a ordem do perfil vertical quando a funcao horizontal nao define ordem propria" do
+    tenant = Tenant.create!(name: "Tenant menu vertical #{SecureRandom.hex(3)}", slug: "tenant-menu-vertical-#{SecureRandom.hex(3)}")
+    vertical = Profile.create!(
+      tenant: tenant,
+      name: "Vertical ordenado #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 600,
+      permissions: {
+        Profile::MENU_ORDER_PERMISSION_KEY => { "product" => %w[leads dashboard imoveis lead_pool lead_funnels] },
+        "dashboard" => { "view" => true },
+        "leads" => { "view" => true, "scope" => "all" },
+        "imoveis" => { "view" => true, "scope" => "all" },
+        "lead_pool" => { "view" => true, "scope" => "all" },
+        "lead_funnels" => { "view" => true, "scope" => "all" }
+      }
+    )
+    horizontal = Profile.create!(
+      tenant: tenant,
+      name: "Funcao sem ordem #{SecureRandom.hex(3)}",
+      axis: "horizontal",
+      vertical_profile: vertical,
+      permissions: {}
+    )
+    user = create(:admin_user, tenant: tenant, profile: vertical, horizontal_profile: horizontal, role: :editor)
+    sign_in user
+
+    get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    product_items = html.css('.ax-nav__section[data-nav-section="product"] .ax-nav__section-items a.ax-nav__link')
+    expect(product_items.map { |link| link.text.squish }.first(3)).to eq(%w[Leads Painel Imóveis])
+  end
+
+  it "prioriza a ordem da funcao horizontal quando ela define ordem propria" do
+    tenant = Tenant.create!(name: "Tenant menu horizontal #{SecureRandom.hex(3)}", slug: "tenant-menu-horizontal-#{SecureRandom.hex(3)}")
+    vertical = Profile.create!(
+      tenant: tenant,
+      name: "Vertical com ordem #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 600,
+      permissions: {
+        Profile::MENU_ORDER_PERMISSION_KEY => { "product" => %w[leads dashboard imoveis] },
+        "dashboard" => { "view" => true },
+        "leads" => { "view" => true, "scope" => "all" },
+        "imoveis" => { "view" => true, "scope" => "all" }
+      }
+    )
+    horizontal = Profile.create!(
+      tenant: tenant,
+      name: "Funcao com ordem #{SecureRandom.hex(3)}",
+      axis: "horizontal",
+      vertical_profile: vertical,
+      permissions: {
+        Profile::MENU_ORDER_PERMISSION_KEY => { "product" => %w[imoveis dashboard leads] }
+      }
+    )
+    user = create(:admin_user, tenant: tenant, profile: vertical, horizontal_profile: horizontal, role: :editor)
+    sign_in user
+
+    get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    product_items = html.css('.ax-nav__section[data-nav-section="product"] .ax-nav__section-items a.ax-nav__link')
+    expect(product_items.map { |link| link.text.squish }.first(3)).to eq(["Imóveis", "Painel", "Leads"])
+  end
+
   it "marca Captações como ativo para o controller real e não deixa Produto aberto por padrão" do
     admin = create(:admin_user, :admin)
     sign_in admin
