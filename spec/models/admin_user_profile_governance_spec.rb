@@ -368,6 +368,47 @@ RSpec.describe AdminUser, "perfis vertical e horizontal", type: :model do
     expect(user.can?(:manage, :access_security)).to be(false)
   end
 
+  it "exige toda a cadeia de ancestrais para liberar recursos netos por URL direta" do
+    vertical = Profile.create!(
+      tenant: tenant,
+      name: "Relatórios sem dashboard",
+      axis: "vertical",
+      position: 650,
+      permissions: {
+        "dashboard" => { "view" => false },
+        "dashboard_leads" => { "view" => true },
+        "dashboard_broker_performance" => { "view" => true, "scope" => "all" }
+      }
+    )
+    user = build(:admin_user, tenant: tenant, profile: vertical)
+
+    expect(user.can?(:view, :dashboard_leads)).to be(false)
+    expect(user.can?(:view, :dashboard_broker_performance)).to be(false)
+
+    vertical.permissions["dashboard"]["view"] = true
+
+    expect(user.can?(:view, :dashboard_leads)).to be(true)
+    expect(user.can?(:view, :dashboard_broker_performance)).to be(true)
+  end
+
+  it "aplica a cadeia completa também ao perfil horizontal" do
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    horizontal = Profile.create!(
+      tenant: tenant,
+      name: "Relatórios horizontais sem dashboard",
+      axis: "horizontal",
+      vertical_profile: owner_profile,
+      permissions: {
+        "dashboard" => { "view" => false },
+        "dashboard_leads" => { "view" => true },
+        "dashboard_campaign_performance" => { "view" => true, "scope" => "all" }
+      }
+    )
+    user = build(:admin_user, tenant: tenant, profile: owner_profile, horizontal_profile: horizontal)
+
+    expect(user.can?(:view, :dashboard_campaign_performance)).to be(false)
+  end
+
   it "impede rebaixar ou inativar o último Tenant Owner ativo do Tenant" do
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
     agent_profile = tenant.profiles.find_by!(key: "agent")

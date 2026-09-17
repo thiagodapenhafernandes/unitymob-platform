@@ -129,6 +129,9 @@ module Admin::SidebarHelper
       return false unless WhatsappBusinessIntegration.current(sidebar_tenant)&.messaging_ready?
     end
 
+    permission_all = Array(item[:permission_all])
+    return false if permission_all.any? && !permission_all.all? { |action, resource| can?(action, resource) }
+
     permission_any = Array(item[:permission_any])
     return permission_any.any? { |action, resource| can?(action, resource) } if permission_any.any?
 

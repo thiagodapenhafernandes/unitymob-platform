@@ -317,17 +317,12 @@ class AdminUser < ApplicationRecord
       return horizontal.can?(action, resource)
     end
     if horizontal
-      parent_section = Profile.parent_section_for(resource_key)
-      parent_action = Profile.parent_section_action_for(resource_key)
-      return false if parent_section.present? && !horizontal.can?(parent_action, parent_section)
+      return false unless permission_ancestors_allowed_by?(horizontal, resource_key)
       return horizontal.can?(action, resource) if horizontal.permission_action_configured?(action, resource_key)
     end
     return true if admin?
     return false unless vertical_profile
-
-    parent_section = Profile.parent_section_for(resource_key)
-    parent_action = Profile.parent_section_action_for(resource_key)
-    return false if parent_section.present? && !vertical_profile.can?(parent_action, parent_section)
+    return false unless permission_ancestors_allowed_by?(vertical_profile, resource_key)
 
     vertical_profile.can?(action, resource) || horizontal&.can?(action, resource) == true
   end
@@ -465,6 +460,27 @@ class AdminUser < ApplicationRecord
   end
 
   private
+
+  # Recursos podem ter mais de um nível de ancestralidade (por exemplo,
+  # relatório -> aba -> dashboard). Todos os ancestrais precisam estar
+  # liberados; validar apenas o pai imediato permitiria acesso por URL direta
+  # quando a seção raiz estivesse negada.
+  def permission_ancestors_allowed_by?(access_profile, resource)
+    current_resource = resource.to_s
+    visited = Set.new
+
+    loop do
+      parent = Profile.parent_section_for(current_resource)
+      return true if parent.blank?
+      return false if visited.include?(parent)
+
+      visited << parent
+      parent_action = Profile.parent_section_action_for(current_resource)
+      return false unless access_profile.can?(parent_action, parent)
+
+      current_resource = parent
+    end
+  end
 
   # Janela efetiva do lembrar-me: o menor entre a validade configurada e o
   # timeout de inatividade — o login sempre lembra o dispositivo (sessions
