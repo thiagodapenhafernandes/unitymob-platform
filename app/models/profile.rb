@@ -135,7 +135,7 @@ class Profile < ApplicationRecord
       { label: "Dashboard Captação", icon: "bi-bullseye", path: "dashboard_admin_captacoes_path", controllers: %w[captacoes], active_actions: %w[dashboard] }
     ], description: "Métricas e gauges de captação" },
     { key: "agenda_fotografia",  label: "Agenda de fotografia",   icon: "bi-camera",           actions: %w[view manage],       scopeable: false, parent_section: "integracoes", description: "Agenda e imóveis pendentes de fotografia" },
-    { key: "distribution_rules", label: "Regras de distribuição", icon: "bi-diagram-3",        actions: %w[view manage],       scopeable: false, sidebar_section: "operation", sidebar_actions: %w[view manage], sidebar_items: [
+    { key: "distribution_rules", label: "Regras de distribuição", icon: "bi-diagram-3",        actions: %w[view manage],       scopeable: false, sidebar_section: "operation", sidebar_actions: %w[manage], sidebar_items: [
       { label: "Distribuição de Leads", icon: "bi-diagram-3", path: "admin_distribution_rules_path", controllers: %w[distribution_rules] }
     ], description: "Distribuição automática de leads" },
     { key: "lojas",              label: "Lojas",                  icon: "bi-shop",             actions: %w[view manage],       scopeable: false, sidebar_section: "management", sidebar_actions: %w[view manage], sidebar_items: [
@@ -155,7 +155,7 @@ class Profile < ApplicationRecord
     { key: "proprietarios",      label: "Proprietários",          icon: "bi-person-vcard",     actions: %w[view manage],       scopeable: false, sidebar_section: "management", sidebar_actions: %w[view], sidebar_items: [
       { label: "Proprietários", icon: "bi-person-vcard", path: "admin_proprietors_path", controllers: %w[proprietors] }
     ], description: "Cadastro de proprietários" },
-    { key: "corretores",         label: "Corretores",             icon: "bi-people",           actions: %w[view manage sync], scopeable: false, sidebar_section: "management", sidebar_actions: %w[view], sidebar_items: [
+    { key: "corretores",         label: "Corretores",             icon: "bi-people",           actions: %w[view manage sync], scopeable: false, sidebar_section: "management", sidebar_actions: %w[manage], sidebar_items: [
       { label: "Usuários", icon: "bi-people", path: "admin_admin_users_path", controllers: %w[admin_users] }
     ], description: "Gerenciar AdminUsers" },
     { key: "metas_captacao",     label: "Metas de captação",      icon: "bi-bullseye",         actions: %w[view manage],       scopeable: false, sidebar_section: "management", sidebar_actions: %w[view], sidebar_items: [
@@ -201,7 +201,7 @@ class Profile < ApplicationRecord
       { label: "Agendamento", icon: "bi-calendar2-check", path: "admin_scheduling_integration_path", controllers: %w[scheduling_integrations], permission: [:view, :agenda_fotografia] },
       { label: "Webhooks", icon: "bi-broadcast", path: "admin_webhook_settings_path", controllers: %w[webhook_settings] },
       { label: "IA", icon: "bi-stars", path: "admin_ai_integration_path", controllers: %w[ai_integrations] },
-      { label: "Imóveis sincronizados", icon: "bi-arrow-repeat", path: "admin_habitations_path", path_params: { sort: "last_sync_at", direction: "desc" }, controllers: %w[habitations], active_params: { sort: "last_sync_at" } },
+      { label: "Imóveis sincronizados", icon: "bi-arrow-repeat", path: "admin_habitations_path", path_params: { sort: "last_sync_at", direction: "desc" }, controllers: %w[habitations], active_params: { sort: "last_sync_at" }, permission_all: [[:manage, :integracoes], [:view, :imoveis]] },
       { label: "Migração de Imagens", icon: "bi-images", path: "admin_image_migration_status_path", controllers: %w[image_migration_status] }
     ], description: "Meta, DWV, Loft, Portais, Webhooks" },
     { key: "configuracoes",      label: "Configurações",          icon: "bi-sliders",          actions: %w[manage],            scopeable: false, section: true, sidebar_section: "settings", sidebar_actions: %w[manage], included_items: ["Configurações de Leads", "Atendimento WhatsApp", "Catálogos Dinâmicos", "Configuração de Imóveis", "Fluxo de revisão", "Configurações de Campo"], sidebar_items: [
@@ -416,7 +416,8 @@ class Profile < ApplicationRecord
   # itens dinâmicos entram pela `permission`/`permission_any` já normalizada em
   # `sidebar_items_for`, mantendo sidebar e matriz de permissões no mesmo contrato.
   def self.sidebar_item_resource_keys(item)
-    explicit_permissions = Array(item[:permission_any]).presence || [item[:permission]].compact
+    explicit_permissions = Array(item[:permission_all])
+    explicit_permissions += Array(item[:permission_any]).presence || [item[:permission]].compact
     keys = explicit_permissions.filter_map { |_action, resource| resource&.to_s }
     keys += Array(item[:children]).flat_map { |child| sidebar_item_resource_keys(child) }
     keys
@@ -452,7 +453,7 @@ class Profile < ApplicationRecord
     sidebar_resources_for(section, profile: profile).flat_map do |resource|
       default_permissions = Array(resource[:sidebar_actions]).map { |action| [action.to_sym, resource.fetch(:key).to_sym] }
       Array(resource[:sidebar_items]).map do |item|
-        next item if item[:caption].present? || item[:permission].present? || item[:permission_any].present?
+        next item if item[:caption].present? || item[:permission].present? || item[:permission_any].present? || item[:permission_all].present?
 
         item.merge(permission_any: default_permissions)
       end

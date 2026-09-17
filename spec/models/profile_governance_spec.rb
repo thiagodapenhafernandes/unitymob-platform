@@ -114,7 +114,9 @@ RSpec.describe Profile, "governança vertical/horizontal", type: :model do
     expect(described_class.parent_section_for(:commercial_contracts)).to eq("comercial")
     expect(described_class.resource_for(:conta)[:included_items]).to include("Perfis")
     expect(described_class.resource_for(:commercial_contracts)[:actions]).to eq(%w[manage])
-    expect(described_class.sidebar_permissions_for(:operation)).to include([:view, :comercial], [:manage, :automacoes])
+    expect(described_class.sidebar_permissions_for(:operation)).to include([:view, :comercial], [:manage, :automacoes], [:manage, :distribution_rules])
+    expect(described_class.sidebar_permissions_for(:operation)).not_to include([:view, :distribution_rules])
+    expect(described_class.sidebar_permissions_for(:management)).to include([:manage, :corretores])
     expect(described_class.sidebar_permissions_for(:account)).to eq([[:manage, :conta]])
     expect(described_class.sidebar_items_for(:product).map { |item| item[:label] || item[:dynamic] || item[:group] }).to include("dashboard_home", "Imóveis", "Leads", "Bolsão", "lead_pipelines")
     expect(described_class.sidebar_menu_count_for(:product)).to eq(6)
@@ -152,6 +154,8 @@ RSpec.describe Profile, "governança vertical/horizontal", type: :model do
     expect(account[:resources].map { |resource| resource[:key] }).to include("access_security", "access_audit", "data_export_audit")
     expect(integrations[:resource][:key]).to eq("integracoes")
     expect(integrations[:resources].map { |resource| resource[:key] }).to include("agenda_fotografia", "inbound_webhooks")
+    synced_properties = described_class.sidebar_items_for(:integrations).find { |item| item[:label] == "Imóveis sincronizados" }
+    expect(synced_properties[:permission_all]).to eq([[:manage, :integracoes], [:view, :imoveis]])
   end
 
   it "permite reordenar menus por perfil sem aceitar chaves fora do catálogo" do
