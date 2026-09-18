@@ -14,7 +14,7 @@ raise "Use an isolated *_test database" unless connection.select_value("SELECT c
 connection.drop_table(:webhook_events, if_exists: true)
 connection.drop_table(:webhook_routes, if_exists: true)
 connection.drop_table(:account_routes, if_exists: true)
-%i[account_memberships discovery_challenges discovery_limits].each { |table| connection.drop_table(table, if_exists: true) }
+%i[account_memberships discovery_challenges discovery_limits admin_login_challenges].each { |table| connection.drop_table(table, if_exists: true) }
 
 ActiveRecord::Schema.define do
   suppress_messages do
@@ -68,6 +68,8 @@ end
 
 require_relative "../db/migrate/20260906040000_create_discovery_v2"
 ActiveRecord::Migration.suppress_messages { CreateDiscoveryV2.new.migrate(:up) }
+require_relative "../db/migrate/20260918000000_create_admin_login_challenges"
+ActiveRecord::Migration.suppress_messages { CreateAdminLoginChallenges.new.migrate(:up) }
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods
@@ -79,5 +81,6 @@ RSpec.configure do |config|
     AccountMembership.delete_all
     DiscoveryChallenge.delete_all
     DiscoveryLimit.delete_all
+    AdminLoginChallenge.delete_all
   end
 end

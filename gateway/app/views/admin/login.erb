@@ -1,0 +1,15 @@
+<div class="card center-card">
+  <h2>Entrar</h2>
+  <% if @error %>
+    <div class="error"><%= @error %></div>
+  <% end %>
+  <form method="post" action="/admin/login">
+    <input type="hidden" name="authenticity_token" value="<%= csrf_token %>">
+    <label for="email">E-mail</label>
+    <input type="email" id="email" name="email" required autofocus>
+    <label for="password">Senha</label>
+    <input type="password" id="password" name="password" required>
+    <button type="submit">Continuar</button>
+  </form>
+  <p class="hint">Um código de confirmação será enviado por e-mail para completar o login.</p>
+</div>

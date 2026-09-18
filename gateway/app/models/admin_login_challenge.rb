@@ -1,0 +1,2 @@
+class AdminLoginChallenge < ApplicationRecord
+end
