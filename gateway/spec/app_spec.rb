@@ -68,6 +68,92 @@ RSpec.describe Gateway::App do
     expect(stub).to have_been_requested
   end
 
+  it "mirrors routed WhatsApp events to the dev target without changing the official delivery" do
+    route = WebhookRoute.create!(
+      client_key: "conexao",
+      phone_number_id: "692164393979141",
+      target_url: "https://app.conexaobc.com/webhooks/whatsapp",
+      forwarding_secret: "forward-secret"
+    )
+    mirror = WebhookMirror.create!(
+      name: "Dev Unitymob",
+      provider: "all",
+      target_url: "https://dev.unitymob.com.br",
+      forwarding_secret: "dev-secret",
+      active: true
+    )
+    payload = {
+      entry: [{ id: "725008303233971", changes: [{ value: { metadata: { phone_number_id: "692164393979141" }, messages: [{ id: "wamid.message" }] } }] }]
+    }.to_json
+    official = stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+    dev = stub_request(:post, "https://dev.unitymob.com.br/webhooks/whatsapp").with(
+      headers: {
+        "X-Unitymob-Gateway-Mirror" => "dev",
+        "X-Unitymob-Gateway-Signature" => Gateway::InternalSignature.sign(payload, secret: "dev-secret")
+      }
+    ).to_return(status: 200, body: "ok")
+
+    post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+
+    expect(last_response.status).to eq(200)
+    expect(WebhookEvent.last).to have_attributes(status: "forwarded", webhook_route_id: route.id)
+    expect(mirror.reload).to have_attributes(last_status: "forwarded")
+    expect(official).to have_been_requested
+    expect(dev).to have_been_requested
+  end
+
+  it "does not mirror events when the dev mirror is disabled by env" do
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with("GATEWAY_DEV_MIRROR_ENABLED", "true").and_return("false")
+    route = WebhookRoute.create!(
+      client_key: "conexao",
+      phone_number_id: "692164393979141",
+      target_url: "https://app.conexaobc.com/webhooks/whatsapp",
+      forwarding_secret: "forward-secret"
+    )
+    WebhookMirror.create!(
+      name: "Dev Unitymob",
+      provider: "all",
+      target_url: "https://dev.unitymob.com.br",
+      forwarding_secret: "dev-secret",
+      active: true
+    )
+    payload = { entry: [{ changes: [{ value: { metadata: { phone_number_id: "692164393979141" }, messages: [{ id: "wamid.message" }] } }] }] }.to_json
+    stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+    dev = stub_request(:post, "https://dev.unitymob.com.br/webhooks/whatsapp").to_return(status: 200, body: "ok")
+
+    post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+
+    expect(last_response.status).to eq(200)
+    expect(dev).not_to have_been_requested
+  end
+
+  it "keeps the official delivery successful when the dev mirror fails" do
+    route = WebhookRoute.create!(
+      client_key: "conexao",
+      phone_number_id: "692164393979141",
+      target_url: "https://app.conexaobc.com/webhooks/whatsapp",
+      forwarding_secret: "forward-secret"
+    )
+    mirror = WebhookMirror.create!(
+      name: "Dev Unitymob",
+      provider: "whatsapp",
+      target_url: "https://dev.unitymob.com.br/webhooks/whatsapp",
+      forwarding_secret: "dev-secret",
+      active: true
+    )
+    payload = { entry: [{ changes: [{ value: { metadata: { phone_number_id: "692164393979141" }, messages: [{ id: "wamid.message" }] } }] }] }.to_json
+    stub_request(:post, mirror.target_url).to_timeout
+    stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+
+    post "/webhooks/whatsapp", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+
+    expect(last_response.status).to eq(200)
+    expect(WebhookEvent.last).to have_attributes(status: "forwarded", webhook_route_id: route.id)
+    expect(mirror.reload.last_status).to eq("failed")
+    expect(mirror.last_error).to include("Net::")
+  end
+
   it "stores and forwards routed Meta leadgen events by page id" do
     route = WebhookRoute.create!(
       provider: "meta",
@@ -111,6 +197,33 @@ RSpec.describe Gateway::App do
       raw_body: payload
     )
     expect(stub).to have_been_requested
+  end
+
+  it "mirrors Meta events to the dev Meta endpoint when the mirror receives all providers" do
+    route = WebhookRoute.create!(
+      provider: "meta",
+      client_key: "conexao",
+      page_id: "214973675033177",
+      target_url: "https://app.conexaobc.com/webhooks/meta",
+      forwarding_secret: "forward-secret"
+    )
+    WebhookMirror.create!(
+      name: "Dev Unitymob",
+      provider: "all",
+      target_url: "https://dev.unitymob.com.br",
+      forwarding_secret: "dev-secret",
+      active: true
+    )
+    payload = {
+      entry: [{ id: "214973675033177", changes: [{ field: "leadgen", value: { leadgen_id: "lead-123", page_id: "214973675033177", form_id: "form-456" } }] }]
+    }.to_json
+    stub_request(:post, route.target_url).to_return(status: 200, body: "ok")
+    dev = stub_request(:post, "https://dev.unitymob.com.br/webhooks/meta").to_return(status: 200, body: "ok")
+
+    post "/webhooks/meta", payload, "CONTENT_TYPE" => "application/json", "HTTP_X_HUB_SIGNATURE_256" => Gateway::MetaSignature.sign(payload, app_secret: "app-secret")
+
+    expect(last_response.status).to eq(200)
+    expect(dev).to have_been_requested
   end
 
   it "prefers a Meta leadgen route scoped to page and form" do

@@ -41,13 +41,15 @@
     input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
       outline: 3px solid #0b57d0; outline-offset: 2px;
     }
-    button[type=submit], .link-button {
+    button[type=submit], .link-button, .button-secondary {
       padding: 10px 12px; background: #1a1d24; color: #fff;
       border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
       text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
     }
     .center-card button[type=submit] { width: 100%; }
-    button[type=submit]:hover, .link-button:hover { background: #2a2f3b; }
+    button[type=submit]:hover, .link-button:hover, .button-secondary:hover { background: #2a2f3b; }
+    .button-secondary { background: #fff; color: #1a1d24; border: 1px solid #d6d9e0; }
+    .button-secondary:hover { color: #fff; border-color: #2a2f3b; }
     .filters, .route-form {
       display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; align-items: end;
       margin-bottom: 18px;
@@ -79,11 +81,17 @@
     .details { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 0; }
     .details dt { color: #6b7080; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 6px; }
     .details dd { margin: 0; font-size: 13px; }
+    dialog { width: min(960px, calc(100vw - 32px)); border: 0; border-radius: 10px; padding: 0; box-shadow: 0 24px 70px rgba(18, 21, 28, 0.22); }
+    dialog::backdrop { background: rgba(18, 21, 28, 0.42); }
+    .dialog-card { padding: 24px; }
+    .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .mirror-form { display: grid; grid-template-columns: 160px 1fr 120px 140px; gap: 12px; align-items: end; margin-top: 12px; }
+    .mirror-form input[type=checkbox] { margin: 0 8px 16px 0; }
     @media (max-width: 900px) {
       main { padding: 20px 12px; }
       .card { padding: 16px; }
       .card__header { display: block; }
-      .filters, .route-form, .details { grid-template-columns: 1fr; }
+      .filters, .route-form, .details, .mirror-form { grid-template-columns: 1fr; }
       .filters > div, .filters > div:first-child, .filters button, .route-form > div, .route-form button { grid-column: auto; }
       table { display: block; overflow-x: auto; white-space: nowrap; }
       .wrap { white-space: normal; min-width: 220px; }

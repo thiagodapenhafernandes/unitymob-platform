@@ -8,6 +8,7 @@
       <h2>Conexões estabelecidas (<%= @route_total %>)</h2>
       <p class="subtle">Ordenadas pelo evento mais recente. Abra uma conexão para ver entregas, falhas e tentativas.</p>
     </div>
+    <button class="button-secondary" type="button" onclick="document.getElementById('route-dialog').showModal()">Nova conexão</button>
   </div>
 
   <form class="filters" method="get" action="/admin">
@@ -94,14 +95,63 @@
 </section>
 
 <section class="card">
-  <h2>Cadastrar conexão manual</h2>
-  <p class="subtle">Use para testes controlados, por exemplo apontando para um túnel em <span class="mono">https://dev.unitymob.com.br/webhooks/meta</span>. Se o segredo ficar em branco, o gateway gera um segredo novo para assinar os encaminhamentos.</p>
-  <% if @route_error %>
-    <p class="error"><%= h(@route_error) %></p>
+  <div class="card__header">
+    <div>
+      <h2>Espelho dev</h2>
+      <p class="subtle">Copia eventos recebidos para <span class="mono">dev.unitymob.com.br</span> sem alterar a entrega oficial.</p>
+    </div>
+    <% if @dev_mirror&.active? %>
+      <span class="badge badge--green">ligado</span>
+    <% else %>
+      <span class="badge badge--gray">desligado</span>
+    <% end %>
+  </div>
+  <% if @mirror_error %>
+    <p class="error"><%= h(@mirror_error) %></p>
   <% end %>
-  <form class="route-form" method="post" action="/admin/routes">
+  <% if @dev_mirror&.last_error.to_s != '' %>
+    <p class="error"><%= h(@dev_mirror.last_error) %></p>
+  <% end %>
+  <form class="mirror-form" method="post" action="/admin/dev_mirror">
     <input type="hidden" name="authenticity_token" value="<%= csrf_token %>">
     <div>
+      <label for="mirror_provider">Canal</label>
+      <select id="mirror_provider" name="provider">
+        <option value="all" <%= 'selected' if @mirror_form['provider'] == 'all' %>>Todos</option>
+        <option value="meta" <%= 'selected' if @mirror_form['provider'] == 'meta' %>>Meta Lead Ads</option>
+        <option value="whatsapp" <%= 'selected' if @mirror_form['provider'] == 'whatsapp' %>>WhatsApp</option>
+      </select>
+    </div>
+    <div>
+      <label for="mirror_target_url">Domínio dev</label>
+      <input id="mirror_target_url" name="target_url" type="url" required value="<%= h(@mirror_form['target_url']) %>">
+    </div>
+    <label>
+      <input type="hidden" name="active" value="false">
+      <input type="checkbox" name="active" value="true" <%= 'checked' if @mirror_form['active'] == 'true' %>>
+      Ligado
+    </label>
+    <button type="submit">Salvar</button>
+    <div>
+      <label for="mirror_forwarding_secret">Segredo</label>
+      <input id="mirror_forwarding_secret" name="forwarding_secret" type="password" autocomplete="new-password" placeholder="manter ou gerar">
+    </div>
+  </form>
+  <% if @dev_mirror&.last_attempted_at %>
+    <p class="subtle">Última tentativa: <%= @dev_mirror.last_attempted_at.strftime('%d/%m %H:%M') %> · status <%= h(@dev_mirror.last_status) %></p>
+  <% end %>
+</section>
+
+<dialog id="route-dialog" <%= 'open' if @route_error %>>
+  <section class="dialog-card">
+    <h2>Cadastrar conexão manual</h2>
+    <p class="subtle">Use para exceções controladas. Se o segredo ficar em branco, o gateway gera um segredo novo para assinar os encaminhamentos.</p>
+    <% if @route_error %>
+      <p class="error"><%= h(@route_error) %></p>
+    <% end %>
+    <form class="route-form" method="post" action="/admin/routes">
+      <input type="hidden" name="authenticity_token" value="<%= csrf_token %>">
+      <div>
       <label for="route_provider">Canal</label>
       <select id="route_provider" name="route_provider" required>
         <option value="meta" <%= 'selected' if @route_form['route_provider'].to_s != 'whatsapp' %>>Meta Lead Ads</option>
@@ -120,19 +170,19 @@
       <label for="target_url">Destino</label>
       <input id="target_url" name="target_url" type="url" required value="<%= h(@route_form['target_url']) %>" placeholder="https://dev.unitymob.com.br/webhooks/meta">
     </div>
-    <div>
+    <div data-route-field="meta">
       <label for="page_id">page_id</label>
       <input id="page_id" name="page_id" type="text" value="<%= h(@route_form['page_id']) %>">
     </div>
-    <div>
+    <div data-route-field="meta">
       <label for="form_id">form_id</label>
       <input id="form_id" name="form_id" type="text" value="<%= h(@route_form['form_id']) %>">
     </div>
-    <div>
+    <div data-route-field="whatsapp">
       <label for="phone_number_id">phone_number_id</label>
       <input id="phone_number_id" name="phone_number_id" type="text" value="<%= h(@route_form['phone_number_id']) %>">
     </div>
-    <div>
+    <div data-route-field="whatsapp">
       <label for="waba_id">waba_id</label>
       <input id="waba_id" name="waba_id" type="text" value="<%= h(@route_form['waba_id']) %>">
     </div>
@@ -147,6 +197,22 @@
         <option value="false" <%= 'selected' if @route_form['active'] == 'false' %>>Inativa</option>
       </select>
     </div>
-    <button type="submit">Salvar conexão</button>
-  </form>
-</section>
+      <div class="dialog-actions">
+        <button class="button-secondary" type="button" onclick="document.getElementById('route-dialog').close()">Cancelar</button>
+        <button type="submit">Salvar conexão</button>
+      </div>
+    </form>
+  </section>
+</dialog>
+
+<script>
+  (() => {
+    const provider = document.getElementById('route_provider');
+    const fields = document.querySelectorAll('[data-route-field]');
+    const sync = () => fields.forEach((field) => {
+      field.hidden = field.dataset.routeField !== provider.value;
+    });
+    provider.addEventListener('change', sync);
+    sync();
+  })();
+</script>

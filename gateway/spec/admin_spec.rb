@@ -57,6 +57,8 @@ RSpec.describe 'Admin panel' do
     expect(last_response.body).to include('Salute')
     expect(last_response.body).to include(route.target_url)
     expect(last_response.body).to include("/admin/routes/#{route.id}")
+    expect(last_response.body).to include('Nova conexão')
+    expect(last_response.body).to include('Espelho dev')
   end
 
   it 'shows events for a selected connection' do
@@ -101,6 +103,24 @@ RSpec.describe 'Admin panel' do
     expect(last_response.status).to eq(302)
     expect(last_response.location).to include("/admin/routes/#{route.id}")
     expect(route).to have_attributes(client_key: 'dev', target_url: 'https://dev.unitymob.com.br/webhooks/meta', active: true)
+  end
+
+  it 'updates the dev mirror from the admin panel' do
+    login
+    get '/admin/login/verify'
+    post '/admin/login/verify', code: @code, authenticity_token: csrf_token
+    get '/admin'
+
+    post '/admin/dev_mirror',
+      provider: 'all',
+      target_url: 'https://dev.unitymob.com.br',
+      forwarding_secret: 'secret-dev',
+      active: 'true',
+      authenticity_token: csrf_token
+
+    mirror = WebhookMirror.find_by!(name: 'Dev Unitymob')
+    expect(last_response.status).to eq(302)
+    expect(mirror).to have_attributes(provider: 'all', active: true, target_url: 'https://dev.unitymob.com.br')
   end
 
   it 'rejects a wrong code without consuming it, then accepts the right one' do
