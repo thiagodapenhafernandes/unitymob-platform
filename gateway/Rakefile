@@ -87,5 +87,14 @@ namespace :discovery do
   task :cleanup do
     DiscoveryChallenge.where('expires_at < ?', Time.now.utc).delete_all
     DiscoveryLimit.where('expires_at < ?', Time.now.utc).delete_all
+    AdminLoginChallenge.where('expires_at < ?', Time.now.utc).delete_all
+  end
+end
+
+namespace :admin do
+  desc "Hash a password for GATEWAY_ADMIN_PASSWORD_DIGEST. Usage: PASSWORD=... rake admin:hash_password"
+  task :hash_password do
+    password = ENV.fetch("PASSWORD") { abort("Set PASSWORD=... rake admin:hash_password") }
+    puts Gateway::AdminAuth.hash_password(password)
   end
 end

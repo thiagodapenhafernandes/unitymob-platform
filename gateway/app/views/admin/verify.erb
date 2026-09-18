@@ -1,0 +1,13 @@
+<div class="card center-card">
+  <h2>Código de confirmação</h2>
+  <% if @error %>
+    <div class="error"><%= @error %></div>
+  <% end %>
+  <form method="post" action="/admin/login/verify">
+    <input type="hidden" name="authenticity_token" value="<%= csrf_token %>">
+    <label for="code">Código de 6 dígitos</label>
+    <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autofocus>
+    <button type="submit">Confirmar</button>
+  </form>
+  <p class="hint">Enviamos um código para o e-mail cadastrado. Válido por 10 minutos.</p>
+</div>

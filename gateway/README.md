@@ -167,6 +167,27 @@ O gateway envia para o `target_url` cadastrado:
 
 O destino deve validar a assinatura com o `forwarding_secret` da rota.
 
+## Painel administrativo (`/admin`)
+
+Visão geral somente leitura das contas roteadas: de onde vêm os eventos (identificadores da Meta — `phone_number_id`/`waba_id` para WhatsApp, `page_id`/`form_id` para Lead Ads) e para onde cada uma é encaminhada (`target_url`), com status do último evento e eventos recentes sem rota.
+
+Login em duas etapas, sem cadastro de usuários — uma única credencial de operação:
+
+1. `POST /admin/login` com e-mail e senha (`GATEWAY_ADMIN_EMAIL` / `GATEWAY_ADMIN_PASSWORD_DIGEST`).
+2. Código de 6 dígitos, válido por 10 minutos, enviado por e-mail (Resend) para `GATEWAY_ADMIN_EMAIL` — não para o e-mail digitado no formulário.
+3. Sessão de navegador (cookie assinado) válida por 12h.
+
+Setup:
+
+```bash
+PASSWORD='sua-senha' bundle exec rake admin:hash_password
+# copiar a saída para GATEWAY_ADMIN_PASSWORD_DIGEST no .env
+```
+
+Defina também `SESSION_SECRET`, `GATEWAY_ADMIN_SECRET` e `GATEWAY_ADMIN_EMAIL` (ver `.env.example`). Reaproveita `RESEND_API_KEY`/`DISCOVERY_MAIL_FROM` já usados pelo Discovery, a menos que `GATEWAY_ADMIN_MAIL_FROM` seja definido.
+
+Rate limit de 10 tentativas / 10 min por IP em cada etapa (login e verificação de código).
+
 ## Discovery V2 (ativação coordenada)
 
 Implementação aditiva: índice `account_memberships`, credenciais exclusivas por instância, confirmação de e-mail via API HTTPS do Resend, desafios de uso único e limites persistidos. Não altera os contratos de webhook.
