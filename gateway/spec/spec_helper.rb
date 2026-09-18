@@ -13,6 +13,7 @@ connection = ActiveRecord::Base.connection
 raise "Use an isolated *_test database" unless connection.select_value("SELECT current_database()").end_with?("_test")
 connection.drop_table(:webhook_events, if_exists: true)
 connection.drop_table(:webhook_routes, if_exists: true)
+connection.drop_table(:webhook_mirrors, if_exists: true)
 connection.drop_table(:account_routes, if_exists: true)
 %i[account_memberships discovery_challenges discovery_limits admin_login_challenges].each { |table| connection.drop_table(table, if_exists: true) }
 
@@ -55,6 +56,20 @@ ActiveRecord::Schema.define do
       t.timestamps
     end
 
+    create_table :webhook_mirrors do |t|
+      t.string :name, null: false
+      t.string :provider, null: false, default: "all"
+      t.string :target_url, null: false
+      t.string :forwarding_secret, null: false
+      t.boolean :active, null: false, default: false
+      t.string :last_status
+      t.text :last_error
+      t.datetime :last_attempted_at
+      t.datetime :last_succeeded_at
+      t.timestamps
+    end
+    add_index :webhook_mirrors, :name, unique: true
+
     create_table :account_routes do |t|
       t.string :email, null: false
       t.string :tenant_name
@@ -77,6 +92,7 @@ RSpec.configure do |config|
   config.before do
     WebhookEvent.delete_all
     WebhookRoute.delete_all
+    WebhookMirror.delete_all
     AccountRoute.delete_all
     AccountMembership.delete_all
     DiscoveryChallenge.delete_all

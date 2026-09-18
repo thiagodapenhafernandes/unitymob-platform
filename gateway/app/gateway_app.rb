@@ -53,6 +53,7 @@ module Gateway
       events = event_contexts.map { |context| persist_event(context, payload, raw_body) }
 
       alert_unrouted_events(events)
+      events.each { |event| mirror_event(event, raw_body) }
       events.each { |event| forward_event(event, raw_body) }
 
       status 200
@@ -75,6 +76,7 @@ module Gateway
       events = event_contexts.map { |context| persist_meta_event(context, context[:payload] || payload, context[:payload] ? JSON.generate(context[:payload]) : raw_body) }
 
       alert_unrouted_events(events)
+      events.each { |event| mirror_event(event, event.raw_body) }
       events.each { |event| forward_event(event, event.raw_body) }
 
       status 200
@@ -354,6 +356,10 @@ module Gateway
       return unless event.webhook_route
 
       EventForwarder.call(event:, raw_body:)
+    end
+
+    def mirror_event(event, raw_body)
+      MirrorForwarder.call(event:, raw_body:)
     end
 
     def alert_unrouted_events(events)

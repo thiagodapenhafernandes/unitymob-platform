@@ -66,6 +66,7 @@ module Gateway
         require_admin!
         load_dashboard!
         @route_form = {}
+        @mirror_form = mirror_form_defaults
         erb :'admin/dashboard'
       end
 
@@ -93,6 +94,27 @@ module Gateway
       rescue ArgumentError => error
         @route_error = error.message
         @route_form = params
+        load_dashboard!
+        erb :'admin/dashboard'
+      end
+
+      app.post '/admin/dev_mirror' do
+        require_admin!
+        verify_csrf!
+        mirror = WebhookMirror.find_or_initialize_by(name: 'Dev Unitymob')
+        mirror.assign_attributes(admin_mirror_attributes(params, mirror))
+        mirror.save!
+        redirect "/admin?message=#{Rack::Utils.escape('Espelho dev salvo.')}"
+      rescue ActiveRecord::RecordInvalid => error
+        @mirror_error = error.record.errors.full_messages.join(', ')
+        @mirror_form = params
+        @route_form = {}
+        load_dashboard!
+        erb :'admin/dashboard'
+      rescue ArgumentError => error
+        @mirror_error = error.message
+        @mirror_form = params
+        @route_form = {}
         load_dashboard!
         erb :'admin/dashboard'
       end
@@ -164,6 +186,8 @@ module Gateway
           route_ids = @routes.map(&:id)
           @last_events = route_ids.empty? ? {} : WebhookEvent.where(webhook_route_id: route_ids).order(received_at: :desc, id: :desc).each_with_object({}) { |event, memo| memo[event.webhook_route_id] ||= event }
           @failed_counts = route_ids.empty? ? {} : WebhookEvent.where(webhook_route_id: route_ids, status: 'failed').where('received_at > ?', Time.now.utc - 86_400).group(:webhook_route_id).count
+          @dev_mirror = WebhookMirror.find_by(name: 'Dev Unitymob')
+          @mirror_form ||= mirror_form_defaults
         end
 
         def admin_routes_scope
@@ -224,6 +248,37 @@ module Gateway
             attrs[:waba_id] = payload['waba_id'].to_s.strip
           end
           attrs
+        rescue URI::InvalidURIError
+          raise ArgumentError, 'Destino deve ser uma URL válida.'
+        end
+
+        def mirror_form_defaults
+          mirror = @dev_mirror || WebhookMirror.find_by(name: 'Dev Unitymob')
+          {
+            'provider' => mirror&.provider || 'all',
+            'target_url' => mirror&.target_url || 'https://dev.unitymob.com.br',
+            'active' => mirror&.active? ? 'true' : 'false'
+          }
+        end
+
+        def admin_mirror_attributes(payload, mirror)
+          provider = payload['provider'].to_s
+          raise ArgumentError, 'Canal inválido.' unless WebhookMirror::PROVIDERS.include?(provider)
+
+          target_url = payload['target_url'].to_s.strip
+          uri = URI.parse(target_url)
+          raise ArgumentError, 'Destino deve ser uma URL https.' unless uri.is_a?(URI::HTTPS) && uri.host
+
+          secret = payload['forwarding_secret'].to_s.strip
+          secret = mirror.forwarding_secret if secret.empty?
+          secret = SecureRandom.hex(32) if secret.to_s.empty?
+
+          {
+            provider:,
+            target_url:,
+            forwarding_secret: secret,
+            active: payload['active'] == 'true'
+          }
         rescue URI::InvalidURIError
           raise ArgumentError, 'Destino deve ser uma URL válida.'
         end
