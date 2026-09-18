@@ -23,23 +23,41 @@
       padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer;
     }
     header button:hover { background: #1f232c; }
-    main { max-width: 1080px; margin: 0 auto; padding: 32px 24px; }
+    main { max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
     .card {
       background: #fff; border: 1px solid #e4e6ec; border-radius: 10px;
       padding: 24px; margin-bottom: 20px;
     }
+    .card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
     .center-card { max-width: 420px; margin: 80px auto; }
     h2 { font-size: 15px; margin: 0 0 16px; color: #4a4f5c; text-transform: uppercase; letter-spacing: 0.04em; }
+    .card__header h2 { margin-bottom: 4px; }
     label { display: block; font-size: 13px; color: #4a4f5c; margin-bottom: 6px; }
-    input[type=email], input[type=password], input[type=text] {
+    input[type=email], input[type=password], input[type=text], input[type=url], select {
       width: 100%; padding: 10px 12px; border: 1px solid #d6d9e0; border-radius: 6px;
       font-size: 14px; margin-bottom: 16px;
+      background: #fff; color: #1a1d24;
     }
-    button[type=submit] {
-      width: 100%; padding: 10px 12px; background: #1a1d24; color: #fff;
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 3px solid #0b57d0; outline-offset: 2px;
+    }
+    button[type=submit], .link-button {
+      padding: 10px 12px; background: #1a1d24; color: #fff;
       border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
     }
-    button[type=submit]:hover { background: #2a2f3b; }
+    .center-card button[type=submit] { width: 100%; }
+    button[type=submit]:hover, .link-button:hover { background: #2a2f3b; }
+    .filters, .route-form {
+      display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; align-items: end;
+      margin-bottom: 18px;
+    }
+    .filters > div { grid-column: span 3; }
+    .filters > div:first-child { grid-column: span 5; }
+    .filters button { grid-column: span 1; margin-bottom: 16px; min-height: 40px; }
+    .route-form > div { grid-column: span 3; }
+    .route-form button { grid-column: span 3; margin-bottom: 16px; min-height: 40px; }
+    .notice { background: #eaf4ff; color: #17456f; padding: 10px 12px; border-radius: 6px; font-size: 13px; margin: 0 0 16px; }
     .error { background: #fdecec; color: #a4292b; padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
     .hint { font-size: 12px; color: #8a8f9c; margin-top: -8px; margin-bottom: 16px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -51,8 +69,25 @@
     .badge--red { background: #fdecec; color: #a4292b; }
     .badge--gray { background: #eef0f3; color: #6b7080; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #4a4f5c; }
+    .wrap { overflow-wrap: anywhere; }
     .muted { color: #8a8f9c; }
+    .subtle { color: #8a8f9c; font-size: 13px; margin: 0 0 14px; }
     .empty { color: #8a8f9c; font-size: 13px; padding: 8px 0; }
+    .pager { display: flex; align-items: center; gap: 12px; justify-content: flex-end; padding-top: 16px; font-size: 13px; }
+    .pager a, .back-link { color: #17456f; text-decoration: none; font-weight: 600; }
+    .pager a:hover, .back-link:hover { text-decoration: underline; }
+    .details { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 0; }
+    .details dt { color: #6b7080; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 6px; }
+    .details dd { margin: 0; font-size: 13px; }
+    @media (max-width: 900px) {
+      main { padding: 20px 12px; }
+      .card { padding: 16px; }
+      .card__header { display: block; }
+      .filters, .route-form, .details { grid-template-columns: 1fr; }
+      .filters > div, .filters > div:first-child, .filters button, .route-form > div, .route-form button { grid-column: auto; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+      .wrap { white-space: normal; min-width: 220px; }
+    }
   </style>
 </head>
 <body>
