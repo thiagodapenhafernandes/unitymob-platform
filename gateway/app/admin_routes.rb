@@ -1,5 +1,9 @@
+require 'uri'
+
 module Gateway
   module AdminRoutes
+    PER_PAGE = 25
+
     def self.registered(app)
       app.set :views, File.join(Gateway.root, 'app/views')
       app.enable :sessions
@@ -29,12 +33,24 @@ module Gateway
           AdminAuth.rate_limited?("admin-#{bucket}:#{request.ip}", limit: 10, period: 600)
         end
 
+        def h(value)
+          Rack::Utils.escape_html(value.to_s)
+        end
+
+        def current_page
+          [params.fetch('page', 1).to_i, 1].max
+        end
+
+        def next_page?(collection)
+          collection.size == PER_PAGE
+        end
+
         def last_event_for(route)
-          WebhookEvent.where(webhook_route_id: route.id).order(received_at: :desc).first
+          @last_events[route.id]
         end
 
         def failed_count_24h(route)
-          WebhookEvent.where(webhook_route_id: route.id, status: 'failed').where('received_at > ?', Time.now.utc - 86_400).count
+          @failed_counts[route.id].to_i
         end
 
         def incoming_label(route)
@@ -48,8 +64,36 @@ module Gateway
 
       app.get '/admin' do
         require_admin!
-        @routes = WebhookRoute.order(:provider, :client_key, :id).to_a
-        @unrouted = WebhookEvent.where(status: 'unrouted').order(received_at: :desc).limit(20)
+        load_dashboard!
+        @route_form = {}
+        erb :'admin/dashboard'
+      end
+
+      app.get '/admin/routes/:id' do
+        require_admin!
+        @route = WebhookRoute.find(params.fetch('id'))
+        @event_total = admin_events_scope.where(webhook_route_id: @route.id).count
+        @events = admin_events_scope.where(webhook_route_id: @route.id).limit(PER_PAGE).offset((current_page - 1) * PER_PAGE).to_a
+        erb :'admin/route'
+      end
+
+      app.post '/admin/routes' do
+        require_admin!
+        verify_csrf!
+        attrs = admin_route_attributes(params)
+        route = WebhookRoute.find_or_initialize_by(admin_route_identity(attrs))
+        route.assign_attributes(attrs)
+        route.save!
+        redirect "/admin/routes/#{route.id}?message=#{Rack::Utils.escape('Rota salva.')}"
+      rescue ActiveRecord::RecordInvalid => error
+        @route_error = error.record.errors.full_messages.join(', ')
+        @route_form = params
+        load_dashboard!
+        erb :'admin/dashboard'
+      rescue ArgumentError => error
+        @route_error = error.message
+        @route_form = params
+        load_dashboard!
         erb :'admin/dashboard'
       end
 
@@ -111,6 +155,78 @@ module Gateway
         verify_csrf!
         session.clear
         redirect '/admin/login'
+      end
+
+      app.helpers do
+        def load_dashboard!
+          @route_total = admin_routes_scope.count
+          @routes = admin_routes_scope.limit(PER_PAGE).offset((current_page - 1) * PER_PAGE).to_a
+          route_ids = @routes.map(&:id)
+          @last_events = route_ids.empty? ? {} : WebhookEvent.where(webhook_route_id: route_ids).order(received_at: :desc, id: :desc).each_with_object({}) { |event, memo| memo[event.webhook_route_id] ||= event }
+          @failed_counts = route_ids.empty? ? {} : WebhookEvent.where(webhook_route_id: route_ids, status: 'failed').where('received_at > ?', Time.now.utc - 86_400).group(:webhook_route_id).count
+        end
+
+        def admin_routes_scope
+          latest = WebhookEvent.where.not(webhook_route_id: nil)
+            .select('webhook_route_id, MAX(received_at) AS last_received_at')
+            .group(:webhook_route_id)
+          scope = WebhookRoute
+            .joins("LEFT JOIN (#{latest.to_sql}) last_events ON last_events.webhook_route_id = webhook_routes.id")
+            .order(Arel.sql('last_events.last_received_at DESC NULLS LAST, webhook_routes.id DESC'))
+          scope = scope.where(provider: params['provider']) if %w[whatsapp meta].include?(params['provider'])
+          scope = scope.where(active: params['active'] == 'true') if %w[true false].include?(params['active'])
+          if params['q'].to_s.strip != ''
+            q = "%#{params['q'].to_s.strip}%"
+            scope = scope.where('tenant_name ILIKE :q OR client_key ILIKE :q OR target_url ILIKE :q OR phone_number_id ILIKE :q OR waba_id ILIKE :q OR page_id ILIKE :q OR form_id ILIKE :q', q:)
+          end
+          scope
+        end
+
+        def admin_events_scope
+          scope = WebhookEvent.includes(:webhook_route).order(received_at: :desc, id: :desc)
+          scope = scope.where(provider: params['provider']) if %w[whatsapp meta].include?(params['provider'])
+          scope = scope.where(status: params['status']) if WebhookEvent::STATUSES.include?(params['status'])
+          scope = scope.where('phone_number_id ILIKE :q OR waba_id ILIKE :q OR page_id ILIKE :q OR form_id ILIKE :q OR external_id ILIKE :q', q: "%#{params['q'].to_s.strip}%") if params['q'].to_s.strip != ''
+          scope
+        end
+
+        def admin_route_identity(attrs)
+          if attrs[:provider] == 'meta'
+            { provider: attrs[:provider], page_id: attrs[:page_id], form_id: attrs[:form_id] }
+          else
+            { provider: attrs[:provider], phone_number_id: attrs[:phone_number_id] }
+          end
+        end
+
+        def admin_route_attributes(payload)
+          provider = payload['route_provider'].to_s
+          raise ArgumentError, 'Provider inválido.' unless %w[whatsapp meta].include?(provider)
+
+          target_url = payload['target_url'].to_s.strip
+          uri = URI.parse(target_url)
+          raise ArgumentError, 'Destino deve ser uma URL http ou https.' unless uri.is_a?(URI::HTTP) && uri.host
+
+          secret = payload['forwarding_secret'].to_s.strip
+          secret = SecureRandom.hex(32) if secret.empty?
+          attrs = {
+            provider:,
+            client_key: payload['client_key'].to_s.strip,
+            tenant_name: payload['tenant_name'].to_s.strip,
+            target_url:,
+            forwarding_secret: secret,
+            active: payload['active'] != 'false'
+          }
+          if provider == 'meta'
+            attrs[:page_id] = payload['page_id'].to_s.strip
+            attrs[:form_id] = payload['form_id'].to_s.strip.presence
+          else
+            attrs[:phone_number_id] = payload['phone_number_id'].to_s.strip
+            attrs[:waba_id] = payload['waba_id'].to_s.strip
+          end
+          attrs
+        rescue URI::InvalidURIError
+          raise ArgumentError, 'Destino deve ser uma URL válida.'
+        end
       end
     end
   end

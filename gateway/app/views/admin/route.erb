@@ -1,0 +1,119 @@
+<p><a class="back-link" href="/admin">&larr; Conexões</a></p>
+
+<% if params['message'].to_s != '' %>
+  <p class="notice"><%= h(params['message']) %></p>
+<% end %>
+
+<section class="card">
+  <div class="card__header">
+    <div>
+      <h2><%= h(@route.tenant_name.presence || @route.client_key) %></h2>
+      <p class="subtle"><%= h(incoming_label(@route)) %></p>
+    </div>
+    <% if @route.active? %>
+      <span class="badge badge--green">ativa</span>
+    <% else %>
+      <span class="badge badge--gray">inativa</span>
+    <% end %>
+  </div>
+  <dl class="details">
+    <div>
+      <dt>Destino</dt>
+      <dd class="mono wrap"><%= h(@route.target_url) %></dd>
+    </div>
+    <div>
+      <dt>Conta</dt>
+      <dd><%= h(@route.client_key) %></dd>
+    </div>
+    <div>
+      <dt>Criada</dt>
+      <dd><%= @route.created_at&.strftime('%d/%m/%Y %H:%M') %></dd>
+    </div>
+    <div>
+      <dt>Atualizada</dt>
+      <dd><%= @route.updated_at&.strftime('%d/%m/%Y %H:%M') %></dd>
+    </div>
+  </dl>
+</section>
+
+<section class="card">
+  <div class="card__header">
+    <div>
+      <h2>Eventos desta conexão (<%= @event_total %>)</h2>
+      <p class="subtle">forwarded confirma HTTP 2xx do destino. failed mostra erro e entra no retry do gateway.</p>
+    </div>
+  </div>
+
+  <form class="filters" method="get" action="/admin/routes/<%= @route.id %>">
+    <div>
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="">Todos</option>
+        <% WebhookEvent::STATUSES.each do |status| %>
+          <option value="<%= status %>" <%= 'selected' if params['status'] == status %>><%= status %></option>
+        <% end %>
+      </select>
+    </div>
+    <div>
+      <label for="q">Buscar evento</label>
+      <input id="q" name="q" type="text" value="<%= h(params['q']) %>" placeholder="external_id, page_id, form_id, phone_number_id">
+    </div>
+    <button type="submit">Filtrar eventos</button>
+  </form>
+
+  <% if @events.empty? %>
+    <p class="empty">Nenhum evento encontrado para esta conexão.</p>
+  <% else %>
+    <table>
+      <thead>
+        <tr>
+          <th>Recebido</th>
+          <th>Status</th>
+          <th>Tipo</th>
+          <th>Identificador</th>
+          <th>Entrega</th>
+          <th>Erro</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @events.each do |event| %>
+          <tr>
+            <td><%= event.received_at&.strftime('%d/%m %H:%M:%S') %></td>
+            <td>
+              <% if event.status == 'forwarded' %>
+                <span class="badge badge--green">forwarded</span>
+              <% elsif event.status == 'failed' %>
+                <span class="badge badge--red">failed</span>
+              <% elsif event.status == 'unrouted' %>
+                <span class="badge badge--gray">unrouted</span>
+              <% else %>
+                <span class="badge badge--gray"><%= h(event.status) %></span>
+              <% end %>
+            </td>
+            <td><%= h(event.event_type) %></td>
+            <td class="mono wrap"><%= h(event.external_id.presence || event.phone_number_id.presence || event.page_id) %></td>
+            <td>
+              <% if event.forwarded_at %>
+                entregue em <%= event.forwarded_at.strftime('%d/%m %H:%M:%S') %><br>
+              <% end %>
+              <span class="muted"><%= event.attempts %> tentativa(s)</span>
+              <% if event.next_retry_at %>
+                <br><span class="muted">retry <%= event.next_retry_at.strftime('%d/%m %H:%M:%S') %></span>
+              <% end %>
+            </td>
+            <td class="mono wrap"><%= h(event.last_error) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <nav class="pager" aria-label="Paginação">
+      <% if current_page > 1 %>
+        <a href="/admin/routes/<%= @route.id %>?<%= Rack::Utils.build_query(params.merge('page' => current_page - 1)) %>">Anterior</a>
+      <% end %>
+      <span>Página <%= current_page %></span>
+      <% if next_page?(@events) %>
+        <a href="/admin/routes/<%= @route.id %>?<%= Rack::Utils.build_query(params.merge('page' => current_page + 1)) %>">Próxima</a>
+      <% end %>
+    </nav>
+  <% end %>
+</section>

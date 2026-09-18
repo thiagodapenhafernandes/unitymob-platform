@@ -56,6 +56,51 @@ RSpec.describe 'Admin panel' do
     expect(last_response.status).to eq(200)
     expect(last_response.body).to include('Salute')
     expect(last_response.body).to include(route.target_url)
+    expect(last_response.body).to include("/admin/routes/#{route.id}")
+  end
+
+  it 'shows events for a selected connection' do
+    route = WebhookRoute.create!(provider: 'meta', client_key: 'conexao', tenant_name: 'Conexão', page_id: 'page-1', form_id: 'form-1', target_url: 'https://app.conexaobc.com/webhooks/meta', forwarding_secret: 'x' * 20)
+    WebhookEvent.create!(provider: 'meta', webhook_route: route, external_id: 'lead-1', event_type: 'leadgen', page_id: 'page-1', form_id: 'form-1', payload: {}, status: 'forwarded', attempts: 1, received_at: Time.now.utc, forwarded_at: Time.now.utc)
+    WebhookEvent.create!(provider: 'meta', webhook_route: route, external_id: 'lead-2', event_type: 'leadgen', page_id: 'page-1', form_id: 'form-1', payload: {}, status: 'failed', attempts: 2, last_error: 'HTTP 500', received_at: Time.now.utc - 60)
+
+    login
+    get '/admin/login/verify'
+    post '/admin/login/verify', code: @code, authenticity_token: csrf_token
+
+    get "/admin/routes/#{route.id}"
+    expect(last_response.status).to eq(200)
+    expect(last_response.body).to include('Conexão')
+    expect(last_response.body).to include('lead-1')
+    expect(last_response.body).to include('forwarded')
+    expect(last_response.body).to include('HTTP 500')
+
+    get "/admin/routes/#{route.id}", status: 'failed'
+    expect(last_response.body).to include('lead-2')
+    expect(last_response.body).not_to include('lead-1')
+  end
+
+  it 'creates a manual route from the admin panel' do
+    login
+    get '/admin/login/verify'
+    post '/admin/login/verify', code: @code, authenticity_token: csrf_token
+    get '/admin'
+
+    post '/admin/routes',
+      route_provider: 'meta',
+      client_key: 'dev',
+      tenant_name: 'Dev Unitymob',
+      page_id: 'page-dev',
+      form_id: 'form-dev',
+      target_url: 'https://dev.unitymob.com.br/webhooks/meta',
+      forwarding_secret: 'secret-dev',
+      active: 'true',
+      authenticity_token: csrf_token
+
+    route = WebhookRoute.find_by!(provider: 'meta', page_id: 'page-dev', form_id: 'form-dev')
+    expect(last_response.status).to eq(302)
+    expect(last_response.location).to include("/admin/routes/#{route.id}")
+    expect(route).to have_attributes(client_key: 'dev', target_url: 'https://dev.unitymob.com.br/webhooks/meta', active: true)
   end
 
   it 'rejects a wrong code without consuming it, then accepts the right one' do
