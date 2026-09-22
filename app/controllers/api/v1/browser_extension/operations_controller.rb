@@ -56,8 +56,9 @@ module Api
 
         def create_task
           lead = confirmed_lead!
-          attrs = params.require(:task).permit(:title, :kind, :due_at, :priority).to_h
+          attrs = params.require(:task).permit(:title, :kind, :due_at, :priority, :description).to_h
           attrs["title"] = required_text(attrs["title"], 200)
+          attrs["description"] = optional_text(attrs["description"], 5000)
           due_at = Time.iso8601(attrs["due_at"].to_s)
           raise ArgumentError unless Task::PRIORITIES.key?(attrs["priority"]) && Task::KINDS.key?(attrs["kind"])
 
@@ -73,8 +74,9 @@ module Api
 
         def create_appointment
           lead = confirmed_lead!
-          attrs = params.require(:appointment).permit(:title, :kind, :starts_at, :ends_at, :location).to_h
+          attrs = params.require(:appointment).permit(:title, :kind, :starts_at, :ends_at, :location, :notes).to_h
           attrs["title"] = required_text(attrs["title"], 200)
+          attrs["notes"] = optional_text(attrs["notes"], 5000)
           starts_at = Time.iso8601(attrs["starts_at"].to_s)
           ends_at = Time.iso8601(attrs["ends_at"]) if attrs["ends_at"].present?
           raise ArgumentError unless Appointment::KINDS.key?(attrs["kind"]) && (!ends_at || ends_at > starts_at)
@@ -134,6 +136,7 @@ module Api
             raise ActiveRecord::RecordNotFound unless properties.length == ids.length
             lead.with_lock do
               properties.each { |property| lead.property_interests.find_or_create_by!(tenant: grant.tenant, habitation: property) }
+              lead.assign_primary_property_if_blank!(properties.first)
             end
             {lead_id: lead.id}
           end
@@ -167,6 +170,12 @@ module Api
           text = value.to_s.strip
           raise ArgumentError if text.empty? || text.length > maximum
           text
+        end
+
+        def optional_text(value, maximum)
+          text = value.to_s.strip
+          raise ArgumentError if text.length > maximum
+          text.presence
         end
 
         def confirmed_phone!

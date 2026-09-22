@@ -25,7 +25,7 @@ Marcador de busca no código: `TEMPORARY_CWS_REVIEW`.
 
 ## Pendência antes de enviar à loja
 
-A Conexão atualmente autoriza somente o ID da extensão descompactada `hokkkaibgfilkmgaohfblcigmhlppdhl`. Confirmar o ID exato do item da Chrome Web Store e adicioná-lo à configuração autorizada do servidor antes de testar o pacote da loja. Não foi alterada essa configuração nesta tarefa.
+A Conexão precisa autorizar o ID publicado da Chrome Web Store `daliegpkkjjfjjlilajomonpkgdmgiaj`. O pacote descompactado de desenvolvimento segue usando `hokkkaibgfilkmgaohfblcigmhlppdhl`.
 
 ## Mais instruções (menos de 500 caracteres)
 

@@ -37,7 +37,8 @@ npm run build
 
 O diretório `dist/` é o pacote descompactado. O build copia somente os arquivos necessários de WA-JS 4.6.0, suas licenças e os componentes visuais compartilhados da Unitymob. Nenhum arquivo da extensão RD ou de perfil Chrome entra no pacote.
 
-ID estável do pacote de desenvolvimento: `hokkkaibgfilkmgaohfblcigmhlppdhl`. `public-key.txt` contém somente a chave pública usada para fixar esse ID. Uma futura publicação na Chrome Web Store exigirá alinhar a chave/ID ao item da loja.
+ID estável do pacote de desenvolvimento: `hokkkaibgfilkmgaohfblcigmhlppdhl`. ID publicado na Chrome Web Store: `daliegpkkjjfjjlilajomonpkgdmgiaj`.
+`public-key.txt` contém somente a chave pública usada para fixar o ID de desenvolvimento.
 
 O pacote do piloto já aponta para `https://dev.unitymob.com.br`. O usuário não escolhe endereço no painel. Cada build aceita uma única origem; para outro ambiente, definir `UNITYMOB_CRM_ORIGINS` no build. Isso não ativa o backend em outros ambientes.
 
@@ -57,7 +58,7 @@ O recurso fica **desligado por padrão**. No backend do ambiente do piloto, conf
 
 ```dotenv
 BROWSER_EXTENSION_TENANT_IDS=ID_CONFIRMADO_DA_CONTA_PILOTO
-BROWSER_EXTENSION_ALLOWED_IDS=hokkkaibgfilkmgaohfblcigmhlppdhl
+BROWSER_EXTENSION_ALLOWED_IDS=hokkkaibgfilkmgaohfblcigmhlppdhl,daliegpkkjjfjjlilajomonpkgdmgiaj
 ```
 
 Mais de uma conta/ID: valores separados por vírgula. Requer reiniciar os processos que recebem essas variáveis. Use IDs confirmados no ambiente alvo; não transporte IDs do teste local.

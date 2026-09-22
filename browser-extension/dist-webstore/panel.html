@@ -186,6 +186,7 @@
               <label for="appointment-start">Data e hora</label><input id="appointment-start" class="ax-control" type="datetime-local" required>
               <label for="appointment-end">Término (opcional)</label><input id="appointment-end" class="ax-control" type="datetime-local">
               <label for="appointment-location">Local (opcional)</label><input id="appointment-location" class="ax-control" maxlength="300">
+              <label for="appointment-notes">Observações (opcional)</label><textarea id="appointment-notes" class="ax-control" maxlength="5000" rows="3"></textarea>
               <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo o compromisso para <strong id="appointment-contact"></strong>.</span></label>
               <button type="submit" class="ax-btn ax-btn--primary">Agendar compromisso</button>
             </form>
@@ -205,6 +206,8 @@
             <input id="task-due" class="ax-control" type="datetime-local" required>
             <label for="task-priority">Prioridade</label>
             <select id="task-priority" class="ax-control"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
+            <label for="task-description">Descrição (opcional)</label>
+            <textarea id="task-description" class="ax-control" maxlength="5000" rows="3"></textarea>
             <p>A tarefa ficará na sua agenda. O tipo Visita cria uma tarefa; o agendamento completo da visita está na ficha do lead.</p>
             <label class="ax-confirmation"><input type="checkbox" required><span>Confirmo a tarefa para <strong id="task-contact"></strong>.</span></label>
             <button class="ax-btn ax-btn--primary" type="submit">Agendar tarefa</button>

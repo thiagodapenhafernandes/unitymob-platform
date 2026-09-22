@@ -49,3 +49,51 @@ test("internal note hides and clears the result while operational contacts requi
   assert.equal(elements["contact-result"].value, "");
   assert.equal(elements["contact-result-field"].hidden, true);
 });
+
+test("task and appointment payloads reject invalid local date before silent failure", () => {
+  const elements = {
+    "task-title": {value: "Retornar"},
+    "task-kind": {value: "follow_up"},
+    "task-priority": {value: "normal"},
+    "task-due": {value: ""},
+    "task-description": {value: "Cliente pediu simulação"},
+    "appointment-title": {value: "Visita"},
+    "appointment-kind": {value: "visita"},
+    "appointment-start": {value: "2026-12-01T09:30"},
+    "appointment-end": {value: ""},
+    "appointment-location": {value: "Imóvel"},
+    "appointment-notes": {value: "Levar proposta impressa"},
+    "new-lead-name": {value: ""},
+    "new-lead-email": {value: ""},
+    "note-body": {value: ""},
+    "contact-kind": {value: "nota"},
+    "contact-result": {value: ""},
+    "status-stage": {value: ""},
+    "label-options": {querySelectorAll: () => []}
+  };
+  const context = vm.createContext({$: id => elements[id]});
+  vm.runInContext(section("function isoDateTime(", "for (const [formId, type]"), context);
+
+  assert.throws(() => context.writePayload("create_task", {stage_id: 1}), /invalid_fields/);
+
+  const payload = context.writePayload("create_appointment", {stage_id: 1});
+  assert.equal(payload.starts_at, new Date("2026-12-01T09:30").toISOString());
+  assert.equal(payload.ends_at, "");
+  assert.equal(payload.notes, "Levar proposta impressa");
+
+  elements["task-due"].value = "2026-12-01T10:00";
+  assert.equal(context.writePayload("create_task", {stage_id: 1}).description, "Cliente pediu simulação");
+});
+
+test("write forms explain why a save was not sent", () => {
+  const context = vm.createContext({saving: false, ready: () => true, context: {state: "ready"}, resolvedPhone: "5511999999999", selectedLead: null, errors: {context_changed: "mudou", invalid_phone: "telefone"}});
+  vm.runInContext(section("function writeBlockedReason(", "for (const [formId, type]"), context);
+
+  assert.equal(context.writeBlockedReason("create_lead"), "");
+  assert.equal(context.writeBlockedReason("create_task"), "Selecione um lead antes de salvar.");
+  context.resolvedPhone = "";
+  assert.equal(context.writeBlockedReason("create_lead"), "telefone");
+  context.resolvedPhone = "5511999999999";
+  context.context = {state: "loading"};
+  assert.equal(context.writeBlockedReason("create_lead"), "mudou");
+});

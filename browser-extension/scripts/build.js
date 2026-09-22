@@ -10,11 +10,12 @@ if (discoveryOrigin) allowedOrigin(discoveryOrigin, [discoveryOrigin]);
 const webStore = process.env.UNITYMOB_WEB_STORE === "1";
 const dist = resolve(root, webStore ? "dist-webstore" : discoveryOrigin ? "dist-discovery" : "dist");
 const { version } = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+const webStoreExtensionId = "daliegpkkjjfjjlilajomonpkgdmgiaj";
 const crmOrigins = (process.env.UNITYMOB_CRM_ORIGINS || "https://dev.unitymob.com.br").split(",").map(s => s.trim());
 if (crmOrigins.length !== 1) throw new Error("Configure exatamente uma origem por pacote.");
 for (const origin of crmOrigins) allowedOrigin(origin, crmOrigins);
 const key = (await readFile(resolve(root, webStore ? "webstore-public-key.txt" : "public-key.txt"), "utf8")).replace(/-----[^-]+-----/g, "").replace(/\s/g, "");
-const extensionId = createHash("sha256").update(Buffer.from(key, "base64")).digest("hex").slice(0, 32).replace(/[0-9a-f]/g, c => String.fromCharCode(97 + parseInt(c, 16)));
+const extensionId = webStore ? webStoreExtensionId : createHash("sha256").update(Buffer.from(key, "base64")).digest("hex").slice(0, 32).replace(/[0-9a-f]/g, c => String.fromCharCode(97 + parseInt(c, 16)));
 await rm(dist, { recursive: true, force: true });
 await mkdir(resolve(dist, "vendor"), { recursive: true });
 await mkdir(resolve(dist, "shared"), { recursive: true });
@@ -45,7 +46,8 @@ for (const name of await readdir(resolve(vendor, "dist"))) {
 const styles = resolve(root, "../app/assets/stylesheets/admin");
 await copyFile(resolve(styles, "theme_tokens.css"), resolve(dist, "shared/theme_tokens.css"));
 for (const name of ["operational_panel", "property_catalog", "button", "form_control", "stack", "menu"]) {
-  await copyFile(resolve(styles, `components/${name}.css`), resolve(dist, `shared/${name}.css`));
+  const source = name === "property_catalog" ? "habitations_catalog.css" : `components/${name}.css`;
+  await copyFile(resolve(styles, source), resolve(dist, `shared/${name}.css`));
 }
 console.log(`Pacote: ${dist}\nID: ${extensionId}\nWA-JS: 4.6.0\nSem dados de sessão ou arquivos do RD.`);
 

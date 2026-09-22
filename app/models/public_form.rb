@@ -25,7 +25,7 @@ class PublicForm < ApplicationRecord
   validates :name, :slug, :category, :title, :submit_label, :success_message, presence: true
   validates :slug, uniqueness: { scope: :tenant_id }, format: { with: /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/ }
   validates :category, inclusion: { in: CATEGORIES.keys }
-  validates :redirect_url, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]), allow_blank: true }
+  validate :redirect_url_is_internal_or_tenant_domain
 
   before_validation :normalize_slug
   before_validation :normalize_modal_config
@@ -150,6 +150,28 @@ class PublicForm < ApplicationRecord
   end
 
   private
+
+  def redirect_url_is_internal_or_tenant_domain
+    return if redirect_url.blank?
+
+    uri = URI.parse(redirect_url.to_s)
+    return if uri.relative? && redirect_url.start_with?("/") && !redirect_url.start_with?("//")
+    return if uri.is_a?(URI::HTTP) && tenant_redirect_host?(uri.host)
+
+    errors.add(:redirect_url, "deve ser um caminho interno ou uma URL de domínio da conta")
+  rescue URI::InvalidURIError
+    errors.add(:redirect_url, "deve ser um caminho interno ou uma URL de domínio da conta")
+  end
+
+  def tenant_redirect_host?(host)
+    normalized_host = TenantDomain.normalize_host(host)
+    return false if normalized_host.blank? || tenant.blank?
+
+    comparable_host = normalized_host.delete_prefix("www.")
+    tenant.tenant_domains.active.pluck(:hostname).any? do |hostname|
+      TenantDomain.normalize_host(hostname).delete_prefix("www.") == comparable_host
+    end
+  end
 
   def normalize_slug
     base = slug.presence || name

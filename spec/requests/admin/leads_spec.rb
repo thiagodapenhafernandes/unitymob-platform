@@ -2651,9 +2651,34 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.parsed_body["message"]).to include("Maria", "SEL-001", response.parsed_body["url"])
       expect(response.parsed_body["whatsapp_url"]).to include("https://wa.me/5547999990000?text=")
       expect(response.parsed_body["chips_html"]).to include("SEL-001", "Enviado")
+      expect(response.parsed_body["chips_html"]).to include("Principal")
+      expect(lead.reload.property_id).to eq(property.id)
       expect(lead.activities.where(kind: "property_share")).to exist
     end
 
+  end
+
+  describe "PATCH /admin/leads/:lead_id/property_interests/:id/primary" do
+    it "promove imóvel de interesse a imóvel principal sem sair do tenant" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      first = create(:habitation, tenant: admin.tenant, codigo: "PRI-001")
+      second = create(:habitation, tenant: admin.tenant, codigo: "PRI-002")
+
+      post admin_lead_property_interests_path(lead), params: { habitation_id: first.id }, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(lead.reload.property_id).to eq(first.id)
+
+      post admin_lead_property_interests_path(lead), params: { habitation_id: second.id }, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(lead.reload.property_id).to eq(first.id)
+
+      interest = lead.property_interests.find_by!(habitation: second)
+      patch primary_admin_lead_property_interest_path(lead, interest), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(lead.reload.property_id).to eq(second.id)
+      expect(response.parsed_body["chips_html"]).to include("PRI-002", "Principal")
+    end
   end
 
   describe "GET /admin/leads/:id" do

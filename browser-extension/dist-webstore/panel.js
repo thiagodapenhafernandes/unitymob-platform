@@ -196,10 +196,10 @@ async function fetchLead(id, version) {
     $(`${key}-count`).textContent = result[`${key}_count`] ?? result[key]?.length ?? 0;
   }
   $("attempts-count").textContent = result.unsuccessful_attempts ?? 0;
-  renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · ") })), "Nada agendado.");
+  renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · "), body: a.notes })), "Nada agendado.");
   renderLabelChoices(result.label_catalog || [], result.labels || []);
   renderLeadProperties(result);
-  renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
+  renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: [t.due_at ? formatDate(t.due_at) : "Sem prazo definido", t.description].filter(Boolean).join("\n") })), "Nenhuma tarefa pendente.");
   renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [n.result, formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhum contato registrado.");
   $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
   $("notes-count").textContent = result.notes_count ?? result.notes?.length ?? 0;
@@ -573,6 +573,28 @@ function syncContactResult() {
 $("contact-kind").addEventListener("change", syncContactResult);
 $("note-form").addEventListener("reset", () => queueMicrotask(syncContactResult));
 
+function isoDateTime(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) throw new Error("invalid_fields");
+  return date.toISOString();
+}
+
+function writePayload(type, target) {
+  if (type === "create_lead") return { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() };
+  if (type === "create_contact") return { body: $("note-body").value.trim(), contact_kind: $("contact-kind").value, contact_result: $("contact-result").value };
+  if (type === "change_status") return { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") };
+  if (type === "set_labels") return { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") };
+  if (type === "create_appointment") return {
+    title: $("appointment-title").value.trim(),
+    kind: $("appointment-kind").value,
+    starts_at: isoDateTime($("appointment-start").value),
+    ends_at: $("appointment-end").value ? isoDateTime($("appointment-end").value) : "",
+    location: $("appointment-location").value.trim(),
+    notes: $("appointment-notes").value.trim()
+  };
+  return { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: isoDateTime($("task-due").value), description: $("task-description").value.trim() };
+}
+
 for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_contact"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["status-form", "change_status"]]) {
   $(formId).addEventListener("submit", async event => {
     event.preventDefault();
@@ -582,18 +604,13 @@ for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form",
     const target = selectedLead;
     const phone = resolvedPhone;
     const form = event.currentTarget;
-    const payload = type === "create_lead" ? { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() } :
-      type === "create_contact" ? { body: $("note-body").value.trim(), contact_kind: $("contact-kind").value, contact_result: $("contact-result").value } :
-      type === "change_status" ? { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") } :
-      type === "set_labels" ? { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") } :
-      type === "create_appointment" ? { title: $("appointment-title").value.trim(), kind: $("appointment-kind").value,
-        starts_at: new Date($("appointment-start").value).toISOString(), ends_at: $("appointment-end").value ? new Date($("appointment-end").value).toISOString() : "", location: $("appointment-location").value.trim() } :
-      { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: new Date($("task-due").value).toISOString() };
+    if (!form.reportValidity()) return;
     saving = true;
     form.append($("feedback"));
     for (const control of form.elements) control.disabled = true;
     $("feedback").textContent = "Salvando…";
     try {
+      const payload = writePayload(type, target);
       const result = await request(type, { tabId: context.tabId, contextKey: contextKey(context), leadId: target?.id,
         phone, confirmed: true, payload });
       if (version !== revision) return;

@@ -283,6 +283,7 @@ Rails.application.routes.draw do
       end
       resources :property_interests, only: [:create, :destroy] do
         get :search, on: :collection
+        patch :primary, on: :member
       end
     end
 

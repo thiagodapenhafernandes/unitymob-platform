@@ -40,4 +40,27 @@ RSpec.describe PublicForm do
     expect(field).not_to be_valid
     expect(field.errors[:field_type]).to be_present
   end
+
+  it "permite redirecionar apenas para caminho interno ou domínio ativo da conta" do
+    tenant = Tenant.create!(name: "Conta Redirect #{SecureRandom.hex(3)}", slug: "conta-redirect-#{SecureRandom.hex(3)}")
+    tenant.tenant_domains.create!(hostname: "salute.example.com", active: true, primary_domain: true)
+    form = tenant.public_forms.new(
+      name: "Contato",
+      slug: "contato",
+      category: "custom",
+      title: "Contato",
+      submit_label: "Enviar",
+      success_message: "Ok"
+    )
+
+    form.redirect_url = "/obrigado"
+    expect(form).to be_valid
+
+    form.redirect_url = "https://www.salute.example.com/obrigado"
+    expect(form).to be_valid
+
+    form.redirect_url = "https://evil.example/phishing"
+    expect(form).not_to be_valid
+    expect(form.errors[:redirect_url]).to be_present
+  end
 end

@@ -172,6 +172,12 @@ class Lead < ApplicationRecord
     statuses
   end
 
+  def assign_primary_property_if_blank!(habitation)
+    return false if property_id.present? || habitation.blank? || habitation.tenant_id != tenant_id
+
+    update!(property_id: habitation.id)
+  end
+
   after_create :record_audit_create
   after_update :sync_open_activity_owners!, if: :saved_change_to_admin_user_id?
   after_update :record_audit_update

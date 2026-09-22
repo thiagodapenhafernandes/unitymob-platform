@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {preparePropertyPhoto, requestPropertyPhotoAccess} from '../src/property-preview.js';
 
-test('requests only selected photo hosts synchronously and stops when access is denied', async () => {
+test('requests only valid selected photo hosts without blocking link sharing', async () => {
   const previous = globalThis.chrome;
   let requested;
   globalThis.chrome = {permissions: {request(options) { requested = options; return Promise.resolve(true); }}};
   try {
-    const pending = requestPropertyPhotoAccess(['https://cdn.saluteimoveis.com.br/a', 'https://cdn.saluteimoveis.com.br/b', '']);
+    const pending = requestPropertyPhotoAccess(['https://cdn.saluteimoveis.com.br/a', 'https://cdn.saluteimoveis.com.br/b', '', 'invalid', 'http://cdn.example.com/a']);
     assert.deepEqual(requested, {origins: ['https://cdn.saluteimoveis.com.br/*']});
     await pending;
     requested = null;
     await requestPropertyPhotoAccess([]);
     assert.equal(requested, null);
     globalThis.chrome.permissions.request = async () => false;
-    await assert.rejects(requestPropertyPhotoAccess(['https://cdn.example.com/a']), /preview_permission_required/);
-    await assert.rejects(requestPropertyPhotoAccess(['http://cdn.example.com/a']), /preview_image_invalid/);
+    await requestPropertyPhotoAccess(['https://cdn.example.com/a']);
+    await requestPropertyPhotoAccess(['http://cdn.example.com/a']);
   } finally { globalThis.chrome = previous; }
 });
 
@@ -45,6 +45,18 @@ test('rejects invalid URLs, network failures, and non-images', async t => {
   await assert.rejects(preparePropertyPhoto('https://cdn.example.com/photo'),/preview_image_failed/);
   globalThis.fetch=async()=>new Response('<html>',{headers:{'Content-Type':'text/html'}});
   await assert.rejects(preparePropertyPhoto('https://cdn.example.com/photo'),/preview_image_failed/);
+});
+
+test('accepts large CRM photos before resizing the thumbnail', async t => {
+  t.mock.method(globalThis,'fetch',async()=>new Response(new Blob([new Uint8Array(8 * 1024 * 1024)]),{headers:{'Content-Type':'image/jpeg'}}));
+  const oldBitmap = globalThis.createImageBitmap, oldCanvas = globalThis.OffscreenCanvas;
+  globalThis.createImageBitmap = async () => ({width:1280,height:720,close(){}});
+  globalThis.OffscreenCanvas = class {
+    getContext(){return {drawImage(){}};}
+    async convertToBlob(){return new Blob(['jpeg']);}
+  };
+  try { assert.equal(await preparePropertyPhoto('https://cdn.example.com/photo'),btoa('jpeg')); }
+  finally { globalThis.createImageBitmap=oldBitmap; globalThis.OffscreenCanvas=oldCanvas; }
 });
 
 test('aborts a stalled download and reports preparation timeout', async t => {

@@ -48,6 +48,20 @@ RSpec.describe "Browser extension API", type: :request do
     expect(response).to have_http_status(:gone)
   end
 
+  it "accepts the published Chrome Web Store extension id even when env keeps a local id" do
+    published_id = BrowserExtensionGrant::PUBLISHED_EXTENSION_IDS.first
+    ENV["BROWSER_EXTENSION_ALLOWED_IDS"] = "hokkkaibgfilkmgaohfblcigmhlppdhl"
+    published_grant = BrowserExtensionGrant.create!(tenant: tenant, admin_user: user, extension_id: published_id,
+      challenge_digest: BrowserExtensionGrant.digest(verifier), challenge_expires_at: 5.minutes.from_now, expires_at: 8.hours.from_now)
+
+    get "/admin/browser_extension_connections/new", params: { challenge: BrowserExtensionGrant.digest(verifier), extension_id: published_id }
+
+    expect(response).to have_http_status(:redirect)
+    sign_in user
+    get "/admin/browser_extension_connections/new", params: { challenge: published_grant.challenge_digest, extension_id: published_id }
+    expect(response).to have_http_status(:ok)
+  end
+
   it "rejects discovery exchanges for a different tenant or user before issuing a credential" do
     attrs = { verifier: verifier, login_token: grant.signed_id(purpose: :browser_extension_pairing, expires_in: 5.minutes), extension_id: extension_id,
       expected_tenant_id: (tenant.id + 1).to_s, expected_email: user.email, expected_instance_id: "test", issuer: "http://localhost" }
@@ -453,11 +467,13 @@ RSpec.describe "Browser extension API", type: :request do
   it "creates one task and its timeline event with timezone and current owner, including late retries" do
     lead = make_lead
     due = 1.hour.from_now.change(usec: 0)
-    attrs = operation_params(task: { title: "Ligar amanhã", kind: "ligacao", priority: "alta", due_at: due.iso8601, admin_user_id: 999, lead_id: 999 })
+    attrs = operation_params(task: { title: "Ligar amanhã", kind: "ligacao", priority: "alta", due_at: due.iso8601,
+      description: "Cliente pediu simulação.", admin_user_id: 999, lead_id: 999 })
     expect { post "/api/v1/browser_extension/leads/#{lead.id}/tasks", params: attrs, headers: headers, as: :json }.to change(Task, :count).by(1)
     expect(response).to have_http_status(:ok)
     task = tenant.tasks.find(response.parsed_body.fetch("task_id"))
-    expect(task).to have_attributes(admin_user_id: user.id, created_by_id: user.id, lead_id: lead.id, source: "manual", due_at: due)
+    expect(task).to have_attributes(admin_user_id: user.id, created_by_id: user.id, lead_id: lead.id, source: "manual", due_at: due,
+      description: "Cliente pediu simulação.")
     travel 2.hours do
       expect { post "/api/v1/browser_extension/leads/#{lead.id}/tasks", params: attrs, headers: headers, as: :json }.not_to change(Task, :count)
       expect(response).to have_http_status(:ok)
@@ -535,11 +551,12 @@ RSpec.describe "Browser extension API", type: :request do
   it "creates an agenda appointment once with trusted ownership and an audit event" do
     lead = make_lead
     attrs = operation_params(appointment: {title: "Visitar imóvel", kind: "visita", starts_at: 1.hour.from_now.iso8601,
-      ends_at: 2.hours.from_now.iso8601, location: "Recepção", admin_user_id: 999, tenant_id: 999})
+      ends_at: 2.hours.from_now.iso8601, location: "Recepção", notes: "Levar proposta impressa.", admin_user_id: 999, tenant_id: 999})
     expect { post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs, headers: headers, as: :json }.to change(Appointment, :count).by(1)
     expect(response).to have_http_status(:ok)
     appointment = Appointment.find(response.parsed_body.fetch("appointment_id"))
-    expect(appointment).to have_attributes(admin_user_id: user.id, tenant_id: tenant.id, lead_id: lead.id, status: "agendado")
+    expect(appointment).to have_attributes(admin_user_id: user.id, tenant_id: tenant.id, lead_id: lead.id, status: "agendado",
+      notes: "Levar proposta impressa.")
     travel 3.hours do
       expect { post "/api/v1/browser_extension/leads/#{lead.id}/appointments", params: attrs, headers: headers, as: :json }.not_to change(Appointment, :count)
       expect(response).to have_http_status(:ok)
@@ -723,6 +740,21 @@ RSpec.describe "Browser extension API", type: :request do
     expect(lead.property_interests.count).to eq(2)
     post "/api/v1/browser_extension/leads/#{lead.id}/properties", params: operation_params(properties: {ids: ""}), headers: headers, as: :json
     expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "uses the first linked property as the primary one when the lead has none" do
+    lead = make_lead
+    first = create(:habitation, tenant: tenant)
+    second = create(:habitation, tenant: tenant)
+
+    post "/api/v1/browser_extension/leads/#{lead.id}/properties",
+         params: operation_params(properties: {ids: "#{first.id},#{second.id}"}),
+         headers: headers,
+         as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(lead.reload.property_id).to eq(first.id)
+    expect(lead.property_interests.pluck(:habitation_id)).to contain_exactly(first.id, second.id)
   end
 
   it "changes the lead stage with an audit trail once and keeps retries idempotent" do

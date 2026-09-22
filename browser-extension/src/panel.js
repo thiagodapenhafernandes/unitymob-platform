@@ -196,10 +196,10 @@ async function fetchLead(id, version) {
     $(`${key}-count`).textContent = result[`${key}_count`] ?? result[key]?.length ?? 0;
   }
   $("attempts-count").textContent = result.unsuccessful_attempts ?? 0;
-  renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · ") })), "Nada agendado.");
+  renderRecords("appointments", (result.appointments || []).map(a => ({ title: a.title, meta: [a.kind, formatDate(a.starts_at)].join(" · "), body: a.notes })), "Nada agendado.");
   renderLabelChoices(result.label_catalog || [], result.labels || []);
   renderLeadProperties(result);
-  renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: t.due_at ? formatDate(t.due_at) : "Sem prazo definido" })), "Nenhuma tarefa pendente.");
+  renderRecords("tasks", result.tasks.map(t => ({ title: t.title, meta: [t.kind, t.priority && `Prioridade ${t.priority.toLowerCase()}`].filter(Boolean).join(" · "), body: [t.due_at ? formatDate(t.due_at) : "Sem prazo definido", t.description].filter(Boolean).join("\n") })), "Nenhuma tarefa pendente.");
   renderRecords("notes", (result.notes || []).map(n => ({ title: n.kind || "Anotação interna", meta: [n.result, formatDate(n.created_at), n.author].filter(Boolean).join(" · "), body: n.body })), "Nenhum contato registrado.");
   $("tasks-count").textContent = result.tasks_count ?? result.tasks.length;
   $("notes-count").textContent = result.notes_count ?? result.notes?.length ?? 0;
@@ -375,10 +375,12 @@ async function resolve(phone) {
     $("match-explanation").textContent = `Atendimentos em ${me.tenant.name}.`;
     if (!result.leads.length) {
       $("create-lead-panel").hidden = !me.capabilities.create_leads;
+      $("create-lead-panel").open = !!me.capabilities.create_leads;
       $("create-contact").textContent = resolvedPhone;
       if (phone.replace(/\D/g, "") === context.phone?.replace(/\D/g, "")) {
         $("new-lead-name").value = context.name || "";
       }
+      if (me.capabilities.create_leads) $("new-lead-name").focus();
       $("candidates").textContent = "Nenhum lead acessível encontrado para este telefone.";
     } else if (result.leads.length === 1) {
       await loadLead(result.leads[0].id);
@@ -573,27 +575,53 @@ function syncContactResult() {
 $("contact-kind").addEventListener("change", syncContactResult);
 $("note-form").addEventListener("reset", () => queueMicrotask(syncContactResult));
 
+function isoDateTime(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) throw new Error("invalid_fields");
+  return date.toISOString();
+}
+
+function writePayload(type, target) {
+  if (type === "create_lead") return { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() };
+  if (type === "create_contact") return { body: $("note-body").value.trim(), contact_kind: $("contact-kind").value, contact_result: $("contact-result").value };
+  if (type === "change_status") return { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") };
+  if (type === "set_labels") return { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") };
+  if (type === "create_appointment") return {
+    title: $("appointment-title").value.trim(),
+    kind: $("appointment-kind").value,
+    starts_at: isoDateTime($("appointment-start").value),
+    ends_at: $("appointment-end").value ? isoDateTime($("appointment-end").value) : "",
+    location: $("appointment-location").value.trim(),
+    notes: $("appointment-notes").value.trim()
+  };
+  return { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: isoDateTime($("task-due").value), description: $("task-description").value.trim() };
+}
+
+function writeBlockedReason(type) {
+  if (saving) return "Já existe um salvamento em andamento. Aguarde a confirmação.";
+  if (!ready()) return "Conecte a extensão e aceite os termos antes de salvar.";
+  if (context?.state !== "ready") return errors.context_changed;
+  if (!resolvedPhone) return errors.invalid_phone;
+  if (type !== "create_lead" && !selectedLead) return "Selecione um lead antes de salvar.";
+  return "";
+}
+
 for (const [formId, type] of [["create-lead-form", "create_lead"], ["note-form", "create_contact"], ["task-form", "create_task"], ["appointment-form", "create_appointment"], ["label-form", "set_labels"], ["status-form", "change_status"]]) {
   $(formId).addEventListener("submit", async event => {
     event.preventDefault();
-    if (saving || !ready() || context?.state !== "ready" || !resolvedPhone) return;
-    if (type !== "create_lead" && !selectedLead) return;
+    const blocked = writeBlockedReason(type);
+    if (blocked) { $("feedback").textContent = blocked; return; }
     const version = revision;
     const target = selectedLead;
     const phone = resolvedPhone;
     const form = event.currentTarget;
-    const payload = type === "create_lead" ? { name: $("new-lead-name").value.trim(), email: $("new-lead-email").value.trim() } :
-      type === "create_contact" ? { body: $("note-body").value.trim(), contact_kind: $("contact-kind").value, contact_result: $("contact-result").value } :
-      type === "change_status" ? { stage_id: $("status-stage").value, expected_stage_id: String(target.stage_id || "") } :
-      type === "set_labels" ? { ids: [...$("label-options").querySelectorAll("input:checked")].map(input => input.value).sort().join(",") } :
-      type === "create_appointment" ? { title: $("appointment-title").value.trim(), kind: $("appointment-kind").value,
-        starts_at: new Date($("appointment-start").value).toISOString(), ends_at: $("appointment-end").value ? new Date($("appointment-end").value).toISOString() : "", location: $("appointment-location").value.trim() } :
-      { title: $("task-title").value.trim(), kind: $("task-kind").value, priority: $("task-priority").value, due_at: new Date($("task-due").value).toISOString() };
+    if (!form.reportValidity()) return;
     saving = true;
     form.append($("feedback"));
     for (const control of form.elements) control.disabled = true;
     $("feedback").textContent = "Salvando…";
     try {
+      const payload = writePayload(type, target);
       const result = await request(type, { tabId: context.tabId, contextKey: contextKey(context), leadId: target?.id,
         phone, confirmed: true, payload });
       if (version !== revision) return;
@@ -700,12 +728,13 @@ async function shareSelectedProperties(fromSearch) {
   const controls = [...container.querySelectorAll("input, button")].map(control => [control, control.disabled]);
   controls.forEach(([control]) => { control.disabled = true; });
   cards.forEach(item => { item.card.classList.remove("pc-card--share-error"); status(item, "Na fila · aguardando sua vez"); });
+  const waitBetweenSends = () => new Promise(resolve => setTimeout(resolve, 650));
   let current = null;
   let sent = 0;
   let linkFailures = 0;
   $("feedback").textContent = "";
   try {
-    await requestPropertyPhotoAccess(toSend.map(input => input.closest(".pc-card").dataset.sharePhotoUrl));
+    await requestPropertyPhotoAccess(toSend.map(input => input.closest(".pc-card").dataset.sharePhotoUrl)).catch(() => {});
     for (const item of cards) {
       if (version !== revision) break;
       current = item;
@@ -740,6 +769,7 @@ async function shareSelectedProperties(fromSearch) {
         pendingPropertyLinks.add(linkKey); linkFailures++;
         renderShareHistory(item.card, receipt.shares?.[item.input.value] || {count:null});
         status(item, "Enviado · vínculo pendente. Tente concluir o vínculo.");
+        if (sent < cards.length) await waitBetweenSends();
         current = null; continue;
       }
       if (fromSearch) propertySelection.delete(item.input.value);
@@ -747,6 +777,7 @@ async function shareSelectedProperties(fromSearch) {
       item.card.querySelector(".pc-share-status")?.remove();
       item.card.classList.remove("pc-card--share-feedback", "pc-card--sharing");
       renderShareHistory(item.card, receipt.shares?.[item.input.value] || {count:null});
+      if (sent < cards.length) await waitBetweenSends();
       current = null;
     }
     if (version === revision) $("feedback").textContent = linkFailures ? "Os envios foram confirmados, mas há vínculos pendentes. Tente concluir o vínculo; as mensagens não serão reenviadas." : "";

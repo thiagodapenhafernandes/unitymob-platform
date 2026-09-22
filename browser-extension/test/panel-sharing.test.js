@@ -21,6 +21,7 @@ function setup({confirm=true, failSecond=false, pending=false, photoAccess=true}
     context:{name:'Cliente',tabId:1},resolvedPhone:'5511999999999',contextKey:()=> 'chat',propertyLinkKey:id=>id,
     propertySelection:selection,pendingPropertyLinks:pendingLinks,revision:1,
     requestPropertyPhotoAccess:async()=>{if(!photoAccess)throw new Error('preview_permission_required');},
+    setTimeout:callback=>callback(),
     crypto:{randomUUID:()=> 'progress'},chrome:{runtime:{id:'ext',onMessage:{addListener(){},removeListener(){}}}},
     window:{confirm:()=>confirm},syncShareSelection(){},syncPropertySelection(){},renderShareHistory(){},renderLeadProperties(){},
     request:async(type,payload)=>{
@@ -31,10 +32,10 @@ function setup({confirm=true, failSecond=false, pending=false, photoAccess=true}
   vm.createContext(context);vm.runInContext(flow,context);
   return {context,calls,inputs,selection,button};
 }
-test('denied photo access sends nothing and preserves selection in both share flows',async()=>{
+test('denied photo access still sends the property links',async()=>{
   for(const fromSearch of [true,false]) {
     const state=setup({photoAccess:false});await state.context.shareSelectedProperties(fromSearch);
-    assert.equal(state.calls.length,0);assert.equal(state.selection.size,2);
+    assert.equal(state.calls.filter(call=>call.type==='send_properties').length,2);
     assert.equal(state.button.disabled,false);
   }
 });

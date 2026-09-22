@@ -8,6 +8,7 @@ class SeoRedirect < ApplicationRecord
   validates :from_path, uniqueness: { scope: :tenant_id }
   validates :status_code, inclusion: { in: VALID_STATUS_CODES }
   validate :paths_are_different
+  validate :to_path_is_internal_or_tenant_domain
 
   before_validation :normalize_paths
 
@@ -36,5 +37,27 @@ class SeoRedirect < ApplicationRecord
 
   def paths_are_different
     errors.add(:to_path, "deve ser diferente da origem") if from_path.present? && from_path == to_path
+  end
+
+  def to_path_is_internal_or_tenant_domain
+    return if to_path.blank?
+
+    uri = URI.parse(to_path.to_s)
+    return if uri.relative? && to_path.start_with?("/") && !to_path.start_with?("//")
+    return if uri.is_a?(URI::HTTP) && tenant_redirect_host?(uri.host)
+
+    errors.add(:to_path, "deve ser um caminho interno ou uma URL de domínio da conta")
+  rescue URI::InvalidURIError
+    errors.add(:to_path, "deve ser um caminho interno ou uma URL de domínio da conta")
+  end
+
+  def tenant_redirect_host?(host)
+    normalized_host = TenantDomain.normalize_host(host)
+    return false if normalized_host.blank? || tenant.blank?
+
+    comparable_host = normalized_host.delete_prefix("www.")
+    tenant.tenant_domains.active.pluck(:hostname).any? do |hostname|
+      TenantDomain.normalize_host(hostname).delete_prefix("www.") == comparable_host
+    end
   end
 end
