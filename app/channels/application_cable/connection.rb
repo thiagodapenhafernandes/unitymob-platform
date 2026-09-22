@@ -13,7 +13,7 @@ module ApplicationCable
       # derrubar sessão — fora do Warden::Manager (aqui é thread do cable) isso
       # viraria UncaughtThrowError e o socket ficaria em loop de reconexão.
       user = catch(:warden) { env["warden"]&.user(:admin_user) }
-      user.is_a?(AdminUser) ? user : reject_unauthorized_connection
+      user.is_a?(AdminUser) && user.active? ? user : reject_unauthorized_connection
     end
   end
 end

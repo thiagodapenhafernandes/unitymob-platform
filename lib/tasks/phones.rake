@@ -4,6 +4,8 @@ namespace :phones do
   PHONE_FIELDS = {
     "admin_users" => %w[phone secondary_phone],
     "captacoes" => %w[proprietario_telefone],
+    "commercial_contract_acceptances" => %w[representative_phone],
+    "commercial_contract_proposals" => %w[client_phone representative_phone],
     "contact_settings" => %w[whatsapp_primary whatsapp_secondary phone],
     "crm_contacts" => %w[phone_primary mobile_phone residential_phone business_phone],
     "footer_settings" => %w[whatsapp],
@@ -23,6 +25,7 @@ namespace :phones do
       business_phone
       spouse_phone
     ],
+    "public_form_submissions" => %w[normalized_phone],
     "stores" => %w[phone],
     "whatsapp_business_integrations" => %w[
       default_whatsapp_number

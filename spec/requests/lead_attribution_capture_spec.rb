@@ -10,7 +10,8 @@ RSpec.describe "Lead attribution capture", type: :request do
       WhatsappBusinessIntegration,
       whatsapp_url_for: "https://wa.me/5547999999999",
       site_phone_settings: {},
-      messaging_ready?: false
+      messaging_ready?: false,
+      redirect_after_capture_for?: false
     )
     allow(WhatsappBusinessIntegration).to receive(:current).and_return(integration)
   end

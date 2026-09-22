@@ -1,0 +1,217 @@
+<%# Etapa "O que acontece em cada botão": uma linha colorida por botão do template, com seletor de ação e campos que mudam conforme a escolha. %>
+<%
+  buttons = Array(local_assigns[:buttons]).select { |button| button["actionable_reply"] }
+  decisions = local_assigns[:decisions].to_h.with_indifferent_access
+  collapsed = local_assigns.fetch(:collapsed, true)
+  distribution_options = Array(local_assigns[:distribution_rules]).map { |row| row.respond_to?(:id) ? [row.name, row.id] : row }
+  agent_options_by_rule_id = local_assigns[:distribution_rule_agent_options].to_h.transform_keys(&:to_s)
+  action_meta = {
+    "record_only" => ["bi-journal-check", "Guarda o clique no histórico do lead, sem responder."],
+    "send_message" => ["bi-chat-dots", "Responde ao cliente com uma mensagem automática."],
+    "send_url" => ["bi-link-45deg", "Responde com uma mensagem e um link."],
+    "create_task" => ["bi-check2-square", "Cria uma tarefa comercial de acompanhamento."],
+    "distribute_lead" => ["bi-people", "Abre um atendimento com alguém da fila, em rodízio."],
+    "send_to_user" => ["bi-person-check", "Abre um atendimento com uma pessoa específica."],
+    "run_automation" => ["bi-lightning-charge", "Continua numa conversa com perguntas e caminhos."]
+  }
+  hints = {
+    "record_only" => "O clique fica registrado no lead. Nenhuma mensagem é enviada.",
+    "send_message" => "O cliente recebe a mensagem abaixo assim que clicar.",
+    "send_url" => "O cliente recebe a mensagem (opcional) junto com o link.",
+    "create_task" => "Uma tarefa é criada para o corretor do lead, com prazo, e ele é avisado em tempo real. O cliente pode receber uma confirmação.",
+    "distribute_lead" => "Um atendente da fila é escolhido em rodízio, recebe o aviso em tempo real e a conversa fica com ele até finalizar.",
+    "send_to_user" => "A conversa vai para a pessoa escolhida, que recebe o aviso em tempo real e atende até finalizar.",
+    "run_automation" => "A conversa continua numa automação: perguntas com botões ou lista, respostas em caminhos e passagem para atendente."
+  }
+%>
+<div class="wtf-map">
+  <div class="wtf-map__head">
+    <div>
+      <strong>Decisões dos botões</strong>
+      <p>Cada botão do template vira uma decisão. Toque em um para configurar; a simulação ao lado mostra o que o cliente vê.</p>
+    </div>
+    <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-response-flow#toggleAll" data-whatsapp-response-flow-target="toggleAll">
+      <i class="bi bi-arrows-expand ax-ico" aria-hidden="true"></i><span>Expandir todos</span>
+    </button>
+  </div>
+
+  <% if buttons.blank? %>
+    <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
+      <%= local_assigns[:empty_message] || "Este template não possui botões de resposta rápida para mapear." %>
+    <% end %>
+  <% else %>
+    <div class="wtf-rows">
+      <% buttons.each_with_index do |button, index| %>
+        <% key = button["key"].to_s %>
+        <% base_name = "whatsapp_response_flow[button_actions][#{key}]" %>
+        <% action = decisions.fetch(key, {}) %>
+        <% selected_action = action["action"].presence || button["action"].presence || "record_only" %>
+        <% safe_id = "flow_#{key}".parameterize(separator: "_") %>
+        <% title = button["text"].presence || "-" %>
+        <% hours = WhatsappResponseFlow::DEFAULT_BUSINESS_HOURS.merge(action.fetch("business_hours", {})) %>
+
+        <article class="wtf-row <%= "is-collapsed" if collapsed %>"
+                 data-response-action="<%= selected_action %>"
+                 data-whatsapp-response-flow-target="row"
+                 data-action="focusin->whatsapp-response-flow#activate click->whatsapp-response-flow#activate input->whatsapp-response-flow#simulate change->whatsapp-response-flow#refresh">
+          <%= hidden_field_tag "#{base_name}[button_key]", key %>
+          <%= hidden_field_tag "#{base_name}[button_text]", title %>
+
+          <button type="button" class="wtf-row__head" aria-expanded="<%= (!collapsed).to_s %>"
+                  aria-label="Abrir ou fechar a configuração do botão <%= title %>"
+                  data-action="whatsapp-response-flow#toggleRow">
+            <span class="wtf-row__num"><%= index + 1 %></span>
+            <span class="wtf-row__btn" title="<%= title %>">
+              <em>Botão recebido</em>
+              <strong><%= title %></strong>
+            </span>
+            <span class="wtf-row__chip"><i class="bi <%= action_meta.fetch(selected_action, action_meta["record_only"]).first %>" data-row-chip-icon></i><span data-row-chip><%= WhatsappResponseFlow::ACTIONS.fetch(selected_action, "Apenas registrar") %></span></span>
+            <span class="wtf-row__summary" data-row-summary></span>
+            <span class="wtf-row__state" data-row-state></span>
+            <i class="bi bi-chevron-down wtf-row__chevron" aria-hidden="true"></i>
+          </button>
+
+          <div class="wtf-row__panel" <%= "inert" if collapsed %>>
+            <div class="wtf-row__inner">
+              <div class="wtf-row__body">
+                <fieldset class="ax-guided-fieldset">
+                  <legend>Quando clicarem, o que acontece?</legend>
+                  <div class="wtf-choices" role="radiogroup" aria-label="Ação do botão <%= title %>">
+                    <% WhatsappResponseFlow::ACTIONS.each do |value, label| %>
+                      <% icon, description = action_meta.fetch(value) %>
+                      <button type="button" class="wtf-choice" role="radio" aria-checked="<%= (value == selected_action).to_s %>"
+                              data-value="<%= value %>" data-label="<%= label %>" data-icon="<%= icon %>"
+                              data-action="whatsapp-response-flow#pickAction">
+                        <span class="wtf-choice__icon"><i class="bi <%= icon %>"></i></span>
+                        <strong><%= label %></strong>
+                        <small><%= description %></small>
+                      </button>
+                    <% end %>
+                  </div>
+                  <%# O select continua sendo o campo enviado; os cartões só o controlam. %>
+                  <%= select_tag "#{base_name}[action]",
+                                 options_for_select(WhatsappResponseFlow.action_options, selected_action),
+                                 id: "whatsapp_button_decision_#{safe_id}_action",
+                                 class: "wtf-row__select",
+                                 hidden: true,
+                                 data: { whatsapp_response_flow_target: "action" } %>
+                </fieldset>
+
+                <div class="wtf-config">
+                  <% hints.each do |value, text| %>
+                    <p class="wtf-config__hint" data-response-hint="<%= value %>"><i class="bi <%= action_meta[value].first %>"></i><span><%= text %></span></p>
+                  <% end %>
+
+                  <div class="wtf-fields">
+                    <div class="ax-field ax-guided-span-2" data-response-field="message">
+                      <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_message" data-message-label>Mensagem automática</label>
+                      <%= text_area_tag "#{base_name}[message]", action["message"], id: "whatsapp_button_decision_#{safe_id}_message", class: "ax-control", rows: 2 %>
+                    </div>
+                    <div class="ax-field ax-guided-span-2" data-response-field="url">
+                      <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_url">Link</label>
+                      <%= url_field_tag "#{base_name}[url]", action["url"], id: "whatsapp_button_decision_#{safe_id}_url", class: "ax-control", placeholder: "https://..." %>
+                    </div>
+                    <div class="ax-field ax-guided-span-2" data-response-field="task">
+                      <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_task_title">Título da tarefa</label>
+                      <%= text_field_tag "#{base_name}[task_title]", action["task_title"], id: "whatsapp_button_decision_#{safe_id}_task_title", class: "ax-control", placeholder: "Acompanhar resposta WhatsApp: #{title}" %>
+                    </div>
+                    <div data-response-field="task-user">
+                      <%= ax_standalone_select_field(name: "#{base_name}[task_user_id]", id: "whatsapp_button_decision_#{safe_id}_task_user_id", label: "Se o lead não tiver corretor, quem recebe",
+                                                     choices: Array(local_assigns[:user_options]), selected: action["task_user_id"], include_blank: "Responsável pela conversa",
+                                                     autocomplete: true, placeholder: "Responsável pela conversa",
+                                                     hint: "A tarefa sempre fica com o corretor do lead. Contatos novos do WhatsApp ainda não têm corretor, então escolha quem recebe.") %>
+                    </div>
+                    <div data-response-field="task-due">
+                      <%= ax_standalone_select_field(name: "#{base_name}[task_due_minutes]", id: "whatsapp_button_decision_#{safe_id}_task_due_minutes", label: "Prazo",
+                                                     choices: WhatsappResponseFlow::TASK_DUE_OPTIONS.map { |minutes, label| [label, minutes] },
+                                                     selected: (action["task_due_minutes"].presence || WhatsappResponseFlow::DEFAULT_TASK_DUE_MINUTES).to_i, autocomplete: true) %>
+                    </div>
+                    <div data-response-field="task-kind">
+                      <%= ax_standalone_select_field(name: "#{base_name}[task_kind]", id: "whatsapp_button_decision_#{safe_id}_task_kind", label: "Tipo da tarefa",
+                                                     choices: Task::KINDS.map { |key, label| [label, key] }, selected: action["task_kind"].presence || "follow_up", autocomplete: true) %>
+                    </div>
+                    <div data-response-field="task-priority">
+                      <%= ax_standalone_select_field(name: "#{base_name}[task_priority]", id: "whatsapp_button_decision_#{safe_id}_task_priority", label: "Prioridade",
+                                                     choices: Task::PRIORITIES.map { |key, label| [label, key] }, selected: action["task_priority"].presence || "normal", autocomplete: true) %>
+                    </div>
+                    <div data-response-field="distribution">
+                      <%= ax_standalone_select_field(name: "#{base_name}[distribution_rule_id]", id: "whatsapp_button_decision_#{safe_id}_distribution_rule_id", label: "Fila/regra de distribuição",
+                                                     choices: distribution_options, selected: action["distribution_rule_id"], include_blank: "Selecione a fila",
+                                                     autocomplete: true, placeholder: "Selecione a fila", data: { response_role: "distribution-rule" }) %>
+                    </div>
+                    <div class="ax-field" data-response-field="accept">
+                      <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_accept_timeout_minutes">Repassar se não abrir em (minutos)</label>
+                      <%= number_field_tag "#{base_name}[accept_timeout_minutes]", action["accept_timeout_minutes"], id: "whatsapp_button_decision_#{safe_id}_accept_timeout_minutes", class: "ax-control", min: 1, max: 1440, placeholder: "Vazio = não repassa" %>
+                    </div>
+                    <div class="ax-field ax-guided-span-2" data-response-field="target-admin">
+                      <% selected_rule_id = action["distribution_rule_id"].to_s %>
+                      <% selected_agent_ids = (Array(action["target_admin_user_ids"]).presence || [action["target_admin_user_id"]]).compact_blank.map(&:to_s) %>
+                      <%= ax_multiselect_field(name: "#{base_name}[target_admin_user_ids][]",
+                                               id: "whatsapp_button_decision_#{safe_id}_target_admin_user_ids",
+                                               label: "Atendentes que podem receber este botão",
+                                               tooltip: "Só os atendentes marcados entram no rodízio quando o contato clicar neste botão. Vazio = todos os atendentes elegíveis da regra.",
+                                               choices: agent_options_by_rule_id.fetch(selected_rule_id, []),
+                                               selected: selected_agent_ids,
+                                               placeholder: "Todos os atendentes da regra",
+                                               data: { tom_select_tags_value: false, response_role: "target-admin" }) %>
+                      <p class="ax-guided-hint">Passa para outro atendente marcado se o dono não abrir a conversa nem responder no prazo. Independente do bolsão da regra.</p>
+                    </div>
+                    <div class="ax-guided-span-2" data-response-field="automation">
+                      <%= ax_standalone_select_field(name: "#{base_name}[automation_workflow_id]", id: "whatsapp_button_decision_#{safe_id}_automation_workflow_id", label: "Automação",
+                                                     choices: Array(local_assigns[:automation_options]), selected: action["automation_workflow_id"], include_blank: "Selecione uma automação",
+                                                     autocomplete: true, placeholder: "Selecione uma automação",
+                                                     hint: safe_join(["A conversa continua no construtor: perguntas com botões ou lista, respostas em caminhos e passagem para atendente. ",
+                                                                      (link_to("Criar automação a partir deste template", local_assigns[:new_automation_path], target: "_blank", rel: "noopener", class: "ax-link") if local_assigns[:new_automation_path])].compact)) %>
+                    </div>
+                    <div class="ax-guided-span-2" data-response-field="target-user">
+                      <%= ax_standalone_select_field(name: "#{base_name}[target_user_id]", id: "whatsapp_button_decision_#{safe_id}_target_user_id", label: "Usuário que atende",
+                                                     choices: Array(local_assigns[:user_options]), selected: action["target_user_id"], include_blank: "Selecione um usuário",
+                                                     autocomplete: true, placeholder: "Selecione um usuário") %>
+                    </div>
+                    <div class="ax-field ax-guided-span-2" data-response-field="finish">
+                      <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_finish_message">Mensagem ao finalizar o atendimento</label>
+                      <%= text_area_tag "#{base_name}[finish_message]", action["finish_message"].presence || Whatsapp::AttendanceManager::DEFAULT_FINISH_MESSAGE, id: "whatsapp_button_decision_#{safe_id}_finish_message", class: "ax-control", rows: 2 %>
+                      <p class="ax-guided-hint">Enviada quando o atendente clicar em “Finalizar atendimento”. Até lá o atendimento fica aberto; o cliente só volta ao menu depois disso.</p>
+                    </div>
+                  </div>
+
+                  <div class="wtf-hours" data-response-field="hours">
+                    <%= ax_switch_field(label: "Usar horário de atendimento",
+                                        name: "#{base_name}[business_hours][enabled]",
+                                        checked: ActiveModel::Type::Boolean.new.cast(hours["enabled"])) %>
+                    <div class="wtf-hours__detail" data-hours-detail>
+                    <div class="whatsapp-response-hours__days">
+                      <% day_options.each do |label, value| %>
+                        <%= ax_check_field(label: label,
+                                           name: "#{base_name}[business_hours][days][]",
+                                           value: value,
+                                           checked: Array(hours["days"]).include?(value),
+                                           class_name: "whatsapp-response-hours__day") %>
+                      <% end %>
+                    </div>
+                    <div class="whatsapp-response-hours__range">
+                      <%= time_field_tag "#{base_name}[business_hours][start]", hours["start"], class: "ax-control" %>
+                      <span aria-hidden="true">até</span>
+                      <%= time_field_tag "#{base_name}[business_hours][end]", hours["end"], class: "ax-control" %>
+                    </div>
+                    <div class="wtf-fields">
+                      <div class="ax-field">
+                        <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_inside_hours_message">Mensagem dentro do horário</label>
+                        <%= text_area_tag "#{base_name}[inside_hours_message]", action["inside_hours_message"].presence || WhatsappResponseFlow::DEFAULT_AUTO_REPLY_MESSAGE, id: "whatsapp_button_decision_#{safe_id}_inside_hours_message", class: "ax-control", rows: 4, placeholder: "Só um momento, um dos nossos atendentes irá entrar em contato." %>
+                      </div>
+                      <div class="ax-field">
+                        <label class="ax-field-label" for="whatsapp_button_decision_<%= safe_id %>_outside_hours_message">Mensagem fora do horário</label>
+                        <%= text_area_tag "#{base_name}[outside_hours_message]", action["outside_hours_message"].presence || WhatsappResponseFlow::DEFAULT_OUTSIDE_HOURS_MESSAGE, id: "whatsapp_button_decision_#{safe_id}_outside_hours_message", class: "ax-control", rows: 3, placeholder: "Não estamos disponíveis no momento, mas entraremos em contato assim que possível." %>
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      <% end %>
+    </div>
+  <% end %>
+</div>

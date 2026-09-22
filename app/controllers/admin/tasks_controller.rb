@@ -7,7 +7,10 @@ class Admin::TasksController < Admin::BaseController
   FILTERS = %w[pendentes hoje atrasadas semana concluidas todas legado].freeze
 
   def index
+    # "Migração externa" é auditoria da importação: só quem enxerga tudo (escopo Todos) precisa dela.
+    @show_legacy = owns_all_resource?(:comercial)
     @filter = params[:filter].presence_in(FILTERS) || "pendentes"
+    @filter = "pendentes" if @filter == "legado" && !@show_legacy
     scoped_tasks = task_scope
     base = @filter == "legado" ? scoped_tasks.external_legacy : scoped_tasks.operational_current
     @tasks = filtered(base, @filter).includes(:lead, :admin_user).ordered.limit(300)
@@ -16,7 +19,7 @@ class Admin::TasksController < Admin::BaseController
       hoje: base.hoje.count,
       atrasadas: base.atrasadas.count,
       semana: base.semana.count,
-      legado: scoped_tasks.external_legacy.pendentes.count
+      legado: (scoped_tasks.external_legacy.pendentes.count if @show_legacy)
     }
     @page_title = "Minhas Tarefas"
   end

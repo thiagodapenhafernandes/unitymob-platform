@@ -44,8 +44,8 @@ RSpec.describe "Admin integrations refinement", type: :request do
     get admin_meta_integrations_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Conexão Facebook")
-    expect(response.body).to include("ax-operational-panel", "meta-integration-connect-icon")
+    expect(response.body).to include("Meta Leads")
+    expect(response.body).to include("ax-integration-onboarding", "Continuar com Facebook")
     expect(Nokogiri::HTML(response.body).at_css(".meta-integration-workspace").to_html).not_to match(/\bstyle\s*=/i)
     expect(response.body).not_to include("Como funciona?")
   end

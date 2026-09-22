@@ -1,0 +1,63 @@
+/* Escolha exclusiva (radio) em chips, segmentos ou cartões com ícone. Helper: ax_choice_group.
+ * O acento vem de --step (chips/segmentos) ou de data-tone (cartões); cores neutras seguem os tokens do tema. */
+
+
+/* Chips de "Onde vai usar" */
+.ax-choice-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ax-choice-chip, .ax-choice-segment__item { position: relative; cursor: pointer; }
+
+.ax-choice-chip input, .ax-choice-segment__item input, .ax-choice-card input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+
+.ax-choice-chip > span, .ax-choice-segment__item > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid var(--ab-line, #d5dbe4);
+  border-radius: 99px;
+  background: var(--ab-panel, #fff);
+  color: var(--ab-muted, #5d6b7e);
+  font-size: 12.5px;
+  font-weight: 650;
+  transition: transform 140ms var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)), background-color 160ms, color 160ms, border-color 160ms, box-shadow 160ms;
+}
+
+.ax-choice-chip:hover > span, .ax-choice-segment__item:hover > span { border-color: color-mix(in srgb, var(--step, var(--admin-primary)) 50%, var(--ab-line, #d5dbe4)); color: var(--ab-ink, #1f2733); transform: translateY(-1px); }
+
+.ax-choice-chip input:checked + span, .ax-choice-segment__item input:checked + span { border-color: var(--step, var(--admin-primary)); background: color-mix(in srgb, var(--step, var(--admin-primary)) 13%, var(--ab-panel, #fff)); color: color-mix(in srgb, var(--step, var(--admin-primary)) 82%, var(--ab-ink, #1f2733)); box-shadow: 0 2px 8px color-mix(in srgb, var(--step, var(--admin-primary)) 22%, transparent); }
+
+.ax-choice-chip input:focus-visible + span, .ax-choice-segment__item input:focus-visible + span, .ax-choice-card input:focus-visible ~ .ax-choice-card__icon { outline: 3px solid color-mix(in srgb, var(--step, var(--admin-primary)) 40%, transparent); outline-offset: 2px; }
+
+.ax-choice-segment { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ax-choice-segment__item > span { border-radius: 9px; }
+
+
+/* Cartões de objetivo */
+.ax-choice-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+
+.ax-choice-card { --tone: var(--ax-accent-pink); position: relative; display: grid; align-content: start; gap: 4px; padding: 14px; border: 1.5px solid var(--ab-line, #d5dbe4); border-radius: 12px; background: var(--ab-panel, #fff); cursor: pointer; transition: transform 160ms var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)), border-color 160ms, box-shadow 200ms, background-color 200ms; }
+
+.ax-choice-card[data-tone="utility"] { --tone: var(--ax-accent-blue); }
+.ax-choice-card[data-tone="brand"] { --tone: var(--admin-primary); }
+
+.ax-choice-card[data-tone="authentication"] { --tone: var(--ax-accent-green); }
+
+.ax-choice-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tone) 55%, var(--ab-line, #d5dbe4)); }
+
+.ax-choice-card:has(input:checked) { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 9%, var(--ab-panel, #fff)); box-shadow: 0 6px 18px color-mix(in srgb, var(--tone) 20%, transparent); }
+
+.ax-choice-card:has(input:disabled) { cursor: not-allowed; opacity: .7; transform: none; }
+
+.ax-choice-card__icon { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 4px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 14%, var(--ab-panel, #fff)); color: var(--tone); font-size: 17px; transition: background-color 200ms, color 200ms, transform 240ms var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)); }
+
+.ax-choice-card:has(input:checked) .ax-choice-card__icon { background: var(--tone); color: #fff; transform: scale(1.06) rotate(-4deg); }
+
+.ax-choice-card strong { font-size: 14px; color: var(--ab-ink, #1f2733); }
+
+.ax-choice-card small { font-size: 12px; line-height: 1.4; color: var(--ab-muted, #5d6b7e); }
+
+@media (max-width: 720px) {
+  .ax-guided-grid, .ax-choice-cards, .ax-guided-checklist { grid-template-columns: 1fr; }
+}

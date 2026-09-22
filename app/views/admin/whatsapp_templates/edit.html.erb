@@ -7,6 +7,15 @@
 <% end %>
 
 <div class="whatsapp-templates">
+  <% if @template.meta_id.present? %>
+    <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+      Ao salvar, as alterações de conteúdo são <strong>reenviadas para nova análise da Meta</strong>. Nome e idioma não podem mudar.
+      Templates aprovados aceitam 1 edição a cada 24h (até 10 em 30 dias) e não podem ser editados enquanto estiverem em análise.
+      <% if @template.whatsapp_response_flows.any? %>
+        <br>Este template tem um <strong>fluxo de resposta</strong>: se mudar o texto ou a ordem dos botões, revise as decisões do fluxo depois da aprovação.
+      <% end %>
+    <% end %>
+  <% end %>
   <% if @template.template_type == "carousel" %>
     <%= render "carousel_form", template: @template, sender_number: nil %>
   <% elsif @template.template_type == "flow" %>

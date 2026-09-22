@@ -35,6 +35,7 @@ class Tenant < ApplicationRecord
   has_many :whatsapp_campaigns, dependent: :restrict_with_error
   has_many :whatsapp_business_integrations, dependent: :restrict_with_error
   has_many :whatsapp_templates, dependent: :restrict_with_error
+  has_many :whatsapp_response_flows, dependent: :restrict_with_error
   has_many :whatsapp_sender_numbers, dependent: :restrict_with_error
   has_many :notification_template_settings, dependent: :restrict_with_error
   has_many :whatsapp_campaign_recipients, dependent: :restrict_with_error
@@ -120,6 +121,7 @@ class Tenant < ApplicationRecord
 
   before_validation :normalize_slug
   before_validation :normalize_public_site_theme
+  before_validation :infer_public_site_theme
   after_create :ensure_builtin_profiles!
   after_create :ensure_default_lead_pipeline!
   after_create_commit :register_support_account
@@ -130,8 +132,19 @@ class Tenant < ApplicationRecord
     Rails.logger.warn("[support] registro aguardando recorrência tenant_id=#{id}")
   end
 
+  # A conta escolhe o modelo em Site público → Identidade; contas novas ou renomeadas que
+  # ainda estão no padrão herdam o modelo pela identidade (nome/slug), como sempre foi.
   def public_site_theme_key
-    inferred_public_site_theme_key
+    return inferred_public_site_theme_key unless has_attribute?(:public_site_theme)
+
+    public_site_theme.presence_in(PUBLIC_SITE_THEMES.keys) || DEFAULT_PUBLIC_SITE_THEME
+  end
+
+  # Modelos que esta conta pode escolher: o Padrão, o modelo da própria identidade (nome/slug)
+  # e o que já está em uso. Skins de outros clientes nunca aparecem.
+  def available_public_site_themes
+    keys = [DEFAULT_PUBLIC_SITE_THEME, inferred_public_site_theme_key, public_site_theme_key].uniq
+    PUBLIC_SITE_THEMES.slice(*keys)
   end
 
   def public_site_theme_label
@@ -262,6 +275,13 @@ class Tenant < ApplicationRecord
     return unless has_attribute?(:public_site_theme)
 
     self.public_site_theme = public_site_theme.to_s.presence_in(PUBLIC_SITE_THEMES.keys) || DEFAULT_PUBLIC_SITE_THEME
+  end
+
+  def infer_public_site_theme
+    return unless has_attribute?(:public_site_theme) && public_site_theme == DEFAULT_PUBLIC_SITE_THEME
+    return unless new_record? || name_changed? || slug_changed?
+
+    self.public_site_theme = inferred_public_site_theme_key
   end
 
   def inferred_public_site_theme_key

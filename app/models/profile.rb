@@ -118,12 +118,15 @@ class Profile < ApplicationRecord
     ], description: "Tarefas, agenda e propostas comerciais" },
     { key: "commercial_contracts", label: "Contratos B2B", icon: "bi-file-earmark-check", actions: %w[manage], scopeable: false, parent_section: "comercial", description: "Propostas comerciais B2B, termos e PDFs de contratação" },
     { key: "whatsapp_inbox",     label: "Atendimento WhatsApp",   icon: "bi-whatsapp",         actions: %w[view manage],       scopeable: true,  sidebar_section: "operation", sidebar_actions: %w[view], sidebar_items: [
-      { group: "WhatsApp", icon: "bi-whatsapp", controllers: %w[whatsapp_inbox whatsapp_campaigns whatsapp_templates], permission_any: [[:view, :whatsapp_inbox], [:view, :whatsapp_campaigns]], children: [
+      { group: "WhatsApp", icon: "bi-whatsapp", controllers: %w[whatsapp_inbox whatsapp_attendances whatsapp_campaigns whatsapp_templates whatsapp_response_flows], permission_any: [[:view, :whatsapp_inbox], [:view, :whatsapp_campaigns], [:view, :whatsapp_response_flows]], children: [
         { label: "Atendimento", icon: "bi-chat-dots", path: "admin_whatsapp_conversations_path", controllers: %w[whatsapp_inbox], permission: [:view, :whatsapp_inbox] },
+        { label: "Gestão de atendimentos", icon: "bi-headset", path: "admin_whatsapp_attendances_path", controllers: %w[whatsapp_attendances], permission: [:view, :whatsapp_inbox] },
         { label: "Templates", icon: "bi-grid-3x2-gap", path: "admin_whatsapp_templates_path", controllers: %w[whatsapp_templates], permission: [:view, :whatsapp_campaigns] },
+        { label: "Fluxos de Resposta", icon: "bi-diagram-3", path: "admin_whatsapp_response_flows_path", controllers: %w[whatsapp_response_flows], permission: [:view, :whatsapp_response_flows] },
         { label: "Disparos", icon: "bi-broadcast", path: "admin_whatsapp_campaigns_path", controllers: %w[whatsapp_campaigns], permission: [:view, :whatsapp_campaigns] }
       ] }
     ], description: "Central de atendimento (inbox) do WhatsApp" },
+    { key: "whatsapp_response_flows", label: "Fluxos de Resposta WhatsApp", icon: "bi-diagram-3", actions: %w[view manage], scopeable: true, sidebar_section: "operation", sidebar_actions: %w[view], description: "Mapeamento de botões aprovados para mensagens, links, tarefas e filas de atendimento" },
     { key: "whatsapp_campaigns", label: "Disparos WhatsApp",      icon: "bi-send",             actions: %w[view manage],       scopeable: true,  sidebar_section: "operation", sidebar_actions: %w[view], description: "Campanhas e disparos em massa pelo WhatsApp" },
     { key: "automacoes",         label: "Automação",              icon: "bi-lightning-charge", actions: %w[manage],            scopeable: false, sidebar_section: "operation", sidebar_actions: %w[manage], sidebar_items: [
       { label: "Automação", icon: "bi-lightning-charge", path: "admin_automation_rules_path", controllers: %w[automation_rules automation_workflows automation_events] }
@@ -169,7 +172,7 @@ class Profile < ApplicationRecord
       { label: "Imóveis com Potencial", icon: "bi-house-heart", path: "admin_marketing_properties_path", controllers: %w[marketing_properties] },
       { label: "Alertas", icon: "bi-exclamation-triangle", path: "admin_marketing_alerts_path", controllers: %w[marketing_alerts] }
     ], description: "Banners, landing, SEO, home, rodapé" },
-    { key: "site_publico",       label: "Site público",           icon: "bi-globe2",           actions: %w[manage],            scopeable: false, section: true, sidebar_section: "public_site", sidebar_actions: %w[manage], included_items: ["Dashboard SEO", "Páginas SEO", "Redirecionamentos SEO", "Formulários", "Blog", "Landing Pages", "Banners", "Seções da Home", "Perfil público", "Home", "Contato", "Rodapé"], sidebar_items: [
+    { key: "site_publico",       label: "Site público",           icon: "bi-globe2",           actions: %w[manage],            scopeable: false, section: true, sidebar_section: "public_site", sidebar_actions: %w[manage], included_items: ["Dashboard SEO", "Páginas SEO", "Redirecionamentos SEO", "Formulários", "Blog", "Landing Pages", "Banners", "Seções da Home", "Identidade", "Topo e menu", "Home", "Contato", "Rodapé", "Perfil público"], sidebar_items: [
       { caption: "SEO" },
       { label: "Dashboard SEO", icon: "bi-graph-up-arrow", path: "admin_seo_dashboard_path", controllers: %w[seo_dashboard] },
       { label: "Páginas SEO", icon: "bi-search", path: "admin_seo_settings_path", controllers: %w[seo_settings] },
@@ -181,10 +184,12 @@ class Profile < ApplicationRecord
       { label: "Banners", icon: "bi-image", path: "admin_banners_path", controllers: %w[banners] },
       { label: "Seções da Home", icon: "bi-layout-text-sidebar", path: "admin_home_sections_path", controllers: %w[home_sections] },
       { caption: "Estrutura" },
-      { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] },
+      { label: "Identidade", icon: "bi-stars", path: "edit_admin_public_identity_path", controllers: %w[public_identities] },
+      { label: "Topo e menu", icon: "bi-layout-text-window", path: "edit_admin_public_header_path", controllers: %w[public_headers] },
       { label: "Home", icon: "bi-house-door", path: "edit_admin_home_setting_path", controllers: %w[home_settings] },
       { label: "Contato", icon: "bi-telephone", path: "edit_admin_contact_setting_path", controllers: %w[contact_settings] },
-      { label: "Rodapé", icon: "bi-layout-sidebar", path: "edit_admin_footer_setting_path", controllers: %w[footer_settings] }
+      { label: "Rodapé", icon: "bi-layout-sidebar", path: "edit_admin_footer_setting_path", controllers: %w[footer_settings] },
+      { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] }
     ], description: "SEO, páginas, blog e estrutura do site público" },
     { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
       { label: "Portais", icon: "bi-building", path: "admin_portal_integrations_path", controllers: %w[portal_integrations] },
@@ -213,9 +218,9 @@ class Profile < ApplicationRecord
       { caption: "Campo" },
       { label: "Configurações de Campo", icon: "bi-toggles2", path: "edit_admin_field_settings_path", controllers: %w[field_settings] }
     ], description: "Configurações gerais da conta operacional" },
-    { key: "conta",              label: "Conta",                  icon: "bi-building-gear",    actions: %w[manage],            scopeable: false, section: true, sidebar_section: "account", sidebar_actions: %w[manage], included_items: ["Visão geral", "Identidade e Marca", "Perfis", "Meu SMTP", "Importados CSV", "Descadastros WhatsApp", "Segurança de Acesso", "Auditoria Operacional", "Auditoria de Campo", "Auditoria de Acessos", "Auditoria de Exportações", "Apresentações WhatsApp"], sidebar_items: [
+    { key: "conta",              label: "Conta",                  icon: "bi-building-gear",    actions: %w[manage],            scopeable: false, section: true, sidebar_section: "account", sidebar_actions: %w[manage], included_items: ["Visão geral", "Aparência da plataforma", "Perfis", "Meu SMTP", "Importados CSV", "Descadastros WhatsApp", "Segurança de Acesso", "Auditoria Operacional", "Auditoria de Campo", "Auditoria de Acessos", "Auditoria de Exportações", "Apresentações WhatsApp"], sidebar_items: [
       { label: "Visão geral", icon: "bi-grid-1x2", path: "admin_account_settings_path", controllers: %w[account_settings] },
-      { label: "Identidade e Marca", icon: "bi-palette", path: "edit_admin_layout_setting_path", controllers: %w[layout_settings] },
+      { label: "Aparência da plataforma", icon: "bi-palette", path: "edit_admin_layout_setting_path", controllers: %w[layout_settings] },
       { label: "Perfis", icon: "bi-shield-lock", path: "admin_profiles_path", controllers: %w[profiles] },
       { caption: "Notificações" },
       { label: "Meu SMTP", icon: "bi-envelope-at", path: "edit_admin_email_setting_path", controllers: %w[email_settings] },

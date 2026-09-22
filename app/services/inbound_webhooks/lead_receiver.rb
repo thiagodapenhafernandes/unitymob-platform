@@ -44,10 +44,7 @@ module InboundWebhooks
 
       {
         tenant: token.admin_user.tenant,
-        # NÃO pré-atribuir ao dono do token: o lead entra SEM corretor para as
-        # regras de distribuição rodarem (o RoutingService só distribui quando
-        # admin_user_id é nil). Quem recebeu via token fica auditado em
-        # other_information (inbound_webhook_user_id/name).
+        admin_user: token.admin_user,
         name: field_value("name", "nome", "client_name", "clientName"),
         email: field_value("email", "client_email", "clientEmail"),
         phone: Phones::Normalizer.call(field_value("phone", "telefone", "celular", "whatsapp", "client_phone", "clientPhone")),

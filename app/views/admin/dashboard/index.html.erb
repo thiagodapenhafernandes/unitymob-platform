@@ -37,28 +37,13 @@
 %>
 
 <section class="ax-dashboard" aria-label="Dashboard operacional">
-  <header class="ax-dashboard-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Cockpit operacional</span>
-      <div class="ax-dashboard-command__title-row">
-        <h1><%= greeting %>, <%= first_name %></h1>
-        <%= ax_badge(@is_admin_view ? "Admin" : "Meu painel", tone: :blue) %>
-      </div>
-      <p><%= l(Date.current, format: :long) %> · <%= dashboard_subtitle %></p>
-      <small class="ax-dashboard-command__updated"><i class="bi bi-arrow-clockwise"></i> Atualizado <%= time_ago_in_words(@dashboard_updated_at) %> atrás</small>
-    </div>
-
-    <div class="ax-dashboard-command__status">
-      <span><i class="bi bi-hdd-network"></i> Operação</span>
-      <% if @field_feature_enabled %>
-        <%= ax_badge("Campo ativo", tone: :green, dot: true) %>
-      <% else %>
-        <%= link_to edit_admin_field_settings_path, title: "Configurar módulo Campo" do %>
-          <%= ax_badge("Campo pausado", tone: :amber) %>
-        <% end %>
-      <% end %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: "#{greeting}, #{first_name}",
+        eyebrow: "Cockpit operacional",
+        icon: "speedometer2",
+        pills: [@is_admin_view ? "Admin" : "Meu painel"],
+        subtitle: "#{l(Date.current, format: :long)} · #{dashboard_subtitle} · Atualizado #{time_ago_in_words(@dashboard_updated_at)} atrás",
+        actions: (@field_feature_enabled ? ax_badge("Campo ativo", tone: :green, dot: true) : link_to(ax_badge("Campo pausado", tone: :amber), edit_admin_field_settings_path, title: "Configurar módulo Campo"))) %>
 
   <nav class="ax-dashboard-tabs" aria-label="Áreas do dashboard">
     <% dashboard_tabs = [["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"], ["site", "Site público", "globe2"], ["overview", "Visão geral", "grid-1x2"]] %>

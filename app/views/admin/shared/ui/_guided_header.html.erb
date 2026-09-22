@@ -1,0 +1,21 @@
+<%# Cabeçalho do formulário guiado: título, progresso e navegação por etapas.
+    locals: icon, title, subtitle, steps ([[rótulo, ícone]]), controller (Stimulus com goToStep), progress_label %>
+<header class="ax-guided-hero">
+  <div class="ax-guided-hero__icon" aria-hidden="true"><i class="bi <%= icon %>"></i></div>
+  <div class="ax-guided-hero__copy">
+    <h1><%= title %></h1>
+    <p><%= subtitle %></p>
+  </div>
+  <div class="ax-guided-progress" role="status" aria-live="polite">
+    <div class="ax-guided-progress__row"><strong data-guided="progressLabel"><%= local_assigns.fetch(:progress_label, "Comece pelo nome") %></strong><span data-guided="progressCount">0 de 3</span></div>
+    <div class="ax-guided-progress__track"><span class="ax-guided-progress__bar" data-guided="progressBar" style="width:0%"></span></div>
+  </div>
+  <nav class="ax-guided-steps-nav" aria-label="Etapas">
+    <% steps.each_with_index do |(label, step_icon), index| %>
+      <button type="button" class="ax-guided-steps-nav__item" data-step="<%= index + 1 %>" data-action="<%= controller %>#goToStep">
+        <span class="ax-guided-steps-nav__dot"><i class="bi <%= step_icon %>"></i><i class="bi bi-check-lg"></i></span>
+        <span><%= label %></span>
+      </button>
+    <% end %>
+  </nav>
+</header>

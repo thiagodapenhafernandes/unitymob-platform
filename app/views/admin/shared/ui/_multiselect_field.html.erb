@@ -1,5 +1,6 @@
 <%
-  select_id = id.presence || "#{form.object_name.to_s.parameterize}-#{method}-multiselect"
+  standalone_name = local_assigns[:name]
+  select_id = id.presence || "#{form&.object_name.to_s.parameterize}-#{method || standalone_name.to_s.parameterize}-multiselect"
   select_data = {
     controller: "tom-select",
     tom_select_tags_value: true,
@@ -15,18 +16,14 @@
 %>
 
 <div class="<%= multiselect_classes %>">
-  <%= ax_field_label(form, method, text: label, tooltip:) %>
+  <%= ax_field_label(form, method, text: label, tooltip:, for: (select_id if form.blank?)) %>
   <div class="ax-multiselect__frame" data-placeholder="<%= placeholder %>">
-    <%= form.select method,
-                    options_for_select(choices, selected),
-                    {},
-                    {
-                      id: select_id,
-                      multiple: true,
-                      disabled: disabled,
-                      class: "ax-control ax-multiselect__select",
-                      data: select_data
-                    } %>
+    <% select_options = { id: select_id, multiple: true, disabled: disabled, class: "ax-control ax-multiselect__select", data: select_data } %>
+    <% if form %>
+      <%= form.select method, options_for_select(choices, selected), {}, select_options %>
+    <% else %>
+      <%= select_tag standalone_name, options_for_select(choices, selected), select_options %>
+    <% end %>
 
     <% if manager_config.present? %>
       <button type="button"
@@ -45,5 +42,5 @@
       </button>
     <% end %>
   </div>
-  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+  <%= render "admin/shared/ui/field_error", form: form, method: method if form %>
 </div>

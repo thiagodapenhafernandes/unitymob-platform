@@ -1,0 +1,15 @@
+<%# Última etapa: checklist dinâmico (o JS atualiza data-state) + ação de envio.
+    locals: number, title, subtitle, checks ([[chave, rótulo]]), submit_label, submit_icon, cancel_path, color %>
+<%= ax_guided_step(number: number, color: local_assigns.fetch(:color, :teal), title: title, subtitle: subtitle) do %>
+  <ul class="ax-guided-checklist" data-guided="checklist">
+    <% checks.each do |key, label| %>
+      <li data-check="<%= key %>"><i></i><span><%= label %></span></li>
+    <% end %>
+  </ul>
+  <div class="ax-guided-send">
+    <button type="submit" class="ax-btn ax-btn--primary ax-guided-send__button" data-guided="submit">
+      <i class="bi <%= local_assigns.fetch(:submit_icon, "bi-send-check") %> ax-ico"></i><span><%= submit_label %></span>
+    </button>
+    <%= link_to "Cancelar", cancel_path, class: "ax-btn" %>
+  </div>
+<% end %>

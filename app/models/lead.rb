@@ -68,7 +68,7 @@ class Lead < ApplicationRecord
 
   def self.claim_unassigned!(lead_id, corretor_id, statuses:, rule_ids: nil)
     user = Current.tenant&.admin_users&.find_by(id: corretor_id)
-    return false unless user
+    return false unless user&.active?
 
     transaction do
       scope = where(id: lead_id, tenant_id: user.tenant_id, admin_user_id: nil, status: statuses)
@@ -222,6 +222,7 @@ class Lead < ApplicationRecord
   validates :phone, presence: true, unless: -> { business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) }
   validate :associated_records_must_belong_to_tenant
   validate :in_service_requires_owner
+  validate :assigned_admin_user_must_be_active
 
   # Motivo e justificativa só são exigidos no fluxo dedicado de arquivar
   # (Admin::LeadsController#archive) — o update genérico (funil/kanban) segue
@@ -595,6 +596,13 @@ class Lead < ApplicationRecord
     if lead_pipeline_stage.present? && lead_pipeline.present? && lead_pipeline_stage.lead_pipeline_id != lead_pipeline_id
       errors.add(:lead_pipeline_stage, "deve pertencer ao funil do lead")
     end
+  end
+
+  def assigned_admin_user_must_be_active
+    return unless will_save_change_to_admin_user_id?
+    return if admin_user_id.blank? || admin_user&.active?
+
+    errors.add(:admin_user, "precisa estar ativo para receber leads")
   end
 
   def record_audit_create

@@ -54,8 +54,8 @@
   min-height: var(--ax-form-control-height);
   padding: 0 10px;
   border: 1px solid var(--ax-field-border);
-  background: #f8fafc;
-  color: #697586;
+  background: var(--ab-panel-soft, #f8fafc);
+  color: var(--ab-muted, #697586);
   font-weight: 760;
   transition: border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
               background-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),

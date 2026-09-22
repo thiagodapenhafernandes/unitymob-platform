@@ -16,17 +16,12 @@
 <% end %>
 
 <div class="hier" data-controller="hierarchy-tree">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Organização</span>
-      <h1>Hierarquia da equipe</h1>
-      <p>Estrutura de gestão (gestor → subordinados). Expanda os nós para ver a árvore.</p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <%= ax_badge("#{@total_users} usuários", tone: :gray) %>
-      <%= ax_badge("#{@manager_count} gestores", tone: :blue) %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: "Hierarquia da equipe",
+        eyebrow: "Organização",
+        icon: "diagram-3",
+        subtitle: "Estrutura de gestão (gestor → subordinados). Expanda os nós para ver a árvore.",
+        metrics: [{ value: @total_users, label: "usuários" }, { value: @manager_count, label: "gestores" }]) %>
 
   <div class="hier__toolbar">
     <button type="button" class="ax-btn ax-btn--sm" data-hier-expand-all data-action="hierarchy-tree#expandAll"><i class="bi bi-arrows-expand"></i> Expandir tudo</button>

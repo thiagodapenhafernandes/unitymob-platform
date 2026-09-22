@@ -42,4 +42,16 @@ RSpec.describe "LandingPages", type: :request do
     expect(response.body).to include(included.titulo_anuncio)
     expect(response.body).not_to include(excluded.titulo_anuncio)
   end
+
+  # Regressão: os multiselects do admin gravam [""]; isso contava como filtro e a página pública/prévia ficava sempre vazia.
+  it "ignora entradas vazias ([\"\"]) dos multiselects e lista os imóveis normalmente" do
+    listed = create(:habitation, titulo_anuncio: "Aparece mesmo com filtros vazios", exibir_no_site_flag: true)
+    landing_page = LandingPage.create!(title: "Sem filtros reais", slug: "sem-filtros-reais", active: true)
+    landing_page.update_columns(filter_params: { "property_codes" => [""], "city" => [""], "category" => [""], "development" => [""], "neighborhood" => [""] })
+
+    get public_landing_page_path(landing_page.slug)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(listed.titulo_anuncio)
+  end
 end

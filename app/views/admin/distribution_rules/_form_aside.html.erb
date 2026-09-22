@@ -33,7 +33,8 @@
           <% [
               [:rotary, "arrow-repeat", "Rotativo", "Fila sequencial", "Entrega para um corretor por vez, seguindo a ordem da fila. Com aceite com prazo, se o corretor não atender no tempo definido, o lead pode ser repassado ou enviado ao Bolsão da regra."],
               [:performance, "graph-up", "Performance", "Baseado em peso", "Escolhe um corretor por sorteio ponderado. Corretores com peso maior têm mais chance de receber o lead, sem seguir uma fila fixa."],
-              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar", "Coloca o lead no Bolsão da regra e notifica todos os corretores elegíveis. O primeiro que clicar em Atender assume; os demais não conseguem mais aceitar."]
+              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar", "Coloca o lead no Bolsão da regra e notifica todos os corretores elegíveis. O primeiro que clicar em Atender assume; os demais não conseguem mais aceitar."],
+              [:attendance, "person-check", "Atendimento", "Escolha direta", "Usado em fluxos receptivos para direcionar o contato a um atendente específico da regra, sem roleta automática."]
             ].each do |mode, icon, label, sub, tooltip| %>
             <%= f.radio_button :distribution_mode, mode, class: "ax-option-card__input", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
             <%= f.label "mode_#{mode}", class: "ax-option-card distribution-rule-mode", for: "mode_#{mode}" do %>

@@ -1,0 +1,11 @@
+<%# Uso: ax_studio_savebar(form: f, cancel_path: admin_root_path). O <form> leva data-controller="ax-dirty-form" (ver ax_dirty_form_controller). %>
+<div class="ax-form-actions ax-studio-savebar">
+  <div class="ax-studio-savebar__state" role="status" aria-live="polite">
+    <span class="ax-studio-savebar__clean"><i class="bi bi-check2-circle"></i> <%= clean_label %></span>
+    <span class="ax-studio-savebar__dirty"><i class="bi bi-circle-fill"></i> <%= dirty_label %></span>
+  </div>
+  <div class="ax-studio-savebar__actions">
+    <%= link_to "Cancelar", cancel_path, class: "ax-btn" %>
+    <%= form.submit submit_label, class: "ax-btn ax-btn--primary", data: (disable_with.present? ? { disable_with: disable_with } : {}) %>
+  </div>
+</div>

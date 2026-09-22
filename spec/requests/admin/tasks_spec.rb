@@ -29,6 +29,42 @@ RSpec.describe "Admin::Tasks", type: :request do
       expect(document.at_css('button.ax-ico-btn[aria-label="Concluir tarefa Ligar para cliente"] i[aria-hidden="true"]')).to be_present
     end
 
+    it "mostra so as tarefas do proprio usuario quando a funcao horizontal restringe o escopo do dono da conta" do
+      finance = admin.tenant.profiles.create!(
+        name: "Financeiro", axis: "horizontal", vertical_profile: admin.profile,
+        permissions: { "comercial" => { "view" => true, "manage" => true, "scope" => "own" } }
+      )
+      admin.update!(horizontal_profile: finance)
+      other = create(:admin_user, tenant: admin.tenant)
+      Task.create!(title: "Minha tarefa", admin_user: admin, status: "pendente")
+      Task.create!(title: "Tarefa de outra pessoa", admin_user: other, status: "pendente")
+
+      get admin_tasks_path
+
+      expect(response.body).to include("Minha tarefa")
+      expect(response.body).not_to include("Tarefa de outra pessoa")
+    end
+
+    it "esconde a auditoria de migracao externa de quem nao ve tudo" do
+      finance = admin.tenant.profiles.create!(
+        name: "Financeiro", axis: "horizontal", vertical_profile: admin.profile,
+        permissions: { "comercial" => { "view" => true, "manage" => true, "scope" => "own" } }
+      )
+      admin.update!(horizontal_profile: finance)
+
+      get admin_tasks_path(filter: "legado")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Migração externa")
+      expect(Nokogiri::HTML(response.body).at_css("a.ax-btn--primary[href*='filter=pendentes']")).to be_present
+    end
+
+    it "mostra a auditoria de migracao externa para quem ve tudo" do
+      get admin_tasks_path
+
+      expect(response.body).to include("Migração externa")
+    end
+
     it "inclui tarefas importadas acionaveis nos filtros operacionais e mantem auditoria da migracao" do
       active_lead = create(:lead, admin_user: admin, status: "Em Atendimento")
       pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)

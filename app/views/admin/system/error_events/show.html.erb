@@ -13,17 +13,13 @@
 <% end %>
 
 <div class="ax-system">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Admin do Sistema · Erro #<%= @error_event.id %></span>
-      <h1><%= @error_event.exception_class %></h1>
-      <p><%= @error_event.message.to_s.truncate(220) %></p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <%= @error_event.resolved? ? ax_badge("Resolvido", tone: :green, dot: true) : ax_badge("Aberto", tone: :red, dot: true) %>
-      <%= ax_badge("#{number_with_delimiter(@error_event.occurrences_count)} ocorrências", tone: :blue) %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: @error_event.exception_class,
+        eyebrow: "Admin do Sistema · Erro ##{@error_event.id}",
+        icon: "bug",
+        pills: [@error_event.resolved? ? "Resolvido" : "Aberto"],
+        subtitle: @error_event.message.to_s.truncate(220),
+        metrics: [{ value: number_with_delimiter(@error_event.occurrences_count), label: "ocorrências" }]) %>
 
   <% resolution_action = capture do %>
     <% if @error_event.resolved? %>

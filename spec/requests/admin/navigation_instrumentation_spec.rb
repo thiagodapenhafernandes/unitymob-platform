@@ -17,8 +17,9 @@ RSpec.describe "Admin navigation instrumentation", type: :request do
     expect(response.headers["X-Admin-Render-Duration-Ms"].to_f).to be > 0
     expect(response.headers["X-Admin-Page"]).to eq("admin/dashboard#index")
     expect(response.headers["Server-Timing"]).to include("admin_render;dur=")
-    expect(response.body).to include('data-controller="ax-drawer admin-navigation"')
-    expect(response.body).to include('data-admin-navigation-target="overlay"')
+    expect(response.body).to include('id="adminNavigationPreloader"')
+    expect(response.body).to include("data-nav-title")
+    expect(response.body).not_to include("admin-navigation")
     expect(response.body).not_to include("ax-navbar__performance")
   end
 end

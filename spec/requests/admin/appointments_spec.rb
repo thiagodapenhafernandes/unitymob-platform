@@ -11,6 +11,29 @@ RSpec.describe "Admin::Appointments", type: :request do
   end
 
   describe "GET /admin/appointments" do
+    it "mostra so os compromissos do proprio usuario quando a funcao horizontal restringe o escopo do dono da conta" do
+      finance = admin.tenant.profiles.create!(
+        name: "Financeiro", axis: "horizontal", vertical_profile: admin.profile,
+        permissions: { "comercial" => { "view" => true, "manage" => true, "scope" => "own" } }
+      )
+      admin.update!(horizontal_profile: finance)
+      other = create(:admin_user, tenant: admin.tenant)
+      Appointment.create!(title: "Minha visita", admin_user: admin, starts_at: Time.current.change(hour: 10))
+      Appointment.create!(title: "Visita de outra pessoa", admin_user: other, starts_at: Time.current.change(hour: 11))
+
+      get admin_appointments_path
+
+      expect(response.body).to include("Minha visita")
+      expect(response.body).not_to include("Visita de outra pessoa")
+    end
+
+    it "mostra um estado vazio unico quando a semana nao tem compromissos" do
+      get admin_appointments_path(team: "0")
+
+      expect(response.body).to include("Nenhum compromisso nesta semana")
+      expect(response.body).not_to include("ax-appointment-grid")
+    end
+
     it "exibe a agenda da semana" do
       Appointment.create!(title: "Visita ap 302", admin_user: admin, starts_at: Time.current.change(hour: 10))
 

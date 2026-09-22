@@ -11,18 +11,12 @@
 <% end %>
 
 <div class="ax-system">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
-      <h1>Erros da aplicação</h1>
-      <p>Rastreador interno cross-tenant: requests, jobs e reportes manuais agrupados por fingerprint. Ocorrências repetidas só incrementam o contador.</p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <% if @storage_ready %>
-        <%= ax_badge("#{@error_events.total_entries} erros", tone: :blue) %>
-      <% end %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: "Erros da aplicação",
+        eyebrow: "Admin do Sistema",
+        icon: "bug",
+        subtitle: "Rastreador interno cross-tenant: requests, jobs e reportes manuais agrupados por fingerprint. Ocorrências repetidas só incrementam o contador.",
+        metrics: [(@storage_ready ? { value: @error_events.total_entries, label: "erros" } : nil)]) %>
 
   <% unless @storage_ready %>
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>

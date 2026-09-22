@@ -9,6 +9,8 @@ class PushDeliveryEvent < ApplicationRecord
     provider_failed
     invalid_subscription
     no_active_subscription
+    admin_user_inactive
+    admin_user_blocked_by_phone_allowlist
     push_unavailable
     device_received
     subscription_replaced

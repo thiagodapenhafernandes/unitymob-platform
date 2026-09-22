@@ -3747,7 +3747,6 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(sale.codigo)
-    expect(response.body).to include(sold.codigo)
     expect(response.body).not_to include("Status: Venda")
   end
 

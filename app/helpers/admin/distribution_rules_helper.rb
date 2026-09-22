@@ -21,7 +21,8 @@ module Admin::DistributionRulesHelper
     {
       "rotary" => "Rotativo",
       "performance" => "Performance",
-      "shark_tank" => "Shark Tank"
+      "shark_tank" => "Shark Tank",
+      "attendance" => "Atendimento"
     }.fetch(rule.distribution_mode, rule.distribution_mode.to_s.humanize)
   end
 

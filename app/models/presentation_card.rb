@@ -66,7 +66,7 @@ class PresentationCard < ApplicationRecord
     "#{text}\n\n#{signature}"
   end
 
-  # Nome do cliente para {empresa}: o nome de exibição (Identidade e Marca →
+  # Nome do cliente para {empresa}: o nome de exibição (Site público → Identidade →
   # site_name) vem primeiro; o nome interno da conta é fallback técnico.
   def company_display_name
     display = begin

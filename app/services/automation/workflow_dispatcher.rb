@@ -277,6 +277,8 @@ module Automation
       config = node.fetch(:config, {}).with_indifferent_access
       return unless lead_matches?(config, fields: %i[stage])
 
+      return if trigger_message?(execution)
+
       route = matching_response_route(config)
       return unless route
 
@@ -306,12 +308,15 @@ module Automation
 
     def resume_await_whatsapp_response(execution, step, node)
       return unless await_whatsapp_response_matches?(node)
+      return if trigger_message?(execution)
 
       output = step.output.to_h.with_indifferent_access
       next_ids = Array(output[:resume_node_ids].presence || output[:resume_node_id]).reject(&:blank?)
       next_ids = whatsapp_response_resume_node_ids(execution, node, next_ids)
       context = execution.context.to_h.deep_dup
+      next_ids = apply_retry_policy(execution, node, next_ids, context)
       context["whatsapp_response"] = whatsapp_response_context_for(node)
+      context["answers"] = Array(context["answers"]) + [{ "question" => question_asked_before(execution, node), "answer" => whatsapp_message_body, "at" => Time.current.iso8601 }]
 
       step.update!(
         status: "completed",
@@ -329,6 +334,21 @@ module Automation
       else
         Automation::RunWorkflowJob.perform_later(execution.id)
       end
+    end
+
+    # O clique que iniciou a automação é o mesmo evento que chega ao despachante: não é resposta à pergunta.
+    def trigger_message?(execution)
+      trigger_id = execution.context.to_h["trigger_whatsapp_message_id"]
+      trigger_id.present? && (@automation_event&.payload_hash || {})[:whatsapp_message_id].to_s == trigger_id.to_s
+    end
+
+    # Texto da pergunta que está logo antes da espera (para o resumo enviado ao atendente).
+    def question_asked_before(execution, await_node)
+      definition = execution.automation_workflow_version&.definition_hash || {}
+      edges = Array(definition[:edges]).map { |edge| edge.with_indifferent_access }
+      source_id = edges.find { |edge| edge[:to].to_s == await_node[:id].to_s }&.dig(:from)
+      source = Array(definition[:nodes]).map { |node| node.with_indifferent_access }.find { |node| node[:id].to_s == source_id.to_s }
+      source&.dig(:config, :message).to_s
     end
 
     def whatsapp_response_resume_node_ids(execution, await_node, next_ids)
@@ -351,6 +371,32 @@ module Automation
         .filter_map { |item| item[:id] }
 
       no_match_fallbacks.presence || next_ids
+    end
+
+    # "Não entendi" com repetição: enquanto houver tentativas, segue o caminho que repete a pergunta; passado o limite,
+    # segue o caminho "depois das tentativas". Uma resposta reconhecida zera a contagem. Fluxos sem repetição não mudam.
+    def apply_retry_policy(execution, await_node, next_ids, context)
+      definition = execution.automation_workflow_version&.definition_hash || {}
+      by_id = Array(definition[:nodes]).map { |item| item.is_a?(Hash) ? item.with_indifferent_access : {} }.index_by { |item| item[:id].to_s }
+      picked = next_ids.filter_map { |id| by_id[id.to_s] }
+      key = await_node[:id].to_s
+
+      if picked.any? { |item| item[:type].to_s == "response_condition" }
+        context["no_match_attempts"]&.delete(key)
+        return next_ids
+      end
+
+      fallbacks = picked.select { |item| item[:type].to_s == "response_fallback" }
+      exhausted, no_match = fallbacks.partition { |item| item.dig(:config, :fallback_type).to_s == "exhausted" }
+      retrying = no_match.select { |item| ActiveModel::Type::Boolean.new.cast(item.dig(:config, :retry_question)) }
+      return next_ids if retrying.empty?
+
+      attempts = context.dig("no_match_attempts", key).to_i
+      max = (retrying.first.dig(:config, :max_attempts).presence || 2).to_i.clamp(1, 5)
+      return exhausted.filter_map { |item| item[:id] } if attempts >= max && exhausted.any?
+
+      context["no_match_attempts"] = (context["no_match_attempts"] || {}).merge(key => attempts + 1)
+      no_match.filter_map { |item| item[:id] }
     end
 
     def response_condition_config_matches?(config)

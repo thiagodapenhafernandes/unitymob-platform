@@ -51,6 +51,49 @@ RSpec.describe Leads::NotificationDispatcher do
     end
   end
 
+  it "nao entrega nenhum canal quando o corretor atribuido esta inativo" do
+    lead
+    corretor.update!(active: false)
+    rule.update!(notify_push: true, notify_whatsapp: true, notify_email: true, notify_webhook: true)
+    allow(LeadMailer).to receive(:with)
+    allow(Leads::WebhookDeliveryJob).to receive(:perform_later)
+
+    described_class.deliver(lead)
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+    expect(LeadMailer).not_to have_received(:with)
+    expect(Leads::WebhookDeliveryJob).not_to have_received(:perform_later)
+  end
+
+  it "nao entrega push de evento para corretor inativo" do
+    lead
+    corretor.update!(active: false)
+
+    described_class.notify_reassignment(lead, corretor)
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+  end
+
+  it "nao entrega canais para corretor fora da allowlist local de telefone" do
+    old_enabled = ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"]
+    old_numbers = ENV["NOTIFICATION_ALLOWED_PHONE_NUMBERS"]
+    ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"] = "true"
+    ENV["NOTIFICATION_ALLOWED_PHONE_NUMBERS"] = "21990872427"
+    corretor.update!(phone: "21900000000")
+    rule.update!(notify_push: true, notify_whatsapp: true, notify_email: true, notify_webhook: true)
+    allow(LeadMailer).to receive(:with)
+    allow(Leads::WebhookDeliveryJob).to receive(:perform_later)
+
+    described_class.deliver(lead)
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+    expect(LeadMailer).not_to have_received(:with)
+    expect(Leads::WebhookDeliveryJob).not_to have_received(:perform_later)
+  ensure
+    ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"] = old_enabled
+    ENV["NOTIFICATION_ALLOWED_PHONE_NUMBERS"] = old_numbers
+  end
+
   it "usa o imóvel de interesse no corpo do push sem expor origem técnica" do
     property_code = "PUSH-#{SecureRandom.hex(4).upcase}"
     property = create(

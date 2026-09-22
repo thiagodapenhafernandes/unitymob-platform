@@ -6,6 +6,14 @@ class WhatsappTemplate < ApplicationRecord
     "carousel" => "Media Card Carousel",
     "flow" => "Template com Flow"
   }.freeze
+  USAGE_CONTEXTS = {
+    "broadcast" => "Disparos e campanhas",
+    "response_flow" => "Fluxos de resposta",
+    "attendance" => "Atendimento",
+    "property_intake" => "Captação de imóveis",
+    "partnership" => "Parcerias",
+    "administrative" => "Administrativo"
+  }.freeze
   CATEGORIES = %w[MARKETING UTILITY AUTHENTICATION].freeze
   HEADER_FORMATS = {
     "none" => "Sem mídia",
@@ -27,29 +35,39 @@ class WhatsappTemplate < ApplicationRecord
     "navigate" => "Abrir tela do Flow",
     "data_exchange" => "Enviar dados para o Flow"
   }.freeze
+  MAX_BUTTONS = 10
 
   has_many :whatsapp_campaigns, dependent: :restrict_with_error
+  has_many :whatsapp_response_flows, dependent: :restrict_with_error
   has_many :notification_template_settings, dependent: :restrict_with_error
   has_one_attached :header_media_file
   has_many_attached :carousel_card_media_files
 
   validates :name, presence: true, uniqueness: { scope: [:tenant_id, :waba_id, :language] }
   validates :template_type, inclusion: { in: TEMPLATE_TYPES.keys }
+  validates :usage_context, inclusion: { in: USAGE_CONTEXTS.keys }
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :header_format, inclusion: { in: HEADER_FORMATS.keys }
   validate :validate_template_submission
+  before_validation :set_default_usage_context
   before_validation :normalize_meta_identifier
   before_validation :normalize_media_handles
 
   scope :approved, -> { where(status: "APPROVED") }
   scope :ordered, -> { order(:name) }
   scope :search, ->(query) { where("name ILIKE ?", "%#{sanitize_sql_like(query)}%") if query.present? }
+  scope :for_campaigns, -> { where(usage_context: "broadcast") }
+  scope :for_response_flows, -> { where(usage_context: %w[response_flow attendance]) }
 
   def approved? = status.to_s.upcase == "APPROVED"
   def pending? = status.to_s.upcase == "PENDING"
 
   def template_type_label
     TEMPLATE_TYPES.fetch(template_type.to_s, TEMPLATE_TYPES["text"])
+  end
+
+  def usage_context_label
+    USAGE_CONTEXTS.fetch(usage_context.to_s, USAGE_CONTEXTS["broadcast"])
   end
 
   def category_label
@@ -126,6 +144,29 @@ class WhatsappTemplate < ApplicationRecord
     end.compact
   end
 
+  # Na Meta só dá para editar templates que já existem lá e não estão em análise.
+  META_EDITABLE_STATUSES = %w[APPROVED REJECTED PAUSED].freeze
+
+  def meta_editable?
+    meta_id.present? && status.to_s.upcase.in?(META_EDITABLE_STATUSES)
+  end
+
+  # Mudou algo que a Meta revisa (texto, mídia, botões, categoria)? Compara o payload gerado antes e depois
+  # do assign, para não reenviar à toa quando só um campo local (ex.: uso) foi alterado.
+  def meta_content_changed?
+    return true if attachment_changes.key?("header_media_file") || attachment_changes.key?("carousel_card_media_files")
+
+    original = self.class.find(id)
+    original.components_payload != components_payload || original.category != category
+  rescue ArgumentError
+    true
+  end
+
+  # Edição: a Meta não aceita name/language; category só se mudou.
+  def meta_edit_payload
+    { category: (category if category_changed?), components: components_payload }.compact
+  end
+
   def meta_create_payload
     {
       name: name.to_s.strip,
@@ -154,12 +195,7 @@ class WhatsappTemplate < ApplicationRecord
   end
 
   def clean_buttons
-    raw_buttons =
-      if buttons.is_a?(Hash)
-        buttons.sort_by { |key, _value| key.to_s }.map { |_key, value| value }
-      else
-        Array(buttons)
-      end
+    raw_buttons = ordered_param_rows(buttons)
 
     raw_buttons.filter_map do |button|
       attrs = button.respond_to?(:to_unsafe_h) ? button.to_unsafe_h : button.to_h
@@ -174,16 +210,11 @@ class WhatsappTemplate < ApplicationRecord
         "phone_number" => attrs["phone_number"].presence || attrs["url"].presence
       }.compact_blank
        .tap { |row| row["phone_number"] = normalize_template_phone(row["phone_number"]) if row["phone_number"].present? }
-    end.first(3)
+    end.first(MAX_BUTTONS)
   end
 
   def clean_carousel_cards
-    raw_cards =
-      if carousel_cards.is_a?(Hash)
-        carousel_cards.sort_by { |key, _value| key.to_s }.map { |_key, value| value }
-      else
-        Array(carousel_cards)
-      end
+    raw_cards = ordered_param_rows(carousel_cards)
 
     raw_cards.filter_map do |card|
       attrs = card.respond_to?(:to_unsafe_h) ? card.to_unsafe_h : card.to_h
@@ -222,6 +253,19 @@ class WhatsappTemplate < ApplicationRecord
   end
 
   private
+
+  def set_default_usage_context
+    self.usage_context = "broadcast" if usage_context.blank?
+  end
+
+  def ordered_param_rows(value)
+    return Array(value) unless value.is_a?(Hash)
+
+    value.sort_by do |key, _row|
+      key_text = key.to_s
+      key_text.match?(/\A\d+\z/) ? [0, key_text.to_i] : [1, key_text]
+    end.map { |_key, row| row }
+  end
 
   def variable_reference_sources
     component_sources = sources_from_components

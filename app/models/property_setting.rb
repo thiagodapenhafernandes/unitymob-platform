@@ -3,6 +3,12 @@ require "mini_magick"
 class PropertySetting < ApplicationRecord
   AI_PROPERTY_SEARCH_DATA_SOURCES = %w[database external_api imported_xml json_feed].freeze
   AI_PROPERTY_SEARCH_SORTS = %w[relevance price_asc price_desc recent area_desc].freeze
+  AI_PROPERTY_SEARCH_DATA_SOURCE_LABELS = {
+    "database" => "Banco de dados da conta", "external_api" => "API externa", "imported_xml" => "XML importado", "json_feed" => "Feed JSON"
+  }.freeze
+  AI_PROPERTY_SEARCH_SORT_LABELS = {
+    "relevance" => "Relevância", "price_asc" => "Menor preço", "price_desc" => "Maior preço", "recent" => "Mais recentes", "area_desc" => "Maior área"
+  }.freeze
   AI_PROPERTY_SEARCH_FIELD_OPTIONS = {
     "transaction_type" => "Finalidade (venda ou locação)",
     "property_type" => "Tipo do imóvel",

@@ -1,0 +1,32 @@
+<%# Sino de notificações internas (tempo real via InAppNotificationsChannel). toasts_only: só o toast (workspace em foco). %>
+<% toasts_only = local_assigns.fetch(:toasts_only, false) %>
+<% notifications = InAppNotification.where(admin_user_id: current_admin_user.id).recent.limit(10).to_a %>
+<% unread = InAppNotification.unread_count_for(current_admin_user) %>
+<div class="ax-notifications"
+     data-controller="<%= "ax-dropdown " unless toasts_only %>in-app-notifications"
+     data-in-app-notifications-unread-value="<%= unread %>"
+     data-in-app-notifications-read-url-value="<%= read_admin_in_app_notification_path(0) %>"
+     data-in-app-notifications-read-all-url-value="<%= read_all_admin_in_app_notifications_path %>">
+  <% unless toasts_only %>
+    <button type="button" class="ax-notifications__trigger" data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger" aria-label="Notificações">
+      <i class="bi bi-bell"></i>
+      <span class="ax-notifications__badge" data-in-app-notifications-target="badge" <%= "hidden" if unread.zero? %>><%= unread > 99 ? "99+" : unread %></span>
+    </button>
+    <div class="ax-menu ax-menu--end ax-notifications__panel" data-ax-dropdown-target="menu" hidden>
+      <div class="ax-notifications__head">
+        <strong>Notificações</strong>
+        <button type="button" class="ax-notifications__sound" data-in-app-notifications-target="soundToggle" data-action="in-app-notifications#toggleSound" aria-pressed="true" title="Som ligado (clique para silenciar)">
+          <i class="bi bi-volume-up" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="ax-notifications__read-all" data-action="in-app-notifications#readAll">Marcar todas como lidas</button>
+      </div>
+      <div data-in-app-notifications-target="list">
+        <% notifications.each do |notification| %>
+          <%= render "admin/shared/notification_item", notification: notification %>
+        <% end %>
+      </div>
+      <p class="ax-notifications__empty" data-in-app-notifications-target="empty" <%= "hidden" if notifications.any? %>>Nenhuma notificação por aqui.</p>
+    </div>
+  <% end %>
+  <div class="ax-notifications__toasts" data-in-app-notifications-target="toasts" aria-live="polite"></div>
+</div>

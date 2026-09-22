@@ -4,6 +4,12 @@ module Automation
       new(node).to_action
     end
 
+    # Opções digitadas uma por linha no construtor (ou já como lista).
+    def self.option_lines(value)
+      lines = value.is_a?(Array) ? value : value.to_s.split(/\r?\n/)
+      lines.map { |line| line.to_s.strip }.reject(&:blank?).uniq
+    end
+
     def initialize(node)
       @node = node.with_indifferent_access
       @config = (@node[:config].is_a?(Hash) ? @node[:config] : {}).with_indifferent_access
@@ -22,6 +28,14 @@ module Automation
         action["message"] = @config[:message]
       when "send_whatsapp_template"
         action["template"] = @config[:template].presence || @config[:message]
+      when "send_whatsapp_buttons", "send_whatsapp_list"
+        action["message"] = @config[:message]
+        action["options"] = self.class.option_lines(@config[:options])
+        action["list_button"] = @config[:list_button] if type == "send_whatsapp_list" && @config[:list_button].present?
+      when "transfer_to_attendant"
+        action["distribution_rule_id"] = @config[:distribution_rule_id] if @config[:distribution_rule_id].present?
+        action["finish_message"] = @config[:finish_message] if @config[:finish_message].present?
+        action["topic"] = @config[:topic].presence || @node[:label]
       when "send_webhook"
         action["url"] = @config[:url]
         action["http_method"] = @config[:http_method].presence || "post"

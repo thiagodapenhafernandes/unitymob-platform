@@ -11,4 +11,14 @@ module PublicHeaderHelper
     end
     HomeSetting::HEADER_COLOR_FIELDS.keys.zip(colors).to_h
   end
+
+  def public_menu_link_attrs(entry)
+    entry.new_tab ? { target: "_blank", rel: "noopener" } : {}
+  end
+
+  def public_menu_label(entry)
+    return entry.label unless entry.icon
+
+    safe_join([tag.i(class: "bi bi-#{entry.icon} mr-1"), entry.label], " ")
+  end
 end

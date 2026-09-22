@@ -6,11 +6,11 @@
   metrics = Array(local_assigns[:metrics]).compact
   actions = local_assigns[:actions]
 %>
-<header class="ax-workspace-heading <%= local_assigns[:class_name] %>">
+<header class="ax-workspace-heading<%= " ax-workspace-heading--icon" if icon.present? %> <%= local_assigns[:class_name] %>">
+  <% if icon.present? %><span class="ax-workspace-heading__icon" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span><% end %>
   <div class="ax-workspace-heading__main">
     <% if eyebrow.present? %>
       <div class="ax-workspace-heading__eyebrow">
-        <% if icon.present? %><i class="bi bi-<%= icon %>"></i><% end %>
         <span><%= eyebrow %></span>
       </div>
     <% end %>

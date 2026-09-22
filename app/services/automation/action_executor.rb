@@ -12,6 +12,9 @@ module Automation
       when "send_whatsapp"          then "enviar WhatsApp"
       when "send_whatsapp_template" then "enviar modelo “#{action[:template]}”"
       when "send_webhook"           then "enviar webhook"
+      when "send_whatsapp_buttons"  then "perguntar com botões"
+      when "send_whatsapp_list"     then "perguntar com lista"
+      when "transfer_to_attendant"  then "passar para atendente"
       when "set_flow_result"        then flow_result_label(action)
       when "move_stage"             then "mover para “#{action[:to]}”"
       when "update_lead_lifecycle"  then lifecycle_label(action)
@@ -41,6 +44,9 @@ module Automation
       when "send_whatsapp"          then act_send_whatsapp(action, template: false)
       when "send_whatsapp_template" then act_send_whatsapp(action, template: true)
       when "send_webhook"           then act_send_webhook(action)
+      when "send_whatsapp_buttons"  then act_send_question(action, list: false)
+      when "send_whatsapp_list"     then act_send_question(action, list: true)
+      when "transfer_to_attendant"  then act_transfer_to_attendant(action)
       when "set_flow_result"        then act_set_flow_result(action)
       when "move_stage"             then act_move_stage(action)
       when "update_lead_lifecycle"  then act_update_lead_lifecycle(action)
@@ -125,6 +131,60 @@ module Automation
         end
 
       conversation.touch_last_message!(message)
+      Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
+      LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: "Automação" })
+    end
+
+    # Pergunta interativa: botões de resposta (até 3) ou lista (até 10). O cliente responde tocando; o texto da
+    # opção chega como corpo da mensagem e casa com as condições de resposta do caminho.
+    def act_send_question(action, list:)
+      conversation = automation_conversation
+      options = Automation::WorkflowActionAdapter.option_lines(action[:options])
+      return if conversation.blank? || options.empty?
+
+      body = render_text(action[:message]).truncate(1024, omission: "")
+      message =
+        if list
+          rows = options.first(10).each_with_index.map { |title, index| { "id" => "aq:#{index}", "title" => title.truncate(24, omission: "") } }
+          conversation.messages.create!(direction: "outbound", status: "pending", msg_type: "interactive_list", body: body,
+                                        template_components: { "button" => (action[:list_button].presence || "Ver opções").truncate(20, omission: ""), "rows" => rows })
+        else
+          buttons = options.first(3).each_with_index.map { |title, index| { "id" => "aq:#{index}", "title" => title.truncate(20, omission: "") } }
+          conversation.messages.create!(direction: "outbound", status: "pending", msg_type: "interactive", body: body, template_components: buttons)
+        end
+      deliver_automation_message(conversation, message)
+    end
+
+    # Vira atendimento humano no módulo de Atendimento, levando as respostas do cliente como anotação no lead.
+    def act_transfer_to_attendant(action)
+      conversation = automation_conversation
+      return if conversation.blank? || conversation.open_attendance
+
+      answers = Array(action[:answers]).map { |item| item.to_h.with_indifferent_access }.select { |item| item[:answer].present? }
+      if answers.any?
+        summary = answers.map { |item| "• #{item[:question].presence || 'Pergunta'} — #{item[:answer]}" }.join("\n")
+        LeadActivity.log!(lead: @lead, kind: "note", metadata: { contact_kind: "automação", body: "Conversa automática:\n#{summary}", by: "Automação" })
+      end
+      Whatsapp::AttendanceManager.open!(
+        conversation: conversation, lead: @lead, flow: nil,
+        action: {
+          "action" => "distribute_lead", "distribution_rule_id" => action[:distribution_rule_id],
+          "button_key" => "automation", "button_text" => action[:topic].presence || "Atendimento automático",
+          "finish_message" => action[:finish_message].presence
+        }.compact
+      )
+    end
+
+    def automation_conversation
+      payload = @automation_event&.payload_hash || {}
+      id = payload[:conversation_id] || payload["conversation_id"]
+      conversation = @lead.tenant.whatsapp_conversations.find_by(id: id) if id.present?
+      conversation || @lead.tenant.whatsapp_conversations.find_by(lead_id: @lead.id)
+    end
+
+    def deliver_automation_message(conversation, message)
+      conversation.touch_last_message!(message)
+      Whatsapp::ThreadBroadcaster.message_created(message)
       Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
       LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: "Automação" })
     end

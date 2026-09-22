@@ -2,9 +2,10 @@
 .ax-table-wrap {
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid var(--ax-field-border);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--admin-primary) 14%, var(--ax-field-border));
+  border-radius: 12px;
   background: var(--ax-panel-bg);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
   overscroll-behavior-inline: contain;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
@@ -32,20 +33,20 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 8px 12px;
-  border-bottom: 1px solid #d2d6db;
-  background: #f8fafa;
-  color: #667085;
+  padding: 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-primary) 18%, #d2d6db);
+  background: color-mix(in srgb, var(--admin-primary) 6%, #f8fafa);
+  color: color-mix(in srgb, var(--admin-primary) 50%, #667085);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .03em;
+  font-weight: 800;
+  letter-spacing: .05em;
   text-align: left;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .ax-table tbody td {
-  padding: 7px 6px;
+  padding: 10px 12px;
   border-top: 1px solid #eceef1;
   color: #475467;
   vertical-align: middle;
@@ -53,7 +54,6 @@
 }
 
 .ax-table tbody tr:first-child td { border-top: 0; }
-.ax-table tbody tr:nth-child(even) td { background: #fafbfc; }
 .ax-table tbody tr:hover td,
 .ax-table tbody tr:focus-within td { background: var(--admin-primary-softer); }
 .ax-table__row--sortable { cursor: move; }

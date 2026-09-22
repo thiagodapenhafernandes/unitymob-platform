@@ -218,3 +218,42 @@
   break-inside: avoid;
   margin-bottom: 6px;
 }
+
+/* Grupo de seleção múltipla (ax_check_group): retângulo arredondado que acomoda rótulos de duas linhas. */
+.ax-chip-grid.ax-check-group { grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); }
+.ax-check-group .ax-toggle-chip { min-height: 34px; border-radius: 9px; }
+.ax-check-group .ax-toggle-chip__label { white-space: normal; line-height: 1.25; }
+.ax-check-group-field { display: grid; gap: 6px; min-width: 0; }
+
+/* Checkbox padrão calmo (ax_check_group class_name: "ax-chip-grid--calm"): marcado = superfície neutra
+ * com tinta e check na cor --tone (padrão: primária); desmarcado = tracejado apagado. Uma coluna: --rows. */
+.ax-chip-grid--rows { grid-template-columns: minmax(0, 1fr); }
+.ax-chip-grid--calm .ax-toggle-chip { min-height: 32px; padding: 5px 10px; border: 1px solid var(--ab-line-soft); border-radius: 9px; background: var(--ab-panel); color: var(--ab-ink); font-weight: 600; }
+.ax-chip-grid--calm .ax-toggle-chip .ax-toggle-chip__label { white-space: normal; line-height: 1.25; }
+.ax-chip-grid--calm .ax-toggle-chip:hover { border-color: color-mix(in srgb, var(--tone, var(--admin-primary)) 45%, var(--ab-line)); background: color-mix(in srgb, var(--tone, var(--admin-primary)) 7%, var(--ab-panel)); }
+.ax-chip-grid--calm .ax-toggle-chip.is-checked,
+.ax-chip-grid--calm .ax-toggle-chip:has(.ax-toggle-chip__input:checked),
+.ax-chip-grid--calm .ax-toggle-chip.is-checked:hover,
+.ax-chip-grid--calm .ax-toggle-chip:has(.ax-toggle-chip__input:checked):hover {
+  border-color: color-mix(in srgb, var(--tone, var(--admin-primary)) 38%, var(--ab-line-soft)) !important;
+  background: color-mix(in srgb, var(--tone, var(--admin-primary)) 8%, var(--ab-panel)) !important;
+  color: var(--ab-ink) !important;
+}
+.ax-chip-grid--calm .ax-toggle-chip:not(.is-checked):not(:has(.ax-toggle-chip__input:checked)) { border-style: dashed; background: transparent; color: var(--ab-muted); font-weight: 500; }
+.ax-chip-grid--calm .ax-toggle-chip .ax-toggle-chip__input { width: 16px !important; height: 16px !important; }
+.ax-chip-grid--calm .ax-toggle-chip .ax-toggle-chip__input:checked { border-color: var(--tone, var(--admin-primary)) !important; background-color: var(--tone, var(--admin-primary)) !important; }
+
+/* Grupo de chips com moldura tingida (ax_chip_section): cor por --tone, contador x/y. */
+.ax-chip-section { --tone: var(--admin-primary); display: grid; align-content: start; gap: 8px; padding: 10px; border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--ab-line-soft)); border-radius: 12px; background: color-mix(in srgb, var(--tone) 4%, var(--ab-panel)); }
+.ax-chip-section__head { display: flex; align-items: center; gap: 8px; }
+.ax-chip-section__head strong { flex: 1; min-width: 0; color: var(--ab-ink); font-size: 12.5px; font-weight: 800; }
+.ax-chip-section__icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--tone) 16%, var(--ab-panel)); color: var(--tone); font-size: 13px; }
+.ax-chip-section__count { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--tone) 14%, var(--ab-panel)); color: color-mix(in srgb, var(--tone) 80%, var(--ab-ink)); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ax-chip-section[data-tone="blue"] { --tone: var(--ax-accent-blue); }
+.ax-chip-section[data-tone="green"] { --tone: var(--ax-accent-green); }
+.ax-chip-section[data-tone="amber"] { --tone: var(--ax-accent-amber); }
+.ax-chip-section[data-tone="red"] { --tone: var(--ax-accent-red); }
+.ax-chip-section[data-tone="violet"] { --tone: var(--ax-accent-violet); }
+.ax-chip-section[data-tone="teal"] { --tone: var(--ax-accent-teal); }
+.ax-chip-section[data-tone="pink"] { --tone: var(--ax-accent-pink); }
+.ax-chip-section[data-tone="slate"] { --tone: var(--ax-accent-slate); }

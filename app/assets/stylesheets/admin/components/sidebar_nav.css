@@ -1,0 +1,400 @@
+/* Menu lateral (Explorer): uma única folha para o menu expandido, o tema escuro e as regras que restam do mobile.
+ * Ordem: (1) base herdada, comum ao modo compacto; (2) tema escuro; (3) visual atual do menu expandido.
+ * O modo compacto (só ícones) continua em admin_tailwind.css, junto das regras do contextbar. */
+
+/* ===== 1. Base ===== */
+/* ---------- Menu de navegação (sidebar) ---------- */
+.ax-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.ax-sidebar .ax-nav {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ax-sidebar .ax-nav > li {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ax-nav__section[data-nav-section] {
+  display: block;
+  overflow: hidden;
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  border: 1px solid var(--nav-section-border, #7b8797);
+  box-shadow: var(--nav-section-shadow, inset 2px 0 0 #365F8F);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--nav-section-background, #7b8797) var(--nav-section-background-opacity, 30%), transparent);
+  color: var(--nav-section-text, #7b8797);
+}
+.ax-nav__section[data-nav-section="product"], .layout-settings-menu-style-preview[data-menu-section-preview="product"] { --nav-section-background: var(--admin-nav-product-background); --nav-section-background-opacity: var(--admin-nav-product-background-opacity); --nav-section-text: var(--admin-nav-product-text); --nav-section-border: var(--admin-nav-product-border); --nav-section-shadow: var(--admin-nav-product-shadow); }
+.ax-nav__section[data-nav-section="operation"], .layout-settings-menu-style-preview[data-menu-section-preview="operation"] { --nav-section-background: var(--admin-nav-operation-background); --nav-section-background-opacity: var(--admin-nav-operation-background-opacity); --nav-section-text: var(--admin-nav-operation-text); --nav-section-border: var(--admin-nav-operation-border); --nav-section-shadow: var(--admin-nav-operation-shadow); }
+.ax-nav__section[data-nav-section="management"], .layout-settings-menu-style-preview[data-menu-section-preview="management"] { --nav-section-background: var(--admin-nav-management-background); --nav-section-background-opacity: var(--admin-nav-management-background-opacity); --nav-section-text: var(--admin-nav-management-text); --nav-section-border: var(--admin-nav-management-border); --nav-section-shadow: var(--admin-nav-management-shadow); }
+.ax-nav__section[data-nav-section="growth"], .layout-settings-menu-style-preview[data-menu-section-preview="growth"] { --nav-section-background: var(--admin-nav-growth-background); --nav-section-background-opacity: var(--admin-nav-growth-background-opacity); --nav-section-text: var(--admin-nav-growth-text); --nav-section-border: var(--admin-nav-growth-border); --nav-section-shadow: var(--admin-nav-growth-shadow); }
+.ax-nav__section[data-nav-section="public-site"], .layout-settings-menu-style-preview[data-menu-section-preview="public-site"] { --nav-section-background: var(--admin-nav-public-site-background); --nav-section-background-opacity: var(--admin-nav-public-site-background-opacity); --nav-section-text: var(--admin-nav-public-site-text); --nav-section-border: var(--admin-nav-public-site-border); --nav-section-shadow: var(--admin-nav-public-site-shadow); }
+.ax-nav__section[data-nav-section="integrations"], .layout-settings-menu-style-preview[data-menu-section-preview="integrations"] { --nav-section-background: var(--admin-nav-integrations-background); --nav-section-background-opacity: var(--admin-nav-integrations-background-opacity); --nav-section-text: var(--admin-nav-integrations-text); --nav-section-border: var(--admin-nav-integrations-border); --nav-section-shadow: var(--admin-nav-integrations-shadow); }
+.ax-nav__section[data-nav-section="settings"], .layout-settings-menu-style-preview[data-menu-section-preview="settings"] { --nav-section-background: var(--admin-nav-settings-background); --nav-section-background-opacity: var(--admin-nav-settings-background-opacity); --nav-section-text: var(--admin-nav-settings-text); --nav-section-border: var(--admin-nav-settings-border); --nav-section-shadow: var(--admin-nav-settings-shadow); }
+.ax-nav__section[data-nav-section="account"], .layout-settings-menu-style-preview[data-menu-section-preview="account"] { --nav-section-background: var(--admin-nav-account-background); --nav-section-background-opacity: var(--admin-nav-account-background-opacity); --nav-section-text: var(--admin-nav-account-text); --nav-section-border: var(--admin-nav-account-border); --nav-section-shadow: var(--admin-nav-account-shadow); }
+.ax-nav__section-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  text-align: left;
+}
+.ax-nav__section-trigger > .bi:first-child {
+  width: 16px;
+  font-size: 13px;
+}
+.ax-nav__section-trigger > span { flex: 1; }
+.ax-nav__section-trigger > .bi:last-child {
+  font-size: 10px;
+  transition: transform var(--ax-motion-fast) var(--ax-motion-ease);
+}
+.ax-nav__section-trigger[aria-expanded="false"] > .bi:last-child {
+  transform: rotate(-90deg);
+}
+.ax-nav__section-items {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 1px;
+  max-height: 0;
+  margin: 0;
+  padding: 0 4px;
+  border-top: 1px solid transparent;
+  opacity: 0;
+  transform: translateY(-3px);
+  list-style: none;
+  transition:
+    max-height 160ms var(--ax-motion-ease),
+    opacity 120ms var(--ax-motion-ease),
+    transform 160ms var(--ax-motion-ease),
+    padding 160ms var(--ax-motion-ease),
+    border-color 120ms var(--ax-motion-ease);
+}
+.ax-nav__section-items.is-visible {
+  padding: 2px 4px 2px 5px;
+  border-top-color: color-mix(in srgb, var(--nav-section-border, #7b8797) 24%, transparent);
+  opacity: 1;
+  transform: translateY(0);
+}
+.ax-nav__section-items[hidden] { display: none !important; }
+.ax-nav__section-items > li { min-width: 0; list-style: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-nav__section-items,
+  .ax-nav__section-trigger > .bi:last-child { transition: none !important; }
+}
+.ax-nav__link {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 31px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #475467; text-decoration: none;
+  font-size: 12.5px; font-weight: 620;
+  cursor: pointer; background: transparent; width: 100%; text-align: left;
+  transition:
+    background var(--ax-motion-fast) var(--ax-motion-ease),
+    border-color var(--ax-motion-fast) var(--ax-motion-ease),
+    color var(--ax-motion-fast) var(--ax-motion-ease),
+    box-shadow var(--ax-motion-fast) var(--ax-motion-ease),
+    transform var(--ax-motion-fast) var(--ax-motion-ease);
+}
+.ax-nav__link span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity var(--ax-motion-fast) var(--ax-motion-ease);
+}
+.ax-nav__link .bi {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  color: #8490a1;
+  flex: none;
+  transition: color var(--ax-motion-fast) var(--ax-motion-ease), transform var(--ax-motion-fast) var(--ax-motion-ease);
+}
+.ax-nav__link:hover { background: #f5faff; border-color: #dbe3ee; color: #1f2733; }
+.ax-nav__link:hover .bi { color: #586579; }
+.ax-nav__link.active {
+  background: #ffffff;
+  border-color: #c7d8ee;
+  color: #112231;
+  font-weight: 700;
+}
+.ax-nav__link.active .bi { color: var(--admin-primary); }
+.ax-nav__link--group { justify-content: space-between; }
+.ax-nav__chevron { margin-left: auto; font-size: 12px !important; color: #98a2b3 !important; width: auto !important; transition: transform var(--ax-motion-base) var(--ax-motion-ease); }
+.ax-nav__group.is-open > .ax-nav__link--group,
+.ax-nav__link--group[aria-expanded="true"] {
+  background: #edf2f8;
+  border-color: #dbe3ee;
+  color: #1f2733;
+}
+.ax-nav__group.is-open > .ax-nav__link--group .ax-nav__chevron,
+.ax-nav__link--group[aria-expanded="true"] .ax-nav__chevron { transform: rotate(180deg); }
+.ax-nav__sub {
+  list-style: none;
+  margin: 2px 0 5px 13px;
+  padding: 2px 0 2px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-left: 1px solid #d7dfeb;
+  background: transparent;
+  opacity: 1;
+  overflow: hidden;
+  will-change: max-height, opacity;
+  transition:
+    max-height var(--ax-motion-base) var(--ax-motion-ease),
+    opacity var(--ax-motion-fast) var(--ax-motion-ease),
+    margin var(--ax-motion-base) var(--ax-motion-ease),
+    padding var(--ax-motion-base) var(--ax-motion-ease);
+}
+.ax-nav__sub[hidden] { display: none !important; }
+.ax-nav__sub .ax-nav__link { min-height: 28px; padding: 4px 7px; font-size: 12px; }
+.ax-nav__sub .ax-nav__link .bi { font-size: 13px; }
+.ax-nav__sub .ax-nav__link.active {
+  background: #fff;
+  border-color: #c7d8ee;
+  color: #245486;
+  box-shadow: inset 2px 0 0 var(--admin-primary), 0 1px 1px rgb(16 24 40 / 0.03);
+}
+.ax-nav__caption { padding: 8px 7px 3px; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .055em; color: color-mix(in srgb, var(--admin-ink, #1f2733) 62%, var(--admin-sidebar-bg, #fff)); }
+
+/* ===== 2. Tema escuro ===== */
+[data-admin-theme="dark"] .ax-nav__section[data-nav-section] {
+  border-color: color-mix(in srgb, var(--nav-section-border, var(--admin-primary)) 42%, var(--admin-sidebar-bg));
+  background: color-mix(in srgb, var(--nav-section-background, var(--admin-primary)) 13%, var(--admin-sidebar-bg));
+  color: color-mix(in srgb, var(--nav-section-text, var(--admin-primary)) 58%, var(--admin-ink));
+  box-shadow: var(--nav-section-shadow, inset 2px 0 0 var(--admin-primary));
+}
+
+[data-admin-theme="dark"] .ax-nav__link { color: var(--ab-muted); }
+[data-admin-theme="dark"] .ax-nav__link .bi { color: color-mix(in srgb, var(--admin-ink) 52%, var(--admin-sidebar-bg)); }
+[data-admin-theme="dark"] .ax-nav__link:hover,
+[data-admin-theme="dark"] .ax-nav__group.is-open > .ax-nav__link--group,
+[data-admin-theme="dark"] .ax-nav__link--group[aria-expanded="true"] {
+  border-color: var(--ax-border-soft);
+  background: color-mix(in srgb, var(--admin-primary) 9%, var(--admin-sidebar-bg));
+  color: var(--admin-ink);
+}
+
+[data-admin-theme="dark"] .ax-nav__link.active,
+[data-admin-theme="dark"] .ax-nav__sub .ax-nav__link.active {
+  border-color: color-mix(in srgb, var(--admin-primary) 48%, var(--admin-sidebar-bg));
+  background: color-mix(in srgb, var(--admin-primary) 18%, var(--admin-sidebar-bg));
+  color: var(--admin-ink);
+  box-shadow: inset 2px 0 0 var(--admin-primary);
+}
+
+[data-admin-theme="dark"] .ax-nav__section-items.is-visible,
+[data-admin-theme="dark"] .ax-nav__sub { border-color: var(--ax-dark-divider-soft); }
+
+[data-admin-theme="dark"] .ax-nav__section[data-nav-section] {
+  border-color: color-mix(in srgb, var(--nav-section-border, var(--admin-primary)) 30%, var(--admin-sidebar-bg));
+  background: color-mix(in srgb, var(--nav-section-background, var(--admin-primary)) 9%, var(--admin-sidebar-bg));
+}
+
+
+/* ===== 3. Visual do menu expandido ===== */
+/* Menu lateral (Explorer): mesma identidade dos construtores de template.
+ * Cada seção é um cartão que herda as cores configuradas em Layout (fundo, texto e borda);
+ * o "texto" da seção vira o acento: ícone em ladrilho, item ativo preenchido, guia da subárvore.
+ * Vale só para o menu expandido; o modo compacto (ícones) mantém as regras próprias. */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact)) .ax-sidebar,
+.lss-sidebar {
+  --nav-ink: #263241;
+  --nav-ink-soft: #475467;
+  --nav-muted: #7b8797;
+  --nav-surface: #ffffff;
+  --nav-ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+[data-admin-theme="dark"]:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar,
+[data-admin-theme="dark"] .lss-sidebar {
+  --nav-ink: var(--admin-ink, #e8eef7);
+  --nav-ink-soft: var(--ab-muted, #b8c5d8);
+  --nav-muted: color-mix(in srgb, var(--admin-ink, #e8eef7) 52%, var(--admin-sidebar-bg, #10181d));
+  --nav-surface: color-mix(in srgb, var(--admin-primary) 16%, var(--admin-sidebar-bg, #10181d));
+}
+
+/* ---------- Seção (cartão) ---------- */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav { gap: 6px; }
+
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section[data-nav-section] {
+  --nav-accent: var(--nav-section-text, var(--admin-primary));
+  margin-bottom: 6px !important;
+  border-radius: 12px;
+  border-color: color-mix(in srgb, var(--nav-section-border, #c7d0dc) 75%, transparent);
+  transition: border-color 200ms var(--nav-ease), box-shadow 240ms var(--nav-ease), background-color 200ms var(--nav-ease);
+}
+
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section[data-nav-section]:has(> .ax-nav__section-trigger[aria-expanded="true"]) {
+  border-color: color-mix(in srgb, var(--nav-accent) 38%, var(--nav-section-border, #c7d0dc));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--nav-accent) 14%, transparent);
+}
+
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger {
+  min-height: 42px;
+  padding: 7px 10px 7px 8px;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: .07em;
+  transition: background-color 160ms var(--nav-ease);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger:hover { background: color-mix(in srgb, var(--nav-accent, var(--admin-primary)) 7%, transparent); }
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--nav-accent, var(--admin-primary)) 40%, transparent);
+  outline-offset: -3px;
+  border-radius: 12px;
+}
+
+/* Ícone da seção em ladrilho: preenchido quando a seção está aberta. */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger > .bi:first-child {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--nav-accent) 15%, var(--nav-surface));
+  color: var(--nav-accent);
+  font-size: 14px;
+  transition: background-color 200ms var(--nav-ease), color 200ms var(--nav-ease), transform 240ms var(--nav-ease), box-shadow 200ms;
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger[aria-expanded="true"] > .bi:first-child {
+  background: var(--nav-accent);
+  color: #fff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--nav-accent) 32%, transparent);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger:hover > .bi:first-child { transform: scale(1.07) rotate(-4deg); }
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-trigger > .bi:last-child { font-size: 11px; opacity: .75; }
+
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-items.is-visible {
+  padding: 5px 6px 8px;
+  border-top-color: color-mix(in srgb, var(--nav-accent) 20%, transparent);
+}
+
+/* ---------- Itens ---------- */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link {
+  --nav-item-accent: var(--nav-accent, var(--admin-primary));
+  min-height: 36px;
+  padding: 4px 8px 4px 5px;
+  gap: 10px;
+  border-radius: 10px;
+  color: var(--nav-ink-soft);
+  font-size: 12.75px;
+  font-weight: 650;
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link > .bi:first-child {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--nav-muted);
+  font-size: 15px;
+  transition: background-color 180ms var(--nav-ease), color 180ms var(--nav-ease), transform 220ms var(--nav-ease), box-shadow 200ms;
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link:hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--nav-item-accent) 8%, transparent);
+  color: var(--nav-ink);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link:hover > .bi:first-child {
+  background: color-mix(in srgb, var(--nav-item-accent) 14%, transparent);
+  color: var(--nav-item-accent);
+  transform: scale(1.06);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--nav-item-accent) 40%, transparent);
+  outline-offset: -2px;
+}
+
+/* Item ativo: cartão claro com ladrilho de ícone preenchido (sem faixa lateral). */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link.active,
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub .ax-nav__link.active {
+  border-color: color-mix(in srgb, var(--nav-item-accent) 28%, transparent);
+  background: var(--nav-surface);
+  color: var(--nav-ink);
+  font-weight: 750;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--nav-item-accent) 16%, transparent);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link.active > .bi:first-child {
+  background: var(--nav-item-accent);
+  color: #fff;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--nav-item-accent) 30%, transparent);
+}
+
+/* ---------- Grupos (submenus) ---------- */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__group.is-open > .ax-nav__link--group,
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__link--group[aria-expanded="true"] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--nav-item-accent) 10%, transparent);
+  color: var(--nav-ink);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__group.is-open > .ax-nav__link--group > .bi:first-child {
+  background: color-mix(in srgb, var(--nav-item-accent) 18%, transparent);
+  color: var(--nav-item-accent);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__chevron { font-size: 11px !important; color: var(--nav-muted) !important; }
+
+/* Subárvore: guia na cor do acento e itens menores, ligados por um traço. */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub {
+  margin: 3px 0 6px 14px;
+  padding: 2px 0 2px 8px;
+  border-left-color: color-mix(in srgb, var(--nav-item-accent, var(--admin-primary)) 28%, transparent);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub .ax-nav__link { position: relative; min-height: 32px; padding: 3px 6px 3px 3px; gap: 8px; font-size: 12px; }
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub .ax-nav__link::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 6px;
+  height: 1px;
+  background: color-mix(in srgb, var(--nav-item-accent, var(--admin-primary)) 28%, transparent);
+}
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub .ax-nav__link > .bi:first-child { width: 22px; height: 22px; font-size: 13px; }
+
+/* ---------- Movimento ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  :is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-items.is-visible > li,
+  :is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub:not([hidden]) > li { animation: ax-nav-in 240ms var(--nav-ease) both; }
+  .ax-nav__section-items.is-visible > li:nth-child(2), .ax-nav__sub:not([hidden]) > li:nth-child(2) { animation-delay: 25ms !important; }
+  .ax-nav__section-items.is-visible > li:nth-child(3), .ax-nav__sub:not([hidden]) > li:nth-child(3) { animation-delay: 50ms !important; }
+  .ax-nav__section-items.is-visible > li:nth-child(4), .ax-nav__sub:not([hidden]) > li:nth-child(4) { animation-delay: 75ms !important; }
+  .ax-nav__section-items.is-visible > li:nth-child(5), .ax-nav__sub:not([hidden]) > li:nth-child(5) { animation-delay: 100ms !important; }
+  .ax-nav__section-items.is-visible > li:nth-child(n+6), .ax-nav__sub:not([hidden]) > li:nth-child(n+6) { animation-delay: 125ms !important; }
+}
+@keyframes ax-nav-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  :is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) * { transition-duration: 1ms !important; animation: none !important; }
+}
+
+/* ---------- Abrir/fechar ----------
+ * Quem anima é lib/slide (altura + paddings + margens + opacidade juntos); as transições antigas de
+ * max-height/padding/margin no menu expandido ficam desligadas para não disputarem a animação. */
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__section-items,
+:is(html:not(.ax-sidebar-compact-preload) .ax-app:not(.is-compact) .ax-sidebar, .lss-sidebar) .ax-nav__sub {
+  transition: none;
+  will-change: auto;
+}

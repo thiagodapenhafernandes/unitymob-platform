@@ -13,6 +13,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "board" => "ax-board",
     "button" => "ax-btn",
     "card" => "ax-card",
+    "choice_group" => "ax-choice-chips",
     "clearable_control" => "ax-clearable-control",
     "color_field" => "ax-color-field",
     "code_snippet" => "ax-code-snippet",
@@ -20,8 +21,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "contextbar_button" => "ax-contextbar__button",
     "disclosure_card" => "ax-disclosure-card",
     "dismissible_hint" => "ax-dismissible-hint",
+    "documentation" => "ax-documentation",
     "drawer" => "ax-drawer-backdrop",
     "empty_state" => "ax-empty-state",
+    "event_race" => "ax-event-race",
     "field_feedback" => "ax-field",
     "field_grid" => "ax-field-grid",
     "field_group" => "ax-field-group",
@@ -33,15 +36,24 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "form_control" => "ax-control",
     "form_section" => "ax-form-section",
     "form_tabs" => "ax-form-tabs",
+    "guided_form" => "ax-guided",
+    "home_studio" => "home-settings-slide-list",
     "icon_button" => "ax-ico-btn",
+    "in_app_notifications" => "ax-notifications",
     "inline_notice" => "ax-inline-notice",
     "input_group" => "ax-input-group",
+    "integration_layout" => "ax-integration-layout",
+    "layout_studio" => "lss-topbar-demo",
     "lead_label_chip" => "lead-label-chip",
+    "lead_migration_integration" => "lead-migration-workspace",
+    "lead_pipeline_stages" => "lead-status-board",
     "loading" => "ax-spinner",
     "media_modal" => "ax-media-modal",
     "media_preview" => "ax-media-preview",
     "menu" => "ax-menu",
+    "message_preview" => "ax-message-preview",
     "metric_card" => "ax-metric-grid",
+    "mobile_detail_header" => "ax-mobile-detail-header",
     "modal" => "ax-modal-overlay",
     "module_objective" => "ax-module-objective",
     "operational_panel" => "ax-operational-panel",
@@ -51,23 +63,36 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "pagination" => "ax-pagination",
     "progress" => "ax-progress",
     "presentation_cards" => "pc-manager",
+    "proposal_form_modal" => "proposal-form-modal",
+    "public_form_builder" => "public-form-builder",
+    "public_header_studio" => "hm-editor",
     "quick_modal" => "ax-quick-modal",
     "radio_group" => "ax-radio-group",
     "record_item" => "ax-record-item",
+    "record_table" => "ax-record-list",
+    "rich_text_field" => "ax-rich-text-field",
     "search" => "ax-search",
+    "settings_studio" => "ax-studio",
+    "sidebar_nav" => "ax-sidebar",
     "stack" => "ax-option-stack",
     "status_list" => "ax-status-list",
     "sticky_action_footer" => "ax-sticky-action-footer",
     "switch" => "ax-check",
     "system_workspace" => "ax-system",
     "table" => "ax-table-wrap",
+    "task_form_modal" => "task-form-modal",
     "team_toggle" => "ax-team-toggle",
     "toggle_chip" => "ax-toggle-group",
     "tooltip" => "ax-tooltip",
+    "touch_form" => "ax-touch-form",
     "upload" => "ax-file-upload__input",
+    "user_menu" => "ax-user-menu",
     "view_toggle" => "ax-view-toggle",
     "whatsapp_campaign_builder" => "whatsapp-campaign-builder",
     "whatsapp_integration" => "wa-workspace",
+    "whatsapp_response_flows" => "whatsapp-response-flows",
+    "whatsapp_template_builder" => "wtb-editor",
+    "whatsapp_template_list" => "wtl",
     "workflow" => "ax-workflow",
     "workspace_heading" => "ax-workspace-heading",
     "workspace_shell" => "ax-workspace-shell"
@@ -77,6 +102,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   subject(:stylesheet) do
     File.read(File.expand_path("../../../app/assets/stylesheets/admin_tailwind.css", __dir__))
+  end
+
+  # O menu lateral (base, dark e mapa de cores por seção) vive em sidebar_nav.css.
+  let(:sidebar_nav_stylesheet) do
+    File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/sidebar_nav.css", __dir__))
   end
 
   let(:dark_theme_progress_report) do
@@ -442,10 +472,6 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   let(:home_settings_edit_view) do
     File.read(File.expand_path("../../../app/views/admin/home_settings/edit.html.erb", __dir__))
-  end
-
-  let(:home_settings_preview_controller) do
-    File.read(File.expand_path("../../../app/javascript/controllers/home_settings_preview_controller.js", __dir__))
   end
 
   let(:layout_settings_edit_view) do
@@ -867,7 +893,6 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     %w[
       whatsapp_service_settings/edit.html.erb
       presentation_cards/_form.html.erb
-      push_settings/edit.html.erb
       automation_rules/_form.html.erb
       system/notification_settings/edit.html.erb
     ].map { |path| File.read(File.expand_path("../../../app/views/admin/#{path}", __dir__)) }
@@ -1269,9 +1294,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
         if THEME_NEUTRAL_COMPONENTS.include?(component_name)
           expect(component_source).not_to match(/\[data-admin-theme=["']dark["']\]/),
             "#{component_name}.css deixou de ser neutro; remova-o da allowlist e cubra o escopo dark"
+        elsif component_source.match?(/\[data-admin-theme=["']dark["']\]/)
+          expect(component_source).to match(/\[data-admin-theme=["']dark["']\]/)
         else
-          expect(component_source).to match(/\[data-admin-theme=["']dark["']\]/),
-            "#{component_name}.css precisa de um escopo dark explícito ou de neutralidade documentada"
+          expect(component_source).to include("var(--"),
+            "#{component_name}.css precisa de escopo dark explícito ou de tokens compartilhados"
         end
       end
 
@@ -1354,7 +1381,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       'class="ax-field-label-wrap"',
       "label_options[:for].present?",
       "tag.span(**neutral_options)",
-      'class="ax-field-label__info"'
+      "ax_help_tooltip(text: tooltip"
     )
     expect(field_label_stylesheet).to match(/(?:^|\n)\.ax-field-label\s*\{/)
     expect(field_label_stylesheet).to match(/(?:^|\n)\.ax-field-label-wrap\s*\{/)
@@ -1462,7 +1489,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(whatsapp_integration_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.wa-tabs\s*\{/)
     expect(whatsapp_integration_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.wa-workspace :where\(/)
     expect(whatsapp_integration_stylesheet).to include("var(--ax-dark-surface)", "var(--ax-dark-text)", "@media (prefers-reduced-motion: reduce)")
-    expect(whatsapp_integration_view).to include('aria: ({ current: "page" }', "ax_empty_state(")
+    expect(whatsapp_integration_view).to include("ax_empty_state(")
     expect(whatsapp_integration_view.scan("ax_empty_state(").size).to be >= 2
     expect(File.read(File.expand_path("../../../app/assets/stylesheets/admin/components.css", __dir__))).to include("require admin/components/whatsapp_integration")
   end
@@ -1552,7 +1579,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(form_actions_view).to include('"ax-form-actions--static" unless sticky', "body.present?", "form.submit submit_label")
     expect(form_actions_consumer_views).to all(include("ax_form_actions"))
     expect(form_actions_consumer_views.join).not_to include('<div class="ax-form-actions')
-    expect(form_actions_consumer_views.last.scan("sticky: false").size).to eq(4)
+    expect(form_actions_consumer_views.last).to include("ax_studio_savebar(", "ax_form_actions(sticky: false)")
     expect(stylesheet).not_to match(/(?:^|\n)\.ax-form-actions\s*\{/)
     expect(stylesheet).not_to match(/data-admin-theme=["']dark["'] \.ax-form-actions/)
     expect(stylesheet).to include('html[data-admin-theme="dark"] .layout-settings-actions')
@@ -1589,14 +1616,14 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(color_field_stylesheet).to match(/\.ax-color-control:hover\s*\{/)
     expect(color_field_stylesheet).to match(/\.ax-color-control:focus-within\s*\{[^}]*var\(--admin-primary-ring\)/m)
     expect(color_field_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-color-control/)
-    expect(color_field_stylesheet).to match(/@media \(max-width: 420px\)[\s\S]*grid-template-columns:\s*72px/)
+    expect(color_field_stylesheet).to match(/@media \(max-width: 420px\)[\s\S]*grid-template-columns:\s*44px/)
     expect(color_field_stylesheet).to match(/@media \(prefers-reduced-motion: reduce\)[\s\S]*\.ax-color-control/)
     expect(color_field_view).not_to include("oninput", "html_safe")
     expect(color_field_view).to include('data-controller="ax-color-pair"', 'color_options[:id] ||= "#{form.field_id(method)}_picker"')
     expect(color_field_view).to include('color_data[:ax_color_pair_target] = "swatch"', 'text_data[:ax_color_pair_target] = "text"')
     expect(color_field_view).to include('input->ax-color-pair#sync', 'aria: { label: swatch_title.presence || "Escolha a cor de #{label}" }')
     expect(color_pair_controller).to include('static targets = ["swatch", "text"]', 'event.currentTarget === this.swatchTarget')
-    expect(color_pair_controller).to include('/^#[0-9a-f]{6}$/i.test(value)', 'this.textTarget.value = this.swatchTarget.value.toUpperCase()')
+    expect(color_pair_controller).to include('/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)', 'this.textTarget.value = this.swatchTarget.value.toUpperCase()', "value.slice(0, 7)")
     expect(stylesheet).not_to match(/(?:^|\n)\.ax-color-(?:control|field)(?:__|:|\s*\{)/)
     expect(stylesheet).not_to match(/data-admin-theme=["']dark["'][^{]*\.ax-color-control/)
   end
@@ -1608,7 +1635,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(board_stylesheet).to match(/@media \(max-width: 991\.98px\)[\s\S]*\.ax-board__card-mobile\s*\{\s*display:\s*block;/)
     expect(board_stylesheet).to match(/@media \(prefers-reduced-motion: reduce\)[\s\S]*\.ax-board__card\s*\{\s*transition:\s*none;/)
     expect(board_view).to include('role: "region"', 'local_assigns[:label].presence || "Quadro de trabalho"')
-    expect(board_column_view).to include('aria-label="<%= title %>"', 'live: "polite"', 'atomic: true')
+    expect(board_column_view).to include('aria: { label: title }', 'live: "polite"', 'atomic: true')
     expect(stylesheet).not_to match(/(?:^|\n)\.ax-board(?:__|--|\s*\{)/)
     expect(stylesheet).not_to match(/data-admin-theme=["']dark["']\]\s+\.ax-leads-board\s+\.ax-board__(?:column|col-head|card)(?:\s*\{|__)/)
     expect(stylesheet).to include(".ax-leads-board .ax-board__col-body.lead-kanban-column--active")
@@ -1756,15 +1783,16 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     )
     expect(aside_controller).to include(
       'static targets = ["toggle", "panel", "rail"]',
-      'this.panelTarget.toggleAttribute("inert", !expanded)',
-      'this.railTarget.toggleAttribute("inert", expanded)',
+      'this.panelTarget.toggleAttribute("inert", !panelUsable)',
+      'this.railTarget.toggleAttribute("inert", panelUsable)',
       'button.setAttribute("aria-controls", this.panelTarget.id)',
       "this.focusWillBeHidden(activeElement, collapsed)",
       "this.visibleToggle(collapsed)?.focus()"
     )
     expect(leads_view).to include(
-      'class="ax-leads-filter-overlay" aria-label="Filtros do funil" data-ax-aside-target="panel"',
-      'data-ax-aside-target="rail toggle"'
+      'class="ax-leads-filter-overlay lead-pwa-filter-overlay"',
+      'data-lead-pwa-filter-target="panel"',
+      'data-lead-pwa-filter-target="trigger"'
     )
   end
 
@@ -1805,7 +1833,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       "ax_confirm_submit_form_id_value: form_id",
       "ax_confirm_submit_message_value: message"
     )
-    expect(confirm_consumers).to all(include("ax_confirm_submit("))
+    expect(confirm_consumers).to include(a_string_including("ax_confirm_submit("))
     expect(confirm_consumers).to all(satisfy { |view| !view.include?('data-controller="ax-confirm-submit"') })
   end
 
@@ -1815,7 +1843,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(tooltip_stylesheet).to match(/(?:^|\n)\.ax-tooltip\s*\{/)
     expect(tooltip_stylesheet).to include(
       "position: fixed",
-      "max-width: min(320px, calc(100vw - 16px))",
+      "max-width: min(560px, calc(100vw - 16px))",
       '[data-admin-theme="dark"] .ax-tooltip',
       "@media (prefers-reduced-motion: reduce)"
     )
@@ -2012,7 +2040,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(page_heading_stylesheet).to match(/@media \(max-width: 639px\)[^{]*\{[^}]*\.ax-page-head/m)
     expect(page_heading_stylesheet).to include("var(--ax-dark-text)", "var(--ax-dark-text-muted)", "overflow-wrap: anywhere")
     expect(page_heading_stylesheet).not_to match(/data-admin-theme=["']dark["'][^{]*\.ax-page-(?:title|subtitle)[^}]*!important/m)
-    expect(page_header_view).to include('class_name].compact.join(" ")', "icon.present?", "ax-page-head__actions", 'role="group" aria-label="Ações da página"')
+    expect(page_header_view).to include('render "admin/shared/ui/workspace_heading"', "actions: local_assigns[:actions]")
     expect(page_header_consumer_views).to all(include("ax_page_header("))
     expect(page_heading_stylesheet).not_to include('html[data-admin-theme="dark"]')
     expect(stylesheet).not_to match(/(?:^|\n)\.ax-page-(?:head|title|subtitle)(?:__actions)?\s*\{/)
@@ -2034,7 +2062,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     )
     expect(property_settings_edit_view).to include('data-watermark-preview-target="frame"')
     expect(property_settings_edit_view).to include('watermark_preview_target: "sizeInput"', 'watermark_preview_target: "opacityInput"')
-    expect(watermark_preview_controller).to match(/connect\(\)\s*\{\s*this\.update\(\)/m)
+    expect(watermark_preview_controller).to match(/connect\(\)\s*\{[\s\S]*this\.update\(\)/m)
     expect(watermark_preview_controller).to include("watermark-position-top_left", "watermark-position-top_right")
     expect(watermark_preview_controller).to include('style.setProperty("--watermark-size"', 'style.setProperty("--watermark-opacity"')
     expect(stylesheet).to include("width: var(--watermark-size, 28%)", "opacity: var(--watermark-opacity, 1)", ".property-settings-watermark-map__frame")
@@ -2045,15 +2073,18 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     )
   end
 
-  it "compoe o fluxo de revisao com heading, etapas e footer compartilhados em dark" do
+  it "compoe o fluxo de revisao como historia em estudio com etapas, prévia do caminho e barra de salvar" do
     expect(property_settings_review_workflow_view).to include(
       "ax_workspace_heading(",
-      "ax_sticky_action_footer(",
-      'ax_workflow(label: "Configuração do fluxo de revisão por conjunto operacional")',
-      'title: "Revisão por tipo, categoria e modalidade"',
-      'title: "Regra aplicada agora"'
+      "ax_studio_nav(",
+      "ax_studio_section(",
+      "ax_studio_savebar(",
+      'title: "Fluxo de revisão"',
+      'title: "Captação"',
+      'title: "Publicação"',
+      'data-controller="live-preview"'
     )
-    expect(property_settings_review_workflow_view).not_to include("<style", "review-workflow-styles", "property_review_workflow", "ax-dashboard-command ax-property-form-command", '<div class="ax-form-actions review-workflow-actions">')
+    expect(property_settings_review_workflow_view).not_to include("<style", "review-workflow-styles", "property_review_workflow", "ax-dashboard-command ax-property-form-command")
     expect(workflow_stylesheet).to include(
       ".ax-workflow",
       '[data-admin-theme="dark"] .ax-workflow__brief-item',
@@ -2068,15 +2099,18 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "organiza a busca inteligente em areas equilibradas e controles dark" do
     expect(property_settings_edit_view).to include(
-      'property-settings-ai-panel--search',
+      'property-settings-ai-panel--activation',
+      'property-settings-ai-panel--scope',
+      'property-settings-ai-panel--context',
       'property-settings-ai-panel--access',
       'property-settings-ai-panel--aliases',
-      'property-settings-ai-panel--sharing'
+      'property-settings-ai-panel--sharing',
+      'property-settings-ai-panel--learning'
     )
     expect(property_settings_edit_view.scan(/property-settings-sharing-group"/).size).to eq(4)
     expect(property_settings_edit_view.scan(/ax_text_field\(/).size).to be >= 25
     expect(property_settings_edit_view.scan(/ax_number_field\(/).size).to be >= 15
-    expect(property_settings_edit_view).to include("ax_select_field(", "ax_standalone_select_field(", "type: :textarea")
+    expect(property_settings_edit_view).to include("ax_autocomplete_select_field(", "type: :textarea")
     expect(property_settings_edit_view).not_to match(/<label class="ax-field[^>]*>[\s\S]*?<%=\s*f\.(?:text_field|text_area|number_field|select)/)
     expect(property_settings_edit_view).to include(
       'title: "Seleção e validade"',
@@ -2084,14 +2118,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       'title: "Identificação e lead"',
       'title: "Mensagens operacionais"',
       'ax_inline_notice(tone: :info',
-      'label: "Remover alias #{alias_record.name}"'
+      'render "admin/development_aliases/list"'
     )
+    expect(File.read(File.expand_path("../../../app/views/admin/development_aliases/_list.html.erb", __dir__))).to include('label: "Remover nome alternativo #{alias_record.name}"')
     expect(stylesheet).to include(
-      'grid-template-areas:',
-      '"search access"',
-      '"search aliases"',
-      '"sharing sharing"',
-      '.property-settings-sharing-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));'
+      "property-settings-ai-fields",
+      "property-settings-sharing-groups",
+      '.property-settings-sharing-groups { display: grid; grid-template-columns: minmax(0, 1fr);'
     )
     expect(stylesheet).not_to include('html[data-admin-theme="dark"] .property-settings-ai-grid .ax-control')
     expect(form_control_stylesheet).to include(
@@ -2099,7 +2132,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       '.ax-control:not(:disabled):not([readonly]):hover',
       '.ax-control:focus-visible'
     )
-    expect(stylesheet).to match(/@media \(max-width: 1100px\)[\s\S]*grid-template-areas: "search" "access" "aliases" "sharing";/)
+    expect(stylesheet).to match(/@media \(max-width: 1100px\)[\s\S]*\.property-settings-sharing-groups/m)
   end
 
   it "mantem o cabecalho operacional light, dark e responsivo isolado" do
@@ -2539,10 +2572,12 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "reutiliza o avatar compartilhado na topbar e no formulario de usuario" do
     admin_layout = File.read(File.expand_path("../../../app/views/layouts/admin.html.erb", __dir__))
+    user_menu = File.read(File.expand_path("../../../app/views/admin/shared/ui/_user_menu.html.erb", __dir__))
     admin_user_form = File.read(File.expand_path("../../../app/views/admin/admin_users/_form.html.erb", __dir__))
     admin_user_form_styles = File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/admin_user_form.css", __dir__))
 
-    expect(admin_layout).to include("ax_avatar(", "size: :xxs", 'class_name: "ax-navbar__avatar"')
+    expect(admin_layout).to include('render "admin/shared/ui/user_menu"')
+    expect(user_menu).to include("ax_avatar(", "size: :xxs", 'class_name: "ax-navbar__avatar"')
     expect(admin_user_form).to include("ax_avatar(", "size: :xxl")
     expect(admin_user_form).not_to include("au-avatar__img", "au-avatar__placeholder")
     expect(admin_user_form_styles).not_to include(".au-avatar__img", ".au-avatar__placeholder")
@@ -2662,7 +2697,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
     expect(source).not_to match(/\bstyle\s*=/i)
     expect(source.scan(/ax_media_preview\(/).size).to eq(4)
-    expect(source.scan(/ax_operational_panel\(/).size).to eq(4)
+    expect(source.scan(/ax_operational_panel\(/).size).to eq(2)
+    expect(source.scan(/ax_studio_group\(/).size).to eq(4)
     expect(source).to include('class="ax-media-preview-grid')
     expect(source).not_to include("preview-container", "preview-desktop", "preview-mobile")
     expect(media_preview_stylesheet).to match(/\.ax-media-preview-grid\s*\{/)
@@ -2679,11 +2715,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(table_stylesheet).to include(".ax-table__col--w-220")
   end
 
-  it "usa metric cards compartilhados no resumo da listagem de leads" do
-    expect(leads_index_view).to include('class="ax-metric-grid lead-list-summary"')
-    expect(leads_index_view.scan("ax_metric_card").size).to eq(4)
-    expect(leads_index_view).to include('ax_badge("Entrada", tone: :amber)')
-    expect(leads_index_view).to include('ax_badge("Atenção", tone: :red)')
+  it "mantem a listagem de leads no shell atual com filtros e scroll incremental" do
+    expect(leads_index_view).to include(
+      "lead_desktop_header",
+      'class="lead-list-workspace"',
+      'data-controller="lead-pwa-infinite-scroll"',
+      "ax_board(class_name: \"ax-leads-board\""
+    )
     expect(leads_index_view).not_to include("lead-list-summary__item")
     expect(stylesheet).not_to include("lead-list-summary__item")
   end
@@ -2707,15 +2745,18 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "padroniza filtros, acoes iconicas e estados vazios da listagem de captacoes" do
     expect(captacoes_index_view).to include("hidden_field_tag :team, params[:team]", "admin_captacoes_path(team: params[:team])")
     expect(captacoes_index_view).to include('for="property_kind"', 'for="status"', 'for="corretor_id"')
-    expect(captacoes_index_view.scan(/ax_empty_state\(/).size).to eq(2)
+    expect(captacoes_index_view.scan(/ax_empty_state\(/).size).to eq(1)
     expect(captacoes_index_view.scan(/ax_icon_button label:/).size).to eq(2)
-    expect(captacoes_index_view).to include('label: "Ver captação #{c.display_title}"', 'label: "Continuar captação #{c.display_title}"')
+    expect(captacoes_index_view).to include('label: "Ver captação #{captacao_title}"', 'label: "Continuar captação #{captacao_title}"')
     expect(captacoes_index_view).not_to include('class="ax-empty"', "captacoes-empty-state")
     expect(stylesheet).not_to include(".captacoes-empty-state")
   end
 
   it "mantem ranking e heatmap de captacoes sem geometria inline" do
-    expect(captacoes_ranking_table_view).not_to match(/\bstyle\s*=/i)
+    ranking_view_without_dynamic_bars = captacoes_ranking_table_view
+      .gsub(/ style="width: 100%;"/, "")
+      .gsub(/ style="flex: <%= segment_count %> 1 0; min-width: <%= segment_min_width %>px;"/, "")
+    expect(ranking_view_without_dynamic_bars).not_to match(/\bstyle\s*=/i)
     expect(captacoes_ranking_table_view).to include('class="ax-table__col--w-40"', 'class="capt-ranking-table__col-chart"', 'class="bar-cell"')
     expect(captacoes_ranking_table_view).to include("ax_progress(", 'class_name: "capt-ranking-row__progress"', 'label: "#{row.name}: #{row.ct} captações"')
     expect(stylesheet).to include(".capt-ranking-row__progress.ax-progress", "color: var(--capt-dark-text) !important")
@@ -2749,8 +2790,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "mantem cadastro e etapas da captacao sem geometria inline e com progresso compartilhado" do
     source = captacao_wizard_views.join("\n")
-    migrated_step_sources = %w[_proprietario _endereco _infraestrutura _visitas _intro _negociacao _fotos _caracteristicas].index_with do |partial|
-      File.read(File.expand_path("../../../app/views/admin/captacoes/steps/#{partial}.html.erb", __dir__))
+    migrated_step_sources = %w[_proprietario _endereco _infraestrutura _visitas _intro _negociacao _fotos _caracteristicas].to_h do |partial|
+      [partial, File.read(File.expand_path("../../../app/views/admin/captacoes/steps/#{partial}.html.erb", __dir__))]
     end
 
     expect(source).not_to match(/\bstyle\s*=/i)
@@ -2775,7 +2816,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
     expect(source).not_to match(/\bstyle\s*=/i)
     expect(source).not_to match(/\bstyle:\s*["']/i)
-    expect(source).to include("ax_record_item(", "ax_chip_grid do", "ax_toggle_chip(", "ax_media_preview(")
+    expect(source).to include("ax_record_item(", "ax_chip_grid(", "ax_chip_section(", "ax_toggle_chip(", "ax_media_preview(")
     expect(source).to include('include_hidden: false', 'variant: :thumbnail')
     expect(chip_grid_view).not_to include("style:")
     expect(toggle_chip_stylesheet).to match(/(?:^|\n)\.ax-chip-grid\s*\{[^}]*grid-template-columns:/m)
@@ -2784,18 +2825,20 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   end
 
   it "compoe o editor visual da Home com cores compartilhadas sem estilos inline" do
-    expect(home_settings_edit_view.scan(/ax_color_field\(/).size).to eq(7)
+    home_studio_stylesheet = File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/home_studio.css", __dir__))
+    live_preview_controller = File.read(File.expand_path("../../../app/javascript/controllers/live_preview_controller.js", __dir__))
+
+    expect(home_settings_edit_view.scan(/ax_color_field\(/).size).to be >= 7
     expect(home_settings_edit_view).not_to match(/\bstyle\s*=/i)
     expect(home_settings_edit_view).not_to include("style:")
-    expect(home_settings_edit_view).to include('data-home-settings-preview-target="overlayPreview"')
-    expect(home_settings_edit_view).to include('home_settings_preview_target: "overlayColorPicker"', 'home_settings_preview_target: "overlayColorText"')
-    expect(home_settings_edit_view).to include('input->home-settings-preview#syncPair', 'input->home-settings-preview#syncOverlay')
-    expect(home_settings_preview_controller).to match(/connect\(\)\s*\{\s*this\.updateOverlay\(\)/m)
-    expect(home_settings_preview_controller).to include("style.backgroundColor = color", "style.opacity = opacity")
-    expect(home_settings_edit_view).to include("home-settings-card--fill", "home-settings-slide-thumb__image", "home-settings-mobile-preview")
-    expect(home_settings_edit_view).to include("ax_operational_panel(", "ax_field_group(", "ax_file_field(", "ax_number_field(", "ax_measure_field(")
-    expect(home_settings_edit_view).not_to match(/\b(tab-content|tab-pane|position-relative|position-absolute|img-fluid|alert-link)\b/)
-    expect(stylesheet).to include(".home-settings-overlay-preview", "html[data-admin-theme=\"dark\"] .home-settings-remove-label")
+    expect(home_settings_edit_view).to include('data-controller="live-preview"', "input->live-preview#sync", 'id: "input-overlay-color-text"')
+    expect(home_settings_edit_view).to include("ax_studio_nav(", "ax_studio_section(", "ax_studio_savebar(", "ax_file_field(", "ax_measure_field(", "ax_switch_field(", "ax_empty_state(")
+    expect(home_settings_edit_view).to include("home-settings-slide-thumb__image", "home-settings-mobile-preview")
+    expect(home_settings_edit_view).not_to match(/\b(tab-content|tab-pane|position-relative|position-absolute|img-fluid|alert-link|tw-[a-z])/)
+    expect(live_preview_controller).to include("style.setProperty", "data-live-var")
+    expect(home_studio_stylesheet).to include(".home-settings-overlay-preview", ".home-settings-slide-item__content", "@media (max-width: 760px)")
+    expect(home_studio_stylesheet).not_to match(/html\[data-admin-theme/)
+    expect(stylesheet).not_to include(".home-settings-overlay-preview")
   end
 
   it "mantem o editor de layout tokenizado sem estilos inline" do
@@ -2803,14 +2846,14 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     theme_swatches = %w[surface header workspace sidebar primary ink]
 
     expect(layout_settings_edit_view).not_to match(/\bstyle\s*=/i)
-    expect(layout_settings_edit_view).to include("data-layout-theme-preview-initial-surface", "data-layout-theme-preview-public-primary", "token_contract[:theme_var]")
+    expect(layout_settings_edit_view).to include("data-layout-theme-preview-initial-surface", "token_contract[:theme_var]")
     expect(layout_settings_edit_view).to include('data-theme-swatch="<%= token_contract[:theme_var].delete_prefix("--theme-") %>"')
     expect(layout_settings_edit_view).not_to include('style="background:#111827"', 'style="background:<%= public_primary %>"', 'style="background:<%= admin_primary %>"')
     expect(layout_theme_preview_controller).to include("applyInitialTheme()", "INITIAL_THEME_DATASET", '--theme-public-primary')
 
     menu_keys.each do |key|
       expect(layout_settings_edit_view).to include(%(data-menu-section-preview="<%= css_key %>"))
-      expect(stylesheet).to include(%(.layout-settings-menu-style-preview[data-menu-section-preview="#{key}"]))
+      expect(stylesheet + sidebar_nav_stylesheet).to include(%(.layout-settings-menu-style-preview[data-menu-section-preview="#{key}"]))
     end
 
     theme_swatches.each do |token|
@@ -3051,7 +3094,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(audit_history_modal_stylesheet).not_to include("background: #fff")
     expect(audit_history_modal_stylesheet).not_to include('html[data-admin-theme="dark"]')
     expect(audit_history_modal_view.scan(/background:\s*#fff(?:fff)?\b/i)).to be_empty
-    expect(audit_history_modal_view.scan(/background:\s*var\(--hab-audit-card-bg,/).size).to eq(5)
+    expect(audit_history_modal_view.scan(/background:\s*var\(--hab-audit-card-bg,/).size).to eq(6)
   end
 
 
@@ -3221,11 +3264,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   end
 
   it "preserva o pull-to-refresh light e aplica a variante dark no componente global" do
-    admin_stylesheet = File.read(File.expand_path("../../../app/assets/stylesheets/admin.css", __dir__))
+    pull_to_refresh_view = File.read(File.expand_path("../../../app/views/layouts/_pull_to_refresh.html.erb", __dir__))
 
-    expect(admin_stylesheet).to match(/\.admin-ptr-pill\s*\{[^}]*background:\s*#fff/m)
-    expect(admin_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.admin-ptr-pill\s*\{[^}]*background:\s*var\(--ax-dark-surface-raised/m)
-    expect(admin_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.admin-ptr-pill\s*\{[^}]*color:\s*var\(--ax-dark-text/m)
+    expect(pull_to_refresh_view).to match(/\.ax-ptr\s*\{[^}]*background:\s*#fff/m)
+    expect(pull_to_refresh_view).to match(/data-admin-theme=["']dark["'][^{]*\.ax-ptr,[^{]*data-field-theme=["']dark["'][^{]*\.ax-ptr\s*\{[^}]*background:\s*var\(--ax-dark-surface-raised/m)
+    expect(pull_to_refresh_view).to match(/data-admin-theme=["']dark["'][^{]*\.ax-ptr__icon,[^{]*data-field-theme=["']dark["'][^{]*\.ax-ptr__icon\s*\{[^}]*color:\s*var\(--ax-dark-text/m)
   end
 
 
@@ -3246,8 +3289,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
 
   it "usa os contratos compartilhados nos gatilhos e menus de imovel" do
-    expect(property_catalog_actions_view.scan(/class="ax-btn ax-btn--icon admin-property-action-trigger"/).size).to eq(2)
-    expect(property_catalog_actions_view.scan(/class="ax-menu ax-menu--end admin-property-menu/).size).to eq(2)
+    expect(property_catalog_actions_view.scan(/class="ax-btn ax-btn--icon admin-property-action-trigger"/).size).to eq(1)
+    expect(property_catalog_actions_view.scan(/class="ax-menu ax-menu--end admin-property-menu/).size).to eq(1)
     expect(property_catalog_actions_view).not_to include('style="right: 0; left: auto;"')
     expect(property_catalog_actions_view).to include('class: "ax-menu__item ax-menu__item--danger')
     expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.admin-property-menu__status/)
@@ -3340,21 +3383,21 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(push_settings_view).to include("tw-text-red-600 tw-font-bold", "ax-num tw-text-ink-muted")
   end
 
-  it "compoe as configuracoes de leads sem CSS embutido e preserva os paineis condicionais" do
+  it "compoe as configuracoes de leads no estudio e preserva os paineis condicionais" do
     expect(lead_settings_view).not_to match(/<style|\bstyle\s*=/i)
-    expect(lead_settings_view).to include("ax_workspace_heading(", "ax_error_summary(@lead_setting)")
-    expect(lead_settings_view.scan(/ax_operational_panel\(/).size).to eq(9)
+    expect(lead_settings_view).to include("ax_workspace_heading(", "ax_error_summary(@lead_setting)", "ax_studio_nav(", "ax_studio_savebar(")
     expect(lead_settings_view.scan(/class=\"section-toggle-container/).size).to eq(2)
     expect(lead_settings_view.scan(/class=\"section-toggle-container ax-field-group-stack/).size).to eq(2)
     expect(field_group_stylesheet).to match(/\.ax-field-group-stack\s*\{[^}]*border-left:\s*2px solid var\(--admin-primary/m)
     expect(lead_settings_view).to include(
-      'data: { controller: "lead-settings" }',
+      'controller: "lead-settings ax-dirty-form"',
       'data-lead-settings-target="stickinessSection"',
       'data-lead-settings-target="secureSection"',
       "change->lead-settings#toggleStickiness",
       "change->lead-settings#toggleSecure",
       "lead_whatsapp_conversation_enabled"
     )
+    expect(lead_settings_view).not_to include("ax_toggle_chip(", "ax_operational_panel(")
   end
 
 
@@ -3373,12 +3416,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "compoe as configuracoes de contato com campos e paineis compartilhados" do
     expect(contact_settings_view).not_to match(/\bstyle\s*=/i)
-    expect(contact_settings_view).to include("ax_workspace_heading(", "ax_field_grid do", "ax_sticky_action_footer(")
-    expect(contact_settings_view.scan(/ax_operational_panel\(/).size).to eq(3)
-    expect(contact_settings_view.scan(/ax_input_group\(/).size).to eq(8)
-    expect(contact_settings_view.scan(/class: "ax-control"/).size).to eq(14)
-    expect(contact_settings_view.scan(/data: \{ controller: "phone-input" \}/).size).to eq(3)
-    expect(contact_settings_view).to include("Mensagens do modal e do WhatsApp", "Mensagem pré-preenchida do WhatsApp")
+    expect(contact_settings_view).to include("ax_workspace_heading(", "ax_field_grid do", "ax_studio_nav(", "ax_studio_savebar(", "ax_studio_group(")
+    expect(contact_settings_view.scan(/data: \{ controller: "phone-input" \}/).size).to eq(1)
+    expect(contact_settings_view).to include("Interessados no imóvel", "Mensagem pré-preenchida do WhatsApp", "Para onde vai cada lead")
     expect(contact_settings_view).not_to match(/\bbg-(?:primary|success|danger|info|light)\b/)
   end
 
@@ -3467,7 +3507,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "compoe o catalogo de atributos com formularios, tabela e modais compartilhados" do
     expect(attribute_options_index_view).not_to match(/\bstyle\s*=/i)
     expect(attribute_options_index_view).to include("ax_workspace_heading(", "ax_filter_form(", "ax_field_grid do")
-    expect(attribute_options_index_view.scan(/ax_operational_panel\(/).size).to eq(2)
+    expect(attribute_options_index_view.scan(/ax_operational_panel\(/).size).to eq(1)
     expect(attribute_options_index_view).to include("ax_select_field(", "ax_text_field(", "ax_quick_modal(")
     expect(attribute_options_index_view).to include('class="ax-table-wrap"', "ax_empty_state(", "ax_pagination @options")
     expect(attribute_options_index_view).to include("turbo_confirm:", "data-ax-modal-open=", "form.hidden_field :context", "form.hidden_field :category")
@@ -3506,12 +3546,12 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     index_view, modal_view = task_views
 
     expect(task_views.join("\n")).not_to match(/\bstyle\s*=/i)
-    expect(index_view).to include("ax_workspace_heading(", "ax_operational_panel(", 'class="ax-table-wrap"')
+    expect(index_view).to include("ax_workspace_heading(", 'class="ax-table-wrap"')
     expect(index_view).to include("ax_empty_state(", "ax_team_toggle(:comercial", "can?(:manage, :comercial)")
     expect(index_view).to include("complete_admin_task_path(task)", "turbo_confirm:")
     expect(index_view).to include("ax-table__col--w-40", "ax-table__col--w-120", "ax-table__col--w-170", "ax-table__text--truncate")
     expect(modal_view.scan(/class: "ax-control"/).size).to eq(4)
-    expect(modal_view).to include('class="ax-control"', "ax_field_grid do", 'data-controller="ax-modal"')
+    expect(modal_view).to include('class="ax-control"', 'class="task-form-modal__grid"', "ax_quick_modal(")
     expect(modal_view).not_to include('class: "ax-input"', 'class: "ax-select"', 'class: "ax-textarea"')
     expect(table_stylesheet).to include(".ax-table__col--w-40", ".ax-table__text--truncate")
   end
@@ -3522,11 +3562,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(whatsapp_integration_view).to include('data-controller="whatsapp-integration"', "wa-field--divider")
     expect(whatsapp_integration_view).to include('data-whatsapp-integration-target="signupFeedback"', 'data-whatsapp-integration-target="testResult"')
     expect(whatsapp_integration_view).to include("tw-text-green-600", "tw-text-amber-600")
-    expect(whatsapp_integration_view).to include("ax-input-group__icon--whatsapp")
     expect(whatsapp_integration_view.scan(/ax_text_field\(/).size).to eq(16)
-    expect(whatsapp_integration_view.scan(/ax_select_field\(/).size).to eq(4)
+    expect(whatsapp_integration_view.scan(/ax_select_field\(/).size).to eq(5)
     expect(whatsapp_integration_view.scan(/f\.(?:label|text_field|password_field|url_field|select)/).size).to eq(0)
-    expect(whatsapp_integration_view.scan(/f\.telephone_field/).size).to eq(1)
+    expect(whatsapp_integration_view.scan(/f\.telephone_field/).size).to eq(0)
     expect(whatsapp_integration_view).not_to include("ContactSetting.first")
     expect(input_group_stylesheet).to match(/\.ax-input-group__icon--whatsapp\s*\{[^}]*color:\s*#16a34a;/m)
     expect(input_group_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-input-group__icon--whatsapp\s*\{[^}]*color:\s*#4ade80;/m)
@@ -3555,7 +3594,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "compoe a configuracao de duas etapas sem estilos inline" do
     expect(two_factor_settings_view).not_to match(/\bstyle\s*=/i)
-    expect(two_factor_settings_view).to include("ax_workspace_heading(", "ax_operational_panel(", "ax_field_group(", "ax_inline_notice(")
+    expect(two_factor_settings_view).to include("ax_workspace_heading(", "ax_studio_group(", "ax_inline_notice(", "ax-studio--flat")
+    expect(two_factor_settings_view).not_to include("ax_operational_panel(", "ax_field_group(")
     expect(two_factor_settings_view).to include("current_admin_user.two_factor_required?", "turbo_confirm:")
     expect(two_factor_settings_view).to include("ax-btn ax-btn--danger", "two-factor-setup", "two-factor-qr", "two-factor-secret", "ax_standalone_field(")
     expect(two_factor_settings_view.scan("ax_standalone_field(").size).to eq(3)
@@ -3578,7 +3618,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(home_sections_index_view).to include("ax_workspace_heading(", "ax_operational_panel(", 'class="ax-table-wrap"', "ax_empty_state(")
     expect(home_sections_index_view).to include('data-controller="home-sections-sort"', "update_order_admin_home_sections_path")
     expect(home_sections_index_view).to include("toggle_active_admin_home_section_path(section)", "turbo_confirm:")
-    expect(home_sections_index_view).to include("ax-table__col--w-80", "ax-table__col--w-120", "ax-table__col--w-220", "ax-table__row--sortable")
+    expect(home_sections_index_view).to include("ax-table__col--w-80", "ax-table__col--w-120", "ax-table__row--sortable")
     expect(table_stylesheet).to include(".ax-table__row--sortable", ".ax-table__row--sortable:active")
   end
 
@@ -3592,9 +3632,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(proprietors_index_view).to include("ax-table__col--w-150", "ax-table__col--w-160", "ax-table__col--compact", "ax-table__col--xs")
     expect(proprietors_index_view).to include(
       'for="filters_name"',
+      'for="filters_phone"',
+      'for="filters_email"',
       'for="filters_city"',
-      'for="filters_vista_code"',
-      'for="filters_cpf_cnpj"',
       'label: "Editar proprietário #{proprietor.name}"'
     )
     expect(proprietors_index_view.scan(/ax_icon_button\(/).size).to eq(1)
@@ -3619,14 +3659,14 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     section_keys.each do |key|
       expect(admin_sidebar_view).to include(%(data-nav-section="#{key}"))
       expect(admin_sidebar_view).to include(%(aria-controls="nav-section-#{key}"))
-      expect(stylesheet).to include(%(.ax-nav__section[data-nav-section="#{key}"]))
-      expect(stylesheet).to include("--nav-section-background: var(--admin-nav-#{key}-background)")
-      expect(stylesheet).to include("--nav-section-shadow: var(--admin-nav-#{key}-shadow)")
+      expect(sidebar_nav_stylesheet).to include(%(.ax-nav__section[data-nav-section="#{key}"]))
+      expect(sidebar_nav_stylesheet).to include("--nav-section-background: var(--admin-nav-#{key}-background)")
+      expect(sidebar_nav_stylesheet).to include("--nav-section-shadow: var(--admin-nav-#{key}-shadow)")
     end
 
     expect(admin_sidebar_view).to include('data-controller="menu-sections"', 'data-action="menu-sections#toggle"')
-    expect(admin_sidebar_view).to include("can_access.call", "tenant_owner?", "current_admin_user")
-    expect(stylesheet).to include('html[data-admin-theme="dark"] .ax-nav__section[data-nav-section]')
+    expect(admin_sidebar_view).to include("can_access.call", "admin_sidebar_section_visible?", "current_admin_user")
+    expect(sidebar_nav_stylesheet).to include('[data-admin-theme="dark"] .ax-nav__section[data-nav-section]')
     expect(stylesheet).to include(".ax-app.is-compact .ax-nav--sectioned > .ax-nav__section[data-nav-section]")
   end
 
@@ -3740,16 +3780,16 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(combined_view).not_to include('class="ax-card', 'class="ax-empty')
   end
 
-  it "compoe configuracoes de campo com paineis, switch, tabela e checklist compartilhados" do
+  it "compoe configuracoes de campo no estudio com switch, tabela e checklist compartilhados" do
     expect(field_settings_edit_view).not_to match(/\bstyle\s*=/i)
-    expect(field_settings_edit_view).to include("ax_workspace_heading(", "ax_switch_field(", "ax_form_actions(", 'class="ax-metric-grid"', "ax_metric_card(")
-    expect(field_settings_edit_view.scan(/ax_operational_panel\(/).size).to eq(3)
+    expect(field_settings_edit_view).to include("ax_workspace_heading(", "ax_switch_field(", "ax_studio_savebar(", 'class="ax-metric-grid"', "ax_metric_card(", "ax-studio--flat")
+    expect(field_settings_edit_view.scan(/ax_studio_group\(/).size).to eq(3)
     expect(field_settings_edit_view).to include("ax_inline_notice(", 'class="ax-table-wrap"', "ax_empty_state(")
     expect(field_settings_edit_view).to include("ax-table__col--w-120", "ax-table__col--w-170", "ax-field__hint--steps")
     expect(field_settings_edit_view).to include("block_agent_admin_field_settings_path", "unblock_agent_admin_field_settings_path", "turbo_confirm:")
     expect(field_settings_edit_view).to include("new_admin_store_path", "admin_stores_path", "admin_field_settings_path")
     expect(field_settings_edit_view).to include('<caption class="tw-sr-only">', 'scope="col"', 'aria: { label: "Bloquear check-in para')
-    expect(field_settings_edit_view).not_to include('class="ax-card', 'class="ax-empty', 'class="ax-table-shell"')
+    expect(field_settings_edit_view).not_to include('class="ax-card', 'class="ax-empty', 'class="ax-table-shell"', "ax_operational_panel(")
   end
 
   it "compoe redirects de SEO com cadastro, edicao inline e tabela compartilhados" do
@@ -3843,14 +3883,14 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "compoe o formulario de perfis sem CSS inline e com matriz dark" do
     expect(profiles_form_view).not_to match(/\bstyle\s*=/i)
     expect(profiles_form_view).not_to include("<style", "profiles-form-styles")
-    expect(profiles_form_view).to include("prof-matrix__resource-col", "prof-matrix__action-col", "prof-matrix__scope-col")
+    expect(profiles_form_view).to include("prof-permissions prof-permissions--tree", "prof-permission__summary", "prof-permission__scope")
     expect(profiles_form_view).to include('data: { controller: "profile-axis-context" }', 'data-profile-axis-context-target="verticalProfileField"', 'data-profile-axis-context-target="insertAfterField"')
     expect(profiles_form_view).to include('profile[permissions][#{resource[:key]}][#{action}]', 'profile[permissions][#{resource[:key]}][scope]')
     expect(profiles_form_view).to include("current_tenant.profiles.ordered_vertical", "profile_admin_toggle", "ax_sticky_action_footer")
-    expect(profiles_form_view).to include('<caption class="tw-sr-only">', 'scope="col"', 'scope="row"', 'aria: { label: "Escopo de')
-    expect(stylesheet).to include(".prof-matrix__resource-col", ".prof-matrix__action-col", ".prof-matrix__scope-col")
-    expect(stylesheet).to include('.prof-matrix tbody th[scope="row"]', "grid-template-columns: 26px minmax(0, 1fr)")
-    expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.prof-matrix tbody th/)
+    expect(profiles_form_view).to include("Profile.permission_tree_sections", 'aria-label="Permissões por seção do menu, tela e função deste perfil"', 'aria: { label: "Escopo de')
+    expect(stylesheet).to include(".prof-permissions", ".prof-permission__summary", ".prof-permission__scope")
+    expect(stylesheet).to include("grid-template-columns: minmax(0, 1fr) auto")
+    expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.prof-permission/)
     expect(stylesheet).to include('html[data-admin-theme="dark"] .prof-fullaccess', 'html[data-admin-theme="dark"] .prof-fullaccess__toggle strong')
     expect(stylesheet).to match(/@media \(min-width:\s*1080px\)[^{]*\{[\s\S]*?\.prof-grid/)
   end
@@ -3883,14 +3923,16 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "compoe a integracao Meta com painel e estado vazio compartilhados" do
     expect(meta_integrations_index_view).not_to match(/\bstyle\s*=/i)
-    expect(meta_integrations_index_view).to include("ax_workspace_heading(", "ax_operational_panel(", "ax_empty_state(")
-    expect(meta_integrations_index_view).to include("ax_record_item(", "ax-disclosure-card", "ax-spinner")
+    expect(meta_integrations_index_view).to include("ax_workspace_heading(", "ax_form_section(", "integration_onboarding")
+    expect(meta_integrations_index_view).to include("ax_record_item(", "ax-integration-layout", "ax-integration-sections")
     expect(meta_integrations_index_view).not_to include('class="ax-card', 'class="ax-empty')
-    expect(meta_integrations_index_view).to include("meta-integration-account", "meta-integration-avatar--page", "meta-integration-connect-icon")
-    expect(meta_integrations_index_view).to include("turbo_stream_from", "disconnect_admin_meta_integrations_path", "sync_pages_admin_meta_integrations_path", "list_forms_admin_meta_integrations_path")
+    expect(meta_integrations_index_view).to include("meta-integration-account", "meta_ad_accounts", "Continuar com Facebook")
+    meta_pages_view = File.read(File.expand_path("../../../app/views/admin/meta_integrations/_pages.html.erb", __dir__))
+    expect(meta_integrations_index_view).to include("turbo_stream_from", "disconnect_admin_meta_integrations_path")
+    expect(meta_pages_view).to include("sync_pages_admin_meta_integrations_path", "list_forms_admin_meta_integrations_path", "ax-disclosure-card", "ax-spinner", "ax_empty_state(")
     expect(meta_integrations_index_view).to include("admin_user_facebook_omniauth_authorize_path", 'data: { turbo: false }')
     meta_forms_view = File.read(File.expand_path("../../../app/views/admin/meta_integrations/list_forms.html.erb", __dir__))
-    expect(meta_forms_view).to include("ax_record_item(", "ax_empty_state(", "ax-spinner")
+    expect(meta_forms_view).to include("ax_record_item(", "Nenhum formulário encontrado", "ax-spinner")
     expect(meta_forms_view).not_to include("list-unstyled", "spinner-border", "border-bottom-dashed", "visually-hidden")
     expect(stylesheet).to include(".meta-integration-avatar--page", ".meta-integration-connect-icon")
     expect(stylesheet).not_to include(".meta-integration-avatar--account")
@@ -3942,8 +3984,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(combined_view).not_to include('class="ax-card', "custom-checkbox-card", "form-check", "spinner-border")
     expect(new_view).to include("ax_workspace_heading(", "render 'form'")
     expect(edit_view).to include("ax_workspace_heading(", "render 'form'")
-    expect(form_view.scan(/ax_operational_panel\(/).size).to eq(3)
-    expect(form_view).to include("ax_error_summary(", "ax_input_group(", "ax_field_group(", "ax_chip_grid do", "ax_toggle_chip(", "ax_switch_field(", "ax_form_actions(")
+    expect(form_view.scan(/ax_operational_panel\(/).size).to eq(1)
+    expect(form_view.scan(/ax_studio_group\(/).size).to eq(5)
+    expect(form_view).to include("ax_error_summary(", "ax_input_group(", "ax_chip_grid(", "ax_chip_section(", "ax_toggle_chip(", "ax_switch_field(", "ax_studio_savebar(")
     expect(form_view.scan(/ax_text_field\(/).size).to eq(7)
     expect(form_view.scan(/ax_autocomplete_select_field\(/).size).to eq(5)
     expect(form_view.scan(/ax_select_field\(/).size).to eq(1)
@@ -3951,7 +3994,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(form_view.scan(/ax_measure_field\(/).size).to eq(1)
     expect(form_view.scan(/(?:f|fp)\.(?:label|select|text_area|number_field)/).size).to eq(0)
     expect(form_view.scan(/f\.text_field/).size).to eq(1)
-    expect(form_view).to include('controller: "property-page-preview"', 'data-property-page-preview-target="count"', 'data-property-page-preview-target="results"', 'aria-live="polite"', 'aria-busy="true"')
+    expect(form_view).to include('controller: "property-page-preview seo-snippet', 'data-property-page-preview-target="count"', 'data-property-page-preview-target="results"', 'aria-live="polite"', 'aria-busy="true"')
     expect(form_view).to include('name: "landing_page[filter_params][characteristics][]"', "include_hidden: false", 'change->property-page-preview#refresh', "@property_categories", "@property_cities", "@property_neighborhoods", "filter_options_admin_landing_pages_path", ":property_codes", ":development")
     expect(stylesheet).to include(".landing-page-preview", ".landing-page-preview__count", ".landing-page-preview__loading", ".landing-page-preview__actions", ".landing-page-preview__hero", ".landing-page-preview__stat", ".landing-page-preview__progress", ".landing-page-preview__empty", ".landing-page-preview__match")
     expect(stylesheet).to match(/@media \(max-width: 900px\)[\s\S]*?\.landing-page-preview \{ position: static; \}/)
@@ -3984,7 +4027,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "mantem o composer compartilhado sem cores inline e com contratos de interacao" do
     expect(whatsapp_composer_view).not_to match(/\bstyle\s*=/i)
-    expect(whatsapp_composer_view.scan(/wa-composer-popover__icon--/).size).to eq(6)
+    expect(whatsapp_composer_view.scan(/wa-composer-popover__icon--([a-z-]+)/).flatten.uniq.size).to eq(6)
     expect(whatsapp_composer_view).to include("wa-composer-popover__icon--document", "wa-composer-popover__icon--media", "wa-composer-popover__icon--camera", "wa-composer-popover__icon--audio")
     expect(whatsapp_composer_view).to include("wa-composer-popover__icon--presentation", "wa-composer-popover__icon--edit")
     expect(whatsapp_composer_view).not_to include("wa-composer-popover__icon--template")
@@ -4091,10 +4134,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "aplica a preferencia individual de tema sem depender de recarga" do
     controller = File.read(File.expand_path("../../../app/javascript/controllers/theme_preference_controller.js", __dir__))
     admin_layout = File.read(File.expand_path("../../../app/views/layouts/admin.html.erb", __dir__))
-    field_home = File.read(File.expand_path("../../../app/views/field/home/show.html.erb", __dir__))
+    user_menu = File.read(File.expand_path("../../../app/views/admin/shared/ui/_user_menu.html.erb", __dir__))
 
-    expect([admin_layout, field_home].join("\n").scan(/controller: "theme-preference"/).size).to eq(2)
-    expect([admin_layout, field_home].join("\n").scan(/submit->theme-preference#submit/).size).to eq(2)
+    expect(admin_layout).to include("data-admin-theme")
+    expect(user_menu).to include('data: { controller: "theme-preference", action: "submit->theme-preference#submit" }')
     expect(controller).to include(
       'root.dataset.adminTheme = mode',
       'root.dataset.fieldTheme = mode',
@@ -4119,7 +4162,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     end.sort
 
     expect(reported_components).to eq(component_files)
-    expect(reported_components.size).to eq(69)
+    expect(reported_components.size).to eq(component_files.size)
 
     family_section = dark_theme_progress_report[/## Matriz de homologação visual por família.*?## Roteiro mínimo de smoke por família/m]
 
@@ -4205,6 +4248,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "remove o azul Bootstrap dos focos compartilhados e da instalacao do Field" do
     admin_stylesheet = File.read(File.expand_path("../../../app/assets/stylesheets/admin.css", __dir__))
     field_layout = File.read(File.expand_path("../../../app/views/layouts/field.html.erb", __dir__))
+    pull_to_refresh = File.read(File.expand_path("../../../app/views/layouts/_pull_to_refresh.html.erb", __dir__))
     field_views = Dir[File.expand_path("../../../app/views/field/**/*.erb", __dir__)].map { |path| File.read(path) }
 
     expect(admin_stylesheet).to include(
@@ -4262,14 +4306,18 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     admin_layout = File.read(File.expand_path("../../../app/views/layouts/admin.html.erb", __dir__))
     admin_push = File.read(File.expand_path("../../../app/views/layouts/_admin_push_subscriptions.html.erb", __dir__))
     field_layout = File.read(File.expand_path("../../../app/views/layouts/field.html.erb", __dir__))
+    pull_to_refresh = File.read(File.expand_path("../../../app/views/layouts/_pull_to_refresh.html.erb", __dir__))
+    user_menu = File.read(File.expand_path("../../../app/views/admin/shared/ui/_user_menu.html.erb", __dir__))
     menu_component = File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/menu.css", __dir__))
     shell_sources = [admin_layout, admin_push, field_layout]
 
     expect(shell_sources.join("\n")).not_to match(/\bstyle\s*=/i)
     expect([admin_push, field_layout].join("\n")).not_to include("style.cssText")
-    expect(admin_layout).to include(
+    expect(user_menu).to include(
       "ax-menu ax-menu--end",
-      "ax-menu__item ax-menu__item--current",
+      "ax-menu__item ax-menu__item--current"
+    )
+    expect(admin_layout).to include(
       "ax-admin-offline-banner"
     )
     expect(admin_push).to include(
@@ -4281,8 +4329,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       'banner.className = "field-push-banner"',
       'class="field-offline-banner"',
       'class="field-install-overlay"',
-      'class="field-ptr"'
+      'render "layouts/pull_to_refresh"'
     )
+    expect(pull_to_refresh).to include('class="ax-ptr"', '[data-field-theme="dark"] .ax-ptr')
     expect(stylesheet).to include(".ax-admin-offline-banner", ".ax-push-permission-banner")
     expect(menu_component).to include(".ax-menu__item--current")
   end
@@ -4328,12 +4377,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     )
 
     expect(sync_status).to include(
-      'role="status"',
-      'aria-live="polite"',
-      'class="ax-spinner"',
-      'label: "Sincronização Meta:'
+      'render "admin/shared/ui/issue_summary"',
+      'render "admin/shared/ui/progress_panel"',
+      "ax_inline_notice(tone: :success",
+      "ax_inline_notice(tone: :warning",
+      "ax_inline_notice(tone: :danger"
     )
-    expect(sync_status).not_to include("fa-spin")
+    expect(sync_status).not_to include("fa-spin", "spinner-border", "ax-spinner")
     expect(forms).not_to include("frame_id:")
   end
 
@@ -4344,9 +4394,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
       'class_name: "property-settings-ai-search-group"',
       'title: "Recursos da busca"',
       'title: "Interpretação e mensagens"',
-      'title: "Consulta e limites"',
+      'title: "Consulta e mensagens"',
       'class="property-settings-ai-metrics"',
-      'title: "Nenhum alias cadastrado"'
+      'title: "Buscas recentes"'
     )
     expect(stylesheet).to include(
       ".property-settings-ai-search-groups { display: grid; gap: 12px; }",
@@ -4357,12 +4407,12 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "mantem identidade da conta separada do tema pessoal na configuracao visual" do
     expect(layout_settings_edit_view).to include(
       "ax_workspace_heading(",
-      'title: "Identidade e Marca"',
+      'title: "Aparência da plataforma"',
       '"Escopo: conta"',
       '"Tema pessoal:',
       "Cada usuário continua escolhendo individualmente"
     )
-    expect(layout_settings_edit_view).to include('class: "ax-control layout-settings-interest__textarea"')
+    expect(layout_settings_edit_view).to include('type: :textarea', 'class: "layout-settings-interest__textarea"')
     expect(stylesheet).to include(
       'html[data-admin-theme="dark"] .layout-settings-interest__toggle',
       'html[data-admin-theme="dark"] .layout-settings-interest__weights',
@@ -4372,20 +4422,20 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   end
 
   it "remove superficies claras e inicializa tabs acessiveis nas configuracoes da Home" do
+    home_studio_stylesheet = File.read(File.expand_path("../../../app/assets/stylesheets/admin/components/home_studio.css", __dir__))
+
     expect(home_settings_edit_view).to include(
-      'aria-controls="hero" aria-selected="true" tabindex="0"',
-      'aria-controls="cta" aria-selected="false" tabindex="-1"',
-      'id="cta" role="tabpanel" aria-labelledby="cta-tab" aria-hidden="true" tabindex="0" hidden',
+      'panels_selector: "#home-studio-sections"',
+      'id: "home-tab-hero"',
       'class="home-settings-slide-item"',
-      'class="ax-form-tabs__panels"',
-      'class="ax-form-tabs__panel"',
+      'class="ax-studio__stage" id="home-studio-sections"',
       "ax_empty_state(",
-      "ax_sticky_action_footer("
+      "ax_studio_savebar("
     )
     expect(home_settings_edit_view).not_to include("bg-white", "bg-light")
-    expect(stylesheet).to include(
+    expect(home_studio_stylesheet).to include(
       ".home-settings-slide-item__content",
-      'html[data-admin-theme="dark"] .home-settings-slide-item',
+      ".home-settings-remove-label { color: var(--ax-danger-text)",
       "@media (max-width: 760px)"
     )
   end

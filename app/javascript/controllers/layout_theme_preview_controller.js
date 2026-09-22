@@ -18,6 +18,12 @@ const TOKEN_TO_ADMIN_VAR = {
   ink: "--admin-ink"
 }
 
+const PUBLIC_VARS = {
+  primary: "--theme-public-primary",
+  secondary: "--theme-public-secondary",
+  accent: "--theme-public-accent"
+}
+
 const DARK_THEME = {
   surface: "#172033",
   header: "#202B3D",
@@ -71,15 +77,19 @@ const DERIVED_ADMIN_VARS = {
 }
 
 export default class extends Controller {
+  static targets = ["brandName", "areaName", "contrast"]
+
   connect() {
     this.applyInitialTheme()
 
-    if (this.darkModeSelected()) {
+    // O tema efetivo do usuário manda ao abrir a tela; o radio só vale depois que a pessoa o troca (updateMode).
+    if (this.previewingDark()) {
       this.applyDarkTheme()
-      return
+    } else {
+      this.applyLightTheme()
     }
 
-    this.applyLightTheme()
+    this.updateContrast()
   }
 
   applyInitialTheme() {
@@ -88,8 +98,10 @@ export default class extends Controller {
       if (value) this.element.style.setProperty(TOKEN_TO_VAR[token], value)
     })
 
-    const publicPrimary = this.normalizedHex(this.element.dataset.layoutThemePreviewPublicPrimary)
-    if (publicPrimary) this.element.style.setProperty("--theme-public-primary", publicPrimary)
+    Object.entries(PUBLIC_VARS).forEach(([key, cssVar]) => {
+      const value = this.normalizedHex(this.element.dataset[`layoutThemePreviewPublic${key[0].toUpperCase()}${key.slice(1)}`])
+      if (value) this.element.style.setProperty(cssVar, value)
+    })
   }
 
   updateMode() {
@@ -114,15 +126,57 @@ export default class extends Controller {
     })
   }
 
+  previewingDark() {
+    return document.documentElement.dataset.adminTheme === "dark"
+  }
+
   darkModeSelected() {
     return this.element.querySelector('input[name="layout_setting[admin_theme_mode]"]:checked')?.value === "dark"
   }
 
   update(event) {
-    if (this.darkModeSelected()) return
+    if (this.previewingDark()) return
 
     const token = event.currentTarget.dataset.themeToken
     this.applyToken(token, event.currentTarget.value, { source: event.currentTarget })
+  }
+
+  // Nomes da marca e da plataforma espelhados na prévia enquanto a pessoa digita.
+  updateName(event) {
+    const input = event.currentTarget
+    const targets = input.dataset.previewName === "area" ? this.areaNameTargets : this.brandNameTargets
+    const text = input.value.trim() || input.dataset.previewFallback || ""
+    targets.forEach((el) => { el.textContent = text })
+  }
+
+  // Cores do site público: --theme-public-{primary,secondary,accent} para a prévia do site.
+  updatePublic(event) {
+    const input = event.currentTarget
+    const value = this.normalizedHex(input.value)
+    const cssVar = PUBLIC_VARS[input.dataset.publicKey]
+    if (!value || !cssVar) return
+
+    this.element.style.setProperty(cssVar, value)
+  }
+
+  // Abre, na sidebar da prévia, a divisão escolhida no seletor do menu (igual ao menu real: uma aberta por vez).
+  focusSection(event) {
+    const key = String(event.currentTarget.dataset.menuSectionKey || "").replaceAll("_", "-")
+    this.element.querySelectorAll(".lss-sidebar [data-nav-section]").forEach((section) => {
+      const open = section.dataset.navSection === key
+      section.classList.toggle("is-open", open)
+      section.querySelector(".ax-nav__section-trigger")?.setAttribute("aria-expanded", String(open))
+      section.querySelector(".ax-nav__section-items")?.classList.toggle("is-visible", open)
+    })
+  }
+
+  // Volta uma divisão do menu aos valores padrão (data-default-value) e reaplica na sidebar e na prévia.
+  resetMenuSection(event) {
+    const panel = event.currentTarget.closest("[data-menu-panel]")
+    panel?.querySelectorAll("[data-menu-style-property][data-default-value]").forEach((input) => {
+      input.value = input.dataset.defaultValue
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
   }
 
   updateMenuSection(event) {
@@ -173,6 +227,41 @@ export default class extends Controller {
     this.element.querySelectorAll(`[data-theme-token-label="${token}"]`).forEach((label) => {
       label.textContent = value.toUpperCase()
     })
+
+    this.updateContrast()
+  }
+
+  // Legibilidade das combinações que o tema cria (WCAG): texto 4.5:1, componentes de interface 3:1.
+  updateContrast() {
+    if (!this.hasContrastTarget) return
+
+    const read = (token) => this.normalizedHex(this.element.style.getPropertyValue(TOKEN_TO_VAR[token]))
+    const pairs = {
+      "ink:surface": [read("ink"), read("surface"), 4.5],
+      "white:primary": ["#ffffff", read("primary"), 4.5],
+      "primary:surface": [read("primary"), read("surface"), 3]
+    }
+
+    this.contrastTargets.forEach((target) => {
+      const [foreground, background, minimum] = pairs[target.dataset.contrastPair] || []
+      if (!foreground || !background) return
+
+      const ratio = this.contrastRatio(foreground, background)
+      target.querySelector("[data-contrast-value]").textContent = `${ratio.toFixed(1)}:1`
+      target.dataset.state = ratio >= minimum ? "pass" : ratio >= minimum * 0.75 ? "warn" : "fail"
+    })
+  }
+
+  contrastRatio(a, b) {
+    const luminance = (hex) => {
+      const [r, g, bl] = [1, 3, 5].map((i) => {
+        const channel = parseInt(hex.slice(i, i + 2), 16) / 255
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+      })
+      return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+    }
+    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+    return (light + 0.05) / (dark + 0.05)
   }
 
   applyDerivedAdminVars(token) {

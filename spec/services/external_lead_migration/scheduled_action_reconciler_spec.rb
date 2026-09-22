@@ -219,7 +219,8 @@ RSpec.describe ExternalLeadMigration::ScheduledActionReconciler do
   it "pula leads sem corretor ativo no backfill operacional" do
     inactive = create(:admin_user, tenant:, active: false)
     [nil, inactive].each_with_index do |owner, index|
-      lead = create(:lead, tenant:, admin_user: owner, status: "Novo")
+      lead = create(:lead, tenant:, admin_user: nil, status: "Novo")
+      lead.update_columns(admin_user_id: owner&.id)
       lead.update_columns(status: "Em Atendimento")
       create_external_schedule_activity(lead:, task_id: nil, external_key: "inactive-#{index}", date: "2026-09-29T09:00:00-03:00", name: "Retornar", alias_name: "feedback_customer")
     end

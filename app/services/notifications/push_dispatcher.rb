@@ -26,6 +26,17 @@ module Notifications
     # clique para registrar o "aceite", abrindo o `url` (ex.: WhatsApp do lead)
     # direto, sem passar por tela do sistema.
     def deliver(title:, body:, url:, icon:, accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false, lead_id: nil, metadata: {})
+      unless admin_user&.active?
+        Rails.logger.warn("[PushDispatcher] usuario inativo para admin_user_id=#{@admin_user_id}")
+        record_delivery_event("admin_user_inactive", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id, metadata: metadata)
+        return 0
+      end
+      unless admin_user.notification_delivery_allowed?
+        Rails.logger.warn("[PushDispatcher] usuario fora da allowlist de notificacao admin_user_id=#{@admin_user_id}")
+        record_delivery_event("admin_user_blocked_by_phone_allowlist", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id, metadata: metadata)
+        return 0
+      end
+
       unless push_setting.enabled?
         Rails.logger.warn("[PushDispatcher] push indisponivel para admin_user_id=#{@admin_user_id}: configuracao incompleta ou desativada")
         record_delivery_event("push_unavailable", tag: tag, urgency: urgency, ttl: ttl, lead_id: lead_id, metadata: metadata)

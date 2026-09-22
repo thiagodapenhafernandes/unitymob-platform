@@ -70,6 +70,65 @@ RSpec.describe Notifications::PushDispatcher do
     )
   end
 
+  it "nao envia push para usuario inativo mesmo com subscription ativa" do
+    admin_user.update!(active: false)
+    PushSubscription.create!(
+      admin_user: admin_user,
+      endpoint: "https://web.push.apple.com/inactive",
+      p256dh: "p256dh",
+      auth: "auth",
+      active: true
+    )
+    allow(WebPush).to receive(:payload_send)
+
+    result = described_class.deliver(
+      admin_user_id: admin_user.id,
+      title: "Novo lead",
+      body: "Teste",
+      url: "/field"
+    )
+
+    expect(result).to eq(0)
+    expect(WebPush).not_to have_received(:payload_send)
+    expect(PushDeliveryEvent.last).to have_attributes(
+      admin_user_id: admin_user.id,
+      event_type: "admin_user_inactive"
+    )
+  end
+
+  it "nao envia push para usuario fora da allowlist local de telefone" do
+    old_enabled = ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"]
+    old_numbers = ENV["NOTIFICATION_ALLOWED_PHONE_NUMBERS"]
+    ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"] = "true"
+    ENV["NOTIFICATION_ALLOWED_PHONE_NUMBERS"] = "21990872427"
+    admin_user.update!(phone: "21900000000")
+    PushSubscription.create!(
+      admin_user: admin_user,
+      endpoint: "https://web.push.apple.com/blocked-phone",
+      p256dh: "p256dh",
+      auth: "auth",
+      active: true
+    )
+    allow(WebPush).to receive(:payload_send)
+
+    result = described_class.deliver(
+      admin_user_id: admin_user.id,
+      title: "Novo lead",
+      body: "Teste",
+      url: "/field"
+    )
+
+    expect(result).to eq(0)
+    expect(WebPush).not_to have_received(:payload_send)
+    expect(PushDeliveryEvent.last).to have_attributes(
+      admin_user_id: admin_user.id,
+      event_type: "admin_user_blocked_by_phone_allowlist"
+    )
+  ensure
+    ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"] = old_enabled
+    ENV["NOTIFICATION_ALLOWED_PHONE_NUMBERS"] = old_numbers
+  end
+
   it "envia com prioridade e ttl informados sem marcar last_seen_at como recebimento" do
     lead = create(:lead, admin_user: admin_user)
     subscription = PushSubscription.create!(

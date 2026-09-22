@@ -1,7 +1,6 @@
 <div class="ax-integration-layout">
 <%
   can_launch_signup = @diagnostics.all? { |item| item[:ok] || item[:fallback].present? }
-  active_tab = params[:tab].presence || "whatsapp"
   connected = @whatsapp_integration.connected?
   effective_connected = connected || @whatsapp_effective_ready
   quality_label = ->(value) {
@@ -85,114 +84,11 @@
         eyebrow: "Integração",
         icon: "whatsapp",
         title: "Integração WhatsApp",
-        subtitle: "Gerencie a conexão, os retornos de mensagens, as notificações e os números de disparo. Configure os contatos públicos na aba Telefones do Site.",
+        subtitle: "Gerencie a conexão, os retornos de mensagens, as notificações e os números de disparo. Os telefones e mensagens do site público ficam em Site público → Contato.",
         actions: connection_status,
         class_name: "wa-command"
       ) %>
 
-  <nav class="wa-tabs" aria-label="Seções da integração">
-    <%= link_to admin_whatsapp_integration_path(tab: "whatsapp"),
-                class: "wa-tabs__item #{'is-active' if active_tab == 'whatsapp'}",
-                aria: ({ current: "page" } if active_tab == "whatsapp") do %>
-      <i class="bi bi-whatsapp" aria-hidden="true"></i><span>WhatsApp Business API</span>
-    <% end %>
-    <%= link_to admin_whatsapp_integration_path(tab: "site_phones"),
-                class: "wa-tabs__item #{'is-active' if active_tab == 'site_phones'}",
-                aria: ({ current: "page" } if active_tab == "site_phones") do %>
-      <i class="bi bi-telephone-outbound" aria-hidden="true"></i><span>Telefones do Site</span>
-    <% end %>
-  </nav>
-
-  <% if active_tab == "site_phones" %>
-    <div class="wa-grid">
-      <div class="wa-main">
-        <%= ax_operational_panel(
-              title: "Telefones do site"
-            ) do %>
-          <div class="wa-panel-body">
-            <p class="wa-hint">Defina o número de destino e se o visitante passa pelo formulário intermediário antes do WhatsApp.</p>
-
-            <% if @phone_settings_errors.present? %>
-              <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-                <strong>Revise os campos:</strong> <%= @phone_settings_errors.to_sentence %>
-              <% end %>
-            <% end %>
-
-            <%= form_with model: @whatsapp_integration, url: phone_settings_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
-              <div class="wa-field">
-                <%= ax_field_label(f, :default_whatsapp_number, text: "Número padrão",
-                      tooltip: "Usado quando o tipo de negociação não tiver número específico. Locação diária segue a regra de locação.") %>
-                <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp ax-input-group__icon--whatsapp")) do %>
-                  <%= f.telephone_field :default_whatsapp_number,
-                        class: "ax-control",
-                        placeholder: "(47) 99999-9999",
-                        value: @whatsapp_integration.default_whatsapp_number.presence || @site_phone_settings[:default_phone],
-                        data: { controller: "phone-input" } %>
-                <% end %>
-              </div>
-
-              <div class="wa-negotiations">
-                <% WhatsappBusinessIntegration::NEGOTIATION_TYPES.each do |key, config| %>
-                  <%= ax_form_section(title: config[:label], tooltip: config[:default_message]) do %>
-                    <div class="wa-negotiation-fields">
-                      <%= ax_text_field(form: f, method: config[:phone_attribute], label: "WhatsApp de destino",
-                            type: :tel, placeholder: "Usar número padrão", data: { controller: "phone-input" }) %>
-                      <div class="wa-negotiation-options">
-                        <%= ax_switch_field(form: f, method: config[:form_attribute],
-                              label: "Captar dados antes de redirecionar",
-                              checked_value: "1", unchecked_value: "0") %>
-                        <%= ax_switch_field(form: f, method: config[:redirect_attribute],
-                              label: "Redirecionar para o WhatsApp após captar o lead",
-                              checked_value: "1", unchecked_value: "0") %>
-                      </div>
-                    </div>
-                  <% end %>
-                <% end %>
-              </div>
-
-              <div class="wa-field wa-field--divider">
-                <%= ax_field_label(text: "Cartão de apresentação do corretor",
-                      tooltip: "Vale para toda a equipe. Desligado, os cartões saem sempre como texto (sem a foto do corretor). O telefone pessoal do corretor nunca é enviado.") %>
-                <%= ax_switch_field(form: f, method: :allow_photo_presentation,
-                      label: "Permitir cartão com foto do corretor",
-                      checked: @whatsapp_integration.allow_photo_presentation?) %>
-              </div>
-
-              <div class="ax-form-actions">
-                <%= f.submit "Salvar telefones do site", class: "ax-btn ax-btn--primary" %>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-
-      <aside class="wa-aside">
-        <%= ax_operational_panel(title: "Resumo dos destinos") do %>
-          <div class="wa-panel-body">
-            <dl class="wa-state">
-              <% @site_phone_settings[:negotiations].each do |key, item| %>
-                <div class="wa-state__row">
-                  <dt>
-                    <strong><%= item[:label] %></strong>
-                    <span>
-                      <%= if item[:requires_form]
-                            item[:redirect_after_capture] ? "Formulário e redirecionamento" : "Formulário sem redirecionamento"
-                          else
-                            "Direto para o WhatsApp"
-                          end %>
-                    </span>
-                  </dt>
-                  <dd><code><%= item[:phone].presence || @site_phone_settings[:default_phone] %></code></dd>
-                </div>
-              <% end %>
-            </dl>
-          </div>
-        <% end %>
-
-
-      </aside>
-    </div>
-  <% else %>
     <div class="wa-grid wa-grid--compact">
       <div class="wa-main">
         <% if @whatsapp_using_global %>
@@ -432,11 +328,11 @@
                   <div class="wa-webhook__grid">
                     <div class="wa-field">
                       <%= ax_text_field(form: f, method: :phone_number_id, label: "Phone Number ID das notificações",
-                            value: @whatsapp_integration.phone_number_id, placeholder: "Ex.: 649374078254590") %>
+                            value: @whatsapp_integration.phone_number_id, placeholder: "Ex.: 000000000000000") %>
                     </div>
                     <div class="wa-field">
                       <%= ax_text_field(form: f, method: :waba_id, label: "WABA das notificações",
-                            value: @whatsapp_integration.waba_id, placeholder: "Ex.: 616242481017427") %>
+                            value: @whatsapp_integration.waba_id, placeholder: "Ex.: 000000000000000") %>
                     </div>
                     <div class="wa-field">
                       <%= ax_text_field(form: f, method: :business_id, label: "Business ID (opcional)", value: @whatsapp_integration.business_id) %>
@@ -799,17 +695,19 @@
                 <%= f.hidden_field :channel, value: "whatsapp" %>
                 <%= f.hidden_field :active, value: "1" %>
                 <%= ax_select_field(form: f, method: :purpose, label: "Finalidade", choices: @notification_template_purpose_options) %>
-                <div class="ax-field">
-                  <%= f.label :whatsapp_template_id, "Template aprovado", class: "ax-label" %>
-                  <%= f.select :whatsapp_template_id,
-                        options_for_select(@notification_template_options),
-                        { include_blank: "Selecione" },
-                        class: "ax-control",
+                <%= ax_select_field(
+                      form: f,
+                      method: :whatsapp_template_id,
+                      label: "Template aprovado",
+                      choices: @notification_template_options,
+                      select_options: { include_blank: "Selecione" },
+                      html_options: {
                         data: {
                           whatsapp_integration_target: "notificationTemplateSelect",
                           action: "change->whatsapp-integration#syncNotificationTemplateVariables"
-                        } %>
-                </div>
+                        }
+                      }
+                    ) %>
                 <div class="ax-field">
                   <%= ax_field_label(text: "Preenchimento das variáveis", tooltip: "O sistema sugere os campos pelo texto do template. Confira cada associação antes de salvar.") %>
                   <div class="wa-variable-map"
@@ -860,23 +758,45 @@
                       <small>Phone Number ID: <%= number.phone_number_id %><%= " · WABA: #{number.waba_id}" if number.waba_id.present? %></small>
                     </div>
                     <div class="wa-number-row__badges">
-                      <%= ax_badge(number.messaging_ready? ? "Credenciais de envio configuradas" : "Envio não configurado", tone: number.messaging_ready? ? :green : :amber, dot: true) %>
+                      <% if number.active? %>
+                        <%= ax_badge(number.messaging_ready? ? "Credenciais de envio configuradas" : "Envio não configurado", tone: number.messaging_ready? ? :green : :amber, dot: true) %>
+                      <% else %>
+                        <%= ax_badge("Desativado", tone: :red, dot: true) %>
+                      <% end %>
                     </div>
                     <div class="wa-number-row__actions">
                       <%= ax_button("Editar", nil, size: :sm, icon: "pencil", data: { ax_modal_open: "#whatsappAccountNumberEditModal#{number.id}" }) %>
-                      <button type="button"
-                              class="ax-btn ax-btn--sm"
-                              data-action="whatsapp-integration#testSenderConnection"
-                              data-test-url="<%= test_connection_admin_whatsapp_sender_number_path(number) %>">
-                        <i class="bi bi-plug ax-ico"></i><span>Testar</span>
-                      </button>
+                      <% if number.active? %>
+                        <button type="button"
+                                class="ax-btn ax-btn--sm"
+                                data-action="whatsapp-integration#testSenderConnection"
+                                data-test-url="<%= test_connection_admin_whatsapp_sender_number_path(number) %>">
+                          <i class="bi bi-plug ax-ico"></i><span>Testar</span>
+                        </button>
 
-                      <%= button_to admin_whatsapp_sender_number_path(number),
-                                    method: :delete,
-                                    class: "ax-btn ax-btn--sm ax-btn--danger",
-                                    form: { data: { turbo_confirm: "Remover este número da conta? O histórico de campanhas será preservado." } } do %>
-                        <%= hidden_field_tag :return_to, admin_whatsapp_integration_path %>
-                        <i class="bi bi-trash ax-ico"></i><span>Remover</span>
+                        <%= button_to connect_admin_whatsapp_sender_number_path(number),
+                                      method: :post,
+                                      class: "ax-btn ax-btn--sm",
+                                      title: "Valida o número na Meta, inscreve o app na WABA (webhooks) e registra a rota no gateway" do %>
+                          <%= hidden_field_tag :return_to, admin_whatsapp_integration_path %>
+                          <i class="bi bi-arrow-repeat ax-ico"></i><span>Reconectar</span>
+                        <% end %>
+
+                        <%= button_to admin_whatsapp_sender_number_path(number),
+                                      method: :delete,
+                                      class: "ax-btn ax-btn--sm ax-btn--danger",
+                                      form: { data: { turbo_confirm: "Remover este número da conta? O histórico de campanhas será preservado." } } do %>
+                          <%= hidden_field_tag :return_to, admin_whatsapp_integration_path %>
+                          <i class="bi bi-trash ax-ico"></i><span>Remover</span>
+                        <% end %>
+                      <% else %>
+                        <%= button_to reactivate_admin_whatsapp_sender_number_path(number),
+                                      method: :patch,
+                                      class: "ax-btn ax-btn--sm ax-btn--success",
+                                      form: { data: { turbo_confirm: "Reativar este número para campanhas?" } } do %>
+                          <%= hidden_field_tag :return_to, admin_whatsapp_integration_path %>
+                          <i class="bi bi-arrow-counterclockwise ax-ico"></i><span>Reativar</span>
+                        <% end %>
                       <% end %>
                     </div>
                     <div class="wa-number-row__test" data-wa-number-test-result hidden></div>
@@ -922,11 +842,11 @@
                             local: true,
                             class: "whatsapp-sender-modal__form" do |f| %>
                 <%= hidden_field_tag :return_to, admin_whatsapp_integration_path %>
-                <%= ax_text_field(form: f, method: :label, label: "Nome interno", placeholder: "Ex: Campanhas venda") %>
+                <%= ax_text_field(form: f, method: :label, label: "Nome interno", placeholder: "Ex: Canal principal") %>
                 <%= ax_text_field(form: f, method: :display_phone_number, label: "Número WhatsApp", type: :tel,
-                      placeholder: "(47) 2122-8669", data: { controller: "phone-input" }) %>
-                <%= ax_text_field(form: f, method: :phone_number_id, label: "ID do telefone na Meta", tooltip: "Identificador do telefone na Cloud API. É diferente do número com DDD.", placeholder: "434291556438028") %>
-                <%= ax_text_field(form: f, method: :waba_id, label: "ID da conta WhatsApp (WABA)", tooltip: "Conta empresarial da Meta à qual este número pertence. Os templates são compartilhados por essa conta.", placeholder: "428655400336219") %>
+                      placeholder: "+55 00 00000-0000", data: { controller: "phone-input" }) %>
+                <%= ax_text_field(form: f, method: :phone_number_id, label: "ID do telefone na Meta", tooltip: "Identificador do telefone na Cloud API. É diferente do número com DDD.", placeholder: "000000000000000") %>
+                <%= ax_text_field(form: f, method: :waba_id, label: "ID da conta WhatsApp (WABA)", tooltip: "Conta empresarial da Meta à qual este número pertence. Os templates são compartilhados por essa conta.", placeholder: "000000000000000") %>
                 <p class="wa-hint">O número ficará disponível na seleção da campanha automaticamente.</p>
                 <div class="whatsapp-sender-modal__actions">
                   <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
@@ -969,21 +889,20 @@
       </aside>
     </div>
 
-  <% end %>
 </div>
 
 <style id="wa-integration-styles">
   .wa-workspace { display: grid; gap: 8px; padding-top: 8px; }
   .wa-command { margin-bottom: 0; }
 
-  .wa-tabs { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #d8dee8; border-radius: 8px; background: #eef2f7; }
+  .wa-tabs { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--ab-line, #d8dee8); border-radius: 8px; background: #eef2f7; }
   .wa-tabs__item {
     display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px;
-    border: 1px solid transparent; border-radius: 6px; color: #64748b;
+    border: 1px solid transparent; border-radius: 6px; color: var(--ab-muted, #697586);
     font-size: 12px; font-weight: 800; text-decoration: none;
   }
-  .wa-tabs__item:hover { background: #fff; color: #1f2937; }
-  .wa-tabs__item.is-active { background: #fff; color: var(--admin-primary, #365f8f); border-color: color-mix(in srgb, var(--admin-primary) 28%, #d8dee8); box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .wa-tabs__item:hover { background: var(--ab-panel, #fff); color: var(--ab-ink, #1f2733); }
+  .wa-tabs__item.is-active { background: var(--ab-panel, #fff); color: var(--admin-primary, #365f8f); border-color: color-mix(in srgb, var(--admin-primary) 28%, var(--ab-line, #d8dee8)); box-shadow: 0 1px 2px rgba(15,23,42,.06); }
 
   .wa-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
   @media (min-width: 1080px) { .wa-grid { grid-template-columns: minmax(0, 1fr) 340px; } }
@@ -992,15 +911,15 @@
   @media (min-width: 1080px) { .wa-aside { position: sticky; top: calc(var(--ax-navbar-h, 48px) + var(--ax-contextbar-h, 40px) + 8px); } }
 
   .wa-panel-body { padding: 12px; display: grid; gap: 14px; }
-  .wa-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
+  .wa-hint { margin: 0; color: var(--ab-muted, #697586); font-size: 11.5px; line-height: 1.45; }
   .wa-form { gap: 14px; }
   .wa-field { display: grid; gap: 5px; min-width: 0; }
   .wa-field--divider { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ax-border-soft, #eceef1); }
 
-  .wa-connected { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #f8fafc; }
+  .wa-connected { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: var(--ab-panel-soft, #f8fafc); }
   .wa-connected__cell { display: grid; gap: 2px; min-width: 0; }
-  .wa-connected__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
-  .wa-connected__cell strong { color: #1f2733; font-size: 13px; overflow-wrap: anywhere; }
+  .wa-connected__cell span { color: var(--ab-muted, #697586); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .wa-connected__cell strong { color: var(--ab-ink, #1f2733); font-size: 13px; overflow-wrap: anywhere; }
   .wa-grid--compact { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .wa-grid--compact .wa-main { gap: 16px; }
   .wa-grid--compact .wa-aside { position: static; }
@@ -1018,7 +937,7 @@
     padding: 10px 12px;
     border: 1px solid var(--ax-border-soft, #e7ebf2);
     border-radius: 8px;
-    background: #f8fafc;
+    background: var(--ab-panel-soft, #f8fafc);
   }
   .wa-summary-row__icon {
     display: inline-flex;
@@ -1027,15 +946,15 @@
     width: 34px;
     height: 34px;
     border-radius: 8px;
-    background: #e6f6ec;
+    background: var(--ax-success-surface, #e3f5ec);
     color: #0e9f6e;
     font-size: 17px;
   }
   .wa-summary-row__main { display: grid; gap: 2px; min-width: 0; }
-  .wa-summary-row__main strong { color: #1f2733; font-size: 13.5px; line-height: 1.2; }
-  .wa-summary-row__main span { color: #4b5565; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
-  .wa-summary-row__main small { color: #8a93a3; font-size: 11px; overflow-wrap: anywhere; }
-  .wa-summary-row__meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; color: #8a93a3; font-size: 11px; font-weight: 700; }
+  .wa-summary-row__main strong { color: var(--ab-ink, #1f2733); font-size: 13.5px; line-height: 1.2; }
+  .wa-summary-row__main span { color: var(--ab-muted, #697586); font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
+  .wa-summary-row__main small { color: var(--ab-muted, #697586); font-size: 11px; overflow-wrap: anywhere; }
+  .wa-summary-row__meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; color: var(--ab-muted, #697586); font-size: 11px; font-weight: 700; }
   .wa-advanced-details { display: block; }
   .wa-advanced-details[open] > :not(summary) { margin-top: 10px; }
   .wa-advanced-details__summary {
@@ -1044,7 +963,7 @@
     align-items: center;
     gap: 7px;
     padding: 2px 0;
-    color: #365f8f;
+    color: var(--ax-link, #365f8f);
     font-size: 12px;
     font-weight: 800;
     cursor: pointer;
@@ -1056,7 +975,7 @@
 
   .wa-webhook { border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
   .wa-webhook__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .wa-webhook__head h3 { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: #1f2733; }
+  .wa-webhook__head h3 { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: var(--ab-ink, #1f2733); }
   .wa-webhook__grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
   @media (max-width: 720px) { .wa-webhook__grid { grid-template-columns: minmax(0, 1fr); } }
   .wa-webhook__actions { display: flex; justify-content: flex-end; }
@@ -1067,64 +986,64 @@
 
   .wa-connect { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
-  .wa-phone-info { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #f8fafc; }
+  .wa-phone-info { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: var(--ab-panel-soft, #f8fafc); }
   .wa-phone-info__cell { display: grid; gap: 2px; min-width: 0; }
-  .wa-phone-info__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
-  .wa-phone-info__cell strong { color: #1f2733; font-size: 13.5px; }
+  .wa-phone-info__cell span { color: var(--ab-muted, #697586); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .wa-phone-info__cell strong { color: var(--ab-ink, #1f2733); font-size: 13.5px; }
   .wa-register-phone {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
     gap: 12px;
     padding: 10px 12px;
-    border: 1px dashed #b8c7d9;
+    border: 1px dashed var(--ab-line, #d8dee8);
     border-radius: 8px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
   }
   .wa-register-phone--ready {
     border-style: solid;
-    border-color: #b7e4c7;
-    background: #f0fdf4;
+    border-color: color-mix(in srgb, var(--ax-accent-green) 40%, var(--ab-panel, #fff));
+    background: var(--ax-success-surface, #e3f5ec);
   }
-  .wa-register-phone strong { display: block; color: #1f2733; font-size: 13px; font-weight: 800; }
-  .wa-register-phone p { margin: 2px 0 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
+  .wa-register-phone strong { display: block; color: var(--ab-ink, #1f2733); font-size: 13px; font-weight: 800; }
+  .wa-register-phone p { margin: 2px 0 0; color: var(--ab-muted, #697586); font-size: 11.5px; line-height: 1.4; }
   .wa-register-phone__form { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; }
   .wa-register-phone__form .ax-control { width: 96px; text-align: center; }
 
-  .wa-context-block { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
-  .wa-context-block--primary { background: #f8fafc; }
+  .wa-context-block { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: var(--ab-panel, #fff); }
+  .wa-context-block--primary { background: var(--ab-panel-soft, #f8fafc); }
   .wa-context-block__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--ax-border-soft, #e7ebf2); }
   .wa-context-block__head > div { display: grid; gap: 3px; min-width: 0; }
   .wa-context-block__head span { color: #7b8494; font-size: 10.5px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
-  .wa-context-block__head strong { color: #1f2733; font-size: 15px; line-height: 1.2; }
-  .wa-context-block__head p { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
+  .wa-context-block__head strong { color: var(--ab-ink, #1f2733); font-size: 15px; line-height: 1.2; }
+  .wa-context-block__head p { margin: 0; color: var(--ab-muted, #697586); font-size: 11.5px; line-height: 1.4; }
   .wa-context-actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 
   .wa-number-section { display: grid; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--ax-border-soft, #e7ebf2); }
   .wa-number-section__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .wa-number-section__head > div { display: grid; gap: 2px; min-width: 0; }
   .wa-number-section__head span { color: #7b8494; font-size: 10.5px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
-  .wa-number-section__head strong { color: #1f2733; font-size: 15px; line-height: 1.2; }
+  .wa-number-section__head strong { color: var(--ab-ink, #1f2733); font-size: 15px; line-height: 1.2; }
   .wa-number-list { display: grid; gap: 8px; }
   .wa-template-stack { display: grid; gap: 8px; margin-top: 10px; }
-  .wa-number-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
-  .wa-template-submit-row { background: #f8fafc; }
-  .wa-number-row--empty { grid-template-columns: minmax(0, 1fr); background: #f8fafc; }
+  .wa-number-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: var(--ab-panel, #fff); }
+  .wa-template-submit-row { background: var(--ab-panel-soft, #f8fafc); }
+  .wa-number-row--empty { grid-template-columns: minmax(0, 1fr); background: var(--ab-panel-soft, #f8fafc); }
   .wa-number-row__main { display: grid; gap: 2px; min-width: 0; }
-  .wa-number-row__main strong { color: #1f2733; font-size: 13.5px; overflow-wrap: anywhere; }
-  .wa-number-row__main span { color: #4b5565; font-size: 12px; font-weight: 700; }
-  .wa-number-row__main small { color: #8a93a3; font-size: 11px; overflow-wrap: anywhere; }
+  .wa-number-row__main strong { color: var(--ab-ink, #1f2733); font-size: 13.5px; overflow-wrap: anywhere; }
+  .wa-number-row__main span { color: var(--ab-muted, #697586); font-size: 12px; font-weight: 700; }
+  .wa-number-row__main small { color: var(--ab-muted, #697586); font-size: 11px; overflow-wrap: anywhere; }
   .wa-number-row__badges,
   .wa-number-row__actions { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
-  .wa-number-row__test { grid-column: 1 / -1; display: none; align-items: center; gap: 7px; min-height: 34px; padding: 7px 9px; border: 1px solid #d8e1ec; border-left-width: 3px; border-radius: 7px; background: #f8fafc; color: #475467; font-size: 12px; font-weight: 650; line-height: 1.35; }
+  .wa-number-row__test { grid-column: 1 / -1; display: none; align-items: center; gap: 7px; min-height: 34px; padding: 7px 9px; border: 1px solid #d8e1ec; border-left-width: 3px; border-radius: 7px; background: var(--ab-panel-soft, #f8fafc); color: #475467; font-size: 12px; font-weight: 650; line-height: 1.35; }
   .wa-number-row__test:not([hidden]) { display: flex; }
   .wa-number-checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: #344054; }
   .wa-number-checkbox input { width: 16px; height: 16px; }
   .wa-variable-map { display: grid; gap: 8px; }
   .wa-variable-map__row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 8px; }
   .wa-variable-map__row > span { color: #344054; font-size: 12px; font-weight: 800; }
-  .wa-variable-map__row > strong { color: #1f2733; font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
-  .wa-variable-map__row small { display: block; margin-top: 2px; color: #8a93a3; font-size: 10.5px; font-weight: 650; line-height: 1.25; }
+  .wa-variable-map__row > strong { color: var(--ab-ink, #1f2733); font-size: 12px; font-weight: 800; overflow-wrap: anywhere; }
+  .wa-variable-map__row small { display: block; margin-top: 2px; color: var(--ab-muted, #697586); font-size: 10.5px; font-weight: 650; line-height: 1.25; }
   .wa-template-details { display: block; }
   .wa-template-details[open] > :not(summary) { margin-top: 14px; }
   .wa-template-details__summary {
@@ -1157,7 +1076,7 @@
     padding: 10px;
     border: 1px solid var(--ax-border-soft, #e7ebf2);
     border-radius: 8px;
-    background: #f8fafc;
+    background: var(--ab-panel-soft, #f8fafc);
   }
   .wa-lead-activation__reference > span,
   .wa-lead-activation__preview > span {
@@ -1192,9 +1111,9 @@
   .wa-state { margin: 0; display: grid; gap: 10px; }
   .wa-state__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
   .wa-state__row dt { margin: 0; min-width: 0; }
-  .wa-state__row dt strong { display: block; color: #1f2733; font-size: 12.5px; font-weight: 700; }
-  .wa-state__row dt span { color: #8a93a3; font-size: 11px; }
-  .wa-state__row dd { margin: 0; flex: 0 0 auto; font-size: 12.5px; color: #1f2733; }
+  .wa-state__row dt strong { display: block; color: var(--ab-ink, #1f2733); font-size: 12.5px; font-weight: 700; }
+  .wa-state__row dt span { color: var(--ab-muted, #697586); font-size: 11px; }
+  .wa-state__row dd { margin: 0; flex: 0 0 auto; font-size: 12.5px; color: var(--ab-ink, #1f2733); }
 </style>
 
 </div>

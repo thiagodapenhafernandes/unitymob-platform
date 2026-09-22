@@ -1,0 +1,154 @@
+/* Peças específicas dos construtores de template do WhatsApp: editor da mensagem, exemplos de variáveis,
+ * botões, cards do carrossel e a prévia em celular. O esqueleto (etapas, progresso, checklist) é o
+ * componente genérico em guided_form.css. */
+
+.ax-guided-hint code, .wtb-vars p code { padding: 1px 5px; border-radius: 4px; background: var(--ax-guided-soft); color: color-mix(in srgb, var(--ax-accent-pink) 75%, var(--ab-ink, #1f2733)); font-size: 11.5px; }
+
+.wtb-editor { overflow: hidden; border: 1px solid var(--ax-field-border, var(--ax-guided-line)); border-radius: 8px; background: var(--ax-guided-surface); transition: border-color 160ms, box-shadow 160ms; }
+
+.wtb-editor:focus-within { border-color: var(--step); box-shadow: 0 0 0 3px color-mix(in srgb, var(--step) 18%, transparent); }
+
+.wtb-toolbar { display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-bottom: 1px solid var(--ax-guided-line); background: var(--ax-guided-soft); }
+
+.wtb-toolbar__sep { width: 1px; height: 18px; margin: 0 4px; background: var(--ax-guided-line); }
+
+.wtb-tool { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 30px; height: 28px; padding: 0 7px; border: 0; border-radius: 6px; background: transparent; color: var(--ax-guided-muted); font-size: 12.5px; font-weight: 650; cursor: pointer; transition: background-color 140ms, color 140ms, transform 120ms; }
+
+.wtb-tool:hover { background: color-mix(in srgb, var(--step) 14%, transparent); color: var(--ax-guided-ink); }
+
+.wtb-tool:active { transform: scale(.94); }
+
+.wtb-tool--text { color: color-mix(in srgb, var(--step) 80%, var(--ax-guided-ink)); }
+
+.ax-guided .wtb-textarea.ax-control { min-height: 130px; border: 0; border-radius: 0; box-shadow: none; resize: vertical; background: transparent; }
+
+
+/* Exemplos de variáveis */
+.wtb-vars { display: grid; gap: 10px; padding: 12px; border: 1px dashed color-mix(in srgb, var(--step) 45%, var(--ax-guided-line)); border-radius: 10px; background: color-mix(in srgb, var(--step) 5%, var(--ax-guided-surface)); }
+
+.wtb-vars__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+.wtb-vars__head strong { font-size: 13px; color: var(--ax-guided-ink); }
+
+.wtb-vars__head p { margin: 2px 0 0; font-size: 12px; color: var(--ax-guided-muted); }
+
+.wtb-vars__grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+
+.wtb-rules { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+.wtb-rules span { padding: 3px 9px; border-radius: 99px; background: var(--ax-guided-soft); box-shadow: inset 0 0 0 1px var(--ax-guided-line); font-size: 11.5px; color: var(--ax-guided-muted); }
+
+
+/* Botões */
+.wtb-buttons { gap: 8px; }
+
+.ax-guided .wtb-button { --kind: var(--ax-accent-amber); grid-template-columns: minmax(175px, .32fr) minmax(180px, .5fr) minmax(200px, .7fr) 36px; padding: 10px; border: 1px solid var(--ax-guided-line); border-radius: 10px; background: var(--ax-guided-surface); transition: border-color 160ms, box-shadow 160ms; animation: ax-guided-pop 260ms var(--ax-guided-ease); }
+
+.ax-guided .wtb-button[data-kind="url"] { --kind: var(--ax-accent-blue); }
+
+.ax-guided .wtb-button[data-kind="phone_number"] { --kind: var(--ax-accent-green); }
+
+.ax-guided .wtb-button:focus-within { border-color: var(--kind); box-shadow: 0 0 0 3px color-mix(in srgb, var(--kind) 16%, transparent); }
+
+.ax-guided .wtb-button .ts-control, .ax-guided .wtb-button select.ax-control { border-color: color-mix(in srgb, var(--kind) 40%, var(--ax-guided-line)); background-color: color-mix(in srgb, var(--kind) 8%, var(--ax-guided-surface)); font-weight: 650; }
+
+.wtb-phone { overflow: hidden; border: 1px solid var(--ax-guided-line); border-radius: 22px; background: var(--ax-guided-surface); box-shadow: 0 14px 34px rgb(15 23 42 / .12); }
+
+.wtb-phone__bar { display: flex; align-items: center; gap: 9px; padding: 10px 14px; background: #0f766e; color: #fff; }
+
+.wtb-phone__bar strong { font-size: 13.5px; }
+
+.wtb-phone__bar small { margin-left: auto; font-size: 11px; opacity: .8; }
+
+.wtb-phone__avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgb(255 255 255 / .2); }
+
+.wtb-phone__chat { display: grid; align-content: start; gap: 6px; min-height: 260px; padding: 16px 12px 18px; background: #e7ddd0 radial-gradient(circle at 20% 20%, rgb(255 255 255 / .35) 0 2px, transparent 3px) 0 0 / 22px 22px; }
+
+[data-admin-theme="dark"] .wtb-phone__chat { background-color: #2a3542; background-image: radial-gradient(circle at 20% 20%, rgb(255 255 255 / .06) 0 2px, transparent 3px); }
+
+.wtb-bubble { position: relative; max-width: 92%; padding: 8px 10px 6px; border-radius: 4px 12px 12px 12px; background: #fff; color: #1f2933; box-shadow: 0 1px 1px rgb(0 0 0 / .13); font-size: 13.5px; line-height: 1.42; animation: ax-guided-pop 320ms var(--ax-guided-ease); }
+
+.wtb-bubble__media { display: grid; place-items: center; align-content: center; gap: 4px; height: 118px; margin: -2px -4px 8px; border-radius: 8px; background: linear-gradient(135deg, #cfe2f7, #e6d9f7); color: #4b5d78; font-size: 12px; font-weight: 650; }
+
+.wtb-bubble__media i { font-size: 30px; }
+
+.wtb-bubble__header { display: block; margin-bottom: 4px; font-size: 14px; }
+
+.wtb-bubble__body { margin: 0; color: inherit; font-size: inherit; line-height: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.wtb-bubble__body.is-empty { color: #8494a7; font-style: italic; }
+
+.wtb-bubble__body mark { padding: 0 4px; border-radius: 4px; background: #dcefff; color: #0f4c8a; }
+
+.wtb-bubble__body mark.is-missing { background: #fff0cc; color: #8a5a00; }
+
+.wtb-bubble__footer { display: block; margin-top: 4px; color: #7a8896; font-size: 11.5px; }
+
+.wtb-bubble time { display: block; margin-top: 2px; text-align: right; color: #8b98a5; font-size: 10.5px; }
+
+.wtb-actions { display: grid; gap: 4px; max-width: 92%; }
+
+.wtb-action { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 10px; border-radius: 10px; background: #fff; color: #0d6ec9; font-size: 13px; font-weight: 650; box-shadow: 0 1px 1px rgb(0 0 0 / .13); animation: ax-guided-pop 260ms var(--ax-guided-ease); }
+
+
+/* ---------- Cards do carrossel ---------- */
+.wtb-cardlist { display: grid; gap: 12px; counter-reset: wtbcard; }
+
+.ax-guided .wtb-cardrow { --kind: var(--ax-accent-amber); counter-increment: wtbcard; overflow: hidden; border: 1px solid var(--ax-guided-line); border-radius: 12px; background: var(--ax-guided-surface); animation: ax-guided-pop 280ms var(--ax-guided-ease); transition: border-color 160ms, box-shadow 160ms; }
+
+.ax-guided .wtb-cardrow:focus-within { border-color: var(--step); box-shadow: 0 0 0 3px color-mix(in srgb, var(--step) 16%, transparent); }
+
+.wtb-vars__actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+
+.ax-guided .wtb-cardrow__toggle { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px 8px 12px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+
+.ax-guided .wtb-cardrow__toggle:hover .wtb-cardrow__chevron { color: var(--ax-guided-ink); }
+
+.ax-guided .wtb-cardrow__toggle:focus-visible { outline: 3px solid color-mix(in srgb, var(--step) 40%, transparent); outline-offset: -3px; border-radius: 10px; }
+
+.ax-guided .wtb-cardrow__chevron { flex: none; font-size: 12px; color: var(--ax-guided-muted); transition: transform 220ms var(--ax-guided-ease); }
+
+.ax-guided .wtb-cardrow.is-collapsed .wtb-cardrow__chevron { transform: rotate(-90deg); }
+
+.ax-guided .wtb-cardrow__summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: var(--ax-guided-muted); }
+
+.ax-guided .wtb-cardrow__state { flex: none; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; background: var(--ax-guided-soft); color: var(--ax-guided-muted); box-shadow: inset 0 0 0 1px var(--ax-guided-line); }
+
+.ax-guided .wtb-cardrow__state[data-state="done"] { background: color-mix(in srgb, var(--ax-guided-ok) 14%, var(--ax-guided-surface)); color: var(--ax-guided-ok); box-shadow: none; }
+
+.ax-guided .wtb-cardrow__state[data-state="todo"] { background: var(--ax-warning-surface); color: var(--ax-warning-text); box-shadow: none; }
+
+.ax-guided .wtb-cardrow__panel { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 240ms var(--ax-guided-ease); }
+
+.ax-guided .wtb-cardrow__inner { min-height: 0; overflow: hidden; }
+
+.ax-guided .wtb-cardrow.is-collapsed .wtb-cardrow__panel { grid-template-rows: 0fr; }
+
+.ax-guided .wtb-cardrow.is-collapsed .whatsapp-template-carousel-card__head { border-bottom-color: transparent; }
+
+
+/* ---------- Prévia do carrossel e do Flow ---------- */
+.wtb-carousel { display: flex; gap: 8px; max-width: 100%; margin: 0 -12px; padding: 2px 12px 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+
+.wtb-mini { display: grid; align-content: start; flex: 0 0 172px; gap: 6px; padding: 6px 6px 8px; border-radius: 12px; background: #fff; color: #1f2933; box-shadow: 0 1px 1px rgb(0 0 0 / .13); scroll-snap-align: start; animation: ax-guided-pop 260ms var(--ax-guided-ease); }
+
+.wtb-mini__media { display: grid; place-items: center; align-content: center; gap: 3px; height: 92px; border-radius: 8px; background: linear-gradient(135deg, #cfe2f7, #e6d9f7); color: #4b5d78; font-size: 11.5px; font-weight: 650; }
+
+.wtb-mini__media i { font-size: 24px; }
+
+.wtb-mini p { margin: 0 2px; color: inherit; font-size: 12.5px; line-height: 1.35; overflow-wrap: anywhere; }
+
+.wtb-mini p.is-empty { color: #8494a7; font-style: italic; }
+
+.wtb-mini .wtb-action { padding: 6px 8px; font-size: 12px; box-shadow: inset 0 0 0 1px #e3e8ef; animation: none; }
+
+
+@media (max-width: 1100px) {
+  .wtb-phone__chat { min-height: 0; }
+}
+
+@media (max-width: 720px) {
+  .ax-guided .wtb-button { grid-template-columns: 1fr 36px; }
+  .ax-guided .wtb-button > :not(.whatsapp-template-button-row__remove) { grid-column: 1; }
+  .ax-guided .wtb-button > .whatsapp-template-button-row__remove { grid-column: 2; grid-row: 1; }
+}

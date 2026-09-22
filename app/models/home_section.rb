@@ -6,6 +6,7 @@ class HomeSection < ApplicationRecord
     "why_choose_us" => "Por que escolher a imobiliária",
     "cta_contact" => "Chamada para contato",
     "featured_properties" => "Imóveis em Destaque",
+    "featured_videos" => "Vídeos em destaque",
     "opportunities" => "Oportunidades",
     "developments" => "Empreendimentos",
     "rentals" => "Imóveis para Locação"
@@ -38,7 +39,21 @@ class HomeSection < ApplicationRecord
     },
     "com_video" => {
       label: "Com vídeo",
-      where: ["jsonb_typeof(habitations.videos) = 'array' AND jsonb_array_length(habitations.videos) > 0"]
+      where: [
+        <<~SQL.squish
+          jsonb_typeof(habitations.videos) = 'array'
+          AND EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(habitations.videos) AS video_items(value)
+            WHERE NULLIF(BTRIM(video_items.value), '') IS NOT NULL
+              AND (
+                video_items.value ~ '^[A-Za-z0-9_-]{11}$'
+                OR video_items.value ~* '(youtube\\.com|youtu\\.be|vimeo\\.com)'
+                OR video_items.value ~* '\\.(mp4|mov|m4v|webm|ogg|ogv|3gp)(\\?|#|$)'
+              )
+          )
+        SQL
+      ]
     },
     "com_fotos" => { label: "Com fotos", scope: :with_photos },
     "tem_placa" => { label: "Tem Placa", column: :tem_placa_flag },
@@ -51,12 +66,22 @@ class HomeSection < ApplicationRecord
     "administracao_locacao" => { label: "Administração de locação", column: :rental_management_flag },
     "vitrine_corporate" => { label: "Vitrine Corporate da Página Inicial", column: :home_corporate_flag }
   }.freeze
+  # Agrupamento dos filtros no formulário (título, ícone, tom e chaves). Chaves fora dos grupos caem em "Outros".
+  PROPERTY_FILTER_GROUPS = [
+    { title: "Negócio", icon: "briefcase", tone: "blue", keys: %w[venda locacao empreendimentos] },
+    { title: "Destaques", icon: "stars", tone: "amber", keys: %w[destaque_web super_destaque lancamento preco_reduzido exclusivo vitrine_corporate] },
+    { title: "Localização", icon: "water", tone: "teal", keys: %w[frente_mar quadra_mar vista_mar] },
+    { title: "Estágio da obra", icon: "building-gear", tone: "violet", keys: %w[pronto na_planta em_construcao] },
+    { title: "Características", icon: "house-heart", tone: "green", keys: %w[garden sol_manha sol_tarde mobiliado decorado aceita_permuta aceita_financiamento] },
+    { title: "Anúncio e mídia", icon: "camera", tone: "pink", keys: %w[com_fotos com_video com_tour_virtual tem_placa imovel_dwv exibir_no_site administracao_locacao] }
+  ].freeze
+
   LEGACY_PROPERTY_FILTER_KEYS = {
     "exibir_site_portal" => "exibir_no_site"
   }.freeze
   PROPERTY_FILTER_ARRAY_KEYS = %w[selected_property_ids].freeze
   PROPERTY_FILTER_PARAM_KEYS = (PROPERTY_FILTER_OPTIONS.keys + PROPERTY_FILTER_ARRAY_KEYS).freeze
-  PROPERTY_SECTION_TYPES = %w[featured_properties opportunities developments rentals].freeze
+  PROPERTY_SECTION_TYPES = %w[featured_properties featured_videos opportunities developments rentals].freeze
   PUBLIC_CHARACTERISTIC_FILTERS = {
     "destaque_web" => "featured",
     "super_destaque" => "festival_flag",
@@ -101,7 +126,8 @@ class HomeSection < ApplicationRecord
     opportunities: 4,
     developments: 5,
     rentals: 6,
-    blog: 7
+    blog: 7,
+    featured_videos: 8
   }
   
   # Validations
@@ -134,10 +160,14 @@ class HomeSection < ApplicationRecord
   end
 
   def enabled_property_filters
-    PROPERTY_FILTER_OPTIONS.keys.select { |key| property_filter_enabled?(key) }
+    filters = PROPERTY_FILTER_OPTIONS.keys.select { |key| property_filter_enabled?(key) }
+    filters << "com_video" if featured_videos? && !filters.include?("com_video")
+    filters
   end
 
   def property_filter_enabled?(key)
+    return true if key.to_s == "com_video" && featured_videos?
+
     raw_filters = property_filters || {}
     values = [raw_filters[key.to_s]]
     values.concat(LEGACY_PROPERTY_FILTER_KEYS.select { |_legacy_key, canonical_key| canonical_key == key.to_s }.keys.map { |legacy_key| raw_filters[legacy_key] })
@@ -149,6 +179,15 @@ class HomeSection < ApplicationRecord
     labels = enabled_property_filters.map { |key| PROPERTY_FILTER_OPTIONS.dig(key, :label) }
     labels << "#{selected_property_ids.size} imóveis selecionados" if selected_property_ids.any?
     labels
+  end
+
+  # Tipo de conteúdo mostrado no formulário: imóveis, blog ou um tipo legado (serviços, CTA...).
+  def content_kind
+    return "blog" if blog?
+    return "cta" if cta_contact?
+    return "videos" if featured_videos?
+
+    property_content_section? ? "properties" : "custom"
   end
 
   def property_content_section?
@@ -166,6 +205,7 @@ class HomeSection < ApplicationRecord
 
   def public_section_kind_label
     return section_type_label unless property_content_section?
+    return "Vídeos" if featured_videos?
     return "Empreendimentos" if development_content?
 
     "Imóveis"
@@ -193,6 +233,8 @@ class HomeSection < ApplicationRecord
   def public_property_cta_label
     base_label = if property_filter_enabled?("locacao") || section_type == "rentals"
                    "Ver Todos os Imóveis para Alugar"
+                 elsif featured_videos?
+                   "Ver Todos os Imóveis com Vídeo"
                  else
                    "Ver Todos os Imóveis"
                  end
@@ -233,7 +275,7 @@ class HomeSection < ApplicationRecord
   private
 
   def normalize_property_filters
-    return self.property_filters = {} if blog?
+    return self.property_filters = {} if blog? || cta_contact?
     raw_filters = property_filters || {}
     normalized_filters = PROPERTY_FILTER_OPTIONS.keys.each_with_object({}) do |key, filters|
       legacy_keys = LEGACY_PROPERTY_FILTER_KEYS.select { |_legacy_key, canonical_key| canonical_key == key }.keys

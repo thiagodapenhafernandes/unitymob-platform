@@ -807,10 +807,10 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     gap: 0.75rem;
     margin-top: 0.15rem;
     padding-top: 0.65rem;
-    border-top: 1px solid #d8dee8;
+    border-top: 1px solid var(--ab-line, #d8dee8);
   }
   .habitations-catalog-data-divider span {
-    color: #667085;
+    color: var(--ab-muted, #667085);
     font-size: 0.68rem;
     font-weight: 900;
     letter-spacing: 0.05em;
@@ -818,7 +818,7 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     text-transform: uppercase;
   }
   .habitations-catalog-data-divider strong {
-    color: #172033;
+    color: var(--ab-ink, #172033);
     font-size: 0.82rem;
     font-weight: 900;
     line-height: 1;
@@ -1371,11 +1371,13 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     align-items: center;
     gap: 12px;
     min-height: 58px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     margin-bottom: .55rem;
-    border: 1px solid #d8dee8;
-    border-radius: 8px;
-    background: #fff;
+    border: 1px solid color-mix(in srgb, var(--admin-primary) 20%, var(--ab-line, #d8dee8));
+    border-radius: 12px;
+    background:
+      radial-gradient(80% 240% at 0% 0%, color-mix(in srgb, var(--admin-primary) 14%, transparent), transparent 62%),
+      linear-gradient(180deg, color-mix(in srgb, var(--admin-primary) 4%, #fff), #fff);
     box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
   }
   .habitations-workspace-heading__main {
@@ -1385,7 +1387,7 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     display: flex;
     align-items: center;
     gap: .3rem;
-    color: #64748b;
+    color: color-mix(in srgb, var(--admin-primary) 78%, #1f2937);
     font-size: .63rem;
     font-weight: 800;
     letter-spacing: .055em;
@@ -1758,8 +1760,8 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     min-height: 20px;
     padding: .12rem .48rem;
     border-radius: 999px;
-    background: #e8f0fb;
-    color: #2f5d91;
+    background: color-mix(in srgb, var(--admin-primary) 14%, #fff);
+    color: color-mix(in srgb, var(--admin-primary) 88%, #1f2937);
     font-size: .68rem;
     font-weight: 900;
     line-height: 1;

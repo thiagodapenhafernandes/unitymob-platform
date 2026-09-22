@@ -11,6 +11,7 @@ class AutomationRule < ApplicationRecord
     "proposal_accepted"  => "Quando o cliente aceita a proposta",
     "proposal_rejected"  => "Quando o cliente recusa a proposta",
     "whatsapp_received"  => "Quando o lead responde no WhatsApp",
+    "whatsapp_flow_button" => "Quando o cliente clica em um botão do fluxo de resposta",
     "whatsapp_campaign_started" => "Quando um disparo WhatsApp inicia",
     "whatsapp_campaign_completed" => "Quando um disparo WhatsApp conclui",
     "whatsapp_campaign_failed" => "Quando um disparo WhatsApp falha",
@@ -45,11 +46,17 @@ class AutomationRule < ApplicationRecord
     "notify_broker_interest_opportunity" => "Criar alerta para responsável do lead",
     "prepare_matching_properties_whatsapp" => "Preparar WhatsApp com imóveis sugeridos",
     "generate_interest_ai_summary" => "Gerar resumo inteligente",
-    "wait"                    => "Esperar (nutrição)"
+    "wait"                    => "Esperar (nutrição)",
+    "send_whatsapp_buttons"   => "Perguntar com botões",
+    "send_whatsapp_list"      => "Perguntar com lista",
+    "transfer_to_attendant"   => "Passar para atendente"
   }.freeze
 
   VERTICAL_DISTRIBUTION_ACTION_TYPES = %w[assign_agent].freeze
-  INTERVENTION_ACTION_TYPES = ACTION_TYPES.except(*VERTICAL_DISTRIBUTION_ACTION_TYPES).freeze
+  # Ações de conversa só fazem sentido em fluxos do construtor (esperam resposta); ficam fora das regras legadas.
+  CONVERSATION_ACTION_TYPES = %w[send_whatsapp_buttons send_whatsapp_list transfer_to_attendant].freeze
+  INTERVENTION_ACTION_TYPES = ACTION_TYPES.except(*VERTICAL_DISTRIBUTION_ACTION_TYPES, *CONVERSATION_ACTION_TYPES).freeze
+  WORKFLOW_ACTION_TYPES = ACTION_TYPES.except(*VERTICAL_DISTRIBUTION_ACTION_TYPES).freeze
 
   TIME_BASED_TRIGGERS = %w[lead_idle].freeze
 

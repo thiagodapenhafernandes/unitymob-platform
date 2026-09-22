@@ -34,6 +34,12 @@
       </div>
       <div class="wa-inbox-conversation__bottom">
         <span class="wa-inbox-conversation__preview"><%= conv.last_message_preview.presence || "Sem mensagem recente." %></span>
+        <% open_attendance = conv.attendances.find(&:open?) %>
+        <% if open_attendance %>
+          <span class="wa-inbox-conversation__attendance" title="Atendimento em curso">
+            <i class="bi bi-headset" aria-hidden="true"></i> <%= open_attendance.button_text %><%= " · #{open_attendance.admin_user.name}" if open_attendance.admin_user %>
+          </span>
+        <% end %>
         <% if conv.lead && lead_labels.any? %>
           <span class="wa-inbox-conversation__labels"><%= render "admin/lead_labels/chips", lead: conv.lead, labels: lead_labels %></span>
         <% end %>

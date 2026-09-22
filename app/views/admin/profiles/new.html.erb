@@ -12,12 +12,10 @@
   <% end %>
 <% end %>
 
-<header class="ax-dashboard-command ax-property-form-command">
-  <div class="ax-dashboard-command__main">
-    <span class="ax-dashboard-command__eyebrow">Administração</span>
-    <h1>Novo perfil de acesso</h1>
-    <p>Defina permissões, escopos e disponibilidade do perfil.</p>
-  </div>
-</header>
+<%= ax_workspace_heading(
+      title: "Novo perfil de acesso",
+      eyebrow: "Administração",
+      icon: "shield-plus",
+      subtitle: "Defina permissões, escopos e disponibilidade do perfil.") %>
 
 <%= render "form", profile: @profile %>

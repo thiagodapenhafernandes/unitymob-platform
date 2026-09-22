@@ -84,13 +84,26 @@ module Automation
         errors << "tem condicao de resposta sem campo" if config[:field].blank?
         errors << "tem condicao de resposta com operador invalido" unless %w[equals contains not_contains present].include?(config[:operator].to_s.presence || "equals")
       when "response_fallback"
-        errors << "tem fallback de resposta com tipo invalido" unless %w[timeout no_match].include?(config[:fallback_type].to_s.presence || "no_match")
+        errors << "tem fallback de resposta com tipo invalido" unless %w[timeout no_match exhausted].include?(config[:fallback_type].to_s.presence || "no_match")
+        errors << "tem fallback de resposta com tentativas invalidas" if config[:max_attempts].present? && !(1..5).cover?(config[:max_attempts].to_i)
       when "response_router"
         amount = config[:timeout_amount].presence || config[:amount]
         unit = config[:timeout_unit].presence || config[:unit]
         errors << "tem resposta condicional sem timeout valido" unless amount.to_i.positive?
         errors << "tem resposta condicional com unidade de timeout invalida" unless %w[minutes hours days].include?(unit.to_s)
       end
+    end
+
+    # Botões de resposta: até 3 opções de 20 caracteres. Lista: até 10 opções de 24 caracteres (limites do WhatsApp).
+    def validate_question_action(config, errors)
+      list = config[:action_type].to_s == "send_whatsapp_list"
+      options = Automation::WorkflowActionAdapter.option_lines(config[:options])
+      max_options, max_length = list ? [10, 24] : [3, 20]
+
+      errors << "tem pergunta sem texto" if config[:message].blank?
+      errors << "tem pergunta sem opcoes" if options.empty?
+      errors << "tem pergunta com mais de #{max_options} opcoes" if options.size > max_options
+      errors << "tem pergunta com opcao acima de #{max_length} caracteres" if options.any? { |option| option.length > max_length }
     end
 
     def validate_wait_config(config, errors)
@@ -183,6 +196,10 @@ module Automation
           errors << "tem acao de WhatsApp sem mensagem" if config[:message].blank?
         when "send_whatsapp_template"
           errors << "tem acao de modelo WhatsApp sem template" if config[:template].blank?
+        when "send_whatsapp_buttons", "send_whatsapp_list"
+          validate_question_action(config, errors)
+        when "transfer_to_attendant"
+          errors << "tem acao de atendente sem fila de atendimento" if config[:distribution_rule_id].blank?
         when "send_webhook"
           errors << "tem acao de webhook sem URL" if config[:url].blank?
           if config[:url].present? && config[:url] !~ URI::DEFAULT_PARSER.make_regexp(%w[http https])

@@ -1,4 +1,6 @@
 class ResilientMailDeliveryJob < ActionMailer::MailDeliveryJob
+  queue_as :mailers
+
   TRANSIENT_SMTP_ERRORS = [
     Net::OpenTimeout,
     Net::ReadTimeout,

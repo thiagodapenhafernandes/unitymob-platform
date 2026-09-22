@@ -30,7 +30,11 @@
 
 ## Componentização obrigatória do admin
 
+- Antes de criar ou alterar uma função, regra de negócio, bloco visual ou comportamento de interface, verifique se o mesmo padrão já existe no projeto e reutilize ou evolua esse ponto compartilhado.
+- Quando uma função, partial, helper, service, componente Stimulus ou bloco de layout tiver uso atual ou previsível em mais de uma tela, extraia para uma camada compartilhada na mesma implementação. Evite duplicar primeiro para "organizar depois".
 - Todo padrão visual ou comportamental com potencial de reutilização deve ser criado ou ajustado na camada compartilhada (`ax-*`, `app/views/admin/shared/ui`, `Admin::UiHelper`, componentes CSS e controllers `ax_*`) já na primeira ocorrência. Não aguarde uma segunda tela e não deixe cópia local como etapa intermediária.
+- Em qualquer UI nova ou ajuste de tela admin, revise explicitamente o ritmo visual antes de entregar: espaçamento vertical entre seções, gap entre label e controle, respiro interno de cards/painéis, distância entre grupos funcionais e alinhamento em mobile. Não use marcação manual para checkbox/switch/select quando existir helper/componente `ax-*`; prefira `ax_switch_field`, `ax_check_field`, `ax_field_grid`, `ax_field_group`, `ax_operational_panel` e equivalentes.
+- Regras de domínio compartilhadas devem ficar em model, concern, service ou helper apropriado, não espalhadas em controllers/views/Stimulus.
 - CSS ou markup específico de página só é aceitável para composição ou geometria comprovadamente exclusiva, deve estar namespaced e não pode duplicar estado, aparência ou comportamento de primitive compartilhada.
 - Se um segundo consumidor surgir, promova o padrão para a camada compartilhada na mesma mudança e remova as versões locais.
 

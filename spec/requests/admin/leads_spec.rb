@@ -123,13 +123,34 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).not_to include("data-lead-kanban-drag-handle")
     end
 
+    it "nao monta lotes de kanban quando a visualizacao e lista" do
+      create(:lead, tenant: admin.tenant, admin_user: admin, name: "Cliente Lista", phone: "11999999999", status: "Novo")
+      sql = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        sql << payload[:sql] unless payload[:name] == "SCHEMA"
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+        get admin_leads_path(view: "list")
+      end
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Cliente Lista")
+      executed_sql = sql.join("\n")
+      expect(executed_sql).not_to include(" AS kanban_rank")
+      expect(executed_sql).not_to include(" AS pwa_kanban_rank")
+    end
+
     it "nao exibe o botao de relatorio sem permissao de relatorios de leads" do
       profile = Profile.create!(
         tenant: admin.tenant,
         name: "Perfil sem relatorio #{SecureRandom.hex(4)}",
         axis: "vertical",
         position: 9_100,
-        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "lead_pool" => { "view" => true, "scope" => "all" }
+        }
       )
       user = create(:admin_user, tenant: admin.tenant, profile:, email: "sem-relatorio-#{SecureRandom.hex(6)}@salute.test")
       sign_in user
@@ -357,6 +378,20 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Lead Normal PWA")
       expect(response.body).to include("bi-star-fill")
       expect(other).to be_persisted
+    end
+
+    it "renderiza a lista desktop em lotes de 10 com infinite scroll" do
+      12.times do |i|
+        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Lista #{i}", phone: "1199999#{format('%04d', i)}", status: "Novo", created_at: i.minutes.ago)
+      end
+
+      get admin_leads_path(view: "list", lead_tab: "all")
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.css(".lead-list-workspace .ax-record-list__row").size).to eq(10)
+      expect(document.at_css('.lead-list-workspace[data-controller="lead-pwa-infinite-scroll"]')).to be_present
+      expect(document.at_css('.lead-pwa-list__loader[data-offset="10"][data-has-more="true"]')).to be_present
     end
 
     it "inclui em A Fazer o lead aceito sem acao e exclui atendimentos ja trabalhados" do
@@ -804,7 +839,10 @@ RSpec.describe "Admin::Leads", type: :request do
         name: "Corretor fila #{SecureRandom.hex(4)}",
         axis: "vertical",
         position: 8_900,
-        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "lead_pool" => { "view" => true }
+        }
       )
       broker = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Gabriela Machado")
       internal_rule = create(
@@ -840,7 +878,10 @@ RSpec.describe "Admin::Leads", type: :request do
         name: "Corretor fila #{SecureRandom.hex(4)}",
         axis: "vertical",
         position: 8_905,
-        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "lead_pool" => { "view" => true, "scope" => "all" }
+        }
       )
       first_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Tayana Agne")
       second_agent = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Fábio Luís Avallone")
@@ -868,7 +909,10 @@ RSpec.describe "Admin::Leads", type: :request do
         name: "Corretor fila #{SecureRandom.hex(4)}",
         axis: "vertical",
         position: 8_901,
-        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "lead_pool" => { "view" => true, "scope" => "all" }
+        }
       )
       current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Gabriela Machado")
       teammate = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Maria Elisabete")
@@ -925,12 +969,16 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "lista no Bolsao apenas leads sem dono que entraram por prazo expirado nas regras do usuario" do
+      broker_permissions = Profile.default_permissions_for("Corretor").deep_merge(
+        "leads" => { "scope" => "all" },
+        "lead_pool" => { "scope" => "all" }
+      )
       broker_profile = Profile.create!(
         tenant: admin.tenant,
         name: "Corretor bolsao #{SecureRandom.hex(4)}",
         axis: "vertical",
         position: 8_902,
-        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+        permissions: broker_permissions
       )
       current_user = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Gabriela Machado")
       teammate = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Renata Santos")
@@ -1690,8 +1738,26 @@ RSpec.describe "Admin::Leads", type: :request do
     end
   end
 
+  describe "GET /admin/leads/list_page" do
+    it "pagina a lista desktop em lotes de 10" do
+      12.times do |i|
+        create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Desktop #{i}", phone: "1199998#{format('%04d', i)}", status: "Novo", created_at: i.minutes.ago)
+      end
+
+      get list_page_admin_leads_path(lead_tab: "all", offset: 10), headers: { "Accept" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["loaded_count"]).to eq(2)
+      expect(json["total"]).to eq(12)
+      expect(json["has_more"]).to eq(false)
+      expect(json["next_offset"]).to eq(12)
+      expect(json["html"]).to include("ax-record-list", "Lead Desktop")
+    end
+  end
+
   describe "GET /admin/leads/pwa_leads_page" do
-    it "pagina a lista PWA em lotes de 15 por aba" do
+    it "pagina a lista PWA em lotes de 10 por aba" do
       default_status = Lead.default_status(tenant: admin.tenant)
       22.times do |i|
         lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Todo #{i}", phone: "1199999#{format('%04d', i)}", status: default_status)
@@ -1703,14 +1769,14 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("lead-pwa-list__loader")
       expect(response.body).to include('data-has-more="true"')
 
-      get pwa_leads_page_admin_leads_path(mobile_tab: "todo", offset: 15), headers: { "Accept" => "application/json" }
+      get pwa_leads_page_admin_leads_path(mobile_tab: "todo", offset: 10), headers: { "Accept" => "application/json" }
 
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
-      expect(json["loaded_count"]).to eq(7)
+      expect(json["loaded_count"]).to eq(10)
       expect(json["total"]).to eq(22)
-      expect(json["has_more"]).to eq(false)
-      expect(json["next_offset"]).to eq(22)
+      expect(json["has_more"]).to eq(true)
+      expect(json["next_offset"]).to eq(20)
       expect(json["html"]).to include("lead-pwa-card")
     end
   end

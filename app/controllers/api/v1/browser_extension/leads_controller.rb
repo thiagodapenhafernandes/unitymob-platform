@@ -70,14 +70,13 @@ module Api
             .pluck(:codigo, :nome_empreendimento).to_h
           appointments = proposals = []
           tasks = if grant.admin_user.can?(:view, :comercial)
-            ids = grant.admin_user.owns_all?(:comercial) ? nil :
-              (grant.admin_user.can_view_team?(:comercial) ? grant.admin_user.team_scope_ids : [grant.admin_user_id])
+            user_id = grant.admin_user.id
             appointments = grant.tenant.appointments.where(lead_id: lead.id).upcoming
             proposals = lead.proposals.ordered
-            appointments = appointments.where(admin_user_id: ids) if ids
-            proposals = proposals.where(admin_user_id: ids) if ids
+            appointments = appointments.where(admin_user_id: user_id)
+            proposals = proposals.where(admin_user_id: user_id)
             scope = grant.tenant.tasks.where(lead_id: lead.id).pendentes
-            scope = scope.where(admin_user_id: ids) if ids
+            scope = scope.where(admin_user_id: user_id)
             scope.ordered
           else
             []

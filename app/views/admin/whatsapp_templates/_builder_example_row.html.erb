@@ -1,0 +1,17 @@
+<%# Linha de exemplo de variável. `index` é o número da linha, ou "__INDEX__" / "__NUMBER__" quando renderizada dentro do <template> que o JS clona. %>
+<%
+  index = local_assigns.fetch(:index)
+  number = local_assigns.fetch(:number, index.to_i + 1)
+  input_id = "whatsapp_template_example_values_#{index}"
+%>
+<div class="ax-field whatsapp-template-example-row" data-whatsapp-template-form-target="exampleRow">
+  <%= label_tag input_id, "Exemplo #{number}", class: "ax-field-label" %>
+  <div class="whatsapp-template-example-row__input">
+    <%= text_field_tag "whatsapp_template[example_values][]", local_assigns[:value], id: input_id, class: "ax-control",
+                       placeholder: (index.to_s == "0" ? "Cliente exemplo" : ""), autocomplete: "off",
+                       data: { whatsapp_template_form_target: "exampleInput" } %>
+    <button type="button" class="ax-btn ax-btn--sm whatsapp-template-example-row__remove" aria-label="Remover exemplo" data-action="whatsapp-template-form#removeExample">
+      <i class="bi bi-trash"></i>
+    </button>
+  </div>
+</div>

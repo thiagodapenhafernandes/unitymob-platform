@@ -164,7 +164,10 @@
           sources: @source_options.to_h { |label| [label, label] },
           brokers: @broker_options.to_h { |label, value| [value, label] },
           templates: @template_options.to_h { |label, value| [value, label] },
-          distribution_rules: @distribution_rule_options.to_h { |label, value| [value, label] }
+          distribution_rules: @distribution_rule_options.to_h { |label, value| [value, label] },
+          workflow_id: @workflow.id,
+          whatsapp_senders: @whatsapp_senders,
+          whatsapp_flow_templates: @whatsapp_flow_templates
         }.to_json) %>
       </script>
     </aside>

@@ -33,7 +33,7 @@ module Automation
           "event" => event.to_s,
           "automation_event_id" => automation_event&.id,
           "automation_event_source" => automation_event&.source
-        }.compact.merge(initial_response_context(event, automation_event))
+        }.compact.merge(initial_response_context(event, automation_event)).merge(trigger_message_context(event, automation_event))
       )
       execution.save!
       Automation::RunWorkflowJob.perform_later(execution.id)
@@ -55,7 +55,7 @@ module Automation
 
     def self.initial_response_context(event, automation_event)
       return {} unless automation_event
-      return {} unless %w[whatsapp_received whatsapp_campaign_message_replied].include?(event.to_s)
+      return {} unless %w[whatsapp_received whatsapp_campaign_message_replied whatsapp_flow_button].include?(event.to_s)
 
       payload = automation_event.payload_hash
       body = payload[:message_body].presence ||
@@ -71,6 +71,14 @@ module Automation
           "received_at" => Time.current.iso8601
         }
       }
+    end
+
+    # A mensagem que iniciou a conversa (clique no botão) não pode contar como resposta à primeira pergunta.
+    def self.trigger_message_context(event, automation_event)
+      return {} unless event.to_s == "whatsapp_flow_button" && automation_event
+
+      message_id = automation_event.payload_hash[:inbound_whatsapp_message_id]
+      message_id.present? ? { "trigger_whatsapp_message_id" => message_id } : {}
     end
 
     def initialize(execution)
@@ -101,6 +109,9 @@ module Automation
         next if result == :completed
 
         queue.concat(next_nodes(node))
+        # "Não entendi" com repetição: depois do aviso, a pergunta é feita de novo.
+        queue << @pending_retry if @pending_retry
+        @pending_retry = nil
       end
 
       if count >= MAX_STEPS
@@ -137,6 +148,7 @@ module Automation
         end
       when "action"
         action = Automation::WorkflowActionAdapter.to_action(node)
+        action = action.merge("answers" => Array(@execution.context.to_h["answers"])) if action["type"] == "transfer_to_attendant"
         begin
           @executor.execute(action)
         rescue => e
@@ -171,6 +183,7 @@ module Automation
         unless matched
           return :completed
         end
+        @pending_retry = retry_question_node(node)
       when "response_router"
         if (route_match = response_route_match_for(node))
           actions = Array(route_match["actions"])
@@ -374,13 +387,29 @@ module Automation
     end
 
     def response_fallback_matched?(node)
-      fallback_type = (node[:config] || {})[:fallback_type].to_s.presence || "no_match"
+      fallback_type = (node[:config] || {})[:fallback_type].to_s.presence || "no_match" # também: "exhausted" (depois das tentativas)
       response = whatsapp_response_context
 
       return response.blank? if fallback_type == "timeout"
       return false if response.blank?
 
       !sibling_response_condition_matched?(node)
+    end
+
+    # Repetir a pergunta: só quando o "não entendi" está configurado para isso e ainda há tentativas
+    # (a contagem é feita pelo despachante no momento em que a resposta chega).
+    def retry_question_node(fallback)
+      config = (fallback[:config] || {}).with_indifferent_access
+      return unless config[:fallback_type].to_s.presence.in?([nil, "no_match"]) && ActiveModel::Type::Boolean.new.cast(config[:retry_question])
+
+      await = node_by_id(edges.find { |edge| edge[:to].to_s == fallback[:id].to_s }&.dig(:from))
+      return unless await && await[:type].to_s == "await_whatsapp_response"
+
+      attempts = @execution.context.to_h.dig("no_match_attempts", await[:id].to_s).to_i
+      return if attempts > (config[:max_attempts].presence || 2).to_i.clamp(1, 5)
+
+      question = node_by_id(edges.find { |edge| edge[:to].to_s == await[:id].to_s }&.dig(:from))
+      question if question && question[:type].to_s == "action"
     end
 
     def sibling_response_condition_matched?(fallback_node)

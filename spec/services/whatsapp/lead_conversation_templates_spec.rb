@@ -42,7 +42,7 @@ RSpec.describe Whatsapp::LeadConversationTemplates do
     it "usa dados da agenda quando o template é de compromisso" do
       tenant = Tenant.create!(name: "Agenda Imóveis", slug: "agenda-#{SecureRandom.hex(3)}")
       admin = create(:admin_user, tenant: tenant, name: "Karla")
-      lead = create(:lead, tenant: tenant, name: "Maria")
+      lead = create(:lead, tenant: tenant, name: "Maria", admin_user: admin)
       conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990101")
       starts_at = 2.days.from_now.change(hour: 15, min: 30, sec: 0)
       Appointment.create!(
@@ -69,7 +69,7 @@ RSpec.describe Whatsapp::LeadConversationTemplates do
     it "usa dados da tarefa quando o template é de tarefa" do
       tenant = Tenant.create!(name: "Tarefas Imóveis", slug: "tarefas-#{SecureRandom.hex(3)}")
       admin = create(:admin_user, tenant: tenant, name: "Rafael")
-      lead = create(:lead, tenant: tenant, name: "João")
+      lead = create(:lead, tenant: tenant, name: "João", admin_user: admin)
       conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990102")
       create(:task, tenant: tenant, lead: lead, admin_user: admin, title: "retornar com proposta")
 

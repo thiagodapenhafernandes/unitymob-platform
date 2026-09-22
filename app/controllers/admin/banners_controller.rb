@@ -1,6 +1,7 @@
 class Admin::BannersController < Admin::BaseController
   requires_permission :manage, :site_publico
   before_action :set_banner, only: [:show, :edit, :update, :destroy]
+  helper_method :position_occupancy
   
   def index
     @banners = current_tenant.banners.ordered.page(params[:page]).per_page(20)
@@ -40,6 +41,14 @@ class Admin::BannersController < Admin::BaseController
   end
   
   private
+
+  # Só um banner por posição aparece no site (o ativo de menor ordem). O formulário mostra quem ocupa cada posição
+  # para a pessoa saber se o banner novo vai aparecer ou ficar atrás de outro.
+  def position_occupancy
+    @position_occupancy ||= Banner::POSITIONS.keys.index_with do |position|
+      current_tenant.banners.active.by_position(position).where.not(id: @banner&.id).map { |banner| { title: banner.title, order: banner.display_order.to_i } }
+    end
+  end
   
   def set_banner
     @banner = current_tenant.banners.find(params[:id])

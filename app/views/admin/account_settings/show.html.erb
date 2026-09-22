@@ -1,8 +1,5 @@
 <% content_for :title, "Configurações da Conta" %>
 
-<%# Ícone no cabeçalho de cada card (título aceita HTML no ax_operational_panel). %>
-<% panel_title = ->(icon, text) { safe_join([tag.i(class: "bi #{icon}"), text], " ") } %>
-
 <div class="layout-settings-workspace">
   <%= ax_workspace_heading(
         eyebrow: "Conta · Governança",
@@ -11,152 +8,118 @@
         subtitle: "Tudo que é da conta em um lugar: marca, equipe e permissões, notificações, segurança, auditorias e compliance."
       ) %>
 
-  <%# ---- Identidade da conta (único bloco editável — destacado no topo) ---- %>
-  <%= ax_operational_panel(eyebrow: "Empresa", title: panel_title.call("bi-building", "Identidade da conta"), class_name: "tw-mb-4") do %>
-    <div class="ax-panel-body">
-      <div class="tw-grid tw-gap-4 md:tw-grid-cols-2">
-        <div>
-          <span class="ax-label">Nome de exibição</span>
-          <p class="tw-mt-1 tw-mb-1 tw-text-base tw-font-semibold tw-text-ink">
-            <%= LayoutSetting.instance.site_name.presence || "Não definido" %>
-          </p>
-          <p class="ax-field__hint tw-mt-0">
+  <%# ---- Identidade da conta (único bloco editável) ---- %>
+  <%= ax_studio_group(title: "Identidade da conta", subtitle: "Como a conta se chama para clientes e para a equipe.", icon: "building") do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-6">
+        <div class="ax-field">
+          <span class="ax-field-label">Nome de exibição</span>
+          <p class="ax-studio-value"><%= LayoutSetting.instance.site_name.presence || "Não definido" %></p>
+          <p class="ax-field__hint">
             Aparece no site, nos cartões de apresentação e no <code>{empresa}</code>.
-            <% if can?(:manage, :marketing) %>
-              Editável em <%= link_to "Identidade e Marca", edit_admin_layout_setting_path, class: "tw-text-primary" %>.
+            <% if can?(:manage, :site_publico) %>
+              Editável em <%= link_to "Site público → Identidade", edit_admin_public_identity_path, class: "ax-link" %>.
             <% end %>
           </p>
         </div>
-
-        <% if can?(:manage, :conta) %>
-          <div>
-            <%= form_with url: admin_account_settings_path, method: :patch, class: "tw-flex tw-items-end tw-gap-2 tw-flex-wrap" do %>
-              <div class="tw-flex-1 tw-min-w-0">
-                <label class="ax-label" for="tenant_name">Nome interno da conta</label>
-                <%= text_field_tag "tenant[name]", current_tenant.name, id: "tenant_name", class: "ax-input tw-w-full", maxlength: 80, required: true %>
-              </div>
-              <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Salvar</button>
-            <% end %>
-            <p class="ax-field__hint">Uso administrativo (relatórios e painel do sistema). Não aparece para clientes.</p>
-          </div>
-        <% end %>
       </div>
-    </div>
+
+      <% if can?(:manage, :conta) %>
+        <div class="ax-span-6">
+          <%= form_with url: admin_account_settings_path, method: :patch do %>
+            <%= ax_standalone_field(
+                  name: "tenant[name]",
+                  id: "tenant_name",
+                  label: "Nome interno da conta",
+                  value: current_tenant.name,
+                  maxlength: 80,
+                  required: true,
+                  hint: "Uso administrativo (relatórios e painel do sistema). Não aparece para clientes.",
+                  action: button_tag("Salvar", type: "submit", class: "ax-btn ax-btn--primary")
+                ) %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
   <% end %>
 
-  <%# ---- Cards de navegação ---- %>
-  <div class="tw-grid tw-gap-4 lg:tw-grid-cols-2 xl:tw-grid-cols-3">
-    <% if can?(:manage, :marketing) %>
-      <%= ax_operational_panel(eyebrow: "Marca", title: panel_title.call("bi-palette", "Identidade e Marca")) do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Logotipo, cores e apresentação do sistema e do site.</p>
-          <%= link_to edit_admin_layout_setting_path, class: "ax-btn ax-btn--sm" do %>
-            <i class="bi bi-palette ax-ico"></i><span>Abrir Identidade e Marca</span>
-          <% end %>
+  <%# ---- Atalhos por assunto ---- %>
+  <div class="ax-hub-grid">
+    <% if can?(:manage, :conta) %>
+      <%= ax_studio_group(title: "Aparência da plataforma", subtitle: "Nome, cores e menu lateral do ambiente da equipe.", icon: "palette") do %>
+        <div class="ax-hub-links">
+          <%= ax_hub_link("Abrir Aparência da plataforma", edit_admin_layout_setting_path, icon: "palette") %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <% if can?(:manage, :site_publico) %>
+      <%= ax_studio_group(title: "Identidade do site", subtitle: "Marca, logo, favicon, paleta e modelo visual do site público.", icon: "stars") do %>
+        <div class="ax-hub-links">
+          <%= ax_hub_link("Abrir Identidade do site", edit_admin_public_identity_path, icon: "stars") %>
         </div>
       <% end %>
     <% end %>
 
     <% if can?(:view, :corretores) || can?(:manage, :conta) %>
-      <%= ax_operational_panel(eyebrow: "Equipe", title: panel_title.call("bi-people", "Equipe & Permissões")) do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Usuários da conta, perfis de acesso e convites externos.</p>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <% if can?(:view, :corretores) %>
-              <%= link_to admin_admin_users_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-people ax-ico"></i><span>Usuários</span>
-              <% end %>
-            <% end %>
-            <% if can?(:manage, :conta) %>
-              <%= link_to admin_profiles_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-shield-lock ax-ico"></i><span>Perfis de acesso</span>
-              <% end %>
-            <% end %>
-            <% if can?(:manage, :corretores) %>
-              <%= link_to admin_account_memberships_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-person-plus ax-ico"></i><span>Acessos externos</span>
-              <% end %>
-            <% end %>
-          </div>
+      <%= ax_studio_group(title: "Equipe e permissões", subtitle: "Usuários da conta, perfis de acesso e convites externos.", icon: "people") do %>
+        <div class="ax-hub-links">
+          <% if can?(:view, :corretores) %>
+            <%= ax_hub_link("Usuários", admin_admin_users_path, icon: "people") %>
+          <% end %>
+          <% if can?(:manage, :conta) %>
+            <%= ax_hub_link("Perfis de acesso", admin_profiles_path, icon: "shield-lock") %>
+          <% end %>
+          <% if can?(:manage, :corretores) %>
+            <%= ax_hub_link("Acessos externos", admin_account_memberships_path, icon: "person-plus") %>
+          <% end %>
         </div>
       <% end %>
     <% end %>
 
     <% if can?(:manage, :integracoes) %>
-      <%= ax_operational_panel(eyebrow: "Canais", title: panel_title.call("bi-bell", "Notificações")) do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Servidor de e-mail (SMTP) desta conta para envios de leads e avisos.</p>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <%= link_to edit_admin_email_setting_path, class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-envelope-at ax-ico"></i><span>Meu SMTP</span>
-            <% end %>
-          </div>
-          <p class="ax-field__hint">Push e transportes globais de notificação são configurados pelo Admin do Sistema.</p>
+      <%= ax_studio_group(title: "Notificações", subtitle: "Servidor de e-mail (SMTP) desta conta para envios de leads e avisos.", icon: "bell") do %>
+        <div class="ax-hub-links">
+          <%= ax_hub_link("Meu SMTP", edit_admin_email_setting_path, icon: "envelope-at") %>
         </div>
+        <p class="ax-field__hint">Push e transportes globais de notificação são configurados pelo Admin do Sistema.</p>
       <% end %>
     <% end %>
 
     <% if can?(:manage, :access_security) %>
-      <%= ax_operational_panel(eyebrow: "Segurança", title: panel_title.call("bi-fingerprint", "Segurança de Acesso")) do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Políticas de sessão, IPs, aparelhos confiáveis e 2FA da equipe.</p>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <%= link_to admin_access_security_path, class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-fingerprint ax-ico"></i><span>Abrir Segurança de Acesso</span>
-            <% end %>
-            <%= link_to admin_two_factor_settings_path, class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-shield-lock ax-ico"></i><span>Verificação em duas etapas</span>
-            <% end %>
-          </div>
+      <%= ax_studio_group(title: "Segurança de acesso", subtitle: "Políticas de sessão, IPs, aparelhos confiáveis e 2FA da equipe.", icon: "fingerprint") do %>
+        <div class="ax-hub-links">
+          <%= ax_hub_link("Abrir Segurança de Acesso", admin_access_security_path, icon: "fingerprint") %>
+          <%= ax_hub_link("Verificação em duas etapas", admin_two_factor_settings_path, icon: "shield-lock") %>
         </div>
       <% end %>
     <% end %>
 
     <% if can?(:manage, :conta) || can?(:view, :field_audit) || can?(:view, :access_audit) || can?(:view, :data_export_audit) %>
-      <%= ax_operational_panel(eyebrow: "Compliance", title: panel_title.call("bi-clipboard-check", "Auditorias")) do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Trilhas de uso operacional, acesso, campo, apresentações e exportações de dados.</p>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <% if can?(:manage, :conta) %>
-              <%= link_to admin_user_activity_sessions_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-activity ax-ico"></i><span>Operacional</span>
-              <% end %>
-            <% end %>
-            <% if can?(:view, :field_audit) %>
-              <%= link_to admin_field_audit_logs_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-shield-lock-fill ax-ico"></i><span>Campo</span>
-              <% end %>
-            <% end %>
-            <% if can?(:view, :access_audit) %>
-              <%= link_to admin_access_audit_logs_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-person-lock ax-ico"></i><span>Acessos</span>
-              <% end %>
-              <%= link_to admin_presentation_audit_logs_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-person-badge ax-ico"></i><span>Apresentações WhatsApp</span>
-              <% end %>
-            <% end %>
-            <% if can?(:view, :data_export_audit) %>
-              <%= link_to admin_data_export_audit_logs_path, class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-file-earmark-arrow-down ax-ico"></i><span>Exportações</span>
-              <% end %>
-            <% end %>
-          </div>
+      <%= ax_studio_group(title: "Auditorias", subtitle: "Trilhas de uso operacional, acesso, campo, apresentações e exportações de dados.", icon: "clipboard-check") do %>
+        <div class="ax-hub-links">
+          <% if can?(:manage, :conta) %>
+            <%= ax_hub_link("Operacional", admin_user_activity_sessions_path, icon: "activity") %>
+          <% end %>
+          <% if can?(:view, :field_audit) %>
+            <%= ax_hub_link("Campo", admin_field_audit_logs_path, icon: "shield-lock-fill") %>
+          <% end %>
+          <% if can?(:view, :access_audit) %>
+            <%= ax_hub_link("Acessos", admin_access_audit_logs_path, icon: "person-lock") %>
+            <%= ax_hub_link("Apresentações WhatsApp", admin_presentation_audit_logs_path, icon: "person-badge") %>
+          <% end %>
+          <% if can?(:view, :data_export_audit) %>
+            <%= ax_hub_link("Exportações", admin_data_export_audit_logs_path, icon: "file-earmark-arrow-down") %>
+          <% end %>
         </div>
       <% end %>
     <% end %>
 
     <% if can?(:view, :whatsapp_campaigns) %>
-      <%= ax_operational_panel(eyebrow: "WhatsApp", title: panel_title.call("bi-whatsapp", "Compliance WhatsApp")) do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Contatos importados por CSV e descadastros (opt-out) dos disparos.</p>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <%= link_to admin_whatsapp_campaign_recipients_path, class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-table ax-ico"></i><span>Importados CSV</span>
-            <% end %>
-            <%= link_to admin_whatsapp_campaign_unsubscribes_path, class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-person-dash ax-ico"></i><span>Descadastros</span>
-            <% end %>
-          </div>
+      <%= ax_studio_group(title: "Compliance WhatsApp", subtitle: "Contatos importados por CSV e descadastros (opt-out) dos disparos.", icon: "whatsapp") do %>
+        <div class="ax-hub-links">
+          <%= ax_hub_link("Importados CSV", admin_whatsapp_campaign_recipients_path, icon: "table") %>
+          <%= ax_hub_link("Descadastros", admin_whatsapp_campaign_unsubscribes_path, icon: "person-dash") %>
         </div>
       <% end %>
     <% end %>

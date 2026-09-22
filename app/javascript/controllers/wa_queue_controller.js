@@ -12,12 +12,38 @@ export default class extends Controller {
       this.observer.observe(this.listTarget, { childList: true })
     }
     window.addEventListener("keydown", this.handleKeydown)
+    this.onAttendanceChanged = (event) => this.applyAttendanceChange(event.detail)
+    window.addEventListener("wa:attendance-changed", this.onAttendanceChanged)
     this.apply()
+  }
+
+  // Atendimento mudou (novo, transferido, encerrado): atualiza/remove o item da fila sem recarregar.
+  applyAttendanceChange({ conversation_id, visible, html }) {
+    if (!this.hasListTarget) return
+
+    const current = this.listTarget.querySelector(`.wa-inbox-conversation[data-conversation-id="${conversation_id}"]`)
+    if (!visible) return current?.remove()
+    if (!html) return
+
+    const wrapper = document.createElement("div")
+    wrapper.innerHTML = html.trim()
+    const next = wrapper.firstElementChild
+    if (!next) return
+
+    if (current) {
+      if (current.classList.contains("is-active")) next.classList.add("is-active")
+      const labels = current.querySelector(".wa-inbox-conversation__labels")
+      if (labels && !next.querySelector(".wa-inbox-conversation__labels")) next.querySelector(".wa-inbox-conversation__bottom")?.append(labels)
+      current.replaceWith(next)
+    } else {
+      this.listTarget.prepend(next)
+    }
   }
 
   disconnect() {
     if (this.observer) this.observer.disconnect()
     window.removeEventListener("keydown", this.handleKeydown)
+    window.removeEventListener("wa:attendance-changed", this.onAttendanceChanged)
   }
 
   search() {

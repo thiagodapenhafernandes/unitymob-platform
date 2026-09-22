@@ -7,6 +7,11 @@ module Leads
 
     def perform(url, payload)
       return if url.blank?
+      corretor_id = payload.to_h.dig("corretor", "id") || payload.to_h.dig(:corretor, :id)
+      if corretor_id.present?
+        corretor = AdminUser.find_by(id: corretor_id)
+        return unless corretor&.active? && corretor.notification_delivery_allowed?
+      end
 
       WebhookService.send_form_data("lead_distributed", payload, url: url)
     end

@@ -1,15 +1,17 @@
 class Admin::AutomationWorkflowsController < Admin::BaseController
   requires_permission :manage, :automacoes
   before_action :set_workflow, only: [:show, :builder, :destroy, :save_draft, :publish, :simulate]
-  before_action :set_catalogs, only: [:new, :builder]
+  before_action :set_catalogs, only: [:builder]
 
+  # A listagem de fluxos vive no hub de automação; esta rota só existia como alvo de "Sair para listagem".
   def index
-    @workflows = current_tenant.automation_workflows.includes(:active_version).recent
-    @page_title = "Automação de acompanhamento"
+    redirect_to admin_automation_rules_path
   end
 
   def new
-    @workflow = current_tenant.automation_workflows.new(name: "Nova intervenção automatizada")
+    # Só o nome. Gatilho, número e template são escolhidos no builder; o template só chega aqui vindo de um fluxo de resposta.
+    @selected_template = template_choices.find { |template| template.id == params[:whatsapp_template_id].to_i }
+    @workflow = current_tenant.automation_workflows.new(name: (@selected_template ? "Conversa: #{@selected_template.name}" : "Nova intervenção automatizada"))
     @page_title = "Nova intervenção automatizada"
   end
 
@@ -17,16 +19,17 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     @workflow = current_tenant.automation_workflows.new(workflow_params)
     @workflow.created_by = current_admin_user
 
+    template = template_choices.find { |item| item.id == params[:whatsapp_template_id].to_i }
     if @workflow.save
       @workflow.versions.create!(
         version_number: 1,
         status: "draft",
-        definition: Automation::WorkflowDefinition.default_definition,
+        definition: template ? Automation::TemplateScaffold.call(template) : Automation::WorkflowDefinition.default_definition,
         created_by: current_admin_user
       )
       redirect_to builder_admin_automation_workflow_path(@workflow), notice: "Intervenção criada como rascunho."
     else
-      set_catalogs
+      @selected_template = template
       @page_title = "Nova intervenção automatizada"
       render :new, status: :unprocessable_entity
     end
@@ -65,7 +68,10 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     version.assign_attributes(definition: definition)
 
     if @workflow.update(workflow_params) && version.save
-      @workflow.publish!(version: version, admin_user: current_admin_user)
+      ActiveRecord::Base.transaction do
+        @workflow.publish!(version: version, admin_user: current_admin_user)
+        Automation::ReceptiveBinding.call(@workflow, entry_config(definition))
+      end
       redirect_to builder_admin_automation_workflow_path(@workflow), notice: "Intervenção publicada e ativada."
     else
       set_catalogs
@@ -75,12 +81,12 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
       flash.now[:alert] = "A intervenção ainda não pode ser publicada."
       render :builder, status: :unprocessable_entity
     end
-  rescue ActiveRecord::RecordInvalid
+  rescue ActiveRecord::RecordInvalid, Automation::ReceptiveBinding::Error => e
     set_catalogs
     set_monitoring
     @version = version
     @page_title = @workflow.name.presence || "Automação de acompanhamento"
-    flash.now[:alert] = "A intervenção ainda não pode ser publicada."
+    flash.now[:alert] = e.is_a?(Automation::ReceptiveBinding::Error) ? e.message : "A intervenção ainda não pode ser publicada."
     render :builder, status: :unprocessable_entity
   end
 
@@ -110,19 +116,46 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
 
   private
 
+  # Templates aprovados com botão de resposta rápida: dão o ponto de partida da conversa.
+  def template_choices
+    current_tenant.whatsapp_templates.approved.ordered.select { |template| template.interactive_buttons.any? { |button| button["actionable_reply"] } }
+  end
+
+  def entry_config(definition)
+    entry = Array(definition.with_indifferent_access[:nodes]).find { |node| node[:type].to_s == "entry" }
+    entry ? entry[:config].to_h : {}
+  end
+
   def set_workflow
     @workflow = current_tenant.automation_workflows.find(params[:id])
   end
 
   def set_catalogs
     @trigger_options = AutomationRule::TRIGGERS
-    @action_options = AutomationRule::INTERVENTION_ACTION_TYPES
+    @action_options = AutomationRule::WORKFLOW_ACTION_TYPES
     @status_options = Lead.status_options
     @automation_stage_options = Automation::StagePolicy.allowed_transition_stages
     @source_options = Lead.origin_options
     @broker_options = current_tenant.admin_users.active.order(:name).pluck(:name, :id)
     @template_options = current_tenant.whatsapp_templates.approved.ordered.pluck(:name, :name)
     @distribution_rule_options = current_tenant.distribution_rules.active.order(:name).pluck(:name, :id)
+    set_whatsapp_start_catalog
+  end
+
+  # Início "clique em botão do WhatsApp": número -> templates daquele número (mesmo WABA) -> caminho por botão.
+  def set_whatsapp_start_catalog
+    @whatsapp_senders = current_tenant.whatsapp_sender_numbers.active.includes(:receptive_response_flow).ordered.map do |sender|
+      { id: sender.id, label: sender.label, phone: sender.display_phone_number, waba_id: sender.waba_id,
+        receptive_flow: sender.receptive_response_flow&.then { |flow| { id: flow.id, name: flow.name, workflow_id: flow.automation_workflow_id } } }
+    end
+    existing_flows = current_tenant.whatsapp_response_flows.index_by(&:whatsapp_template_id)
+    @whatsapp_flow_templates = template_choices.map do |template|
+      flow = existing_flows[template.id]
+      { id: template.id, name: template.name, waba_id: template.waba_id,
+        existing_flow: flow && { id: flow.id, name: flow.name, workflow_id: flow.automation_workflow_id },
+        receptive_ok: %w[response_flow attendance].include?(template.usage_context.to_s),
+        scaffold: Automation::TemplateScaffold.call(template) }
+    end
   end
 
   def set_monitoring

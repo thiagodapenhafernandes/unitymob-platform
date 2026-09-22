@@ -48,7 +48,7 @@ module Whatsapp
         recipient = conversation.cloud_recipient # telefone ou BSUID
         return update_message_status!(message, status: "failed", error_message: "Conversa sem telefone ou BSUID") if recipient.blank?
 
-        client = Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(conversation.tenant))
+        client = Whatsapp::CloudClient.new(conversation.reply_credentials)
 
         result =
           if message.msg_type == "template" && message.template_name.present?
@@ -57,6 +57,11 @@ module Whatsapp
               name: message.template_name,
               components: message.template_components
             )
+          elsif message.msg_type == "interactive_list"
+            list = message.template_components.to_h
+            client.send_interactive_list(to: recipient, body: message.body, button: list["button"], rows: list["rows"])
+          elsif message.msg_type == "interactive"
+            client.send_interactive_buttons(to: recipient, body: message.body, buttons: message.template_components)
           elsif message.media?
             send_media_message(client, recipient, message)
           else

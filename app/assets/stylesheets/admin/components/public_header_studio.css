@@ -1,0 +1,69 @@
+/*
+ * Topo e menu (/admin/public_header/edit): editor de linhas do menu e prévia do cabeçalho.
+ * Reaproveita o estúdio genérico; aqui só o que é específico do menu.
+ */
+.hm-editor { display: grid; gap: 10px; }
+.hm-rows { display: grid; gap: 6px; }
+.hm-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--ab-line-soft);
+  border-radius: 10px;
+  background: var(--ab-panel);
+}
+.hm-row--custom { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto; background: var(--ab-panel-soft); }
+.hm-row__move { display: inline-flex; flex-direction: column; }
+.hm-row__move .ax-btn { min-height: 18px; height: 18px; padding: 0 6px; }
+.hm-row__label { display: grid; gap: 3px; min-width: 0; }
+.hm-row__label small { display: flex; align-items: center; gap: 4px; color: var(--ab-muted); font-size: 11px; }
+.hm-row__flags { display: flex; align-items: center; gap: 14px; }
+.hm-row__switch { white-space: nowrap; }
+.hm-editor__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.hm-editor__foot small { color: var(--ab-muted); font-size: 11.5px; }
+
+.hm-preview { display: grid; gap: 10px; }
+.hm-web { overflow: hidden; border: 1px solid var(--ab-line); border-radius: 10px; background: #fff; color: #1f2733; font-size: 9px; }
+.hm-web__bar { display: grid; gap: 6px; padding: 9px 10px; box-shadow: 0 1px 4px rgb(0 0 0 / .1); }
+.hm-web__row { display: flex; align-items: center; gap: 8px; }
+.hm-web__row .hm-web__cta { margin-left: auto; }
+.hm-web__brand { font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #022b3a; }
+.hm-web__phone { display: inline-flex; align-items: center; gap: 3px; color: #374151; font-weight: 700; white-space: nowrap; }
+.hm-web__phone[hidden] { display: none; }
+.hm-web__links { display: flex; flex-wrap: wrap; gap: 2px 10px; min-width: 0; padding-top: 6px; border-top: 1px solid #eef1f5; }
+.hm-web__links span { color: var(--hps-h-menu, #374151); font-weight: 700; white-space: nowrap; transition: color .2s; }
+.hm-web__links span:last-child { color: var(--hps-h-hover, var(--hps-h-menu, #374151)); text-decoration: underline; text-underline-offset: 2px; }
+.hm-web__cta { flex: none; padding: 4px 9px; border-radius: 99px; background: var(--hps-h-cta, #022b3a); color: #fff; font-weight: 800; white-space: nowrap; transition: background-color .2s; }
+.hm-web__toggle { color: var(--hps-h-menu, #022b3a); font-size: 15px; }
+.hm-web__panel { display: grid; gap: 4px; padding: 8px 10px; border-top: 1px solid #e3e7ee; background: #f7f9fc; }
+.hm-web__panel small { color: #64748b; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.hm-web__panel ul { display: flex; flex-wrap: wrap; gap: 3px 10px; margin: 0; padding: 0; list-style: none; }
+.hm-web__panel li { color: #374151; }
+.hm-web__hero { display: grid; gap: 5px; padding: 18px 12px; background: linear-gradient(135deg, #022b3a, #053c5e); }
+.hm-web__hero span { height: 6px; border-radius: 3px; background: rgb(255 255 255 / .75); }
+.hm-web__hero span + span { width: 55%; opacity: .5; }
+
+@media (max-width: 760px) {
+  .hm-row, .hm-row--custom { grid-template-columns: auto minmax(0, 1fr); }
+  .hm-row__flags, .hm-row__url { grid-column: 1 / -1; }
+  .hm-row__remove { grid-column: 2; justify-self: end; }
+}
+
+/* ---- Contato (/admin/contact_setting/edit): destinos por negociação e resumo ---- */
+.ctt-negotiations { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; align-items: start; }
+.ctt-variables { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; color: var(--ab-muted); font-size: 12px; }
+.ctt-variables > code { padding: 2px 8px; border: 1px solid var(--ab-line-soft); border-radius: 99px; background: var(--ab-panel-soft); color: var(--ab-ink); font-size: 11.5px; }
+.ctt-variables small { flex-basis: 100%; font-size: 11.5px; }
+.ctt-variables small code { padding: 0; background: transparent; color: var(--ab-ink); font-size: inherit; }
+.ctt-summary { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--ab-line-soft); border-radius: 12px; background: var(--ab-panel); }
+.ctt-summary h3 { margin: 0; color: var(--ab-ink); font-size: 13px; font-weight: 800; }
+.ctt-summary dl { display: grid; gap: 8px; margin: 0; }
+.ctt-summary dl > div { display: grid; gap: 3px; padding-bottom: 8px; border-bottom: 1px solid var(--ab-line-soft); }
+.ctt-summary dl > div:last-child { padding-bottom: 0; border-bottom: 0; }
+.ctt-summary dt { display: grid; gap: 1px; }
+.ctt-summary dt span { color: var(--ab-muted); font-size: 11.5px; }
+.ctt-summary dd { margin: 0; }
+.ctt-summary dd code { color: var(--ab-ink); font-size: 12px; }
+.ctt-summary p { margin: 0; color: var(--ab-muted); font-size: 11.5px; line-height: 1.5; }

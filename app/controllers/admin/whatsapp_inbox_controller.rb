@@ -7,9 +7,9 @@ class Admin::WhatsappInboxController < Admin::BaseController
   # Fila é filtrada/buscada client-side (wa-queue opera sobre o DOM): reduzir o
   # limite esconde conversas da busca — por isso configurável, default 200.
   DEFAULT_QUEUE_LIMIT = 200
-  requires_permission :manage, :whatsapp_inbox, only: [:send_message, *MESSAGE_TOOL_ACTIONS]
+  requires_permission :manage, :whatsapp_inbox, only: [:send_message, :finish_attendance, :transfer_attendance, :add_note, *MESSAGE_TOOL_ACTIONS]
   requires_permission :manage, :integracoes, only: :sync_templates
-  before_action :set_conversation, only: [:show, *MESSAGE_TOOL_ACTIONS]
+  before_action :set_conversation, only: [:show, :context, :finish_attendance, :transfer_attendance, :add_note, *MESSAGE_TOOL_ACTIONS]
   before_action :set_conversation_for_send_message, only: [:send_message]
   before_action :set_message, only: [:media]
 
@@ -26,9 +26,14 @@ class Admin::WhatsappInboxController < Admin::BaseController
       load_inbox
     end
 
+    Whatsapp::AttendanceManager.accept!(@conversation, current_admin_user)
+    InAppNotification.mark_conversation_read!(current_admin_user, @conversation.id)
     unread_before = @conversation.unread_count.to_i
-    @conversation.mark_read!
-    Whatsapp::ThreadBroadcaster.queue_refreshed(@conversation) if unread_before.positive?
+    # Gestor que só está olhando não zera o "não lida" do atendente responsável.
+    attendance = @conversation.open_attendance
+    viewing_for_owner = attendance.nil? || attendance.admin_user_id.nil? || attendance.admin_user_id == current_admin_user.id
+    @conversation.mark_read! if viewing_for_owner
+    Whatsapp::ThreadBroadcaster.queue_refreshed(@conversation) if unread_before.positive? && viewing_for_owner
     load_thread_messages
     load_thread_context
     @page_title = "WhatsApp · #{@conversation.display_name}"
@@ -141,6 +146,49 @@ class Admin::WhatsappInboxController < Admin::BaseController
     render json: { ok: true }
   end
 
+  # Painel de contexto sozinho (atualização em tempo real quando o atendimento muda).
+  def context
+    load_thread_messages
+    load_thread_context
+    render html: thread_context_html.html_safe
+  end
+
+  # Transferência manual do atendimento aberto para um colega do mesmo grupo.
+  def transfer_attendance
+    attendance = @conversation.open_attendance
+    target = attendance&.transfer_candidates&.find_by(id: params[:to_admin_user_id])
+    return redirect_to(admin_whatsapp_conversation_path(@conversation), alert: "Escolha um colega válido para transferir.") unless target
+
+    Whatsapp::AttendanceManager.transfer!(attendance, to: target, by: current_admin_user)
+    notice = "Atendimento transferido para #{target.name}."
+    if WhatsappConversation.visible_to(current_admin_user).exists?(@conversation.id)
+      redirect_to admin_whatsapp_conversation_path(@conversation), notice: notice
+    else
+      redirect_to admin_whatsapp_conversations_path, notice: notice # perdeu o acesso: volta para a fila
+    end
+  end
+
+  # Anotação rápida sobre o lead da conversa (aparece na timeline e no histórico de contato do lead).
+  def add_note
+    lead = @conversation.context_lead
+    body = params[:body].to_s.strip
+    if lead.blank? || body.blank?
+      return redirect_to(admin_whatsapp_conversation_path(@conversation), alert: lead.blank? ? "Conversa sem lead vinculado." : "Escreva a anotação antes de salvar.")
+    end
+
+    LeadActivity.log!(lead: lead, kind: "note", metadata: { body: body, by: current_admin_user&.name, admin_user_id: current_admin_user&.id, source: "whatsapp_context" }.compact)
+    redirect_to admin_whatsapp_conversation_path(@conversation), notice: "Anotação salva."
+  end
+
+  # Encerra o atendimento aberto pelo botão do fluxo: envia a mensagem de finalização e libera o menu para um novo ciclo.
+  def finish_attendance
+    attendance = @conversation.open_attendance
+    return redirect_to(admin_whatsapp_conversation_path(@conversation), alert: "Nenhum atendimento em curso nesta conversa.") unless attendance
+
+    result = Whatsapp::AttendanceManager.finish!(attendance, admin_user: current_admin_user)
+    redirect_to admin_whatsapp_conversation_path(@conversation), notice: "Atendimento finalizado.", alert: result.warning
+  end
+
   def send_message
     @integration = WhatsappBusinessIntegration.current(current_tenant)
     body = params[:body].to_s.strip
@@ -236,6 +284,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
       )
     end
     message.save!
+    Whatsapp::AttendanceManager.accept!(@conversation, current_admin_user)
     @conversation.touch_last_message!(message)
     Whatsapp::ThreadBroadcaster.message_created(message)
     Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
@@ -341,7 +390,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def conversation_scope
-    base = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, lead: { lead_labelings: :lead_label })
+    base = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, { attendances: :admin_user }, lead: { lead_labelings: :lead_label })
     ids = visible_owner_ids(:whatsapp_inbox)
     return base if ids.nil?
 

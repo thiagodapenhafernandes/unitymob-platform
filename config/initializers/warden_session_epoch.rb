@@ -36,6 +36,14 @@ module AdminSessionEpoch
   # Sessão anterior ao epoch da conta deve ser encerrada. Tolerante
   # pré-migration 20260707000002 (has_attribute?).
   def expired?(record, session_data)
+    return true if record.respond_to?(:active?) && !record.active?
+
+    if record.respond_to?(:has_attribute?) && record.has_attribute?(:session_revoked_at)
+      revoked_at = record.session_revoked_at
+      stamp = session_data[SESSION_KEY]
+      return true if revoked_at.present? && (stamp.nil? || stamp.to_i < revoked_at.to_i)
+    end
+
     tenant = record.respond_to?(:tenant) ? record.tenant : nil
     return false unless tenant&.has_attribute?(:session_epoch_at)
 
@@ -61,7 +69,8 @@ Warden::Manager.after_set_user do |record, warden, options|
         # failure app com a mensagem própria (devise.failure.session_expired).
         proxy = Devise::Hooks::Proxy.new(warden)
         Devise.sign_out_all_scopes ? proxy.sign_out : proxy.sign_out(scope)
-        throw :warden, scope: scope, message: :session_expired
+        message = record.respond_to?(:active?) && !record.active? ? :inactive : :session_expired
+        throw :warden, scope: scope, message: message
       end
     end
   end

@@ -7,13 +7,13 @@ RSpec.describe "Admin habitation form contract" do
 
   it "keeps the primary save action in the property form" do
     expect(form_source).to include('hidden_field_tag :save_navigation, "stay"')
-    expect(form_source).to include('name: "save_navigation"')
-    expect(form_source).to include('value: "exit"')
+    expect(form_source).to include('direct_new_record ? "publication_choice" : "save_navigation"')
+    expect(form_source).to include(': "exit"')
   end
 
   it "accepts images and PDFs for internal document uploads" do
-    expect(form_source).to include('accept: "image/*,application/pdf"')
-    expect(documents_source.scan('accept: "image/*,application/pdf"').size).to be >= 4
+    expect(form_source).to include('accept: "image/*,image/heic,image/heif,application/pdf,.odf,.odt"')
+    expect(documents_source.scan("application/pdf").size).to be >= 4
   end
 
   it "não substitui o proprietário da unidade pelo proprietário do empreendimento vinculado" do

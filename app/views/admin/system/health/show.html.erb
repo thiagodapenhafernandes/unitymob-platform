@@ -11,21 +11,13 @@
 <% end %>
 
 <div class="ax-system">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Admin do Sistema · Operação</span>
-      <h1>Saúde do sistema</h1>
-      <p>Aplicação, infraestrutura, filas e erros em uma visão somente leitura.</p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <% assessment_tone = @assessment[:status] == "healthy" ? :green : (@assessment[:status] == "critical" ? :red : :amber) %>
-      <%= ax_badge(@assessment[:status] == "healthy" ? "Operacional" : (@assessment[:status] == "critical" ? "Crítico" : "Atenção"), tone: assessment_tone, dot: true) %>
-      <%= ax_badge(@platform.dig(:release, :identifier), tone: :blue) %>
-      <% if @health[:collected_at].present? %>
-        <span>Coletado em <%= l(Time.zone.parse(@health[:collected_at]), format: :short) rescue @health[:collected_at] %></span>
-      <% end %>
-    </div>
-  </header>
+  <% assessment_tone = @assessment[:status] == "healthy" ? :green : (@assessment[:status] == "critical" ? :red : :amber) %>
+  <%= ax_workspace_heading(
+        title: "Saúde do sistema",
+        eyebrow: "Admin do Sistema · Operação",
+        icon: "heart-pulse",
+        subtitle: "Aplicação, infraestrutura, filas e erros em uma visão somente leitura.#{" Coletado em #{(l(Time.zone.parse(@health[:collected_at]), format: :short) rescue @health[:collected_at])}." if @health[:collected_at].present?}",
+        pills: [(@assessment[:status] == "healthy" ? "Operacional" : (@assessment[:status] == "critical" ? "Crítico" : "Atenção")), @platform.dig(:release, :identifier)]) %>
 
   <div class="ax-dashboard-value-strip">
     <article><span>HTTP</span><strong><%= @health[:http_status] || "—" %></strong><em><%= @health[:http_ms] ? "#{@health[:http_ms]} ms" : "sem amostra" %></em></article>

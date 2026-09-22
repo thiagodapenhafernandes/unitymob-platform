@@ -93,7 +93,7 @@
           --admin-nav-<%= section.dasherize %>-background-opacity: <%= section_style["background_opacity"] %>%;
           --admin-nav-<%= section.dasherize %>-text: <%= section_style["text_color"] %>;
           --admin-nav-<%= section.dasherize %>-border: <%= section_style["border_color"] %>;
-          --admin-nav-<%= section.dasherize %>-shadow: <%= LayoutSetting.normalized_box_shadow(section_style["box_shadow"]) %>;
+          --admin-nav-<%= section.dasherize %>-shadow: <%= LayoutSetting.menu_section_box_shadow(section_style["box_shadow"]) %>;
         <% end %>
         --admin-primary-fg: #ffffff;
       }
@@ -279,7 +279,7 @@
   <% whatsapp_focus_workspace = whatsapp_workspace && params[:workspace].to_s == 'focus' %>
   <% admin_metrics = admin_page_render_metrics %>
   <body class="ax-app admin-layout <%= 'ax-pwa-bottom-nav-body' if current_admin_user && current_tenant && !whatsapp_focus_workspace %> <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-form-workspace' if habitation_form_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-captacoes-workspace' if captacoes_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %> <%= 'ax-scheduling-settings-workspace' if scheduling_settings_workspace %> <%= 'ax-whatsapp-workspace' if whatsapp_workspace %> <%= 'ax-whatsapp-focus-workspace' if whatsapp_focus_workspace %>"
-        data-controller="ax-drawer admin-navigation"
+        data-controller="ax-drawer"
         data-admin-render-ms="<%= admin_metrics[:duration_ms] %>"
         data-admin-render-page="<%= admin_metrics[:page] %>">
     <%= yield :mobile_detail_header %>
@@ -302,6 +302,7 @@
 
         <div class="ax-navbar__spacer"></div>
 
+        <%= render "admin/shared/notification_bell" if current_admin_user %>
         <%= render "admin/shared/ui/user_menu" %>
       </nav>
 
@@ -337,6 +338,7 @@
       </aside>
     <% end %>
 
+    <%= render "admin/shared/notification_bell", toasts_only: true if whatsapp_focus_workspace && current_admin_user %>
     <%= render "layouts/pull_to_refresh" unless whatsapp_focus_workspace %>
 
     <!-- Content -->
@@ -348,15 +350,14 @@
 
     <div id="adminNavigationPreloader"
          class="ax-admin-preloader"
-         data-admin-navigation-target="overlay"
          data-turbo-permanent
          hidden
          aria-live="polite"
          aria-busy="true">
       <div class="ax-admin-preloader__panel" role="status">
         <span class="ax-admin-preloader__spinner" aria-hidden="true"></span>
-        <strong data-admin-navigation-target="title">Carregando página...</strong>
-        <span data-admin-navigation-target="detail">Preparando workspace administrativo</span>
+        <strong data-nav-title>Carregando página...</strong>
+        <span data-nav-detail>Preparando workspace administrativo</span>
       </div>
     </div>
 

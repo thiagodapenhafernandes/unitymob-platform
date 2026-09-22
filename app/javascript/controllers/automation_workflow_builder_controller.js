@@ -4,7 +4,7 @@ export default class extends Controller {
   static targets = ["definition", "canvas", "inspector", "inspectorTitle", "catalog", "aside"]
 
   connect() {
-    this.catalog = this.parseJson(this.catalogTarget.textContent, { triggers: {}, actions: {}, statuses: {}, automation_stages: {}, sources: {}, brokers: {}, templates: {}, distribution_rules: {} })
+    this.catalog = this.parseJson(this.catalogTarget.textContent, { triggers: {}, actions: {}, statuses: {}, automation_stages: {}, sources: {}, brokers: {}, templates: {}, distribution_rules: {}, whatsapp_senders: [], whatsapp_flow_templates: [] })
     this.definition = this.normalizeDefinition(this.parseJson(this.definitionTarget.value, this.defaultDefinition()))
     this.selectedNodeId = this.definition.nodes?.[0]?.id
     this.webhookMapDraftRows = {}
@@ -13,6 +13,8 @@ export default class extends Controller {
     window.addEventListener("resize", this.redrawConnections)
     this.sync()
     this.render()
+    // Automação nova (só a entrada): o primeiro passo é escolher como ela começa.
+    if (this.definition.nodes.length === 1) this.openDrawer()
   }
 
   disconnect() {
@@ -61,6 +63,7 @@ export default class extends Controller {
     const type = event.currentTarget.dataset.type
     const actionType = event.currentTarget.dataset.actionType
     const preset = event.currentTarget.dataset.preset
+    const conversation = event.currentTarget.dataset.conversation
     const node = this.buildNode(type)
 
     if (node.type === "action" && actionType) {
@@ -69,8 +72,14 @@ export default class extends Controller {
       this.normalizeActionConfig(node, "action_type")
     }
     if (preset) this.applyStepPreset(node, preset)
+    if (conversation) this.applyConversationDefaults(node, conversation)
+    if (node.type === "action" && actionType === "transfer_to_attendant") {
+      node.config.topic = node.config.topic || "Atendimento automático"
+      node.config.distribution_rule_id = node.config.distribution_rule_id || this.defaultDistributionRuleId()
+    }
 
     this.insertNodeAfter(this.pendingInsertion?.afterId, node, this.pendingInsertion?.mode || "sequential")
+    if (conversation) this.scaffoldQuestion(node)
     this.selectedNodeId = node.id
     this.pendingInsertion = null
     this.inspectorMode = "node"
@@ -251,22 +260,33 @@ export default class extends Controller {
     const field = event.currentTarget.dataset.field
     const value = event.currentTarget.type === "checkbox" ? event.currentTarget.checked : this.inputValue(event.currentTarget)
 
+    if (field === "__start_category") {
+      this.changeStartCategory(node, value)
+      this.sync()
+      this.render()
+      return
+    }
+
     if (field === "label") {
       node.label = value
     } else {
       node.config = node.config || {}
       node.config[field] = value
-      if (node.type === "entry") this.normalizeEntryConfigForTrigger(node)
+      if (node.type === "entry") {
+        this.normalizeEntryConfigForTrigger(node)
+        this.afterEntryChange(node, field)
+      }
       if (node.type === "await_event") this.normalizeAwaitEventConfigForTrigger(node)
       if (node.type === "response_router" && field === "category") this.normalizeResponseRouterForCategory(node)
       if (node.type === "response_condition" && field === "category") this.normalizeResponseConditionForCategory(node)
       if (node.type === "action") this.normalizeActionConfig(node, field)
+      if (node.type === "action" && field === "options" && node.config.scaffold) this.syncQuestionOptions(node)
     }
 
     this.sync()
     this.renderCanvas()
     this.refreshLiteralSummary()
-    if (event.currentTarget.tagName === "SELECT" || field === "retry_enabled") this.renderInspector()
+    if (event.currentTarget.tagName === "SELECT" || ["retry_enabled", "retry_question", "use_as_receptive"].includes(field)) this.renderInspector()
   }
 
   inputValue(input) {
@@ -373,18 +393,15 @@ export default class extends Controller {
 
     if (!node) return
 
+    if (node.type === "entry") {
+      this.renderEntryInspector(node)
+      return
+    }
+
     this.inspectorTarget.appendChild(this.field("Nome do bloco", "label", node.label || this.nodeTitle(node)))
     this.inspectorTarget.appendChild(this.literalSummaryPanel(node))
 
-    if (node.type === "entry") {
-      this.inspectorTarget.appendChild(this.entryPolicyPanel(node))
-      this.inspectorTarget.appendChild(this.selectField("Evento observado", "trigger", node.config?.trigger, this.catalog.triggers, { placeholder: "Selecione o evento" }))
-      this.inspectorTarget.appendChild(this.multiSelectField("Regras de distribuição", "distribution_rule_ids", node.config?.distribution_rule_ids, this.catalog.distribution_rules, {
-        placeholder: "Qualquer regra",
-        info: "Limita esta automação aos leads vinculados a uma das regras selecionadas. Sem seleção, vale para qualquer regra."
-      }))
-      this.renderEntryEventFields(node)
-    } else if (node.type === "action") {
+    if (node.type === "action") {
       if (node.config?.action_type) {
         this.inspectorTarget.appendChild(this.actionTypeSummary(node))
       } else {
@@ -432,6 +449,7 @@ export default class extends Controller {
     if (trigger === "lead_created") keep.push("stage", "source")
     if (trigger === "lead_idle") keep.push("idle_hours", "stage", "source")
     if (trigger === "whatsapp_received") keep.push("stage", "message_contains", "message_not_contains")
+    if (trigger === "whatsapp_flow_button") keep.push("whatsapp_sender_number_id", "whatsapp_template_id", "use_as_receptive")
     if (trigger === "scheduled_routine") keep.push("schedule_frequency", "interval", "time_of_day", "weekdays", "month_day", "stage", "source")
     if (this.proposalEvents().includes(trigger)) keep.push("stage")
     if (this.interestEvents().includes(trigger)) keep.push("stage", "source", "minimum_score")
@@ -611,6 +629,11 @@ export default class extends Controller {
     }
 
     this.appendStepChooserGroup(panel, "Operação", "Tarefas e registros internos para organizar o atendimento.", this.actionStepOptions(["set_flow_result", "create_task", "add_note", "move_stage", "update_lead_lifecycle"]))
+    this.appendStepChooserGroup(panel, "Conversa com o cliente", "Pergunte, deixe o cliente escolher e passe para um atendente quando precisar.", [
+      ...this.actionStepOptions(["send_whatsapp_buttons", "send_whatsapp_list"]).map((option) => ({ ...option, conversation: option.actionType === "send_whatsapp_list" ? "list" : "buttons" })),
+      { type: "action", actionType: "send_whatsapp", conversation: "text", icon: "bi-chat-left-text", title: "Perguntar com resposta livre", copy: "Envia uma pergunta e segue quando o cliente responder com qualquer texto.", badge: "pergunta" },
+      ...this.actionStepOptions(["transfer_to_attendant"])
+    ])
     this.appendStepChooserGroup(panel, "Comunicação", "Mensagens enviadas ao lead durante a jornada.", this.actionStepOptions(["send_whatsapp", "send_whatsapp_template"]))
     this.appendStepChooserGroup(panel, "Integrações", "Saídas técnicas para sistemas externos.", this.actionStepOptions(["send_webhook"]))
     this.appendStepChooserGroup(panel, "Inteligência de Interesse", "Curadoria e recomendação com base no comportamento do lead e nos imóveis disponíveis.", this.actionStepOptions([
@@ -704,6 +727,7 @@ export default class extends Controller {
       button.dataset.searchText = this.normalizedSearchText([option.title, option.copy, option.badge].filter(Boolean).join(" "))
       if (option.actionType) button.dataset.actionType = option.actionType
       if (option.preset) button.dataset.preset = option.preset
+      if (option.conversation) button.dataset.conversation = option.conversation
 
       const icon = document.createElement("span")
       icon.className = "automation-workflow-builder__step-option-icon"
@@ -758,6 +782,140 @@ export default class extends Controller {
         copy: this.actionDescription(value),
         badge: this.actionBadge(value)
       }))
+  }
+
+  // ----- Perguntas: uma etapa de pergunta cria sozinha "aguardar resposta" + um caminho por opção -----
+  questionOptions(node) {
+    return String(node.config?.options || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean).filter((line, index, all) => all.indexOf(line) === index)
+  }
+
+  applyConversationDefaults(node, kind) {
+    if (kind === "buttons") {
+      node.label = "Perguntar com botões"
+      node.config = { ...node.config, action_type: "send_whatsapp_buttons", message: "Como podemos ajudar?", options: "Sim\nNão" }
+    } else if (kind === "list") {
+      node.label = "Perguntar com lista"
+      node.config = { ...node.config, action_type: "send_whatsapp_list", message: "Escolha uma opção:", list_button: "Ver opções", options: "Opção 1\nOpção 2\nOpção 3" }
+    } else {
+      node.label = "Perguntar (resposta livre)"
+      node.config = { ...node.config, action_type: "send_whatsapp", message: "Qual é a sua dúvida?", ask_free_text: true }
+    }
+  }
+
+  uniqueNodeId(type) {
+    this.nodeSeq = (this.nodeSeq || 0) + 1
+    return `${type}_${Date.now()}_${this.nodeSeq}`
+  }
+
+  buildUniqueNode(type, label, config) {
+    const node = this.buildNode(type)
+    node.id = this.uniqueNodeId(type)
+    node.label = label
+    node.config = { ...node.config, ...config }
+    return node
+  }
+
+  optionCondition(option) {
+    return this.buildUniqueNode("response_condition", `Se resposta: ${option}`, {
+      category: "template_buttons", field: "interaction.button_text", operator: "equals", value: option, option_path: true
+    })
+  }
+
+  optionReply(option) {
+    return this.buildUniqueNode("action", `Responder: ${option}`, {
+      action_type: "send_whatsapp", message: `Perfeito! Você escolheu “${option}”. Edite esta mensagem e continue a conversa.`, default_reply: true
+    })
+  }
+
+  // Insere um bloco numa posição da lista (a ordem da lista define a ordem dos caminhos no canvas) e liga a origem.
+  attachNode(node, fromId, atIndex) {
+    this.definition.nodes.splice(atIndex, 0, node)
+    this.addEdge(fromId, node.id)
+    return atIndex + 1
+  }
+
+  // Cria: pergunta -> aguardar resposta -> um caminho por opção (+ "não entendi" e "sem resposta").
+  scaffoldQuestion(question) {
+    const wait = this.buildUniqueNode("await_whatsapp_response", "Aguardar resposta", { timeout_amount: "2", timeout_unit: "hours" })
+    this.insertNodeAfter(question.id, wait, "sequential")
+    let at = this.definition.nodes.findIndex((node) => node.id === wait.id) + 1
+
+    const options = question.config.ask_free_text ? [] : this.questionOptions(question)
+    const paths = options.length ? options.map((option) => [this.optionCondition(option), this.optionReply(option)]) : [[
+      this.buildUniqueNode("response_condition", "Se respondeu", { category: "lead_text", field: "message.body", operator: "present", value: "", option_path: true }),
+      this.buildUniqueNode("action", "Responder", { action_type: "send_whatsapp", message: "Obrigado! Edite esta mensagem e continue a conversa.", default_reply: true })
+    ]]
+    const ids = []
+    paths.forEach(([condition, reply]) => {
+      at = this.attachNode(condition, wait.id, at)
+      at = this.attachNode(reply, condition.id, at)
+      ids.push(condition.id)
+    })
+
+    const unknown = this.buildUniqueNode("response_fallback", "Não entendi (repete a pergunta)", { fallback_type: "no_match", retry_question: true, max_attempts: "2" })
+    const unknownReply = this.buildUniqueNode("action", "Avisar que não entendeu", { action_type: "send_whatsapp", message: "Não entendi sua resposta. Vou perguntar de novo.", default_reply: true })
+    at = this.attachNode(unknown, wait.id, at)
+    at = this.attachNode(unknownReply, unknown.id, at)
+
+    const exhausted = this.buildUniqueNode("response_fallback", "Depois de 2 tentativas", { fallback_type: "exhausted" })
+    const exhaustedReply = this.buildUniqueNode("action", "Avisar que vai chamar alguém", { action_type: "send_whatsapp", message: "Vou chamar um atendente para te ajudar.", default_reply: true })
+    at = this.attachNode(exhausted, wait.id, at)
+    at = this.attachNode(exhaustedReply, exhausted.id, at)
+    const queueId = this.defaultDistributionRuleId()
+    if (queueId) {
+      const handoff = this.buildUniqueNode("action", "Passar para atendente", { action_type: "transfer_to_attendant", distribution_rule_id: queueId, topic: "Atendimento automático", default_reply: true })
+      at = this.attachNode(handoff, exhaustedReply.id, at)
+    }
+
+    const timeout = this.buildUniqueNode("response_fallback", "Sem resposta", { fallback_type: "timeout" })
+    const timeoutReply = this.buildUniqueNode("action", "Lembrar o cliente", { action_type: "send_whatsapp", message: "Ainda posso te ajudar? É só responder por aqui.", default_reply: true })
+    at = this.attachNode(timeout, wait.id, at)
+    this.attachNode(timeoutReply, timeout.id, at)
+
+    question.config.scaffold = { wait: wait.id, options: ids }
+  }
+
+  defaultReplyOf(conditionId) {
+    return this.nextNodeIds(conditionId).map((id) => this.nodeById(id)).find((item) => item?.config?.default_reply)
+  }
+
+  // Ao editar as opções da pergunta, os caminhos acompanham (nome, valor e mensagem padrão; novos e removidos).
+  syncQuestionOptions(question) {
+    const scaffold = question.config.scaffold
+    const options = this.questionOptions(question)
+    const existing = (scaffold.options || []).map((id) => this.nodeById(id)).filter(Boolean)
+
+    options.forEach((option, index) => {
+      const condition = existing[index]
+      if (condition) {
+        condition.label = `Se resposta: ${option}`
+        condition.config.value = option
+        const reply = this.defaultReplyOf(condition.id)
+        if (reply) {
+          reply.label = `Responder: ${option}`
+          reply.config.message = `Perfeito! Você escolheu “${option}”. Edite esta mensagem e continue a conversa.`
+        }
+        return
+      }
+
+      const last = existing[existing.length - 1]
+      const anchorId = (last && (this.defaultReplyOf(last.id)?.id || last.id)) || scaffold.wait
+      let at = this.definition.nodes.findIndex((node) => node.id === anchorId) + 1
+      const created = this.optionCondition(option)
+      at = this.attachNode(created, scaffold.wait, at)
+      this.attachNode(this.optionReply(option), created.id, at)
+      scaffold.options.push(created.id)
+      existing.push(created)
+    })
+
+    existing.slice(options.length).forEach((condition) => {
+      const removable = [condition, ...this.nextNodeIds(condition.id).map((id) => this.nodeById(id)).filter((item) => item?.config?.default_reply)]
+      removable.forEach((item) => {
+        this.definition.nodes = this.definition.nodes.filter((node) => node.id !== item.id)
+        this.definition.edges = this.definition.edges.filter((edge) => edge.from !== item.id && edge.to !== item.id)
+      })
+      scaffold.options = scaffold.options.filter((id) => id !== condition.id)
+    })
   }
 
   actionOptionsFor(node) {
@@ -1141,6 +1299,7 @@ export default class extends Controller {
     })
     select.dataset.field = field
     select.dataset.action = "change->automation-workflow-builder#updateNode"
+    if (config.disabled) select.disabled = true
 
     Object.entries(options || {}).forEach(([optionValue, optionLabel]) => {
       const option = document.createElement("option")
@@ -1205,9 +1364,9 @@ export default class extends Controller {
     return text
   }
 
-  renderEntryEventFields(node) {
+  renderEntryEventFields(node, container = this.inspectorTarget) {
     if (node.config?.trigger === "scheduled_routine") {
-      this.inspectorTarget.appendChild(this.selectField("Frequência", "schedule_frequency", node.config?.schedule_frequency, {
+      container.appendChild(this.selectField("Frequência", "schedule_frequency", node.config?.schedule_frequency, {
         every_n_minutes: "A cada intervalo",
         daily: "Todo dia",
         weekly: "Semanalmente",
@@ -1215,12 +1374,12 @@ export default class extends Controller {
       }, { placeholder: "Selecione a frequência" }))
 
       if ((node.config?.schedule_frequency || "every_n_minutes") === "every_n_minutes") {
-        this.inspectorTarget.appendChild(this.field("Intervalo em minutos", "interval", node.config?.interval || "60", "number"))
+        container.appendChild(this.field("Intervalo em minutos", "interval", node.config?.interval || "60", "number"))
       } else {
-        this.inspectorTarget.appendChild(this.field("Horário", "time_of_day", node.config?.time_of_day || "09:00", "time"))
+        container.appendChild(this.field("Horário", "time_of_day", node.config?.time_of_day || "09:00", "time"))
 
         if (node.config?.schedule_frequency === "weekly") {
-          this.inspectorTarget.appendChild(this.selectField("Dia da semana", "weekdays", node.config?.weekdays, {
+          container.appendChild(this.selectField("Dia da semana", "weekdays", node.config?.weekdays, {
             "": "Qualquer dia",
             "1": "Segunda-feira",
             "2": "Terça-feira",
@@ -1233,42 +1392,212 @@ export default class extends Controller {
         }
 
         if (node.config?.schedule_frequency === "monthly") {
-          this.inspectorTarget.appendChild(this.field("Dia do mês", "month_day", node.config?.month_day || "1", "number"))
+          container.appendChild(this.field("Dia do mês", "month_day", node.config?.month_day || "1", "number"))
         }
       }
 
-      this.inspectorTarget.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
-      this.inspectorTarget.appendChild(this.entryEventNotice("Rotinas agendadas rodam pelo monitor periódico da automação. Use filtros para limitar quais leads entram em cada execução."))
+      container.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
+      container.appendChild(this.entryEventNotice("Rotinas agendadas rodam pelo monitor periódico da automação. Use filtros para limitar quais leads entram em cada execução."))
     } else if (node.config?.trigger === "lead_stage_changed") {
-      this.inspectorTarget.appendChild(this.selectField("De etapa", "from_stage", node.config?.from_stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.selectField("Para etapa", "to_stage", node.config?.to_stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.entryEventNotice("A automação roda quando a mudança de etapa bater com esses critérios. Deixe em branco quando qualquer etapa servir."))
+      container.appendChild(this.selectField("De etapa", "from_stage", node.config?.from_stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.selectField("Para etapa", "to_stage", node.config?.to_stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.entryEventNotice("A automação roda quando a mudança de etapa bater com esses critérios. Deixe em branco quando qualquer etapa servir."))
     } else if (node.config?.trigger === "lead_created") {
-      this.inspectorTarget.appendChild(this.selectField("Etapa inicial", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
-      this.inspectorTarget.appendChild(this.entryEventNotice("Use estes filtros quando a jornada deve iniciar apenas para leads criados em uma etapa ou origem específica."))
+      container.appendChild(this.selectField("Etapa inicial", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
+      container.appendChild(this.entryEventNotice("Use estes filtros quando a jornada deve iniciar apenas para leads criados em uma etapa ou origem específica."))
     } else if (node.config?.trigger === "lead_idle") {
-      this.inspectorTarget.appendChild(this.field("Parado ha (horas)", "idle_hours", node.config?.idle_hours || "48", "number"))
-      this.inspectorTarget.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
-      this.inspectorTarget.appendChild(this.entryEventNotice("Lead parado é avaliado por rotina periódica. Etapa e origem filtram quais leads entram nessa observação."))
+      container.appendChild(this.field("Parado ha (horas)", "idle_hours", node.config?.idle_hours || "48", "number"))
+      container.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
+      container.appendChild(this.entryEventNotice("Lead parado é avaliado por rotina periódica. Etapa e origem filtram quais leads entram nessa observação."))
     } else if (node.config?.trigger === "whatsapp_received") {
-      this.inspectorTarget.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.field("Mensagem contem", "message_contains", node.config?.message_contains || ""))
-      this.inspectorTarget.appendChild(this.field("Mensagem nao contem", "message_not_contains", node.config?.message_not_contains || ""))
-      this.inspectorTarget.appendChild(this.entryEventNotice("O filtro usa o texto da mensagem recebida. Deixe os campos de texto vazios para aceitar qualquer resposta."))
+      container.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.field("Mensagem contem", "message_contains", node.config?.message_contains || ""))
+      container.appendChild(this.field("Mensagem nao contem", "message_not_contains", node.config?.message_not_contains || ""))
+      container.appendChild(this.entryEventNotice("O filtro usa o texto da mensagem recebida. Deixe os campos de texto vazios para aceitar qualquer resposta."))
     } else if (this.proposalEvents().includes(node.config?.trigger)) {
-      this.inspectorTarget.appendChild(this.selectField("Etapa atual do lead", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.entryEventNotice("Use este filtro quando a automação de proposta deve rodar somente para leads em uma etapa específica."))
+      container.appendChild(this.selectField("Etapa atual do lead", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.entryEventNotice("Use este filtro quando a automação de proposta deve rodar somente para leads em uma etapa específica."))
     } else if (this.interestEvents().includes(node.config?.trigger)) {
-      this.inspectorTarget.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
-      this.inspectorTarget.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
+      container.appendChild(this.selectField("Etapa atual", "stage", node.config?.stage, { "": "Qualquer etapa", ...this.catalog.statuses }, { placeholder: "Qualquer etapa" }))
+      container.appendChild(this.selectField("Origem do lead", "source", node.config?.source, { "": "Qualquer origem", ...this.catalog.sources }, { placeholder: "Qualquer origem" }))
       if (node.config?.trigger === "matching_property_found") {
-        this.inspectorTarget.appendChild(this.field("Score mínimo do imóvel", "minimum_score", node.config?.minimum_score || "65", "number"))
+        container.appendChild(this.field("Score mínimo do imóvel", "minimum_score", node.config?.minimum_score || "65", "number"))
       }
-      this.inspectorTarget.appendChild(this.entryEventNotice("Estes eventos vêm da Inteligência de Interesse: navegação pública, imóveis vistos, filtros usados e perfil real do lead após a conversão."))
+      container.appendChild(this.entryEventNotice("Estes eventos vêm da Inteligência de Interesse: navegação pública, imóveis vistos, filtros usados e perfil real do lead após a conversão."))
     }
+  }
+
+  // Tipos de início: escolhidos antes do evento e das demais opções. A categoria é derivada do gatilho (não é salva).
+  startCategories() {
+    const categories = {
+      lead: { label: "Lead", triggers: ["lead_created", "lead_stage_changed", "lead_assigned", "lead_idle"] },
+      whatsapp: { label: "WhatsApp", triggers: ["whatsapp_flow_button", "whatsapp_received", ...Object.keys(this.catalog.triggers || {}).filter((key) => key.startsWith("whatsapp_campaign_"))] },
+      proposal: { label: "Proposta", triggers: this.proposalEvents() },
+      interest: { label: "Interesse em imóveis", triggers: this.interestEvents() },
+      schedule: { label: "Rotina agendada", triggers: ["scheduled_routine"] }
+    }
+    const known = new Set(Object.values(categories).flatMap((item) => item.triggers))
+    const others = Object.keys(this.catalog.triggers || {}).filter((key) => !known.has(key))
+    if (others.length) categories.other = { label: "Outros", triggers: others }
+    return categories
+  }
+
+  startCategoryOf(trigger) {
+    const categories = this.startCategories()
+    return Object.keys(categories).find((key) => categories[key].triggers.includes(trigger)) || "lead"
+  }
+
+  changeStartCategory(node, category) {
+    const item = this.startCategories()[category]
+    if (!item || item.triggers.includes(node.config?.trigger)) return
+
+    node.config = node.config || {}
+    node.config.trigger = item.triggers.find((key) => this.catalog.triggers?.[key]) || item.triggers[0]
+    this.normalizeEntryConfigForTrigger(node)
+    this.afterEntryChange(node, "trigger")
+  }
+
+  // Reações do início por botão: um único número já vem escolhido; trocar de número descarta template de outro WABA;
+  // escolher o template monta o caminho por botão quando o canvas ainda só tem a entrada.
+  afterEntryChange(node, field) {
+    if (node.config?.trigger !== "whatsapp_flow_button") return
+
+    const senders = this.catalog.whatsapp_senders || []
+    if (field === "trigger" && !node.config.whatsapp_sender_number_id && senders.length === 1) {
+      node.config.whatsapp_sender_number_id = String(senders[0].id)
+    }
+    if (field === "whatsapp_sender_number_id" && node.config.whatsapp_template_id &&
+        !this.flowTemplatesFor(node).some((template) => String(template.id) === String(node.config.whatsapp_template_id))) {
+      delete node.config.whatsapp_template_id
+    }
+    if (field === "whatsapp_template_id") this.applyTemplateScaffold(node)
+  }
+
+  flowTemplatesFor(node) {
+    const sender = (this.catalog.whatsapp_senders || []).find((item) => String(item.id) === String(node.config?.whatsapp_sender_number_id))
+    return (this.catalog.whatsapp_flow_templates || []).filter((template) => !sender?.waba_id || !template.waba_id || template.waba_id === sender.waba_id)
+  }
+
+  applyTemplateScaffold(entry) {
+    const template = (this.catalog.whatsapp_flow_templates || []).find((item) => String(item.id) === String(entry.config?.whatsapp_template_id))
+    if (!template || this.definition.nodes.length > 1) return
+
+    const scaffold = JSON.parse(JSON.stringify(template.scaffold))
+    this.definition.nodes.push(...scaffold.nodes.filter((node) => node.type !== "entry"))
+    this.definition.edges.push(...scaffold.edges.map((edge) => ({ ...edge, from: edge.from === "entry_1" ? entry.id : edge.from })))
+  }
+
+  // Inspector da entrada em passos, na ordem em que a decisão acontece. O que é raro fica recolhido no fim.
+  renderEntryInspector(node) {
+    const category = this.startCategoryOf(node.config?.trigger)
+    const categories = this.startCategories()
+    const steps = []
+    const step = (title, ...children) => steps.push(this.entryStep(steps.length + 1, title, children))
+
+    step("Fonte", this.selectField("Como esta automação começa?", "__start_category", category, Object.fromEntries(Object.entries(categories).map(([key, item]) => [key, item.label])), {
+      placeholder: "Selecione o tipo de início",
+      info: "Escolha primeiro a fonte; os próximos passos mudam de acordo com ela."
+    }))
+
+    const eventOptions = Object.fromEntries(categories[category].triggers.filter((key) => this.catalog.triggers?.[key]).map((key) => [key, this.catalog.triggers[key]]))
+    const eventField = this.selectField(category === "whatsapp" ? "O que dispara?" : "Evento observado", "trigger", node.config?.trigger, eventOptions, { placeholder: "Selecione o evento" })
+
+    if (node.config?.trigger === "whatsapp_flow_button") {
+      step("Gatilho", eventField)
+      this.whatsappFlowSteps(node).forEach((args) => step(...args))
+    } else {
+      const fields = document.createElement("div")
+      this.renderEntryEventFields(node, fields)
+      step(category === "whatsapp" ? "Gatilho" : "Evento", eventField, ...fields.children)
+    }
+
+    this.inspectorTarget.append(...steps)
+
+    const limits = document.createElement("div")
+    limits.className = "automation-workflow-builder__step-loose"
+    limits.appendChild(this.multiSelectField("Regras de distribuição", "distribution_rule_ids", node.config?.distribution_rule_ids, this.catalog.distribution_rules, {
+      placeholder: "Qualquer regra",
+      info: "Limita esta automação aos leads vinculados a uma das regras selecionadas. Sem seleção, vale para qualquer regra."
+    }))
+    this.inspectorTarget.appendChild(limits)
+
+    const advanced = document.createElement("details")
+    advanced.className = "automation-workflow-builder__entry-advanced"
+    advanced.innerHTML = "<summary><i class=\"bi bi-sliders\"></i><span>Política de entrada e nome do bloco</span></summary>"
+    advanced.append(this.entryPolicyPanel(node), this.field("Nome do bloco", "label", node.label || this.nodeTitle(node)), this.literalSummaryPanel(node))
+    this.inspectorTarget.appendChild(advanced)
+  }
+
+  entryStep(number, title, children) {
+    const section = document.createElement("section")
+    section.className = "automation-workflow-builder__step"
+
+    const head = document.createElement("header")
+    head.className = "automation-workflow-builder__step-head"
+    head.innerHTML = `<span class="automation-workflow-builder__step-num">${number}</span><strong>${title}</strong>`
+
+    const body = document.createElement("div")
+    body.className = "automation-workflow-builder__step-body"
+    body.append(...children)
+
+    section.append(head, body)
+    return section
+  }
+
+  // Passos do início por botão de template: número -> template do número (botões viram cartões) -> receptivo.
+  whatsappFlowSteps(node) {
+    const senders = this.catalog.whatsapp_senders || []
+    if (!senders.length) {
+      return [["Número de WhatsApp", this.entryEventNotice("Nenhum número de WhatsApp ativo. Conecte um número em Integrações › WhatsApp para começar por um template.")]]
+    }
+
+    const sender = senders.find((item) => String(item.id) === String(node.config?.whatsapp_sender_number_id))
+    const senderOptions = { "": "Selecione o número", ...Object.fromEntries(senders.map((item) => [item.id, `${item.label} · ${item.phone}`])) }
+    const steps = [["Número de WhatsApp", this.selectField("Número", "whatsapp_sender_number_id", node.config?.whatsapp_sender_number_id, senderOptions, { placeholder: "Selecione o número" })]]
+    if (!sender) return steps
+
+    const templates = this.flowTemplatesFor(node)
+    if (!templates.length) {
+      steps.push(["Template", this.entryEventNotice("Este número não tem templates aprovados com botão de resposta.")])
+      return steps
+    }
+
+    const templateOptions = { "": "Selecione o template", ...Object.fromEntries(templates.map((template) => [template.id, template.name])) }
+    const chosen = templates.find((template) => String(template.id) === String(node.config?.whatsapp_template_id))
+    const templateChildren = [this.selectField("Template deste número", "whatsapp_template_id", node.config?.whatsapp_template_id, templateOptions, { placeholder: "Selecione o template" })]
+    if (chosen) {
+      const buttons = chosen.scaffold.nodes.filter((item) => item.type === "response_condition").map((item) => item.config?.button_text).filter(Boolean)
+      const next = this.definition.nodes.length > 1 ? "Adicione uma resposta condicional para tratar cada botão." : "Cada botão virou um cartão no canvas: escolha o que fazer com ele."
+      templateChildren.push(this.entryEventNotice(`Botões: ${buttons.join(", ")}. ${next}`))
+    }
+    steps.push(["Template", ...templateChildren])
+    if (chosen) steps.push(["Receptivo", ...this.receptiveControls(node, sender, chosen)])
+
+    return steps
+  }
+
+  receptiveControls(node, sender, template) {
+    if (template.existing_flow && template.existing_flow.workflow_id !== this.catalog.workflow_id) {
+      return [this.entryEventNotice(`Este template já tem o fluxo de resposta “${template.existing_flow.name}”. Para usá-lo como receptivo por aqui, edite ou remova esse fluxo em Fluxos de Resposta.`)]
+    }
+    if (!template.receptive_ok) {
+      return [this.entryEventNotice("Para ser receptivo, classifique o template como “Fluxos de resposta” ou “Atendimento” em Templates.")]
+    }
+
+    const controls = [this.checkboxField(
+      "Usar como receptivo deste número",
+      "use_as_receptive",
+      node.config?.use_as_receptive,
+      `Quando alguém escrever para ${sender.label} · ${sender.phone}, este fluxo envia o menu do template e cada botão segue o caminho montado aqui. Vale ao publicar.`
+    )]
+    const current = sender.receptive_flow
+    if (node.config?.use_as_receptive && current && current.workflow_id !== this.catalog.workflow_id) {
+      controls.push(this.entryEventNotice(`Hoje este número usa o fluxo “${current.name}” como receptivo. Ao publicar, ele será substituído por este.`))
+    }
+    return controls
   }
 
   proposalEvents() {
@@ -1536,6 +1865,12 @@ export default class extends Controller {
       summary = `Criar tarefa "${title}" para o responsável atual do lead, com vencimento em ${node.config?.due_in_hours || "24"} hora(s). ${this.taskFallbackLiteral(node)}`
     } else if (actionType === "send_whatsapp") {
       summary = node.config?.message ? "Enviar WhatsApp para o lead com a mensagem configurada." : "Configurar a mensagem de WhatsApp que será enviada ao lead."
+    } else if (actionType === "send_whatsapp_buttons" || actionType === "send_whatsapp_list") {
+      const count = this.questionOptions(node).length
+      summary = `Perguntar ao cliente com ${actionType === "send_whatsapp_list" ? "uma lista" : "botões"} (${count} opç${count === 1 ? "ão" : "ões"}) e seguir pelo caminho da resposta.`
+    } else if (actionType === "transfer_to_attendant") {
+      const queue = this.valueLabel(this.catalog.distribution_rules, node.config?.distribution_rule_id, "uma fila ainda não selecionada")
+      summary = `Passar a conversa para um atendente da fila "${queue}", levando as respostas do cliente como anotação.`
     } else if (actionType === "send_whatsapp_template") {
       const template = this.valueLabel(this.catalog.templates, node.config?.template, "um modelo ainda não selecionado")
       summary = `Enviar modelo WhatsApp "${template}" para o lead.`
@@ -1770,12 +2105,19 @@ export default class extends Controller {
 
     this.inspectorTarget.appendChild(this.selectField("Tipo de fallback", "fallback_type", fallbackType, {
       timeout: "Sem resposta até timeout",
-      no_match: "Resposta não reconhecida"
+      no_match: "Resposta não reconhecida",
+      exhausted: "Depois das tentativas"
     }, {
       placeholder: "Selecione o fallback",
       info: "Define quando este caminho alternativo deve rodar."
     }))
     this.inspectorTarget.appendChild(this.responseRouterInfoPanel(detail))
+    if (fallbackType === "no_match") {
+      this.inspectorTarget.appendChild(this.checkboxField("Repetir a pergunta depois do aviso", "retry_question", node.config?.retry_question, "Pergunta de novo até o limite abaixo. Depois disso, segue o caminho “Depois das tentativas”, se existir."))
+      if (this.booleanConfig(node.config?.retry_question, false)) {
+        this.inspectorTarget.appendChild(this.field("Repetir até quantas vezes (1 a 5)", "max_attempts", node.config?.max_attempts || "2", "number"))
+      }
+    }
     this.inspectorTarget.appendChild(this.entryEventNotice("Depois deste fallback, adicione a intervenção normal: perguntar novamente, criar tarefa, mover etapa ou registrar nota."))
   }
 
@@ -2236,6 +2578,11 @@ export default class extends Controller {
         title: "Resposta não reconhecida",
         icon: "bi-question-diamond",
         copy: "Este caminho roda quando houve resposta, mas nenhuma condição irmã conectada ao mesmo ponto casou."
+      },
+      exhausted: {
+        title: "Depois das tentativas",
+        icon: "bi-arrow-repeat",
+        copy: "Roda quando o cliente já errou o número de vezes definido em “Resposta não reconhecida”. Use para passar para um atendente."
       }
     }
   }
@@ -2300,6 +2647,17 @@ export default class extends Controller {
       this.renderTaskAssigneeFallbackField(node)
     } else if (actionType === "send_whatsapp") {
       this.inspectorTarget.appendChild(this.textArea("Mensagem WhatsApp", "message", node.config?.message || ""))
+    } else if (actionType === "send_whatsapp_buttons" || actionType === "send_whatsapp_list") {
+      const list = actionType === "send_whatsapp_list"
+      this.inspectorTarget.appendChild(this.textArea("Pergunta", "message", node.config?.message || "", { info: "O que o cliente vai ler. Você pode usar {{nome}} para o nome dele." }))
+      if (list) this.inspectorTarget.appendChild(this.field("Texto do botão que abre a lista", "list_button", node.config?.list_button || "Ver opções", "text", { info: "Até 20 caracteres." }))
+      this.inspectorTarget.appendChild(this.textArea(list ? "Opções (uma por linha, até 10)" : "Opções (uma por linha, até 3)", "options", node.config?.options || "", {
+        info: list ? "Cada opção pode ter até 24 caracteres. Cada uma ganha um caminho abaixo: edite as respostas de cada caminho." : "Cada opção pode ter até 20 caracteres. Cada uma ganha um caminho abaixo: edite as respostas de cada caminho."
+      }))
+    } else if (actionType === "transfer_to_attendant") {
+      this.inspectorTarget.appendChild(this.selectField("Fila de atendimento", "distribution_rule_id", node.config?.distribution_rule_id, this.catalog.distribution_rules, { placeholder: "Selecione a fila" }))
+      this.inspectorTarget.appendChild(this.field("Assunto (o atendente vê na lista)", "topic", node.config?.topic || "Atendimento automático", "text", { info: "Aparece na lista de conversas e na gestão de atendimentos." }))
+      this.inspectorTarget.appendChild(this.textArea("Mensagem ao finalizar o atendimento", "finish_message", node.config?.finish_message || "", { info: "Enviada ao cliente quando o atendente clicar em Finalizar. Vazio usa a mensagem padrão." }))
     } else if (actionType === "send_whatsapp_template") {
       this.inspectorTarget.appendChild(this.selectField("Modelo WhatsApp", "template", node.config?.template, this.catalog.templates, { placeholder: "Selecione o modelo" }))
     } else if (actionType === "send_webhook") {
@@ -3511,6 +3869,9 @@ export default class extends Controller {
       create_task: "bi-check2-square",
       send_whatsapp: "bi-whatsapp",
       send_whatsapp_template: "bi-chat-square-text",
+      send_whatsapp_buttons: "bi-ui-radios",
+      send_whatsapp_list: "bi-list-ul",
+      transfer_to_attendant: "bi-headset",
       send_webhook: "bi-broadcast",
       set_flow_result: "bi-signpost-split",
       move_stage: "bi-arrow-right-circle",
@@ -3531,6 +3892,9 @@ export default class extends Controller {
       create_task: "Cria uma tarefa para o time acompanhar o lead no prazo definido.",
       send_whatsapp: "Envia uma mensagem livre pelo WhatsApp quando a etapa chegar aqui.",
       send_whatsapp_template: "Dispara um modelo WhatsApp aprovado e reutilizável.",
+      send_whatsapp_buttons: "Pergunta com até 3 botões. Cada botão vira um caminho para você continuar.",
+      send_whatsapp_list: "Pergunta com uma lista de até 10 opções. Cada opção vira um caminho.",
+      transfer_to_attendant: "Entrega a conversa a um atendente da fila, com as respostas do cliente já anotadas.",
       send_webhook: "Envia o evento da automação para um endpoint externo com payload configurável.",
       set_flow_result: "Define se o caminho gera atendimento e qual regra assume o destino.",
       move_stage: "Atualiza a etapa operacional do lead como apoio ao acompanhamento.",
@@ -3551,6 +3915,9 @@ export default class extends Controller {
       create_task: "tarefa",
       send_whatsapp: "mensagem",
       send_whatsapp_template: "modelo",
+      send_whatsapp_buttons: "pergunta",
+      send_whatsapp_list: "pergunta",
+      transfer_to_attendant: "atendente",
       set_flow_result: "resultado",
       move_stage: "etapa",
       update_lead_lifecycle: "ciclo",

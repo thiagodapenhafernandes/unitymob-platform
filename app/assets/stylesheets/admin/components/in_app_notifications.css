@@ -1,0 +1,36 @@
+.ax-notifications { position: relative; display: flex; align-items: center; }
+.ax-notifications { margin-right: 8px; }
+.ax-notifications__trigger {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+  border: 1px solid var(--ab-field-border, #d5deea); border-radius: 10px; background: var(--ab-control-bg, #fff);
+  color: var(--ab-ink, #344054); cursor: pointer;
+}
+.ax-notifications__badge {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: #e5484d; color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+}
+.ax-notifications__badge[hidden] { display: none; }
+/* top: 100% ancora o painel logo abaixo do sino; sem isso o flex do wrapper centraliza o painel no botão e ele sobe para trás da navbar. */
+.ax-notifications__panel { top: 100%; width: min(360px, 92vw); max-height: min(70vh, calc(100vh - 72px)); overflow-y: auto; padding: 0; margin-top: 8px; z-index: 60; }
+.ax-notifications__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--ax-border-soft, #e5eaf1); }
+.ax-notifications__read-all { border: 0; background: none; color: var(--ax-primary, #2f6f80); font-size: 12px; font-weight: 700; cursor: pointer; }
+.ax-notifications__sound { margin-left: auto; border: 0; background: none; color: var(--ab-muted, #667085); font-size: 16px; cursor: pointer; }
+.ax-notifications__sound:hover { color: var(--ax-primary, #2f6f80); }
+.ax-notifications__empty { margin: 0; padding: 20px 14px; color: var(--ab-muted, #667085); font-size: 13px; text-align: center; }
+.ax-notifications__empty[hidden] { display: none; }
+.ax-notifications__item { flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 14px; border-bottom: 1px solid var(--ax-border-soft, #eef1f6); white-space: normal; }
+.ax-notifications__item.is-unread { background: var(--ab-panel-soft, #eef7f9); box-shadow: inset 3px 0 0 #e5484d; }
+.ax-notifications__item-title { font-size: 13px; font-weight: 800; color: var(--ab-ink, #172033); }
+.ax-notifications__item-body { font-size: 12px; color: var(--ab-muted, #475467); }
+.ax-notifications__item-time { font-size: 11px; color: #98a2b3; }
+
+.ax-notifications__toasts { position: fixed; right: 16px; bottom: 16px; z-index: 1090; display: grid; gap: 8px; width: min(340px, calc(100vw - 32px)); pointer-events: none; }
+.ax-notifications__toast {
+  position: relative; display: grid; gap: 2px; padding: 12px 34px 12px 14px; pointer-events: auto;
+  border: 1px solid var(--ab-line, #b7e4c0); border-left: 4px solid var(--ax-accent-green); border-radius: 10px; background: var(--ab-panel, #fff);
+  box-shadow: 0 8px 24px rgb(16 24 40 / .16); color: inherit; text-decoration: none;
+  animation: ax-notification-in .2s ease-out;
+}
+.ax-notifications__toast-close { position: absolute; top: 6px; right: 8px; border: 0; background: none; font-size: 18px; line-height: 1; color: var(--ab-muted, #667085); cursor: pointer; }
+@keyframes ax-notification-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ax-notifications__toast { animation: none; } }

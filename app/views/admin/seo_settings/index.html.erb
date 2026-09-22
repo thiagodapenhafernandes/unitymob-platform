@@ -3,74 +3,57 @@
 <% active_ratio = @stats[:total].to_i.positive? ? ((@stats[:active].to_f / @stats[:total].to_i) * 100).round : 0 %>
 <% generated_ratio = @stats[:total].to_i.positive? ? ((@stats[:generated].to_f / @stats[:total].to_i) * 100).round : 0 %>
 
-<div class="seo-settings-page">
-  <% heading_actions = capture do %>
-    <div class="tw-inline-flex tw-flex-wrap tw-items-center tw-justify-end tw-gap-2">
-      <%= button_to discover_admin_seo_settings_path,
-          method: :post,
-          class: "ax-btn ax-btn--sm ax-btn--primary",
-          data: { turbo_submits_with: "Descobrindo..." } do %>
-        <i class="bi bi-compass"></i>Descobrir SEO
-      <% end %>
-
-      <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-ax-modal-open="#seoStrategyModal">
-        <i class="bi bi-stars"></i>Estratégia IA
-      </button>
-
-      <%= ax_button("Redirects", admin_seo_redirects_path, size: :sm, variant: :ghost, icon: "signpost-split") %>
-      <%= ax_button("Novo SEO", new_admin_seo_setting_path, size: :sm, variant: :primary, icon: "plus-circle") %>
-    </div>
+<%# Ações do módulo na contextbar; o heading fica só com título e contexto. %>
+<% content_for :admin_contextbar_actions do %>
+  <%= button_to discover_admin_seo_settings_path, method: :post, class: "ax-contextbar__button", data: { turbo_submits_with: "Descobrindo..." } do %>
+    <i class="bi bi-compass"></i><span>Descobrir SEO</span>
   <% end %>
+  <%= admin_contextbar_button("Estratégia IA", icon: "stars", data: { ax_modal_open: "#seoStrategyModal" }) %>
+  <%= admin_contextbar_link("Redirects", admin_seo_redirects_path, icon: "signpost-split") %>
+  <%= admin_contextbar_link("Novo SEO", new_admin_seo_setting_path, icon: "plus-circle", primary: true) %>
+<% end %>
 
+<div class="seo-settings-page">
   <%= ax_workspace_heading(
         eyebrow: "Site público",
         icon: "search",
         title: "Páginas SEO",
-        subtitle: "Inventário técnico das páginas públicas, aplicação, indexação e geração com IA.",
-        metrics: [
-          { value: number_with_delimiter(@stats[:total]), label: "mapeadas" },
-          { value: number_with_delimiter(@stats[:public]), label: "públicas" },
-          { value: number_with_delimiter(@stats[:generated]), label: "com IA" }
-        ],
-        actions: heading_actions
+        subtitle: "Inventário técnico das páginas públicas: aplicação, indexação e geração com IA.",
+        pills: [@seo_discovery_enabled ? "Descoberta ativa" : "Descoberta off"]
       ) %>
 
   <%= ax_field_grid do %>
     <div class="ax-span-3">
       <%= ax_metric_card(
-            label: "Mapeadas",
+            label: "Mapeadas", icon: "diagram-3", tone: :blue,
             value: number_with_delimiter(@stats[:total]),
-            hint: "registros no inventário técnico",
-            badge: ax_badge("Inventário", tone: :blue)
+            hint: "registros no inventário técnico"
           ) %>
     </div>
 
     <div class="ax-span-3">
       <%= ax_metric_card(
-            label: "Ativas",
+            label: "Ativas", icon: "toggle-on", tone: :green,
             value: number_with_delimiter(@stats[:active]),
             hint: "#{active_ratio}% do inventário",
-            badge: ax_badge("Operação", tone: :green),
             progress: active_ratio
           ) %>
     </div>
 
     <div class="ax-span-3">
       <%= ax_metric_card(
-            label: "Públicas",
+            label: "Públicas", icon: "globe2", tone: :teal,
             value: number_with_delimiter(@stats[:public]),
             hint: "#{public_ratio}% aplicadas no site",
-            badge: ax_badge("Site", tone: :blue),
             progress: public_ratio
           ) %>
     </div>
 
     <div class="ax-span-3">
       <%= ax_metric_card(
-            label: "Com IA",
+            label: "Com IA", icon: "stars", tone: :amber,
             value: number_with_delimiter(@stats[:generated]),
             hint: "#{generated_ratio}% geradas automaticamente",
-            badge: ax_badge("IA", tone: :amber),
             progress: generated_ratio
           ) %>
     </div>
@@ -167,15 +150,17 @@
                   <%= link_to public_url,
                       target: "_blank",
                       rel: "noopener",
-                      class: "ax-btn ax-btn--sm ax-btn--ghost seo-public-link",
+                      class: "seo-public-link",
                       title: "Abrir página pública" do %>
                     <i class="bi bi-box-arrow-up-right"></i>
                   <% end %>
 
                   <div>
                     <div class="tw-font-bold text-truncate" title="<%= seo.display_name %>"><%= seo.display_name %></div>
-                    <div class="tw-text-sm tw-text-ink-muted text-truncate" title="<%= seo.page_type_label %>"><%= seo.page_type_label %></div>
-                    <div class="tw-text-sm tw-text-ink-muted text-truncate" title="<%= seo.sanitized_canonical_path %>"><%= seo.sanitized_canonical_path %></div>
+                    <div class="seo-settings-page-meta">
+                      <span class="seo-settings-type"><%= seo.page_type_label %></span>
+                      <span class="seo-settings-path text-truncate" title="<%= seo.sanitized_canonical_path %>"><%= seo.sanitized_canonical_path %></span>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -211,10 +196,10 @@
                   <%= button_to generate_ai_admin_seo_setting_path(seo), method: :post, class: "ax-btn ax-btn--sm ax-btn--ghost", title: "Gerar com IA" do %>
                     <i class="bi bi-stars"></i>
                   <% end %>
-                  <%= link_to edit_admin_seo_setting_path(seo), class: "ax-btn ax-btn--sm ax-btn--primary", title: "Editar" do %>
+                  <%= link_to edit_admin_seo_setting_path(seo), class: "ax-btn ax-btn--sm", title: "Editar" do %>
                     <i class="bi bi-pencil"></i>
                   <% end %>
-                  <%= button_to admin_seo_setting_path(seo), method: :delete, class: "ax-btn ax-btn--sm ax-btn--danger", form: { data: { turbo_confirm: "Excluir este registro de SEO?" } } do %>
+                  <%= button_to admin_seo_setting_path(seo), method: :delete, class: "ax-btn ax-btn--sm ax-btn--ghost seo-settings-delete", title: "Excluir", form: { data: { turbo_confirm: "Excluir este registro de SEO?" } } do %>
                     <i class="bi bi-trash"></i>
                   <% end %>
                 </div>
@@ -247,25 +232,14 @@
     <%= form_with url: update_strategy_admin_seo_settings_path, method: :patch, local: true do %>
       <div class="ax-quick-modal__body">
         <div class="seo-strategy-toggle-grid">
-          <label class="seo-strategy-toggle">
-            <span>Criar SEO ao acessar</span>
-            <%= check_box_tag :seo_auto_inventory_enabled, "1", @auto_inventory_enabled, class: "seo-strategy-toggle__input" %>
-          </label>
-
-          <label class="seo-strategy-toggle">
-            <span>Aplicar por padrão</span>
-            <%= check_box_tag :seo_auto_apply_enabled, "1", @auto_apply_enabled, class: "seo-strategy-toggle__input" %>
-          </label>
-
-          <label class="seo-strategy-toggle">
-            <span>Gerar IA automaticamente</span>
-            <%= check_box_tag :seo_ai_auto_generate_enabled, "1", @auto_ai_enabled, class: "seo-strategy-toggle__input" %>
-          </label>
-
-          <label class="seo-strategy-toggle">
-            <span>Descobrir oportunidades todo dia</span>
-            <%= check_box_tag :seo_discovery_enabled, "1", @seo_discovery_enabled, class: "seo-strategy-toggle__input" %>
-          </label>
+          <%= ax_switch_field(name: "seo_auto_inventory_enabled", checked: @auto_inventory_enabled, class_name: "ax-switch--card",
+                              label: "Criar SEO ao acessar", description: "Cada página pública visitada entra no inventário.") %>
+          <%= ax_switch_field(name: "seo_auto_apply_enabled", checked: @auto_apply_enabled, class_name: "ax-switch--card",
+                              label: "Aplicar por padrão", description: "Registros novos já valem no site público.") %>
+          <%= ax_switch_field(name: "seo_ai_auto_generate_enabled", checked: @auto_ai_enabled, class_name: "ax-switch--card",
+                              label: "Gerar IA automaticamente", description: "Título, descrição e insights por página, sem clique.") %>
+          <%= ax_switch_field(name: "seo_discovery_enabled", checked: @seo_discovery_enabled, class_name: "ax-switch--card",
+                              label: "Descobrir oportunidades todo dia", description: "Rotina diária que avalia e cria páginas indexáveis.") %>
         </div>
 
         <label class="ax-label tw-font-bold" for="seo_ai_strategy_prompt">Instruções para IA</label>

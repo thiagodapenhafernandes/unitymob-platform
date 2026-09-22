@@ -1,0 +1,16 @@
+<%# Seleção múltipla em chips (toggle_chip.css). locals: form, method, choices ([[valor, rótulo]]), legend, class_name, disabled, selected (opcional) %>
+<%
+  selected = Array(local_assigns[:selected].nil? ? form.object.public_send(method) : local_assigns[:selected]).map(&:to_s)
+  field_name = "#{form.object_name}[#{method}][]"
+%>
+<div class="ax-check-group-field" role="group"<%= raw %( aria-label="#{h(legend)}") if local_assigns[:legend].present? %>>
+  <% if local_assigns[:legend].present? %><span class="ax-field-label"><%= legend %></span><% end %>
+  <%= hidden_field_tag field_name, "", id: nil %>
+  <div class="<%= ["ax-chip-grid", "ax-check-group", local_assigns[:class_name]].compact.join(" ") %>">
+    <% choices.each do |value, label| %>
+      <%= ax_toggle_chip(label: label, name: field_name, checked_value: value, checked: selected.include?(value.to_s),
+                         id: "#{form.object_name}_#{method}_#{value}".gsub(/[^\w]/, "_"), include_hidden: false,
+                         disabled: local_assigns.fetch(:disabled, false)) %>
+    <% end %>
+  </div>
+</div>

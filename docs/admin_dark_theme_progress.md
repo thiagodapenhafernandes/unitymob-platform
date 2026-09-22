@@ -13,9 +13,9 @@ Status atual: **em validação**, não “concluído”.
 | Dimensão | Estado verificável | Leitura correta |
 | --- | --- | --- |
 | Fundação do tema | Tokens light/dark e carregamento nos layouts implementados | Base técnica existente; não prova acabamento das telas |
-| Componentização CSS | 69 arquivos compartilhados | Cobertura ampla, ainda sujeita a resíduos e duplicações |
+| Componentização CSS | 94 arquivos compartilhados | Cobertura ampla, ainda sujeita a resíduos e duplicações |
 | Contrato automatizado | 223 exemplos passando | 210 contratos estáticos + 13 requests direcionados; não substitui inspeção visual |
-| Adoção estática mínima | 69/69 seletores-raiz referenciados no admin | Impede CSS órfão; não prova que todas as telas usam o contrato correto |
+| Adoção estática mínima | 94/94 seletores-raiz referenciados no admin | Impede CSS órfão; não prova que todas as telas usam o contrato correto |
 | Build e integridade | CSS compila e `git diff --check` passa | Sem erro estrutural detectado nessa rodada |
 | Homologação visual | **1 smoke parcial aprovado** | Leads, dark, desktop, somente no viewport auditado |
 | Regressão light | **0 cenários aprovados formalmente** | Principal lacuna atual |
@@ -39,8 +39,8 @@ Arquivos de controllers, models, serviços, banco e views públicas presentes no
 
 - camada semântica de tokens para preservar light e aplicar dark;
 - bundle próprio de componentes compartilhados carregado depois do legado;
-- 69 folhas de componente extraídas ou consolidadas;
-- contrato automatizado no conjunto atual, incluindo varredura das folhas próprias do admin para impedir tokens `--ax-dark-*` fora de seletores `data-admin-theme`, manifesto de adoção estática mínima dos 69 componentes, preferência individual no admin e no Field, comportamento acessível de modais, command menus, disclosures, tooltips, drawer, aside contextual e confirmação destrutiva e completude das matrizes deste relatório;
+- 94 folhas de componente extraídas ou consolidadas;
+- contrato automatizado no conjunto atual, incluindo varredura das folhas próprias do admin para impedir tokens `--ax-dark-*` fora de seletores `data-admin-theme`, manifesto de adoção estática mínima dos 94 componentes, preferência individual no admin, comportamento acessível de modais, command menus, disclosures, tooltips, drawer, aside contextual e confirmação destrutiva e completude das matrizes deste relatório;
 - redução de 3.246 linhas e adição de 1.051 linhas no `admin_tailwind.css`/catálogo no diff rastreado atual, resultado principalmente da retirada de regras duplicadas para componentes;
 - correção recente do botão acoplado de multiselect promovida do editor de imóvel para o componente compartilhado.
 
@@ -71,7 +71,7 @@ Uma tela não será apresentada como concluída apenas porque recebeu CSS ou por
 ## Arquitetura adotada
 
 - `theme_tokens.css`: cores semânticas e contrato light/dark.
-- `admin/components/*.css`: regras reutilizáveis de componentes; existem **69 arquivos de componente** nesta camada.
+- `admin/components/*.css`: regras reutilizáveis de componentes; existem **94 arquivos de componente** nesta camada.
 - `admin_tailwind.css`: compatibilidade e layouts específicos ainda não migrados. Não deve ser a origem definitiva de componentes reutilizáveis.
 - `dark_theme_component_contract_spec.rb`: contrato automatizado que impede a volta de fundos claros e baixo contraste nos componentes cobertos.
 
@@ -98,6 +98,7 @@ Legenda:
 | Board/Kanban | `board.css` | Sim | Sim | Estrutura, colunas e cards extraídos do monólito; região/colunas nomeadas, contador anunciado, foco, dark, compacto e movimento reduzido protegidos, sem homologação após a promoção | Dark/light + vazio/preenchido + drag/retorno/erro + foco + compacto |
 | Botões | `button.css` | Sim | Sim | Evidências em várias áreas | Light + hover/focus/disabled |
 | Cards | `card.css` | Sim | Sim | Contrato automatizado para card e colapsável, foco, relações ARIA e compacto; sem homologação após o refinamento | Dark/light + hover/foco/open/closed + movimento reduzido + compacto |
+| Grupo de escolhas | `choice_group.css` | Sim | Sim | Opções densas e estados selecionados compartilhados; sem homologação visual completa | Dark/light + hover/foco/checked/disabled + compacto |
 | Controle limpável | `clearable_control.css` | Sim | Sim | Texto/select/número/data/textarea protegidos contra sobreposição; controller não limpa disabled/readonly/TomSelect bloqueado e preserva foco/eventos; dark e movimento reduzido cobertos, sem homologação após o refinamento | Dark/light + vazio/preenchido + foco + disabled/readonly + TomSelect + compacto |
 | Bloco de código | `code_snippet.css` | Sim | Sim | Helper/partial adotado em Distribuição, Webhooks e auditorias; scroll por teclado, conteúdo longo e compacto protegidos, sem homologação após a promoção | Superfície neutra + foco/scroll + JSON/backtrace + compacto |
 | Campo de cor | `color_field.css` | Sim | Sim | Picker/texto extraídos do monólito; IDs distintos, sincronização Stimulus, foco, disabled, dark e compacto protegidos, sem homologação após a promoção | Dark/light + picker/texto + valor válido/incompleto + foco/disabled + compacto |
@@ -105,12 +106,16 @@ Legenda:
 | Card expansível | `disclosure_card.css` | Sim | Sim | Evidência anterior em filtros/painéis | Light + open/closed + foco + movimento reduzido |
 | Confirmação destrutiva | `confirm_submit.css` | Sim | Sim | Helper/partial adotado em Segurança, Leads e Documentos; contrato automatizado para foco/Escape/submit e layout, sem homologação após o refinamento | Dark/light + foco/Escape/submit + compacto |
 | Dica dispensável | `dismissible_hint.css` | Sim | Sim | Persistência individual por usuário, foco fora de regiões ocultas e contraste protegidos por contrato; sem homologação após o refinamento | Dark/light + fechar/persistir individual/foco + movimento reduzido + compacto |
+| Documentação interna | `documentation.css` | Sim | Sim | Superfícies documentais administrativas tokenizadas; sem homologação visual completa | Dark/light + conteúdo longo + tabelas/blocos + compacto |
 | Drawer/sidebar móvel | `drawer.css` | Sim | Sim | Sem homologação após a promoção | Dark/light + foco/Escape/backdrop + compacto |
 | Estado vazio | `empty_state.css` | Sim | Sim | Adoção em 48 arquivos; tokens dark, textos/ações longos, anúncio atômico e compacto protegidos por contrato, sem homologação após o refinamento | Dark/light + normal/compacto + ação + conteúdo longo |
 | Feedback de campo | `field_feedback.css` | Sim | Sim | Erro dark e foco inválido no componente; `aria-invalid` global e anúncio da mensagem protegidos por contrato; sem homologação após o refinamento | Dark/light + hint/erro/sucesso + foco inválido + compacto |
+| Corrida de eventos | `event_race.css` | Sim | Sim | Estados de eventos concorrentes e registros operacionais tokenizados; sem homologação visual completa | Dark/light + vazio/preenchido + alertas + compacto |
 | Formulário de usuários | `admin_user_form.css` | Sim | Sim | Sem homologação após a promoção | Dark/light + novo/edição + compacto |
 | Grade de campos | `field_grid.css` | Sim | Sim | Filhos protegidos contra overflow e spans responsivos cobertos pelo contrato; sem homologação após o refinamento | Neutro ao tema + spans + conteúdo longo + compacto |
 | Grupo de campos | `field_group.css` | Sim | Sim | Título, token e ações longos/compactos protegidos pelo contrato; superfícies de painel dark preservadas, sem homologação após o refinamento | Dark/light + título/token/ações longos + compacto |
+| Formulário guiado | `guided_form.css` | Sim | Sim | Etapas, revisão e navegação guiada compartilhadas; sem homologação visual completa | Dark/light + etapas + revisão + foco + compacto |
+| Estúdio da Home | `home_studio.css` | Sim | Sim | Editor visual da Home tokenizado; sem homologação visual completa | Dark/light + preview + seções + compacto |
 | Etiqueta de lead | `lead_label_chip.css` | Sim | Sim | Sete tons e cor customizada extraídos do monólito; contraste dark, nomes longos e compacto protegidos para Leads e Inbox, sem homologação após a promoção | Dark/light + sete tons/custom + nome longo + lista/Kanban/detalhe/Inbox + compacto |
 | Label de campo | `field_label.css` | Sim | Sim | Helper evita labels órfãos e separa tooltip do label associado; foco, disabled, texto longo e dark protegidos por contrato/helper spec, sem homologação após o refinamento | Dark/light + texto longo + tooltip/foco + disabled + compacto |
 | Lista de arquivos | `file_list.css` | Sim | Sim | Anexo compartilhado cobre link seguro, foco, erro dark, ações e compacto; sem homologação após o refinamento | Dark/light + vazio/preenchido/erro + foco/ações + compacto |
@@ -122,12 +127,19 @@ Legenda:
 | Tabs de formulário | `form_tabs.css` | Sim | Sim | Controller alterna painéis mapeados sem depender de `.tab-pane`; semântica, teclado, disabled, foco, overflow e movimento reduzido protegidos em Rastreamento, Captações e Configurações; sem homologação após o refinamento | Dark/light + hover/foco/active/disabled + teclado + overflow compacto + movimento reduzido |
 | Botão de ícone | `icon_button.css` | Sim | Sim | Contrato automatizado preserva ações transparentes/contornadas e estados; `ax_icon` é decorativo por padrão e `ax_icon_button` fornece nome acessível, sem homologação após o refinamento | Dark/light + hover/foco/active/disabled + nome acessível + movimento reduzido + compacto |
 | Aviso inline | `inline_notice.css` | Sim | Sim | Evidência anterior no editor; sem homologação após o refinamento | Cinco tons dark/light + normal/compacto + anúncio |
+| Notificações internas | `in_app_notifications.css` | Sim | Sim | Lista, sino e itens de notificação tokenizados; sem homologação visual completa | Dark/light + lido/não lido + menu + compacto |
 | Input agrupado | `input_group.css` | Sim | Sim | Contrato automatizado para tamanho, foco, disabled/readonly e movimento reduzido; sem homologação após o refinamento | Dark/light + foco/disabled/readonly + movimento reduzido + compacto |
+| Layout de integração | `integration_layout.css` | Sim | Sim | Shells e onboarding de integrações centralizados; sem homologação visual completa | Dark/light + conectado/desconectado + vazio + compacto |
+| Estúdio de layout | `layout_studio.css` | Sim | Sim | Configuração de identidade/layout tokenizada; sem homologação visual completa | Dark/light + preview + grupos + compacto |
 | Loading/skeleton | `loading.css` | Sim | Sim | Spinner, preloader e skeletons consolidados com contrato automatizado; sem homologação após a promoção | Dark/light + spinner/preloader/skeleton + movimento reduzido + compacto |
 | Modal de mídia | `media_modal.css` | Sim | Sim | Screenshot dark registrado | Light + compacto + estados |
 | Preview de mídia | `media_preview.css` | Sim | Sim | Sem homologação após a promoção | Dark/light + compacto |
 | Menu/dropdown | `menu.css` | Sim | Sim | Evidência anterior em imóveis; WhatsApp sem nova inspeção | Light + hover/open/focus + teclado |
 | Card de métrica | `metric_card.css` | Sim | Sim | Contrato automatizado para semântica, valores longos, progresso e compacto; sem homologação após o refinamento | Dark/light + valor/hint/badge/progresso + compacto |
+| Migração de leads | `lead_migration_integration.css` | Sim | Sim | Integração de migração com painéis e estados tokenizados; sem homologação visual completa | Dark/light + conexão + execução + erros + compacto |
+| Estágios de pipeline | `lead_pipeline_stages.css` | Sim | Sim | Editor de estágios e linhas operacionais tokenizados; sem homologação visual completa | Dark/light + ordenação + estados + compacto |
+| Preview de mensagem | `message_preview.css` | Sim | Sim | Bolhas e prévias de mensagem compartilhadas; sem homologação visual completa | Dark/light + mídia/texto + compacto |
+| Cabeçalho mobile de detalhe | `mobile_detail_header.css` | Sim | Sim | Header compacto mobile extraído e tokenizado; sem homologação visual completa | Dark/light + safe-area + ações + compacto |
 | Workspace de audiências | `audience_workspace.css` | Sim | Sim | Sem homologação após a promoção | Importados/descadastros dark/light + filtros + compacto |
 | Modal genérico | `modal.css` | Sim | Sim | Evidências em várias áreas | Light + compacto + focus trap |
 | Objetivo do módulo | `module_objective.css` | Sim | Sim | Evidência por cabeçalhos | Light + compacto |
@@ -137,11 +149,18 @@ Legenda:
 | Cabeçalho de página | `page_heading.css` | Sim | Sim | Helper ampliado para Captações, Item da Home e edição SEO; tokens dark, ações agrupadas e texto longo protegidos, sem homologação após o refinamento | Dark/light + ações/conteúdo longo + compacto |
 | Paginação | `pagination.css` | Sim | Sim | Contrato automatizado para resumo, hover/active/foco, atual/disabled semânticos, legado e compacto; sem homologação após o refinamento | Dark/light + hover/active/foco/current/disabled + compacto |
 | Progresso | `progress.css` | Sim | Sim | Extraído de Upload como contrato transversal; valor sempre possui nome acessível, clamp, quatro tons, estado assíncrono, movimento reduzido e alto contraste protegidos, sem homologação após a promoção | Dark/light + 0/intermediário/100 + tons + running + movimento reduzido + alto contraste + compacto |
+| Modal de proposta | `proposal_form_modal.css` | Sim | Sim | Formulário modal de proposta tokenizado; sem homologação visual completa | Dark/light + campos + erros + compacto |
 | Cartões de apresentação | `presentation_cards.css` | Sim | Sim | Gerenciador do composer extraído do monólito; superfícies, foco do disclosure, danger, dark, movimento reduzido e compacto protegidos, sem homologação após a promoção | Dark/light + sistema/pessoal/vazio + modal/disclosure + hover/foco + compacto |
+| Formulário público | `public_form_builder.css` | Sim | Sim | Builder de formulários públicos tokenizado; sem homologação visual completa | Dark/light + campos + preview + compacto |
+| Estúdio de cabeçalho público | `public_header_studio.css` | Sim | Sim | Menus e identidade do cabeçalho público tokenizados; sem homologação visual completa | Dark/light + menus + preview + compacto |
 | Modal rápido | `quick_modal.css` | Sim | Sim | Central do imóvel dark inspecionada | Light + compacto |
 | Grupo de rádios | `radio_group.css` | Sim | Sim | Evidência automatizada em Leads e Portais; sem nova homologação visual | Light/dark + hover/focus/checked/disabled + compacto |
 | Item de registro | `record_item.css` | Sim | Sim | Contrato automatizado para layout, foco interno e compacto; evidência visual anterior em listas | Dark/light + foco real das ações + compacto; sem homologação após o refinamento |
+| Tabela de registros | `record_table.css` | Sim | Sim | Tabela operacional alternativa tokenizada; sem homologação visual completa | Dark/light + hover/foco + vazio + compacto |
+| Campo rich text | `rich_text_field.css` | Sim | Sim | Editor rich text e barras de progresso tokenizados; sem homologação visual completa | Dark/light + toolbar + progresso + compacto |
 | Busca | `search.css` | Sim | Sim | Contrato automatizado e adoção em Lojas, Usuários e Proprietários; sem homologação após o refinamento | Dark/light + hover/foco/disabled/readonly/clear + compacto |
+| Estúdio de configurações | `settings_studio.css` | Sim | Sim | Shells de configurações em estúdio tokenizados; sem homologação visual completa | Dark/light + grupos + preview + compacto |
+| Navegação lateral | `sidebar_nav.css` | Sim | Sim | Seções globais da sidebar com tokens por família; sem homologação visual completa | Dark/light + aberto/fechado + foco + compacto |
 | Stack/layout | `stack.css` | Sim | Sim | Cobertura estrutural indireta | Compacto |
 | Lista de status | `status_list.css` | Sim | Sim | Pares semânticos de diagnóstico promovidos dos inspectors de E-mail, Leads e Push; dark e empilhamento compacto protegidos por contrato, sem homologação visual | Dark/light + múltiplos badges + textos longos + compacto |
 | Rodapé de ação fixo | `sticky_action_footer.css` | Sim | Sim | Sticky real com variante static, safe-area, semântica de formulário, meta/ações longas e compacto protegidos; sem homologação após o refinamento | Dark/light + sticky/static + meta/ações + safe-area + compacto |
@@ -149,17 +168,23 @@ Legenda:
 | Workspace do sistema | `system_workspace.css` | Sim | Sim | Contrato automatizado para superfícies da fila/falhas, tabelas semânticas e compacto; sem homologação visual após a promoção | Dark/light + métricas/fila/falhas/tabelas + hover/foco + compacto |
 | Workflow operacional | `workflow.css` | Sim | Sim | Etapas, clarificador, main/inspector, stepper e estados promovidos do Fluxo de revisão; dark e compacto protegidos, sem homologação visual após a promoção | Dark/light + etapas/inspector/estados + hover/foco + compacto |
 | Tabela | `table.css` | Sim | Sim | Contrato automatizado para rolagem, hover/foco e densidade compacta; sem homologação após o refinamento | Dark/light + hover/foco + rolagem horizontal + compacto |
+| Modal de tarefa | `task_form_modal.css` | Sim | Sim | Modal de tarefa administrativa tokenizado; sem homologação visual completa | Dark/light + campos + recorrência + compacto |
 | Recorte por equipe | `team_toggle.css` | Sim | Sim | Link-switch composto sobre `toggle_chip`; ícone antes oculto, foco, estado marcado, dark e filtros preservados protegidos, sem homologação após a promoção | Dark/light + ligado/desligado + com/sem equipe + foco + filtros + compacto |
 | Chip selecionável | `toggle_chip.css` | Sim | Sim | Evidência automatizada transversal; sem nova homologação visual | Light/dark + hover/focus/checked/disabled + compacto |
 | Tooltip | `tooltip.css` | Sim | Sim | Contrato automatizado para hover/foco/Escape, fallback legado, descrição ARIA e viewport dinâmico; sem homologação após o refinamento | Dark/light + hover/foco/Escape + bordas do viewport + compacto |
+| Formulário touch | `touch_form.css` | Sim | Sim | Controles touch/mobile tokenizados; sem homologação visual completa | Dark/light + toque + foco + compacto |
 | Upload | `upload.css` | Sim | Sim | `ax_file_field` promovido do monólito; foco visível do input oculto, disabled, anúncio do filename, dark e compacto protegidos por contrato; sem homologação após o refinamento | Dark/light + vazio/preenchido/disabled + foco + filename longo + compacto |
+| Menu do usuário | `user_menu.css` | Sim | Sim | Menu pessoal, tema e avatar compartilhados; sem homologação visual completa | Dark/light + aberto/fechado + foco + compacto |
 | Alternador de visualização | `view_toggle.css` | Sim | Sim | Evidência no catálogo | Light + hover/checked |
 | Integração Meta/WhatsApp | `whatsapp_integration.css` | Sim | Sim | Contrato de superfícies, textos, abas, foco e movimento reduzido aplicado à conexão, webhook, WABA, números e telefones do site; sem homologação visual após a promoção | Dark/light + conectado/desconectado + abas + webhook + números/vazios + foco + compacto |
 | Builder de campanhas WhatsApp | `whatsapp_campaign_builder.css` | Sim | Sim | Navegação de cinco etapas com tabs/panels relacionados, roving tabindex, teclado, progressbar, foco, dark e movimento reduzido protegidos; sem homologação visual após a promoção | Dark/light + cinco etapas + setas/Home/End + validação + progresso + foco + compacto |
+| Fluxos receptivos WhatsApp | `whatsapp_response_flows.css` | Sim | Sim | Builder/listagem de fluxos receptivos tokenizados; sem homologação visual completa | Dark/light + fluxo + gatilhos + compacto |
+| Builder de templates WhatsApp | `whatsapp_template_builder.css` | Sim | Sim | Builder guiado de templates tokenizado; sem homologação visual completa | Dark/light + etapas + preview + compacto |
+| Lista de templates WhatsApp | `whatsapp_template_list.css` | Sim | Sim | Listagem e filtros de templates tokenizados; sem homologação visual completa | Dark/light + filtros + ações + compacto |
 | Cabeçalho do workspace | `workspace_heading.css` | Sim | Sim | Evidência em várias áreas | Light + compacto |
 | Shell de workspace | `workspace_shell.css` | Sim | Sim | Contrato estrutural extraído do monólito; main/aside, contexto, estado recolhido, nomes acessíveis, dark e movimento reduzido protegidos; geometria inline de `aside_first` removida, sem homologação após a promoção | Dark/light + main/aside + expandido/recolhido + contextbar + movimento reduzido + compacto |
 
-Leitura objetiva da matriz: **69/69 componentes têm folha compartilhada carregada, seletor-raiz referenciado no admin e entram na proteção automatizada; 66/69 possuem escopo dark explícito e 3/69 são neutros por contrato; 0/69 estão homologados em toda a matriz dark/light + desktop/compacto + estados interativos**. A matriz não afirma que todas as telas já adotaram cada contrato: adoção e resíduos legados são auditados por área. Evidência por screenshot ou inspeção parcial é registrada separadamente para não inflar o avanço.
+Leitura objetiva da matriz: **94/94 componentes têm folha compartilhada carregada, seletor-raiz referenciado no admin e entram na proteção automatizada; 91/94 possuem escopo dark explícito e 3/94 são neutros por contrato; 0/94 estão homologados em toda a matriz dark/light + desktop/compacto + estados interativos**. A matriz não afirma que todas as telas já adotaram cada contrato: adoção e resíduos legados são auditados por área. Evidência por screenshot ou inspeção parcial é registrada separadamente para não inflar o avanço.
 
 ## Avanço comprovado
 
@@ -172,7 +197,7 @@ Os contratos automatizados cobrem atualmente **210 comportamentos** de dark them
 - cards, tabelas, estados vazios, skeletons e tooltips;
 - componentes do dashboard, catálogo de imóveis, leads e editor de imóveis;
 - componentes específicos de captações, automações, distribuição, SEO e marketing.
-- correspondência integral entre as 69 folhas carregadas, seus seletores-raiz catalogados e ao menos uma referência estática no admin.
+- correspondência integral entre as 94 folhas carregadas, seus seletores-raiz catalogados e ao menos uma referência estática no admin.
 
 Nesta rodada foram consolidados os seguintes comportamentos compartilhados:
 
@@ -733,6 +758,80 @@ O smoke aprovado é deliberadamente restrito à combinação registrada acima. E
 - `/admin/presentation_cards`, cadastro e edição preservaram a separação entre template corporativo e cartões pessoais. A listagem recebeu captions, escopo de colunas/linhas e ações icon-only identificadas pelo cartão; o formulário principal usa resumo de erros e dois `ax_text_field`, inclusive textarea sem montagem manual.
 - o gerenciador aberto pelo composer do WhatsApp manteve modal, disclosures, `return_to`, criação, edição, switches e exclusão, mas seus quatro campos avulsos passaram a `ax_standalone_field`. Diálogo e ações receberam nomes contextuais, a exclusão rápida ganhou confirmação e ícones decorativos saíram da árvore acessível.
 - `pc-manager`/`pc-item` e seus estados dark deixaram o monólito e formaram `presentation_cards.css`, o **69º componente catalogado**, com tokens semânticos, foco, danger, largura compacta e movimento reduzido. `PresentationCard#company_display_name` agora resolve explicitamente `LayoutSetting.instance(tenant: tenant)`: o teste força outro `Current.tenant` e comprova que a saudação continua usando a marca da conta do cartão. Contrato, CRUD/isolamento e model passaram juntos com **217 exemplos, 0 falhas**; ERB real, Zeitwerk, os dois builds CSS e integridade também passaram. Listagem com/sem cartões, sistema/pessoal, modal aberto, disclosures, confirmação, dark/light, hover/foco e viewport compacto permanecem pendentes de homologação visual.
+
+### Retomada de 19/09/2026 — Controles escuros e formulário guiado
+
+- **Campos nativos brancos no escuro:** a regra escura de `form_control.css` usava `:where(...)` e perdia em especificidade para `.ax-field input:not([type="color"])`. Passou a `html[data-admin-theme="dark"] :is(...)`, com a mesma especificidade dos seletores claros. O efeito vale para todo o admin; leads, tarefas e configurações da conta foram conferidos no escuro sem regressão.
+- **TomSelect branco no escuro:** o CSS claro usa `.ax-app .ts-wrapper .ts-control { background-color: #fff !important }` e só o lead tinha regra escura própria. Entrou o par escuro (também `!important`) em `form_control.css`.
+- **Componentes novos:** `guided_form.css` e `choice_group.css` usam apenas tokens semânticos (`--ab-*`) e dispensam bloco escuro próprio; `sidebar_nav.css` concentra o menu expandido. Verificado com usuário em modo escuro (renderização local com o CSS e os controllers reais): roteiro de templates, fluxo de resposta, listagem de templates e menu.
+- Pendente: verde de sucesso e cores das etapas do roteiro continuam fixos, sem token semântico; a homologação no navegador do admin logado segue por fazer.
+
+### Retomada de 19/09/2026 (2) — Homologação no navegador, admin logado
+
+Método: servidor Rails em `RAILS_ENV=test` (porta 3055, banco de teste), login real por formulário com um usuário claro e um escuro, Chrome headless via CDP. Por rota: captura, erros de JS, rolagem horizontal, blocos claros no escuro (fundo de luminância > 0,6 e área > 2500 px²) e texto com contraste < 3. Viewports 1440×900 e 390×844. Escopo: 21 rotas × 2 temas × 2 larguras; **não** cobre hover, foco e desabilitado.
+
+- **Causa raiz corrigida:** `admin_compat.css` fixava `#1f2733` em `.ax-app h1..h6` e `#be185d` em `code`; títulos sumiam no escuro. Passou a `--ab-ink` e a mistura com `--ax-accent-pink`.
+- **Corrigido por rota (escuro):** sino de notificações e painel (`in_app_notifications.css`); seletor de período e funil do dashboard; cabeçalho, abas e modal de filtros de leads (chips e rodapé brancos); caixa de entrada do WhatsApp inteira (tokens `--wa-*` com bloco escuro); cartões da integração WhatsApp; tabela e título de "Tipo de template"; linha ativa do TomSelect (`admin.css` usava `#e7f1ff !important`); drawer mobile do menu (`rgba(255,255,255,.98)` fixo) e botão de recolher; divisor do catálogo de imóveis.
+- **Tokens novos** em `theme_tokens.css`: `--ax-accent-*`, `--ax-{success,warning,danger}-{surface,text}` e `--ax-link` (primária no claro, `--ax-dark-link` no escuro).
+- **Sem achado:** captações, distribuição, lojas, marketing, tarefas, usuários, templates (lista e novo), fluxos de resposta (lista e novo), disparos (lista e novo).
+- **Abertos:** `/admin/layout_setting` mistura claro e escuro (pré-visualização ao vivo dos tokens da conta; decisão de produto); `/admin/automacoes/fluxos` responde 406 e renderiza a página de erro do Rails; o modal de filtros de leads usa `<select>` nativo; legendas do dashboard e `ax-nav__caption` com contraste 2,6–3; texto "Descoberta SEO ainda não…" com contraste 1,6 no escuro; inbox só verificada vazia.
+- Nota de método: `public/assets` pré-compilado sobrepõe o CSS em qualquer ambiente; rodar `admin_tailwind:build` e remover/recompilar `public/assets` antes de conferir CSS no navegador.
+
+### Retomada de 19/09/2026 (3) — Pendências da homologação e redesign de Identidade e Marca
+
+- **Filtros de leads:** os 13 `<select>` nativos do modal passaram a `ax_autocomplete_select_field` / `ax_standalone_select_field(autocomplete: true)` (TomSelect), com altura igual à dos campos de texto; o filtro mobile também.
+- **`/admin/automacoes/fluxos`:** a action `index` não tinha view (406). Passou a redirecionar ao hub `admin_automation_rules_path`, que já lista os fluxos; request spec cobre.
+- **Contraste:** legenda do menu (`ax-nav__caption`), legendas do painel, texto de status do SEO, inbox (item ativo, chips, selos de imóvel) e linhas do mapa de impacto passaram a tokens. Falsos positivos do auditor: texto sobre gradiente (FAB, hero da prévia do site) e amostras de cor de token.
+- **Inbox com conversa real:** bolhas, item ativo e composer conferidos no escuro (banco de percurso isolado `unitymob_platform_walk`).
+- **Identidade e Marca:** redesenhada como estúdio (`settings_studio.css` genérico + `layout_studio.css`): navegação lateral por seção (hash/teclado via `ax-tabs`), seletor mestre-detalhe das 8 divisões do menu, prévia ao vivo fixa (miniapp que lê `--theme-*`), barra de salvar com estado "não salvo" (`ax_dirty_form_controller`). Helpers `ax_studio_nav` e `ax_studio_section`.
+- **Causas raiz:** `_color_field` perdia a ação do token no merge (prévia ao vivo não reagia); `layout_theme_preview` aplicava a paleta clara em usuário escuro; `.ax-form-actions` era branca no escuro (todas as telas com barra de ações).
+- **Fora do escopo:** hover/foco/desabilitado seguem sem varredura sistemática; título de `ax_workspace_heading` corta no celular.
+
+### Retomada de 20/09/2026 — Acabamento de Identidade e Marca
+
+- **Prévia fiel:** a miniatura usa o menu real (`ax-nav`, com `.lss-sidebar` ao lado de `.ax-sidebar` nas regras do menu expandido) e componentes reais (`ax-btn`, `ax-badge`, `ax-control`) em zoom reduzido, lendo os tokens vivos do `:root`. Escolher uma divisão no seletor do menu a abre na prévia (`layout-theme-preview#focusSection`).
+- **Design system:** interruptores em `ax_switch_field` (cartão), números em `ax_standalone_field` (agora com `prefix:`/`suffix:` via `ax_input_group`), cores do menu em `ax_color_field` (via `fields_for` + Struct), textarea em `ax_text_field`, grades em `ax_field_grid`. Addon do `ax_input_group` tokenizado.
+- **Novo:** faixa de legibilidade WCAG ao vivo, "Padrão da divisão" por divisão do menu, prévia do site com as três cores, mapa de impacto com hex ao vivo.
+- **Responsivo:** ≤1280px a prévia vira faixa compacta; ≤900px a ordem é abas, prévia, formulário. `ax_workspace_heading` deixou de cortar o título no celular.
+- **Verificação:** percurso no navegador (1900, 1100 e 390 px; claro e escuro) sem rolagem horizontal, sem bloco claro no escuro e sem erro de JS; teste de edição ao vivo (cor, contraste, seção do menu e reset). Suíte `requests/admin` + helpers + lib + views: 41 falhas, as mesmas de antes (35 do contrato escuro e 6 de áreas não relacionadas).
+- **Pendente:** texto padrão de "Integrações" no menu (`#D97706` sobre âmbar a 10%) tem contraste 2,8 no claro; é a paleta padrão das contas, não a tela.
+
+### Retomada de 20/09/2026 (2) — Home do site público e acabamento dos campos
+
+- **Home (`/admin/home_setting/edit`):** estúdio com 6 seções, prévia do site público ao vivo (`live_preview_controller`, atributos `data-live-*`), alternador Desktop/Mobile, filtro de busca em 3 grupos e slides em linhas compactas (miniatura, texto alternativo e ações na mesma linha; imagem mobile com miniatura ao lado do arquivo).
+- **Alturas e ritmo (causa raiz):** `ax-color-control` tinha 34px contra 28px dos demais controles e o `switch` em cartão 57px, então as linhas da grade nunca alinhavam. O controle de cor passou a usar `--ax-form-control-height`, com a amostra em pastilha contornada (branco sobre branco visível) e fonte igual à dos campos (era monoespaçada, negrito). Opacidades viraram `ax_measure_field` com unidade "0–1" (sem dica repetida embaixo); `textarea[rows="2"]` deixou de exigir 72px; `.ax-field textarea` herda a fonte. A borda do filtro (interruptor) ganhou grupo próprio e os campos dependentes esmaecem com a borda desligada.
+- **Contratos atualizados:** `color_field.css` (≤420px agora 44px de pastilha) e a Home (sem `ax_number_field`, com `ax_studio_*`).
+
+### Retomada de 20/09/2026 (3) — Estúdio nas configurações de Leads, SMTP e Push
+
+- **Leads (`/admin/lead_setting/edit`):** estúdio com navegação em 6 seções (Fidelização, Avisos ao corretor, Lembretes, Prazos e automação, Privacidade, Como funciona) e resumo "Como está salvo hoje" na lateral. Todos os interruptores viraram `ax_switch_field` em cartão (eventos em 2 colunas), durações em `ax_measure_field` com unidade (dias, min) e o select de SLA em TomSelect. Blocos condicionais (`lead-settings#toggleStickiness/toggleSecure`) e classes do contrato preservados. Request spec novo (`lead_settings_spec.rb`).
+- **SMTP e Push:** variante plana do estúdio (`ax-studio--flat`, sem navegação): grupos no palco e diagnóstico/teste na lateral; SMTP com identidade em 3 colunas e senha, porta e autenticação nos componentes do design system.
+- **Compartilhado:** `ax_studio_group` (grupo com título, ícone e ações), `.ax-studio-switches(--2)`, `.ax-studio-form`; botões `input[type=submit].ax-btn` dentro de `.ax-field` deixaram de herdar largura total (o "Enviar teste" ocupava a linha inteira); toasts (`ax_toast.css`) passaram a tokens (eram brancos no escuro).
+- **Demais telas migradas na sequência:** ver a retomada (4).
+
+### Retomada de 20/09/2026 (4) — Estúdio nas demais telas de configuração
+
+- **Configurações da Conta:** hub de atalhos (`ax-hub-grid`, `ax_hub_link`) em cartões `ax_studio_group`; identidade da conta com o nome interno editável no mesmo formulário do design system.
+- **Campo:** métricas + variante plana (`ax-studio--flat`): check-in com interruptor em cartão e barra de salvar, tabela de bloqueios num grupo, checklist na lateral.
+- **Duas etapas:** variante plana com grupos por estado (ativar, backup, desativar) e explicações na lateral.
+- **Notificações globais (Admin do Sistema):** estúdio com navegação em 4 seções (WhatsApp e webhooks, SMTP, Web Push, Contas); cada seção mantém seu formulário e sua barra de salvar; segredos em `ax_text_field type: :password`; opt-ins com `ax_check_field`.
+- **Configurações de imóveis:** as duas camadas de abas (mídia + 8 sub-abas de IA) viraram uma navegação única com títulos de grupo (`caption:` no `ax_studio_nav`), `ax-studio--nav`; IDs das seções preservados (âncoras de retorno do `form-return-anchor`). Interruptores em cartão, grupos em `ax_studio_group`, barra `ax_studio_savebar`. Corrigido o desalinhamento vertical dos campos com dica na grade `.property-settings-ai-fields` (`align-content: start`).
+- **Contratos e specs:** contrato de duas etapas e de campo reescritos; consumidores de `ax_form_actions` atualizados; `property_settings_spec` ajustado à navegação nova.
+- **Ficaram de fora:** a tela de fluxo de revisão de imóveis e as páginas de auditoria (não são formulários de configuração).
+
+### Retomada de 20/09/2026 (5) — Reestruturação do Site público
+
+- **Identidade (`/admin/public_identity/edit`, permissão `site_publico`):** marca (`site_name`), logo, favicon, CSS da logo, paleta (primária, secundária, destaque) e **modelo visual do site** saíram de Conta → Identidade e Marca. O modelo é escolhido pela conta entre `Tenant::PUBLIC_SITE_THEMES` (cada um com sua folha `public_site_themes/*.css`); `public_site_theme_key` agora lê a coluna (contas novas/renomeadas ainda no padrão herdam pela identidade, e a migration gravou o valor inferido nas existentes).
+- **Aparência da plataforma (`/admin/layout_setting/edit`, antes Identidade e Marca):** ficou só o nome da plataforma, cores internas, menu lateral e inteligência de interesse; a paleta pública saiu.
+- **Topo e menu (`/admin/public_header/edit`):** menu do cabeçalho configurável (`HomeSetting#header_menu` jsonb + `PublicHeaderMenu` com os itens do sistema), botão de ação (`header_cta_label/url`), telefone no topo, cores e CSS do header (saíram da Home). O `layouts/_header` desenha barra, menu suspenso e celular a partir do mesmo menu; vazio equivale ao desenho original. Prévia e ordem/visibilidade atualizadas por `header_menu_preview_controller`.
+- **Contato unificado (`/admin/contact_setting/edit`):** canais, endereço/horário, roteamento do WhatsApp por negociação (antes em Integrações → WhatsApp → Telefones do site), mensagens e redes numa tela só, com resumo dos destinos. A aba antiga redireciona; a rota `phone_settings` foi removida.
+- **Home em etapas (`/admin/home_setting/edit`):** Abertura (mensagem, imagens, sobreposição com medidor de legibilidade), A busca (onde aparece, pontos de partida, fundo, campos, borda, botão) e Depois do hero (ordem real das seções e banners). A prévia é uma amostra da página inteira, destaca e rola até a área em edição (`data-live-focus`), aceita clicar num slide para vê-lo (`data-live-image`) e aplicar pontos de partida (`data-live-fill`). Campos sem efeito no site (`cta_title/subtitle`, `services/why_choose/cta_contact_active`, `hero_cta_link`) saíram da UI e dos params; as colunas permanecem.
+- **Causa raiz dos textareas estreitos:** ao inserir a regra de botões em `form_control.css` a lista `textarea.ax-control, …` foi partida e `textarea.ax-control` herdou `width: auto`. Regra restaurada; o campo volta a ocupar a linha inteira em todas as telas.
+- **Sidebar/permissões:** Site público > Estrutura agora lista Identidade, Topo e menu, Home, Contato, Rodapé e Perfil público; Conta lista Aparência da plataforma.
+- **Contratos e specs:** `public_site_structure_spec`, `public_header_menu_spec`, `tenant_spec` (modelo escolhido), `layout_settings_spec`, `public_site_workspace_spec`, `whatsapp_integrations_spec` e o contrato dark (Home, contato, layout, WhatsApp) atualizados. CSS órfão `.wa-tabs*` permanece por ser referenciado pelo contrato.
+
+- **Fluxo de revisão (`/admin/property_setting/review_workflow`):** estúdio em etapas (Captação, Revisão, Avisos, Publicação) sob um seletor de cenário (tipo, categoria, modalidade, com TomSelect e envio automático). A lateral mostra o caminho da captação e reage à chave de aprovação administrativa (`data-approval`); `ax_check_group` ganhou `selected:` para regras que herdam do padrão. Contrato de dark reescrito para o novo desenho.
+- **Convenção de texto:** a ideia de "contar uma história" (início, meio, fim) orienta a ordem das etapas, mas não aparece na interface: sem rótulos como "Início/Meio/Fim", "Passo zero" ou "Onde a história termina".
 
 ## Próxima fila objetiva
 

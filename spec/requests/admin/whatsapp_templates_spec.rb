@@ -32,10 +32,30 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       document = Nokogiri::HTML(response.body)
       expect(document.at_css("a.whatsapp-template-selector__option[aria-current='true']")).to be_present
       expect(document.at_css("table caption")&.text).to include("Templates da WABA selecionada")
-      expect(document.css("table th[scope='col']").size).to eq(6)
+      expect(document.css("table th[scope='col']").size).to eq(5)
+      expect(response.body).to include("Disparos e campanhas")
       campaign_action = document.at_css("a.ax-btn--primary[href*='new_campaign']")
       expect(campaign_action).to be_present
       expect(campaign_action["style"]).to be_nil
+    end
+
+    it "mostra contagem por status em abas e a proxima acao certa para cada situacao" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-abas")
+      base = { language: "pt_BR", category: "MARKETING", waba_id: sender.waba_id, body: "Olá {{1}}!" }
+      admin.tenant.whatsapp_templates.create!(base.merge(name: "aprovado_flow", status: "APPROVED", usage_context: "response_flow", buttons: [{ "kind" => "quick_reply", "text" => "Oi" }]))
+      admin.tenant.whatsapp_templates.create!(base.merge(name: "em_analise", status: "PENDING", meta_id: "meta-1", usage_context: "broadcast"))
+      admin.tenant.whatsapp_templates.create!(base.merge(name: "recusado", status: "REJECTED", meta_id: "meta-2", usage_context: "broadcast"))
+
+      get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
+
+      document = Nokogiri::HTML(response.body)
+      expect(document.css(".wtl-tab").map { |tab| [tab.css("span").last.text, tab.at_css("b").text] }).to eq([["Todos", "3"], ["Aprovados", "1"], ["Em análise", "1"], ["Rejeitados", "1"]])
+      expect(document.at_css("a.wtl-tab[href*='status=REJECTED']")).to be_present
+      expect(document.text).to include("Criar fluxo").and include("Corrigir").and include("Em análise")
+      expect(document.css(".wtl-row").size).to eq(3)
+
+      get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id, status: "REJECTED")
+      expect(Nokogiri::HTML(response.body).css(".wtl-row .wtl-name__link").map(&:text)).to eq(["recusado"])
     end
 
     it "pede selecao do numero antes de listar templates" do
@@ -44,7 +64,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       get admin_whatsapp_templates_path
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Número / WABA")
+      expect(response.body).to include("Escolha o número / WABA")
       expect(response.body).not_to include("<table")
     end
 
@@ -59,7 +79,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Nenhum template encontrado", "Ajuste os filtros ou sincronize novamente")
+      expect(response.body).to include("Nenhum template encontrado", "Sincronize para trazer os modelos desta WABA")
     end
 
     it "permite gerenciar templates tambem para o numero da integracao principal" do
@@ -153,6 +173,15 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       expect(response.body).to include("Mídia de exemplo")
       expect(response.body).to include("Adicionar exemplo")
       expect(response.body).not_to include("Handle da mídia na Meta")
+      document = Nokogiri::HTML(response.body)
+      expect(document.css("[data-guided-step]").size).to eq(5)
+      expect(document.at_css("aside.ax-guided-aside [data-guided='previewBody']")).to be_present
+      expect(document.css("input[type=radio][name='whatsapp_template[category]']").map { |input| input["value"] }).to eq(%w[MARKETING UTILITY AUTHENTICATION])
+      expect(document.at_css("input[name='whatsapp_template[header_format]'][value='video']")).to be_present
+      # campos do design system: selects com TomSelect e linhas novas clonadas de um <template> do servidor
+      expect(document.css("select[name='whatsapp_template[language]']").map { |select| select["data-controller"].to_s }).to all(include("tom-select"))
+      expect(document.at_css("template[data-whatsapp-template-form-target='buttonTemplate'] select[name*='__INDEX__']")).to be_present
+      expect(document.at_css("template[data-whatsapp-template-form-target='exampleTemplate'] input[id*='__INDEX__']")).to be_present
     end
 
     it "renderiza editor completo de carousel" do
@@ -162,6 +191,9 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       expect(response.body).to include("Cards do carrossel")
       expect(response.body).to include("Adicionar card")
       expect(response.body).to include("Mídia do card")
+      document = Nokogiri::HTML(response.body)
+      expect(document.css("[data-whatsapp-template-form-target=carouselCardList] > .wtb-cardrow").size).to eq(2)
+      expect(document.at_css("template[data-whatsapp-template-form-target='carouselCardTemplate'] select[name*='[button_kind]']")["data-controller"]).to include("tom-select")
       expect(response.body).not_to include("Ainda está bloqueado")
     end
 
@@ -172,6 +204,7 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       expect(response.body).to include("Conexão com Flow")
       expect(response.body).to include("ID do Flow na Meta")
       expect(response.body).to include("Ação do Flow")
+      expect(Nokogiri::HTML(response.body).at_css("select[name='whatsapp_template[flow_config][action]']")["data-controller"]).to include("tom-select")
       expect(response.body).not_to include("Ainda está bloqueado")
     end
   end
@@ -359,6 +392,85 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
   end
 
   describe "DELETE destroy" do
+    describe "edicao com reenvio para a Meta" do
+      let(:sender) { create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-edit") }
+      let(:client) { instance_double(Whatsapp::CloudClient, update_template: { ok: true, data: { "success" => true } }, fetch_template: { ok: true, data: { "status" => "PENDING" } }) }
+      let!(:template) do
+        admin.tenant.whatsapp_templates.create!(name: "menu_edit", language: "pt_BR", status: "APPROVED", category: "UTILITY", body: "Olá!",
+                                                waba_id: sender.waba_id, meta_id: "meta-123", usage_context: "response_flow")
+      end
+
+      before { allow(Whatsapp::CloudClient).to receive(:new).and_return(client) }
+
+      def patch_template(attrs) = patch(admin_whatsapp_template_path(template), params: { whatsapp_template: { template_type: "text", header_format: "none" }.merge(attrs) })
+
+      it "reenvia o conteudo alterado para a Meta e guarda o status devolvido" do
+        expect(client).to receive(:update_template) do |meta_id, payload|
+          expect(meta_id).to eq("meta-123")
+          expect(payload[:components].find { |c| c[:type] == "BODY" }[:text]).to eq("Olá, novo texto!")
+          expect(payload).not_to include(:name, :language)
+          { ok: true, data: { "success" => true } }
+        end
+
+        patch_template(body: "Olá, novo texto!", name: "outro_nome")
+
+        expect(response).to redirect_to(admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id))
+        expect(template.reload).to have_attributes(body: "Olá, novo texto!", status: "PENDING", name: "menu_edit")
+      end
+
+      it "nao reenvia quando so um campo local mudou" do
+        expect(client).not_to receive(:update_template)
+
+        patch_template(body: "Olá!", usage_context: "attendance")
+
+        expect(response).to redirect_to(admin_whatsapp_template_path(template))
+        expect(template.reload.usage_context).to eq("attendance")
+        expect(template.status).to eq("APPROVED")
+      end
+
+      it "mostra o erro da Meta e nao grava a alteracao" do
+        allow(client).to receive(:update_template).and_return({ ok: false, error: "(#100) Só é possível editar 1 vez a cada 24 horas" })
+
+        patch_template(body: "Texto novo")
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.body).to include("1 vez a cada 24 horas")
+        expect(template.reload.body).to eq("Olá!")
+      end
+
+      it "bloqueia a edicao enquanto o template esta em analise" do
+        template.update_columns(status: "PENDING")
+        expect(client).not_to receive(:update_template)
+
+        patch_template(body: "Texto novo")
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.body).to include("não pode ser editado agora")
+      end
+
+      it "renderiza todos os botoes existentes na edicao e reenvia sem trunca-los" do
+        buttons = (1..8).map { |i| { "kind" => "quick_reply", "text" => "Opção #{i}" } }
+        template.update_columns(buttons: buttons)
+
+        get edit_admin_whatsapp_template_path(template)
+        expect(Nokogiri::HTML(response.body).css("[data-whatsapp-template-form-target=buttonList] > .whatsapp-template-button-row").size).to eq(8)
+
+        expect(client).to receive(:update_template) do |_meta_id, payload|
+          expect(payload[:components].find { |c| c[:type] == "BUTTONS" }[:buttons].size).to eq(8)
+          { ok: true, data: { "success" => true } }
+        end
+        patch_template(body: "Novo corpo", buttons: buttons.each_with_index.to_h { |b, i| [i.to_s, b] })
+      end
+
+      it "lista o botao Editar e avisa da nova analise na tela de edicao" do
+        get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
+        expect(response.body).to include("Editar e reenviar para aprovação da Meta")
+
+        get edit_admin_whatsapp_template_path(template)
+        expect(response.body).to include("nova análise da Meta").and include("Salvar e reenviar para aprovação")
+      end
+    end
+
     it "remove template sem vinculos" do
       template = admin.tenant.whatsapp_templates.create!(
         name: "template_removivel",

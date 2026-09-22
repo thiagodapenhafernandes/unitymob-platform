@@ -9,7 +9,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     @selected_sender_number = current_tenant.whatsapp_sender_numbers.active.find_by(id: params[:whatsapp_sender_number_id])
     @number_selection_only = @selected_sender_number.blank?
     @filters = campaign_filters
-    @sender_numbers = current_tenant.whatsapp_sender_numbers.ordered
+    @sender_numbers = current_tenant.whatsapp_sender_numbers.active.ordered
     @campaign_groups = grouped_campaigns(base_campaign_scope)
     scoped = apply_campaign_filters(base_campaign_scope)
     @campaigns = scoped.recent.paginate(page: params[:page], per_page: 25)
@@ -110,7 +110,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def preview_template
-    template = current_tenant.whatsapp_templates.approved.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
+    template = current_tenant.whatsapp_templates.approved.for_campaigns.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
     unless template
       render json: { ok: false, error: "Selecione um modelo aprovado." }, status: :unprocessable_content
       return
@@ -120,21 +120,33 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     suggestions = suggested_template_variables(template)
     effective_variables = suggestions.merge(variables)
     preview = Whatsapp::CampaignTemplatePreview.call(template: template, variables: effective_variables)
+    decisions = clean_response_decisions(params.dig(:whatsapp_campaign, :response_decisions))
+    buttons = template_buttons_schema(template, decisions)
+
     render json: {
       ok: true,
       body: preview.body,
       preview_html: render_to_string(partial: "admin/shared/ui/whatsapp_message_preview", formats: [:html], locals: { template: template, body: preview.body }),
+      response_decisions_html: render_to_string(
+        partial: "admin/shared/whatsapp/button_decision_map",
+        formats: [:html],
+        locals: {
+          buttons: buttons,
+          decisions: decisions,
+          distribution_rules: current_tenant.distribution_rules.active.order(:name).pluck(:name, :id)
+        }
+      ),
       values: preview.values,
       media: template_preview_media(template),
       variable_count: template.variable_count,
       suggested_variables: suggestions,
       variables_schema: template_variables_schema(template, effective_variables),
-      buttons: template_buttons_schema(template, clean_response_decisions(params.dig(:whatsapp_campaign, :response_decisions)))
+      buttons: buttons
     }
   end
 
   def send_test
-    template = current_tenant.whatsapp_templates.approved.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
+    template = current_tenant.whatsapp_templates.approved.for_campaigns.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
     unless template
       render json: { ok: false, error: "Selecione um modelo aprovado." }, status: :unprocessable_entity
       return
@@ -221,7 +233,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def load_options
-    @template_options = current_tenant.whatsapp_templates.approved.ordered.pluck(:name, :id)
+    @template_options = current_tenant.whatsapp_templates.approved.for_campaigns.ordered.pluck(:name, :id)
     @status_options = Lead.status_options
     @origin_options = Lead.origin_options
     @tag_options = Lead.tag_options(scope: current_tenant.leads)

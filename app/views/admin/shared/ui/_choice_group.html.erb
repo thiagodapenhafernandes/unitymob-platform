@@ -1,0 +1,25 @@
+<%# Escolha exclusiva (radio) em chips, segmentos ou cartões.
+    locals: form, method, choices ([{ value:, label:, icon:, description:, tone: }]), variant (:chips|:segment|:cards),
+            selected, disabled, input_data, aria_label, class_name %>
+<%
+  variant = (local_assigns[:variant] || :chips).to_sym
+  container = { chips: "ax-choice-chips", segment: "ax-choice-segment", cards: "ax-choice-cards" }.fetch(variant)
+  item = { chips: "ax-choice-chip", segment: "ax-choice-segment__item", cards: "ax-choice-card" }.fetch(variant)
+  selected = local_assigns[:selected]
+  disabled = local_assigns.fetch(:disabled, false)
+%>
+<div class="<%= [container, local_assigns[:class_name]].compact.join(" ") %>" role="radiogroup" aria-label="<%= local_assigns[:aria_label] %>">
+  <% choices.each do |choice| %>
+    <label class="<%= item %>" <%= tag.attributes(data: { tone: choice[:tone] }) if choice[:tone].present? %>>
+      <%= form.radio_button method, choice[:value], checked: (choice[:value].to_s == selected.to_s), disabled: disabled,
+                            data: (local_assigns[:input_data] || {}).merge(choice[:data] || {}) %>
+      <% if variant == :cards %>
+        <span class="ax-choice-card__icon"><i class="bi <%= choice[:icon] %>"></i></span>
+        <strong><%= choice[:label] %></strong>
+        <% if choice[:description].present? %><small><%= choice[:description] %></small><% end %>
+      <% else %>
+        <span><% if choice[:icon].present? %><i class="bi <%= choice[:icon] %>"></i><% end %><%= choice[:label] %></span>
+      <% end %>
+    </label>
+  <% end %>
+</div>

@@ -21,7 +21,7 @@ RSpec.describe Whatsapp::LeadWindowTemplateSelector do
     admin = create(:admin_user, tenant: tenant)
     integration = WhatsappBusinessIntegration.current(tenant)
     integration.update!(waba_id: "waba-selector-agenda")
-    lead = create(:lead, tenant: tenant)
+    lead = create(:lead, tenant: tenant, admin_user: admin)
     conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990201")
     approve_template(tenant: tenant, integration: integration, name: "lead_appointment_reminder")
     Appointment.create!(
@@ -44,7 +44,7 @@ RSpec.describe Whatsapp::LeadWindowTemplateSelector do
     admin = create(:admin_user, tenant: tenant)
     integration = WhatsappBusinessIntegration.current(tenant)
     integration.update!(waba_id: "waba-selector-followup")
-    lead = create(:lead, tenant: tenant)
+    lead = create(:lead, tenant: tenant, admin_user: admin)
     conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990202")
     conversation.messages.create!(tenant: tenant, direction: "inbound", body: "Tenho interesse", status: "delivered")
     approve_template(tenant: tenant, integration: integration, name: "lead_followup")
@@ -60,7 +60,7 @@ RSpec.describe Whatsapp::LeadWindowTemplateSelector do
     admin = create(:admin_user, tenant: tenant)
     integration = WhatsappBusinessIntegration.current(tenant)
     integration.update!(waba_id: "waba-selector-fallback")
-    lead = create(:lead, tenant: tenant)
+    lead = create(:lead, tenant: tenant, admin_user: admin)
     conversation = WhatsappConversation.create!(tenant: tenant, lead: lead, contact_phone: "5547999990203")
     WhatsappTemplate.create!(
       tenant: tenant,

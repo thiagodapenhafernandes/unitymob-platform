@@ -262,22 +262,22 @@
         <% end %>
       </button>
 
-      <div class="habitations-view-toggle" aria-label="Visualização da listagem">
+      <div class="ax-view-toggle habitations-view-toggle" aria-label="Visualização da listagem">
         <%= link_to admin_habitations_path(property_view_params.merge(visualizacao: "cards")),
-                    class: "habitations-view-toggle__item #{property_view_mode == 'cards' ? 'is-active' : ''}",
+                    class: "ax-view-toggle__item habitations-view-toggle__item #{property_view_mode == 'cards' ? 'is-active' : ''}",
                     title: "Visualizar em cards" do %>
           <i class="bi bi-view-stacked"></i>
           <span>Cards</span>
         <% end %>
         <%= link_to admin_habitations_path(property_view_params.merge(visualizacao: "tabela")),
-                    class: "habitations-view-toggle__item #{property_view_mode == 'tabela' ? 'is-active' : ''}",
+                    class: "ax-view-toggle__item habitations-view-toggle__item #{property_view_mode == 'tabela' ? 'is-active' : ''}",
                     title: "Visualizar em tabela" do %>
           <i class="bi bi-table"></i>
           <span>Tabela</span>
         <% end %>
         <% if property_view_mode == "tabela" %>
           <button type="button"
-                  class="habitations-view-toggle__item habitations-view-toggle__gear"
+                  class="ax-view-toggle__item habitations-view-toggle__item habitations-view-toggle__gear"
                   data-ax-modal-open="#habitationColumnsModal"
                   title="Escolher colunas exibidas"
                   aria-label="Escolher colunas exibidas">
@@ -372,21 +372,21 @@
   pending_review_active = @intake_review == "pending"
 %>
 <div class="habitations-workspace-scopebar">
-  <div class="habitations-view-toggle habitations-view-toggle--scope" role="group" aria-label="Escopo dos imóveis">
+  <div class="ax-view-toggle habitations-view-toggle habitations-view-toggle--scope" role="group" aria-label="Escopo dos imóveis">
     <%# Catálogo: todos podem navegar todos os imóveis (curadoria). %>
-    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "all")), class: "habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "all")), class: "ax-view-toggle__item habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
       <i class="bi bi-collection"></i>
       <span>Todos</span>
     <% end %>
     <%# Revisão segue a ação e o escopo de Captações (own/team/all), não o escopo global de Imóveis. %>
     <% if can?(:review, :captacoes) %>
-      <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
+      <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "ax-view-toggle__item habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
         <i class="bi bi-clipboard-check"></i>
         <span>Pendente de revisão</span>
       <% end %>
     <% end %>
     <% if can_view_administrative_review? %>
-      <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "administrative")), class: "habitations-view-toggle__item #{@intake_review == 'administrative' ? 'is-active' : ''}" do %>
+      <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "administrative")), class: "ax-view-toggle__item habitations-view-toggle__item #{@intake_review == 'administrative' ? 'is-active' : ''}" do %>
         <i class="bi bi-clipboard-check"></i>
         <span>Revisão administrativa</span>
       <% end %>

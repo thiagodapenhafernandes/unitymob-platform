@@ -40,6 +40,7 @@ class Admin::BaseController < ApplicationController
   PERMISSION_GATE_EXEMPT_CONTROLLER_FILES = {
     "app/controllers/admin/account_switches_controller.rb" => "troca de conta já valida owner/membership/política de acesso",
     "app/controllers/admin/context_items_controller.rb" => "estado visual da sessão do próprio usuário",
+    "app/controllers/admin/in_app_notifications_controller.rb" => "notificações pessoais do próprio usuário autenticado",
     "app/controllers/admin/impersonations_controller.rb" => "encerra sessão de impersonação já iniciada por Admin do Sistema",
     "app/controllers/admin/manifests_controller.rb" => "manifesto PWA público/dinâmico sem operação de conta",
     "app/controllers/admin/my_profiles_controller.rb" => "perfil pessoal do usuário autenticado",

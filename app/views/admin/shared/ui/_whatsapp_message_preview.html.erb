@@ -9,7 +9,7 @@
       <% if template.footer_text.present? %><small class="ax-message-preview__footer"><%= template.footer_text %></small><% end %>
     </div>
     <% template.interactive_buttons.reject { |button| button["source"] == "carousel" }.each do |button| %>
-      <div class="ax-message-preview__button"><%= ax_icon(button["kind"] == "url" ? "box-arrow-up-right" : "reply") %><%= button["text"] %></div>
+      <div class="ax-message-preview__button" data-button-key="<%= button["key"] %>"><%= ax_icon(button["kind"] == "url" ? "box-arrow-up-right" : "reply") %><%= button["text"] %></div>
     <% end %>
   </div>
   <% if template.template_type == "carousel" %>
@@ -19,7 +19,7 @@
         <div class="ax-message-preview__bubble ax-message-preview__card">
           <%= render "admin/shared/ui/message_media", kind: card["media_type"], url: file ? url_for(file) : whatsapp_preview_media_url(nil, card["media_handle"]) %>
           <div class="ax-message-preview__content"><%= whatsapp_preview_text(card["text"]) %></div>
-          <% if card["button_text"].present? %><div class="ax-message-preview__button"><%= card["button_text"] %></div><% end %>
+          <% if card["button_text"].present? %><div class="ax-message-preview__button" data-button-key="carousel:<%= index %>:<%= card["button_text"].to_s.parameterize %>"><%= card["button_text"] %></div><% end %>
         </div>
       <% end %>
     </div>

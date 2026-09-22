@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { slide } from "lib/slide"
 
 // Collapse / accordion (substitui bootstrap.Collapse).
 // Uso:
@@ -42,28 +43,13 @@ export default class extends Controller {
   }
 
   openContent(animate) {
-    this.contentTarget.hidden = false
-
     if (!animate) {
+      this.contentTarget.hidden = false
       this.clearInlineMotion()
       return
     }
 
-    this.contentTarget.style.overflow = "hidden"
-    this.contentTarget.style.maxHeight = "0px"
-    this.contentTarget.style.opacity = "0"
-
-    window.requestAnimationFrame(() => {
-      this.contentTarget.style.maxHeight = `${this.contentTarget.scrollHeight}px`
-      this.contentTarget.style.opacity = "1"
-    })
-
-    this.closeTimer = window.setTimeout(() => {
-      if (this.element.classList.contains("is-open")) {
-        this.contentTarget.style.maxHeight = ""
-        this.contentTarget.style.overflow = ""
-      }
-    }, 200)
+    slide(this.contentTarget, true)
   }
 
   closeContent(animate) {
@@ -73,21 +59,7 @@ export default class extends Controller {
       return
     }
 
-    this.contentTarget.style.overflow = "hidden"
-    this.contentTarget.style.maxHeight = `${this.contentTarget.scrollHeight}px`
-    this.contentTarget.style.opacity = "1"
-
-    window.requestAnimationFrame(() => {
-      this.contentTarget.style.maxHeight = "0px"
-      this.contentTarget.style.opacity = "0"
-    })
-
-    this.closeTimer = window.setTimeout(() => {
-      if (!this.element.classList.contains("is-open")) {
-        this.contentTarget.hidden = true
-        this.clearInlineMotion()
-      }
-    }, 200)
+    slide(this.contentTarget, false)
   }
 
   clearInlineMotion() {

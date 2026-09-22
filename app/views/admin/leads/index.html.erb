@@ -42,7 +42,7 @@
     padding: 0 11px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 999px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     color: var(--ab-ink, #202a37);
     font-size: 12px;
     font-weight: 800;
@@ -94,7 +94,7 @@
     overflow: hidden;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 10px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
   }
 
@@ -114,7 +114,7 @@
     padding: 4px 10px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 10px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     color: var(--ab-muted, #657386);
     line-height: 1;
     text-align: center;
@@ -123,7 +123,7 @@
   }
 
   .lead-desktop-queue strong {
-    color: var(--admin-primary, #365f8f);
+    color: var(--ax-link, #365f8f);
     font-size: 15px;
     font-weight: 850;
   }
@@ -136,7 +136,7 @@
 
   .lead-desktop-queue:hover {
     border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 42%, var(--ab-line, #d8dee8));
-    color: var(--admin-primary, #365f8f);
+    color: var(--ax-link, #365f8f);
     text-decoration: none;
   }
 
@@ -149,7 +149,7 @@
     position: absolute;
     top: 50%;
     left: 13px;
-    color: #7b8797;
+    color: var(--ab-muted, #697586);
     transform: translateY(-50%);
     pointer-events: none;
   }
@@ -160,7 +160,7 @@
     padding: 0 14px 0 38px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 10px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     color: var(--ab-ink, #202a37);
     font-size: 14px;
     font-weight: 750;
@@ -185,7 +185,7 @@
     overflow: hidden;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 10px;
-    background: #f8fafc;
+    background: var(--ab-panel-soft, #f8fafc);
   }
 
   .lead-desktop-view-toggle__item,
@@ -198,7 +198,7 @@
     padding: 0 13px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 10px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     color: var(--ab-ink, #202a37);
     font-size: 13px;
     font-weight: 850;
@@ -221,7 +221,7 @@
 
   .lead-desktop-header__button:hover,
   .lead-desktop-view-toggle__item:hover {
-    color: var(--admin-primary, #365f8f);
+    color: var(--ax-link, #365f8f);
     text-decoration: none;
   }
 
@@ -286,7 +286,7 @@
 
   .lead-desktop-tab.is-active,
   .lead-desktop-tab:hover {
-    color: var(--admin-primary, #365f8f);
+    color: var(--ax-link, #365f8f);
     text-decoration: none;
   }
 
@@ -325,7 +325,7 @@
     gap: 8px;
     padding: 14px 24px;
     border-top: 1px solid var(--ab-line-soft, #e7ebf2);
-    background: color-mix(in srgb, #fff 92%, transparent);
+    background: color-mix(in srgb, var(--ab-panel, #fff) 92%, transparent);
     backdrop-filter: blur(10px);
   }
 
@@ -354,7 +354,7 @@
     padding: 0 12px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 999px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     color: var(--ab-ink, #202a37);
     font-size: 13px;
     font-weight: 850;
@@ -417,6 +417,7 @@
   }
 
   .lead-desktop-filter-modal .ax-control,
+  .lead-desktop-filter-modal .ts-control,
   .lead-desktop-filter-modal input:not([type="checkbox"]):not([type="radio"]),
   .lead-desktop-filter-modal select,
   .lead-desktop-filter-modal textarea {
@@ -533,7 +534,7 @@
     padding: 6px 10px;
     border: 1px solid var(--ab-line, #d8dee8);
     border-radius: 999px;
-    background: #fff;
+    background: var(--ab-panel, #fff);
     color: var(--admin-muted, #64748b);
     font-size: 12px;
     font-weight: 800;
@@ -2082,48 +2083,42 @@
           <div class="lead-filter-form-section__title">Atendimento</div>
           <%= ax_field_grid do %>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :broker_id, label: "Usuário",
+              <%= ax_autocomplete_select_field(form: f, method: :broker_id, label: "Usuário",
                                   choices: [["Sem corretor", "unassigned"]] + @broker_options,
                                   select_options: { include_blank: "Todos os usuários", selected: @broker_id }) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_field_label(nil, nil, text: "Tipo de negociação") %>
-              <%= select_tag "business_filter[]",
-                             options_for_select(business_filter_options, @business_filters.first),
-                             include_blank: "Todos os tipos",
-                             class: "ax-control" %>
+              <%= ax_standalone_select_field(name: "business_filter[]", id: "lead_business_filter", label: "Tipo de negociação",
+                                         choices: business_filter_options, selected: @business_filters.first,
+                                         include_blank: "Todos os tipos", autocomplete: true) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :status, label: "Status",
+              <%= ax_autocomplete_select_field(form: f, method: :status, label: "Status",
                                   choices: status_filter_options,
                                   select_options: { include_blank: "Todos os status", selected: @status_filters.first }) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :attention_filter, label: "Situação",
+              <%= ax_autocomplete_select_field(form: f, method: :attention_filter, label: "Situação",
                                   choices: situation_filter_options,
                                   select_options: { include_blank: "Todas as situações", selected: @attention_filter }) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_field_label(nil, nil, text: "Canal") %>
-              <%= select_tag "channel_filter[]",
-                             options_for_select(channel_filter_options, @channel_filters.first),
-                             include_blank: "Todos os canais",
-                             class: "ax-control" %>
+              <%= ax_standalone_select_field(name: "channel_filter[]", id: "lead_channel_filter", label: "Canal",
+                                         choices: channel_filter_options, selected: @channel_filters.first,
+                                         include_blank: "Todos os canais", autocomplete: true) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :origin, label: "Fonte",
+              <%= ax_autocomplete_select_field(form: f, method: :origin, label: "Fonte",
                                   choices: @origin_options,
                                   select_options: { include_blank: "Todas as fontes", selected: @origin }) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_field_label(nil, nil, text: "Atividade") %>
-              <%= select_tag "activity_filter[]",
-                             options_for_select(activity_filter_options, @activity_filters.first),
-                             include_blank: "Todas as atividades",
-                             class: "ax-control" %>
+              <%= ax_standalone_select_field(name: "activity_filter[]", id: "lead_activity_filter", label: "Atividade",
+                                         choices: activity_filter_options, selected: @activity_filters.first,
+                                         include_blank: "Todas as atividades", autocomplete: true) %>
             </div>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :archive_reason_id, label: "Motivo de arquivamento",
+              <%= ax_autocomplete_select_field(form: f, method: :archive_reason_id, label: "Motivo de arquivamento",
                                   choices: @lead_archive_reason_options,
                                   select_options: { include_blank: "Todos os motivos", selected: @archive_reason_id }) %>
             </div>
@@ -2140,12 +2135,12 @@
           <div class="lead-filter-form-section__title">Funil e busca</div>
           <%= ax_field_grid do %>
             <div class="ax-span-4">
-              <%= ax_select_field(form: f, method: :lead_pipeline_id, label: "Funil",
+              <%= ax_autocomplete_select_field(form: f, method: :lead_pipeline_id, label: "Funil",
                                   choices: @pipeline_options,
                                   select_options: { include_blank: "Todos os funis", selected: @selected_pipeline&.id }) %>
             </div>
             <div class="ax-span-4">
-              <%= ax_select_field(form: f, method: :lead_pipeline_stage_id, label: "Etapa de funil",
+              <%= ax_autocomplete_select_field(form: f, method: :lead_pipeline_stage_id, label: "Etapa de funil",
                                   choices: @lead_pipeline_stage_options,
                                   select_options: { include_blank: "Todas as etapas", selected: @lead_pipeline_stage_id }) %>
             </div>
@@ -2174,7 +2169,7 @@
           <div class="lead-filter-form-section__title">Imóvel e contato</div>
           <%= ax_field_grid do %>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :property_filter, label: "Vínculo com imóvel",
+              <%= ax_autocomplete_select_field(form: f, method: :property_filter, label: "Vínculo com imóvel",
                                   choices: [["Com imóvel vinculado", "with_property"], ["Contato geral", "general"], ["Imóvel indisponível", "unavailable_property"]],
                                   select_options: { include_blank: "Todos", selected: @property_filter }) %>
             </div>
@@ -2184,7 +2179,7 @@
                                 placeholder: "Código, título ou empreendimento...") %>
             </div>
             <div class="ax-span-3">
-              <%= ax_select_field(form: f, method: :contact_filter, label: "Contato",
+              <%= ax_autocomplete_select_field(form: f, method: :contact_filter, label: "Contato",
                                   choices: [["Com telefone", "with_phone"], ["Com e-mail", "with_email"], ["Sem telefone/e-mail", "missing_contact"]],
                                   select_options: { include_blank: "Todos", selected: @contact_filter }) %>
             </div>
@@ -2317,13 +2312,13 @@
             <% end %>
           </div>
           <div class="lead-pwa-filter-divider"></div>
-          <%= ax_select_field(form: f, method: :origin, label: "Fonte principal",
+          <%= ax_autocomplete_select_field(form: f, method: :origin, label: "Fonte principal",
                               choices: @origin_options,
                               select_options: { include_blank: "Todas as fontes", selected: @origin }) %>
         <% end %>
 
         <%= ax_filter_section(title: "Equipes", count: (@broker_id.present? ? 1 : 0), open: true) do %>
-          <%= ax_select_field(form: f, method: :broker_id, label: "Corretor ou responsável",
+          <%= ax_autocomplete_select_field(form: f, method: :broker_id, label: "Corretor ou responsável",
                               choices: [["Sem corretor", "unassigned"]] + @broker_options,
                               select_options: { include_blank: "Todos permitidos", selected: @broker_id }) %>
         <% end %>
@@ -2853,15 +2848,28 @@
     <% end %>
   <% else %>
     <% if @leads.any? %>
-      <div class="lead-list-workspace">
+      <div class="lead-list-workspace"
+           data-controller="lead-pwa-infinite-scroll"
+           data-lead-pwa-infinite-scroll-url-value="<%= list_page_admin_leads_path(lead_query_params.merge(view: "list", lead_tab: @desktop_lead_tab, page: nil).compact) %>">
         <%= render "admin/leads/table", leads: @leads %>
-      </div>
 
-      <% if @leads.total_pages > 1 %>
-        <div class="ax-leads-pagination">
-          <%= ax_pagination @leads, params: request.query_parameters %>
-        </div>
-      <% end %>
+        <% if @leads.current_page < @leads.total_pages %>
+          <% next_list_offset = ((@leads.current_page - 1) * @leads.per_page) + @leads.size %>
+          <%= tag.div(
+                class: "lead-pwa-list__loader",
+                data: {
+                  lead_pwa_infinite_scroll_target: "loader",
+                  offset: next_list_offset,
+                  has_more: @leads.current_page < @leads.total_pages
+                }
+              ) do %>
+            <span class="lead-pwa-list__loader-pill">
+              <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+              Carregando mais leads
+            </span>
+          <% end %>
+        <% end %>
+      </div>
     <% else %>
       <%= ax_empty_state title: "Nenhum lead encontrado",
                          description: "Ajuste os filtros de busca, status ou origem para ver mais resultados.",

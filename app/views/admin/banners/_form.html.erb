@@ -1,84 +1,112 @@
+<%
+  editing = @banner.persisted?
+  selected_positions = Array(@banner.positions)
+  active = editing ? @banner.active? : true
+%>
 <div class="public-site-workspace">
-<%= ax_workspace_heading(eyebrow: "Site público · Banners", icon: "image", title: @banner.persisted? ? "Editar banner" : "Novo banner", pills: [(@banner.active? ? "Ativo" : "Inativo")], subtitle: "Gerencie mídia, destino, posição e publicação.", actions: ax_button("Voltar", admin_banners_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
+<%= ax_workspace_heading(eyebrow: "Site público · Banners", icon: "image", title: editing ? "Editar banner" : "Novo banner", pills: [(active ? "Ativo" : "Inativo")], subtitle: "Escolha onde ele aparece e veja como fica antes de publicar.", actions: ax_button("Voltar", admin_banners_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
-<%= form_with(model: [:admin, @banner], local: true, class: "admin-form") do |f| %>
-  <%= ax_error_summary(@banner) %>
+<div class="ax-studio ax-studio--flat"
+     data-controller="banner-preview"
+     data-banner-preview-occupancy-value="<%= json_escape(position_occupancy.to_json) %>"
+     data-banner-preview-labels-value="<%= json_escape(Banner::POSITIONS.to_json) %>"
+     data-banner-preview-saved-desktop-value="<%= @banner.image_desktop.attached? ? rails_blob_path(@banner.image_desktop, only_path: true) : "" %>"
+     data-banner-preview-saved-mobile-value="<%= @banner.image_mobile.attached? ? rails_blob_path(@banner.image_mobile, only_path: true) : "" %>"
+     data-action="input->banner-preview#refresh change->banner-preview#refresh">
+  <%= form_with(model: [:admin, @banner], local: true, class: "ax-studio-form ax-studio__stage", data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" }) do |f| %>
+    <%= ax_error_summary(@banner) %>
 
-  <%= ax_field_grid do %>
-    <div class="ax-span-8">
-      <%= ax_operational_panel(eyebrow: "Mídia", title: "Cadastro de mídia") do %>
-          <div class="ax-media-preview-grid tw-mb-4">
-            <%= ax_media_preview(
-                  label: "Imagem desktop",
-                  icon: "pc-display",
-                  image: (@banner.image_desktop if @banner.image_desktop.attached?),
-                  variant: :desktop,
-                  size: :compact,
-                  empty_text: "Sem imagem desktop"
-                ) do %>
-              <%= ax_file_field(form: f, method: :image_desktop, label: "Alterar desktop", accept: "image/*", button_label: "Escolher imagem") %>
-            <% end %>
-            <%= ax_media_preview(
-                  label: "Imagem mobile",
-                  icon: "phone",
-                  image: (@banner.image_mobile if @banner.image_mobile.attached?),
-                  variant: :mobile,
-                  size: :compact,
-                  empty_text: "Sem imagem mobile"
-                ) do %>
-              <%= ax_file_field(form: f, method: :image_mobile, label: "Alterar mobile", accept: "image/*", button_label: "Escolher imagem") %>
-            <% end %>
-          </div>
+    <%= ax_studio_group(title: "Onde exibir", icon: "geo-alt",
+                        subtitle: "Pode ser em mais de um lugar. Em cada posição o site mostra só um banner: o ativo de menor ordem.") do %>
+      <div class="ax-choice-cards bn-positions">
+        <% Banner::POSITIONS.each do |value, label| %>
+          <% meta = Banner::POSITION_META.fetch(value) %>
+          <% holder = position_occupancy[value].min_by { |item| item[:order] } %>
+          <label class="ax-choice-card bn-pos" data-tone="<%= meta[:tone] %>">
+            <input type="checkbox" name="banner[positions][]" value="<%= value %>" id="banner_positions_<%= value %>" <%= "checked" if selected_positions.include?(value) %> data-banner-preview-target="position">
+            <span class="ax-choice-card__icon"><i class="bi bi-<%= meta[:icon] %>"></i></span>
+            <strong><%= label %></strong>
+            <small><%= meta[:note] %></small>
+            <span class="bn-pos__size"><i class="bi bi-aspect-ratio"></i> <%= meta[:size] %></span>
+            <span class="bn-pos__holder <%= "is-free" unless holder %>"><%= holder ? "Hoje: #{truncate(holder[:title], length: 28)} (ordem #{holder[:order]})" : "Livre hoje" %></span>
+          </label>
+        <% end %>
+      </div>
+    <% end %>
 
-          <%= ax_field_grid do %>
-            <div class="ax-span-12">
-              <%= ax_text_field(form: f, method: :title, label: "Título principal", placeholder: "Ex.: Lançamento em Balneário Camboriú", required: true) %>
-            </div>
-            <div class="ax-span-12">
-              <%= ax_text_field(form: f, method: :description, label: "Subtítulo ou descrição curta", type: :textarea, rows: 2, placeholder: "Breve texto para atrair atenção") %>
-            </div>
-            <div class="ax-span-6">
-              <%= ax_text_field(form: f, method: :link_url, label: "URL do botão", placeholder: "https://exemplo.com.br/imoveis") %>
-            </div>
-            <div class="ax-span-6">
-              <%= ax_text_field(form: f, method: :link_text, label: "Texto do botão", placeholder: "Ex.: Saiba mais") %>
-            </div>
-          <% end %>
+    <%= ax_studio_group(title: "Mídia", icon: "image", subtitle: "O site usa a imagem inteira, sem texto por cima. Sem imagem, mostra um bloco com título e subtítulo.") do %>
+      <div class="ax-media-preview-grid tw-mb-2">
+        <%= ax_media_preview(
+              label: "Imagem desktop",
+              icon: "pc-display",
+              image: (@banner.image_desktop if @banner.image_desktop.attached?),
+              variant: :desktop,
+              size: :compact,
+              empty_text: "Sem imagem desktop"
+            ) do %>
+          <%= ax_file_field(form: f, method: :image_desktop, label: "Alterar desktop", accept: "image/*", button_label: "Escolher imagem", hint: "Até 1440 × 360 (proporção 4:1).") %>
+        <% end %>
+        <%= ax_media_preview(
+              label: "Imagem mobile",
+              icon: "phone",
+              image: (@banner.image_mobile if @banner.image_mobile.attached?),
+              variant: :mobile,
+              size: :compact,
+              empty_text: "Sem imagem mobile"
+            ) do %>
+          <%= ax_file_field(form: f, method: :image_mobile, label: "Alterar mobile", accept: "image/*", button_label: "Escolher imagem", hint: "Até 768 × 360. A barra lateral usa só esta.") %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= ax_studio_group(title: "Conteúdo e destino", icon: "cursor", subtitle: "Título e link valem sempre; o subtítulo só aparece quando não há imagem.") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :title, label: "Título principal", placeholder: "Ex.: Lançamento em Balneário Camboriú", required: true, tooltip: "Com imagem, vira o texto alternativo (acessibilidade e SEO).") %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :description, label: "Subtítulo ou descrição curta", type: :textarea, rows: 2, placeholder: "Breve texto para atrair atenção", tooltip: "Aparece só no bloco de texto, quando o banner não tem imagem.") %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :link_url, label: "Link ao clicar", placeholder: "https://exemplo.com.br/imoveis", tooltip: "O banner inteiro vira um link que abre em nova aba. Deixe vazio para não ter link.") %>
+        </div>
+        <div class="ax-span-12">
+          <details class="bn-advanced">
+            <summary><i class="bi bi-sliders"></i><span>Texto do botão (não aparece no site)</span></summary>
+            <%= ax_text_field(form: f, method: :link_text, label: "Texto do botão", placeholder: "Ex.: Saiba mais", hint: "Hoje o site não desenha botão; este texto só aparece na tela de detalhe do admin.") %>
+          </details>
+        </div>
       <% end %>
-    </div>
+    <% end %>
 
-    <div class="ax-span-4">
-      <%= ax_operational_panel(eyebrow: "Entrega", title: "Publicação", class_name: "tw-mb-4") do %>
-          <div class="tw-mb-4">
-            <%= ax_field_label(nil, nil, text: "Onde exibir este banner?") %>
-            <%= ax_chip_grid(class_name: "tw-mt-2") do %>
-              <% Banner::POSITIONS.each do |value, label| %>
-                <%= ax_toggle_chip(
-                      nil,
-                      nil,
-                      name: "banner[positions][]",
-                      checked_value: value,
-                      checked: @banner.positions&.include?(value),
-                      include_hidden: false,
-                      id: "banner_positions_#{value}",
-                      label: label
-                    ) %>
-              <% end %>
-            <% end %>
-          </div>
-
-          <%= ax_number_field(form: f, method: :display_order, label: "Ordem de exibição", min: 0, value: @banner.display_order || 0, class_name: "tw-mb-4", tooltip: "Use 0, 1, 2 e assim por diante para ordenar os banners.") %>
-
-          <div class="tw-mb-4">
-            <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-circle-fill tw-text-sm tw-text-green-600"), " Banner ativo"], " "), class: "tw-font-bold"), form: f, method: :active, id: "banner_active", input_html: { role: "switch" }) %>
-          </div>
-
-          <%= ax_form_actions(sticky: false, class_name: "layout-settings-actions") do %>
-            <%= link_to "Cancelar", admin_banners_path, class: "ax-btn" %>
-            <%= f.submit(@banner.persisted? ? "Salvar alterações" : "Publicar banner", class: "ax-btn ax-btn--primary") %>
-          <% end %>
+    <%= ax_studio_group(title: "Publicação", icon: "send", subtitle: "Ativo e ordem decidem quem aparece quando há mais de um banner na mesma posição.") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-8">
+          <%= ax_switch_field(label: "Banner ativo", form: f, method: :active, id: "banner_active", class_name: "ax-switch--card",
+                              description: "Desativado, ele não aparece em nenhuma posição.", input_html: { role: "switch", checked: active }) %>
+        </div>
+        <div class="ax-span-4">
+          <%= ax_number_field(form: f, method: :display_order, label: "Ordem", min: 0, value: @banner.display_order || 0, tooltip: "Menor número aparece primeiro (0, 1, 2…). Só um banner por posição é exibido.") %>
+        </div>
       <% end %>
-    </div>
+    <% end %>
+
+    <%= ax_studio_savebar(form: f, cancel_path: admin_banners_path, submit_label: editing ? "Salvar alterações" : "Publicar banner") %>
   <% end %>
-<% end %>
+
+  <aside class="ax-studio__aside" aria-label="Prévia do banner">
+    <div class="bn-pv">
+      <header class="bn-pv__bar">
+        <span>Como vai aparecer</span>
+        <div class="bn-pv__device" role="group" aria-label="Dispositivo">
+          <button type="button" class="is-active" data-device="desktop" data-action="banner-preview#device"><i class="bi bi-pc-display"></i> Desktop</button>
+          <button type="button" data-device="mobile" data-action="banner-preview#device"><i class="bi bi-phone"></i> Mobile</button>
+        </div>
+      </header>
+      <div class="bn-pv__stage" data-banner-preview-target="stage"></div>
+      <ul class="bn-pv__status" data-banner-preview-target="status"></ul>
+    </div>
+    <p class="bn-pv__hint">Prévia com os dados que você preencheu, sem salvar.</p>
+  </aside>
+</div>
 </div>

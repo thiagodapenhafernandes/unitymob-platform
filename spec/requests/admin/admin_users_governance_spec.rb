@@ -167,6 +167,30 @@ RSpec.describe "Admin user governance", type: :request do
     expect(response.body).to include("Carteira desvinculada")
   end
 
+  it "permite apenas ao admin da conta encerrar acessos em todos os aparelhos" do
+    tenant = Tenant.create!(name: "Tenant revogar acessos #{SecureRandom.hex(3)}", slug: "tenant-revogar-acessos-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    manager_profile = create_vertical_profile(tenant, "Manager Revogar", 300, "corretores" => { "manage" => true })
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner")
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner, name: "Gestor")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, name: "Corretor")
+    PushSubscription.create!(admin_user: broker, endpoint: "https://web.push.apple.com/request-revoke", p256dh: "p256dh", auth: "auth", active: true)
+
+    sign_in manager
+    post revoke_access_admin_admin_user_path(broker)
+
+    expect(response).to redirect_to(edit_admin_admin_user_path(broker))
+    expect(PushSubscription.where(admin_user: broker).pluck(:active)).to eq([true])
+
+    sign_out manager
+    sign_in owner
+    post revoke_access_admin_admin_user_path(broker)
+
+    expect(response).to redirect_to(edit_admin_admin_user_path(broker))
+    expect(PushSubscription.where(admin_user: broker).pluck(:active)).to eq([false])
+  end
+
   it "bloqueia inativacao direta pelo formulario geral sem decisao de carteira" do
     tenant = Tenant.create!(name: "Tenant bloqueio inativacao #{SecureRandom.hex(3)}", slug: "tenant-bloqueio-inativacao-#{SecureRandom.hex(3)}")
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")

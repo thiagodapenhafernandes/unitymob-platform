@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Lista PWA de leads (mobile): carrega mais 15 leads da aba atual ao chegar
-// perto do fim da lista, no mesmo padrão de lead_kanban_controller.js
+// Lista de leads: carrega mais 10 leads da aba atual ao chegar perto do fim,
+// no mesmo padrão de lead_kanban_controller.js
 // (IntersectionObserver + fetch JSON + append de HTML), mas com scroll de
 // página inteira (root: null) em vez de coluna própria.
 export default class extends Controller {

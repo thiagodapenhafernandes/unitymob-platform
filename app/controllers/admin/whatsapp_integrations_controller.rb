@@ -11,6 +11,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
   def show
     return redirect_to admin_meta_integrations_path if params[:tab] == "forms"
+    return redirect_to edit_admin_contact_setting_path if params[:tab] == "site_phones"
 
     load_page_state
   end
@@ -432,18 +433,6 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     redirect_to admin_whatsapp_integration_path, notice: "Conexão WhatsApp removida."
   end
 
-  def phone_settings
-    integration = current_whatsapp_integration
-
-    if integration.update(phone_settings_params)
-      redirect_to admin_whatsapp_integration_path(tab: "site_phones"), notice: "Telefones do site atualizados."
-    else
-      load_page_state
-      @phone_settings_errors = integration.errors.full_messages
-      render :show, status: :unprocessable_content
-    end
-  end
-
   private
 
   def load_page_state
@@ -451,7 +440,6 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @whatsapp_transport = Notifications::TransportResolver.whatsapp(current_tenant)
     @whatsapp_using_global = @whatsapp_transport&.global?
     @whatsapp_effective_ready = @whatsapp_transport.present?
-    @site_phone_settings = @whatsapp_integration.site_phone_settings
     @embedded_signup_config_id = embedded_signup_config_id
     @diagnostics = diagnostics
     @default_webhook_callback_url = default_webhook_callback_url
@@ -515,7 +503,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def campaign_sender_numbers
-    current_tenant.whatsapp_sender_numbers.active.ordered
+    current_tenant.whatsapp_sender_numbers.ordered
   end
 
   def current_integration_sender_number
@@ -650,22 +638,6 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     params.require(:whatsapp_business_integration).permit(
       :webhook_callback_url,
       :webhook_verify_token
-    )
-  end
-
-  def phone_settings_params
-    params.require(:whatsapp_business_integration).permit(
-      :allow_photo_presentation,
-      :default_whatsapp_number,
-      :sale_whatsapp_number,
-      :rent_whatsapp_number,
-      :sale_rent_whatsapp_number,
-      :sale_requires_lead_form,
-      :rent_requires_lead_form,
-      :sale_rent_requires_lead_form,
-      :sale_redirect_after_capture,
-      :rent_redirect_after_capture,
-      :sale_rent_redirect_after_capture
     )
   end
 

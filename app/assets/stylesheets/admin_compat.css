@@ -6,7 +6,7 @@
  * ============================================================ */
 
 /* ---------- mini-reboot (escopo .ax-app) ---------- */
-.ax-app h1, .ax-app h2, .ax-app h3, .ax-app h4, .ax-app h5, .ax-app h6 { margin: 0 0 .4rem; font-weight: 650; color: #1f2733; line-height: 1.25; }
+.ax-app h1, .ax-app h2, .ax-app h3, .ax-app h4, .ax-app h5, .ax-app h6 { margin: 0 0 .4rem; font-weight: 650; color: var(--ab-ink, #1f2733); line-height: 1.25; }
 .ax-app h1, .ax-app .h1 { font-size: 1.5rem; }
 .ax-app h2, .ax-app .h2 { font-size: 1.3rem; }
 .ax-app h3, .ax-app .h3 { font-size: 1.15rem; }
@@ -15,7 +15,7 @@
 .ax-app h6, .ax-app .h6 { font-size: .82rem; }
 .ax-app p { margin: 0 0 .75rem; }
 .ax-app hr { border: 0; border-top: 1px solid #e6e8eb; margin: 1rem 0; opacity: 1; }
-.ax-app code { color: #be185d; font-size: .85em; }
+.ax-app code { color: color-mix(in srgb, var(--ax-accent-pink, #d9469a) 75%, var(--ab-ink, #1f2733)); font-size: .85em; }
 /* só links de conteúdo "puros" (sem classe) recebem a cor primária;
    botões/nav/menus (.ax-btn, .ax-nav__link, etc.) mantêm a própria cor */
 .ax-app a { text-decoration: none; }
@@ -83,7 +83,7 @@
 .card-header { padding: 12px 16px; border-bottom: 1px solid #eceef1; background: transparent; font-weight: 600; }
 .card-body { padding: 16px; }
 .card-footer { padding: 12px 16px; border-top: 1px solid #eceef1; background: transparent; }
-.card-title { font-size: 14px; font-weight: 650; color: #1f2733; margin: 0; }
+.card-title { font-size: 14px; font-weight: 650; color: var(--ab-ink, #1f2733); margin: 0; }
 .card-luxury, .card-premium { background: #fff; border: 1px solid #e6e8eb; border-radius: 8px; box-shadow: 0 1px 2px rgb(16 24 40 / .05); }
 
 /* ---------- Forms ---------- */

@@ -81,14 +81,14 @@
                         <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp footer-contact-icon footer-contact-icon--whatsapp")) do %>
                           <%= f.telephone_field :whatsapp,
                                                 class: "ax-control",
-                                                placeholder: "(47) 98863-0198",
+                                                placeholder: "+55 00 00000-0000",
                                                 data: { controller: "phone-input" } %>
                         <% end %>
                       </div>
                       <div class="ax-span-6 tw-mb-3">
                         <%= ax_field_label(f, :email, text: "E-mail de contato") %>
                         <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope footer-contact-icon footer-contact-icon--email")) do %>
-                          <%= f.email_field :email, class: "ax-control", placeholder: "exemplo@email.com" %>
+                          <%= f.email_field :email, class: "ax-control", placeholder: "contato@example.invalid" %>
                         <% end %>
                       </div>
                       <div class="ax-span-12">

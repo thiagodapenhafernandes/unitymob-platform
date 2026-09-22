@@ -6,7 +6,7 @@
       eyebrow: "Comercial · Agenda",
       icon: "calendar-event",
       title: "Agenda",
-      subtitle: "Visitas, reuniões e ligações da sua equipe.",
+      subtitle: (current_admin_user.owns_all?(:comercial) || current_admin_user.can_view_team?(:comercial) ? "Visitas, reuniões e ligações da sua equipe." : "Suas visitas, reuniões e ligações."),
       actions: appointment_heading_actions
     ) %>
 
@@ -37,7 +37,13 @@
   <% end %>
 </div>
 
-<% if @view == "semana" %>
+<% if @view == "semana" && @appointments.empty? %>
+  <%= ax_empty_state(
+        title: "Nenhum compromisso nesta semana",
+        description: "Agende uma visita a partir de um lead ou no botão Novo compromisso.",
+        icon: "calendar2-week"
+      ) %>
+<% elsif @view == "semana" %>
   <div class="ax-appointment-grid">
     <% @days.each do |day| %>
       <div class="ax-card <%= 'tw-ring-2 tw-ring-primary' if day == Date.current %>">

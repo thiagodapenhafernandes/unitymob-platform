@@ -1,6 +1,27 @@
 <% content_for :mobile_detail_header do %>
   <%= render "admin/shared/ui/mobile_detail_header", title: "Configurações de Leads", subtitle: "Lembretes e operação", back_path: admin_root_path, icon: "bell" %>
 <% end %>
+<%
+  studio_items = [
+    { id: "lead-tab-stickiness", icon: "person-check", label: "Fidelização", hint: "Lead volta ao mesmo corretor" },
+    { id: "lead-tab-notify", icon: "bell", label: "Avisos ao corretor", hint: "Eventos, toque no push e conversa" },
+    { id: "lead-tab-reminders", icon: "alarm", label: "Lembretes", hint: "Tarefas, agenda e visitas" },
+    { id: "lead-tab-sla", icon: "stopwatch", label: "Prazos e automação", hint: "SLA de 1º contato e varredura" },
+    { id: "lead-tab-privacy", icon: "shield-lock", label: "Privacidade", hint: "Contato atrás de link seguro" },
+    { id: "lead-tab-how", icon: "info-circle", label: "Como funciona", hint: "Fluxo e regras de aviso" }
+  ]
+  distribution_events = [
+    [:notify_on_distribution, "diagram-3", "Lead novo distribuído", "Rotativo ou por performance."],
+    [:notify_on_sticky, "person-check", "Lead fidelizado", "Volta para o mesmo corretor."],
+    [:notify_on_redistribution, "arrow-repeat", "Reenvio após o aceite expirar", "Vai para um novo corretor."],
+    [:notify_on_shark_tank, "lightning", "Shark Tank: avisar todos", "O primeiro que aceitar vira dono."]
+  ]
+  other_events = [
+    [:notify_on_direct_assignment, "person-plus", "Lead que já chega com corretor", "Share link ou atribuição na criação."],
+    [:notify_on_reassignment, "arrow-left-right", "Reatribuição manual pelo admin", "Avisa o novo responsável."],
+    [:notify_on_lost_turn, "hourglass-bottom", "Avisar quem perdeu a vez", "O aceite com prazo expirou."]
+  ]
+%>
 <div class="layout-settings-workspace">
   <%= ax_workspace_heading(
         eyebrow: "Configurações · Operação",
@@ -10,208 +31,238 @@
         subtitle: "Regras globais da conta para o tratamento de leads: fidelização ao corretor e privacidade na notificação."
       ) %>
 
-  <div class="layout-settings-grid">
-    <div class="layout-settings-main">
-      <%= form_with(model: [:admin, @lead_setting], url: admin_lead_setting_path, method: :patch, local: true,
-            data: { controller: "lead-settings" }, class: "layout-settings-form") do |f| %>
-        <%= ax_error_summary(@lead_setting) %>
+  <%= form_with(model: [:admin, @lead_setting], url: admin_lead_setting_path, method: :patch, local: true,
+        data: { controller: "lead-settings ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" }, class: "layout-settings-form") do |f| %>
+    <%= ax_error_summary(@lead_setting) %>
 
+    <div class="ax-studio">
+      <div class="ax-studio__nav">
+        <%= ax_studio_nav(items: studio_items, panels_selector: "#lead-studio-sections", label: "Seções das configurações de leads") %>
+      </div>
+
+      <div class="ax-studio__stage" id="lead-studio-sections">
         <%# ===== Fidelização ===== %>
-        <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Fidelização", title: "Lead sempre com o mesmo corretor") do %>
-          <div class="ax-panel-body">
-            <%= ax_toggle_chip(f, :stickiness_enabled,
-                  label: raw("<i class='bi bi-person-check'></i> Ativar fidelização"),
-                  input_data: { action: "change->lead-settings#toggleStickiness" }) %>
-            <p class="ax-field__hint">Quando um lead chega de uma pessoa já atendida antes, ele é atribuído ao mesmo corretor, em vez de entrar na rotação.</p>
-
-            <div class="section-toggle-container ax-field-group-stack ax-field-group-stack--settings<%= ' tw-hidden' unless @lead_setting.stickiness_enabled? %>"
-                 data-lead-settings-target="stickinessSection">
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Como reconhecer a mesma pessoa", token: "Identidade") do %>
-                <%= ax_radio_group(form: f, method: :stickiness_match, label: "Casar leads pelo:",
-                      choices: [
-                        ["Telefone", "phone"],
-                        ["Telefone ou e-mail", "phone_or_email"],
-                        ["Telefone e e-mail (ambos)", "phone_and_email"]
-                      ]) %>
-                <p class="ax-field__hint">Telefone é o mais confiável no mercado imobiliário (comparado só pelos dígitos, ignora formatação).</p>
-              <% end %>
-
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Quem conta como corretor da pessoa", token: "Dono anterior") do %>
-                <%= ax_radio_group(form: f, method: :stickiness_owner, label: "Considerar como dono:",
-                      choices: [
-                        ["Só quem atendeu de fato (aceitou / em atendimento)", "attended"],
-                        ["Qualquer corretor a quem já foi atribuído", "any_assignment"]
-                      ]) %>
-                <p class="ax-field__hint">"Atendeu de fato" ignora leads que foram só atribuídos e expiraram no aceite com prazo sem atendimento.</p>
-              <% end %>
-
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Se o corretor anterior não estiver disponível", token: "Elegibilidade") do %>
-                <%= ax_radio_group(form: f, method: :stickiness_fallback, label: "Aplicar fidelização:",
-                      choices: [
-                        ["Só se o corretor estiver ativo e na regra que casou", "active_in_rule"],
-                        ["Se o corretor estiver ativo, mesmo fora da regra", "active_any"]
-                      ]) %>
-                <p class="ax-field__hint">Quando não elegível, o lead cai na distribuição normal da regra.</p>
-              <% end %>
-
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Por quanto tempo a fidelização vale", token: "Janela") do %>
-                <%= ax_number_field(form: f, method: :stickiness_window_days, label: "Janela em dias",
-                      placeholder: "vazio = para sempre", min: 0,
-                      hint: "Vazio (ou 0) = para sempre. Ex.: 90 = só volta para o mesmo corretor se o atendimento foi nos últimos 90 dias.") %>
-              <% end %>
-
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Quando redistribuir mesmo com histórico", token: "Exceções") do %>
-                <%= ax_multiselect_field(
-                      form: f,
-                      method: :stickiness_non_fidelizing_stage_ids,
-                      label: "Etapas que não mantêm fidelização",
-                      choices: @stickiness_stage_options,
-                      selected: @lead_setting.stickiness_non_fidelizing_stage_ids_value,
-                      placeholder: "Selecione as etapas",
-                      data: {
-                        tom_select_tags_value: false,
-                        tom_select_options_value: { plugins: ["remove_button"] }
-                      }
-                    ) %>
-                <p class="ax-field__hint">Se o último lead encontrado da pessoa estiver em uma dessas etapas, ele entra novamente na distribuição normal da regra.</p>
-              <% end %>
-            </div>
+        <%= ax_studio_section(id: "lead-tab-stickiness", icon: "person-check", active: true,
+                              title: "Lead sempre com o mesmo corretor",
+                              subtitle: "Quando um lead chega de uma pessoa já atendida antes, ele é atribuído ao mesmo corretor, em vez de entrar na rotação.",
+                              actions: ax_badge(@lead_setting.stickiness_enabled? ? "Ativa" : "Desligada", tone: @lead_setting.stickiness_enabled? ? :green : :gray, dot: true)) do %>
+          <div class="ax-studio-group">
+            <%= ax_switch_field(form: f, method: :stickiness_enabled, label: "Ativar fidelização",
+                                description: "Se a pessoa já tem corretor e ele está elegível, o lead vai direto para ele; senão, segue a rotação normal.",
+                                class_name: "ax-switch--card", input_html: { data: { action: "change->lead-settings#toggleStickiness" } }) %>
           </div>
-        <% end %>
 
-        <%# ===== Notificações por evento ===== %>
-        <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Notificações", title: "Quando avisar o corretor") do %>
-          <div class="ax-panel-body">
-            <p class="ax-field__hint tw-mb-2">Os eventos de distribuição usam os canais ligados na regra: push, WhatsApp, e-mail e webhook. Os outros eventos abaixo enviam apenas push. Desligue aqui os eventos que não quiser.</p>
+          <div class="section-toggle-container ax-field-group-stack ax-field-group-stack--settings<%= ' tw-hidden' unless @lead_setting.stickiness_enabled? %>"
+               data-lead-settings-target="stickinessSection">
+            <%= ax_studio_group(title: "Como reconhecer a mesma pessoa", actions: tag.span("Identidade", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_radio_group(form: f, method: :stickiness_match, label: "Casar leads pelo:",
+                    choices: [
+                      ["Telefone", "phone"],
+                      ["Telefone ou e-mail", "phone_or_email"],
+                      ["Telefone e e-mail (ambos)", "phone_and_email"]
+                    ]) %>
+              <p class="ax-field__hint">Telefone é o mais confiável no mercado imobiliário (comparado só pelos dígitos, ignora formatação).</p>
+            <% end %>
 
-            <strong class="ax-field-caption">Distribuição</strong>
-            <div class="ax-option-stack tw-mb-3">
-              <%= ax_toggle_chip(f, :notify_on_distribution, label: raw("<i class='bi bi-diagram-3'></i> Lead novo distribuído (rotativo/performance)")) %>
-              <%= ax_toggle_chip(f, :notify_on_sticky, label: raw("<i class='bi bi-person-check'></i> Lead fidelizado (volta pro mesmo corretor)")) %>
-              <%= ax_toggle_chip(f, :notify_on_redistribution, label: raw("<i class='bi bi-arrow-repeat'></i> Reenvio após aceite com prazo expirar (novo corretor)")) %>
-              <%= ax_toggle_chip(f, :notify_on_shark_tank, label: raw("<i class='bi bi-lightning'></i> Shark Tank: avisar todos (1º que aceitar vira dono)")) %>
-            </div>
+            <%= ax_studio_group(title: "Quem conta como corretor da pessoa", actions: tag.span("Dono anterior", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_radio_group(form: f, method: :stickiness_owner, label: "Considerar como dono:",
+                    choices: [
+                      ["Só quem atendeu de fato (aceitou / em atendimento)", "attended"],
+                      ["Qualquer corretor a quem já foi atribuído", "any_assignment"]
+                    ]) %>
+              <p class="ax-field__hint">"Atendeu de fato" ignora leads que foram só atribuídos e expiraram no aceite com prazo sem atendimento.</p>
+            <% end %>
 
-            <strong class="ax-field-caption">Outros eventos</strong>
-            <div class="ax-option-stack">
-              <%= ax_toggle_chip(f, :notify_on_direct_assignment, label: raw("<i class='bi bi-person-plus'></i> Lead que já chega com corretor (share link / atribuição na criação)")) %>
-              <%= ax_toggle_chip(f, :notify_on_reassignment, label: raw("<i class='bi bi-arrow-left-right'></i> Reatribuição manual pelo admin")) %>
-              <%= ax_toggle_chip(f, :notify_on_lost_turn, label: raw("<i class='bi bi-hourglass-bottom'></i> Avisar quem perdeu a vez (aceite com prazo expirou)")) %>
-            </div>
+            <%= ax_studio_group(title: "Se o corretor anterior não estiver disponível", actions: tag.span("Elegibilidade", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_radio_group(form: f, method: :stickiness_fallback, label: "Aplicar fidelização:",
+                    choices: [
+                      ["Só se o corretor estiver ativo e na regra que casou", "active_in_rule"],
+                      ["Se o corretor estiver ativo, mesmo fora da regra", "active_any"]
+                    ]) %>
+              <p class="ax-field__hint">Quando não elegível, o lead cai na distribuição normal da regra.</p>
+            <% end %>
 
-            <p class="ax-field__hint tw-mt-2">Lembre: push é por aparelho — cada corretor precisa ativar no <code>/field</code> dele.</p>
-          </div>
-        <% end %>
+            <%= ax_studio_group(title: "Por quanto tempo a fidelização vale", actions: tag.span("Janela", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_measure_field(form: f, method: :stickiness_window_days, label: "Janela", unit: "dias", placeholder: "para sempre", min: 0, step: 1) %>
+              <p class="ax-field__hint">Vazio (ou 0) = para sempre. Ex.: 90 = só volta para o mesmo corretor se o atendimento foi nos últimos 90 dias.</p>
+            <% end %>
 
-        <%= render "reminder_settings", f: f %>
-
-        <%# ===== SLA ===== %>
-        <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Atendimento", title: "SLA de primeiro contato") do %>
-          <div class="ax-panel-body">
-            <div class="tw-grid tw-gap-3 md:tw-grid-cols-[220px_1fr]">
-              <%= ax_select_field(form: f, method: :first_contact_sla_duration_unit, label: "Unidade",
-                    choices: [["Minutos", "minutes"], ["Horas", "hours"], ["Dias", "days"]],
-                    html_options: {
-                      data: {
-                        lead_settings_target: "slaUnit",
-                        action: "change->lead-settings#syncSlaDuration"
-                      }
-                    }) %>
-              <%= ax_number_field(form: f, method: :first_contact_sla_duration_value, label: "Prazo",
-                    min: 1,
-                    max: LeadSetting::FIRST_CONTACT_SLA_UNITS.dig(@lead_setting.first_contact_sla_duration_unit, :max),
-                    placeholder: @lead_setting.first_contact_sla_duration_value,
+            <%= ax_studio_group(title: "Quando redistribuir mesmo com histórico", actions: tag.span("Exceções", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_multiselect_field(
+                    form: f,
+                    method: :stickiness_non_fidelizing_stage_ids,
+                    label: "Etapas que não mantêm fidelização",
+                    choices: @stickiness_stage_options,
+                    selected: @lead_setting.stickiness_non_fidelizing_stage_ids_value,
+                    placeholder: "Selecione as etapas",
                     data: {
-                      lead_settings_target: "slaValue",
-                      action: "input->lead-settings#limitSlaDuration change->lead-settings#clampSlaDuration blur->lead-settings#clampSlaDuration"
-                    }) %>
+                      tom_select_tags_value: false,
+                      tom_select_options_value: { plugins: ["remove_button"] }
+                    }
+                  ) %>
+              <p class="ax-field__hint">Se o último lead encontrado da pessoa estiver em uma dessas etapas, ele entra novamente na distribuição normal da regra.</p>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%# ===== Avisos ao corretor ===== %>
+        <%= ax_studio_section(id: "lead-tab-notify", icon: "bell",
+                              title: "Avisos ao corretor",
+                              subtitle: "Os eventos de distribuição usam os canais ligados na regra (push, WhatsApp, e-mail e webhook); os outros eventos enviam apenas push.") do %>
+          <%= ax_studio_group(title: "Distribuição", subtitle: "Desligue um evento para o corretor não receber aviso dele.") do %>
+            <div class="ax-studio-switches ax-studio-switches--2">
+              <% distribution_events.each do |method, icon, label, description| %>
+                <%= ax_switch_field(form: f, method: method, label: label, description: description, class_name: "ax-switch--card") %>
+              <% end %>
             </div>
-            <p class="ax-field__hint" data-lead-settings-target="slaHint">
-              Usado no dashboard e nos filtros de leads para apontar quem passou de <%= @lead_setting.first_contact_sla_duration_label %> sem primeiro atendimento.
-            </p>
-          </div>
-        <% end %>
+          <% end %>
 
-        <%# ===== Automação de etapas ===== %>
-        <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Automação", title: "Verificação das automações de etapa") do %>
-          <div class="ax-panel-body">
-            <%= ax_number_field(form: f, method: :stage_automation_sweep_interval_minutes,
-                  label: "Intervalo mínimo em minutos",
-                  min: LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
-                  max: LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
-                  data: {
-                    action: "input->lead-settings#limitStageAutomationInterval change->lead-settings#clampStageAutomationInterval blur->lead-settings#clampStageAutomationInterval",
-                    lead_settings_min_value: LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
-                    lead_settings_max_value: LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES
-                  },
-                  placeholder: LeadSetting::DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
-                  hint: "Define de quanto em quanto tempo a conta verifica leads vencidos nas automações das etapas. Aceita apenas valores entre #{LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES} e #{LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES} minutos; valores menores que #{LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES} são ajustados para #{LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES}.") %>
-          </div>
-        <% end %>
+          <%= ax_studio_group(title: "Outros eventos", subtitle: "Só por push. Lembre: push é por aparelho — cada corretor precisa ativar no /field dele.") do %>
+            <div class="ax-studio-switches ax-studio-switches--2">
+              <% other_events.each do |method, icon, label, description| %>
+                <%= ax_switch_field(form: f, method: method, label: label, description: description, class_name: "ax-switch--card") %>
+              <% end %>
+            </div>
+          <% end %>
 
-        <%# ===== Comportamento do push ===== %>
-        <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Push", title: "Ao tocar na notificação") do %>
-          <div class="ax-panel-body">
+          <%= ax_studio_group(title: "Ao tocar na notificação", subtitle: "Nas duas opções, o toque no push conta como aceite no prazo e trava a rotação do aceite com prazo.") do %>
             <%= ax_radio_group(form: f, method: :push_lead_click_action,
                   label: "O push de lead deve abrir:",
                   choices: [
                     ["Detalhes do lead primeiro", "system"],
                     ["WhatsApp do lead direto", "whatsapp"]
                   ]) %>
-            <p class="ax-field__hint tw-mt-2">
-              Nas duas opções, o toque no push conta como aceite no prazo e trava a rotação do aceite com prazo.
-              Use detalhes quando o corretor precisa ver telefone, e-mail, origem e interesse antes de chamar o cliente.
-            </p>
+            <p class="ax-field__hint">Use detalhes quando o corretor precisa ver telefone, e-mail, origem e interesse antes de chamar o cliente.</p>
+            <%= ax_switch_field(form: f, method: :lead_whatsapp_conversation_enabled, label: "Mostrar conversa WhatsApp dentro do lead",
+                                description: "Desligado, o lead não abre nem exibe a conversa embutida. O inbox dedicado continua disponível para quem tem permissão.",
+                                class_name: "ax-switch--card") %>
+          <% end %>
+        <% end %>
 
-            <div class="ax-option-stack tw-mt-3">
-              <%= ax_toggle_chip(f, :lead_whatsapp_conversation_enabled,
-                    label: raw("<i class='bi bi-chat-dots'></i> Mostrar conversa WhatsApp dentro do lead")) %>
-            </div>
-            <p class="ax-field__hint tw-mt-2">
-              Quando desligado, o lead não abre nem exibe a conversa embutida. O inbox dedicado continua disponível para quem tem permissão.
+        <%# ===== Lembretes ===== %>
+        <%= render "reminder_settings", f: f %>
+
+        <%# ===== Prazos e automação ===== %>
+        <%= ax_studio_section(id: "lead-tab-sla", icon: "stopwatch",
+                              title: "Prazos e automação",
+                              subtitle: "Quando um lead passa do prazo de primeiro contato e de quanto em quanto tempo as automações de etapa são verificadas.") do %>
+          <%= ax_studio_group(title: "SLA de primeiro contato", subtitle: "Aponta no dashboard e nos filtros de leads quem passou do prazo sem primeiro atendimento.") do %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= ax_autocomplete_select_field(form: f, method: :first_contact_sla_duration_unit, label: "Unidade",
+                      choices: [["Minutos", "minutes"], ["Horas", "hours"], ["Dias", "days"]],
+                      html_options: {
+                        data: {
+                          lead_settings_target: "slaUnit",
+                          action: "change->lead-settings#syncSlaDuration"
+                        }
+                      }) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_number_field(form: f, method: :first_contact_sla_duration_value, label: "Prazo",
+                      min: 1,
+                      max: LeadSetting::FIRST_CONTACT_SLA_UNITS.dig(@lead_setting.first_contact_sla_duration_unit, :max),
+                      placeholder: @lead_setting.first_contact_sla_duration_value,
+                      data: {
+                        lead_settings_target: "slaValue",
+                        action: "input->lead-settings#limitSlaDuration change->lead-settings#clampSlaDuration blur->lead-settings#clampSlaDuration"
+                      }) %>
+              </div>
+            <% end %>
+            <p class="ax-field__hint" data-lead-settings-target="slaHint">
+              Usado no dashboard e nos filtros de leads para apontar quem passou de <%= @lead_setting.first_contact_sla_duration_label %> sem primeiro atendimento.
             </p>
+          <% end %>
+
+          <%= ax_studio_group(title: "Verificação das automações de etapa", subtitle: "De quanto em quanto tempo a conta verifica leads vencidos nas automações das etapas.") do %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= ax_measure_field(form: f, method: :stage_automation_sweep_interval_minutes,
+                      label: "Intervalo mínimo", unit: "min",
+                      min: LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                      max: LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                      step: 1,
+                      data: {
+                        action: "input->lead-settings#limitStageAutomationInterval change->lead-settings#clampStageAutomationInterval blur->lead-settings#clampStageAutomationInterval",
+                        lead_settings_min_value: LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES,
+                        lead_settings_max_value: LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES
+                      },
+                      placeholder: LeadSetting::DEFAULT_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES) %>
+              </div>
+            <% end %>
+            <p class="ax-field__hint">Aceita apenas valores entre <%= LeadSetting::MIN_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES %> e <%= LeadSetting::MAX_STAGE_AUTOMATION_SWEEP_INTERVAL_MINUTES %> minutos.</p>
+          <% end %>
+        <% end %>
+
+        <%# ===== Privacidade ===== %>
+        <%= ax_studio_section(id: "lead-tab-privacy", icon: "shield-lock",
+                              title: "Mascarar contato na notificação",
+                              subtitle: "Telefone e e-mail viram links /s/<token> (só o nome fica visível). O clique abre o contato do lead e marca como atendido dentro do prazo, medindo o SLA em todos os canais.",
+                              actions: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true)) do %>
+          <div class="ax-studio-group">
+            <%= ax_switch_field(form: f, method: :secure_links_enabled, label: "Esconder telefone/e-mail atrás de link seguro",
+                                description: "Com o link ligado, a notificação não mostra o contato direto.",
+                                class_name: "ax-switch--card", input_html: { data: { action: "change->lead-settings#toggleSecure" } }) %>
+          </div>
+
+          <div class="section-toggle-container ax-field-group-stack ax-field-group-stack--settings<%= ' tw-hidden' unless @lead_setting.secure_links_enabled? %>"
+               data-lead-settings-target="secureSection">
+            <%= ax_studio_group(title: "Validade do link", actions: tag.span("Expiração", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_measure_field(form: f, method: :secure_link_expiry_days, label: "Validade", unit: "dias", min: 0, placeholder: "7", step: 1) %>
+              <p class="ax-field__hint">Dias até o link expirar. 0 = nunca expira.</p>
+            <% end %>
+
+            <%= ax_studio_group(title: "Canais com link seguro", actions: tag.span("Operação", class: "ax-badge ax-badge--gray")) do %>
+              <p class="ax-field__hint">Escolha quais notificações roteiam o contato pelo link seguro. O que ficar desligado envia o dado direto (sem mascarar e sem registrar atendimento pelo clique).</p>
+              <div class="ax-studio-switches">
+                <%= ax_switch_field(form: f, method: :secure_link_whatsapp, label: "WhatsApp", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :secure_link_email, label: "E-mail", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :secure_link_push, label: "Push", description: "O clique conta como aceite no prazo.", class_name: "ax-switch--card") %>
+              </div>
+            <% end %>
           </div>
         <% end %>
 
-        <%# ===== Privacidade / Link seguro ===== %>
-        <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Privacidade", title: "Mascarar contato na notificação") do %>
-          <div class="ax-panel-body">
-            <%= ax_toggle_chip(f, :secure_links_enabled,
-                  label: raw("<i class='bi bi-shield-lock'></i> Esconder telefone/e-mail atrás de link seguro"),
-                  input_data: { action: "change->lead-settings#toggleSecure" }) %>
-            <p class="ax-field__hint">
-              Telefone e e-mail viram links <code>/s/&lt;token&gt;</code> (só o nome fica visível).
-              O clique passa pelo mesmo motor — abre o contato do lead e <strong>marca como atendido</strong> dentro do prazo —, mantendo o sistema no meio e medindo o SLA em todos os canais.
-            </p>
+        <%# ===== Como funciona ===== %>
+        <%= ax_studio_section(id: "lead-tab-how", icon: "info-circle",
+                              title: "Como funciona",
+                              subtitle: "O que acontece por trás de cada regra, para você configurar com segurança.") do %>
+          <%= ax_studio_group(title: "Fluxo") do %>
+          <ol class="ax-field__hint ax-field__hint--steps">
+            <li><strong>Fidelização</strong>: na distribuição, se a pessoa já tem corretor (pela chave escolhida) e ele está elegível → vai direto pra ele; senão, rotação normal.</li>
+            <li><strong>Push</strong>: o clique sempre vale como aceite dentro do prazo; depois abre o destino configurado: detalhes do lead ou WhatsApp direto.</li>
+            <li><strong>Link seguro</strong>: nos canais ligados (WhatsApp, e-mail, push), a notificação esconde o contato atrás de um link <code>/s/&lt;token&gt;</code>; o clique valida a expiração, abre o contato/lead e marca o atendimento dentro do prazo (mede o SLA).</li>
+          </ol>
+          <% end %>
 
-            <div class="section-toggle-container ax-field-group-stack ax-field-group-stack--settings<%= ' tw-hidden' unless @lead_setting.secure_links_enabled? %>"
-                 data-lead-settings-target="secureSection">
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Validade do link", token: "Expiração") do %>
-                <%= ax_number_field(form: f, method: :secure_link_expiry_days, label: "Validade em dias",
-                      min: 0, placeholder: "7",
-                      hint: "Dias até o link expirar. 0 = nunca expira.") %>
-              <% end %>
+          <%= ax_studio_group(title: "Lembretes e regras de notificação") do %>
+          <%= ax_studio_group(title: "Tarefas, agenda e visitas") do %>
+            <p class="ax-field__hint"><strong>Quando avisamos:</strong> tarefas e compromissos têm lembretes nas janelas de <strong><%= @lead_setting.reminder_first_minutes %>, <%= @lead_setting.reminder_second_minutes %> e <%= @lead_setting.reminder_third_minutes %> minutos antes<%= ", além do vencimento" if @lead_setting.reminder_due_enabled? %></strong>. O sistema verifica as atividades a cada minuto.</p>
+            <p class="ax-field__hint"><strong>Atividades atrasadas:</strong> os lembretes se repetem em intervalos de <strong><%= @lead_setting.reminder_overdue_minutes %> minutos, entre <%= @lead_setting.reminder_start_time %> e <%= @lead_setting.reminder_end_time %></strong>, enquanto continuarem pendentes.</p>
+            <p class="ax-field__hint"><strong>Quando não enviamos:</strong> responsável inativo, atividade encerrada, lead sem responsável ou atividade ainda vinculada ao corretor antigo. Tarefas de leads descartados ou não operacionais também não geram lembretes.</p>
+            <p class="ax-field__hint"><strong>Sem avisos duplicados:</strong> há controle para evitar a repetição da mesma fase do lembrete. Novas tentativas da mesma fase respeitam um intervalo mínimo de <strong><%= @lead_setting.reminder_retry_minutes %> minutos</strong>; as próximas fases programadas mantêm seus horários.</p>
+            <p class="ax-field__hint"><strong>Troca de corretor:</strong> tarefas pendentes e compromissos agendados, inclusive atrasados, acompanham o novo responsável. Os próximos lembretes passam a ser dele; atividades concluídas ou canceladas preservam o histórico.</p>
+            <p class="ax-field__hint">Para criar ou agendar uma atividade vinculada ao lead, atribua um corretor primeiro. Atividades pessoais, sem vínculo com um lead, notificam seu próprio responsável.</p>
+            <p class="ax-field__hint"><strong>Os lembretes de tarefas e compromissos não são controlados pelas opções de eventos de leads.</strong></p>
+          <% end %>
 
-              <%= ax_field_group(class_name: "ax-field-group--settings", title: "Canais com link seguro", token: "Operação") do %>
-                <p class="ax-field__hint tw-mb-2">Escolha quais notificações roteiam o contato pelo link seguro. O que ficar desligado envia o dado direto (sem mascarar e sem registrar atendimento).</p>
-                <%= ax_toggle_chip(f, :secure_link_whatsapp, label: raw("<i class='bi bi-whatsapp'></i> WhatsApp")) %>
-                <%= ax_toggle_chip(f, :secure_link_email, label: raw("<i class='bi bi-envelope'></i> E-mail")) %>
-                <%= ax_toggle_chip(f, :secure_link_push, label: raw("<i class='bi bi-bell'></i> Push (clique = aceite no prazo)")) %>
-              <% end %>
-            </div>
-          </div>
+          <%= ax_studio_group(title: "Novos leads: rodízio e Bolsão") do %>
+            <p class="ax-field__hint">No rodízio, o aviso ao corretor acontece após a atribuição. No Bolsão (Shark Tank), os corretores elegíveis podem receber o aviso enquanto o lead está sem responsável, para que alguém o assuma. O envio depende da opção de aviso do Shark Tank e dos canais da regra; a repetição depende do intervalo configurado na regra.</p>
+          <% end %>
+
+          <%= ax_studio_group(title: "Leads recebidos pelo formulário do site") do %>
+            <p class="ax-field__hint">O formulário do site não envia aviso de novo lead para o e-mail principal da imobiliária. Os avisos aos corretores seguem as regras de distribuição configuradas. Se o cliente informar um e-mail, o sistema agenda uma mensagem de boas-vindas, independentemente de haver corretor atribuído. As boas-vindas dependem da configuração de e-mail da conta e não são controladas pelas opções de eventos de leads.</p>
+          <% end %>
+
+          <%= ax_inline_notice(announce: false) do %>
+            Não há um alerta específico ao gestor apenas porque um lead ficou sem corretor. Acompanhe os leads sem responsável na listagem de leads.
+          <% end %>
+          <% end %>
         <% end %>
+      </div>
 
-        <%= ax_form_actions(sticky: false, class_name: "layout-settings-actions") do %>
-          <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
-          <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-        <% end %>
-      <% end %>
-    </div>
-
-    <aside class="layout-settings-inspector">
-      <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Status", title: "Resumo") do %>
-        <div class="ax-panel-body">
+      <aside class="ax-studio__aside" aria-label="Resumo das configurações">
+        <%= ax_studio_group(title: "Como está salvo hoje", subtitle: "Reflete o último salvamento, não as edições em andamento.", icon: "card-checklist") do %>
           <% lead_status_rows = [
             { label: "Fidelização", value: ax_badge(@lead_setting.stickiness_enabled? ? "Ativa" : "Desligada", tone: @lead_setting.stickiness_enabled? ? :green : :gray, dot: true) }
           ] %>
@@ -235,43 +286,10 @@
             <% lead_status_rows << { label: "Canais", value: channel_badges } %>
           <% end %>
           <%= ax_status_list(rows: lead_status_rows, label: "Resumo das configurações de leads") %>
-        </div>
-      <% end %>
+        <% end %>
+      </aside>
+    </div>
 
-      <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Como funciona", title: "Fluxo") do %>
-        <div class="ax-panel-body">
-          <ol class="ax-field__hint ax-field__hint--steps">
-            <li><strong>Fidelização</strong>: na distribuição, se a pessoa já tem corretor (pela chave escolhida) e ele está elegível → vai direto pra ele; senão, rotação normal.</li>
-            <li><strong>Push</strong>: o clique sempre vale como aceite dentro do prazo; depois abre o destino configurado: detalhes do lead ou WhatsApp direto.</li>
-            <li><strong>Link seguro</strong>: nos canais ligados (WhatsApp, e-mail, push), a notificação esconde o contato atrás de um link <code>/s/&lt;token&gt;</code>; o clique valida a expiração, abre o contato/lead e marca o atendimento dentro do prazo (mede o SLA).</li>
-          </ol>
-        </div>
-      <% end %>
-      <%= ax_operational_panel(class_name: "ax-operational-panel--settings", eyebrow: "Como funciona", title: "Lembretes e regras de notificação") do %>
-        <div class="ax-panel-body">
-          <%= ax_field_group(class_name: "ax-field-group--settings", title: "Tarefas, agenda e visitas") do %>
-            <p class="ax-field__hint"><strong>Quando avisamos:</strong> tarefas e compromissos têm lembretes nas janelas de <strong><%= @lead_setting.reminder_first_minutes %>, <%= @lead_setting.reminder_second_minutes %> e <%= @lead_setting.reminder_third_minutes %> minutos antes<%= ", além do vencimento" if @lead_setting.reminder_due_enabled? %></strong>. O sistema verifica as atividades a cada minuto.</p>
-            <p class="ax-field__hint"><strong>Atividades atrasadas:</strong> os lembretes se repetem em intervalos de <strong><%= @lead_setting.reminder_overdue_minutes %> minutos, entre <%= @lead_setting.reminder_start_time %> e <%= @lead_setting.reminder_end_time %></strong>, enquanto continuarem pendentes.</p>
-            <p class="ax-field__hint"><strong>Quando não enviamos:</strong> responsável inativo, atividade encerrada, lead sem responsável ou atividade ainda vinculada ao corretor antigo. Tarefas de leads descartados ou não operacionais também não geram lembretes.</p>
-            <p class="ax-field__hint"><strong>Sem avisos duplicados:</strong> há controle para evitar a repetição da mesma fase do lembrete. Novas tentativas da mesma fase respeitam um intervalo mínimo de <strong><%= @lead_setting.reminder_retry_minutes %> minutos</strong>; as próximas fases programadas mantêm seus horários.</p>
-            <p class="ax-field__hint"><strong>Troca de corretor:</strong> tarefas pendentes e compromissos agendados, inclusive atrasados, acompanham o novo responsável. Os próximos lembretes passam a ser dele; atividades concluídas ou canceladas preservam o histórico.</p>
-            <p class="ax-field__hint">Para criar ou agendar uma atividade vinculada ao lead, atribua um corretor primeiro. Atividades pessoais, sem vínculo com um lead, notificam seu próprio responsável.</p>
-            <p class="ax-field__hint"><strong>Os lembretes de tarefas e compromissos não são controlados pelas opções de eventos de leads.</strong></p>
-          <% end %>
-
-          <%= ax_field_group(class_name: "ax-field-group--settings", title: "Novos leads: rodízio e Bolsão") do %>
-            <p class="ax-field__hint">No rodízio, o aviso ao corretor acontece após a atribuição. No Bolsão (Shark Tank), os corretores elegíveis podem receber o aviso enquanto o lead está sem responsável, para que alguém o assuma. O envio depende da opção de aviso do Shark Tank e dos canais da regra; a repetição depende do intervalo configurado na regra.</p>
-          <% end %>
-
-          <%= ax_field_group(class_name: "ax-field-group--settings", title: "Leads recebidos pelo formulário do site") do %>
-            <p class="ax-field__hint">O formulário do site não envia aviso de novo lead para o e-mail principal da imobiliária. Os avisos aos corretores seguem as regras de distribuição configuradas. Se o cliente informar um e-mail, o sistema agenda uma mensagem de boas-vindas, independentemente de haver corretor atribuído. As boas-vindas dependem da configuração de e-mail da conta e não são controladas pelas opções de eventos de leads.</p>
-          <% end %>
-
-          <%= ax_inline_notice(announce: false) do %>
-            Não há um alerta específico ao gestor apenas porque um lead ficou sem corretor. Acompanhe os leads sem responsável na listagem de leads.
-          <% end %>
-        </div>
-      <% end %>
-    </aside>
-  </div>
+    <%= ax_studio_savebar(form: f, cancel_path: admin_root_path) %>
+  <% end %>
 </div>

@@ -17,6 +17,11 @@ module Whatsapp
         return
       end
 
+      if attendance_in_progress?
+        campaign_message.mark_cancelled!("Atendimento em curso com este contato: o menu só volta depois de finalizado.")
+        return
+      end
+
       campaign_message.queue!
       conversation = find_or_create_conversation!
       template = campaign.whatsapp_template
@@ -86,6 +91,14 @@ module Whatsapp
         sleep(0.5 * attempts)
         retry
       end
+    end
+
+    # Menu de fluxo de resposta não é reenviado enquanto houver atendimento aberto no número.
+    def attendance_in_progress?
+      return false unless campaign.tenant.whatsapp_response_flows.exists?(whatsapp_template_id: campaign.whatsapp_template_id)
+
+      conversation = campaign.tenant.whatsapp_conversations.find_by(contact_phone: campaign_message.phone_number)
+      conversation&.open_attendance.present?
     end
 
     def unsubscribed_contact?

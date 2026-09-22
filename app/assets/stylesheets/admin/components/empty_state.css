@@ -21,7 +21,8 @@
   color: var(--admin-primary);
 }
 
-.ax-empty-state__title {
+/* Precisa vencer `.ax-app h2` (1.3rem) do admin_compat, senão o título do vazio herda o tamanho de h2. */
+.ax-empty-state .ax-empty-state__title {
   margin: 0;
   color: #1f2733;
   font-size: 14px;

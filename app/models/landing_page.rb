@@ -12,7 +12,14 @@ class LandingPage < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  # Multiselects gravam [""]; limpar na entrada mantém filter_params só com o que foi escolhido.
+  before_validation :compact_filter_params
+
   private
+
+  def compact_filter_params
+    self.filter_params = (filter_params || {}).to_h.transform_values { |value| value.is_a?(Array) ? value.compact_blank : value }
+  end
 
   def set_default_filter_params
     self.filter_params ||= {}

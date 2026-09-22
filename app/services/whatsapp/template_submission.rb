@@ -1,12 +1,13 @@
 module Whatsapp
   class TemplateSubmission
-    def self.call(template:, client: Whatsapp::CloudClient.new)
-      new(template:, client:).call
+    def self.call(template:, client: Whatsapp::CloudClient.new, edit: false)
+      new(template:, client:, edit:).call
     end
 
-    def initialize(template:, client:)
+    def initialize(template:, client:, edit: false)
       @template = template
       @client = client
+      @edit = edit
     end
 
     def call
@@ -17,7 +18,7 @@ module Whatsapp
       return carousel_media unless carousel_media[:ok]
 
       @template.assign_components_from_payload!
-      result = @client.create_template(@template.meta_create_payload)
+      result = @edit ? @client.update_template(@template.meta_id, @template.meta_edit_payload) : @client.create_template(@template.meta_create_payload)
       return persist_success(result) if result[:ok]
 
       @template.submission_error = result[:error].presence || "Não foi possível enviar o modelo para aprovação."
@@ -77,11 +78,16 @@ module Whatsapp
     end
 
     def persist_success(result)
-      @template.status = result.dig(:data, "status").presence || "PENDING"
+      @template.status = (@edit ? current_status_after_edit : result.dig(:data, "status")).presence || "PENDING"
       @template.meta_id = result.dig(:data, "id").presence || @template.meta_id
       @template.submission_error = nil
       @template.save!
       { ok: true, template: @template, result: result }
+    end
+
+    # A edição responde só { success: true }: pergunta à Meta em que status o template ficou (em análise ou ainda aprovado).
+    def current_status_after_edit
+      @client.fetch_template(@template.meta_id).dig(:data, "status")
     end
 
     def validation_failure

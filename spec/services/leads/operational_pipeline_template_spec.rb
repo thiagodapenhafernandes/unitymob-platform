@@ -90,9 +90,11 @@ RSpec.describe Leads::OperationalPipelineTemplate do
       validation_chain: true
     )
     stages = pipeline.stages.ordered.index_by(&:name)
+    admin = create(:admin_user, tenant: tenant)
     lead = create(
       :lead,
       tenant: tenant,
+      admin_user: admin,
       lead_pipeline: pipeline,
       lead_pipeline_stage: stages.fetch("Novo Lead"),
       status: "Novo Lead",

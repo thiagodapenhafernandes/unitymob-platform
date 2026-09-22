@@ -1,0 +1,9 @@
+<%# Grupo de chips (toggle_chip.css). Uso: ax_chip_section(title:, icon:, tone:, count: "2/5") { ax_chip_grid { ... } } %>
+<section class="ax-chip-section" data-tone="<%= tone %>" data-chip-section>
+  <header class="ax-chip-section__head">
+    <% if local_assigns[:icon].present? %><span class="ax-chip-section__icon" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span><% end %>
+    <strong><%= title %></strong>
+    <% if local_assigns[:count].present? %><span class="ax-chip-section__count" data-chip-count><%= count %></span><% end %>
+  </header>
+  <%= body %>
+</section>

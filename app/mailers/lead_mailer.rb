@@ -41,6 +41,8 @@ class LeadMailer < ApplicationMailer
   def lead_assigned
     @lead = params[:lead]
     @corretor = params[:corretor]
+    return unless @corretor&.active?
+    return unless @corretor.notification_delivery_allowed?
     return if @corretor&.email.blank?
 
     @property = lead_tenant.habitations.find_by(id: @lead.property_id)

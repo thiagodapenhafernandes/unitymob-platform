@@ -132,7 +132,7 @@
       <%= ax_text_field(form: f, method: :edificio_nome,
             label: safe_join(["Edifício / Condomínio", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:edificio_nome),
-            placeholder: "Ex.: Edifício Mirante do Atlântico", readonly: @captacao.codigo_empreendimento.present?,
+            placeholder: "Ex.: Nome do empreendimento", readonly: @captacao.codigo_empreendimento.present?,
             data: { habitation_form_target: "developmentName", habitation_duplicate_check_target: "building",
                     action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
       <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>

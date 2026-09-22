@@ -1,20 +1,11 @@
 <%# Regras de Distribuição — listagem. A ação "Nova regra" vem da contextbar global. %>
-<header class="ax-dashboard-command ax-property-form-command">
-  <div class="ax-dashboard-command__main">
-    <span class="ax-dashboard-command__eyebrow">Distribuição de leads</span>
-    <h1>Regras de Distribuição</h1>
-    <p>Gerencie o fluxo vertical de entrada, fila, responsável, aceite e entrega dos leads à equipe.</p>
-  </div>
-  <div class="ax-dashboard-command__status">
-    <%= ax_button("Objetivo",
-          nil,
-          size: :sm,
-          icon: "info-circle",
-          data: { ax_modal_open: "#distributionObjectiveModal" }) %>
-    <i class="bi bi-diagram-3" aria-hidden="true"></i>
-    <%= ax_badge("#{@distribution_rules.size} regra#{'s' if @distribution_rules.size != 1}", tone: :gray) %>
-  </div>
-</header>
+<%= ax_workspace_heading(
+      title: "Regras de Distribuição",
+      eyebrow: "Distribuição de leads",
+      icon: "diagram-3",
+      subtitle: "Gerencie o fluxo vertical de entrada, fila, responsável, aceite e entrega dos leads à equipe.",
+      metrics: [{ value: @distribution_rules.size, label: @distribution_rules.size == 1 ? "regra" : "regras" }],
+      actions: ax_button("Objetivo", nil, size: :sm, icon: "info-circle", data: { ax_modal_open: "#distributionObjectiveModal" })) %>
 
 <%= ax_quick_modal(id: "distributionObjectiveModal",
       title: "Qual é o objetivo e para que serve",
@@ -84,8 +75,8 @@
           </td>
           <td>
             <span class="tw-inline-flex tw-items-center tw-gap-1.5 tw-text-2xs tw-uppercase tw-font-semibold tw-text-ink-muted">
-              <i class="bi bi-<%= rule.rotary? ? 'arrow-repeat' : (rule.performance? ? 'graph-up-arrow' : 'lightning-fill') %>" aria-hidden="true"></i>
-              <%= rule.distribution_mode %>
+              <i class="bi bi-<%= rule.rotary? ? 'arrow-repeat' : (rule.performance? ? 'graph-up-arrow' : (rule.attendance? ? 'person-check' : 'lightning-fill')) %>" aria-hidden="true"></i>
+              <%= distribution_rule_mode_label(rule) %>
             </span>
           </td>
           <td class="ax-num">

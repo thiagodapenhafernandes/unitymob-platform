@@ -275,8 +275,7 @@
     <%= stylesheet_link_tag "support_desk" %>
     <%= javascript_include_tag "support_desk", defer: true %>
   </head>
-  <body class="ax-pwa-bottom-nav-body"
-        data-controller="admin-navigation">
+  <body class="ax-pwa-bottom-nav-body">
     <%= render "admin/shared/ui/support_access_banner" %>
 
     <%= render 'shared/flash_messages', toast: true if flash.any? %>
@@ -444,15 +443,14 @@
 
     <div id="adminNavigationPreloader"
          class="ax-admin-preloader"
-         data-admin-navigation-target="overlay"
          data-turbo-permanent
          hidden
          aria-live="polite"
          aria-busy="true">
       <div class="ax-admin-preloader__panel" role="status">
         <span class="ax-admin-preloader__spinner" aria-hidden="true"></span>
-        <strong data-admin-navigation-target="title">Carregando página...</strong>
-        <span data-admin-navigation-target="detail">Preparando workspace administrativo</span>
+        <strong data-nav-title>Carregando página...</strong>
+        <span data-nav-detail>Preparando workspace administrativo</span>
       </div>
     </div>
 
