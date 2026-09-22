@@ -18,6 +18,7 @@
 %>
 <% interests.each do |interest| %>
   <% habitation = interest.habitation %>
+  <% primary = lead.property_id.to_i == habitation.id %>
   <div class="ax-context-pin ax-context-pin--property">
     <% if share_enabled %>
       <label class="lead-property-share-check">
@@ -35,6 +36,18 @@
     <% share_status = shared_property_statuses[habitation.id] || shared_property_statuses[habitation.id.to_s] || ("sent" if shared_property_ids.include?(habitation.id)) %>
     <% if share_status.present? %>
       <span class="lead-property-share-badge lead-property-share-badge--<%= share_status %>"><%= status_labels.fetch(share_status, "Enviado") %></span>
+    <% end %>
+    <% if primary %>
+      <span class="lead-property-share-badge lead-property-share-badge--primary">Principal</span>
+    <% else %>
+      <button type="button"
+              class="ax-context-pin__primary"
+              title="Definir como imóvel principal"
+              aria-label="Definir <%= habitation.codigo %> como imóvel principal"
+              data-action="property-interests#primary"
+              data-url="<%= primary_admin_lead_property_interest_path(lead, interest) %>">
+        <i class="bi bi-star"></i>
+      </button>
     <% end %>
     <button type="button"
             class="ax-context-pin__remove"

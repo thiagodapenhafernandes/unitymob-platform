@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Unitymob para WhatsApp
 
-> Last Updated: 2026-09-11
+> Last Updated: 2026-09-22
 
 ## Store Listing
 
@@ -32,10 +32,21 @@ Português (Brasil)
 
 | Version | File | Status |
 |---|---|---|
+| 0.4.24 | `browser-extension/unitymob-whatsapp-0.4.24-manual.zip` | Ready for manual validation |
+| 0.4.23 | `browser-extension/unitymob-whatsapp-0.4.23-manual.zip` | Ready for manual validation |
+| 0.4.22 | `browser-extension/unitymob-whatsapp-0.4.22-manual.zip` | Ready for manual validation |
+| 0.4.21 | `browser-extension/unitymob-whatsapp-0.4.21-manual.zip` | Ready for manual validation |
+| 0.4.20 | `browser-extension/unitymob-whatsapp-0.4.20-manual.zip` | Ready for manual validation |
+| 0.4.19 | `browser-extension/unitymob-whatsapp-0.4.19-manual.zip` | Ready for manual validation |
+| 0.4.18 | `browser-extension/unitymob-whatsapp-0.4.18-manual.zip` | Ready for manual validation |
+| 0.4.17 | `browser-extension/unitymob-whatsapp-0.4.17-manual.zip` | Ready for manual validation |
+| 0.4.16 | `browser-extension/unitymob-whatsapp-0.4.16-webstore.zip` | Ready |
+| 0.4.15 | `browser-extension/unitymob-whatsapp-0.4.15-webstore.zip` | Ready |
+| 0.4.14 | `browser-extension/unitymob-whatsapp-0.4.14-webstore.zip` | Ready |
 | 0.4.13 | `browser-extension/unitymob-whatsapp-0.4.13-webstore.zip` | Ready |
 | 0.4.13 | `browser-extension/releases/0.4.13.zip` | Ready |
 
-Both ZIP files are identical for upload. They contain `manifest.json` at the ZIP root and do not include a manifest `key` field.
+The upload ZIP contains `manifest.json` at the ZIP root and does not include a manifest `key` field.
 
 ## Graphics & Assets
 
@@ -53,7 +64,7 @@ Both ZIP files are identical for upload. They contain `manifest.json` at the ZIP
 | `scripting` | permissions | Loads the Unitymob content script on WhatsApp Web to identify the active conversation and support user-confirmed actions. |
 | `identity` | permissions | Completes the Chrome extension authentication callback with Unitymob. |
 | `https://web.whatsapp.com/*` | host_permissions | Restricts the extension panel and conversation detection to WhatsApp Web. |
-| `https://anpohhipfkehheinckhpgbphcibifocm.chromiumapp.org/*` | host_permissions | Allows the Chrome identity callback for the published Web Store item. |
+| `https://daliegpkkjjfjjlilajomonpkgdmgiaj.chromiumapp.org/*` | host_permissions | Allows the Chrome identity callback for the published Web Store item. |
 | `https://webhooks.unitymob.com.br/*` | host_permissions | Allows account discovery and secure connection with Unitymob services. |
 | `https://*/*` | optional_host_permissions | Requested only when the user chooses to prepare and share property images from approved external property/photo URLs. |
 
@@ -100,6 +111,17 @@ TBD
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
+| 0.4.24 | 2026-09-22 | Keeps property sharing active when photo permission or photo URL validation fails. | Ready for manual validation |
+| 0.4.23 | 2026-09-22 | Sends property links even when thumbnail preparation fails. | Ready for manual validation |
+| 0.4.22 | 2026-09-22 | Accepts confirmed Brazilian mobile contacts when WhatsApp and CRM differ only by the ninth digit. | Ready for manual validation |
+| 0.4.21 | 2026-09-22 | Restores compact filter/sort CSS and spaces property sends to avoid WhatsApp sequence failures. | Ready for manual validation |
+| 0.4.20 | 2026-09-22 | Restores the compact property catalog CSS in the WhatsApp side panel. | Ready for manual validation |
+| 0.4.19 | 2026-09-22 | Allows confirmed CRM saves when WhatsApp changes the internal chat id but the account and phone stay the same. | Ready for manual validation |
+| 0.4.18 | 2026-09-22 | Shows an explicit reason when a create/save action is blocked before reaching the CRM. | Ready for manual validation |
+| 0.4.17 | 2026-09-22 | Opens the create-lead form automatically when no accessible lead is found, avoiding confusion with the disclosure header. | Ready for manual validation |
+| 0.4.16 | 2026-09-22 | Aligns the Web Store callback host with the published extension ID used during login. | Ready |
+| 0.4.15 | 2026-09-22 | Adds CRM notes fields to appointments and tasks; fixes silent failure when creating tasks or appointments with invalid local date values. | Ready |
+| 0.4.14 | 2026-09-22 | Prepares package after task and appointment validation fixes. | Ready |
 | 0.4.13 | 2026-09-11 | Store-ready package without manifest key in ZIP. | Ready |
 | 0.4.11 | 2026-09-11 | Current published package shown in dashboard. | Published |
 

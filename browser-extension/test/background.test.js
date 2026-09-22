@@ -229,7 +229,7 @@ test("revoked persisted login and its retry keys are removed", async () => {
 
 test("agenda and labels use confirmed writes, fixed paths and stripped payloads", async () => {
   for (const [type, path, key, payload] of [
-    ["create_appointment", "appointments", "appointment", { title: "Visita", kind: "visita", starts_at: "2026-12-01T12:00:00Z", ends_at: "", location: "Recepção" }],
+    ["create_appointment", "appointments", "appointment", { title: "Visita", kind: "visita", starts_at: "2026-12-01T12:00:00Z", ends_at: "", location: "Recepção", notes: "Levar proposta impressa" }],
     ["set_labels", "labels", "labels", { ids: "1,2" }],
     ["link_properties", "properties", "properties", { ids: "1,2" }],
     ["change_status", "status", "status", { stage_id: "3", expected_stage_id: "2" }]
@@ -244,6 +244,43 @@ test("agenda and labels use confirmed writes, fixed paths and stripped payloads"
     assert.deepEqual(body[key], payload);
     assert.match(body.request_key, /^[0-9a-f-]{36}$/);
   }
+});
+
+test("task writes include the CRM description field and strip arbitrary metadata", async () => {
+  const payload = { title: "Retornar", kind: "follow_up", priority: "normal", due_at: "2026-12-01T12:00:00Z", description: "Cliente pediu simulação." };
+  const message = { type: "create_task", tabId: 1, contextKey: contextKey(projection), leadId: 15, phone: projection.phone, confirmed: true, payload: { ...payload, notes: "ignorar", tenant_id: "999" } };
+
+  assert.equal((await send(message)).ok, true);
+  assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads/15/tasks`);
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body).task, payload);
+});
+
+test("confirmed CRM writes tolerate WhatsApp chat id churn for the same phone", async () => {
+  const originalKey = contextKey(projection);
+  projection.chatId = "987654321@lid";
+  const payload = { name: "Ana Luisa Filha BC", email: "" };
+
+  assert.equal((await send({ type: "create_lead", tabId: 1, contextKey: originalKey, phone: projection.phone, confirmed: true, payload })).ok, true);
+  assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads`);
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body).lead, payload);
+});
+
+test("confirmed CRM writes accept Brazilian mobile numbers with or without the ninth digit", async () => {
+  projection.phone = "+554888067092";
+  const originalKey = contextKey(projection);
+  projection.chatId = "987654321@lid";
+
+  assert.equal((await send({ type: "create_lead", tabId: 1, contextKey: originalKey, phone: "5548988067092", confirmed: true, payload: { name: "Elizabeth Boroni", email: "" } })).ok, true);
+  assert.equal(requests.at(-1).url, `${origin}/api/v1/browser_extension/leads`);
+});
+
+test("confirmed CRM writes still reject a different active phone", async () => {
+  const originalKey = contextKey(projection);
+  projection.chatId = "987654321@lid";
+  projection.phone = "+5511000000000";
+
+  assert.equal((await send({ type: "create_lead", tabId: 1, contextKey: originalKey, phone: "+5511999999999", confirmed: true, payload: { name: "Ana", email: "" } })).error, "context_changed");
+  assert.equal(requests.length, 0);
 });
 
 test("property search is scoped to the selected lead and rejects arbitrary filters", async () => {
@@ -315,10 +352,11 @@ test('prepares the public photo before sending and reports the sending phase', a
   };
   global.fetch=async url=>url.startsWith('https://cdn.example.com') ? new Response('image',{headers:{'Content-Type':'image/jpeg'}}) : json({properties:[{id:7,code:'7',title:'Imóvel',public_path:'/imovel/7',photo_urls:['https://cdn.example.com/photo']}],public_origin:'https://example.com'});
   let sends=0;
+  let expectedThumbnail=btoa('jpeg');
   chrome.scripting.executeScript=async options=>{
     if(options.func?.name==='sendPropertyMessage') {
-      assert.equal(options.args[2].thumbnail,btoa('jpeg'));
-      assert.equal(stages.at(-1).stage,'sending');
+      assert.equal(options.args[2].thumbnail,expectedThumbnail);
+      if (expectedThumbnail) assert.equal(stages.at(-1).stage,'sending');
       sends++;
       return [{frameId:0,result:{sent:true}}];
     }
@@ -329,11 +367,40 @@ test('prepares the public photo before sending and reports the sending phase', a
     assert.equal((await send(message)).ok,true);
     assert.equal(sends,1);
     globalThis.createImageBitmap=async()=>{throw new Error('invalid photo');};
-    assert.deepEqual(await send(message),{ok:false,error:'preview_image_failed'});
-    assert.equal(sends,1);
+    expectedThumbnail=null;
+    assert.equal((await send(message)).ok,true);
+    assert.equal(sends,2);
   } finally {
     chrome.scripting.executeScript=original;
     delete chrome.runtime.sendMessage;
+    globalThis.createImageBitmap=oldBitmap;globalThis.OffscreenCanvas=oldCanvas;
+  }
+});
+
+test('tries the next public photo when the first one cannot be prepared', async () => {
+  const original=chrome.scripting.executeScript;
+  const oldBitmap=globalThis.createImageBitmap, oldCanvas=globalThis.OffscreenCanvas;
+  globalThis.createImageBitmap=async()=>({width:1280,height:720,close(){}});
+  globalThis.OffscreenCanvas=class {
+    getContext(){return {drawImage(){}};}
+    async convertToBlob(){return new Blob(['jpeg']);}
+  };
+  global.fetch=async url=>{
+    if (url === 'https://cdn.example.com/bad') return new Response('too big',{headers:{'Content-Type':'image/jpeg'}});
+    if (url === 'https://cdn.example.com/good') return new Response('image',{headers:{'Content-Type':'image/jpeg'}});
+    return json({properties:[{id:7,code:'7',title:'Imóvel',public_path:'/imovel/7',photo_urls:['https://cdn.example.com/bad','https://cdn.example.com/good']}],public_origin:'https://example.com'});
+  };
+  chrome.scripting.executeScript=async options=>{
+    if(options.func?.name==='sendPropertyMessage') {
+      assert.equal(options.args[2].thumbnail,btoa('jpeg'));
+      return [{frameId:0,result:{sent:true}}];
+    }
+    return [{frameId:0,result:{...projection}}];
+  };
+  try {
+    assert.equal((await send({type:'send_properties',tabId:1,contextKey:contextKey(projection),leadId:1,ids:[7],phone:projection.phone,confirmed:true})).ok,true);
+  } finally {
+    chrome.scripting.executeScript=original;
     globalThis.createImageBitmap=oldBitmap;globalThis.OffscreenCanvas=oldCanvas;
   }
 });

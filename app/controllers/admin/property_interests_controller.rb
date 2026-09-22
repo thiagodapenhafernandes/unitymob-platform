@@ -24,10 +24,19 @@ class Admin::PropertyInterestsController < Admin::BaseController
     interest.tenant ||= current_tenant
 
     if interest.persisted? || interest.save
+      @lead.assign_primary_property_if_blank!(habitation)
       render json: state_payload
     else
       render json: { error: interest.errors.full_messages.to_sentence }, status: :unprocessable_entity
     end
+  end
+
+  def primary
+    interest = @lead.property_interests.includes(:habitation).find_by(id: params[:id])
+    return render json: { error: "Imóvel não encontrado." }, status: :not_found unless interest&.habitation
+
+    @lead.update!(property_id: interest.habitation_id)
+    render json: state_payload
   end
 
   def destroy

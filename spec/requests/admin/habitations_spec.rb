@@ -3459,6 +3459,17 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(own_property.titulo_anuncio)
   end
 
+  it "busca por código encontra o imóvel mesmo com filtros ativos incompatíveis" do
+    target = create(:habitation, codigo: "4382", status: "Aluguel", categoria: "Casa", titulo_anuncio: "Porto dos Sonhos")
+    filtered = create(:habitation, status: "Venda", categoria: "Apartamento", titulo_anuncio: "Apartamento filtrado")
+
+    get admin_habitations_path(ownership: "all", q: target.codigo, status: "Venda", categoria: "Apartamento")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(target.titulo_anuncio)
+    expect(response.body).not_to include(filtered.titulo_anuncio)
+  end
+
   it "prioriza empreendimento correspondente antes de imóveis que só citam o termo na descrição" do
     code_suffix = SecureRandom.hex(6)
     search_term = "Rooftop #{code_suffix}"

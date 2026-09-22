@@ -87,7 +87,7 @@ module Api
             status_options: grant.capabilities[:change_status] ? available_status_stages(lead).map { |stage| {id: stage.id, name: stage.name, color: stage.display_color} } : [],
             unsuccessful_attempts: lead.unsuccessful_attempt_count,
             appointments_count: appointments.size,
-            appointments: appointments.first(20).map { |item| { id: item.id, title: item.title, kind: item.kind_label, starts_at: item.starts_at.iso8601 } },
+            appointments: appointments.first(20).map { |item| { id: item.id, title: item.title, kind: item.kind_label, starts_at: item.starts_at.iso8601, notes: item.notes } },
             proposals_count: proposals.size,
             proposals: proposals.first(20).map { |item| { id: item.id, status: item.status_label, created_at: item.created_at.iso8601 } },
             labels: lead.labels_for(grant.admin_user).where(tenant_id: grant.tenant_id).map { |label| { id: label.id, name: label.name, color: label.color } },
@@ -112,7 +112,7 @@ module Api
               price_cents: property.valor_venda_cents.to_i.positive? ? property.valor_venda_cents : property.valor_locacao_cents,
               rental: !property.valor_venda_cents.to_i.positive? && property.valor_locacao_cents.to_i.positive?,
               condo_cents: property.valor_condominio_cents, iptu_cents: property.valor_iptu_cents, city: property.cidade, neighborhood: property.bairro } },
-            tasks: tasks.first(20).map { |task| { id: task.id, title: task.title, kind: task.kind_label, priority: task.priority_label, due_at: task.due_at&.iso8601 } }
+            tasks: tasks.first(20).map { |task| { id: task.id, title: task.title, kind: task.kind_label, priority: task.priority_label, due_at: task.due_at&.iso8601, description: task.description } }
           }
         end
 

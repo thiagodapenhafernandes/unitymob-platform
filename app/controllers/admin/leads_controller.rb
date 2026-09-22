@@ -868,6 +868,7 @@ class Admin::LeadsController < Admin::BaseController
     habitations.each do |habitation|
       @lead.property_interests.find_or_create_by!(tenant: current_tenant, habitation:)
     end
+    @lead.assign_primary_property_if_blank!(habitations.first)
   end
 
   def property_suggestion_payload(match)

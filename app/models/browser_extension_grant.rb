@@ -1,5 +1,6 @@
 # Concessão limitada à API da extensão. Não é um token Devise/mobile.
 class BrowserExtensionGrant < ApplicationRecord
+  PUBLISHED_EXTENSION_IDS = %w[daliegpkkjjfjjlilajomonpkgdmgiaj].freeze
   TERMS_VERSION = "2026-09-08.v6".freeze
   TERMS_TEXT = <<~TEXT.strip.freeze
     Uso de dados e termos da extensão Unitymob para WhatsApp
@@ -43,7 +44,8 @@ class BrowserExtensionGrant < ApplicationRecord
   end
 
   def self.allowed_extension?(id)
-    id.to_s.match?(/\A[a-p]{32}\z/) && ENV.fetch("BROWSER_EXTENSION_ALLOWED_IDS", "").split(",").map(&:strip).include?(id)
+    allowed_ids = ENV.fetch("BROWSER_EXTENSION_ALLOWED_IDS", "").split(",").map(&:strip) + PUBLISHED_EXTENSION_IDS
+    id.to_s.match?(/\A[a-p]{32}\z/) && allowed_ids.include?(id)
   end
 
   def self.digest(value)

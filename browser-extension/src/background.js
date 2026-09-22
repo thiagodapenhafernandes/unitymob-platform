@@ -28,6 +28,14 @@ chrome.action.onClicked.addListener(tab => { openFromToolbar(tab).catch(() => co
 let authenticationQueue = Promise.resolve();
 let writeQueue = Promise.resolve();
 
+async function firstPreparedPropertyPhoto(urls) {
+  for (const url of (Array.isArray(urls) ? urls : []).slice(0, 5)) {
+    try { return await preparePropertyPhoto(url); }
+    catch {}
+  }
+  return null;
+}
+
 async function activeWhatsAppTab(tabId) {
   if (!Number.isInteger(tabId)) throw new Error("no_whatsapp");
   const tab = await chrome.tabs.get(tabId);
@@ -45,6 +53,27 @@ async function snapshot(tabId) {
   }
   await activeWhatsAppTab(tabId);
   return { ...result, tabId };
+}
+
+function sameConfirmedRecipient(context, previousKey, phone) {
+  const currentPhone = context?.phone?.replace(/\D/g, "");
+  const confirmedPhone = String(phone || "").replace(/\D/g, "");
+  if (!samePhone(currentPhone, confirmedPhone)) return false;
+  if (contextKey(context) === previousKey) return true;
+  let previous;
+  try { previous = JSON.parse(previousKey); } catch { return false; }
+  return context?.state === "ready" && context.account === previous?.[1];
+}
+
+function samePhone(a, b) {
+  const variants = value => {
+    const digits = String(value || "").replace(/\D/g, "");
+    const list = [digits];
+    if (/^55\d{10}$/.test(digits)) list.push(`${digits.slice(0, 4)}9${digits.slice(4)}`);
+    if (/^55\d{2}9\d{8}$/.test(digits)) list.push(`${digits.slice(0, 4)}${digits.slice(5)}`);
+    return list;
+  };
+  return !!a && !!b && variants(a).some(value => variants(b).includes(value));
 }
 
 async function crmFetch(origin, path, { token, body, method = "GET" } = {}) {
@@ -216,7 +245,7 @@ async function handle(message) {
       if (!connection.termsAccepted) throw new Error("terms_required");
       const context = await snapshot(message.tabId);
       if (context.state !== "ready" || contextKey(context) !== message.contextKey) throw new Error("context_changed");
-      if (message.confirmed !== true || !context.phone || context.phone.replace(/\D/g, "") !== String(message.phone).replace(/\D/g, "")) throw new Error("context_changed");
+      if (message.confirmed !== true || !samePhone(context.phone, message.phone)) throw new Error("context_changed");
       if (!Array.isArray(message.ids) || !message.ids.length || message.ids.length > 20 || (message.fromSearch === true && message.ids.length !== 1)) throw new Error("invalid_fields");
       const result = message.fromSearch === true
         ? await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/share`, {method: "POST", body: {ids: message.ids}})
@@ -237,7 +266,7 @@ async function handle(message) {
           continue;
         }
         const text = `${property.code} · ${property.title}\n${[property.neighborhood, property.city].filter(Boolean).join(" · ")}\n${publicOrigin.origin}${property.public_path}`;
-        const thumbnail = property.photo_urls?.[0] ? await preparePropertyPhoto(property.photo_urls[0]) : null;
+        const thumbnail = await firstPreparedPropertyPhoto(property.photo_urls);
         if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
         if (thumbnail && message.progressId) await chrome.runtime.sendMessage({type:"property_share_progress", progressId:message.progressId, stage:"sending"}).catch(() => {});
         const prepared = await chrome.scripting.executeScript({target: {tabId: message.tabId}, world: "MAIN", func: sendPropertyMessage, args: [context, text, {url: `${publicOrigin.origin}${property.public_path}`, title: `${property.code} · ${property.title}`, description: [property.neighborhood, property.city].filter(Boolean).join(" · "), thumbnail}]});
@@ -301,15 +330,14 @@ async function handle(message) {
       if (!connection.termsAccepted) throw new Error("terms_required");
       if (message.confirmed !== true) throw new Error("invalid_fields");
       const context = await snapshot(message.tabId);
-      if (context.state !== "ready" || contextKey(context) !== message.contextKey) throw new Error("context_changed");
       if (typeof message.phone !== "string" || !/^\+?\d[\d ()-]{6,38}$/.test(message.phone)) throw new Error("invalid_phone");
-      if (context.phone && context.phone.replace(/\D/g, "") !== message.phone.replace(/\D/g, "")) throw new Error("context_changed");
+      if (!sameConfirmedRecipient(context, message.contextKey, message.phone)) throw new Error("context_changed");
       const definitions = {
         create_lead: { path: "leads", key: "lead", fields: ["name", "email"] },
         create_contact: { suffix: "contacts", key: "contact", fields: ["body", "contact_kind", "contact_result"] },
         create_note: { suffix: "notes", key: "note", fields: ["body"] },
-        create_task: { suffix: "tasks", key: "task", fields: ["title", "kind", "priority", "due_at"] },
-        create_appointment: { suffix: "appointments", key: "appointment", fields: ["title", "kind", "starts_at", "ends_at", "location"] },
+        create_task: { suffix: "tasks", key: "task", fields: ["title", "kind", "priority", "due_at", "description"] },
+        create_appointment: { suffix: "appointments", key: "appointment", fields: ["title", "kind", "starts_at", "ends_at", "location", "notes"] },
         set_labels: { suffix: "labels", key: "labels", fields: ["ids"] },
         unlink_property: { suffix: "properties/remove", key: "property", fields: ["id"] },
         link_properties: { suffix: "properties", key: "properties", fields: ["ids"] },
@@ -335,7 +363,7 @@ async function handle(message) {
       }
       body.request_key = writeAttempts[fingerprint].key;
       // Recheck after storage/crypto awaits, immediately before the mutation.
-      if (contextKey(await snapshot(message.tabId)) !== message.contextKey) throw new Error("context_changed");
+      if (!sameConfirmedRecipient(await snapshot(message.tabId), message.contextKey, message.phone)) throw new Error("context_changed");
       const result = await authenticatedFetch(connection, operation.path, { method: "POST", body });
       if (message.type === "link_properties") {
         const key = `${await shareHistoryKey(connection, context, message.leadId)}:pending-links`;

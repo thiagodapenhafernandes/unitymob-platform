@@ -1578,8 +1578,25 @@ class Admin::HabitationsController < Admin::BaseController
     params[:q].to_s.squish.present? || params[:codigo].to_s.squish.present?
   end
 
+  def direct_habitation_code_search_value
+    return if @intake_review.present?
+
+    value = @codigo.presence || @q.to_s.squish
+    return if value.blank?
+    return value if @codigo.present?
+    return value if value.match?(/\A[[:alnum:]_-]*\d[[:alnum:]_-]*\z/)
+  end
+
   def filtered_habitations_scope
     scope = current_tenant.habitations.left_outer_joins(:address)
+    if (code = direct_habitation_code_search_value).present?
+      direct_scope = apply_ownership_scope(scope).where(
+        "habitations.codigo = :code OR habitations.codigo_dwv = :code",
+        code: code
+      )
+      return direct_scope if direct_scope.exists?
+    end
+
     scope = if @intake_review == "administrative"
               administrative_intake_review_scope(scope)
             elsif @codigo.present?

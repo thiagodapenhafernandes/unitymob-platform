@@ -38,6 +38,11 @@ export default class extends Controller {
     if (url) this.request(url, "DELETE")
   }
 
+  primary(event) {
+    const url = event.currentTarget.dataset.url
+    if (url) this.request(url, "PATCH")
+  }
+
   toggleShareSelection() {
     this.updateShareButton()
   }
