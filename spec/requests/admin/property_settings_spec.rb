@@ -51,16 +51,15 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get edit_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Mídia e marca d'água")
     expect(response.body).to include("property-settings-workspace")
     expect(response.body).to include("ax-workspace-heading", "bi-building-gear")
     expect(response.body).to include("property-settings-preview-panel")
-    expect(response.body).to include("property-settings-action-footer")
+    expect(response.body).to include("ax-studio-savebar")
     expect(response.body).to include("Marca d&#39;água das fotos")
     expect(response.body).to include("Tamanho da marca")
     expect(response.body).to include("Opacidade da marca")
     expect(response.body).to include("Prévia")
-    expect(response.body).to include("Busca Inteligente por IA")
+    expect(response.body).to include("Busca inteligente por IA")
     expect(response.body).to include(
       "property-settings-ai-panel--activation",
       "property-settings-ai-panel--interpretation",
@@ -87,12 +86,14 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Clique na área desejada")
     expect(html.at_css('.ax-file-field input[data-watermark-preview-target="fileInput"]')).to be_present
     expect(html.css(".tab-content, .tab-pane, .property-settings-tabs-card, .property-settings-range, .property-settings-position-option")).to be_empty
-    expect(html.css("#property-settings-ai-search .ax-field > label.ax-field-label").size).to be >= 35
-    expect(html.css("#property-settings-ai-search .property-settings-ai-subtabs .ax-form-tabs__item").size).to eq(8)
+    ai_sections = html.css(".ax-studio__stage > .ax-studio-section[id^='property-settings-ai-']")
+    expect(ai_sections.size).to eq(8)
+    expect(ai_sections.flat_map { |section| section.css(".ax-field > label.ax-field-label").to_a }.size).to be >= 35
+    expect(html.css(".ax-studio-nav [data-ax-tabs-target-param^='#property-settings-ai-']").size).to eq(8)
     expect(html.at_css('input[name="return_anchor"][data-form-return-anchor-target="input"]')).to be_present
     expect(html.at_css('select#development_alias_development_id[name="development_id"]')).to be_present
     expect(html.at_css('textarea#development_alias_names[name="names"]')).to be_present
-    expect(html.css("#property-settings-ai-search label.ax-field")).to be_empty
+    expect(html.css(".ax-studio__stage label.ax-field")).to be_empty
 
     setting = PropertySetting.instance
     setting.update!(
@@ -251,16 +252,15 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get review_workflow_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Revisão por tipo, categoria e modalidade")
-    expect(response.body).to include("ax-workspace-heading", "ax-sticky-action-footer")
+    html = Nokogiri::HTML(response.body)
+    expect(response.body).to include("ax-workspace-heading", "ax-studio-savebar", "Para qual cenário é esta regra?")
     expect(response.body).not_to include("review-workflow-styles", "property_review_workflow")
-    expect(response.body).to include("Escolha o cenário que quer configurar")
-    expect(response.body).to include("Regra aplicada agora")
-    expect(response.body).to include("O sistema vai exigir")
-    expect(response.body).to include("Não se aplica neste conjunto")
-    expect(response.body).to include("Ajustar regra deste conjunto")
-    expect(response.body).to include("Sempre manual")
-    expect(response.body).to include("Leitura rápida")
+    expect(html.css(".ax-studio-nav [data-ax-tabs-target='tab']").map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
+      %w[#review-tab-capture #review-tab-review #review-tab-notify #review-tab-publish]
+    )
+    expect(html.css(".ax-studio-nav__caption")).to be_empty
+    expect(html.css(".rvw-flow .rvw-step").size).to eq(4)
+    expect(response.body).to include("Validações que bloqueiam o envio", "valem neste cenário", "rvw-area", "Sempre manual", "Caminho da captação")
   end
 
   it "deixa claro que revisão desligada não publica automaticamente" do
@@ -276,8 +276,9 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get review_workflow_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Tipo")
-    expect(response.body).to include("Validações ativas")
+    html = Nokogiri::HTML(response.body)
+    expect(html.at_css(".rvw-workspace")["data-approval"]).to eq("off")
+    expect(response.body).to include("Sem revisão", "Nenhuma captação é publicada sozinha")
   end
 
   it "salva regra específica de revisão para o conjunto selecionado" do

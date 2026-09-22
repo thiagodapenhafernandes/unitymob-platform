@@ -1,14 +1,27 @@
-<%= form_with model: [:admin, @home_section], local: true, data: { controller: "conditional-reveal", conditional_reveal_kind_value: "select" } do |f| %>
-  <%= ax_error_summary(@home_section) %>
+<%
+  editing = @home_section.persisted?
+  kind = @home_section.content_kind
+  groups = HomeSection::PROPERTY_FILTER_GROUPS.dup
+  other_keys = HomeSection::PROPERTY_FILTER_OPTIONS.keys - groups.flat_map { |group| group[:keys] }
+  groups << { title: "Outros", icon: "three-dots", tone: "slate", keys: other_keys } if other_keys.any?
+  choices = [["Imóveis", "properties"], ["Vídeos", "videos"], ["Blog", "blog"], ["Chamada para contato", "cta"]]
+  choices << [@home_section.section_type_label, "custom"] if kind == "custom"
+%>
+<div class="ax-studio ax-studio--flat"
+     data-controller="home-section-preview"
+     data-home-section-preview-preview-url-value="<%= preview_admin_home_sections_path %>"
+     data-action="input->home-section-preview#schedule change->home-section-preview#schedule">
+  <%= form_with model: [:admin, @home_section], local: true,
+        class: "ax-studio-form ax-studio__stage",
+        data: { controller: "conditional-reveal ax-dirty-form", conditional_reveal_kind_value: "select", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } do |f| %>
+    <%= ax_error_summary(@home_section) %>
 
-  <div class="ax-card">
-    <div class="ax-card__body">
+    <%= ax_studio_group(title: "Conteúdo", subtitle: "O que a seção mostra e como ela é apresentada na página inicial.", icon: "layout-text-window") do %>
       <div class="tw-mb-3">
         <%= label_tag "home_section_content_kind", "Conteúdo", class: "ax-label" %>
-        <% choices = [["Imóveis", "properties"], ["Blog", "blog"]] %>
-        <% choices << [@home_section.section_type_label, "custom"] unless @home_section.blog? || @home_section.property_content_section? %>
-        <%= select_tag "home_section[content_kind]", options_for_select(choices, @home_section.blog? ? "blog" : (@home_section.property_content_section? ? "properties" : "custom")), id: "home_section_content_kind", class: "ax-control", data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
+        <%= select_tag "home_section[content_kind]", options_for_select(choices, kind), id: "home_section_content_kind", class: "ax-control", data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
       </div>
+
       <div class="tw-mb-3">
         <%= f.label :title, "Título", class: "ax-label" %>
         <%= f.text_field :title, class: "ax-control", required: true %>
@@ -19,19 +32,16 @@
         <%= f.text_area :subtitle, rows: 2, class: "ax-control" %>
       </div>
 
-      <div class="tw-mb-3">
-        <%= ax_switch_field(label: "Seção Ativa", form: f, method: :active, input_html: { role: "switch", checked: @home_section.persisted? ? @home_section.active : true }) %>
-        <small class="tw-text-ink-muted">Seções inativas não aparecem na página inicial</small>
-      </div>
+      <%= ax_switch_field(label: "Seção ativa", form: f, method: :active, class_name: "ax-switch--card",
+                          description: "Seções inativas não aparecem na página inicial.",
+                          input_html: { role: "switch", checked: editing ? @home_section.active : true }) %>
+    <% end %>
 
-      <div class="border tw-rounded-lg tw-p-2 tw-mb-3" data-conditional-reveal-target="panel" data-conditional-reveal-values="properties|custom" <%= "hidden" if @home_section.blog? %>>
-        <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Curadoria de imóveis</h6>
-        <p class="ax-page-subtitle tw-mb-3">
-          Imóveis selecionados manualmente aparecem primeiro. Os filtros completam a seção com imóveis públicos deste tenant.
-        </p>
-
+    <div data-conditional-reveal-target="panel" data-conditional-reveal-values="properties|custom" <%= "hidden" unless kind.in?(%w[properties custom]) %>>
+      <%= ax_studio_group(title: "Curadoria de imóveis", icon: "houses",
+                          subtitle: "Imóveis selecionados manualmente aparecem primeiro. Os filtros completam a seção com imóveis públicos deste tenant.") do %>
         <%= f.fields_for :property_filters do |filters_form| %>
-          <div class="tw-mb-4">
+          <div class="tw-mb-2">
             <%= ax_autocomplete_select_field(
                   form: filters_form,
                   method: :selected_property_ids,
@@ -49,29 +59,94 @@
                   }
                 ) %>
             <small class="tw-text-ink-muted">
-              A lista mostra imóveis publicáveis da conta atual. Deixe vazio para usar apenas a regra automática da seção.
+              A lista mostra imóveis publicáveis da conta atual. Com imóveis escolhidos, só eles aparecem na Home e os filtros abaixo são ignorados. Deixe vazio para usar os filtros.
             </small>
           </div>
         <% end %>
 
+        <div class="hs-filters" data-hs-filters>
         <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Filtros automáticos</h6>
-        <%= ax_chip_grid do %>
-          <% HomeSection::PROPERTY_FILTER_OPTIONS.each do |key, option| %>
-            <%= ax_toggle_chip(
-                  label: option[:label],
-                  name: "home_section[property_filters][#{key}]",
-                  checked: @home_section.property_filter_enabled?(key),
-                  include_hidden: false,
-                  class_name: "ax-toggle-chip--full"
-                ) %>
+        <div data-hs-filters-note hidden>
+          <%= ax_inline_notice(tone: :info, icon: "hand-index", compact: true, body: "Você escolheu imóveis específicos: só eles aparecem na Home. Estes filtros ficam ignorados enquanto houver escolhidos.") %>
+        </div>
+        <div class="hs-sections">
+          <% groups.each do |group| %>
+            <% keys = group[:keys].select { |key| HomeSection::PROPERTY_FILTER_OPTIONS.key?(key) } %>
+            <%= ax_chip_section(title: group[:title], icon: group[:icon], tone: group[:tone], count: "#{keys.count { |key| @home_section.property_filter_enabled?(key) }}/#{keys.size}") do %>
+              <%= ax_chip_grid(class_name: "ax-chip-grid--calm ax-chip-grid--rows") do %>
+                <% keys.each do |key| %>
+                  <%= ax_toggle_chip(
+                        label: HomeSection::PROPERTY_FILTER_OPTIONS.dig(key, :label),
+                        name: "home_section[property_filters][#{key}]",
+                        checked: @home_section.property_filter_enabled?(key),
+                        include_hidden: false
+                      ) %>
+                <% end %>
+              <% end %>
+            <% end %>
           <% end %>
-        <% end %>
-      </div>
-
-      <div class="tw-flex tw-gap-2">
-        <%= link_to "Cancelar", admin_home_sections_path, class: "ax-btn ax-btn--ghost" %>
-        <%= f.submit @home_section.persisted? ? "Atualizar Seção" : "Criar Seção", class: "ax-btn ax-btn--primary" %>
-      </div>
+        </div>
+        </div>
+      <% end %>
     </div>
-  </div>
-<% end %>
+
+    <div data-conditional-reveal-target="panel" data-conditional-reveal-values="videos" <%= "hidden" unless kind == "videos" %>>
+      <%= ax_studio_group(title: "Vitrine de vídeos", icon: "video",
+                          subtitle: "Selecione imóveis que já tenham vídeo. YouTube, Vimeo e links diretos de MP4 publicados no Spaces aparecem no player da Home.") do %>
+        <div class="tw-mb-3">
+          <%= label_tag "home_section_video_property_ids", "Imóveis com vídeo", class: "ax-label" %>
+          <% if (@property_options || []).blank? %>
+            <div class="tw-mb-2">
+              <%= ax_inline_notice(tone: :warning, icon: "camera-video-off", compact: true, body: "Nenhum imóvel publicável com vídeo válido foi encontrado. Cadastre um link de YouTube, Vimeo ou MP4 no imóvel para ele aparecer aqui.") %>
+            </div>
+          <% end %>
+          <%= select_tag "home_section[property_filters][selected_property_ids][]",
+                options_for_select(@property_options || [], @home_section.selected_property_ids),
+                id: "home_section_video_property_ids",
+                multiple: true,
+                class: "ax-control ax-autocomplete-select ax-autocomplete-select--multi",
+                placeholder: "Buscar por código, título ou localização",
+                data: {
+                  controller: "tom-select",
+                  tom_select_options_value: { plugins: ["remove_button"], maxOptions: 500, placeholder: "Buscar por código, título ou localização" }
+                } %>
+          <small class="tw-text-ink-muted">
+            Deixe vazio para a seção usar automaticamente os imóveis públicos com vídeo. Os chips de cidade são gerados pela vitrine e filtram apenas o que aparece na Home.
+          </small>
+        </div>
+
+        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-3">
+          <div class="ax-panel ax-panel--soft tw-p-3">
+            <strong class="tw-block tw-text-sm tw-text-ink">Fontes aceitas</strong>
+            <span class="tw-text-xs tw-text-ink-muted">YouTube, Vimeo e arquivo de vídeo direto.</span>
+          </div>
+          <div class="ax-panel ax-panel--soft tw-p-3">
+            <strong class="tw-block tw-text-sm tw-text-ink">Upload/importado</strong>
+            <span class="tw-text-xs tw-text-ink-muted">Use o link final do arquivo publicado no Spaces da conta.</span>
+          </div>
+          <div class="ax-panel ax-panel--soft tw-p-3">
+            <strong class="tw-block tw-text-sm tw-text-ink">Filtros</strong>
+            <span class="tw-text-xs tw-text-ink-muted">A seção já exige vídeo; cidade vira chip visual na vitrine.</span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%= ax_studio_savebar(form: f, cancel_path: admin_home_sections_path, submit_label: editing ? "Atualizar Seção" : "Criar Seção") %>
+  <% end %>
+
+  <aside class="ax-studio__aside" aria-label="Prévia da Home">
+    <div class="hs-pv" data-home-section-preview-target="preview">
+      <header class="hs-pv__bar"><span>Como vai aparecer na Home</span><b data-pv="state">Carregando…</b></header>
+      <div class="hs-pv__page">
+        <span class="hs-pv__eyebrow" data-pv="kind"></span>
+        <h3 class="hs-pv__title" data-pv="title"></h3>
+        <p class="hs-pv__subtitle" data-pv="subtitle" hidden></p>
+        <div class="hs-pv__body" data-pv="body"></div>
+        <p class="hs-pv__cta" data-pv="cta" hidden></p>
+      </div>
+      <p class="hs-pv__note" data-pv="note" hidden></p>
+    </div>
+    <p class="hs-pv__hint">Dados reais da sua conta. Atualiza enquanto você edita.</p>
+  </aside>
+</div>

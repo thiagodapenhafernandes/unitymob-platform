@@ -320,6 +320,12 @@ module Admin::UiHelper
     )
   end
 
+  # Grupo de chips com moldura tingida (--tone), ícone e contador x/y. Use dentro de listas longas de opções.
+  # tone: :blue :green :amber :red :violet :teal :pink. O contador é atualizado por quem controla o formulário ([data-chip-count]).
+  def ax_chip_section(title:, icon: nil, tone: :blue, count: nil, &block)
+    render "admin/shared/ui/chip_section", title:, icon:, tone:, count:, body: capture(&block)
+  end
+
   def ax_chip_grid(id: nil, class_name: nil, data: {}, body: nil, &block)
     render(
       "admin/shared/ui/chip_grid",
@@ -390,7 +396,7 @@ module Admin::UiHelper
   # Campo avulso para formulários que não pertencem a um model (OTP, senha de
   # confirmação, destino de teste etc.). Pode compor uma ação acoplada usando
   # o mesmo contrato visual de `ax_input_group`.
-  def ax_standalone_field(name:, id:, label:, value: nil, type: :text, hint: nil, action: nil, class_name: nil, input_class: nil, **options)
+  def ax_standalone_field(name:, id:, label:, value: nil, type: :text, hint: nil, action: nil, prefix: nil, suffix: nil, class_name: nil, input_class: nil, **options)
     render(
       "admin/shared/ui/standalone_field",
       name:,
@@ -400,13 +406,23 @@ module Admin::UiHelper
       type:,
       hint:,
       action:,
+      prefix:,
+      suffix:,
       class_name:,
       input_class:,
       options:
     )
   end
 
-  def ax_standalone_select_field(name:, id:, label:, choices:, selected: nil, include_blank: nil, hint: nil, class_name: nil, grouped: false, **options)
+  # `autocomplete: true` usa o mesmo TomSelect de `ax_autocomplete_select_field` (busca, visual do design system),
+  # para selects sem model.
+  def ax_standalone_select_field(name:, id:, label:, choices:, selected: nil, include_blank: nil, hint: nil, class_name: nil, grouped: false, autocomplete: false, placeholder: nil, **options)
+    if autocomplete
+      data = (options[:data] || {}).dup
+      controllers = [data.delete(:controller), "tom-select"].compact_blank.join(" ")
+      data[:tom_select_options_value] = { placeholder: placeholder } if placeholder.present?
+      options = options.merge(data: data.merge(controller: controllers), class: ["ax-autocomplete-select", options[:class]].compact_blank.join(" "))
+    end
     render(
       "admin/shared/ui/standalone_select_field",
       name:,
@@ -530,11 +546,19 @@ module Admin::UiHelper
   # Switch deslizante reutilizável (substitui o markup Bootstrap `form-check form-switch`).
   # Usa com form builder (form:/method:) OU com nome solto (name:/checked:). Atributos extras
   # do input (data-action etc.) via input_html.
+  # `description` acrescenta uma linha de apoio sob o rótulo; `class_name: "ax-switch--card"` dá o formato de cartão.
   def ax_switch_field(label: nil, form: nil, method: nil, name: nil, checked: false, value: "1",
-                      checked_value: "1", unchecked_value: "0", id: nil, class_name: nil, input_html: {})
+                      checked_value: "1", unchecked_value: "0", id: nil, class_name: nil, input_html: {}, description: nil)
     render "admin/shared/ui/switch_field",
            label:, form:, method:, name:, checked:, value:,
-           checked_value:, unchecked_value:, id:, class_name:, input_html:
+           checked_value:, unchecked_value:, id:, class_name:, input_html:, description:
+  end
+
+  # Seleção múltipla de uma lista (campo array): um ax_toggle_chip por opção, com o mesmo
+  # marcador dos demais chips. choices: [[valor, rótulo]]; o valor atual vem de form.object.
+  # selected: sobrepõe o valor do objeto (regras que herdam de um padrão).
+  def ax_check_group(form:, method:, choices:, legend: nil, class_name: nil, disabled: false, selected: nil)
+    render "admin/shared/ui/check_group", form:, method:, choices:, legend:, class_name:, disabled:, selected:
   end
 
   def ax_toggle_chip(form = nil, method = nil, label:, checked_value: "1", unchecked_value: "0", disabled: false, class_name: nil, id: nil, input_data: {}, name: nil, checked: false, include_hidden: true)
@@ -555,11 +579,12 @@ module Admin::UiHelper
     )
   end
 
-  def ax_multiselect_field(form:, method:, label:, choices:, selected: [], id: nil, disabled: false, placeholder: "Selecione...", manager: nil, class_name: nil, tooltip: nil, data: {})
+  def ax_multiselect_field(form: nil, method: nil, name: nil, label:, choices:, selected: [], id: nil, disabled: false, placeholder: "Selecione...", manager: nil, class_name: nil, tooltip: nil, data: {})
     render(
       "admin/shared/ui/multiselect_field",
       form:,
       method:,
+      name:,
       label:,
       choices:,
       selected:,
@@ -889,8 +914,9 @@ module Admin::UiHelper
     )
   end
 
-  def ax_metric_card(label:, value:, badge: nil, hint: nil, progress: nil, class_name: nil)
-    render "admin/shared/ui/metric_card", label:, value:, badge:, hint:, progress:, class_name:
+  # icon:/tone: (:blue :green :amber :red :violet :teal) são opcionais e dão o KPI colorido com tile de ícone.
+  def ax_metric_card(label:, value:, badge: nil, hint: nil, progress: nil, class_name: nil, icon: nil, tone: nil)
+    render "admin/shared/ui/metric_card", label:, value:, badge:, hint:, progress:, class_name:, icon:, tone:
   end
 
   # Toggle reutilizável "+ equipe": recorta uma listagem pela subárvore de gestão.
@@ -951,6 +977,51 @@ module Admin::UiHelper
         class_name:
       )
     end
+  end
+
+  # ---- Estúdio de configuração (settings_studio.css): navegação por seções + palco + prévia ----
+  # items: [{ id:, icon:, label:, hint: }]. Usa ax-tabs (hash na URL, teclado, aria).
+  def ax_studio_nav(items:, panels_selector:, label: "Seções", orientation: :vertical)
+    render "admin/shared/ui/studio_nav", items:, panels_selector:, label:, orientation:
+  end
+
+  # Linha de atalho de um cartão de hub (ícone + rótulo + seta). Uso dentro de .ax-hub-links.
+  def ax_hub_link(label, path, icon:, **options)
+    link_to(path, **options, class: ["ax-hub-link", options[:class]].compact.join(" ")) do
+      safe_join([tag.i(class: "bi bi-#{icon} ax-hub-link__icon", aria: { hidden: true }), tag.span(label), tag.i(class: "bi bi-chevron-right ax-hub-link__go", aria: { hidden: true })])
+    end
+  end
+
+  # Cartão de grupo do estúdio: título, texto de apoio, ícone e ações opcionais.
+  def ax_studio_group(title: nil, subtitle: nil, icon: nil, actions: nil, class_name: nil, &block)
+    render "admin/shared/ui/studio_group", title:, subtitle:, icon:, actions:, class_name:, body: capture(&block)
+  end
+
+  # Barra fixa de salvar com o estado "sem alterações / não salvas" (o form precisa de ax-dirty-form).
+  def ax_studio_savebar(form:, cancel_path:, submit_label: "Salvar configurações", clean_label: "Sem alterações pendentes", dirty_label: "Alterações ainda não salvas", disable_with: nil)
+    render "admin/shared/ui/studio_savebar", form:, cancel_path:, submit_label:, clean_label:, dirty_label:, disable_with:
+  end
+
+  def ax_studio_section(id:, title:, subtitle: nil, icon: nil, actions: nil, active: false, class_name: nil, data: nil, &block)
+    render "admin/shared/ui/studio_section", id:, title:, subtitle:, icon:, actions:, active:, class_name:, data:, body: capture(&block)
+  end
+
+  # ---- Formulário guiado por etapas (guided_form.css) ----
+  def ax_guided_header(icon:, title:, subtitle:, steps:, controller:, progress_label: "Comece pelo nome")
+    render "admin/shared/ui/guided_header", icon:, title:, subtitle:, steps:, controller:, progress_label:
+  end
+
+  def ax_guided_step(number:, color:, title:, subtitle:, optional: false, &block)
+    render "admin/shared/ui/guided_step", number:, color:, title:, subtitle:, optional:, body: capture(&block)
+  end
+
+  def ax_guided_review(number:, title:, subtitle:, checks:, submit_label:, cancel_path:, submit_icon: "bi-send-check", color: :teal)
+    render "admin/shared/ui/guided_review", number:, title:, subtitle:, checks:, submit_label:, cancel_path:, submit_icon:, color:
+  end
+
+  # Escolha exclusiva em chips, segmentos ou cartões (choice_group.css).
+  def ax_choice_group(form:, method:, choices:, variant: :chips, selected: nil, disabled: false, input_data: {}, aria_label: nil, class_name: nil)
+    render "admin/shared/ui/choice_group", form:, method:, choices:, variant:, selected:, disabled:, input_data:, aria_label:, class_name:
   end
 
   def ax_empty_state(title:, description: nil, icon: "inbox", action: nil, compact: false, class_name: nil)

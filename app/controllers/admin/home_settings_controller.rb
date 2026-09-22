@@ -30,14 +30,8 @@ class Admin::HomeSettingsController < Admin::BaseController
       :hero_title_font_size,
       :hero_subtitle_font_size,
       :hero_cta_text,
-      :hero_cta_link,
       :overlay_opacity,
       :overlay_color,
-      :cta_title,
-      :cta_subtitle,
-      :services_active,
-      :why_choose_active,
-      :cta_contact_active,
       :hero_background_desktop,
       :hero_background_mobile,
       :hero_button_color,
@@ -54,8 +48,6 @@ class Admin::HomeSettingsController < Admin::BaseController
       :search_filter_border_radius,
       :search_filter_display_mode,
       :mobile_search_filter_display_mode,
-      :public_header_css,
-      *HomeSetting::HEADER_COLOR_FIELDS.keys,
       hero_slide_images: [],
       hero_slides_attributes: [:id, :position, :active, :alt_text, :_destroy]
     )

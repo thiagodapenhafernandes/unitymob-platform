@@ -18,8 +18,10 @@
   color_data[:action] = ["input->ax-color-pair#sync", color_data[:action]].compact_blank.join(" ")
   text_data[:action] = ["input->ax-color-pair#sync", text_data[:action]].compact_blank.join(" ")
 
-  color_data = token_data.merge(color_data)
-  text_data = token_data.merge(text_data)
+  # Junta as ações (token + par + extras); um merge simples deixava a ação do token cair e a prévia ao vivo não reagia.
+  join_actions = ->(key, token_value, own_value) { key == :action ? [token_value, own_value].compact_blank.join(" ") : own_value }
+  color_data = token_data.merge(color_data, &join_actions)
+  text_data = token_data.merge(text_data, &join_actions)
   color_class = ["ax-color-control__swatch", color_options.delete(:class)].compact_blank.join(" ")
   text_class = ["ax-color-control__text", text_options.delete(:class)].compact_blank.join(" ")
 %>

@@ -1,8 +1,8 @@
 module Admin
   class AdminUsersController < BaseController
     requires_permission :manage, :corretores
-    before_action :set_admin_user, only: %i[show edit update destroy inactivate reset_two_factor]
-    before_action :authorize_admin_user_management!, only: %i[show edit update destroy inactivate reset_two_factor]
+    before_action :set_admin_user, only: %i[show edit update destroy inactivate reset_two_factor revoke_access]
+    before_action :authorize_admin_user_management!, only: %i[show edit update destroy inactivate reset_two_factor revoke_access]
     before_action :authorize_hierarchy_management!, only: %i[new create move_hierarchy]
     before_action :load_access_options, only: %i[new edit create update]
 
@@ -305,6 +305,22 @@ module Admin
       redirect_to admin_admin_users_path(status: "inactive"), notice: notice
     rescue AdminUsers::InactivationTransfer::Error, ActiveRecord::RecordInvalid => e
       redirect_to admin_admin_users_path, alert: "Não foi possível remover o acesso do usuário: #{e.message}"
+    end
+
+    def revoke_access
+      unless tenant_owner?
+        redirect_to edit_admin_admin_user_path(@admin_user), alert: "Apenas o admin da conta pode encerrar acessos em todos os aparelhos."
+        return
+      end
+      if @admin_user == current_admin_user
+        redirect_to edit_admin_admin_user_path(@admin_user), alert: "Você não pode encerrar todos os acessos do próprio usuário."
+        return
+      end
+
+      @admin_user.revoke_all_access!
+      redirect_to edit_admin_admin_user_path(@admin_user), notice: "Sessões, aparelhos, extensão, push e tokens do usuário foram encerrados."
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to edit_admin_admin_user_path(@admin_user), alert: "Não foi possível encerrar os acessos: #{e.message}"
     end
 
     private

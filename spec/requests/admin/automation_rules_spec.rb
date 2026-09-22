@@ -104,7 +104,7 @@ RSpec.describe "Admin::AutomationRules", type: :request do
 
   describe "POST simulate" do
     it "simula a regra sem salvar" do
-      create(:lead, name: "Lead Simulado", status: "Em Atendimento")
+      create(:lead, name: "Lead Simulado", status: "Em Atendimento", admin_user: admin)
 
       expect {
         post simulate_admin_automation_rules_path, params: {

@@ -38,6 +38,23 @@ RSpec.describe Whatsapp::InboundProcessor do
     expect(conv.lead.phone).to be_nil
   end
 
+  it "avisa o atendente responsavel (som) e guarda o numero que recebeu a conversa" do
+    tenant = integration.tenant
+    agent = create(:admin_user, tenant: tenant)
+    sender = create(:whatsapp_sender_number, tenant: tenant, phone_number_id: integration.phone_number_id)
+    WhatsappConversation.create!(tenant: tenant, contact_phone: "5521977776666", status: "open", assigned_admin_user: agent)
+    allow(ActionCable.server).to receive(:broadcast)
+
+    described_class.call(payload(
+      contacts: [{ "wa_id" => "5521977776666", "profile" => { "name" => "Cli" } }],
+      messages: [{ "id" => "wamid.som", "from" => "5521977776666", "type" => "text", "text" => { "body" => "oi" } }]
+    ))
+
+    conv = WhatsappConversation.find_by(contact_phone: "5521977776666")
+    expect(ActionCable.server).to have_received(:broadcast).with(InAppNotification.stream_name(agent.id), event: "whatsapp_message", conversation_id: conv.id)
+    expect(conv.whatsapp_sender_number).to eq(sender)
+  end
+
   it "ignora mensagens de sistema (troca de número)" do
     expect {
       described_class.call(payload(

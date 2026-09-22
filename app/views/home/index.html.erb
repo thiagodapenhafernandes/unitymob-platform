@@ -58,6 +58,14 @@
         <%= render 'shared/corporate_showcase', properties: payload[:corporate_records] %>
       <% end %>
     <% end %>
+
+  <% when 'property_videos' %>
+    <% properties = payload[:records] || [] %>
+    <% if properties.present? %>
+      <% cache ['home_section_property_videos_v1', section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+        <%= render 'home/video_properties_section', section: section, properties: properties, bg_class: bg_class %>
+      <% end %>
+    <% end %>
     
   <% when 'developments' %>
     <% developments = payload[:records] || [] %>

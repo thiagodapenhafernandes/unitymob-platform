@@ -1,0 +1,41 @@
+<%# Editor do texto (negrito, itálico, variável) + exemplos das variáveis. %>
+<div class="ax-field">
+  <div class="ax-guided-label-row">
+    <%= ax_field_label(f, :body, text: label, tooltip: tooltip) %>
+    <span class="ax-guided-counter" data-guided="bodyCount">0 / 1024</span>
+  </div>
+  <div class="wtb-editor">
+    <div class="wtb-toolbar" role="toolbar" aria-label="Formatação">
+      <button type="button" class="wtb-tool" data-action="whatsapp-template-form#wrap" data-wrap="*" aria-label="Negrito" title="Negrito"><i class="bi bi-type-bold"></i></button>
+      <button type="button" class="wtb-tool" data-action="whatsapp-template-form#wrap" data-wrap="_" aria-label="Itálico" title="Itálico"><i class="bi bi-type-italic"></i></button>
+      <span class="wtb-toolbar__sep" aria-hidden="true"></span>
+      <button type="button" class="wtb-tool wtb-tool--text" data-action="whatsapp-template-form#insertVariable"><i class="bi bi-braces"></i><span>Inserir variável</span></button>
+    </div>
+    <%= f.text_area :body,
+                    class: "ax-control wtb-textarea",
+                    rows: rows,
+                    maxlength: 1024,
+                    placeholder: placeholder,
+                    data: {
+                      whatsapp_template_form_target: "bodyInput",
+                      action: "input->whatsapp-template-form#syncExamples"
+                    } %>
+  </div>
+</div>
+
+<div class="wtb-vars">
+  <div class="wtb-vars__head">
+    <div><strong>Exemplos das variáveis</strong><p>Um exemplo real para cada <code>{{1}}</code>, <code>{{2}}</code>… ajuda a Meta a aprovar.</p></div>
+    <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-template-form#addExample">
+      <i class="bi bi-plus-lg ax-ico"></i><span>Adicionar exemplo</span>
+    </button>
+  </div>
+  <div class="whatsapp-template-example-grid wtb-vars__grid" data-whatsapp-template-form-target="examplesList">
+    <% example_rows = Array(template.example_values).map(&:to_s).reject(&:blank?) %>
+    <% example_rows = [""] if example_rows.blank? %>
+    <% example_rows.each_with_index do |value, index| %>
+      <%= render "builder_example_row", index: index, value: value %>
+    <% end %>
+  </div>
+  <template data-whatsapp-template-form-target="exampleTemplate"><%= render "builder_example_row", index: "__INDEX__", number: "__NUMBER__" %></template>
+</div>

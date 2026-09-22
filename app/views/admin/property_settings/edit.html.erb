@@ -1,6 +1,3 @@
-<% content_for :admin_contextbar_breadcrumb do %>
-  <%= link_to "Início", admin_root_path %><i class="bi bi-chevron-right"></i><strong>Configurações de imóveis</strong>
-<% end %>
 <% content_for :mobile_detail_header do %>
   <%= render "admin/shared/ui/mobile_detail_header", title: "Configurações de imóveis", subtitle: "Mídia e busca inteligente", back_path: admin_root_path, icon: "building-gear" %>
 <% end %>
@@ -33,406 +30,390 @@
         html: { multipart: true },
         class: "property-settings-form",
         data: {
-          controller: "form-return-anchor ax-form-validation",
-          action: "submit->form-return-anchor#sync",
+          controller: "form-return-anchor ax-form-validation ax-dirty-form",
+          action: "submit->form-return-anchor#sync input->ax-dirty-form#mark change->ax-dirty-form#mark",
           form_return_anchor_fallback_value: "property-settings-media"
         } do |f| %>
     <%= hidden_field_tag :return_anchor, params[:return_anchor], data: { form_return_anchor_target: "input" } %>
     <%= ax_error_summary(@property_setting) if @property_setting.errors.any? %>
 
-    <ul class="ax-form-tabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-reveal-active-value="true" data-ax-tabs-panel-selector-value="#property-settings-tab-content">
-      <li><button class="ax-form-tabs__item active" id="property-settings-media-tab" type="button" role="tab" aria-controls="property-settings-media" aria-selected="true" tabindex="0" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-media" data-action="click->ax-tabs#select"><i class="bi bi-image" aria-hidden="true"></i> Mídia e marca d'água</button></li>
-      <li><button class="ax-form-tabs__item" id="property-settings-ai-search-tab" type="button" role="tab" aria-controls="property-settings-ai-search" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-search" data-action="click->ax-tabs#select"><i class="bi bi-stars" aria-hidden="true"></i> Busca Inteligente por IA</button></li>
-    </ul>
+    <%
+      studio_items = [
+        { id: "property-settings-media", icon: "image", label: "Marca d'água", hint: "Mídia e prévia das fotos", caption: "Mídia" },
+        { id: "property-settings-ai-activation", icon: "toggles", label: "Ativação", hint: "Recursos e execução base", caption: "Busca inteligente por IA" },
+        { id: "property-settings-ai-interpretation", icon: "chat-left-text", label: "Interpretação", hint: "Instruções e mensagens" },
+        { id: "property-settings-ai-scope", icon: "bullseye", label: "Abrangência", hint: "Campos, catálogo e tolerâncias" },
+        { id: "property-settings-ai-context", icon: "diagram-3", label: "Contexto", hint: "Termos enviados à IA" },
+        { id: "property-settings-ai-access", icon: "shield-lock", label: "Acesso e resultado", hint: "Perfis e cards do PWA" },
+        { id: "property-settings-ai-aliases", icon: "tags", label: "Nomes alternativos", hint: "Aliases de empreendimentos" },
+        { id: "property-settings-ai-sharing", icon: "share", label: "Compartilhamento", hint: "Seleção, página pública e lead" },
+        { id: "property-settings-ai-learning", icon: "mortarboard", label: "Aprendizado", hint: "Sinais do histórico" }
+      ]
+    %>
+    <div class="ax-studio ax-studio--nav">
+      <div class="ax-studio__nav">
+        <%= ax_studio_nav(items: studio_items, panels_selector: "#property-studio-sections", label: "Seções das configurações de imóveis") %>
+      </div>
 
-    <div class="ax-form-tabs__panels" id="property-settings-tab-content">
-      <section class="ax-form-tabs__panel" id="property-settings-media" role="tabpanel" aria-labelledby="property-settings-media-tab" aria-hidden="false" tabindex="0">
+      <div class="ax-studio__stage" id="property-studio-sections">
+        <%= ax_studio_section(id: "property-settings-media", icon: "image", active: true,
+                              title: "Marca d'água das fotos",
+                              subtitle: "Arquivo, posição e intensidade aplicados quando o envio de fotos solicitar marca d'água.",
+                              actions: ax_badge("novas fotos", tone: :blue)) do %>
 
-    <div class="property-settings-layout">
-      <main class="property-settings-main">
-        <%= ax_panel(
-              class_name: "ax-panel--settings",
-              title: "Marca d'água das fotos",
-              subtitle: "Arquivo, posição e intensidade aplicados quando o envio solicitar marca d'água.",
-              actions: ax_badge("novas fotos", tone: :blue)
-            ) do %>
-          <div class="property-settings-fields">
-            <%= ax_file_field(
-                  form: f,
-                  method: :watermark_image,
-                  label: "Imagem da marca d'água",
-                  tooltip: "Use preferencialmente PNG transparente. JPEG e WebP também são aceitos.",
-                  hint: "PNG, JPEG ou WebP de até 5 MB. Prefira PNG transparente.",
-                  accept: "image/png,image/jpeg,image/webp",
-                  button_label: "Escolher marca",
-                  data: { action: "change->watermark-preview#loadFile", watermark_preview_target: "fileInput" }
-                ) %>
+          <div class="property-settings-layout">
+            <main class="property-settings-main">
+              <%= ax_studio_group(
+                    title: "Arquivo, posição e tamanho",
+                    subtitle: "Imagem da marca, posição padrão na foto e intensidade."
+                  ) do %>
+                <div class="property-settings-fields">
+                  <%= ax_file_field(
+                        form: f,
+                        method: :watermark_image,
+                        label: "Imagem da marca d'água",
+                        tooltip: "Use preferencialmente PNG transparente. JPEG e WebP também são aceitos.",
+                        hint: "PNG, JPEG ou WebP de até 5 MB. Prefira PNG transparente.",
+                        accept: "image/png,image/jpeg,image/webp",
+                        button_label: "Escolher marca",
+                        data: { action: "change->watermark-preview#loadFile", watermark_preview_target: "fileInput" }
+                      ) %>
 
-            <% if @property_setting.watermark_image.attached? %>
-              <div class="property-settings-current-file">
-                <div class="property-settings-current-file__thumb">
-                  <%= ax_icon("file-earmark-image") %>
+                  <% if @property_setting.watermark_image.attached? %>
+                    <div class="property-settings-current-file">
+                      <div class="property-settings-current-file__thumb">
+                        <%= ax_icon("file-earmark-image") %>
+                      </div>
+                      <div class="property-settings-current-file__meta">
+                        <span>Arquivo atual</span>
+                        <strong><%= @property_setting.watermark_image.filename %></strong>
+                        <small><%= number_to_human_size(@property_setting.watermark_image.byte_size) %></small>
+                      </div>
+                      <%= ax_check_field(
+                            name: "property_setting[remove_watermark_image]",
+                            value: "1",
+                            id: "property_setting_remove_watermark_image",
+                            label: "Remover imagem atual",
+                            class_name: "property-settings-remove-file",
+                            checked: ActiveModel::Type::Boolean.new.cast(params.dig(:property_setting, :remove_watermark_image)),
+                            input_html: { data: { watermark_preview_target: "removeInput", action: "change->watermark-preview#update" } }
+                          ) %>
+                    </div>
+                  <% end %>
+
+                  <fieldset class="property-settings-watermark-map">
+                    <legend class="property-settings-watermark-map__label">Posição padrão</legend>
+                    <div class="property-settings-watermark-map__frame" aria-label="Selecione uma das 5 posições da marca d'água">
+                      <div class="property-settings-watermark-map__photo" aria-hidden="true"></div>
+                      <div class="property-settings-watermark-map__guide property-settings-watermark-map__guide--vertical" aria-hidden="true"></div>
+                      <div class="property-settings-watermark-map__guide property-settings-watermark-map__guide--horizontal" aria-hidden="true"></div>
+                      <% PropertySetting::WATERMARK_POSITIONS.each do |value, label| %>
+                        <label class="property-settings-watermark-map__option property-settings-watermark-map__option--<%= value %>">
+                          <%= f.radio_button :watermark_position,
+                                value,
+                                class: "property-settings-watermark-map__input",
+                                data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" } %>
+                          <span class="property-settings-watermark-map__choice">
+                            <span class="property-settings-watermark-map__dot" aria-hidden="true"></span>
+                            <span><%= label %></span>
+                          </span>
+                        </label>
+                      <% end %>
+                    </div>
+                    <p class="property-settings-watermark-map__hint">Clique na área desejada para mover a prévia e salvar a posição usada nas próximas fotos com marca d'água.</p>
+                  </fieldset>
+
+                  <div class="property-settings-range-grid">
+                    <%= ax_range_field(
+                          form: f,
+                          method: :watermark_size_percentage,
+                          label: "Tamanho da marca",
+                          value: @property_setting.watermark_size_percentage,
+                          suffix: "%",
+                          hint: "Proporção ocupada sobre a largura da foto.",
+                          min: PropertySetting::WATERMARK_SIZE_RANGE.begin,
+                          max: PropertySetting::WATERMARK_SIZE_RANGE.end,
+                          step: 1,
+                          input_data: { action: "input->watermark-preview#update", watermark_preview_target: "sizeInput" },
+                          output_data: { watermark_preview_target: "sizeValue" }
+                        ) %>
+
+                    <%= ax_range_field(
+                          form: f,
+                          method: :watermark_opacity_percentage,
+                          label: "Opacidade da marca",
+                          value: @property_setting.watermark_opacity_percentage,
+                          suffix: "%",
+                          hint: "Equilibre legibilidade e preservação da imagem.",
+                          min: PropertySetting::WATERMARK_OPACITY_RANGE.begin,
+                          max: PropertySetting::WATERMARK_OPACITY_RANGE.end,
+                          step: 1,
+                          input_data: { action: "input->watermark-preview#update", watermark_preview_target: "opacityInput" },
+                          output_data: { watermark_preview_target: "opacityValue" }
+                        ) %>
+                  </div>
                 </div>
-                <div class="property-settings-current-file__meta">
-                  <span>Arquivo atual</span>
-                  <strong><%= @property_setting.watermark_image.filename %></strong>
-                  <small><%= number_to_human_size(@property_setting.watermark_image.byte_size) %></small>
+              <% end %>
+
+            </main>
+
+            <aside class="property-settings-preview-panel">
+              <div class="property-settings-preview-panel__header">
+                <div>
+                  <span>Prévia em tempo real</span>
+                  <strong>Simulação da marca</strong>
                 </div>
-                <%= ax_check_field(
-                      name: "property_setting[remove_watermark_image]",
-                      value: "1",
-                      id: "property_setting_remove_watermark_image",
-                      label: "Remover imagem atual",
-                      class_name: "property-settings-remove-file",
-                      checked: ActiveModel::Type::Boolean.new.cast(params.dig(:property_setting, :remove_watermark_image)),
-                      input_html: { data: { watermark_preview_target: "removeInput", action: "change->watermark-preview#update" } }
-                    ) %>
+                <i class="bi bi-eye"></i>
               </div>
-            <% end %>
-
-            <fieldset class="property-settings-watermark-map">
-              <legend class="property-settings-watermark-map__label">Posição padrão</legend>
-              <div class="property-settings-watermark-map__frame" aria-label="Selecione uma das 5 posições da marca d'água">
-                <div class="property-settings-watermark-map__photo" aria-hidden="true"></div>
-                <div class="property-settings-watermark-map__guide property-settings-watermark-map__guide--vertical" aria-hidden="true"></div>
-                <div class="property-settings-watermark-map__guide property-settings-watermark-map__guide--horizontal" aria-hidden="true"></div>
-                <% PropertySetting::WATERMARK_POSITIONS.each do |value, label| %>
-                  <label class="property-settings-watermark-map__option property-settings-watermark-map__option--<%= value %>">
-                    <%= f.radio_button :watermark_position,
-                          value,
-                          class: "property-settings-watermark-map__input",
-                          data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" } %>
-                    <span class="property-settings-watermark-map__choice">
-                      <span class="property-settings-watermark-map__dot" aria-hidden="true"></span>
-                      <span><%= label %></span>
-                    </span>
-                  </label>
+              <div class="property-settings-preview-frame"
+                   data-watermark-preview-target="frame">
+                <div class="property-settings-preview-photo"></div>
+                <% logo_class = "property-settings-preview-logo watermark-position-#{@property_setting.watermark_position}" %>
+                <% logo_class = "#{logo_class} tw-hidden" unless @property_setting.watermark_image.attached? %>
+                <% if @property_setting.watermark_image.attached? %>
+                  <%= image_tag @property_setting.watermark_image,
+                        class: logo_class,
+                        data: { watermark_preview_target: "logo", action: "load->watermark-preview#imageLoaded error->watermark-preview#imageFailed" },
+                        alt: "Marca d'água configurada" %>
+                <% else %>
+                  <%= tag.img class: logo_class,
+                        data: { watermark_preview_target: "logo", action: "load->watermark-preview#imageLoaded error->watermark-preview#imageFailed" },
+                        alt: "Marca d'água configurada" %>
                 <% end %>
+                <div class="property-settings-preview-placeholder <%= "tw-hidden" if @property_setting.watermark_image.attached? %>"
+                     data-watermark-preview-target="placeholder">
+                  <i class="bi bi-image"></i>
+                  <strong data-watermark-preview-target="placeholderTitle">Envie uma imagem</strong>
+                  <span data-watermark-preview-target="placeholderMessage">A prévia aparecerá aqui antes de salvar.</span>
+                </div>
               </div>
-              <p class="property-settings-watermark-map__hint">Clique na área desejada para mover a prévia e salvar a posição usada nas próximas fotos com marca d'água.</p>
-            </fieldset>
-
-            <div class="property-settings-range-grid">
-              <%= ax_range_field(
-                    form: f,
-                    method: :watermark_size_percentage,
-                    label: "Tamanho da marca",
-                    value: @property_setting.watermark_size_percentage,
-                    suffix: "%",
-                    hint: "Proporção ocupada sobre a largura da foto.",
-                    min: PropertySetting::WATERMARK_SIZE_RANGE.begin,
-                    max: PropertySetting::WATERMARK_SIZE_RANGE.end,
-                    step: 1,
-                    input_data: { action: "input->watermark-preview#update", watermark_preview_target: "sizeInput" },
-                    output_data: { watermark_preview_target: "sizeValue" }
-                  ) %>
-
-              <%= ax_range_field(
-                    form: f,
-                    method: :watermark_opacity_percentage,
-                    label: "Opacidade da marca",
-                    value: @property_setting.watermark_opacity_percentage,
-                    suffix: "%",
-                    hint: "Equilibre legibilidade e preservação da imagem.",
-                    min: PropertySetting::WATERMARK_OPACITY_RANGE.begin,
-                    max: PropertySetting::WATERMARK_OPACITY_RANGE.end,
-                    step: 1,
-                    input_data: { action: "input->watermark-preview#update", watermark_preview_target: "opacityInput" },
-                    output_data: { watermark_preview_target: "opacityValue" }
-                  ) %>
-            </div>
+              <div class="property-settings-preview-panel__note">
+                <i class="bi bi-info-circle"></i>
+                <span>A configuração afeta novas fotos quando a aplicação de marca estiver selecionada no imóvel.</span>
+              </div>
+            </aside>
           </div>
         <% end %>
 
-      </main>
-
-      <aside class="property-settings-preview-panel">
-        <div class="property-settings-preview-panel__header">
-          <div>
-            <span>Prévia em tempo real</span>
-            <strong>Simulação da marca</strong>
-          </div>
-          <i class="bi bi-eye"></i>
-        </div>
-        <div class="property-settings-preview-frame"
-             data-watermark-preview-target="frame">
-          <div class="property-settings-preview-photo"></div>
-          <% logo_class = "property-settings-preview-logo watermark-position-#{@property_setting.watermark_position}" %>
-          <% logo_class = "#{logo_class} tw-hidden" unless @property_setting.watermark_image.attached? %>
-          <% if @property_setting.watermark_image.attached? %>
-            <%= image_tag @property_setting.watermark_image,
-                  class: logo_class,
-                  data: { watermark_preview_target: "logo", action: "load->watermark-preview#imageLoaded error->watermark-preview#imageFailed" },
-                  alt: "Marca d'água configurada" %>
-          <% else %>
-            <%= tag.img class: logo_class,
-                  data: { watermark_preview_target: "logo", action: "load->watermark-preview#imageLoaded error->watermark-preview#imageFailed" },
-                  alt: "Marca d'água configurada" %>
+        <%= ax_studio_section(id: "property-settings-ai-activation", icon: "toggles", title: "Ativação da busca", subtitle: "Disponibilidade do recurso no PWA e guarda do histórico operacional.", actions: ax_badge("Conta", tone: :blue), class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--activation") do %>
+            <%= ax_studio_group(title: "Recursos da busca", actions: tag.span("Comportamento", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-switches ax-studio-switches ax-studio-switches--2">
+                <%= ax_switch_field(form: f, method: :ai_property_search_enabled, label: "Ativar busca inteligente", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :voice_property_search_enabled, label: "Exibir gravação por voz no PWA", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :ai_property_search_history_enabled, label: "Registrar histórico operacional", class_name: "ax-switch--card") %>
+              </div>
+            <% end %>
+            <%= ax_studio_group(title: "Execução base", actions: tag.span("PWA", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-fields">
+                <%= ax_text_field(form: f, method: :ai_property_search_language, label: "Idioma", class_name: "ax-span-4", placeholder: "pt-BR") %>
+                <%= ax_number_field(form: f, method: :ai_property_search_max_audio_duration_seconds, label: "Áudio máximo (segundos)", class_name: "ax-span-4", min: 5, max: 180) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_history_retention_days, label: "Retenção do histórico (dias)", class_name: "ax-span-4", min: 1, max: 365) %>
+              </div>
+            <% end %>
           <% end %>
-          <div class="property-settings-preview-placeholder <%= "tw-hidden" if @property_setting.watermark_image.attached? %>"
-               data-watermark-preview-target="placeholder">
-            <i class="bi bi-image"></i>
-            <strong data-watermark-preview-target="placeholderTitle">Envie uma imagem</strong>
-            <span data-watermark-preview-target="placeholderMessage">A prévia aparecerá aqui antes de salvar.</span>
-          </div>
-        </div>
-        <div class="property-settings-preview-panel__note">
-          <i class="bi bi-info-circle"></i>
-          <span>A configuração afeta novas fotos quando a aplicação de marca estiver selecionada no imóvel.</span>
-        </div>
-      </aside>
-    </div>
-      </section>
 
-      <section class="ax-form-tabs__panel" id="property-settings-ai-search" role="tabpanel" aria-labelledby="property-settings-ai-search-tab" aria-hidden="true" tabindex="0" hidden>
-        <div class="property-settings-ai-grid">
-          <ul class="ax-form-tabs property-settings-ai-subtabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-reveal-active-value="true" data-ax-tabs-panel-selector-value="#property-settings-ai-subtab-content">
-            <li><button class="ax-form-tabs__item active" id="property-settings-ai-activation-tab" type="button" role="tab" aria-controls="property-settings-ai-activation" aria-selected="true" tabindex="0" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-activation" data-action="click->ax-tabs#select"><i class="bi bi-power" aria-hidden="true"></i> Ativação</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-interpretation-tab" type="button" role="tab" aria-controls="property-settings-ai-interpretation" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-interpretation" data-action="click->ax-tabs#select"><i class="bi bi-stars" aria-hidden="true"></i> Interpretação</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-scope-tab" type="button" role="tab" aria-controls="property-settings-ai-scope" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-scope" data-action="click->ax-tabs#select"><i class="bi bi-sliders" aria-hidden="true"></i> Abrangência</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-context-tab" type="button" role="tab" aria-controls="property-settings-ai-context" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-context" data-action="click->ax-tabs#select"><i class="bi bi-braces" aria-hidden="true"></i> Contexto</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-access-tab" type="button" role="tab" aria-controls="property-settings-ai-access" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-access" data-action="click->ax-tabs#select"><i class="bi bi-shield-check" aria-hidden="true"></i> Acesso e resultado</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-aliases-tab" type="button" role="tab" aria-controls="property-settings-ai-aliases" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-aliases" data-action="click->ax-tabs#select"><i class="bi bi-tags" aria-hidden="true"></i> Nomes alternativos</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-sharing-tab" type="button" role="tab" aria-controls="property-settings-ai-sharing" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-sharing" data-action="click->ax-tabs#select"><i class="bi bi-share" aria-hidden="true"></i> Compartilhamento</button></li>
-            <li><button class="ax-form-tabs__item" id="property-settings-ai-learning-tab" type="button" role="tab" aria-controls="property-settings-ai-learning" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-learning" data-action="click->ax-tabs#select"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i> Aprendizado</button></li>
-          </ul>
+        <%= ax_studio_section(id: "property-settings-ai-interpretation", icon: "chat-left-text", title: "Interpretação e mensagens", subtitle: "Instruções, fonte de dados e textos exibidos durante a busca.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--interpretation") do %>
+            <%= ax_studio_group(title: "Instruções da IA", actions: tag.span("IA", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-fields">
+                <%= ax_text_field(
+                      form: f,
+                      method: :ai_property_search_instructions,
+                      type: :textarea,
+                      label: "Instrução principal da IA",
+                      hint: "Instrução operacional por tenant. Ex.: “entre R$ 1,5 milhão e R$ 2 milhões” deve virar faixa mínima e máxima; “apartment” deve ser normalizado para “Apartamento”. A IA também recebe um JSON seguro do catálogo preparado pelo backend para reconhecer nomes, bairros, cidades e empreendimentos. Não inclua credenciais, SQL ou dados sensíveis. A allowlist abaixo prevalece sobre o texto.",
+                      class_name: "ax-span-12",
+                      rows: 7
+                    ) %>
+              </div>
+            <% end %>
+            <details class="ax-studio-advanced" <%= "open" if @property_setting.errors.any? %>>
+            <summary><i class="bi bi-sliders"></i> Avançado: parâmetros da resposta <i class="bi bi-chevron-down"></i></summary>
+            <%= ax_studio_group(title: "Parâmetros da resposta", actions: tag.span("OpenAI", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-fields">
+                <%= ax_number_field(form: f, method: :ai_property_search_temperature, label: "Variação da resposta (Temperature)", hint: "Padrão conservador: 0,20.", class_name: "ax-span-3", min: 0, max: 2, step: 0.01) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_top_p, label: "Diversidade (Top P)", hint: "Padrão: 0,80.", class_name: "ax-span-3", min: 0, max: 1, step: 0.01) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_frequency_penalty, label: "Repetições (Frequency penalty)", hint: "Padrão: 0,50.", class_name: "ax-span-3", min: -2, max: 2, step: 0.01) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_presence_penalty, label: "Novos termos (Presence penalty)", hint: "Padrão: 0,20.", class_name: "ax-span-3", min: -2, max: 2, step: 0.01) %>
+              </div>
+            <% end %>
+          </details>
+            <%= ax_studio_group(title: "Consulta e mensagens", actions: tag.span("Execução", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-fields">
+                <%= ax_autocomplete_select_field(form: f, method: :ai_property_search_data_source, label: "Fonte de dados", choices: PropertySetting::AI_PROPERTY_SEARCH_DATA_SOURCES.map { |value| [PropertySetting::AI_PROPERTY_SEARCH_DATA_SOURCE_LABELS.fetch(value, value.humanize), value] }, class_name: "ax-span-4") %>
+                <%= ax_autocomplete_select_field(form: f, method: :ai_property_search_default_sort, label: "Ordenação padrão", choices: PropertySetting::AI_PROPERTY_SEARCH_SORTS.map { |value| [PropertySetting::AI_PROPERTY_SEARCH_SORT_LABELS.fetch(value, value.humanize), value] }, class_name: "ax-span-4") %>
+                <%= ax_number_field(form: f, method: :ai_property_search_max_results, label: "Máximo de resultados", class_name: "ax-span-4", min: 1, max: 100) %>
+                <%= ax_text_field(form: f, method: :ai_property_search_welcome_message, label: "Mensagem inicial", class_name: "ax-span-12") %>
+                <%= ax_text_field(form: f, method: :ai_property_search_processing_message, label: "Mensagem durante o processamento", class_name: "ax-span-6") %>
+                <%= ax_text_field(form: f, method: :ai_property_search_no_results_message, label: "Mensagem sem resultados", class_name: "ax-span-6") %>
+              </div>
+            <% end %>
+          <% end %>
 
-          <div class="ax-form-tabs__panels property-settings-ai-subtab-panels" id="property-settings-ai-subtab-content">
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-activation" role="tabpanel" aria-labelledby="property-settings-ai-activation-tab" aria-hidden="false" tabindex="0">
-              <%= ax_panel(title: "Ativação da busca", subtitle: "Disponibilidade do recurso no PWA e guarda do histórico operacional.", actions: ax_badge("Conta", tone: :blue), class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--activation") do %>
-                <%= ax_field_group(title: "Recursos da busca", token: "Comportamento", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-switches">
-                    <%= ax_toggle_chip(f, :ai_property_search_enabled, label: "Ativar busca inteligente") %>
-                    <%= ax_toggle_chip(f, :voice_property_search_enabled, label: "Exibir gravação por voz no PWA") %>
-                    <%= ax_toggle_chip(f, :ai_property_search_history_enabled, label: "Registrar histórico operacional") %>
-                  </div>
-                <% end %>
-                <%= ax_field_group(title: "Execução base", token: "PWA", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-fields">
-                    <%= ax_text_field(form: f, method: :ai_property_search_language, label: "Idioma", class_name: "ax-span-4", placeholder: "pt-BR") %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_max_audio_duration_seconds, label: "Áudio máximo (segundos)", class_name: "ax-span-4", min: 5, max: 180) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_history_retention_days, label: "Retenção do histórico (dias)", class_name: "ax-span-4", min: 1, max: 365) %>
-                  </div>
-                <% end %>
-              <% end %>
-            </section>
+        <%= ax_studio_section(id: "property-settings-ai-scope", icon: "bullseye", title: "Abrangência dos parâmetros", subtitle: "Critérios que a IA pode reconhecer e quanto o backend pode relaxar quando não encontra correspondência.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--scope") do %>
+            <%= ax_studio_group(title: "Campos de busca", actions: tag.span("Permissões", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <fieldset class="property-settings-ai-options"><legend>Campos permitidos para busca</legend><%= ax_check_group(form: f, method: :ai_property_search_allowed_fields, choices: PropertySetting::AI_PROPERTY_SEARCH_FIELD_OPTIONS.to_a, class_name: "ax-check-group--fields") %></fieldset>
+            <% end %>
+            <%= ax_studio_group(title: "Reconhecimento por catálogo", actions: tag.span("Catálogo", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-switches ax-studio-switches ax-studio-switches--2">
+                <%= ax_switch_field(form: f, method: :ai_property_search_development_name_enabled, label: "Buscar pelo nome do empreendimento", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :ai_property_search_developer_name_enabled, label: "Buscar por incorporadora", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :ai_property_search_development_aliases_enabled, label: "Considerar nomes comerciais alternativos", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :ai_property_search_search_by_characteristics_enabled, label: "Identificar por características", class_name: "ax-switch--card") %>
+              </div>
+            <% end %>
+            <%= ax_studio_group(title: "Flexibilidade e tolerâncias", actions: tag.span("Matching", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-switches ax-studio-switches ax-studio-switches--2">
+                <%= ax_switch_field(form: f, method: :ai_property_search_allow_flexible_results, label: "Sugerir alternativas após busca sem resultados", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :ai_property_search_resilient_search_enabled, label: "Busca resiliente (sempre tentar alternativas)", class_name: "ax-switch--card") %>
+                <%= ax_switch_field(form: f, method: :ai_property_search_fuzzy_matching_enabled, label: "Aceitar nomes aproximados", class_name: "ax-switch--card") %>
+              </div>
+              <div class="property-settings-ai-metrics">
+                <%= ax_number_field(form: f, method: :ai_property_search_price_tolerance_percentage, label: "Tolerância de preço (%)", hint: "Aplicada para mais no máximo e para menos no mínimo pedidos.", min: 0, max: 30) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_fuzzy_similarity_threshold, label: "Similaridade mínima", hint: "0,30 equilibra variações e falsos positivos.", min: 0.1, max: 1, step: 0.05) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_location_fuzzy_threshold, label: "Similaridade mínima de localização", hint: "0,40 é mais conservador para cidades e bairros.", min: 0.1, max: 1, step: 0.05) %>
+              </div>
+            <% end %>
+          <% end %>
 
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-interpretation" role="tabpanel" aria-labelledby="property-settings-ai-interpretation-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Interpretação e mensagens", subtitle: "Instruções, fonte de dados e textos exibidos durante a busca.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--interpretation") do %>
-                <%= ax_field_group(title: "Instruções da IA", token: "IA", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-fields">
-                    <%= ax_text_field(
-                          form: f,
-                          method: :ai_property_search_instructions,
-                          type: :textarea,
-                          label: "Instrução principal da IA",
-                          hint: "Instrução operacional por tenant. Ex.: “entre R$ 1,5 milhão e R$ 2 milhões” deve virar faixa mínima e máxima; “apartment” deve ser normalizado para “Apartamento”. A IA também recebe um JSON seguro do catálogo preparado pelo backend para reconhecer nomes, bairros, cidades e empreendimentos. Não inclua credenciais, SQL ou dados sensíveis. A allowlist abaixo prevalece sobre o texto.",
-                          class_name: "ax-span-12",
-                          rows: 7
-                        ) %>
-                  </div>
-                <% end %>
-                <%= ax_filter_section(title: "Avançado · Parâmetros da resposta", icon: "sliders", open: @property_setting.errors.any?) do %>
-                <%= ax_field_group(title: "Parâmetros da resposta", token: "OpenAI", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-fields">
-                    <%= ax_number_field(form: f, method: :ai_property_search_temperature, label: "Variação da resposta (Temperature)", hint: "Padrão conservador: 0,20.", class_name: "ax-span-3", min: 0, max: 2, step: 0.01) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_top_p, label: "Diversidade (Top P)", hint: "Padrão: 0,80.", class_name: "ax-span-3", min: 0, max: 1, step: 0.01) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_frequency_penalty, label: "Repetições (Frequency penalty)", hint: "Padrão: 0,50.", class_name: "ax-span-3", min: -2, max: 2, step: 0.01) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_presence_penalty, label: "Novos termos (Presence penalty)", hint: "Padrão: 0,20.", class_name: "ax-span-3", min: -2, max: 2, step: 0.01) %>
-                  </div>
-                <% end %>
-                <% end %>
-                <%= ax_field_group(title: "Consulta e mensagens", token: "Execução", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-fields">
-                    <%= ax_select_field(form: f, method: :ai_property_search_data_source, label: "Fonte de dados", choices: PropertySetting::AI_PROPERTY_SEARCH_DATA_SOURCES.map { |value| [value.humanize, value] }, class_name: "ax-span-4") %>
-                    <%= ax_select_field(form: f, method: :ai_property_search_default_sort, label: "Ordenação padrão", choices: PropertySetting::AI_PROPERTY_SEARCH_SORTS.map { |value| [value.humanize, value] }, class_name: "ax-span-4") %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_max_results, label: "Máximo de resultados", class_name: "ax-span-4", min: 1, max: 100) %>
-                    <%= ax_text_field(form: f, method: :ai_property_search_welcome_message, label: "Mensagem inicial", class_name: "ax-span-12") %>
-                    <%= ax_text_field(form: f, method: :ai_property_search_processing_message, label: "Mensagem durante o processamento", class_name: "ax-span-6") %>
-                    <%= ax_text_field(form: f, method: :ai_property_search_no_results_message, label: "Mensagem sem resultados", class_name: "ax-span-6") %>
-                  </div>
-                <% end %>
-              <% end %>
-            </section>
+        <%= ax_studio_section(id: "property-settings-ai-context", icon: "diagram-3", title: "Contexto do catálogo", subtitle: "Quantidade de termos enviados para apoiar interpretação e transcrição.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--context") do %>
+            <%= ax_studio_group(title: "Transcrição de áudio", actions: tag.span("Voice", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-switches ax-studio-switches ax-studio-switches--2">
+                <%= ax_switch_field(form: f, method: :ai_property_search_transcription_vocabulary_enabled, label: "Vocabulário do catálogo na transcrição de áudio", class_name: "ax-switch--card") %>
+              </div>
+              <small class="ax-field__hint">Envia cidades, bairros e empreendimentos da conta para a transcrição reconhecer nomes falados com mais exatidão.</small>
+            <% end %>
+            <%= ax_studio_group(title: "Profundidade do contexto do catálogo", actions: tag.span("JSON", class: "ax-badge ax-badge--gray"), class_name: "property-settings-ai-search-group") do %>
+              <div class="property-settings-ai-fields">
+                <%= ax_number_field(form: f, method: :ai_property_search_catalog_property_types_limit, label: "Tipos de imóvel no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_catalog_cities_limit, label: "Cidades no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_catalog_neighborhoods_limit, label: "Bairros no contexto", hint: "Padrão atual: 18.", class_name: "ax-span-4", min: 1, max: 80) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_catalog_developments_limit, label: "Empreendimentos no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_catalog_feature_terms_limit, label: "Características e lazer", hint: "Padrão atual: 20.", class_name: "ax-span-4", min: 1, max: 100) %>
+                <%= ax_number_field(form: f, method: :ai_property_search_catalog_alias_names_limit, label: "Aliases por empreendimento", hint: "Padrão atual: 5.", class_name: "ax-span-4", min: 1, max: 20) %>
+              </div>
+            <% end %>
+          <% end %>
 
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-scope" role="tabpanel" aria-labelledby="property-settings-ai-scope-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Abrangência dos parâmetros", subtitle: "Critérios que a IA pode reconhecer e quanto o backend pode relaxar quando não encontra correspondência.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--scope") do %>
-                <%= ax_field_group(title: "Campos de busca", token: "Permissões", class_name: "property-settings-ai-search-group") do %>
-                  <fieldset class="property-settings-ai-options"><legend>Campos permitidos para busca</legend><div class="ax-chip-grid"><%= f.collection_check_boxes :ai_property_search_allowed_fields, PropertySetting::AI_PROPERTY_SEARCH_FIELD_OPTIONS.to_a, :first, :last do |item| %><%= item.label(class: "ax-toggle-chip") { item.check_box + tag.span(item.text) } %><% end %></div></fieldset>
-                <% end %>
-                <%= ax_field_group(title: "Reconhecimento por catálogo", token: "Catálogo", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-switches">
-                    <%= ax_toggle_chip(f, :ai_property_search_development_name_enabled, label: "Buscar pelo nome do empreendimento") %>
-                    <%= ax_toggle_chip(f, :ai_property_search_developer_name_enabled, label: "Buscar por incorporadora") %>
-                    <%= ax_toggle_chip(f, :ai_property_search_development_aliases_enabled, label: "Considerar nomes comerciais alternativos") %>
-                    <%= ax_toggle_chip(f, :ai_property_search_search_by_characteristics_enabled, label: "Identificar por características") %>
-                  </div>
-                <% end %>
-                <%= ax_field_group(title: "Flexibilidade e tolerâncias", token: "Matching", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-switches">
-                    <%= ax_toggle_chip(f, :ai_property_search_allow_flexible_results, label: "Sugerir alternativas após busca sem resultados") %>
-                    <%= ax_toggle_chip(f, :ai_property_search_resilient_search_enabled, label: "Busca resiliente (sempre tentar alternativas)") %>
-                    <%= ax_toggle_chip(f, :ai_property_search_fuzzy_matching_enabled, label: "Aceitar nomes aproximados") %>
-                  </div>
-                  <div class="property-settings-ai-metrics">
-                    <%= ax_number_field(form: f, method: :ai_property_search_price_tolerance_percentage, label: "Tolerância de preço (%)", hint: "Aplicada para mais no máximo e para menos no mínimo pedidos.", min: 0, max: 30) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_fuzzy_similarity_threshold, label: "Similaridade mínima", hint: "0,30 equilibra variações e falsos positivos.", min: 0.1, max: 1, step: 0.05) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_location_fuzzy_threshold, label: "Similaridade mínima de localização", hint: "0,40 é mais conservador para cidades e bairros.", min: 0.1, max: 1, step: 0.05) %>
-                  </div>
-                <% end %>
-              <% end %>
-            </section>
+        <%= ax_studio_section(id: "property-settings-ai-access", icon: "shield-lock", title: "Acesso e resultado", subtitle: "Perfis autorizados e informações visíveis nos cards do PWA.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--access") do %>
+            <%= ax_studio_group(title: "Campos visíveis nos cards", subtitle: "Informações mostradas em cada imóvel do resultado, no PWA.", actions: tag.span("Resultado", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_check_group(form: f, method: :ai_property_search_result_fields, choices: PropertySetting::AI_PROPERTY_SEARCH_RESULT_FIELD_OPTIONS.to_a) %>
+            <% end %>
+            <%= ax_studio_group(title: "Disponibilidade por perfil", subtitle: "Quem pode usar a busca inteligente.", actions: tag.span("Permissões", class: "ax-badge ax-badge--gray")) do %>
+              <%= ax_check_group(form: f, method: :ai_property_search_allowed_profiles, choices: PropertySetting::AI_PROPERTY_SEARCH_PROFILE_OPTIONS.to_a) %>
+            <% end %>
+            <%= ax_inline_notice(tone: :info, icon: "shield-lock", compact: true) do %>
+              O áudio original não é persistido. O histórico guarda apenas transcrição, filtros, contagem e tempos quando ativado.
+            <% end %>
+          <% end %>
 
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-context" role="tabpanel" aria-labelledby="property-settings-ai-context-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Contexto do catálogo", subtitle: "Quantidade de termos enviados para apoiar interpretação e transcrição.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--context") do %>
-                <%= ax_field_group(title: "Transcrição de áudio", token: "Voice", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-switches">
-                    <%= ax_toggle_chip(f, :ai_property_search_transcription_vocabulary_enabled, label: "Vocabulário do catálogo na transcrição de áudio") %>
-                  </div>
-                  <small class="ax-field__hint">Envia cidades, bairros e empreendimentos da conta para a transcrição reconhecer nomes falados com mais exatidão.</small>
-                <% end %>
-                <%= ax_field_group(title: "Profundidade do contexto do catálogo", token: "JSON", class_name: "property-settings-ai-search-group") do %>
-                  <div class="property-settings-ai-fields">
-                    <%= ax_number_field(form: f, method: :ai_property_search_catalog_property_types_limit, label: "Tipos de imóvel no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_catalog_cities_limit, label: "Cidades no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_catalog_neighborhoods_limit, label: "Bairros no contexto", hint: "Padrão atual: 18.", class_name: "ax-span-4", min: 1, max: 80) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_catalog_developments_limit, label: "Empreendimentos no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_catalog_feature_terms_limit, label: "Características e lazer", hint: "Padrão atual: 20.", class_name: "ax-span-4", min: 1, max: 100) %>
-                    <%= ax_number_field(form: f, method: :ai_property_search_catalog_alias_names_limit, label: "Aliases por empreendimento", hint: "Padrão atual: 5.", class_name: "ax-span-4", min: 1, max: 20) %>
-                  </div>
-                <% end %>
-              <% end %>
-            </section>
+        <%= ax_studio_section(id: "property-settings-ai-aliases", icon: "tags", title: "Nomes alternativos de empreendimentos", subtitle: "Cadastre nomes comerciais e variações usadas pelos corretores.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--aliases") do %>
+            <%= ax_studio_group(title: "Nomes cadastrados", subtitle: "A IA reconhece essas variações como o mesmo empreendimento.",
+                                actions: tag.button(safe_join([tag.i(class: "bi bi-plus-lg ax-ico"), " Adicionar nomes"]), type: "button", class: "ax-btn ax-btn--primary ax-btn--sm", data: { ax_modal_open: "newDevelopmentAliasModal" })) do %>
+              <%= render "admin/development_aliases/list", aliases: @development_aliases %>
+            <% end %>
+          <% end %>
 
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-access" role="tabpanel" aria-labelledby="property-settings-ai-access-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Acesso e resultado", subtitle: "Perfis autorizados e informações visíveis nos cards do PWA.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--access") do %>
-                <fieldset class="property-settings-ai-options"><legend>Campos visíveis nos cards</legend><div class="ax-chip-grid"><%= f.collection_check_boxes :ai_property_search_result_fields, PropertySetting::AI_PROPERTY_SEARCH_RESULT_FIELD_OPTIONS.to_a, :first, :last do |item| %><%= item.label(class: "ax-toggle-chip") { item.check_box + tag.span(item.text) } %><% end %></div></fieldset>
-                <fieldset class="property-settings-ai-options"><legend>Disponibilidade por perfil</legend><div class="ax-chip-grid"><%= f.collection_check_boxes :ai_property_search_allowed_profiles, PropertySetting::AI_PROPERTY_SEARCH_PROFILE_OPTIONS.to_a, :first, :last do |item| %><%= item.label(class: "ax-toggle-chip") { item.check_box + tag.span(item.text) } %><% end %></div></fieldset>
-                <%= ax_inline_notice(tone: :info, icon: "shield-lock", compact: true) do %>
-                  O áudio original não é persistido. O histórico guarda apenas transcrição, filtros, contagem e tempos quando ativado.
-                <% end %>
-              <% end %>
-            </section>
-
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-aliases" role="tabpanel" aria-labelledby="property-settings-ai-aliases-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Nomes alternativos de empreendimentos", subtitle: "Cadastre nomes comerciais e variações usadas pelos corretores.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--aliases") do %>
-                <div>
-                  <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-ax-modal-open="newDevelopmentAliasModal">Adicionar nomes alternativos</button>
+        <%= ax_studio_section(id: "property-settings-ai-sharing", icon: "share", title: "Compartilhamento e conversão", subtitle: "Configure a seleção enviada pelo corretor, identificação do visitante e mensagens operacionais.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--sharing") do %>
+            <%= ax_studio_group(title: "Compartilhamento de seleções", subtitle: "O corretor envia ao cliente uma página com os imóveis escolhidos na busca.") do %>
+              <%= ax_switch_field(form: f, method: :ai_property_search_sharing_enabled, label: "Permitir compartilhar seleções", class_name: "ax-switch--card") %>
+            <% end %>
+            <div class="property-settings-sharing-groups">
+              <%= ax_studio_group(title: "Seleção e validade", actions: tag.span("Compartilhamento", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_number_field(form: f, method: :ai_property_search_share_max_properties, label: "Máximo de imóveis por seleção", class_name: "ax-span-4", min: 1, max: 100) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_share_expiration_days, label: "Validade do link (dias)", class_name: "ax-span-4", min: 1, max: 365) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_visitor_recognition_days, label: "Reconhecer visitante por (dias)", class_name: "ax-span-4", min: 1, max: 730) %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_title, label: "Título ao compartilhar", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_message, label: "Mensagem ao compartilhar", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
                 </div>
-                <%= render "admin/development_aliases/list", aliases: @development_aliases %>
               <% end %>
-            </section>
 
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-sharing" role="tabpanel" aria-labelledby="property-settings-ai-sharing-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Compartilhamento e conversão", subtitle: "Configure a seleção enviada pelo corretor, identificação do visitante e mensagens operacionais.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--sharing") do %>
-                <div class="property-settings-ai-switches"><%= ax_toggle_chip(f, :ai_property_search_sharing_enabled, label: "Permitir compartilhar seleções") %></div>
-                <div class="property-settings-sharing-groups">
-                  <%= ax_field_group(title: "Seleção e validade", token: "Compartilhamento", class_name: "property-settings-sharing-group") do %>
-                    <div class="property-settings-ai-fields">
-                      <%= ax_number_field(form: f, method: :ai_property_search_share_max_properties, label: "Máximo de imóveis por seleção", class_name: "ax-span-4", min: 1, max: 100) %>
-                      <%= ax_number_field(form: f, method: :ai_property_search_share_expiration_days, label: "Validade do link (dias)", class_name: "ax-span-4", min: 1, max: 365) %>
-                      <%= ax_number_field(form: f, method: :ai_property_search_visitor_recognition_days, label: "Reconhecer visitante por (dias)", class_name: "ax-span-4", min: 1, max: 730) %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_share_title, label: "Título ao compartilhar", class_name: "ax-span-4") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_share_message, label: "Mensagem ao compartilhar", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
+              <%= ax_studio_group(title: "Página pública", actions: tag.span("Conteúdo", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_eyebrow, label: "Chamada da página pública", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_title, label: "Título da página pública", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_description, label: "Descrição da página pública", class_name: "ax-span-12") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_view_property_label, label: "Botão para visualizar", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_button_label, label: "Botão de interesse", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+
+              <%= ax_studio_group(title: "Identificação e lead", actions: tag.span("Conversão", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_title, label: "Título da identificação", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_description, label: "Texto da identificação", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_name_label, label: "Campo nome", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_phone_label, label: "Campo telefone", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_submit_label, label: "Confirmar identificação", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_cancel_label, label: "Cancelar identificação", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_success_message, label: "Mensagem de interesse registrado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_lead_origin, label: "Origem do lead", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+
+              <%= ax_studio_group(title: "Mensagens operacionais", actions: tag.span("Corretor", class: "ax-badge ax-badge--gray"), class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_panel_title, label: "Título do bloco do corretor", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_event_message, label: "Mensagem do interesse", hint: "Use %{name} para o nome do lead.", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_selection_count_message, label: "Contador da seleção", hint: "Use %{count}.", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_button_label, label: "Botão compartilhar", class_name: "ax-span-4") %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_broker_events_limit, label: "Máximo de avisos ao corretor", class_name: "ax-span-4", min: 1, max: 20) %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_link_copied_message, label: "Link copiado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_sharing_disabled_message, label: "Compartilhamento desativado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_error_message, label: "Erro ao compartilhar", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_error_message, label: "Erro ao registrar interesse", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_event_meta, label: "Resumo agrupado ao corretor", hint: "Use %{count}.", class_name: "ax-span-12") %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+        <%= ax_studio_section(id: "property-settings-ai-learning", icon: "mortarboard", title: "Aprendizado supervisionado", subtitle: "Sinais do histórico para revisão administrativa antes de qualquer ajuste.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--learning") do %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= number_with_delimiter(@ai_learning_metrics[:total]) %></strong><div class="tw-text-sm tw-text-ink-muted">Buscas registradas</div></div></div>
+              <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= number_with_delimiter(@ai_learning_metrics[:no_results]) %></strong><div class="tw-text-sm tw-text-ink-muted">Sem resultado recente</div></div></div>
+              <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= number_with_delimiter(@ai_learning_metrics[:selected]) %></strong><div class="tw-text-sm tw-text-ink-muted">Com imóvel selecionado</div></div></div>
+              <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= @ai_learning_metrics[:average_processing_time_ms] ? "#{@ai_learning_metrics[:average_processing_time_ms]} ms" : "n/d" %></strong><div class="tw-text-sm tw-text-ink-muted">Tempo médio recente</div></div></div>
+            <% end %>
+
+            <div class="property-settings-learning-grid">
+              <%= ax_studio_group(title: "Termos candidatos", actions: tag.span("Revisão", class: "ax-badge ax-badge--gray"), class_name: "property-settings-learning-group") do %>
+                <div class="property-settings-alias-list">
+                  <% @ai_learning_candidate_terms.each do |term, count| %>
+                    <div class="property-settings-alias-item">
+                      <span><strong><%= term %></strong><small><%= pluralize(count, "ocorrência") %> sem resultado no histórico recente</small></span>
+                      <%= ax_badge("revisar", tone: :amber) %>
                     </div>
                   <% end %>
-
-                  <%= ax_field_group(title: "Página pública", token: "Conteúdo", class_name: "property-settings-sharing-group") do %>
-                    <div class="property-settings-ai-fields">
-                      <%= ax_text_field(form: f, method: :ai_property_search_public_eyebrow, label: "Chamada da página pública", class_name: "ax-span-4") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_public_title, label: "Título da página pública", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_public_description, label: "Descrição da página pública", class_name: "ax-span-12") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_view_property_label, label: "Botão para visualizar", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_interest_button_label, label: "Botão de interesse", class_name: "ax-span-6") %>
-                    </div>
-                  <% end %>
-
-                  <%= ax_field_group(title: "Identificação e lead", token: "Conversão", class_name: "property-settings-sharing-group") do %>
-                    <div class="property-settings-ai-fields">
-                      <%= ax_text_field(form: f, method: :ai_property_search_identity_title, label: "Título da identificação", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_identity_description, label: "Texto da identificação", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_identity_name_label, label: "Campo nome", class_name: "ax-span-3") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_identity_phone_label, label: "Campo telefone", class_name: "ax-span-3") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_identity_submit_label, label: "Confirmar identificação", class_name: "ax-span-3") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_identity_cancel_label, label: "Cancelar identificação", class_name: "ax-span-3") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_interest_success_message, label: "Mensagem de interesse registrado", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_lead_origin, label: "Origem do lead", class_name: "ax-span-6") %>
-                    </div>
-                  <% end %>
-
-                  <%= ax_field_group(title: "Mensagens operacionais", token: "Corretor", class_name: "property-settings-sharing-group") do %>
-                    <div class="property-settings-ai-fields">
-                      <%= ax_text_field(form: f, method: :ai_property_search_broker_panel_title, label: "Título do bloco do corretor", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_broker_event_message, label: "Mensagem do interesse", hint: "Use %{name} para o nome do lead.", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_selection_count_message, label: "Contador da seleção", hint: "Use %{count}.", class_name: "ax-span-4") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_share_button_label, label: "Botão compartilhar", class_name: "ax-span-4") %>
-                      <%= ax_number_field(form: f, method: :ai_property_search_broker_events_limit, label: "Máximo de avisos ao corretor", class_name: "ax-span-4", min: 1, max: 20) %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_link_copied_message, label: "Link copiado", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_sharing_disabled_message, label: "Compartilhamento desativado", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_share_error_message, label: "Erro ao compartilhar", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_interest_error_message, label: "Erro ao registrar interesse", class_name: "ax-span-6") %>
-                      <%= ax_text_field(form: f, method: :ai_property_search_broker_event_meta, label: "Resumo agrupado ao corretor", hint: "Use %{count}.", class_name: "ax-span-12") %>
-                    </div>
+                  <% if @ai_learning_candidate_terms.empty? %>
+                    <%= ax_empty_state(title: "Sem candidatos no histórico recente", description: "Ative o histórico operacional para alimentar esta análise.", icon: "graph-up", compact: true) %>
                   <% end %>
                 </div>
               <% end %>
-            </section>
 
-            <section class="ax-form-tabs__panel property-settings-ai-subtab-panel" id="property-settings-ai-learning" role="tabpanel" aria-labelledby="property-settings-ai-learning-tab" aria-hidden="true" tabindex="0" hidden>
-              <%= ax_panel(title: "Aprendizado supervisionado", subtitle: "Sinais do histórico para revisão administrativa antes de qualquer ajuste.", class_name: "ax-panel--settings property-settings-ai-panel property-settings-ai-panel--learning") do %>
-                <%= ax_field_grid do %>
-                  <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= number_with_delimiter(@ai_learning_metrics[:total]) %></strong><div class="tw-text-sm tw-text-ink-muted">Buscas registradas</div></div></div>
-                  <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= number_with_delimiter(@ai_learning_metrics[:no_results]) %></strong><div class="tw-text-sm tw-text-ink-muted">Sem resultado recente</div></div></div>
-                  <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= number_with_delimiter(@ai_learning_metrics[:selected]) %></strong><div class="tw-text-sm tw-text-ink-muted">Com imóvel selecionado</div></div></div>
-                  <div class="ax-span-3"><div class="integration-stat-tile"><strong><%= @ai_learning_metrics[:average_processing_time_ms] ? "#{@ai_learning_metrics[:average_processing_time_ms]} ms" : "n/d" %></strong><div class="tw-text-sm tw-text-ink-muted">Tempo médio recente</div></div></div>
-                <% end %>
-
-                <div class="property-settings-learning-grid">
-                  <%= ax_field_group(title: "Termos candidatos", token: "Revisão", class_name: "property-settings-learning-group") do %>
-                    <div class="property-settings-alias-list">
-                      <% @ai_learning_candidate_terms.each do |term, count| %>
-                        <div class="property-settings-alias-item">
-                          <span><strong><%= term %></strong><small><%= pluralize(count, "ocorrência") %> sem resultado no histórico recente</small></span>
-                          <%= ax_badge("revisar", tone: :amber) %>
-                        </div>
-                      <% end %>
-                      <% if @ai_learning_candidate_terms.empty? %>
-                        <%= ax_empty_state(title: "Sem candidatos no histórico recente", description: "Ative o histórico operacional para alimentar esta análise.", icon: "graph-up", compact: true) %>
-                      <% end %>
+              <%= ax_studio_group(title: "Buscas recentes", actions: tag.span("Histórico", class: "ax-badge ax-badge--gray"), class_name: "property-settings-learning-group") do %>
+                <div class="property-settings-alias-list">
+                  <% @ai_learning_recent_histories.each do |history| %>
+                    <div class="property-settings-alias-item">
+                      <span>
+                        <strong><%= history.transcription.to_s.squish.presence || "Busca sem transcrição" %></strong>
+                        <small><%= history.status %> · <%= pluralize(history.result_count.to_i, "resultado") %> · <%= l(history.created_at, format: :short) %></small>
+                      </span>
+                      <%= ax_badge(history.selected_habitation_id.present? ? "selecionada" : "observada", tone: history.selected_habitation_id.present? ? :green : :gray) %>
                     </div>
                   <% end %>
-
-                  <%= ax_field_group(title: "Buscas recentes", token: "Histórico", class_name: "property-settings-learning-group") do %>
-                    <div class="property-settings-alias-list">
-                      <% @ai_learning_recent_histories.each do |history| %>
-                        <div class="property-settings-alias-item">
-                          <span>
-                            <strong><%= history.transcription.to_s.squish.presence || "Busca sem transcrição" %></strong>
-                            <small><%= history.status %> · <%= pluralize(history.result_count.to_i, "resultado") %> · <%= l(history.created_at, format: :short) %></small>
-                          </span>
-                          <%= ax_badge(history.selected_habitation_id.present? ? "selecionada" : "observada", tone: history.selected_habitation_id.present? ? :green : :gray) %>
-                        </div>
-                      <% end %>
-                      <% if @ai_learning_recent_histories.empty? %>
-                        <%= ax_empty_state(title: "Nenhuma busca registrada", description: "O histórico não guarda áudio, apenas transcrição, filtros, contagem e tempos.", icon: "clock-history", compact: true) %>
-                      <% end %>
-                    </div>
+                  <% if @ai_learning_recent_histories.empty? %>
+                    <%= ax_empty_state(title: "Nenhuma busca registrada", description: "O histórico não guarda áudio, apenas transcrição, filtros, contagem e tempos.", icon: "clock-history", compact: true) %>
                   <% end %>
                 </div>
               <% end %>
-            </section>
-          </div>
-        </div>
-      </section>
+            </div>
+          <% end %>
+
+      </div>
     </div>
 
-    <%= ax_sticky_action_footer(
-          meta: safe_join([tag.i(class: "bi bi-shield-check"), tag.span("Configuração isolada por conta")], " "),
-          class_name: "property-settings-action-footer"
-        ) do %>
-      <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
-      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-    <% end %>
+    <%= ax_studio_savebar(form: f, cancel_path: admin_root_path) %>
   <% end %>
   <%= render "admin/development_aliases/modal", developments: @ai_search_developments %>
 </div>

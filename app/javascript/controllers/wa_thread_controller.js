@@ -7,6 +7,7 @@ export default class extends Controller {
   static values = {
     last: Number,
     conversationId: Number,
+    contextUrl: String,
     focusMode: Boolean,
     statusCursor: String
   }
@@ -24,6 +25,8 @@ export default class extends Controller {
     this.cableConnected = false
     this.recoveryAttempt = 0
     this.lastServerActivityAt = Date.now()
+    this.handleAttendanceChanged = (event) => this.refreshContext(event.detail)
+    window.addEventListener("wa:attendance-changed", this.handleAttendanceChanged)
     window.addEventListener("wa:message-submitting", this.handleSubmittingMessage)
     window.addEventListener("wa:message-sent", this.handleSentMessage)
     window.addEventListener("wa:message-send-failed", this.handleFailedMessage)
@@ -47,6 +50,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    window.removeEventListener("wa:attendance-changed", this.handleAttendanceChanged)
     window.removeEventListener("wa:message-submitting", this.handleSubmittingMessage)
     window.removeEventListener("wa:message-sent", this.handleSentMessage)
     window.removeEventListener("wa:message-send-failed", this.handleFailedMessage)
@@ -379,6 +383,71 @@ export default class extends Controller {
     this.syncServiceWindowGate(message)
     this.syncQueue(message)
     this.scrollBottom({ force: true })
+  }
+
+  // Ações do painel de contexto (finalizar, anotar, tarefas) sem recarregar a tela:
+  // envia o formulário por fetch, segue o redirect e troca só o painel com o HTML devolvido.
+  async contextSubmit(event) {
+    const form = event.target.closest("form[data-wa-context-form]")
+    if (!form) return
+
+    event.preventDefault()
+    if (form.dataset.waConfirm && !window.confirm(form.dataset.waConfirm)) return
+
+    const buttons = [...form.querySelectorAll("button, input[type='submit']")]
+    buttons.forEach((button) => { button.disabled = true })
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: { "X-CSRF-Token": document.querySelector("meta[name='csrf-token']")?.content || "", Accept: "text/html" },
+        credentials: "same-origin",
+        redirect: "follow"
+      })
+      const doc = new DOMParser().parseFromString(await response.text(), "text/html")
+      const context = doc.querySelector("[data-wa-thread-target='context']")
+      if (!response.ok) return window.location.reload()
+      if (!context) return window.location.assign(response.url) // ex.: transferiu e perdeu o acesso: volta para a fila
+
+      this.closeModalsAround(form)
+      if (this.hasContextTarget) this.contextTarget.innerHTML = context.innerHTML
+      this.showFlash(doc)
+    } catch (_error) {
+      window.location.reload()
+    } finally {
+      buttons.forEach((button) => { if (button.isConnected) button.disabled = false })
+    }
+  }
+
+  // Atendimento mudou de dono/estado em outro lugar: atualiza o painel da direita desta conversa.
+  async refreshContext({ conversation_id, visible }) {
+    if (Number(conversation_id) !== this.conversationIdValue || !this.hasContextTarget) return
+    if (!visible) {
+      this.contextTarget.innerHTML = "<p class='wa-inbox-thread__work-empty'>Este atendimento foi transferido e não está mais na sua fila.</p>"
+      return
+    }
+    // Não atropela uma anotação que está sendo digitada.
+    const active = document.activeElement
+    if (this.contextTarget.contains(active) && active.value) return
+
+    try {
+      const response = await fetch(this.contextUrlValue, { headers: { Accept: "text/html" }, credentials: "same-origin" })
+      if (response.ok) this.contextTarget.innerHTML = await response.text()
+    } catch (_error) { /* mantém o painel atual */ }
+  }
+
+  closeModalsAround(form) {
+    form.closest("[data-controller~='ax-modal']")?.dispatchEvent(new CustomEvent("ax-modal:close"))
+  }
+
+  // O redirect consome o flash no servidor; reexibimos o mesmo aviso (sucesso/alerta) aqui.
+  showFlash(doc) {
+    const stack = doc.querySelector(".ax-flash-toast-stack")
+    if (!stack) return
+
+    document.querySelectorAll(".ax-flash-toast-stack").forEach((el) => el.remove())
+    document.body.append(stack)
+    setTimeout(() => stack.remove(), 6000)
   }
 
   syncContext(payload) {

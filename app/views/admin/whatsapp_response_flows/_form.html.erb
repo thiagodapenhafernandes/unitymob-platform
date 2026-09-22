@@ -1,0 +1,112 @@
+<%
+  content_for :admin_contextbar_title, flow.persisted? ? "Editar fluxo" : "Novo fluxo"
+  content_for :admin_contextbar_actions do %>
+    <%= link_to admin_whatsapp_response_flows_path, class: "ax-contextbar__button" do %>
+      <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+    <% end %>
+  <% end
+
+  editing = flow.persisted?
+  template_present = flow.whatsapp_template.present?
+  day_options = [
+    ["Seg", "mon"], ["Ter", "tue"], ["Qua", "wed"], ["Qui", "thu"],
+    ["Sex", "fri"], ["Sáb", "sat"], ["Dom", "sun"]
+  ]
+%>
+
+<div class="whatsapp-response-flow-form"
+     data-controller="whatsapp-response-flow"
+     data-whatsapp-response-flow-rule-agents-value="<%= json_escape((@distribution_rule_agent_options || {}).to_json) %>"
+     data-whatsapp-response-flow-new-url-value="<%= new_admin_whatsapp_response_flow_path %>"
+     data-whatsapp-response-flow-default-reply-value="<%= WhatsappResponseFlow::DEFAULT_AUTO_REPLY_MESSAGE %>"
+     data-whatsapp-response-flow-default-outside-value="<%= WhatsappResponseFlow::DEFAULT_OUTSIDE_HOURS_MESSAGE %>"
+     data-action="input->whatsapp-response-flow#refreshProgress change->whatsapp-response-flow#refreshProgress focusin->whatsapp-response-flow#focusStep">
+  <%= form_with model: [:admin, flow], local: true, class: "ax-guided" do |f| %>
+    <%= hidden_field_tag :whatsapp_sender_number_id, @receptive_sender_number.id if @receptive_sender_number.present? %>
+
+    <% if flow.errors.any? %>
+      <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %>
+        <%= flow.errors.full_messages.to_sentence %>
+      <% end %>
+    <% end %>
+
+    <%= ax_guided_header(controller: "whatsapp-response-flow", icon: "bi-diagram-3",
+                 title: (editing ? "Ajuste seu fluxo de resposta" : "Vamos criar seu fluxo de resposta"),
+                 subtitle: "Diga o que acontece quando o cliente clica em cada botão do seu template. Você confere o resultado ao lado.",
+                 steps: [["Template", "bi-grid-3x2-gap"], ["Quando vale", "bi-toggle2-on"], ["Botões", "bi-hand-index"], ["Salvar", "bi-check2-circle"]]) %>
+
+    <div class="ax-guided-layout <%= "ax-guided-layout--single" unless template_present %>">
+      <div class="ax-guided-steps">
+        <%= ax_guided_step(number: 1, color: :blue, title: "Qual template vamos usar?", subtitle: "Os botões do template aprovado viram as decisões deste fluxo.") do %>
+          <div class="ax-guided-grid">
+            <div class="ax-field">
+              <% if editing %>
+                <%# O template é escolhido só na criação: depois não muda (as decisões dependem dos botões dele). %>
+                <%= f.hidden_field :whatsapp_template_id %>
+                <%= ax_standalone_field(name: nil, id: "response_flow_template_name", label: "Template aprovado", value: flow.whatsapp_template&.name, readonly: true,
+                                        hint: "Fixo depois de criado, porque as decisões dependem dos botões dele.") %>
+              <% else %>
+                <%= ax_autocomplete_select_field(form: f, method: :whatsapp_template_id, label: "Template aprovado",
+                                                 choices: (@templates || []).map { |template| [template.name, template.id] },
+                                                 select_options: { prompt: "Selecione um template aprovado" },
+                                                 html_options: { data: { action: "change->whatsapp-response-flow#changeTemplate" } },
+                                                 placeholder: "Selecione um template aprovado") %>
+                <p class="ax-field__hint">Só aparecem templates aprovados para fluxo de resposta ou atendimento. Ao escolher, os botões aparecem abaixo.</p>
+              <% end %>
+            </div>
+            <%= ax_text_field(form: f, method: :name, label: "Nome do fluxo", placeholder: "Ex: Menu principal Salute", hint: "Só a equipe vê. Ajuda a achar o fluxo na listagem.") %>
+          </div>
+        <% end %>
+
+        <%= ax_guided_step(number: 2, color: :violet, title: "Quando este fluxo vale?", subtitle: "Ligue ou desligue e escolha se ele atende o número receptivo.") do %>
+          <%= ax_switch_field(form: f, method: :active, label: "Fluxo ativo", class_name: "ax-switch--card",
+                              description: "Desligado, o fluxo não interpreta nenhum clique.") %>
+          <% if @receptive_sender_number.present? %>
+            <%= ax_switch_field(name: "set_as_receptive_for_sender", value: "1", checked: @set_as_receptive_for_sender, class_name: "ax-switch--card",
+                                label: "Usar como receptivo do número #{@receptive_sender_number.display_label}",
+                                description: "Quando alguém escrever para este número, é este fluxo que envia o menu e interpreta os cliques. A Meta aprova o template; aqui você define qual fluxo responde.") %>
+          <% end %>
+        <% end %>
+
+        <%= ax_guided_step(number: 3, color: :green, title: "O que acontece em cada botão?", subtitle: "Comece simples: registrar, responder ou enviar para a fila. Use automação quando precisar de uma conversa.") do %>
+          <% if template_present %>
+            <%= render "admin/whatsapp_response_flows/button_map",
+                       collapsed: flow.errors.none?,
+                       buttons: flow.whatsapp_template.interactive_buttons,
+                       decisions: flow.button_actions,
+                       distribution_rules: @distribution_rules,
+                       distribution_rule_agent_options: @distribution_rule_agent_options,
+                       user_options: @user_options,
+                       automation_options: @automation_workflow_options,
+                       new_automation_path: (admin_new_automation_workflow_entry_path(whatsapp_template_id: flow.whatsapp_template_id) if flow.whatsapp_template_id),
+                       day_options: day_options,
+                       empty_message: "Este template não possui botões de resposta rápida para mapear." %>
+          <% else %>
+            <%= ax_empty_state(title: "Selecione um template aprovado", description: "Os botões aparecem depois que o fluxo está associado a um template.", icon: "grid-3x2-gap", compact: true) %>
+          <% end %>
+        <% end %>
+
+        <%= ax_guided_review(number: 4, title: "Tudo certo para salvar?", subtitle: "Confira o resumo. Você pode voltar e ajustar quando quiser.",
+                             submit_label: "Salvar fluxo", submit_icon: "bi-check2", cancel_path: admin_whatsapp_response_flows_path,
+                             checks: [["template", "Template escolhido"], ["name", "Nome do fluxo"], ["buttons", "Botões configurados"]]) %>
+      </div>
+
+      <% if template_present %>
+        <aside class="ax-guided-aside" aria-label="Simulação do receptivo">
+          <div class="ax-guided-aside__label"><span>Simulação do receptivo</span></div>
+          <div class="whatsapp-response-simulator">
+            <header class="whatsapp-response-simulator__head">
+              <span>Cliente clicou em</span>
+              <strong data-whatsapp-response-flow-target="simTitle">Selecione um botão</strong>
+            </header>
+            <div class="whatsapp-response-simulator__template" data-whatsapp-response-flow-target="preview">
+              <%= render "admin/shared/ui/whatsapp_message_preview", template: flow.whatsapp_template %>
+            </div>
+            <div class="whatsapp-response-simulator__thread" data-whatsapp-response-flow-target="thread" aria-live="polite"></div>
+          </div>
+          <p class="ax-guided-aside__hint">Muda conforme você configura cada botão.</p>
+        </aside>
+      <% end %>
+    </div>
+  <% end %>
+</div>

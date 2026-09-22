@@ -8,8 +8,10 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
     @sender_number = selected_sender_number(allow_default: false)
     @filters = template_filters
     @templates = selected_template_scope ? apply_filters(selected_template_scope.ordered).paginate(page: params[:page], per_page: 25) : WhatsappTemplate.none.paginate(page: params[:page], per_page: 25)
-    @approved_count = selected_template_scope&.where(status: "APPROVED")&.count || 0
-    @pending_count = selected_template_scope&.where(status: "PENDING")&.count || 0
+    @status_counts = selected_template_scope ? selected_template_scope.group(:status).count.transform_keys { |status| status.to_s.upcase } : {}
+    @total_count = @status_counts.values.sum
+    @approved_count = @status_counts.fetch("APPROVED", 0)
+    @pending_count = @status_counts.fetch("PENDING", 0)
     @page_title = "Templates WhatsApp"
   end
 
@@ -78,10 +80,15 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   end
 
   def update
-    @template.assign_attributes(template_params)
+    attributes = template_params
+    # Nome e idioma são imutáveis na Meta: em template já enviado, só o conteúdo pode mudar.
+    attributes = attributes.except(:name, :language) if @template.meta_id.present?
+    @template.assign_attributes(attributes)
     @template.buttons = @template.clean_buttons
     @template.carousel_cards = @template.clean_carousel_cards
     @template.flow_config = @template.clean_flow_config
+
+    return update_on_meta if @template.meta_id.present? && @template.meta_content_changed?
 
     if @template.save
       redirect_to admin_whatsapp_template_path(@template), notice: "Template atualizado."
@@ -114,6 +121,10 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
       redirect_to admin_whatsapp_templates_path, alert: "Apenas templates aprovados podem iniciar campanha."
       return
     end
+    unless @template.usage_context == "broadcast"
+      redirect_to admin_whatsapp_templates_path, alert: "Este template está classificado para #{@template.usage_context_label.downcase}, não para disparos."
+      return
+    end
 
     redirect_to new_admin_whatsapp_campaign_path(
       whatsapp_template_id: @template.id,
@@ -123,6 +134,29 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
 
   private
 
+  # Conteúdo mudou num template que já existe na Meta: reenvia para nova análise e só grava se a Meta aceitar.
+  def update_on_meta
+    unless @template.meta_editable?
+      @template.errors.add(:base, "Este template está #{t("whatsapp_template_statuses.#{@template.status.to_s.upcase}", default: @template.status.to_s.downcase)} na Meta e não pode ser editado agora. Aguarde a análise terminar.")
+      return render_edit_failure
+    end
+
+    sender = sender_number_scope.active.find_by(waba_id: @template.waba_id)
+    client = Whatsapp::CloudClient.new(sender || WhatsappBusinessIntegration.current(current_tenant))
+    result = Whatsapp::TemplateSubmission.call(template: @template, client: client, edit: true)
+    return render_edit_failure(result[:error]) unless result[:ok]
+
+    redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: sender&.id),
+                notice: "Alterações enviadas para nova análise da Meta. O status atual aparece na listagem (#{@template.status.to_s.downcase})."
+  end
+
+  def render_edit_failure(message = nil)
+    @template_type = @template.template_type
+    @template.errors.add(:base, message) if message.present? && @template.errors.empty?
+    flash.now[:alert] = message.presence || @template.errors.full_messages.to_sentence
+    render :edit, status: :unprocessable_entity
+  end
+
   def set_template
     @template = template_scope.find(params[:id])
   end
@@ -130,6 +164,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   def build_template
     template = template_scope.new(
       template_type: @template_type.presence || "text",
+      usage_context: "broadcast",
       category: "MARKETING",
       language: "pt_BR",
       header_format: "none",
@@ -166,7 +201,8 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
       query: params[:query].to_s.strip.presence,
       status: params[:status].to_s.presence,
       category: params[:category].to_s.presence,
-      template_type: params[:template_type].to_s.presence
+      template_type: params[:template_type].to_s.presence,
+      usage_context: params[:usage_context].to_s.presence
     }.compact
   end
 
@@ -176,6 +212,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
     scope = scope.where(status: filters[:status]) if filters[:status].present?
     scope = scope.where(category: filters[:category]) if filters[:category].present?
     scope = scope.where(template_type: filters[:template_type]) if filters[:template_type].present?
+    scope = scope.where(usage_context: filters[:usage_context]) if filters[:usage_context].present?
     scope
   end
 
@@ -194,6 +231,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
       :category,
       :body,
       :template_type,
+      :usage_context,
       :allow_category_change,
       :header_format,
       :header_text,

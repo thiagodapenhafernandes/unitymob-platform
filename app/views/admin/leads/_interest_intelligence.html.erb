@@ -27,7 +27,7 @@
 
   <div class="<%= embedded ? 'tw-grid tw-gap-3' : 'ax-card__body tw-grid tw-gap-3' %>">
     <% unless enabled %>
-      <p class="ax-page-subtitle">A leitura de interesse está desativada em Identidade e Marca.</p>
+      <p class="ax-page-subtitle">A leitura de interesse está desativada em Aparência da plataforma.</p>
     <% else %>
       <div class="lead-interest-metrics">
         <span><strong><%= journey[:viewed_count] %></strong><small>imóveis vistos <%= ax_help_tooltip(text: "Imóveis distintos abertos no site ou em seleções compartilhadas. Repetições não aumentam esta quantidade.") %></small></span>

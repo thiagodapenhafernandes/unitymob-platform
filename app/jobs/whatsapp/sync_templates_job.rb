@@ -20,14 +20,25 @@ module Whatsapp
     private
 
     def fan_out_all_tenants!
+      sender_jobs = WhatsappSenderNumber
+                    .active
+                    .where.not(waba_id: [nil, ""])
+                    .pluck(:tenant_id, :id)
+
+      sender_jobs.each do |tenant_id, sender_number_id|
+        self.class.perform_later(tenant_id, sender_number_id: sender_number_id)
+      end
+
+      tenant_ids_with_sender = sender_jobs.map(&:first).uniq
       tenant_ids = WhatsappBusinessIntegration
                    .where(status: "connected")
                    .where.not(waba_id: [nil, ""])
+                   .where.not(tenant_id: tenant_ids_with_sender)
                    .distinct
                    .pluck(:tenant_id)
                    .compact
       tenant_ids.each { |id| self.class.perform_later(id) }
-      { ok: true, enqueued: tenant_ids.size }
+      { ok: true, enqueued: sender_jobs.size + tenant_ids.size }
     end
 
     def sync_templates_for(tenant, sender_number_id: nil)

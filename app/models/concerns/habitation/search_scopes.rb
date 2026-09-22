@@ -747,6 +747,8 @@ module Habitation::SearchScopes
     # Busca avançada SUPER DINÂMICA combinando múltiplos filtros
     def advanced_search(params = {}, base_scope: nil, **filters)
       params = params.to_h.merge(filters).with_indifferent_access
+      # Multiselects enviam [""] (campo oculto do Rails): sem limpar, `present?` é true e o filtro vazio zera a busca.
+      params.keys.each { |key| params[key] = params[key].compact_blank if params[key].is_a?(Array) }
       query = base_scope || active # active já restringe a imóveis públicos com fotos e preço.
       
       # Tipo de transação

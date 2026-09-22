@@ -35,7 +35,7 @@ RSpec.describe Proprietors::DuplicateAnalyzer do
     create_proprietor(name: "Telefone Dois", mobile_phone: "47 99999-0000")
 
     candidates = described_class.new(tenant_scope: Tenant.where(id: tenant.id)).call
-    phone_candidate = candidates.find { |candidate| candidate.match_type == "phone" && candidate.match_key == "47999990000" }
+    phone_candidate = candidates.find { |candidate| candidate.match_type == "phone" && candidate.match_key == "5547999990000" }
 
     expect(phone_candidate).to be_present
     expect(phone_candidate.risk).to eq("review_required")
@@ -47,7 +47,7 @@ RSpec.describe Proprietors::DuplicateAnalyzer do
     create(:habitation, tenant: tenant, proprietor: canonical, codigo: "91#{SecureRandom.random_number(10**8)}")
 
     candidates = described_class.new(tenant_scope: Tenant.where(id: tenant.id)).call
-    exact_candidate = candidates.find { |candidate| candidate.match_type == "exact_name_phone" && candidate.match_key == "a10|47992421044" }
+    exact_candidate = candidates.find { |candidate| candidate.match_type == "exact_name_phone" && candidate.match_key == "a10|5547992421044" }
 
     expect(exact_candidate).to be_present
     expect(exact_candidate.risk).to eq("automatic_candidate")
@@ -62,7 +62,7 @@ RSpec.describe Proprietors::DuplicateAnalyzer do
     create(:habitation, tenant: tenant, proprietor: duplicate, codigo: "89#{SecureRandom.random_number(10**8)}")
 
     candidates = described_class.new(tenant_scope: Tenant.where(id: tenant.id)).call
-    exact_candidate = candidates.find { |candidate| candidate.match_type == "exact_name_phone" && candidate.match_key == "a10|47992421044" }
+    exact_candidate = candidates.find { |candidate| candidate.match_type == "exact_name_phone" && candidate.match_key == "a10|5547992421044" }
 
     expect(exact_candidate).to be_present
     expect(exact_candidate.risk).to eq("review_required")

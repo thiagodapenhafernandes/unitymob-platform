@@ -109,6 +109,8 @@ module Ai
           return option if normalize_token(option) == normalized_value
         end
 
+        return normalized_value.titleize if PROPERTY_TYPE_ALIASES.key?(normalized_value)
+
         PROPERTY_TYPE_ALIASES.each do |canonical, aliases|
           next unless aliases.include?(normalized_value)
 

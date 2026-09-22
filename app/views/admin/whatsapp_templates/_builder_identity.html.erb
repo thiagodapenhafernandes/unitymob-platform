@@ -1,0 +1,39 @@
+<%# Etapas 1 e 2 (identificação e objetivo), iguais para texto, carousel e flow. %>
+<%
+  editing = template.meta_id.present?
+  usage_icons = {
+    "broadcast" => "bi-megaphone", "response_flow" => "bi-diagram-3", "attendance" => "bi-headset",
+    "property_intake" => "bi-house-door", "partnership" => "bi-people", "administrative" => "bi-gear"
+  }
+  categories = [
+    ["MARKETING", "Marketing", "Promoções, novidades e ofertas. É o que a maioria das campanhas usa.", "bi-megaphone"],
+    ["UTILITY", "Utilidade", "Avisos sobre algo que o cliente pediu ou contratou: confirmações e lembretes.", "bi-bell"],
+    ["AUTHENTICATION", "Autenticação", "Códigos de verificação e acesso.", "bi-shield-lock"]
+  ]
+  selected_category = template.category.presence || "MARKETING"
+  selected_usage = template.usage_context.presence || "broadcast"
+%>
+<%= ax_guided_step(number: 1, color: :blue, title: "Como vamos chamar?", subtitle: "Só você e a equipe veem este nome. Serve para achar o modelo depois.") do %>
+  <div class="ax-guided-grid">
+    <div class="ax-guided-span-2">
+      <%= ax_text_field(form: f, method: :name, label: "Nome interno", readonly: editing, placeholder: name_placeholder,
+                        tooltip: "Use um nome curto para encontrar este modelo depois. O sistema ajusta o formato automaticamente.",
+                        hint: tag.span(safe_join(["Será salvo como ", tag.code("", data: { guided: "nameSlug" })]), hidden: true, data: { guided: "nameHint" }),
+                        data: { whatsapp_template_form_target: "nameInput" }) %>
+    </div>
+    <%= ax_autocomplete_select_field(form: f, method: :language, label: "Idioma", tooltip: "Idioma da mensagem que será revisada e aprovada.",
+                                     choices: [["Português (Brasil)", "pt_BR"], ["English", "en_US"], ["Español", "es"]]) %>
+  </div>
+  <fieldset class="ax-guided-fieldset">
+    <legend>Onde vai usar</legend>
+    <%= ax_choice_group(form: f, method: :usage_context, variant: :chips, selected: selected_usage, aria_label: "Onde vai usar",
+                        choices: WhatsappTemplate::USAGE_CONTEXTS.map { |key, label| { value: key, label: label, icon: usage_icons.fetch(key, "bi-chat") } }) %>
+  </fieldset>
+<% end %>
+
+<%= ax_guided_step(number: 2, color: :violet, title: "Qual é o objetivo da mensagem?", subtitle: "A Meta usa isso para revisar e cobrar. Escolha o que mais combina.") do %>
+  <%= ax_choice_group(form: f, method: :category, variant: :cards, selected: selected_category, disabled: editing, aria_label: "Objetivo da mensagem",
+                      choices: categories.map { |value, label, description, icon| { value: value, label: label, description: description, icon: icon, tone: value.downcase, data: { label: label } } }) %>
+  <%= ax_switch_field(form: f, method: :allow_category_change, label: "Deixar a Meta ajustar a categoria", class_name: "ax-switch--card",
+                      description: "Se ela entender que é outra, o modelo segue em vez de ser recusado.") %>
+<% end %>

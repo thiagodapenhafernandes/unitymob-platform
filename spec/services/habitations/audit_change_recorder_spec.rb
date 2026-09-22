@@ -4,7 +4,7 @@ RSpec.describe Habitations::AuditChangeRecorder do
   it "does not record manual admin noise fields when they change with a real field" do
     habitation = create(:habitation, status: "Venda", agenciador: nil, imovel_dwv: nil, perfil_construcao: "Alto Padrão", tipo_vaga: "Escritura")
     habitation.skip_auto_audit = true
-    habitation.update!(status: "Vendido terceiros", agenciador: "", imovel_dwv: "Não", perfil_construcao: "", tipo_vaga: "")
+    habitation.update!(status: "Vendido terceiros", valor_vendido_terceiros_cents: 900_000_00, agenciador: "", imovel_dwv: "Não", perfil_construcao: "", tipo_vaga: "")
 
     described_class.new(
       habitation,
@@ -14,9 +14,10 @@ RSpec.describe Habitations::AuditChangeRecorder do
     ).record_update!
 
     log = HabitationAuditLog.where(habitation: habitation).last
-    expect(log.changed_fields).to eq(["status"])
-    expect(log.changeset).to eq(
-      "status" => { "before" => "Venda", "after" => "Vendido terceiros" }
+    expect(log.changed_fields).to eq(%w[status exibir_no_site_flag exibir_no_site_portal_flag valor_vendido_terceiros_cents])
+    expect(log.changeset).to include(
+      "status" => { "before" => "Venda", "after" => "Vendido terceiros" },
+      "valor_vendido_terceiros_cents" => { "before" => nil, "after" => 90000000 }
     )
   end
 

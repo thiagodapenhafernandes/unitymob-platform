@@ -63,8 +63,7 @@ RSpec.describe "Admin::UserActivitySessions", type: :request do
     get admin_user_activity_sessions_path
 
     expect(response).to redirect_to(admin_root_path)
-    follow_redirect!
-    expect(response.body).to include("Você não tem permissão para acessar esta área.")
+    expect(flash[:alert]).to eq("Você não tem permissão para acessar esta área.")
   end
 
   it "mantém as sessões isoladas por conta" do

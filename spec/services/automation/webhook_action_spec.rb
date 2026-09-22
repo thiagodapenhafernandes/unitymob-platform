@@ -68,7 +68,7 @@ RSpec.describe "Automation webhook action" do
     expect(delivery.request_payload).to include(
       "lead_id" => admin.id.to_s,
       "name" => "Maria Lead",
-      "phone" => "(47) 99999-0000",
+      "phone" => "5547999990000", # o Lead normaliza o telefone ao salvar (dígitos com DDI)
       "rule_id" => "12",
       "campaign_id" => campaign.id.to_s,
       "campaign" => "Campanha WhatsApp",

@@ -17,16 +17,16 @@
           </div>
 
           <%= ax_field_grid do %>
-            <%= ax_text_field(form: f, method: :name, label: "Nome completo", class_name: "ax-span-6", placeholder: "Ex.: João Silva") %>
-            <%= ax_text_field(form: f, method: :email, type: :email, label: "E-mail de acesso", class_name: "ax-span-6", placeholder: "joao@empresa.com") %>
+            <%= ax_text_field(form: f, method: :name, label: "Nome completo", class_name: "ax-span-6", placeholder: "Ex.: Nome do usuário") %>
+            <%= ax_text_field(form: f, method: :email, type: :email, label: "E-mail de acesso", class_name: "ax-span-6", placeholder: "usuario@example.invalid") %>
 
-            <%= ax_text_field(form: f, method: :phone, type: :tel, label: "Celular / WhatsApp", class_name: "ax-span-6", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" }) %>
-            <%= ax_text_field(form: f, method: :secondary_phone, type: :tel, label: "Telefone secundário", class_name: "ax-span-6", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" }) %>
+            <%= ax_text_field(form: f, method: :phone, type: :tel, label: "Celular / WhatsApp", class_name: "ax-span-6", placeholder: "+55 00 00000-0000", autocomplete: "tel", data: { controller: "phone-input" }) %>
+            <%= ax_text_field(form: f, method: :secondary_phone, type: :tel, label: "Telefone secundário", class_name: "ax-span-6", placeholder: "+55 00 00000-0000", autocomplete: "tel", data: { controller: "phone-input" }) %>
 
             <%= ax_text_field(form: f, method: :creci, label: "CRECI", class_name: "ax-span-6", placeholder: "Ex.: 12345SC") %>
             <%= ax_date_field(form: f, method: :birth_date, label: "Data de nascimento", class_name: "ax-span-6") %>
 
-            <%= ax_text_field(form: f, method: :city, label: "Cidade", class_name: "ax-span-6", placeholder: "Ex.: Balneário Camboriú") %>
+            <%= ax_text_field(form: f, method: :city, label: "Cidade", class_name: "ax-span-6", placeholder: "Ex.: Cidade") %>
             <%= ax_text_field(form: f, method: :biography, type: :textarea, label: "Biografia / observações", class_name: "ax-span-12", rows: 4, placeholder: "Breve descrição sobre o usuário...") %>
           <% end %>
 
@@ -140,6 +140,18 @@
               <%= ax_chip_grid do %>
                 <%= ax_toggle_chip(f, :require_ip_allowlist, label: "Exigir IP permitido", id: "admin_user_require_ip_allowlist") %>
                 <%= ax_toggle_chip(f, :require_trusted_device, label: "Exigir aparelho confiável", id: "admin_user_require_trusted_device") %>
+              <% end %>
+              <% if admin_user.persisted? && admin_user != current_admin_user && tenant_owner? %>
+                <div class="tw-mt-2">
+                  <%= link_to revoke_access_admin_admin_user_path(admin_user),
+                        data: {
+                          turbo_method: :post,
+                          turbo_confirm: "Encerrar todas as sessões, aparelhos confiáveis, extensão, push e tokens de #{admin_user.name}?"
+                        },
+                        class: "ax-btn ax-btn--sm ax-btn--danger" do %>
+                    <i class="bi bi-person-lock ax-ico" aria-hidden="true"></i><span>Encerrar acessos em todos os aparelhos</span>
+                  <% end %>
+                </div>
               <% end %>
             <% end %>
           <% end %>

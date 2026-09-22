@@ -17,8 +17,8 @@
 
 <div class="<%= field_classes %>">
   <label class="ax-field-label" for="<%= id %>"><%= label %></label>
-  <% if local_assigns[:action].present? %>
-    <%= ax_input_group(action: action) { control } %>
+  <% if local_assigns[:action].present? || local_assigns[:prefix].present? || local_assigns[:suffix].present? %>
+    <%= ax_input_group(action: local_assigns[:action], prefix: local_assigns[:prefix], suffix: local_assigns[:suffix]) { control } %>
   <% else %>
     <%= control %>
   <% end %>

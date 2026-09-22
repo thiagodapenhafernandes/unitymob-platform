@@ -42,6 +42,21 @@ module Whatsapp
       post_message(to: to, **payload)
     end
 
+    # Botões de resposta rápida (até 3, título até 20 caracteres) — só dentro da janela de 24h.
+    def send_interactive_buttons(to:, body:, buttons:)
+      reply_buttons = Array(buttons).first(3).map { |button| { type: "reply", reply: { id: button["id"].to_s, title: button["title"].to_s.first(20) } } }
+      post_message(to: to, type: "interactive", interactive: { type: "button", body: { text: body.to_s }, action: { buttons: reply_buttons } })
+    end
+
+    # Lista de opções (até 10 linhas) — só dentro da janela de 24h.
+    def send_interactive_list(to:, body:, button:, rows:)
+      list_rows = Array(rows).first(10).map { |row| { id: row["id"].to_s, title: row["title"].to_s.first(24) } }
+      post_message(to: to, type: "interactive", interactive: {
+        type: "list", body: { text: body.to_s },
+        action: { button: button.to_s.first(20), sections: [{ title: "Opções", rows: list_rows }] }
+      })
+    end
+
     # Reação a uma mensagem (emoji vazio remove a reação)
     def send_reaction(to:, message_id:, emoji:)
       post_message(to: to, type: "reaction", reaction: { message_id: message_id, emoji: emoji.to_s })
@@ -172,6 +187,26 @@ module Whatsapp
       url = "#{base}/#{@integration.waba_id}/message_templates"
       response = HTTParty.post(url, headers: auth_headers, body: payload.to_json, timeout: 20)
       parse(response)
+    rescue => e
+      error_result(e.message)
+    end
+
+    # Edita um template existente na Meta (POST /{template_id}). Nome e idioma não mudam; só components/category.
+    def update_template(meta_id, payload)
+      return error_result("Integração não configurada") unless configured?
+      return error_result("Template sem ID na Meta") if meta_id.blank?
+
+      response = HTTParty.post("#{base}/#{meta_id}", headers: auth_headers, body: payload.to_json, timeout: 20)
+      parse(response)
+    rescue => e
+      error_result(e.message)
+    end
+
+    # Status atual de um template na Meta (usado logo após editar).
+    def fetch_template(meta_id)
+      return error_result("Integração não configurada") unless configured?
+
+      parse(HTTParty.get("#{base}/#{meta_id}", query: { access_token: token, fields: "id,name,status,category" }, timeout: 15))
     rescue => e
       error_result(e.message)
     end

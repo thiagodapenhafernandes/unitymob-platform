@@ -909,8 +909,8 @@ body.admin-drawer-catalog-layout .admin-sidebar-offcanvas {
 }
 
 .ts-dropdown .active {
-  background-color: #e7f1ff !important;
-  color: var(--admin-primary) !important;
+  background-color: color-mix(in srgb, var(--admin-primary) 12%, var(--ab-panel, #fff)) !important;
+  color: var(--ax-link, var(--admin-primary)) !important;
 }
 
 /* KPI Cards for Dashboard */
@@ -1088,8 +1088,8 @@ body.admin-drawer-catalog-layout .admin-sidebar-offcanvas {
 }
 
 .ts-dropdown .active {
-  background-color: #e7f1ff !important;
-  color: var(--admin-primary) !important;
+  background-color: color-mix(in srgb, var(--admin-primary) 12%, var(--ab-panel, #fff)) !important;
+  color: var(--ax-link, var(--admin-primary)) !important;
 }
 
 /* Custom Checkbox Card refined */

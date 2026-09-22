@@ -1,6 +1,15 @@
 require 'rails_helper'
 
 RSpec.describe "Field rate limiting via rack-attack", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around do |example|
+    travel_to Time.zone.local(2026, 9, 21, 12, 0, 0)
+    example.run
+  ensure
+    travel_back
+  end
+
   before do
     # MemoryStore dedicado para não vazar estado entre specs.
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new

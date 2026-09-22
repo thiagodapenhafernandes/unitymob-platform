@@ -1,0 +1,27 @@
+<%# Navegação do estúdio. items: [{ id:, icon:, label:, hint:, caption: (título opcional de grupo antes do item) }]; a primeira seção começa ativa (o hash da URL prevalece). %>
+<ul class="ax-studio-nav ax-studio-nav--<%= orientation %>"
+    role="tablist"
+    aria-label="<%= label %>"
+    aria-orientation="<%= orientation %>"
+    data-controller="ax-tabs"
+    data-ax-tabs-panel-selector-value="<%= panels_selector %>">
+  <% items.each_with_index do |item, index| %>
+    <% if item[:caption].present? %>
+      <li class="ax-studio-nav__caption" role="presentation"><%= item[:caption] %></li>
+    <% end %>
+    <li>
+      <button type="button"
+              class="ax-studio-nav__item<%= " active" if index.zero? %>"
+              data-ax-tabs-target="tab"
+              data-ax-tabs-target-param="#<%= item[:id] %>"
+              data-action="click->ax-tabs#select"
+              aria-selected="<%= index.zero? %>">
+        <span class="ax-studio-nav__icon"><i class="bi bi-<%= item[:icon] %>"></i></span>
+        <span class="ax-studio-nav__text">
+          <strong><%= item[:label] %></strong>
+          <% if item[:hint].present? %><small><%= item[:hint] %></small><% end %>
+        </span>
+      </button>
+    </li>
+  <% end %>
+</ul>

@@ -18,7 +18,7 @@ class Admin::SessionsController < Devise::SessionsController
       return
     end
 
-    if resource&.valid_password?(password)
+    if resource&.active_for_authentication? && resource.valid_password?(password)
       access_result = AccessControl::Policy.call(admin_user: resource, request: request, controller: self)
 
       unless access_result.allowed?

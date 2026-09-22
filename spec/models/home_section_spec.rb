@@ -82,6 +82,16 @@ RSpec.describe HomeSection, type: :model do
       expect(described_class.infer_section_type_from_filters({})).to eq("featured_properties")
     end
 
+    it "trata vídeos em destaque como seção de imóveis com filtro de vídeo" do
+      section = described_class.new(section_type: "featured_videos", title: "Vídeos")
+
+      expect(section.content_kind).to eq("videos")
+      expect(section.property_content_section?).to be(true)
+      expect(section.property_filter_enabled?("com_video")).to be(true)
+      expect(section.property_filter_labels).to include("Com vídeo")
+      expect(section.public_property_cta_label).to eq("Ver Todos os Imóveis com Vídeo")
+    end
+
     it "monta CTA público e parâmetros de URL a partir dos filtros da seção" do
       section = described_class.new(
         section_type: "featured_properties",

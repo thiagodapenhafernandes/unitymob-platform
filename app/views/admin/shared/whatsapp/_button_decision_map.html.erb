@@ -1,0 +1,81 @@
+<%# Decisões dos botões de uma campanha. As decisões de um fluxo de resposta ficam em admin/whatsapp_response_flows/_button_map. %>
+<% buttons = Array(local_assigns[:buttons]) %>
+<% decisions = local_assigns[:decisions].to_h.with_indifferent_access %>
+<% notice_html = local_assigns[:notice_html] %>
+<% empty_message = local_assigns[:empty_message].presence || "Selecione um modelo para detectar os botões e configurar as decisões." %>
+<% distribution_options = Array(local_assigns[:distribution_rules]).map { |row| row.respond_to?(:id) ? [row.name, row.id] : row } %>
+
+<div class="whatsapp-response-decision-map">
+  <div class="whatsapp-response-decision-map__head">
+    <div>
+      <span>Respostas do modelo</span>
+      <strong>Decisões dos botões</strong>
+      <small>Configure o que acontece quando o contato clica em cada botão real do template.</small>
+    </div>
+    <button type="button"
+            class="ax-icon-btn"
+            title="Use as decisões para registrar cliques, responder automaticamente, abrir links, criar tarefas ou enviar para atendimento.">
+      <i class="bi bi-info-circle"></i>
+    </button>
+  </div>
+
+  <%= notice_html if notice_html.present? %>
+
+  <div data-whatsapp-campaign-builder-target="responseDecisionList">
+    <% if buttons.blank? %>
+      <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
+        <%= empty_message %>
+      <% end %>
+    <% else %>
+      <% buttons.each_with_index do |button, index| %>
+        <% key = button["key"].to_s %>
+        <% base_name = "whatsapp_campaign[response_decisions][buttons][#{index}]" %>
+        <% action = Array(decisions[:buttons].is_a?(Hash) ? decisions[:buttons].values : decisions[:buttons]).find { |item| item.to_h["key"].to_s == key }.to_h %>
+        <% selected_action = action["action"].presence || button["action"].presence || "ignore" %>
+        <% safe_id = "campaign_#{index}".parameterize(separator: "_") %>
+        <% title = button["text"].presence || "-" %>
+        <% kind_label = button["context"].presence || button["kind_label"].presence || "Botão do template" %>
+
+        <article class="whatsapp-response-decision-row" data-response-action="<%= selected_action %>" data-whatsapp-campaign-builder-target="responseDecisionRow">
+          <%= hidden_field_tag "#{base_name}[key]", key %>
+          <%= hidden_field_tag "#{base_name}[kind]", button["kind"] %>
+          <%= hidden_field_tag "#{base_name}[text]", title %>
+
+          <div class="whatsapp-response-decision-row__button" title="<%= title %>">
+            <em>Botão recebido</em>
+            <strong><%= title %></strong>
+            <small><%= kind_label %></small>
+          </div>
+
+          <div class="whatsapp-response-decision-row__config">
+            <div class="whatsapp-response-decision-row__config-head">
+              <span>Quando clicarem</span>
+              <strong data-response-decision-badge><%= WhatsappCampaign::RESPONSE_ACTIONS.fetch(selected_action, "Registro") %></strong>
+            </div>
+            <%= select_tag "#{base_name}[action]",
+                           options_for_select(WhatsappCampaign::RESPONSE_ACTIONS.map { |value, label| [label, value] }, selected_action),
+                           id: "whatsapp_button_decision_#{safe_id}_action",
+                           class: "ax-control",
+                           data: { whatsapp_campaign_builder_target: "responseDecisionInput", action: "change->whatsapp-campaign-builder#syncResponseDecisionRow change->whatsapp-campaign-builder#refreshReview" } %>
+          </div>
+
+          <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="distribution_rule">
+            <label class="ax-label">Regra de distribuição</label>
+            <%= select_tag "#{base_name}[distribution_rule_id]",
+                           options_for_select(distribution_options, action["distribution_rule_id"]),
+                           include_blank: "Escolher regra...",
+                           class: "ax-control" %>
+          </div>
+          <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="message">
+            <label class="ax-label">Mensagem automática</label>
+            <%= text_field_tag "#{base_name}[message]", action["message"], class: "ax-control", placeholder: "Ex: Perfeito, vou te encaminhar para atendimento." %>
+          </div>
+          <div class="whatsapp-response-decision-row__impact">
+            <i class="bi bi-arrow-return-right" aria-hidden="true"></i>
+            <span data-response-decision-summary></span>
+          </div>
+        </article>
+      <% end %>
+    <% end %>
+  </div>
+</div>

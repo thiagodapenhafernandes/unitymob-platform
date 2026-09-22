@@ -44,9 +44,8 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Integração WhatsApp")
-    expect(response.body).to include("WhatsApp Business API")
-    expect(response.body).not_to include("Páginas e Formulários")
-    expect(response.body).to include("Telefones do Site")
+    expect(response.body).not_to include("Páginas e Formulários", "Telefones do Site")
+    expect(response.body).to include("Site público → Contato")
     expect(response.body).to include("1980983762681491")
     expect(response.body).to include("Template oficial para primeiro contato")
     expect(response.body).to include("lead_activation_default")
@@ -58,7 +57,6 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("lead_task_reminder_utility")
     expect(response.body).to include("Sincronizar templates")
     document = Nokogiri::HTML(response.body)
-    expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")
     expect(document.at_css('input[type="url"][name="whatsapp_business_integration[webhook_callback_url]"]')).to be_present
     expect(document.at_css('input[type="password"][name="whatsapp_business_integration[access_token]"]')).to be_present
     expect(document.at_css('input[type="tel"][name="whatsapp_sender_number[display_phone_number]"][data-controller="phone-input"]')).to be_present
@@ -410,19 +408,6 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("gateway-verify-token")
   end
 
-  it "renderiza o prefixo semântico dos telefones do site" do
-    get admin_whatsapp_integration_path(tab: "site_phones")
-
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Telefones do site")
-    document = Nokogiri::HTML(response.body)
-    expect(document.at_css(".ax-input-group__icon--whatsapp")).to be_present
-    expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("Telefones do Site")
-    expect(document.css(".wa-form [style]")).to be_empty
-    expect(document.at_css('input[type="tel"][name="whatsapp_business_integration[sale_whatsapp_number]"][data-controller="phone-input"]')).to be_present
-    expect(document.at_css('input[name="whatsapp_business_integration[sale_redirect_after_capture]"]')).to be_present
-  end
-
   it "inclui metadados dos placeholders para mapear variaveis ao selecionar template de notificacao" do
     integration = current_whatsapp_integration!(waba_id: "waba-auto-map")
     template = admin.tenant.whatsapp_templates.create!(
@@ -518,6 +503,27 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(sender.reload).to be_active
     expect(sender.status).to eq("connected")
     expect(sender.label).to eq("Principal antigo")
+  end
+
+  it "lista numeros desativados com acao de reativar e ainda permite editar" do
+    integration = current_whatsapp_integration!
+    sender = create(
+      :whatsapp_sender_number,
+      tenant: admin.tenant,
+      whatsapp_business_integration: integration,
+      active: false,
+      status: "disconnected"
+    )
+
+    get admin_whatsapp_integration_path
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    row = document.css(".wa-number-row").find { |el| el.text.include?(sender.formatted_phone) }
+    expect(row.at_css("form[action='#{reactivate_admin_whatsapp_sender_number_path(sender)}']")).to be_present
+    expect(row.at_css("[data-ax-modal-open='#whatsappAccountNumberEditModal#{sender.id}']")).to be_present
+    expect(row.at_css("button[data-test-url]")).to be_nil
+    expect(row.at_css("form[action='#{admin_whatsapp_sender_number_path(sender)}']")).to be_nil
   end
 
   it "exibe acao para registrar o numero quando a integracao esta pronta" do
@@ -630,35 +636,6 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response).to redirect_to(admin_whatsapp_integration_path)
     follow_redirect!
     expect(response.body).to include("(#133010) Account not registered")
-  end
-
-  it "exibe e salva telefones do site por tipo de negociacao" do
-    get admin_whatsapp_integration_path(tab: "site_phones")
-
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Telefones do site")
-
-    patch phone_settings_admin_whatsapp_integration_path, params: {
-      whatsapp_business_integration: {
-        default_whatsapp_number: "554733111067",
-        sale_whatsapp_number: "5547991111111",
-        rent_whatsapp_number: "5547992222222",
-        sale_rent_whatsapp_number: "5547993333333",
-        sale_requires_lead_form: "1",
-        rent_requires_lead_form: "0",
-        sale_rent_requires_lead_form: "1",
-        sale_redirect_after_capture: "1",
-        rent_redirect_after_capture: "0",
-        sale_rent_redirect_after_capture: "1"
-      }
-    }
-
-    expect(response).to redirect_to(admin_whatsapp_integration_path(tab: "site_phones"))
-    integration = WhatsappBusinessIntegration.current(admin.tenant)
-    expect(integration.phone_for("sale")).to eq("5547991111111")
-    expect(integration.phone_for("rent")).to eq("5547992222222")
-    expect(integration.requires_form_for?("rent")).to be(false)
-    expect(integration.redirect_after_capture_for?("rent")).to be(false)
   end
 
   it "salva a conexao quando o embedded signup finaliza" do

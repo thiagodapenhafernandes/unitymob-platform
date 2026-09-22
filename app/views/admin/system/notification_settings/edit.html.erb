@@ -38,169 +38,151 @@
     <% end %>
   <% end %>
 
-  <div class="layout-settings-grid">
-    <div class="layout-settings-main">
+  <%
+    studio_items = [
+      { id: "sys-tab-whatsapp", icon: "whatsapp", label: "WhatsApp e webhooks", hint: "Número global e segredos da Meta" },
+      { id: "sys-tab-smtp", icon: "envelope-at", label: "SMTP global", hint: "E-mail de fallback" },
+      { id: "sys-tab-push", icon: "phone-vibrate", label: "Web Push", hint: "Transporte VAPID global" },
+      { id: "sys-tab-tenants", icon: "buildings", label: "Contas", hint: "Opt-in do fallback por conta" }
+    ]
+    dirty_form = { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" }
+  %>
+  <div class="ax-studio">
+    <div class="ax-studio__nav">
+      <%= ax_studio_nav(items: studio_items, panels_selector: "#sys-studio-sections", label: "Transportes globais de notificação") %>
+    </div>
+
+    <div class="ax-studio__stage" id="sys-studio-sections">
       <%# ============ WhatsApp global + segredos de webhook ============ %>
-      <% if system_setting.present? %>
-        <%= form_with(model: system_setting, url: admin_system_notification_settings_path, method: :patch, local: true, class: "layout-settings-form") do |f| %>
-          <%= ax_error_summary(system_setting) %>
+      <%= ax_studio_section(id: "sys-tab-whatsapp", icon: "whatsapp", active: true,
+                            title: "WhatsApp global e webhooks",
+                            subtitle: "Número global de notificações e os segredos que validam as entregas da Meta.",
+                            actions: ax_badge(wa_configured ? "Pronto" : "Incompleto", tone: wa_configured ? :green : :gray, dot: true)) do %>
+        <% if system_setting.present? %>
+          <%= form_with(model: system_setting, url: admin_system_notification_settings_path, method: :patch, local: true, data: dirty_form, class: "layout-settings-form ax-studio-form") do |f| %>
+            <%= ax_error_summary(system_setting) %>
 
-          <%= ax_operational_panel(eyebrow: "WhatsApp Cloud", title: "Número global de notificações") do %>
-            <div class="ax-panel-body">
-              <%= ax_toggle_chip(f, :whatsapp_enabled, label: raw("<i class='bi bi-whatsapp'></i> Ativar WhatsApp global")) %>
-              <p class="ax-field__hint">Usado por contas com o opt-in ligado e sem integração WhatsApp própria pronta.</p>
-
-              <div class="tw-mt-3">
-                <%= ax_field_grid do %>
-                  <div class="ax-span-12">
-                    <div class="ax-field">
-                      <%= ax_field_label(f, :whatsapp_access_token, text: "Access token (permanente)") %>
-                      <% token_set = system_setting.respond_to?(:whatsapp_access_token) && (system_setting.whatsapp_access_token.present? rescue false) %>
-                      <%= f.password_field :whatsapp_access_token, value: nil, class: "ax-control",
-                            autocomplete: "new-password",
-                            placeholder: token_set ? "•••••••• (preenchido)" : "EAAG..." %>
-                      <p class="ax-field__hint">Deixe em branco para manter o token atual.</p>
-                    </div>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :whatsapp_phone_number_id, label: "Phone Number ID", placeholder: "1234567890") %>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :whatsapp_business_account_id, label: "WhatsApp Business Account ID", placeholder: "opcional") %>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :whatsapp_template_name, label: "Template padrão", placeholder: "novo_lead") %>
-                  </div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-
-          <%= ax_operational_panel(eyebrow: "Webhooks", title: "Segredos de assinatura (Meta)") do %>
-            <div class="ax-panel-body">
-              <p class="ax-field__hint tw-mt-0">Validam a assinatura das entregas de webhook da Meta. Em branco, o sistema cai para as variáveis de ambiente (<code>FACEBOOK_APP_SECRET</code> / <code>WHATSAPP_APP_SECRET</code>).</p>
+            <%= ax_studio_group(title: "Número global de notificações", subtitle: "Usado por contas com o opt-in ligado e sem integração WhatsApp própria pronta.", icon: "whatsapp") do %>
+              <%= ax_switch_field(form: f, method: :whatsapp_enabled, label: "Ativar WhatsApp global", description: "Liga ou desliga o número global para todas as contas com opt-in.", class_name: "ax-switch--card") %>
               <%= ax_field_grid do %>
-                <div class="ax-span-6">
-                  <div class="ax-field">
-                    <%= ax_field_label(f, :facebook_app_secret, text: "Facebook App Secret") %>
-                    <% fb_set = system_setting.respond_to?(:facebook_app_secret) && (system_setting.facebook_app_secret.present? rescue false) %>
-                    <%= f.password_field :facebook_app_secret, value: nil, class: "ax-control",
-                          autocomplete: "new-password",
-                          placeholder: fb_set ? "•••••••• (preenchido)" : "" %>
-                    <p class="ax-field__hint">Deixe em branco para manter o atual.</p>
-                  </div>
+                <div class="ax-span-12">
+                  <% token_set = system_setting.respond_to?(:whatsapp_access_token) && (system_setting.whatsapp_access_token.present? rescue false) %>
+                  <%= ax_text_field(form: f, method: :whatsapp_access_token, label: "Access token (permanente)", type: :password, value: nil,
+                        autocomplete: "new-password", placeholder: token_set ? "•••••••• (preenchido)" : "EAAG...",
+                        hint: "Deixe em branco para manter o token atual.") %>
                 </div>
-                <div class="ax-span-6">
-                  <div class="ax-field">
-                    <%= ax_field_label(f, :whatsapp_app_secret, text: "WhatsApp App Secret") %>
-                    <% wa_set = system_setting.respond_to?(:whatsapp_app_secret) && (system_setting.whatsapp_app_secret.present? rescue false) %>
-                    <%= f.password_field :whatsapp_app_secret, value: nil, class: "ax-control",
-                          autocomplete: "new-password",
-                          placeholder: wa_set ? "•••••••• (preenchido)" : "" %>
-                    <p class="ax-field__hint">Deixe em branco para manter o atual.</p>
-                  </div>
+                <div class="ax-span-4">
+                  <%= ax_text_field(form: f, method: :whatsapp_phone_number_id, label: "Phone Number ID", placeholder: "1234567890") %>
+                </div>
+                <div class="ax-span-4">
+                  <%= ax_text_field(form: f, method: :whatsapp_business_account_id, label: "WhatsApp Business Account ID", placeholder: "opcional") %>
+                </div>
+                <div class="ax-span-4">
+                  <%= ax_text_field(form: f, method: :whatsapp_template_name, label: "Template padrão", placeholder: "novo_lead") %>
                 </div>
               <% end %>
-            </div>
-          <% end %>
+            <% end %>
 
-          <%= ax_form_actions(sticky: false) do %>
-            <%= f.submit "Salvar WhatsApp e webhooks", class: "ax-btn ax-btn--primary" %>
+            <%= ax_studio_group(title: "Segredos de assinatura (Meta)", icon: "key",
+                  subtitle: safe_join(["Validam a assinatura das entregas de webhook da Meta. Em branco, o sistema cai para as variáveis de ambiente."])) do %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-6">
+                  <% fb_set = system_setting.respond_to?(:facebook_app_secret) && (system_setting.facebook_app_secret.present? rescue false) %>
+                  <%= ax_text_field(form: f, method: :facebook_app_secret, label: "Facebook App Secret", type: :password, value: nil,
+                        autocomplete: "new-password", placeholder: fb_set ? "•••••••• (preenchido)" : "",
+                        hint: "Deixe em branco para manter o atual.") %>
+                </div>
+                <div class="ax-span-6">
+                  <% wa_set = system_setting.respond_to?(:whatsapp_app_secret) && (system_setting.whatsapp_app_secret.present? rescue false) %>
+                  <%= ax_text_field(form: f, method: :whatsapp_app_secret, label: "WhatsApp App Secret", type: :password, value: nil,
+                        autocomplete: "new-password", placeholder: wa_set ? "•••••••• (preenchido)" : "",
+                        hint: "Deixe em branco para manter o atual.") %>
+                </div>
+              <% end %>
+            <% end %>
+
+            <%= ax_studio_savebar(form: f, cancel_path: admin_system_path, submit_label: "Salvar WhatsApp e webhooks") %>
           <% end %>
-        <% end %>
-      <% else %>
-        <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-          O modelo de notificação global (<code>SystemNotificationSetting</code>) ainda não existe neste ambiente — rode as migrations pendentes para editar o WhatsApp global e os segredos de webhook.
+        <% else %>
+            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+              O modelo de notificação global (<code>SystemNotificationSetting</code>) ainda não existe neste ambiente — rode as migrations pendentes para editar o WhatsApp global e os segredos de webhook.
+            <% end %>
         <% end %>
       <% end %>
 
       <%# ============ SMTP global de fallback ============ %>
-      <% if global_email.present? %>
-        <%= form_with(model: global_email, url: admin_system_notification_settings_path, method: :patch, local: true, class: "layout-settings-form") do |f| %>
-          <%= ax_error_summary(global_email) %>
+      <%= ax_studio_section(id: "sys-tab-smtp", icon: "envelope-at",
+                            title: "SMTP global de fallback",
+                            subtitle: "Contas com opt-in de e-mail ligado e sem SMTP próprio usam este servidor.",
+                            actions: ax_badge(email_ready ? "Pronto" : "Incompleto", tone: email_ready ? :green : :gray, dot: true)) do %>
+        <% if global_email.present? %>
+          <%= form_with(model: global_email, url: admin_system_notification_settings_path, method: :patch, local: true, data: dirty_form, class: "layout-settings-form ax-studio-form") do |f| %>
+            <%= ax_error_summary(global_email) %>
 
-          <%= ax_operational_panel(eyebrow: "SMTP global", title: "E-mail de fallback") do %>
-            <div class="ax-panel-body">
-              <%= ax_toggle_chip(f, :enabled, label: raw("<i class='bi bi-envelope-at'></i> Ativar SMTP global")) %>
-              <p class="ax-field__hint">Contas com opt-in de e-mail ligado e sem SMTP próprio usam este servidor.</p>
-
-              <div class="tw-mt-3">
-                <%= ax_field_grid do %>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :from_name, label: "Nome do remetente", placeholder: "Ex.: Plataforma") %>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :from_email, label: "E-mail do remetente", type: :email, placeholder: "no-reply@plataforma.com.br") %>
-                  </div>
-                  <div class="ax-span-8">
-                    <%= ax_text_field(form: f, method: :smtp_address, label: "Host SMTP", placeholder: "smtp.seuprovedor.com") %>
-                  </div>
-                  <div class="ax-span-4">
-                    <%= ax_number_field(form: f, method: :smtp_port, label: "Porta", placeholder: "587") %>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :smtp_user_name, label: "Usuário", placeholder: "no-reply@plataforma.com.br") %>
-                  </div>
-                  <div class="ax-span-6">
-                    <div class="ax-field">
-                      <%= ax_field_label(f, :smtp_password, text: "Senha") %>
-                      <% pass_set = global_email.respond_to?(:encryption_ready?) && global_email.encryption_ready? && (global_email.smtp_password.present? rescue false) %>
-                      <%= f.password_field :smtp_password, value: nil, class: "ax-control",
-                            autocomplete: "new-password",
-                            placeholder: pass_set ? "•••••••• (preenchida)" : "" %>
-                      <p class="ax-field__hint">Deixe em branco para manter a senha atual.</p>
-                    </div>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_select_field(form: f, method: :smtp_authentication, label: "Autenticação",
-                          choices: EmailSetting::AUTHENTICATIONS.map { |a| [a, a] }) %>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_text_field(form: f, method: :reply_to, label: "Responder para (reply-to)", type: :email, placeholder: "opcional") %>
-                  </div>
-                <% end %>
-                <div class="tw-mt-2">
-                  <%= ax_toggle_chip(f, :smtp_enable_starttls_auto, label: raw("<i class='bi bi-lock'></i> STARTTLS automático")) %>
+            <%= ax_studio_group(title: "E-mail de fallback", icon: "envelope-at") do %>
+              <%= ax_switch_field(form: f, method: :enabled, label: "Ativar SMTP global", description: "Liga ou desliga o servidor de fallback.", class_name: "ax-switch--card") %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-6">
+                  <%= ax_text_field(form: f, method: :from_name, label: "Nome do remetente", placeholder: "Ex.: Plataforma") %>
                 </div>
-              </div>
-            </div>
-          <% end %>
+                <div class="ax-span-6">
+                  <%= ax_text_field(form: f, method: :from_email, label: "E-mail do remetente", type: :email, placeholder: "no-reply@plataforma.com.br") %>
+                </div>
+                <div class="ax-span-8">
+                  <%= ax_text_field(form: f, method: :smtp_address, label: "Host SMTP", placeholder: "smtp.seuprovedor.com") %>
+                </div>
+                <div class="ax-span-4">
+                  <%= ax_measure_field(form: f, method: :smtp_port, label: "Porta", unit: "TCP", placeholder: "587", step: 1, min: 1, max: 65535) %>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_text_field(form: f, method: :smtp_user_name, label: "Usuário", placeholder: "no-reply@plataforma.com.br") %>
+                </div>
+                <div class="ax-span-6">
+                  <% pass_set = global_email.respond_to?(:encryption_ready?) && global_email.encryption_ready? && (global_email.smtp_password.present? rescue false) %>
+                  <%= ax_text_field(form: f, method: :smtp_password, label: "Senha", type: :password, value: nil,
+                        autocomplete: "new-password", placeholder: pass_set ? "•••••••• (preenchida)" : "",
+                        hint: "Deixe em branco para manter a senha atual.") %>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_autocomplete_select_field(form: f, method: :smtp_authentication, label: "Autenticação",
+                        choices: EmailSetting::AUTHENTICATIONS.map { |a| [a, a] }) %>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_text_field(form: f, method: :reply_to, label: "Responder para (reply-to)", type: :email, placeholder: "opcional") %>
+                </div>
+              <% end %>
+              <%= ax_switch_field(form: f, method: :smtp_enable_starttls_auto, label: "STARTTLS automático", description: "Negocia a criptografia da conexão quando o servidor oferece.", class_name: "ax-switch--card") %>
+            <% end %>
 
-          <%= ax_form_actions(sticky: false) do %>
-            <%= f.submit "Salvar SMTP global", class: "ax-btn ax-btn--primary" %>
+            <%= ax_studio_savebar(form: f, cancel_path: admin_system_path, submit_label: "Salvar SMTP global") %>
           <% end %>
         <% end %>
       <% end %>
 
       <%# ============ Web Push (VAPID) global ============ %>
-      <% if push_setting.present? %>
-        <%= form_with(model: [:admin, push_setting], url: admin_system_notification_settings_path, method: :patch, local: true, class: "layout-settings-form") do |f| %>
-          <%= ax_error_summary(push_setting) %>
+      <%= ax_studio_section(id: "sys-tab-push", icon: "phone-vibrate",
+                            title: "Web Push (VAPID)",
+                            subtitle: "O transporte VAPID é global; o alvo (aparelho do corretor) é resolvido por conta no dispatcher.",
+                            actions: ax_badge(push_ready ? "Pronto" : "Incompleto", tone: push_ready ? :green : :gray, dot: true)) do %>
+        <% if push_setting.present? %>
+          <%= form_with(model: [:admin, push_setting], url: admin_system_notification_settings_path, method: :patch, local: true, data: dirty_form, class: "layout-settings-form ax-studio-form") do |f| %>
+            <%= ax_error_summary(push_setting) %>
 
-          <%= ax_operational_panel(eyebrow: "Web Push (VAPID)", title: "Transporte de push global") do %>
-            <div class="ax-panel-body">
-              <%= ax_toggle_chip(f, :enabled, label: raw("<i class='bi bi-phone-vibrate'></i> Ativar Web Push")) %>
-              <p class="ax-field__hint">O transporte VAPID é global; o alvo (aparelho do corretor) é resolvido por conta no dispatcher.</p>
+            <%= ax_studio_group(title: "Transporte de push global", icon: "phone-vibrate") do %>
+              <%= ax_switch_field(form: f, method: :enabled, label: "Ativar Web Push", description: "Liga ou desliga o transporte global.", class_name: "ax-switch--card") %>
+              <%= ax_text_field(form: f, method: :subject_email, label: "E-mail de contato (VAPID subject)",
+                    type: :email, placeholder: (ENV["VAPID_SUBJECT_EMAIL"].presence || "suporte@plataforma.com.br"),
+                    hint: "Exigido pelo protocolo Web Push como canal de contato do remetente.") %>
+            <% end %>
 
-              <div class="tw-mt-3">
-                <%= ax_text_field(form: f, method: :subject_email, label: "E-mail de contato (VAPID subject)",
-                      type: :email, placeholder: (ENV["VAPID_SUBJECT_EMAIL"].presence || "suporte@plataforma.com.br"),
-                      hint: "Exigido pelo protocolo Web Push como canal de contato do remetente.") %>
-              </div>
-            </div>
+            <%= ax_studio_savebar(form: f, cancel_path: admin_system_path, submit_label: "Salvar Web Push") %>
           <% end %>
 
-          <%= ax_form_actions(sticky: false) do %>
-            <%= f.submit "Salvar Web Push", class: "ax-btn ax-btn--primary" %>
-          <% end %>
-        <% end %>
-
-        <%= ax_operational_panel(eyebrow: "Credenciais", title: "Chaves VAPID",
-              actions: (push_setting.respond_to?(:keys_source) ? (
+          <%= ax_studio_group(title: "Chaves VAPID", icon: "key", subtitle: "Credenciais que assinam o envio. A chave privada nunca é exibida.",
+                actions: (push_setting.respond_to?(:keys_source) ? (
                 push_setting.keys_source == :custom ? ax_badge("Personalizadas", tone: :amber) :
                 (push_setting.keys_source == :env ? ax_badge("Do ambiente (ENV)", tone: :blue) : ax_badge("Ausentes", tone: :gray))
               ) : nil)) do %>
-          <div class="ax-panel-body">
             <% if push_setting.respond_to?(:keys_present?) && push_setting.keys_present? %>
               <div class="ax-field">
                 <%= ax_field_label(nil, nil, text: "Chave pública (em uso)") %>
@@ -219,17 +201,19 @@
                 <% if push_setting.respond_to?(:encryption_ready?) && push_setting.encryption_ready? %>ou gere um par na tela de Push<% end %>.
               <% end %>
             <% end %>
-            <p class="ax-field__hint tw-mt-2">
-              A geração/rotação das chaves VAPID fica na tela <%= link_to "Push (PWA)", edit_admin_push_setting_path, class: "tw-text-primary" %>.
+            <p class="ax-field__hint">
+              A geração/rotação das chaves VAPID fica na tela <%= link_to "Push (PWA)", edit_admin_push_setting_path, class: "ax-link" %>.
             </p>
-          </div>
+          <% end %>
         <% end %>
       <% end %>
 
       <%# ============ Opt-in do fallback global por conta ============ %>
-      <%= ax_operational_panel(eyebrow: "Contas", title: "Fallback global por conta (opt-in)",
-            actions: ax_badge("#{@tenants.to_a.size} contas", tone: :gray)) do %>
-        <div class="ax-panel-body">
+      <%= ax_studio_section(id: "sys-tab-tenants", icon: "buildings",
+                            title: "Fallback global por conta (opt-in)",
+                            subtitle: "Cada conta só usa o transporte global quando liga o opt-in e a integração própria dela não está pronta.",
+                            actions: ax_badge("#{@tenants.to_a.size} contas", tone: :gray)) do %>
+        <%= ax_studio_group(title: "Contas") do %>
           <% unless @fallback_columns_ready %>
             <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
               As colunas <code>use_global_whatsapp_fallback</code> / <code>use_global_email_fallback</code> ainda não existem no Tenant — rode as migrations pendentes para habilitar os opt-ins.
@@ -256,60 +240,48 @@
                       <tr>
                         <td class="ax-strong"><%= tenant.name %></td>
                         <td>
-                          <label class="tw-inline-flex tw-items-center tw-gap-2">
-                            <%= check_box_tag "use_global_whatsapp_fallback[]", tenant.id, wa_on, disabled: !@fallback_columns_ready %>
-                            <span class="ax-field__hint tw-m-0">Usar</span>
-                          </label>
+                          <%= ax_check_field(name: "use_global_whatsapp_fallback[]", value: tenant.id, checked: wa_on, id: "use_global_whatsapp_fallback_#{tenant.id}", label: "Usar", input_html: { disabled: !@fallback_columns_ready }) %>
                         </td>
                         <td>
-                          <label class="tw-inline-flex tw-items-center tw-gap-2">
-                            <%= check_box_tag "use_global_email_fallback[]", tenant.id, email_on, disabled: !@fallback_columns_ready %>
-                            <span class="ax-field__hint tw-m-0">Usar</span>
-                          </label>
+                          <%= ax_check_field(name: "use_global_email_fallback[]", value: tenant.id, checked: email_on, id: "use_global_email_fallback_#{tenant.id}", label: "Usar", input_html: { disabled: !@fallback_columns_ready }) %>
                         </td>
                       </tr>
                     <% end %>
                   </tbody>
                 </table>
               </div>
-              <%= ax_form_actions(sticky: false, class_name: "tw-mt-3") do %>
+              <%= ax_form_actions(sticky: false) do %>
                 <%= submit_tag "Salvar opt-ins", class: "ax-btn ax-btn--primary", disabled: !@fallback_columns_ready %>
               <% end %>
             <% end %>
           <% end %>
-        </div>
+
+        <% end %>
       <% end %>
     </div>
 
-    <aside class="layout-settings-inspector">
-      <%= ax_operational_panel(eyebrow: "Status", title: "Transportes globais") do %>
-        <div class="ax-panel-body">
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>WhatsApp global</span>
-            <%= ax_badge(wa_configured ? "Pronto" : "Incompleto", tone: wa_configured ? :green : :gray, dot: true) %>
-          </div>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>SMTP global</span>
-            <%= ax_badge(email_ready ? "Pronto" : "Incompleto", tone: email_ready ? :green : :gray, dot: true) %>
-          </div>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Web Push (VAPID)</span>
-            <%= ax_badge(push_ready ? "Pronto" : "Incompleto", tone: push_ready ? :green : :gray, dot: true) %>
-          </div>
-          <p class="ax-field__hint tw-mt-2 tw-mb-0">
-            Um transporte só é usado por uma conta quando o <strong>opt-in</strong> da conta está ligado e a integração <strong>própria</strong> dela não está pronta.
-          </p>
-        </div>
+    <aside class="ax-studio__aside" aria-label="Status dos transportes">
+      <%= ax_studio_group(title: "Transportes globais", subtitle: "Estado atual de cada canal.", icon: "activity") do %>
+        <%= ax_status_list(
+              label: "Estado dos transportes globais",
+              rows: [
+                { label: "WhatsApp global", value: ax_badge(wa_configured ? "Pronto" : "Incompleto", tone: wa_configured ? :green : :gray, dot: true) },
+                { label: "SMTP global", value: ax_badge(email_ready ? "Pronto" : "Incompleto", tone: email_ready ? :green : :gray, dot: true) },
+                { label: "Web Push (VAPID)", value: ax_badge(push_ready ? "Pronto" : "Incompleto", tone: push_ready ? :green : :gray, dot: true) }
+              ]
+            ) %>
+        <p class="ax-field__hint">
+          Um transporte só é usado por uma conta quando o <strong>opt-in</strong> da conta está ligado e a integração <strong>própria</strong> dela não está pronta.
+        </p>
       <% end %>
 
-      <%= ax_operational_panel(eyebrow: "Como funciona", title: "Ordem de resolução") do %>
-        <div class="ax-panel-body">
-          <ol class="ax-field__hint ax-field__hint--steps">
-            <li>A conta usa <strong>sempre</strong> a integração própria quando ela está pronta.</li>
-            <li>Se não estiver e o <strong>opt-in</strong> da conta estiver ligado, cai para o transporte global.</li>
-            <li>Sem opt-in ou sem global configurado, o canal simplesmente não dispara.</li>
-          </ol>
-        </div>
+      <%= ax_studio_group(title: "Ordem de resolução", icon: "diagram-2") do %>
+        <ol class="ax-field__hint ax-field__hint--steps">
+          <li>A conta usa <strong>sempre</strong> a integração própria quando ela está pronta.</li>
+          <li>Se não estiver e o <strong>opt-in</strong> da conta estiver ligado, cai para o transporte global.</li>
+          <li>Sem opt-in ou sem global configurado, o canal simplesmente não dispara.</li>
+        </ol>
+
       <% end %>
     </aside>
   </div>

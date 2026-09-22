@@ -149,20 +149,8 @@
               Selecione um modelo para o sistema identificar e montar os campos variáveis automaticamente.
             <% end %>
           </div>
-          <div class="whatsapp-response-decision-map">
-            <div class="whatsapp-response-decision-map__head">
-              <div>
-                <span>Respostas do modelo</span>
-                <strong>Decisões dos botões</strong>
-                <small>Configure o que acontece quando o contato clica em cada botão real do template.</small>
-              </div>
-              <button type="button"
-                      class="ax-icon-btn"
-                      title="Use Converter em lead para botões de intenção comercial, Sem interesse para recusa e Descadastrar quando o contato pediu para sair da base. Essas decisões alimentam relatórios e automações.">
-                <i class="bi bi-info-circle"></i>
-              </button>
-            </div>
-            <% linked_workflow = campaign.automation_workflow %>
+          <% linked_workflow = campaign.automation_workflow %>
+          <% notice_html = capture do %>
             <% if linked_workflow&.whatsapp_campaign_customized? %>
               <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true) do %>
                 A automação vinculada foi personalizada no builder avançado. As decisões simples continuam visíveis aqui, mas não sobrescrevem os ajustes finos.
@@ -178,19 +166,20 @@
                 Ao salvar a campanha, o sistema gera uma automação vinculada com base nos botões reais do template.
               <% end %>
             <% end %>
-            <div data-whatsapp-campaign-builder-target="responseDecisionList">
-              <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
-                Selecione um modelo para detectar os botões e configurar as decisões comerciais.
-              <% end %>
-            </div>
-          </div>
+          <% end %>
+          <%= render "admin/shared/whatsapp/button_decision_map",
+                     buttons: [],
+                     decisions: campaign.response_decisions,
+                     distribution_rules: @distribution_rule_options,
+                     notice_html: notice_html,
+                     empty_message: "Selecione um modelo para detectar os botões e configurar as decisões comerciais." %>
           <div class="whatsapp-campaign-test-send">
             <div class="ax-field">
               <%= label_tag :test_phone, "Telefone de teste", class: "ax-label" %>
               <%= telephone_field_tag :test_phone,
                                       nil,
                                       class: "ax-control",
-                                      placeholder: "(47) 99999-0000",
+                                      placeholder: "+55 00 00000-0000",
                                       data: {
                                         controller: "phone-input",
                                         whatsapp_campaign_builder_target: "testPhone"

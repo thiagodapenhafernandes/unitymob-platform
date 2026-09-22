@@ -33,7 +33,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     get admin_banners_path
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
-    expect(document.at_css("table.ax-table caption").text).to include("Banners configurados")
+    expect(document.at_css("table.ax-table caption.ax-table__caption--sr-only").text).to include("Banners configurados")
     expect(document.css('table.ax-table th[scope="col"]').size).to eq(6)
     expect(document.at_css(%([aria-label="Ver banner #{banner.title}"]))).to be_present
     expect(document.at_css(%([aria-label="Editar banner #{banner.title}"]))).to be_present
@@ -44,9 +44,9 @@ RSpec.describe "Admin public site workspace", type: :request do
     get new_admin_banner_path
     expect(response).to have_http_status(:ok)
     new_form = Nokogiri::HTML(response.body)
-    expect(new_form.css('.ax-chip-grid input[name="banner[positions][]"]').size).to eq(Banner::POSITIONS.size)
+    expect(new_form.css('.bn-pos input[name="banner[positions][]"]').size).to eq(Banner::POSITIONS.size)
     expect(new_form.css('input[type="hidden"][name="banner[positions][]"]')).to be_empty
-    expect(new_form.at_css(".ax-form-actions--static")).to be_present
+    expect(new_form.at_css(".ax-studio-savebar")).to be_present
     expect(new_form.at_css(".ax-number-field #banner_display_order")).to be_present
 
     get edit_admin_banner_path(banner)
@@ -68,7 +68,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("public-site-workspace")
     expect(response.body).not_to include("Preview dos Links")
-    expect(response.body).to include("Exibir telefone no header")
+    expect(response.body).to include("Interessados no imóvel")
 
     get edit_admin_footer_setting_path
     expect(response).to have_http_status(:ok)
@@ -80,7 +80,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response.body).to include("Links úteis")
   end
 
-  it "salva a visibilidade do telefone do header somente no tenant autenticado" do
+  it "salva contato e a visibilidade do telefone no topo somente no tenant autenticado" do
     other_tenant = Tenant.create!(name: "Outro contato #{SecureRandom.hex(3)}", slug: "outro-contato-#{SecureRandom.hex(4)}")
     other_setting = ContactSetting.instance(tenant: other_tenant)
     other_setting.update!(phone: "(11) 3000-0000", show_phone_in_header: true)
@@ -88,13 +88,14 @@ RSpec.describe "Admin public site workspace", type: :request do
     patch admin_contact_setting_path, params: {
       contact_setting: {
         phone: "(47) 3515-4920",
-        show_phone_in_header: "0",
         sale_lead_success_message: "Obrigado, {nome}. Recebemos seu interesse no imóvel {codigo}.",
         rent_whatsapp_message: "Olá, sou {nome} e quero alugar {imovel}."
       }
     }
 
     expect(response).to redirect_to(edit_admin_contact_setting_path)
+    ContactSetting.instance(tenant: admin.tenant).update!(show_phone_in_header: true)
+    patch admin_public_header_path, params: { contact_setting: { show_phone_in_header: "0" } }
     expect(ContactSetting.instance(tenant: admin.tenant)).to have_attributes(
       phone: "554735154920",
       show_phone_in_header: false,
@@ -180,7 +181,7 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    overlay = html.at_css("#hero-overlay-preview[data-home-settings-preview-target='overlayPreview']")
+    overlay = html.at_css("#hero-overlay-preview.home-settings-overlay-preview")
     expect(overlay).to be_present
     expect(overlay["style"]).to be_nil
     expect(html.at_css("#input-overlay-color-text")["value"]).to eq("#123456")
@@ -201,30 +202,32 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    tabs = html.css("#homeSettingsTabs [role='tab']")
-    expect(tabs.size).to eq(3)
-    expect(tabs.map { |tab| [tab["aria-controls"], tab["aria-selected"], tab["tabindex"]] }).to eq([
-      ["hero", "true", "0"],
-      ["cta", "false", "-1"],
-      ["sections", "false", "-1"]
-    ])
-    expect(html.at_css("#cta[hidden][aria-labelledby='cta-tab']")).to be_present
-    expect(html.at_css("#sections[hidden][aria-labelledby='sections-tab']")).to be_present
-    expect(html.css(".ax-operational-panel").size).to eq(9)
-    expect(html.css(".ax-field-group").size).to eq(3)
-    expect(html.css(".ax-operational-panel").map(&:text).map(&:squish)).to include(
-      a_string_including("Sobreposição do Hero"),
-      a_string_including("Filtro de busca"),
-      a_string_including("Fundo do header")
+    tabs = html.css(".ax-studio-nav [role='tab'], .ax-studio-nav [data-ax-tabs-target='tab']")
+    sections = html.css(".ax-studio__stage > .ax-studio-section")
+    expect(tabs.map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
+      %w[#home-tab-hero #home-tab-search #home-tab-after]
     )
+    expect(sections.map { |section| section["id"] }).to eq(tabs.map { |tab| tab["data-ax-tabs-target-param"].delete_prefix("#") })
+    expect(sections.reject { |section| section.key?("hidden") }.map { |section| section["id"] }).to eq(["home-tab-hero"])
+    expect(html.at_css(".ax-studio__aside .hps-site")).to be_present
+    expect(html.at_css("form[data-controller~='ax-dirty-form'] .ax-studio-savebar")).to be_present
+    expect(html.css(".ax-studio-group").map(&:text).map(&:squish)).to include(
+      a_string_including("Sobreposição da imagem"),
+      a_string_including("Fundo e forma"),
+      a_string_including("Pontos de partida"),
+      a_string_including("Ordem da página")
+    )
+    expect(html.css(".ax-studio-nav__caption")).to be_empty
+    expect(html.at_css(".hps-meter[data-live-meter-target='overlay']")).to be_present
+    expect(html.css("[data-live-fill]").size).to eq(3)
+    expect(html.css("section[data-live-focus]").map { |section| section["data-live-focus"] }).to eq(%w[hero search after])
     expect(html.at_css('input[type="file"][name="home_setting[hero_slide_images][]"][multiple]')).to be_present
     expect(html.at_css('#input-overlay-opacity[type="number"]')).to be_present
-    expect(html.at_css('textarea[name="home_setting[public_header_css]"].ax-control--code')).to be_present
-    expect(html.css('input[type="text"][name^="home_setting[header_"]').size).to eq(4)
-    expect(html.at_css('input[name="home_setting[header_menu_color]"][type="text"]')["placeholder"]).to be_present
-    expect(html.css(".ax-number-field .ax-field__hint").map(&:text)).to include("Use um valor entre 0,0 e 1,0.")
+    expect(html.at_css('textarea[name="home_setting[public_header_css]"]')).to be_nil
+    expect(html.at_css('[name="home_setting[cta_title]"], [name="home_setting[services_active]"], [name="home_setting[hero_cta_link]"]')).to be_nil
+    expect(html.css(".ax-measure-field .ax-input-group__addon").map(&:text).map(&:strip)).to include("0–1", "px")
     expect(html.css(".tab-content, .tab-pane, .card, .form-control, .alert-link")).to be_empty
-    expect(response.body).to include("Nenhuma imagem desktop carregada", "Nenhuma imagem mobile carregada", "ax-sticky-action-footer")
+    expect(response.body).to include("Nenhuma imagem desktop carregada", "Nenhuma imagem mobile carregada", "ax-studio-savebar")
     expect(response.body).not_to include("bg-white", "bg-light")
   end
 
@@ -236,20 +239,15 @@ RSpec.describe "Admin public site workspace", type: :request do
     patch admin_home_setting_path, params: {
       home_setting: {
         hero_title: "Hero exclusivo da conta atual",
-        header_menu_color: "#123456",
-        public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
+        header_menu_color: "#123456"
       }
     }
 
     expect(response).to redirect_to(edit_admin_home_setting_path)
-    expect(HomeSetting.instance(tenant: admin.tenant).reload).to have_attributes(
-      hero_title: "Hero exclusivo da conta atual",
-      public_header_css: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);"
-    )
+    expect(HomeSetting.instance(tenant: admin.tenant).reload.hero_title).to eq("Hero exclusivo da conta atual")
     expect(other_setting.reload.hero_title).to eq("Hero de outra conta")
-    expect(HomeSetting.instance(tenant: admin.tenant).header_menu_color).to eq("#123456")
-    expect(other_setting.header_menu_color).to be_blank
-    expect(other_setting.public_header_css).to be_blank
+    # O topo saiu da Home: a cor do header só é gravada por Topo e menu.
+    expect(HomeSetting.instance(tenant: admin.tenant).header_menu_color).to be_blank
   end
 
   it "bloqueia acesso direto de usuario sem permissao de marketing" do
@@ -272,8 +270,8 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("Cidade Exclusiva Outro Tenant")
-    expect(response.body).to include("Conteúdo e SEO", "Filtros de imóveis", "Resumo do conjunto")
-    expect(response.body).to include('data-controller="property-page-preview"', 'data-property-page-preview-target="count"')
+    expect(response.body).to include("Quais imóveis aparecem", "Como o Google vê", "Resumo do conjunto")
+    expect(response.body).to include('data-controller="property-page-preview seo-snippet', 'data-property-page-preview-target="count"')
     expect(response.body.scan('name="landing_page[filter_params][characteristics][]"').size).to eq(20)
     expect(response.body).not_to include('type="hidden" name="landing_page[filter_params][characteristics][]"')
     html = Nokogiri::HTML(response.body)
@@ -288,7 +286,7 @@ RSpec.describe "Admin public site workspace", type: :request do
       "landing_page[filter_params][development][]"
     )
     expect(html.at_css('.ax-measure-field input[name="landing_page[filter_params][min_area]"]')).to be_present
-    expect(html.at_css(".ax-form-actions--static")).to be_present
+    expect(html.at_css(".ax-studio-savebar")).to be_present
     expect(html.css(".form-group, .form-control, .tab-pane, .card")).to be_empty
 
     get filter_options_admin_landing_pages_path, params: { type: "property_codes", q: property.codigo }, as: :json
@@ -370,7 +368,7 @@ RSpec.describe "Admin public site workspace", type: :request do
     section = admin.tenant.home_sections.create!(section_type: :services, title: "Serviços especiais", active: true)
     section.home_section_items.create!(title: "Avaliação", description: "Avaliação especializada", active: true)
     filter_section = admin.tenant.home_sections.create!(section_type: :featured_properties, title: "Imóveis em destaque", active: true)
-    current_property = create(:habitation, tenant: admin.tenant, codigo: "HOME-1", titulo_anuncio: "Imóvel do tenant atual")
+    current_property = create(:habitation, tenant: admin.tenant, codigo: "HOME-1", titulo_anuncio: "Imóvel do tenant atual", exibir_no_site_flag: true)
     other_tenant = Tenant.create!(name: "Outro tenant home #{SecureRandom.hex(3)}", slug: "outro-home-#{SecureRandom.hex(4)}")
     foreign_property = create(:habitation, tenant: other_tenant, codigo: "HOME-2", titulo_anuncio: "Imóvel de outro tenant")
 
@@ -381,7 +379,7 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     get edit_admin_home_section_path(filter_section)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("ax-chip-grid", "ax-toggle-chip", "Curadoria de imóveis")
+    expect(response.body).to include("ax-chip-grid", "ax-toggle-chip", "ax-chip-section", "ax-studio-group", "Curadoria")
     expect(response.body).not_to include("Tipo de Seção", "Ordem de Exibição")
     expect(response.body).to include("Imóvel do tenant atual")
     expect(response.body).not_to include("Imóvel de outro tenant")

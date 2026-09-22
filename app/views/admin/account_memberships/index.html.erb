@@ -17,7 +17,7 @@
             <%= ax_field_grid do %>
               <div class="ax-field ax-span-6">
                 <%= ax_field_label(f, :invited_email, text: "E-mail do convidado") %>
-                <%= f.email_field :invited_email, class: "ax-control", required: true, placeholder: "pessoa@agencia.com.br" %>
+                <%= f.email_field :invited_email, class: "ax-control", required: true, placeholder: "pessoa@example.invalid" %>
               </div>
               <div class="ax-field ax-span-6">
                 <%= ax_field_label(nil, nil, text: "Perfil de acesso nesta conta", for: "account_membership_access_profile_id") %>

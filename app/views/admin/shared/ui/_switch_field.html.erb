@@ -10,5 +10,7 @@
     <%= check_box_tag name, value, checked, input_opts %>
   <% end %>
   <span class="ax-switch__track" aria-hidden="true"></span>
-  <% if label.present? %><span><%= label %></span><% end %>
+  <% if label.present? %>
+    <span><%= label %><% if local_assigns[:description].present? %><small class="ax-switch__description"><%= description %></small><% end %></span>
+  <% end %>
 </label>

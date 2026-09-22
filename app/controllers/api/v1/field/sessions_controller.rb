@@ -14,7 +14,7 @@ module Api
         def create
           admin_user = AdminUser.find_for_authentication(email: params[:email].to_s)
 
-          unless admin_user&.valid_password?(params[:password].to_s)
+          unless admin_user&.active_for_authentication? && admin_user.valid_password?(params[:password].to_s)
             return render json: { error: "invalid_credentials" }, status: :unauthorized
           end
 

@@ -27,12 +27,12 @@
   gap: 9px;
   min-height: 44px;
   padding: 10px 10px 10px 12px;
-  border: 1px solid #d8dee8;
+  border: 1px solid var(--ab-line, #d8dee8);
   border-left-width: 4px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, .98);
+  background: color-mix(in srgb, var(--ab-panel, #fff) 98%, transparent);
   box-shadow: 0 16px 36px rgba(15, 23, 42, .16), 0 2px 8px rgba(15, 23, 42, .08);
-  color: #263241;
+  color: var(--ab-ink, #263241);
   pointer-events: auto;
   animation: ax-flash-toast-enter 140ms ease-out both, ax-flash-toast-exit 180ms ease-in 6.5s forwards;
 }

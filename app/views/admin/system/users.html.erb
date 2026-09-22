@@ -11,16 +11,12 @@
 <% end %>
 
 <div class="ax-system">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
-      <h1>Usuários da plataforma</h1>
-      <p>Lista global para impersonação auditada. O acesso operacional acontece somente depois de entrar como o usuário escolhido.</p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <%= ax_badge("#{@admin_users.total_entries} usuários", tone: :blue) %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: "Usuários da plataforma",
+        eyebrow: "Admin do Sistema",
+        icon: "people",
+        subtitle: "Lista global para impersonação auditada. O acesso operacional acontece somente depois de entrar como o usuário escolhido.",
+        metrics: [{ value: @admin_users.total_entries, label: "usuários" }]) %>
 
   <%= ax_operational_panel(
         eyebrow: "Filtro",

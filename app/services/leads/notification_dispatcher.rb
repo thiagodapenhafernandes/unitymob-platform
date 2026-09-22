@@ -63,7 +63,8 @@ module Leads
     end
 
     def self.push_to(corretor, title:, body:, url:, notification_context: "general")
-      return unless corretor
+      return unless corretor&.active?
+      return unless corretor.notification_delivery_allowed?
 
       # high: com urgency normal o Android em Doze (aparelho parado) segura a
       # entrega — exatamente o "push parou de chegar" com o celular na mesa.
@@ -85,6 +86,8 @@ module Leads
 
     def deliver
       return unless @rule && @corretor
+      return unless @corretor.active?
+      return unless @corretor.notification_delivery_allowed?
       return unless distribution_event_enabled?
 
       deliver_channels
@@ -93,7 +96,8 @@ module Leads
     # Envia a notificação da regra para um corretor específico (usado no Shark Tank,
     # que notifica todos os corretores elegíveis da regra).
     def deliver_to_agent(agent, shark_tank: false, pool: false, notification_context: nil)
-      return unless @rule && agent
+      return unless @rule && agent&.active?
+      return unless agent.notification_delivery_allowed?
 
       @corretor = agent
       @pool_notification = pool || shark_tank

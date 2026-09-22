@@ -50,11 +50,47 @@
 
 .ax-metric-card > .ax-progress { margin-top: 8px; }
 
+/* KPI colorido (opt-in via icon:/tone:): tile de ícone e fundo tingidos pelo tom. */
+.ax-metric-card__lead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ax-metric-card__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--mc-tone, var(--admin-primary)) 16%, #fff);
+  color: var(--mc-tone, var(--admin-primary));
+  font-size: 14px;
+}
+.ax-metric-card[data-tone] {
+  border-color: color-mix(in srgb, var(--mc-tone) 24%, var(--ax-border-soft));
+  background:
+    radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--mc-tone) 11%, transparent), transparent 62%),
+    #fff;
+}
+.ax-metric-card[data-tone] .ax-metric-card__value { margin-top: 10px; font-size: 27px; }
+.ax-metric-card[data-tone="blue"] { --mc-tone: var(--ax-accent-blue); }
+.ax-metric-card[data-tone="green"] { --mc-tone: var(--ax-accent-green); }
+.ax-metric-card[data-tone="amber"] { --mc-tone: var(--ax-accent-amber); }
+.ax-metric-card[data-tone="red"] { --mc-tone: var(--ax-accent-red); }
+.ax-metric-card[data-tone="violet"] { --mc-tone: var(--ax-accent-violet); }
+.ax-metric-card[data-tone="teal"] { --mc-tone: var(--ax-accent-teal); }
+
 [data-admin-theme="dark"] .ax-metric-card {
   border-color: var(--ax-dark-border-soft);
   background: var(--ax-dark-surface);
   color: var(--ax-dark-text);
 }
+
+[data-admin-theme="dark"] .ax-metric-card[data-tone] {
+  border-color: color-mix(in srgb, var(--mc-tone) 30%, var(--ax-dark-border-soft));
+  background:
+    radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--mc-tone) 16%, transparent), transparent 62%),
+    var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .ax-metric-card__icon { background: color-mix(in srgb, var(--mc-tone, var(--admin-primary)) 22%, var(--ax-dark-surface)); }
 
 [data-admin-theme="dark"] .ax-metric-card__value {
   color: var(--ax-dark-text);

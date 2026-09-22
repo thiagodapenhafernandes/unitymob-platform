@@ -4,7 +4,10 @@ class WhatsappConversation < ApplicationRecord
 
   belongs_to :lead, optional: true
   belongs_to :assigned_admin_user, class_name: "AdminUser", optional: true
+  # Número do negócio que recebeu a última mensagem do contato: as respostas saem por ele.
+  belongs_to :whatsapp_sender_number, optional: true
   has_many :messages, -> { order(:created_at) }, class_name: "WhatsappMessage", dependent: :destroy
+  has_many :attendances, class_name: "WhatsappAttendance", dependent: :destroy
 
   normalize_phone_fields :contact_phone
 
@@ -14,6 +17,15 @@ class WhatsappConversation < ApplicationRecord
   validate :phone_or_bsuid_present
 
   scope :open, -> { where(status: "open") }
+  # Mesma regra de visibilidade do inbox (dono da conversa ou do lead dentro do escopo do usuário; equipe inclui a subárvore).
+  scope :visible_to, ->(user) {
+    if user.owns_all?(:whatsapp_inbox)
+      all
+    else
+      ids = user.can_view_team?(:whatsapp_inbox) ? user.team_scope_ids : [user.id]
+      left_joins(:lead).where("whatsapp_conversations.assigned_admin_user_id IN (:ids) OR leads.admin_user_id IN (:ids)", ids: ids)
+    end
+  }
   # Colunas qualificadas: o inbox faz left_joins(:lead) no escopo por corretor
   # e "updated_at" ficaria ambíguo (leads também tem a coluna).
   scope :recent, -> { order(Arel.sql("whatsapp_conversations.last_message_at DESC NULLS LAST, whatsapp_conversations.updated_at DESC")) }
@@ -41,6 +53,32 @@ class WhatsappConversation < ApplicationRecord
       starts_at: starts_at
     )
   }
+
+  # Credenciais para responder: o número que recebeu a conversa; senão a integração da conta.
+  def reply_credentials
+    sender = whatsapp_sender_number
+    sender&.messaging_ready? ? sender : WhatsappBusinessIntegration.current(tenant)
+  end
+
+  # Contatos internos (número de um usuário da conta) não ficam vinculados a lead na conversa;
+  # o atendimento aberto ainda carrega o lead, e é ele que alimenta o painel de contexto.
+  def context_lead
+    lead || open_attendance&.lead
+  end
+
+  # Quem ouve o som de mensagem nova: o dono do atendimento aberto; sem atendimento, o responsável de sempre.
+  # Conversa cujo atendimento foi encerrado não alerta ninguém até um novo atendimento começar (o menu volta).
+  def alert_recipient_id
+    attendance = open_attendance
+    return attendance.admin_user_id || assigned_admin_user_id if attendance
+    return nil if attendances.exists?
+
+    assigned_admin_user_id || context_lead&.admin_user_id
+  end
+
+  def open_attendance
+    attendances.open_now.first
+  end
 
   def display_name
     contact_name.presence || lead&.display_name.presence || contact_phone

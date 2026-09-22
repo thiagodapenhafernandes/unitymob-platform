@@ -1,0 +1,142 @@
+<%
+  public_primary = @layout_setting.primary_color.presence || "#022B3A"
+  public_secondary = @layout_setting.secondary_color.presence || "#053C5E"
+  public_accent = @layout_setting.accent_color.presence || "#BFAB25"
+  brand_name = @layout_setting.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
+  live = ->(var, fallback) { { live_var: var, live_kind: "color", live_fallback: fallback } }
+  themes = @tenant.available_public_site_themes.map do |key, config|
+    { value: key, tone: "brand", label: config[:label], description: config[:description], icon: { "default" => "bi-window", "saluteimoveis" => "bi-buildings", "conexaoimobiliaria" => "bi-diagram-3" }.fetch(key, "bi-palette") }
+  end
+  studio_items = [
+    { id: "identity-tab-brand", icon: "stars", label: "Marca", hint: "Nome, logo e favicon" },
+    { id: "identity-tab-colors", icon: "palette2", label: "Paleta", hint: "As três cores do site" },
+    { id: "identity-tab-theme", icon: "layout-wtf", label: "Modelo visual", hint: "O desenho do site" }
+  ]
+%>
+<div class="public-site-workspace pid-workspace">
+  <%= ax_workspace_heading(
+        eyebrow: "Site público · Identidade",
+        icon: "stars",
+        title: "Identidade",
+        pills: ["Escopo: conta", "Modelo: #{@tenant.public_site_theme_label}"],
+        subtitle: "Marca, logo, favicon, cores e modelo visual do site. Tudo que o visitante reconhece como a sua imobiliária fica aqui.",
+        actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")
+      ) %>
+
+  <%= form_with(model: @layout_setting, url: admin_public_identity_path, method: :patch, local: true,
+                html: { multipart: true, class: "pid-form", data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } }) do |f| %>
+    <%= ax_error_summary(@layout_setting) %>
+
+    <div class="ax-studio" data-controller="live-preview" data-action="input->live-preview#sync change->live-preview#sync">
+      <div class="ax-studio__nav">
+        <%= ax_studio_nav(items: studio_items, panels_selector: "#identity-studio-sections", label: "Seções da identidade do site") %>
+      </div>
+
+      <div class="ax-studio__stage" id="identity-studio-sections">
+        <%= ax_studio_section(id: "identity-tab-brand", icon: "stars", active: true,
+                              title: "Marca",
+                              subtitle: "O nome e os arquivos que identificam a imobiliária no site, no login da equipe e na aba do navegador.") do %>
+          <%= ax_studio_group(title: "Nome da marca", subtitle: "Use o nome que o cliente reconhece. Também aparece no topo da plataforma interna.") do %>
+            <%= ax_text_field(form: f, method: :site_name, label: "Nome da conta/marca", placeholder: "Ex.: Sua Imobiliária", clearable: true,
+                              data: { live_text: "brand" }) %>
+          <% end %>
+
+          <%= ax_studio_group(title: "Logo e favicon", subtitle: "SVG ou PNG transparente para a logo; PNG ou ICO quadrado para o favicon.") do %>
+            <div class="lss-assets">
+              <div class="lss-asset">
+                <div class="lss-asset__preview lss-asset__preview--logo">
+                  <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
+                    <% logo_source = @layout_setting.logo.content_type == "image/svg+xml" ? @layout_setting.logo : @layout_setting.logo.variant(resize_to_limit: [400, 160]) %>
+                    <%= image_tag logo_source, class: "lss-asset__img", alt: "Logo atual" %>
+                  <% else %>
+                    <i class="bi bi-image"></i><span>Sem logo próprio</span>
+                  <% end %>
+                </div>
+                <%= ax_file_field(form: f, method: :logo, label: "Logo", accept: "image/svg+xml,image/png", hint: "Proporção recomendada: 3:1 ou 4:1.") %>
+              </div>
+              <div class="lss-asset">
+                <div class="lss-asset__preview lss-asset__preview--favicon">
+                  <% if @layout_setting.favicon.attached? && @layout_setting.favicon.persisted? %>
+                    <%= image_tag @layout_setting.favicon, class: "lss-asset__img", alt: "Favicon atual" %>
+                  <% else %>
+                    <i class="bi bi-app-indicator"></i><span>Padrão do sistema</span>
+                  <% end %>
+                </div>
+                <%= ax_file_field(form: f, method: :favicon, label: "Favicon", accept: "image/png,image/x-icon,image/vnd.microsoft.icon", hint: "32x32 ou 64x64.") %>
+              </div>
+            </div>
+          <% end %>
+
+          <details class="ax-studio-advanced">
+            <summary><i class="bi bi-code-slash"></i> Avançado: CSS da logo pública <i class="bi bi-chevron-down"></i></summary>
+            <div class="ax-field layout-settings-custom-logo-css">
+              <%= ax_field_label(f, :custom_logo_css, text: "CSS da logo pública") %>
+              <div class="layout-settings-css-editor" data-controller="css-micro-editor">
+                <pre class="layout-settings-css-editor__highlight" aria-hidden="true"><code data-css-micro-editor-target="highlight"></code></pre>
+                <%= f.text_area(:custom_logo_css, rows: 8, class: "ax-control layout-settings-css-editor__input", spellcheck: false,
+                                placeholder: ".custom-logo img {\n  width: 170px;\n  object-fit: contain;\n}\n\n@media (max-width: 767px) {\n  .custom-logo img {\n    width: 140px;\n  }\n}",
+                                data: { css_micro_editor_target: "input", action: "input->css-micro-editor#sync scroll->css-micro-editor#syncScroll keydown->css-micro-editor#handleKeydown" }) %>
+              </div>
+              <p class="ax-field__hint">Limitado aos seletores <code>.custom-logo</code>, <code>.custom-logo::before</code>, <code>.custom-logo::after</code> e <code>.custom-logo img</code>. Aceita <code>@media (max-width: 767px)</code> e <code>@media (min-width: 1080px)</code>.</p>
+            </div>
+          </details>
+        <% end %>
+
+        <%= ax_studio_section(id: "identity-tab-colors", icon: "palette2",
+                              title: "Paleta",
+                              subtitle: "Três cores bastam: a base da marca, o apoio e o toque de destaque. Não alteram as cores da plataforma interna.") do %>
+          <div class="lss-site__fields">
+            <% [
+              [:primary_color, "Primária do site", public_primary, "--theme-public-primary", "--color-primary", "Fundo do topo, rodapé e títulos fortes."],
+              [:secondary_color, "Secundária do site", public_secondary, "--theme-public-secondary", "--color-secondary", "Apoio da marca e degradês."],
+              [:accent_color, "Destaque do site", public_accent, "--theme-public-accent", "--color-accent", "Botões de chamada e detalhes."]
+            ].each do |method, label, value, var, token, about| %>
+              <%= ax_color_field(form: f, method: method, label: label, value: value,
+                                 swatch_title: "Escolha a cor #{label.downcase.sub(' do site', '')} do site público",
+                                 color_options: { data: live.call(var, value) }, text_options: { data: live.call(var, value) },
+                                 hint: safe_join([about, " Token ", tag.code(token), "."])) %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= ax_studio_section(id: "identity-tab-theme", icon: "layout-wtf",
+                              title: "Modelo visual",
+                              subtitle: "Cada modelo é uma folha de estilo própria do site. A troca vale para todas as páginas públicas, com a sua marca e a sua paleta.") do %>
+          <%= fields_for :tenant, @tenant do |tf| %>
+            <%= ax_choice_group(form: tf, method: :public_site_theme, choices: themes, variant: :cards, selected: @tenant.public_site_theme_key,
+                                aria_label: "Modelo visual do site", class_name: "pid-themes") %>
+          <% end %>
+          <%= ax_inline_notice(tone: :info, icon: "info-circle",
+                               body: "Trocar o modelo não apaga conteúdo nem configurações: só muda o desenho. Confira o site depois de salvar.") %>
+        <% end %>
+      </div>
+
+      <aside class="ax-studio__aside" aria-label="Prévia ao vivo">
+        <div class="lss-preview">
+          <div class="lss-preview__label"><span class="lss-preview__live"></span> Prévia ao vivo</div>
+          <div class="lss-web" role="img" aria-label="Prévia do site público com a marca e a paleta escolhidas">
+            <header class="lss-web__top">
+              <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
+                <span class="pid-web__logo"><%= image_tag @layout_setting.logo.content_type == "image/svg+xml" ? @layout_setting.logo : @layout_setting.logo.variant(resize_to_limit: [240, 80]), alt: brand_name %></span>
+              <% else %>
+                <strong data-live-text-target="brand"><%= brand_name %></strong>
+              <% end %>
+              <span>Comprar</span><span>Alugar</span><span>Contato</span>
+            </header>
+            <div class="lss-web__hero">
+              <small>Imóveis selecionados</small>
+              <strong>Encontre o lugar certo para você</strong>
+              <span class="lss-web__cta">Ver imóveis</span>
+            </div>
+            <div class="lss-web__cards">
+              <div><i></i><b></b><em></em></div><div><i></i><b></b><em></em></div><div><i></i><b></b><em></em></div>
+            </div>
+          </div>
+          <p class="lss-preview__note">A prévia mostra marca e paleta. O modelo visual muda o desenho das páginas depois de salvar.</p>
+        </div>
+      </aside>
+    </div>
+
+    <%= ax_studio_savebar(form: f, cancel_path: admin_root_path) %>
+  <% end %>
+</div>

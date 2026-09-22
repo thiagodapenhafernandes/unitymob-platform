@@ -1,0 +1,26 @@
+<%# Pré-visualização ao vivo (celular). mode: text | carousel | flow %>
+<aside class="ax-guided-aside" aria-label="Pré-visualização da mensagem">
+  <div class="ax-guided-aside__label"><span>Pré-visualização</span><em class="ax-guided-tag" data-guided="previewCategory" data-tone="marketing">Marketing</em></div>
+  <div class="wtb-phone">
+    <div class="wtb-phone__bar"><span class="wtb-phone__avatar"><i class="bi bi-building"></i></span><strong>Sua imobiliária</strong><small>conta comercial</small></div>
+    <div class="wtb-phone__chat">
+      <div class="wtb-bubble" data-guided="bubble">
+        <% if mode == "text" %>
+          <div class="wtb-bubble__media" data-guided="previewMedia" hidden><i class="bi bi-image"></i><span></span></div>
+          <strong class="wtb-bubble__header" data-guided="previewHeader" hidden></strong>
+        <% end %>
+        <p class="wtb-bubble__body" data-guided="previewBody"></p>
+        <% unless mode == "carousel" %>
+          <small class="wtb-bubble__footer" data-guided="previewFooter" hidden></small>
+        <% end %>
+        <time>agora</time>
+      </div>
+      <% if mode == "carousel" %>
+        <div class="wtb-carousel" data-guided="previewCards"></div>
+      <% else %>
+        <div class="wtb-actions" data-guided="previewButtons"></div>
+      <% end %>
+    </div>
+  </div>
+  <p class="ax-guided-aside__hint"><%= mode == "carousel" ? "Arraste para o lado para ver os cards." : "As variáveis aparecem com os seus exemplos." %></p>
+</aside>

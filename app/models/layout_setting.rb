@@ -197,6 +197,12 @@ class LayoutSetting < ApplicationRecord
     fallback
   end
 
+  # A faixa lateral ("inset ...") deu lugar ao ladrilho de ícone na seção do menu; sombras externas continuam valendo.
+  def self.menu_section_box_shadow(value)
+    shadow = normalized_box_shadow(value)
+    shadow.start_with?("inset") ? "none" : shadow
+  end
+
   def self.normalized_box_shadow(value, fallback = ADMIN_MENU_SECTION_SHADOW_DEFAULT)
     candidate = value.to_s.squish
     candidate.match?(ADMIN_MENU_SECTION_SHADOW_PATTERN) ? candidate : fallback

@@ -4,7 +4,9 @@ export default class extends Controller {
   static targets = ["tab"]
   static values = {
     panelSelector: String,
-    revealActive: { type: Boolean, default: false }
+    revealActive: { type: Boolean, default: false },
+    // false em abas aninhadas: não escrevem nem leem o hash da URL, que pertence às abas externas.
+    syncHash: { type: Boolean, default: true }
   }
 
   connect() {
@@ -145,6 +147,7 @@ export default class extends Controller {
   }
 
   syncHash(targetSelector) {
+    if (!this.syncHashValue) return
     if (!targetSelector?.startsWith("#")) return
     if (window.location.hash === targetSelector) return
 
@@ -152,6 +155,8 @@ export default class extends Controller {
   }
 
   activateFromHash() {
+    if (!this.syncHashValue) return
+
     const tabId = window.location.hash?.replace("#", "")
     if (!tabId) return
 

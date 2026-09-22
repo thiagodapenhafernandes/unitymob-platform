@@ -115,15 +115,26 @@ RSpec.describe "phones:normalize" do
     technical_or_non_phone_fields = {
       "client_interactions" => %w[business_id],
       "client_property_interests" => %w[business_id],
-      "contact_settings" => %w[business_hours],
+      "appointments" => %w[invite_via_whatsapp],
+      "commercial_contract_acceptances" => %w[legal_business_name],
+      "commercial_contract_proposals" => %w[legal_business_name],
+      "contact_settings" => %w[
+        business_hours
+        rent_whatsapp_message
+        sale_rent_whatsapp_message
+        sale_whatsapp_message
+        show_phone_in_header
+      ],
       "crm_appointments" => %w[business_id],
       "crm_contacts" => %w[show_phone_on_web],
       "distribution_rules" => %w[business_type notify_whatsapp],
       "habitation_interactions" => %w[business_id],
-      "lead_settings" => %w[secure_link_whatsapp],
+      "home_settings" => %w[mobile_search_filter_display_mode],
+      "lead_settings" => %w[lead_whatsapp_conversation_enabled secure_link_whatsapp],
       "leads" => %w[business_scoped_user_id],
       "notification_template_settings" => %w[whatsapp_template_id],
       "portal_integrations" => %w[allowed_business_types],
+      "property_settings" => %w[ai_property_search_identity_phone_label],
       "proprietors" => %w[phone_extension show_phone_on_web],
       "system_notification_settings" => %w[
         whatsapp_access_token
@@ -149,8 +160,10 @@ RSpec.describe "phones:normalize" do
         whatsapp_sender_number_id
       ],
       "whatsapp_campaigns" => %w[whatsapp_sender_number_id whatsapp_template_id],
-      "whatsapp_conversations" => %w[business_scoped_user_id],
+      "whatsapp_conversations" => %w[business_scoped_user_id whatsapp_sender_number_id],
       "whatsapp_messages" => %w[whatsapp_conversation_id],
+      "whatsapp_attendances" => %w[whatsapp_conversation_id whatsapp_response_flow_id],
+      "whatsapp_response_flows" => %w[whatsapp_template_id],
       "whatsapp_sender_numbers" => %w[phone_number_id whatsapp_business_integration_id]
     }
 

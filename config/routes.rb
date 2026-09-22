@@ -131,6 +131,8 @@ Rails.application.routes.draw do
       end
     end
 
+    resource :public_identity, only: [:edit, :update]
+    resource :public_header, only: [:edit, :update]
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
     resource :my_profile, only: [:edit, :update]
@@ -217,11 +219,13 @@ Rails.application.routes.draw do
       end
       collection do
         patch :update_order
+        get :preview
       end
       resources :home_section_items, only: [:new, :create, :edit, :update, :destroy]
     end
     resources :admin_users, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       post :reset_two_factor, on: :member
+      post :revoke_access, on: :member
       patch :inactivate, on: :member
       collection do
         get   :hierarchy
@@ -257,6 +261,7 @@ Rails.application.routes.draw do
     end
     resources :leads, only: [:index, :new, :create, :show, :update, :destroy] do
       get :kanban_column, on: :collection
+      get :list_page, on: :collection
       get :pwa_leads_page, on: :collection
       get :distribution_queue, on: :collection
       get :lead_pool, on: :collection
@@ -339,6 +344,11 @@ Rails.application.routes.draw do
         get :new_campaign
       end
     end
+    resources :whatsapp_attendances, path: "whatsapp/atendimentos", only: [:index] do
+      post :transfer, on: :member
+      post :finish, on: :member
+    end
+    resources :whatsapp_response_flows, path: "whatsapp/fluxos-resposta"
     resources :whatsapp_campaign_unsubscribes, path: "whatsapp/descadastros", only: [:index] do
       member do
         patch :reenable
@@ -347,13 +357,23 @@ Rails.application.routes.draw do
     resources :whatsapp_campaign_recipients, path: "whatsapp/importados", only: [:index]
     resources :whatsapp_sender_numbers, path: "whatsapp/numeros", only: [:create, :update, :destroy] do
       post :test_connection, on: :member
+      post :connect, on: :member
+      patch :reactivate, on: :member
     end
     resources :notification_template_settings, path: "notificacoes/templates", only: [:create, :update, :destroy]
+    resources :in_app_notifications, path: "notificacoes/internas", only: [] do
+      post :read, on: :member
+      post :read_all, on: :collection
+    end
 
     # === Atendimento WhatsApp (inbox) ===
     resources :whatsapp_conversations, only: [:index, :show], path: "atendimento/whatsapp", controller: "whatsapp_inbox" do
       member do
         post :send_message
+        post :finish_attendance
+        post :transfer_attendance
+        get :context
+        post :add_note
         get "messages/:message_id/media", action: :media, as: :message_media
         post "messages/:message_id/react", action: :react
         post "messages/:message_id/toggle_pin", action: :toggle_pin
@@ -425,7 +445,6 @@ Rails.application.routes.draw do
     resource :whatsapp_integration, only: [:show] do
       post :embedded_signup_callback
       delete :disconnect
-      patch :phone_settings
       patch :manual_connection
       patch :lead_activation_template
       post :submit_lead_activation_template

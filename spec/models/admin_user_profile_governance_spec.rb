@@ -57,6 +57,20 @@ RSpec.describe AdminUser, "perfis vertical e horizontal", type: :model do
     expect(user.scope_for(:leads)).to eq("own")
   end
 
+  it "aplica o escopo proprio da funcao horizontal mesmo quando o vertical e o dono da conta" do
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    finance = Profile.create!(
+      tenant: tenant, name: "Financeiro", axis: "horizontal", vertical_profile: owner_profile,
+      permissions: { "comercial" => { "view" => true, "manage" => true, "scope" => "own" } }
+    )
+    restricted = build(:admin_user, tenant: tenant, profile: owner_profile, horizontal_profile: finance)
+    owner = build(:admin_user, tenant: tenant, profile: owner_profile)
+
+    expect(restricted.scope_for(:comercial)).to eq("own")
+    expect(restricted.owns_all?(:comercial)).to be(false)
+    expect(owner.scope_for(:comercial)).to eq("all")
+  end
+
   it "deriva o perfil vertical a partir da função horizontal" do
     manager = Profile.create!(tenant: tenant, name: "Manager", axis: "vertical", position: 200, permissions: {})
     director = Profile.create!(tenant: tenant, name: "Director", axis: "vertical", position: 150, permissions: {})

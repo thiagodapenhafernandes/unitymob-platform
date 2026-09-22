@@ -8,9 +8,9 @@
   gap: 8px;
   margin-top: 14px;
   padding: 10px 12px;
-  border: 1px solid #d8dee8;
+  border: 1px solid var(--ab-line, #d8dee8);
   border-radius: 8px;
-  background: rgba(255, 255, 255, .92);
+  background: color-mix(in srgb, var(--ab-panel, #fff) 92%, transparent);
   box-shadow: 0 -2px 14px rgba(15, 23, 42, .06);
   backdrop-filter: blur(8px);
 }

@@ -1,29 +1,68 @@
-<%= form_with(model: [:admin, @landing_page], local: true, class: "ax-field-grid", data: { controller: "property-page-preview", property_page_preview_url_value: "/admin/landing_pages/preview" }) do |f| %>
-  <div class="ax-span-12"><%= ax_error_summary(@landing_page) %></div>
-  <div class="ax-span-8">
-    <%= ax_operational_panel(eyebrow: "Página", title: "Conteúdo e SEO", class_name: "tw-mb-4") do %>
-        <%= ax_text_field(form: f, method: :title, label: "Título da Página (H1)", placeholder: "Ex: Apartamentos na Planta em Balneário Camboriú", required: true) %>
+<%
+  editing = @landing_page.persisted?
+  active = editing ? @landing_page.active? : true
+  flag_groups = [
+    { title: "Localização e sol", icon: "water", tone: "teal", flags: [%w[frente_mar Frente\ Mar], %w[quadra_mar Quadra\ Mar], %w[vista_mar Vista\ Mar], %w[sol_manha Sol\ da\ manhã], %w[sol_tarde Sol\ da\ tarde], %w[sol_dia_todo Sol\ o\ dia\ todo]] },
+    { title: "Lazer e estrutura", icon: "building-check", tone: "violet", flags: [%w[piscina Piscina], %w[churrasqueira Churrasqueira], ["cozinha_gourmet_churrasqueira", "Cozinha gourmet com churrasqueira"], ["dependencia_empregada", "Dependência de empregada"], %w[sacada Sacada]] },
+    { title: "Acabamento", icon: "brush", tone: "pink", flags: [%w[mobiliado Mobiliado], %w[decorado Decorado], ["garden_flag", "Garden"]] },
+    { title: "Negócio e destaque", icon: "stars", tone: "amber", flags: [["lancamento_flag", "Lançamento"], ["aceita_permuta_flag", "Aceita Permuta"], ["aceita_financiamento_flag", "Aceita Financiamento"], ["festival_flag", "Oportunidade especial"], ["opportunity", "Oportunidade (Preço Reduzido)"], ["exibir_no_site_portal_flag", "Exibir no site"]] }
+  ]
+  selected_flags = Array((@landing_page.filter_params || {})["characteristics"])
+%>
+<%= form_with(model: [:admin, @landing_page], local: true,
+      class: "ax-studio ax-studio--flat ax-studio--wide",
+      data: {
+        controller: "property-page-preview seo-snippet ax-dirty-form",
+        property_page_preview_url_value: "/admin/landing_pages/preview",
+        seo_snippet_host_value: request.host,
+        action: "input->seo-snippet#refresh input->ax-dirty-form#mark change->ax-dirty-form#mark"
+      }) do |f| %>
+  <div class="ax-studio-form ax-studio-form--soft ax-studio__stage">
+    <%= ax_error_summary(@landing_page) %>
 
-        <%= ax_field_grid do %>
-          <div class="ax-span-6">
-            <%= ax_field_label(f, :slug, text: "URL Amigável (Slug)") %>
-            <%= ax_input_group(prefix: "/") do %>
-              <%= f.text_field :slug, class: "ax-control", placeholder: "apartamentos-na-planta-bc" %>
-            <% end %>
-            <p class="ax-field__hint">Deixe em branco para gerar do título.</p>
-          </div>
-          <div class="ax-span-6">
-            <%= ax_text_field(form: f, method: :meta_title, label: "Título SEO (Meta Title)", placeholder: "Título para o Google") %>
-          </div>
-        <% end %>
-
-        <%= ax_text_field(form: f, method: :meta_description, label: "Descrição SEO (Meta Description)", type: :textarea, rows: 2, placeholder: "Breve resumo para o Google...") %>
-        <%= ax_text_field(form: f, method: :description, label: "Descrição de Topo (Introdução)", type: :textarea, rows: 3, placeholder: "Texto que aparece logo abaixo do título na página pública...") %>
-        <%= ax_text_field(form: f, method: :content, label: "Texto SEO (Rodapé)", type: :textarea, rows: 6, placeholder: "Conteúdo rico para SEO que aparece após a listagem de imóveis...") %>
+    <%= ax_studio_group(title: "Página", icon: "file-earmark-text", subtitle: "O título é o H1 da página pública; a URL é o endereço que o Google indexa.") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :title, label: "Título da Página (H1)", placeholder: "Ex: Imóveis em destaque na cidade", required: true) %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_field_label(f, :slug, text: "URL Amigável (Slug)") %>
+          <%= ax_input_group(prefix: "/") do %>
+            <%= f.text_field :slug, class: "ax-control", placeholder: "apartamentos-na-planta-bc" %>
+          <% end %>
+          <p class="ax-field__hint">Deixe em branco para gerar do título.</p>
+        </div>
+      <% end %>
     <% end %>
 
-    <%= ax_operational_panel(eyebrow: "Segmentação", title: "Filtros de imóveis", class_name: "tw-mb-4") do %>
-        <%= f.fields_for :filter_params do |fp| %>
+    <%= ax_studio_group(title: "Quais imóveis aparecem", icon: "funnel", subtitle: "Os filtros montam a lista da página. A prévia ao lado mostra o resultado real enquanto você ajusta.") do %>
+      <%= f.fields_for :filter_params do |fp| %>
+        <%= ax_chip_section(title: "Onde", icon: "geo-alt", tone: "teal") do %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= ax_autocomplete_select_field(form: fp, method: :city, label: "Cidade(s)", choices: @property_cities, multiple: true, placeholder: "Selecione cidades", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_autocomplete_select_field(form: fp, method: :neighborhood, label: "Bairro(s)", choices: @property_neighborhoods, multiple: true, placeholder: "Selecione bairros", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_autocomplete_select_field(
+                    form: fp,
+                    method: :development,
+                    label: "Empreendimento(s)",
+                    choices: @selected_development_options || [],
+                    multiple: true,
+                    placeholder: "Digite o nome do empreendimento",
+                    url: filter_options_admin_landing_pages_path(type: "developments"),
+                    min_length: 2,
+                    select_options: { selected: Array((@landing_page.filter_params || {})["development"]).compact_blank },
+                    html_options: { data: { action: "change->property-page-preview#refresh" } }
+                  ) %>
+            </div>
+          <% end %>
+        <% end %>
+
+        <%= ax_chip_section(title: "O quê", icon: "search", tone: "blue") do %>
           <%= ax_field_grid do %>
             <div class="ax-span-12">
               <%= ax_text_field(
@@ -52,114 +91,101 @@
               <%= ax_autocomplete_select_field(form: fp, method: :category, label: "Categoria(s)", choices: @property_categories, multiple: true, placeholder: "Selecione categorias", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
             </div>
             <div class="ax-span-6">
-              <%= ax_autocomplete_select_field(form: fp, method: :city, label: "Cidade(s)", choices: @property_cities, multiple: true, placeholder: "Selecione cidades", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
-            </div>
-            <div class="ax-span-6">
-              <%= ax_autocomplete_select_field(form: fp, method: :neighborhood, label: "Bairro(s)", choices: @property_neighborhoods, multiple: true, placeholder: "Selecione bairros", html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
-            </div>
-            <div class="ax-span-6">
-              <%= ax_autocomplete_select_field(
-                    form: fp,
-                    method: :development,
-                    label: "Empreendimento(s)",
-                    choices: @selected_development_options || [],
-                    multiple: true,
-                    placeholder: "Digite o nome do empreendimento",
-                    url: filter_options_admin_landing_pages_path(type: "developments"),
-                    min_length: 2,
-                    select_options: { selected: Array((@landing_page.filter_params || {})["development"]).compact_blank },
-                    html_options: { data: { action: "change->property-page-preview#refresh" } }
-                  ) %>
-            </div>
-            <div class="ax-span-6">
               <%= ax_select_field(form: fp, method: :transaction_type, label: "Transação", choices: [['Venda', 'venda'], ['Aluguel', 'aluguel']], select_options: { include_blank: "Todas" }, html_options: { data: { action: "change->property-page-preview#refresh" } }) %>
             </div>
+          <% end %>
+        <% end %>
 
-            <div class="ax-span-6">
-              <%= ax_text_field(form: fp, method: :caracteristica_unica, label: "Característica Única (Tag/Badge)", placeholder: "Ex: Oportunidade exclusiva", data: { action: "input->property-page-preview#refresh" }) %>
-            </div>
-
+        <%= ax_chip_section(title: "Perfil", icon: "sliders", tone: "violet") do %>
+          <%= ax_field_grid do %>
             <div class="ax-span-6">
               <%= ax_number_field(form: fp, method: :target_price, label: "Preço Sugerido (Range +/- 20%)", placeholder: "Ex: 1500000", min: 0, data: { action: "input->property-page-preview#refresh" }) %>
             </div>
-
-            <div class="ax-span-4">
+            <div class="ax-span-6">
+              <%= ax_text_field(form: fp, method: :caracteristica_unica, label: "Característica Única (Tag/Badge)", placeholder: "Ex: Oportunidade exclusiva", data: { action: "input->property-page-preview#refresh" }) %>
+            </div>
+            <div class="ax-span-3">
               <%= ax_measure_field(form: fp, method: :min_area, label: "Área Mínima", unit: "m²", min: 0, data: { action: "input->property-page-preview#refresh" }) %>
             </div>
-
-            <div class="ax-span-4">
+            <div class="ax-span-3">
               <%= ax_number_field(form: fp, method: :min_bedrooms, label: "Mín. Dormitórios", min: 0, data: { action: "input->property-page-preview#refresh" }) %>
             </div>
-            <div class="ax-span-4">
+            <div class="ax-span-3">
               <%= ax_number_field(form: fp, method: :min_suites, label: "Mín. Suítes", min: 0, data: { action: "input->property-page-preview#refresh" }) %>
             </div>
-            <div class="ax-span-4">
+            <div class="ax-span-3">
               <%= ax_number_field(form: fp, method: :min_parking, label: "Mín. Vagas", min: 0, data: { action: "input->property-page-preview#refresh" }) %>
             </div>
           <% end %>
+        <% end %>
 
-          <%= ax_field_group(title: "Características e flags", token: "Opcional", class_name: "ax-field-group--panel tw-mt-4") do %>
-            <%= ax_chip_grid do %>
-              <% [
-                ['frente_mar', 'Frente Mar'],
-                ['quadra_mar', 'Quadra Mar'],
-                ['vista_mar', 'Vista Mar'],
-                ['piscina', 'Piscina'],
-                ['mobiliado', 'Mobiliado'],
-                ['churrasqueira', 'Churrasqueira'],
-                ['cozinha_gourmet_churrasqueira', 'Cozinha gourmet com churrasqueira'],
-                ['dependencia_empregada', 'Dependência de empregada'],
-                ['sacada', 'Sacada'],
-                ['decorado', 'Decorado'],
-                ['sol_manha', 'Sol da manhã'],
-                ['sol_tarde', 'Sol da tarde'],
-                ['sol_dia_todo', 'Sol o dia todo'],
-                ['lancamento_flag', 'Lançamento'],
-                ['aceita_permuta_flag', 'Aceita Permuta'],
-                ['aceita_financiamento_flag', 'Aceita Financiamento'],
-                ['garden_flag', 'Garden'],
-                ['festival_flag', 'Oportunidade especial'],
-                ['exibir_no_site_portal_flag', 'Exibir no site'],
-                ['opportunity', 'Oportunidade (Preço Reduzido)']
-              ].each do |value, label| %>
-                <%= ax_toggle_chip(
-                      nil,
-                      nil,
-                      label:,
-                      name: "landing_page[filter_params][characteristics][]",
-                      checked_value: value,
-                      unchecked_value: "",
-                      include_hidden: false,
-                      checked: (f.object.filter_params["characteristics"] || []).include?(value),
-                      id: "char_#{value}",
-                      input_data: { action: "change->property-page-preview#refresh" }
-                    ) %>
+        <h4 class="lp-subhead"><i class="bi bi-stars" aria-hidden="true"></i> Características e flags <em>opcional</em></h4>
+          <div class="lp-flags">
+            <% flag_groups.each do |group| %>
+              <%= ax_chip_section(title: group[:title], icon: group[:icon], tone: group[:tone], count: "#{group[:flags].count { |value, _| selected_flags.include?(value) }}/#{group[:flags].size}") do %>
+                <%= ax_chip_grid(class_name: "ax-chip-grid--calm ax-chip-grid--rows") do %>
+                  <% group[:flags].each do |value, label| %>
+                    <%= ax_toggle_chip(
+                          nil,
+                          nil,
+                          label:,
+                          name: "landing_page[filter_params][characteristics][]",
+                          checked_value: value,
+                          unchecked_value: "",
+                          include_hidden: false,
+                          checked: selected_flags.include?(value),
+                          id: "char_#{value}",
+                          input_data: { action: "change->property-page-preview#refresh" }
+                        ) %>
+                  <% end %>
+                <% end %>
               <% end %>
             <% end %>
-          <% end %>
-        <% end %>
-    <% end %>
-  </div>
-
-  <div class="ax-span-4">
-    <%= ax_operational_panel(eyebrow: "Preview", title: "Resumo do conjunto", class_name: "landing-page-preview") do %>
-        <div class="tw-mb-4">
-          <div class="ax-badge ax-badge--blue landing-page-preview__count" data-property-page-preview-target="count">0 imóveis encontrados</div>
-          <div id="preview-results" data-property-page-preview-target="results" aria-live="polite" aria-busy="true">
-           <div class="landing-page-preview__loading">
-              <span class="ax-spinner" role="status" aria-label="Analisando dados"></span>
-              <div>Analisando dados...</div>
-           </div>
-        </div>
-        </div>
-
-        <div class="landing-page-preview__actions">
-          <div class="tw-mb-4">
-            <%= ax_switch_field(form: f, method: :active, label: tag.span("Página Ativa para Indexação", class: "tw-font-bold"), id: "activeSwitch") %>
           </div>
-
-          <%= ax_form_actions(form: f, submit_label: "Salvar Página SEO", cancel_path: admin_landing_pages_path, sticky: false) %>
-        </div>
+      <% end %>
     <% end %>
+
+    <%= ax_studio_group(title: "Como o Google vê", icon: "google", subtitle: "Título e descrição dos resultados de busca. Em branco, valem o H1 e um trecho da página.") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :meta_title, label: "Título SEO (Meta Title)", placeholder: "Título para o Google", label_meta: tag.span(safe_join([tag.span("0", data: { seo_snippet_target: "titleCount" }), "/60"]), class: "seo-editor-counter")) %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :meta_description, label: "Descrição SEO (Meta Description)", type: :textarea, rows: 2, placeholder: "Breve resumo para o Google...", label_meta: tag.span(safe_join([tag.span("0", data: { seo_snippet_target: "descriptionCount" }), "/160"]), class: "seo-editor-counter")) %>
+        </div>
+        <div class="ax-span-12">
+          <div class="lp-serp" aria-label="Prévia nos resultados do Google">
+            <span class="lp-serp__url" data-seo-snippet-target="url"></span>
+            <strong class="lp-serp__title" data-seo-snippet-target="title"></strong>
+            <p class="lp-serp__desc" data-seo-snippet-target="description"></p>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= ax_studio_group(title: "Textos da página", icon: "card-text", subtitle: "A introdução aparece abaixo do título; o texto SEO, depois da lista de imóveis.") do %>
+      <%= ax_text_field(form: f, method: :description, label: "Descrição de Topo (Introdução)", type: :textarea, rows: 3, placeholder: "Texto que aparece logo abaixo do título na página pública...") %>
+      <%= ax_text_field(form: f, method: :content, label: "Texto SEO (Rodapé)", type: :textarea, rows: 6, placeholder: "Conteúdo rico para SEO que aparece após a listagem de imóveis...") %>
+    <% end %>
+
+    <%= ax_studio_group(title: "Publicação", icon: "send", subtitle: "Página inativa não abre no site nem é indexada.") do %>
+      <%= ax_switch_field(form: f, method: :active, label: "Página ativa para indexação", id: "activeSwitch", class_name: "ax-switch--card",
+                          description: "Ligada, a página abre em /#{@landing_page.slug.presence || "sua-url"} e entra na indexação.",
+                          input_html: { role: "switch", checked: active }) %>
+    <% end %>
+
+    <%= ax_studio_savebar(form: f, cancel_path: admin_landing_pages_path, submit_label: "Salvar Página SEO") %>
   </div>
+
+  <aside class="ax-studio__aside" aria-label="Resumo do conjunto">
+    <%= ax_operational_panel(eyebrow: "Preview", title: "Resumo do conjunto", class_name: "landing-page-preview") do %>
+      <div class="ax-badge ax-badge--blue landing-page-preview__count" data-property-page-preview-target="count">0 imóveis encontrados</div>
+      <div id="preview-results" data-property-page-preview-target="results" aria-live="polite" aria-busy="true">
+        <div class="landing-page-preview__loading">
+          <span class="ax-spinner" role="status" aria-label="Analisando dados"></span>
+          <div>Analisando dados...</div>
+        </div>
+      </div>
+    <% end %>
+  </aside>
 <% end %>

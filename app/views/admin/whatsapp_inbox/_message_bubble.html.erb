@@ -97,6 +97,9 @@
           <span class="wa-quote__snippet"><%= replied.preview.to_s.truncate(110) %></span>
         </button>
       <% end %>
+      <% if message.outbound? && message.admin_user %>
+        <div class="wa-inbox-bubble__author"><%= message.admin_user.name %></div>
+      <% end %>
       <% if message.msg_type == "template" && !template_header_image %>
         <div class="wa-inbox-bubble__eyebrow"><i class="bi bi-file-text"></i> modelo <%= message.template_name %></div>
       <% end %>
@@ -288,7 +291,7 @@
       <% elsif media_message && message.body.present? %>
         <div class="wa-inbox-bubble__body wa-inbox-bubble__body--media"><%= message.body %></div>
       <% elsif !media_message && message.body.present? %>
-        <div class="wa-inbox-bubble__body wa-inbox-bubble__body--text"><%= message.body %></div>
+        <div class="wa-inbox-bubble__body wa-inbox-bubble__body--text <%= "wa-inbox-bubble__body--external" if message.msg_type == "external" %>"><%= message.body %></div>
         <% if (share_collection = AiPropertyShareCollection.preview_for_message_body(message.body, tenant: message.tenant)) %>
           <%= render "admin/whatsapp_inbox/property_share_preview", collection: share_collection %>
         <% end %>

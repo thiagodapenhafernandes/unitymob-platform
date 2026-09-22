@@ -1,179 +1,131 @@
-<div class="public-site-workspace">
+<%
+  routing = @whatsapp_integration.site_phone_settings
+  studio_items = [
+    { id: "contact-tab-channels", icon: "telephone", label: "Canais", hint: "Telefone, e-mail, endereço e horário" },
+    { id: "contact-tab-forms", icon: "whatsapp", label: "Interessados no imóvel", hint: "Para onde vai o lead e o que ele lê" },
+    { id: "contact-tab-social", icon: "share", label: "Redes e blog", hint: "Links exibidos no site" }
+  ]
+  negotiations = WhatsappBusinessIntegration::NEGOTIATION_TYPES
+  phone_field = ->(form, method, label, **opts) { ax_text_field(form: form, method: method, label: label, type: :tel, placeholder: "+55 00 00000-0000", data: { controller: "phone-input" }, **opts) }
+%>
+<div class="public-site-workspace ctt-workspace">
   <%= ax_workspace_heading(
         eyebrow: "Site público · Estrutura",
         icon: "telephone",
         title: "Contato",
-        subtitle: "Gerencie canais, redes sociais e mensagens usadas na captura de interessados em imóveis.",
-        actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")
+        subtitle: "Canais da imobiliária e o atendimento de quem se interessa por um imóvel: destino do WhatsApp, captura de dados e mensagens.",
+        actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")
       ) %>
 
-  <%= form_with(model: @contact_setting, url: admin_contact_setting_path, method: :patch) do |f| %>
+  <%= form_with(model: @contact_setting, url: admin_contact_setting_path, method: :patch, local: true,
+                html: { data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } }) do |f| %>
     <%= ax_error_summary(@contact_setting) %>
 
-    <%= ax_field_grid do %>
-      <div class="ax-span-6">
-        <%= ax_operational_panel(eyebrow: "Atendimento", title: "Contato principal") do %>
-          <div class="tw-grid tw-gap-4">
-            <div class="ax-field">
-              <%= ax_field_label(f, :whatsapp_primary, text: "WhatsApp principal") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp tw-text-green-600", aria: { hidden: true })) do %>
-                <%= f.text_field :whatsapp_primary, class: "ax-control", placeholder: "(11) 99999-0000", autocomplete: "tel", data: { controller: "phone-input" } %>
-              <% end %>
-              <p class="ax-field__hint">Formato: código do país + DDD + número.</p>
-            </div>
-
-            <div class="ax-field">
-              <%= ax_field_label(f, :phone, text: "Telefone fixo") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-telephone tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.text_field :phone, class: "ax-control", placeholder: "(11) 3000-0000", autocomplete: "tel", data: { controller: "phone-input" } %>
-              <% end %>
-              <p class="ax-field__hint">Telefone fixo da empresa.</p>
-            </div>
-
-            <div class="ax-field">
-              <label class="tw-flex tw-items-start tw-gap-3 tw-rounded-lg tw-border tw-border-slate-200 tw-bg-white tw-p-3">
-                <%= f.check_box :show_phone_in_header, class: "tw-mt-1 tw-h-4 tw-w-4 tw-rounded tw-border-slate-300 tw-text-primary focus:tw-ring-primary" %>
-                <span>
-                  <strong class="tw-block tw-text-sm tw-font-semibold tw-text-slate-800">Exibir telefone no header</strong>
-                  <span class="tw-block tw-text-xs tw-text-slate-500">Controla somente o telefone ao lado da logo no site público.</span>
-                </span>
-              </label>
-            </div>
-
-            <div class="ax-field">
-              <%= ax_field_label(f, :email_primary, text: "E-mail principal") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope tw-text-red-600", aria: { hidden: true })) do %>
-                <%= f.email_field :email_primary, class: "ax-control", placeholder: "contato@suaimobiliaria.com.br" %>
-              <% end %>
-              <p class="ax-field__hint">E-mail principal para contato.</p>
-            </div>
-
-            <div class="ax-field">
-              <div class="tw-flex tw-items-center tw-gap-2">
-                <%= ax_field_label(f, :whatsapp_secondary, text: "WhatsApp secundário") %>
-                <%= ax_badge("Opcional", tone: :gray) %>
-              </div>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp tw-text-green-600", aria: { hidden: true })) do %>
-                <%= f.text_field :whatsapp_secondary, class: "ax-control", placeholder: "(11) 98888-0000", autocomplete: "tel", data: { controller: "phone-input" } %>
-              <% end %>
-              <p class="ax-field__hint">Canal alternativo de WhatsApp.</p>
-            </div>
-          </div>
-        <% end %>
+    <div class="ax-studio">
+      <div class="ax-studio__nav">
+        <%= ax_studio_nav(items: studio_items, panels_selector: "#contact-studio-sections", label: "Seções de contato") %>
       </div>
 
-      <div class="ax-span-6">
-        <%= ax_operational_panel(eyebrow: "Presença digital", title: "Redes sociais") do %>
-          <div class="tw-grid tw-gap-4">
-            <div class="ax-field">
-              <%= ax_field_label(f, :facebook_url, text: "Facebook") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-facebook tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.url_field :facebook_url, class: "ax-control", placeholder: "https://facebook.com/suaimobiliaria" %>
-              <% end %>
-              <p class="ax-field__hint">URL completa da página do Facebook.</p>
-            </div>
+      <div class="ax-studio__stage" id="contact-studio-sections">
+        <%= ax_studio_section(id: "contact-tab-channels", icon: "telephone", active: true,
+                              title: "Canais",
+                              subtitle: "Aparecem na página Contato, no rodapé e nos botões do site. O telefone no topo é ligado em Topo e menu.") do %>
+          <%= ax_studio_group(title: "Telefones e e-mails") do %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-6"><%= phone_field.call(f, :whatsapp_primary, "WhatsApp principal", autocomplete: "tel", hint: "Código do país + DDD + número.") %></div>
+              <div class="ax-span-6"><%= phone_field.call(f, :whatsapp_secondary, "WhatsApp secundário", autocomplete: "tel", hint: "Opcional. Canal alternativo.") %></div>
+              <div class="ax-span-6"><%= phone_field.call(f, :phone, "Telefone fixo", autocomplete: "tel", hint: "Aparece no topo se ligado em Topo e menu.") %></div>
+              <div class="ax-span-6"><%= ax_text_field(form: f, method: :email_primary, label: "E-mail principal", type: :email, placeholder: "contato@suaimobiliaria.com.br") %></div>
+              <div class="ax-span-6"><%= ax_text_field(form: f, method: :email_commercial, label: "E-mail comercial", type: :email, hint: "Opcional.") %></div>
+            <% end %>
+          <% end %>
 
-            <div class="ax-field">
-              <%= ax_field_label(f, :instagram_url, text: "Instagram") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-instagram tw-text-red-600", aria: { hidden: true })) do %>
-                <%= f.url_field :instagram_url, class: "ax-control", placeholder: "https://instagram.com/suaimobiliaria" %>
-              <% end %>
-              <p class="ax-field__hint">URL completa do perfil do Instagram.</p>
-            </div>
-
-            <div class="ax-field">
-              <%= ax_field_label(f, :youtube_url, text: "YouTube") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-youtube tw-text-red-600", aria: { hidden: true })) do %>
-                <%= f.url_field :youtube_url, class: "ax-control", placeholder: "https://youtube.com/@suaimobiliaria" %>
-              <% end %>
-              <p class="ax-field__hint">URL completa do canal do YouTube.</p>
-            </div>
-
-            <div class="ax-field">
-              <%= ax_field_label(f, :blog_url, text: "Blog") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-journal-text tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.url_field :blog_url, class: "ax-control", placeholder: "https://suaimobiliaria.com.br/blog" %>
-              <% end %>
-              <p class="ax-field__hint">URL completa do blog exibido no menu público.</p>
-            </div>
-
-            <div class="ax-field">
-              <%= ax_field_label(f, :linkedin_url, text: "LinkedIn") %>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-linkedin tw-text-primary", aria: { hidden: true })) do %>
-                <%= f.url_field :linkedin_url, class: "ax-control", placeholder: "https://linkedin.com/company/suaimobiliaria" %>
-              <% end %>
-              <p class="ax-field__hint">URL completa da página do LinkedIn.</p>
-            </div>
-          </div>
+          <%= ax_studio_group(title: "Endereço e horário", subtitle: "Mostrados na página Contato; o endereço também alimenta o mapa.") do %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-6"><%= ax_text_field(form: f, method: :address, label: "Endereço", type: :textarea, rows: 3) %></div>
+              <div class="ax-span-6"><%= ax_text_field(form: f, method: :business_hours, label: "Horário de atendimento", type: :textarea, rows: 3, placeholder: "Segunda a sexta, das 9h às 18h") %></div>
+            <% end %>
+          <% end %>
         <% end %>
-      </div>
 
-      <div class="ax-span-12">
-        <%= ax_operational_panel(eyebrow: "Atendimento do imóvel", title: "Mensagens do modal e do WhatsApp") do %>
-          <div class="tw-grid tw-gap-5">
-            <div class="tw-flex tw-flex-col tw-gap-3 lg:tw-flex-row lg:tw-items-start lg:tw-justify-between">
-              <p class="tw-m-0 tw-max-w-3xl tw-text-sm tw-leading-6 tw-text-slate-600">
-                Personalize o retorno exibido após o envio do modal e a mensagem que abre no WhatsApp. Quando um campo ficar vazio, o sistema usa o texto padrão.
-              </p>
-              <div class="tw-flex tw-flex-wrap tw-gap-2" aria-label="Variáveis disponíveis para mensagens">
-                <% ContactSetting::PROPERTY_LEAD_VARIABLES.each do |token, description| %>
-                  <span class="tw-inline-flex tw-items-center tw-gap-1 tw-rounded-full tw-border tw-border-slate-200 tw-bg-white tw-px-3 tw-py-1 tw-text-xs tw-font-semibold tw-text-slate-600"
-                        title="<%= description %>">
-                    <code class="tw-font-mono tw-text-[11px] tw-text-primary"><%= token %></code>
-                  </span>
-                <% end %>
-              </div>
-            </div>
+        <%= ax_studio_section(id: "contact-tab-forms", icon: "whatsapp",
+                              title: "Interessados no imóvel",
+                              subtitle: "Cada tipo de negociação tem o seu destino de WhatsApp, o seu passo de captura e as suas mensagens. Campo vazio usa o padrão do sistema.") do %>
+          <%= fields_for :whatsapp_business_integration, @whatsapp_integration do |wf| %>
+            <%= ax_studio_group(title: "Número padrão", subtitle: "Usado quando o tipo de negociação não tem número próprio. Vazio usa o WhatsApp principal.") do %>
+              <%= phone_field.call(wf, :default_whatsapp_number, "WhatsApp padrão dos formulários", value: @whatsapp_integration.default_whatsapp_number.presence || routing[:default_phone]) %>
+            <% end %>
 
-            <div class="tw-grid tw-gap-5 xl:tw-grid-cols-3">
-              <% ContactSetting::PROPERTY_LEAD_MESSAGE_TYPES.each do |negotiation_type, config| %>
-                <% success_method = config.fetch(:success_attribute) %>
-                <% whatsapp_method = config.fetch(:whatsapp_attribute) %>
-                <% success_hint_id = "contact_setting_#{success_method}_hint" %>
-                <% whatsapp_hint_id = "contact_setting_#{whatsapp_method}_hint" %>
-
-                <fieldset class="tw-min-w-0 tw-rounded-xl tw-border tw-border-slate-200 tw-p-4">
-                  <legend class="tw-px-1 tw-text-sm tw-font-bold tw-text-slate-800"><%= config.fetch(:label) %></legend>
-
-                  <div class="tw-grid tw-gap-4">
-                    <div class="ax-field">
-                      <%= ax_field_label(f, success_method, text: "Mensagem de sucesso do modal") %>
-                      <p id="<%= success_hint_id %>" class="ax-field__hint tw-mb-2">
-                        Aparece quando o lead é salvo e a conta não redireciona automaticamente para o WhatsApp.
-                      </p>
-                      <%= f.text_area success_method,
-                                      class: "ax-control",
-                                      rows: 4,
-                                      placeholder: ContactSetting::DEFAULT_PROPERTY_LEAD_SUCCESS_MESSAGE,
-                                      aria: { describedby: success_hint_id } %>
-                    </div>
-
-                    <div class="ax-field">
-                      <%= ax_field_label(f, whatsapp_method, text: "Mensagem pré-preenchida do WhatsApp") %>
-                      <p id="<%= whatsapp_hint_id %>" class="ax-field__hint tw-mb-2">
-                        Usada no botão de WhatsApp do imóvel e no redirecionamento após o modal.
-                      </p>
-                      <%= f.text_area whatsapp_method,
-                                      class: "ax-control",
-                                      rows: 4,
-                                      placeholder: ContactSetting::DEFAULT_PROPERTY_WHATSAPP_MESSAGE,
-                                      aria: { describedby: whatsapp_hint_id } %>
-                    </div>
+            <div class="ctt-negotiations">
+              <% negotiations.each do |key, config| %>
+                <% message = ContactSetting::PROPERTY_LEAD_MESSAGE_TYPES.fetch(key) %>
+                <%= ax_studio_group(title: config[:label], subtitle: config[:default_message], icon: "whatsapp", class_name: "ctt-negotiation") do %>
+                  <%= phone_field.call(wf, config[:phone_attribute], "WhatsApp de destino", placeholder: "Usar número padrão") %>
+                  <div class="ax-studio-switches">
+                    <%= ax_switch_field(form: wf, method: config[:form_attribute], label: "Captar dados antes de redirecionar", checked_value: "1", unchecked_value: "0") %>
+                    <%= ax_switch_field(form: wf, method: config[:redirect_attribute], label: "Redirecionar para o WhatsApp após captar", checked_value: "1", unchecked_value: "0") %>
                   </div>
-                </fieldset>
+                  <%= ax_text_field(form: f, method: message.fetch(:success_attribute), label: "Mensagem de sucesso do modal", type: :textarea, rows: 3,
+                                    placeholder: ContactSetting::DEFAULT_PROPERTY_LEAD_SUCCESS_MESSAGE,
+                                    hint: "Aparece quando o lead é salvo e não há redirecionamento automático.") %>
+                  <%= ax_text_field(form: f, method: message.fetch(:whatsapp_attribute), label: "Mensagem pré-preenchida do WhatsApp", type: :textarea, rows: 3,
+                                    placeholder: ContactSetting::DEFAULT_PROPERTY_WHATSAPP_MESSAGE,
+                                    hint: "Usada no botão de WhatsApp do imóvel e no redirecionamento após o modal.") %>
+                <% end %>
               <% end %>
             </div>
 
-            <p class="tw-m-0 tw-text-xs tw-leading-5 tw-text-slate-500">
-              Exemplo: <code class="tw-rounded tw-bg-slate-100 tw-px-1 tw-py-0.5">{nome}</code> vira o nome preenchido no modal e <code class="tw-rounded tw-bg-slate-100 tw-px-1 tw-py-0.5">{imovel}</code> vira o título do imóvel.
-            </p>
-          </div>
+            <div class="ctt-variables" aria-label="Variáveis disponíveis para mensagens">
+              <span>Variáveis:</span>
+              <% ContactSetting::PROPERTY_LEAD_VARIABLES.each do |token, description| %>
+                <code title="<%= description %>"><%= token %></code>
+              <% end %>
+              <small><code>{nome}</code> vira o nome preenchido no modal e <code>{imovel}</code> o título do imóvel.</small>
+            </div>
+
+            <%= ax_studio_group(title: "Cartão do corretor", subtitle: "Vale para toda a equipe. Desligado, os cartões de apresentação saem sempre como texto, sem a foto do corretor.") do %>
+              <%= ax_switch_field(form: wf, method: :allow_photo_presentation, label: "Permitir cartão com foto do corretor",
+                                  description: "O telefone pessoal do corretor nunca é enviado.", checked: @whatsapp_integration.allow_photo_presentation?, class_name: "ax-switch--card") %>
+            <% end %>
+          <% end %>
+        <% end %>
+
+        <%= ax_studio_section(id: "contact-tab-social", icon: "share",
+                              title: "Redes e blog",
+                              subtitle: "Endereços completos. Aparecem no rodapé e na página Contato; Blog e YouTube também viram links do topo.") do %>
+          <%= ax_studio_group(title: "Endereços") do %>
+            <%= ax_field_grid do %>
+              <% [
+                [:facebook_url, "Facebook", "https://facebook.com/suaimobiliaria"],
+                [:instagram_url, "Instagram", "https://instagram.com/suaimobiliaria"],
+                [:youtube_url, "YouTube", "https://youtube.com/@suaimobiliaria"],
+                [:linkedin_url, "LinkedIn", "https://linkedin.com/company/suaimobiliaria"],
+                [:blog_url, "Blog", "https://suaimobiliaria.com.br/blog"]
+              ].each do |method, label, placeholder| %>
+                <div class="ax-span-6"><%= ax_text_field(form: f, method: method, label: label, type: :url, placeholder: placeholder) %></div>
+              <% end %>
+            <% end %>
+          <% end %>
         <% end %>
       </div>
-    <% end %>
 
-    <%= ax_sticky_action_footer(meta: safe_join([tag.i(class: "bi bi-shield-check tw-text-green-600", aria: { hidden: true }), tag.span("As informações serão atualizadas em todo o site")], " ")) do %>
-      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>
-    <% end %>
+      <aside class="ax-studio__aside" aria-label="Resumo dos destinos">
+        <div class="ctt-summary">
+          <h3>Para onde vai cada lead</h3>
+          <dl>
+            <% routing[:negotiations].each do |_key, item| %>
+              <div>
+                <dt><strong><%= item[:label] %></strong>
+                  <span><%= item[:requires_form] ? (item[:redirect_after_capture] ? "Formulário e redirecionamento" : "Formulário sem redirecionamento") : "Direto para o WhatsApp" %></span></dt>
+                <dd><code><%= item[:phone].presence || routing[:default_phone] %></code></dd>
+              </div>
+            <% end %>
+          </dl>
+          <p>O resumo reflete o que está salvo. Depois de salvar, o site usa os novos destinos em até 5 minutos.</p>
+        </div>
+      </aside>
+    </div>
+
+    <%= ax_studio_savebar(form: f, cancel_path: admin_root_path) %>
   <% end %>
 </div>

@@ -31,6 +31,38 @@
         thread_next_task: thread_next_task %>
 </div>
 
+<% attendance = conversation&.open_attendance %>
+<% if attendance && can?(:manage, :whatsapp_inbox) %>
+  <%= render layout: "admin/whatsapp_inbox/context_section", locals: { label: "Atendimento em curso", class_name: "wa-inbox-thread__attendance" } do %>
+    <p class="wa-inbox-thread__attendance-info">
+      <strong><%= attendance.button_text %></strong><br>
+      <small>Com <%= attendance.owner&.name || "—" %> · desde <%= l(attendance.opened_at, format: :short) %></small>
+    </p>
+    <% candidates = attendance.transfer_candidates.to_a %>
+    <% if candidates.any? %>
+      <%= form_with url: transfer_attendance_admin_whatsapp_conversation_path(conversation), method: :post, class: "wa-inbox-thread__transfer", data: { wa_context_form: true } do %>
+        <%= select_tag :to_admin_user_id, options_from_collection_for_select(candidates, :id, :name), prompt: "Transferir para…", required: true, class: "ax-control", "aria-label": "Transferir atendimento para" %>
+        <button type="submit" class="ax-btn ax-btn--block"><i class="bi bi-arrow-left-right ax-ico"></i><span>Transferir</span></button>
+      <% end %>
+    <% end %>
+    <%= button_to finish_attendance_admin_whatsapp_conversation_path(conversation), method: :post,
+          class: "ax-btn ax-btn--block ax-btn--primary",
+          form: { data: { wa_context_form: true, wa_confirm: "Finalizar o atendimento? O cliente receberá a mensagem de encerramento." } } do %>
+      <i class="bi bi-check2-circle ax-ico"></i><span>Finalizar atendimento</span>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% last_closed = attendance.nil? ? conversation&.attendances&.select(&:closed?)&.max_by(&:closed_at) : nil %>
+<% if last_closed && can?(:view, :whatsapp_inbox) %>
+  <%= render layout: "admin/whatsapp_inbox/context_section", locals: { label: "Último atendimento", class_name: "wa-inbox-thread__attendance" } do %>
+    <p class="wa-inbox-thread__attendance-info">
+      <strong><%= last_closed.button_text %></strong><br>
+      <small><%= last_closed.close_reason_label %> · <%= l(last_closed.closed_at, format: :short) %><%= " · dono: #{last_closed.admin_user.name}" if last_closed.admin_user %></small>
+    </p>
+  <% end %>
+<% end %>
+
 <% if show_labels && thread_lead && thread_lead_labels.present? %>
   <%= render layout: "admin/whatsapp_inbox/context_section",
         locals: { label: "Etiquetas", class_name: "wa-inbox-thread__labels" } do %>
@@ -45,4 +77,8 @@
         lead: thread_lead, conversation: conversation,
         can_manage_comercial: can_manage_comercial,
         only_presentation: (actions_variant == :presentation) %>
+<% end %>
+
+<% if actions_variant == :full && thread_lead && can?(:manage, :whatsapp_inbox) %>
+  <%= render "admin/whatsapp_inbox/thread_context_work", lead: thread_lead, conversation: conversation, can_manage_comercial: can_manage_comercial %>
 <% end %>

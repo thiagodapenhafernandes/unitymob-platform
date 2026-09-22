@@ -26,7 +26,7 @@
     <% if trigger_badge.present? %><small><%= trigger_badge %></small><% end %>
   </button>
   <%= ax_quick_modal(id: task_modal_id, title: task_modal_title, size: :sm, class_name: "task-form-modal") do %>
-    <%= form_with url: form_url, method: form_method, local: true, class: "task-form-modal__form" do %>
+    <%= form_with url: form_url, method: form_method, local: true, class: "task-form-modal__form", data: local_assigns.fetch(:form_data, {}) do %>
       <% if task_lead %>
         <%= hidden_field_tag "task[lead_id]", task_lead.id %>
         <div class="task-form-modal__lead">

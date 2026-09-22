@@ -52,4 +52,38 @@ RSpec.describe Admin::NavbarHelper, type: :helper do
       expect(helper.admin_contextbar_back_path).to be_nil
     end
   end
+
+  describe "trilha do contextbar" do
+    let(:request_context) do
+      instance_double(ActionDispatch::Request, host: "dev.unitymob.com.br", port: 443, referer: "https://dev.unitymob.com.br/admin", fullpath: "/admin/habitations", path: "/admin/habitations")
+    end
+
+    before do
+      helper.extend(Admin::SidebarHelper)
+      allow(helper).to receive(:request).and_return(request_context)
+      allow(helper).to receive(:params).and_return({})
+      allow(helper).to receive(:controller_name).and_return("habitations")
+      allow(helper).to receive(:controller_path).and_return("admin/habitations")
+    end
+
+    it "na listagem mostra Seção › Módulo, sem Início e sem Voltar por referer" do
+      allow(helper).to receive(:action_name).and_return("index")
+
+      html = helper.admin_contextbar_breadcrumb
+
+      expect(html).to include("ax-breadcrumb__section", "Produto")
+      expect(html).to include("<strong>Imóveis</strong>")
+      expect(html).not_to include("Início")
+      expect(helper.admin_contextbar_back_path).to be_nil
+    end
+
+    it "em página interna linka o módulo e nomeia a ação; Voltar usa o referer" do
+      allow(helper).to receive(:action_name).and_return("edit")
+
+      html = helper.admin_contextbar_breadcrumb
+
+      expect(html).to include('class="ax-breadcrumb__module"', "Imóveis", "<strong>Editar</strong>")
+      expect(helper.admin_contextbar_back_path).to eq("/admin")
+    end
+  end
 end

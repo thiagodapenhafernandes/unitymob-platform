@@ -1,0 +1,114 @@
+<% content_for :admin_contextbar_title, "Gestão de atendimentos" %>
+
+<%= ax_workspace_heading(
+      eyebrow: "WhatsApp",
+      icon: "headset",
+      title: "Gestão de atendimentos",
+      subtitle: "Quem está atendendo quem. Atualiza sozinha quando algo muda.",
+      metrics: [
+        { value: @counts[:open], label: "em curso" },
+        { value: @counts[:closed], label: "encerrados (7 dias)" }
+      ]
+    ) %>
+
+<div data-controller="wa-attendances">
+  <turbo-frame id="wa-attendances-table" data-wa-attendances-target="frame" data-turbo-action="advance">
+    <div class="whatsapp-attendances__filters">
+      <%= link_to admin_whatsapp_attendances_path(status: "open", owner_id: params[:owner_id]), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @status == 'open'}", aria: { current: ("page" if @status == "open") } do %>
+        <span>Em curso</span><span class="ax-badge ax-badge--gray tw-ml-1"><%= @counts[:open] %></span>
+      <% end %>
+      <%= link_to admin_whatsapp_attendances_path(status: "closed", owner_id: params[:owner_id]), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @status == 'closed'}", aria: { current: ("page" if @status == "closed") } do %>
+        <span>Encerrados</span><span class="ax-badge ax-badge--gray tw-ml-1"><%= @counts[:closed] %></span>
+      <% end %>
+      <% if @owners.size > 1 %>
+        <%= form_with url: admin_whatsapp_attendances_path, method: :get, class: "whatsapp-attendances__owner-filter" do %>
+          <%= hidden_field_tag :status, @status %>
+          <%= select_tag :owner_id, options_from_collection_for_select(@owners, :id, :name, params[:owner_id]), include_blank: "Todos os atendentes", class: "ax-control", "aria-label": "Filtrar por atendente", onchange: "this.form.requestSubmit()" %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th scope="col">Cliente</th>
+            <th scope="col">Assunto</th>
+            <th scope="col">Atendente</th>
+            <% if @status == "open" %>
+              <th scope="col">Aberto há</th>
+              <th scope="col">Última do cliente</th>
+              <th scope="col">Aceite</th>
+              <th scope="col" class="ax-table__actions-heading">Ações</th>
+            <% else %>
+              <th scope="col">Encerrado em</th>
+              <th scope="col">Motivo</th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @attendances.each do |attendance| %>
+            <% conversation = attendance.whatsapp_conversation %>
+            <tr>
+              <td>
+                <div class="whatsapp-attendances__person">
+                  <%= ax_avatar(name: conversation.display_name, size: :sm) %>
+                  <div>
+                    <%= link_to conversation.display_name, admin_whatsapp_conversation_path(conversation), class: "ax-table__record-name", data: { turbo_frame: "_top" } %>
+                    <span class="whatsapp-response-flows__sub"><%= conversation.contact_phone %></span>
+                  </div>
+                </div>
+              </td>
+              <td><% if attendance.button_text.present? %><span class="whatsapp-attendances__subject"><%= attendance.button_text %></span><% else %><span class="whatsapp-attendances__none">—</span><% end %></td>
+              <td>
+                <% if attendance.admin_user %>
+                  <div class="whatsapp-attendances__person whatsapp-attendances__person--inline">
+                    <%= ax_avatar(name: attendance.admin_user.name, image: attendance.admin_user.avatar, size: :xs) %>
+                    <span><%= attendance.admin_user.name %></span>
+                  </div>
+                <% else %>
+                  <span class="whatsapp-attendances__none">Sem atendente</span>
+                <% end %>
+              </td>
+              <% if @status == "open" %>
+                <% last = @last_inbound[attendance.whatsapp_conversation_id] || attendance.opened_at %>
+                <td class="whatsapp-response-flows__num"><span class="whatsapp-attendances__time"><i class="bi bi-clock" aria-hidden="true"></i><%= time_ago_in_words(attendance.opened_at) %></span></td>
+                <td class="whatsapp-response-flows__num <%= "is-overdue" if last < 12.hours.ago %>">
+                  <span class="whatsapp-attendances__time <%= "whatsapp-attendances__time--late" if last < 12.hours.ago %>" <%= 'title="Cliente sem resposta há mais de 12 horas"'.html_safe if last < 12.hours.ago %>>
+                    <i class="bi bi-<%= last < 12.hours.ago ? "exclamation-circle" : "chat-left-text" %>" aria-hidden="true"></i><%= time_ago_in_words(last) %>
+                  </span>
+                </td>
+                <td><%= ax_badge(attendance.accepted? ? "Aceito" : "Aguardando", tone: attendance.accepted? ? :green : :amber, dot: true) %></td>
+                <td>
+                  <div class="whatsapp-attendances__actions">
+                    <% candidates = attendance.transfer_candidates.to_a %>
+                    <% if candidates.any? && can?(:manage, :whatsapp_inbox) %>
+                      <%= form_with url: transfer_admin_whatsapp_attendance_path(attendance), method: :post, class: "whatsapp-attendances__transfer" do %>
+                        <%= select_tag :to_admin_user_id, options_from_collection_for_select(candidates, :id, :name), prompt: "Transferir…", required: true, class: "ax-control", "aria-label": "Transferir atendimento de #{conversation.display_name}" %>
+                        <button type="submit" class="ax-btn ax-btn--sm" title="Transferir"><i class="bi bi-arrow-left-right ax-ico"></i></button>
+                      <% end %>
+                    <% end %>
+                    <% if can?(:manage, :whatsapp_inbox) %>
+                      <%= button_to finish_admin_whatsapp_attendance_path(attendance), method: :post, class: "ax-btn ax-btn--sm",
+                            form: { data: { turbo_confirm: "Finalizar este atendimento? O cliente receberá a mensagem de encerramento." } } do %>
+                        <i class="bi bi-check2-circle ax-ico"></i><span>Finalizar</span>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </td>
+              <% else %>
+                <td class="whatsapp-response-flows__num"><%= l(attendance.closed_at, format: :short) %></td>
+                <td><%= attendance.close_reason_label %></td>
+              <% end %>
+            </tr>
+          <% end %>
+          <% if @attendances.empty? %>
+            <tr>
+              <td colspan="7"><%= ax_empty_state(title: @status == "open" ? "Nenhum atendimento em curso" : "Nenhum atendimento encerrado nos últimos 7 dias", description: "Os atendimentos aparecem aqui quando o cliente clica em um botão de fluxo com envio para atendente.", icon: "headset", compact: true) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </turbo-frame>
+</div>

@@ -12,16 +12,12 @@
 %>
 
 <div class="ax-system">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
-      <h1>Painel do sistema</h1>
-      <p>Métricas da aplicação e operadores com acesso de sistema. Este nível está acima do Admin da Conta.</p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <%= ax_badge("#{@system_admins.size} admins do sistema", tone: :blue) %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: "Painel do sistema",
+        eyebrow: "Admin do Sistema",
+        icon: "cpu",
+        subtitle: "Métricas da aplicação e operadores com acesso de sistema. Este nível está acima do Admin da Conta.",
+        metrics: [{ value: @system_admins.size, label: "admins do sistema" }]) %>
 
   <div class="ax-metric-grid">
     <%= ax_metric_card(label: "Usuários", value: fmt.call(@metrics[:admin_users]),

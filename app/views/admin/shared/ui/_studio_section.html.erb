@@ -1,0 +1,11 @@
+<section class="ax-studio-section <%= class_name %>" id="<%= id %>" <%= tag.attributes(data: local_assigns[:data]) if local_assigns[:data].present? %> <%= "hidden" unless active %>>
+  <header class="ax-studio-section__head">
+    <% if icon.present? %><span class="ax-studio-section__icon"><i class="bi bi-<%= icon %>"></i></span><% end %>
+    <div class="ax-studio-section__title">
+      <h2><%= title %></h2>
+      <% if subtitle.present? %><p><%= subtitle %></p><% end %>
+    </div>
+    <% if actions.present? %><div class="ax-studio-section__actions"><%= actions %></div><% end %>
+  </header>
+  <div class="ax-studio-section__body"><%= body %></div>
+</section>

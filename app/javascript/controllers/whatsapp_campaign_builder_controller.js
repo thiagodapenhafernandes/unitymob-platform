@@ -322,7 +322,7 @@ export default class extends Controller {
       .then(({ ok, data }) => {
         if (!ok) throw new Error(data.error || "Falha ao gerar preview")
         if (shouldRebuildVariables) this.renderVariableMapping(data.variables_schema || [])
-        this.renderResponseDecisions(data.buttons || [])
+        this.renderResponseDecisions(data)
         this.renderTemplatePreview(data)
         this.refreshReview()
       })
@@ -650,9 +650,18 @@ export default class extends Controller {
     `
   }
 
-  renderResponseDecisions(buttons) {
+  renderResponseDecisions(data) {
     if (!this.hasResponseDecisionListTarget) return
+    if (data.response_decisions_html) {
+      const wrapper = document.createElement("div")
+      wrapper.innerHTML = data.response_decisions_html
+      const list = wrapper.querySelector("[data-whatsapp-campaign-builder-target~='responseDecisionList']")
+      this.responseDecisionListTarget.innerHTML = list ? list.innerHTML : data.response_decisions_html
+      this.responseDecisionRowTargets.forEach((row) => this.syncResponseDecisionRow({ currentTarget: row }))
+      return
+    }
 
+    const buttons = data.buttons || []
     if (!buttons.length) {
       this.responseDecisionListTarget.innerHTML = `
         <div class="ax-inline-notice ax-inline-notice--info">
@@ -704,7 +713,7 @@ export default class extends Controller {
             <input class="ax-control"
                    name="whatsapp_campaign[response_decisions][buttons][${index}][message]"
                    value="${this.escapeAttribute(message)}"
-                   placeholder="Ex: Perfeito, vou te encaminhar para atendimento.">
+                   placeholder="Ex: Recebemos sua resposta e vamos dar continuidade.">
           </div>
           <div class="whatsapp-response-decision-row__impact">
             <i class="bi bi-arrow-return-right" aria-hidden="true"></i>

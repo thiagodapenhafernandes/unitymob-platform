@@ -1,5 +1,6 @@
 // Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 import "@hotwired/turbo-rails"
+import "lib/navigation_loader"
 import "submit_guard"
 import "pwa_scope_guard"
 import "controllers"

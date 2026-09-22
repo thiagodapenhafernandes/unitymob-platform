@@ -1,353 +1,381 @@
-<div class="public-site-workspace" data-controller="home-settings-preview">
-  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "house-gear", title: "Home", subtitle: "Gerencie hero, chamada final e visibilidade das seções.", actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
+<%
+  layout_setting = LayoutSetting.find_by(tenant: @home_setting.tenant)
+  active_sections = current_tenant.home_sections.active.to_a
+  banners = current_tenant.banners.active.to_a
+  banners_after_hero = banners.select { |banner| banner.positions.include?("home_after_hero") }
+  banners_before_footer = banners.select { |banner| banner.positions.include?("home_before_footer") }
+  active_slides = @home_setting.hero_slides.select { |slide| slide.active? && slide.image.attached? }
+  active_slide = active_slides.first
+  desktop_image = active_slide&.image || (@home_setting.hero_background_desktop if @home_setting.hero_background_desktop.attached?)
+  mobile_image = (@home_setting.hero_background_mobile if @home_setting.hero_background_mobile.attached?) || desktop_image
+  hero_ready = @home_setting.hero_title.present? && @home_setting.hero_subtitle.present? && desktop_image.present?
+  header_entries = PublicHeaderMenu.visible(@home_setting.header_menu, blog_url: nil, youtube_url: nil).select(&:bar?).first(4)
+  header_cta = @home_setting.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL
+  studio_items = [
+    { id: "home-tab-hero", icon: "image", label: "Abertura", hint: hero_ready ? "Mensagem, #{active_slides.size.positive? ? pluralize(active_slides.size, 'slide') : 'imagem'} e sobreposição" : "Falta título, subtítulo ou imagem" },
+    { id: "home-tab-search", icon: "search", label: "A busca", hint: @home_setting.search_filter_in_hero? ? "Filtro dentro do hero" : "Botão flutuante que abre a busca" },
+    { id: "home-tab-after", icon: "layout-three-columns", label: "Depois do hero", hint: "#{pluralize(active_sections.size, 'seção', 'seções')} ativas · #{pluralize(banners_after_hero.size + banners_before_footer.size, 'banner', 'banners')}" }
+  ]
+  # Atributos data-live-* (ver live_preview_controller): ligam cada campo à prévia sem JS por tela.
+  live = ->(var, kind, fallback, unit = nil) { { live_var: var, live_kind: kind, live_fallback: fallback, live_unit: unit }.compact }
+  overlay_live = ->(var, kind, fallback) { live.call(var, kind, fallback).merge(live_meter: "overlay") }
+  preview_brand = layout_setting&.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
+  hero_defaults = { title: "Encontre o imóvel dos seus sonhos", subtitle: "As melhores oportunidades" }
+  filter_presets = [
+    ["Vidro", "Translúcido com desfoque, sobre a foto", { "search_filter_background_color" => "#FFFFFF", "search_filter_background_opacity" => "0.25", "search_filter_backdrop_blur" => "16", "search_filter_border_radius" => "22", "search_filter_field_background_color" => "#FFFFFF", "search_filter_field_background_opacity" => "0.85", "search_filter_text_color" => "#022B3A" }],
+    ["Sólido claro", "Painel branco, campos limpos", { "search_filter_background_color" => "#FFFFFF", "search_filter_background_opacity" => "0.95", "search_filter_backdrop_blur" => "0", "search_filter_border_radius" => "14", "search_filter_field_background_color" => "#F4F6F9", "search_filter_field_background_opacity" => "1", "search_filter_text_color" => "#022B3A" }],
+    ["Sólido escuro", "Painel escuro que destaca o botão", { "search_filter_background_color" => "#022B3A", "search_filter_background_opacity" => "0.92", "search_filter_backdrop_blur" => "8", "search_filter_border_radius" => "14", "search_filter_field_background_color" => "#0B4A63", "search_filter_field_background_opacity" => "1", "search_filter_text_color" => "#FFFFFF" }]
+  ].map { |label, about, values| [label, about, values.transform_keys { |key| "home_setting[#{key}]" }.to_json] }
+%>
+<div class="public-site-workspace hps-workspace"
+     data-controller="live-preview"
+     data-action="input->live-preview#sync change->live-preview#sync focusin->live-preview#focus ax:tab-shown->live-preview#focus">
+  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "house-gear", title: "Home", subtitle: "Abertura, busca e o que vem depois dela. O topo do site fica em Topo e menu.", actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")) %>
 
-  <%= form_with(model: @home_setting, url: admin_home_setting_path, local: true, html: { multipart: true }) do |f| %>
+  <%= form_with(model: @home_setting, url: admin_home_setting_path, local: true,
+                html: { multipart: true, data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } }) do |f| %>
     <%= ax_error_summary(@home_setting) %>
 
-    <ul class="ax-form-tabs tw-mb-4" id="homeSettingsTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#homeSettingsTabsContent">
-      <li role="presentation">
-        <button class="ax-form-tabs__item active" id="hero-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#hero" data-action="click->ax-tabs#select" type="button" role="tab" aria-controls="hero" aria-selected="true" tabindex="0">
-          <i class="bi bi-image" aria-hidden="true"></i>Seção Hero
-        </button>
-      </li>
-      <li role="presentation">
-        <button class="ax-form-tabs__item" id="cta-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#cta" data-action="click->ax-tabs#select" type="button" role="tab" aria-controls="cta" aria-selected="false" tabindex="-1">
-          <i class="bi bi-megaphone" aria-hidden="true"></i>Call to Action
-        </button>
-      </li>
-      <li role="presentation">
-        <button class="ax-form-tabs__item" id="sections-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#sections" data-action="click->ax-tabs#select" type="button" role="tab" aria-controls="sections" aria-selected="false" tabindex="-1">
-          <i class="bi bi-layout-three-columns" aria-hidden="true"></i>Gerenciar Seções
-        </button>
-      </li>
-    </ul>
+    <div class="ax-studio ax-studio--home">
+      <div class="ax-studio__nav">
+        <%= ax_studio_nav(items: studio_items, panels_selector: "#home-studio-sections", label: "Etapas da Home") %>
+      </div>
 
-    <div class="ax-form-tabs__panels" id="homeSettingsTabsContent">
-      <div class="ax-form-tabs__panel" id="hero" role="tabpanel" aria-labelledby="hero-tab" aria-hidden="false" tabindex="0">
-        <%= ax_field_grid do %>
-          <div class="ax-span-12">
-            <%= ax_operational_panel(eyebrow: "Conteúdo", title: "Textos do Hero") do %>
-                <%= ax_text_field(form: f, method: :hero_title, type: :textarea, label: "Título principal", hint: "Texto principal que aparece no topo da Home.", rows: 2, placeholder: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú") %>
+      <div class="ax-studio__stage" id="home-studio-sections">
+        <%# ===== Abertura ===== %>
+        <%= ax_studio_section(id: "home-tab-hero", icon: "image", active: true, data: { live_focus: "hero" },
+                              title: "Abertura",
+                              subtitle: "A primeira dobra: o que o visitante lê, a foto por trás e o quanto ela é escurecida para o texto continuar legível.") do %>
 
-                <%= ax_field_grid class_name: "tw-mb-3" do %>
-                  <div class="ax-span-6">
-                    <%= ax_measure_field(form: f, method: :hero_title_font_size, label: "Tamanho do título", unit: "px", value: @home_setting.hero_title_font_size || 72, min: 24, max: 96, step: 1) %>
-                  </div>
-                  <div class="ax-span-6">
-                    <%= ax_measure_field(form: f, method: :hero_subtitle_font_size, label: "Tamanho do subtítulo", unit: "px", value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1) %>
-                  </div>
-                <% end %>
-
-                <%= ax_text_field(form: f, method: :hero_subtitle, type: :textarea, label: "Subtítulo", hint: "Texto secundário exibido abaixo do título.", rows: 2, placeholder: "Aqui o lar é o centro das grandes histórias da vida.") %>
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Textos do Hero</h3><p>Título e subtítulo aparecem centralizados sobre a imagem.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-9">
+                <%= ax_text_field(form: f, method: :hero_title, type: :textarea, label: "Título principal", hint: "Texto principal que aparece no topo da Home.", rows: 2, placeholder: "Compre ou alugue com atendimento especializado", data: { live_text: "hero-title" }) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :hero_title_font_size, label: "Tamanho do título", unit: "px", value: @home_setting.hero_title_font_size || 72, min: 24, max: 96, step: 1, data: live.call("--hps-title-size", "number", "72")) %>
+              </div>
+              <div class="ax-span-9">
+                <%= ax_text_field(form: f, method: :hero_subtitle, type: :textarea, label: "Subtítulo", hint: "Texto secundário exibido abaixo do título.", rows: 2, placeholder: "Aqui o lar é o centro das grandes histórias da vida.", data: { live_text: "hero-subtitle" }) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :hero_subtitle_font_size, label: "Tamanho do subtítulo", unit: "px", value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1, data: live.call("--hps-subtitle-size", "number", "20")) %>
+              </div>
             <% end %>
           </div>
 
-          <div class="ax-span-6">
-            <%= ax_operational_panel(eyebrow: "Mídia", title: "Slides para desktop", class_name: "home-settings-card--fill") do %>
-                <%= ax_file_field(form: f, method: :hero_slide_images, label: "Imagens do Hero", hint: "Envie uma ou mais imagens. O sistema redimensiona até 1920x1080px e otimiza para web.", accept: "image/*", multiple: true, input_id: "home-setting-hero-slide-images", button_label: "Adicionar imagens") %>
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Slides para desktop</h3><p>Arraste para ordenar; slides desativados não entram no carrossel.</p></div>
+            <%= ax_file_field(form: f, method: :hero_slide_images, label: "Imagens do Hero", hint: "Envie uma ou mais imagens. O sistema redimensiona até 1920x1080px e otimiza para web.", accept: "image/*", multiple: true, input_id: "home-setting-hero-slide-images", button_label: "Adicionar imagens") %>
 
-                <% if @home_setting.hero_slides.any? %>
-                  <div class="tw-flex tw-flex-col tw-gap-2"
-                       data-controller="sortable"
-                       data-sortable-handle-value=".hero-slide-drag-handle">
-                    <%= f.fields_for :hero_slides, @home_setting.hero_slides do |slide_f| %>
-                      <% slide = slide_f.object %>
-                      <div class="nested-form-wrapper">
-                        <div class="home-settings-slide-item">
-                          <div class="home-settings-slide-item__content">
-                            <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm hero-slide-drag-handle" aria-label="Arrastar slide <%= slide.position %> para ordenar">
-                              <i class="bi bi-arrows-move" aria-hidden="true"></i>
-                            </button>
+            <% if @home_setting.hero_slides.any? %>
+              <div class="home-settings-slide-list"
+                   data-controller="sortable"
+                   data-sortable-handle-value=".hero-slide-drag-handle">
+                <%= f.fields_for :hero_slides, @home_setting.hero_slides do |slide_f| %>
+                  <% slide = slide_f.object %>
+                  <div class="nested-form-wrapper">
+                    <div class="home-settings-slide-item">
+                      <div class="home-settings-slide-item__content">
+                        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm hero-slide-drag-handle" aria-label="Arrastar slide <%= slide.position %> para ordenar">
+                          <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+                        </button>
 
-                            <span class="ax-badge ax-badge--gray home-settings-slide-item__position">
-                              #<span class="position-display"><%= slide.position %></span>
-                            </span>
+                        <span class="ax-badge ax-badge--gray home-settings-slide-item__position">
+                          #<span class="position-display"><%= slide.position %></span>
+                        </span>
 
-                            <div class="home-settings-slide-thumb">
-                            <% if slide.image.attached? %>
-                              <%= image_tag slide.image.variant(resize_to_limit: [300, 170]), class: "tw-w-full home-settings-slide-thumb__image" %>
-                            <% end %>
-                            </div>
+                        <button type="button" class="home-settings-slide-thumb" data-live-image="<%= url_for(slide.image.variant(resize_to_limit: [720, 405])) if slide.image.attached? %>"
+                                data-action="click->live-preview#image" aria-pressed="false" title="Ver este slide na prévia" aria-label="Ver o slide <%= slide.position %> na prévia">
+                          <% if slide.image.attached? %>
+                            <%= image_tag slide.image.variant(resize_to_limit: [240, 135]), class: "home-settings-slide-thumb__image", alt: "" %>
+                          <% end %>
+                        </button>
 
-                            <%= slide_f.hidden_field :position, class: "position-field" %>
+                        <%= slide_f.hidden_field :position, class: "position-field" %>
 
-                            <div class="home-settings-slide-item__field">
-                              <%= ax_text_field(form: slide_f, method: :alt_text, label: "Texto alternativo", class_name: "tw-text-sm", class: "ax-control--sm") %>
-                            </div>
+                        <div class="home-settings-slide-item__field">
+                          <%= ax_text_field(form: slide_f, method: :alt_text, label: "Texto alternativo", placeholder: "Texto alternativo da imagem", class_name: "home-settings-slide-item__alt") %>
+                        </div>
 
-                            <div class="home-settings-slide-item__actions">
-                              <%= ax_switch_field(form: slide_f, method: :active, label: "Ativo") %>
-                              <%= ax_check_field(form: slide_f, method: :_destroy, label: tag.span("Remover", class: "tw-text-sm home-settings-remove-label")) %>
-                            </div>
-                          </div>
+                        <div class="home-settings-slide-item__actions">
+                          <%= ax_switch_field(form: slide_f, method: :active, label: "Ativo") %>
+                          <%= ax_check_field(form: slide_f, method: :_destroy, label: tag.span("Remover", class: "home-settings-remove-label")) %>
                         </div>
                       </div>
-                    <% end %>
-                  </div>
-                <% elsif @home_setting.hero_background_desktop.attached? %>
-                  <div class="home-settings-legacy-preview">
-                            <%= image_tag @home_setting.hero_background_desktop.variant(resize_to_limit: [960, 540]), class: "tw-w-full home-settings-slide-thumb__image", id: "hero-desktop-image" %>
-                    <div id="hero-overlay-preview" class="home-settings-overlay-preview" data-home-settings-preview-target="overlayPreview">
                     </div>
-                    <span class="ax-badge ax-badge--gray home-settings-current-image-badge">
-                      <i class="bi bi-image"></i>Imagem atual antiga
-                    </span>
-                  </div>
-                <% else %>
-                  <%= ax_empty_state(
-                        title: "Nenhuma imagem desktop carregada",
-                        description: "Envie uma ou mais imagens para montar os slides do Hero.",
-                        icon: "image",
-                        compact: true
-                      ) %>
-                <% end %>
-            <% end %>
-          </div>
-
-          <div class="ax-span-6">
-            <%= ax_operational_panel(eyebrow: "Mídia", title: "Imagem para mobile", class_name: "home-settings-card--fill") do %>
-                <%= ax_file_field(form: f, method: :hero_background_mobile, label: "Imagem de fundo", hint: "Formato recomendado: 768x1024px, orientação vertical.", accept: "image/*", button_label: "Escolher imagem") %>
-
-                <% if @home_setting.hero_background_mobile.attached? %>
-                  <div class="home-settings-mobile-preview">
-                    <%= image_tag @home_setting.hero_background_mobile, class: "home-settings-mobile-preview__image" %>
-                    <span class="ax-badge ax-badge--blue home-settings-mobile-preview__badge">
-                      <i class="bi bi-check-circle"></i>Imagem Atual
-                    </span>
-                  </div>
-                <% else %>
-                  <%= ax_empty_state(
-                        title: "Nenhuma imagem mobile carregada",
-                        description: "Sem arquivo específico, a experiência poderá usar a imagem desktop configurada.",
-                        icon: "phone",
-                        compact: true
-                      ) %>
-                <% end %>
-            <% end %>
-          </div>
-
-          <div class="ax-span-6">
-            <%= ax_operational_panel(eyebrow: "Aparência", title: "Sobreposição do Hero", class_name: "home-settings-card--fill") do %>
-              <%= ax_field_grid do %>
-                <div class="ax-span-5 tw-mb-3">
-                  <%= ax_number_field(form: f, method: :overlay_opacity, label: "Opacidade", hint: "Use um valor entre 0,0 e 1,0.", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: { home_settings_preview_target: "overlayOpacity", action: "input->home-settings-preview#updateOverlay" }) %>
-                </div>
-
-                <div class="ax-span-7 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f,
-                        method: :overlay_color,
-                        label: "Cor da sobreposição",
-                        value: @home_setting.overlay_color || "#000000",
-                        color_options: { id: "input-overlay-color-picker", data: { home_settings_preview_target: "overlayColorPicker", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "picker" } },
-                        text_options: { id: "input-overlay-color-text", data: { home_settings_preview_target: "overlayColorText", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <div class="ax-span-6">
-            <%= ax_operational_panel(eyebrow: "Conversão", title: "Botão de busca", class_name: "home-settings-card--fill") do %>
-              <%= ax_field_grid do %>
-                <div class="ax-span-12 tw-mb-3">
-                  <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis") %>
-                </div>
-
-                <div class="ax-span-6 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f, method: :hero_button_color, label: "Cor do botão",
-                        value: @home_setting.hero_button_color || "#BFAB25",
-                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "picker" } },
-                        text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-
-                <div class="ax-span-6 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f, method: :hero_button_text_color, label: "Cor do texto",
-                        value: @home_setting.hero_button_text_color || "#FFFFFF",
-                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "picker" } },
-                        text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <div class="ax-span-12">
-            <%= ax_operational_panel(eyebrow: "Busca", title: "Filtro de busca") do %>
-              <%= ax_field_grid do %>
-                <div class="ax-span-6 tw-mb-3">
-                  <%= ax_radio_group(
-                        form: f,
-                        method: :search_filter_display_mode,
-                        label: "Como exibir o filtro no desktop",
-                        choices: HomeSetting::SEARCH_FILTER_DISPLAY_MODE_OPTIONS,
-                        item_class: "tw-min-w-[180px]"
-                      ) %>
-                </div>
-
-                <div class="ax-span-6 tw-mb-3">
-                  <%= ax_radio_group(
-                        form: f,
-                        method: :mobile_search_filter_display_mode,
-                        label: "Como exibir o filtro no mobile",
-                        choices: HomeSetting::MOBILE_SEARCH_FILTER_DISPLAY_MODE_OPTIONS,
-                        item_class: "tw-min-w-[180px]"
-                      ) %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f, method: :search_filter_background_color, label: "Cor do fundo do filtro",
-                        value: @home_setting.search_filter_background_color || "#FFFFFF",
-                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "picker" } },
-                        text_options: { id: "search-filter-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_number_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, placeholder: "0.9") %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Translucidez / desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16") %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio do filtro", unit: "px", value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, placeholder: "22") %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f, method: :search_filter_field_background_color, label: "Cor dos campos",
-                        value: @home_setting.search_filter_field_background_color || "#FFFFFF",
-                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "picker" } },
-                        text_options: { id: "search-filter-field-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_number_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, placeholder: "0.85") %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f, method: :search_filter_text_color, label: "Cor dos textos/links",
-                        value: @home_setting.search_filter_text_color || "#022B3A",
-                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "picker" } },
-                        text_options: { id: "search-filter-text-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro") %>
-                </div>
-
-                <div class="ax-span-4 tw-mb-3">
-                  <%= ax_color_field(
-                        form: f, method: :search_filter_border_color, label: "Cor da borda",
-                        value: @home_setting.search_filter_border_color || "#FFFFFF",
-                        color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "picker" } },
-                        text_options: { id: "search-filter-border-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "text" } }
-                      ) %>
-                </div>
-
-                <div class="ax-span-4">
-                  <%= ax_number_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45") %>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <div class="ax-span-12">
-            <%= ax_operational_panel(eyebrow: "Header público", title: "Fundo do header") do %>
-              <% header_defaults = public_header_color_defaults(tenant: @home_setting.tenant, layout: LayoutSetting.find_by(tenant: @home_setting.tenant)) %>
-              <%= ax_field_grid do %>
-                <% HomeSetting::HEADER_COLOR_FIELDS.each do |field, label| %>
-                  <div class="ax-span-6">
-                    <% inherited = header_defaults.fetch(field) %>
-                    <%= ax_color_field(form: f, method: field, label: label,
-                          value: @home_setting.public_send(field), default_value: inherited.start_with?("#") ? inherited[0, 7] : "#FFFFFF",
-                          text_options: { placeholder: inherited == "transparent" ? "Transparente" : inherited },
-                          hint: inherited == "transparent" ? "Herdado: transparente, mostra o fundo do header." : "Cor herdada: #{inherited}. Vazio mantém o tema.") %>
                   </div>
                 <% end %>
-              <% end %>
-              <%= ax_text_field(
-                    form: f,
-                    method: :public_header_css,
-                    type: :textarea,
-                    label: "CSS aplicado no header",
-                    hint: "Informe apenas declarações CSS. O conteúdo será aplicado ao elemento header do site público deste tenant.",
-                    rows: 9,
-                    class: "ax-control--code",
-                    placeholder: "color: var(--default-color);\nbackground-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);\n-webkit-backdrop-filter: blur(15px);\npadding: 15px 0;\ntransition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);\nz-index: 997;\nborder-bottom: 1px solid rgba(255,255,255,0.05);"
+              </div>
+            <% elsif @home_setting.hero_background_desktop.attached? %>
+              <div class="home-settings-legacy-preview">
+                <%= image_tag @home_setting.hero_background_desktop.variant(resize_to_limit: [960, 540]), class: "home-settings-slide-thumb__image", id: "hero-desktop-image", alt: "Imagem atual do hero" %>
+                <div id="hero-overlay-preview" class="home-settings-overlay-preview"></div>
+                <span class="ax-badge ax-badge--gray home-settings-current-image-badge">
+                  <i class="bi bi-image"></i>Imagem atual antiga
+                </span>
+              </div>
+            <% else %>
+              <%= ax_empty_state(
+                    title: "Nenhuma imagem desktop carregada",
+                    description: "Envie uma ou mais imagens para montar os slides do Hero.",
+                    icon: "image",
+                    compact: true
                   ) %>
             <% end %>
           </div>
-        <% end %>
-      </div>
 
-      <div class="ax-form-tabs__panel" id="cta" role="tabpanel" aria-labelledby="cta-tab" aria-hidden="true" tabindex="0" hidden>
-        <%= ax_operational_panel(eyebrow: "Conversão", title: "Chamada para ação") do %>
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Imagem para mobile</h3><p>Formato vertical. Sem ela, o celular reaproveita a imagem do desktop.</p></div>
+            <div class="home-settings-mobile-row">
+              <% if @home_setting.hero_background_mobile.attached? %>
+                <div class="home-settings-mobile-preview">
+                  <%= image_tag @home_setting.hero_background_mobile.variant(resize_to_limit: [160, 285]), class: "home-settings-mobile-preview__image", alt: "Imagem mobile atual" %>
+                  <span class="ax-badge ax-badge--blue home-settings-mobile-preview__badge" title="Imagem atual"><i class="bi bi-check-circle"></i></span>
+                </div>
+              <% else %>
+                <div class="home-settings-mobile-empty">
+                  <i class="bi bi-phone" aria-hidden="true"></i>
+                  <span>Nenhuma imagem mobile carregada</span>
+                  <small>Sem arquivo específico, a experiência poderá usar a imagem desktop configurada.</small>
+                </div>
+              <% end %>
+              <%= ax_file_field(form: f, method: :hero_background_mobile, label: "Imagem de fundo", hint: "Formato recomendado: 768x1024px, orientação vertical.", accept: "image/*", button_label: "Escolher imagem") %>
+            </div>
+          </div>
+
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Sobreposição da imagem</h3><p>Escurece (ou tinge) a foto para o texto continuar legível.</p></div>
             <%= ax_field_grid do %>
-              <div class="ax-span-6 tw-mb-3">
-                <%= ax_text_field(form: f, method: :cta_title, label: "Título", hint: "Título da seção de chamada para ação.", placeholder: "Pronto para encontrar seu imóvel?") %>
+              <div class="ax-span-4">
+                <%= ax_measure_field(form: f, method: :overlay_opacity, label: "Opacidade", unit: "0–1", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: live.call("--hps-overlay-opacity", "number", "0.7")) %>
               </div>
-
-              <div class="ax-span-6 tw-mb-3">
-                <%= ax_text_field(form: f, method: :cta_subtitle, label: "Subtítulo", hint: "Descrição complementar da chamada.", placeholder: "Entre em contato conosco e descubra as melhores oportunidades") %>
+              <div class="ax-span-8">
+                <%= ax_color_field(
+                      form: f,
+                      method: :overlay_color,
+                      label: "Cor da sobreposição",
+                      value: @home_setting.overlay_color || "#000000",
+                      color_options: { id: "input-overlay-color-picker", data: live.call("--hps-overlay-color", "color", "#000000") },
+                      text_options: { id: "input-overlay-color-text", data: live.call("--hps-overlay-color", "color", "#000000") }
+                    ) %>
               </div>
             <% end %>
+            <div class="hps-meter" data-live-meter-target="overlay" data-level="ok"
+                 data-text-low="Fraca: o texto branco pode se perder em fotos claras." data-text-ok="Boa: texto legível e a foto continua viva." data-text-high="Forte: a foto quase some, aproveite menos opacidade.">
+              <i class="hps-meter__bar" data-meter-bar></i><span data-meter-text></span>
+            </div>
+          </div>
+        <% end %>
+
+        <%# ===== A busca ===== %>
+        <%= ax_studio_section(id: "home-tab-search", icon: "search", data: { live_focus: "search" },
+                              title: "A busca",
+                              subtitle: "Onde o filtro aparece no desktop e no celular, como ele se parece sobre a imagem e o botão que fecha a ação.") do %>
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Onde aparece</h3><p>No hero, dentro da imagem, ou como um botão flutuante que abre a busca.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-6">
+                <%= ax_radio_group(form: f, method: :search_filter_display_mode, label: "Como exibir o filtro no desktop",
+                                   choices: HomeSetting::SEARCH_FILTER_DISPLAY_MODE_OPTIONS, input_data: { live_attr: "searchFilterMode" }) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_radio_group(form: f, method: :mobile_search_filter_display_mode, label: "Como exibir o filtro no mobile",
+                                   choices: HomeSetting::MOBILE_SEARCH_FILTER_DISPLAY_MODE_OPTIONS, input_data: { live_attr: "mobileFilterMode" }) %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Pontos de partida</h3><p>Aplica um conjunto de ajustes de uma vez. Você continua afinando cada campo abaixo.</p></div>
+            <div class="hps-presets" role="group" aria-label="Pontos de partida do filtro">
+              <% filter_presets.each do |label, about, values| %>
+                <button type="button" class="hps-preset" data-live-fill="<%= values %>" data-action="click->live-preview#fill" aria-pressed="false">
+                  <strong><%= label %></strong><small><%= about %></small>
+                </button>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Fundo e forma</h3><p>Cor, transparência, desfoque e arredondamento do painel que segura os campos.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-3">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_background_color, label: "Cor do fundo",
+                      value: @home_setting.search_filter_background_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-f-bg", "color", "#FFFFFF") },
+                      text_options: { id: "search-filter-background-text", data: live.call("--hps-f-bg", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", unit: "0–1", value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, placeholder: "0.9", data: live.call("--hps-f-bg-opacity", "number", "0.9")) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16", data: live.call("--hps-f-blur", "number", "16")) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio", unit: "px", value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, placeholder: "22", data: live.call("--hps-f-radius", "number", "22")) %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Campos e textos</h3><p>Aparência dos campos dentro do filtro e das palavras sobre ele.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_field_background_color, label: "Cor dos campos",
+                      value: @home_setting.search_filter_field_background_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-f-field", "color", "#FFFFFF") },
+                      text_options: { id: "search-filter-field-background-text", data: live.call("--hps-f-field", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_measure_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", unit: "0–1", value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, placeholder: "0.85", data: live.call("--hps-f-field-opacity", "number", "0.85")) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_text_color, label: "Cor dos textos/links",
+                      value: @home_setting.search_filter_text_color || "#022B3A",
+                      color_options: { data: live.call("--hps-f-text", "color", "#022B3A") },
+                      text_options: { id: "search-filter-text-text", data: live.call("--hps-f-text", "color", "#022B3A") }
+                    ) %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Borda</h3><p>Contorno fino ao redor do painel de busca. Cor e opacidade só valem com a borda ligada.</p></div>
+            <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro", class_name: "ax-switch--card", input_html: { data: { live_attr: "filterBorder" } }) %>
+            <%= ax_field_grid class_name: "home-settings-dependent" do %>
+              <div class="ax-span-6">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_border_color, label: "Cor da borda",
+                      value: @home_setting.search_filter_border_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-f-border", "color", "#FFFFFF") },
+                      text_options: { id: "search-filter-border-text", data: live.call("--hps-f-border", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_measure_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", unit: "0–1", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45", data: live.call("--hps-f-border-opacity", "number", "0.45")) %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="ax-studio-group">
+            <div class="ax-studio-group__head"><h3>Botão de busca</h3><p>Aparece dentro do filtro do hero e no botão flutuante.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis", data: { live_text: "hero-cta" }) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :hero_button_color, label: "Cor do botão",
+                      value: @home_setting.hero_button_color || "#BFAB25",
+                      color_options: { data: live.call("--hps-btn-bg", "color", "#BFAB25") },
+                      text_options: { data: live.call("--hps-btn-bg", "color", "#BFAB25") }
+                    ) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :hero_button_text_color, label: "Cor do texto",
+                      value: @home_setting.hero_button_text_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-btn-text", "color", "#FFFFFF") },
+                      text_options: { data: live.call("--hps-btn-text", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%# ===== Depois do hero ===== %>
+        <%= ax_studio_section(id: "home-tab-after", icon: "layout-three-columns", data: { live_focus: "after" },
+                              title: "Depois do hero",
+                              subtitle: "O que o visitante encontra rolando a página, na ordem em que aparece. Cada bloco é gerenciado na sua própria tela.") do %>
+          <%= ax_studio_group(title: "Ordem da página", subtitle: "Da abertura ao rodapé.", actions: link_to("Gerenciar seções", admin_home_sections_path, class: "ax-btn ax-btn--sm")) do %>
+            <ol class="hps-story">
+              <li class="hps-story__step is-fixed"><i class="bi bi-image"></i><div><strong>Abertura e busca</strong><small>Editadas nas duas etapas anteriores.</small></div></li>
+              <% if banners_after_hero.any? %>
+                <li class="hps-story__step"><i class="bi bi-image-alt"></i><div><strong>Banners após o hero</strong><small><%= banners_after_hero.map(&:title).to_sentence %></small></div><%= link_to "Banners", admin_banners_path, class: "ax-link" %></li>
+              <% end %>
+              <% active_sections.each do |section| %>
+                <li class="hps-story__step"><i class="bi bi-<%= section.property_content_section? ? "buildings" : "card-text" %>"></i><div><strong><%= section.title.presence || HomeSection::SECTION_TYPE_LABELS[section.section_type] %></strong><small><%= HomeSection::SECTION_TYPE_LABELS[section.section_type] %></small></div><%= link_to "Editar", edit_admin_home_section_path(section), class: "ax-link" %></li>
+              <% end %>
+              <% if active_sections.empty? %>
+                <li class="hps-story__step is-empty"><i class="bi bi-layout-text-sidebar"></i><div><strong>Nenhuma seção ativa</strong><small>A Home mostra só a abertura e a busca.</small></div><%= link_to "Criar seção", new_admin_home_section_path, class: "ax-link" %></li>
+              <% end %>
+              <% if banners_before_footer.any? %>
+                <li class="hps-story__step"><i class="bi bi-image-alt"></i><div><strong>Banners antes do rodapé</strong><small><%= banners_before_footer.map(&:title).to_sentence %></small></div><%= link_to "Banners", admin_banners_path, class: "ax-link" %></li>
+              <% end %>
+              <li class="hps-story__step is-fixed"><i class="bi bi-layout-sidebar"></i><div><strong>Rodapé</strong><small>Links, lojas e redes.</small></div><%= link_to "Editar", edit_admin_footer_setting_path, class: "ax-link" %></li>
+            </ol>
+          <% end %>
         <% end %>
       </div>
 
-      <div class="ax-form-tabs__panel" id="sections" role="tabpanel" aria-labelledby="sections-tab" aria-hidden="true" tabindex="0" hidden>
-        <%= ax_operational_panel(eyebrow: "Publicação", title: "Controle de seções da Home") do %>
-            <p class="tw-text-ink-muted tw-mb-4">
-              <i class="bi bi-info-circle"></i>
-              Ative ou desative seções específicas da página inicial. Seções desativadas não aparecerão para os visitantes.
-            </p>
+      <aside class="ax-studio__aside" aria-label="Prévia da Home">
+        <div class="hps" data-preview-device="desktop">
+          <div class="hps__label">
+            <span class="hps__live"></span> Prévia da Home
+            <div class="hps__devices" role="group" aria-label="Dispositivo da prévia">
+              <button type="button" data-live-device="desktop" data-action="click->live-preview#device" aria-pressed="true"><i class="bi bi-display"></i>Desktop</button>
+              <button type="button" data-live-device="mobile" data-action="click->live-preview#device" aria-pressed="false"><i class="bi bi-phone"></i>Mobile</button>
+            </div>
+          </div>
 
-            <%= ax_field_grid class_name: "home-settings-section-grid" do %>
-              <div class="ax-span-4">
-                <%= ax_field_group(title: "Nossos serviços", class_name: "home-settings-card--fill") do %>
-                    <%= ax_switch_field(form: f, method: :services_active, id: "services_active", label: "Exibir seção") %>
-                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2">Exibe os serviços oferecidos pela imobiliária.</p>
+          <div class="hps-site" data-live-scroller aria-hidden="true">
+            <div class="hps-hero" data-live-focus-target="hero">
+              <div class="hps-hero__media">
+                <% if desktop_image %>
+                  <%= image_tag desktop_image.variant(resize_to_limit: [720, 405]), class: "hps-hero__img hps-hero__img--desktop", alt: "", data: { live_image_target: true } %>
+                <% end %>
+                <% if mobile_image %>
+                  <%= image_tag mobile_image.variant(resize_to_limit: [400, 711]), class: "hps-hero__img hps-hero__img--mobile", alt: "" %>
                 <% end %>
               </div>
+              <div class="hps-hero__overlay"></div>
 
-              <div class="ax-span-4">
-                <%= ax_field_group(title: "Por que escolher", class_name: "home-settings-card--fill") do %>
-                    <%= ax_switch_field(form: f, method: :why_choose_active, id: "why_choose_active", label: "Exibir seção") %>
-                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2">Mostra os diferenciais da empresa.</p>
+              <header class="hps-header">
+                <strong><%= preview_brand %></strong>
+                <% header_entries.each_with_index do |entry, index| %>
+                  <span class="hps-header__link<%= " hps-header__link--hover" if index == header_entries.size - 1 %>"><%= entry.label %></span>
                 <% end %>
+                <span class="hps-header__cta"><%= header_cta %></span>
+              </header>
+
+              <div class="hps-hero__copy">
+                <h4 data-live-text-target="hero-title"><%= @home_setting.hero_title.presence || hero_defaults[:title] %></h4>
+                <p data-live-text-target="hero-subtitle"><%= @home_setting.hero_subtitle.presence || hero_defaults[:subtitle] %></p>
               </div>
 
-              <div class="ax-span-4">
-                <%= ax_field_group(title: "CTA de contato", class_name: "home-settings-card--fill") do %>
-                    <%= ax_switch_field(form: f, method: :cta_contact_active, id: "cta_contact_active", label: "Exibir seção") %>
-                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2">Exibe a chamada para entrar em contato.</p>
-                <% end %>
+              <div class="hps-filter" data-live-focus-target="search">
+                <span class="hps-filter__field"><i class="bi bi-geo-alt"></i>Cidade</span>
+                <span class="hps-filter__field"><i class="bi bi-house"></i>Tipo</span>
+                <span class="hps-filter__field hps-filter__field--wide"><i class="bi bi-currency-dollar"></i>Valor</span>
+                <span class="hps-filter__button"><i class="bi bi-search"></i><span data-live-text-target="hero-cta"><%= @home_setting.hero_cta_text.presence || "Buscar imóveis" %></span></span>
               </div>
-            <% end %>
 
-            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-              <strong>Atenção:</strong> As seções de imóveis (Destaques, Oportunidades, etc.) são gerenciadas em
-              <%= link_to 'Seções da Home', admin_home_sections_path, class: 'ax-link' %>.
-            <% end %>
-        <% end %>
-      </div>
+              <span class="hps-fab"><i class="bi bi-search"></i></span>
+            </div>
 
+            <div class="hps-body" data-live-focus-target="after">
+              <% if banners_after_hero.any? %><div class="hps-banner"><i class="bi bi-image-alt"></i><b><%= banners_after_hero.first.title %></b></div><% end %>
+              <% active_sections.each do |section| %>
+                <div class="hps-block"><i class="bi bi-<%= section.property_content_section? ? "buildings" : "card-text" %>"></i><b><%= section.title.presence || HomeSection::SECTION_TYPE_LABELS[section.section_type] %></b>
+                  <% if section.property_content_section? %><span class="hps-block__cards"><i></i><i></i><i></i></span><% end %></div>
+              <% end %>
+              <% if active_sections.empty? %><div class="hps-block is-empty"><b>Nenhuma seção ativa</b></div><% end %>
+              <% if banners_before_footer.any? %><div class="hps-banner"><i class="bi bi-image-alt"></i><b><%= banners_before_footer.first.title %></b></div><% end %>
+              <div class="hps-block hps-block--footer"><i class="bi bi-layout-sidebar"></i><b>Rodapé</b></div>
+            </div>
+          </div>
+          <p class="hps__note">Uma amostra do site público. A área em edição fica destacada e a prévia rola até ela. Vale para os visitantes depois de salvar.</p>
+        </div>
+      </aside>
     </div>
 
-    <%= ax_sticky_action_footer(
-          meta: safe_join([tag.i(class: "bi bi-globe2", aria: { hidden: true }), tag.span("As alterações serão publicadas na Home desta conta após salvar.")], " ")
-        ) do %>
-      <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
-      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>
-    <% end %>
+    <%= ax_studio_savebar(form: f, cancel_path: admin_root_path, disable_with: "Salvando...") %>
   <% end %>
 </div>

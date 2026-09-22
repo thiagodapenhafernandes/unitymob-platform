@@ -31,6 +31,15 @@ RSpec.describe Seo::SitemapBuilder do
         nome_empreendimento: "Epic Tower",
         slug: "epic-tower"
       )
+      create(
+        :habitation,
+        tenant: public_tenant,
+        codigo_empreendimento: development.codigo,
+        status: "Venda",
+        exibir_no_site_flag: true,
+        valor_venda_cents: 900_000_00,
+        pictures: [{ "url" => "https://cdn.example.com/epic.jpg" }]
+      )
 
       xml = described_class.new(
         base_url: "https://saluteimoveis.com.br",

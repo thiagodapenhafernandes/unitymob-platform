@@ -36,13 +36,21 @@
   outline: 0;
 }
 
+/* Botões nativos dentro de .ax-field (submit_tag como ação do grupo) não herdam a largura total dos campos. */
+.ax-field input[type="submit"].ax-btn,
+.ax-field input[type="button"].ax-btn { width: auto; flex: none; }
+
 textarea.ax-control,
 .ax-field textarea {
   min-height: 72px;
   padding: 9px 10px;
+  font-family: inherit; /* o padrão do navegador para textarea é monoespaçado; só .ax-control--code o mantém */
   line-height: 1.45;
   resize: vertical;
 }
+
+/* rows="2" (título/subtítulo curtos) não precisa da altura padrão de 72px. */
+.ax-field textarea[rows="2"] { min-height: 58px; }
 
 textarea.ax-control--code,
 .ax-field textarea.ax-control--code {
@@ -481,4 +489,30 @@ body > .ts-dropdown { z-index: 6500; }
 [data-admin-theme="dark"] .ax-range-field__value {
   background: var(--ax-dark-surface-raised);
   color: color-mix(in srgb, var(--admin-primary) 58%, #fff);
+}
+
+/* Reforço de especificidade do tema escuro (o contrato acima usa :where, que perde para `.ax-field input:not([type="color"])`
+ * e para o `.ax-app .ts-wrapper .ts-control { background-color: #fff !important }` do CSS claro): sem isto os campos nativos
+ * e os seletores TomSelect ficavam brancos no escuro em qualquer tela sem regra própria. */
+[data-admin-theme="dark"] :is(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-field select,
+  .ax-field textarea
+) {
+  border-color: var(--ax-dark-border);
+  background-color: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-app .ts-wrapper .ts-control {
+  border-color: var(--ax-dark-border) !important;
+  background-color: var(--ax-dark-surface) !important;
+  color: var(--ax-dark-text) !important;
+}
+
+[data-admin-theme="dark"] .ax-app .ts-wrapper.focus .ts-control,
+[data-admin-theme="dark"] .ax-app .ts-wrapper.dropdown-active .ts-control {
+  border-color: var(--ax-dark-focus-border) !important;
+  box-shadow: 0 0 0 3px rgb(98 148 204 / .16) !important;
 }

@@ -1,8 +1,13 @@
+<%
+  editing = template.meta_id.present?
+  config = template.clean_flow_config
+%>
 <%= form_with model: [:admin, template],
-              class: "whatsapp-template-form",
+              class: "ax-guided",
               data: {
                 controller: "whatsapp-template-form",
-                action: "submit->whatsapp-template-form#submitStarted"
+                whatsapp_template_form_type_value: "flow",
+                action: "submit->whatsapp-template-form#submitStarted input->whatsapp-template-form#refresh change->whatsapp-template-form#refresh focusin->whatsapp-template-form#focusStep"
               } do |f| %>
   <%= hidden_field_tag :whatsapp_sender_number_id, sender_number&.id if sender_number %>
   <%= f.hidden_field :template_type, value: "flow" %>
@@ -10,122 +15,47 @@
 
   <%= render "form_feedback", template: template %>
 
-  <section class="whatsapp-template-header whatsapp-template-header--approval">
-    <div class="whatsapp-template-header__icon"><i class="bi bi-diagram-3"></i></div>
-    <div>
-      <strong>Template com Flow</strong>
-      <span>Conecte uma mensagem aprovada a um Flow já criado na Meta.</span>
-    </div>
-  </section>
+  <%= ax_guided_header(controller: "whatsapp-template-form", icon: "bi-diagram-3", title: (editing ? "Ajuste seu template com Flow" : "Vamos criar seu template com Flow"),
+                             subtitle: "Uma mensagem com um botão que abre um formulário, agendamento ou pesquisa já criado na Meta.",
+                             steps: [["Identifique", "bi-tag"], ["Objetivo", "bi-bullseye"], ["Mensagem", "bi-chat-text"], ["Flow", "bi-diagram-3"], ["Revisar", "bi-send-check"]]) %>
 
-  <%= ax_operational_panel(eyebrow: "Flow", title: "Informações do template") do %>
-    <div class="ax-panel-body whatsapp-template-form__stack">
-      <div class="whatsapp-template-form__grid">
-        <div class="ax-field">
-          <%= ax_field_label(f, :name, text: "Nome interno", tooltip: "Use um nome curto para localizar o template e criar campanhas depois.") %>
-          <%= f.text_field :name, class: "ax-control", placeholder: "ex: flow_agendamento_visita" %>
-        </div>
-        <div class="ax-field">
-          <%= ax_field_label(f, :category, text: "Categoria", tooltip: "Flows podem ser usados em Marketing ou Utility conforme o objetivo da mensagem.") %>
-          <%= f.select :category, WhatsappTemplate::CATEGORIES.map { |category| [category.titleize, category] }, {}, class: "ax-control" %>
-        </div>
-        <div class="ax-field">
-          <%= ax_field_label(f, :language, text: "Idioma", tooltip: "Idioma usado na revisão da mensagem pela Meta.") %>
-          <%= f.select :language, [["Português (Brasil)", "pt_BR"], ["English", "en_US"], ["Español", "es"]], {}, class: "ax-control" %>
-        </div>
-        <label class="whatsapp-template-check">
-          <%= f.check_box :allow_category_change %>
-          <span>Permitir ajuste automático de categoria</span>
-        </label>
-      </div>
+  <div class="ax-guided-layout">
+    <div class="ax-guided-steps">
+      <%= render "builder_identity", f: f, template: template, name_placeholder: "ex: flow_agendamento" %>
 
-      <div class="ax-field">
-        <%= ax_field_label(f, :body, text: "Texto da mensagem", tooltip: "Texto que introduz o botão do Flow. Use variáveis como {{1}} quando precisar personalizar.") %>
-        <%= f.text_area :body,
-                        class: "ax-control",
-                        rows: 5,
-                        maxlength: 1024,
-                        placeholder: "Olá {{1}}, toque no botão para continuar.",
-                        data: {
-                          whatsapp_template_form_target: "bodyInput",
-                          action: "input->whatsapp-template-form#syncExamples"
-                        } %>
-      </div>
-    </div>
-  <% end %>
+      <%= ax_guided_step(number: 3, color: :green, title: "Escreva a mensagem", subtitle: "O texto que convida o cliente a tocar no botão do Flow.") do %>
+        <%= render "builder_message", f: f, template: template, label: "Texto da mensagem", rows: 5,
+                                      tooltip: "Texto que introduz o botão do Flow. Use variáveis como {{1}} quando precisar personalizar.",
+                                      placeholder: "Olá {{1}}, toque no botão para continuar." %>
+        <%= ax_text_field(form: f, method: :footer_text, label: "Rodapé", tooltip: "Texto curto opcional exibido abaixo da mensagem.", maxlength: 60,
+                          label_meta: tag.span("0 / 60", class: "ax-guided-counter", data: { guided: "footerCount" }), placeholder: "Ex: Leva menos de 1 minuto") %>
+      <% end %>
 
-  <%= ax_operational_panel(eyebrow: "Configuração", title: "Conexão com Flow") do %>
-    <div class="ax-panel-body whatsapp-template-form__stack">
-      <% config = template.clean_flow_config %>
-      <div class="whatsapp-template-flow-grid">
-        <div class="ax-field">
-          <%= label_tag "whatsapp_template_flow_config_flow_id", "ID do Flow na Meta", class: "ax-label" %>
-          <%= text_field_tag "whatsapp_template[flow_config][flow_id]", config["flow_id"], id: "whatsapp_template_flow_config_flow_id", class: "ax-control", placeholder: "Ex: 123456789012345" %>
-          <p class="ax-field__hint">Informe o ID do Flow publicado na Meta. A campanha usa esse vínculo no botão.</p>
-        </div>
-        <div class="ax-field">
-          <%= label_tag "whatsapp_template_flow_config_button_text", "Texto do botão", class: "ax-label" %>
-          <%= text_field_tag "whatsapp_template[flow_config][button_text]", config["button_text"].presence || "Abrir", id: "whatsapp_template_flow_config_button_text", class: "ax-control", maxlength: 25, placeholder: "Abrir cadastro" %>
-        </div>
-        <div class="ax-field">
-          <%= label_tag "whatsapp_template_flow_config_action", "Ação do Flow", class: "ax-label" %>
-          <%= select_tag "whatsapp_template[flow_config][action]",
-                         options_for_select(WhatsappTemplate::FLOW_ACTIONS.map { |key, label| [label, key] }, config["action"].presence || "navigate"),
-                         id: "whatsapp_template_flow_config_action",
-                         class: "ax-control",
-                         data: {
-                           whatsapp_template_form_target: "flowActionSelect",
-                           action: "change->whatsapp-template-form#toggleFlowFields"
-                         } %>
-        </div>
-        <div class="ax-field" data-whatsapp-template-form-target="flowScreenField">
-          <%= label_tag "whatsapp_template_flow_config_screen", "Tela inicial", class: "ax-label" %>
-          <%= text_field_tag "whatsapp_template[flow_config][screen]", config["screen"], id: "whatsapp_template_flow_config_screen", class: "ax-control", placeholder: "Ex: APPOINTMENT" %>
-          <p class="ax-field__hint">Opcional. Use quando o Flow precisa abrir em uma tela específica.</p>
-        </div>
-      </div>
-      <div class="ax-field">
-        <%= ax_field_label(f, :footer_text, text: "Rodapé", tooltip: "Texto curto opcional exibido abaixo da mensagem.") %>
-        <%= f.text_field :footer_text, class: "ax-control", placeholder: "Texto adicional ou instruções" %>
-      </div>
-    </div>
-  <% end %>
-
-  <%= ax_operational_panel(eyebrow: "Variáveis", title: "Exemplos para aprovação") do %>
-    <div class="ax-panel-body whatsapp-template-form__stack">
-      <div class="whatsapp-template-examples__head">
-        <p class="ax-field__hint">Adicione um exemplo para cada variável usada no texto da mensagem.</p>
-        <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-template-form#addExample">
-          <i class="bi bi-plus-lg ax-ico"></i><span>Adicionar exemplo</span>
-        </button>
-      </div>
-      <div class="whatsapp-template-example-grid" data-whatsapp-template-form-target="examplesList">
-        <% example_rows = Array(template.example_values).map(&:to_s).reject(&:blank?) %>
-        <% example_rows = [""] if example_rows.blank? %>
-        <% example_rows.each_with_index do |value, index| %>
-          <div class="ax-field whatsapp-template-example-row" data-whatsapp-template-form-target="exampleRow">
-            <%= label_tag "whatsapp_template_example_values_#{index}", "Exemplo #{index + 1}", class: "ax-label" %>
-            <div class="whatsapp-template-example-row__input">
-              <%= text_field_tag "whatsapp_template[example_values][]",
-                                 value,
-                                 id: "whatsapp_template_example_values_#{index}",
-                                 class: "ax-control",
-                                 placeholder: index.zero? ? "Maria Silva" : "",
-                                 data: { whatsapp_template_form_target: "exampleInput" } %>
-              <button type="button" class="ax-btn ax-btn--sm whatsapp-template-example-row__remove" aria-label="Remover exemplo" data-action="whatsapp-template-form#removeExample">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
+      <%= ax_guided_step(number: 4, color: :amber, title: "Conexão com Flow", subtitle: "Informe qual Flow publicado na Meta o botão vai abrir.") do %>
+        <div class="ax-guided-grid">
+          <div class="ax-guided-span-2">
+            <%= ax_standalone_field(name: "whatsapp_template[flow_config][flow_id]", id: "whatsapp_template_flow_config_flow_id", label: "ID do Flow na Meta", value: config["flow_id"],
+                                    placeholder: "Ex: 000000000000000", inputmode: "numeric", autocomplete: "off",
+                                    hint: "Copie no Gerenciador do WhatsApp, em Flows. O Flow precisa estar publicado.") %>
           </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
+          <%= ax_standalone_field(name: "whatsapp_template[flow_config][button_text]", id: "whatsapp_template_flow_config_button_text", label: "Texto do botão",
+                                  value: config["button_text"].presence || "Abrir", maxlength: 25, placeholder: "Abrir cadastro", autocomplete: "off") %>
+          <%= ax_standalone_select_field(name: "whatsapp_template[flow_config][action]", id: "whatsapp_template_flow_config_action", label: "Ação do Flow",
+                                         choices: WhatsappTemplate::FLOW_ACTIONS.map { |key, label| [label, key] }, selected: config["action"].presence || "navigate", autocomplete: true,
+                                         data: { whatsapp_template_form_target: "flowActionSelect", action: "change->whatsapp-template-form#toggleFlowFields" }) %>
+          <div class="ax-guided-span-2" data-whatsapp-template-form-target="flowScreenField">
+            <%= ax_standalone_field(name: "whatsapp_template[flow_config][screen]", id: "whatsapp_template_flow_config_screen", label: "Tela inicial", value: config["screen"],
+                                    placeholder: "Ex: APPOINTMENT", autocomplete: "off", hint: "Opcional. Use quando o Flow precisa abrir em uma tela específica.") %>
+          </div>
+        </div>
+      <% end %>
 
-  <footer class="whatsapp-template-form__footer">
-    <%= link_to "Cancelar", admin_whatsapp_templates_path(whatsapp_sender_number_id: sender_number&.id), class: "ax-btn" %>
-    <button type="submit" class="ax-btn ax-btn--primary">
-      <i class="bi bi-send-check ax-ico"></i><span>Enviar para aprovação</span>
-    </button>
-  </footer>
+      <%= ax_guided_review(number: 5, title: "Tudo certo para enviar?", subtitle: "A Meta revisa o modelo antes de liberar o uso. Você acompanha o status na listagem.",
+                     submit_label: (template.meta_id.present? ? "Salvar e reenviar para aprovação" : "Enviar para aprovação"),
+                     cancel_path: admin_whatsapp_templates_path(whatsapp_sender_number_id: sender_number&.id),
+                     checks: [["name", "Nome do template"], ["body", "Texto da mensagem"], ["examples", "Exemplos das variáveis"], ["flow", "Conexão com o Flow"]]) %>
+    </div>
+
+    <%= render "builder_preview", mode: "flow" %>
+  </div>
 <% end %>

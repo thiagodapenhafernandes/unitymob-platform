@@ -3,7 +3,7 @@
 # Manifest do PWA da plataforma (/admin). Sem ele o iOS abre o atalho dentro
 # do Safari (sem standalone) e o Web Push em iOS fica indisponível — push só
 # funciona em PWA instalado com manifest válido. Dinâmico para herdar a marca
-# do cliente (nome e cores de Identidade e Marca).
+# do cliente (nome e cores de Site público → Identidade).
 module Admin
   class ManifestsController < ApplicationController
     # Buscado pelo navegador fora do ciclo autenticado.

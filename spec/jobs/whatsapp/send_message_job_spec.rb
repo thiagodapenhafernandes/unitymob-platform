@@ -145,4 +145,26 @@ RSpec.describe Whatsapp::SendMessageJob, type: :job do
       expect(client).not_to have_received(:send_media)
     end
   end
+
+  describe "credenciais de envio" do
+    let(:conversation) { tenant.whatsapp_conversations.create!(contact_phone: "5547999990088", contact_name: "Lia") }
+    let(:message) { conversation.messages.create!(direction: "outbound", msg_type: "text", body: "Oi", status: "pending") }
+    let(:client) { instance_double(Whatsapp::CloudClient, send_text: { ok: true, message_id: "wamid.1" }) }
+
+    it "responde pelo numero do negocio que recebeu a conversa" do
+      sender = create(:whatsapp_sender_number, tenant: tenant, phone_number_id: "phone-recebeu")
+      allow(sender).to receive(:messaging_ready?).and_return(true)
+      conversation.update!(whatsapp_sender_number: sender)
+      allow_any_instance_of(WhatsappConversation).to receive(:whatsapp_sender_number).and_return(sender)
+      expect(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+
+      described_class.perform_now(message.id, tenant_id: tenant.id)
+    end
+
+    it "usa a integracao da conta quando a conversa nao tem numero associado" do
+      expect(Whatsapp::CloudClient).to receive(:new).with(an_instance_of(WhatsappBusinessIntegration)).and_return(client)
+
+      described_class.perform_now(message.id, tenant_id: tenant.id)
+    end
+  end
 end

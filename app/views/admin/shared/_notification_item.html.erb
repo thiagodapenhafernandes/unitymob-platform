@@ -1,0 +1,8 @@
+<a href="<%= notification.url.presence || "#" %>"
+   class="ax-menu__item ax-notifications__item <%= "is-unread" if notification.read_at.nil? %>"
+   data-notification-id="<%= notification.id %>"
+   data-action="click->in-app-notifications#open">
+  <span class="ax-notifications__item-title"><%= notification.title %></span>
+  <% if notification.body.present? %><span class="ax-notifications__item-body"><%= notification.body %></span><% end %>
+  <time class="ax-notifications__item-time" datetime="<%= notification.created_at.iso8601 %>"><%= l(notification.created_at, format: :short) %></time>
+</a>

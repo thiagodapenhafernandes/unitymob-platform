@@ -10,45 +10,36 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     sign_in admin
   end
 
-  it "inicia os blocos de configuração recolhidos" do
+  it "organiza a identidade em seções navegáveis e abre só a primeira" do
     get edit_admin_layout_setting_path
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    panels = html.css(".layout-settings-workspace .ax-panel--collapsible")
+    tabs = html.css(".ax-studio-nav [data-ax-tabs-target='tab']")
+    sections = html.css(".ax-studio__stage > .ax-studio-section")
 
-    expect(panels.size).to eq(7)
-    expect(panels).to all(satisfy do |panel|
-      panel.at_xpath('./div[contains(concat(" ", normalize-space(@class), " "), " ax-panel__body ")]')&.key?("hidden")
-    end)
-    expect(panels).to all(satisfy do |panel|
-      panel.at_xpath('./header[contains(concat(" ", normalize-space(@class), " "), " ax-panel__header ")]//button[contains(concat(" ", normalize-space(@class), " "), " ax-panel__trigger ")]')&.[]("aria-expanded") == "false"
-    end)
-    expect(response.body).to include("Identidade e Marca", "Escopo: conta", "Tema pessoal: Claro")
+    expect(tabs.map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
+      %w[#layout-tab-brand #layout-tab-colors #layout-tab-menu #interest-intelligence-settings #layout-tab-impact]
+    )
+    expect(sections.map { |section| section["id"] }).to eq(tabs.map { |tab| tab["data-ax-tabs-target-param"].delete_prefix("#") })
+    expect(sections.reject { |section| section.key?("hidden") }.map { |section| section["id"] }).to eq(["layout-tab-brand"])
+    expect(html.at_css(".ax-studio__aside .lss-preview[data-layout-theme-preview-target='preview']")).to be_present
+    expect(html.at_css("form.layout-settings-form[data-controller~='ax-dirty-form'] .ax-studio-savebar")).to be_present
+    expect(response.body).to include("Aparência da plataforma", "Escopo: conta", "Tema pessoal: Claro")
     expect(response.body).to include("Cada usuário continua escolhendo individualmente")
   end
 
-  it "prioriza os blocos por impacto na identidade e na operação" do
+  it "mantém as oito divisões do menu como seletor com painéis próprios" do
     get edit_admin_layout_setting_path
 
-    expect(response).to have_http_status(:ok)
-    expected_priorities = {
-      "layout-settings-panel--account-brand" => 1,
-      "layout-settings-panel--public-theme" => 2,
-      "layout-settings-panel--platform" => 3,
-      "layout-settings-panel--admin-theme" => 4,
-      "layout-settings-panel--menu-sections" => 5,
-      "layout-settings-panel--interest-intelligence" => 6
-    }
+    html = Nokogiri::HTML(response.body)
+    chips = html.css(".lss-menu-picker [data-ax-tabs-target='tab']")
+    panels = html.css(".lss-menu-panels > .lss-menu-panel")
 
-    expected_priorities.each_key do |class_name|
-      expect(response.body).to include(class_name)
-    end
-
-    css = Rails.root.join("app/assets/stylesheets/admin_tailwind.css").read
-    expected_priorities.each do |class_name, priority|
-      expect(css).to include(".#{class_name} { order: #{priority}; }")
-    end
+    expect(chips.size).to eq(8)
+    expect(panels.map { |panel| "##{panel['id']}" }).to eq(chips.map { |chip| chip["data-ax-tabs-target-param"] })
+    expect(panels.reject { |panel| panel.key?("hidden") }.size).to eq(1)
+    expect(html.css(".lss-menu-panels input[name^='layout_setting[admin_menu_section_colors]']").size).to eq(8 * 8)
   end
 
   it "entrega os tokens iniciais da previa sem estilos inline" do
@@ -62,7 +53,6 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     expect(workspace).to be_present
     expect(workspace["style"]).to be_nil
     expect(workspace["data-layout-theme-preview-initial-surface"]).to match(/\A#[0-9A-F]{6}\z/i)
-    expect(workspace["data-layout-theme-preview-public-primary"]).to match(/\A#[0-9A-F]{6}\z/i)
     expect(contract_swatches.map { |swatch| swatch["data-theme-swatch"] }).to eq(
       %w[surface header workspace sidebar primary ink]
     )
@@ -86,8 +76,11 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
 
   describe "PATCH update" do
     it "nega acesso a usuario sem permissao de gerenciar marketing" do
+      # Perfil que entra no admin (dashboard) mas não gerencia marketing; sem nenhum acesso o usuário seria levado ao app de campo.
+      profile = Profile.create!(tenant: admin.tenant, name: "Só dashboard #{SecureRandom.hex(3)}", axis: "vertical", position: 8_760,
+                                permissions: { "dashboard" => { "view" => true } })
       sign_out admin
-      user = create(:admin_user)
+      user = create(:admin_user, tenant: admin.tenant, profile: profile)
       expect(user.can?(:manage, :marketing)).to be(false)
       sign_in user
 
@@ -208,7 +201,7 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     intelligence = html.at_css(".layout-settings-panel--interest-intelligence")
     expect(intelligence).to be_present
     expect(intelligence.css(".ax-control").size).to be >= 12
-    expect(intelligence.to_html).not_to include('class="ax-input')
+    expect(intelligence.to_html).not_to match(/class="ax-input(?![-\w])/)
 
     css = Rails.root.join("app/assets/stylesheets/admin_tailwind.css").read
     expect(css).to include(

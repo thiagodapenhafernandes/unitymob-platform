@@ -30,6 +30,7 @@ RSpec.describe "Admin::Habitations catálogos de endereço", type: :request do
       position: 20,
       active: true,
       permissions: {
+        "configuracoes" => { "manage" => true },
         "catalogos" => { "manage" => true },
         "imoveis" => {
           "view" => true,

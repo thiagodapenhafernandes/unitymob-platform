@@ -1,0 +1,23 @@
+<%# Botão do template (texto). Renderizado para cada botão salvo e uma vez dentro do <template> ("__INDEX__") que o JS clona. %>
+<%
+  index = local_assigns.fetch(:index)
+  button = (local_assigns[:button] || {}).to_h
+  kind = button["kind"].presence || "quick_reply"
+  phone_button = kind == "phone_number"
+  name = "whatsapp_template[buttons][#{index}]"
+  dom = "whatsapp_template_buttons_#{index}"
+%>
+<div class="whatsapp-template-button-row wtb-button" data-whatsapp-template-form-target="buttonRow" data-kind="<%= kind %>">
+  <%= ax_standalone_select_field(name: "#{name}[kind]", id: "#{dom}_kind", label: "Tipo", choices: WhatsappTemplate::BUTTON_KINDS.map { |key, label| [label, key] },
+                                 selected: kind, autocomplete: true, data: { action: "change->whatsapp-template-form#toggleButtonRows" }) %>
+  <%= ax_standalone_field(name: "#{name}[text]", id: "#{dom}_text", label: "Texto do botão", value: button["text"], maxlength: 25, placeholder: "Ex: Ver opções", autocomplete: "off") %>
+  <div data-whatsapp-template-button-extra>
+    <%= ax_standalone_field(name: "#{name}[url]", id: "#{dom}_url", label: "URL ou telefone", value: button["url"].presence || button["phone_number"],
+                            type: (phone_button ? :tel : :text), autocomplete: (phone_button ? "tel" : "off"),
+                            placeholder: (phone_button ? "+55 00 00000-0000" : "https://exemplo.invalid ou +55 00 00000-0000"),
+                            data: (phone_button ? { controller: "phone-input" } : {})) %>
+  </div>
+  <button type="button" class="ax-btn ax-btn--sm whatsapp-template-button-row__remove" aria-label="Remover botão" data-action="whatsapp-template-form#removeButton">
+    <i class="bi bi-trash"></i>
+  </button>
+</div>

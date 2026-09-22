@@ -20,10 +20,11 @@
 <div data-controller="wa-thread fancybox-gallery"
      data-wa-thread-last-value="<%= last_id %>"
      data-wa-thread-conversation-id-value="<%= conversation.id %>"
+     data-wa-thread-context-url-value="<%= context_admin_whatsapp_conversation_path(conversation) %>"
      data-wa-thread-focus-mode-value="<%= focus_mode %>"
      data-wa-thread-status-cursor-value="<%= status_cursor %>"
      class="<%= workspace_classes.compact.join(' ') %>">
-  <div data-wa-thread-target="context" class="wa-inbox-thread__context">
+  <div data-wa-thread-target="context" data-action="submit->wa-thread#contextSubmit" class="wa-inbox-thread__context">
     <%= render "admin/whatsapp_inbox/thread_context",
           **thread_context_locals,
           focus_mode: focus_mode,

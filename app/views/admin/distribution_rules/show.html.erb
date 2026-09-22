@@ -24,16 +24,12 @@
 <% end %>
 
 <div class="distribution-rule-show">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Regra de distribuição</span>
-      <div class="ax-dashboard-command__title-row">
-        <h1><%= @rule.name %></h1>
-        <%= ax_badge(@rule.active? ? "Ativa" : "Inativa", tone: @rule.active? ? :green : :gray, dot: true) %>
-      </div>
-      <p><%= distribution_rule_business_label(@rule) %> · <%= distribution_rule_mode_label(@rule) %> · <%= enabled_sources.presence&.to_sentence || "Nenhuma fonte habilitada" %></p>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: @rule.name,
+        eyebrow: "Regra de distribuição",
+        icon: "shuffle",
+        pills: [@rule.active? ? "Ativa" : "Inativa"],
+        subtitle: "#{distribution_rule_business_label(@rule)} · #{distribution_rule_mode_label(@rule)} · #{enabled_sources.presence&.to_sentence || "Nenhuma fonte habilitada"}") %>
 
   <div class="distribution-rule-show__kpis">
     <%= ax_metric_card(label: "Tipo", value: distribution_rule_business_label(@rule)) %>

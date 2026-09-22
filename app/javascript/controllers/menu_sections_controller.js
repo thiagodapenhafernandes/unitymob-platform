@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { slide } from "lib/slide"
 
 export default class extends Controller {
   static targets = ["trigger", "items"]
@@ -61,8 +62,7 @@ export default class extends Controller {
     const items = this.sectionItems(section)
     if (!trigger || !items) return
 
-    const previousTimer = this.transitionTimers.get(items)
-    if (previousTimer) window.clearTimeout(previousTimer)
+    if (!open && animate && items.hidden) return // já fechada: nada para animar
 
     trigger.setAttribute("aria-expanded", String(open))
     section.classList.toggle("is-open", open)
@@ -74,33 +74,20 @@ export default class extends Controller {
       return
     }
 
+    // A altura, os paddings e a opacidade animam juntos (lib/slide); as classes só marcam o estado final.
     if (open) {
-      items.hidden = false
-      items.style.maxHeight = "0px"
-      requestAnimationFrame(() => {
-        items.classList.add("is-visible")
-        items.style.maxHeight = `${items.scrollHeight}px`
-      })
-
-      const timer = window.setTimeout(() => {
-        items.style.maxHeight = "none"
-        this.transitionTimers.delete(items)
-      }, 170)
-      this.transitionTimers.set(items, timer)
+      items.classList.add("is-visible")
+      items.style.maxHeight = "none"
+      slide(items, true)
       return
     }
 
-    items.style.maxHeight = `${items.scrollHeight}px`
-    requestAnimationFrame(() => {
-      items.classList.remove("is-visible")
-      items.style.maxHeight = "0px"
+    slide(items, false, {
+      onDone: () => {
+        items.classList.remove("is-visible")
+        items.style.maxHeight = "0px"
+      }
     })
-
-    const timer = window.setTimeout(() => {
-      items.hidden = true
-      this.transitionTimers.delete(items)
-    }, 170)
-    this.transitionTimers.set(items, timer)
   }
 
   previewCompactSection(event) {

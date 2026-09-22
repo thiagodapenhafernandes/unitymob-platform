@@ -250,13 +250,23 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
     expect(flow.flow_config).to include("flow_id" => "123", "button_text" => "Abrir", "screen" => "START")
   end
 
-  it "agenda fan-out para integrações conectadas quando nenhum tenant é informado" do
+  it "agenda fan-out por numero ativo quando nenhum tenant é informado" do
+    sender = tenant.whatsapp_sender_numbers.create!(
+      whatsapp_business_integration: integration,
+      label: "Campanhas",
+      display_phone_number: "21990872427",
+      phone_number_id: "phone-campaigns",
+      waba_id: "waba-campaigns",
+      status: "pending",
+      active: true
+    )
     allow(Whatsapp::CloudClient).to receive(:new)
 
     result = described_class.perform_now
 
     expect(result[:ok]).to be(true)
     expect(result[:enqueued]).to be >= 1
+    expect(described_class).to have_been_enqueued.with(tenant.id, sender_number_id: sender.id)
     expect(Whatsapp::CloudClient).not_to have_received(:new)
   end
 end

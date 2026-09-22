@@ -1,0 +1,50 @@
+<%# Tarefas e anotações do lead no painel de contexto do atendimento. locals: lead, conversation, can_manage_comercial %>
+<% lead = local_assigns.fetch(:lead) %>
+<% conversation = local_assigns.fetch(:conversation) %>
+<% tasks = lead.tasks.ordered.limit(5).to_a %>
+<% notes = lead.activities.where(kind: "note").recent.limit(5).to_a %>
+
+<%= render layout: "admin/whatsapp_inbox/context_section", locals: { label: "Tarefas", class_name: "wa-inbox-thread__work" } do %>
+  <% if tasks.empty? %>
+    <p class="wa-inbox-thread__work-empty">Nenhuma tarefa para este lead.</p>
+  <% else %>
+    <ul class="wa-inbox-thread__work-list">
+      <% tasks.each do |task| %>
+        <li class="wa-inbox-thread__work-item <%= "is-done" unless task.pendente? %>">
+          <span class="wa-inbox-thread__work-title"><%= task.title %></span>
+          <small class="<%= "is-overdue" if task.pendente? && task.due_at.present? && task.due_at < Time.current %>">
+            <%= task.due_at ? l(task.due_at, format: :short) : "Sem prazo" %><%= " · #{task.admin_user.name}" if task.admin_user %>
+          </small>
+          <% if task.pendente? && local_assigns[:can_manage_comercial] %>
+            <%= button_to complete_admin_task_path(task), method: :patch, class: "wa-inbox-thread__work-done", title: "Concluir tarefa",
+                  form: { data: { wa_context_form: true } } do %>
+              <i class="bi bi-check2-circle" aria-hidden="true"></i><span>Concluir</span>
+            <% end %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+  <% if local_assigns[:can_manage_comercial] %>
+    <%= render "admin/tasks/form_modal", lead: lead, trigger_label: "Nova tarefa",
+          trigger_class: "ax-btn ax-btn--block wa-inbox-thread__schedule-button",
+          form_data: { wa_context_form: true } %>
+  <% end %>
+<% end %>
+
+<%= render layout: "admin/whatsapp_inbox/context_section", locals: { label: "Anotações", class_name: "wa-inbox-thread__work" } do %>
+  <%= form_with url: add_note_admin_whatsapp_conversation_path(conversation), method: :post, class: "wa-inbox-thread__note-form", data: { wa_context_form: true } do %>
+    <%= text_area_tag :body, nil, rows: 2, class: "ax-control", placeholder: "Escreva uma anotação sobre este atendimento…", "aria-label": "Nova anotação", required: true %>
+    <button type="submit" class="ax-btn ax-btn--block"><i class="bi bi-journal-plus ax-ico"></i><span>Salvar anotação</span></button>
+  <% end %>
+  <% if notes.any? %>
+    <ul class="wa-inbox-thread__work-list">
+      <% notes.each do |note| %>
+        <li class="wa-inbox-thread__work-item">
+          <span class="wa-inbox-thread__work-title"><%= note.metadata["body"].to_s.truncate(240) %></span>
+          <small><%= l(note.created_at, format: :short) %><%= " · #{note.metadata['by']}" if note.metadata["by"].present? %></small>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>

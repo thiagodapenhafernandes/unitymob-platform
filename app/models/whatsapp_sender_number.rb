@@ -5,6 +5,7 @@ class WhatsappSenderNumber < ApplicationRecord
   STATUSES = %w[connected pending failed disconnected].freeze
 
   belongs_to :whatsapp_business_integration, optional: true
+  belongs_to :receptive_response_flow, class_name: "WhatsappResponseFlow", optional: true
   has_many :whatsapp_campaigns, dependent: :restrict_with_error
   has_many :whatsapp_campaign_unsubscribes, dependent: :restrict_with_error
 
@@ -16,6 +17,7 @@ class WhatsappSenderNumber < ApplicationRecord
             numericality: { greater_than_or_equal_to: 0, less_than: 1_000_000 }
   validate :display_phone_number_must_be_valid
   validate :integration_must_belong_to_tenant
+  validate :receptive_response_flow_must_match_sender
   normalize_phone_fields :display_phone_number
   before_save :clear_other_notification_sender, if: :active_notification_sender?
 
@@ -100,6 +102,19 @@ class WhatsappSenderNumber < ApplicationRecord
     return if whatsapp_business_integration.tenant_id == tenant_id
 
     errors.add(:whatsapp_business_integration, "deve pertencer ao mesmo Tenant")
+  end
+
+  def receptive_response_flow_must_match_sender
+    return if receptive_response_flow.blank?
+
+    if receptive_response_flow.tenant_id != tenant_id
+      errors.add(:receptive_response_flow, "deve pertencer à mesma conta")
+    end
+
+    return if waba_id.blank? || receptive_response_flow.whatsapp_template&.waba_id.blank?
+    return if receptive_response_flow.whatsapp_template.waba_id == waba_id
+
+    errors.add(:receptive_response_flow, "deve usar um template aprovado no mesmo WABA")
   end
 
   def active_notification_sender?

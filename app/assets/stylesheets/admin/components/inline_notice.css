@@ -121,3 +121,6 @@
 @media (max-width: 639px) {
   .ax-inline-notice { align-items: flex-start; }
 }
+
+/* Links dentro do aviso acompanham a cor do tom (o azul padrão some sobre âmbar/vermelho). */
+.ax-inline-notice a { color: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }

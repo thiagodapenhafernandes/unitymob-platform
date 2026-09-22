@@ -29,7 +29,7 @@ class DistributionRule < ApplicationRecord
   belongs_to :checkin_store, class_name: "Store", optional: true # legado — mantido pra retrocompat de URL/relatórios
 
   enum :business_type, { venda: 0, locacao: 1, ambos: 2 }, suffix: true
-  enum :distribution_mode, { rotary: 0, performance: 1, shark_tank: 2 }
+  enum :distribution_mode, { rotary: 0, performance: 1, shark_tank: 2, attendance: 3 }
 
   validates :name, presence: true
   validates :min_price, numericality: { greater_than_or_equal_to: 0, allow_nil: true }

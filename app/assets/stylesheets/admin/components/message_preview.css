@@ -13,4 +13,12 @@
 .ax-message-preview__error { display: none; padding: 24px 12px; color: #526460; background: #f3f5f4; font-size: 13px; }
 .ax-message-preview__media-container.is-image-missing .ax-message-preview__error { display: block; }
 .ax-message-preview__media[hidden] { display: none; }
+[data-admin-theme="dark"] .ax-message-preview { background: var(--ax-dark-shell); }
+[data-admin-theme="dark"] .ax-message-preview__bubble { background: var(--ax-dark-surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+[data-admin-theme="dark"] .ax-message-preview .ax-message-preview__content p { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-message-preview__footer { color: var(--ax-dark-muted); }
+[data-admin-theme="dark"] .ax-message-preview__button { border-top-color: var(--ax-dark-border); color: var(--ax-dark-accent); }
+[data-admin-theme="dark"] .ax-message-preview__missing,
+[data-admin-theme="dark"] .ax-message-preview__document,
+[data-admin-theme="dark"] .ax-message-preview__error { color: var(--ax-dark-muted); background: var(--ax-dark-surface-raised); }
 @media (max-width: 767px) { .ax-message-preview { padding: 12px; } }

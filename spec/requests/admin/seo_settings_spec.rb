@@ -30,10 +30,10 @@ RSpec.describe "Admin::SeoSettings", type: :request do
     get new_admin_seo_setting_path
 
     expect(response).to have_http_status(:ok)
-    header = Nokogiri::HTML(response.body).at_css(".ax-page-head")
-    expect(header.at_css(".ax-page-title").text.squish).to eq("Novo SEO")
-    expect(header.at_css(".ax-page-title .bi-search[aria-hidden='true']")).to be_present
-    expect(header.at_css(".ax-page-subtitle").text.squish).to eq("Crie uma configuração técnica manual.")
+    header = Nokogiri::HTML(response.body).at_css(".ax-workspace-heading")
+    expect(header.at_css("h1").text.squish).to eq("Novo SEO")
+    expect(header.at_css(".ax-workspace-heading__icon .bi-search")).to be_present
+    expect(header.at_css("p").text.squish).to eq("Crie uma configuração técnica manual.")
   end
 
   it "renderiza o inventário SEO com componentes operacionais" do

@@ -1,0 +1,62 @@
+<%# Card do carrossel. Renderizado para cada card salvo e uma vez dentro do <template> ("__INDEX__"/"__NUMBER__") que o JS clona. %>
+<%
+  index = local_assigns.fetch(:index)
+  number = local_assigns.fetch(:number, index.to_i + 1)
+  card = (local_assigns[:card] || {}).to_h
+  collapsed = local_assigns.fetch(:collapsed, true)
+  button_kind = card["button_kind"].presence || "url"
+  name = "whatsapp_template[carousel_cards][#{index}]"
+  dom = "whatsapp_template_carousel_cards_#{index}"
+  upload_input_id = "whatsapp_template_carousel_card_media_files_#{index}"
+%>
+<div class="whatsapp-template-carousel-card wtb-cardrow <%= "is-collapsed" if collapsed %>" data-whatsapp-template-form-target="carouselCardRow">
+  <div class="whatsapp-template-carousel-card__head">
+    <button type="button" class="wtb-cardrow__toggle" aria-expanded="<%= (!collapsed).to_s %>" data-action="whatsapp-template-form#toggleCard">
+      <i class="bi bi-chevron-down wtb-cardrow__chevron" aria-hidden="true"></i>
+      <strong>Card <%= number %></strong>
+      <span class="wtb-cardrow__summary" data-card-summary></span>
+      <span class="wtb-cardrow__state" data-card-state></span>
+    </button>
+    <button type="button" class="ax-btn ax-btn--sm whatsapp-template-button-row__remove" aria-label="Remover card" data-action="whatsapp-template-form#removeCarouselCard">
+      <i class="bi bi-trash"></i>
+    </button>
+  </div>
+  <div class="wtb-cardrow__panel" <%= "inert" if collapsed %>><div class="wtb-cardrow__inner">
+    <div class="whatsapp-template-carousel-card__grid">
+      <%= ax_standalone_select_field(name: "#{name}[media_type]", id: "#{dom}_media_type", label: "Tipo de mídia",
+                                     choices: WhatsappTemplate::CAROUSEL_MEDIA_TYPES.map { |key, label| [label, key] },
+                                     selected: card["media_type"].presence || "image", autocomplete: true) %>
+      <div class="ax-field">
+        <%= ax_field_label(text: "Mídia do card", for: upload_input_id,
+                           tooltip: "Formatos aceitos: imagem JPG/PNG ou vídeo MP4/3GPP. O sistema envia o arquivo para a Meta e usa o handle retornado na aprovação.") %>
+        <div class="ax-upload-control whatsapp-template-upload-control">
+          <%= ax_file_upload_button(label: "Selecionar mídia", input_id: upload_input_id) %>
+          <%= file_field_tag "whatsapp_template[carousel_card_media_files][]", id: upload_input_id, class: "ax-file-upload__input whatsapp-template-file",
+                             accept: "image/png,image/jpeg,video/mp4,video/3gpp", data: { action: "change->whatsapp-template-form#updateFileName" } %>
+          <span class="ax-upload-status" data-whatsapp-template-file-status>Nenhum arquivo selecionado</span>
+        </div>
+        <%= hidden_field_tag "#{name}[media_handle]", card["media_handle"], id: "#{dom}_media_handle" %>
+      </div>
+      <%= ax_standalone_select_field(name: "#{name}[button_kind]", id: "#{dom}_button_kind", label: "Tipo de botão",
+                                     choices: WhatsappTemplate::BUTTON_KINDS.map { |key, label| [label, key] }, selected: button_kind, autocomplete: true,
+                                     data: { action: "change->whatsapp-template-form#toggleCarouselButtonRows" }) %>
+      <%= ax_standalone_field(name: "#{name}[button_text]", id: "#{dom}_button_text", label: "Texto do botão", value: card["button_text"], placeholder: "Ver detalhes", maxlength: 25, autocomplete: "off") %>
+      <div class="whatsapp-template-carousel-card__wide">
+        <div class="whatsapp-template-carousel-button-extra" data-whatsapp-template-carousel-extra="url" <%= "hidden" unless button_kind == "url" %>>
+          <div class="whatsapp-template-carousel-extra-grid">
+            <%= ax_standalone_field(name: "#{name}[button_url]", id: "#{dom}_button_url", label: "URL", value: card["button_url"], placeholder: "https://exemplo.invalid/pagina", autocomplete: "off") %>
+            <%= ax_standalone_field(name: "#{name}[button_url_example]", id: "#{dom}_button_url_example", label: "Exemplo da URL", value: card["button_url_example"], placeholder: "https://exemplo.invalid/item", autocomplete: "off") %>
+          </div>
+        </div>
+        <div class="whatsapp-template-carousel-button-extra" data-whatsapp-template-carousel-extra="phone_number" <%= "hidden" unless button_kind == "phone_number" %>>
+          <%= ax_standalone_field(name: "#{name}[button_phone_number]", id: "#{dom}_button_phone_number", label: "Telefone", value: card["button_phone_number"], type: :tel,
+                                  placeholder: "+55 00 00000-0000", autocomplete: "tel", data: { controller: "phone-input" }) %>
+        </div>
+      </div>
+      <div class="whatsapp-template-carousel-card__wide">
+        <%= ax_standalone_field(name: "#{name}[text]", id: "#{dom}_text", label: "Texto do card", value: card["text"], type: :textarea, rows: 3, maxlength: 160,
+                                placeholder: "Resumo curto do imóvel, oferta ou opção.") %>
+      </div>
+    </div>
+  </div></div>
+</div>

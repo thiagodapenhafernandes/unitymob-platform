@@ -35,6 +35,7 @@ class AdminUser < ApplicationRecord
   has_many :lead_audit_logs
   has_many :trusted_devices, dependent: :destroy
   has_many :browser_extension_grants, dependent: :destroy
+  has_many :push_subscriptions, dependent: :destroy
   has_many :access_control_rules, dependent: :nullify
   has_many :created_whatsapp_campaigns, class_name: "WhatsappCampaign", foreign_key: "created_by_id", dependent: :restrict_with_error
   has_many :lead_labels, dependent: :destroy
@@ -130,6 +131,35 @@ class AdminUser < ApplicationRecord
   # E-mail humano para notificações/telas: espelho guarda o real em contact_email.
   def notification_email
     (contact_email.presence if has_attribute?(:contact_email)) || email
+  end
+
+  def active_for_authentication?
+    super && active?
+  end
+
+  def inactive_message
+    active? ? super : :inactive
+  end
+
+  def revoke_all_access!
+    transaction do
+      update_columns(jti: SecureRandom.uuid, remember_created_at: nil, updated_at: Time.current) if has_attribute?(:jti)
+      update_columns(session_revoked_at: Time.current, updated_at: Time.current) if has_attribute?(:session_revoked_at)
+      push_subscriptions.update_all(active: false, updated_at: Time.current)
+      browser_extension_grants.where(revoked_at: nil).update_all(revoked_at: Time.current, updated_at: Time.current)
+      trusted_devices.destroy_all
+      active_check_in&.force_close!(reason: :closed_admin_force)
+    end
+  end
+
+  def notification_delivery_allowed?
+    return true unless ENV["NOTIFICATION_PHONE_ALLOWLIST_ENABLED"].to_s == "true"
+
+    allowed_numbers = ENV.fetch("NOTIFICATION_ALLOWED_PHONE_NUMBERS", "")
+      .split(",")
+      .map { |number| Phones::Normalizer.call(number).to_s }
+      .reject(&:blank?)
+    allowed_numbers.include?(Phones::Normalizer.call(phone).to_s)
   end
 
   def self.mirror_email_for(primary, tenant)
@@ -329,9 +359,12 @@ class AdminUser < ApplicationRecord
 
   # "own" — só os próprios / "team" — próprios + subárvore de gestão / "all" — tudo
   def scope_for(resource)
-    return "all" if admin?
-    vertical_scope = vertical_profile&.scope_for(resource) || "own"
     horizontal_scope = horizontal_profile&.configured_scope_for(resource)
+    # Dono da conta sem função horizontal vê tudo. Com função (ex.: Financeiro), o escopo configurado nela
+    # restringe o nível vertical, como já acontece com os demais perfis — senão "Próprios" seria ignorado.
+    return "all" if admin? && horizontal_scope.blank?
+
+    vertical_scope = admin? ? "all" : (vertical_profile&.scope_for(resource) || "own")
     Profile.restricted_scope(vertical_scope, horizontal_scope)
   end
 

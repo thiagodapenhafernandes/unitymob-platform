@@ -6,7 +6,7 @@ RSpec.describe HabitationsHelper, type: :helper do
       allow(Storage::PublicPropertyPhoto).to receive(:public_base_url).and_return("https://cdn.saluteimoveis.com.br")
     end
 
-    it "não inclui fotos de empreendimento quando a unidade não optou pelo fallback" do
+    it "herda as fotos do empreendimento vinculado mesmo com a flag desativada, sem usar o payload de fotos da unidade" do
       development = create(
         :habitation,
         codigo: "EMP-CATALOG-1",
@@ -24,7 +24,9 @@ RSpec.describe HabitationsHelper, type: :helper do
         use_development_photos_flag: false
       )
 
-      expect(helper.catalog_property_image_urls(unit)).to be_empty
+      urls = helper.catalog_property_image_urls(unit)
+      expect(urls).to include("https://cdn.saluteimoveis.com.br/empreendimento.jpg")
+      expect(urls).not_to include("https://cdn.saluteimoveis.com.br/payload-empreendimento.jpg")
     end
 
     it "inclui fotos de empreendimento quando a unidade optou pelo fallback e não tem fotos próprias" do

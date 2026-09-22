@@ -42,6 +42,17 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Abrir campanhas")
     end
 
+    it "nao lista numeros desativados no seletor de remetentes" do
+      sender = create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
+      inactive_sender = create(:whatsapp_sender_number, display_phone_number: "5511977776666", phone_number_id: "555666777888", active: false, status: "disconnected")
+
+      get admin_whatsapp_campaigns_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(sender.formatted_phone)
+      expect(response.body).not_to include(inactive_sender.formatted_phone)
+    end
+
     it "filtra campanhas por numero de envio" do
       sender = create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
       other_sender = create(:whatsapp_sender_number, display_phone_number: "5511977776666", phone_number_id: "555666777888")
@@ -804,6 +815,14 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       sender = create(:whatsapp_sender_number, tenant: admin.tenant, active: false)
       patch admin_whatsapp_sender_number_path(sender), params: { whatsapp_sender_number: { label: "Inativo" } }
       expect(gateway).not_to have_received(:register_route)
+    end
+
+    it "reativa um numero desativado" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, active: false, status: "disconnected")
+      patch reactivate_admin_whatsapp_sender_number_path(sender)
+      expect(response).to redirect_to(admin_whatsapp_integration_path)
+      expect(sender.reload).to be_active
+      expect(sender.status).to eq("pending")
     end
 
     it "adiciona numero de envio" do

@@ -77,32 +77,7 @@ class HomeController < ApplicationController
 
   def cached_home_development_payload(section)
     Rails.cache.fetch(home_section_cache_key(section, "developments"), expires_in: 15.minutes) do
-      development_scope = public_habitations
-        .empreendimentos_publicos
-        .where.not(codigo: nil)
-
-      manual_ids = ordered_section_property_ids(section, development_scope, limit: 12)
-      manual_rows = development_scope.where(id: manual_ids).pluck(:id, :codigo)
-      manual_rows = manual_ids.filter_map do |manual_id|
-        manual_rows.detect { |id, _codigo| id == manual_id }
-      end
-
-      automatic_rows = section
-        .apply_property_filters(development_scope)
-        .where.not(id: manual_ids)
-        .newest_first
-        .limit(20)
-        .pluck(:id, :codigo)
-
-      rows = manual_rows + automatic_rows
-
-      seen_codes = Set.new
-      selected_rows = rows.filter_map do |id, codigo|
-        next if codigo.blank? || seen_codes.include?(codigo)
-
-        seen_codes.add(codigo)
-        [id, codigo]
-      end.first(12)
+      selected_rows = HomeSections::Showcase.new(section, habitations: public_habitations).development_rows
 
       dev_codes = selected_rows.map(&:second)
 
@@ -145,35 +120,15 @@ class HomeController < ApplicationController
   end
 
   def property_payload_for(section)
-    properties = cached_home_properties(section, "properties") do
-      prioritized_home_property_ids(
-        section,
-        home_property_auto_scope,
-        limit: home_property_limit(section),
-        manual_scope: home_property_manual_scope(section)
-      )
-    end
+    showcase = HomeSections::Showcase.new(section, habitations: public_habitations)
+    properties = cached_home_properties(section, "properties") { showcase.property_ids }
 
-    payload = home_property_cta(section).merge(kind: "properties", records: properties)
+    kind = section.featured_videos? ? "property_videos" : "properties"
+    payload = home_property_cta(section).merge(kind:, records: properties)
     payload[:corporate_records] = cached_home_properties(section, "corporate_properties") do
       public_habitations.active.home_corporate.limit(3).pluck(:id)
-    end if section.corporate_showcase?
+    end if section.corporate_showcase? && section.selected_property_ids.empty?
     payload
-  end
-
-  def home_property_auto_scope
-    public_habitations.active.without_developments
-  end
-
-  def home_property_manual_scope(section)
-    scope = public_habitations.active.without_developments
-    scope = scope.for_rent if section.property_filter_enabled?("locacao") || section.section_type == "rentals"
-    scope = scope.for_sale if section.property_filter_enabled?("venda")
-    scope
-  end
-
-  def home_property_limit(section)
-    section.property_filter_enabled?("locacao") || section.section_type == "rentals" ? 6 : 12
   end
 
   def home_property_cta(section)
@@ -208,25 +163,6 @@ class HomeController < ApplicationController
         { constructor: { logo_attachment: :blob } },
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
-  end
-
-  def prioritized_home_property_ids(section, fallback_scope, limit:, manual_scope: public_habitations.active)
-    manual_ids = ordered_section_property_ids(section, manual_scope, limit:)
-    remaining = limit - manual_ids.size
-    return manual_ids if remaining <= 0
-
-    automatic_scope = section.apply_property_filters(fallback_scope)
-    automatic_scope = automatic_scope.newest_first if automatic_scope.respond_to?(:newest_first)
-
-    manual_ids + automatic_scope.where.not(id: manual_ids).limit(remaining).pluck(:id)
-  end
-
-  def ordered_section_property_ids(section, scope, limit:)
-    requested_ids = section.selected_property_ids
-    return [] if requested_ids.empty?
-
-    available_ids = scope.where(id: requested_ids).reorder(nil).pluck(:id).map(&:to_i)
-    (requested_ids & available_ids).first(limit)
   end
 
   def development_unit_counts_for(development_codes)

@@ -9,108 +9,103 @@
         actions: ax_badge(@otp_enabled ? "Protegido" : "Inativo", tone: @otp_enabled ? :green : :gray, dot: @otp_enabled)
       ) %>
 
-  <div class="layout-settings-grid">
-    <div class="layout-settings-main">
+  <div class="ax-studio ax-studio--flat">
+    <div class="ax-studio__stage">
       <% if @otp_enabled %>
-        <%= ax_operational_panel(eyebrow: "Status", title: "Duas etapas ativas",
+        <%= ax_studio_group(title: "Duas etapas ativas", icon: "shield-check",
+              subtitle: "Todo login pede um código do aplicativo autenticador.",
               actions: ax_badge("Protegido", tone: :green, dot: true)) do %>
-          <div class="ax-panel-body">
-            <p class="ax-field__hint tw-mt-0">
-              Todo login pede um código do aplicativo autenticador.
-              Você ainda tem <strong><%= @backup_codes_remaining %></strong> código<%= "s" if @backup_codes_remaining != 1 %> de backup.
-            </p>
-
-            <%= ax_field_group(title: "Gerar novos códigos de backup", token: "Backup") do %>
-              <%= form_with url: regenerate_backup_codes_admin_two_factor_settings_path, method: :post, local: true do %>
-                <%= ax_standalone_field(
-                      name: "otp_code",
-                      id: "regen_otp",
-                      label: "Código atual do aplicativo",
-                      inputmode: "numeric",
-                      autocomplete: "one-time-code",
-                      placeholder: "000000",
-                      maxlength: 6,
-                      hint: "Os códigos antigos deixam de valer na hora.",
-                      action: button_tag("Gerar novos", type: "submit", class: "ax-btn")
-                    ) %>
-              <% end %>
-            <% end %>
-
-            <%= ax_field_group(title: "Desativar duas etapas", token: "Cuidado") do %>
-              <% if current_admin_user.two_factor_required? %>
-                <%= ax_inline_notice(tone: :warning, icon: "lock") do %>
-                  Esta conta <strong>exige</strong> verificação em duas etapas — a desativação está bloqueada pelo administrador.
-                <% end %>
-              <% else %>
-                <%= form_with url: admin_two_factor_settings_path, method: :delete, local: true,
-                      data: { turbo_confirm: "Desativar a verificação em duas etapas reduz a segurança da sua conta. Continuar?" } do %>
-                  <%= ax_standalone_field(
-                        name: "current_password",
-                        id: "disable_pwd",
-                        label: "Confirme sua senha",
-                        type: :password,
-                        autocomplete: "current-password",
-                        action: button_tag("Desativar", type: "submit", class: "ax-btn ax-btn--danger")
-                      ) %>
-                <% end %>
-              <% end %>
-            <% end %>
-          </div>
+          <p class="ax-field__hint">
+            Você ainda tem <strong><%= @backup_codes_remaining %></strong> código<%= "s" if @backup_codes_remaining != 1 %> de backup.
+          </p>
         <% end %>
-      <% else %>
-        <%= ax_operational_panel(eyebrow: "Ativação", title: "Configurar o autenticador",
-              actions: ax_badge("Inativo", tone: :gray, dot: true)) do %>
-          <div class="ax-panel-body">
-            <ol class="ax-field__hint ax-field__hint--steps ax-field__hint--steps-spacious">
-              <li>Instale o <strong>Google Authenticator</strong> (ou similar) no celular.</li>
-              <li>Escaneie o QR code abaixo.</li>
-              <li>Digite o código de 6 dígitos para confirmar.</li>
-            </ol>
 
-            <div class="two-factor-setup">
-              <div class="two-factor-qr">
-                <%= raw @qr_svg %>
-              </div>
-              <div class="two-factor-manual">
-                <p class="ax-field__hint tw-mt-0">Não consegue escanear? Cadastre manualmente com esta chave:</p>
-                <code class="two-factor-secret"><%= @pending_secret %></code>
-              </div>
-            </div>
+        <%= ax_studio_group(title: "Gerar novos códigos de backup", icon: "key", actions: tag.span("Backup", class: "ax-badge ax-badge--gray")) do %>
+          <%= form_with url: regenerate_backup_codes_admin_two_factor_settings_path, method: :post, local: true do %>
+            <%= ax_standalone_field(
+                  name: "otp_code",
+                  id: "regen_otp",
+                  label: "Código atual do aplicativo",
+                  inputmode: "numeric",
+                  autocomplete: "one-time-code",
+                  placeholder: "000000",
+                  maxlength: 6,
+                  hint: "Os códigos antigos deixam de valer na hora.",
+                  action: button_tag("Gerar novos", type: "submit", class: "ax-btn")
+                ) %>
+          <% end %>
+        <% end %>
 
-            <%= form_with url: admin_two_factor_settings_path, method: :post, local: true do %>
+        <%= ax_studio_group(title: "Desativar duas etapas", icon: "shield-x", actions: tag.span("Cuidado", class: "ax-badge ax-badge--amber")) do %>
+          <% if current_admin_user.two_factor_required? %>
+            <%= ax_inline_notice(tone: :warning, icon: "lock") do %>
+              Esta conta <strong>exige</strong> verificação em duas etapas — a desativação está bloqueada pelo administrador.
+            <% end %>
+          <% else %>
+            <%= form_with url: admin_two_factor_settings_path, method: :delete, local: true,
+                  data: { turbo_confirm: "Desativar a verificação em duas etapas reduz a segurança da sua conta. Continuar?" } do %>
               <%= ax_standalone_field(
-                    name: "otp_code",
-                    id: "confirm_otp",
-                    label: "Código do aplicativo",
-                    inputmode: "numeric",
-                    autocomplete: "one-time-code",
-                    placeholder: "000000",
-                    maxlength: 6,
-                    autofocus: true,
-                    action: button_tag("Ativar duas etapas", type: "submit", class: "ax-btn ax-btn--primary")
+                    name: "current_password",
+                    id: "disable_pwd",
+                    label: "Confirme sua senha",
+                    type: :password,
+                    autocomplete: "current-password",
+                    action: button_tag("Desativar", type: "submit", class: "ax-btn ax-btn--danger")
                   ) %>
             <% end %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <%= ax_studio_group(title: "Configurar o autenticador", icon: "qr-code-scan",
+              subtitle: "Três passos rápidos.",
+              actions: ax_badge("Inativo", tone: :gray, dot: true)) do %>
+          <ol class="ax-field__hint ax-field__hint--steps ax-field__hint--steps-spacious">
+            <li>Instale o <strong>Google Authenticator</strong> (ou similar) no celular.</li>
+            <li>Escaneie o QR code abaixo.</li>
+            <li>Digite o código de 6 dígitos para confirmar.</li>
+          </ol>
+
+          <div class="two-factor-setup">
+            <div class="two-factor-qr">
+              <%= raw @qr_svg %>
+            </div>
+            <div class="two-factor-manual">
+              <p class="ax-field__hint">Não consegue escanear? Cadastre manualmente com esta chave:</p>
+              <code class="two-factor-secret"><%= @pending_secret %></code>
+            </div>
           </div>
+
+          <%= form_with url: admin_two_factor_settings_path, method: :post, local: true do %>
+            <%= ax_standalone_field(
+                  name: "otp_code",
+                  id: "confirm_otp",
+                  label: "Código do aplicativo",
+                  inputmode: "numeric",
+                  autocomplete: "one-time-code",
+                  placeholder: "000000",
+                  maxlength: 6,
+                  autofocus: true,
+                  action: button_tag("Ativar duas etapas", type: "submit", class: "ax-btn ax-btn--primary")
+                ) %>
+          <% end %>
         <% end %>
       <% end %>
     </div>
 
-    <aside class="layout-settings-inspector">
-      <%= ax_operational_panel(eyebrow: "Como funciona", title: "Login em 2 etapas") do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">1. Você entra com e-mail e senha, como sempre.</p>
-          <p class="ax-field__hint">2. O sistema pede o código de 6 dígitos do aplicativo.</p>
-          <p class="ax-field__hint tw-mb-0">3. Sem o código, ninguém entra — mesmo sabendo a senha.</p>
-        </div>
+    <aside class="ax-studio__aside" aria-label="Como funciona">
+      <%= ax_studio_group(title: "Login em 2 etapas", subtitle: "Como fica o acesso depois de ativar.", icon: "diagram-2") do %>
+        <ol class="ax-field__hint ax-field__hint--steps">
+          <li>Você entra com e-mail e senha, como sempre.</li>
+          <li>O sistema pede o código de 6 dígitos do aplicativo.</li>
+          <li>Sem o código, ninguém entra — mesmo sabendo a senha.</li>
+        </ol>
       <% end %>
 
-      <%= ax_operational_panel(eyebrow: "Emergência", title: "Códigos de backup") do %>
-        <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0 tw-mb-0">
-            Ao ativar, você recebe <strong>10 códigos de uso único</strong> para entrar se perder o celular.
-            Guarde-os em local seguro (gerenciador de senhas ou impresso).
-          </p>
-        </div>
+      <%= ax_studio_group(title: "Códigos de backup", subtitle: "Para emergências.", icon: "life-preserver") do %>
+        <p class="ax-field__hint">
+          Ao ativar, você recebe <strong>10 códigos de uso único</strong> para entrar se perder o celular.
+          Guarde-os em local seguro (gerenciador de senhas ou impresso).
+        </p>
       <% end %>
     </aside>
   </div>

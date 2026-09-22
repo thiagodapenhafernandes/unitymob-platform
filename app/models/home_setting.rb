@@ -50,6 +50,8 @@ class HomeSetting < ApplicationRecord
   validates :search_filter_display_mode, inclusion: { in: SEARCH_FILTER_DISPLAY_MODES }
   validates :mobile_search_filter_display_mode, inclusion: { in: MOBILE_SEARCH_FILTER_DISPLAY_MODES }
   validates :public_header_css, length: { maximum: 2000 }, allow_blank: true
+  validates :header_cta_label, length: { maximum: 30 }
+  validates :header_cta_url, format: { with: PublicHeaderMenu::URL_FORMAT, message: "deve começar com / ou http(s)://" }, allow_blank: true
   validate :public_header_css_must_be_declarations_only
   
   # Singleton pattern - só existe um registro

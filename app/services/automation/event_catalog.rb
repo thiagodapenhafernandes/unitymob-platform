@@ -33,6 +33,10 @@ module Automation
         label: "WhatsApp recebido",
         description: "Observa quando o lead envia uma mensagem para a plataforma."
       },
+      "whatsapp_flow_button" => {
+        label: "Clique em botão do fluxo de resposta",
+        description: "Começa quando o cliente clica em um botão configurado com a ação Iniciar automação."
+      },
       "whatsapp_campaign_started" => {
         label: "Disparo WhatsApp iniciado",
         description: "Observa quando uma campanha de WhatsApp começa a processar sua audiência."

@@ -64,6 +64,16 @@
  *= require admin/components/workspace_shell
  *= require admin/components/whatsapp_integration
  *= require admin/components/whatsapp_campaign_builder
+ *= require admin/components/whatsapp_response_flows
+ *= require admin/components/guided_form
+ *= require admin/components/choice_group
+ *= require admin/components/whatsapp_template_builder
+ *= require admin/components/whatsapp_template_list
+ *= require admin/components/sidebar_nav
+ *= require admin/components/in_app_notifications
+ *= require admin/components/settings_studio
+ *= require admin/components/layout_studio
+ *= require admin/components/home_studio
  *= require admin/components/button
  *= require admin/components/contextbar_button
  *= require admin/components/modal
@@ -81,4 +91,5 @@
  *= require admin/components/public_form_builder
  *= require admin/components/lead_migration_integration
  *= require admin/components/lead_pipeline_stages
+ *= require admin/components/public_header_studio
  */

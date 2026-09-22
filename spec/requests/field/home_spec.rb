@@ -36,8 +36,8 @@ RSpec.describe "Field::Home", type: :request do
     get field_root_path, headers: mobile_headers
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('data-controller="admin-navigation"')
-    expect(response.body).to include('data-admin-navigation-target="overlay"')
+    expect(response.body).to include('id="adminNavigationPreloader"')
+    expect(response.body).to include("data-nav-title")
     expect(response.body).to include("ax-admin-preloader")
     expect(response.body).to include("ax-pwa-bottom-nav")
     expect(response.body).to include("admin/components/loading")

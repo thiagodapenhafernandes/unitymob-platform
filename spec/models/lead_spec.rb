@@ -28,6 +28,24 @@ RSpec.describe Lead, type: :model do
     end
   end
 
+  describe "atribuicao de corretor" do
+    it "bloqueia nova atribuicao para usuario inativo" do
+      inactive = create(:admin_user, tenant: Current.tenant, active: false)
+      lead = create(:lead, admin_user: nil)
+
+      expect(lead.update(admin_user: inactive)).to be(false)
+      expect(lead.errors[:admin_user]).to include("precisa estar ativo para receber leads")
+    end
+
+    it "nao permite claim atomico para corretor inativo" do
+      inactive = create(:admin_user, tenant: Current.tenant, active: false)
+      lead = create(:lead, admin_user: nil, status: Lead.status_value(:waiting_acceptance))
+
+      expect(described_class.claim!(lead.id, inactive.id)).to be(false)
+      expect(lead.reload.admin_user_id).to be_nil
+    end
+  end
+
   describe "#enqueue_meta_enrichment" do
     it "enfileira enriquecimento para lead Meta identificado por formulario" do
       lead = build(

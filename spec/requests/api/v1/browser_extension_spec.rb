@@ -103,10 +103,11 @@ RSpec.describe "Browser extension API", type: :request do
     property = create(:habitation, tenant: tenant)
     lead.update!(property_id: property.id)
     lead.update!(notes: "internal note not serialized")
+    other_user = create(:admin_user, tenant: tenant)
     Task.create!(tenant: tenant, lead: lead, admin_user: user, title: "Retornar", kind: "follow_up", status: "pendente")
-    Task.create!(tenant: tenant, lead: lead, admin_user: create(:admin_user, tenant: tenant), title: "Outra equipe", kind: "follow_up", status: "pendente")
+    Task.create!(tenant: tenant, lead: lead, admin_user: user, title: "Outra equipe", kind: "follow_up", status: "pendente").update_columns(admin_user_id: other_user.id)
     Appointment.create!(tenant: tenant, lead: lead, admin_user: user, title: "Visita autorizada", kind: "visita", status: "agendado", starts_at: 1.day.from_now)
-    Appointment.create!(tenant: tenant, lead: lead, admin_user: create(:admin_user, tenant: tenant), title: "Agenda de outra equipe", kind: "visita", status: "agendado", starts_at: 1.day.from_now)
+    Appointment.create!(tenant: tenant, lead: lead, admin_user: user, title: "Agenda de outra equipe", kind: "visita", status: "agendado", starts_at: 1.day.from_now).update_columns(admin_user_id: other_user.id)
     Proposal.create!(lead: lead, admin_user: user, status: "rascunho", valor_cents: 0, entrada_cents: 0)
     get "/api/v1/browser_extension/leads/#{lead.id}", headers: headers
     expect(response).to have_http_status(:ok)

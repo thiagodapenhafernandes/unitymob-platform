@@ -26,6 +26,11 @@ module Whatsapp
         )
       end
 
+      # HTML do item da fila (sem etiquetas privadas) para atualizar a lista em tempo real.
+      def queue_item_html(conversation)
+        serialize_conversation(conversation)[:html]
+      end
+
       def queue_refreshed(conversation)
         broadcast_to_workspaces(
           conversation,

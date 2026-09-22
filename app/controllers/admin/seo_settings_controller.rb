@@ -7,7 +7,7 @@ class Admin::SeoSettingsController < Admin::BaseController
     seo_inventory = current_tenant.seo_settings.public_inventory
     @seo_settings = seo_inventory
                     .order(last_accessed_at: :desc, access_count: :desc, page_name: :asc)
-                    .paginate(page: params[:page], per_page: 20)
+                    .paginate(page: params[:page], per_page: 10)
     @seo_strategy_prompt = Ai::SeoContentService.instructions(tenant: current_tenant)
     @auto_inventory_enabled = Seo::PageTracker.enabled?(tenant: current_tenant)
     @auto_apply_enabled = Seo::PageTracker.auto_apply?(tenant: current_tenant)

@@ -31,7 +31,7 @@ RSpec.describe HabitationAuditLog, type: :model do
 
       expect(summaries).to include(
         hash_including(label: "Valor de venda", before: "R$ 900.000,00", after: "R$ 950.000,00"),
-        hash_including(label: "Valor vendido por terceiros", before: "vazio", after: "R$ 880.000,00"),
+        hash_including(label: "Valor comercializado (venda)", before: "vazio", after: "R$ 880.000,00"),
         hash_including(label: "Motivo de suspensão", before: "vazio", after: "Vendido por outra imobiliária"),
         hash_including(label: "Publicação no site", before: "Não", after: "Sim")
       )

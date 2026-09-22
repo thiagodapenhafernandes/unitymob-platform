@@ -1,0 +1,14 @@
+<%# Grupo do estúdio (settings_studio.css). Uso: ax_studio_group(title:, subtitle:, icon:, actions:) { ... } %>
+<section class="ax-studio-group <%= class_name %>">
+  <% if title.present? || actions.present? %>
+    <div class="ax-studio-group__head<%= " ax-studio-group__head--split" if actions.present? || icon.present? %>">
+      <% if icon.present? %><span class="ax-studio-group__icon"><i class="bi bi-<%= icon %>"></i></span><% end %>
+      <div class="ax-studio-group__copy">
+        <% if title.present? %><h3><%= title %></h3><% end %>
+        <% if subtitle.present? %><p><%= subtitle %></p><% end %>
+      </div>
+      <% if actions.present? %><div class="ax-studio-group__actions"><%= actions %></div><% end %>
+    </div>
+  <% end %>
+  <%= body %>
+</section>

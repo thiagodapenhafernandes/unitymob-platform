@@ -317,18 +317,12 @@
     </span>
   </header>
 
-  <header class="lead-pool-command">
-    <div class="lead-pool-command__copy">
-      <span>Distribuição de leads</span>
-      <h1>Bolsão</h1>
-      <p>Leads que não foram atendidos no prazo e estão disponíveis para atendimento.</p>
-    </div>
-
-    <div class="lead-pool-command__count" aria-label="Leads disponíveis no bolsão">
-      <strong><%= @pool_leads.size %></strong>
-      <span>lead<%= "s" if @pool_leads.size != 1 %></span>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        title: "Bolsão",
+        eyebrow: "Distribuição de leads",
+        icon: "collection",
+        subtitle: "Leads que não foram atendidos no prazo e estão disponíveis para atendimento.",
+        metrics: [{ value: @pool_leads.size, label: @pool_leads.size == 1 ? "lead" : "leads" }]) %>
 
   <% if @pool_leads.any? %>
     <section class="lead-pool-list" aria-label="Leads disponíveis no bolsão">

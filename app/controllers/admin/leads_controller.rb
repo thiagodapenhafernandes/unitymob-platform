@@ -5,8 +5,9 @@ require "zlib"
 class Admin::LeadsController < Admin::BaseController
   # Kanban carrega em pequenos lotes por coluna para manter a tela responsiva.
   KANBAN_COLUMN_PAGE_SIZE = 5
+  LEAD_LIST_PAGE_SIZE = 10
   # Lista PWA de leads: carrega em lotes por aba (scroll infinito).
-  PWA_LEAD_LIST_PAGE_SIZE = 15
+  PWA_LEAD_LIST_PAGE_SIZE = LEAD_LIST_PAGE_SIZE
   # Kanban PWA: mostra um recorte curto por etapa para manter a navegação leve.
   PWA_LEAD_KANBAN_COLUMN_SIZE = 5
   HIDDEN_KANBAN_STATUSES = ["Aguardando Aceite", "Represado", "Concluido"].freeze
@@ -123,8 +124,8 @@ class Admin::LeadsController < Admin::BaseController
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
-  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
-  before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :pwa_leads_page, :report]
+  before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report, :new, :create, :show, :update]
+  before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
 
   def index
@@ -152,40 +153,47 @@ class Admin::LeadsController < Admin::BaseController
     lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
     list_scope = list_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
 
-    @lead_statuses = lead_statuses_for_kanban(lead_scope)
-    @leads_by_status = @lead_statuses.index_with { |status| [] }
-    # Primeiro lote por coluna DIRETO NO BANCO (janela por status): antes carregava a
-    # base inteira de leads na memória a cada visita ao kanban.
-    ranked = lead_scope.reorder(nil).select(
-      "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.created_at DESC) AS kanban_rank"
-    )
-    @kanban_leads = Lead.from(ranked, :leads)
-                        .where("kanban_rank <= ?", KANBAN_COLUMN_PAGE_SIZE)
-                        .includes(:admin_user, lead_labelings: :lead_label)
-                        .order(created_at: :desc)
-                        .to_a
-    @kanban_leads.each do |lead|
-      status = Lead.status_value(lead.status, tenant: current_tenant)
-      next if @selected_pipeline.present? && !@leads_by_status.key?(status)
+    if @view_mode == "kanban"
+      @lead_statuses = lead_statuses_for_kanban(lead_scope)
+      @leads_by_status = @lead_statuses.index_with { |status| [] }
+      # Primeiro lote por coluna DIRETO NO BANCO (janela por status): antes carregava a
+      # base inteira de leads na memória a cada visita ao kanban.
+      ranked = lead_scope.reorder(nil).select(
+        "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.created_at DESC) AS kanban_rank"
+      )
+      @kanban_leads = Lead.from(ranked, :leads)
+                          .where("kanban_rank <= ?", KANBAN_COLUMN_PAGE_SIZE)
+                          .includes(:admin_user, lead_labelings: :lead_label)
+                          .order(created_at: :desc)
+                          .to_a
+      @kanban_leads.each do |lead|
+        status = Lead.status_value(lead.status, tenant: current_tenant)
+        next if @selected_pipeline.present? && !@leads_by_status.key?(status)
 
-      @leads_by_status[status] ||= []
-      @leads_by_status[status] << lead
-    end
-    # Contadores da coluna = total REAL (a coluna pode estar truncada no teto).
-    @lead_counts_by_status = Hash.new(0)
-    lead_scope.reorder(nil).group(:status).count.each do |status, count|
-      status = Lead.status_value(status, tenant: current_tenant)
-      next if @selected_pipeline.present? && !@leads_by_status.key?(status)
+        @leads_by_status[status] ||= []
+        @leads_by_status[status] << lead
+      end
+      # Contadores da coluna = total REAL (a coluna pode estar truncada no teto).
+      @lead_counts_by_status = Hash.new(0)
+      lead_scope.reorder(nil).group(:status).count.each do |status, count|
+        status = Lead.status_value(status, tenant: current_tenant)
+        next if @selected_pipeline.present? && !@leads_by_status.key?(status)
 
-      @lead_counts_by_status[status] += count
+        @lead_counts_by_status[status] += count
+      end
+      @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
+    else
+      @lead_statuses = []
+      @leads_by_status = {}
+      @lead_counts_by_status = Hash.new(0)
+      @kanban_leads = []
     end
-    @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
     @kanban_column_page_size = KANBAN_COLUMN_PAGE_SIZE
-    @leads = list_scope.paginate(page: params[:page], per_page: 20)
+    @leads = list_scope.paginate(page: params[:page], per_page: LEAD_LIST_PAGE_SIZE)
     load_pwa_leads_context(common_scope.reorder(nil), unfiltered_scope: common_unfiltered_scope.reorder(nil))
     property_ids = (@kanban_leads + @leads.to_a + @pwa_leads.to_a + @pwa_kanban_leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
-    @selected_lead = @kanban_leads.first || @leads.first
+    @selected_lead = @view_mode == "kanban" ? (@kanban_leads.first || @leads.first) : @leads.first
     @page_title = "Gerenciar Leads"
   end
 
@@ -291,6 +299,35 @@ class Admin::LeadsController < Admin::BaseController
         }
       )
     end.join
+    next_offset = offset + leads.size
+
+    render json: {
+      html: html,
+      next_offset: next_offset,
+      has_more: next_offset < total,
+      loaded_count: leads.size,
+      total: total
+    }
+  end
+
+  def list_page
+    assign_lead_filter_state
+
+    desktop_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
+    common_scope = hide_waiting_acceptance_from_common_scope(filtered_lead_scope_for_current_user)
+    list_scope = lead_scope_for_tab(hide_discarded_from_list_scope(common_scope), desktop_tab)
+    offset = [params[:offset].to_i, 0].max
+    total = list_scope.reorder(nil).count
+    leads = list_scope
+            .includes(:admin_user, lead_labelings: :lead_label)
+            .order(created_at: :desc)
+            .offset(offset)
+            .limit(LEAD_LIST_PAGE_SIZE)
+            .to_a
+
+    property_ids = leads.filter_map(&:property_id).uniq
+    @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
+    html = leads.any? ? render_to_string(partial: "admin/leads/table", formats: [:html], locals: { leads: leads }) : ""
     next_offset = offset + leads.size
 
     render json: {
@@ -2495,7 +2532,16 @@ class Admin::LeadsController < Admin::BaseController
                  .order(updated_at: :desc, created_at: :desc)
                  .limit(PWA_LEAD_LIST_PAGE_SIZE)
                  .to_a
-    load_pwa_kanban_context(base_scope)
+    if @view_mode == "kanban"
+      load_pwa_kanban_context(base_scope)
+    else
+      @pwa_kanban_statuses = []
+      @pwa_kanban_leads_by_status = {}
+      @pwa_kanban_counts_by_status = Hash.new(0)
+      @pwa_kanban_total_count = 0
+      @pwa_kanban_leads = []
+      @pwa_kanban_column_size = PWA_LEAD_KANBAN_COLUMN_SIZE
+    end
     load_pwa_lead_activity_context((@pwa_leads + @pwa_kanban_leads).uniq)
   end
 

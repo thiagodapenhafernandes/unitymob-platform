@@ -41,7 +41,11 @@ module Admin::NavbarHelper
     "access_audit_logs" => "Auditoria",
     "user_activity_sessions" => "Auditoria Operacional",
     "data_export_audit_logs" => "Exportações",
-    "layout_settings" => "Identidade e Marca",
+    "layout_settings" => "Aparência da plataforma",
+    "public_identities" => "Identidade",
+    "public_headers" => "Topo e menu",
+    "contact_settings" => "Contato",
+    "home_settings" => "Home",
     "lead_settings" => "Configurações de Leads",
     "email_settings" => "E-mail (SMTP)",
     "push_settings" => "Push no PWA",
@@ -49,6 +53,18 @@ module Admin::NavbarHelper
     "public_forms" => "Formulários",
     "landing_pages" => "Landing pages",
     "banners" => "Banners"
+  }.freeze
+
+  # Seções do Explorer (mesmos rótulos/ícones do sidebar) — raiz do breadcrumb de cada módulo.
+  ADMIN_CONTEXTBAR_SECTIONS = {
+    product: ["Produto", "grid-1x2"],
+    operation: ["Operação", "briefcase"],
+    management: ["Gestão", "people"],
+    growth: ["Crescimento", "graph-up-arrow"],
+    public_site: ["Site público", "globe2"],
+    integrations: ["Integrações", "plug"],
+    settings: ["Configurações", "sliders"],
+    account: ["Conta", "building-gear"]
   }.freeze
 
   def admin_contextbar_title
@@ -145,16 +161,58 @@ module Admin::NavbarHelper
     "".html_safe
   end
 
+  # Trilha padrão: Seção › Módulo [› Ação]. Deriva do catálogo do sidebar, então acompanha o menu.
+  # O "Início" saiu: home é a logo da navbar / "Painel" no Explorer; aqui o usuário vê ONDE está.
   def admin_contextbar_breadcrumb
     return content_for(:admin_contextbar_breadcrumb) if content_for?(:admin_contextbar_breadcrumb)
 
-    safe_join(
-      [
-        link_to(admin_contextbar_root_label, tenant_owner? ? admin_root_path : field_root_path),
-        tag.i(class: "bi bi-chevron-right"),
-        tag.strong(admin_contextbar_title)
-      ]
-    )
+    context = admin_contextbar_module
+    return tag.strong(admin_contextbar_title) if context.blank?
+
+    leaf = admin_contextbar_leaf_label
+    module_crumb = if leaf && context[:path].present?
+                     link_to(context[:label], context[:path], class: "ax-breadcrumb__module")
+                   else
+                     tag.strong(context[:label])
+                   end
+    chevron = tag.i(class: "bi bi-chevron-right", aria: { hidden: true })
+
+    safe_join([admin_contextbar_section_crumb(context[:section]), chevron, module_crumb, (chevron if leaf), (tag.strong(leaf) if leaf)].compact)
+  end
+
+  def admin_contextbar_section_crumb(section)
+    label, icon = ADMIN_CONTEXTBAR_SECTIONS.fetch(section.to_sym)
+    tag.span(class: "ax-breadcrumb__section", title: "Seção #{label}") do
+      safe_join([
+        tag.span(tag.i(class: "bi bi-#{icon}"), class: "ax-breadcrumb__section-icon", aria: { hidden: true }),
+        tag.span(label, class: "ax-breadcrumb__section-label")
+      ])
+    end
+  end
+
+  # Item do sidebar ativo para a página atual: { section:, label:, path: } (nil se nenhum casar).
+  def admin_contextbar_module
+    return @admin_contextbar_module if defined?(@admin_contextbar_module)
+
+    @admin_contextbar_module = ADMIN_CONTEXTBAR_SECTIONS.each_key.lazy.filter_map { |section| admin_contextbar_module_in(section) }.first
+  end
+
+  def admin_contextbar_module_in(section)
+    items = Profile.sidebar_items_for(section).flat_map { |item| item[:children].presence || [item] }
+    item = items.find { |candidate| candidate[:path].present? && admin_sidebar_item_active?(candidate) }
+    return unless item
+
+    { section:, label: item[:label], path: (admin_sidebar_item_path(item) rescue nil) }
+  end
+
+  def admin_contextbar_leaf_label
+    return content_for(:admin_contextbar_title) if content_for?(:admin_contextbar_title)
+
+    case action_name
+    when "new", "create" then "Novo"
+    when "edit", "update" then "Editar"
+    when "show" then "Detalhes"
+    end
   end
 
   def admin_contextbar_navigation(breadcrumb = nil)
@@ -182,11 +240,10 @@ module Admin::NavbarHelper
     inferred_return_path = admin_contextbar_inferred_back_path
     return inferred_return_path if inferred_return_path.present?
 
-    safe_admin_contextbar_return_path(request.referer)
-  end
+    # Listagem/raiz do módulo não tem "pai": voltar pelo referer só faz sentido em show/new/edit.
+    return nil if action_name == "index"
 
-  def admin_contextbar_root_label
-    "Início"
+    safe_admin_contextbar_return_path(request.referer)
   end
 
   # Contadores leves exibidos na navbar (rodam em toda página admin — sempre resilientes).

@@ -1,0 +1,7 @@
+<div class="ax-field">
+  <%= ax_field_label(form, :usage_context, text: "Uso no sistema", tooltip: "Define onde este template aparece: campanhas, fluxos de resposta, atendimento ou outros canais operacionais.") %>
+  <%= form.select :usage_context,
+                  WhatsappTemplate::USAGE_CONTEXTS.map { |key, label| [label, key] },
+                  {},
+                  class: "ax-control" %>
+</div>

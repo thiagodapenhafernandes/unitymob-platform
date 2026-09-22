@@ -23,6 +23,7 @@ export default class extends Controller {
       const nameMatch = key.match(/\[filter_params\]\[(.*?)\]/)
       if (nameMatch) {
         let fieldName = nameMatch[1]
+        if (value === "") continue // campo oculto dos multiselects ([""]) e campos vazios não são filtro
 
         // Handle array fields
         if (fieldName.endsWith('[]')) {

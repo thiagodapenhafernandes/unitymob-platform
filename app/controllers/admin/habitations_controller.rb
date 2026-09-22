@@ -60,6 +60,20 @@ class Admin::HabitationsController < Admin::BaseController
   }.freeze
   INDEX_PAGE_SIZE_OPTIONS = [10, 20].freeze
   DEFAULT_INDEX_PAGE_SIZE = 10
+  DEFAULT_CATALOG_STATUSES = ["Venda", "Aluguel", "Venda e Aluguel", "Diária", "Lançamento"].freeze
+  ALL_CATALOG_STATUSES = [
+    "Venda",
+    "Aluguel",
+    "Venda e Aluguel",
+    "Diária",
+    "Lançamento",
+    "Pendente",
+    "Suspenso",
+    "Alugado imobiliária",
+    "Alugado terceiros",
+    "Vendido imobiliária",
+    "Vendido terceiros"
+  ].freeze
   DASHBOARD_QUALITY_FILTERS = %w[missing_address missing_photos missing_price stale].freeze
   REPORT_MAX_PAGES = 100
   INTAKE_REVIEW_LABELS = { "pending" => "Pendente de revisão", "administrative" => "Revisão administrativa" }.freeze
@@ -1249,7 +1263,12 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def permitted_habitation_filter_statuses
-    @permitted_habitation_filter_statuses ||= current_admin_user&.allowed_habitation_search_statuses || []
+    @permitted_habitation_filter_statuses ||= begin
+      user = current_admin_user if respond_to?(:current_admin_user, true)
+      user&.allowed_habitation_search_statuses.presence || ALL_CATALOG_STATUSES
+    rescue Devise::MissingWarden
+      ALL_CATALOG_STATUSES
+    end
   end
 
   def sorted_habitation_statuses(statuses)
@@ -1580,7 +1599,11 @@ class Admin::HabitationsController < Admin::BaseController
 
     scope = scope.admin_search_text(@q) if @q.present?
 
-    scope = apply_status_filter(scope, @statuses)
+    scope = apply_status_filter(
+      scope,
+      @statuses,
+      explicit: explicit_habitation_status_filter?(effective_habitations_filter_params) || @somente_sem_imagens == "1"
+    )
     scope = apply_category_filter(scope, @categorias)
     scope = scope.where(
       "unaccent(CONCAT_WS(' ', " \
@@ -2584,14 +2607,14 @@ class Admin::HabitationsController < Admin::BaseController
     scope.where("LOWER(TRIM(habitations.#{column})) = ?", value.downcase)
   end
 
-  def apply_status_filter(scope, raw_statuses)
+  def apply_status_filter(scope, raw_statuses, explicit: true)
     statuses = Array(raw_statuses).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
     allowed_statuses = permitted_habitation_filter_statuses
     return scope.none if allowed_statuses.blank?
     return scope.none if @invalid_habitation_status_filter
 
     statuses = ["Todos"] if statuses.blank?
-    statuses = allowed_statuses if statuses.any? { |status| I18n.transliterate(status).downcase == "todos" }
+    statuses = statuses.any? { |status| I18n.transliterate(status).downcase == "todos" } ? (explicit ? allowed_statuses : DEFAULT_CATALOG_STATUSES) : statuses
 
     normalized_statuses = statuses
       .map { |status| Habitation.normalize_status(status) }

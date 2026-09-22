@@ -1,0 +1,91 @@
+<% content_for :admin_contextbar_title, "Fluxos de Resposta" %>
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to new_admin_whatsapp_response_flow_path, class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Novo fluxo de resposta</span>
+  <% end %>
+<% end %>
+
+<%
+  actions = capture do %>
+    <%= ax_button("Templates", admin_whatsapp_templates_path, size: :sm, variant: :ghost, icon: "grid-3x2-gap") %>
+  <% end
+%>
+
+<%= ax_workspace_heading(
+      eyebrow: "WhatsApp",
+      icon: "diagram-3",
+      title: "Fluxos de Resposta",
+      subtitle: "Mapeie botões aprovados para mensagens, links, tarefas e filas de atendimento.",
+      metrics: [
+        { value: @flows.count, label: "fluxos" },
+        { value: @flows.count(&:active?), label: "ativos" }
+      ],
+      actions: actions
+    ) %>
+
+<div class="whatsapp-response-flows">
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead>
+        <tr>
+          <th scope="col">Fluxo</th>
+          <th scope="col">Template</th>
+          <th scope="col">Botões com ação</th>
+          <th scope="col">Receptivo do número</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="ax-table__actions-heading">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @flows.each do |flow| %>
+          <% template_buttons = flow.whatsapp_template.interactive_buttons.select { |button| button["actionable_reply"] } %>
+          <% configured = template_buttons.count { |button| flow.button_actions.dig(button["key"], "action").to_s.then { |action| action.present? && action != "record_only" } } %>
+          <% receptive = @receptive_numbers.fetch(flow.id, []) %>
+          <tr>
+            <td>
+              <%= link_to flow.name, edit_admin_whatsapp_response_flow_path(flow), class: "ax-table__record-name whatsapp-response-flows__name" %>
+              <% if flow.automation_workflow %>
+                <%= link_to builder_admin_automation_workflow_path(flow.automation_workflow), class: "ax-link whatsapp-response-flows__sub" do %>
+                  <i class="bi bi-lightning-charge" aria-hidden="true"></i> Ver automação
+                <% end %>
+              <% else %>
+                <span class="whatsapp-response-flows__sub">Automação criada ao salvar</span>
+              <% end %>
+            </td>
+            <td>
+              <%= flow.whatsapp_template.name %>
+              <span class="whatsapp-response-flows__sub"><%= flow.whatsapp_template.template_type_label %></span>
+            </td>
+            <td class="whatsapp-response-flows__num">
+              <%= configured %> de <%= template_buttons.size %>
+              <% if configured < template_buttons.size %>
+                <span class="whatsapp-response-flows__sub">restantes só registram o clique</span>
+              <% end %>
+            </td>
+            <td>
+              <% if receptive.any? %>
+                <% receptive.each do |number| %><span class="whatsapp-response-flows__sub whatsapp-response-flows__sub--strong"><%= number.formatted_phone %></span><% end %>
+              <% else %>
+                <span class="ax-muted">—</span>
+              <% end %>
+            </td>
+            <td><%= ax_badge(flow.active? ? "Ativo" : "Inativo", tone: flow.active? ? :green : :gray, dot: flow.active?) %></td>
+            <td>
+              <div class="whatsapp-response-flows__actions">
+                <%= ax_button("Editar", edit_admin_whatsapp_response_flow_path(flow), size: :sm, variant: :ghost, icon: "pencil-square") %>
+                <%= button_to admin_whatsapp_response_flow_path(flow), method: :delete, class: "ax-btn ax-btn--sm ax-btn--danger", form: { data: { turbo_confirm: "Remover este fluxo de resposta?" } } do %>
+                  <i class="bi bi-trash ax-ico"></i><span>Excluir</span>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+        <% if @flows.empty? %>
+          <tr>
+            <td colspan="6"><%= ax_empty_state(title: "Nenhum fluxo configurado", description: "Use “Novo fluxo de resposta” para escolher um template aprovado e mapear os botões.", icon: "diagram-3", compact: true) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

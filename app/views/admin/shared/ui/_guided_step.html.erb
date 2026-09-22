@@ -1,0 +1,11 @@
+<%# Etapa numerada do formulário guiado (cor via --step). Uso: ax_guided_step(number:, color: (:blue, :violet, :green, :amber, :teal… ou CSS), title:, subtitle:, optional:) { ... } %>
+<section class="ax-guided-step" data-guided-step="<%= number %>" style="--step:<%= color.is_a?(Symbol) ? "var(--ax-accent-#{color})" : color %>">
+  <header class="ax-guided-step__head">
+    <span class="ax-guided-step__num"><b><%= number %></b><i class="bi bi-check-lg"></i></span>
+    <div>
+      <h2><%= title %><% if local_assigns[:optional] %> <em>opcional</em><% end %></h2>
+      <p><%= subtitle %></p>
+    </div>
+  </header>
+  <div class="ax-guided-step__body"><%= body %></div>
+</section>

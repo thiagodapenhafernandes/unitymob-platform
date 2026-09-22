@@ -1,0 +1,136 @@
+<%
+  layout_setting = LayoutSetting.find_by(tenant: @home_setting.tenant)
+  header_defaults = public_header_color_defaults(tenant: @home_setting.tenant, layout: layout_setting)
+  live = ->(var, kind, fallback) { { live_var: var, live_kind: kind, live_fallback: fallback } }
+  internal_blog = current_tenant.blog_articles.publicly_visible.exists?
+  entries = PublicHeaderMenu.entries(@home_setting.header_menu,
+                                     blog_url: (internal_blog ? blog_path : @contact_setting.blog_url),
+                                     youtube_url: @contact_setting.youtube_url)
+  brand_name = layout_setting&.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
+  cta_label = @home_setting.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL
+  studio_items = [
+    { id: "header-tab-menu", icon: "list-ul", label: "Menu", hint: "Links, ordem e o que fica na barra" },
+    { id: "header-tab-action", icon: "telephone-outbound", label: "Botão e telefone", hint: "Chamada em destaque do topo" },
+    { id: "header-tab-style", icon: "palette2", label: "Aparência", hint: "Cores e CSS do topo" }
+  ]
+%>
+<div class="public-site-workspace hm-workspace">
+  <%= ax_workspace_heading(
+        eyebrow: "Site público · Estrutura",
+        icon: "layout-text-window",
+        title: "Topo e menu",
+        subtitle: "O que o visitante vê no cabeçalho de todas as páginas: links, botão de ação, telefone e cores.",
+        actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")
+      ) %>
+
+  <%= form_with(model: @home_setting, url: admin_public_header_path, method: :patch, local: true,
+                html: { data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } }) do |f| %>
+    <%= ax_error_summary(@home_setting) %>
+
+    <div class="ax-studio ax-studio--home hps-workspace" data-controller="live-preview header-menu-preview"
+         data-action="input->live-preview#sync change->live-preview#sync input->header-menu-preview#render change->header-menu-preview#render click->header-menu-preview#render">
+      <div class="ax-studio__nav">
+        <%= ax_studio_nav(items: studio_items, panels_selector: "#header-studio-sections", label: "Seções do topo do site") %>
+      </div>
+
+      <div class="ax-studio__stage" id="header-studio-sections">
+        <%= ax_studio_section(id: "header-tab-menu", icon: "list-ul", active: true,
+                              title: "Menu",
+                              subtitle: "Todo link visível entra no menu suspenso e no celular; os marcados “Na barra” também aparecem no topo do desktop.",
+                              actions: tag.span("#{entries.count(&:visible?)} visíveis", class: "ax-badge ax-badge--blue", data: { header_menu_preview_target: "count" })) do %>
+          <div data-controller="nested-form" data-nested-form-wrapper-selector-value=".nested-fields" class="hm-editor">
+            <template data-nested-form-target="template"><%= render "admin/public_headers/menu_row", entry: nil, index: "NEW_RECORD" %></template>
+            <div class="hm-rows" data-nested-form-target="container" data-header-menu-preview-target="rows">
+              <% entries.each_with_index do |entry, index| %>
+                <%= render "admin/public_headers/menu_row", entry: entry, index: index %>
+              <% end %>
+            </div>
+            <div class="hm-editor__foot">
+              <button type="button" class="ax-btn ax-btn--sm" data-action="nested-form#add"><i class="bi bi-plus-lg ax-ico"></i> Adicionar link</button>
+              <small>Até <%= PublicHeaderMenu::MAX_CUSTOM_ITEMS %> links próprios. Nome vazio volta ao nome padrão da página.</small>
+            </div>
+          </div>
+        <% end %>
+
+        <%= ax_studio_section(id: "header-tab-action", icon: "telephone-outbound",
+                              title: "Botão e telefone",
+                              subtitle: "A chamada em destaque do topo e o telefone ao lado da logo.") do %>
+          <%= ax_studio_group(title: "Botão de ação", subtitle: "Aparece no desktop, ao lado do menu. Sem preencher, usa “Fale Conosco” e leva à página de contato.") do %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-5">
+                <%= ax_text_field(form: f, method: :header_cta_label, label: "Texto do botão", placeholder: PublicHeaderMenu::DEFAULT_CTA_LABEL, maxlength: 30,
+                                  data: { live_text: "cta" }) %>
+              </div>
+              <div class="ax-span-7">
+                <%= ax_text_field(form: f, method: :header_cta_url, label: "Destino", placeholder: "/contato ou https://wa.me/…", hint: "Página do site (/contato) ou endereço completo.") %>
+              </div>
+            <% end %>
+          <% end %>
+
+          <%= ax_studio_group(title: "Telefone", subtitle: "Número principal, definido em Contato. Aparece ao lado da logo em telas largas.") do %>
+            <%= fields_for :contact_setting, @contact_setting do |cf| %>
+              <%= ax_switch_field(form: cf, method: :show_phone_in_header, label: "Mostrar o telefone no topo",
+                                  description: @contact_setting.phone.present? ? "Mostra #{@contact_setting.phone}." : "Cadastre o telefone em Contato para ele aparecer.",
+                                  class_name: "ax-switch--card", input_html: { data: { live_flag: "phone" } }) %>
+            <% end %>
+            <p class="ax-field__hint"><%= link_to "Editar telefone e WhatsApp em Contato", edit_admin_contact_setting_path, class: "ax-link" %></p>
+          <% end %>
+        <% end %>
+
+        <%= ax_studio_section(id: "header-tab-style", icon: "palette2",
+                              title: "Aparência",
+                              subtitle: "Cores do topo sobre o hero. Campo vazio mantém a cor herdada do modelo visual.") do %>
+          <%= ax_studio_group(title: "Cores do topo", subtitle: "Texto do menu e botão de ação, em repouso e no hover.") do %>
+            <%= ax_field_grid do %>
+              <% HomeSetting::HEADER_COLOR_FIELDS.each do |field, label| %>
+                <% inherited = header_defaults.fetch(field) %>
+                <% header_var = { header_menu_color: "--hps-h-menu", header_menu_hover_color: "--hps-h-hover", header_cta_background: "--hps-h-cta", header_cta_hover_background: "--hps-h-cta-hover" }.fetch(field) %>
+                <% live_header = live.call(header_var, "color", inherited.start_with?("#") ? inherited[0, 7] : "transparent") %>
+                <div class="ax-span-6">
+                  <%= ax_color_field(form: f, method: field, label: label,
+                        value: @home_setting.public_send(field), default_value: inherited.start_with?("#") ? inherited[0, 7] : "#FFFFFF",
+                        color_options: { data: live_header },
+                        text_options: { placeholder: inherited == "transparent" ? "Transparente" : inherited, data: live_header },
+                        hint: inherited == "transparent" ? "Herdado: transparente, mostra o fundo do topo." : "Cor herdada: #{inherited}. Vazio mantém o modelo.") %>
+                </div>
+              <% end %>
+            <% end %>
+          <% end %>
+
+          <details class="ax-studio-advanced">
+            <summary><i class="bi bi-code-slash"></i> Avançado: CSS aplicado no topo <i class="bi bi-chevron-down"></i></summary>
+            <%= ax_text_field(form: f, method: :public_header_css, type: :textarea, label: "CSS aplicado no topo",
+                              hint: "Apenas declarações CSS. Aplicadas ao elemento header do site público desta conta.",
+                              rows: 9, class: "ax-control--code",
+                              placeholder: "background-color: rgba(0,9,16,0.4);\nbackdrop-filter: blur(15px);\npadding: 15px 0;") %>
+          </details>
+        <% end %>
+      </div>
+
+      <aside class="ax-studio__aside" aria-label="Prévia ao vivo">
+        <div class="hps-preview hm-preview">
+          <div class="lss-preview__label"><span class="lss-preview__live"></span> Prévia ao vivo</div>
+          <div class="hm-web" role="img" aria-label="Prévia do topo do site">
+            <header class="hm-web__bar">
+              <div class="hm-web__row">
+                <strong class="hm-web__brand"><%= brand_name %></strong>
+                <span class="hm-web__phone" data-live-flag-target="phone" <%= "hidden" unless @contact_setting.show_phone_in_header? && @contact_setting.phone.present? %>><i class="bi bi-telephone"></i> <%= @contact_setting.phone.presence || "(00) 0000-0000" %></span>
+                <span class="hm-web__cta" data-live-text-target="cta"><%= cta_label %></span>
+                <i class="bi bi-list hm-web__toggle"></i>
+              </div>
+              <nav class="hm-web__links" aria-label="Barra do desktop" data-header-menu-preview-target="bar"></nav>
+            </header>
+            <div class="hm-web__panel">
+              <small>Menu suspenso e celular</small>
+              <ul data-header-menu-preview-target="menu"></ul>
+            </div>
+            <div class="hm-web__hero"><span></span><span></span></div>
+          </div>
+          <p class="lss-preview__note">A barra e o menu acompanham os ajustes ao lado. Blog e YouTube só aparecem se a conta tiver o endereço.</p>
+        </div>
+      </aside>
+    </div>
+
+    <%= ax_studio_savebar(form: f, cancel_path: admin_root_path) %>
+  <% end %>
+</div>

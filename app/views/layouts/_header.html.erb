@@ -8,10 +8,10 @@
   <% internal_blog = public_tenant.blog_articles.publicly_visible.exists? %>
   <% public_blog_url = internal_blog ? blog_path : public_contact_setting.blog_url %>
   <% public_phone = public_identity.phone %>
-  <% is_buying = controller_name == "habitations" && params[:transaction_type].to_s.downcase == "venda" %>
-  <% is_renting = controller_name == "habitations" && %w[aluguel locacao locação].include?(params[:transaction_type].to_s.downcase) %>
-  <% is_developments = controller_name == "empreendimentos" || (controller_name == "habitations" && Array(params[:category]).map(&:to_s).include?("Empreendimento")) %>
-  <% is_launches = controller_name == "habitations" && Array(params[:characteristics]).map(&:to_s).include?("lancamento") %>
+  <% menu_entries = PublicHeaderMenu.visible(@home_setting&.header_menu, blog_url: public_blog_url, youtube_url: public_contact_setting.youtube_url,
+                                             context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params)) %>
+  <% public_cta_label = @home_setting&.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL %>
+  <% public_cta_url = @home_setting&.header_cta_url.presence || contato_path %>
   <div class="w-full max-w-[1600px] mx-auto px-4 lg:px-8">
     <div class="flex items-center justify-between py-3">
       
@@ -44,29 +44,8 @@
       <!-- Desktop Menu -->
       <div class="hidden xl:flex items-center gap-3 text-[13px]">
         <div data-header-part="links" class="hidden xl:flex items-center gap-1 text-gray-700">
-          <%= link_to "Comprar",
-              habitations_path(transaction_type: "venda"),
-              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_buying ? 'text-blue-three' : 'hover:text-blue-three'}" %>
-          <%= link_to "Alugar",
-              habitations_path(transaction_type: "aluguel"),
-              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_renting ? 'text-blue-three' : 'hover:text-blue-three'}" %>
-          <%= link_to "Anunciar",
-              contato_path,
-              class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" %>
-          <%= link_to "Empreendimentos",
-              empreendimentos_path,
-              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_developments ? 'text-blue-three' : 'hover:text-blue-three'}" %>
-          <%= link_to "Lançamentos",
-              habitations_path(characteristics: ['lancamento']),
-              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_launches ? 'text-blue-three' : 'hover:text-blue-three'}" %>
-          <% if public_blog_url.present? %>
-            <%= link_to "Blog",
-                public_blog_url, target: internal_blog ? nil : "_blank", rel: "noopener",
-                class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" %>
-          <% end %>
-          <%= link_to favorite_habitations_path,
-              class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" do %>
-            <i class="bi bi-bookmark-heart mr-1"></i> Favoritos
+          <% menu_entries.select(&:bar?).each do |entry| %>
+            <%= link_to entry.url, class: "px-3 py-2 rounded-md font-semibold transition-colors #{entry.active? ? 'text-blue-three' : 'hover:text-blue-three'}", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %>
           <% end %>
         </div>
 
@@ -80,7 +59,7 @@
           <i class="bi bi-search" aria-hidden="true"></i>
         </button>
         
-        <%= link_to "Fale Conosco", contato_path, data: { header_part: "cta" }, class: "hidden lg:inline-flex items-center justify-center px-5 py-2 border border-transparent text-xs font-bold rounded-full text-white bg-blue-three hover:bg-blue-one transition-colors shadow-sm whitespace-nowrap" %>
+        <%= link_to public_cta_label, public_cta_url, data: { header_part: "cta" }, class: "hidden lg:inline-flex items-center justify-center px-5 py-2 border border-transparent text-xs font-bold rounded-full text-white bg-blue-three hover:bg-blue-one transition-colors shadow-sm whitespace-nowrap" %>
 
         <!-- Hamburger for submenu -->
         <button type="button"
@@ -107,26 +86,9 @@
     <div class="hidden" data-header-part="panel" data-navbar-target="desktopMenu">
       <nav class="py-4 border-t">
         <ul class="flex flex-col gap-3">
-          <li><%= link_to "Home", root_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Comprar", habitations_path(transaction_type: "venda"), class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Alugar", habitations_path(transaction_type: "aluguel"), class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Anunciar", contato_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three" %></li>
-          <% if public_blog_url.present? %>
-            <li><%= link_to "Blog", public_blog_url, target: internal_blog ? nil : "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three" %></li>
+          <% menu_entries.each do |entry| %>
+            <li><%= link_to entry.url, class: "text-gray-700 hover:text-blue-three", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %></li>
           <% end %>
-          <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Fale com um corretor", brokers_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Galpões", corporativos_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Simule um financiamento", simulador_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Trabalhe conosco", trabalhe_conosco_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Sobre nós", "/imobiliaria", class: "text-gray-700 hover:text-blue-three" %></li>
-          <% if public_contact_setting.youtube_url.present? %>
-            <li><%= link_to "Youtube", public_contact_setting.youtube_url, target: "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three" %></li>
-          <% end %>
-          <li><%= link_to "Links Úteis", links_uteis_path, class: "text-gray-700 hover:text-blue-three" %></li>
-          <li><%= link_to "Contato", contato_path, class: "text-gray-700 hover:text-blue-three" %></li>
         </ul>
       </nav>
     </div>
@@ -135,27 +97,9 @@
     <div class="hidden lg:hidden" data-header-part="panel" data-navbar-target="mobileMenu">
       <nav class="py-4 border-t">
         <ul class="flex flex-col gap-3">
-          <li><%= link_to "Comprar", habitations_path(transaction_type: "venda"), class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Alugar", habitations_path(transaction_type: "aluguel"), class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Anunciar", contato_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <% if public_blog_url.present? %>
-            <li><%= link_to "Blog", public_blog_url, target: internal_blog ? nil : "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <% menu_entries.each do |entry| %>
+            <li><%= link_to entry.url, class: "text-gray-700 hover:text-blue-three py-2", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %></li>
           <% end %>
-          <li><%= link_to "Favoritos", favorite_habitations_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Home", root_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Fale com um corretor", brokers_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Galpões", corporativos_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Simule um financiamento", simulador_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Trabalhe conosco", trabalhe_conosco_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Sobre nós", sobre_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <% if public_contact_setting.youtube_url.present? %>
-            <li><%= link_to "Youtube", public_contact_setting.youtube_url, target: "_blank", rel: "noopener", class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <% end %>
-          <li><%= link_to "Links Úteis", links_uteis_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
-          <li><%= link_to "Contato", contato_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
         </ul>
       </nav>
     </div>

@@ -241,7 +241,7 @@ module Leads
       VALIDATION_CHAIN.map do |stage_name, next_stage_name|
         {
           stage: stage_name,
-          trigger: "stage_duration",
+          trigger: "no_stage_change",
           action_type: "move_stage",
           auto_advance_to_stage: next_stage_name,
           action_config: {}

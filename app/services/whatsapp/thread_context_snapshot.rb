@@ -24,7 +24,7 @@ module Whatsapp
     attr_reader :conversation, :messages, :focus_mode, :tenant
 
     def thread_lead
-      @thread_lead ||= conversation.lead
+      @thread_lead ||= conversation.context_lead
     end
 
     def thread_property

@@ -8,6 +8,10 @@ module Leads
       new(lead).distribute_to(rule)
     end
 
+    def self.distribute_to_agent(lead, rule, admin_user)
+      new(lead).distribute_to_agent(rule, admin_user)
+    end
+
     def initialize(lead)
       @lead = lead
     end
@@ -87,6 +91,32 @@ module Leads
         error_message: e.message,
         rule_id: rule&.id,
         rule_name: rule&.name
+      }.compact)
+      nil
+    end
+
+    def distribute_to_agent(rule, admin_user)
+      return nil unless rule && admin_user
+      raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
+      raise ArgumentError, "Usuário pertence a outro tenant" if admin_user.tenant_id != tenant.id
+      return nil unless rule.active?
+
+      agent = rule.eligible_distribution_rule_agents.find_by(admin_user_id: admin_user.id)
+      return nil unless agent
+
+      finalize_sticky_assignment(rule, admin_user_id: admin_user.id, admin_user_name: admin_user.name)
+      rule
+    rescue => e
+      Rails.logger.error(
+        "[DistributorService] Erro ao atribuir lead #{@lead.id} para atendente " \
+        "(tenant_id=#{@lead.tenant_id}, rule_id=#{rule&.id}, admin_user_id=#{admin_user&.id}): #{e.class}: #{e.message}"
+      )
+      LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: {
+        error_class: e.class.name,
+        error_message: e.message,
+        rule_id: rule&.id,
+        rule_name: rule&.name,
+        admin_user_id: admin_user&.id
       }.compact)
       nil
     end

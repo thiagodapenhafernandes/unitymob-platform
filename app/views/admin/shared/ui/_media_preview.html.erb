@@ -7,7 +7,8 @@
   ].compact.join(" ")
 %>
 
-<article class="<%= preview_classes %>">
+<%# Ao escolher um arquivo de imagem no corpo (ax_file_field), o quadro passa a mostrá-lo na hora (controller ax-media-preview). %>
+<article class="<%= preview_classes %>" data-controller="ax-media-preview" data-action="change->ax-media-preview#pick">
   <% if label.present? %>
     <div class="ax-media-preview__label">
       <i class="bi bi-<%= icon %>" aria-hidden="true"></i>

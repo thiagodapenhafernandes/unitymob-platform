@@ -36,7 +36,7 @@ RSpec.describe "Automation engine" do
         actions: [
           { "type" => "create_task", "title" => "Ligar", "due_in_hours" => 2 },
           { "type" => "add_note", "body" => "via automação" },
-          { "type" => "move_stage", "to" => "Concluido" }
+          { "type" => "move_stage", "to" => "Proposta" }
         ]
       )
 
@@ -44,7 +44,7 @@ RSpec.describe "Automation engine" do
         Automation::ActionRunner.run(rule, lead)
       }.to change(Task, :count).by(1).and change(AutomationRun, :count).by(1)
 
-      expect(lead.reload.status).to eq("Concluido")
+      expect(lead.reload.status).to eq("Proposta")
       expect(lead.tasks.first.title).to eq("Ligar")
       expect(lead.tasks.first.tenant).to eq(lead.tenant)
       expect(lead.activities.where(kind: "task_created").count).to eq(1)

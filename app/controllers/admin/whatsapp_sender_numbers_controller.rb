@@ -1,6 +1,6 @@
 class Admin::WhatsappSenderNumbersController < Admin::BaseController
   before_action :authorize_sender_number_management!
-  before_action :set_sender_number, only: [:update, :destroy, :test_connection]
+  before_action :set_sender_number, only: [:update, :destroy, :test_connection, :reactivate, :connect]
 
   def create
     @sender_number = current_tenant.whatsapp_sender_numbers.new(sender_number_params)
@@ -22,9 +22,19 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
     end
   end
 
+  # Reprocessa a conexão com a Meta (validação, inscrição do app na WABA e rota no gateway).
+  def connect
+    redirect_after_save("Conexão do número reprocessada.")
+  end
+
   def destroy
     @sender_number.update!(active: false, status: "disconnected", use_for_notifications: false)
     redirect_to sender_number_return_path(admin_whatsapp_campaigns_path), notice: "Número WhatsApp desativado."
+  end
+
+  def reactivate
+    @sender_number.update!(active: true, status: "pending")
+    redirect_to sender_number_return_path(admin_whatsapp_integration_path), notice: "Número WhatsApp reativado."
   end
 
   def test_connection
@@ -58,14 +68,16 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
   def redirect_after_save(message)
     flash_type = :notice
     if @sender_number.active?
-      result = Whatsapp::WebhookGatewayClient.new(
-        integration: @sender_number,
+      result = Whatsapp::SenderNumberConnector.call(
+        @sender_number,
         tenant: current_tenant,
         target_url: webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
-      ).register_route
-      unless result.ok? || result.skipped?
+      )
+      if result.warnings.any?
         flash_type = :alert
-        message += " Não foi possível registrar a rota no gateway de webhooks: #{result.error.presence || 'sem detalhes retornados'}."
+        message += " Atenção: #{result.warnings.join(' ')}"
+      elsif !result.skipped?
+        message += " Número validado na Meta, app inscrito na WABA e rota registrada."
       end
     end
     redirect_to sender_number_return_path(admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number.id)), flash_type => message

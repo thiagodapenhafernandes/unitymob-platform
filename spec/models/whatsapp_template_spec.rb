@@ -98,6 +98,19 @@ RSpec.describe WhatsappTemplate, type: :model do
       )
     end
 
+    it "preserva ate dez botoes de resposta rapida" do
+      template = described_class.new(
+        name: "menu_principal",
+        category: "UTILITY",
+        body: "Escolha uma opção.",
+        buttons: 12.times.index_with { |index| { "kind" => "quick_reply", "text" => "Opção #{index + 1}" } }
+      )
+
+      expect(template.clean_buttons.size).to eq(10)
+      expect(template.components_payload.last[:buttons].size).to eq(10)
+      expect(template.components_payload.last[:buttons].last).to eq(type: "QUICK_REPLY", text: "Opção 10")
+    end
+
     it "inclui nono dígito em botão de telefone antigo" do
       template = described_class.new(
         name: "convite_telefone_antigo",

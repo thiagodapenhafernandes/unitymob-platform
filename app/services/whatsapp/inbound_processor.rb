@@ -50,7 +50,8 @@ module Whatsapp
             end
 
             contacts = index_contacts(value["contacts"])
-            Array(value["messages"]).each { |msg| handle_inbound(msg, contacts) }
+            phone_number_id = value.dig("metadata", "phone_number_id").presence || value["phone_number_id"].presence
+            Array(value["messages"]).each { |msg| handle_inbound(msg, contacts, phone_number_id: phone_number_id) }
             Array(value["statuses"]).each { |st| handle_status(st) }
           ensure
             Current.tenant = nil
@@ -77,7 +78,15 @@ module Whatsapp
       end
     end
 
-    def handle_inbound(msg, contacts)
+    # Guarda qual número do negócio recebeu o contato para que as respostas (e templates) saiam por ele.
+    def remember_receiving_number(conversation, phone_number_id)
+      return if phone_number_id.blank?
+
+      sender = tenant.whatsapp_sender_numbers.find_by(phone_number_id: phone_number_id)
+      conversation.update_column(:whatsapp_sender_number_id, sender.id) if sender && conversation.whatsapp_sender_number_id != sender.id
+    end
+
+    def handle_inbound(msg, contacts, phone_number_id: nil)
       return if tenant.whatsapp_messages.exists?(wa_message_id: msg["id"]) # dedup pelo id da mensagem no tenant
       return if msg["type"].to_s == "system" # eventos de sistema (ex.: troca de número) não são mensagens
 
@@ -92,6 +101,7 @@ module Whatsapp
 
       conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name, entry_message: msg)
       extend_free_entry_point_window(conversation, msg)
+      remember_receiving_number(conversation, phone_number_id)
       type = msg["type"].to_s
 
       # Reação do cliente: marca a mensagem alvo (não cria bolha nova)
@@ -130,8 +140,12 @@ module Whatsapp
       conversation.reload
       conversation.touch_last_message!(message)
       Whatsapp::ThreadBroadcaster.message_created(message)
+      # Som no navegador do atendente responsável (evento efêmero, sem entrada no sino).
+      InAppNotification.broadcast_event!(conversation.alert_recipient_id,
+                                         event: "whatsapp_message", conversation_id: conversation.id)
 
       campaign_message = mark_campaign_reply!(conversation, message, raw_message: msg)
+      Whatsapp::ResponseFlowRunner.call(conversation: conversation, inbound_message: message, raw_message: msg, campaign_message: campaign_message, phone_number_id: phone_number_id)
       enqueue_entry_enrichment(conversation, message)
 
       if conversation.lead_id
@@ -258,7 +272,10 @@ module Whatsapp
       update_lead_notification_status(status, state)
 
       message = tenant.whatsapp_messages.find_by(wa_message_id: status["id"])
-      return unless message
+      unless message
+        schedule_external_message_marker(status) if state == "sent"
+        return
+      end
 
       backfill_conversation_phone(message.whatsapp_conversation, status["recipient_id"])
 
@@ -288,6 +305,15 @@ module Whatsapp
       when "failed"
         campaign_message.mark_failed!(attrs[:error_message].presence || "Falha informada pela Meta")
       end
+    end
+
+    # Envio por outro sistema no mesmo número: só chega o status, sem texto. O job confirma depois que não é nosso.
+    def schedule_external_message_marker(status)
+      return if status["id"].blank? || (status["recipient_id"].blank? && status["recipient_user_id"].blank?)
+
+      Whatsapp::ExternalMessageMarkerJob.set(wait: 2.minutes).perform_later(
+        tenant.id, status["id"], status["recipient_id"], status["recipient_user_id"], (status_timestamp(status) || Time.current).iso8601
+      )
     end
 
     def update_lead_notification_status(status, state)

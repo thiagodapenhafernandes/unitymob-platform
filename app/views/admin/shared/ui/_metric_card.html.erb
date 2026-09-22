@@ -1,6 +1,13 @@
-<article class="ax-metric-card <%= local_assigns[:class_name] %>" aria-label="<%= label %>">
+<article class="ax-metric-card <%= local_assigns[:class_name] %>" aria-label="<%= label %>"<%= raw %( data-tone="#{h(tone)}") if local_assigns[:tone].present? %>>
   <div class="ax-metric-card__header">
-    <span class="ax-metric-card__label"><%= label %></span>
+    <% if local_assigns[:icon].present? %>
+      <span class="ax-metric-card__lead">
+        <span class="ax-metric-card__icon" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span>
+        <span class="ax-metric-card__label"><%= label %></span>
+      </span>
+    <% else %>
+      <span class="ax-metric-card__label"><%= label %></span>
+    <% end %>
     <% if local_assigns[:badge].present? %>
       <%= badge %>
     <% end %>

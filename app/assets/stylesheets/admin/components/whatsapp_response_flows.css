@@ -1,0 +1,316 @@
+.whatsapp-response-flows {
+  display: grid;
+  gap: 24px;
+}
+
+.whatsapp-response-flows__template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.whatsapp-response-template,
+.whatsapp-response-button {
+  border: 1px solid var(--admin-border, #dbe3ef);
+  border-radius: 8px;
+  background: var(--admin-surface, #fff);
+}
+
+.whatsapp-response-template {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+}
+
+.whatsapp-response-template span,
+.whatsapp-response-template small,
+.whatsapp-response-button__summary span,
+.whatsapp-response-button__summary small {
+  display: block;
+  color: var(--admin-muted, #667085);
+  font-size: 12px;
+}
+
+.whatsapp-response-flow-buttons {
+  display: grid;
+  gap: 14px;
+}
+
+.whatsapp-response-button {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) 1fr;
+  overflow: hidden;
+}
+
+.whatsapp-response-button__summary {
+  padding: 16px;
+  border-right: 1px solid var(--admin-border, #dbe3ef);
+  background: var(--admin-subtle, #f8fafc);
+}
+
+.whatsapp-response-button__summary strong {
+  display: block;
+  margin: 6px 0;
+  color: var(--admin-text, #1f2937);
+  font-size: 18px;
+}
+
+.whatsapp-response-button__config {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.whatsapp-response-hours {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--admin-border, #dbe3ef);
+  border-radius: 8px;
+  background: var(--admin-surface, #fff);
+}
+
+.whatsapp-response-hours__days,
+.whatsapp-response-hours__range,
+.whatsapp-response-flows__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.whatsapp-response-hours__days label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-border, #dbe3ef);
+  border-radius: 6px;
+  background: var(--admin-subtle, #f8fafc);
+}
+
+.whatsapp-response-hours__range .ax-control {
+  max-width: 140px;
+}
+
+.whatsapp-response-hours[hidden] {
+  display: none;
+}
+
+.whatsapp-response-simulator {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--ax-guided-line, #dbe3ef);
+  border-radius: 14px;
+  background: var(--ax-guided-surface, #fff);
+  box-shadow: 0 10px 26px rgb(15 23 42 / .10);
+}
+
+.whatsapp-response-simulator__head {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--admin-border, #dbe3ef);
+}
+
+.whatsapp-response-simulator__head span {
+  color: var(--admin-muted, #667085);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.whatsapp-response-simulator__head strong {
+  font-size: 14px;
+}
+
+.whatsapp-response-simulator__template .ax-message-preview {
+  padding: 14px 14px 6px;
+  border-radius: 0;
+}
+
+.whatsapp-response-simulator__template .ax-message-preview__content p {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.whatsapp-response-simulator__template .ax-message-preview__button {
+  padding: 7px 10px;
+  font-size: 13px;
+  transition: background-color .15s ease, opacity .15s ease;
+}
+
+.whatsapp-response-simulator__template.has-active-button .ax-message-preview__button:not(.is-active) {
+  opacity: .5;
+}
+
+.whatsapp-response-simulator__template .ax-message-preview__button.is-active {
+  background: #d9fdd3;
+  color: #0b6b2c;
+  font-weight: 800;
+}
+
+.whatsapp-response-simulator__thread {
+  display: grid;
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px 14px 14px;
+  background: #efeae2;
+}
+
+.whatsapp-response-simulator__msg {
+  color: #1f2933; /* balões do WhatsApp são claros nos dois temas */
+  max-width: 86%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  box-shadow: 0 1px 1px #18232320;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.whatsapp-response-simulator__msg small {
+  display: block;
+  margin-bottom: 2px;
+  color: #667085;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.whatsapp-response-simulator__msg.is-out {
+  justify-self: end;
+  background: #d9fdd3;
+  border-top-right-radius: 0;
+}
+
+.whatsapp-response-simulator__msg.is-in {
+  justify-self: start;
+  background: #fff;
+  border-top-left-radius: 0;
+}
+
+.whatsapp-response-simulator__note {
+  justify-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff5c4;
+  color: #6b5b16;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.whatsapp-response-hours__day.ax-check {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Listagem de fluxos: linha de apoio sob o valor principal e números tabulares */
+.whatsapp-response-flows__name { display: block; color: var(--admin-text, #1f2937); font-weight: 700; text-decoration: none; }
+.whatsapp-response-flows__name:hover { color: var(--admin-primary, #365f8f); text-decoration: underline; text-underline-offset: 2px; }
+.whatsapp-response-flows__sub { display: block; margin-top: 2px; color: var(--admin-muted, #667085); font-size: 11.5px; line-height: 1.35; }
+.whatsapp-response-flows__sub--strong { color: var(--admin-text, #1f2937); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.whatsapp-response-flows__num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.whatsapp-response-flows__actions { justify-content: flex-end; }
+
+/* Gestão de atendimentos */
+.whatsapp-attendances__filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.whatsapp-attendances__owner-filter { margin-left: auto; min-width: 200px; }
+.whatsapp-attendances__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.whatsapp-attendances__transfer { display: inline-flex; gap: 4px; }
+.whatsapp-attendances__transfer .ax-control { min-width: 150px; }
+td.is-overdue { color: var(--ax-danger-text); font-weight: 700; }
+.whatsapp-attendances__person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.whatsapp-attendances__person--inline { gap: 8px; color: var(--admin-ink); font-weight: 600; }
+.whatsapp-attendances__person .ax-table__record-name { line-height: 1.25; }
+.whatsapp-attendances__subject { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--admin-primary) 11%, var(--admin-surface, #fff)); color: color-mix(in srgb, var(--admin-primary) 85%, var(--admin-ink)); font-size: 12px; font-weight: 700; }
+.whatsapp-attendances__none { color: var(--admin-muted, #98a2b3); font-size: 12px; }
+.whatsapp-attendances__time { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 8px; background: var(--ab-panel-soft, #f3f5f8); color: var(--admin-ink); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.whatsapp-attendances__time .bi { color: var(--admin-muted, #98a2b3); font-size: 12px; }
+.whatsapp-attendances__time--late { background: color-mix(in srgb, var(--ax-accent-red, #d64550) 12%, var(--admin-surface, #fff)); color: var(--ax-danger-text, #b42318); }
+.whatsapp-attendances__time--late .bi { color: currentColor; }
+
+/* ---------- Construtor guiado do fluxo de resposta (reaproveita .wtb-* de whatsapp_template_builder.css) ---------- */
+.ax-guided-layout.ax-guided-layout--single { grid-template-columns: minmax(0, 1fr); }
+.ax-guided .ax-guided-hint .bi { margin-right: 3px; }
+
+.wtf-map { display: grid; gap: 12px; }
+.wtf-map__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.wtf-map__head strong { font-size: 14px; color: var(--ax-guided-ink); }
+.wtf-map__head p { margin: 2px 0 0; max-width: 62ch; font-size: 12.5px; color: var(--ax-guided-muted); }
+.wtf-rows { display: grid; gap: 10px; }
+
+.wtf-row { --act: var(--ax-accent-slate); position: relative; overflow: hidden; border: 1px solid var(--ax-guided-line); border-radius: 12px; background: var(--ax-guided-surface); transition: border-color 160ms, box-shadow 200ms; }
+.wtf-row[data-response-action="send_message"] { --act: var(--ax-accent-green); }
+.wtf-row[data-response-action="send_url"] { --act: var(--ax-accent-blue); }
+.wtf-row[data-response-action="create_task"] { --act: var(--ax-accent-amber); }
+.wtf-row[data-response-action="distribute_lead"] { --act: var(--ax-accent-violet); }
+.wtf-row[data-response-action="send_to_user"] { --act: var(--ax-accent-pink); }
+.wtf-row[data-response-action="run_automation"] { --act: var(--ax-accent-teal); }
+.wtf-row.is-active { border-color: color-mix(in srgb, var(--act) 60%, var(--ax-guided-line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--act) 15%, transparent); }
+
+.wtf-row__head { display: grid; grid-template-columns: 30px minmax(150px, .8fr) auto minmax(0, 1fr) auto 16px; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background-color 160ms; }
+.wtf-row__head:hover { background: color-mix(in srgb, var(--act) 5%, transparent); }
+.wtf-row__head:focus-visible { outline: 3px solid color-mix(in srgb, var(--act) 40%, transparent); outline-offset: -3px; border-radius: 12px; }
+.wtf-row__num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--act); color: #fff; font-size: 13px; font-weight: 800; transition: background-color 200ms; }
+.wtf-row__btn { display: grid; min-width: 0; }
+.wtf-row__btn em { font-size: 10px; font-style: normal; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ax-guided-muted); }
+.wtf-row__btn strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ax-guided-ink); }
+.wtf-row__chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 99px; background: color-mix(in srgb, var(--act) 13%, var(--ax-guided-surface)); color: color-mix(in srgb, var(--act) 80%, var(--ax-guided-ink)); font-size: 12.5px; font-weight: 700; white-space: nowrap; transition: background-color 200ms, color 200ms; }
+.wtf-row__summary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ax-guided-muted); }
+.wtf-row__state { padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; background: color-mix(in srgb, var(--ax-guided-ok) 14%, var(--ax-guided-surface)); color: var(--ax-guided-ok); white-space: nowrap; }
+.wtf-row__state[data-state="todo"] { background: var(--ax-warning-surface); color: var(--ax-warning-text); }
+.wtf-row__chevron { font-size: 12px; color: var(--ax-guided-muted); transition: transform 220ms var(--ax-guided-ease); }
+.wtf-row.is-collapsed .wtf-row__chevron { transform: rotate(-90deg); }
+
+.wtf-row__panel { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 260ms var(--ax-guided-ease); }
+.wtf-row__inner { min-height: 0; overflow: hidden; }
+.wtf-row.is-collapsed .wtf-row__panel { grid-template-rows: 0fr; }
+.wtf-row__body { display: grid; gap: 14px; padding: 4px 16px 16px 58px; border-top: 1px solid var(--ax-guided-line); padding-top: 14px; }
+
+.wtf-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 8px; }
+.wtf-choice { --c: var(--ax-accent-slate); display: grid; align-content: start; gap: 2px; padding: 10px 11px; border: 1.5px solid var(--ax-guided-line); border-radius: 10px; background: var(--ax-guided-surface); text-align: left; cursor: pointer; transition: transform 140ms var(--ax-guided-ease), border-color 160ms, background-color 160ms, box-shadow 200ms; }
+.wtf-choice[data-value="send_message"] { --c: var(--ax-accent-green); }
+.wtf-choice[data-value="send_url"] { --c: var(--ax-accent-blue); }
+.wtf-choice[data-value="create_task"] { --c: var(--ax-accent-amber); }
+.wtf-choice[data-value="distribute_lead"] { --c: var(--ax-accent-violet); }
+.wtf-choice[data-value="send_to_user"] { --c: var(--ax-accent-pink); }
+.wtf-choice[data-value="run_automation"] { --c: var(--ax-accent-teal); }
+.wtf-choice:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--c) 55%, var(--ax-guided-line)); }
+.wtf-choice:focus-visible { outline: 3px solid color-mix(in srgb, var(--c) 40%, transparent); outline-offset: 2px; }
+.wtf-choice[aria-checked="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--ax-guided-surface)); box-shadow: 0 4px 14px color-mix(in srgb, var(--c) 20%, transparent); }
+.wtf-choice__icon { display: grid; place-items: center; width: 28px; height: 28px; margin-bottom: 4px; border-radius: 8px; background: color-mix(in srgb, var(--c) 14%, var(--ax-guided-surface)); color: var(--c); font-size: 14px; transition: background-color 200ms, color 200ms, transform 240ms var(--ax-guided-ease); }
+.wtf-choice[aria-checked="true"] .wtf-choice__icon { background: var(--c); color: #fff; transform: scale(1.06) rotate(-4deg); }
+.wtf-choice strong { font-size: 12.5px; color: var(--ax-guided-ink); }
+.wtf-choice small { font-size: 11.5px; line-height: 1.35; color: var(--ax-guided-muted); }
+.wtf-row__select { display: none; }
+
+.wtf-config { display: grid; gap: 12px; padding: 14px; border: 1px dashed color-mix(in srgb, var(--act) 45%, var(--ax-guided-line)); border-radius: 10px; background: color-mix(in srgb, var(--act) 4%, var(--ax-guided-surface)); }
+.wtf-config__hint { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ax-guided-ink); }
+.wtf-config__hint .bi { flex: none; margin-top: 1px; color: var(--act); }
+.wtf-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.wtf-fields:empty { display: none; }
+.wtf-row .ax-control { min-height: 36px; }
+.wtf-row textarea.ax-control { min-height: 62px; font: inherit; line-height: 1.45; }
+.wtf-hours { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--ax-guided-line); border-radius: 10px; background: var(--ax-guided-surface); }
+.wtf-hours .whatsapp-response-hours__range { align-items: center; color: var(--ax-guided-muted); font-size: 12.5px; }
+
+@media (max-width: 900px) {
+  .wtf-row__head { grid-template-columns: 30px minmax(0, 1fr) 16px; grid-template-areas: "num btn chev" "chip chip chip" "sum sum sum" "state state state"; row-gap: 6px; }
+  .wtf-row__num { grid-area: num; }
+  .wtf-row__btn { grid-area: btn; }
+  .wtf-row__chevron { grid-area: chev; }
+  .wtf-row__chip { grid-area: chip; justify-self: start; }
+  .wtf-row__summary { grid-area: sum; }
+  .wtf-row__state { grid-area: state; justify-self: start; }
+  .wtf-row__body { padding-left: 16px; }
+  .wtf-fields { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .wtf-row__panel, .wtf-row__chevron { transition: none; } }
+.wtf-hours__detail { display: grid; gap: 12px; }

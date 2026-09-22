@@ -17,7 +17,7 @@ RSpec.describe "Admin notification workspaces", type: :request do
     expect(response.body).to include("ax-workspace-heading", "Meu SMTP", "Configurações · Notificações")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('dl.ax-status-list[aria-label="Diagnóstico do canal de e-mail"]')).to be_present
-    expect(document.at_css(".ax-form-actions--static")).to be_present
+    expect(document.at_css(".ax-studio-savebar")).to be_present
   end
 
   it "nao exibe a configuracao SMTP de outra conta" do

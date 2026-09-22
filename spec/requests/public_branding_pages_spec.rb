@@ -376,4 +376,44 @@ RSpec.describe "Public branding pages", type: :request do
     expect(response.body).to include("Curadoria manual", "Cobertura exclusiva do tenant atual")
     expect(response.body).not_to include("Cobertura exclusiva de outro tenant")
   end
+
+  it "renderiza seção pública de vídeos em destaque com modal e chips por cidade" do
+    Rails.cache.clear
+    tenant = Tenant.default
+    tenant.home_sections.destroy_all
+    create(
+      :habitation,
+      tenant:,
+      codigo: "VIDEO-1",
+      titulo_anuncio: "Apartamento com vídeo",
+      cidade: "Balneário Camboriú",
+      videos: ["https://www.youtube.com/watch?v=abc123"]
+    )
+    create(
+      :habitation,
+      tenant:,
+      codigo: "VIDEO-2",
+      titulo_anuncio: "Apartamento com vídeo sem acento",
+      cidade: "Balneario Camboriu",
+      videos: ["https://vimeo.com/123456789"]
+    )
+    tenant.home_sections.create!(
+      section_type: :featured_videos,
+      title: "Vídeos em destaque",
+      subtitle: "Conheça os imóveis antes de visitar.",
+      active: true
+    )
+
+    get root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Vídeos em destaque", "Conheça os imóveis antes de visitar.")
+    expect(response.body).to include("home-video-section", "home-video-card", "home-video-modal")
+    expect(response.body).to include("home-video-modal__progress", "data-poster=")
+    expect(response.body).to include("home-video-section__chips", "Todas as cidades")
+    expect(response.body).to include("Balneário Camboriú", "youtube.com/embed/abc123")
+    expect(response.body).to include("Ver imóvel")
+    chip_labels = Nokogiri::HTML(response.body).css(".home-video-section__chip").map { |chip| chip.text.squish }
+    expect(chip_labels).to eq(["Todas as cidades", "Balneário Camboriú"])
+  end
 end
