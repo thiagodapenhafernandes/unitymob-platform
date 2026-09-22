@@ -7,7 +7,7 @@
   choices = [["Imóveis", "properties"], ["Vídeos", "videos"], ["Blog", "blog"], ["Chamada para contato", "cta"]]
   choices << [@home_section.section_type_label, "custom"] if kind == "custom"
 %>
-<div class="ax-studio ax-studio--flat"
+<div class="ax-studio ax-studio--flat home-section-studio"
      data-controller="home-section-preview"
      data-home-section-preview-preview-url-value="<%= preview_admin_home_sections_path %>"
      data-action="input->home-section-preview#schedule change->home-section-preview#schedule">
@@ -91,8 +91,8 @@
     </div>
 
     <div data-conditional-reveal-target="panel" data-conditional-reveal-values="videos" <%= "hidden" unless kind == "videos" %>>
-      <%= ax_studio_group(title: "Vitrine de vídeos", icon: "video",
-                          subtitle: "Selecione imóveis que já tenham vídeo. YouTube, Vimeo e links diretos de MP4 publicados no Spaces aparecem no player da Home.") do %>
+      <%= ax_studio_group(title: "Vitrine de vídeos", icon: "camera-video",
+                          subtitle: "Misture imóveis com vídeo, URLs externas e vídeos importados para o Spaces da conta.") do %>
         <div class="tw-mb-3">
           <%= label_tag "home_section_video_property_ids", "Imóveis com vídeo", class: "ax-label" %>
           <% if (@property_options || []).blank? %>
@@ -115,18 +115,27 @@
           </small>
         </div>
 
-        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-3">
-          <div class="ax-panel ax-panel--soft tw-p-3">
-            <strong class="tw-block tw-text-sm tw-text-ink">Fontes aceitas</strong>
-            <span class="tw-text-xs tw-text-ink-muted">YouTube, Vimeo e arquivo de vídeo direto.</span>
+        <div class="hs-video-editor" data-controller="nested-form" data-nested-form-wrapper-selector-value=".nested-fields">
+          <div class="hs-video-editor__head">
+            <div>
+              <strong>Vídeos manuais</strong>
+              <span>Use YouTube, Instagram, Vimeo, MP4 direto ou faça upload para o Spaces.</span>
+            </div>
+            <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="nested-form#add">
+              <i class="bi bi-plus-lg ax-ico" aria-hidden="true"></i> Adicionar vídeo
+            </button>
           </div>
-          <div class="ax-panel ax-panel--soft tw-p-3">
-            <strong class="tw-block tw-text-sm tw-text-ink">Upload/importado</strong>
-            <span class="tw-text-xs tw-text-ink-muted">Use o link final do arquivo publicado no Spaces da conta.</span>
-          </div>
-          <div class="ax-panel ax-panel--soft tw-p-3">
-            <strong class="tw-block tw-text-sm tw-text-ink">Filtros</strong>
-            <span class="tw-text-xs tw-text-ink-muted">A seção já exige vídeo; cidade vira chip visual na vitrine.</span>
+
+          <template data-nested-form-target="template">
+            <%= f.fields_for :home_section_items, HomeSectionItem.new(source_type: "external", active: true), child_index: "NEW_RECORD" do |item_form| %>
+              <%= render "admin/home_sections/video_item_fields", f: item_form %>
+            <% end %>
+          </template>
+
+          <div class="hs-video-editor__rows" data-nested-form-target="container">
+            <%= f.fields_for :home_section_items, @home_section.home_section_items.video_items.ordered do |item_form| %>
+              <%= render "admin/home_sections/video_item_fields", f: item_form %>
+            <% end %>
           </div>
         </div>
       <% end %>

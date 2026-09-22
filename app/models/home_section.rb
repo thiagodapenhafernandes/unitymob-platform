@@ -116,6 +116,7 @@ class HomeSection < ApplicationRecord
 
   # Associations
   has_many :home_section_items, dependent: :destroy
+  accepts_nested_attributes_for :home_section_items, allow_destroy: true
   
   # Enum
   enum section_type: {

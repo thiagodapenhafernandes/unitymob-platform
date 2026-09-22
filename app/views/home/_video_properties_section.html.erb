@@ -1,5 +1,24 @@
 <%
-  video_items = properties.filter_map do |property|
+  manual_video_items = section.home_section_items.active.video_items.ordered.filter_map do |item|
+    video = home_section_item_video_payload(item)
+    next if video.blank?
+
+    location = item.location.presence || "Vídeo em destaque"
+    city_key = I18n.transliterate(location.to_s).downcase.squish
+    {
+      video: video,
+      poster: video[:poster_url],
+      path: nil,
+      city: location,
+      city_key: city_key,
+      location: location,
+      title: item.title,
+      price: item.price_label.presence || "Preço sob consulta",
+      badges: Array(item.badges).first(2)
+    }
+  end
+
+  property_video_items = properties.filter_map do |property|
     video = home_property_video_payload(property)
     next if video.blank?
 
@@ -15,9 +34,11 @@
       city_key: city_key,
       location: property.public_location_label.presence || property.cidade.presence,
       title: property.display_title,
-      price: home_video_price_label(property)
+      price: home_video_price_label(property),
+      badges: property.display_badges.first(2).map { |badge| badge[:text] }
     }
   end
+  video_items = manual_video_items + property_video_items
   cities = video_items.each_with_object({}) { |item, options| options[item[:city_key]] ||= item[:city] }
 %>
 
@@ -60,7 +81,6 @@
 
       <div class="home-video-section__rail" aria-label="Vídeos de imóveis em destaque">
         <% video_items.each_with_index do |item, index| %>
-          <% property = item[:property] %>
           <% video = item[:video] %>
           <article class="home-video-card"
                    data-home-video-showcase-target="card"
@@ -93,8 +113,8 @@
 
               <span class="home-video-card__shade" aria-hidden="true"></span>
               <span class="home-video-card__badges" aria-hidden="true">
-                <% property.display_badges.first(2).each do |badge| %>
-                  <span><%= badge[:text] %></span>
+                <% item[:badges].each do |badge| %>
+                  <span><%= badge %></span>
                 <% end %>
               </span>
               <span class="home-video-card__play" aria-hidden="true"><i class="bi bi-play-fill"></i></span>

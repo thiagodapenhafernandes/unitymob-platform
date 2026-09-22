@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 // (IntersectionObserver + fetch JSON + append de HTML), mas com scroll de
 // página inteira (root: null) em vez de coluna própria.
 export default class extends Controller {
-  static targets = ["loader"]
+  static targets = ["list", "loader"]
   static values = { url: String }
 
   connect() {
@@ -59,7 +59,11 @@ export default class extends Controller {
       if (data.html) {
         const template = document.createElement("template")
         template.innerHTML = data.html.trim()
-        loader.before(template.content)
+        if (this.hasListTarget) {
+          this.listTarget.append(template.content)
+        } else {
+          loader.before(template.content)
+        }
       }
 
       const nextOffset = Number.parseInt(data.next_offset, 10)

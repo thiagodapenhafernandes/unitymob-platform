@@ -44,7 +44,7 @@ class Admin::HomeSectionsController < Admin::BaseController
   # GET de propósito: é leitura pura e, sendo disparada em segundo plano a cada digitação, não pode cair no
   # tratamento de CSRF do admin (que faz reset_session e derrubaria login/impersonação).
   def preview
-    section = current_tenant.home_sections.new(home_section_params)
+    section = current_tenant.home_sections.new(home_section_params_for_preview)
     render json: HomeSections::Preview.call(section, tenant: current_tenant)
   end
 
@@ -62,16 +62,43 @@ class Admin::HomeSectionsController < Admin::BaseController
   end
   
   private
-  
+
   def set_home_section
     @home_section = current_tenant.home_sections.find(params[:id])
   end
-  
+
+  # A prévia sempre monta uma seção nova e descartável (não sabe nem qual está sendo editada:
+  # é uma rota de coleção, sem :id). Se o formulário mandar o id de um item já persistido
+  # (editando uma seção existente), o Rails tenta achá-lo na associação do objeto novo, que
+  # está vazia, e estoura RecordNotFound. A prévia só precisa dos valores, não da identidade.
+  def home_section_params_for_preview
+    attrs = home_section_params
+    items = attrs[:home_section_items_attributes]
+    return attrs if items.blank?
+
+    attrs[:home_section_items_attributes] = items.transform_values { |item| item.except(:id, "id") }
+    attrs
+  end
+
   def home_section_params
     permitted = params.require(:home_section).permit(
       :title,
       :subtitle,
       :active,
+      home_section_items_attributes: [
+        :id,
+        :title,
+        :description,
+        :active,
+        :display_order,
+        :source_type,
+        :source_url,
+        :location,
+        :price_label,
+        :badges_text,
+        :video_file,
+        :_destroy
+      ],
       property_filters: [
         *HomeSection::PROPERTY_FILTER_OPTIONS.keys,
         { selected_property_ids: [] }

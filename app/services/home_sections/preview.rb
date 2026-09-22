@@ -2,7 +2,7 @@ module HomeSections
   # O que a Home mostraria para uma seção (salva ou não): dados enxutos para a prévia ao vivo do formulário.
   # Reusa HomeSections::Showcase, a mesma regra da home pública.
   class Preview
-    ITEMS = 4
+    ITEMS = 3
 
     def self.call(section, tenant:)
       new(section, tenant).call
@@ -41,15 +41,33 @@ module HomeSections
 
       {
         kind: section.featured_videos? ? "property_videos" : (development ? "developments" : "properties"),
-        count: ids.size,
+        count: ids.size + manual_video_items.size,
         limit: development ? Showcase::DEVELOPMENT_LIMIT : showcase.limit,
         manual: manual,
         matching: matching,
         cta_label: development ? "Ver Todos os Empreendimentos" : section.public_property_cta_label,
         corporate: section.corporate_showcase? && section.selected_property_ids.empty? ? tenant.habitations.active.home_corporate.limit(3).count : nil,
-        items: items(ids.first(ITEMS)),
-        warning: ids.empty? ? "Nenhum imóvel atende a esses critérios: a seção não aparece na Home." : nil
+        items: (manual_video_items + items(ids.first(ITEMS))).first(ITEMS),
+        warning: ids.empty? && manual_video_items.empty? ? "Nenhum imóvel atende a esses critérios: a seção não aparece na Home." : nil
       }
+    end
+
+    def manual_video_items
+      return [] unless section.featured_videos?
+
+      section.home_section_items.select(&:video_item?).select { |item| item.active != false }.filter_map do |item|
+        next if item.title.blank?
+        next if item.source_type == "external" && item.source_url.blank?
+        next if item.source_type == "upload" && !item.video_file.attached?
+
+        {
+          title: item.title,
+          price: item.price_label.presence || "Preço sob consulta",
+          location: item.location.presence,
+          badges: Array(item.badges).first(2),
+          video: true
+        }
+      end
     end
 
     def blog

@@ -1082,3 +1082,17 @@
     font-size: 12px;
   }
 }
+
+/* Vídeo do imóvel (com_video) pareado com o Tour Virtual: mesmo par visual, cada
+   um com sua própria label — deixa claro que são campos diferentes e lado a lado. */
+.habitation-form-ui .ax-media-link-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .habitation-form-ui .ax-media-link-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

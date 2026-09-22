@@ -1752,7 +1752,8 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(json["total"]).to eq(12)
       expect(json["has_more"]).to eq(false)
       expect(json["next_offset"]).to eq(12)
-      expect(json["html"]).to include("ax-record-list", "Lead Desktop")
+      expect(json["html"]).to include("ax-record-list__row", "Lead Desktop")
+      expect(json["html"]).not_to include("lead-list ax-record-list")
     end
   end
 

@@ -1,0 +1,112 @@
+<%
+  item = f.object
+  source_type = item.source_type.presence || "external"
+%>
+<div class="nested-fields hs-video-item"
+     data-new-record="<%= item.new_record? %>"
+     data-controller="home-section-video-item">
+  <%= f.hidden_field :id if item.persisted? %>
+  <%= f.hidden_field :_destroy, value: "0" %>
+  <%= f.hidden_field :display_order, value: item.display_order.presence || 1 %>
+
+  <div class="hs-video-item__head">
+    <strong>Vídeo <span data-position-label></span></strong>
+    <div class="hs-video-item__actions">
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="nested-form#moveUp" aria-label="Subir vídeo"><i class="bi bi-chevron-up"></i></button>
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="nested-form#moveDown" aria-label="Descer vídeo"><i class="bi bi-chevron-down"></i></button>
+      <button type="button" class="ax-btn ax-btn--danger ax-btn--sm" data-action="nested-form#remove" aria-label="Remover vídeo"><i class="bi bi-trash"></i></button>
+    </div>
+  </div>
+
+  <div class="hs-video-item__body">
+    <div class="hs-video-item__preview" data-home-section-video-item-target="preview">
+      <div class="hs-video-item__media" data-home-section-video-item-target="media">
+        <i class="bi bi-play-fill" aria-hidden="true"></i>
+      </div>
+      <div class="hs-video-item__caption">
+        <small class="hs-video-item__source" data-home-section-video-item-target="provider">Cole uma URL pública do vídeo.</small>
+        <div class="hs-video-item__chips" data-home-section-video-item-target="badges"></div>
+        <strong data-home-section-video-item-target="title"><%= item.title.presence || "Prévia do vídeo" %></strong>
+        <span data-home-section-video-item-target="location"><%= item.location.presence || "Localidade" %></span>
+        <b data-home-section-video-item-target="price"><%= item.price_label.presence || "Valor" %></b>
+      </div>
+    </div>
+
+    <div class="hs-video-item__grid">
+    <div class="hs-video-item__field hs-video-item__field--sm">
+      <%= f.label :source_type, "Origem", class: "ax-label" %>
+      <%= f.select :source_type,
+            options_for_select([["URL externa", "external"], ["Upload Spaces", "upload"]], source_type),
+            {},
+            class: "ax-control",
+            data: { home_section_video_item_target: "source", action: "change->home-section-video-item#sync" } %>
+    </div>
+
+    <div class="hs-video-item__field hs-video-item__field--lg" data-home-section-video-item-target="externalField">
+      <%= f.label :source_url, "URL do vídeo", class: "ax-label" %>
+      <%
+        # text_field, não url_field: o ID puro do YouTube (ex.: 6dqN_qEWp1Q) é aceito em todo o resto
+        # do fluxo (busca de imóveis, prévia, player público), mas a validação nativa de type="url"
+        # exige esquema (http://...) e bloquearia esse valor antes de chegar no servidor.
+      %>
+      <%= f.text_field :source_url,
+            class: "ax-control",
+            placeholder: "YouTube, Instagram, Vimeo ou MP4 direto",
+            autocomplete: "url",
+            data: { home_section_video_item_target: "url", action: "input->home-section-video-item#sync" } %>
+      <small class="tw-text-ink-muted">YouTube, Instagram, Vimeo ou arquivo MP4 público. Para YouTube, também aceita só o ID do vídeo (ex.: 6dqN_qEWp1Q).</small>
+    </div>
+
+    <div class="hs-video-item__field hs-video-item__field--lg" data-home-section-video-item-target="uploadField">
+      <%= f.label :video_file, "Upload", class: "ax-label" %>
+      <%= f.file_field :video_file,
+            class: "ax-control",
+            accept: "video/mp4,video/quicktime,video/webm,video/ogg,video/3gpp",
+            direct_upload: true,
+            data: { home_section_video_item_target: "file", action: "change->home-section-video-item#sync" } %>
+      <% if item.video_file.attached? %>
+        <small class="tw-text-ink-muted">Arquivo atual: <%= item.video_file.filename %></small>
+      <% end %>
+    </div>
+
+    <div class="hs-video-item__field">
+      <%= f.label :title, "Título", class: "ax-label" %>
+      <%= f.text_field :title,
+            class: "ax-control",
+            placeholder: "Apartamento frente mar",
+            data: { home_section_video_item_target: "titleInput", action: "input->home-section-video-item#sync" } %>
+    </div>
+
+    <div class="hs-video-item__field">
+      <%= f.label :location, "Localidade", class: "ax-label" %>
+      <%= f.text_field :location,
+            class: "ax-control",
+            placeholder: "Balneário Camboriú · Barra Sul",
+            data: { home_section_video_item_target: "locationInput", action: "input->home-section-video-item#sync" } %>
+    </div>
+
+    <div class="hs-video-item__field hs-video-item__field--sm">
+      <%= f.label :price_label, "Valor", class: "ax-label" %>
+      <%= f.text_field :price_label,
+            class: "ax-control",
+            placeholder: "R$ 13.400.000",
+            data: { home_section_video_item_target: "priceInput", action: "input->home-section-video-item#sync" } %>
+    </div>
+
+    <div class="hs-video-item__field">
+      <%= f.label :badges_text, "Badges", class: "ax-label" %>
+      <%= f.text_field :badges_text,
+            class: "ax-control",
+            placeholder: "Pronto para morar, Vista mar",
+            data: { home_section_video_item_target: "badgesInput", action: "input->home-section-video-item#sync" } %>
+    </div>
+
+    <div class="hs-video-item__field hs-video-item__field--toggle">
+      <%= f.label :active, class: "ax-check" do %>
+        <%= f.check_box :active, checked: item.active != false %>
+        <span>Exibir na vitrine</span>
+      <% end %>
+    </div>
+    </div>
+  </div>
+</div>
