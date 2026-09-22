@@ -327,7 +327,7 @@ class Admin::LeadsController < Admin::BaseController
 
     property_ids = leads.filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
-    html = leads.any? ? render_to_string(partial: "admin/leads/table", formats: [:html], locals: { leads: leads }) : ""
+    html = leads.any? ? render_to_string(partial: "admin/leads/table_rows", formats: [:html], locals: { leads: leads }) : ""
     next_offset = offset + leads.size
 
     render json: {

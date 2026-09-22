@@ -1,0 +1,43 @@
+<% meta_form_names = lead_table_meta_form_names(leads, tenant: current_tenant) %>
+<% origin_campaign_names = lead_origin_campaign_names(leads, tenant: current_tenant) %>
+<% origin_site_events = lead_origin_site_events(leads, tenant: current_tenant) %>
+<% interest_properties = lead_table_interest_properties(leads, tenant: current_tenant) %>
+<% leads.each do |lead| %>
+  <%
+    lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
+    property = @properties_by_id[lead.property_id] || interest_properties[lead.id]
+    display_name = lead.display_name.presence || lead.name
+    phone_href = Phones::Normalizer.tel_href(lead.display_phone)
+    origin = lead_origin_column(lead, tenant: current_tenant, site_event: origin_site_events[lead.id], form_name: meta_form_names[lead.id], campaign_name: origin_campaign_names[lead.id])
+    labels = lead.preloaded_labels_for(current_admin_user)
+  %>
+  <article class="ax-record-list__row" role="row" id="lead_<%= lead.id %>">
+    <div class="ax-record-list__cell" role="cell">
+      <div class="ax-record-identity">
+        <span class="ax-record-avatar" aria-hidden="true"><%= display_name.to_s.first.to_s.upcase.presence || "L" %></span>
+        <div class="ax-record-identity__copy">
+          <%= link_to display_name, admin_lead_path(lead, return_to: lead_return_to_path), class: "ax-record-name", title: display_name %>
+          <div class="ax-record-contact"><span><%= format_phone(lead.display_phone) %></span><%= ax_badge(lead.status.presence || Lead.default_status, tone: lead_table_status_tone(lead.status)) %></div>
+          <div class="ax-record-contact-details"><span class="ax-record-email" title="<%= lead.display_email %>"><%= lead.display_email %></span>
+          <%= render "admin/lead_labels/chips", lead: lead, labels: labels if labels.any? %></div>
+        </div>
+      </div>
+    </div>
+    <div class="ax-record-list__cell" role="cell">
+      <% if property %>
+        <% property_path = admin_habitation_path_with_query(admin_habitation_path(property.id), admin_habitation_flat_return_params(lead_return_to_path)) %>
+        <%= link_to property_path, class: "ax-record-reference" do %><%= ax_icon("house-door") %><strong>#<%= property.codigo.to_s.delete_prefix("#") %></strong><% end %>
+        <%= link_to property.display_title, property_path, class: "ax-record-title", title: property.display_title %>
+        <div class="ax-record-badges"><% lead_table_property_badges(lead, property).each do |label, tone| %><%= ax_badge(label, tone: tone) %><% end %></div>
+      <% else %>
+        <span class="ax-record-title"><%= ax_icon(lead.property_id.present? ? "exclamation-circle" : "megaphone") %> <%= lead.property_id.present? ? "Imóvel indisponível" : "Contato geral" %></span>
+      <% end %>
+    </div>
+    <div class="ax-record-list__cell" role="cell">
+      <%= render "admin/shared/ui/lead_origin", origin: origin %>
+    </div>
+    <div class="ax-record-list__cell" role="cell"><span class="ax-record-owner"><%= ax_icon("person-badge") %> <%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span></div>
+    <div class="ax-record-list__cell ax-record-date" role="cell"><%= l(lead.created_at, format: "%d/%m/%Y") %><span class="ax-record-sub"><%= l(lead.created_at, format: "%H:%M") %></span></div>
+    <div class="ax-record-list__cell" role="cell"><%= render "admin/leads/table_actions", lead: lead, lead_return_to_path: lead_return_to_path, phone_href: phone_href %></div>
+  </article>
+<% end %>

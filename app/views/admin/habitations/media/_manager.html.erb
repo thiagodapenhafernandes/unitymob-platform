@@ -244,16 +244,26 @@
 
 <div class="ax-form-section ax-form-section--media <%= 'ax-media-links-section--compact' if compact_mode %>">
   <div class="ax-form-section__body">
+    <% videos = Array(f.object.videos).compact_blank %>
     <% links_content = capture do %>
-      <%= ax_dynamic_list_field(
-            label: "Vídeos e tour virtual",
-            values: f.object.videos || [],
-            input_name: "habitation[videos][]",
-            placeholder: "https://..."
-          ) %>
-      <div class="ax-media-link-field">
+      <div class="ax-media-link-pair">
+        <%= ax_standalone_field(
+              name: "habitation[videos][]",
+              id: "habitation_video_primary",
+              label: "Vídeo (YouTube, Vimeo ou MP4)",
+              value: videos.first,
+              placeholder: "https://...",
+              hint: "Esse link aparece na seção de vídeos da Home do site público. Para YouTube, também aceita só o ID do vídeo (ex.: 6dqN_qEWp1Q)."
+            ) %>
         <%= ax_text_field(form: f, method: :tour_virtual, label: "Link Tour Virtual (360)", placeholder: "https://...") %>
       </div>
+      <%= ax_dynamic_list_field(
+            label: "Outros vídeos",
+            values: videos.drop(1),
+            input_name: "habitation[videos][]",
+            placeholder: "https://...",
+            add_label: "Adicionar outro vídeo"
+          ) %>
       <div class="ax-media-link-field">
         <%= ax_text_field(form: f, method: :podcast_url, label: "Link do Podcast", placeholder: "https://...") %>
       </div>

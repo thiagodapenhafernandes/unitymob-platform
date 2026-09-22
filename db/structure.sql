@@ -1,4 +1,4 @@
-\restrict lQw5cKksbNKt1U5o4WcVFMwPZGrTYLwWC6dOzctEHxNhRQTxQA9vVMx5lrYDqal
+\restrict gxOvVi0IjsBe4cotJH2dq5kIGj017aSz2pbddZKBeBDodC9CB70YmenjckBZ2YI
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -3583,7 +3583,12 @@ CREATE TABLE public.home_section_items (
     display_order integer,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    source_type character varying,
+    source_url text,
+    location character varying,
+    price_label character varying,
+    badges jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -19605,11 +19610,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lQw5cKksbNKt1U5o4WcVFMwPZGrTYLwWC6dOzctEHxNhRQTxQA9vVMx5lrYDqal
+\unrestrict gxOvVi0IjsBe4cotJH2dq5kIGj017aSz2pbddZKBeBDodC9CB70YmenjckBZ2YI
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260922110000'),
 ('20260920100000'),
 ('20260919110000'),
 ('20260919100100'),

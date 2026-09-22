@@ -57,7 +57,7 @@ export default class extends Controller {
         positionLabel.textContent = index + 1
       }
 
-      const positionInput = field.querySelector("input[name*='position']")
+      const positionInput = field.querySelector("input[name*='position'], input[name*='display_order']")
       if (positionInput) {
         positionInput.value = index + 1
       }

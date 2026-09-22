@@ -24,12 +24,26 @@ RSpec.describe HomeVideosHelper, type: :helper do
       expect(payload[:embed_url]).to eq("https://player.vimeo.com/video/123456?autoplay=1")
     end
 
+    it "normaliza Instagram para embed" do
+      payload = helper.home_video_payload("https://www.instagram.com/reel/ABC123/")
+
+      expect(payload[:provider]).to eq("instagram")
+      expect(payload[:embed_url]).to eq("https://www.instagram.com/reel/ABC123/embed")
+    end
+
     it "mantém MP4 direto para player nativo" do
       payload = helper.home_video_payload({ "url" => "https://cdn.example.com/imovel.mp4" })
 
       expect(payload[:provider]).to eq("direct")
       expect(payload[:direct_url]).to eq("https://cdn.example.com/imovel.mp4")
       expect(payload[:content_type]).to eq("video/mp4")
+    end
+
+    it "aceita URL relativa do ActiveStorage para upload salvo" do
+      payload = helper.home_video_payload("/rails/active_storage/blobs/redirect/token/video.mp4")
+
+      expect(payload[:provider]).to eq("direct")
+      expect(payload[:direct_url]).to eq("/rails/active_storage/blobs/redirect/token/video.mp4")
     end
 
     it "ignora tour virtual e URL sem formato de vídeo reproduzível" do

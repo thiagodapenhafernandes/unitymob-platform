@@ -5,6 +5,17 @@ module HomeVideosHelper
     Array(property&.videos).filter_map { |item| home_video_payload(item) }.first
   end
 
+  def home_section_item_video_payload(item)
+    url = item.source_type == "upload" && item.video_file.attached? ? url_for(item.video_file) : item.source_url
+    payload = home_video_payload(url)
+    return if payload.blank?
+
+    if item.source_type == "upload" && item.video_file.attached?
+      payload[:content_type] = item.video_file.blob.content_type if payload[:direct_url].present?
+    end
+    payload
+  end
+
   def home_property_video_poster(property, video_payload)
     source = property&.primary_image_source
     poster = public_image_url(source, resize_to_fill: [560, 900], format: :webp, force_variant: true, representation_proxy: true) if source.present?
@@ -38,6 +49,12 @@ module HomeVideosHelper
         url:,
         embed_url: "https://player.vimeo.com/video/#{vimeo_id}?autoplay=1"
       }
+    elsif (instagram_embed_url = home_instagram_embed_url(url))
+      {
+        provider: "instagram",
+        url:,
+        embed_url: instagram_embed_url
+      }
     else
       {
         provider: "direct",
@@ -58,6 +75,7 @@ module HomeVideosHelper
     url = raw.to_s.strip
     return if url.blank?
     return "https://www.youtube.com/watch?v=#{home_youtube_id(url)}" if home_youtube_id(url)
+    return url if url.start_with?("/")
 
     uri = URI.parse(url)
     return unless uri.scheme.in?(%w[http https])
@@ -90,6 +108,21 @@ module HomeVideosHelper
     return unless host.match?(/(^|\.)vimeo\.com\z/)
 
     uri.path.split("/").reverse.find { |part| part.match?(/\A\d+\z/) }
+  rescue URI::InvalidURIError
+    nil
+  end
+
+  def home_instagram_embed_url(url)
+    uri = URI.parse(url)
+    host = uri.host.to_s.downcase
+    return unless host.match?(/(^|\.)instagram\.com\z/)
+
+    parts = uri.path.split("/").compact_blank
+    type = parts.first
+    code = parts.second
+    return unless type.in?(%w[p reel tv]) && code.present?
+
+    "https://www.instagram.com/#{type}/#{code}/embed"
   rescue URI::InvalidURIError
     nil
   end

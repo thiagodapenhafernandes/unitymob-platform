@@ -60,6 +60,39 @@ textarea.ax-control--code,
   tab-size: 2;
 }
 
+/* Upload nativo (input[type=file]): só o botão é estilizável via ::file-selector-button. */
+input[type="file"].ax-control {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  color: var(--ab-muted, #667085);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+input[type="file"].ax-control::file-selector-button {
+  height: calc(var(--ax-form-control-height, 28px) - 6px);
+  margin-right: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--ax-field-border);
+  border-radius: calc(var(--ax-form-control-radius, 7px) - 2px);
+  background: var(--ax-control-bg);
+  color: #344054;
+  font-size: 12.5px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
+              border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease);
+}
+input[type="file"].ax-control:hover::file-selector-button {
+  border-color: var(--ax-field-hover);
+  background: var(--ax-control-hover);
+}
+input[type="file"].ax-control:focus-visible::file-selector-button {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 1px;
+}
+input[type="file"].ax-control:disabled { cursor: not-allowed; opacity: .6; }
+
 :where(
   .ax-control:disabled,
   .ax-control[readonly],
@@ -140,6 +173,17 @@ textarea.ax-control--code,
   border-color: var(--ax-dark-border-soft);
   background: #141f32;
   color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] input[type="file"].ax-control { color: var(--ax-dark-text-muted); }
+[data-admin-theme="dark"] input[type="file"].ax-control::file-selector-button {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+[data-admin-theme="dark"] input[type="file"].ax-control:hover::file-selector-button {
+  border-color: #526b8c;
+  background: var(--ax-dark-surface-hover);
 }
 
 .ax-input,

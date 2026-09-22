@@ -72,6 +72,7 @@ export default class extends Controller {
     this.titleTarget.textContent = trigger.dataset.title || "Vídeo do imóvel"
     this.locationTarget.textContent = trigger.dataset.location || ""
     this.priceTarget.textContent = trigger.dataset.price || ""
+    this.propertyLinkTarget.hidden = !trigger.dataset.propertyUrl
     this.propertyLinkTarget.href = trigger.dataset.propertyUrl || "#"
     this.renderProgress(!trigger.dataset.directUrl)
     this.renderMedia(trigger)
