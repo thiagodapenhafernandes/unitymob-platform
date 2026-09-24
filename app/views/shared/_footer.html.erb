@@ -1,4 +1,4 @@
-<footer id="footer">
+<footer id="footer" class="ps-footer">
   <% footer_tenant = Current.tenant || (respond_to?(:public_tenant) ? public_tenant : Tenant.public_for) %>
   <% footer_identity = Tenants::PublicIdentity.new(footer_tenant) %>
   <% footer_layout = @layout_setting || LayoutSetting.instance(tenant: footer_tenant) %>

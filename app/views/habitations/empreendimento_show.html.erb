@@ -100,6 +100,9 @@
 %>
 <%= json_ld_tag({ "@context" => "https://schema.org", "@graph" => [development_schema, breadcrumb_schema, faq_schema].compact }) %>
 
+<% if salute_luxury_theme? %>
+  <%= render "public_theme/luxury_development_body" %>
+<% else %>
 <div class="public-development-show bg-gray-50 min-h-screen">
   
   <!-- Hero Section with Background Image -->
@@ -619,3 +622,4 @@
     </div>
   </div>
 </div>
+<% end %>

@@ -37,6 +37,9 @@
   <% end %>
 <% end %>
 
+<% if salute_luxury_theme? %>
+  <%= render "public_theme/luxury_detail_body" %>
+<% else %>
 <div class="public-habitations-show bg-gray-50 min-h-screen pb-14 habitation-details"
      data-property-id="<%= @habitation.id %>"
      data-controller="<%= "public-property-map" if @public_map.visible? %>"
@@ -458,3 +461,4 @@
     <% end %>
   </div>
 </div>
+<% end %>

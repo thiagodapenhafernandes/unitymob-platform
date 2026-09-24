@@ -1,0 +1,19 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  box_class = ["public-theme-development-info", "public-theme-development-info--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  rows = Array(local_assigns[:rows]).select { |row| (row[:value] || row["value"]).present? }
+%>
+
+<% if rows.any? %>
+  <aside class="<%= box_class %>">
+    <h2 class="public-theme-development-info__title"><%= local_assigns.fetch(:title, "Informações") %></h2>
+    <dl class="public-theme-development-info__rows">
+      <% rows.each do |row| %>
+        <div class="public-theme-development-info__row">
+          <dt><%= row[:label] || row["label"] %></dt>
+          <dd><%= row[:value] || row["value"] %></dd>
+        </div>
+      <% end %>
+    </dl>
+  </aside>
+<% end %>

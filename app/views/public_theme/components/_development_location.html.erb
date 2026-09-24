@@ -1,0 +1,22 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  section_class = ["public-theme-development-location", "public-theme-development-location--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  address = local_assigns[:address].presence
+  region = local_assigns[:region].presence
+%>
+
+<% if address.present? || region.present? %>
+  <section id="<%= local_assigns[:id] %>" class="<%= section_class %>">
+    <h2 class="public-theme-development-section__title"><%= local_assigns.fetch(:title, "Localização") %></h2>
+    <div class="public-theme-development-location__card">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="public-theme-development-location__pin">
+        <path d="M12 22s7-6.1 7-11a7 7 0 10-14 0c0 4.9 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="12" cy="11" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <div>
+        <% if address.present? %><strong><%= address %></strong><% end %>
+        <% if region.present? %><span><%= region %></span><% end %>
+      </div>
+    </div>
+  </section>
+<% end %>

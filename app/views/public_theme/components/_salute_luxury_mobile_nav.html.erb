@@ -1,0 +1,22 @@
+<%# Navegação mobile do luxury adaptada aos dados da plataforma (sem CMS de blocos).
+  Locals: nav_items (label/url/target/rel), site_name, phone (dígitos), close_action. %>
+<%
+  items = Array(local_assigns[:nav_items])
+  site_name = local_assigns.fetch(:site_name, "Site imobiliário")
+  phone = local_assigns[:phone].to_s.gsub(/\D/, "")
+%>
+<nav class="sl-mobile-nav" id="saluteLuxuryMenu" aria-hidden="true"
+     aria-label="Menu <%= site_name %>" data-salute-luxury-theme-target="mobileNav">
+  <button type="button" class="<%= local_assigns[:close_class] %>" data-action="<%= local_assigns[:close_action] %>" aria-label="Fechar menu">
+    <%= public_svg_icon("x") %>
+  </button>
+  <% items.each do |item| %>
+    <%= link_to item[:label] || item["label"], item[:url] || item["url"],
+                target: item[:target] || item["target"], rel: item[:rel] || item["rel"] %>
+  <% end %>
+  <% if phone.present? %>
+    <%= link_to "tel:+#{phone}", class: "sl-mobile-nav__phone" do %>
+      <%= public_svg_icon("telephone") %><span><%= Phones::Normalizer.display(phone) %></span>
+    <% end %>
+  <% end %>
+</nav>

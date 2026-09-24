@@ -1,0 +1,59 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  title = local_assigns[:title].presence || habitation.display_title
+  shared_broker = local_assigns[:shared_broker]
+  contact_class = ["public-theme-property-contact-box", "public-theme-property-contact-box--#{local_assigns.fetch(:variant, "default")}", local_assigns[:class_name]].compact.join(" ")
+%>
+
+<%
+  # `split_ctas`: valores e contato viram dois cartões separados, em vez de um
+  # bloco único. É o arranjo do tema salute.
+  split_ctas = local_assigns.fetch(:split_ctas, false)
+
+  # `show_info`: ficha "Informações" ao pé do bloco. O tema salute a desliga
+  # porque os mesmos dados já aparecem no cartão de características do main.
+  show_info = local_assigns.fetch(:show_info, true)
+%>
+
+<div class="<%= contact_class %>">
+  <%= render "habitations/price_card",
+      habitation: habitation,
+      title: title,
+      show_ctas: !split_ctas,
+      has_sale_price: local_assigns[:has_sale_price],
+      has_rent_price: local_assigns[:has_rent_price],
+      has_discount: local_assigns[:has_discount],
+      has_rent_discount: local_assigns[:has_rent_discount] %>
+
+  <% if split_ctas %>
+    <section class="public-theme-property-contact-box__actions sl-detail__side-card sl-detail__contact-card">
+      <h3>Entrar em contato</h3>
+      <%= render "habitations/price_card_ctas", habitation: habitation, title: title %>
+    </section>
+  <% end %>
+
+  <% if shared_broker.present? %>
+    <%= render "habitations/shared_broker_card",
+        shared_broker: shared_broker,
+        habitation: habitation,
+        share_token: local_assigns[:share_token] %>
+  <% end %>
+
+  <% if show_info %>
+    <section class="public-theme-property-contact-box__info sl-detail__side-card">
+      <h3>Informações</h3>
+      <dl>
+        <div><dt>Status</dt><dd><%= habitation.status.presence || "Disponível" %></dd></div>
+        <div><dt>Tipo</dt><dd><%= habitation.categoria %></dd></div>
+        <% if habitation.unique_features.present? %>
+          <div><dt>Característica</dt><dd><%= habitation.unique_features.join(", ") %></dd></div>
+        <% end %>
+        <% if habitation.delivery_date_visible? %>
+          <div><dt>Previsão de entrega</dt><dd><%= l(habitation.data_entrega, format: :long) %></dd></div>
+        <% elsif habitation.data_entrega.present? && habitation.ready_to_move? %>
+          <div><dt>Situação</dt><dd>Pronto para morar</dd></div>
+        <% end %>
+      </dl>
+    </section>
+  <% end %>
+</div>

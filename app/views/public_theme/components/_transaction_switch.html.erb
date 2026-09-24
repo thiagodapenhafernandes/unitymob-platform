@@ -1,0 +1,23 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  options = Array(local_assigns[:options])
+  default_value = local_assigns.fetch(:default_value, options.first && (options.first[:value] || options.first["value"]))
+  switch_class = ["public-theme-transaction-switch", "public-theme-transaction-switch--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  button_class = ["public-theme-transaction-switch__button", local_assigns[:button_class]].compact.join(" ")
+%>
+
+<div class="<%= switch_class %>" role="group" aria-label="<%= local_assigns.fetch(:aria_label, "Finalidade") %>">
+  <% options.each do |option| %>
+    <%
+      label = option[:label] || option["label"]
+      value = option[:value] || option["value"]
+      pressed = value == default_value
+    %>
+    <button type="button"
+            class="<%= button_class %>"
+            data-salute-luxury-theme-target="transactionButton"
+            data-transaction-type="<%= value %>"
+            data-action="<%= local_assigns[:action] %>"
+            aria-pressed="<%= pressed ? "true" : "false" %>"><%= label %></button>
+  <% end %>
+</div>

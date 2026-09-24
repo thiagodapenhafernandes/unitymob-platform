@@ -1,0 +1,62 @@
+<%
+  properties = Array(local_assigns.fetch(:properties, []))
+  variant = local_assigns.fetch(:variant, "default")
+  card_partial = local_assigns.fetch(:card_partial, "public_theme/components/property_card")
+  unit_counts = local_assigns[:unit_counts].to_h
+  unit_metrics = local_assigns[:unit_metrics].to_h
+  strip = local_assigns.fetch(:strip, false)
+  strip_page_size = local_assigns.fetch(:strip_page_size, 3).to_i.clamp(1, 6)
+  strip_limit = local_assigns.fetch(:strip_limit, 9).to_i.clamp(strip_page_size, 18)
+  properties = properties.first(strip_limit) if strip
+  grid_class = ["public-theme-property-grid", "public-theme-property-grid--#{variant}", local_assigns[:class_name]].compact.join(" ")
+%>
+
+<% if properties.present? %>
+  <% if strip && properties.size > strip_page_size %>
+    <div class="public-theme-card-strip public-theme-card-strip--<%= variant %>"
+         data-controller="public-card-strip"
+         data-public-card-strip-index-value="0">
+      <div class="public-theme-card-strip__viewport">
+        <div class="public-theme-card-strip__track" data-public-card-strip-target="track">
+          <% properties.each_slice(strip_page_size).each_with_index do |page_properties, page_index| %>
+            <div class="public-theme-card-strip__page">
+              <% page_properties.each do |property| %>
+                <%= render card_partial,
+                      property: property,
+                      variant: variant,
+                      defer_initial_image: page_index.positive?,
+                      unit_count: unit_counts[property.codigo],
+                      unit_metric: unit_metrics[property.codigo] %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      <div class="public-theme-card-strip__controls" aria-label="Navegar vitrines de imóveis">
+        <button type="button"
+                class="public-theme-card-strip__button"
+                data-public-card-strip-target="previousButton"
+                data-action="public-card-strip#previous"
+                aria-label="Ver imóveis anteriores"><%= public_svg_icon("chevron-left") %></button>
+        <span class="public-theme-card-strip__indicator" data-public-card-strip-target="indicator"></span>
+        <button type="button"
+                class="public-theme-card-strip__button"
+                data-public-card-strip-target="nextButton"
+                data-action="public-card-strip#next"
+                aria-label="Ver próximos imóveis"><%= public_svg_icon("chevron-right") %></button>
+      </div>
+    </div>
+  <% else %>
+    <div class="<%= grid_class %>">
+      <% properties.each do |property| %>
+        <%= render card_partial,
+              property: property,
+              variant: variant,
+              unit_count: unit_counts[property.codigo],
+              unit_metric: unit_metrics[property.codigo] %>
+      <% end %>
+    </div>
+  <% end %>
+<% else %>
+  <p class="public-theme-empty"><%= local_assigns.fetch(:empty_message, "Nenhum imóvel disponível para esta vitrine.") %></p>
+<% end %>

@@ -217,15 +217,19 @@
         data-public-interest-tracker-property-parking-spaces-value="<%= @habitation&.vagas_qtd %>"
         data-public-interest-tracker-property-price-cents-value="<%= @habitation&.valor_venda_cents.presence || @habitation&.valor_locacao_cents %>">
     <%= render "layouts/tracking_body", tracking_setting: @tracking_setting %>
-    <%= render 'layouts/header' %>
-    
-    <main role="main">
-      <%= render 'shared/flash_messages', toast: true if flash.any? %>
+    <% if salute_luxury_theme? %>
+      <%= render("public_theme/luxury_shell") { yield } %>
+    <% else %>
+      <%= render 'layouts/header' %>
 
-      <%= yield %>
-    </main>
-    
-    <%= render 'layouts/footer' %>
+      <main role="main">
+        <%= render 'shared/flash_messages', toast: true if flash.any? %>
+
+        <%= yield %>
+      </main>
+
+      <%= render 'layouts/footer' %>
+    <% end %>
     
     <%# Performance: Defer non-critical external libraries %>
     <script>

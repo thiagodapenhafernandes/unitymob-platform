@@ -1,0 +1,72 @@
+<%# Corpo de empreendimento luxury com dados da plataforma (sem CMS de blocos). %>
+<%
+  dev = @habitation
+  dev_units = Array(@development_units)
+  dev_range = lambda do |values, suffix = nil|
+    values = Array(values).compact.reject(&:zero?)
+    next nil if values.empty?
+    text = values.min == values.max ? values.min.to_s : "#{values.min} a #{values.max}"
+    [text, suffix].compact.join(" ")
+  end
+  dev_photos = dev.all_images.first(18).filter_map do |photo|
+    thumb = public_image_url(photo, resize_to_limit: [520, 400], format: :webp, representation_proxy: true)
+    next if thumb.blank?
+    { thumb: thumb, full: public_image_url(photo) }
+  end
+  dev_address = [dev.logradouro.presence || dev.endereco, dev.numero].compact_blank.join(", ")
+  dev_region = [dev.public_neighborhood, dev.cidade, dev.uf].compact_blank.join(" - ")
+  dev_availability = dev_units.size.positive? ? "#{dev_units.size} #{dev_units.size == 1 ? 'unidade disponível' : 'unidades disponíveis'}" : nil
+  dev_contact = @contact_setting || ContactSetting.instance(tenant: public_tenant)
+%>
+<%= render "public_theme/components/development_hero",
+      id: "topo", variant: "salute-luxury", container_class: "sl-container",
+      background_url: public_image_url(dev.all_images.first, resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true),
+      breadcrumbs: [
+        { label: "Início", url: root_path },
+        { label: "Empreendimentos", url: empreendimentos_path },
+        { label: dev.display_title }
+      ],
+      title: dev.nome_empreendimento.presence || dev.display_title,
+      location: [dev.public_neighborhood, dev.cidade].compact_blank.join(" - "),
+      availability: dev_availability,
+      gallery_photos: dev_photos %>
+<div class="sl-container sl-development__layout">
+  <div class="sl-development__main">
+    <%= render "public_theme/components/development_about",
+          id: "sobre", variant: "salute-luxury",
+          title: "Sobre o empreendimento", body: dev.display_description,
+          empty_text: "Entre em contato para conhecer os detalhes deste empreendimento." %>
+    <%= render "public_theme/components/development_features",
+          id: "infraestrutura", variant: "salute-luxury",
+          title: "Características e infraestrutura", subtitle: "Destaque lazer",
+          features: (dev.leisure_features_for_display + dev.property_features_for_display).uniq %>
+    <%= render "public_theme/components/development_location",
+          id: "localizacao", variant: "salute-luxury", title: "Localização",
+          address: dev_address,
+          region: [dev_region, dev.cep.presence && "CEP: #{dev.cep}"].compact_blank.join(" · ") %>
+    <% if dev_units.any? %>
+      <section id="unidades" class="public-theme-development-units">
+        <h2 class="public-theme-development-section__title">Unidades disponíveis</h2>
+        <%= render "public_theme/components/property_grid",
+              properties: dev_units, variant: "salute-luxury",
+              empty_message: "Nenhuma unidade publicada no momento." %>
+      </section>
+    <% end %>
+  </div>
+  <aside class="sl-development__aside">
+    <%= render "public_theme/components/development_contact",
+          variant: "salute-luxury", title: "Interessado?",
+          intro: "Fale com um especialista e receba atendimento personalizado.",
+          whatsapp_label: "Falar no WhatsApp", schedule_label: "Agendar visita",
+          phone: (dev_contact.whatsapp_primary if dev_contact.respond_to?(:whatsapp_primary)),
+          property_id: dev.id, property_title: dev.display_title, property_code: dev.codigo %>
+    <%= render "public_theme/components/development_info",
+          variant: "salute-luxury", title: "Informações",
+          rows: [
+            { label: "Código", value: dev.codigo },
+            ({ label: "Construtora", value: dev.constructor_name } if dev.respond_to?(:constructor_name)),
+            { label: "Unidades", value: dev_availability },
+            ({ label: "Entrega", value: dev.data_entrega } if dev.respond_to?(:delivery_date_visible?) && dev.delivery_date_visible?)
+          ].compact %>
+  </aside>
+</div>

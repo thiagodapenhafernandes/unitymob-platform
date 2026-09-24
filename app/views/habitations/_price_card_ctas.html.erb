@@ -1,0 +1,44 @@
+<%# Ações de contato do imóvel. Extraído do _price_card para que o tema
+    salute possa renderizá-las como cartão próprio, separado dos valores.
+    Locals: habitation, title %>
+  <button type="button"
+      class="public-habitations-show__cta public-habitations-show__cta--whatsapp mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-three px-4 py-3 font-bold text-white transition hover:bg-blue-one"
+      data-action="click->lead-capture#open"
+      data-property-id="<%= habitation.id %>"
+      data-property-code="<%= habitation.codigo %>"
+      data-property-title="<%= title %>"
+      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+      data-require-lead-form="true"
+      data-whatsapp-message="Olá, estou interessado no imóvel <%= title %> (Código: <%= habitation.codigo %>). Gostaria de mais informações.">
+    <%= public_svg_icon("whatsapp", class_name: "text-green-400") %>
+    <span class="public-habitations-show__cta-label--desktop">Falar no WhatsApp</span>
+    <span class="public-habitations-show__cta-label--mobile">Receber informações</span>
+  </button>
+
+  <button type="button"
+      class="public-habitations-show__cta public-habitations-show__cta--visit public-habitations-show__cta--desktop-only mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-three/15 bg-blue-three/5 px-4 py-3 font-bold text-blue-three transition hover:bg-blue-three/10"
+      data-action="click->lead-capture#open"
+      data-property-id="<%= habitation.id %>"
+      data-property-code="<%= habitation.codigo %>"
+      data-property-title="<%= title %>"
+      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+      data-require-lead-form="true"
+      data-whatsapp-message="Olá, gostaria de agendar uma visita para o imóvel <%= title %> (Código: <%= habitation.codigo %>).">
+    <%= public_svg_icon("calendar", class_name: "text-golden-one") %>
+    Agendar visita
+  </button>
+
+  <button type="button"
+      class="public-habitations-show__cta public-habitations-show__cta--conditions public-habitations-show__cta--mobile-only mt-3 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition"
+      data-action="click->lead-capture#open"
+      data-property-id="<%= habitation.id %>"
+      data-property-code="<%= habitation.codigo %>"
+      data-property-title="<%= title %>"
+      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+      data-require-lead-form="true"
+      data-whatsapp-message="Olá, gostaria de conhecer as condições de pagamento do imóvel <%= title %> (Código: <%= habitation.codigo %>).">
+    <%= public_svg_icon("whatsapp") %>
+    Condições de pagamento
+  </button>
+
+  <p class="public-habitations-show__price-code mt-4 text-center text-xs text-gray-400">Código: <%= habitation.codigo %></p>

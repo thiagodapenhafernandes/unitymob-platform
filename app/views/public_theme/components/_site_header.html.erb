@@ -1,0 +1,124 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  logo = local_assigns.fetch(:logo)
+  site_name = local_assigns.fetch(:site_name, "Site imobiliário")
+  nav_items = Array(local_assigns[:nav_items])
+  mobile_nav_items = Array(local_assigns[:mobile_nav_items])
+  header_class = ["public-theme-site-header", "public-theme-site-header--#{variant}", "public-theme-header", local_assigns[:class_name]].compact.join(" ")
+  container_class = ["public-theme-site-header__container", "public-theme-header__bar", local_assigns.fetch(:container_class, "public-theme-container"), local_assigns[:bar_class]].compact.join(" ")
+  brand_class = ["public-theme-site-header__brand", "public-theme-header__brand", local_assigns[:brand_class]].compact.join(" ")
+  logo_class = ["public-theme-site-header__logo", "public-theme-header__logo", local_assigns[:logo_class]].compact.join(" ")
+  nav_class = ["public-theme-site-header__nav", "public-theme-header__nav", local_assigns[:nav_class]].compact.join(" ")
+  mobile_nav_class = ["public-theme-site-header__mobile", "public-theme-header__mobile", local_assigns[:mobile_nav_class]].compact.join(" ")
+  cta = local_assigns[:cta]
+  actions = local_assigns[:actions]
+  actions_class = local_assigns[:actions_class]
+  phone = local_assigns[:phone]
+  header_data = local_assigns[:data] || {}
+  menu_button_data = local_assigns[:menu_button_data] || {}
+  menu_button = capture do
+    tag.button(
+      type: "button",
+      class: ["public-theme-site-header__menu-button", "public-theme-header__menu", local_assigns[:menu_button_class]].compact.join(" "),
+      data: { action: local_assigns[:menu_action] }.merge(menu_button_data),
+      aria: {
+        expanded: false,
+        controls: local_assigns[:menu_controls],
+        label: local_assigns.fetch(:menu_label, "Abrir menu")
+      }
+    ) do
+      safe_join(3.times.map { tag.span(aria: { hidden: true }) })
+    end
+  end
+%>
+
+<%= tag.header(class: header_class, data: header_data) do %>
+  <div class="<%= container_class %>">
+    <div class="<%= brand_class %>">
+      <%= link_to root_path, class: logo_class, aria: { label: site_name } do %>
+        <% if logo.present? %>
+        <%= image_tag logo, alt: site_name %>
+      <% else %>
+        <span class="sl-logo__name"><%= site_name %></span>
+      <% end %>
+      <% end %>
+
+      <% if phone.present? %>
+        <%= link_to "tel:+#{Phones::Normalizer.call(phone)}",
+                    class: ["public-theme-site-header__phone", "public-theme-header__phone", local_assigns[:phone_class]].compact.join(" ") do %>
+          <%= public_svg_icon("telephone") %>
+          <span><%= Phones::Normalizer.display(phone) %></span>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if nav_items.any? %>
+      <nav class="<%= nav_class %>" aria-label="<%= local_assigns.fetch(:aria_label, "Menu principal") %>">
+        <% nav_items.each do |item| %>
+          <% if (item[:action_type] || item["action_type"]).to_s == "form_modal" %>
+            <%= button_tag type: "button",
+                  data: {
+                    controller: "public-form-trigger",
+                    action: "click->public-form-trigger#open",
+                    public_form_trigger_form_type_value: item[:url] || item["url"]
+                  } do %>
+              <% if (item[:icon] || item["icon"]).present? %>
+                <%= public_svg_icon(item[:icon] || item["icon"]) %>
+              <% end %>
+              <span><%= item[:label] || item["label"] %></span>
+            <% end %>
+          <% else %>
+            <%= link_to item[:url] || item["url"],
+                        target: item[:target] || item["target"],
+                        rel: item[:rel] || item["rel"] do %>
+              <% if (item[:icon] || item["icon"]).present? %>
+                <%= public_svg_icon(item[:icon] || item["icon"]) %>
+              <% end %>
+              <span><%= item[:label] || item["label"] %></span>
+            <% end %>
+          <% end %>
+        <% end %>
+      </nav>
+    <% end %>
+
+    <% if actions.present? %>
+      <div class="<%= ["public-theme-site-header__actions", "public-theme-header__actions", actions_class].compact.join(" ") %>">
+        <%= actions %>
+        <%= menu_button %>
+        <%= cta if cta.present? %>
+      </div>
+    <% else %>
+      <%= cta if cta.present? %>
+      <%= menu_button %>
+    <% end %>
+  </div>
+
+  <% if mobile_nav_items.any? %>
+    <nav class="<%= mobile_nav_class %>" data-navbar-target="mobileMenu" aria-label="<%= local_assigns.fetch(:mobile_aria_label, "Menu principal mobile") %>">
+      <% mobile_nav_items.each do |item| %>
+        <% if (item[:action_type] || item["action_type"]).to_s == "form_modal" %>
+          <%= button_tag type: "button",
+                data: {
+                  controller: "public-form-trigger",
+                  action: "click->public-form-trigger#open",
+                  public_form_trigger_form_type_value: item[:url] || item["url"]
+                } do %>
+            <% if (item[:icon] || item["icon"]).present? %>
+              <%= public_svg_icon(item[:icon] || item["icon"]) %>
+            <% end %>
+            <span><%= item[:label] || item["label"] %></span>
+          <% end %>
+        <% else %>
+          <%= link_to item[:url] || item["url"],
+                      target: item[:target] || item["target"],
+                      rel: item[:rel] || item["rel"] do %>
+            <% if (item[:icon] || item["icon"]).present? %>
+              <%= public_svg_icon(item[:icon] || item["icon"]) %>
+            <% end %>
+            <span><%= item[:label] || item["label"] %></span>
+          <% end %>
+        <% end %>
+      <% end %>
+    </nav>
+  <% end %>
+<% end %>

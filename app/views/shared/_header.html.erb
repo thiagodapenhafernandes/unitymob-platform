@@ -1,10 +1,10 @@
-<header id="header" class="fixed-top d-flex align-items-center">
+<header id="header" class="fixed-top d-flex align-items-center ps-topbar">
   <% header_tenant = Current.tenant || (respond_to?(:public_tenant) ? public_tenant : Tenant.public_for) %>
   <% header_identity = Tenants::PublicIdentity.new(header_tenant) %>
   <% header_layout = @layout_setting || LayoutSetting.instance(tenant: header_tenant) %>
   <div class="container d-flex align-items-center justify-content-between">
 
-    <div class="logo">
+    <div class="logo ps-brand">
       <a href="<%= root_path %>">
         <% if header_layout.logo.attached? %>
           <%= image_tag header_layout.logo, alt: header_identity.name, class: "img-fluid" %>
@@ -14,7 +14,7 @@
       </a>
     </div>
 
-    <nav id="navbar" class="navbar">
+    <nav id="navbar" class="navbar ps-nav">
       <ul>
         <li><a class="nav-link scrollto active" href="<%= root_path %>">Home</a></li>
         <li><a class="nav-link scrollto" href="#">Sobre nós</a></li>

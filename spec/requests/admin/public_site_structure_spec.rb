@@ -19,7 +19,7 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       html = Nokogiri::HTML(response.body)
       tabs = html.css(".ax-studio-nav [data-ax-tabs-target='tab']").map { |tab| tab["data-ax-tabs-target-param"] }
       expect(tabs).to eq(%w[#identity-tab-brand #identity-tab-colors #identity-tab-theme])
-      expect(html.css("input[name='tenant[public_site_theme]']").map { |input| input["value"] }).to eq(%w[default])
+      expect(html.css("select[name='tenant[public_site_theme]'] option").map { |option| option["value"] }).to eq(%w[default])
       expect(html.at_css("input[name='layout_setting[primary_color]']")).to be_present
       expect(html.at_css("input[type='file'][name='layout_setting[logo]']")).to be_present
       expect(html.at_css(".ax-studio__aside .lss-web")).to be_present
@@ -44,7 +44,7 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
 
       get edit_admin_public_identity_path
 
-      values = Nokogiri::HTML(response.body).css("input[name='tenant[public_site_theme]']").map { |input| input["value"] }
+      values = Nokogiri::HTML(response.body).css("select[name='tenant[public_site_theme]'] option").map { |option| option["value"] }
       expect(values).to eq(%w[default saluteimoveis])
       expect(response.body).not_to include("Conexão Imobiliária")
 
@@ -87,7 +87,7 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
 
       expect(response).to have_http_status(:ok)
       html = Nokogiri::HTML(response.body)
-      keys = html.css(".hm-rows .hm-row input[name$='[key]']").map { |input| input["value"] }
+      keys = html.css(".hm-rows .hm-row input[name$='[key]']").map { |option| option["value"] }
       expect(keys).to eq(PublicHeaderMenu::SYSTEM_ITEMS.keys)
       bar = html.css(".hm-rows .hm-row").select { |row| row.at_css("input[type='checkbox'][name$='[bar]']")["checked"] }.map { |row| row.at_css("input[name$='[key]']")["value"] }
       expect(bar).to eq(%w[comprar alugar anunciar empreendimentos lancamentos blog favoritos])

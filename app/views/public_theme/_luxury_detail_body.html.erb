@@ -1,0 +1,32 @@
+<%# Corpo do detalhe luxury com dados da plataforma (sem CMS de blocos). %>
+<%
+  hab = @habitation
+  d_images = hab.public_image_sources
+  d_address = [hab.endereco, hab.public_neighborhood, hab.cidade].compact_blank.join(" - ")
+  d_primary_url = public_image_url(d_images.first, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if d_images.first
+  d_primary_srcset = public_image_srcset(d_images.first, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if d_images.first
+%>
+<%= render "public_theme/components/property_gallery",
+      habitation: hab, images: d_images, variant: "salute-luxury",
+      title: hab.display_title, address_text: d_address,
+      has_sale_price: hab.valor_venda_cents.to_i.positive?,
+      has_rent_price: hab.valor_locacao_cents.to_i.positive?,
+      primary_image_url: d_primary_url, primary_image_srcset: d_primary_srcset %>
+<%= render "public_theme/components/property_info",
+      habitation: hab, images: d_images, variant: "salute-luxury",
+      public_map: @public_map, public_media_url: public_property_media_url(hab),
+      feature_items: [] %>
+<%= render "public_theme/components/property_contact_box",
+      habitation: hab, variant: "salute-luxury", title: hab.display_title %>
+<% if @public_map&.visible? %>
+  <%= render "public_theme/components/property_map", public_map: @public_map, variant: "salute-luxury" %>
+<% end %>
+<% if @related_properties&.any? %>
+  <section class="sl-section sl-detail__related">
+    <div class="sl-container">
+      <%= render "public_theme/components/property_grid",
+            properties: @related_properties, variant: "salute-luxury",
+            empty_message: "Nenhum imóvel semelhante no momento." %>
+    </div>
+  </section>
+<% end %>

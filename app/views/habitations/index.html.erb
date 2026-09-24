@@ -126,21 +126,32 @@
   <div class="public-habitations-index__results results-section mt-8">
       
       <% if @habitations.any? %>
-        <div class="public-habitations-index__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
-          <% @habitations.each_with_index do |property, index| %>
-            <%= render 'shared/tailwind/property_card', property: property, priority_image: index < 2 %>
-          <% end %>
-        </div>
+        <% if salute_luxury_theme? %>
+          <%= render "public_theme/components/property_grid",
+                properties: @habitations, variant: "salute-luxury" %>
+        <% else %>
+          <div class="public-habitations-index__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
+            <% @habitations.each_with_index do |property, index| %>
+              <%= render 'shared/tailwind/property_card', property: property, priority_image: index < 2 %>
+            <% end %>
+          </div>
+        <% end %>
         
         <!-- Pagination -->
         <div class="public-habitations-index__pagination flex justify-center mt-8">
-          <%= will_paginate @habitations, 
-              renderer: WillPaginate::ActionView::TailwindLinkRenderer,
-              path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) },
-              inner_window: 2,
-              outer_window: 0,
-              previous_label: '<i class="bi bi-chevron-left"></i>',
-              next_label: '<i class="bi bi-chevron-right"></i>' %>
+          <% if salute_luxury_theme? %>
+            <%= render "public_theme/components/pagination",
+                  collection: @habitations, variant: "salute-luxury",
+                  path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) } %>
+          <% else %>
+            <%= will_paginate @habitations, 
+                renderer: WillPaginate::ActionView::TailwindLinkRenderer,
+                path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) },
+                inner_window: 2,
+                outer_window: 0,
+                previous_label: '<i class="bi bi-chevron-left"></i>',
+                next_label: '<i class="bi bi-chevron-right"></i>' %>
+          <% end %>
         </div>
 
         <% listing_seo = current_public_seo_setting %>
