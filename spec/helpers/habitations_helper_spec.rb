@@ -84,6 +84,23 @@ RSpec.describe HabitationsHelper, type: :helper do
     end
   end
 
+  describe "#catalog_property_media_count" do
+    it "conta mídia interna mesmo quando uma foto anexada está fora do site" do
+      property = create(
+        :habitation,
+        codigo: "CATALOG-MEDIA-#{SecureRandom.hex(4)}",
+        address_attributes: address_attributes("Imóvel com mídia interna")
+      )
+      property.photos.attach(io: StringIO.new("foto site"), filename: "foto-site.jpg", content_type: "image/jpeg")
+      property.photos.attach(io: StringIO.new("foto interna"), filename: "foto-interna.jpg", content_type: "image/jpeg")
+      attachments = property.photos.attachments.order(:id).to_a
+      property.update!(site_hidden_photo_ids: [attachments.second.id])
+
+      expect(helper.catalog_property_media_count(property.reload)).to eq(2)
+      expect(helper.catalog_property_image_count(property)).to eq(1)
+    end
+  end
+
   def address_attributes(logradouro)
     {
       logradouro:,
