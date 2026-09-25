@@ -93,6 +93,42 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       expect(bar).to eq(%w[comprar alugar anunciar empreendimentos lancamentos blog favoritos])
     end
 
+    it "renderiza cartões colapsáveis com resumo, edição e exclusão" do
+      patch admin_public_header_path, params: {
+        home_setting: {
+          header_menu: {
+            "0" => { key: "alugar", position: "1", label: "", visible: "1", bar: "1" },
+            "1" => { key: "custom-a1", custom: "1", position: "2", label: "Condomínios", url: "/condominios", visible: "1", bar: "0" }
+          }
+        }
+      }
+
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      container = html.at_css(".hm-rows[data-controller='header-menu-sort']")
+      expect(container).to be_present
+      rows = container.css("details.hm-row[data-menu-row]")
+      expect(rows).not_to be_empty
+      rows.each do |row|
+        head = row.at_css("summary.hm-row__head")
+        expect(head.at_css(".hm-row__handle")).to be_present
+        expect(head.at_css("[data-role='title']").text).not_to be_empty
+        expect(head.at_css("[data-role='dest']")).to be_present
+        expect(row.at_css("button[data-action='nested-form#moveUp']")).to be_nil
+        body = row.at_css(".hm-row__body")
+        expect(body.at_css("input[type='hidden'][data-role='position']")).to be_present
+        expect(body.at_css("input[data-role='label']")).to be_present
+        expect(body.at_css("button[data-action='nested-form#remove']")).to be_present
+      end
+      custom = rows.detect { |row| row.at_css("input[data-role='custom']")["value"] == "1" }
+      system = rows.detect { |row| row.at_css("input[data-role='custom']")["value"] == "0" }
+      expect(custom.at_css("input[data-role='url']")).to be_present
+      expect(system.at_css("input[data-role='url']")).to be_nil
+      expect(system.at_css(".hm-row__body input[disabled][readonly]")).to be_present
+    end
+
     it "grava ordem, rótulos, visibilidade, link próprio e botão" do
       patch admin_public_header_path, params: {
         home_setting: {

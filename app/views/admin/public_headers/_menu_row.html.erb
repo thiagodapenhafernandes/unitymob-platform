@@ -4,44 +4,63 @@
   custom = entry.nil? || entry.custom?
   name = ->(field) { "home_setting[header_menu][#{index}][#{field}]" }
   dom = ->(field) { "home_setting_header_menu_#{index}_#{field}" }
+  typed_label = entry && (entry.custom? || entry.label != entry.default_label) ? entry.label : ""
+  head_title = typed_label.presence || entry&.default_label || "Novo link"
+  head_dest = custom ? entry&.url.presence || "Sem endereço" : entry&.url
 %>
-<div class="nested-fields hm-row<%= " hm-row--custom" if custom %>" data-new-record="<%= entry.nil? %>" data-menu-row>
-  <input type="hidden" name="<%= name.call(:key) %>" value="<%= entry&.key || "custom-#{SecureRandom.hex(3)}" %>">
-  <input type="hidden" name="<%= name.call(:custom) %>" value="<%= custom ? 1 : 0 %>" data-role="custom">
-  <input type="hidden" name="<%= name.call(:position) %>" value="" data-role="position">
-  <input type="hidden" name="<%= name.call(:_destroy) %>" value="0">
+<details class="nested-fields hm-row<%= " hm-row--custom" if custom %>" data-new-record="<%= entry.nil? %>" data-menu-row<%= " open" if entry.nil? %>>
+  <summary class="hm-row__head">
+    <span class="hm-row__handle" title="Arrastar para reordenar" aria-label="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+    <span class="hm-row__heading">
+      <span class="hm-row__title" data-role="title"><%= head_title %></span>
+      <span class="hm-row__dest" data-role="dest"><%= head_dest %></span>
+    </span>
+    <span class="hm-row__badges">
+      <span class="ax-badge ax-badge--gray" data-role="badge-hidden"<%= " hidden" unless entry && !entry.visible? %>>Oculto</span>
+      <span class="ax-badge ax-badge--blue" data-role="badge-bar"<%= " hidden" unless entry&.bar? %>>Na barra</span>
+    </span>
+    <i class="bi bi-chevron-down hm-row__chev" aria-hidden="true"></i>
+  </summary>
 
-  <span class="hm-row__move">
-    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="nested-form#moveUp" title="Subir" aria-label="Subir"><i class="bi bi-chevron-up"></i></button>
-    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="nested-form#moveDown" title="Descer" aria-label="Descer"><i class="bi bi-chevron-down"></i></button>
-  </span>
+  <div class="hm-row__body">
+    <input type="hidden" name="<%= name.call(:key) %>" value="<%= entry&.key || "custom-#{SecureRandom.hex(3)}" %>">
+    <input type="hidden" name="<%= name.call(:custom) %>" value="<%= custom ? 1 : 0 %>" data-role="custom">
+    <input type="hidden" name="<%= name.call(:position) %>" value="" data-role="position">
+    <input type="hidden" name="<%= name.call(:_destroy) %>" value="0">
 
-  <div class="hm-row__label">
-    <input type="text" class="ax-control" id="<%= dom.call(:label) %>" name="<%= name.call(:label) %>" maxlength="<%= PublicHeaderMenu::LABEL_LIMIT %>"
-           value="<%= entry && (entry.custom? || entry.label != entry.default_label) ? entry.label : "" %>"
-           placeholder="<%= entry&.default_label || "Nome do link" %>" aria-label="Nome exibido" data-role="label" data-default="<%= entry&.default_label %>">
+    <div class="hm-row__fields">
+      <div>
+        <label class="ax-field__label" for="<%= dom.call(:label) %>">Título</label>
+        <input type="text" class="ax-control" id="<%= dom.call(:label) %>" name="<%= name.call(:label) %>" maxlength="<%= PublicHeaderMenu::LABEL_LIMIT %>"
+               value="<%= typed_label %>" placeholder="<%= entry&.default_label || "Nome do link" %>" data-role="label" data-default="<%= entry&.default_label %>">
+      </div>
+      <div>
+        <label class="ax-field__label" for="<%= dom.call(:url) %>">Endereço</label>
+        <% if custom %>
+          <input type="text" class="ax-control hm-row__url" id="<%= dom.call(:url) %>" name="<%= name.call(:url) %>" value="<%= entry&.url %>"
+                 placeholder="/pagina ou https://..." spellcheck="false" data-role="url">
+        <% else %>
+          <input type="text" class="ax-control" id="<%= dom.call(:url) %>" value="<%= entry&.url %>" disabled readonly aria-label="Endereço fixo da página">
+        <% end %>
+      </div>
+    </div>
     <% if entry&.key.in?(%w[blog youtube]) %>
-      <small><i class="bi bi-info-circle"></i> Só aparece quando a conta tem <%= entry.key == "blog" ? "blog ou endereço do blog" : "canal do YouTube" %></small>
+      <small class="ax-field__hint"><i class="bi bi-info-circle"></i> Só aparece quando a conta tem <%= entry.key == "blog" ? "blog ou endereço do blog" : "canal do YouTube" %></small>
+    <% end %>
+
+    <div class="hm-row__flags">
+      <%= hidden_field_tag name.call(:visible), "0", id: nil %>
+      <%= ax_switch_field(name: name.call(:visible), id: dom.call(:visible), checked: entry ? entry.visible? : true, label: "Mostrar", class_name: "hm-row__switch", input_html: { data: { role: "visible" } }) %>
+      <%= hidden_field_tag name.call(:bar), "0", id: nil %>
+      <%= ax_switch_field(name: name.call(:bar), id: dom.call(:bar), checked: entry ? entry.bar? : false, label: "Na barra", class_name: "hm-row__switch", input_html: { data: { role: "bar" } }) %>
+      <% if custom %>
+        <%= hidden_field_tag name.call(:new_tab), "0", id: nil %>
+        <%= ax_switch_field(name: name.call(:new_tab), id: dom.call(:new_tab), checked: entry ? entry.new_tab : false, label: "Nova aba", class_name: "hm-row__switch") %>
+      <% end %>
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm hm-row__remove" data-action="nested-form#remove" title="Excluir link" aria-label="Excluir link"><i class="bi bi-trash"></i> Excluir</button>
+    </div>
+    <% unless custom %>
+      <small class="ax-field__hint">Excluir remove da lista; o item do sistema volta ao padrão ao gravar.</small>
     <% end %>
   </div>
-
-  <% if custom %>
-    <input type="text" class="ax-control hm-row__url" id="<%= dom.call(:url) %>" name="<%= name.call(:url) %>" value="<%= entry&.url %>"
-           placeholder="/pagina ou https://..." aria-label="Endereço do link" spellcheck="false">
-  <% end %>
-
-  <div class="hm-row__flags">
-    <%= hidden_field_tag name.call(:visible), "0", id: nil %>
-    <%= ax_switch_field(name: name.call(:visible), id: dom.call(:visible), checked: entry ? entry.visible? : true, label: "Mostrar", class_name: "hm-row__switch", input_html: { data: { role: "visible" } }) %>
-    <%= hidden_field_tag name.call(:bar), "0", id: nil %>
-    <%= ax_switch_field(name: name.call(:bar), id: dom.call(:bar), checked: entry ? entry.bar? : false, label: "Na barra", class_name: "hm-row__switch", input_html: { data: { role: "bar" } }) %>
-    <% if custom %>
-      <%= hidden_field_tag name.call(:new_tab), "0", id: nil %>
-      <%= ax_switch_field(name: name.call(:new_tab), id: dom.call(:new_tab), checked: entry ? entry.new_tab : false, label: "Nova aba", class_name: "hm-row__switch") %>
-    <% end %>
-  </div>
-
-  <% if custom %>
-    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm hm-row__remove" data-action="nested-form#remove" title="Remover link" aria-label="Remover link"><i class="bi bi-trash"></i></button>
-  <% end %>
-</div>
+</details>

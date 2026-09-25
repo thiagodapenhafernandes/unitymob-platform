@@ -36,11 +36,11 @@
       <div class="ax-studio__stage" id="header-studio-sections">
         <%= ax_studio_section(id: "header-tab-menu", icon: "list-ul", active: true,
                               title: "Menu",
-                              subtitle: "Todo link visível entra no menu suspenso e no celular; os marcados “Na barra” também aparecem no topo do desktop.",
+                              subtitle: "Todo link visível entra no menu suspenso e no celular; os marcados “Na barra” também aparecem no topo do desktop. Arraste pela alça para reordenar.",
                               actions: tag.span("#{entries.count(&:visible?)} visíveis", class: "ax-badge ax-badge--blue", data: { header_menu_preview_target: "count" })) do %>
           <div data-controller="nested-form" data-nested-form-wrapper-selector-value=".nested-fields" class="hm-editor">
             <template data-nested-form-target="template"><%= render "admin/public_headers/menu_row", entry: nil, index: "NEW_RECORD" %></template>
-            <div class="hm-rows" data-nested-form-target="container" data-header-menu-preview-target="rows">
+            <div class="hm-rows" data-nested-form-target="container" data-header-menu-preview-target="rows" data-controller="header-menu-sort">
               <% entries.each_with_index do |entry, index| %>
                 <%= render "admin/public_headers/menu_row", entry: entry, index: index %>
               <% end %>
