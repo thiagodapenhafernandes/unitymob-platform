@@ -1,0 +1,9 @@
+<%= render 'layouts/header' %>
+
+<main role="main">
+  <%= render 'shared/flash_messages', toast: true if flash.any? %>
+
+  <%= yield %>
+</main>
+
+<%= render 'layouts/footer' %>

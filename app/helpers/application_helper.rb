@@ -49,6 +49,32 @@ module ApplicationHelper
     )
   end
 
+  # Resolve o partial do componente do tema atual (com fallback para o
+  # default): a view pede theme_component(:property_card) e o tema responde
+  # com seu render próprio, sem condicionais espalhadas.
+  def theme_component(name, **locals, &block)
+    entry = theme_component_entry(name)
+    render entry[:partial], **locals.merge(variant: entry[:variant]), &block
+  end
+
+  def theme_component_path(name)
+    theme_component_entry(name)[:partial]
+  end
+
+  def theme_variant
+    theme_component_entry(:property_card)[:variant]
+  end
+
+  def theme_component_entry(name)
+    key = public_tenant&.public_site_theme_key || Tenant::DEFAULT_PUBLIC_SITE_THEME
+    meta = Tenant::PUBLIC_SITE_THEMES[key] || {}
+    partial = (meta[:components] || {})[name.to_sym]
+    return { partial:, variant: meta[:variant] || "default" } if partial
+
+    default_meta = Tenant::PUBLIC_SITE_THEMES[Tenant::DEFAULT_PUBLIC_SITE_THEME]
+    { partial: default_meta[:components][name.to_sym], variant: "default" }
+  end
+
   def public_habitation_detail_path(property)
     return "#" if property.blank?
 

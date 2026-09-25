@@ -126,32 +126,11 @@
   <div class="public-habitations-index__results results-section mt-8">
       
       <% if @habitations.any? %>
-        <% if luxury_theme? %>
-          <%= render "public_theme/components/property_grid",
-                properties: @habitations, variant: "salute-luxury" %>
-        <% else %>
-          <div class="public-habitations-index__grid public-theme-property-grid public-theme-property-grid--default grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
-            <% @habitations.each_with_index do |property, index| %>
-              <%= render 'shared/tailwind/property_card', property: property, priority_image: index < 2 %>
-            <% end %>
-          </div>
-        <% end %>
+        <%= theme_component(:property_grid, properties: @habitations) %>
         
         <!-- Pagination -->
         <div class="public-habitations-index__pagination flex justify-center mt-8">
-          <% if luxury_theme? %>
-            <%= render "public_theme/components/pagination",
-                  collection: @habitations, variant: "salute-luxury",
-                  path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) } %>
-          <% else %>
-            <%= will_paginate @habitations, 
-                renderer: WillPaginate::ActionView::TailwindLinkRenderer,
-                path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) },
-                inner_window: 2,
-                outer_window: 0,
-                previous_label: '<i class="bi bi-chevron-left"></i>',
-                next_label: '<i class="bi bi-chevron-right"></i>' %>
-          <% end %>
+          <%= theme_component(:pagination, collection: @habitations, path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) }) %>
         </div>
 
         <% listing_seo = current_public_seo_setting %>

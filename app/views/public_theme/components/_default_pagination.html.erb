@@ -1,0 +1,8 @@
+<%# locals: collection, path_helper %>
+<%= will_paginate collection,
+    renderer: WillPaginate::ActionView::TailwindLinkRenderer,
+    path_helper: path_helper,
+    inner_window: 2,
+    outer_window: 0,
+    previous_label: '<i class="bi bi-chevron-left"></i>',
+    next_label: '<i class="bi bi-chevron-right"></i>' %>

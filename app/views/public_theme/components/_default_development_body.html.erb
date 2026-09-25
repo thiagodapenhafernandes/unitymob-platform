@@ -1,0 +1,519 @@
+<div class="public-development-show bg-gray-50 min-h-screen">
+  
+  <!-- Hero Section with Background Image -->
+  <% hero_image_source = @habitation.all_images.first %>
+  <% hero_image = public_image_url(hero_image_source, resize_to_fill: [1400, 820], format: :webp) if hero_image_source %>
+  <% hero_image_srcset = public_image_srcset(hero_image_source, widths: [640, 960, 1400], aspect_ratio: 1400.0 / 820, crop: true, format: :webp) if hero_image_source %>
+  <div class="public-development-show__hero relative h-[60vh] min-h-[500px] bg-cover bg-center mt-[72px] <%= 'bg-gradient-to-br from-blue-three to-blue-one' unless hero_image %>">
+    <% if hero_image.present? %>
+      <%= image_tag hero_image,
+          alt: development_name,
+          class: "absolute inset-0 h-full w-full object-cover",
+          fetchpriority: "high",
+          loading: "eager",
+          decoding: "async",
+          width: 1400,
+          height: 820,
+          srcset: hero_image_srcset,
+          sizes: "100vw" %>
+      <div class="absolute inset-0 bg-blue-three/70"></div>
+    <% end %>
+    <div class="absolute inset-0 flex items-center">
+      <div class="container-custom">
+        <div class="public-development-show__hero-content max-w-4xl text-white">
+          <!-- Breadcrumb -->
+          <div class="public-development-show__breadcrumb flex items-center gap-2 text-sm mb-6 text-white/80">
+            <%= link_to "Início", root_path, class: "hover:text-golden-one transition" %>
+            <i class="bi bi-chevron-right text-xs"></i>
+            <%= link_to "Empreendimentos", habitations_path(category: 'Empreendimento'), class: "hover:text-golden-one transition" %>
+            <i class="bi bi-chevron-right text-xs"></i>
+            <span class="text-golden-one font-semibold"><%= @habitation.nome_empreendimento %></span>
+          </div>
+
+          <h1 class="public-development-show__title text-4xl lg:text-5xl font-bold mb-4">
+            <%= @habitation.nome_empreendimento %>
+          </h1>
+
+          <% if @habitation.public_rating_configured? %>
+            <div class="public-development-show__rating mb-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
+              <span class="inline-flex items-center gap-1 text-golden-one" aria-label="Avaliação <%= public_rating_value_label(@habitation) %> de 5">
+                <% public_rating_star_icon_names(@habitation).each do |icon_name| %>
+                  <i class="bi <%= icon_name %>" aria-hidden="true"></i>
+                <% end %>
+              </span>
+              <span><%= public_rating_value_label(@habitation) %></span>
+              <span class="text-white/70">(<%= public_rating_count_label(@habitation) %>)</span>
+            </div>
+          <% end %>
+          
+          <div class="public-development-show__hero-meta flex flex-wrap items-center gap-6 mb-8">
+            <div class="public-development-show__hero-meta-item flex items-center gap-2">
+              <i class="bi bi-geo-alt text-golden-one text-xl"></i>
+              <span class="text-lg"><%= [@habitation.public_neighborhood, @habitation.cidade].compact.join(' - ') %>, <%= @habitation.uf %></span>
+            </div>
+            
+            <div class="public-development-show__availability flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <i class="bi bi-building text-golden-one text-xl"></i>
+              <span class="font-bold"><%= @development_units.count %> <%= @development_units.count == 1 ? 'unidade disponível' : 'unidades disponíveis' %></span>
+            </div>
+          </div>
+
+          <div class="public-development-show__hero-actions flex flex-wrap gap-4">
+            <button type="button"
+                class="public-development-show__cta public-development-show__cta--primary inline-flex items-center gap-2 px-8 py-4 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-golden-two transition-all shadow-lg"
+                data-action="click->lead-capture#open"
+                data-property-id="<%= @habitation.id %>"
+                data-property-code="<%= @habitation.codigo %>"
+                data-property-title="<%= @habitation.nome_empreendimento %>"
+                data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
+                data-whatsapp-message="Olá, gostaria de saber mais sobre o empreendimento <%= @habitation.nome_empreendimento %>">
+              <i class="bi bi-whatsapp text-xl"></i>
+              <span>Fale Conosco</span>
+            </button>
+            
+            <% if @habitation.tour_virtual.present? %>
+              <%= link_to @habitation.tour_virtual,
+                  target: "_blank",
+                  class: "public-development-show__cta public-development-show__cta--ghost inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-bold rounded-lg hover:bg-white/20 transition-all border-2 border-white/30" do %>
+                <i class="bi bi-camera-video text-xl"></i>
+                <span>Tour Virtual</span>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unit Statistics Bar -->
+  <% if @development_units.any? %>
+    <div class="public-development-show__stats bg-white border-y border-gray-100 py-6">
+      <div class="container-custom">
+        <div class="public-development-show__stats-grid grid grid-cols-2 md:grid-cols-4 gap-6">
+          
+          <!-- Dormitórios -->
+          <% 
+            dorms = @development_units.map(&:dormitorios_qtd).compact.reject(&:zero?)
+            if dorms.any?
+              min_dorms = dorms.min
+              max_dorms = dorms.max
+          %>
+            <div class="public-development-show__stat flex items-center gap-3">
+              <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i class="bi bi-door-closed text-blue-three text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-gray-900">
+                  <%= min_dorms == max_dorms ? min_dorms : "#{min_dorms} ou #{max_dorms}" %>
+                </p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">
+                  <%= min_dorms == max_dorms && min_dorms == 1 ? 'Dormitório' : 'Dormitórios' %>
+                </p>
+              </div>
+            </div>
+          <% end %>
+          
+          <!-- Suítes -->
+          <% 
+            suites = @development_units.map(&:suites_qtd).compact.reject(&:zero?)
+            if suites.any?
+              min_suites = suites.min
+              max_suites = suites.max
+          %>
+            <div class="public-development-show__stat flex items-center gap-3">
+              <div class="w-12 h-12 bg-golden-50 rounded-lg flex items-center justify-center">
+                <i class="bi bi-house-door text-golden-one text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-gray-900">
+                  <%= min_suites == max_suites ? min_suites : "#{min_suites} ou #{max_suites}" %>
+                </p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">
+                  <%= min_suites == max_suites && min_suites == 1 ? 'Suíte' : 'Suítes' %>
+                </p>
+              </div>
+            </div>
+          <% end %>
+          
+          <!-- Área -->
+          <% 
+            areas = @development_units.filter_map(&:public_area_m2)
+            if areas.any?
+              min_area = areas.min.to_i
+              max_area = areas.max.to_i
+          %>
+            <div class="public-development-show__stat flex items-center gap-3">
+              <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                <i class="bi bi-rulers text-blue-three text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-gray-900">
+                  <%= min_area == max_area ? "#{min_area}m²" : "#{min_area}m² a #{max_area}m²" %>
+                </p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Área privativa</p>
+              </div>
+            </div>
+          <% end %>
+          
+          <!-- Vagas -->
+          <% 
+            vagas = @development_units.map(&:vagas_qtd).compact.reject(&:zero?)
+            if vagas.any?
+              min_vagas = vagas.min
+              max_vagas = vagas.max
+          %>
+            <div class="public-development-show__stat flex items-center gap-3">
+              <div class="w-12 h-12 bg-golden-50 rounded-lg flex items-center justify-center">
+                <i class="bi bi-car-front text-golden-one text-2xl"></i>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-gray-900">
+                  <%= min_vagas == max_vagas ? min_vagas : "#{min_vagas} ou #{max_vagas}" %>
+                </p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">
+                  <%= min_vagas == max_vagas && min_vagas == 1 ? 'Vaga' : 'Vagas' %>
+                </p>
+              </div>
+            </div>
+          <% end %>
+          
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Main Content -->
+  <div class="public-development-show__content container-custom py-12">
+    <div class="public-development-show__layout grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Main Column (2/3) -->
+      <div class="public-development-show__main lg:col-span-2 space-y-12">
+        <section class="public-development-show__section public-development-show__seo-summary bg-white rounded-xl shadow-sm p-8 border border-blue-100">
+          <p class="text-sm font-bold uppercase tracking-wide text-golden-one mb-3">Empreendimento em destaque</p>
+          <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-4">
+            <%= development_name %><%= " em #{development_full_location}" if development_full_location.present? %>
+          </h2>
+          <% if development_summary.present? %>
+            <p class="text-gray-700 leading-relaxed"><%= development_summary %></p>
+          <% end %>
+
+          <% if development_summary_metrics.any? %>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+              <% development_summary_metrics.each do |metric| %>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-blue-three">
+                  <%= metric %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <div class="flex flex-wrap gap-3 mt-6">
+            <% if @habitation.cidade.present? && development_city_path.present? %>
+              <%= link_to "Empreendimentos em #{@habitation.cidade}",
+                  development_city_path,
+                  class: "inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-three hover:bg-blue-100 transition" %>
+            <% end %>
+            <% if @habitation.public_neighborhood.present? && development_neighborhood_path.present? %>
+              <%= link_to "Empreendimentos em #{@habitation.public_neighborhood}",
+                  development_neighborhood_path,
+                  class: "inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-three hover:bg-blue-100 transition" %>
+            <% end %>
+          </div>
+        </section>
+        
+        <!-- About Section -->
+        <% description_content = @habitation.display_description %>
+        <% if description_content.present? %>
+          <section class="public-theme-development-about public-theme-development-about--default public-development-show__section public-development-show__about bg-white rounded-xl shadow-sm p-8 border border-blue-100">
+            <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div class="w-1 h-8 bg-golden-one rounded"></div>
+              <i class="bi bi-info-circle-fill text-blue-three"></i>
+              Sobre o Empreendimento
+            </h2>
+            <% description_id = dom_id(@habitation, :public_development_description) %>
+            <div class="public-collapsible-text public-development-show__prose rounded-lg bg-gradient-to-br from-blue-50 to-white border border-blue-100 p-5 prose prose-lg max-w-none text-gray-700 leading-relaxed"
+                 data-controller="collapsible-text"
+                 data-collapsible-text-collapsed-height-value="210">
+              <div id="<%= description_id %>" class="public-collapsible-text__content" data-collapsible-text-target="content">
+                <% if description_content.match?(/<[^>]+>/) %>
+                  <%= sanitize(description_content, tags: %w[p br strong em b i ul ol li h3 h4 h5 blockquote a], attributes: %w[href target rel]) %>
+                <% else %>
+                  <%= simple_format(description_content) %>
+                <% end %>
+              </div>
+              <button type="button"
+                      class="public-collapsible-text__toggle"
+                      data-collapsible-text-target="toggle"
+                      data-action="collapsible-text#toggle"
+                      aria-controls="<%= description_id %>"
+                      hidden>
+                Exibir mais +
+              </button>
+            </div>
+          </section>
+        <% end %>
+
+        <!-- Photo Gallery -->
+        <% if @habitation.all_images.count > 1 %>
+          <section class="public-development-show__section public-development-show__gallery bg-white rounded-xl shadow-sm p-8" data-controller="fancybox-gallery">
+            <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div class="w-1 h-8 bg-golden-one rounded"></div>
+              Galeria de Fotos
+            </h2>
+            
+            <div class="public-development-show__gallery-grid grid grid-cols-2 md:grid-cols-3 gap-4">
+              <% @habitation.all_images.each_with_index do |photo, index| %>
+                <% photo_url = public_image_url(photo) %>
+                <a href="<%= photo_url %>"
+                   data-fancybox="development-gallery" 
+                   data-caption="<%= @habitation.nome_empreendimento %> - Foto <%= index + 1 %>"
+                   class="public-development-show__gallery-item group relative aspect-video bg-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+                  <%= image_tag photo_url,
+                      alt: "#{@habitation.nome_empreendimento} - Foto #{index + 1}",
+                      class: "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" %>
+                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <i class="bi bi-zoom-in text-white text-3xl opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                  </div>
+                </a>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+
+        <!-- Features & Infrastructure -->
+        <% property_features = @habitation.public_property_features_for_display %>
+        <% leisure_features = @habitation.leisure_features_for_display %>
+        
+        <% if property_features.any? || leisure_features.any? %>
+          <section class="public-theme-development-features public-theme-development-features--default public-development-show__section public-development-show__features bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+            <h2 class="public-development-show__section-title text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
+              <div class="w-1 h-8 bg-golden-one rounded"></div>
+              <i class="bi bi-patch-check-fill text-golden-one"></i>
+              Características e Infraestrutura
+            </h2>
+
+            <% if property_features.any? %>
+              <div class="mb-6">
+                <h3 class="text-lg font-semibold text-blue-three mb-3 flex items-center gap-2">
+                  <span class="inline-block w-8 h-px bg-blue-200"></span>
+                  Destaque deste empreendimento
+                </h3>
+                <div class="public-development-show__chip-list flex flex-wrap gap-2">
+                  <% property_features.each do |feature| %>
+                    <div class="public-development-show__chip inline-flex items-center gap-2 text-gray-700 bg-white border border-gray-200 rounded-full px-3 py-1.5">
+                      <i class="bi bi-building-check text-golden-one text-sm"></i>
+                      <span class="text-sm leading-tight"><%= feature %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
+            <% if leisure_features.any? %>
+              <div>
+                <h3 class="text-lg font-semibold text-blue-three mb-3 flex items-center gap-2">
+                  <span class="inline-block w-8 h-px bg-blue-200"></span>
+                  Destaque lazer
+                </h3>
+                <div class="public-development-show__chip-list flex flex-wrap gap-2">
+                  <% leisure_features.each do |feature| %>
+                    <div class="public-development-show__chip inline-flex items-center gap-2 text-gray-700 bg-[#f8fafc] border border-gray-200 rounded-full px-3 py-1.5">
+                      <i class="bi bi-stars text-blue-three text-sm"></i>
+                      <span class="text-sm leading-tight"><%= feature %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </section>
+        <% end %>
+
+        <!--Location Section -->
+        <section class="public-theme-development-location public-theme-development-location--default public-development-show__section public-development-show__location bg-white rounded-xl shadow-sm p-8">
+          <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+            <div class="w-1 h-8 bg-golden-one rounded"></div>
+            Localização
+          </h2>
+          
+          <div class="space-y-6">
+            <!-- Address -->
+            <div class="public-development-show__address flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+              <i class="bi bi-geo-alt-fill text-blue-three text-2xl mt-1"></i>
+              <div>
+                <p class="font-semibold text-gray-900">
+                  <%= [@habitation.endereco, @habitation.numero].compact.join(', ') %>
+                </p>
+                <p class="text-gray-600">
+                  <%= [@habitation.public_neighborhood, @habitation.cidade, @habitation.uf].compact.join(' - ') %>
+                  <% if @habitation.cep.present? %>
+                    - CEP: <%= @habitation.cep %>
+                  <% end %>
+                </p>
+              </div>
+            </div>
+
+            <!-- Nearby -->
+            <% surroundings = Array(@habitation.imediacoes).flatten.compact.map(&:to_s).map(&:strip).reject(&:blank?) %>
+            <% if surroundings.present? %>
+              <div>
+                <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <i class="bi bi-pin-map text-golden-one"></i>
+                  Imediações
+                </h3>
+                <p class="text-gray-600"><%= surroundings.join(", ") %></p>
+              </div>
+            <% end %>
+          </div>
+        </section>
+
+        <!-- Available Units -->
+        <section class="public-theme-development-units public-theme-development-units--default public-development-show__section public-development-show__units bg-white rounded-xl shadow-sm p-8">
+          <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+            <div class="w-1 h-8 bg-golden-one rounded"></div>
+            Unidades Disponíveis
+            <span class="ml-auto text-base text-gray-500 font-normal">
+              <%= @development_units.count %> <%= @development_units.count == 1 ? 'unidade' : 'unidades' %>
+            </span>
+          </h2>
+          
+          <% if @development_units.any? %>
+            <div class="public-development-show__units-grid grid grid-cols-1 gap-6">
+              <% @development_units.each do |unit| %>
+                <%= render 'shared/tailwind/property_card', property: unit %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center py-12">
+              <i class="bi bi-inbox text-6xl text-gray-300 mb-4"></i>
+              <p class="text-gray-500">Nenhuma unidade disponível no momento.</p>
+            </div>
+          <% end %>
+        </section>
+
+        <% if development_faq_items.any? %>
+          <section class="public-development-show__section public-development-show__faq bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+            <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div class="w-1 h-8 bg-golden-one rounded"></div>
+              Perguntas frequentes sobre <%= development_name %>
+            </h2>
+
+            <div class="divide-y divide-gray-100">
+              <% development_faq_items.each do |item| %>
+                <div class="py-5 first:pt-0 last:pb-0">
+                  <h3 class="text-lg font-semibold text-blue-three mb-2"><%= item[:question] %></h3>
+                  <p class="text-gray-700 leading-relaxed"><%= item[:answer] %></p>
+                </div>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+
+      </div>
+
+      <!-- Sidebar (1/3) -->
+      <aside class="public-development-show__aside lg:col-span-1">
+        <div class="public-development-show__aside-stack sticky top-24 space-y-6">
+          <% if @shared_broker.present? %>
+            <%= render "habitations/shared_broker_card",
+                shared_broker: @shared_broker,
+                habitation: @habitation,
+                share_token: @lead_share_token %>
+          <% end %>
+          
+          <!-- Contact Card -->
+          <div class="public-development-show__contact-card bg-gradient-to-br from-blue-three to-blue-one rounded-xl shadow-lg p-6 text-white">
+            <h3 class="text-xl font-bold mb-4">Interessado?</h3>
+            <p class="text-white/90 text-sm mb-6">Fale com um especialista e receba atendimento personalizado</p>
+            
+            <button type="button" 
+                class="public-development-show__cta public-development-show__cta--contact w-full bg-white text-blue-three font-bold py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 mb-3"
+                data-action="click->lead-capture#open"
+                data-property-id="<%= @habitation.id %>"
+                data-property-code="<%= @habitation.codigo %>"
+                data-property-title="<%= @habitation.nome_empreendimento %>"
+                data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
+                data-whatsapp-message="Olá, gostaria de saber mais sobre o empreendimento <%= @habitation.nome_empreendimento %>">
+              <i class="bi bi-whatsapp text-green-500 text-xl"></i>
+              Falar no WhatsApp
+            </button>
+            
+            <%= link_to "tel:+554733111067", 
+                class: "public-development-show__cta public-development-show__cta--contact-ghost w-full bg-white/10 backdrop-blur-sm text-white font-bold py-3 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2 mb-3" do %>
+              <i class="bi bi-telephone text-golden-one"></i>
+              (47) 3311-1067
+            <% end %>
+            
+            <button type="button"
+                class="public-development-show__cta public-development-show__cta--contact-ghost w-full bg-white/10 backdrop-blur-sm text-white font-bold py-3 px-4 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
+                data-action="click->lead-capture#open"
+                data-property-id="<%= @habitation.id %>"
+                data-property-code="<%= @habitation.codigo %>"
+                data-property-title="<%= @habitation.nome_empreendimento %>"
+                data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
+                data-whatsapp-message="Gostaria de agendar uma visita para <%= @habitation.nome_empreendimento %>">
+              <i class="bi bi-calendar-check text-golden-one"></i>
+              Agendar Visita
+            </button>
+          </div>
+
+          <!-- Info Card -->
+          <div class="public-development-show__info-card bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-bold text-gray-900 mb-4">Informações</h3>
+            
+            <div class="space-y-3 text-sm">
+              <div class="flex justify-between py-2 border-b border-gray-100">
+                <span class="text-gray-500">Código:</span>
+                <span class="font-semibold text-gray-900"><%= @habitation.codigo %></span>
+              </div>
+              
+              <% if @habitation.constructor_name.present? %>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                  <span class="text-gray-500">Construtora:</span>
+                  <span class="font-semibold text-gray-900"><%= @habitation.constructor_name %></span>
+                </div>
+              <% end %>
+              
+              <% if @habitation.delivery_date_visible? %>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                  <span class="text-gray-500">Previsão de entrega:</span>
+                  <span class="font-semibold text-gray-900"><%= l(@habitation.data_entrega, format: :long) %></span>
+                </div>
+              <% elsif @habitation.data_entrega.present? && @habitation.ready_to_move? %>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                  <span class="text-gray-500">Situação:</span>
+                  <span class="font-semibold text-gray-900">Pronto para morar</span>
+                </div>
+              <% end %>
+              
+              <% if @habitation.aptos_andar.to_i > 0 %>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                  <span class="text-gray-500">Aptos por Andar:</span>
+                  <span class="font-semibold text-gray-900"><%= @habitation.aptos_andar %></span>
+                </div>
+              <% end %>
+              
+              <% if @habitation.aptos_edificio.to_i > 0 %>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                  <span class="text-gray-500">Total de Aptos:</span>
+                  <span class="font-semibold text-gray-900"><%= @habitation.aptos_edificio %></span>
+                </div>
+              <% end %>
+              
+              <div class="flex justify-between py-2">
+                <span class="text-gray-500">Unidades:</span>
+                <span class="font-semibold text-gray-900"><%= @development_units.count %> disponíveis</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="public-development-show__share-card bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-bold text-gray-900 mb-4">Compartilhar</h3>
+            <%= render "shared/broker_share_menu", property: @habitation %>
+          </div>
+
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</div>

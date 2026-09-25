@@ -33,6 +33,28 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(rule.reload.meta_page_ids).to eq([allowed.page_id])
   end
 
+  it "desabilita o aviso por e-mail quando o SMTP nao esta configurado" do
+    get new_admin_distribution_rule_path
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    toggle = doc.at_css("input[name='distribution_rule[notify_email]'].ax-toggle-chip__input")
+    expect(toggle["disabled"]).to be_present
+    expect(response.body).to include("SMTP não configurado")
+  end
+
+  it "libera o aviso por e-mail quando o SMTP esta configurado" do
+    allow_any_instance_of(DistributionRule).to receive(:email_channel_available?).and_return(true)
+
+    get new_admin_distribution_rule_path
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    toggle = doc.at_css("input[name='distribution_rule[notify_email]'].ax-toggle-chip__input")
+    expect(toggle["disabled"]).to be_nil
+    expect(response.body).not_to include("SMTP não configurado")
+  end
+
   it "carrega o layout para System Admin sem tenant sem erro interno" do
     sign_out admin
     sign_in create(:admin_user, super_admin: true)

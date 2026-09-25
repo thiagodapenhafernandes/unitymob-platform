@@ -1,0 +1,6 @@
+<%# locals: properties %>
+<div class="public-habitations-index__grid public-theme-property-grid public-theme-property-grid--default grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
+  <% properties.each_with_index do |property, index| %>
+    <%= render 'shared/tailwind/property_card', property: property, priority_image: index < 2 %>
+  <% end %>
+</div>
