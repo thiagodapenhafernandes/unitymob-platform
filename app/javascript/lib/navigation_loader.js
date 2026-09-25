@@ -203,10 +203,13 @@ export function createNavigationLoader({ document, window }) {
   })
 
   // Falhas que não terminam em turbo:load.
+  // Durante uma visita o body ainda é o da origem: esconder aqui faria o
+  // overlay sumir e a tela de origem reaparecer antes do destino. Nesse caso
+  // o encerramento fica com o `turbo:load` do destino (ou o failsafe).
   on("turbo:fetch-request-error", (event) => {
     const el = event.target?.closest?.("turbo-frame")
     if (el) el.dataset.navSettled = "1"
-    else hide()
+    else if (!visiting) hide()
   })
   on("turbo:frame-missing", (event) => {
     if (event.target?.dataset) event.target.dataset.navSettled = "1"

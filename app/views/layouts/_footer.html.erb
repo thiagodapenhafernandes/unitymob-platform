@@ -1,4 +1,4 @@
-<footer class="bg-gradient-to-br from-blue-three to-blue-one text-white">
+<footer class="public-theme-site-footer public-theme-site-footer--default bg-gradient-to-br from-blue-three to-blue-one text-white">
   <% public_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant) %>
   <% public_contact_setting = @contact_setting || ContactSetting.instance(tenant: public_tenant) %>
   <% footer_setting = @footer_setting || FooterSetting.instance(tenant: public_tenant) %>

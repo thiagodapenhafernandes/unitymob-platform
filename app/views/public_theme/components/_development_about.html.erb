@@ -1,0 +1,16 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  section_class = ["public-theme-development-about", "public-theme-development-about--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  body = local_assigns[:body].presence
+%>
+
+<section id="<%= local_assigns[:id] %>" class="<%= section_class %>">
+  <h2 class="public-theme-development-section__title"><%= local_assigns.fetch(:title, "Sobre o empreendimento") %></h2>
+  <div class="public-theme-development-about__body">
+    <% if body.present? %>
+      <%= simple_format(body, {}, sanitize: true) %>
+    <% else %>
+      <p class="public-theme-development-about__empty"><%= local_assigns[:empty_text] %></p>
+    <% end %>
+  </div>
+</section>

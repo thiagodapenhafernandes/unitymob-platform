@@ -27,6 +27,15 @@ class PwaIconsController < ApplicationController
   private
 
   def icon_png(size)
+    setting = layout_setting
+    logo_key = setting.logo.attached? ? setting.logo.blob.id : "no-logo"
+    version = [setting.tenant_id, setting.updated_at.to_i, logo_key].join("-")
+    Rails.cache.fetch("pwa-icons/v1/#{size}/#{version}", expires_in: 7.days) do
+      build_icon_png(size)
+    end
+  end
+
+  def build_icon_png(size)
     require "mini_magick"
 
     base = build_background(size)

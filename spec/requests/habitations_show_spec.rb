@@ -181,6 +181,25 @@ RSpec.describe "Habitation details", type: :request do
       expect(og_image).not_to include("/rails/active_storage/")
     end
 
+    it "serve a galeria via redirect do storage em vez de proxy pelo Rails" do
+      habitation = create(:habitation, codigo: "GAL-REDIRECT", slug: "apartamento-galeria-redirect")
+      habitation.update_column(:pictures, [])
+      habitation.photos.attach(
+        io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+        filename: "foto.png",
+        content_type: "image/png"
+      )
+      habitation.reload
+      habitation.photos.first.blob.variant(resize_to_limit: [1200, 900], format: :webp).processed
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      mobile_src = response.body[/data-public-gallery-mobile-src="([^"]+)"/, 1]
+      expect(mobile_src).to include("/rails/active_storage/representations/redirect/")
+      expect(mobile_src).not_to include("/representations/proxy/")
+    end
+
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do
       broker = create(:admin_user, name: "Eliane Rosa", creci: "CREI24685", phone: "(47) 99905-8447")
       habitation = create(:habitation, codigo: "BROKER-CARD", slug: "apartamento-broker-card")
@@ -1058,6 +1077,31 @@ RSpec.describe "Habitation details", type: :request do
       expect(collapsible_description.at_css(".public-collapsible-text__content").text.squish).to include("Empreendimento com lazer completo")
       expect(toggle.text.squish).to eq("Exibir mais +")
       expect(toggle["aria-controls"]).to eq(collapsible_description.at_css(".public-collapsible-text__content")["id"])
+    end
+
+    it "serve o hero do empreendimento via redirect do storage em vez de proxy pelo Rails" do
+      development = create(
+        :habitation,
+        codigo: "DEV-REDIRECT",
+        slug: "empreendimento-redirect",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Residencial Redirect"
+      )
+      development.update_column(:pictures, [])
+      development.photos.attach(
+        io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+        filename: "foto.png",
+        content_type: "image/png"
+      )
+      development.reload
+      development.photos.first.blob.variant(resize_to_fill: [1400, 820], format: :webp).processed
+
+      get empreendimento_details_path(development)
+
+      expect(response).to have_http_status(:ok)
+      hero_src = Nokogiri::HTML(response.body).at_css(".public-development-show__hero img")["src"]
+      expect(hero_src).to include("/rails/active_storage/representations/redirect/")
+      expect(hero_src).not_to include("/representations/proxy/")
     end
 
     it "redirects the property URL for developments to the canonical development URL" do

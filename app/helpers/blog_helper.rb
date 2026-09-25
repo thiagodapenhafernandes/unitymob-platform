@@ -43,9 +43,14 @@ module BlogHelper
 
   def blog_image_url(source, size:)
     blob = source.respond_to?(:blob) ? source.blob : source
-    # Generate a signed route only: no Spaces HEAD requests or image processing while rendering HTML.
-    image = blob.variable? ? blob.variant(resize_to_limit: size, format: :webp) : blob
-    rails_storage_proxy_path(image, only_path: true)
+    # Generate a signed redirect route only: no Spaces HEAD requests or image
+    # processing while rendering HTML, and no byte streaming through Rails —
+    # the browser fetches the bytes straight from storage.
+    if blob.variable?
+      rails_representation_path(blob.variant(resize_to_limit: size, format: :webp), only_path: true)
+    else
+      rails_blob_path(blob, only_path: true)
+    end
   end
 
   def blog_cover(article, hero: false, archive: false)

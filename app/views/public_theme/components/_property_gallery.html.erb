@@ -1,0 +1,105 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  images = Array(local_assigns[:images])
+  title = local_assigns[:title].presence || habitation.display_title
+  address_text = local_assigns[:address_text].to_s
+  has_sale_price = local_assigns[:has_sale_price]
+  has_rent_price = local_assigns[:has_rent_price]
+  primary_image_source = images.first
+  primary_image_url = local_assigns[:primary_image_url] || (public_image_url(primary_image_source, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if primary_image_source)
+  primary_image_srcset = local_assigns[:primary_image_srcset] || (public_image_srcset(primary_image_source, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if primary_image_source)
+  gallery_class = ["public-theme-property-gallery", "public-theme-property-gallery--#{local_assigns.fetch(:variant, "default")}", local_assigns[:class_name]].compact.join(" ")
+%>
+
+<section class="<%= gallery_class %>" data-controller="fancybox-gallery">
+  <% if images.any? %>
+    <div class="public-theme-property-gallery__grid sl-detail__gallery-grid"
+         data-controller="public-gallery-mobile"
+         data-public-gallery-mobile-property-id-value="<%= habitation.id %>"
+         data-public-gallery-mobile-property-url-value="<%= habitation_path(habitation) %>"
+         data-public-gallery-mobile-property-title-value="<%= title %>"
+         data-public-gallery-mobile-property-image-url-value="<%= public_image_url(images.first) %>"
+         data-public-gallery-mobile-property-price-value="<%= number_to_currency((has_rent_price ? habitation.valor_locacao_cents : habitation.valor_venda_cents).to_i / 100.0, unit: 'R$ ', separator: ',', delimiter: '.', precision: 0) if (has_rent_price || has_sale_price) %>"
+         data-public-gallery-mobile-property-location-value="<%= address_text %>">
+      <a href="<%= public_image_url(images.first) %>"
+         data-fancybox="property-gallery"
+         data-caption="<%= title %> - Foto 1"
+         data-public-gallery-mobile-src="<%= primary_image_url %>"
+         data-public-gallery-mobile-srcset="<%= primary_image_srcset %>"
+         data-public-gallery-mobile-sizes="(min-width: 1024px) 58vw, 100vw"
+         data-public-gallery-mobile-class="<%= public_gallery_image_class(images.first) %>"
+         data-public-gallery-mobile-style="<%= public_gallery_image_style(images.first, primary: true) %>"
+         class="public-theme-property-gallery__primary sl-detail__gallery-primary">
+        <%= image_tag primary_image_url,
+            alt: "#{title} - Foto 1",
+            class: public_gallery_image_class(images.first),
+            data: { public_gallery_mobile_target: "primaryImage" },
+            style: public_gallery_image_style(images.first, primary: true),
+            fetchpriority: "high",
+            loading: "eager",
+            decoding: "async",
+            srcset: primary_image_srcset,
+            sizes: "(min-width: 1024px) 58vw, 100vw" %>
+      </a>
+
+      <div class="public-theme-property-gallery__thumbs sl-detail__gallery-thumbs">
+        <% images.drop(1).first(4).each_with_index do |photo, index| %>
+          <a href="<%= public_image_url(photo) %>"
+             data-fancybox="property-gallery"
+             data-caption="<%= title %> - Foto <%= index + 2 %>"
+             data-public-gallery-mobile-src="<%= public_image_url(photo, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) %>"
+             data-public-gallery-mobile-srcset="<%= public_image_srcset(photo, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) %>"
+             data-public-gallery-mobile-sizes="(min-width: 1024px) 58vw, 100vw"
+             data-public-gallery-mobile-class="<%= public_gallery_image_class(photo) %>"
+             data-public-gallery-mobile-style="<%= public_gallery_image_style(photo, primary: true) %>">
+            <%= image_tag public_image_url(photo, resize_to_fill: [560, 420], format: :webp),
+                alt: "#{title} - Foto #{index + 2}",
+                class: public_gallery_image_class(photo),
+                style: public_gallery_image_style(photo),
+                loading: "lazy",
+                decoding: "async" %>
+          </a>
+        <% end %>
+      </div>
+
+      <% images.drop(5).each_with_index do |photo, index| %>
+        <a href="<%= public_image_url(photo) %>"
+           data-fancybox="property-gallery"
+           data-caption="<%= title %> - Foto <%= index + 6 %>"
+           data-public-gallery-mobile-src="<%= public_image_url(photo) %>"
+           data-public-gallery-mobile-sizes="(min-width: 1024px) 58vw, 100vw"
+           data-public-gallery-mobile-class="<%= public_gallery_image_class(photo) %>"
+           data-public-gallery-mobile-style="<%= public_gallery_image_style(photo, primary: true) %>"
+           class="hidden"></a>
+      <% end %>
+
+      <%# `share` opcional: círculo no canto inferior esquerdo da foto principal. %>
+      <% if local_assigns[:share].present? %>
+        <div class="public-theme-property-gallery__share sl-detail__gallery-share"><%= local_assigns[:share] %></div>
+      <% end %>
+
+      <%# Quando `actions` vem preenchido, a contagem sai de dentro da foto e
+          vira uma pílula na fileira abaixo da galeria. %>
+      <% unless local_assigns[:actions].present? %>
+        <button type="button" class="public-theme-property-gallery__count sl-detail__gallery-count" data-gallery-open>
+          <%= public_svg_icon("images") %>
+          Ver <%= images.size %> fotos
+        </button>
+      <% end %>
+      <span class="public-habitations-show__gallery-status" data-public-gallery-mobile-target="status" aria-live="polite"></span>
+    </div>
+
+    <%# Dentro da <section> de propósito: o controller do fancybox escuta o
+        clique no próprio elemento, então [data-gallery-open] precisa estar aqui. %>
+    <% if local_assigns[:actions].present? %>
+      <div class="public-theme-property-gallery__actions sl-detail__gallery-actions">
+        <%= local_assigns[:actions] %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="public-theme-property-gallery__empty sl-detail__empty-media">
+      <%= public_svg_icon("image") %>
+      <p>Sem fotos disponíveis</p>
+    </div>
+  <% end %>
+</section>

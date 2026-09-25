@@ -1636,7 +1636,17 @@ class Admin::HabitationsController < Admin::BaseController
         "habitations.codigo = :code OR habitations.codigo_dwv = :code",
         code: code
       )
-      return direct_scope if direct_scope.exists?
+      if direct_scope.exists?
+        # Busca exata por código com filtro de status explícito ignora filtros
+        # incompatíveis; sem filtro explícito vale a regra padrão (só ativos).
+        return direct_scope if explicit_habitation_status_filter?(effective_habitations_filter_params)
+
+        return apply_status_filter(
+          direct_scope,
+          @statuses,
+          explicit: @somente_sem_imagens == "1"
+        )
+      end
     end
 
     scope = if @intake_review == "administrative"

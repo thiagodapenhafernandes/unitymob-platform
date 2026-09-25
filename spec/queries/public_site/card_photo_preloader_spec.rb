@@ -96,3 +96,33 @@ RSpec.describe PublicSite::CardPhotoPreloader do
     expect(record.photos_attachments.map(&:id)).to eq(attachments.drop(5).first(3).map(&:id))
   end
 end
+
+RSpec.describe PublicSite::CardPhotoPreloader, "#preload_variant_records" do
+  def attach_real_photo(habitation)
+    habitation.photos.attach(
+      io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+      filename: "foto.png",
+      content_type: "image/png"
+    )
+  end
+
+  it "deixa variant_records dos blobs carregados (processed? sem query)" do
+    habitation = create(:habitation)
+    attach_real_photo(habitation)
+    record = Habitation.find(habitation.id)
+
+    described_class.new([record], limit: 3).call
+
+    blob = record.photos_attachments.first.blob
+    expect(blob.association(:variant_records)).to be_loaded
+
+    variant_queries = 0
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+      variant_queries += 1 if payload[:sql].to_s.include?("active_storage_variant_records")
+    end
+    blob.variant(resize_to_limit: [400, 300]).send(:processed?)
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    expect(variant_queries).to eq(0)
+  end
+end

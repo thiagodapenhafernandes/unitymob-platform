@@ -1,0 +1,77 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  background_url = local_assigns[:background_url]
+  background_srcset = local_assigns[:background_srcset]
+  background_mobile_srcset = local_assigns[:background_mobile_srcset]
+  background_sizes = local_assigns[:background_sizes].presence || "100vw"
+  background_alt = local_assigns[:background_alt].to_s
+  slides = Array(local_assigns[:slides])
+  transition_effect = local_assigns[:transition_effect].presence || "cinematic_fade"
+  slide_interval = local_assigns[:slide_interval].presence || 5200
+  hero_class = [
+    "public-theme-hero",
+    "public-theme-hero--#{variant}",
+    ("public-theme-hero--with-slides public-theme-hero--transition-#{transition_effect.to_s.tr("_", "-")}" if slides.any?),
+    local_assigns[:class_name]
+  ].compact.join(" ")
+  container_class = ["public-theme-hero__container", local_assigns.fetch(:container_class, "public-theme-container")].compact.join(" ")
+  inner_class = ["public-theme-hero__inner", local_assigns[:inner_class]].compact.join(" ")
+  section_data = local_assigns.fetch(:data, {}).to_h.deep_dup
+  if slides.any?
+    section_data[:controller] = [section_data[:controller], "public-hero-slides"].compact_blank.join(" ")
+    section_data[:public_hero_slides_effect_value] = transition_effect
+    section_data[:public_hero_slides_interval_value] = slide_interval
+  end
+%>
+
+<%= tag.section id: local_assigns[:id], class: hero_class, data: section_data.presence do %>
+  <% if slides.any? %>
+    <div class="public-theme-hero__slides" aria-hidden="true">
+      <% slides.each_with_index do |slide, index| %>
+        <div class="public-theme-hero__background public-theme-hero__slide <%= local_assigns[:background_class] %><%= " is-active" if index.zero? %>"
+             style="background-image: url('<%= slide[:image_url] %>')"
+             data-public-hero-slides-target="slide"
+             data-display-period="<%= slide[:display_period] %>"></div>
+      <% end %>
+    </div>
+  <% elsif background_url.present? && (background_srcset.present? || background_mobile_srcset.present?) %>
+    <picture class="public-theme-hero__background <%= local_assigns[:background_class] %>" aria-hidden="true">
+      <% if background_mobile_srcset.present? %>
+        <source media="(max-width: 767px)" srcset="<%= background_mobile_srcset %>" sizes="<%= background_sizes %>">
+      <% end %>
+      <% if background_srcset.present? %>
+        <source media="(min-width: 768px)" srcset="<%= background_srcset %>" sizes="<%= background_sizes %>">
+      <% end %>
+      <%= image_tag background_url,
+            alt: background_alt,
+            loading: "eager",
+            decoding: "async",
+            fetchpriority: "high",
+            sizes: background_sizes,
+            srcset: (background_srcset.presence || background_mobile_srcset) %>
+    </picture>
+  <% elsif background_url.present? %>
+    <div class="public-theme-hero__background <%= local_assigns[:background_class] %>" style="background-image: url('<%= background_url %>')"></div>
+  <% end %>
+  <% Array(local_assigns[:overlay_classes]).each do |overlay_class| %>
+    <div class="<%= overlay_class %>"></div>
+  <% end %>
+
+  <div class="<%= container_class %>">
+    <div class="<%= inner_class %>">
+      <% if local_assigns[:tagline].present? %>
+        <p class="public-theme-hero__tagline <%= local_assigns[:tagline_class] %>"><%= local_assigns[:tagline] %></p>
+      <% end %>
+
+      <% if local_assigns[:title].present? %>
+        <h1 class="public-theme-hero__title"><%= local_assigns[:title] %></h1>
+      <% end %>
+
+      <% if local_assigns[:lead].present? %>
+        <p class="public-theme-hero__lead <%= local_assigns[:lead_class] %>"><%= local_assigns[:lead] %></p>
+      <% end %>
+
+      <%= yield %>
+    </div>
+  </div>
+<% end %>

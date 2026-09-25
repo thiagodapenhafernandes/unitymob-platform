@@ -1,0 +1,48 @@
+<%
+  public_map = local_assigns.fetch(:public_map)
+  map_class = ["public-theme-property-map", "public-theme-property-map--#{local_assigns.fetch(:variant, "default")}", local_assigns[:class_name]].compact.join(" ")
+  place_label = local_assigns[:place_label]
+%>
+
+<% if public_map.visible? %>
+  <section id="<%= local_assigns.fetch(:id, "localizacao-imovel") %>" class="<%= map_class %>">
+    <div class="public-theme-property-map__heading sl-detail__map-heading">
+      <div>
+        <h3>Localização</h3>
+        <p><%= public_map.approximate? ? "Região aproximada do imóvel" : "Localização do imóvel" %></p>
+      </div>
+
+      <% if public_map.external_url.present? %>
+        <%= link_to public_map.external_url, target: "_blank", rel: "noopener noreferrer" do %>
+          <%= public_svg_icon("box-arrow-up-right") %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="public-theme-property-map__tabs sl-detail__map-tabs" role="tablist" aria-label="Visualização da localização">
+      <button type="button" class="is-active" role="tab" aria-selected="true" data-public-property-map-target="mapButton" data-action="click->public-property-map#showMap">Mapa</button>
+      <% if public_map.satellite_enabled? %>
+        <button type="button" role="tab" aria-selected="false" data-public-property-map-target="satelliteButton" data-action="click->public-property-map#toggleSatellite">Satélite</button>
+      <% end %>
+      <% if public_map.street_view_enabled? %>
+        <button type="button" role="tab" aria-selected="false" data-public-property-map-target="streetViewButton" data-action="click->public-property-map#showStreetView">Rua</button>
+      <% end %>
+    </div>
+
+    <div class="public-theme-property-map__shell sl-detail__map-shell" data-public-property-map-target="shell">
+      <div class="public-habitations-show__map sl-detail__map"
+           data-public-property-map-target="map"
+           aria-label="<%= public_map.approximate? ? "Mapa com região aproximada do imóvel" : "Mapa com localização do imóvel" %>"></div>
+      <% if public_map.street_view_enabled? %>
+        <div class="public-habitations-show__street-view sl-detail__street-view"
+             data-public-property-map-target="streetView"
+             hidden
+             aria-label="Vista da rua do imóvel"></div>
+      <% end %>
+    </div>
+
+    <% if place_label.present? %>
+      <p class="public-theme-property-map__place sl-detail__map-place"><%= place_label %></p>
+    <% end %>
+  </section>
+<% end %>

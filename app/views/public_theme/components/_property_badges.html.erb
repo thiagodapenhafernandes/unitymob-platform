@@ -1,0 +1,26 @@
+<%
+  property = local_assigns.fetch(:property)
+  reduced_price = local_assigns.fetch(:reduced_price, false)
+  discount_percentage = local_assigns[:discount_percentage]
+  domain_badges = Array(property.display_badges).filter_map do |badge|
+    text = badge[:text] || badge["text"]
+    next if text.blank?
+
+    color = badge[:tailwind_color] || badge["tailwind_color"] || badge[:color] || badge["color"]
+    css_token = color.to_s.parameterize
+    {
+      text: text,
+      css_class: css_token.present? ? "public-theme-property-card__tag--#{css_token}" : nil
+    }
+  end.first(reduced_price ? 1 : 2)
+%>
+
+<div class="public-theme-property-card__badges">
+  <% if reduced_price && discount_percentage.present? %>
+    <span class="public-theme-property-card__discount-tag"><%= public_svg_icon("arrow-down") %> <%= discount_percentage %>%</span>
+  <% end %>
+
+  <% domain_badges.each do |badge| %>
+    <span class="public-theme-property-card__tag <%= badge[:css_class] %>"><%= badge[:text] %></span>
+  <% end %>
+</div>

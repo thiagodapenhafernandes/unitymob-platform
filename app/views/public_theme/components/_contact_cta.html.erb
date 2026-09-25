@@ -1,0 +1,18 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  cta_class = ["public-theme-contact-cta", "public-theme-contact-cta--#{variant}", local_assigns[:class_name]].compact.join(" ")
+%>
+
+<section id="<%= local_assigns[:id] %>" class="<%= cta_class %>">
+  <div class="<%= local_assigns.fetch(:container_class, "public-theme-container") %>">
+    <% if local_assigns[:title].present? %>
+      <h2 class="public-theme-contact-cta__title"><%= local_assigns[:title] %></h2>
+    <% end %>
+    <% if local_assigns[:body].present? %>
+      <p class="public-theme-contact-cta__body"><%= local_assigns[:body] %></p>
+    <% end %>
+    <% if local_assigns[:cta].present? %>
+      <div class="public-theme-contact-cta__action"><%= local_assigns[:cta] %></div>
+    <% end %>
+  </div>
+</section>

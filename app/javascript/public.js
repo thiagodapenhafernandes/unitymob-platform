@@ -73,7 +73,11 @@ const pageScopedControllers = [
   ["collapsible-text", () => import("controllers/collapsible_text_controller")],
   ["public-favorites", () => import("controllers/public_favorites_controller")],
   ["public-gallery-mobile", () => import("controllers/public_gallery_mobile_controller")],
-  ["sidebar", () => import("controllers/sidebar_controller")]
+  ["sidebar", () => import("controllers/sidebar_controller")],
+  ["salute-luxury-theme", () => import("controllers/salute_luxury_theme_controller")],
+  ["public-card-gallery", () => import("controllers/public_card_gallery_controller")],
+  ["public-card-strip", () => import("controllers/public_card_strip_controller")],
+  ["public-property-favorite", () => import("controllers/public_property_favorite_controller")]
 ]
 
 const loadedPageScoped = new Set()

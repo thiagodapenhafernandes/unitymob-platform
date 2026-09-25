@@ -1,0 +1,76 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  hero_class = ["public-theme-development-hero", "public-theme-development-hero--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  background_url = local_assigns[:background_url]
+  breadcrumbs = Array(local_assigns[:breadcrumbs])
+  availability = local_assigns[:availability]
+%>
+
+<section id="<%= local_assigns[:id] %>" class="<%= hero_class %>">
+  <% if background_url.present? %>
+    <%# Blurred background fill: a mesma foto em duas camadas. A de trás cobre a
+        largura toda, borrada, só para preencher o que sobra nas laterais; a da
+        frente aparece inteira, ajustada pela altura. %>
+    <div class="public-theme-development-hero__bg-blur" style="background-image: url('<%= background_url %>')" aria-hidden="true"></div>
+    <div class="public-theme-development-hero__bg" style="background-image: url('<%= background_url %>')"></div>
+  <% end %>
+  <div class="public-theme-development-hero__grade" aria-hidden="true"></div>
+
+  <div class="<%= local_assigns.fetch(:container_class, "public-theme-container") %> public-theme-development-hero__inner">
+    <% if breadcrumbs.any? %>
+      <nav class="public-theme-development-hero__crumbs" aria-label="Você está aqui">
+        <% breadcrumbs.each_with_index do |crumb, index| %>
+          <% label = crumb[:label] || crumb["label"] %>
+          <% url = crumb[:url] || crumb["url"] %>
+          <span aria-hidden="true" class="public-theme-development-hero__crumb-sep"><%= "›" if index.positive? %></span>
+          <% if url.present? %>
+            <%= link_to label, url %>
+          <% else %>
+            <span aria-current="page"><%= label %></span>
+          <% end %>
+        <% end %>
+      </nav>
+    <% end %>
+
+    <h1 class="public-theme-development-hero__title"><%= local_assigns[:title] %></h1>
+
+    <div class="public-theme-development-hero__meta">
+      <% if local_assigns[:location].present? %>
+        <span class="public-theme-development-hero__tag"><%= local_assigns[:location] %></span>
+      <% end %>
+      <% if availability.present? %>
+        <span class="public-theme-development-hero__tag public-theme-development-hero__tag--gold"><%= availability %></span>
+      <% end %>
+    </div>
+
+    <%# O fancybox_gallery_controller monta o álbum com os `a[data-fancybox]`
+        DENTRO do seu elemento. Por isso o controller fica neste container e não
+        no botão: botão e demais fotos precisam estar sob a mesma instância. %>
+    <% gallery_photos = Array(local_assigns[:gallery_photos]) %>
+    <% if gallery_photos.any? %>
+      <div class="public-theme-development-hero__gallery-wrap" data-controller="fancybox-gallery">
+        <a class="public-theme-development-hero__gallery"
+           href="<%= gallery_photos.first[:full] || gallery_photos.first["full"] %>"
+           data-fancybox="empreendimento">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <circle cx="8.5" cy="10" r="1.6" fill="currentColor"/>
+            <path d="M4 17l5-5 4 4 3-2.5 4 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <%= gallery_photos.size == 1 ? "Abrir a foto" : "Abrir as #{gallery_photos.size} fotos" %>
+        </a>
+
+        <%# Demais fotos do álbum: fora da tela, mas no DOM e sob o mesmo
+            controller. clip-path em vez de display:none — escondido com display
+            não entra na coleção do Fancybox. %>
+        <span class="public-theme-development-hero__gallery-rest">
+          <% gallery_photos.drop(1).each do |photo| %>
+            <a href="<%= photo[:full] || photo["full"] %>" data-fancybox="empreendimento" tabindex="-1" aria-hidden="true"></a>
+          <% end %>
+        </span>
+      </div>
+    <% end %>
+
+    <%= yield if block_given? %>
+  </div>
+</section>

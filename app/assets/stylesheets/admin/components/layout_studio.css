@@ -120,6 +120,12 @@
 .lss-web { overflow: hidden; border: 1px solid var(--ab-line); border-radius: 10px; background: #fff; color: #1f2733; font-size: 11px; }
 .lss-web__top { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: var(--theme-public-primary, #022b3a); color: #fff; transition: background-color 200ms; }
 .lss-web__top strong { margin-right: auto; font-size: 12.5px; }
+/* Logo da prévia: variante quebrada vira nome da marca (com live-text). */
+.pid-web__logo { display: inline-flex; align-items: center; }
+.pid-web__logo img { width: auto; max-height: 26px; }
+.pid-web__logo-name { display: none; }
+.pid-web__logo.is-image-missing img { display: none; }
+.pid-web__logo.is-image-missing .pid-web__logo-name { display: inline; }
 .lss-web__top span { opacity: .8; }
 .lss-web__hero { display: grid; justify-items: start; gap: 8px; padding: 28px 18px; background: linear-gradient(135deg, var(--theme-public-primary, #022b3a), var(--theme-public-secondary, #053c5e)); color: #fff; transition: background 200ms; }
 .lss-web__hero small { opacity: .75; font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; }

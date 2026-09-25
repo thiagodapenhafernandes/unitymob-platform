@@ -1,0 +1,18 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  items = Array(local_assigns[:items]).select { |item| (item[:value] || item["value"]).present? }
+  strip_class = ["public-theme-development-highlights", "public-theme-development-highlights--#{variant}", local_assigns[:class_name]].compact.join(" ")
+%>
+
+<% if items.any? %>
+  <section class="<%= strip_class %>">
+    <div class="<%= local_assigns.fetch(:container_class, "public-theme-container") %> public-theme-development-highlights__grid">
+      <% items.each do |item| %>
+        <div class="public-theme-development-highlights__item">
+          <strong><%= item[:value] || item["value"] %></strong>
+          <span><%= item[:label] || item["label"] %></span>
+        </div>
+      <% end %>
+    </div>
+  </section>
+<% end %>

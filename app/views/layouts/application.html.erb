@@ -52,10 +52,10 @@
     <% if defined?(@hero_preload_source) && @hero_preload_source.present? %>
       <%
         hero_preload_mobile_source = @hero_preload_mobile_source || @hero_preload_source
-        hero_preload_mobile_640 = public_image_url(hero_preload_mobile_source, resize_to_limit: [640, 1138], format: :webp, representation_proxy: true)
-        hero_preload_mobile_900 = public_image_url(hero_preload_mobile_source, resize_to_limit: [900, 1600], format: :webp, representation_proxy: true)
-        hero_preload_desktop_1440 = public_image_url(@hero_preload_source, resize_to_limit: [1440, 810], format: :webp, representation_proxy: true)
-        hero_preload_desktop_1920 = public_image_url(@hero_preload_source, resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true)
+        hero_preload_mobile_640 = public_image_url(hero_preload_mobile_source, resize_to_limit: [640, 1138], format: :webp)
+        hero_preload_mobile_900 = public_image_url(hero_preload_mobile_source, resize_to_limit: [900, 1600], format: :webp)
+        hero_preload_desktop_1440 = public_image_url(@hero_preload_source, resize_to_limit: [1440, 810], format: :webp)
+        hero_preload_desktop_1920 = public_image_url(@hero_preload_source, resize_to_limit: [1920, 1080], format: :webp)
         hero_preload_srcset = [
           ("#{hero_preload_mobile_640} 640w" if hero_preload_mobile_640.present?),
           ("#{hero_preload_mobile_900} 900w" if hero_preload_mobile_900.present?),
@@ -217,15 +217,19 @@
         data-public-interest-tracker-property-parking-spaces-value="<%= @habitation&.vagas_qtd %>"
         data-public-interest-tracker-property-price-cents-value="<%= @habitation&.valor_venda_cents.presence || @habitation&.valor_locacao_cents %>">
     <%= render "layouts/tracking_body", tracking_setting: @tracking_setting %>
-    <%= render 'layouts/header' %>
-    
-    <main role="main">
-      <%= render 'shared/flash_messages', toast: true if flash.any? %>
+    <% if luxury_theme? %>
+      <%= render("public_theme/luxury_shell") { yield } %>
+    <% else %>
+      <%= render 'layouts/header' %>
 
-      <%= yield %>
-    </main>
-    
-    <%= render 'layouts/footer' %>
+      <main role="main">
+        <%= render 'shared/flash_messages', toast: true if flash.any? %>
+
+        <%= yield %>
+      </main>
+
+      <%= render 'layouts/footer' %>
+    <% end %>
     
     <%# Performance: Defer non-critical external libraries %>
     <script>

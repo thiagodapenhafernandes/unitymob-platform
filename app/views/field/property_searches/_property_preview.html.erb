@@ -1,7 +1,7 @@
 <%
   images = habitation.public_image_sources
   image_url = ->(source, fill = [960, 640]) { public_image_url(source, resize_to_fill: fill, format: :webp) }
-  gallery_url = ->(source) { public_image_url(source, resize_to_limit: [1600, 1200], format: :webp, representation_proxy: true) }
+  gallery_url = ->(source) { public_image_url(source, resize_to_limit: [1600, 1200], format: :webp) }
   gallery_group = "field-property-preview-#{habitation.id}"
   photo_count = images.size
   facts = [

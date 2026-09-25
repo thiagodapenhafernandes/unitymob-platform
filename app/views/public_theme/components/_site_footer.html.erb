@@ -1,0 +1,146 @@
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  logo = local_assigns.fetch(:logo)
+  site_name = local_assigns.fetch(:site_name, "Site imobiliário")
+  description = local_assigns[:description]
+  link_groups = Array(local_assigns[:link_groups])
+  stores_title = local_assigns[:stores_title]
+  stores = Array(local_assigns[:stores])
+  contact_items = Array(local_assigns[:contact_items])
+  socials = local_assigns[:socials]
+  social_title = local_assigns[:social_title]
+  social_links = Array(local_assigns[:social_links])
+  if social_links.blank? && socials.present?
+    social_links = [
+      { label: "Instagram", url: socials[:instagram] || socials["instagram"], icon_class: "instagram" },
+      { label: "WhatsApp", url: socials[:whatsapp] || socials["whatsapp"], icon_class: "whatsapp" },
+      { label: "LinkedIn", url: socials[:linkedin] || socials["linkedin"], icon_class: "linkedin" }
+    ].select { |item| item[:url].present? && item[:url] != "#" }
+  end
+  legal = local_assigns[:legal]
+  legal_links = Array(local_assigns[:legal_links])
+  registration = local_assigns[:registration]
+  footer_class = ["public-theme-site-footer", "public-theme-site-footer--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  outer_class = ["public-theme-site-footer__container", local_assigns.fetch(:container_class, "public-theme-container")].compact.join(" ")
+  grid_class = ["public-theme-site-footer__grid", local_assigns[:grid_class]].compact.join(" ")
+%>
+
+<footer class="<%= footer_class %>">
+  <div class="<%= outer_class %>">
+    <div class="<%= grid_class %>">
+      <div class="public-theme-site-footer__brand">
+        <% if logo.present? %>
+        <%= image_tag logo, alt: site_name %>
+      <% else %>
+        <strong class="public-theme-site-footer__brand-name"><%= site_name %></strong>
+      <% end %>
+        <% if description.present? %>
+          <p><%= description %></p>
+        <% end %>
+        <% if social_links.any? %>
+          <div class="public-theme-site-footer__socials">
+            <% social_links.each do |item| %>
+              <%= link_to item[:url] || item["url"],
+                          target: "_blank",
+                          rel: "noopener",
+                          aria: { label: item[:label] || item["label"] || social_title || "Rede social" } do %>
+                <%= public_svg_icon(item[:icon_class] || item["icon_class"] || "share") %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <% link_groups.each do |group| %>
+        <div class="public-theme-site-footer__group">
+          <% if (title = group[:title] || group["title"]).present? %>
+            <h4><%= title %></h4>
+          <% end %>
+          <% Array(group[:links] || group["links"]).each do |item| %>
+            <%= link_to item[:label] || item["label"],
+                        item[:url] || item["url"],
+                        target: item[:target] || item["target"],
+                        rel: item[:rel] || item["rel"] %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if stores.any? %>
+        <div class="public-theme-site-footer__stores">
+          <% if stores_title.present? %>
+            <h4><%= stores_title %></h4>
+          <% end %>
+          <% stores.each do |store| %>
+            <article class="public-theme-site-footer__store">
+              <% if (name = store[:name] || store["name"]).present? %>
+                <strong><%= name %></strong>
+              <% end %>
+              <% Array(store[:address_lines] || store["address_lines"]).each do |line| %>
+                <p><%= line %></p>
+              <% end %>
+              <% if (zip_code = store[:zip_code] || store["zip_code"]).present? %>
+                <p><b>CEP:</b> <%= zip_code %></p>
+              <% end %>
+              <% if (creci = store[:creci] || store["creci"]).present? %>
+                <p><b>CRECI:</b> <%= creci %></p>
+              <% end %>
+              <% if (phone = store[:phone] || store["phone"]).present? %>
+                <p>
+                  <b>Tel:</b>
+                  <% if (phone_url = store[:phone_url] || store["phone_url"]).present? %>
+                    <%= link_to phone, phone_url %>
+                  <% else %>
+                    <%= phone %>
+                  <% end %>
+                </p>
+              <% end %>
+            </article>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if contact_items.any? %>
+        <div class="public-theme-site-footer__contact">
+          <h4><%= local_assigns.fetch(:contact_title, "Contato") %></h4>
+          <% contact_items.each do |item| %>
+            <% if item.is_a?(Hash) %>
+              <% value = item[:value] || item["value"] %>
+              <% url = item[:url] || item["url"] %>
+              <% icon = item[:icon] || item["icon"] %>
+              <% target = item[:target] || item["target"] %>
+              <% rel = item[:rel] || item["rel"] %>
+              <% next if value.blank? %>
+              <p class="public-theme-site-footer__contact-item">
+                <%= public_svg_icon(icon) if icon.present? %>
+                <% if url.present? %>
+                  <%= link_to value, url, target: target, rel: rel %>
+                <% else %>
+                  <span><%= value %></span>
+                <% end %>
+              </p>
+            <% else %>
+              <p><%= item %></p>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <% if legal.present? || registration.present? || legal_links.any? %>
+      <div class="public-theme-site-footer__bottom">
+        <div class="public-theme-site-footer__legal-copy">
+          <% if legal.present? %><p><%= legal %></p><% end %>
+          <% if registration.present? %><span class="public-theme-site-footer__creci"><%= registration %></span><% end %>
+        </div>
+        <% if legal_links.any? %>
+          <nav class="public-theme-site-footer__legal-links" aria-label="Links legais">
+            <% legal_links.each_with_index do |item, index| %>
+              <%= link_to item[:label] || item["label"], item[:url] || item["url"] %>
+              <% if index < legal_links.size - 1 %><span aria-hidden="true">|</span><% end %>
+            <% end %>
+          </nav>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</footer>

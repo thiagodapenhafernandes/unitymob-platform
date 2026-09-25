@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Unitymob para WhatsApp
 
-> Last Updated: 2026-09-22
+> Last Updated: 2026-09-23
 
 ## Store Listing
 
@@ -32,7 +32,7 @@ Português (Brasil)
 
 | Version | File | Status |
 |---|---|---|
-| 0.4.24 | `browser-extension/unitymob-whatsapp-0.4.24-manual.zip` | Ready for manual validation |
+| 0.4.24 | `browser-extension/unitymob-whatsapp-0.4.24-webstore.zip` | Ready |
 | 0.4.23 | `browser-extension/unitymob-whatsapp-0.4.23-manual.zip` | Ready for manual validation |
 | 0.4.22 | `browser-extension/unitymob-whatsapp-0.4.22-manual.zip` | Ready for manual validation |
 | 0.4.21 | `browser-extension/unitymob-whatsapp-0.4.21-manual.zip` | Ready for manual validation |
@@ -111,7 +111,7 @@ TBD
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 0.4.24 | 2026-09-22 | Keeps property sharing active when photo permission or photo URL validation fails. | Ready for manual validation |
+| 0.4.24 | 2026-09-23 | Keeps property sharing active when photo permission or photo URL validation fails. | Ready |
 | 0.4.23 | 2026-09-22 | Sends property links even when thumbnail preparation fails. | Ready for manual validation |
 | 0.4.22 | 2026-09-22 | Accepts confirmed Brazilian mobile contacts when WhatsApp and CRM differ only by the ninth digit. | Ready for manual validation |
 | 0.4.21 | 2026-09-22 | Restores compact filter/sort CSS and spaces property sends to avoid WhatsApp sequence failures. | Ready for manual validation |
