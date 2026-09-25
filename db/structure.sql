@@ -1,4 +1,4 @@
-\restrict gxOvVi0IjsBe4cotJH2dq5kIGj017aSz2pbddZKBeBDodC9CB70YmenjckBZ2YI
+\restrict czb4yo6DYyTU3NM444LG3tGj3asHsoDtmCn0Iq6cZ8hetlLHiYgtZlJpJ9c4svz
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -2675,7 +2675,8 @@ CREATE TABLE public.external_lead_integrations (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     webhook_listening_enabled boolean DEFAULT false NOT NULL,
-    operational_mappings jsonb DEFAULT '{}'::jsonb NOT NULL
+    operational_mappings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    accept_lead_without_phone boolean DEFAULT false NOT NULL
 );
 
 
@@ -19610,11 +19611,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict gxOvVi0IjsBe4cotJH2dq5kIGj017aSz2pbddZKBeBDodC9CB70YmenjckBZ2YI
+\unrestrict czb4yo6DYyTU3NM444LG3tGj3asHsoDtmCn0Iq6cZ8hetlLHiYgtZlJpJ9c4svz
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260925120000'),
 ('20260922110000'),
 ('20260920100000'),
 ('20260919110000'),
@@ -20079,3 +20081,4 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
+

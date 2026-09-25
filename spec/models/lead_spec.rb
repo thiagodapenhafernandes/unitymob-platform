@@ -286,4 +286,21 @@ RSpec.describe Lead, type: :model do
       expect(event.reload.lead_id).to be_nil
     end
   end
+
+  describe "phone na integração externa" do
+    it "é válido sem phone quando a integração aceita leads sem telefone" do
+      integration = create(:external_lead_integration, tenant: Tenant.default, accept_lead_without_phone: true)
+      lead = build(:lead, phone: nil, external_lead_integration: integration)
+
+      expect(lead).to be_valid
+    end
+
+    it "exige phone por padrão (default false)" do
+      integration = create(:external_lead_integration, tenant: Tenant.default)
+      lead = build(:lead, phone: nil, external_lead_integration: integration)
+
+      expect(lead).not_to be_valid
+      expect(lead.errors[:phone]).to be_present
+    end
+  end
 end

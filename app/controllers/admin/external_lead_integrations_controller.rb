@@ -115,6 +115,7 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       :enabled,
       :access_token,
       :webhook_listening_enabled,
+      :accept_lead_without_phone,
       operational_stage_mappings: [:key, :stage_id],
       operational_stage_targets: [:stage_id, { keys: [] }]
     )

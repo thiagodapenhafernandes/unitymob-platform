@@ -225,7 +225,7 @@ class Lead < ApplicationRecord
   # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
   has_many :instagram_messages, dependent: :destroy
-  validates :phone, presence: true, unless: -> { business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) }
+  validates :phone, presence: true, unless: -> { business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
   validate :associated_records_must_belong_to_tenant
   validate :in_service_requires_owner
   validate :assigned_admin_user_must_be_active

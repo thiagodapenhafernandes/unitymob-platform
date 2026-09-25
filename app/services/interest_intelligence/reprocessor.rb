@@ -58,12 +58,24 @@ module InterestIntelligence
       created_count = 0
 
       @lead.public_navigation_events.property_signals.where.not(habitation_id: nil).find_each do |event|
+        created_count += 1 if upsert_interest_from_event(event)
+      end
+
+      created_count
+    end
+
+    # find_or_initialize_by + save! tem TOCTOU sob jobs concorrentes: dois
+    # workers inicializam o mesmo (source_table, source_key) e o segundo
+    # recebe RecordNotUnique no unique index. Re-lê e tenta uma vez.
+    def upsert_interest_from_event(event)
+      attempts = 0
+      begin
+        attempts += 1
         interest = ClientPropertyInterest.find_or_initialize_by(
           source_table: "public_navigation_events",
           source_key: event.id.to_s
         )
-
-        created_count += 1 if interest.new_record?
+        created = interest.new_record?
         interest.assign_attributes(
           lead_id: @lead.id,
           habitation_id: event.habitation_id,
@@ -81,9 +93,11 @@ module InterestIntelligence
         )
         interest[:lead] = true
         interest.save!
+        created
+      rescue ActiveRecord::RecordNotUnique
+        retry if attempts < 2
+        raise
       end
-
-      created_count
     end
 
     def emit_profile_event(profile)

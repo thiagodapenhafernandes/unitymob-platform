@@ -38,4 +38,15 @@ RSpec.describe ExternalLeadMigration::WebhookEventJob do
       expect { described_class.new.perform(integration.id, "lead_id" => "webhook-upsert") }.to raise_error(ExternalLeadMigration::Client::Error)
     }.not_to change(Lead, :count)
   end
+
+  it "descarta RecordInvalid sem retry (validação nunca passa em retentativa)" do
+    invalid = ActiveRecord::RecordInvalid.new(Lead.new)
+    allow(ExternalLeadMigration::LeadUpsert).to receive(:call).and_raise(invalid)
+    payload_with_attrs = { "data" => { "attributes" => { "customer" => { "name" => "Sem phone" } } } }
+
+    expect {
+      described_class.perform_now(integration.id, payload_with_attrs)
+    }.not_to raise_error
+    expect(Lead.count).to eq(0)
+  end
 end

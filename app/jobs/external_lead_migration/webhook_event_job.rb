@@ -4,6 +4,11 @@ module ExternalLeadMigration
 
     retry_on StandardError, wait: :polynomially_longer, attempts: 5
 
+    # RecordInvalid é determinístico (validação nunca passa em retentativa):
+    # descarta sem retry para não multiplicar o erro nem prender a fila sync.
+    # Definido após o retry_on de propósito — o último handler vence.
+    discard_on ActiveRecord::RecordInvalid
+
     def perform(integration_id, payload)
       integration = ExternalLeadIntegration.find(integration_id)
       return unless integration.connected?
