@@ -24,7 +24,7 @@
   <% when 'properties' %>
     <% properties = payload[:records] || [] %>
     <% if properties.present? %>
-      <% cache ['home_section_properties_v2', section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+      <% cache ['home_section_properties_v3', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
         <section class="home-deferred-section py-16 <%= bg_class %>"
                  data-public-home-section="<%= section.id %>"
                  data-public-home-section-type="<%= section.section_type %>"
@@ -70,7 +70,7 @@
   <% when 'property_videos' %>
     <% properties = payload[:records] || [] %>
     <% if properties.present? || section.home_section_items.active.video_items.exists? %>
-      <% cache ['home_section_property_videos_v1', section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+      <% cache ['home_section_property_videos_v2', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
         <%= render 'home/video_properties_section', section: section, properties: properties, bg_class: bg_class %>
       <% end %>
     <% end %>
@@ -78,7 +78,7 @@
   <% when 'developments' %>
     <% developments = payload[:records] || [] %>
     <% if developments.present? %>
-      <% cache ['home_section_developments_v1', section.id, section.updated_at.to_i, developments.map(&:id), developments.map(&:updated_at).max, payload[:unit_counts], payload[:unit_metrics]] do %>
+      <% cache ['home_section_developments_v2', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, developments.map(&:id), developments.map(&:updated_at).max, payload[:unit_counts], payload[:unit_metrics]] do %>
         <section class="home-deferred-section py-16 <%= bg_class %>"
                  data-public-home-section="<%= section.id %>"
                  data-public-home-section-type="<%= section.section_type %>"
