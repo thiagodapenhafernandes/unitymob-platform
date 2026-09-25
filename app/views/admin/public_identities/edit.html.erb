@@ -82,18 +82,20 @@
         <%= ax_studio_section(id: "identity-tab-colors", icon: "palette2",
                               title: "Paleta",
                               subtitle: "Três cores bastam: a base da marca, o apoio e o toque de destaque. Não alteram as cores da plataforma interna.") do %>
-          <div class="lss-site__fields">
-            <% [
-              [:primary_color, "Primária do site", public_primary, "--theme-public-primary", "--color-primary", "Fundo do topo, rodapé e títulos fortes."],
-              [:secondary_color, "Secundária do site", public_secondary, "--theme-public-secondary", "--color-secondary", "Apoio da marca e degradês."],
-              [:accent_color, "Destaque do site", public_accent, "--theme-public-accent", "--color-accent", "Botões de chamada e detalhes."]
-            ].each do |method, label, value, var, token, about| %>
-              <%= ax_color_field(form: f, method: method, label: label, value: value,
-                                 swatch_title: "Escolha a cor #{label.downcase.sub(' do site', '')} do site público",
-                                 color_options: { data: live.call(var, value) }, text_options: { data: live.call(var, value) },
-                                 hint: safe_join([about, " Token ", tag.code(token), "."])) %>
-            <% end %>
-          </div>
+          <%= ax_panel(class_name: "pid-palette") do %>
+            <div class="lss-site__fields">
+              <% [
+                [:primary_color, "Primária do site", public_primary, "--theme-public-primary", "--color-primary", "Fundo do topo, rodapé e títulos fortes."],
+                [:secondary_color, "Secundária do site", public_secondary, "--theme-public-secondary", "--color-secondary", "Apoio da marca e degradês."],
+                [:accent_color, "Destaque do site", public_accent, "--theme-public-accent", "--color-accent", "Botões de chamada e detalhes."]
+              ].each do |method, label, value, var, token, about| %>
+                <%= ax_color_field(form: f, method: method, label: label, value: value,
+                                   swatch_title: "Escolha a cor #{label.downcase.sub(' do site', '')} do site público",
+                                   color_options: { data: live.call(var, value) }, text_options: { data: live.call(var, value) },
+                                   hint: safe_join([about, " Token ", tag.code(token), "."])) %>
+              <% end %>
+            </div>
+          <% end %>
         <% end %>
 
         <%= ax_studio_section(id: "identity-tab-theme", icon: "layout-wtf",
@@ -115,7 +117,9 @@
           <div class="lss-web" role="img" aria-label="Prévia do site público com a marca e a paleta escolhidas">
             <header class="lss-web__top">
               <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
-                <span class="pid-web__logo"><%= image_tag @layout_setting.logo.content_type == "image/svg+xml" ? @layout_setting.logo : @layout_setting.logo.variant(resize_to_limit: [240, 80]), alt: brand_name %></span>
+                <span class="pid-web__logo"><%= image_tag @layout_setting.logo.content_type == "image/svg+xml" ? @layout_setting.logo : @layout_setting.logo.variant(resize_to_limit: [240, 80]), alt: brand_name,
+                      data: { controller: "image-fallback", action: "error->image-fallback#hide",
+                              image_fallback_container_selector_value: ".pid-web__logo" } %><strong data-live-text-target="brand" class="pid-web__logo-name"><%= brand_name %></strong></span>
               <% else %>
                 <strong data-live-text-target="brand"><%= brand_name %></strong>
               <% end %>

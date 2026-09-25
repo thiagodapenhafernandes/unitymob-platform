@@ -10,7 +10,7 @@ export async function preparePropertyPhoto(url) {
     const response = await fetch(parsed.href, {credentials:'omit', referrerPolicy:'no-referrer', signal:abort.signal});
     if (!response.ok || !/^image\/(jpeg|png|webp)(;|$)/i.test(response.headers.get('content-type') || '')) throw new Error('preview_image_failed');
     const blob = await response.blob();
-    if (blob.size > 5 * 1024 * 1024) throw new Error('preview_image_invalid');
+    if (blob.size > 15 * 1024 * 1024) throw new Error('preview_image_invalid');
     bitmap = await createImageBitmap(blob);
     if (bitmap.width < 300 || bitmap.height < 1) throw new Error('preview_image_invalid');
     const scale = Math.min(320 / bitmap.width, 320 / bitmap.height);
@@ -28,10 +28,11 @@ export async function preparePropertyPhoto(url) {
 }
 // Called directly from the share click, before any await loses the user gesture.
 export async function requestPropertyPhotoAccess(urls) {
-  const origins = [...new Set(urls.filter(Boolean).map(url => {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('preview_image_invalid');
-    return `${parsed.origin}/*`;
+  const origins = [...new Set(urls.filter(Boolean).flatMap(url => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? [`${parsed.origin}/*`] : [];
+    } catch { return []; }
   }))];
-  if (origins.length && !await chrome.permissions.request({origins}).catch(() => false)) throw new Error('preview_permission_required');
+  if (origins.length) await chrome.permissions.request({origins}).catch(() => false);
 }

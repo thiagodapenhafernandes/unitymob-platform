@@ -97,3 +97,23 @@ test("write forms explain why a save was not sent", () => {
   context.context = {state: "loading"};
   assert.equal(context.writeBlockedReason("create_lead"), "mudou");
 });
+
+test("already_connected keeps its reset action next to the banner", () => {
+  let placedAfter = null;
+  const elements = new Map([
+    ["feedback", { textContent: "", after(node) { placedAfter = node; } }],
+    ["reset-connection", { hidden: true }],
+  ]);
+  const context = vm.createContext({
+    $: id => elements.get(id),
+    me: null, clearContext() {}, renderAccount() {},
+  });
+  vm.runInContext(section("const errors = {", "function showLeadIdentity("), context);
+  vm.runInContext(section("function feedback(error) {", "function renderAccount()"), context);
+  vm.runInContext('feedback({ message: "already_connected" })', context);
+  assert.equal(elements.get("reset-connection").hidden, false);
+  assert.equal(placedAfter, elements.get("reset-connection"));
+  assert.match(elements.get("feedback").textContent, /conexão anterior/);
+  vm.runInContext('feedback({ message: "unavailable" })', context);
+  assert.equal(elements.get("reset-connection").hidden, true);
+});

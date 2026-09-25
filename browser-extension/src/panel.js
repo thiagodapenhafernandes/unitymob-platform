@@ -97,6 +97,7 @@ function clearContext() {
 
 function feedback(error) {
   $("reset-connection").hidden = error.message !== "already_connected";
+  $("feedback").after($("reset-connection"));
   $("feedback").textContent = errors[error.message] || errors.unavailable;
   if (["not_connected", "http_401", "http_403", "http_410"].includes(error.message)) {
     me = null; clearContext(); renderAccount();
@@ -417,6 +418,7 @@ async function refreshSession(force = false) {
           clearContext(); $("terms-accepted").checked = false; $("accept-terms").disabled = true;
         }
         me = next;
+        if (ready() && $("feedback").textContent === errors.already_connected) { $("feedback").textContent = ""; $("reset-connection").hidden = true; }
         if (accountChanged) renderAccount();
       } catch (error) { if (["not_connected", "http_401", "http_403"].includes(error.message)) { me = null; clearContext(); renderAccount(); } else if (force) feedback(error); }
     }
@@ -462,6 +464,7 @@ async function refresh(force = false) {
 }
 
 async function connectAccount(account = null) {
+  if (me) { $("feedback").textContent = ""; $("reset-connection").hidden = true; await refreshSession(true); return; }
   try {
     const origin = account?.origin || crmOrigin;
     if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => { throw new Error("permission_required"); }))) throw new Error("permission_required");
