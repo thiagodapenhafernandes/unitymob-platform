@@ -64,6 +64,7 @@
           <div class="lead-migration-settings-form__toggle">
             <%= ax_switch_field(label: "Manter integração de leads ativa", form: f, method: :enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.enabled? }) %>
             <%= ax_switch_field(label: "Escutar novos leads automaticamente", form: f, method: :webhook_listening_enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.webhook_listening_enabled? }) %>
+            <%= ax_switch_field(label: "Aceitar leads sem telefone", form: f, method: :accept_lead_without_phone, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.accept_lead_without_phone? }) %>
           </div>
 
           <%= ax_field_grid do %>

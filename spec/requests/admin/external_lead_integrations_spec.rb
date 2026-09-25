@@ -91,6 +91,17 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(ExternalLeadMigration::SetupService).to have_received(:call).with(integration:)
   end
 
+  it "salva a opção de aceitar leads sem telefone" do
+    integration = create(:external_lead_integration, tenant: admin.tenant)
+
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: { enabled: "1", accept_lead_without_phone: "1" }
+    }
+
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(integration.reload.accept_lead_without_phone).to be(true)
+  end
+
   it "habilita escuta de novos leads ao salvar com checkbox marcado" do
     admin.tenant.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
     admin.tenant.tenant_domains.create!(hostname: "app.conexaobc.com")
