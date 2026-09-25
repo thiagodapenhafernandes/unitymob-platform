@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Turbo } from "@hotwired/turbo-rails"
 
 export default class extends Controller {
   static values = {
@@ -94,7 +95,8 @@ export default class extends Controller {
         onClick: (_event, elements) => {
           const index = elements?.[0]?.index
           const url = Number.isInteger(index) ? this.leadsUrlsValue[index] : null
-          if (url) window.location.assign(url)
+          // Via Turbo para engajar o preloader de navegação compartilhado.
+          if (url) Turbo.visit(url)
         },
         onHover: (event, elements) => {
           if (event?.native?.target) event.native.target.style.cursor = elements.length ? "pointer" : "default"

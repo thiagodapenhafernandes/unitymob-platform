@@ -65,40 +65,41 @@
   infrastructure_names = @habitation.leisure_features_for_display
   unique_feature_names = @habitation.unique_features
 
-  admin_gallery_photo_limit = 12
-  attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.first(admin_gallery_photo_limit).select { |photo| photo.persisted? && photo.blob&.persisted? }.filter_map.with_index { |photo, index|
-    photo_url = public_image_url({ attachment: photo })
+  media_gallery = Habitations::MediaGallery.new(@habitation)
+  hidden_photo_ids = Array(@habitation.site_hidden_photo_ids).map(&:to_i)
+  attached_photo_sources = media_gallery.attached_media_photos.filter_map.with_index { |photo, index|
+    photo_url = public_image_url({ attachment: photo }).presence || rails_blob_path(photo, only_path: true)
     next if photo_url.blank?
+    hidden_from_site = hidden_photo_ids.include?(photo.id)
 
     {
       url: photo_url,
       thumb: photo_url,
-      caption: "Foto #{index + 1} - #{photo.filename}",
-      badge: "Ativo"
+      caption: ["Foto #{index + 1} - #{photo.filename}", ("Foto interna, fora do site" if hidden_from_site)].compact.join(" · "),
+      badge: hidden_from_site ? "Fora do site" : "Ativo",
+      hidden_from_site: hidden_from_site
     }
-  } : []
+  }
 
   dwv_photo_sources = if @habitation.dwv_property?
-    Habitations::MediaGallery.new(@habitation).api_media_pictures.filter_map.with_index do |(_picture, _original_index, photo_url), index|
-      next if photo_url.blank?
+    media_gallery.api_media_pictures.filter_map.with_index do |(picture, _original_index, photo_url), index|
+      picture_url = public_image_url(picture).presence || photo_url
+      next if picture_url.blank?
+      hidden_from_site = @habitation.picture_hidden_from_site?(picture)
 
       {
-        url: photo_url,
-        thumb: photo_url,
-        caption: "Foto DWV #{index + 1}",
-        badge: "DWV"
+        url: picture_url,
+        thumb: picture_url,
+        caption: ["Foto DWV #{index + 1}", ("Foto interna, fora do site" if hidden_from_site)].compact.join(" · "),
+        badge: hidden_from_site ? "Fora do site" : "DWV",
+        hidden_from_site: hidden_from_site
       }
     end
   else
     []
   end
 
-  development_photo_sources = if @habitation.use_development_photos? && linked_development.present? && attached_photo_sources.blank? && dwv_photo_sources.blank?
-    development_gallery = Habitations::MediaGallery.new(linked_development)
-    local_development_sources = development_gallery.attached_media_photos.map { |photo| { attachment: photo } }
-    dwv_development_sources = development_gallery.api_media_pictures.map { |_picture, _original_index, photo_url| photo_url }
-
-    (local_development_sources + dwv_development_sources).first(admin_gallery_photo_limit).filter_map.with_index do |source, index|
+  development_photo_sources = media_gallery.development_media_sources.filter_map.with_index do |source, index|
       photo_url = source.is_a?(Hash) ? public_image_url(source) : source
       next if photo_url.blank?
 
@@ -106,15 +107,15 @@
         url: photo_url,
         thumb: photo_url,
         caption: "Foto do empreendimento #{index + 1}",
-        badge: "Empreendimento"
+        badge: "Empreendimento",
+        hidden_from_site: false
       }
-    end
-  else
-    []
   end
 
   photo_sources = attached_photo_sources + dwv_photo_sources + development_photo_sources
   primary_photo = photo_sources.first
+  internal_photo_count = photo_sources.size
+  site_photo_count = @habitation.public_image_sources.size
 
   sale_price = money.call(@habitation.valor_venda_cents)
   rent_price = money.call(@habitation.valor_locacao_cents)
@@ -465,7 +466,11 @@
       <% if primary_photo.present? %>
         <%= link_to safe_join([
               image_tag(primary_photo[:thumb], class: "ax-property-gallery__hero", alt: primary_photo[:caption]),
-              tag.span(safe_join([tag.i(class: "bi bi-clock"), updated_label]), class: "ax-property-gallery__status")
+              tag.span(safe_join([
+                tag.i(class: "bi bi-clock"),
+                updated_label,
+                (tag.span("Fora do site", class: "ax-badge ax-badge--gray") if primary_photo[:hidden_from_site])
+              ].compact), class: "ax-property-gallery__status")
             ]), primary_photo[:url], class: "ax-property-gallery__hero-link", data: { fancybox: "admin-habitation-show-gallery", caption: primary_photo[:caption], thumb_src: primary_photo[:thumb] } %>
       <% else %>
         <div class="ax-property-gallery__hero ax-property-gallery__empty">
@@ -477,7 +482,12 @@
       <div class="ax-property-gallery__head">
         <div>
           <strong>Galeria</strong>
-          <span><%= pluralize(photo_sources.size, "foto", "fotos") %></span>
+          <span>
+            <%= pluralize(internal_photo_count, "mídia", "mídias") %>
+            <% if site_photo_count != internal_photo_count %>
+              · <%= site_photo_count %> no site
+            <% end %>
+          </span>
         </div>
         <% if photo_sources.any? %>
           <button type="button" class="ax-btn ax-btn--sm" data-gallery-open>

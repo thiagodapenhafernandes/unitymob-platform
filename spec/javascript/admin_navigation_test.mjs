@@ -129,6 +129,26 @@ test("resposta não-HTML (download) libera o overlay sem trocar de página", asy
   assert.equal(overlay.hidden, true)
 })
 
+test("erro de fetch no meio da visita não derruba o overlay; o load posterior encerra", async () => {
+  const { fire, flush, overlay } = setup()
+  fire("turbo:visit", visit("http://x/admin/leads"))
+  assert.equal(overlay.hidden, false)
+  fire("turbo:fetch-request-error", { target: { closest: () => null } })
+  await flush()
+  assert.equal(overlay.hidden, false, "origem não pode reaparecer sem loader no meio da visita")
+  fire("turbo:load")
+  await flush()
+  assert.equal(overlay.hidden, true)
+})
+
+test("erro de fetch fora de visita libera o overlay", async () => {
+  const { fire, overlay } = setup()
+  fire("turbo:submit-start", { target: { dataset: {}, closest: () => null } })
+  assert.equal(overlay.hidden, false)
+  fire("turbo:fetch-request-error", { target: { closest: () => null } })
+  assert.equal(overlay.hidden, true)
+})
+
 test("hold segura o fim da navegação até resolver", async () => {
   const { loader, fire, flush, overlay } = setup()
   fire("turbo:visit", visit("http://x/admin"))

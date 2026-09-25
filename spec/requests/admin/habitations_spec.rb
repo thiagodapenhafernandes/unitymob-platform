@@ -1691,6 +1691,32 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.parsed_body.fetch("items").pluck("src")).to eq(pictures.pluck("url"))
   end
 
+  it "inclui fotos internas fora do site na galeria admin com sinalização" do
+    habitation = create(
+      :habitation,
+      tenant: admin.tenant,
+      codigo: "GAL-HIDDEN-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Casa com foto interna"
+    )
+    habitation.photos.attach(io: StringIO.new("foto site"), filename: "foto-site.jpg", content_type: "image/jpeg")
+    habitation.photos.attach(io: StringIO.new("foto interna"), filename: "foto-interna.jpg", content_type: "image/jpeg")
+    attachments = habitation.photos.attachments.order(:id).to_a
+    habitation.update!(site_hidden_photo_ids: [attachments.second.id])
+
+    get gallery_admin_habitation_path(habitation), as: :json
+
+    expect(response).to have_http_status(:ok)
+    captions = response.parsed_body.fetch("items").pluck("caption")
+    expect(captions.size).to eq(2)
+    expect(captions.last).to include("Foto interna, fora do site")
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("2 mídias")
+    expect(response.body).to include("Foto interna, fora do site")
+  end
+
   it "não exibe badge de canais publicados no card do catálogo" do
     habitation = create(
       :habitation,
