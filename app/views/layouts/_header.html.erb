@@ -1,6 +1,6 @@
 <%= render "layouts/header_colors", setting: @home_setting %>
 <% public_header_style = @home_setting&.public_header_style %>
-<header data-public-header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300"
+<header data-public-header class="public-theme-header public-theme-header--default fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300"
         data-controller="navbar"
         <%= tag.attributes(style: public_header_style) if public_header_style.present? %>>
   <% public_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant) %>
@@ -12,18 +12,18 @@
                                              context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params)) %>
   <% public_cta_label = @home_setting&.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL %>
   <% public_cta_url = @home_setting&.header_cta_url.presence || contato_path %>
-  <div class="w-full max-w-[1600px] mx-auto px-4 lg:px-8">
-    <div class="flex items-center justify-between py-3">
+  <div class="public-theme-header__container w-full max-w-[1600px] mx-auto px-4 lg:px-8">
+    <div class="public-theme-header__bar flex items-center justify-between py-3">
       
       <!-- Logo + Phone -->
       <div class="flex items-center gap-4">
-        <%= link_to root_path, class: "flex items-center" do %>
+        <%= link_to root_path, class: "public-theme-header__brand flex items-center" do %>
           <% if @layout_setting&.logo&.attached? %>
             <span class="custom-logo flex items-center">
               <% if @layout_setting.logo.content_type == 'image/svg+xml' || @layout_setting.logo.filename.to_s.downcase.end_with?('.svg') %>
-                <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'h-10', style: 'width: 170px; object-fit: contain;' %>
+                <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'public-theme-header__logo h-10', style: 'width: 170px; object-fit: contain;' %>
               <% else %>
-                <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'h-10', style: 'width: 170px; object-fit: contain;' %>
+                <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'public-theme-header__logo h-10', style: 'width: 170px; object-fit: contain;' %>
               <% end %>
             </span>
           <% else %>
@@ -43,7 +43,7 @@
       
       <!-- Desktop Menu -->
       <div class="hidden xl:flex items-center gap-3 text-[13px]">
-        <div data-header-part="links" class="hidden xl:flex items-center gap-1 text-gray-700">
+        <div data-header-part="links" class="public-theme-header__nav hidden xl:flex items-center gap-1 text-gray-700">
           <% menu_entries.select(&:bar?).each do |entry| %>
             <%= link_to entry.url, class: "px-3 py-2 rounded-md font-semibold transition-colors #{entry.active? ? 'text-blue-three' : 'hover:text-blue-three'}", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %>
           <% end %>
@@ -84,7 +84,7 @@
     
     <!-- Desktop Dropdown Menu (hidden by default) -->
     <div class="hidden" data-header-part="panel" data-navbar-target="desktopMenu">
-      <nav class="py-4 border-t">
+      <nav class="public-theme-header__nav py-4 border-t">
         <ul class="flex flex-col gap-3">
           <% menu_entries.each do |entry| %>
             <li><%= link_to entry.url, class: "text-gray-700 hover:text-blue-three", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %></li>
@@ -95,7 +95,7 @@
     
     <!-- Mobile Menu -->
     <div class="hidden lg:hidden" data-header-part="panel" data-navbar-target="mobileMenu">
-      <nav class="py-4 border-t">
+      <nav class="public-theme-header__nav py-4 border-t">
         <ul class="flex flex-col gap-3">
           <% menu_entries.each do |entry| %>
             <li><%= link_to entry.url, class: "text-gray-700 hover:text-blue-three py-2", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %></li>

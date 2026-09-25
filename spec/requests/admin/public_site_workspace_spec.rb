@@ -58,6 +58,16 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(response.body).to include("Pré-visualização do banner", "Dados detalhados", banner.title)
   end
 
+  it "antecipa as fontes críticas do admin para evitar flash sem estilo" do
+    get edit_admin_home_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    preloads = html.css("link[rel='preload'][as='font']").map { |link| link["href"] }
+    expect(preloads.any? { |href| href.to_s.include?("bootstrap-icons") && href.to_s.end_with?(".woff2") }).to be(true)
+    expect(preloads.any? { |href| href.to_s.include?("inter-latin") && href.to_s.end_with?(".woff2") }).to be(true)
+  end
+
   it "padroniza os editores estruturais e remove previews explicativos" do
     get edit_admin_home_setting_path
     expect(response).to have_http_status(:ok)

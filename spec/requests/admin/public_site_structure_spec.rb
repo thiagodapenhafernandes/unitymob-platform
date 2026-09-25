@@ -19,7 +19,7 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       html = Nokogiri::HTML(response.body)
       tabs = html.css(".ax-studio-nav [data-ax-tabs-target='tab']").map { |tab| tab["data-ax-tabs-target-param"] }
       expect(tabs).to eq(%w[#identity-tab-brand #identity-tab-colors #identity-tab-theme])
-      expect(html.css("input[name='tenant[public_site_theme]']").map { |input| input["value"] }).to eq(%w[default])
+      expect(html.css("select[name='tenant[public_site_theme]'] option").map { |option| option["value"] }).to eq(%w[default])
       expect(html.at_css("input[name='layout_setting[primary_color]']")).to be_present
       expect(html.at_css("input[type='file'][name='layout_setting[logo]']")).to be_present
       expect(html.at_css(".ax-studio__aside .lss-web")).to be_present
@@ -44,7 +44,7 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
 
       get edit_admin_public_identity_path
 
-      values = Nokogiri::HTML(response.body).css("input[name='tenant[public_site_theme]']").map { |input| input["value"] }
+      values = Nokogiri::HTML(response.body).css("select[name='tenant[public_site_theme]'] option").map { |option| option["value"] }
       expect(values).to eq(%w[default saluteimoveis])
       expect(response.body).not_to include("Conexão Imobiliária")
 
@@ -87,10 +87,46 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
 
       expect(response).to have_http_status(:ok)
       html = Nokogiri::HTML(response.body)
-      keys = html.css(".hm-rows .hm-row input[name$='[key]']").map { |input| input["value"] }
+      keys = html.css(".hm-rows .hm-row input[name$='[key]']").map { |option| option["value"] }
       expect(keys).to eq(PublicHeaderMenu::SYSTEM_ITEMS.keys)
       bar = html.css(".hm-rows .hm-row").select { |row| row.at_css("input[type='checkbox'][name$='[bar]']")["checked"] }.map { |row| row.at_css("input[name$='[key]']")["value"] }
       expect(bar).to eq(%w[comprar alugar anunciar empreendimentos lancamentos blog favoritos])
+    end
+
+    it "renderiza cartões colapsáveis com resumo, edição e exclusão" do
+      patch admin_public_header_path, params: {
+        home_setting: {
+          header_menu: {
+            "0" => { key: "alugar", position: "1", label: "", visible: "1", bar: "1" },
+            "1" => { key: "custom-a1", custom: "1", position: "2", label: "Condomínios", url: "/condominios", visible: "1", bar: "0" }
+          }
+        }
+      }
+
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      container = html.at_css(".hm-rows[data-controller='header-menu-sort']")
+      expect(container).to be_present
+      rows = container.css("details.hm-row[data-menu-row]")
+      expect(rows).not_to be_empty
+      rows.each do |row|
+        head = row.at_css("summary.hm-row__head")
+        expect(head.at_css(".hm-row__handle")).to be_present
+        expect(head.at_css("[data-role='title']").text).not_to be_empty
+        expect(head.at_css("[data-role='dest']")).to be_present
+        expect(row.at_css("button[data-action='nested-form#moveUp']")).to be_nil
+        body = row.at_css(".hm-row__body")
+        expect(body.at_css("input[type='hidden'][data-role='position']")).to be_present
+        expect(body.at_css("input[data-role='label']")).to be_present
+        expect(body.at_css("button[data-action='nested-form#remove']")).to be_present
+      end
+      custom = rows.detect { |row| row.at_css("input[data-role='custom']")["value"] == "1" }
+      system = rows.detect { |row| row.at_css("input[data-role='custom']")["value"] == "0" }
+      expect(custom.at_css("input[data-role='url']")).to be_present
+      expect(system.at_css("input[data-role='url']")).to be_nil
+      expect(system.at_css(".hm-row__body input[disabled][readonly]")).to be_present
     end
 
     it "grava ordem, rótulos, visibilidade, link próprio e botão" do

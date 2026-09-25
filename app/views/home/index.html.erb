@@ -4,7 +4,11 @@
 <% end %>
 
 <!-- Hero Section -->
-<%= render 'hero' %>
+<% if luxury_theme? %>
+  <%= render "public_theme/luxury_home_hero" %>
+<% else %>
+  <%= render 'hero' %>
+<% end %>
 
 <!-- Banner Após Hero -->
 <%= display_banner('home_after_hero') %>
@@ -37,7 +41,11 @@
               <% end %>
             </div>
 
-            <%= render 'shared/property_carousel', properties: properties %>
+<% if luxury_theme? %>
+  <%= render 'shared/property_carousel', properties: properties, card_partial: "public_theme/components/property_card", variant: "salute-luxury" %>
+<% else %>
+  <%= render 'shared/property_carousel', properties: properties %>
+<% end %>
 
             <div class="text-center mt-8">
               <%= link_to payload[:cta_path] || habitations_path,

@@ -32,15 +32,53 @@ class Setting < ApplicationRecord
     cache = request_cache
     return cache[cache_key] if cache.key?(cache_key)
 
-    if scope_tenant
-      scoped = find_by(tenant_id: scope_tenant.id, key: key)&.value
-      return cache[cache_key] = scoped if scoped.present?
-    end
+    # Bulk-load (1 query por tenant por request): primeira falta busca todas
+    # as linhas do tenant + globais de uma vez; as demais leituras saem da
+    # memória. Semântica idêntica à leitura individual anterior.
+    bulk_load_tenant_settings(scope_tenant)
+    return cache[cache_key] if cache.key?(cache_key)
+
+    scoped = bulk_scoped_value(key, scope_tenant)
+    return cache[cache_key] = scoped if scoped.present?
 
     return cache[cache_key] = default if scope_tenant && !fallback_global
 
-    global = tenant_scoping_available? ? find_by(tenant_id: nil, key: key)&.value : find_by(key: key)&.value
-    cache[cache_key] = global.presence || default
+    cache[cache_key] = bulk_global_value(key).presence || default
+  end
+
+  def self.bulk_load_tenant_settings(scope_tenant)
+    cache = request_cache
+    marker = [:__bulk_settings__, scope_tenant&.id]
+    return if cache.key?(marker)
+
+    cache[marker] = true
+    scoped_values = {}
+    global_values = {}
+    rows = if tenant_scoping_available?
+             tenant_ids = scope_tenant ? [scope_tenant.id, nil] : [nil]
+             where(tenant_id: tenant_ids)
+           else
+             all
+           end
+    rows.pluck(:tenant_id, :key, :value).each do |tenant_id, row_key, value|
+      if tenant_id.nil?
+        global_values[row_key.to_s] = value
+      else
+        scoped_values[row_key.to_s] = value
+      end
+    end
+    cache[[:__bulk_scoped__, scope_tenant&.id]] = scoped_values
+    cache[:__bulk_global__] = global_values
+  end
+
+  def self.bulk_scoped_value(key, scope_tenant)
+    return nil if scope_tenant.nil?
+
+    request_cache.fetch([:__bulk_scoped__, scope_tenant.id], {})[key.to_s]
+  end
+
+  def self.bulk_global_value(key)
+    request_cache.fetch(:__bulk_global__, {})[key.to_s]
   end
 
   def self.tenant_get(key, default = nil, tenant: Current.tenant)
@@ -77,5 +115,9 @@ class Setting < ApplicationRecord
   def self.clear_request_cache_for(key, scope_tenant)
     cache = request_cache
     cache.delete_if { |(cached_key, tenant_id, _fallback_global), _| cached_key == key.to_s && tenant_id == scope_tenant&.id }
+    cache.fetch([:__bulk_scoped__, scope_tenant&.id], {}).delete(key.to_s)
+    cache.fetch(:__bulk_global__, {}).delete(key.to_s) if scope_tenant.nil?
+    # Derruba o marcador para a próxima leitura refazer o bulk (1 query).
+    cache.delete([:__bulk_settings__, scope_tenant&.id])
   end
 end

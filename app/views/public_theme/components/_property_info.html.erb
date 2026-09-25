@@ -1,0 +1,71 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  images = Array(local_assigns[:images])
+  public_map = local_assigns[:public_map]
+  public_media_url = local_assigns[:public_media_url]
+  feature_items = Array(local_assigns[:feature_items])
+  info_class = ["public-theme-property-info", "public-theme-property-info--#{local_assigns.fetch(:variant, "default")}", local_assigns[:class_name]].compact.join(" ")
+%>
+
+<section class="<%= info_class %>">
+  <%# O tema salute renderiza estas pílulas logo abaixo da galeria. %>
+  <% if local_assigns.fetch(:show_media_actions, true) && (public_media_url.present? || public_map&.visible? || images.any?) %>
+    <nav class="public-theme-property-info__media-actions sl-detail__media-actions" aria-label="Recursos do imóvel">
+      <% if public_media_url.present? %>
+        <%= link_to public_media_url, target: "_blank", rel: "noopener noreferrer" do %>
+          <%= public_svg_icon("play-circle") %>
+          <span><%= habitation.tour_virtual.present? && public_media_url == habitation.tour_virtual ? "Tour 360" : "Vídeo" %></span>
+        <% end %>
+      <% end %>
+
+      <% if public_map&.visible? %>
+        <button type="button" data-action="click->public-property-map#showMap"><%= public_svg_icon("map") %><span>Mapa</span></button>
+      <% end %>
+
+      <% if public_map&.street_view_enabled? %>
+        <button type="button" data-action="click->public-property-map#showStreetView"><%= public_svg_icon("person-standing") %><span>Rua</span></button>
+      <% end %>
+
+      <% if images.any? %>
+        <button type="button" data-gallery-open><%= public_svg_icon("images") %><span><%= images.size %> fotos</span></button>
+      <% end %>
+    </nav>
+  <% end %>
+
+  <% if feature_items.any? %>
+    <div class="public-theme-property-info__features sl-detail__features">
+      <% feature_items.each do |feature| %>
+        <div>
+          <%= public_svg_icon(feature[:icon]) %>
+          <span><%= feature[:label] %></span>
+          <strong><%= feature[:value] %></strong>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <h2>Descrição</h2>
+  <div class="public-theme-property-info__description sl-detail__description">
+    <% description_content = habitation.display_description %>
+    <% if description_content.present? %>
+      <%= formatted_habitation_description(description_content) %>
+    <% else %>
+      <p>Sem descrição disponível.</p>
+    <% end %>
+  </div>
+
+  <%
+    property_features = habitation.property_features_for_display
+    leisure_features = habitation.leisure_features_for_display
+  %>
+  <% if property_features.any? || leisure_features.any? %>
+    <div class="public-theme-property-info__amenities sl-detail__amenities">
+      <h3>Características e infraestrutura</h3>
+      <div>
+        <% (property_features + leisure_features).each do |feature| %>
+          <span><%= public_svg_icon("check2") %><%= feature %></span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</section>

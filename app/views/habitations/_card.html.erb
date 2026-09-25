@@ -1,4 +1,4 @@
-<div class="card h-100 shadow-sm">
+<div class="card h-100 shadow-sm ps-card">
   <% if habitation.primary_image_url.present? %>
     <%= image_tag habitation.primary_image_url, 
         alt: habitation.display_title,
@@ -19,7 +19,7 @@
     <% end %>
   </div>
   
-  <div class="card-body d-flex flex-column">
+  <div class="card-body d-flex flex-column ps-card-body">
     <h5 class="card-title text-truncate" title="<%= habitation.display_title %>">
       <%= habitation.display_title %>
     </h5>
@@ -28,7 +28,7 @@
       <i class="bi bi-geo-alt"></i> <%= habitation.short_address %>
     </p>
     
-    <p class="fw-bold text-primary fs-5 mb-3">
+    <p class="fw-bold text-primary fs-5 mb-3 ps-price">
       <%= habitation.preco_principal %>
     </p>
     

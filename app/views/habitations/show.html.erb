@@ -14,8 +14,8 @@
 <% map_coordinates = @public_map.center_coordinates if @public_map.visible? %>
 <% street_view_coordinates = @public_map.street_view_coordinates if @public_map.street_view_enabled? %>
 <% primary_image_source = gallery_images.first %>
-<% primary_image_url = public_image_url(primary_image_source, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if primary_image_source %>
-<% primary_image_srcset = public_image_srcset(primary_image_source, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if primary_image_source %>
+<% primary_image_url = public_image_url(primary_image_source, resize_to_limit: [1200, 900], format: :webp) if primary_image_source %>
+<% primary_image_srcset = public_image_srcset(primary_image_source, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp) if primary_image_source %>
 
 <% content_for :head do %>
   <%= json_ld_tag(real_estate_listing_schema(@habitation)) %>
@@ -37,6 +37,9 @@
   <% end %>
 <% end %>
 
+<% if luxury_theme? %>
+  <%= render "public_theme/luxury_detail_body" %>
+<% else %>
 <div class="public-habitations-show bg-gray-50 min-h-screen pb-14 habitation-details"
      data-property-id="<%= @habitation.id %>"
      data-controller="<%= "public-property-map" if @public_map.visible? %>"
@@ -63,7 +66,7 @@
   </div>
 
   <div class="container-custom pt-8" data-controller="fancybox-gallery">
-    <section class="public-habitations-show__gallery relative overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+    <section class="public-theme-property-gallery public-theme-property-gallery--default public-habitations-show__gallery relative overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
              data-controller="public-gallery-mobile"
              data-public-gallery-mobile-property-id-value="<%= @habitation.id %>"
              data-public-gallery-mobile-property-url-value="<%= habitation_path(@habitation) %>"
@@ -106,8 +109,8 @@
               <a href="<%= image_url.call(photo) %>"
                  data-fancybox="property-gallery"
                  data-caption="<%= title %> - Foto <%= index + 2 %>"
-                 data-public-gallery-mobile-src="<%= public_image_url(photo, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) %>"
-                 data-public-gallery-mobile-srcset="<%= public_image_srcset(photo, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) %>"
+                 data-public-gallery-mobile-src="<%= public_image_url(photo, resize_to_limit: [1200, 900], format: :webp) %>"
+                 data-public-gallery-mobile-srcset="<%= public_image_srcset(photo, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp) %>"
                  data-public-gallery-mobile-sizes="(min-width: 1024px) 52vw, 100vw"
                  data-public-gallery-mobile-class="<%= public_gallery_image_class(photo) %>"
                  data-public-gallery-mobile-style="<%= public_gallery_image_style(photo, primary: true) %>"
@@ -214,7 +217,7 @@
     </nav>
 
     <div class="public-habitations-show__body mt-6">
-      <main class="public-habitations-show__main min-w-0">
+      <main class="public-theme-property-info public-theme-property-info--default public-habitations-show__main min-w-0">
         <section class="public-habitations-show__header">
         <div class="public-habitations-show__identity mb-4 flex flex-wrap items-center gap-2">
           <span class="public-habitations-show__code rounded bg-blue-three/10 px-2 py-1 text-[11px] font-bold uppercase tracking-widest text-blue-three">
@@ -386,7 +389,7 @@
 
         <% if @public_map.visible? %>
           <% map_place_label = public_property_map_place_label(@habitation, exact: !@public_map.approximate?) %>
-          <section id="localizacao-imovel" class="public-habitations-show__map-card rounded-2xl bg-white p-6 shadow-sm">
+          <section id="localizacao-imovel" class="public-theme-property-map public-theme-property-map--default public-habitations-show__map-card rounded-2xl bg-white p-6 shadow-sm">
             <div class="public-habitations-show__map-heading">
               <div>
                 <h3 class="public-habitations-show__section-title text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Localização</h3>
@@ -458,3 +461,4 @@
     <% end %>
   </div>
 </div>
+<% end %>

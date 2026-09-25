@@ -4,9 +4,6 @@
   public_accent = @layout_setting.accent_color.presence || "#BFAB25"
   brand_name = @layout_setting.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
   live = ->(var, fallback) { { live_var: var, live_kind: "color", live_fallback: fallback } }
-  themes = @tenant.available_public_site_themes.map do |key, config|
-    { value: key, tone: "brand", label: config[:label], description: config[:description], icon: { "default" => "bi-window", "saluteimoveis" => "bi-buildings", "conexaoimobiliaria" => "bi-diagram-3" }.fetch(key, "bi-palette") }
-  end
   studio_items = [
     { id: "identity-tab-brand", icon: "stars", label: "Marca", hint: "Nome, logo e favicon" },
     { id: "identity-tab-colors", icon: "palette2", label: "Paleta", hint: "As três cores do site" },
@@ -105,8 +102,9 @@
                               title: "Modelo visual",
                               subtitle: "Cada modelo é uma folha de estilo própria do site. A troca vale para todas as páginas públicas, com a sua marca e a sua paleta.") do %>
           <%= fields_for :tenant, @tenant do |tf| %>
-            <%= ax_choice_group(form: tf, method: :public_site_theme, choices: themes, variant: :cards, selected: @tenant.public_site_theme_key,
-                                aria_label: "Modelo visual do site", class_name: "pid-themes") %>
+            <%= ax_select_field(form: tf, method: :public_site_theme, label: "Modelo visual do site",
+                                choices: @tenant.available_public_site_themes.map { |key, config| [config[:label], key] },
+                                tooltip: "Cada modelo é uma folha de estilo própria do site. A troca vale para todas as páginas públicas, com a sua marca e a sua paleta.") %>
           <% end %>
           <%= ax_inline_notice(tone: :info, icon: "info-circle",
                                body: "Trocar o modelo não apaga conteúdo nem configurações: só muda o desenho. Confira o site depois de salvar.") %>

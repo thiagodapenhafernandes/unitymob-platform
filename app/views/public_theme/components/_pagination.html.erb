@@ -1,0 +1,20 @@
+<%
+  collection = local_assigns.fetch(:collection)
+  variant = local_assigns.fetch(:variant, "default")
+  pagination_class = ["public-theme-pagination", "public-theme-pagination--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  path_helper = local_assigns[:path_helper]
+  pagination_options = {
+    renderer: WillPaginate::ActionView::TailwindLinkRenderer,
+    inner_window: local_assigns.fetch(:inner_window, 2),
+    outer_window: local_assigns.fetch(:outer_window, 0),
+    previous_label: local_assigns.fetch(:previous_label, public_svg_icon("chevron-left")),
+    next_label: local_assigns.fetch(:next_label, public_svg_icon("chevron-right"))
+  }
+  pagination_options[:path_helper] = path_helper if path_helper.respond_to?(:call)
+%>
+
+<% if collection.respond_to?(:total_pages) && collection.total_pages.to_i > 1 %>
+  <nav class="<%= pagination_class %>" aria-label="<%= local_assigns.fetch(:aria_label, "Paginação") %>">
+    <%= will_paginate collection, pagination_options %>
+  </nav>
+<% end %>

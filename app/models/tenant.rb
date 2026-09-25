@@ -1,23 +1,46 @@
 class Tenant < ApplicationRecord
   DEFAULT_SLUG = "default".freeze
   DEFAULT_PUBLIC_SITE_THEME = "default".freeze
-  PUBLIC_SITE_THEMES = {
+  PUBLIC_SITE_THEME_DIR = Rails.root.join("app/assets/stylesheets/public_site_themes").freeze
+  PUBLIC_SITE_THEME_METADATA = {
     "default" => {
       label: "Padrão",
-      description: "Usa os componentes públicos compartilhados com cores neutras e dados da própria conta.",
-      stylesheet: "public_site_themes/default"
+      description: "Usa os componentes públicos compartilhados com cores neutras e dados da própria conta."
     },
     "saluteimoveis" => {
       label: "Salute Imóveis",
       description: "Mantém o desenho atual do site e herda cores, logo e conteúdo da conta.",
-      stylesheet: "public_site_themes/saluteimoveis"
+      tenant_slugs: ["salute"]
     },
     "conexaoimobiliaria" => {
       label: "Conexão Imobiliária",
       description: "Usa os mesmos componentes públicos com uma expressão visual própria para a Conexão.",
-      stylesheet: "public_site_themes/conexaoimobiliaria"
-    }
+      tenant_slugs: ["conexao"]
+    },
+    "salute_luxury" => {
+      label: "Salute Imóveis - Luxury",
+      description: "Desenho premium da Salute com identidade própria.",
+      tenant_slugs: ["salute"]
+    },
   }.freeze
+
+  # Temas = folhas CSS do diretório: soltar um .css novo já o torna selecionável
+  # (respeitando available_public_site_themes). Metadados conhecidos acima;
+  # arquivos novos ganham rótulo a partir do nome.
+  def self.public_site_theme_definitions
+    Dir.children(PUBLIC_SITE_THEME_DIR).select { |f| f.end_with?(".css") }
+       .map { |f| File.basename(f, ".css") }.sort.index_with do |key|
+      meta = PUBLIC_SITE_THEME_METADATA[key] || {}
+      {
+        label: meta[:label] || key.humanize,
+        description: meta[:description] || "Folha #{key}.css do diretório de temas do site público.",
+        stylesheet: "public_site_themes/#{key}",
+        tenant_slugs: Array(meta[:tenant_slugs])
+      }
+    end
+  end
+
+  PUBLIC_SITE_THEMES = public_site_theme_definitions.freeze
 
   has_many :profiles, dependent: :restrict_with_error
   has_many :tenant_domains, dependent: :destroy
@@ -144,6 +167,9 @@ class Tenant < ApplicationRecord
   # e o que já está em uso. Skins de outros clientes nunca aparecem.
   def available_public_site_themes
     keys = [DEFAULT_PUBLIC_SITE_THEME, inferred_public_site_theme_key, public_site_theme_key].uniq
+    keys |= PUBLIC_SITE_THEMES.keys.select do |key|
+      Array(PUBLIC_SITE_THEMES[key][:tenant_slugs]).include?(slug)
+    end
     PUBLIC_SITE_THEMES.slice(*keys)
   end
 

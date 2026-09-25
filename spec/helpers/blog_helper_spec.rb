@@ -11,7 +11,7 @@ RSpec.describe BlogHelper, type: :helper do
     expect(helper).not_to receive(:public_image_url)
     expect(blob.service).not_to receive(:exist?)
     expect(blob.service).not_to receive(:download)
-    expect(helper.blog_image_url(blob, size: [640, 420])).to start_with("/rails/active_storage/representations/proxy/")
+    expect(helper.blog_image_url(blob, size: [640, 420])).to start_with("/rails/active_storage/representations/redirect/")
   end
   it "prioritizes responsive covers and leaves secondary images lazy" do
     blob = ActiveStorage::Blob.create_and_upload!(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "cover.png", content_type: "image/png", service_name: "test", metadata: { tenant_id: Tenant.default.id, purpose: "blog" })

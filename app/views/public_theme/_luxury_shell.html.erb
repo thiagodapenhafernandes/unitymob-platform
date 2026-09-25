@@ -1,0 +1,92 @@
+<%# Shell luxury (fatia 1: header). Header/mobile-nav luxury com dados da plataforma;
+    corpo e rodapé seguem o padrão até as próximas fatias. Só renderiza com o tema ativo. %>
+<%
+  luxury_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant)
+  luxury_layout = @layout_setting || LayoutSetting.instance(tenant: public_tenant)
+  luxury_contact = @contact_setting || ContactSetting.instance(tenant: public_tenant)
+  luxury_blog = public_tenant.blog_articles.publicly_visible.exists?
+  luxury_blog_url = luxury_blog ? blog_path : luxury_contact.blog_url
+  luxury_menu = PublicHeaderMenu.visible(@home_setting&.header_menu, blog_url: luxury_blog_url,
+    youtube_url: luxury_contact.youtube_url,
+    context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params))
+  luxury_logo = luxury_logo(luxury_layout)
+  luxury_phone = luxury_contact.show_phone_in_header? ? luxury_identity.phone : nil
+  luxury_items = luxury_nav_items(luxury_menu)
+  luxury_bar_items = luxury_nav_items(luxury_menu, bar_only: true)
+%>
+<div class="public-theme-shell public-theme-shell--salute-luxury salute-luxury-theme" data-controller="salute-luxury-theme">
+  <%= render "public_theme/components/site_header",
+        variant: "salute-luxury",
+        class_name: "sl-header",
+        container_class: "sl-container public-theme-header__bar",
+        bar_class: "sl-header__bar",
+        logo_class: "sl-logo",
+        nav_class: "sl-menu",
+        menu_button_class: "sl-burger",
+        menu_action: "click->salute-luxury-theme#openMenu",
+        logo: luxury_logo,
+        site_name: luxury_identity.name,
+        phone: luxury_phone,
+        nav_items: luxury_bar_items,
+        data: { salute_luxury_theme_target: "header" } %>
+  <%= render "public_theme/components/salute_luxury_mobile_nav",
+        close_class: "sl-mobile-nav__close",
+        close_action: "click->salute-luxury-theme#closeMenu",
+        nav_items: luxury_items,
+        site_name: luxury_identity.name,
+        phone: luxury_phone %>
+  <main role="main">
+    <%= render "shared/flash_messages", toast: true if flash.any? %>
+    <%= yield %>
+  </main>
+  <%
+    luxury_footer_setting = @footer_setting || FooterSetting.instance(tenant: public_tenant)
+    luxury_links_src = Array(@footer_links).presence || luxury_footer_setting.footer_links.to_a.presence || Footer::QuickLinksService.call
+    luxury_link_groups = [{ title: luxury_footer_setting.links_title,
+                            links: luxury_links_src.map { |l| { label: l.label, url: l.url } } }]
+    luxury_stores_src = Array(@footer_stores).presence || public_tenant.stores.active.order(:id).to_a.presence || luxury_footer_setting.footer_stores.to_a
+    luxury_stores = luxury_stores_src.map do |store|
+      lines = []
+      if store.respond_to?(:footer_address_line)
+        lines << store.footer_address_line if store.footer_address_line.present?
+        lines << store.footer_city_line if store.footer_city_line.present?
+      elsif store.address.present?
+        lines << store.address
+      end
+      store_digits = Phones::Normalizer.call(store.phone)
+      { name: store.name, address_lines: lines,
+        zip_code: (store.zip_code if store.respond_to?(:zip_code)),
+        creci: (store.creci if store.respond_to?(:creci)),
+        phone: (Phones::Normalizer.display(store.phone) if store.phone.present?),
+        phone_url: (store_digits.present? ? "tel:+#{store_digits}" : nil) }
+    end
+    luxury_wa_value = luxury_footer_setting.whatsapp.presence || luxury_contact.whatsapp_primary.presence
+    luxury_wa_digits = Phones::Normalizer.call(luxury_wa_value)
+    luxury_email = luxury_footer_setting.email.presence || luxury_contact.email_primary.presence
+    luxury_phone_value = luxury_contact.phone.presence
+    luxury_phone_digits = Phones::Normalizer.call(luxury_phone_value)
+    luxury_contact_items = [
+      (luxury_wa_digits.present? ? { value: Phones::Normalizer.display(luxury_wa_value), url: "https://wa.me/#{luxury_wa_digits}", icon: "whatsapp", target: "_blank", rel: "noopener" } : nil),
+      (luxury_email.present? ? { value: luxury_email, url: "mailto:#{luxury_email}", icon: "envelope" } : nil),
+      (luxury_phone_digits.present? ? { value: Phones::Normalizer.display(luxury_phone_value), url: "tel:+#{luxury_phone_digits}", icon: "telephone" } : nil)
+    ].compact
+    luxury_socials_src = Array(@footer_social_links).presence || luxury_footer_setting.footer_social_links.where(enabled: true).to_a.presence || luxury_contact.footer_social_links
+    luxury_legal = luxury_footer_setting.copyright_text.presence || "© #{Date.current.year} #{luxury_identity.name}. Todos os direitos reservados."
+  %>
+  <%= render "public_theme/components/site_footer",
+        variant: "salute-luxury",
+        class_name: "sl-footer",
+        container_class: "sl-container",
+        logo: luxury_logo,
+        site_name: luxury_identity.name,
+        description: luxury_footer_setting.about_text,
+        link_groups: luxury_link_groups,
+        stores: luxury_stores,
+        stores_title: luxury_footer_setting.stores_title,
+        contact_title: luxury_footer_setting.contact_title,
+        contact_items: luxury_contact_items,
+        social_links: luxury_socials_src.map { |so| { label: so.platform, url: so.url, icon_class: so.icon_class } },
+        legal: luxury_legal,
+        legal_links: [{ label: "Política de Privacidade", url: privacy_policy_path },
+                      { label: "Termos de Uso", url: terms_of_use_path }] %>
+</div>

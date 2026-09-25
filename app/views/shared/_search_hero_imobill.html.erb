@@ -18,8 +18,8 @@
      data-search-tabs-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
 
   <!-- Tabs (Comprar / Alugar) - Outside and Centered -->
-  <div class="flex justify-center mb-3 md:mb-4">
-    <div class="inline-flex rounded-full border border-white/40 bg-white/85 p-1.5 shadow-[0_12px_34px_rgba(8,31,48,0.18)] backdrop-blur-xl">
+  <div class="public-theme-search__tabs flex justify-center mb-3 md:mb-4">
+    <div class="public-theme-search__tabs-box inline-flex rounded-full border border-white/40 bg-white/85 p-1.5 shadow-[0_12px_34px_rgba(8,31,48,0.18)] backdrop-blur-xl">
       <button type="button"
               class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-blue-three bg-hero-button shadow-sm transition-all active-tab"
               data-search-tabs-target="tab"
@@ -40,7 +40,7 @@
   </div>
 
   <!-- Search Form Container -->
-  <div class="relative z-30 shadow-[0_24px_80px_rgba(8,31,48,0.24)]"
+  <div class="public-theme-search__panel relative z-30 shadow-[0_24px_80px_rgba(8,31,48,0.24)]"
        style="<%= search_filter_style %>; background-color: var(--search-filter-bg); border: var(--search-filter-border); border-radius: var(--search-filter-radius); color: var(--search-filter-text); backdrop-filter: blur(var(--search-filter-blur)); -webkit-backdrop-filter: blur(var(--search-filter-blur));">
     <%= form_with url: habitations_path,
                   method: :get,
@@ -51,10 +51,10 @@
       <% selected_characteristics = Array(params[:characteristics]).map(&:to_s) %>
       <% price_range_options = public_price_range_options(params[:transaction_type]) %>
 
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
+      <div class="public-theme-search__fields grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
         
         <!-- Tipo de Imóvel (Checklist Dropdown) -->
-        <div class="md:col-span-3" data-controller="category-filter">
+        <div class="public-theme-search__field public-theme-search__field--type md:col-span-3" data-controller="category-filter">
           <span id="hero-category-filter-label" class="sr-only">Tipos de imóveis</span>
           <% selected_categories = Array(params[:category]).reject(&:blank?) %>
           <div class="relative">
@@ -64,7 +64,7 @@
                     data-category-filter-target="trigger"
                     data-action="click->category-filter#toggle"
                     aria-labelledby="hero-category-filter-label">
-              <i class="bi bi-building absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
+              <i class="public-theme-search__trigger-icon bi bi-building absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
               <span class="truncate" data-category-filter-target="summary">Tipos de imóveis</span>
               <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
             </button>
@@ -100,7 +100,7 @@
         </div>
         
         <!-- Localização (Checklist Multiseleção) -->
-        <div class="md:col-span-4" data-controller="location-filter">
+        <div class="public-theme-search__field public-theme-search__field--location md:col-span-4" data-controller="location-filter">
           <span id="hero-location-filter-label" class="sr-only">Localização</span>
           <% selected_locations = Array(params[:city]).reject(&:blank?) %>
           <div class="relative">
@@ -110,7 +110,7 @@
                     data-location-filter-target="trigger"
                     data-action="click->location-filter#toggle"
                     aria-labelledby="hero-location-filter-label">
-              <i class="bi bi-geo-alt absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
+              <i class="public-theme-search__trigger-icon bi bi-geo-alt absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
               <span class="truncate" data-location-filter-target="summary">Selecione bairros ou cidades</span>
               <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
             </button>
@@ -168,7 +168,7 @@
         </div>
         
         <!-- Valores -->
-        <div class="md:col-span-2">
+        <div class="public-theme-search__field public-theme-search__field--price md:col-span-2">
           <%= f.label :price_range, "Valores", class: "sr-only" %>
           <div class="relative">
             <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-45 pointer-events-none"></i>
@@ -181,7 +181,7 @@
           </div>
         </div>
 
-        <div class="md:col-span-3">
+        <div class="public-theme-search__field public-theme-search__field--submit md:col-span-3">
           <%= button_tag type: 'submit', name: nil, class: "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-hero-button py-3 text-sm font-bold uppercase tracking-wide text-blue-three shadow-[0_10px_24px_rgba(190,139,38,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:opacity-95 hover:shadow-[0_14px_30px_rgba(190,139,38,0.34)]" do %>
             <i class="bi bi-search"></i>
             <%= @home_setting.hero_cta_text.presence || "Buscar" %>
@@ -190,9 +190,9 @@
         
       </div>
 
-      <div class="overflow-hidden max-h-0 opacity-0 pointer-events-none transition-all duration-500 ease-out"
+      <div class="public-theme-search__advanced overflow-hidden max-h-0 opacity-0 pointer-events-none transition-all duration-500 ease-out"
            data-search-tabs-target="advancedPanel">
-        <div class="mt-5 pt-5" style="<%= search_filter_divider_style %>">
+        <div class="public-theme-search__advanced-body mt-5 pt-5" style="<%= search_filter_divider_style %>">
           <% metric_groups = [
             [:min_bedrooms, "Quartos", [["1", "1"], ["2", "2"], ["3", "3"], ["4+", "4"]]],
             [:min_suites, "Suítes", [["1+", "1"], ["2+", "2"], ["3+", "3"], ["4+", "4"]]],
@@ -204,11 +204,11 @@
             <% metric_groups.each do |field, label, options| %>
               <div>
                 <div class="mb-1 text-xs font-bold uppercase tracking-wide text-current opacity-70"><%= label %></div>
-                <div class="grid grid-cols-4 overflow-hidden rounded-lg bg-white" style="<%= search_filter_field_style %>">
+                <div class="public-theme-search__segmented grid grid-cols-4 overflow-hidden rounded-lg bg-white" style="<%= search_filter_field_style %>">
                   <% options.each do |text, value| %>
-                    <label class="cursor-pointer last:border-r-0" style="<%= search_filter_right_border_style unless options.last == [text, value] %>">
+                    <label class="public-theme-search__segment cursor-pointer last:border-r-0" style="<%= search_filter_right_border_style unless options.last == [text, value] %>">
                       <%= radio_button_tag field, value, params[field].to_s == value, class: "peer sr-only" %>
-                      <span class="flex h-9 items-center justify-center text-xs font-semibold text-gray-600 transition-colors peer-checked:bg-blue-three peer-checked:text-white hover:bg-gray-50">
+                      <span class="public-theme-search__segment-label flex h-9 items-center justify-center text-xs font-semibold text-gray-600 transition-colors peer-checked:bg-blue-three peer-checked:text-white hover:bg-gray-50">
                         <%= text %>
                       </span>
                     </label>
@@ -231,20 +231,20 @@
                 ['opportunity', 'Ofertas', 'bi-tag-fill'],
                 ['lancamento', 'Lançamento', 'bi-stars']
               ] %>
-              <div class="flex flex-wrap gap-2">
+              <div class="public-theme-search__chips flex flex-wrap gap-2">
                 <% quick_filters.each do |value, label, icon| %>
-                  <label class="cursor-pointer">
+                  <label class="public-theme-search__chip-option cursor-pointer">
                     <%= check_box_tag "characteristics[]", value, selected_characteristics.include?(value), class: "peer sr-only" %>
-                    <span class="inline-flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-gray-600 transition-all peer-checked:bg-blue-three peer-checked:text-white hover:text-blue-three" style="<%= search_filter_chip_border_style %>">
+                    <span class="public-theme-search__chip inline-flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-gray-600 transition-all peer-checked:bg-blue-three peer-checked:text-white hover:text-blue-three" style="<%= search_filter_chip_border_style %>">
                       <i class="bi <%= icon %>"></i>
                       <%= label %>
                     </span>
                   </label>
                 <% end %>
 
-                <label class="cursor-pointer">
+                <label class="public-theme-search__chip-option cursor-pointer">
                   <%= check_box_tag :accepts_exchange, "1", params[:accepts_exchange].to_s == "1", class: "peer sr-only" %>
-                  <span class="inline-flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-gray-600 transition-all peer-checked:bg-blue-three peer-checked:text-white hover:text-blue-three" style="<%= search_filter_chip_border_style %>">
+                  <span class="public-theme-search__chip inline-flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-gray-600 transition-all peer-checked:bg-blue-three peer-checked:text-white hover:text-blue-three" style="<%= search_filter_chip_border_style %>">
                     <i class="bi bi-arrow-left-right"></i>
                     Permuta
                   </span>
@@ -255,11 +255,11 @@
             <div hidden>
               <div class="mb-2 text-xs font-bold uppercase tracking-wide text-current opacity-70">Mais características</div>
               <% extra_filters = [] %>
-              <div class="flex flex-wrap gap-2">
+              <div class="public-theme-search__chips flex flex-wrap gap-2">
                 <% extra_filters.each do |value, label, icon| %>
-                  <label class="cursor-pointer">
+                  <label class="public-theme-search__chip-option cursor-pointer">
                     <%= check_box_tag "characteristics[]", value, selected_characteristics.include?(value), class: "peer sr-only" %>
-                    <span class="inline-flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-gray-600 transition-all peer-checked:bg-golden-one peer-checked:text-blue-three hover:text-blue-three" style="<%= search_filter_chip_border_style %>">
+                    <span class="public-theme-search__chip inline-flex h-9 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-gray-600 transition-all peer-checked:bg-golden-one peer-checked:text-blue-three hover:text-blue-three" style="<%= search_filter_chip_border_style %>">
                       <i class="bi <%= icon %>"></i>
                       <%= label %>
                     </span>

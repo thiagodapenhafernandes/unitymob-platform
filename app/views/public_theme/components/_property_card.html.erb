@@ -1,0 +1,175 @@
+<%
+  property = local_assigns.fetch(:property)
+  variant = local_assigns.fetch(:variant, "default")
+  card_class = ["public-theme-property-card", "public-theme-property-card--#{variant}", local_assigns[:class_name]].compact.join(" ")
+  property_url = habitation_path(property)
+  title = property.display_title
+  location = [property.public_neighborhood, property.cidade].compact_blank.join(" · ")
+  context_name = property.nome_empreendimento.to_s.squish.presence
+  context_label = property.categoria.to_s.match?(/condom[ií]nio/i) ? "Condomínio" : "Empreendimento"
+  show_context = context_name.present? && !title.to_s.downcase.include?(context_name.downcase)
+  gallery_limit = local_assigns.fetch(:gallery_limit, 3)
+  image_loading = local_assigns.fetch(:image_loading, "lazy")
+  defer_initial_image = local_assigns.fetch(:defer_initial_image, false)
+  card_images = property.card_image_sources(gallery_limit)
+  placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+  image_variants = card_images.map do |photo|
+    {
+      url: public_image_url(photo, resize_to_fill: [720, 540], format: :webp),
+      srcset: public_image_srcset(photo, widths: [360, 540, 720], aspect_ratio: 4.0 / 3, crop: true, format: :webp)
+    }
+  end
+  image_urls = image_variants.map { |variant| variant[:url] }
+  favorite_image_url = image_urls.first.to_s
+
+  sale_price = property.valor_venda_cents.to_i
+  rent_price = property.valor_locacao_cents.to_i
+  sale_mode = sale_price.positive?
+  current_price = sale_mode ? sale_price : rent_price
+  previous_price = sale_mode ? property.valor_venda_anterior_cents.to_i : property.valor_locacao_anterior_cents.to_i
+  reduced_price = current_price.positive? && previous_price > current_price
+  discount_percentage = reduced_price ? (((previous_price - current_price).to_f / previous_price) * 100).round : nil
+  price_suffix = !sale_mode && current_price.positive? ? "/mês" : ""
+  current_price_label = current_price.positive? ? "#{number_to_currency(current_price / 100.0, precision: 0)}#{price_suffix}" : "Sob consulta"
+  previous_price_label = reduced_price ? "#{number_to_currency(previous_price / 100.0, precision: 0)}#{price_suffix}" : nil
+  card_tracking_data = {
+    controller: "marketing-tracker",
+    action: "click->marketing-tracker#track",
+    marketing_tracker_event_type_value: "property_card_click",
+    marketing_tracker_placement_value: "property_card_image",
+    marketing_tracker_label_value: title,
+    marketing_tracker_target_url_value: property_url,
+    marketing_tracker_habitation_id_value: property.id
+  }
+%>
+
+<article class="<%= card_class %>" data-property-id="<%= property.id %>">
+  <div class="public-theme-property-card__media">
+    <% if image_urls.present? %>
+      <div class="public-theme-property-card__gallery"
+           <% if image_urls.many? %>
+             data-controller="public-card-gallery"
+             data-public-card-gallery-index-value="0"
+             data-action="pointerenter->public-card-gallery#warm focusin->public-card-gallery#warm touchstart->public-card-gallery#warm touchstart->public-card-gallery#startSwipe touchmove->public-card-gallery#moveSwipe:!passive touchend->public-card-gallery#endSwipe touchcancel->public-card-gallery#cancelSwipe pointerdown->public-card-gallery#startSwipe pointermove->public-card-gallery#moveSwipe pointerup->public-card-gallery#endSwipe pointercancel->public-card-gallery#cancelSwipe"
+           <% end %>>
+        <% image_variants.each_with_index do |image_variant, index| %>
+          <div class="public-theme-property-card__gallery-frame <%= "is-active" if index.zero? %>"
+               data-public-card-gallery-target="frame"
+               aria-hidden="<%= index.zero? ? "false" : "true" %>">
+            <% image_deferred = !index.zero? || defer_initial_image %>
+            <% image_data = image_deferred ? { public_card_gallery_target: "image", src: image_variant[:url], srcset: image_variant[:srcset], public_deferred: "true" } : {} %>
+            <%= image_tag(image_deferred ? placeholder : image_variant[:url],
+                  alt: "#{title} — foto #{index + 1}",
+                  width: 720,
+                  height: 540,
+                  loading: index.zero? ? image_loading : "lazy",
+                  decoding: "async",
+                  sizes: "(max-width: 760px) 100vw, 33vw",
+                  srcset: (image_variant[:srcset] if !image_deferred && index.zero?),
+                  data: image_data) %>
+          </div>
+        <% end %>
+
+        <% if image_urls.many? %>
+          <button type="button"
+                  class="public-theme-property-card__gallery-control public-theme-property-card__gallery-control--prev"
+                  data-action="public-card-gallery#previous"
+                  aria-label="Ver foto anterior de <%= title %>"></button>
+          <button type="button"
+                  class="public-theme-property-card__gallery-control public-theme-property-card__gallery-control--next"
+                  data-action="public-card-gallery#next"
+                  aria-label="Ver próxima foto de <%= title %>"></button>
+          <div class="public-theme-property-card__pagination" aria-hidden="true">
+            <% image_urls.each_with_index do |_image_url, index| %>
+              <span class="public-theme-property-card__pagination-dot <%= "is-active" if index.zero? %>"
+                    data-public-card-gallery-target="indicator"></span>
+            <% end %>
+          </div>
+        <% end %>
+
+      </div>
+    <% else %>
+      <div class="public-theme-property-card__placeholder" aria-hidden="true"></div>
+    <% end %>
+
+    <%= render "public_theme/components/property_badges",
+          property: property,
+          reduced_price: reduced_price,
+          discount_percentage: discount_percentage %>
+
+    <button type="button"
+            class="public-theme-property-card__favorite"
+            aria-pressed="false"
+            data-controller="public-property-favorite"
+            data-action="public-property-favorite#toggle"
+            data-public-property-favorite-id-value="<%= property.id %>"
+            data-public-property-favorite-url-value="<%= property_url %>"
+            data-public-property-favorite-title-value="<%= title %>"
+            data-public-property-favorite-image-url-value="<%= favorite_image_url %>"
+            data-public-property-favorite-price-value="<%= current_price_label %>"
+            data-public-property-favorite-location-value="<%= location %>">
+      <%= public_svg_icon("heart", data: { public_property_favorite_target: "icon" }) %>
+      <span class="public-theme-property-card__favorite-label" data-public-property-favorite-target="label">Favoritar imóvel</span>
+    </button>
+
+    <span class="public-theme-property-card__price-wrap">
+      <% if reduced_price %>
+        <small class="public-theme-property-card__previous-price">De <%= previous_price_label %></small>
+        <small class="public-theme-property-card__price-label">Agora</small>
+      <% else %>
+        <small class="public-theme-property-card__price-label">Valor</small>
+      <% end %>
+      <strong class="public-theme-property-card__price"><%= current_price_label %></strong>
+    </span>
+
+  </div>
+
+  <div class="public-theme-property-card__body">
+    <h3><%= link_to title, property_url, data: card_tracking_data %></h3>
+    <% if show_context %>
+      <p class="public-theme-property-card__development">
+        <%= public_svg_icon("building") %>
+        <span>
+          <small><%= context_label %></small>
+          <strong><%= context_name %></strong>
+        </span>
+      </p>
+    <% end %>
+    <% if location.present? %>
+      <p class="public-theme-property-card__location"><%= public_svg_icon("geo-alt") %><span><%= location %></span></p>
+    <% end %>
+
+    <div class="public-theme-property-card__specs">
+      <% if property.suites_qtd.to_i.positive? %><span><%= public_svg_icon("door-open") %><b><%= property.suites_qtd %></b> suítes</span><% end %>
+      <% if property.vagas_qtd.to_i.positive? %><span><%= public_svg_icon("car-front") %><b><%= property.vagas_qtd %></b> vagas</span><% end %>
+      <% if property.area_privativa_m2.to_f.positive? %><span><%= public_svg_icon("aspect-ratio") %><b><%= number_with_precision(property.area_privativa_m2, precision: 0) %></b> m²</span><% end %>
+    </div>
+
+    <button type="button"
+            class="public-theme-property-card__whatsapp"
+            data-action="click->marketing-tracker#track click->lead-capture#open"
+            data-controller="marketing-tracker"
+            data-marketing-tracker-event-type-value="whatsapp_click"
+            data-marketing-tracker-placement-value="property_card"
+            data-marketing-tracker-label-value="<%= title %>"
+            data-marketing-tracker-target-url-value="<%= property_url %>"
+            data-marketing-tracker-habitation-id-value="<%= property.id %>"
+            data-property-id="<%= property.id %>"
+            data-property-code="<%= property.codigo %>"
+            data-property-title="<%= title %>"
+            data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
+            data-lead-origin="property_card"
+            data-require-lead-form="true"
+            data-whatsapp-message="Olá, vi o imóvel <%= title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+            aria-label="Solicitar informações pelo WhatsApp sobre <%= title %>">
+      <%= public_svg_icon("whatsapp", class_name: "public-theme-property-card__whatsapp-icon") %>
+      <span>Tenho interesse</span>
+    </button>
+  </div>
+
+  <% if reduced_price %>
+    <div class="public-theme-property-card__opportunity<%= " public-theme-property-card__opportunity--rent" unless sale_mode %>">
+      <span><%= sale_mode ? "OPORTUNIDADE" : "LOCAÇÃO COM PREÇO REDUZIDO" %></span>
+    </div>
+  <% end %>
+</article>

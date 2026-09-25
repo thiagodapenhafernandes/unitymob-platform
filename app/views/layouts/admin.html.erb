@@ -45,6 +45,9 @@
     
     <%# CSS de framework legado removido — substituído pela camada de compatibilidade (admin_compat) + Tailwind admin %>
     <%# Vendors self-hosted (sem CDN de terceiros em runtime) %>
+    <%# Preload das fontes críticas: evita o flash de ícones/texto sem estilo no primeiro paint. %>
+    <%= preload_link_tag font_path("bootstrap-icons.woff2"), as: "font", type: "font/woff2", crossorigin: "anonymous" %>
+    <%= preload_link_tag font_path("inter-latin-wght.woff2"), as: "font", type: "font/woff2", crossorigin: "anonymous" %>
     <!-- Bootstrap Icons -->
     <%= stylesheet_link_tag "vendor/bootstrap-icons", media: "all" %>
     <!-- Tom Select -->

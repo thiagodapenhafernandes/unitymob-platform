@@ -8,8 +8,8 @@
   
   <% desktop_image = banner.image_desktop.attached? ? banner.image_desktop : banner.image_mobile %>
   <% mobile_image = banner.image_mobile.attached? ? banner.image_mobile : desktop_image %>
-  <% desktop_source = public_image_url(desktop_image, resize_to_limit: [1440, 360], force_variant: true, representation_proxy: true) %>
-  <% mobile_source = public_image_url(mobile_image, resize_to_limit: [768, 360], force_variant: true, representation_proxy: true) %>
+  <% desktop_source = public_image_url(desktop_image, resize_to_limit: [1440, 360], force_variant: true) %>
+  <% mobile_source = public_image_url(mobile_image, resize_to_limit: [768, 360], force_variant: true) %>
   <% image_classes = "w-full rounded-lg shadow-md hover:shadow-xl transition-shadow" %>
   <% render_image_banner = desktop_image&.attached? && desktop_source.present? %>
   <% banner_body = capture do %>
