@@ -2,25 +2,50 @@ class Tenant < ApplicationRecord
   DEFAULT_SLUG = "default".freeze
   DEFAULT_PUBLIC_SITE_THEME = "default".freeze
   PUBLIC_SITE_THEME_DIR = Rails.root.join("app/assets/stylesheets/public_site_themes").freeze
+  DEFAULT_THEME_COMPONENTS = {
+    hero: "hero",
+    property_card: "shared/tailwind/property_card",
+    property_grid: "public_theme/components/default_property_grid",
+    pagination: "public_theme/components/default_pagination",
+    detail_body: "public_theme/components/default_detail_body",
+    development_body: "public_theme/components/default_development_body",
+    shell: "layouts/default_shell"
+  }.freeze
   PUBLIC_SITE_THEME_METADATA = {
     "default" => {
       label: "Padrão",
-      description: "Usa os componentes públicos compartilhados com cores neutras e dados da própria conta."
+      description: "Usa os componentes públicos compartilhados com cores neutras e dados da própria conta.",
+      variant: "default",
+      components: DEFAULT_THEME_COMPONENTS
     },
     "saluteimoveis" => {
       label: "Salute Imóveis",
       description: "Mantém o desenho atual do site e herda cores, logo e conteúdo da conta.",
-      tenant_slugs: ["salute"]
+      tenant_slugs: ["salute"],
+      variant: "default",
+      components: DEFAULT_THEME_COMPONENTS
     },
     "conexaoimobiliaria" => {
       label: "Conexão Imobiliária",
       description: "Usa os mesmos componentes públicos com uma expressão visual própria para a Conexão.",
-      tenant_slugs: ["conexao"]
+      tenant_slugs: ["conexao"],
+      variant: "default",
+      components: DEFAULT_THEME_COMPONENTS
     },
     "salute_luxury" => {
       label: "Salute Imóveis - Luxury",
       description: "Desenho premium da Salute com identidade própria.",
-      tenant_slugs: ["salute"]
+      tenant_slugs: ["salute"],
+      variant: "salute-luxury",
+      components: {
+        hero: "public_theme/luxury_home_hero",
+        property_card: "public_theme/components/property_card",
+        property_grid: "public_theme/components/property_grid",
+        pagination: "public_theme/components/pagination",
+        detail_body: "public_theme/luxury_detail_body",
+        development_body: "public_theme/luxury_development_body",
+        shell: "public_theme/luxury_shell"
+      }
     },
   }.freeze
 
@@ -35,7 +60,9 @@ class Tenant < ApplicationRecord
         label: meta[:label] || key.humanize,
         description: meta[:description] || "Folha #{key}.css do diretório de temas do site público.",
         stylesheet: "public_site_themes/#{key}",
-        tenant_slugs: Array(meta[:tenant_slugs])
+        tenant_slugs: Array(meta[:tenant_slugs]),
+        variant: meta[:variant] || "default",
+        components: meta[:components] || DEFAULT_THEME_COMPONENTS
       }
     end
   end

@@ -48,6 +48,26 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include("Apartamento à venda com 3 dormitórios na Barra Sul")
     end
 
+    it "exibe venda e locação em blocos próprios quando o imóvel tem os dois valores" do
+      habitation = create(
+        :habitation,
+        codigo: "DUAL-PRICE-#{SecureRandom.hex(4)}",
+        slug: "apartamento-venda-locacao-#{SecureRandom.hex(4)}",
+        status: "Venda e Aluguel",
+        valor_venda_cents: 1_500_000_00,
+        valor_locacao_cents: 8_500_00
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      page_text = Nokogiri::HTML(response.body).text.squish
+      expect(page_text).to include("Valor de venda")
+      expect(page_text).to include("R$ 1.500.000")
+      expect(page_text).to include("Valor de locação")
+      expect(page_text).to include("R$ 8.500")
+    end
+
     it "não renderiza imóvel público de outro tenant pelo slug" do
       other_tenant = Tenant.create!(name: "Outro hab public #{SecureRandom.hex(3)}", slug: "outro-hab-public-#{SecureRandom.hex(3)}")
       habitation = create(:habitation, tenant: other_tenant, codigo: "TENANT-X", slug: "imovel-outro-tenant")

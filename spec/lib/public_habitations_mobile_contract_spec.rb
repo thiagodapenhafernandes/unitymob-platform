@@ -5,7 +5,7 @@ RSpec.describe "Public habitations mobile listing contract" do
   let(:style_source) { Rails.root.join("app/assets/stylesheets/public_habitations_index_refresh.css").read }
 
   it "renders results before SEO and related-search content" do
-    grid_position = view_source.index("public-habitations-index__grid")
+    grid_position = view_source.index("theme_component(:property_grid")
     pagination_position = view_source.index("public-habitations-index__pagination")
     seo_position = view_source.index("public-habitations-index__seo-intro")
     related_position = view_source.index("public-habitations-index__strategic-links")
