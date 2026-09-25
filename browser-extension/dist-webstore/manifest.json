@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Unitymob para WhatsApp",
-  "version": "0.4.16",
+  "version": "0.4.24",
   "minimum_chrome_version": "116",
   "description": "Consulte e crie leads, registre notas e agende tarefas durante o atendimento no WhatsApp Web.",
   "permissions": [
