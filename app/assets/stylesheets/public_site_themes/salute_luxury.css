@@ -1755,6 +1755,18 @@ body.no-scroll { overflow: hidden; }
   height: 18px;
   stroke-width: 2.35;
 }
+.public-theme-property-card--salute-luxury .public-theme-property-card__opportunity {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  background: #107448;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
 
 /* Empreendimentos usam a fotografia como superfície integral do card. */
 .public-theme-development-card--salute-luxury {

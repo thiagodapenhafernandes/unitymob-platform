@@ -9,12 +9,10 @@
   luxury_menu = PublicHeaderMenu.visible(@home_setting&.header_menu, blog_url: luxury_blog_url,
     youtube_url: luxury_contact.youtube_url,
     context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params))
-  luxury_logo =
-    if luxury_layout.logo.attached?
-      luxury_layout.logo.content_type == "image/svg+xml" ? luxury_layout.logo : luxury_layout.logo.variant(resize_to_limit: [400, 120])
-    end
+  luxury_logo = luxury_logo(luxury_layout)
   luxury_phone = luxury_contact.show_phone_in_header? ? luxury_identity.phone : nil
-  luxury_items = salute_luxury_nav_items(luxury_menu)
+  luxury_items = luxury_nav_items(luxury_menu)
+  luxury_bar_items = luxury_nav_items(luxury_menu, bar_only: true)
 %>
 <div class="public-theme-shell public-theme-shell--salute-luxury salute-luxury-theme" data-controller="salute-luxury-theme">
   <%= render "public_theme/components/site_header",
@@ -29,7 +27,7 @@
         logo: luxury_logo,
         site_name: luxury_identity.name,
         phone: luxury_phone,
-        nav_items: luxury_items,
+        nav_items: luxury_bar_items,
         data: { salute_luxury_theme_target: "header" } %>
   <%= render "public_theme/components/salute_luxury_mobile_nav",
         close_class: "sl-mobile-nav__close",

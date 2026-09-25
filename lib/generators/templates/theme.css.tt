@@ -1,0 +1,31 @@
+/* Tema <%= file_name %> — esqueleto gerado por `rails g public_theme`.
+ * Disciplina: seletores planos por classe (BEM do contrato). Nada de `>`,
+ * `nth-child` ou posição no DOM: o HTML varia por tema, as classes não.
+ * Ganchos do card: .public-theme-property-card[-<variante>]
+ *   __media __gallery(-frame) __placeholder __badges __discount-tag __tag
+ *   __favorite __price-wrap __previous-price __price-label __price
+ *   __body __development __location __specs __whatsapp
+ *   __opportunity[--rent] (faixa OPORTUNIDADE / LOCAÇÃO COM PREÇO REDUZIDO)
+ * Paleta da conta via :root: --color-primary, --color-secondary,
+ * --color-accent, --color-hero-button, --color-hero-button-text.
+ */
+
+.public-theme-property-card--<%= file_name %> {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #fff;
+}
+
+.public-theme-property-card--<%= file_name %> .public-theme-property-card__opportunity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  background: #107448;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}

@@ -45,7 +45,7 @@
           address: dev_address,
           region: [dev_region, dev.cep.presence && "CEP: #{dev.cep}"].compact_blank.join(" · ") %>
     <% if dev_units.any? %>
-      <section id="unidades" class="public-theme-development-units">
+      <section id="unidades" class="public-theme-development-units public-theme-development-units--salute-luxury">
         <h2 class="public-theme-development-section__title">Unidades disponíveis</h2>
         <%= render "public_theme/components/property_grid",
               properties: dev_units, variant: "salute-luxury",

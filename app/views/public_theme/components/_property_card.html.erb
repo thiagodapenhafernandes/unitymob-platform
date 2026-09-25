@@ -166,4 +166,10 @@
       <span>Tenho interesse</span>
     </button>
   </div>
+
+  <% if reduced_price %>
+    <div class="public-theme-property-card__opportunity<%= " public-theme-property-card__opportunity--rent" unless sale_mode %>">
+      <span><%= sale_mode ? "OPORTUNIDADE" : "LOCAÇÃO COM PREÇO REDUZIDO" %></span>
+    </div>
+  <% end %>
 </article>
