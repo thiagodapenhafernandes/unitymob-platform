@@ -5,6 +5,10 @@ module Storage
     TRANSFORM_ENQUEUE_TTL = 15.minutes
     VARIANT_MISSING_TTL = 5.minutes
     VARIANT_CLEANUP_TTL = 5.minutes
+    # Variants processadas são imutáveis: o positivo pode ser cacheado por
+    # horas (sem isso, cada render faz 1 HEAD no S3 por foto — ~200ms).
+    # O cleanup de faltantes já invalida esta chave ao destruir o record.
+    VARIANT_EXISTING_TTL = 12.hours
     TRANSFORM_FAILURE_METADATA_KEY = "public_variant_failures".freeze
     SOURCE_URL_KEYS = [
       "url",
@@ -202,10 +206,13 @@ module Storage
 
       cache_key = self.class.variant_existence_cache_key(variant.blob.id, variant_blob.id)
       cached = Rails.cache.read(cache_key)
-      return false if cached == false
+      return cached if cached == true || cached == false
 
       exists = variant_blob.service.exist?(variant_blob.key)
-      return true if exists
+      if exists
+        Rails.cache.write(cache_key, true, expires_in: VARIANT_EXISTING_TTL)
+        return true
+      end
 
       cleanup_missing_variant!(variant, variant_blob, cache_key: cache_key)
       Rails.cache.write(cache_key, false, expires_in: VARIANT_MISSING_TTL)

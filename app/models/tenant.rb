@@ -18,10 +18,10 @@ class Tenant < ApplicationRecord
       tenant_slugs: ["conexao"]
     },
     "salute_luxury" => {
-      label: "Salute - Landing premium",
+      label: "Salute Imóveis - Luxury",
       description: "Desenho premium da Salute com identidade própria.",
       tenant_slugs: ["salute"]
-    }
+    },
   }.freeze
 
   # Temas = folhas CSS do diretório: soltar um .css novo já o torna selecionável

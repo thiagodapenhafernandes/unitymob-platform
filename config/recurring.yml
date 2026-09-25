@@ -63,6 +63,10 @@ production:
     class: Storage::PublishPublicPropertyPhotosJob
     queue: default
     schedule: every day at 2:35am
+  warm_public_variants:
+    class: Storage::WarmPublicVariantsJob
+    queue: media
+    schedule: every 2 hours at minute 20
   critical_blob_integrity:
     class: Storage::CriticalBlobIntegrityJob
     queue: checkin

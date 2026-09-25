@@ -100,15 +100,15 @@
 %>
 <%= json_ld_tag({ "@context" => "https://schema.org", "@graph" => [development_schema, breadcrumb_schema, faq_schema].compact }) %>
 
-<% if salute_luxury_theme? %>
+<% if luxury_theme? %>
   <%= render "public_theme/luxury_development_body" %>
 <% else %>
 <div class="public-development-show bg-gray-50 min-h-screen">
   
   <!-- Hero Section with Background Image -->
   <% hero_image_source = @habitation.all_images.first %>
-  <% hero_image = public_image_url(hero_image_source, resize_to_fill: [1400, 820], format: :webp, representation_proxy: true) if hero_image_source %>
-  <% hero_image_srcset = public_image_srcset(hero_image_source, widths: [640, 960, 1400], aspect_ratio: 1400.0 / 820, crop: true, format: :webp, representation_proxy: true) if hero_image_source %>
+  <% hero_image = public_image_url(hero_image_source, resize_to_fill: [1400, 820], format: :webp) if hero_image_source %>
+  <% hero_image_srcset = public_image_srcset(hero_image_source, widths: [640, 960, 1400], aspect_ratio: 1400.0 / 820, crop: true, format: :webp) if hero_image_source %>
   <div class="public-development-show__hero relative h-[60vh] min-h-[500px] bg-cover bg-center mt-[72px] <%= 'bg-gradient-to-br from-blue-three to-blue-one' unless hero_image %>">
     <% if hero_image.present? %>
       <%= image_tag hero_image,
@@ -329,7 +329,7 @@
         <!-- About Section -->
         <% description_content = @habitation.display_description %>
         <% if description_content.present? %>
-          <section class="public-development-show__section public-development-show__about bg-white rounded-xl shadow-sm p-8 border border-blue-100">
+          <section class="public-theme-development-about public-theme-development-about--default public-development-show__section public-development-show__about bg-white rounded-xl shadow-sm p-8 border border-blue-100">
             <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
               <div class="w-1 h-8 bg-golden-one rounded"></div>
               <i class="bi bi-info-circle-fill text-blue-three"></i>
@@ -390,7 +390,7 @@
         <% leisure_features = @habitation.leisure_features_for_display %>
         
         <% if property_features.any? || leisure_features.any? %>
-          <section class="public-development-show__section public-development-show__features bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+          <section class="public-theme-development-features public-theme-development-features--default public-development-show__section public-development-show__features bg-white rounded-xl shadow-sm p-8 border border-gray-100">
             <h2 class="public-development-show__section-title text-2xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
               <div class="w-1 h-8 bg-golden-one rounded"></div>
               <i class="bi bi-patch-check-fill text-golden-one"></i>
@@ -434,7 +434,7 @@
         <% end %>
 
         <!--Location Section -->
-        <section class="public-development-show__section public-development-show__location bg-white rounded-xl shadow-sm p-8">
+        <section class="public-theme-development-location public-theme-development-location--default public-development-show__section public-development-show__location bg-white rounded-xl shadow-sm p-8">
           <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
             <div class="w-1 h-8 bg-golden-one rounded"></div>
             Localização
@@ -472,7 +472,7 @@
         </section>
 
         <!-- Available Units -->
-        <section class="public-development-show__section public-development-show__units bg-white rounded-xl shadow-sm p-8">
+        <section class="public-theme-development-units public-theme-development-units--default public-development-show__section public-development-show__units bg-white rounded-xl shadow-sm p-8">
           <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
             <div class="w-1 h-8 bg-golden-one rounded"></div>
             Unidades Disponíveis

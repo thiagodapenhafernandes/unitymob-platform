@@ -24,9 +24,9 @@
      data-property-id="<%= property.id %>">
   
   <!-- Image Carousel Area -->
-  <div class="relative h-[320px] overflow-hidden bg-gray-100">
+  <div class="public-theme-card__media relative h-[320px] overflow-hidden bg-gray-100">
     <!-- Badges (Top Left) - Dynamic with max 2 -->
-    <div class="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
+    <div class="public-theme-card__badges absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
       <% property.display_badges.each do |badge| %>
         <% badge_text_class = badge[:tailwind_color].to_s.match?(/\A(yellow|amber)-/) ? "text-blue-three" : "text-white" %>
         <span class="px-2.5 py-1 bg-<%= badge[:tailwind_color] %> <%= badge_text_class %> text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.12)] border border-white/25">
@@ -36,7 +36,7 @@
     </div>
 
     <!-- Code & Constructor Badge (Top Right) -->
-    <div class="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
+    <div class="public-theme-card__code absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
       <span class="px-2.5 py-1.5 bg-white/60 backdrop-blur-md text-blue-three text-[10px] font-bold rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.1)] border border-white/50">
         <%= property.codigo %>
       </span>
@@ -137,10 +137,10 @@
   </div>
 
   <!-- Content -->
-  <div class="pt-4 px-5 flex flex-col flex-1 <%= (sale_discount || rent_discount) ? 'pb-0' : 'pb-4' %>">
+  <div class="public-theme-card__body pt-4 px-5 flex flex-col flex-1 <%= (sale_discount || rent_discount) ? 'pb-0' : 'pb-4' %>">
     
     <!-- Location -->
-    <div class="flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
+    <div class="public-theme-card__location flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
       <i class="bi bi-geo-alt text-golden-one"></i>
       <span class="truncate"><%= property.public_location_label %></span>
     </div>
@@ -235,16 +235,16 @@
       vagas_label = property.card_vagas_text
       dorms_label = property.card_dormitorios_text
     %>
-    <div class="grid grid-cols-3 gap-2 mb-4 border-t border-gray-100 pt-4">
-      <div class="flex flex-col items-center justify-center text-center">
+    <div class="public-theme-card__specs grid grid-cols-3 gap-2 mb-4 border-t border-gray-100 pt-4">
+      <div class="public-theme-card__spec flex flex-col items-center justify-center text-center">
         <i class="bi bi-arrows-fullscreen text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= area_label.presence || "—" %></span>
       </div>
-      <div class="flex flex-col items-center justify-center text-center border-l border-gray-100">
+      <div class="public-theme-card__spec flex flex-col items-center justify-center text-center border-l border-gray-100">
         <i class="bi bi-car-front text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= vagas_label.present? ? "#{vagas_label} Vagas" : "—" %></span>
       </div>
-      <div class="flex flex-col items-center justify-center text-center border-l border-gray-100">
+      <div class="public-theme-card__spec flex flex-col items-center justify-center text-center border-l border-gray-100">
         <i class="bi bi-door-closed text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= dorms_label.present? ? "#{dorms_label} Quartos" : "—" %></span>
       </div>

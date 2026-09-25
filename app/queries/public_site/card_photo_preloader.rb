@@ -15,6 +15,7 @@ module PublicSite
       records.each do |record|
         load_selected_attachments(record, attachments_by_record.fetch(record.id, []))
       end
+      preload_variant_records
 
       records
     end
@@ -95,6 +96,18 @@ module PublicSite
       association = record.association(:photos_attachments)
       association.target = selected
       association.loaded!
+    end
+
+    # Os checks de variante (processed?/exists?) do render passam a ler
+    # da memória em vez de 1 query por foto.
+    def preload_variant_records
+      blobs = records.flat_map { |record| record.photos_attachments.map(&:blob) }.compact.uniq(&:id)
+      return if blobs.empty?
+
+      ActiveRecord::Associations::Preloader.new(
+        records: blobs,
+        associations: [variant_records: { image_attachment: :blob }]
+      ).call
     end
 
     def preload_development_unit_summaries

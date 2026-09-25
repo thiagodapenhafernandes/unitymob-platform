@@ -2,7 +2,7 @@
 <% overlay_opacity = @home_setting.overlay_opacity || 0.7 %>
 
 <!-- Hero Section - Cinematic Master Edition -->
-<section id="hero" class="relative min-h-[75dvh] md:h-[90vh] lg:h-screen flex items-center md:items-center justify-center bg-gray-900 overflow-x-clip ps-hero"
+<section id="hero" class="relative min-h-[75dvh] md:h-[90vh] lg:h-screen flex items-center md:items-center justify-center bg-gray-900 overflow-x-clip ps-hero public-theme-hero public-theme-hero--default"
          data-controller="hero-slider" 
          data-hero-slider-interval-value="10000"
          style="--hero-overlay-start: <%= overlay_color %><%= format('%02x', (overlay_opacity * 255).to_i) %>; 
@@ -14,10 +14,10 @@
       <% @hero_images.each_with_index do |image, index| %>
         <% hero_source = image[:source] %>
         <% hero_mobile_source = image[:mobile_source] || hero_source %>
-        <% desktop_source = public_image_url(hero_source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(hero_source).presence || hero_source %>
-        <% desktop_source_1440 = index.zero? ? public_image_url(hero_source, resize_to_limit: [1440, 810], format: :webp, force_variant: true, representation_proxy: true).presence || desktop_source : desktop_source %>
-        <% mobile_source_640 = index.zero? ? public_image_url(hero_mobile_source, resize_to_limit: [640, 1138], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(hero_mobile_source).presence || hero_mobile_source : desktop_source %>
-        <% mobile_source_900 = index.zero? ? public_image_url(hero_mobile_source, resize_to_limit: [900, 1600], format: :webp, force_variant: true, representation_proxy: true).presence || mobile_source_640 : desktop_source %>
+        <% desktop_source = public_image_url(hero_source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true).presence || public_image_url(hero_source).presence || hero_source %>
+        <% desktop_source_1440 = index.zero? ? public_image_url(hero_source, resize_to_limit: [1440, 810], format: :webp, force_variant: true).presence || desktop_source : desktop_source %>
+        <% mobile_source_640 = index.zero? ? public_image_url(hero_mobile_source, resize_to_limit: [640, 1138], format: :webp, force_variant: true).presence || public_image_url(hero_mobile_source).presence || hero_mobile_source : desktop_source %>
+        <% mobile_source_900 = index.zero? ? public_image_url(hero_mobile_source, resize_to_limit: [900, 1600], format: :webp, force_variant: true).presence || mobile_source_640 : desktop_source %>
         <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
         <div class="hero-slide <%= 'active' if index == 0 %>" data-hero-slider-target="slide">
           <% if index.zero? %>
@@ -62,16 +62,16 @@
   </div>
   
   <!-- Overlay with Premium Gradient -->
-  <div class="hero-overlay"></div>
+  <div class="hero-overlay public-theme-hero__overlay"></div>
   
   <!-- Content -->
   <div class="container-custom hero-content-wrapper w-full">
     <div class="hero-copy text-center mx-auto">
-      <h1 class="hero-title font-bold text-white tracking-tight px-2 break-words"
+      <h1 class="hero-title public-theme-hero__title font-bold text-white tracking-tight px-2 break-words"
           style="--hero-title-configured-size: <%= @home_setting.hero_title_font_size_value %>px;">
         <%= @home_setting.hero_title || "Encontre o imóvel dos seus sonhos" %>
       </h1>
-      <p class="hero-subtitle text-white/90 max-w-2xl mx-auto font-medium px-3"
+      <p class="hero-subtitle public-theme-hero__lead text-white/90 max-w-2xl mx-auto font-medium px-3"
          style="--hero-subtitle-configured-size: <%= @home_setting.hero_subtitle_font_size_value %>px;">
         <%= @home_setting.hero_subtitle.presence || ["As melhores oportunidades", ("em #{@public_identity.primary_city}" if @public_identity.primary_city.present?)].compact.join(" ") %>
       </p>
@@ -79,7 +79,7 @@
 
     <% if @home_setting.renders_hero_search_filter? %>
       <!-- Search Form Imobill Style -->
-      <div class="relative z-20 <%= @home_setting.hero_search_filter_visibility_class %>">
+      <div class="public-theme-hero__search relative z-20 <%= @home_setting.hero_search_filter_visibility_class %>">
         <%= render 'shared/search_hero_imobill' %>
       </div>
     <% end %>

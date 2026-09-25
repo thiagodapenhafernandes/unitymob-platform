@@ -126,11 +126,11 @@
   <div class="public-habitations-index__results results-section mt-8">
       
       <% if @habitations.any? %>
-        <% if salute_luxury_theme? %>
+        <% if luxury_theme? %>
           <%= render "public_theme/components/property_grid",
                 properties: @habitations, variant: "salute-luxury" %>
         <% else %>
-          <div class="public-habitations-index__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
+          <div class="public-habitations-index__grid public-theme-property-grid public-theme-property-grid--default grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
             <% @habitations.each_with_index do |property, index| %>
               <%= render 'shared/tailwind/property_card', property: property, priority_image: index < 2 %>
             <% end %>
@@ -139,7 +139,7 @@
         
         <!-- Pagination -->
         <div class="public-habitations-index__pagination flex justify-center mt-8">
-          <% if salute_luxury_theme? %>
+          <% if luxury_theme? %>
             <%= render "public_theme/components/pagination",
                   collection: @habitations, variant: "salute-luxury",
                   path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) } %>

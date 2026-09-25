@@ -1,10 +1,15 @@
+<%
+  card_partial = local_assigns.fetch(:card_partial, "shared/tailwind/property_card")
+  variant = local_assigns[:variant]
+%>
+
 <% if properties.present? %>
 <div class="property-carousel-wrapper relative group px-4 lg:px-12">
   <div class="swiper property-carousel" data-controller="property-carousel">
     <div class="swiper-wrapper pb-12">
       <% properties.each do |property| %>
         <div class="swiper-slide h-auto">
-          <%= render 'shared/tailwind/property_card', property: property %>
+          <%= render card_partial, property: property, variant: variant %>
         </div>
       <% end %>
     </div>
