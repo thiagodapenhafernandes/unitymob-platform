@@ -73,6 +73,8 @@ end
 
 group :development do
   gem "web-console"
+  gem "rack-mini-profiler"
+  gem "stackprof"
   gem "mina"
   gem "mina-multistage", require: false
   gem "annotate"
