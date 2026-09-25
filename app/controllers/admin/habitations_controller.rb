@@ -560,19 +560,61 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def gallery
-    items = @habitation.public_image_sources.each_with_index.filter_map do |source, index|
-      url = Storage::PublicCdnImageUrl.resolve(source)
+    media_gallery = Habitations::MediaGallery.new(@habitation)
+    attached_items = media_gallery.attached_media_photos.filter_map.with_index do |photo, index|
+      hidden_from_site = Array(@habitation.site_hidden_photo_ids).map(&:to_i).include?(photo.id)
+      source = { attachment: photo }
+      url = Storage::PublicCdnImageUrl.resolve(source) || url_for(photo)
       next if url.blank?
 
       {
         src: url,
         thumb_src: url,
         type: "image",
-        caption: "#{@habitation.display_title} - Foto #{index + 1}"
+        caption: ["#{@habitation.display_title} - Foto #{index + 1}", ("Foto interna, fora do site" if hidden_from_site)].compact.join(" · ")
+      }
+    end
+    api_offset = attached_items.size
+    api_items = media_gallery.api_media_pictures.filter_map.with_index do |(picture, _original_index, picture_url), index|
+      hidden_from_site = @habitation.picture_hidden_from_site?(picture)
+      url = Storage::PublicCdnImageUrl.resolve(picture) || picture_url
+      next if url.blank?
+
+      {
+        src: url,
+        thumb_src: url,
+        type: "image",
+        caption: ["#{@habitation.display_title} - Foto #{api_offset + index + 1}", ("Foto interna, fora do site" if hidden_from_site)].compact.join(" · ")
+      }
+    end
+    development_offset = attached_items.size + api_items.size
+    development_items = media_gallery.development_media_sources.filter_map.with_index do |source, index|
+      url = source.is_a?(Hash) ? Storage::PublicCdnImageUrl.resolve(source) : source
+      next if url.blank?
+
+      {
+        src: url,
+        thumb_src: url,
+        type: "image",
+        caption: "#{@habitation.display_title} - Foto #{development_offset + index + 1} · Empreendimento"
       }
     end
 
-    render json: { items: }
+    internal_items = attached_items + api_items + development_items
+    existing_sources = internal_items.map { |item| item[:src] }
+    public_items = @habitation.public_image_sources.filter_map.with_index do |source, index|
+      url = Storage::PublicCdnImageUrl.resolve(source)
+      next if url.blank? || existing_sources.include?(url)
+
+      {
+        src: url,
+        thumb_src: url,
+        type: "image",
+        caption: "#{@habitation.display_title} - Foto #{internal_items.size + index + 1}"
+      }
+    end
+
+    render json: { items: internal_items + public_items }
   end
 
   def confirm_owner_contact

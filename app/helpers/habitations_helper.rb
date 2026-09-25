@@ -22,6 +22,10 @@ module HabitationsHelper
     property.public_image_sources.size
   end
 
+  def catalog_property_media_count(property)
+    [Habitations::MediaGallery.new(property).media_gallery_count, catalog_property_image_count(property)].max
+  end
+
   def catalog_property_image_preview_count(property, total_count: nil)
     [total_count || catalog_property_image_count(property), CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT].min
   end
