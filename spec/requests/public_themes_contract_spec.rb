@@ -70,7 +70,8 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(html.at_css(".public-theme-financing-simulator--#{variant}[data-controller='financing-simulator']")).to be_present
 
         get habitation_path(sale)
-        expect(html.at_css(".public-theme-financing-simulator--#{variant}.public-theme-financing-simulator--property")).to be_present
+        expect(html.at_css(".public-theme-financing-trigger--#{variant}")).to be_present
+        expect(html.at_css(".public-theme-financing-modal--#{variant} .public-theme-financing-simulator--#{variant}.public-theme-financing-simulator--property")).to be_present
       end
 
       it "empreendimentos: cabeçalho de página, card compartilhado e paginação do tema" do
@@ -92,7 +93,7 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
     # para o luxury. Só a transição comum do menu é compartilhada de propósito.
     %w[_public_theme_navigation_overlay _public_global_search_drawer _public_theme_listing _public_theme_home _public_theme_financing_simulator].each do |file|
       css = Rails.root.join("app/assets/stylesheets/components/#{file}.scss").read
-      component_rules = css.scan(/^\.public-theme-(?:filter-drawer|filter-fab|page-head|developments|home-section|section__head|section__cta|navigation-overlay--|financing-)[\w-]*[^{]*\{/)
+      component_rules = css.scan(/^\.public-theme-(?:filter-drawer|filter-fab|page-head|developments|home-section|section__head|section__cta|navigation-overlay--|financing-(?:simulator|trigger|page))[\w-]*[^{]*\{/)
       expect(component_rules.reject { _1.include?("--default") }).to be_empty, "#{file}: #{component_rules.reject { _1.include?('--default') }.first}"
     end
   end

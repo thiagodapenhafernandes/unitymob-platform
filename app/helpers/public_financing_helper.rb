@@ -27,4 +27,21 @@ module PublicFinancingHelper
     month = rate.reference_date ? " #{I18n.l(rate.reference_date, format: '%b/%Y').downcase}" : ""
     "#{value} — #{series} (Banco Central#{month})"
   end
+
+  # Parcela de chamada do botão no card de preço, com as premissas iniciais do
+  # simulador (entrada 20%, 30 anos, taxa da conta, tabela Price — a menor
+  # parcela inicial). Mesma fórmula do financing_simulator_controller.js.
+  FINANCING_TEASER_DOWN = 0.2
+  FINANCING_TEASER_MONTHS = 360
+
+  def public_financing_teaser_payment(price_cents, rate = public_financing_rate)
+    financed = price_cents.to_i / 100.0 * (1 - FINANCING_TEASER_DOWN)
+    return if financed <= 0
+
+    monthly = ((1 + rate.annual_rate.to_f / 100)**(1.0 / 12)) - 1
+    return financed / FINANCING_TEASER_MONTHS if monthly.zero?
+
+    financed * monthly / (1 - ((1 + monthly)**-FINANCING_TEASER_MONTHS))
+  end
 end
+

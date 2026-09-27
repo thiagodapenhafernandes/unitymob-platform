@@ -81,7 +81,8 @@
     <% end %>
     <%= render "habitations/payment_conditions_action", habitation: hab, title: title %>
     <% if show_financing %>
-      <a href="#simulador-financiamento"><%= public_icon("calculator") %><span>Simular financiamento</span></a>
+      <button type="button" data-controller="financing-modal-trigger" data-action="financing-modal-trigger#open"
+              aria-haspopup="dialog" aria-controls="simulador-financiamento-modal"><%= public_icon("calculator") %><span>Simular financiamento</span></button>
     <% end %>
     <% if images.any? %>
       <button type="button" data-gallery-open><%= public_icon("images") %><span><span class="sl-detail__pill-prefix">Ver </span><%= images.size %> fotos</span></button>
@@ -141,11 +142,6 @@
             show_media_actions: false,
             variant: "salute-luxury",
             class_name: "sl-detail__card sl-detail__info" %>
-
-      <% if show_financing %>
-        <%= render "public_theme/components/financing_simulator", variant: "salute-luxury", rate: public_financing_rate,
-              property: hab, class_name: "sl-detail__card" %>
-      <% end %>
     </main>
 
     <aside class="sl-detail__aside">
@@ -246,4 +242,7 @@
       <span>Entrar em contato</span>
     </button>
   </div>
+  <% if show_financing %>
+    <%= render "public_theme/components/financing_simulator_modal", variant: "salute-luxury", rate: public_financing_rate, property: hab %>
+  <% end %>
 </div>

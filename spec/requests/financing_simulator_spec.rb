@@ -40,20 +40,27 @@ RSpec.describe "Simulador de financiamento", type: :request do
 
     get habitation_path(sale)
     expect(response).to have_http_status(:ok)
-    expect(html.at_css(".public-theme-financing-simulator")).to be_nil
+    expect(html.at_css(".public-theme-financing-simulator, .public-theme-financing-trigger, #simulador-financiamento-modal")).to be_nil
     expect(html.css("a").map { _1["href"] }).not_to include(simulador_path)
   end
 
-  it "na página do imóvel à venda, vem preenchido com o preço e o lead leva o imóvel" do
+  it "no imóvel à venda: botão no card de preço com parcela de chamada e simulador em modal" do
     sale = create(:habitation, tenant:, exibir_no_site_flag: true, status: "Venda", valor_venda_cents: 850_000_00)
 
     get habitation_path(sale)
 
-    simulator = html.at_css("#simulador-financiamento.public-theme-financing-simulator--property")
+    trigger = html.at_css(".public-habitations-show__price-card .public-theme-financing-trigger--default")
+    expect(trigger["data-action"]).to eq("financing-modal-trigger#open")
+    # 850 mil, 20% de entrada, 30 anos, 11,3% a.a., Price: R$ 6.349,62.
+    expect(trigger.at_css(".public-theme-financing-trigger__teaser").text).to include("R$ 6.350")
+
+    modal = html.at_css("dialog#simulador-financiamento-modal[data-controller='financing-modal']")
+    expect(modal["data-action"]).to include("public-financing:open@window->financing-modal#open", "cancel->financing-modal#cancel")
+    simulator = modal.at_css("#simulador-financiamento.public-theme-financing-simulator--property")
     expect(simulator.at_css("#simulador-valor")["value"]).to eq("850.000")
     expect(simulator.at_css(".public-theme-financing-simulator__cta")["data-property-id"]).to eq(sale.id.to_s)
     expect(simulator["data-financing-simulator-property-label-value"]).to include(sale.codigo)
-    expect(html.css("a[href='#simulador-financiamento']")).to be_present
+    expect(html.css(".public-habitations-show__media-action[data-controller='financing-modal-trigger']")).to be_present
   end
 
   it "imóvel só para locação não mostra o simulador" do

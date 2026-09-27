@@ -4931,3 +4931,32 @@ body.no-scroll { overflow: hidden; }
   .public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__systems,
   .public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics { grid-template-columns: 1fr; }
 }
+
+/* Botão "Simular financiamento" do card de preço e fundo do modal. */
+.public-theme-financing-trigger--salute-luxury {
+  position: relative; display: flex; width: 100%; align-items: center; gap: 14px; margin-top: 20px; padding: 16px 18px;
+  overflow: hidden; border: 1px solid rgba(190, 155, 71, .45); border-radius: 18px;
+  background: linear-gradient(135deg, var(--sl-navy-900), var(--sl-navy-800)); color: #fff; text-align: left; cursor: pointer;
+  box-shadow: 0 16px 38px rgba(10, 24, 38, .22); transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+.public-theme-financing-trigger--salute-luxury::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(216, 189, 125, .28) 50%, transparent 70%);
+  transform: translateX(-100%); animation: public-theme-financing-shine 2.6s ease .8s 1 both;
+}
+.public-theme-financing-trigger--salute-luxury:hover { transform: translateY(-2px); border-color: var(--sl-gold); box-shadow: 0 22px 48px rgba(10, 24, 38, .3); }
+.public-theme-financing-trigger--salute-luxury:focus-visible { outline: 2px solid var(--sl-gold); outline-offset: 3px; }
+.public-theme-financing-trigger--salute-luxury .public-theme-financing-trigger__icon { display: grid; flex: 0 0 auto; width: 46px; height: 46px; place-items: center; border-radius: 999px; background: var(--sl-gold); color: var(--sl-navy-900); font-size: 20px; }
+.public-theme-financing-trigger--salute-luxury .public-theme-financing-trigger__text { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.public-theme-financing-trigger--salute-luxury .public-theme-financing-trigger__title { font-family: var(--sl-sans); font-size: 12px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+.public-theme-financing-trigger--salute-luxury .public-theme-financing-trigger__teaser { color: rgba(255, 255, 255, .78); font-family: var(--sl-sans); font-size: 13px; }
+.public-theme-financing-trigger--salute-luxury .public-theme-financing-trigger__teaser b { color: var(--sl-gold-soft); font-family: var(--sl-numeric); font-weight: 500; }
+.public-theme-financing-trigger--salute-luxury .public-theme-financing-trigger__arrow { color: var(--sl-gold-soft); transition: transform .3s ease; }
+.public-theme-financing-trigger--salute-luxury:hover .public-theme-financing-trigger__arrow { transform: translateX(4px); }
+.public-theme-financing-trigger__note--salute-luxury { margin: 8px 2px 0; color: var(--sl-muted); font-size: 11.5px; line-height: 1.4; }
+.public-theme-financing-modal--salute-luxury.is-open::backdrop { background: rgba(5, 16, 27, .66); }
+.public-theme-financing-modal--salute-luxury .public-theme-financing-modal__close { background: rgba(10, 24, 38, .06); color: var(--sl-navy-800); }
+.public-theme-financing-modal--salute-luxury .public-theme-financing-modal__close:hover { background: var(--sl-gold); color: var(--sl-navy-900); }
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-financing-trigger--salute-luxury::after { animation: none; }
+}

@@ -7,6 +7,8 @@ RSpec.describe "public_theme/_luxury_detail_body.html.erb", type: :view do
     # O menu de compartilhar do corretor consulta o admin logado (Devise).
     without_partial_double_verification do
       allow(view).to receive(:current_admin_user).and_return(nil)
+      # Botão do simulador no card de preço usa a variante do tema da conta.
+      allow(view).to receive(:theme_variant).and_return("salute-luxury")
     end
     assign(:public_map, nil)
     assign(:related_properties, [])

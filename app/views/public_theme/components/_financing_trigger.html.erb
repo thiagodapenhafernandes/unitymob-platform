@@ -1,0 +1,19 @@
+<%# Botão "Simular financiamento" do card de preço — mesmo HTML em todos os
+    temas (contrato public-theme-financing-trigger__*). Abre o modal do
+    simulador da página (evento public-financing:open). Locals: habitation. %>
+<% teaser = public_financing_teaser_payment(local_assigns.fetch(:habitation).valor_venda_cents) %>
+<button type="button" class="public-theme-financing-trigger public-theme-financing-trigger--<%= theme_variant %>"
+        data-controller="financing-modal-trigger" data-action="financing-modal-trigger#open"
+        aria-haspopup="dialog" aria-controls="simulador-financiamento-modal">
+  <span class="public-theme-financing-trigger__icon" aria-hidden="true"><%= public_icon("calculator") %></span>
+  <span class="public-theme-financing-trigger__text">
+    <strong class="public-theme-financing-trigger__title">Simular financiamento</strong>
+    <% if teaser %>
+      <span class="public-theme-financing-trigger__teaser">Parcelas a partir de <b><%= number_to_currency(teaser, unit: "R$", separator: ",", delimiter: ".", precision: 0) %></b>/mês*</span>
+    <% end %>
+  </span>
+  <%= public_icon("arrow-right", class_name: "public-theme-financing-trigger__arrow") %>
+</button>
+<% if teaser %>
+  <p class="public-theme-financing-trigger__note public-theme-financing-trigger__note--<%= theme_variant %>">*Estimativa com 20% de entrada em 30 anos. Ajuste no simulador.</p>
+<% end %>

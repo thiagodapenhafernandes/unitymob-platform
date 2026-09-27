@@ -15,6 +15,10 @@
       <% discount_percent = ((habitation.valor_venda_anterior_cents - habitation.valor_venda_cents).to_f / habitation.valor_venda_anterior_cents * 100).round(1) %>
       <p class="mt-2 text-sm font-bold text-golden-one"><%= discount_percent %>% de desconto</p>
     <% end %>
+    <%# Simulador de financiamento (recurso da conta): abre o modal da página. %>
+    <% if public_financing_enabled? %>
+      <%= render "public_theme/components/financing_trigger", habitation: habitation %>
+    <% end %>
   <% end %>
   <% if has_rent_price %>
     <p class="public-habitations-show__price-label text-xs font-bold uppercase tracking-[0.22em] text-gray-400<%= " mt-5" if has_sale_price %>">

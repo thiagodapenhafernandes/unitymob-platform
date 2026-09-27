@@ -90,3 +90,99 @@
   .public-theme-financing-simulator--default .public-theme-financing-simulator__systems,
   .public-theme-financing-simulator--default .public-theme-financing-simulator__metrics { grid-template-columns: 1fr; }
 }
+
+// Botão "Simular financiamento" do card de preço (contrato public-theme-financing-trigger__*).
+.public-theme-financing-trigger--default {
+  --ft-primary: var(--color-primary, #022b3a);
+  --ft-accent: var(--color-accent, #bfab25);
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--ft-primary), color-mix(in srgb, var(--ft-primary) 72%, var(--ft-accent)));
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ft-primary) 32%, transparent);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.public-theme-financing-trigger--default::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / .22) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: public-theme-financing-shine 2.4s ease .8s 1 both;
+  pointer-events: none;
+}
+.public-theme-financing-trigger--default:hover { transform: translateY(-2px); box-shadow: 0 18px 36px color-mix(in srgb, var(--ft-primary) 40%, transparent); }
+.public-theme-financing-trigger--default:focus-visible { outline: 3px solid var(--ft-accent); outline-offset: 3px; }
+.public-theme-financing-trigger--default .public-theme-financing-trigger__icon {
+  display: grid; flex: 0 0 auto; width: 44px; height: 44px; place-items: center; border-radius: 12px;
+  background: var(--ft-accent); color: var(--ft-primary); font-size: 1.25rem;
+}
+.public-theme-financing-trigger--default .public-theme-financing-trigger__text { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.public-theme-financing-trigger--default .public-theme-financing-trigger__title { font-size: 1rem; font-weight: 800; }
+.public-theme-financing-trigger--default .public-theme-financing-trigger__teaser { font-size: .82rem; opacity: .88; }
+.public-theme-financing-trigger--default .public-theme-financing-trigger__teaser b { color: var(--ft-accent); font-variant-numeric: tabular-nums; }
+.public-theme-financing-trigger--default .public-theme-financing-trigger__arrow { transition: transform .25s ease; }
+.public-theme-financing-trigger--default:hover .public-theme-financing-trigger__arrow { transform: translateX(4px); }
+.public-theme-financing-trigger__note--default { margin: 8px 2px 0; color: #94a3b8; font-size: .72rem; line-height: 1.4; }
+
+@keyframes public-theme-financing-shine { to { transform: translateX(100%); } }
+
+// Modal do simulador (contrato public-theme-financing-modal__*): comum a todos
+// os temas na estrutura e na animação; cores do fundo por variante.
+.public-theme-financing-modal {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.public-theme-financing-modal[open] { display: grid; place-items: center; padding: 24px 16px; }
+.public-theme-financing-modal::backdrop { background: rgb(15 23 42 / 0); transition: background .3s ease; }
+.public-theme-financing-modal.is-open { opacity: 1; }
+.public-theme-financing-modal.is-open::backdrop { background: rgb(15 23 42 / .58); }
+.public-theme-financing-modal__panel {
+  position: relative;
+  width: min(1040px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 22px;
+  transform: translateY(28px) scale(.98);
+  transition: transform .45s cubic-bezier(.2, .75, .2, 1);
+}
+.public-theme-financing-modal.is-open .public-theme-financing-modal__panel { transform: none; }
+.public-theme-financing-modal__close {
+  position: absolute; z-index: 1; top: 14px; right: 14px; display: grid; width: 40px; height: 40px; place-items: center;
+  border: 0; border-radius: 999px; background: rgb(15 23 42 / .06); color: inherit; font-size: 1.05rem; cursor: pointer;
+  transition: background .2s ease, transform .2s ease;
+}
+.public-theme-financing-modal__close:hover { background: rgb(15 23 42 / .12); transform: rotate(90deg); }
+.public-theme-financing-modal .public-theme-financing-simulator { margin: 0; box-shadow: none; }
+
+@media (max-width: 640px) {
+  .public-theme-financing-modal[open] { place-items: end center; padding: 12px 0 0; }
+  .public-theme-financing-modal__panel { max-height: calc(100dvh - 12px); border-radius: 22px 22px 0 0; transform: translateY(100%); }
+  .public-theme-financing-modal .public-theme-financing-simulator { border-radius: 22px 22px 0 0; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-financing-trigger--default::after { animation: none; }
+  .public-theme-financing-modal,
+  .public-theme-financing-modal::backdrop,
+  .public-theme-financing-modal__panel { transition: none; }
+}
