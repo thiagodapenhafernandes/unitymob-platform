@@ -69,7 +69,46 @@ RSpec.describe HabitationGeocodeJob do
       described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id)
       address.reload
       expect(address.latitude.to_f).to eq(-26.96)
-      expect(address.coordinates_precision).to be_nil
+      expect(address.coordinates_precision).to eq(Address::STREET_PRECISION)
+    end
+  end
+
+  describe "endereço alterado (refresh)" do
+    let(:habitation) { create(:habitation, latitude: nil, longitude: nil) }
+    let(:new_street) { Geo::AddressGeocoder::Result.new(latitude: -27.1, longitude: -48.7, display_name: "Rua Nova", house_number: "9", provider: "osm", precision: "street") }
+
+    before do
+      allow(GoogleMapsIntegrationSetting).to receive(:for)
+        .and_return(instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "leaflet", api_key: nil))
+      habitation.address.update!(latitude: -26.9, longitude: -48.6, coordinates_precision: Address::STREET_PRECISION)
+    end
+
+    it "recalcula a coordenada automática para o novo endereço" do
+      allow(Geo::AddressGeocoder).to receive(:new).and_return(instance_double(Geo::AddressGeocoder, call: new_street))
+
+      described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id, refresh: true)
+
+      expect(habitation.address.reload.latitude.to_f).to eq(-27.1)
+      expect(habitation.address.coordinates_precision).to eq(Address::STREET_PRECISION)
+    end
+
+    it "sem resultado para o novo endereço, apaga a coordenada antiga em vez de apontar para o lugar errado" do
+      allow(Geo::AddressGeocoder).to receive(:new).and_return(instance_double(Geo::AddressGeocoder, call: nil, neighborhood_call: nil))
+
+      described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id, refresh: true)
+
+      expect(habitation.address.reload.latitude).to be_nil
+      expect(habitation.address.coordinates_precision).to be_nil
+    end
+
+    it "não mexe em coordenada do import ou ajustada à mão" do
+      habitation.address.update!(latitude: -26.5, longitude: -48.5) # sem marca = manual
+      allow(Geo::AddressGeocoder).to receive(:new)
+
+      described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id, refresh: true)
+
+      expect(Geo::AddressGeocoder).not_to have_received(:new)
+      expect(habitation.address.reload.latitude.to_f).to eq(-26.5)
     end
   end
 end
@@ -92,5 +131,27 @@ RSpec.describe Address do
     habitation.address.update!(latitude: -26.97, longitude: -48.64)
 
     expect(habitation.address.reload.coordinates_precision).to be_nil
+  end
+
+  describe "ao mudar o endereço de um imóvel já mapeado" do
+    let(:habitation) { create(:habitation, latitude: nil, longitude: nil) }
+
+    before do
+      allow(GoogleMapsIntegrationSetting).to receive(:for)
+        .and_return(instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "leaflet"))
+    end
+
+    it "recalcula quando a coordenada foi calculada pelo sistema" do
+      habitation.address.update!(latitude: -26.9, longitude: -48.6, coordinates_precision: Address::STREET_PRECISION)
+
+      expect { habitation.address.update!(logradouro: "Rua Corrigida") }
+        .to have_enqueued_job(HabitationGeocodeJob).with(habitation.id, tenant_id: habitation.tenant_id, refresh: true)
+    end
+
+    it "preserva coordenada do import ou ajustada à mão" do
+      habitation.address.update!(latitude: -26.9, longitude: -48.6)
+
+      expect { habitation.address.update!(logradouro: "Rua Corrigida") }.not_to have_enqueued_job(HabitationGeocodeJob)
+    end
   end
 end

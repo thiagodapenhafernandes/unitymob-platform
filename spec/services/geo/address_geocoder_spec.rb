@@ -76,4 +76,21 @@ RSpec.describe Geo::AddressGeocoder do
       expect(neighborhood_geocoder.neighborhood_call).to be_nil
     end
   end
+
+  it "com Google recusado, tenta a rua no OpenStreetMap antes de desistir" do
+    allow(geocoder).to receive(:sleep)
+    allow(geocoder).to receive(:json_get) do |url, _params|
+      if url.include?("googleapis")
+        { "status" => "REQUEST_DENIED", "error_message" => "API keys with referer restrictions cannot be used with this API." }
+      else
+        [{ "lat" => "-26.99", "lon" => "-48.63", "display_name" => "Av. Brasil", "address" => {} }]
+      end
+    end
+    allow(Rails.logger).to receive(:warn)
+
+    result = geocoder.call
+
+    expect(result.provider).to eq("osm")
+    expect(geocoder.google_status).to eq("REQUEST_DENIED")
+  end
 end
