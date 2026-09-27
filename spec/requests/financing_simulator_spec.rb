@@ -87,4 +87,34 @@ RSpec.describe "Simulador de financiamento", type: :request do
     expect(html.at_css("#simulador-taxa")["value"]).to eq("9.75")
     expect(html.at_css(".public-theme-financing-simulator__hint").text).to include("9,75% a.a.", "taxa de referência da imobiliária")
   end
+
+  it "imóvel acima do teto do SFH (R$ 1,5 mi) usa a média de taxas de mercado" do
+    sale = create(:habitation, tenant:, exibir_no_site_flag: true, status: "Venda", valor_venda_cents: 9_590_000_00)
+
+    get habitation_path(sale)
+
+    simulator = html.at_css("#simulador-financiamento")
+    expect(simulator.at_css("#simulador-taxa")["value"]).to eq("14.28")
+    expect(simulator.at_css(".public-theme-financing-simulator__hint").text).to include("14,28% a.a.", "taxas de mercado (Banco Central jul/2026). Imóveis acima de R$ 1,5 mi", "fora do SFH")
+    expect(simulator["data-financing-simulator-base-rate-value"]).to eq("11.30")
+    expect(simulator["data-financing-simulator-market-rate-value"]).to eq("14.28")
+    expect(simulator["data-financing-simulator-sfh-limit-value"]).to eq("1500000")
+    # 9,59 mi, 20% de entrada, 30 anos a 14,28% a.a., parcelas fixas.
+    expect(html.at_css(".public-theme-financing-trigger__teaser").text).to include("R$ 87.409")
+    expect(simulator.at_css(".public-theme-financing-simulator__warning")["hidden"]).not_to be_nil
+    expect(simulator.at_css(".public-theme-financing-simulator__notice").text).to include("Parcela real um pouco maior")
+  end
+
+  it "taxa própria da conta vale também acima do teto do SFH" do
+    profile.financing_rate_source = "custom"
+    profile.financing_custom_rate = "12"
+    expect(profile.save).to be(true)
+    sale = create(:habitation, tenant:, exibir_no_site_flag: true, status: "Venda", valor_venda_cents: 3_000_000_00)
+
+    get habitation_path(sale)
+
+    expect(html.at_css("#simulador-taxa")["value"]).to eq("12.00")
+    expect(html.at_css("#simulador-financiamento")["data-financing-simulator-market-rate-value"]).to eq("12.00")
+  end
 end
+

@@ -17,6 +17,23 @@ module PublicFinancingHelper
     @public_financing_rate ||= public_financing_profile.financing_rate
   end
 
+  # Taxa para imóvel acima do teto do SFH (média de mercado ou a própria da conta).
+  def public_financing_market_rate
+    @public_financing_market_rate ||= public_financing_profile.financing_market_rate
+  end
+
+  def public_financing_rate_for(price_cents)
+    price_cents.to_i > Financing::CentralBankRate::SFH_LIMIT_CENTS ? public_financing_market_rate : public_financing_rate
+  end
+
+  # Nota da taxa de mercado: explica por que o imóvel caro usa outra média.
+  def public_financing_market_note
+    note = public_financing_rate_note(public_financing_market_rate)
+    return note if public_financing_market_rate.source == "custom"
+
+    "#{note}. Imóveis acima de R$ 1,5 mi são financiados fora do SFH, com taxa de mercado"
+  end
+
   # "11,30% a.a. — média do financiamento imobiliário (Banco Central, jul/2026)"
   def public_financing_rate_note(rate = public_financing_rate)
     value = "#{number_with_precision(rate.annual_rate, precision: 2, separator: ',')}% a.a."
@@ -34,7 +51,7 @@ module PublicFinancingHelper
   FINANCING_TEASER_DOWN = 0.2
   FINANCING_TEASER_MONTHS = 360
 
-  def public_financing_teaser_payment(price_cents, rate = public_financing_rate)
+  def public_financing_teaser_payment(price_cents, rate = public_financing_rate_for(price_cents))
     financed = price_cents.to_i / 100.0 * (1 - FINANCING_TEASER_DOWN)
     return if financed <= 0
 

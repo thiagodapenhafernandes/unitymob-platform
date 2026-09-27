@@ -79,11 +79,31 @@ class PublicSiteProfile
     financing_simulator_enabled != false
   end
 
-  # Taxa anual (% a.a.) e origem para o simulador.
-  def financing_rate
-    return Financing::CentralBankRate::Result.new(annual_rate: financing_custom_rate.to_f, reference_date: nil, source: "custom", fallback: false) if financing_rate_source == "custom" && financing_custom_rate.to_f.positive?
+  # Taxa anual (% a.a.) e origem para o simulador. Com price_cents acima do
+  # teto do SFH, a média do Banco Central passa a ser a de taxas de mercado
+  # (a taxa regulada não vale ali); taxa própria da conta vale sempre.
+  def financing_rate(price_cents: nil)
+    return custom_financing_rate if custom_financing_rate?
+    return Financing::CentralBankRate.fetch(Financing::CentralBankRate::MARKET_SOURCE) if above_sfh_limit?(price_cents)
 
     Financing::CentralBankRate.fetch(financing_rate_source.presence || Financing::CentralBankRate::DEFAULT_SOURCE)
+  end
+
+  # Taxa sugerida para imóvel acima do teto do SFH (mesma da conta se for própria).
+  def financing_market_rate
+    financing_rate(price_cents: Financing::CentralBankRate::SFH_LIMIT_CENTS + 1)
+  end
+
+  def custom_financing_rate?
+    financing_rate_source == "custom" && financing_custom_rate.to_f.positive?
+  end
+
+  def custom_financing_rate
+    Financing::CentralBankRate::Result.new(annual_rate: financing_custom_rate.to_f, reference_date: nil, source: "custom", fallback: false)
+  end
+
+  def above_sfh_limit?(price_cents)
+    price_cents.to_i > Financing::CentralBankRate::SFH_LIMIT_CENTS
   end
 
   def custom_price_ranges?
