@@ -234,6 +234,7 @@
               has_rent_price: has_rent_price,
               has_discount: has_discount,
               has_rent_discount: has_rent_discount %>
+          <%= render "public_theme/components/financing_card", habitation: @habitation, has_sale_price: has_sale_price %>
         </div>
 
         <% feature_items = [] %>
@@ -305,6 +306,7 @@
               has_rent_price: has_rent_price,
               has_discount: has_discount,
               has_rent_discount: has_rent_discount %>
+          <%= render "public_theme/components/financing_card", habitation: @habitation, has_sale_price: has_sale_price %>
         </div>
 
         <% if @shared_broker.present? %>

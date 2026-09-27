@@ -49,7 +49,9 @@ RSpec.describe "Simulador de financiamento", type: :request do
 
     get habitation_path(sale)
 
-    trigger = html.at_css(".public-habitations-show__price-card .public-theme-financing-trigger--default")
+    # Bloco próprio logo abaixo do card "Valor de venda", não dentro dele.
+    expect(html.at_css(".public-habitations-show__price-card .public-theme-financing-trigger")).to be_nil
+    trigger = html.at_css(".public-habitations-show__desktop-price .public-theme-financing-card--default .public-theme-financing-trigger--default")
     expect(trigger["data-action"]).to eq("financing-modal-trigger#open")
     # 850 mil, 20% de entrada, 30 anos, 11,3% a.a., Price: R$ 6.349,62.
     expect(trigger.at_css(".public-theme-financing-trigger__teaser").text).to include("R$ 6.350")
@@ -61,6 +63,10 @@ RSpec.describe "Simulador de financiamento", type: :request do
     expect(simulator.at_css(".public-theme-financing-simulator__cta")["data-property-id"]).to eq(sale.id.to_s)
     expect(simulator["data-financing-simulator-property-label-value"]).to include(sale.codigo)
     expect(html.css(".public-habitations-show__media-action[data-controller='financing-modal-trigger']")).to be_present
+    # Termos em português para o visitante.
+    expect(simulator.css(".public-theme-financing-simulator__system-name").map { _1.text.squish })
+      .to eq(["Parcelas decrescentes Sistema de amortização constante (SAC)", "Parcelas fixas Sistema francês de amortização"])
+    expect(simulator.text).not_to match(/\bPrice\b/)
   end
 
   it "imóvel só para locação não mostra o simulador" do

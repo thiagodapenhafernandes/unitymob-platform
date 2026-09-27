@@ -1,0 +1,9 @@
+<%# Bloco "Simular financiamento" logo abaixo do card "Valor de venda" — mesmo
+    HTML em todos os temas (contrato public-theme-financing-card). Só com o
+    simulador ligado na conta e imóvel à venda com preço; abre o modal.
+    Locals: habitation, has_sale_price. %>
+<% if local_assigns[:has_sale_price] && public_financing_enabled? %>
+  <div class="public-theme-financing-card public-theme-financing-card--<%= theme_variant %>">
+    <%= render "public_theme/components/financing_trigger", habitation: local_assigns.fetch(:habitation) %>
+  </div>
+<% end %>
