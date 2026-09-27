@@ -33,8 +33,10 @@ Rails.application.configure do
     config.cache_store = :null_store
   end
 
-  # Always isolate new development uploads from imported production services.
-  config.active_storage.service = :development_sandbox
+  # Development uploads stay on local disk; production keeps using Spaces.
+  # Isolation from imported production services is enforced by
+  # config/initializers/development_storage_sandbox.rb.
+  config.active_storage.service = :local
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = false

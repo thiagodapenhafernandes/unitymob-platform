@@ -9,7 +9,7 @@ module Blog
 
     def service_name(tenant)
       return :test if Rails.env.test?
-      return :development_sandbox if Rails.env.development?
+      return :local if Rails.env.development?
 
       setting = StorageIntegrationSetting.current(tenant: tenant)
       raise ArgumentError, "Configure o DigitalOcean Spaces desta conta antes de enviar anexos." unless setting.digital_ocean_ready?
@@ -47,7 +47,7 @@ module Blog
 
     def spaces_service?(name)
       return name == "test" if Rails.env.test?
-      return name == "development_sandbox" if Rails.env.development?
+      return name.in?(%w[local development_sandbox]) if Rails.env.development?
 
       name.match?(/\A(?:do_spaces|do_spaces_db(?:_tenant_\d+)?)\z/)
     end
