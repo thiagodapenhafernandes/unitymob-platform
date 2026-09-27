@@ -5,13 +5,16 @@
     amortização (SAC e francês/"Price", mostrados em português) no navegador
     (controller financing-simulator); o botão final usa a captura de lead do
     site com os valores simulados na mensagem.
-    Locals: variant, rate (Financing::CentralBankRate::Result), property
-    (opcional, preenche o valor), heading_tag, class_name. %>
+    Taxa sugerida pela faixa de valor: até o teto do SFH a taxa da conta,
+    acima a média de mercado (troca sozinha no navegador enquanto o visitante
+    não editar a taxa). Locals: variant, property (opcional, preenche o
+    valor), heading_tag, class_name. %>
 <%
   variant = local_assigns.fetch(:variant, "default")
-  rate = local_assigns.fetch(:rate)
   property = local_assigns[:property]
   price = property ? property.valor_venda_cents.to_i / 100 : 500_000
+  rate = public_financing_rate_for(price * 100)
+  market = price * 100 > Financing::CentralBankRate::SFH_LIMIT_CENTS
   property_label = property ? "#{property.display_title} (Código: #{property.codigo})" : nil
   heading_tag = local_assigns.fetch(:heading_tag, :h2)
   section_class = ["public-theme-financing-simulator", "public-theme-financing-simulator--#{variant}",
@@ -20,7 +23,12 @@
 %>
 <section id="simulador-financiamento" class="<%= section_class %>"
          data-controller="financing-simulator"
-         data-financing-simulator-property-label-value="<%= property_label %>">
+         data-financing-simulator-property-label-value="<%= property_label %>"
+         data-financing-simulator-sfh-limit-value="<%= Financing::CentralBankRate::SFH_LIMIT_CENTS / 100 %>"
+         data-financing-simulator-base-rate-value="<%= format("%.2f", public_financing_rate.annual_rate) %>"
+         data-financing-simulator-market-rate-value="<%= format("%.2f", public_financing_market_rate.annual_rate) %>"
+         data-financing-simulator-base-note-value="Taxa sugerida: <%= public_financing_rate_note(public_financing_rate) %>."
+         data-financing-simulator-market-note-value="Taxa sugerida: <%= public_financing_market_note %>.">
   <header class="public-theme-financing-simulator__head">
     <span class="public-theme-financing-simulator__eyebrow">Simulador de financiamento</span>
     <%= content_tag heading_tag, (property ? "Simule o financiamento deste imóvel" : "Simule seu financiamento"), class: "public-theme-financing-simulator__title" %>
@@ -59,10 +67,11 @@
         <div class="public-theme-financing-simulator__field">
           <label class="public-theme-financing-simulator__label" for="simulador-taxa">Juros ao ano (%)</label>
           <input id="simulador-taxa" class="public-theme-financing-simulator__input" type="number" inputmode="decimal" min="0" max="30" step="0.01"
-                 value="<%= rate_value %>" data-financing-simulator-target="rate">
+                 value="<%= rate_value %>" data-financing-simulator-target="rate"
+                 data-action="input->financing-simulator#rateEdited">
         </div>
       </div>
-      <p class="public-theme-financing-simulator__hint"><%= public_icon("info-circle") %><span>Taxa sugerida: <%= public_financing_rate_note(rate) %>.</span></p>
+      <p class="public-theme-financing-simulator__hint"><%= public_icon("info-circle") %><span data-financing-simulator-target="rateNote">Taxa sugerida: <%= market ? public_financing_market_note : public_financing_rate_note(rate) %>.</span></p>
     </form>
 
     <div class="public-theme-financing-simulator__results" aria-live="polite">
@@ -87,6 +96,8 @@
         <div><dt>Entrada</dt><dd data-financing-simulator-target="downValue">—</dd></div>
         <div><dt>Renda familiar sugerida</dt><dd data-financing-simulator-target="income">—</dd></div>
       </dl>
+
+      <p class="public-theme-financing-simulator__notice"><%= public_icon("info-circle") %><span>Parcela real um pouco maior: seguros obrigatórios e tarifas do banco não estão incluídos.</span></p>
 
       <p class="public-theme-financing-simulator__warning" data-financing-simulator-target="warning" hidden>
         <%= public_icon("exclamation-circle") %><span>Os bancos costumam exigir ao menos 20% de entrada.</span>

@@ -74,6 +74,11 @@
 .public-theme-financing-simulator--default .public-theme-financing-simulator__warning {
   display: flex; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 10px; background: #fff7ed; color: #9a3412; font-size: .85rem;
 }
+// display:flex acima anularia o atributo hidden (aviso só com entrada < 20%).
+.public-theme-financing-simulator--default .public-theme-financing-simulator__warning[hidden] { display: none; }
+.public-theme-financing-simulator--default .public-theme-financing-simulator__notice {
+  display: flex; gap: 8px; margin: 0; color: #64748b; font-size: .8rem; line-height: 1.5;
+}
 .public-theme-financing-simulator--default .public-theme-financing-simulator__cta {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 22px;
   border: 0; border-radius: 999px; background: var(--fs-accent); color: var(--fs-primary); font-weight: 800; cursor: pointer;

@@ -19,6 +19,11 @@ module Financing
       "bcb_market" => { code: 20772, label: "média do financiamento com taxas de mercado" }
     }.freeze
     DEFAULT_SOURCE = "bcb_total".freeze
+    MARKET_SOURCE = "bcb_market".freeze
+    # Teto de valor do imóvel no Sistema Financeiro da Habitação (CMN, desde
+    # 2018). Acima dele o financiamento é com taxa de mercado. Revisar se o CMN
+    # mudar o teto.
+    SFH_LIMIT_CENTS = 1_500_000_00
     FALLBACK_RATE = 8.5
     TIMEOUT = 3
 

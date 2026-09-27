@@ -6,14 +6,30 @@ import { Controller } from "@hotwired/stimulus"
 //   Parcelas decrescentes (SAC): amortização P/n; 1ª = P/n + P·i; última = P/n·(1 + i); juros = P·i·(n + 1)/2
 // Renda sugerida: 1ª parcela do SAC até 30% da renda. Recalcula a cada ajuste e
 // deixa a mensagem do botão de lead com os valores simulados.
+// Taxa sugerida pela faixa: acima do teto do SFH vale a média de mercado; troca
+// sozinha ao mudar o valor, até o visitante editar a taxa à mão.
 export default class extends Controller {
   static targets = ["price", "down", "downLabel", "years", "rate", "sacFirst", "sacLast", "sacInterest",
-    "pricePayment", "priceInterest", "financed", "downValue", "income", "warning", "cta"]
-  static values = { propertyLabel: String }
+    "pricePayment", "priceInterest", "financed", "downValue", "income", "warning", "cta", "rateNote"]
+  static values = {
+    propertyLabel: String, sfhLimit: Number, baseRate: String, marketRate: String, baseNote: String, marketNote: String
+  }
 
   connect() {
     this.money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
     this.calculate()
+  }
+
+  rateEdited() {
+    this.rateTouched = true
+  }
+
+  suggestRate(price) {
+    if (this.rateTouched || !this.hasRateNoteTarget) return
+
+    const market = price > this.sfhLimitValue
+    this.rateTarget.value = market ? this.marketRateValue : this.baseRateValue
+    this.rateNoteTarget.textContent = market ? this.marketNoteValue : this.baseNoteValue
   }
 
   prevent(event) {
@@ -27,6 +43,7 @@ export default class extends Controller {
 
   calculate() {
     const price = this.priceValue()
+    this.suggestRate(price)
     const downPercent = Number(this.downTarget.value) || 0
     const months = (Number(this.yearsTarget.value) || 30) * 12
     const annualRate = Math.max(Number(String(this.rateTarget.value).replace(",", ".")) || 0, 0)
