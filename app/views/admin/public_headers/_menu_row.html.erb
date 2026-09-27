@@ -44,8 +44,8 @@
         <% end %>
       </div>
     </div>
-    <% if entry&.key.in?(%w[blog youtube]) %>
-      <small class="ax-field__hint"><i class="bi bi-info-circle"></i> Só aparece quando a conta tem <%= entry.key == "blog" ? "blog ou endereço do blog" : "canal do YouTube" %></small>
+    <% if entry&.key.in?(%w[blog youtube financiamento]) %>
+      <small class="ax-field__hint"><i class="bi bi-info-circle"></i> Só aparece quando a conta tem <%= { "blog" => "blog ou endereço do blog", "youtube" => "canal do YouTube", "financiamento" => "o simulador de financiamento ligado (Perfil público)" }[entry.key] %></small>
     <% end %>
 
     <div class="hm-row__flags">

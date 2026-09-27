@@ -67,6 +67,7 @@ escalonar animação de itens de lista.
 | Card de empreendimento | `shared/tailwind/_development_card` | `public-theme-dev-card--<variante>` | Home e `/empreendimentos` |
 | Paginação | `components/_pagination` (todos os temas) | `public-theme-pagination--<variante>` | `<nav>` com `aria-label`; só aparece com mais de uma página |
 | Listagem de empreendimentos | `empreendimentos/index` | `public-theme-developments--<variante>` | Filtros próprios; esconde o filtro global |
+| Simulador de financiamento | `components/_financing_simulator` | `public-theme-financing-simulator--<variante>` (+ `--property` no imóvel) | Recurso por conta (Perfil público). `/simulador` e bloco no imóvel à venda; SAC e Price no navegador (controller `financing-simulator`); taxa do Banco Central (`Financing::CentralBankRate`, séries 20774/20773/20772) ou própria; botão abre a captura de lead com os valores |
 | Página do imóvel | `components/_property_gallery`, `_info`, `_contact_box`, `_map`, `_amenities`, `_development`, `_city_links` | `public-theme-property-*--<variante>`, `public-theme-city-links--<variante>` | Nome do empreendimento só com opção da conta ligada |
 | Empreendimento | `components/_development_*` | `public-theme-development-*--<variante>` | |
 | Rodapé | `components/_site_footer` / `layouts/_footer` | `public-theme-site-footer--<variante>` | |

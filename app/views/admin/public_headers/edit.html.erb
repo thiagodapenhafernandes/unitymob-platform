@@ -5,7 +5,8 @@
   internal_blog = current_tenant.blog_articles.publicly_visible.exists?
   entries = PublicHeaderMenu.entries(@home_setting.header_menu,
                                      blog_url: (internal_blog ? blog_path : @contact_setting.blog_url),
-                                     youtube_url: @contact_setting.youtube_url)
+                                     youtube_url: @contact_setting.youtube_url,
+                                     financing_url: (simulador_path if PublicSiteProfile.current(tenant: current_tenant).financing_simulator_enabled?))
   brand_name = layout_setting&.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
   cta_label = @home_setting.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL
   studio_items = [

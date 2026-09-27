@@ -60,6 +60,19 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(html.at_css(".public-theme-navigation-overlay--#{variant}")).to be_present
       end
 
+      it "simulador de financiamento: página e bloco do imóvel à venda na variante" do
+        sale = create(:habitation, tenant:, exibir_no_site_flag: true, status: "Venda", valor_venda_cents: 700_000_00,
+                                   slug: "venda-#{theme_key.dasherize}", address_attributes: address)
+
+        get simulador_path
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css(".public-theme-page-head--#{variant}")).to be_present
+        expect(html.at_css(".public-theme-financing-simulator--#{variant}[data-controller='financing-simulator']")).to be_present
+
+        get habitation_path(sale)
+        expect(html.at_css(".public-theme-financing-simulator--#{variant}.public-theme-financing-simulator--property")).to be_present
+      end
+
       it "empreendimentos: cabeçalho de página, card compartilhado e paginação do tema" do
         development = create(:habitation, tipo: "Empreendimento", nome_empreendimento: "Torre Contrato", address_attributes: address)
         create(:habitation, codigo_empreendimento: development.codigo, address_attributes: address)
@@ -77,9 +90,9 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
   it "o CSS da variante padrão fica escopado (carrega junto de todos os temas)" do
     # application.css entra em todas as páginas; regra sem --default vazaria
     # para o luxury. Só a transição comum do menu é compartilhada de propósito.
-    %w[_public_theme_navigation_overlay _public_global_search_drawer _public_theme_listing _public_theme_home].each do |file|
+    %w[_public_theme_navigation_overlay _public_global_search_drawer _public_theme_listing _public_theme_home _public_theme_financing_simulator].each do |file|
       css = Rails.root.join("app/assets/stylesheets/components/#{file}.scss").read
-      component_rules = css.scan(/^\.public-theme-(?:filter-drawer|filter-fab|page-head|developments|home-section|section__head|section__cta|navigation-overlay--)[\w-]*[^{]*\{/)
+      component_rules = css.scan(/^\.public-theme-(?:filter-drawer|filter-fab|page-head|developments|home-section|section__head|section__cta|navigation-overlay--|financing-)[\w-]*[^{]*\{/)
       expect(component_rules.reject { _1.include?("--default") }).to be_empty, "#{file}: #{component_rules.reject { _1.include?('--default') }.first}"
     end
   end

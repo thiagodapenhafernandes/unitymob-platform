@@ -9,6 +9,7 @@
   <% public_blog_url = internal_blog ? blog_path : public_contact_setting.blog_url %>
   <% public_phone = public_identity.phone %>
   <% menu_entries = PublicHeaderMenu.visible(@home_setting&.header_menu, blog_url: public_blog_url, youtube_url: public_contact_setting.youtube_url,
+                                             financing_url: public_financing_simulator_url,
                                              context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params)) %>
   <% public_cta_label = @home_setting&.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL %>
   <% public_cta_url = @home_setting&.header_cta_url.presence || contato_path %>

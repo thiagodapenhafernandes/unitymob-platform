@@ -5,6 +5,7 @@ class Admin::PublicSiteProfilesController < Admin::BaseController
   EDITABLE_FIELDS = %i[
     primary_city legal_name legal_document legal_address privacy_email creci
     show_development_identity custom_price_ranges
+    financing_simulator_enabled financing_rate_source financing_custom_rate
   ].freeze
 
   def edit
@@ -39,6 +40,8 @@ class Admin::PublicSiteProfilesController < Admin::BaseController
     city_groups = current_tenant.habitations.public_city_link_groups(cities: 30, neighborhoods: 0)
     @city_suggestions = city_groups.map { |group| group[:label] }
     @automatic_city = city_groups.first&.dig(:label)
+    # Valor atual de cada série do Banco Central para os rótulos do select.
+    @financing_rates = Financing::CentralBankRate::SERIES.keys.index_with { |source| Financing::CentralBankRate.fetch(source) }
   end
 
   def profile_params

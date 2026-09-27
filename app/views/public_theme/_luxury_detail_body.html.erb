@@ -10,6 +10,8 @@
   address_text = local_assigns[:address_text].presence || [hab.endereco, hab.public_neighborhood, hab.cidade].compact_blank.join(" - ")
   area_text = local_assigns.key?(:area_text) ? local_assigns[:area_text] : hab.public_area_m2
   has_sale_price = local_assigns.key?(:has_sale_price) ? local_assigns[:has_sale_price] : hab.valor_venda_cents.to_i.positive?
+  # Simulador de financiamento: recurso da conta, só para imóvel à venda com preço.
+  show_financing = has_sale_price && public_financing_enabled?
   has_rent_price = local_assigns.key?(:has_rent_price) ? local_assigns[:has_rent_price] : hab.valor_locacao_cents.to_i.positive?
   has_discount = local_assigns.key?(:has_discount) ? local_assigns[:has_discount] : hab.sale_discount?
   has_rent_discount = local_assigns.key?(:has_rent_discount) ? local_assigns[:has_rent_discount] : hab.rent_discount?
@@ -78,6 +80,9 @@
       <button type="button" data-action="click->public-property-map#showStreetView"><%= public_icon("person-standing") %><span>Rua</span></button>
     <% end %>
     <%= render "habitations/payment_conditions_action", habitation: hab, title: title %>
+    <% if show_financing %>
+      <a href="#simulador-financiamento"><%= public_icon("calculator") %><span>Simular financiamento</span></a>
+    <% end %>
     <% if images.any? %>
       <button type="button" data-gallery-open><%= public_icon("images") %><span><span class="sl-detail__pill-prefix">Ver </span><%= images.size %> fotos</span></button>
     <% end %>
@@ -136,6 +141,11 @@
             show_media_actions: false,
             variant: "salute-luxury",
             class_name: "sl-detail__card sl-detail__info" %>
+
+      <% if show_financing %>
+        <%= render "public_theme/components/financing_simulator", variant: "salute-luxury", rate: public_financing_rate,
+              property: hab, class_name: "sl-detail__card" %>
+      <% end %>
     </main>
 
     <aside class="sl-detail__aside">

@@ -486,7 +486,10 @@ class HabitationsController < ApplicationController
   def load_property_page_context
     development = @habitation.empreendimento
     @property_development = development if development && development.id != @habitation.id
-    @show_development_identity = PublicSiteProfile.current(tenant: public_tenant).show_development_identity?
+    @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
+    @show_development_identity = @public_site_profile.show_development_identity?
+    # Simulador na página (e na ETag): muda quando a conta liga/desliga ou a taxa muda.
+    @financing_cache_key = (@public_site_profile.financing_rate.cache_key if @public_site_profile.financing_simulator_enabled?)
 
     @neighborhood_properties = []
     neighborhood = @habitation.public_neighborhood

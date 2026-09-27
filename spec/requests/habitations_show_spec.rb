@@ -821,8 +821,9 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include("Agendar visita")
       expect(response.body).to include("Condições de pagamento")
       expect(response.body).to include("public-habitations-show__price-code-value")
-      # 2 CTAs x 2 price cards (mobile/desktop) + atalho "Condições de pagamento".
-      expect(response.body.scan('data-require-lead-form="true"').size).to eq(5)
+      # 2 CTAs x 2 price cards (mobile/desktop) + atalho "Condições de pagamento"
+      # + "Quero falar com um especialista" do simulador de financiamento.
+      expect(response.body.scan('data-require-lead-form="true"').size).to eq(6)
     end
 
     it "inclui todas as fotos no lightbox e mantém srcset apenas nas fotos visíveis" do

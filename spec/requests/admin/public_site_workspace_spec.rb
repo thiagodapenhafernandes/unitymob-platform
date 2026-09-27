@@ -133,6 +133,25 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(profile.sale_price_ranges).to be_blank
   end
 
+  it "liga, desliga e configura a taxa do simulador de financiamento" do
+    get edit_admin_public_site_profile_path
+    form = Nokogiri::HTML(response.body).at_css("form#public-site-profile-form")
+    expect(form.at_css('input[type="checkbox"][name="public_site_profile[financing_simulator_enabled]"]')["checked"]).to be_present
+    expect(form.css('select[name="public_site_profile[financing_rate_source]"] option').map { _1.text })
+      .to include(a_string_including("Banco Central", "11,30% a.a."), "Taxa própria da imobiliária")
+
+    patch admin_public_site_profile_path, params: { public_site_profile: {
+      financing_simulator_enabled: "0", financing_rate_source: "custom", financing_custom_rate: "9,5"
+    } }
+    expect(response).to redirect_to(edit_admin_public_site_profile_path)
+    profile = PublicSiteProfile.current(tenant: Tenant.default)
+    expect(profile.financing_simulator_enabled?).to be(false)
+    expect(profile.financing_rate.annual_rate).to eq(9.5)
+
+    patch admin_public_site_profile_path, params: { public_site_profile: { financing_rate_source: "custom", financing_custom_rate: "" } }
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
   it "edita as páginas institucionais sem apagar os dados jurídicos do perfil" do
     PublicSiteProfile.new({ legal_name: "Imobiliária Exemplo Ltda", creci: "1234" }, tenant: Tenant.default).save
 

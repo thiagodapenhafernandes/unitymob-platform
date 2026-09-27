@@ -9,6 +9,7 @@
   luxury_blog = public_tenant.blog_articles.publicly_visible.exists?
   luxury_blog_url = luxury_blog ? blog_path : luxury_contact.blog_url
   luxury_menu = PublicHeaderMenu.visible(@home_setting&.header_menu, blog_url: luxury_blog_url,
+    financing_url: public_financing_simulator_url,
     youtube_url: luxury_contact.youtube_url,
     context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params))
   luxury_logo = luxury_logo(luxury_layout)
