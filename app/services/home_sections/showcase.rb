@@ -5,6 +5,8 @@ module HomeSections
     PROPERTY_LIMIT = 12
     RENTAL_LIMIT = 6
     DEVELOPMENT_LIMIT = 12
+    CITY_LIMIT = 6
+    CITY_NEIGHBORHOOD_LIMIT = 5
 
     # O que pode ser escolhido/mostrado: imóveis publicados no site (status Venda, Aluguel ou Venda e Aluguel, com foto e preço)
     # ou, nas seções de empreendimentos, empreendimentos públicos com unidades. Usado pela Home, pela prévia e pelo seletor do admin.
@@ -14,9 +16,12 @@ module HomeSections
       habitations.active.without_developments
     end
 
-    def initialize(section, habitations:)
+    # exclude_ids: imóveis já mostrados em seções anteriores da home. Só afeta
+    # a vitrine automática; se o estoque não bastar, eles voltam no fim.
+    def initialize(section, habitations:, exclude_ids: [])
       @section = section
       @habitations = habitations
+      @exclude_ids = Array(exclude_ids).map(&:to_i).to_set
     end
 
     def rental?
@@ -35,7 +40,9 @@ module HomeSections
 
       automatic_scope = section.apply_property_filters(self.class.eligible(habitations))
       automatic_scope = automatic_scope.newest_first if automatic_scope.respond_to?(:newest_first)
-      { manual: [], automatic: automatic_scope.limit(limit).pluck(:id) }
+      candidates = automatic_scope.limit(limit + exclude_ids.size).pluck(:id)
+      fresh, repeated = candidates.partition { |id| exclude_ids.exclude?(id) }
+      { manual: [], automatic: (fresh + repeated).first(limit) }
     end
 
     def property_ids
@@ -62,9 +69,14 @@ module HomeSections
       end.first(DEVELOPMENT_LIMIT)
     end
 
+    # Seção "Explore por cidade": cidades com mais imóveis públicos e seus bairros mais fortes.
+    def city_groups
+      habitations.public_city_link_groups(cities: CITY_LIMIT, neighborhoods: CITY_NEIGHBORHOOD_LIMIT)
+    end
+
     private
 
-    attr_reader :section, :habitations
+    attr_reader :section, :habitations, :exclude_ids
 
     def selected_ids(scope, limit:)
       requested = section.selected_property_ids

@@ -67,8 +67,8 @@ class HomeController < ApplicationController
     @business_hours = @contact_setting.business_hours.presence
   end
 
-  def cached_home_properties(section, cache_name)
-    ids = Rails.cache.fetch(home_section_cache_key(section, cache_name), expires_in: 15.minutes) do
+  def cached_home_properties(section, cache_name, variant: nil)
+    ids = Rails.cache.fetch([home_section_cache_key(section, cache_name), variant].compact.join("/"), expires_in: 15.minutes) do
       Array(yield)
     end
 
@@ -83,9 +83,15 @@ class HomeController < ApplicationController
 
       {
         ids: selected_rows.map(&:first),
-        unit_counts: development_unit_counts_for(dev_codes),
-        unit_metrics: development_unit_metrics_for(dev_codes)
+        unit_counts: (dev_metrics = PublicSite::DevelopmentUnitMetrics.new(public_habitations, dev_codes)).unit_counts,
+        unit_metrics: dev_metrics.unit_metrics
       }
+    end
+  end
+
+  def cached_home_city_groups(section)
+    Rails.cache.fetch(home_section_cache_key(section, "city_links"), expires_in: 6.hours) do
+      HomeSections::Showcase.new(section, habitations: public_habitations).city_groups
     end
   end
 
@@ -94,6 +100,10 @@ class HomeController < ApplicationController
       if section.blog?
         @home_blog_articles ||= public_tenant.blog_articles.publicly_visible.recent.with_attached_cover.includes(:blog_categories).limit(3).to_a
         payloads[section.id] = { kind: "blog", records: @home_blog_articles }
+        next
+      end
+      if section.city_links?
+        payloads[section.id] = { kind: "city_links", records: cached_home_city_groups(section) }
         next
       end
       next unless section.property_content_section?
@@ -119,16 +129,26 @@ class HomeController < ApplicationController
     }
   end
 
+  # Seções de imóveis em sequência não repetem o mesmo imóvel: cada uma pula
+  # os já exibidos acima. Vídeos ficam de fora (outro formato de vitrine).
   def property_payload_for(section)
-    showcase = HomeSections::Showcase.new(section, habitations: public_habitations)
-    properties = cached_home_properties(section, "properties") { showcase.property_ids }
+    videos = section.featured_videos?
+    shown = videos ? [] : home_shown_property_ids
+    showcase = HomeSections::Showcase.new(section, habitations: public_habitations, exclude_ids: shown)
+    exclusion_key = Digest::SHA1.hexdigest(shown.sort.join(","))[0, 12] if shown.any?
+    properties = cached_home_properties(section, "properties", variant: exclusion_key) { showcase.property_ids }
+    shown.concat(properties.map(&:id)) unless videos
 
-    kind = section.featured_videos? ? "property_videos" : "properties"
+    kind = videos ? "property_videos" : "properties"
     payload = home_property_cta(section).merge(kind:, records: properties)
     payload[:corporate_records] = cached_home_properties(section, "corporate_properties") do
       public_habitations.active.home_corporate.limit(3).pluck(:id)
     end if section.corporate_showcase? && section.selected_property_ids.empty?
     payload
+  end
+
+  def home_shown_property_ids
+    @home_shown_property_ids ||= []
   end
 
   def home_property_cta(section)
@@ -163,59 +183,6 @@ class HomeController < ApplicationController
         { constructor: { logo_attachment: :blob } },
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
-  end
-
-  def development_unit_counts_for(development_codes)
-    return {} if development_codes.blank?
-
-    public_habitations
-      .where.not(codigo_empreendimento: nil)
-      .where(codigo_empreendimento: development_codes)
-      .group(:codigo_empreendimento)
-      .count
-  end
-
-  def development_unit_metrics_for(development_codes)
-    return {} if development_codes.blank?
-
-    grouped_values = Hash.new { |hash, key| hash[key] = { areas: [], suites: [], dorms: [], vagas: [] } }
-
-    public_habitations
-      .publicly_listable
-      .with_public_listing_price
-      .where(codigo_empreendimento: development_codes)
-      .pluck(:codigo_empreendimento, :area_privativa_m2, :suites_qtd, :dormitorios_qtd, :vagas_qtd)
-      .each do |codigo, area, suites, dorms, vagas|
-        grouped_values[codigo][:areas] << area if area.to_f.positive?
-        grouped_values[codigo][:suites] << suites if suites.to_i.positive?
-        grouped_values[codigo][:dorms] << dorms if dorms.to_i.positive?
-        grouped_values[codigo][:vagas] << vagas if vagas.to_i.positive?
-      end
-
-    grouped_values.transform_values do |values|
-      {
-        area_label: area_range_label(values[:areas]),
-        suites_label: integer_range_label(values[:suites]),
-        dorms_label: integer_range_label(values[:dorms]),
-        vagas_label: integer_range_label(values[:vagas])
-      }
-    end
-  end
-
-  def integer_range_label(values)
-    normalized = values.map(&:to_i).select(&:positive?).uniq.sort
-    return if normalized.empty?
-
-    normalized.size == 1 ? normalized.first.to_s : "#{normalized.min} a #{normalized.max}"
-  end
-
-  def area_range_label(values)
-    normalized = values.map(&:to_i).select(&:positive?)
-    return if normalized.empty?
-
-    min = normalized.min
-    max = normalized.max
-    min == max ? "#{min} m²" : "#{min} a #{max} m²"
   end
 
   def build_hero_images(home_setting)

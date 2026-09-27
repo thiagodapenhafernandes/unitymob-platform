@@ -56,4 +56,21 @@ RSpec.describe HomeSections::Showcase do
     expect(ids).to include(with_video.id, with_youtube_id.id)
     expect(ids).not_to include(with_tour.id, with_blank_video.id, without_video.id)
   end
+
+  it "pula imóveis já mostrados em seções anteriores e só os reaproveita se faltar estoque" do
+    section.property_filters = { "exibir_no_site" => "1" }
+    all_ids = [picked.id, *others.map(&:id)]
+    shown = all_ids.first(2)
+
+    ids = described_class.new(section, habitations: tenant.habitations, exclude_ids: shown).property_ids
+
+    expect(ids.first(2)).to match_array(all_ids - shown)
+    expect(ids.last(2)).to match_array(shown)
+  end
+
+  it "não aplica a exclusão sobre a curadoria manual" do
+    ids = described_class.new(section, habitations: tenant.habitations, exclude_ids: [picked.id]).property_ids
+
+    expect(ids).to eq([picked.id])
+  end
 end
