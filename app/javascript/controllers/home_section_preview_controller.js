@@ -4,7 +4,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["preview"]
   static values = { previewUrl: String }
-  static kindLabels = { properties: "Imóveis", property_videos: "Vídeos", developments: "Empreendimentos", blog: "Blog", cta: "Chamada para contato" }
+  static kindLabels = { properties: "Imóveis", property_videos: "Vídeos", developments: "Empreendimentos", blog: "Blog", cta: "Chamada para contato", cities: "Explore por cidade" }
 
   connect() {
     this.updateManualState()
@@ -100,7 +100,7 @@ export default class extends Controller {
 
   bodyFor(data) {
     if (data.kind === "cta") return [this.row(data.buttons.map((label) => this.el("span", "hs-pv__btn", label)))]
-    if (data.kind === "blog") return data.items.map((item) => this.row([this.el("strong", "", item.title), this.el("small", "", item.meta || "")]))
+    if (data.kind === "blog" || data.kind === "cities") return data.items.map((item) => this.row([this.el("strong", "", item.title), this.el("small", "", item.meta || "")]))
     const cards = data.items.slice(0, 3).map((item) => {
       const card = this.el("article", data.kind === "property_videos" ? "hs-pv__card hs-pv__card--video" : "hs-pv__card")
       const photo = this.el("div", "hs-pv__photo")

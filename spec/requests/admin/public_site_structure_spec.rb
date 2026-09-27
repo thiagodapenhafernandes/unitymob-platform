@@ -18,7 +18,7 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       expect(response).to have_http_status(:ok)
       html = Nokogiri::HTML(response.body)
       tabs = html.css(".ax-studio-nav [data-ax-tabs-target='tab']").map { |tab| tab["data-ax-tabs-target-param"] }
-      expect(tabs).to eq(%w[#identity-tab-brand #identity-tab-colors #identity-tab-theme])
+      expect(tabs).to eq(%w[#identity-tab-brand #identity-tab-colors #identity-tab-theme #identity-tab-settings])
       expect(html.css("select[name='tenant[public_site_theme]'] option").map { |option| option["value"] }).to eq(%w[default])
       expect(html.at_css("input[name='layout_setting[primary_color]']")).to be_present
       expect(html.at_css("input[type='file'][name='layout_setting[logo]']")).to be_present

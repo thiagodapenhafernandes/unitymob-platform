@@ -1,0 +1,91 @@
+<%
+  useful_links = @profile.useful_link_options
+  icon_choices = [
+    ["Prédio", "building"], ["Banco", "bank"], ["Calculadora", "calculator"], ["Documento", "file-earmark-text"],
+    ["Casa", "house"], ["Mapa", "map"], ["Segurança", "shield-check"], ["Telefone", "telephone"],
+    ["Internet", "globe2"], ["Dinheiro", "cash-coin"], ["Recibo", "receipt"], ["Maleta", "briefcase"],
+    ["Carro", "car-front"], ["Saúde", "heart-pulse"], ["Educação", "mortarboard"], ["Energia", "lightning-charge"],
+    ["Água", "droplet"], ["Link", "link-45deg"]
+  ]
+  link_fields = [
+    { key: :label, label: "Nome", placeholder: "Ex.: Consulta de IPTU", width: "minmax(0, 1.1fr)" },
+    { key: :url, label: "Endereço (URL)", placeholder: "https://...", type: :url, width: "minmax(0, 1.4fr)" },
+    { key: :description, label: "Descrição", placeholder: "Opcional", width: "minmax(0, 1.2fr)" },
+    { key: :icon, label: "Ícone", placeholder: "Link (padrão)", type: :select, options: icon_choices, width: "minmax(0, .8fr)" }
+  ]
+  about_filled = [@profile.institutional_mission, @profile.institutional_vision, @profile.institutional_values].count(&:present?)
+  metrics = [
+    { value: "#{about_filled}/3", label: "pilares da página Sobre" },
+    { value: useful_links.size, label: useful_links.size == 1 ? "link útil" : "links úteis" }
+  ]
+%>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to edit_admin_public_site_profile_path, class: "ax-btn ax-btn--sm" do %>
+    <i class="bi bi-building-gear ax-ico" aria-hidden="true"></i><span>Perfil público</span>
+  <% end %>
+  <%= button_tag type: "submit", form: "institutional-pages-form", class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+    <i class="bi bi-check2 ax-ico" aria-hidden="true"></i><span>Salvar</span>
+  <% end %>
+<% end %>
+
+<div class="public-site-workspace public-site-profile">
+  <%= ax_workspace_heading(eyebrow: "Site público · Conteúdo", icon: "file-earmark-text", title: "Páginas institucionais",
+        subtitle: "Textos da página Sobre e a lista da página Links úteis.", metrics: metrics) %>
+
+  <%= form_with model: @profile, url: admin_institutional_page_path, method: :patch, scope: :public_site_profile, id: "institutional-pages-form" do |f| %>
+    <%= ax_error_summary(@profile) %>
+
+    <%= ax_form_section(title: "Página Sobre", eyebrow: "Institucional", icon: "bullseye",
+          actions: link_to("Ver página", sobre_path, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost ax-btn--sm")) do %>
+      <div class="public-site-profile__pillars">
+        <div>
+          <%= f.label :institutional_mission, "Missão", class: "ax-label" %>
+          <%= f.text_area :institutional_mission, rows: 5, class: "ax-control" %>
+        </div>
+        <div>
+          <%= f.label :institutional_vision, "Visão", class: "ax-label" %>
+          <%= f.text_area :institutional_vision, rows: 5, class: "ax-control" %>
+        </div>
+        <div>
+          <%= f.label :institutional_values, "Valores", class: "ax-label" %>
+          <%= f.text_area :institutional_values, rows: 5, class: "ax-control" %>
+        </div>
+      </div>
+      <p class="public-site-profile__hint tw-mb-0">Pilar vazio não aparece na página.</p>
+    <% end %>
+
+    <%= ax_form_section(title: "Links úteis", eyebrow: "Serviços", icon: "link-45deg",
+          actions: (link_to("Ver página", links_uteis_path, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost ax-btn--sm") if useful_links.any?)) do %>
+      <%= ax_inline_notice(tone: :neutral, icon: "info-circle", compact: true, announce: false) do %>
+        A página só aparece no site quando tem ao menos um link e está no menu — inclua "Links Úteis" em
+        <%= link_to "Topo e menu", edit_admin_public_header_path %>. Sem links, o endereço /links-uteis volta para a home.
+      <% end %>
+      <div class="public-site-profile__row public-site-profile__row--flush public-site-profile__row--links">
+        <%= ax_repeatable_rows(label: "Links", rows: @profile.useful_link_rows, fields: link_fields,
+              input_name: "public_site_profile[useful_link_rows]", add_label: "Adicionar link",
+              empty_hint: "Nenhum link. Use \"Adicionar link\" para montar a página.") %>
+        <div class="public-site-profile__preview" aria-label="Prévia da página de links úteis">
+          <span class="public-site-profile__preview-label">Como aparece em /links-uteis (após salvar)</span>
+          <% if useful_links.any? %>
+            <ul class="public-site-profile__links">
+              <% useful_links.each do |link| %>
+                <li class="public-site-profile__link">
+                  <i class="bi bi-<%= link[:icon].to_s.delete_prefix("bi-").gsub(/[^a-z0-9-]/, "") %>" aria-hidden="true"></i>
+                  <span>
+                    <strong><%= link[:label] %></strong>
+                    <% if link[:description].present? %><small><%= link[:description] %></small><% end %>
+                  </span>
+                </li>
+              <% end %>
+            </ul>
+          <% else %>
+            <%= ax_empty_state(title: "Página sem links", description: "Enquanto estiver vazia, ela não aparece no site.", icon: "link-45deg", compact: true) %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="public-site-profile__footer"><%= f.submit "Salvar páginas", class: "ax-btn ax-btn--primary" %></div>
+  <% end %>
+</div>

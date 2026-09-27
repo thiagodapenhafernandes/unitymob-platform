@@ -172,21 +172,7 @@
         <%# ===== A busca ===== %>
         <%= ax_studio_section(id: "home-tab-search", icon: "search", data: { live_focus: "search" },
                               title: "A busca",
-                              subtitle: "Onde o filtro aparece no desktop e no celular, como ele se parece sobre a imagem e o botão que fecha a ação.") do %>
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Onde aparece</h3><p>No hero, dentro da imagem, ou como um botão flutuante que abre a busca.</p></div>
-            <%= ax_field_grid do %>
-              <div class="ax-span-6">
-                <%= ax_radio_group(form: f, method: :search_filter_display_mode, label: "Como exibir o filtro no desktop",
-                                   choices: HomeSetting::SEARCH_FILTER_DISPLAY_MODE_OPTIONS, input_data: { live_attr: "searchFilterMode" }) %>
-              </div>
-              <div class="ax-span-6">
-                <%= ax_radio_group(form: f, method: :mobile_search_filter_display_mode, label: "Como exibir o filtro no mobile",
-                                   choices: HomeSetting::MOBILE_SEARCH_FILTER_DISPLAY_MODE_OPTIONS, input_data: { live_attr: "mobileFilterMode" }) %>
-              </div>
-            <% end %>
-          </div>
-
+                              subtitle: "Como ele se parece sobre a imagem e o botão que fecha a ação. O lugar onde o filtro aparece fica em Identidade → Configurações.") do %>
           <div class="ax-studio-group">
             <div class="ax-studio-group__head"><h3>Pontos de partida</h3><p>Aplica um conjunto de ajustes de uma vez. Você continua afinando cada campo abaixo.</p></div>
             <div class="hps-presets" role="group" aria-label="Pontos de partida do filtro">

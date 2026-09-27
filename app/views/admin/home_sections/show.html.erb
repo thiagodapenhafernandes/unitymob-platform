@@ -29,6 +29,8 @@
       <div class="tw-mb-3">
         <% if @home_section.blog? %>
           <p>Os 3 artigos publicados mais recentes desta conta.</p>
+        <% elsif @home_section.city_links? %>
+          <p>As <%= HomeSections::Showcase::CITY_LIMIT %> cidades com mais imóveis publicados, com links de venda, locação, empreendimentos e os bairros mais fortes.</p>
         <% else %>
         <strong>Filtros dos imóveis:</strong>
         <% if @home_section.property_filter_labels.any? %>

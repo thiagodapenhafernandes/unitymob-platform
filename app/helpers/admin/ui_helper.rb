@@ -725,6 +725,11 @@ module Admin::UiHelper
     )
   end
 
+  # Linhas repetíveis com vários campos por linha (ver _repeatable_rows).
+  def ax_repeatable_rows(label:, rows:, fields:, input_name:, add_label: "Adicionar", empty_hint: nil, class_name: nil)
+    render "admin/shared/ui/repeatable_rows", label:, rows:, fields:, input_name:, add_label:, empty_hint:, class_name:
+  end
+
   def ax_dynamic_list_field(label:, values:, input_name:, placeholder: nil, add_label: "Adicionar", class_name: nil)
     render(
       "admin/shared/ui/dynamic_list_field",

@@ -16,7 +16,7 @@ RSpec.describe "Admin::HomeSections formulário", type: :request do
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    expect(html.at_css("select[name='home_section[content_kind]']").css("option").map { |option| option["value"] }).to eq(%w[properties videos blog cta])
+    expect(html.at_css("select[name='home_section[content_kind]']").css("option").map { |option| option["value"] }).to eq(%w[properties videos blog cta cities])
     expect(html.at_css("input[name='home_section[title]']")).to be_present
     expect(html.at_css("textarea[name='home_section[subtitle]']")).to be_present
     expect(html.at_css("input[type='checkbox'][name='home_section[active]']")).to be_present

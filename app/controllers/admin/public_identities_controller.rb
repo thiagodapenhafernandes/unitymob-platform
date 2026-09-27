@@ -10,7 +10,7 @@ module Admin
 
     def update
       saved = LayoutSetting.transaction do
-        @layout_setting.update(layout_params) && update_theme!
+        @layout_setting.update(layout_params) && @home_setting.update(home_params) && update_theme!
       end
 
       if saved
@@ -25,10 +25,16 @@ module Admin
     def set_records
       @layout_setting = LayoutSetting.instance
       @tenant = current_tenant
+      @home_setting = HomeSetting.instance(tenant: current_tenant)
     end
 
     def layout_params
       params.fetch(:layout_setting, {}).permit(:site_name, :logo, :favicon, :custom_logo_css, :primary_color, :secondary_color, :accent_color)
+    end
+
+    def home_params
+      params.fetch(:home_setting, {}).permit(:search_filter_display_mode, :mobile_search_filter_display_mode, :filter_panel_background,
+                                           :navigation_menu_image, :remove_navigation_menu_image)
     end
 
     def update_theme!

@@ -1,0 +1,51 @@
+<%# Linhas repetíveis com vários campos (ex.: nome + URL + ícone), sobre o
+    controller dynamic-list. Cada linha envia input_name[índice][chave].
+    Locals: label, rows, fields, input_name, add_label, empty_hint, class_name.
+    fields: [{ key:, label:, placeholder:, type: (:text|:url|:number|:select), options:, width: }] %>
+<%
+  columns = fields.map { |field| field[:width] || "minmax(0, 1fr)" }.push("auto").join(" ")
+  render_field = lambda do |field, index, value|
+    name = "#{input_name}[#{index}][#{field[:key]}]"
+    common = { class: "ax-control", "aria-label": field[:label] }
+    case field[:type]&.to_sym
+    when :select
+      select_tag(name, options_for_select(field[:options], value), common.merge(include_blank: field[:placeholder]))
+    when :number
+      text_field_tag(name, value, common.merge(placeholder: field[:placeholder], inputmode: "numeric"))
+    when :url
+      url_field_tag(name, value, common.merge(placeholder: field[:placeholder]))
+    else
+      text_field_tag(name, value, common.merge(placeholder: field[:placeholder]))
+    end
+  end
+%>
+<div class="<%= ["ax-dynamic-list ax-repeatable-rows", class_name].compact.join(" ") %>"
+     data-controller="dynamic-list"
+     style="--ax-repeatable-columns: <%= columns %>">
+  <div class="ax-dynamic-list__header">
+    <h6 class="ax-dynamic-list__title"><%= label %></h6>
+    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="dynamic-list#add">
+      <i class="bi bi-plus-lg ax-ico" aria-hidden="true"></i><%= add_label %>
+    </button>
+  </div>
+  <div class="ax-repeatable-rows__head" aria-hidden="true">
+    <% fields.each do |field| %><span><%= field[:label] %></span><% end %><span></span>
+  </div>
+  <div class="ax-dynamic-list__items" data-dynamic-list-target="container">
+    <% Array(rows).each_with_index do |row, index| %>
+      <div class="ax-input-group ax-dynamic-list__item">
+        <% fields.each do |field| %><%= render_field.call(field, index, row[field[:key]]) %><% end %>
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove" aria-label="Remover linha">
+          <i class="bi bi-trash" aria-hidden="true"></i>
+        </button>
+      </div>
+    <% end %>
+  </div>
+  <% if empty_hint.present? %><p class="ax-repeatable-rows__hint"><%= empty_hint %></p><% end %>
+  <template data-dynamic-list-target="template">
+    <% fields.each do |field| %><%= render_field.call(field, "NEW_RECORD", nil) %><% end %>
+    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove" aria-label="Remover linha">
+      <i class="bi bi-trash" aria-hidden="true"></i>
+    </button>
+  </template>
+</div>

@@ -86,8 +86,90 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     get edit_admin_public_site_profile_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Pilares institucionais")
+    expect(response.body).to include("Faixas de preço da busca")
+    expect(response.body).to include("Mostrar o nome do empreendimento")
+
+    get edit_admin_institutional_page_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Página Sobre")
     expect(response.body).to include("Links úteis")
+  end
+
+  it "organiza o perfil público: cidade por sugestão, CRECI explicado, faixas automáticas e pendências no topo" do
+    get edit_admin_public_site_profile_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    form = html.at_css("form#public-site-profile-form")
+    expect(html.at_css('button[type="submit"][form="public-site-profile-form"]')).to be_present
+    %w[primary_city legal_name legal_document legal_address privacy_email creci show_development_identity custom_price_ranges].each do |field|
+      expect(form.at_css(%([name="public_site_profile[#{field}]"]))).to be_present, "faltou o campo #{field}"
+    end
+    expect(form.at_css('select[name="public_site_profile[primary_city]"] option[value=""]').text).to start_with("Automática")
+    expect(form.at_css(%(a[href="#{admin_stores_path}"]))).to be_present
+    rendered_rows = form.css('[name^="public_site_profile[sale_price_rows]"]').reject { |node| node.ancestors("template").any? }
+    expect(rendered_rows).to be_empty
+    expect(form.css("template").map { _1.inner_html }.join).to include("public_site_profile[sale_price_rows][NEW_RECORD][min]")
+    expect(html.at_css(".ax-workspace-heading__meta").text).to include("pendências jurídicas", "Automáticas")
+    expect(response.body).not_to include("ativar outra marca")
+    expect(form.at_css('[name="public_site_profile[useful_links]"], [name="public_site_profile[institutional_mission]"]')).to be_nil
+  end
+
+  it "salva faixas personalizadas em linhas e limpa quando todas são removidas" do
+    patch admin_public_site_profile_path, params: { public_site_profile: {
+      custom_price_ranges: "1",
+      sale_price_rows: { "0" => { label: "", min: "0", max: "1.500.000" }, "1" => { label: "Alto padrão", min: "1500000", max: "" } }
+    } }
+
+    expect(response).to redirect_to(edit_admin_public_site_profile_path)
+    profile = PublicSiteProfile.current(tenant: Tenant.default)
+    expect(profile.custom_price_ranges?).to be(true)
+    expect(profile.sale_price_options).to eq([["Até R$ 1,5 mi", "0-1500000"], ["Alto padrão", "1500000"]])
+
+    patch admin_public_site_profile_path, params: { public_site_profile: { custom_price_ranges: "0" } }
+
+    profile = PublicSiteProfile.current(tenant: Tenant.default)
+    expect(profile.custom_price_ranges?).to be(false)
+    expect(profile.sale_price_ranges).to be_blank
+  end
+
+  it "edita as páginas institucionais sem apagar os dados jurídicos do perfil" do
+    PublicSiteProfile.new({ legal_name: "Imobiliária Exemplo Ltda", creci: "1234" }, tenant: Tenant.default).save
+
+    patch admin_institutional_page_path, params: { public_site_profile: {
+      institutional_mission: "Servir bem",
+      useful_link_rows: { "0" => { label: "Prefeitura", url: "https://prefeitura.exemplo.gov.br", description: "Portal", icon: "bank" },
+                          "1" => { label: "", url: "", description: "", icon: "" } }
+    } }
+
+    expect(response).to redirect_to(edit_admin_institutional_page_path)
+    profile = PublicSiteProfile.current(tenant: Tenant.default)
+    expect(profile.institutional_mission).to eq("Servir bem")
+    expect(profile.useful_link_options).to eq([{ label: "Prefeitura", url: "https://prefeitura.exemplo.gov.br", description: "Portal", icon: "bank" }])
+    expect(profile.legal_name).to eq("Imobiliária Exemplo Ltda")
+    expect(profile.creci).to eq("1234")
+
+    get edit_admin_institutional_page_path
+    expect(Nokogiri::HTML(response.body).at_css(".public-site-profile__link strong").text).to eq("Prefeitura")
+  end
+
+  it "recusa link útil sem URL válida e mantém o que foi digitado" do
+    patch admin_institutional_page_path, params: { public_site_profile: {
+      useful_link_rows: { "0" => { label: "Quebrado", url: "sem-protocolo", description: "", icon: "" } }
+    } }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Quebrado")
+  end
+
+  it "liga a identidade do empreendimento só na conta autenticada" do
+    other_tenant = Tenant.create!(name: "Outra identidade #{SecureRandom.hex(3)}", slug: "outra-identidade-#{SecureRandom.hex(4)}")
+
+    patch admin_public_site_profile_path, params: { public_site_profile: { show_development_identity: "1" } }
+
+    expect(response).to redirect_to(edit_admin_public_site_profile_path)
+    expect(PublicSiteProfile.current(tenant: Tenant.default).show_development_identity?).to be(true)
+    expect(PublicSiteProfile.current(tenant: other_tenant).show_development_identity?).to be(false)
   end
 
   it "salva contato e a visibilidade do telefone no topo somente no tenant autenticado" do

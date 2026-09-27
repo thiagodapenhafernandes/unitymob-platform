@@ -7,7 +7,8 @@
   studio_items = [
     { id: "identity-tab-brand", icon: "stars", label: "Marca", hint: "Nome, logo e favicon" },
     { id: "identity-tab-colors", icon: "palette2", label: "Paleta", hint: "As três cores do site" },
-    { id: "identity-tab-theme", icon: "layout-wtf", label: "Modelo visual", hint: "O desenho do site" }
+    { id: "identity-tab-theme", icon: "layout-wtf", label: "Modelo visual", hint: "O desenho do site" },
+    { id: "identity-tab-settings", icon: "sliders", label: "Configurações", hint: "Filtro global de imóveis" }
   ]
 %>
 <div class="public-site-workspace pid-workspace">
@@ -108,6 +109,48 @@
           <% end %>
           <%= ax_inline_notice(tone: :info, icon: "info-circle",
                                body: "Trocar o modelo não apaga conteúdo nem configurações: só muda o desenho. Confira o site depois de salvar.") %>
+        <% end %>
+
+        <%= ax_studio_section(id: "identity-tab-settings", icon: "sliders",
+                              title: "Configurações",
+                              subtitle: "O filtro global de imóveis (onde o botão de busca aparece e como o painel abre) e a foto do menu em tela cheia.") do %>
+          <%= fields_for :home_setting, @home_setting do |hf| %>
+            <div class="ax-studio-group">
+              <div class="ax-studio-group__head"><h3>Onde aparece</h3><p>No hero, dentro da imagem, ou como um botão flutuante que abre a busca em tela cheia.</p></div>
+              <%= ax_field_grid do %>
+                <div class="ax-span-6">
+                  <%= ax_radio_group(form: hf, method: :search_filter_display_mode, label: "Como exibir o filtro no desktop",
+                                     choices: HomeSetting::SEARCH_FILTER_DISPLAY_MODE_OPTIONS) %>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_radio_group(form: hf, method: :mobile_search_filter_display_mode, label: "Como exibir o filtro no mobile",
+                                     choices: HomeSetting::MOBILE_SEARCH_FILTER_DISPLAY_MODE_OPTIONS) %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          <%= fields_for :home_setting, @home_setting do |hf| %>
+            <%= ax_studio_group(title: "Foto do painel", subtitle: "Imagem lateral do filtro em tela cheia. Usada quando o botão flutuante está ativo (Só botão flutuante ou Hero + botão flutuante). Sem foto, vale o fundo do hero.") do %>
+              <% if @home_setting.filter_panel_background.attached? && @home_setting.filter_panel_background.persisted? %>
+                <div class="lss-asset__preview">
+                  <%= image_tag @home_setting.filter_panel_background.variant(resize_to_limit: [480, 300]), class: "lss-asset__img", alt: "Foto atual do painel" %>
+                </div>
+              <% end %>
+              <%= ax_file_field(form: hf, method: :filter_panel_background, label: "Foto do painel", accept: "image/png,image/jpeg,image/webp", hint: "Paisagem, JPG/PNG/WebP. Recomendado 1200x1500 ou maior.") %>
+            <% end %>
+            <%= ax_studio_group(title: "Foto do menu", subtitle: "Imagem lateral do menu em tela cheia (botão ☰ do topo), em todos os temas. Sem foto, o menu usa a primeira imagem do hero da home.") do %>
+              <% if @home_setting.navigation_menu_image.attached? && @home_setting.navigation_menu_image.persisted? %>
+                <div class="lss-asset__preview">
+                  <%= image_tag @home_setting.navigation_menu_image.variant(resize_to_limit: [300, 400]), class: "lss-asset__img", alt: "Foto atual do menu" %>
+                </div>
+                <%= ax_check_field(form: hf, method: :remove_navigation_menu_image, label: "Remover e voltar a usar a foto do hero") %>
+              <% end %>
+              <%= ax_file_field(form: hf, method: :navigation_menu_image, label: "Foto do menu", accept: "image/png,image/jpeg,image/webp",
+                                hint: "Vertical, JPG/PNG/WebP até 8 MB. Recomendado 1200x1600. No celular a foto não aparece, só o menu.") %>
+            <% end %>
+          <% end %>
+          <%= ax_inline_notice(tone: :info, icon: "info-circle",
+                               body: "O painel abre em tela cheia com transição suave de 320ms e fecha com Escape, no X ou tocando fora. Vale para todos os temas do site.") %>
         <% end %>
       </div>
 

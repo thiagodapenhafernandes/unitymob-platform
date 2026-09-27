@@ -17,6 +17,7 @@ module HomeSections
       case section.content_kind
       when "blog" then blog
       when "cta" then cta
+      when "cities" then cities
       else properties
       end.merge(title: section.title.to_s, subtitle: section.subtitle.to_s, active: section.active != false)
     end
@@ -83,6 +84,17 @@ module HomeSections
 
     def cta
       { kind: "cta", count: 0, buttons: ["Fale Conosco", "Anuncie seu imóvel", "WhatsApp"], warning: nil, items: [] }
+    end
+
+    def cities
+      groups = Showcase.new(section, habitations: tenant.habitations).city_groups
+      {
+        kind: "cities",
+        count: groups.size,
+        limit: Showcase::CITY_LIMIT,
+        items: groups.map { |group| { title: group[:label], meta: "#{group[:count]} imóveis · #{group[:neighborhoods].size} bairros em destaque" } },
+        warning: groups.empty? ? "Nenhum imóvel publicado com cidade: a seção não aparece na Home." : nil
+      }
     end
 
     def items(ids)

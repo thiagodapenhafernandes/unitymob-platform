@@ -1,57 +1,111 @@
-<div class="public-site-workspace">
-  <%= ax_workspace_heading(eyebrow: "Site público · Governança", icon: "building-gear", title: "Perfil público", subtitle: "Defina mercado, faixas de preço e dados jurídicos usados pelo site desta conta.") %>
+<%
+  legal_gaps = @profile.activation_gaps - ["Cidade principal"]
+  custom_ranges = @profile.custom_price_ranges?
+  sale_auto = @automatic_price_ranges["venda"]
+  rental_auto = @automatic_price_ranges["aluguel"]
+  city_choices = [["Automática#{" — #{@automatic_city}" if @automatic_city}", ""]] +
+                 (@city_suggestions | [@profile.primary_city.presence].compact).map { |city| [city, city] }
+  metrics = [
+    { value: legal_gaps.empty? ? "OK" : legal_gaps.size, label: legal_gaps.empty? ? "dados jurídicos" : "pendências jurídicas",
+      class_name: ("is-warning" if legal_gaps.any?) },
+    { value: custom_ranges ? "Personalizadas" : "Automáticas", label: "faixas de preço" },
+    { value: @profile.primary_city.presence || @automatic_city || "—", label: "cidade principal" }
+  ]
+  price_fields = [
+    { key: :label, label: "Nome (opcional)", placeholder: "Gerado automaticamente", width: "minmax(0, 1.4fr)" },
+    { key: :min, label: "De (R$)", placeholder: "0", type: :number },
+    { key: :max, label: "Até (R$)", placeholder: "sem limite", type: :number }
+  ]
+%>
 
-  <%= form_with model: @profile, url: admin_public_site_profile_path, method: :patch do |f| %>
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to edit_admin_institutional_page_path, class: "ax-btn ax-btn--sm" do %>
+    <i class="bi bi-file-earmark-text ax-ico" aria-hidden="true"></i><span>Páginas institucionais</span>
+  <% end %>
+  <%= button_tag type: "submit", form: "public-site-profile-form", class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+    <i class="bi bi-check2 ax-ico" aria-hidden="true"></i><span>Salvar</span>
+  <% end %>
+<% end %>
+
+<div class="public-site-workspace public-site-profile">
+  <%= ax_workspace_heading(eyebrow: "Site público · Governança", icon: "building-gear", title: "Perfil público",
+        subtitle: "Região de atuação, dados legais e as faixas de preço que a busca do site oferece.",
+        metrics: metrics) %>
+
+  <%= form_with model: @profile, url: admin_public_site_profile_path, method: :patch, id: "public-site-profile-form" do |f| %>
     <%= ax_error_summary(@profile) %>
 
-    <div class="tw-grid tw-gap-4 lg:tw-grid-cols-2">
-      <%= ax_form_section(title: "Mercado de atuação", eyebrow: "Localização", icon: "geo-alt") do %>
-        <%= ax_text_field(form: f, method: :primary_city, label: "Cidade principal", placeholder: "Ex.: Cidade") %>
-        <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Quando vazio, o sistema usa a cidade mais frequente entre os imóveis públicos.</p>
+    <div class="public-site-profile__row">
+      <%= ax_form_section(title: "Identidade e região", eyebrow: "Mercado", icon: "geo-alt") do %>
+        <%= ax_select_field(form: f, method: :primary_city, label: "Cidade principal", choices: city_choices) %>
+        <p class="public-site-profile__hint">As opções vêm das cidades dos imóveis publicados. "Automática" acompanha a cidade com mais imóveis.</p>
+        <%= ax_inline_notice(tone: :neutral, icon: "broadcast", compact: true, announce: false,
+              body: "Aparece em: SEO e dados estruturados, subtítulo da home, página Sobre, e-mails de lead e textos gerados por IA.") %>
       <% end %>
 
-      <%= ax_form_section(title: "Prontidão jurídica", eyebrow: "Publicação", icon: "shield-check") do %>
-        <% if @profile.activation_gaps.any? %>
-          <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", body: "Pendências para ativar outra marca: #{@profile.activation_gaps.join(', ')}.") %>
-        <% else %>
-          <%= ax_inline_notice(tone: :success, icon: "check-circle", body: "Dados jurídicos essenciais preenchidos.") %>
-        <% end %>
-      <% end %>
-
-      <%= ax_form_section(title: "Faixas para venda", eyebrow: "Filtros", icon: "cash-stack") do %>
-        <%= f.label :sale_price_ranges, "Uma faixa por linha: Nome|mínimo|máximo", class: "ax-label" %>
-        <%= f.text_area :sale_price_ranges, rows: 7, class: "ax-control", placeholder: "Até R$ 1 milhão|0|1000000\nAcima de R$ 1 milhão|1000000|" %>
-      <% end %>
-
-      <%= ax_form_section(title: "Faixas para locação", eyebrow: "Filtros", icon: "cash-coin") do %>
-        <%= f.label :rental_price_ranges, "Uma faixa por linha: Nome|mínimo|máximo", class: "ax-label" %>
-        <%= f.text_area :rental_price_ranges, rows: 7, class: "ax-control", placeholder: "Até R$ 5 mil|0|5000\nAcima de R$ 5 mil|5000|" %>
-      <% end %>
-
-      <%= ax_form_section(title: "Dados jurídicos", eyebrow: "Privacidade", icon: "file-earmark-lock") do %>
-        <%= ax_text_field(form: f, method: :legal_name, label: "Razão social") %>
-        <%= ax_text_field(form: f, method: :legal_document, label: "CNPJ/Documento") %>
-        <%= ax_text_field(form: f, method: :legal_address, label: "Endereço jurídico") %>
-        <%= ax_text_field(form: f, method: :privacy_email, label: "E-mail de privacidade") %>
-        <%= ax_text_field(form: f, method: :creci, label: "CRECI da empresa") %>
-      <% end %>
-
-      <%= ax_form_section(title: "Pilares institucionais", eyebrow: "Sobre", icon: "bullseye") do %>
-        <%= f.label :institutional_mission, "Missão", class: "ax-label" %>
-        <%= f.text_area :institutional_mission, rows: 3, class: "ax-control tw-mb-3" %>
-        <%= f.label :institutional_vision, "Visão", class: "ax-label" %>
-        <%= f.text_area :institutional_vision, rows: 3, class: "ax-control tw-mb-3" %>
-        <%= f.label :institutional_values, "Valores", class: "ax-label" %>
-        <%= f.text_area :institutional_values, rows: 3, class: "ax-control" %>
-      <% end %>
-
-      <%= ax_form_section(title: "Links úteis", eyebrow: "Serviços", icon: "link-45deg") do %>
-        <%= f.label :useful_links, "Um link por linha: Nome|URL|Descrição|ícone", class: "ax-label" %>
-        <%= f.text_area :useful_links, rows: 9, class: "ax-control", placeholder: "Prefeitura|https://prefeitura.exemplo.gov.br|Portal municipal|building" %>
-        <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0">O ícone usa os nomes do Bootstrap Icons. Ex.: building, bank, calculator.</p>
+      <%= ax_form_section(title: "Página do imóvel", eyebrow: "Empreendimento", icon: "buildings") do %>
+        <%= ax_switch_field(form: f, method: :show_development_identity, class_name: "ax-switch--card",
+              label: "Mostrar o nome do empreendimento",
+              description: "Exibe nome, rua, descrição e link da página do empreendimento no bloco \"Sobre o empreendimento\" das unidades. Desligado, o bloco mostra só fotos, faixas, lazer e bairro. Sem nome cadastrado, fica sempre discreto.") %>
       <% end %>
     </div>
 
-    <div class="tw-flex tw-justify-end tw-mt-4"><%= f.submit "Salvar perfil público", class: "ax-btn ax-btn--primary" %></div>
+    <%= ax_form_section(title: "Dados jurídicos", eyebrow: "Privacidade", icon: "file-earmark-lock") do %>
+      <% if legal_gaps.any? %>
+        <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true, body: "Falta preencher: #{legal_gaps.join(', ')}.") %>
+      <% else %>
+        <%= ax_inline_notice(tone: :success, icon: "check-circle", compact: true, body: "Dados jurídicos essenciais preenchidos.") %>
+      <% end %>
+      <div class="public-site-profile__fields">
+        <%= ax_text_field(form: f, method: :legal_name, label: "Razão social") %>
+        <%= ax_text_field(form: f, method: :legal_document, label: "CNPJ/Documento") %>
+        <div>
+          <%= ax_text_field(form: f, method: :creci, label: "CRECI da empresa") %>
+          <p class="public-site-profile__hint">É o CRECI jurídico da imobiliária. O CRECI de cada loja, mostrado no rodapé, fica em <%= link_to "Lojas", admin_stores_path %>.</p>
+        </div>
+        <%= ax_text_field(form: f, method: :privacy_email, label: "E-mail de privacidade", type: :email) %>
+        <%= ax_text_field(form: f, method: :legal_address, label: "Endereço jurídico", class_name: "public-site-profile__field--wide") %>
+      </div>
+      <%= ax_inline_notice(tone: :neutral, icon: "broadcast", compact: true, announce: false,
+            body: "Aparece em: Política de Privacidade, Termos de Uso e cabeçalho da ficha de captação.") %>
+    <% end %>
+
+    <%= ax_form_section(title: "Faixas de preço da busca", eyebrow: "Filtros", icon: "cash-stack") do %>
+      <div class="public-site-profile__ranges">
+        <div class="public-site-profile__row public-site-profile__row--flush">
+          <% [["Venda", sale_auto], ["Locação", rental_auto]].each do |title, auto| %>
+            <div class="public-site-profile__preview" aria-label="Faixas automáticas de <%= title.downcase %>">
+              <span class="public-site-profile__preview-label"><%= title %> — calculado pelo estoque</span>
+              <% if auto && auto[:ranges].any? %>
+                <div class="public-site-profile__chips">
+                  <% auto[:ranges].each do |label, _range| %><%= ax_badge(label, tone: :blue) %><% end %>
+                </div>
+                <p class="public-site-profile__hint tw-mb-0">Slider do filtro: de <%= PublicSite::PriceRanges.short_money(auto[:min]) %> a <%= PublicSite::PriceRanges.short_money(auto[:max]) %> · base de <%= auto[:count] %> imóveis.</p>
+              <% else %>
+                <p class="public-site-profile__hint tw-mb-0">Poucos imóveis para calcular: o site usa as faixas padrão do sistema.</p>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <%= ax_switch_field(form: f, method: :custom_price_ranges, input_html: { checked: custom_ranges }, class_name: "ax-switch--card public-site-profile__custom-toggle",
+              label: "Personalizar as faixas",
+              description: "Desligado, as faixas acompanham o estoque automaticamente. Ligado, a busca mostra exatamente as faixas abaixo (o slider do filtro continua pelo estoque).") %>
+
+        <div class="public-site-profile__custom">
+          <%= ax_repeatable_rows(label: "Faixas de venda", rows: @profile.sale_price_rows, fields: price_fields,
+                input_name: "public_site_profile[sale_price_rows]", add_label: "Adicionar faixa",
+                empty_hint: "Sem faixas de venda personalizadas.") %>
+          <%= ax_repeatable_rows(label: "Faixas de locação", rows: @profile.rental_price_rows, fields: price_fields,
+                input_name: "public_site_profile[rental_price_rows]", add_label: "Adicionar faixa",
+                empty_hint: "Sem faixas de locação personalizadas.") %>
+          <p class="public-site-profile__hint tw-mb-0">Valores em reais. "Até" vazio significa "acima de". Sem nome, o site gera um (ex.: "R$ 1,5 mi a R$ 3 mi").</p>
+        </div>
+      </div>
+      <%= ax_inline_notice(tone: :neutral, icon: "broadcast", compact: true, announce: false,
+            body: "Aparece em: busca do topo da home, filtros da listagem e limites do filtro detalhado.") %>
+    <% end %>
+
+    <div class="public-site-profile__footer"><%= f.submit "Salvar perfil público", class: "ax-btn ax-btn--primary" %></div>
   <% end %>
 </div>
