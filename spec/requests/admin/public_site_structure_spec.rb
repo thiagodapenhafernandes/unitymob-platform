@@ -45,7 +45,8 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       get edit_admin_public_identity_path
 
       values = Nokogiri::HTML(response.body).css("select[name='tenant[public_site_theme]'] option").map { |option| option["value"] }
-      expect(values).to eq(%w[default saluteimoveis])
+      # Os dois modelos da marca, identificada pelo nome da conta.
+      expect(values).to eq(%w[default saluteimoveis salute_luxury])
       expect(response.body).not_to include("Conexão Imobiliária")
 
       patch admin_public_identity_path, params: { layout_setting: { site_name: "X" }, tenant: { public_site_theme: "conexaoimobiliaria" } }

@@ -6,7 +6,8 @@ RSpec.describe Tenant, type: :model do
 
     expect(tenant.public_site_theme_key).to eq("saluteimoveis")
     expect(tenant.public_site_stylesheet).to eq("public_site_themes/saluteimoveis")
-    expect(tenant.available_public_site_themes.keys).to contain_exactly("default", "saluteimoveis")
+    # Temas da marca pelo nome da conta (em produção o slug é "default").
+    expect(tenant.available_public_site_themes.keys).to contain_exactly("default", "saluteimoveis", "salute_luxury")
   end
 
   it "Conexão resolve seu skin e nunca vê o da Salute" do

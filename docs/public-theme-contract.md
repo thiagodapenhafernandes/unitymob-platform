@@ -105,9 +105,9 @@ Estados de checkbox com `:has()` no próprio item. Controllers `filter-drawer`,
 | Tema | Variante | Contas (`tenant_slugs`) |
 | --- | --- | --- |
 | `default` | `default` | global — fallback de todas |
-| `saluteimoveis` | `default` | `salute` |
-| `conexaoimobiliaria` | `default` | `conexao` |
-| `salute_luxury` | `salute-luxury` | `salute` |
+| `saluteimoveis` | `default` | `salute`, `saluteimoveis` |
+| `conexaoimobiliaria` | `default` | `conexao`, `conexaoimobiliaria` |
+| `salute_luxury` | `salute-luxury` | `salute`, `saluteimoveis` |
 
 - **Conta nova nasce no `default`.** Garantido em duas camadas: `attribute
   :public_site_theme, default: "default"` no `Tenant` (vale mesmo se o padrão
@@ -116,6 +116,10 @@ Estados de checkbox com `:has()` no próprio item. Controllers `filter-drawer`,
   bater com um tema cadastrado, ela nasce nele.
 - A conta só vê no select de Modelo visual os temas globais, os do próprio
   `tenant_slugs`, o inferido pelo nome e o que já está em uso.
+- `tenant_slugs` casa com o **slug** da conta ou com o **nome dela em forma
+  compacta** ("Salute Imóveis" → `saluteimoveis`). Em produção a conta
+  principal de cada servidor tem slug `default`; quem identifica a marca é o
+  nome. Ao amarrar um tema a uma conta, liste os dois.
 
 ## Novo tema (checklist)
 

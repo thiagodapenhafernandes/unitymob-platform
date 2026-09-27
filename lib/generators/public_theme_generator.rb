@@ -2,7 +2,7 @@ class PublicThemeGenerator < Rails::Generators::NamedBase
   source_root File.expand_path("templates", __dir__)
 
   class_option :label, type: :string, desc: "Rótulo no select de Modelo visual (padrão: nome humanizado)"
-  class_option :tenant_slugs, type: :string, desc: "Contas em CSV (ex.: salute). Omitido = global, como o Padrão"
+  class_option :tenant_slugs, type: :string, desc: "Contas em CSV: slug ou nome compacto (ex.: salute,saluteimoveis). Omitido = global, como o Padrão"
 
   def create_stylesheet
     template "theme.css.tt", "app/assets/stylesheets/public_site_themes/#{file_name}.css"
