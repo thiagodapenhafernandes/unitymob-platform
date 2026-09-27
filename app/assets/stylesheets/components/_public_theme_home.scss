@@ -1,12 +1,12 @@
 // Seções da home — contrato public-theme-home-section / public-theme-section__*.
 // Variante default: Padrão, Salute e Conexão (as cores vêm das variáveis de cada skin).
 
-.public-theme-home-section {
+.public-theme-home-section--default {
   padding: 4rem 0;
   background: var(--public-theme-surface, #fff);
 }
 
-.public-theme-home-section--alt {
+.public-theme-home-section--default.public-theme-home-section--alt {
   background: var(--public-theme-subtle, #f8fafc);
 }
 
@@ -48,6 +48,7 @@
   line-height: 1.7;
 }
 
+// Comum a todos os temas (estrutura, não aparência): cada variante ajusta só o espaço.
 .public-theme-section__actions {
   margin-top: 2.5rem;
   text-align: center;

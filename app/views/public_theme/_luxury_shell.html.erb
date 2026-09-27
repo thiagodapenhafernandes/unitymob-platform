@@ -1,5 +1,7 @@
-<%# Shell luxury (fatia 1: header). Header/mobile-nav luxury com dados da plataforma;
-    corpo e rodapé seguem o padrão até as próximas fatias. Só renderiza com o tema ativo. %>
+<%# Shell do tema luxury (theme_component(:shell)): header, menu em tela cheia e
+    rodapé na variante salute-luxury, com dados da própria conta. Os
+    componentes são os mesmos dos outros temas (docs/public-theme-contract.md);
+    só a pele muda. Renderiza apenas com o tema ativo. %>
 <%
   luxury_identity = @public_identity || Tenants::PublicIdentity.new(public_tenant)
   luxury_layout = @layout_setting || LayoutSetting.instance(tenant: public_tenant)
@@ -36,7 +38,6 @@
   <%= render "public_theme/components/navigation_overlay",
         id: "saluteLuxuryMenu",
         variant: "salute-luxury",
-        class_name: "sl-mobile-nav",
         site_name: luxury_identity.name,
         logo: luxury_logo,
         media_logo: luxury_logo,

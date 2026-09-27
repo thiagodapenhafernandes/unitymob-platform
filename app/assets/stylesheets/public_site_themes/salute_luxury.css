@@ -554,72 +554,38 @@ body.no-scroll { overflow: hidden; }
 .sl-burger span:nth-child(2) { top: 10px; }
 .sl-burger span:nth-child(3) { top: 19px; }
 
-.sl-mobile-nav {
-  --sl-mobile-nav-close-duration: .7s;
+/* Menu em tela cheia (componente navigation_overlay, variante salute-luxury).
+   Abre e fecha por fade do conjunto: as colunas (foto | painel) não se movem,
+   então nenhum vão aparece entre elas; a cascata do conteúdo é compartilhada
+   em components/_public_theme_navigation_overlay.scss. */
+.public-theme-navigation-overlay {
   position: fixed;
   inset: 0;
-  z-index: 110;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 26px;
-  background: rgba(10, 24, 38, .98);
-  backdrop-filter: blur(14px);
-  visibility: hidden;
-  pointer-events: none;
-  transition: visibility 0s linear var(--sl-mobile-nav-close-duration);
-}
-.sl-mobile-nav::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: url("/salute/pattern-gold.svg") center/112px 112px repeat;
-  opacity: .055;
-  pointer-events: none;
-}
-.sl-mobile-nav.open { visibility: visible; pointer-events: auto; transition-delay: 0s; }
-.public-theme-navigation-overlay__close {
-  position: absolute;
-  z-index: 1;
-  top: 26px;
-  right: 26px;
-  border: 0;
-  background: transparent;
-  color: #fff;
-  font-size: 34px;
-  opacity: 0;
-  transition: opacity .2s ease .36s;
-}
-.sl-mobile-nav.open .public-theme-navigation-overlay__close { opacity: 1; transition-delay: .08s; }
-
-@media (prefers-reduced-motion: reduce) {
-  .sl-mobile-nav,
-  .public-theme-navigation-overlay__close {
-    transition: none;
-  }
-}
-
-/* Drawer editorial: preserva o header original e aplica a referência somente ao menu aberto. */
-.sl-mobile-nav.public-theme-navigation-overlay {
-  --sl-mobile-nav-close-duration: .62s;
   z-index: 160;
   display: grid;
   grid-template-columns: minmax(360px, 42vw) minmax(0, 1fr);
   align-items: stretch;
-  justify-content: stretch;
-  gap: 0;
-  padding: 0;
   overflow: hidden;
   background: var(--sl-navy-900);
-  backdrop-filter: none;
-  /* Abre e fecha por fade do conjunto: as colunas não se movem, então nenhum
-     vão aparece entre foto e painel durante a transição. */
+  visibility: hidden;
+  pointer-events: none;
   opacity: 0;
   transition: opacity .3s ease, visibility 0s linear .3s;
 }
-.sl-mobile-nav.public-theme-navigation-overlay.open { opacity: 1; transition: opacity .38s ease, visibility 0s; }
-.sl-mobile-nav.public-theme-navigation-overlay::before { content: none; }
+.public-theme-navigation-overlay.open { visibility: visible; pointer-events: auto; opacity: 1; transition: opacity .38s ease, visibility 0s; }
+.public-theme-navigation-overlay__close {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__close { opacity: 1; transition-delay: .08s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-navigation-overlay,
+  .public-theme-navigation-overlay__close { transition: none; }
+}
 .public-theme-navigation-overlay__media {
   position: relative;
   min-width: 0;
@@ -671,13 +637,13 @@ body.no-scroll { overflow: hidden; }
   transition: color .2s ease, opacity .3s ease, transform .42s cubic-bezier(.2, .75, .2, 1);
   cursor: pointer;
 }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button) { opacity: 1; transform: none; }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(1) { transition-delay: .08s; }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(2) { transition-delay: .12s; }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(3) { transition-delay: .16s; }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(4) { transition-delay: .20s; }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(5) { transition-delay: .24s; }
-.sl-mobile-nav.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(6) { transition-delay: .28s; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button) { opacity: 1; transform: none; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(1) { transition-delay: .08s; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(2) { transition-delay: .12s; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(3) { transition-delay: .16s; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(4) { transition-delay: .20s; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(5) { transition-delay: .24s; }
+.public-theme-navigation-overlay.open .public-theme-navigation-overlay__featured :is(a, button):nth-child(6) { transition-delay: .28s; }
 .salute-luxury-theme .public-theme-navigation-overlay__featured a:hover,
 .salute-luxury-theme .public-theme-navigation-overlay__featured a:focus-visible,
 .salute-luxury-theme .public-theme-navigation-overlay__featured button:hover,
@@ -4158,7 +4124,7 @@ body.no-scroll { overflow: hidden; }
 }
 
 @media (max-width: 760px) {
-  .sl-mobile-nav.public-theme-navigation-overlay {
+  .public-theme-navigation-overlay {
     display: block;
     padding: 0;
     overflow-x: hidden;
@@ -4991,7 +4957,7 @@ body.no-scroll { overflow: hidden; }
 .public-theme-city-links--salute-luxury.public-theme-city-links--home { margin: 0; padding: 0; }
 
 /* Menu (navigation-overlay): complementos do componente compartilhado. */
-.sl-mobile-nav.public-theme-navigation-overlay--no-media { grid-template-columns: minmax(0, 1fr); }
+.public-theme-navigation-overlay--no-media { grid-template-columns: minmax(0, 1fr); }
 .public-theme-navigation-overlay__catalog-group h2 .public-theme-navigation-overlay__catalog-title { color: inherit; }
 .public-theme-navigation-overlay__media-name { display: block; margin-bottom: 18px; color: #fff; font-family: var(--sl-serif); font-size: 34px; font-weight: 500; }
 .salute-luxury-theme .public-theme-navigation-overlay__contact a { display: inline-flex; align-items: center; gap: 8px; }

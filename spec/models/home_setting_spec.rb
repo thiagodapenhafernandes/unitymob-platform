@@ -104,10 +104,12 @@ RSpec.describe HomeSetting, type: :model do
       tenant: Tenant.default,
       hero_title: "Hero",
       hero_subtitle: "Sub",
-      search_filter_display_mode: "both",
+      search_filter_display_mode: "sidebar",
       mobile_search_filter_display_mode: "hero"
     )
 
+    # "both" (Hero + botão flutuante) é válido desde o filtro global; o teste
+    # usa um modo que não existe.
     expect(setting).not_to be_valid
     expect(setting.errors[:search_filter_display_mode]).to be_present
   end

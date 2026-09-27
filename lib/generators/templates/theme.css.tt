@@ -1,31 +1,38 @@
 /* Tema <%= file_name %> — esqueleto gerado por `rails g public_theme`.
- * Disciplina: seletores planos por classe (BEM do contrato). Nada de `>`,
- * `nth-child` ou posição no DOM: o HTML varia por tema, as classes não.
- * Ganchos do card: .public-theme-property-card[-<variante>]
- *   __media __gallery(-frame) __placeholder __badges __discount-tag __tag
- *   __favorite __price-wrap __previous-price __price-label __price
- *   __body __development __location __specs __whatsapp
- *   __opportunity[--rent] (faixa OPORTUNIDADE / LOCAÇÃO COM PREÇO REDUZIDO)
- * Paleta da conta via :root: --color-primary, --color-secondary,
- * --color-accent, --color-hero-button, --color-hero-button-text.
+ *
+ * Como funciona (docs/public-theme-contract.md):
+ * - O tema nasce na variante `default`: herda TODOS os componentes públicos
+ *   (header, menu em tela cheia, filtro global, seções da home, cards, página
+ *   do imóvel, empreendimentos) com o HTML e o CSS padrão. Nada some.
+ * - Este arquivo só carrega quando o tema está ativo e é a pele por cima:
+ *   escopo sempre em [data-public-site-theme="<%= file_name %>"] (atributo do <body>)
+ *   mirando as classes do contrato public-theme-*. Nunca classes novas no HTML.
+ * - Seletores planos por classe; nada de `>` ou posição no DOM para estilizar
+ *   componente (o HTML pode variar por tema, as classes não).
+ * - Paleta da conta via :root: --color-primary, --color-secondary,
+ *   --color-accent, --color-hero-button, --color-hero-button-text.
+ * - Mudou um componente público? Vale para este tema também:
+ *   rode spec/requests/public_themes_contract_spec.rb.
  */
 
-.public-theme-property-card--<%= file_name %> {
-  position: relative;
-  overflow: hidden;
-  border-radius: 22px;
-  background: #fff;
+[data-public-site-theme="<%= file_name %>"] {
+  --public-theme-surface: #ffffff;
+  --public-theme-subtle: #f6f7f9;
+  --public-theme-border: color-mix(in srgb, var(--color-primary, #022b3a) 12%, #e5e7eb);
+  --public-theme-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+  --public-theme-radius: 14px;
 }
 
-.public-theme-property-card--<%= file_name %> .public-theme-property-card__opportunity {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 9px 16px;
-  background: #107448;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
+/* Exemplos de ajuste por componente (apague o que não usar). */
+[data-public-site-theme="<%= file_name %>"] .public-theme-section__title {
+  letter-spacing: -.01em;
+}
+
+[data-public-site-theme="<%= file_name %>"] .public-theme-property-card__opportunity {
   letter-spacing: .18em;
-  text-transform: uppercase;
+}
+
+[data-public-site-theme="<%= file_name %>"] .public-theme-navigation-overlay__cta,
+[data-public-site-theme="<%= file_name %>"] a.public-theme-section__cta--default {
+  border-radius: var(--public-theme-radius);
 }

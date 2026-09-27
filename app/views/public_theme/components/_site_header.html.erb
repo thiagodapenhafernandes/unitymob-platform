@@ -7,13 +7,11 @@
   logo = local_assigns.fetch(:logo)
   site_name = local_assigns.fetch(:site_name, "Site imobiliário")
   nav_items = Array(local_assigns[:nav_items])
-  mobile_nav_items = Array(local_assigns[:mobile_nav_items])
   header_class = ["public-theme-site-header", "public-theme-site-header--#{variant}", "public-theme-header", "public-theme-header--#{variant}", local_assigns[:class_name]].compact.join(" ")
   container_class = ["public-theme-site-header__container", "public-theme-header__container", "public-theme-header__bar", local_assigns.fetch(:container_class, "public-theme-container"), local_assigns[:bar_class]].compact.join(" ")
   brand_class = ["public-theme-site-header__brand", "public-theme-header__brand", local_assigns[:brand_class]].compact.join(" ")
   logo_class = ["public-theme-site-header__logo", "public-theme-header__logo", local_assigns[:logo_class]].compact.join(" ")
   nav_class = ["public-theme-site-header__nav", "public-theme-header__nav", local_assigns[:nav_class]].compact.join(" ")
-  mobile_nav_class = ["public-theme-site-header__mobile", "public-theme-header__mobile", local_assigns[:mobile_nav_class]].compact.join(" ")
   cta = local_assigns[:cta]
   actions = local_assigns[:actions]
   actions_class = local_assigns[:actions_class]
@@ -97,32 +95,4 @@
     <% end %>
   </div>
 
-  <% if mobile_nav_items.any? %>
-    <nav class="<%= mobile_nav_class %>" data-navbar-target="mobileMenu" aria-label="<%= local_assigns.fetch(:mobile_aria_label, "Menu principal mobile") %>">
-      <% mobile_nav_items.each do |item| %>
-        <% if (item[:action_type] || item["action_type"]).to_s == "form_modal" %>
-          <%= button_tag type: "button",
-                data: {
-                  controller: "public-form-trigger",
-                  action: "click->public-form-trigger#open",
-                  public_form_trigger_form_type_value: item[:url] || item["url"]
-                } do %>
-            <% if (item[:icon] || item["icon"]).present? %>
-              <%= public_icon(item[:icon] || item["icon"]) %>
-            <% end %>
-            <span><%= item[:label] || item["label"] %></span>
-          <% end %>
-        <% else %>
-          <%= link_to item[:url] || item["url"],
-                      target: item[:target] || item["target"],
-                      rel: item[:rel] || item["rel"] do %>
-            <% if (item[:icon] || item["icon"]).present? %>
-              <%= public_icon(item[:icon] || item["icon"]) %>
-            <% end %>
-            <span><%= item[:label] || item["label"] %></span>
-          <% end %>
-        <% end %>
-      <% end %>
-    </nav>
-  <% end %>
 <% end %>

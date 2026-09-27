@@ -51,9 +51,11 @@ RSpec.describe "Menu de navegação em tela cheia", type: :request do
     get root_path
 
     shell = Nokogiri::HTML(response.body).at_css('[data-controller~="salute-luxury-theme"]')
-    expect(shell.at_css("#saluteLuxuryMenu.sl-mobile-nav.public-theme-navigation-overlay--salute-luxury")).to be_present
+    expect(shell.at_css("#saluteLuxuryMenu.public-theme-navigation-overlay--salute-luxury")).to be_present
     expect(shell.at_css('[data-action*="salute-luxury-theme#openMenu"]')).to be_present
-    expect(response.body).not_to include("salute-luxury-theme#closeMenu", "sl-mobile-nav__phone")
+    # Apelidos de tema (.sl-*) ficam só no CSS do tema, nunca no HTML do componente.
+    expect(shell.at_css("#saluteLuxuryMenu")["class"]).not_to include("sl-")
+    expect(response.body).not_to include("salute-luxury-theme#closeMenu", "sl-mobile-nav")
   end
 
   it "sem foto de hero, o menu marca a variante sem mídia" do

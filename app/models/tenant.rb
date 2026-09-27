@@ -6,7 +6,7 @@ class Tenant < ApplicationRecord
     hero: "hero",
     property_card: "shared/tailwind/property_card",
     property_grid: "public_theme/components/default_property_grid",
-    pagination: "public_theme/components/default_pagination",
+    pagination: "public_theme/components/pagination",
     detail_body: "public_theme/components/default_detail_body",
     development_body: "public_theme/components/default_development_body",
     shell: "layouts/default_shell",

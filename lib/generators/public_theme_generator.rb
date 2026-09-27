@@ -24,8 +24,14 @@ class PublicThemeGenerator < Rails::Generators::NamedBase
     lines << "      label: \"#{options[:label].presence || file_name.humanize}\","
     lines << "      description: \"Tema #{file_name} (#{file_name}.css).\","
     lines << "      tenant_slugs: #{slugs.inspect}," if slugs.any?
+    # Variante default: o tema herda todos os componentes compartilhados; o
+    # CSS gerado é só a pele. Desenho próprio = trocar partials aqui depois.
+    lines << "      variant: \"default\","
+    lines << "      components: DEFAULT_THEME_COMPONENTS"
     lines << "    },"
-    inject_into_file "app/models/tenant.rb", before: "  }.freeze" do
+    # Âncora: o fecho de PUBLIC_SITE_THEME_METADATA (o primeiro "}.freeze" do
+    # arquivo é o de DEFAULT_THEME_COMPONENTS).
+    inject_into_file "app/models/tenant.rb", before: "  }.freeze\n\n  # Temas = folhas CSS do diretório" do
       "#{lines.join("\n")}\n"
     end
   end

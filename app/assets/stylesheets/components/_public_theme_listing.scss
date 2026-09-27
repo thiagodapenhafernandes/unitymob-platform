@@ -40,12 +40,12 @@
   line-height: 1.7;
 }
 
-.public-theme-developments {
+.public-theme-developments--default {
   padding: 48px 0 72px;
   background: linear-gradient(180deg, #f8fafc, #fff 320px);
 }
 
-.public-theme-developments__toolbar {
+.public-theme-developments--default .public-theme-developments__toolbar {
   display: grid;
   grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto;
   gap: 12px;
@@ -58,13 +58,13 @@
   box-shadow: 0 14px 34px rgba(15, 23, 42, .06);
 }
 
-.public-theme-developments__field {
+.public-theme-developments--default .public-theme-developments__field {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
-.public-theme-developments__label {
+.public-theme-developments--default .public-theme-developments__label {
   color: #64748b;
   font-size: .7rem;
   font-weight: 800;
@@ -72,12 +72,12 @@
   text-transform: uppercase;
 }
 
-.public-theme-developments__input-wrap {
+.public-theme-developments--default .public-theme-developments__input-wrap {
   position: relative;
   display: block;
 }
 
-.public-theme-developments__input-wrap .bi {
+.public-theme-developments--default .public-theme-developments__input-wrap .bi {
   position: absolute;
   top: 50%;
   left: 14px;
@@ -85,7 +85,7 @@
   transform: translateY(-50%);
 }
 
-.public-theme-developments__input {
+.public-theme-developments--default .public-theme-developments__input {
   width: 100%;
   min-height: 46px;
   padding: 0 14px;
@@ -96,23 +96,23 @@
   font-size: .95rem;
 }
 
-.public-theme-developments__input-wrap .public-theme-developments__input {
+.public-theme-developments--default .public-theme-developments__input-wrap .public-theme-developments__input {
   padding-left: 38px;
 }
 
-.public-theme-developments__input:focus {
+.public-theme-developments--default .public-theme-developments__input:focus {
   border-color: var(--color-primary, #022b3a);
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #022b3a) 16%, transparent);
 }
 
-.public-theme-developments__actions {
+.public-theme-developments--default .public-theme-developments__actions {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.public-theme-developments__submit {
+.public-theme-developments--default .public-theme-developments__submit {
   display: inline-flex;
   min-height: 46px;
   align-items: center;
@@ -128,31 +128,31 @@
   cursor: pointer;
 }
 
-.public-theme-developments__clear {
+.public-theme-developments--default .public-theme-developments__clear {
   color: #64748b;
   font-size: .9rem;
   font-weight: 700;
   text-decoration: underline;
 }
 
-.public-theme-developments__count {
+.public-theme-developments--default .public-theme-developments__count {
   margin: 0 0 18px;
   color: #475569;
 }
 
-.public-theme-developments__count strong {
+.public-theme-developments--default .public-theme-developments__count strong {
   color: var(--color-primary, #022b3a);
   font-size: 1.25rem;
 }
 
-.public-theme-developments__grid {
+.public-theme-developments--default .public-theme-developments__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 28px;
   margin-bottom: 40px;
 }
 
-.public-theme-developments__empty {
+.public-theme-developments--default .public-theme-developments__empty {
   display: grid;
   justify-items: center;
   gap: 10px;
@@ -160,40 +160,40 @@
   text-align: center;
 }
 
-.public-theme-developments__empty .bi {
+.public-theme-developments--default .public-theme-developments__empty .bi {
   color: #94a3b8;
   font-size: 2.5rem;
 }
 
-.public-theme-developments__empty h2 {
+.public-theme-developments--default .public-theme-developments__empty h2 {
   margin: 0;
   color: var(--color-primary, #022b3a);
   font-size: 1.5rem;
   font-weight: 800;
 }
 
-.public-theme-developments__about {
+.public-theme-developments--default .public-theme-developments__about {
   max-width: 900px;
   margin: 48px auto 0;
   color: #475569;
   line-height: 1.7;
 }
 
-.public-theme-developments__related {
+.public-theme-developments--default .public-theme-developments__related {
   display: grid;
   justify-items: center;
   gap: 10px;
   margin-top: 32px;
 }
 
-.public-theme-developments__related-links {
+.public-theme-developments--default .public-theme-developments__related-links {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
 }
 
-.public-theme-developments__related-link {
+.public-theme-developments--default .public-theme-developments__related-link {
   padding: 7px 14px;
   border: 1px solid rgba(15, 23, 42, .12);
   border-radius: 999px;
@@ -203,29 +203,29 @@
   text-decoration: none;
 }
 
-.public-theme-developments__related-link:hover {
+.public-theme-developments--default .public-theme-developments__related-link:hover {
   border-color: var(--color-primary, #022b3a);
   color: var(--color-primary, #022b3a);
 }
 
 @media (max-width: 1023px) {
-  .public-theme-developments__toolbar {
+  .public-theme-developments--default .public-theme-developments__toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .public-theme-developments__field--search,
-  .public-theme-developments__actions {
+  .public-theme-developments--default .public-theme-developments__field--search,
+  .public-theme-developments--default .public-theme-developments__actions {
     grid-column: 1 / -1;
   }
 
-  .public-theme-developments__grid {
+  .public-theme-developments--default .public-theme-developments__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .public-theme-developments__toolbar,
-  .public-theme-developments__grid {
+  .public-theme-developments--default .public-theme-developments__toolbar,
+  .public-theme-developments--default .public-theme-developments__grid {
     grid-template-columns: 1fr;
   }
 }
