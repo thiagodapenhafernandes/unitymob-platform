@@ -137,6 +137,7 @@ Rails.application.routes.draw do
     resource :contact_setting, only: [:edit, :update]
     resource :my_profile, only: [:edit, :update]
     resource :public_site_profile, only: [:edit, :update]
+    resource :institutional_page, only: [:edit, :update]
     resource :layout_setting, only: [:show, :edit, :update]
     resource :lead_setting, only: [:edit, :update]
     resource :footer_setting, only: [:edit, :update]

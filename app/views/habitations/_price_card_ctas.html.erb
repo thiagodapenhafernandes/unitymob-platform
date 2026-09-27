@@ -10,22 +10,8 @@
       data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
       data-require-lead-form="true"
       data-whatsapp-message="Olá, estou interessado no imóvel <%= title %> (Código: <%= habitation.codigo %>). Gostaria de mais informações.">
-    <%= public_svg_icon("whatsapp", class_name: "text-green-400") %>
-    <span class="public-habitations-show__cta-label--desktop">Falar no WhatsApp</span>
-    <span class="public-habitations-show__cta-label--mobile">Receber informações</span>
-  </button>
-
-  <button type="button"
-      class="public-habitations-show__cta public-habitations-show__cta--visit public-habitations-show__cta--desktop-only mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-three/15 bg-blue-three/5 px-4 py-3 font-bold text-blue-three transition hover:bg-blue-three/10"
-      data-action="click->lead-capture#open"
-      data-property-id="<%= habitation.id %>"
-      data-property-code="<%= habitation.codigo %>"
-      data-property-title="<%= title %>"
-      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
-      data-require-lead-form="true"
-      data-whatsapp-message="Olá, gostaria de agendar uma visita para o imóvel <%= title %> (Código: <%= habitation.codigo %>).">
-    <%= public_svg_icon("calendar", class_name: "text-golden-one") %>
-    Agendar visita
+    <i class="bi bi-whatsapp text-green-400" aria-hidden="true"></i>
+    <span class="public-habitations-show__cta-label">Tenho interesse</span>
   </button>
 
   <button type="button"
@@ -37,8 +23,11 @@
       data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
       data-require-lead-form="true"
       data-whatsapp-message="Olá, gostaria de conhecer as condições de pagamento do imóvel <%= title %> (Código: <%= habitation.codigo %>).">
-    <%= public_svg_icon("whatsapp") %>
+    <i class="bi bi-whatsapp" aria-hidden="true"></i>
     Condições de pagamento
   </button>
 
-  <p class="public-habitations-show__price-code mt-4 text-center text-xs text-gray-400">Código: <%= habitation.codigo %></p>
+  <p class="public-habitations-show__price-code mt-4 flex items-center justify-between gap-3 rounded-xl border border-blue-three/10 bg-blue-three/5 px-4 py-3">
+    <span class="public-habitations-show__price-code-label text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500">Código do imóvel</span>
+    <strong class="public-habitations-show__price-code-value text-lg font-extrabold tracking-wider text-blue-three lining-nums tabular-nums"><%= habitation.codigo %></strong>
+  </p>

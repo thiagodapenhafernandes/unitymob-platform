@@ -4,7 +4,7 @@
   groups = HomeSection::PROPERTY_FILTER_GROUPS.dup
   other_keys = HomeSection::PROPERTY_FILTER_OPTIONS.keys - groups.flat_map { |group| group[:keys] }
   groups << { title: "Outros", icon: "three-dots", tone: "slate", keys: other_keys } if other_keys.any?
-  choices = [["Imóveis", "properties"], ["Vídeos", "videos"], ["Blog", "blog"], ["Chamada para contato", "cta"]]
+  choices = [["Imóveis", "properties"], ["Vídeos", "videos"], ["Blog", "blog"], ["Chamada para contato", "cta"], ["Explore por cidade", "cities"]]
   choices << [@home_section.section_type_label, "custom"] if kind == "custom"
 %>
 <div class="ax-studio ax-studio--flat home-section-studio"

@@ -1,10 +1,11 @@
 class HomeSetting < ApplicationRecord
   include TenantScoped
 
-  SEARCH_FILTER_DISPLAY_MODES = %w[hero floating].freeze
+  SEARCH_FILTER_DISPLAY_MODES = %w[hero floating both].freeze
   SEARCH_FILTER_DISPLAY_MODE_OPTIONS = [
-    ["Filtro no hero", "hero"],
-    ["Botão flutuante", "floating"]
+    ["Só filtro no hero", "hero"],
+    ["Só botão flutuante", "floating"],
+    ["Hero + botão flutuante", "both"]
   ].freeze
   MOBILE_SEARCH_FILTER_DISPLAY_MODES = %w[floating hero both].freeze
   MOBILE_SEARCH_FILTER_DISPLAY_MODE_OPTIONS = [
@@ -25,6 +26,13 @@ class HomeSetting < ApplicationRecord
   # ActiveStorage attachments
   has_one_attached :hero_background_desktop
   has_one_attached :hero_background_mobile
+  has_one_attached :filter_panel_background
+  # Foto lateral do menu em tela cheia (navigation-overlay). Sem ela, o menu usa a do hero.
+  has_one_attached :navigation_menu_image
+  NAVIGATION_MENU_IMAGE_TYPES = %w[image/png image/jpeg image/webp].freeze
+  NAVIGATION_MENU_IMAGE_MAX_BYTES = 8.megabytes
+  attribute :remove_navigation_menu_image, :boolean, default: false
+  after_save :purge_navigation_menu_image, if: :remove_navigation_menu_image
   has_many :hero_slides, -> { ordered }, class_name: "HomeHeroSlide", dependent: :destroy
   accepts_nested_attributes_for :hero_slides, allow_destroy: true
   
@@ -53,6 +61,7 @@ class HomeSetting < ApplicationRecord
   validates :header_cta_label, length: { maximum: 30 }
   validates :header_cta_url, format: { with: PublicHeaderMenu::URL_FORMAT, message: "deve começar com / ou http(s)://" }, allow_blank: true
   validate :public_header_css_must_be_declarations_only
+  validate :navigation_menu_image_must_be_web_image
   
   # Singleton pattern - só existe um registro
   def self.instance(tenant: Current.tenant || Tenant.public_for)
@@ -96,7 +105,7 @@ class HomeSetting < ApplicationRecord
   end
 
   def floating_search_filter?
-    search_filter_display_mode == "floating"
+    search_filter_display_mode.in?(%w[floating both])
   end
 
   def mobile_floating_search_filter?
@@ -123,6 +132,17 @@ class HomeSetting < ApplicationRecord
     return nil if floating_search_filter? && mobile_floating_search_filter?
     return "public-global-search--desktop-only" if floating_search_filter?
     return "public-global-search--mobile-only" if mobile_floating_search_filter?
+
+    nil
+  end
+
+  # Filtros próprios da listagem (barra, gaveta e botão "Filtros") só onde o
+  # filtro global não aparece — senão a busca fica duplicada. Espelha
+  # floating_search_filter_visibility_class para a mesma faixa de tela.
+  def listing_filters_visibility_class
+    return "public-listing-filters--hidden" if floating_search_filter? && mobile_floating_search_filter?
+    return "public-listing-filters--mobile-only" if floating_search_filter?
+    return "public-listing-filters--desktop-only" if mobile_floating_search_filter?
 
     nil
   end
@@ -184,6 +204,25 @@ class HomeSetting < ApplicationRecord
     blue = hex[5..6].to_i(16)
 
     "rgba(#{red}, #{green}, #{blue}, #{opacity})"
+  end
+
+  def navigation_menu_image_must_be_web_image
+    change = attachment_changes["navigation_menu_image"]
+    return unless change.is_a?(ActiveStorage::Attached::Changes::CreateOne)
+
+    blob = change.blob
+    return if NAVIGATION_MENU_IMAGE_TYPES.include?(blob.content_type) && blob.byte_size <= NAVIGATION_MENU_IMAGE_MAX_BYTES
+
+    errors.add(:navigation_menu_image, "deve ser PNG, JPEG ou WebP de até 8 MB")
+  end
+
+  # Remoção explícita no admin: volta a valer a foto do hero. Envio de nova foto
+  # no mesmo salvamento tem prioridade.
+  def purge_navigation_menu_image
+    self.remove_navigation_menu_image = false
+    return if attachment_changes["navigation_menu_image"].present?
+
+    navigation_menu_image.purge_later if navigation_menu_image.attached?
   end
 
   def public_header_css_must_be_declarations_only

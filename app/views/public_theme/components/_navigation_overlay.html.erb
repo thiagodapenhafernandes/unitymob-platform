@@ -1,0 +1,121 @@
+<%# Menu de navegação em tela cheia — mesmo HTML em todos os temas (contrato
+    public-theme-navigation-overlay__*); cada tema estiliza a variante.
+    Abre com o evento `public-navigation:open` (botões do header) e fecha no
+    X, no Esc ou ao seguir um link.
+    Locals: id, variant, class_name, site_name, logo, media_logo, tagline e os
+    dados de public_navigation_overlay_data (catalog_groups, menu_links,
+    address, phone, phone_url, cta_label, cta_url, media). %>
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  catalog_groups = Array(local_assigns[:catalog_groups])
+  menu_links = Array(local_assigns[:menu_links])
+  media = local_assigns[:media]
+  overlay_class = ["public-theme-navigation-overlay", "public-theme-navigation-overlay--#{variant}",
+                   ("public-theme-navigation-overlay--no-media" if media.blank?), local_assigns[:class_name]].compact.join(" ")
+  close_action = "click->navigation-overlay#close"
+%>
+
+<%= tag.div id: local_assigns[:id], class: overlay_class, tabindex: "-1",
+      role: "dialog", aria: { hidden: true, modal: true, label: "Navegação principal" },
+      data: { controller: "navigation-overlay",
+              action: "public-navigation:open@window->navigation-overlay#open keydown.esc@window->navigation-overlay#close" } do %>
+  <% if media.present? %>
+    <div class="public-theme-navigation-overlay__media" aria-hidden="true">
+      <%= tag.img alt: "", decoding: "async", data: { navigation_overlay_target: "media", src: url_for(media) } %>
+      <div class="public-theme-navigation-overlay__media-brand">
+        <% if local_assigns[:media_logo].present? %>
+          <%= image_tag local_assigns[:media_logo], alt: "", class: "public-theme-navigation-overlay__media-logo" %>
+        <% else %>
+          <strong class="public-theme-navigation-overlay__media-name"><%= local_assigns[:site_name] %></strong>
+        <% end %>
+        <% if local_assigns[:tagline].present? %><p><%= local_assigns[:tagline] %></p><% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="public-theme-navigation-overlay__panel">
+    <div class="public-theme-navigation-overlay__topbar">
+      <%= link_to root_path, class: "public-theme-navigation-overlay__mobile-logo", aria: { label: local_assigns[:site_name] },
+                             data: { action: close_action } do %>
+        <% if local_assigns[:logo].present? %>
+          <%= image_tag local_assigns[:logo], alt: local_assigns[:site_name] %>
+        <% else %>
+          <span><%= local_assigns[:site_name] %></span>
+        <% end %>
+      <% end %>
+      <button type="button" class="public-theme-navigation-overlay__close" data-action="<%= close_action %>" aria-label="Fechar menu">
+        <%= public_icon("x-lg") %>
+      </button>
+    </div>
+
+    <div class="<%= ["public-theme-navigation-overlay__content", ("public-theme-navigation-overlay__content--catalog" if catalog_groups.any?)].compact.join(" ") %>">
+      <% if catalog_groups.any? %>
+        <div class="public-theme-navigation-overlay__catalog" aria-label="Imóveis por categoria">
+          <% catalog_groups.each do |group| %>
+            <section class="public-theme-navigation-overlay__catalog-group">
+              <h2>
+                <% if group[:url] %>
+                  <%= link_to group[:title], group[:url], data: { action: close_action } %>
+                <% else %>
+                  <span class="public-theme-navigation-overlay__catalog-title"><%= group[:title] %></span>
+                <% end %>
+                <% if group[:count].to_i.positive? %><span><%= number_with_delimiter(group[:count]) %></span><% end %>
+                <% if group[:action_label].present? %><small>- <%= group[:action_label] %></small><% end %>
+              </h2>
+              <nav aria-label="<%= group[:title] %>">
+                <% group[:links].each do |item| %>
+                  <%= link_to item[:url], data: { action: close_action } do %>
+                    <%= public_icon("chevron-right") %>
+                    <span><%= item[:label] %></span>
+                    <% if item[:count].to_i.positive? %><em><%= number_with_delimiter(item[:count]) %></em><% end %>
+                  <% end %>
+                <% end %>
+              </nav>
+            </section>
+          <% end %>
+
+          <%# Links do menu do admin (Sobre, Blog, Contato...) continuam acessíveis junto do catálogo. %>
+          <% if menu_links.any? %>
+            <section class="public-theme-navigation-overlay__catalog-group public-theme-navigation-overlay__catalog-group--menu">
+              <h2><span class="public-theme-navigation-overlay__catalog-title">Navegação</span></h2>
+              <nav aria-label="Navegação do site">
+                <% menu_links.each do |item| %>
+                  <%= link_to item[:url], target: item[:target], rel: item[:rel], data: { action: close_action },
+                                          aria: { current: ("page" if item[:active]) } do %>
+                    <%= public_icon(item[:icon].presence || "chevron-right") %>
+                    <span><%= item[:label] %></span>
+                  <% end %>
+                <% end %>
+              </nav>
+            </section>
+          <% end %>
+        </div>
+      <% else %>
+        <nav class="public-theme-navigation-overlay__featured" aria-label="Navegação do site">
+          <% menu_links.each do |item| %>
+            <%= link_to item[:label], item[:url], target: item[:target], rel: item[:rel], data: { action: close_action },
+                                                  aria: { current: ("page" if item[:active]) } %>
+          <% end %>
+        </nav>
+      <% end %>
+    </div>
+
+    <div class="public-theme-navigation-overlay__footer">
+      <div class="public-theme-navigation-overlay__contact">
+        <% if local_assigns[:address].present? %><span><%= local_assigns[:address] %></span><% end %>
+        <% if local_assigns[:phone].present? %>
+          <%= link_to local_assigns[:phone_url], target: ("_blank" if local_assigns[:phone_url].to_s.start_with?("https://")), rel: "noopener",
+                                                 aria: { label: "Falar com #{local_assigns[:site_name]}" } do %>
+            <%= public_icon(local_assigns[:phone_url].to_s.include?("wa.me") ? "whatsapp" : "telephone") %>
+            <%= local_assigns[:phone] %>
+          <% end %>
+        <% end %>
+      </div>
+      <% if local_assigns[:cta_url].present? %>
+        <%= link_to local_assigns[:cta_label], local_assigns[:cta_url],
+              class: "public-theme-button public-theme-button--style-gold public-theme-navigation-overlay__cta",
+              data: { action: close_action } %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

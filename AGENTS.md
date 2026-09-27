@@ -43,3 +43,15 @@
 - No mobile/PWA/app nativo, sempre que o usuário entrar em uma tela específica que não seja uma listagem principal, use o header compacto de detalhe: ação de voltar à esquerda, título/contexto centralizado no meio e uma ação, estado ou indicador relevante à direita.
 - Esse header deve respeitar `safe-area` do iPhone e substituir visualmente o cabeçalho administrativo padrão no mobile, evitando sobreposição com status bar, navbar, breadcrumb ou contextbar.
 - Listagens principais podem manter seus headers próprios de busca/filtro/tabs; telas de detalhe, formulário, acompanhamento, fila, agenda, proposta ou qualquer drill-down operacional devem seguir o padrão compacto.
+
+## Site público e temas
+
+Referência completa: `docs/public-theme-contract.md`. Esta seção é o resumo obrigatório.
+
+- Toda mudança em tela, componente, CSS ou comportamento do site público vale para **todos** os temas de `app/assets/stylesheets/public_site_themes/` (hoje `default`, `saluteimoveis`, `conexaoimobiliaria`, `salute_luxury`), cada um na sua identidade visual. Nunca só o tema citado no pedido.
+- A regra vale para temas futuros: tema novo entra no padrão com o próprio CSS. Não crie condição ou trava que funcione só para os temas atuais (nada de `if tema == ...` no markup compartilhado).
+- Um HTML por componente em `app/views/public_theme/components/`, com classes `public-theme-<componente>__*` e a variante como sufixo `--<variante>` (`default` ou `salute-luxury`). Tema com desenho próprio registra partial em `Tenant::PUBLIC_SITE_THEME_METADATA[:components]` e emite as mesmas classes. Apelidos de tema (`.sl-*`) só aparecem no CSS do tema, agrupados no seletor.
+- Estilo da variante `default` (Padrão, Salute, Conexão) fica em `app/assets/stylesheets/components/_public_theme_*.scss`, usando a paleta da conta (`--color-primary`, `--color-secondary`, `--color-accent`). A variante luxury fica em `public_site_themes/salute_luxury.css`.
+- O que existe num tema e falta em outro deve ser replicado na mesma entrega. Ao entregar, dê o veredito por tema: ajustado, ou já coberto sem mudança.
+- Contas novas nascem no tema `default` (padrão da coluna `tenants.public_site_theme` e fallback em `Tenant#public_site_theme_key`).
+- Validação obrigatória ao mexer no site público: `bundle exec rspec spec/requests/public_themes_contract_spec.rb spec/views/public_theme spec/lib` (o primeiro percorre todos os temas cadastrados, inclusive os que forem criados depois) e `npm run build:css` quando houver SCSS.

@@ -108,7 +108,7 @@
             data-public-property-favorite-image-url-value="<%= favorite_image_url %>"
             data-public-property-favorite-price-value="<%= current_price_label %>"
             data-public-property-favorite-location-value="<%= location %>">
-      <%= public_svg_icon("heart", data: { public_property_favorite_target: "icon" }) %>
+      <%= public_icon("heart", data: { public_property_favorite_target: "icon" }) %>
       <span class="public-theme-property-card__favorite-label" data-public-property-favorite-target="label">Favoritar imóvel</span>
     </button>
 
@@ -125,10 +125,10 @@
   </div>
 
   <div class="public-theme-property-card__body">
-    <h3><%= link_to title, property_url, data: card_tracking_data %></h3>
+    <h3 class="public-theme-property-card__title"><%= link_to title, property_url, data: card_tracking_data, title: title %></h3>
     <% if show_context %>
       <p class="public-theme-property-card__development">
-        <%= public_svg_icon("building") %>
+        <%= public_icon("building") %>
         <span>
           <small><%= context_label %></small>
           <strong><%= context_name %></strong>
@@ -136,13 +136,18 @@
       </p>
     <% end %>
     <% if location.present? %>
-      <p class="public-theme-property-card__location"><%= public_svg_icon("geo-alt") %><span><%= location %></span></p>
+      <p class="public-theme-property-card__location"><%= public_icon("geo-alt") %><span><%= location %></span></p>
     <% end %>
 
+    <%
+      suites = property.suites_qtd.to_i
+      parking = property.vagas_qtd.to_i
+      area = property.area_privativa_m2.to_f
+    %>
     <div class="public-theme-property-card__specs">
-      <% if property.suites_qtd.to_i.positive? %><span><%= public_svg_icon("door-open") %><b><%= property.suites_qtd %></b> suítes</span><% end %>
-      <% if property.vagas_qtd.to_i.positive? %><span><%= public_svg_icon("car-front") %><b><%= property.vagas_qtd %></b> vagas</span><% end %>
-      <% if property.area_privativa_m2.to_f.positive? %><span><%= public_svg_icon("aspect-ratio") %><b><%= number_with_precision(property.area_privativa_m2, precision: 0) %></b> m²</span><% end %>
+      <% if suites.positive? %><span class="public-theme-property-card__spec"><%= public_icon("door-open") %><span><b><%= suites %></b> <%= suites == 1 ? "suíte" : "suítes" %></span></span><% end %>
+      <% if parking.positive? %><span class="public-theme-property-card__spec"><%= public_icon("car-front") %><span><b><%= parking %></b> <%= parking == 1 ? "vaga" : "vagas" %></span></span><% end %>
+      <% if area.positive? %><span class="public-theme-property-card__spec"><%= public_icon("aspect-ratio") %><span><b><%= number_with_precision(area, precision: 0, delimiter: ".") %></b> m²</span></span><% end %>
     </div>
 
     <button type="button"
@@ -162,7 +167,7 @@
             data-require-lead-form="true"
             data-whatsapp-message="Olá, vi o imóvel <%= title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
             aria-label="Solicitar informações pelo WhatsApp sobre <%= title %>">
-      <%= public_svg_icon("whatsapp", class_name: "public-theme-property-card__whatsapp-icon") %>
+      <i class="public-theme-property-card__whatsapp-icon bi bi-whatsapp" aria-hidden="true"></i>
       <span>Tenho interesse</span>
     </button>
   </div>

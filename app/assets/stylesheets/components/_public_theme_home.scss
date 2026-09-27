@@ -1,0 +1,76 @@
+// Seções da home — contrato public-theme-home-section / public-theme-section__*.
+// Variante default: Padrão, Salute e Conexão (as cores vêm das variáveis de cada skin).
+
+.public-theme-home-section--default {
+  padding: 4rem 0;
+  background: var(--public-theme-surface, #fff);
+}
+
+.public-theme-home-section--default.public-theme-home-section--alt {
+  background: var(--public-theme-subtle, #f8fafc);
+}
+
+.public-theme-section__head--default {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 760px;
+  margin: 0 auto 3rem;
+  text-align: center;
+}
+
+.public-theme-section__head--default .public-theme-section__eyebrow {
+  color: var(--color-accent, #bfab25);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.public-theme-section__head--default .public-theme-section__title {
+  margin: 0;
+  color: var(--color-primary, #022b3a);
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.public-theme-section__head--default .public-theme-section__rule {
+  width: 56px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--color-accent, #bfab25);
+}
+
+.public-theme-section__head--default .public-theme-section__lead {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+// Comum a todos os temas (estrutura, não aparência): cada variante ajusta só o espaço.
+.public-theme-section__actions {
+  margin-top: 2.5rem;
+  text-align: center;
+}
+
+a.public-theme-section__cta--default,
+a.public-theme-section__cta--default:visited {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2.5rem;
+  border-radius: var(--public-theme-radius, .5rem);
+  background: var(--color-primary, #022b3a);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / .1);
+  transition: background-color .3s ease, color .3s ease, box-shadow .3s ease, transform .3s ease;
+}
+
+a.public-theme-section__cta--default:hover {
+  background: var(--color-accent, #bfab25);
+  color: var(--color-primary, #022b3a);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / .1);
+  transform: translateY(-2px);
+}

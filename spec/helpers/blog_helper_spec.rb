@@ -32,4 +32,14 @@ RSpec.describe BlogHelper, type: :helper do
     expect(Nokogiri::HTML.fragment(body).at_css("img")["loading"]).to eq("lazy")
   end
 
+  it "limpa o rabicho do WordPress no resumo do card e escolhe a categoria específica" do
+    article = Tenant.default.blog_articles.build(title: "Card", excerpt: "O mercado começa 2026 com um sinal positivo e atingiu […] Leia mais…")
+    allow(article).to receive(:blog_categories).and_return([double(name: "Geral"), double(name: "Mercado Imobiliário")])
+
+    expect(helper.blog_card_excerpt(article)).to eq("O mercado começa 2026 com um sinal positivo e atingiu…")
+    expect(helper.blog_card_category(article)).to eq("Mercado Imobiliário")
+
+    allow(article).to receive(:blog_categories).and_return([double(name: "Geral")])
+    expect(helper.blog_card_category(article)).to eq("Geral")
+  end
 end

@@ -52,4 +52,12 @@ RSpec.describe HomeVideosHelper, type: :helper do
       expect(helper.home_video_payload("")).to be_nil
     end
   end
+
+  describe "#home_video_price_label" do
+    it "formata venda e locação com um espaço só depois do R$" do
+      expect(helper.home_video_price_label(Habitation.new(valor_venda_cents: 1_950_000_000))).to eq("R$ 19.500.000")
+      expect(helper.home_video_price_label(Habitation.new(valor_venda_cents: 0, valor_locacao_cents: 850_000))).to eq("R$ 8.500/mês")
+      expect(helper.home_video_price_label(Habitation.new(valor_venda_cents: 0, valor_locacao_cents: 0))).to eq("Preço sob consulta")
+    end
+  end
 end

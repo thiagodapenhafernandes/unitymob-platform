@@ -1,0 +1,13 @@
+<%# Cabeçalho de seção (home e blocos internos) — mesmo HTML em todos os temas
+    (contrato public-theme-section__*); cada tema estiliza a variante.
+    Locals: title, lead, eyebrow, variant, class_name %>
+<header class="<%= ["public-theme-section__head", "public-theme-section__head--center", "public-theme-section__head--#{local_assigns.fetch(:variant, "default")}", local_assigns[:class_name]].compact.join(" ") %>">
+  <% if local_assigns[:eyebrow].present? %>
+    <span class="public-theme-section__eyebrow"><%= eyebrow %></span>
+  <% end %>
+  <h2 class="public-theme-section__title"><%= title %></h2>
+  <span class="public-theme-section__rule" aria-hidden="true"></span>
+  <% if local_assigns[:lead].present? %>
+    <p class="public-theme-section__lead"><%= lead %></p>
+  <% end %>
+</header>

@@ -115,6 +115,33 @@ module Seo
       development_pages(tenant: tenant).map { |slug, data| data.merge(slug: slug, path: "/empreendimentos/#{slug}") }
     end
 
+    # "Buscas relacionadas" das telas de busca: só links que levam a algum
+    # imóvel desta conta (frente mar numa conta sem praia sumiria da lista em
+    # vez de abrir uma listagem vazia). Links de bairro já são restritos em
+    # localized_pages. Cache de 30 min, renovado quando um imóvel muda.
+    def self.available_property_links(tenant: current_tenant)
+      available_links(property_links(tenant: tenant), tenant: tenant, kind: "property") do |params|
+        tenant.habitations.public_property_search(params).exists?
+      end
+    end
+
+    def self.available_development_links(tenant: current_tenant)
+      available_links(development_links(tenant: tenant), tenant: tenant, kind: "development") do |params|
+        Array(params[:characteristics]).reduce(tenant.habitations.empreendimentos_publicos) do |scope, characteristic|
+          scope.respond_to?(characteristic) ? scope.public_send(characteristic) : scope
+        end.exists?
+      end
+    end
+
+    def self.available_links(links, tenant:, kind:)
+      tenant ||= Tenant.public_for
+      updated_at = tenant.habitations.maximum(:updated_at)&.utc&.to_i || 0
+      live = Rails.cache.fetch("strategic_landing_links_v1/#{kind}/tenant/#{tenant.id}/#{updated_at}", expires_in: 30.minutes) do
+        links.select { |link| link[:params][:city].present? || yield(link[:params]) }.map { |link| link[:slug] }
+      end
+      links.select { |link| live.include?(link[:slug]) }
+    end
+
     def self.property_pages(tenant: current_tenant)
       localized_pages(PROPERTY_PAGES, tenant: tenant, location_slugs: PROPERTY_LOCATION_SLUGS)
     end
@@ -144,10 +171,13 @@ module Seo
       TEXT
     end
 
+    # Páginas de bairro/cidade (Centro, Barra Sul, Praia Brava...) valem para a
+    # conta que tem imóvel publicado ali — pelo estoque, não pelo nome ou slug
+    # da conta. Cache de 1h por conta (estoque de região muda devagar).
     def self.localized_pages(source, tenant:, location_slugs:)
       tenant ||= Tenant.public_for
-      pages = source
-      pages = pages.except(*location_slugs) unless tenant.slug == Tenant::DEFAULT_SLUG
+      served = served_location_slugs(source.slice(*location_slugs), tenant: tenant)
+      pages = source.except(*(location_slugs - served))
 
       identity = Tenants::PublicIdentity.new(tenant)
       city = identity.primary_city.presence || "sua região"
@@ -163,9 +193,15 @@ module Seo
       end
     end
 
+    def self.served_location_slugs(location_pages, tenant:)
+      Rails.cache.fetch("strategic_landing_locations_v1/tenant/#{tenant.id}/#{location_pages.keys.join(',')}", expires_in: 1.hour) do
+        location_pages.select { |_slug, data| tenant.habitations.public_property_search(data[:params]).exists? }.keys
+      end
+    end
+
     def self.current_tenant
       Current.tenant || Tenant.public_for
     end
-    private_class_method :localized_pages, :current_tenant
+    private_class_method :localized_pages, :current_tenant, :available_links, :served_location_slugs
   end
 end

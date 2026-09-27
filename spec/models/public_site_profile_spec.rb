@@ -65,4 +65,16 @@ RSpec.describe PublicSiteProfile do
       { label: "Prefeitura", url: "https://cidade.example.gov.br", description: "Portal municipal", icon: "building" }
     ])
   end
+
+  it "mantém a identidade do empreendimento desligada por padrão e persiste a escolha da conta" do
+    tenant = Tenant.create!(name: "Identidade", slug: "identidade-empreendimento")
+
+    expect(described_class.current(tenant: tenant).show_development_identity?).to be(false)
+
+    expect(described_class.new({ show_development_identity: "1" }, tenant: tenant).save).to be(true)
+    expect(described_class.current(tenant: tenant).show_development_identity?).to be(true)
+
+    described_class.new({ show_development_identity: "0" }, tenant: tenant).save
+    expect(described_class.current(tenant: tenant).show_development_identity?).to be(false)
+  end
 end

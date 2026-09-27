@@ -2,8 +2,8 @@
 <% if setting.present? %>
   <style>
     <% {
-      menu_color: ['[data-header-part="links"] a, [data-header-part="search"], [data-header-part="toggle"], [data-header-part="panel"] a, [data-header-part="cta"]', "color"],
-      menu_hover_color: ['[data-header-part="links"] a:is(:hover, :focus-visible), [data-header-part="search"]:is(:hover, :focus-visible), [data-header-part="toggle"]:is(:hover, :focus-visible), [data-header-part="panel"] a:is(:hover, :focus-visible), [data-header-part="cta"]:is(:hover, :focus-visible)', "color"],
+      menu_color: ['[data-header-part="links"] a, [data-header-part="search"], [data-header-part="toggle"], [data-header-part="cta"]', "color"],
+      menu_hover_color: ['[data-header-part="links"] a:is(:hover, :focus-visible), [data-header-part="search"]:is(:hover, :focus-visible), [data-header-part="toggle"]:is(:hover, :focus-visible), [data-header-part="cta"]:is(:hover, :focus-visible)', "color"],
       cta_background: ['[data-header-part="cta"]', "background-color"],
       cta_hover_background: ['[data-header-part="cta"]:is(:hover, :focus-visible)', "background-color"]
     }.each do |key, (selector, property)| %>

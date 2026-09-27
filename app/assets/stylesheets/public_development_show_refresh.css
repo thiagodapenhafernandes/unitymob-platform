@@ -11,9 +11,7 @@
   font-family: "Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.public-development-show .container-custom {
-  max-width: 1180px;
-}
+/* Largura: herda .container-custom (1440px), a mesma da home e da busca. */
 
 .public-development-show__hero {
   min-height: 520px;
@@ -150,7 +148,7 @@
   line-height: 1.76;
 }
 
-.public-development-show__prose.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+.public-development-show__prose.is-collapsible .public-collapsible-text__content::after {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 78%);
 }
 

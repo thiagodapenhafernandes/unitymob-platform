@@ -217,7 +217,11 @@
         data-public-interest-tracker-property-parking-spaces-value="<%= @habitation&.vagas_qtd %>"
         data-public-interest-tracker-property-price-cents-value="<%= @habitation&.valor_venda_cents.presence || @habitation&.valor_locacao_cents %>">
     <%= render "layouts/tracking_body", tracking_setting: @tracking_setting %>
-    <%= theme_component(:shell) { yield } %>
+    <%# O filtro global fica dentro do shell: variantes (luxury) dependem do
+        controller Stimulus que o shell monta. %>
+    <%= theme_component(:shell) do
+          safe_join([yield, (render("shared/global_property_search_drawer") if @home_setting&.renders_floating_search_filter? && !@hide_global_search)].compact)
+        end %>
     
     <%# Performance: Defer non-critical external libraries %>
     <script>
@@ -256,7 +260,6 @@
     
     <%= render 'shared/code_search_modal' %>
     <%= render 'shared/lead_modal' %>
-    <%= render 'shared/global_property_search_drawer' if @home_setting&.renders_floating_search_filter? %>
     <%= render 'shared/lgpd_consent' %>
   </body>
 </html>

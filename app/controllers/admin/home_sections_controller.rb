@@ -108,6 +108,7 @@ class Admin::HomeSectionsController < Admin::BaseController
     blog_content = content_kind == "blog" || (content_kind.blank? && @home_section&.blog?)
     cta_content = content_kind == "cta" || (content_kind.blank? && @home_section&.cta_contact?)
     video_content = content_kind == "videos" || (content_kind.blank? && @home_section&.featured_videos?)
+    city_content = content_kind == "cities" || (content_kind.blank? && @home_section&.city_links?)
     filters = permitted.delete(:property_filters)
     filters = if filters.respond_to?(:to_unsafe_h)
                 filters.to_unsafe_h
@@ -125,10 +126,12 @@ class Admin::HomeSectionsController < Admin::BaseController
                              "cta_contact"
                            elsif video_content
                              "featured_videos"
+                           elsif city_content
+                             "city_links"
                            else
                              HomeSection.infer_section_type_from_filters(filters, fallback: content_kind == "properties" ? nil : section_type_fallback)
                            end
-    attrs[:property_filters] = {} if blog_content || cta_content
+    attrs[:property_filters] = {} if blog_content || cta_content || city_content
     attrs[:order_position] = next_order_position unless @home_section&.persisted?
     attrs
   end

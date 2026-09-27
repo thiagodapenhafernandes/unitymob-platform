@@ -1,3 +1,6 @@
+<%# Rodapé — contrato: .public-theme-site-footer(--<variante>).
+    Cobertura: spec/views/public_theme/header_footer_contract_spec.rb.
+    Ver docs/public-theme-contract.md. %>
 <%
   variant = local_assigns.fetch(:variant, "default")
   logo = local_assigns.fetch(:logo)
@@ -30,7 +33,8 @@
     <div class="<%= grid_class %>">
       <div class="public-theme-site-footer__brand">
         <% if logo.present? %>
-        <%= image_tag logo, alt: site_name %>
+        <%= image_tag logo, alt: site_name,
+              data: { controller: "image-fallback", action: "error->image-fallback#hide" } %>
       <% else %>
         <strong class="public-theme-site-footer__brand-name"><%= site_name %></strong>
       <% end %>
@@ -44,7 +48,7 @@
                           target: "_blank",
                           rel: "noopener",
                           aria: { label: item[:label] || item["label"] || social_title || "Rede social" } do %>
-                <%= public_svg_icon(item[:icon_class] || item["icon_class"] || "share") %>
+                <%= public_icon(item[:icon_class] || item["icon_class"] || "share") %>
               <% end %>
             <% end %>
           </div>
@@ -111,7 +115,7 @@
               <% rel = item[:rel] || item["rel"] %>
               <% next if value.blank? %>
               <p class="public-theme-site-footer__contact-item">
-                <%= public_svg_icon(icon) if icon.present? %>
+                <%= public_icon(icon) if icon.present? %>
                 <% if url.present? %>
                   <%= link_to value, url, target: target, rel: rel %>
                 <% else %>

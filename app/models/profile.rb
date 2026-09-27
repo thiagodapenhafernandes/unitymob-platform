@@ -183,6 +183,7 @@ class Profile < ApplicationRecord
       { label: "Landing Pages", icon: "bi-file-earmark-post", path: "admin_landing_pages_path", controllers: %w[landing_pages] },
       { label: "Banners", icon: "bi-image", path: "admin_banners_path", controllers: %w[banners] },
       { label: "Seções da Home", icon: "bi-layout-text-sidebar", path: "admin_home_sections_path", controllers: %w[home_sections] },
+      { label: "Páginas institucionais", icon: "bi-file-earmark-text", path: "edit_admin_institutional_page_path", controllers: %w[institutional_pages] },
       { caption: "Estrutura" },
       { label: "Identidade", icon: "bi-stars", path: "edit_admin_public_identity_path", controllers: %w[public_identities] },
       { label: "Topo e menu", icon: "bi-layout-text-window", path: "edit_admin_public_header_path", controllers: %w[public_headers] },

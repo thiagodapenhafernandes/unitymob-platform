@@ -90,15 +90,26 @@ RSpec.describe HomeSetting, type: :model do
     expect(setting.floating_search_filter_visibility_class).to eq("public-global-search--mobile-only")
   end
 
+  it "esconde os filtros próprios da listagem onde o filtro global aparece" do
+    build = ->(desktop, mobile) { described_class.new(tenant: Tenant.default, search_filter_display_mode: desktop, mobile_search_filter_display_mode: mobile) }
+
+    expect(build.call("floating", "floating").listing_filters_visibility_class).to eq("public-listing-filters--hidden")
+    expect(build.call("floating", "hero").listing_filters_visibility_class).to eq("public-listing-filters--mobile-only")
+    expect(build.call("hero", "floating").listing_filters_visibility_class).to eq("public-listing-filters--desktop-only")
+    expect(build.call("hero", "hero").listing_filters_visibility_class).to be_nil
+  end
+
   it "rejeita modo inválido de exibição do filtro público" do
     setting = described_class.new(
       tenant: Tenant.default,
       hero_title: "Hero",
       hero_subtitle: "Sub",
-      search_filter_display_mode: "both",
+      search_filter_display_mode: "sidebar",
       mobile_search_filter_display_mode: "hero"
     )
 
+    # "both" (Hero + botão flutuante) é válido desde o filtro global; o teste
+    # usa um modo que não existe.
     expect(setting).not_to be_valid
     expect(setting.errors[:search_filter_display_mode]).to be_present
   end

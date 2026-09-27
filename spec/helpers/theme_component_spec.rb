@@ -10,6 +10,8 @@ RSpec.describe ApplicationHelper, "#theme_component" do
     stub_theme("salute_luxury")
 
     expect(helper.theme_component_path(:property_card)).to eq("public_theme/components/property_card")
+    expect(helper.theme_component_path(:filter_trigger)).to eq("public_theme/components/filter_trigger")
+    expect(helper.theme_component_path(:filter_panel)).to eq("public_theme/components/filter_drawer")
     expect(helper.theme_variant).to eq("salute-luxury")
   end
 
@@ -18,6 +20,8 @@ RSpec.describe ApplicationHelper, "#theme_component" do
 
     expect(helper.theme_component_path(:property_card)).to eq("shared/tailwind/property_card")
     expect(helper.theme_component_path(:property_grid)).to eq("public_theme/components/default_property_grid")
+    expect(helper.theme_component_path(:filter_trigger)).to eq("public_theme/components/filter_trigger")
+    expect(helper.theme_component_path(:filter_panel)).to eq("public_theme/components/filter_drawer")
     expect(helper.theme_variant).to eq("default")
   end
 

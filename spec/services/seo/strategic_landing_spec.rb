@@ -1,13 +1,20 @@
 require "rails_helper"
 
 RSpec.describe Seo::StrategicLanding do
-  it "preserva os atalhos regionais da conta padrão" do
-    slugs = described_class.property_links(tenant: Tenant.default).pluck(:slug)
+  it "oferece o atalho de bairro para a conta que tem imóvel lá, qualquer que seja o slug" do
+    tenant = Tenant.create!(name: "Imobiliária Litoral", slug: "litoral-#{SecureRandom.hex(4)}")
+    create(:habitation, tenant:, exibir_no_site_flag: true,
+                        address_attributes: { logradouro: "Av. Brasil", numero: "1", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC" })
 
-    expect(slugs).to include("centro", "barra-sul", "praia-brava", "frente-mar")
+    property_slugs = described_class.property_links(tenant: tenant).pluck(:slug)
+
+    expect(property_slugs).to include("centro", "frente-mar")
+    expect(property_slugs).not_to include("barra-sul", "praia-brava")
+    expect(described_class.property("centro", tenant: tenant)).to be_present
+    expect(described_class.property("barra-sul", tenant: tenant)).to be_nil
   end
 
-  it "não oferece regiões da Salute para outro tenant" do
+  it "não oferece bairros onde a conta não tem imóvel" do
     tenant = Tenant.create!(name: "Imobiliária Curitiba", slug: "seo-curitiba-#{SecureRandom.hex(4)}")
     expect(PublicSiteProfile.new({ primary_city: "Curitiba" }, tenant: tenant).save).to be(true)
 

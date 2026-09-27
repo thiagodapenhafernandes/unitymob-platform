@@ -16,6 +16,16 @@
 %>
 
 <div class="<%= contact_class %>">
+  <%# Atendimento primeiro, valores logo abaixo (split_ctas). %>
+  <% if split_ctas %>
+    <section class="public-theme-property-contact-box__actions sl-detail__side-card sl-detail__contact-card">
+      <span class="public-theme-property-contact-box__eyebrow">Atendimento</span>
+      <h3 class="public-theme-property-contact-box__title">Entrar em contato</h3>
+      <p class="public-theme-property-contact-box__lead">Fale com um especialista e receba todas as informações deste imóvel.</p>
+      <%= render "habitations/price_card_ctas", habitation: habitation, title: title %>
+    </section>
+  <% end %>
+
   <%= render "habitations/price_card",
       habitation: habitation,
       title: title,
@@ -25,12 +35,6 @@
       has_discount: local_assigns[:has_discount],
       has_rent_discount: local_assigns[:has_rent_discount] %>
 
-  <% if split_ctas %>
-    <section class="public-theme-property-contact-box__actions sl-detail__side-card sl-detail__contact-card">
-      <h3>Entrar em contato</h3>
-      <%= render "habitations/price_card_ctas", habitation: habitation, title: title %>
-    </section>
-  <% end %>
 
   <% if shared_broker.present? %>
     <%= render "habitations/shared_broker_card",

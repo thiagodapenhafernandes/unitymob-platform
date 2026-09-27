@@ -5,7 +5,7 @@ module Seo
   class PageIdentity
     TRACKED_PROPERTY_FILTERS = %w[
       transaction_type finalidade category tipo city cidade neighborhood bairro state
-      min_bedrooms min_suites min_bathrooms min_parking min_area max_area min_price max_price
+      min_bedrooms min_suites min_bathrooms min_parking bedrooms suites parking min_area max_area min_price max_price
       price_range furnished accepts_exchange accepts_financing characteristics search
     ].freeze
     INDEXABLE_PROPERTY_FILTERS = %w[transaction_type category tipo city cidade neighborhood bairro characteristics price_range].freeze

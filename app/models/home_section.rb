@@ -9,7 +9,8 @@ class HomeSection < ApplicationRecord
     "featured_videos" => "Vídeos em destaque",
     "opportunities" => "Oportunidades",
     "developments" => "Empreendimentos",
-    "rentals" => "Imóveis para Locação"
+    "rentals" => "Imóveis para Locação",
+    "city_links" => "Explore por cidade"
   }.freeze
 
   PROPERTY_FILTER_OPTIONS = {
@@ -128,7 +129,8 @@ class HomeSection < ApplicationRecord
     developments: 5,
     rentals: 6,
     blog: 7,
-    featured_videos: 8
+    featured_videos: 8,
+    city_links: 9
   }
   
   # Validations
@@ -187,6 +189,7 @@ class HomeSection < ApplicationRecord
     return "blog" if blog?
     return "cta" if cta_contact?
     return "videos" if featured_videos?
+    return "cities" if city_links?
 
     property_content_section? ? "properties" : "custom"
   end

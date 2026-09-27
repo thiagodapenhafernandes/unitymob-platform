@@ -1,4 +1,4 @@
-\restrict czb4yo6DYyTU3NM444LG3tGj3asHsoDtmCn0Iq6cZ8hetlLHiYgtZlJpJ9c4svz
+\restrict Tm5TzluFdL9GSZ8ceft0GK3nPjdXRObKl4AcRni1mUB6W7GqbgHX3ZcuGi7QwXO
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -19611,11 +19611,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict czb4yo6DYyTU3NM444LG3tGj3asHsoDtmCn0Iq6cZ8hetlLHiYgtZlJpJ9c4svz
+\unrestrict Tm5TzluFdL9GSZ8ceft0GK3nPjdXRObKl4AcRni1mUB6W7GqbgHX3ZcuGi7QwXO
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927090000'),
 ('20260925120000'),
 ('20260922110000'),
 ('20260920100000'),

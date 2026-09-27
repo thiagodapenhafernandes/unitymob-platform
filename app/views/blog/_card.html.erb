@@ -1,11 +1,33 @@
-<% cache ["blog-card-v2", public_tenant.id, article, article.blog_categories.map(&:cache_key_with_version)], expires_in: 15.minutes do %>
-  <article class="blog-card">
-    <%= link_to blog_article_path(article) do %>
-      <%= blog_cover(article) %>
-      <p class="blog-meta"><%= article.blog_categories.map(&:name).join(" · ") %></p>
-      <h2><%= article.title %></h2>
-    <% end %>
-    <p><%= article.excerpt.to_s.truncate(160) %></p>
-    <time datetime="<%= article.published_at.iso8601 %>"><%= l(article.published_at.to_date, format: :long) %></time>
+<%# Card de artigo: home, listagem do blog e "Continue explorando". Estrutura
+    igual em todos os temas; cada tema estiliza a variante
+    (.public-theme-blog-card--<variante>) — base em blog.css. %>
+<% variant = theme_variant %>
+<% cache ["blog-card-v3", public_tenant.id, variant, article, article.blog_categories.map(&:cache_key_with_version)], expires_in: 15.minutes do %>
+  <% article_path = blog_article_path(article) %>
+  <% category = blog_card_category(article) %>
+  <article class="public-theme-blog-card public-theme-blog-card--<%= variant %>">
+    <div class="public-theme-blog-card__media">
+      <% if article.cover.attached? %>
+        <%= blog_cover(article) %>
+      <% else %>
+        <span class="public-theme-blog-card__placeholder" aria-hidden="true"><i class="bi bi-journal-text"></i></span>
+      <% end %>
+      <% if category.present? %>
+        <span class="public-theme-blog-card__category"><%= category %></span>
+      <% end %>
+    </div>
+
+    <div class="public-theme-blog-card__body">
+      <time class="public-theme-blog-card__date" datetime="<%= article.published_at.iso8601 %>"><%= l(article.published_at.to_date, format: :long) %></time>
+      <h3 class="public-theme-blog-card__title"><%= link_to article.title, article_path, class: "public-theme-blog-card__link", title: article.title %></h3>
+      <% excerpt = blog_card_excerpt(article) %>
+      <% if excerpt.present? %>
+        <p class="public-theme-blog-card__excerpt"><%= excerpt %></p>
+      <% end %>
+      <span class="public-theme-blog-card__more" aria-hidden="true">
+        Ler artigo
+        <i class="public-theme-blog-card__more-icon bi bi-arrow-right"></i>
+      </span>
+    </div>
   </article>
 <% end %>

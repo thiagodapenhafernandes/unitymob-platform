@@ -82,7 +82,7 @@
           vira uma pílula na fileira abaixo da galeria. %>
       <% unless local_assigns[:actions].present? %>
         <button type="button" class="public-theme-property-gallery__count sl-detail__gallery-count" data-gallery-open>
-          <%= public_svg_icon("images") %>
+          <%= public_icon("images") %>
           Ver <%= images.size %> fotos
         </button>
       <% end %>
@@ -98,7 +98,7 @@
     <% end %>
   <% else %>
     <div class="public-theme-property-gallery__empty sl-detail__empty-media">
-      <%= public_svg_icon("image") %>
+      <%= public_icon("image") %>
       <p>Sem fotos disponíveis</p>
     </div>
   <% end %>

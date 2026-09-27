@@ -4,7 +4,8 @@ RSpec.shared_examples "contrato do empreendimento público" do
     expect(development_standard_source).to include("public-theme-development-features--default")
     expect(development_standard_source).to include("public-theme-development-location--default")
     expect(development_standard_source).to include("public-theme-development-units--default")
-    expect(development_standard_source).to include("public-theme-developments--default")
+    # A listagem aplica a variante do tema ativo (default nos temas padrão).
+    expect(development_standard_source).to match(/public-theme-developments--(default|<%= variant %>)/)
     expect(development_standard_source).to include("public-theme-developments__grid")
   end
 

@@ -1,25 +1,32 @@
 <%
   image = development.primary_image_source || development.primary_image_url || development.image_urls.first
   title = development.nome_empreendimento.presence || development.titulo_anuncio.presence || development.display_title
-  location = [development.public_neighborhood, development.cidade].compact_blank.join(" - ")
-  units_count = local_assigns[:unit_count].presence || development.available_units_count
+  location = [development.public_neighborhood, development.cidade].compact_blank.join(" · ")
+  units_count = (local_assigns[:unit_count].presence || development.available_units_count).to_i
   unit_metric = local_assigns[:unit_metric]
   area_label = unit_metric ? unit_metric[:area_label] : development.card_area_text
   suites_label = unit_metric ? unit_metric[:suites_label] : development.card_suites_text
   dorms_label = unit_metric ? unit_metric[:dorms_label] : development.card_dormitorios_text
   vagas_label = unit_metric ? unit_metric[:vagas_label] : development.card_vagas_text
+  count_word = ->(label, singular, plural) { "#{label} #{label.to_s == "1" ? singular : plural}" }
   metrics = [
-    area_label,
-    suites_label.present? ? "#{suites_label} suítes" : (dorms_label.present? ? "#{dorms_label} quartos" : nil),
-    vagas_label.present? ? "#{vagas_label} vagas" : nil
+    (["aspect-ratio", area_label] if area_label.present?),
+    if suites_label.present?
+      ["door-open", count_word.call(suites_label, "suíte", "suítes")]
+    elsif dorms_label.present?
+      ["door-closed", count_word.call(dorms_label, "quarto", "quartos")]
+    end,
+    (["car-front", count_word.call(vagas_label, "vaga", "vagas")] if vagas_label.present?)
   ].compact
-  logo_url = development.effective_constructor&.dynamic_logo_url || development.effective_constructor&.favicon_url
+  # Só logo de verdade: o favicon, forçado a branco, virava um borrão no canto.
+  logo_url = development.effective_constructor&.dynamic_logo_url
+  variant = theme_variant
 %>
 
 <%= link_to public_habitation_detail_path(development),
     class: "public-development-card-link group block h-full rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-golden-one focus-visible:ring-offset-2",
     aria: { label: title } do %>
-  <article class="public-development-card relative min-h-[430px] overflow-hidden rounded-xl bg-blue-three shadow-[0_18px_40px_rgba(2,43,58,0.18)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_26px_56px_rgba(2,43,58,0.24)]">
+  <article class="public-development-card public-theme-dev-card public-theme-dev-card--<%= variant %> relative h-full min-h-[440px] overflow-hidden rounded-xl bg-blue-three shadow-[0_18px_40px_rgba(2,43,58,0.16)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_26px_56px_rgba(2,43,58,0.22)]">
     <% if image.present? %>
       <% image_source = public_image_url(image, resize_to_fill: [720, 860], format: :webp, force_variant: true).presence || public_image_url(image).presence || image %>
       <%= image_tag image_source,
@@ -32,49 +39,60 @@
           sizes: "(min-width: 1280px) 410px, (min-width: 768px) 50vw, 100vw" %>
     <% else %>
       <div class="public-theme-dev-card__veil absolute inset-0 z-0 flex items-center justify-center bg-blue-three text-white/40">
-        <i class="bi bi-building text-6xl"></i>
+        <i class="bi bi-building text-6xl" aria-hidden="true"></i>
       </div>
     <% end %>
 
-    <div class="public-theme-dev-card__veil absolute inset-0 z-10 bg-gradient-to-t from-black/75 via-black/30 to-transparent"></div>
-    <div class="public-theme-dev-card__veil absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black/80 via-black/55 to-transparent"></div>
-    <div class="public-theme-dev-card__veil absolute inset-x-0 bottom-0 z-10 h-1/2 bg-gradient-to-t from-blue-three/55 via-blue-three/20 to-transparent"></div>
-    <div class="public-theme-dev-card__veil absolute inset-0 z-10 bg-black/5 transition-colors duration-500 group-hover:bg-black/0"></div>
+    <%# Um véu só: leve no topo (selos legíveis) e fechado embaixo (texto). %>
+    <div class="public-theme-dev-card__veil absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.32)_0%,rgba(0,0,0,0)_26%,rgba(0,0,0,0)_42%,rgba(0,0,0,.55)_68%,rgba(0,0,0,.86)_100%)] transition-opacity duration-500"></div>
+
+    <% if units_count.positive? %>
+      <div class="public-theme-dev-card__count absolute left-5 top-5 z-20">
+        <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md">
+          <i class="bi bi-building" aria-hidden="true"></i>
+          <%= units_count %> <%= units_count == 1 ? "unidade" : "unidades" %>
+        </span>
+      </div>
+    <% end %>
 
     <% if logo_url.present? %>
-      <div class="public-theme-dev-card__logo absolute right-5 top-5 z-20 flex h-20 w-20 items-center justify-center rounded-lg bg-white/10 p-3 backdrop-blur-md">
+      <div class="public-theme-dev-card__logo absolute right-5 top-5 z-20 flex h-10 max-w-[120px] items-center justify-end">
         <img src="<%= logo_url %>"
              alt="<%= development.constructor_name %>"
-             class="max-h-full max-w-full object-contain brightness-0 invert">
+             loading="lazy"
+             class="max-h-full max-w-full object-contain opacity-90 brightness-0 invert drop-shadow-[0_2px_6px_rgba(0,0,0,.35)]">
       </div>
     <% end %>
 
-    <div class="public-theme-dev-card__count absolute left-5 top-5 z-20">
-      <span class="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white backdrop-blur-md">
-        <i class="bi bi-building"></i>
-        <%= units_count %> <%= units_count.to_i == 1 ? "unidade" : "unidades" %>
-      </span>
-    </div>
-
     <div class="public-theme-dev-card__body absolute inset-x-0 bottom-0 z-20 p-6 text-white">
-      <h3 class="font-serif text-3xl font-bold leading-none drop-shadow-sm">
+      <h3 class="public-theme-dev-card__title line-clamp-2 font-serif text-[30px] font-bold leading-[1.05] drop-shadow-sm">
         <%= title %>
       </h3>
 
       <% if metrics.any? %>
-        <p class="mt-3 text-sm font-bold leading-relaxed text-white">
-          <%= metrics.join(" | ") %>
+        <p class="public-theme-dev-card__metrics mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-white/90">
+          <% metrics.each do |icon, label| %>
+            <span class="public-theme-dev-card__metric inline-flex items-center gap-1.5 whitespace-nowrap">
+              <i class="public-theme-dev-card__metric-icon bi bi-<%= icon %> text-golden-one" aria-hidden="true"></i>
+              <%= label %>
+            </span>
+          <% end %>
         </p>
       <% end %>
 
-      <div class="my-4 h-px w-full bg-white/55"></div>
+      <div class="public-theme-dev-card__divider my-4 h-px w-full bg-white/25"></div>
 
-      <% if location.present? %>
-        <p class="flex items-center gap-2 text-base font-bold text-white">
-          <i class="bi bi-geo-alt text-golden-one"></i>
-          <%= location %>
-        </p>
-      <% end %>
+      <div class="public-theme-dev-card__footer flex items-center justify-between gap-3">
+        <% if location.present? %>
+          <p class="public-theme-dev-card__location flex min-w-0 items-center gap-2 text-sm font-medium text-white/85">
+            <i class="public-theme-dev-card__location-icon bi bi-geo-alt text-golden-one" aria-hidden="true"></i>
+            <span class="truncate"><%= location %></span>
+          </p>
+        <% end %>
+        <span class="public-theme-dev-card__cta ml-auto inline-flex h-9 w-9 flex-none items-center justify-center rounded-full border border-white/40 text-white transition-all duration-300 group-hover:border-golden-one group-hover:bg-golden-one group-hover:text-blue-three" aria-hidden="true">
+          <i class="bi bi-arrow-up-right"></i>
+        </span>
+      </div>
     </div>
   </article>
 <% end %>

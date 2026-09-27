@@ -1,5 +1,5 @@
 <!-- Listing Page with Horizontal Filters (Image Replica) -->
-<div data-controller="sidebar advanced-filters" class="public-habitations-index mt-[72px]"> <!-- Added margin-top to compensate for fixed header -->
+<div data-controller="sidebar advanced-filters" class="public-habitations-index public-header-offset mt-[72px]"> <!-- Added margin-top to compensate for fixed header -->
 
   <!-- Advanced Filters Sidebar (Off-canvas) -->
   <div data-advanced-filters-target="overlay" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity duration-300" data-action="click->advanced-filters#close"></div>
@@ -34,17 +34,18 @@
     </div>
   </div>
 
+  <% listing_filters_class = @home_setting&.listing_filters_visibility_class %>
   <!-- Floating Filter Button (Mobile/Scroll) -->
   <button type="button" 
           data-action="click->advanced-filters#open"
-          class="public-habitations-index__floating-filter fixed z-40 bg-blue-three text-white shadow-2xl flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:bg-blue-one group"
+          class="<%= listing_filters_class %> public-habitations-index__floating-filter fixed z-40 bg-blue-three text-white shadow-2xl flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:bg-blue-one group"
           aria-label="Abrir filtros de imóveis">
     <i class="bi bi-sliders text-lg" aria-hidden="true"></i>
     <span>Filtros</span>
   </button>
 
   <!-- Horizontal Filter Bar (TOP) -->
-  <div class="public-habitations-index__filterbar bg-white border-b border-gray-200 z-30 shadow-sm py-3">
+  <div class="<%= listing_filters_class %> public-habitations-index__filterbar bg-white border-b border-gray-200 z-30 shadow-sm py-3">
     <div class="container-custom">
       <%= form_with url: habitations_path,
                     method: :get,
@@ -143,14 +144,17 @@
             </section>
           <% end %>
 
+          <% related_links = Seo::StrategicLanding.available_property_links %>
+          <% if related_links.any? %>
           <nav class="public-habitations-index__strategic-links bg-white border border-gray-100 rounded-xl p-5 shadow-sm" aria-label="Buscas estratégicas">
             <h2 class="public-habitations-index__section-title text-sm font-bold text-blue-three uppercase tracking-wide mb-3">Buscas relacionadas</h2>
             <div class="public-habitations-index__strategic-list flex flex-wrap gap-2">
-              <% Seo::StrategicLanding.property_links.each do |link| %>
+              <% related_links.each do |link| %>
                 <%= link_to link[:label], link[:path], class: "public-habitations-index__strategic-link inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-golden-one hover:text-blue-three transition-colors" %>
               <% end %>
             </div>
           </nav>
+          <% end %>
         </div>
       <% else %>
         <!-- Empty State -->
@@ -164,7 +168,7 @@
           </p>
           <div class="flex flex-wrap justify-center gap-2">
             <%= link_to "Limpar filtros", habitations_path, class: "public-habitations-index__primary-link btn-primary inline-flex items-center gap-2" %>
-            <% Seo::StrategicLanding.property_links.first(4).each do |link| %>
+            <% Seo::StrategicLanding.available_property_links.first(4).each do |link| %>
               <%= link_to link[:label], link[:path], class: "public-habitations-index__empty-link inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-three hover:text-blue-three transition-colors" %>
             <% end %>
           </div>
