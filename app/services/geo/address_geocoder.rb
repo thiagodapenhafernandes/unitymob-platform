@@ -13,8 +13,14 @@ module Geo
     # (ex.: chave com restrição de referenciador devolve REQUEST_DENIED).
     attr_reader :google_status, :google_error
 
-    def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil", api_key: nil)
+    # Nominatim (OpenStreetMap) aceita no máximo 1 requisição por segundo.
+    NOMINATIM_INTERVAL = 1.1
+
+    # provider: "leaflet" usa só o Nominatim (gratuito, OpenStreetMap), sem
+    # cair numa chave Google do ambiente; nil mantém Google com fallback.
+    def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil", api_key: nil, provider: nil)
       @api_key = api_key
+      @provider = provider.to_s
       @address = address.to_s.strip
       @number = number.to_s.strip
       @neighborhood = neighborhood.to_s.strip
@@ -25,6 +31,7 @@ module Geo
     end
 
     def call
+      return nominatim_result if @provider == "leaflet"
       return google_result if @api_key.present?
 
       google_result || nominatim_result
@@ -69,7 +76,8 @@ module Geo
     end
 
     def nominatim_result
-      nominatim_requests.each do |request|
+      nominatim_requests.each_with_index do |request, index|
+        sleep(NOMINATIM_INTERVAL) if index.positive?
         data = json_get("https://nominatim.openstreetmap.org/search", request)
         next unless data.is_a?(Array) && data.first
 

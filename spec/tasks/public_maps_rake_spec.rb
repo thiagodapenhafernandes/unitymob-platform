@@ -55,4 +55,20 @@ RSpec.describe "public_maps:geocode_missing" do
       .to output(/Google recusou a chave \(REQUEST_DENIED: API keys with referer restrictions.*Nada foi enfileirado/).to_stdout
     expect(enqueued_jobs.count { |job| job[:job] == HabitationGeocodeJob }).to eq(0)
   end
+
+  it "com Leaflet enfileira pelo OpenStreetMap, um job a cada 4s e sem teste de chave" do
+    ENV["APPLY"] = "1"
+    other = create(:habitation, tenant: tenant, latitude: nil, longitude: nil)
+    allow(GoogleMapsIntegrationSetting).to receive(:for)
+      .and_return(instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "leaflet", api_key: nil))
+    clear_enqueued_jobs
+
+    expect { Rake::Task["public_maps:geocode_missing"].invoke }.to output(/2 geocodificações enfileiradas \(OpenStreetMap\)/).to_stdout
+
+    expect(Geo::AddressGeocoder).not_to have_received(:new)
+    runs = enqueued_jobs.select { |job| job[:job] == HabitationGeocodeJob }.map { _1[:at].to_f }.sort
+    expect(runs.size).to eq(2)
+    expect(runs.last - runs.first).to be_within(1).of(4)
+    expect(enqueued_jobs.map { _1[:args].first }).to include(missing.id, other.id)
+  end
 end

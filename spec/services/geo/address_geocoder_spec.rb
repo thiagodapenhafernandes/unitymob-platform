@@ -26,4 +26,22 @@ RSpec.describe Geo::AddressGeocoder do
     expect(geocoder.google_status).to eq("ZERO_RESULTS")
     expect(Rails.logger).not_to have_received(:warn)
   end
+
+  it "no modo leaflet usa só o OpenStreetMap, mesmo com chave Google no ambiente" do
+    leaflet = described_class.new(address: "Av. Brasil", number: "1", neighborhood: "Centro", city: "Itajaí",
+                                  state: "SC", zip_code: "", provider: "leaflet")
+    allow(leaflet).to receive(:sleep)
+    allow(leaflet).to receive(:json_get) do |url, _params|
+      raise "não deveria chamar o Google" if url.include?("googleapis")
+
+      [{ "lat" => "-26.9", "lon" => "-48.6", "display_name" => "Av. Brasil", "address" => { "house_number" => "1" } }]
+    end
+
+    previous = ENV["GOOGLE_MAPS_API_KEY"]
+    ENV["GOOGLE_MAPS_API_KEY"] = "chave-do-ambiente"
+
+    expect(leaflet.call.provider).to eq("osm")
+  ensure
+    ENV["GOOGLE_MAPS_API_KEY"] = previous
+  end
 end
