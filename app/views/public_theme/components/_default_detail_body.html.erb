@@ -316,6 +316,10 @@
               share_token: @lead_share_token %>
         <% end %>
 
+        <%# Só com conteúdo: sem característica única nem entrega, o card ficava vazio. %>
+        <% show_info_card = @habitation.unique_features.present? || @habitation.delivery_date_visible? ||
+                            (@habitation.data_entrega.present? && @habitation.ready_to_move?) %>
+        <% if show_info_card %>
         <section class="public-habitations-show__info-card rounded-2xl bg-white p-6 shadow-sm">
           <h3 class="public-habitations-show__section-title text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Informações</h3>
           <div class="mt-4 space-y-3 text-sm">
@@ -338,6 +342,7 @@
             <% end %>
           </div>
         </section>
+        <% end %>
 
         <%= render "public_theme/components/property_map",
               public_map: @public_map,

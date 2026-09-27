@@ -94,4 +94,15 @@ RSpec.describe "Página do imóvel — seções no formato completo", type: :req
       expect(response.body).to include("Prefeitura")
     end
   end
+
+  it "não mostra o card \"Informações\" vazio na lateral" do
+    plain = create(:habitation, slug: "sem-informacoes", data_entrega: nil, address_attributes: address)
+    allow_any_instance_of(Habitation).to receive(:unique_features).and_return([])
+
+    get habitation_path(plain)
+
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css(".public-habitations-show__info-card")).to be_nil
+  end
 end
+

@@ -1445,3 +1445,182 @@
   text-decoration: underline;
 }
 
+
+/* ==========================================================================
+   Refinamento da página do imóvel — variante default (Padrão, Salute,
+   Conexão), na identidade de cada conta (--public-show-primary/accent).
+   Escopado na raiz .public-habitations-show: o luxury não é afetado.
+   ========================================================================== */
+.public-habitations-show {
+  --public-show-card-radius: 20px;
+  --public-show-card-border: rgba(2, 43, 58, .08);
+  --public-show-card-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 14px 34px rgba(15, 23, 42, .06);
+}
+
+/* Superfície, ritmo e cabeçalho só a partir de 768px: no celular a página tem
+   desenho próprio (cabeçalho e preço de ponta a ponta, sem cartão). */
+@media (min-width: 768px) {
+/* Ritmo: mesmo espaçamento entre todos os cartões das duas colunas. */
+.public-habitations-show .public-habitations-show__main { gap: 24px; }
+.public-habitations-show .public-habitations-show__aside > * + * { margin-top: 20px; }
+
+/* Cartões: mesma superfície, raio e sombra. */
+.public-habitations-show .public-habitations-show__header,
+.public-habitations-show .public-habitations-show__features,
+.public-habitations-show .public-habitations-show__description,
+.public-habitations-show .public-habitations-show__amenities,
+.public-habitations-show .public-habitations-show__price-card,
+.public-habitations-show .public-habitations-show__info-card,
+.public-habitations-show .public-habitations-show__map-card {
+  border: 1px solid var(--public-show-card-border);
+  border-radius: var(--public-show-card-radius);
+  background: #fff;
+  box-shadow: var(--public-show-card-shadow);
+}
+.public-habitations-show .public-habitations-show__header,
+.public-habitations-show .public-habitations-show__features,
+.public-habitations-show .public-habitations-show__description,
+.public-habitations-show .public-habitations-show__amenities { padding: 28px; }
+
+/* Cabeçalho do imóvel: faixa da marca à esquerda, título na cor principal. */
+.public-habitations-show .public-habitations-show__header {
+  position: relative;
+  overflow: hidden;
+  padding-left: 32px;
+}
+.public-habitations-show .public-habitations-show__header::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--public-show-primary), var(--public-show-accent));
+}
+.public-habitations-show .public-habitations-show__title { color: var(--public-show-primary-strong, #022b3a); letter-spacing: -.01em; }
+.public-habitations-show .public-habitations-show__code {
+  background: color-mix(in srgb, var(--public-show-primary) 9%, #fff);
+  color: var(--public-show-primary);
+  font-variant-numeric: tabular-nums;
+}
+}
+
+/* Títulos de seção: escuros e legíveis, com traço da cor de destaque. */
+.public-habitations-show .public-habitations-show__section-title,
+.public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  color: var(--public-show-primary-strong, #022b3a);
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.public-habitations-show .public-habitations-show__section-title::before,
+.public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__title::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 18px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--public-show-accent);
+}
+
+/* Características: ícone em destaque, número grande, rótulo discreto. */
+.public-habitations-show .public-habitations-show__feature-card {
+  border: 1px solid var(--public-show-card-border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--public-show-primary) 3%, #fff));
+  box-shadow: none;
+  transition: border-color .2s ease, transform .2s ease;
+}
+.public-habitations-show .public-habitations-show__feature-card:hover {
+  border-color: color-mix(in srgb, var(--public-show-accent) 55%, transparent);
+  transform: translateY(-2px);
+}
+.public-habitations-show .public-habitations-show__feature-icon { border-radius: 14px; }
+
+/* Comodidades: lista em colunas com check, em vez de nuvem de pílulas. */
+.public-habitations-show .public-theme-property-amenities--default { gap: 28px; }
+.public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 20px;
+}
+.public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #334155;
+  font-size: .9rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--public-show-accent) 16%, #fff);
+  color: color-mix(in srgb, var(--public-show-accent) 70%, var(--public-show-primary));
+  font-size: .75rem;
+}
+
+/* Descrição e "Ler mais". */
+.public-habitations-show .public-habitations-show__description-card { color: #475569; font-size: .98rem; line-height: 1.75; }
+
+/* Botões de mídia sob a galeria. */
+@media (min-width: 768px) {
+  .public-habitations-show .public-habitations-show__media-actions { justify-content: flex-start; gap: 10px; margin-top: 14px; }
+}
+.public-habitations-show .public-habitations-show__media-action {
+  border-color: var(--public-show-card-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+}
+.public-habitations-show .public-habitations-show__media-action i { color: var(--public-show-accent); }
+.public-habitations-show .public-habitations-show__media-action:hover { border-color: var(--public-show-accent); }
+
+/* Cartão de preço: valor em destaque; fatos com divisórias leves (desktop). */
+.public-habitations-show .public-habitations-show__price { color: var(--public-show-primary-strong, #022b3a); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+@media (min-width: 768px) {
+  .public-habitations-show .public-habitations-show__fact { padding-bottom: 10px; border-bottom: 1px dashed rgba(2, 43, 58, .08); }
+  .public-habitations-show .public-habitations-show__fact:last-child { padding-bottom: 0; border-bottom: 0; }
+}
+
+/* Imóveis relacionados: título no mesmo padrão dos blocos. */
+.public-habitations-show .public-habitations-show__related { padding-top: 40px; border-top: 1px solid var(--public-show-card-border); }
+.public-habitations-show .public-habitations-show__related-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--public-show-primary-strong, #022b3a);
+  font-size: clamp(1.35rem, 2.2vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.public-habitations-show .public-habitations-show__related-title::before {
+  content: "";
+  width: 28px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--public-show-accent);
+}
+
+@media (max-width: 1023px) {
+  .public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .public-habitations-show .public-theme-property-amenities--default .public-theme-property-amenities__list { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-habitations-show .public-habitations-show__feature-card { transition: none; }
+}
