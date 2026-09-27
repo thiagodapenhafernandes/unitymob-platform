@@ -30,4 +30,25 @@ RSpec.describe Tenant, type: :model do
       expect(tenant.available_public_site_themes.keys - %w[default saluteimoveis conexaoimobiliaria]).to be_empty
     end
   end
+
+  describe "tema de conta nova" do
+    it "nasce no default mesmo se o padrão da coluna no banco estiver em outro tema" do
+      # DDL dentro da transação do teste: o Postgres desfaz no rollback.
+      described_class.connection.change_column_default(:tenants, :public_site_theme, "saluteimoveis")
+      described_class.reset_column_information
+
+      tenant = described_class.create!(name: "Imobiliária Nova", slug: "imobiliaria-nova-#{SecureRandom.hex(3)}")
+
+      expect(tenant.public_site_theme).to eq("default")
+      expect(tenant.public_site_stylesheet).to eq("public_site_themes/default")
+    ensure
+      described_class.reset_column_information
+    end
+
+    it "continua inferindo o tema pelo nome da conta" do
+      tenant = described_class.create!(name: "Conexão Imobiliária", slug: "conexao-#{SecureRandom.hex(3)}")
+
+      expect(tenant.public_site_theme).to eq("conexaoimobiliaria")
+    end
+  end
 end

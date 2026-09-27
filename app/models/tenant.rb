@@ -72,6 +72,10 @@ class Tenant < ApplicationRecord
   end
 
   PUBLIC_SITE_THEMES = public_site_theme_definitions.freeze
+  # Conta nova nasce no tema padrão mesmo que o padrão da coluna no banco tenha
+  # ficado em outro valor (ver migration 20260927090000). A inferência pelo nome
+  # (ex.: conta "conexao") continua em infer_public_site_theme.
+  attribute :public_site_theme, :string, default: DEFAULT_PUBLIC_SITE_THEME
 
   has_many :profiles, dependent: :restrict_with_error
   has_many :tenant_domains, dependent: :destroy
