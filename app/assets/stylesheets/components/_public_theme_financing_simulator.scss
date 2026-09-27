@@ -91,7 +91,10 @@
   .public-theme-financing-simulator--default .public-theme-financing-simulator__metrics { grid-template-columns: 1fr; }
 }
 
-// Botão "Simular financiamento" do card de preço (contrato public-theme-financing-trigger__*).
+// Bloco "Simular financiamento" abaixo do card de preço (public-theme-financing-card)
+// com o botão (public-theme-financing-trigger__*).
+.public-theme-financing-card--default { margin-top: 16px; }
+
 .public-theme-financing-trigger--default {
   --ft-primary: var(--color-primary, #022b3a);
   --ft-accent: var(--color-accent, #bfab25);
@@ -100,7 +103,6 @@
   width: 100%;
   align-items: center;
   gap: 14px;
-  margin-top: 18px;
   padding: 14px 16px;
   overflow: hidden;
   border: 0;

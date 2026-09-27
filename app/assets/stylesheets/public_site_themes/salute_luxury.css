@@ -4932,9 +4932,10 @@ body.no-scroll { overflow: hidden; }
   .public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics { grid-template-columns: 1fr; }
 }
 
-/* Botão "Simular financiamento" do card de preço e fundo do modal. */
+/* Bloco "Simular financiamento" abaixo do card de preço e fundo do modal. */
+.public-theme-financing-card--salute-luxury { margin-top: 18px; }
 .public-theme-financing-trigger--salute-luxury {
-  position: relative; display: flex; width: 100%; align-items: center; gap: 14px; margin-top: 20px; padding: 16px 18px;
+  position: relative; display: flex; width: 100%; align-items: center; gap: 14px; padding: 16px 18px;
   overflow: hidden; border: 1px solid rgba(190, 155, 71, .45); border-radius: 18px;
   background: linear-gradient(135deg, var(--sl-navy-900), var(--sl-navy-800)); color: #fff; text-align: left; cursor: pointer;
   box-shadow: 0 16px 38px rgba(10, 24, 38, .22); transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;

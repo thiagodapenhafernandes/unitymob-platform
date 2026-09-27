@@ -2,8 +2,8 @@ import { Controller } from "@hotwired/stimulus"
 
 // Simulador de financiamento (public_theme/components/financing_simulator).
 // Juros efetivos anuais → mensais: i = (1 + a)^(1/12) − 1 (como os bancos informam).
-//   Price: parcela fixa = P·i / (1 − (1 + i)^−n)
-//   SAC:   amortização P/n; 1ª = P/n + P·i; última = P/n·(1 + i); juros = P·i·(n + 1)/2
+//   Parcelas fixas (sistema francês/"Price"): P·i / (1 − (1 + i)^−n)
+//   Parcelas decrescentes (SAC): amortização P/n; 1ª = P/n + P·i; última = P/n·(1 + i); juros = P·i·(n + 1)/2
 // Renda sugerida: 1ª parcela do SAC até 30% da renda. Recalcula a cada ajuste e
 // deixa a mensagem do botão de lead com os valores simulados.
 export default class extends Controller {
@@ -74,7 +74,7 @@ export default class extends Controller {
     this.ctaTarget.dataset.whatsappMessage =
       `Olá, simulei no site o financiamento${subject}: valor ${this.money.format(price)}, entrada de ${downPercent}%, ` +
       `${months / 12} anos, juros de ${annualRate.toLocaleString("pt-BR")}% a.a. ` +
-      `(1ª parcela SAC ${this.money.format(sacFirst)}; Price ${this.money.format(pricePayment)}). ` +
+      `(parcelas decrescentes a partir de ${this.money.format(sacFirst)}; parcelas fixas de ${this.money.format(pricePayment)}). ` +
       "Gostaria de falar com um especialista."
   }
 }

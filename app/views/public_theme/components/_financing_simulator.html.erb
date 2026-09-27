@@ -1,7 +1,8 @@
 <%# Simulador de financiamento — mesmo HTML em todos os temas (contrato
     public-theme-financing-simulator__*); cada tema estiliza a variante.
     Página /simulador e bloco da página do imóvel à venda. Só renderiza com o
-    recurso ligado na conta (Perfil público). Cálculo SAC e Price no navegador
+    recurso ligado na conta (Perfil público). Cálculo nos dois sistemas de
+    amortização (SAC e francês/"Price", mostrados em português) no navegador
     (controller financing-simulator); o botão final usa a captura de lead do
     site com os valores simulados na mensagem.
     Locals: variant, rate (Financing::CentralBankRate::Result), property
@@ -67,14 +68,14 @@
     <div class="public-theme-financing-simulator__results" aria-live="polite">
       <div class="public-theme-financing-simulator__systems">
         <article class="public-theme-financing-simulator__system">
-          <span class="public-theme-financing-simulator__system-name">SAC <small>parcelas decrescentes</small></span>
+          <span class="public-theme-financing-simulator__system-name">Parcelas decrescentes <small>Sistema de amortização constante (SAC)</small></span>
           <span class="public-theme-financing-simulator__caption">1ª parcela</span>
           <strong class="public-theme-financing-simulator__value" data-financing-simulator-target="sacFirst">—</strong>
           <span class="public-theme-financing-simulator__caption">Última parcela: <b data-financing-simulator-target="sacLast">—</b></span>
           <span class="public-theme-financing-simulator__caption">Total de juros: <b data-financing-simulator-target="sacInterest">—</b></span>
         </article>
         <article class="public-theme-financing-simulator__system public-theme-financing-simulator__system--price">
-          <span class="public-theme-financing-simulator__system-name">Price <small>parcelas fixas</small></span>
+          <span class="public-theme-financing-simulator__system-name">Parcelas fixas <small>Sistema francês de amortização</small></span>
           <span class="public-theme-financing-simulator__caption">Parcela</span>
           <strong class="public-theme-financing-simulator__value" data-financing-simulator-target="pricePayment">—</strong>
           <span class="public-theme-financing-simulator__caption">Total de juros: <b data-financing-simulator-target="priceInterest">—</b></span>
@@ -109,8 +110,8 @@
   </div>
 
   <p class="public-theme-financing-simulator__disclaimer">
-    Simulação com juros efetivos anuais convertidos para mensais. Não inclui seguros obrigatórios (MIP e DFI), tarifas
-    nem correção por TR, e depende da análise de crédito de cada banco. A taxa do Banco Central é a média do mercado,
-    não uma oferta de instituição.
+    Simulação com juros efetivos anuais convertidos para mensais. Não inclui os seguros obrigatórios (morte e invalidez
+    e danos ao imóvel), tarifas nem a correção pela Taxa Referencial, e depende da análise de crédito de cada banco. A
+    taxa do Banco Central é a média do mercado, não uma oferta de instituição.
   </p>
 </section>
