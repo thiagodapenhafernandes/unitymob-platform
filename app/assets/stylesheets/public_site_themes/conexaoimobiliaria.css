@@ -704,6 +704,7 @@
 }
 
 [data-public-site-theme="conexaoimobiliaria"] .public-habitations-show__gallery {
+  --public-show-gallery-gap: 4px;
   overflow: hidden;
   border: 0 !important;
   border-radius: 28px !important;
@@ -712,7 +713,6 @@
 }
 
 [data-public-site-theme="conexaoimobiliaria"] .public-habitations-show__gallery-grid {
-  gap: 4px !important;
   background: #ffffff !important;
 }
 
