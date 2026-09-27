@@ -1,4 +1,8 @@
 class Address < ApplicationRecord
+  # Coordenada tirada do centro do bairro (o mapa não conhecia a rua). O mapa
+  # público mostra só região aproximada; nova geocodificação pode substituir.
+  NEIGHBORHOOD_PRECISION = "neighborhood".freeze
+
   belongs_to :addressable, polymorphic: true
 
   # Higiene vinda do Vista: espaços sobrando criavam variantes de bairro/cidade
@@ -7,6 +11,12 @@ class Address < ApplicationRecord
     self.cidade = cidade.to_s.squish.presence if respond_to?(:cidade) && will_save_change_to_cidade?
   end
   before_validation :normalize_imediacoes
+  # Coordenada ajustada à mão (pino no admin, import) deixa de ser aproximada.
+  before_save do
+    if (will_save_change_to_latitude? || will_save_change_to_longitude?) && !will_save_change_to_coordinates_precision?
+      self.coordinates_precision = nil
+    end
+  end
   after_commit :clear_habitation_public_filter_cache, if: :habitation_location_cache_relevant?
 
   # Validations
@@ -16,8 +26,17 @@ class Address < ApplicationRecord
   
   after_commit :schedule_missing_coordinates, on: [:create, :update]
 
+  def neighborhood_coordinates?
+    coordinates_precision == NEIGHBORHOOD_PRECISION
+  end
+
+  # Sem coordenada, ou só com o centro do bairro: vale tentar geocodificar.
+  def coordinates_improvable?
+    latitude.blank? || longitude.blank? || neighborhood_coordinates?
+  end
+
   def schedule_missing_coordinates
-    return unless addressable_type == "Habitation" && (latitude.blank? || longitude.blank?)
+    return unless addressable_type == "Habitation" && coordinates_improvable?
     return unless previous_changes.keys.intersect?(%w[id logradouro numero bairro cidade uf cep])
 
     setting = GoogleMapsIntegrationSetting.for(addressable.tenant)

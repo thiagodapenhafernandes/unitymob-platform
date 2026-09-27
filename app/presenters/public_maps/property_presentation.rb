@@ -4,6 +4,9 @@ module PublicMaps
   class PropertyPresentation
     MAP_DISPLAY_MODES = %w[inherit hidden approximate exact].freeze
     STREET_VIEW_MODES = %w[inherit enabled disabled].freeze
+    # Coordenada do centro do bairro (Address::NEIGHBORHOOD_PRECISION): só região
+    # aproximada, com raio que cubra um bairro, nunca pino exato.
+    NEIGHBORHOOD_RADIUS_METERS = 1000
 
     attr_reader :property, :setting
 
@@ -22,9 +25,14 @@ module PublicMaps
 
     def display_mode
       property_mode = property.public_map_display_mode.to_s
-      return setting.default_display_mode if property_mode.blank? || property_mode == "inherit"
+      mode = property_mode.blank? || property_mode == "inherit" ? setting.default_display_mode : property_mode
+      return "approximate" if neighborhood_only? && mode != "hidden"
 
-      property_mode
+      mode
+    end
+
+    def neighborhood_only?
+      property.address&.neighborhood_coordinates? == true
     end
 
     def center_coordinates
@@ -35,7 +43,10 @@ module PublicMaps
     end
 
     def radius_meters
-      display_mode == "approximate" ? setting.approximate_radius_meters : 0
+      return 0 unless display_mode == "approximate"
+      return [setting.approximate_radius_meters.to_i, NEIGHBORHOOD_RADIUS_METERS].max if neighborhood_only?
+
+      setting.approximate_radius_meters
     end
 
     def zoom
@@ -49,6 +60,7 @@ module PublicMaps
     def street_view_enabled?
       return false unless provider == "google"
       return false unless exact_coordinates.present?
+      return false if neighborhood_only?
 
       case property.public_street_view_mode.to_s
       when "enabled" then true

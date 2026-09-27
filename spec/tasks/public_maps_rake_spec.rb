@@ -56,7 +56,7 @@ RSpec.describe "public_maps:geocode_missing" do
     expect(enqueued_jobs.count { |job| job[:job] == HabitationGeocodeJob }).to eq(0)
   end
 
-  it "com Leaflet enfileira pelo OpenStreetMap, um job a cada 4s e sem teste de chave" do
+  it "com Leaflet enfileira pelo OpenStreetMap, um job a cada 5s e sem teste de chave" do
     ENV["APPLY"] = "1"
     other = create(:habitation, tenant: tenant, latitude: nil, longitude: nil)
     allow(GoogleMapsIntegrationSetting).to receive(:for)
@@ -68,7 +68,17 @@ RSpec.describe "public_maps:geocode_missing" do
     expect(Geo::AddressGeocoder).not_to have_received(:new)
     runs = enqueued_jobs.select { |job| job[:job] == HabitationGeocodeJob }.map { _1[:at].to_f }.sort
     expect(runs.size).to eq(2)
-    expect(runs.last - runs.first).to be_within(1).of(4)
+    expect(runs.last - runs.first).to be_within(1).of(5)
     expect(enqueued_jobs.map { _1[:args].first }).to include(missing.id, other.id)
+  end
+
+  it "APPROXIMATE=1 refaz também quem ficou só com o centro do bairro" do
+    approximate = create(:habitation, tenant: tenant, latitude: nil, longitude: nil)
+    approximate.address.update!(latitude: -26.95, longitude: -48.62, coordinates_precision: Address::NEIGHBORHOOD_PRECISION)
+    ENV["APPROXIMATE"] = "1"
+
+    expect { Rake::Task["public_maps:geocode_missing"].invoke }.to output(/2 imóveis publicados sem coordenadas/).to_stdout
+  ensure
+    ENV.delete("APPROXIMATE")
   end
 end
