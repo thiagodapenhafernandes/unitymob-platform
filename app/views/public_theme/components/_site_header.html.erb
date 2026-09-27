@@ -1,3 +1,7 @@
+<%# Header — contrato: .public-theme-header(--<variante>) com __container,
+    __brand, __logo, __phone, __nav, __bar, __actions e __mobile. Variants
+    mantêm os ganchos (o CSS por tema usa data-public-site-theme).
+    Cobertura: spec/views/public_theme/header_footer_contract_spec.rb. %>
 <%
   variant = local_assigns.fetch(:variant, "default")
   logo = local_assigns.fetch(:logo)
@@ -46,7 +50,7 @@
       <% if phone.present? %>
         <%= link_to "tel:+#{Phones::Normalizer.call(phone)}",
                     class: ["public-theme-site-header__phone", "public-theme-header__phone", local_assigns[:phone_class]].compact.join(" ") do %>
-          <%= public_svg_icon("telephone") %>
+          <%= public_icon("telephone") %>
           <span><%= Phones::Normalizer.display(phone) %></span>
         <% end %>
       <% end %>
@@ -63,7 +67,7 @@
                     public_form_trigger_form_type_value: item[:url] || item["url"]
                   } do %>
               <% if (item[:icon] || item["icon"]).present? %>
-                <%= public_svg_icon(item[:icon] || item["icon"]) %>
+                <%= public_icon(item[:icon] || item["icon"]) %>
               <% end %>
               <span><%= item[:label] || item["label"] %></span>
             <% end %>
@@ -72,7 +76,7 @@
                         target: item[:target] || item["target"],
                         rel: item[:rel] || item["rel"] do %>
               <% if (item[:icon] || item["icon"]).present? %>
-                <%= public_svg_icon(item[:icon] || item["icon"]) %>
+                <%= public_icon(item[:icon] || item["icon"]) %>
               <% end %>
               <span><%= item[:label] || item["label"] %></span>
             <% end %>
@@ -104,7 +108,7 @@
                   public_form_trigger_form_type_value: item[:url] || item["url"]
                 } do %>
             <% if (item[:icon] || item["icon"]).present? %>
-              <%= public_svg_icon(item[:icon] || item["icon"]) %>
+              <%= public_icon(item[:icon] || item["icon"]) %>
             <% end %>
             <span><%= item[:label] || item["label"] %></span>
           <% end %>
@@ -113,7 +117,7 @@
                       target: item[:target] || item["target"],
                       rel: item[:rel] || item["rel"] do %>
             <% if (item[:icon] || item["icon"]).present? %>
-              <%= public_svg_icon(item[:icon] || item["icon"]) %>
+              <%= public_icon(item[:icon] || item["icon"]) %>
             <% end %>
             <span><%= item[:label] || item["label"] %></span>
           <% end %>

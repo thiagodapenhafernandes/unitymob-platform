@@ -17,7 +17,7 @@
 
 <div class="public-theme-property-card__badges">
   <% if reduced_price && discount_percentage.present? %>
-    <span class="public-theme-property-card__discount-tag"><%= public_svg_icon("arrow-down") %> <%= discount_percentage %>%</span>
+    <span class="public-theme-property-card__discount-tag"><%= public_icon("arrow-down") %> <%= discount_percentage %>%</span>
   <% end %>
 
   <% domain_badges.each do |badge| %>

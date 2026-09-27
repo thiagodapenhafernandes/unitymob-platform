@@ -15,7 +15,7 @@
       <div class="public-favorites__grid" data-public-favorites-target="list"></div>
 
       <div class="public-favorites__empty" data-public-favorites-target="empty">
-        <i class="bi bi-bookmark-heart"></i>
+        <i class="public-favorites__empty-icon bi bi-bookmark-heart" aria-hidden="true"></i>
         <h2>Nenhum imóvel salvo ainda</h2>
         <p>Toque no marcador em qualquer imóvel para criar sua seleção.</p>
         <%= link_to "Explorar imóveis", habitations_path, class: "public-favorites__primary-link" %>

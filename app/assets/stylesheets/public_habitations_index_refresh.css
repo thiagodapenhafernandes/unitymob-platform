@@ -19,7 +19,7 @@
 }
 
 .public-habitations-index .container-custom {
-  max-width: 1380px;
+  max-width: 1440px;
 }
 
 .public-habitations-index__filterbar {
@@ -580,3 +580,22 @@
     height: 248px;
   }
 }
+
+/* Filtros próprios da listagem somem onde o filtro global já aparece
+   (HomeSetting#listing_filters_visibility_class). */
+.public-listing-filters--hidden {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .public-listing-filters--mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-listing-filters--desktop-only {
+    display: none !important;
+  }
+}
+

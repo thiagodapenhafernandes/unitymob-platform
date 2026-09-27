@@ -168,7 +168,9 @@ RSpec.describe "Public branding pages", type: :request do
     expect(header["style"]).to include("backdrop-filter: blur(15px);")
     expect(response.body).to include('color: #123456 !important', 'color: #ABCDEF !important')
     expect(header.css('[data-header-part="toggle"]').size).to eq(2)
-    expect(header.css('[data-header-part="panel"]').size).to eq(2)
+    # O menu abre o navigation-overlay (fora do header), com paleta própria do tema.
+    expect(header.css('[data-header-part="toggle"][data-action="click->navbar#openMenu"]').size).to eq(2)
+    expect(Nokogiri::HTML(response.body).at_css(".public-theme-navigation-overlay--default[data-controller='navigation-overlay']")).to be_present
   end
 
   it "oculta somente o telefone do header quando configurado" do
@@ -226,41 +228,30 @@ RSpec.describe "Public branding pages", type: :request do
     get root_path
 
     html = Nokogiri::HTML(response.body)
-    wrapper = html.at_css(".public-global-search")
-    button = html.at_css(".public-global-search__button")
-    drawer = html.at_css("#public-global-search-drawer")
-    form = drawer.at_css("form")
+    wrapper = html.at_css('.public-global-search[data-controller="filter-drawer"]')
+    button = wrapper.at_css(".public-theme-filter-fab.public-theme-filter-fab--default")
+    drawer = wrapper.at_css('#public-global-search-drawer.public-theme-filter-drawer--default[data-filter-drawer-target="drawer"]')
+    form = drawer.at_css('form[data-filter-drawer-target="form"]')
+    characteristics = form.css('input[name="characteristics[]"]').map { |input| input["value"] }
 
     expect(response).to have_http_status(:ok)
     expect(html.at_css("#hero form")).to be_nil
     expect(wrapper["class"]).not_to include("public-global-search--desktop-only")
     expect(wrapper["class"]).not_to include("public-global-search--mobile-only")
     expect(button.text.squish).to eq("Filtrar imóveis")
-    expect(button["data-action"]).to include("global-search-drawer#open")
+    expect(button["data-action"]).to eq("click->filter-drawer#open")
     expect(drawer["aria-hidden"]).to eq("true")
     expect(form["action"]).to eq(habitations_path)
-    expect(form["data-controller"]).to include("public-search-url")
-    expect(form["data-action"]).to include("submit->public-search-url#submit")
     expect(form.at_css('input[name="transaction_type"]')["value"]).to eq("venda")
-    search_field = form.at_css('.public-global-search__field--autocomplete input[name="search"]')
-    expect(search_field).to be_present
-    expect(search_field["data-action"]).to include("input->autocomplete#search")
-    expect(form.at_css('[data-autocomplete-target="results"]')).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="frente_mar"]')).to be_present
-    expect(form.css('input[type="radio"][name="min_bedrooms"]').map { |input| input["value"] }).to eq(["1", "2", "3", "4", ""])
-    expect(form.css('input[type="radio"][name="min_suites"]').map { |input| input["value"] }).to eq(["1", "2", "3", "4", ""])
-    expect(form.css('input[type="radio"][name="min_parking"]').map { |input| input["value"] }).to eq(["1", "2", "3", "4", ""])
-    expect(form.at_css(".public-global-search__highlights")).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="opportunity"]')).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="lancamento"]')).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="na_planta"]')).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="pronto"]')).to be_present
-    expect(form.at_css(".public-global-search__features")).to be_present
-    expect(form.text).to include("Características")
-    expect(form.at_css('input[name="characteristics[]"][value="sacada"]')).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="cozinha_gourmet_churrasqueira"]')).to be_present
-    expect(form.at_css('input[name="characteristics[]"][value="piscina"]')).to be_present
-    expect(form.at_css(".public-global-search__advanced")).not_to be_present
+    expect(form.at_css('[data-controller="autocomplete"] input[name="search"][data-autocomplete-target="input"]')).to be_present
+    expect(form.css('[data-controller="combobox"]').size).to eq(3)
+    %w[bedrooms suites parking].each do |name|
+      expect(form.css(%([data-pill-group="#{name}"] button)).map { |pill| pill.text.strip }).to eq(%w[1 2 3 4+])
+    end
+    expect(form.css(".public-theme-filter-drawer__quick-input").map { |input| input["value"] }).to eq(%w[frente_mar quadra_mar vista_mar mobiliado carro_eletrico])
+    expect(characteristics).to include("opportunity", "lancamento", "na_planta", "pronto", "sacada", "cozinha_gourmet_churrasqueira", "piscina")
+    expect(characteristics).to eq(characteristics.uniq)
+    expect(form.at_css('.public-theme-filter-drawer__actions button[type="submit"]')).to be_present
   end
 
   it "renderiza filtro no hero e oculta drawer quando configurado" do
@@ -274,7 +265,7 @@ RSpec.describe "Public branding pages", type: :request do
     html = Nokogiri::HTML(response.body)
 
     expect(response).to have_http_status(:ok)
-    expect(html.at_css(".public-global-search__button")).to be_nil
+    expect(html.at_css(".public-theme-filter-fab")).to be_nil
     expect(html.at_css("#hero form")).to be_present
   end
 
@@ -293,7 +284,7 @@ RSpec.describe "Public branding pages", type: :request do
     expect(response).to have_http_status(:ok)
     expect(hero_search.at_css("form")).to be_present
     expect(drawer["class"]).to include("public-global-search--mobile-only")
-    expect(drawer.at_css(".public-global-search__button").text.squish).to eq("Filtrar imóveis")
+    expect(drawer.at_css(".public-theme-filter-fab").text.squish).to eq("Filtrar imóveis")
   end
 
   it "permite filtro no hero e botão flutuante juntos no mobile" do
@@ -313,7 +304,7 @@ RSpec.describe "Public branding pages", type: :request do
     expect(hero_search["class"]).not_to include("public-hero-search--desktop-only")
     expect(hero_search["class"]).not_to include("public-hero-search--mobile-only")
     expect(drawer["class"]).to include("public-global-search--mobile-only")
-    expect(drawer.at_css(".public-global-search__button").text.squish).to eq("Filtrar imóveis")
+    expect(drawer.at_css(".public-theme-filter-fab").text.squish).to eq("Filtrar imóveis")
   end
 
   it "renderiza crédito global da Unitymob dentro do footer público" do

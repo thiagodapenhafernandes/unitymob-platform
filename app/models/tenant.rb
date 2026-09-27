@@ -9,7 +9,9 @@ class Tenant < ApplicationRecord
     pagination: "public_theme/components/default_pagination",
     detail_body: "public_theme/components/default_detail_body",
     development_body: "public_theme/components/default_development_body",
-    shell: "layouts/default_shell"
+    shell: "layouts/default_shell",
+    filter_trigger: "public_theme/components/filter_trigger",
+    filter_panel: "public_theme/components/filter_drawer"
   }.freeze
   PUBLIC_SITE_THEME_METADATA = {
     "default" => {
@@ -44,7 +46,9 @@ class Tenant < ApplicationRecord
         pagination: "public_theme/components/pagination",
         detail_body: "public_theme/luxury_detail_body",
         development_body: "public_theme/luxury_development_body",
-        shell: "public_theme/luxury_shell"
+        shell: "public_theme/luxury_shell",
+        filter_trigger: "public_theme/components/filter_trigger",
+        filter_panel: "public_theme/components/filter_drawer"
       }
     },
   }.freeze

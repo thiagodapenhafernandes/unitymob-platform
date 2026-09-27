@@ -301,6 +301,30 @@ RSpec.describe Habitation::SearchScopes, type: :model do
   end
 
   describe ".advanced_search" do
+    it "filtra carro elétrico pela característica ou pela menção na descrição" do
+      by_feature = create(:habitation, caracteristicas: { "recarga" => "Ponto de recarga para veículo elétrico" })
+      by_description = create(:habitation, descricao_web: "Garagem com tomada para carro elétrico.")
+      by_development = create(:habitation, descricao_empreendimento: "Wallbox em todas as vagas")
+      unrelated = create(:habitation, descricao_web: "Aquecimento elétrico e energia elétrica trifásica.")
+
+      result = Habitation.advanced_search(characteristics: ["carro_eletrico"])
+
+      expect(result).to include(by_feature, by_description, by_development)
+      expect(result).not_to include(unrelated)
+    end
+
+    it "filtra quantidade exata de quartos, suítes e vagas e mantém o mínimo para 4+" do
+      two = create(:habitation, dormitorios_qtd: 2, suites_qtd: 1, vagas_qtd: 2)
+      three = create(:habitation, dormitorios_qtd: 3, suites_qtd: 2, vagas_qtd: 1)
+      five = create(:habitation, dormitorios_qtd: 5, suites_qtd: 4, vagas_qtd: 4)
+
+      expect(Habitation.advanced_search(bedrooms: "2")).to contain_exactly(two)
+      expect(Habitation.advanced_search(suites: "2")).to contain_exactly(three)
+      expect(Habitation.advanced_search(parking: "1")).to contain_exactly(three)
+      expect(Habitation.advanced_search(min_bedrooms: "4")).to contain_exactly(five)
+      expect(Habitation.advanced_search(min_bedrooms: "2")).to contain_exactly(two, three, five)
+    end
+
     it "filters by dependencia de empregada characteristic" do
       matching = create(:habitation, caracteristicas: ["Dep. Empregada"])
       non_matching = create(:habitation, caracteristicas: ["Lavanderia"])

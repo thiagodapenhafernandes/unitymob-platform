@@ -41,7 +41,10 @@ export default class extends Controller {
       setTimeout(() => loadingCard.classList.remove("is-loading"), 5000)
     }
 
-    Promise.all([this.ensureFancyboxAssets(), this.galleryItems()]).then(([Fancybox, items]) => {
+    // Só as fotos do mesmo grupo (data-fancybox) da clicada: a página pode ter
+    // mais de uma galeria (imóvel e empreendimento) sob o mesmo controller.
+    const group = galleryTrigger.dataset?.fancybox
+    Promise.all([this.ensureFancyboxAssets(), this.galleryItems(group)]).then(([Fancybox, items]) => {
       if (items.length === 0) {
         return
       }
@@ -142,14 +145,15 @@ export default class extends Controller {
     )
   }
 
-  galleryLinks() {
-    return Array.from(this.element.querySelectorAll("a[data-fancybox]")).filter((link) => link.href)
+  galleryLinks(group = null) {
+    return Array.from(this.element.querySelectorAll("a[data-fancybox]"))
+      .filter((link) => link.href && (!group || link.dataset.fancybox === group))
   }
 
-  galleryItems() {
+  galleryItems(group = null) {
     const sourceUrl = this.remoteGallerySourceUrl()
 
-    if (!sourceUrl) return Promise.resolve(this.galleryLinks().map((item) => this.galleryItem(item)))
+    if (!sourceUrl) return Promise.resolve(this.galleryLinks(group).map((item) => this.galleryItem(item)))
     if (this.remoteGalleryItems) return Promise.resolve(this.remoteGalleryItems)
     if (this.galleryRequest) return this.galleryRequest
 

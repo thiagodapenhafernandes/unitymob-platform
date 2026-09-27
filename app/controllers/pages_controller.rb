@@ -52,6 +52,8 @@ class PagesController < ApplicationController
 
   def links_uteis
     @useful_links = PublicSiteProfile.current(tenant: public_tenant).useful_link_options
+    # Página vazia não se sustenta: volta para a home (302, pode ganhar links depois).
+    redirect_to root_path if @useful_links.empty?
   end
 
   def corporativos

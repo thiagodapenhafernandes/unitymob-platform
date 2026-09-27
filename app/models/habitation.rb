@@ -484,6 +484,7 @@ class Habitation < ApplicationRecord
 
     Rails.cache.delete(public_filter_property_types_cache_key(tenant_id))
     Rails.cache.delete(public_filter_location_options_cache_key(tenant_id))
+    Rails.cache.delete(PublicSite::PriceRanges.cache_key(tenant_id))
     clear_public_sitemap_cache_for_tenant(tenant_id)
     clear_public_listing_count_cache_for_tenant(tenant_id)
     clear_public_home_cache_for_tenant(tenant_id)

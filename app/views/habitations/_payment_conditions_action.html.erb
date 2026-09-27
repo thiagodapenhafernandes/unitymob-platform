@@ -1,0 +1,15 @@
+<%# Atalho "Condições de pagamento" da barra de recursos do detalhe (todos os
+    temas). Abre a mesma captura de lead do botão de condições do price card.
+    Locals: habitation, title, class_name %>
+<button type="button"
+        class="<%= local_assigns[:class_name] %>"
+        data-action="click->lead-capture#open"
+        data-property-id="<%= habitation.id %>"
+        data-property-code="<%= habitation.codigo %>"
+        data-property-title="<%= title %>"
+        data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+        data-require-lead-form="true"
+        data-whatsapp-message="Olá, gostaria de conhecer as condições de pagamento do imóvel <%= title %> (Código: <%= habitation.codigo %>).">
+  <%= public_icon("cash-coin") %>
+  <span>Condições de pagamento</span>
+</button>

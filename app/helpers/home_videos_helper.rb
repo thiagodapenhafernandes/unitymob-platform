@@ -29,7 +29,7 @@ module HomeVideosHelper
     return "Preço sob consulta" unless cents.positive?
 
     suffix = sale.positive? ? "" : "/mês"
-    "#{number_to_currency(cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0)}#{suffix}"
+    "#{number_to_currency(cents / 100.0, unit: "R$", separator: ",", delimiter: ".", precision: 0)}#{suffix}"
   end
 
   def home_video_payload(item)

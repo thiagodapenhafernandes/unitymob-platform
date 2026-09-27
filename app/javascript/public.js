@@ -11,9 +11,10 @@ import CardSwiperController from "controllers/card_swiper_controller"
 import CategoryFilterController from "controllers/category_filter_controller"
 import ClickableCardController from "controllers/clickable_card_controller"
 import CodeSearchController from "controllers/code_search_controller"
+import ComboboxController from "controllers/combobox_controller"
 import FiltersController from "controllers/filters_controller"
 import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
-import GlobalSearchDrawerController from "controllers/global_search_drawer_controller"
+import FilterDrawerController from "controllers/filter_drawer_controller"
 import HeroSliderController from "controllers/hero_slider_controller"
 import HomeVideoShowcaseController from "controllers/home_video_showcase_controller"
 import LeadCaptureController from "controllers/lead_capture_controller"
@@ -40,9 +41,10 @@ application.register("card-swiper", CardSwiperController)
 application.register("category-filter", CategoryFilterController)
 application.register("clickable-card", ClickableCardController)
 application.register("code-search", CodeSearchController)
+application.register("combobox", ComboboxController)
 application.register("filters", FiltersController)
 application.register("fancybox-gallery", FancyboxGalleryController)
-application.register("global-search-drawer", GlobalSearchDrawerController)
+application.register("filter-drawer", FilterDrawerController)
 application.register("hero-slider", HeroSliderController)
 application.register("home-video-showcase", HomeVideoShowcaseController)
 application.register("lead-capture", LeadCaptureController)
@@ -71,6 +73,7 @@ application.register("transaction-toggle", TransactionToggleController)
 const pageScopedControllers = [
   ["advanced-filters", () => import("controllers/advanced_filters_controller")],
   ["collapsible-text", () => import("controllers/collapsible_text_controller")],
+  ["navigation-overlay", () => import("controllers/navigation_overlay_controller")],
   ["public-favorites", () => import("controllers/public_favorites_controller")],
   ["public-gallery-mobile", () => import("controllers/public_gallery_mobile_controller")],
   ["sidebar", () => import("controllers/sidebar_controller")],

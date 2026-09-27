@@ -1,0 +1,252 @@
+<%# Drawer "Filtro detalhado" — compartilhado por todos os temas (estrutura
+    do unitymob-crm: foto + formulário). Comportamento: controllers
+    filter-drawer (abrir/fechar, faixas, pills, finalidade) e combobox.
+    Classes canônicas public-theme-filter-drawer__* são o contrato de estilo;
+    os aliases curtos (drawer-*, dm-*, df-*) são os que o CSS do luxury usa.
+    Cada tema estiliza a variante em public_site_themes/<chave>.css ou, no
+    default, em components/_public_global_search_drawer.scss. %>
+<%
+  panel_visual = @home_setting&.filter_panel_background if @home_setting&.filter_panel_background&.attached?
+  panel_visual ||= @home_setting&.hero_background_desktop
+  panel_visual_url = panel_visual&.attached? ? public_image_url(panel_visual, resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true) : nil
+  panel_logo = luxury_logo(@layout_setting)
+  panel_site_name = @layout_setting&.site_name.presence || public_tenant&.name.presence || "Site imobiliário"
+
+  property_types = Array(drawer_property_types).compact_blank
+  location_options = Array(drawer_location_options).filter_map do |option|
+    label = option[:label] || option["label"] || option[:value] || option["value"]
+    next if label.blank?
+
+    { type: (option[:type] || option["type"]).to_s, label: label.to_s, value: (option[:value] || option["value"] || label).to_s }
+  end
+  city_options = location_options.reject { |option| option[:type] == "neighborhood" }
+  neighborhood_options = location_options.select { |option| option[:type] == "neighborhood" }
+  transaction_type = drawer_transaction_type.to_s == "aluguel" ? "aluguel" : "venda"
+  selected_characteristics = Array(drawer_selected_characteristics).map(&:to_s)
+
+  # Mesmas listas do drawer padrão (vindas do shell): o luxury só muda o estilo.
+  quick_filter_options = Array(drawer_quick_filters)
+  highlight_options = Array(drawer_highlight_filters)
+  characteristic_options = Array(drawer_feature_filters)
+  checkbox_id = ->(value) { "public-filter-carac-#{value.tr('_', '-')}" }
+
+  # 1, 2 e 3 são quantidade exata (bedrooms/suites/parking); 4+ é mínimo
+  # (min_*). O controller troca o name do hidden conforme a pill ativa.
+  count_groups = [
+    { label: "Quartos", exact_name: "bedrooms", min_name: "min_bedrooms" },
+    { label: "Suítes", exact_name: "suites", min_name: "min_suites" },
+    { label: "Vagas", exact_name: "parking", min_name: "min_parking" }
+  ]
+%>
+
+<div class="public-theme-filter-drawer public-theme-filter-drawer--<%= variant %>"
+     id="public-global-search-drawer"
+     data-filter-drawer-target="drawer"
+     aria-hidden="true">
+  <div class="public-theme-filter-drawer__scrim" data-action="click->filter-drawer#close"></div>
+  <div class="public-theme-filter-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="public-global-search-title">
+    <aside class="public-theme-filter-drawer__media">
+      <div class="public-theme-filter-drawer__image"<% if panel_visual_url.present? %> style="background-image: url('<%= j panel_visual_url %>')"<% end %>></div>
+      <div class="public-theme-filter-drawer__grade"></div>
+      <div class="public-theme-filter-drawer__ghost" aria-hidden="true"><%= panel_site_name.first.upcase %></div>
+      <%= image_tag panel_logo, class: "public-theme-filter-drawer__logo", alt: panel_site_name if panel_logo.present? %>
+      <div class="public-theme-filter-drawer__copy">
+        <span class="public-theme-filter-drawer__eyebrow">Busca avançada</span>
+        <h3 class="public-theme-filter-drawer__headline">Encontre o imóvel exato que você procura.</h3>
+        <div class="public-theme-filter-drawer__rule"></div>
+      </div>
+    </aside>
+
+    <div class="public-theme-filter-drawer__body">
+      <button type="button" class="public-theme-filter-drawer__close" data-action="click->filter-drawer#close" aria-label="Fechar filtro" data-filter-drawer-initial-focus>
+        <i class="public-theme-filter-drawer__close-icon bi bi-x-lg" aria-hidden="true"></i>
+      </button>
+
+      <h2 class="public-theme-filter-drawer__title" id="public-global-search-title">Filtro <em class="public-theme-filter-drawer__title-accent">detalhado</em></h2>
+
+      <%= form_with url: habitations_path,
+                    method: :get,
+                    class: "public-theme-filter-drawer__form",
+                    id: "filtroForm",
+                    local: true,
+                    autocomplete: "off",
+                    data: { filter_drawer_target: "form", action: "reset->filter-drawer#reset" } do %>
+        <%= hidden_field_tag :transaction_type, transaction_type, id: nil, data: { segmented_input: "transaction" } %>
+        <%= hidden_field_tag :min_price, "", id: nil, data: { range_hidden: "valor-min" } %>
+        <%= hidden_field_tag :max_price, "", id: nil, data: { range_hidden: "valor-max" } %>
+        <%= hidden_field_tag :min_area, "", id: nil, data: { range_hidden: "area-min" } %>
+        <%= hidden_field_tag :max_area, "", id: nil, data: { range_hidden: "area-max" } %>
+
+        <%# Busca livre com sugestões (código, bairro, cidade, empreendimento). %>
+        <div class="public-theme-filter-drawer__field public-theme-filter-drawer__search"
+             data-controller="autocomplete"
+             data-autocomplete-url-value="<%= autocomplete_habitations_path %>">
+          <label class="public-theme-filter-drawer__label" for="public-filter-code">Código, bairro ou empreendimento</label>
+          <%= text_field_tag :search, params[:search],
+                id: "public-filter-code",
+                class: "public-theme-filter-drawer__input",
+                placeholder: "Digite código, região ou nome",
+                autocomplete: "off",
+                data: { autocomplete_target: "input", action: "focus->autocomplete#focus input->autocomplete#search" } %>
+          <div class="public-theme-filter-drawer__suggestions hidden" data-autocomplete-target="results"></div>
+        </div>
+
+        <div class="public-theme-filter-drawer__field">
+          <div class="public-theme-filter-drawer__segment" data-seg="transaction" data-segmented="transaction" role="group" aria-label="Finalidade">
+            <button type="button" class="public-theme-filter-drawer__segment-option" aria-pressed="<%= transaction_type == "venda" %>" data-value="venda" data-action="click->filter-drawer#setSegment">Comprar</button>
+            <button type="button" class="public-theme-filter-drawer__segment-option" aria-pressed="<%= transaction_type == "aluguel" %>" data-value="aluguel" data-action="click->filter-drawer#setSegment">Alugar</button>
+          </div>
+        </div>
+
+        <div class="public-theme-filter-drawer__field">
+          <label class="public-theme-filter-drawer__label" id="public-filter-category-label">Tipo de imóvel</label>
+          <div class="public-theme-combobox" data-controller="combobox" data-combobox-compact-value="true">
+            <%= hidden_field_tag "category[]", "", id: nil %>
+            <div class="public-theme-combobox__trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="public-filter-category-label">
+              <div class="public-theme-combobox__field">
+                <span class="public-theme-combobox__tags"></span>
+                <input class="public-theme-combobox__input" type="text" placeholder="Selecione" aria-label="Tipo de imóvel" aria-autocomplete="list">
+              </div>
+              <i class="public-theme-combobox__caret bi bi-chevron-down" aria-hidden="true"></i>
+            </div>
+            <div class="public-theme-combobox__panel" role="listbox">
+              <% property_types.each do |type| %>
+                <div class="public-theme-combobox__option" role="option" data-value="<%= type %>" data-search="<%= type.to_s.parameterize(separator: " ") %>"><span class="public-theme-combobox__label"><%= type %></span></div>
+              <% end %>
+              <div class="public-theme-combobox__empty" hidden>Nenhum tipo encontrado</div>
+            </div>
+          </div>
+        </div>
+
+        <%# Cidade e bairro mandam city[]: a busca pública casa cidade, bairro
+            ou "Bairro - Cidade" pelo mesmo parâmetro. %>
+        <div class="public-theme-filter-drawer__field public-theme-filter-drawer__grid">
+          <% [["city", "Cidade", city_options, "Nenhuma cidade encontrada"],
+              ["neighborhood", "Bairro", neighborhood_options, "Nenhum bairro encontrado"]].each do |key, label, options, empty_label| %>
+            <div>
+              <label class="public-theme-filter-drawer__label" id="public-filter-<%= key %>-label"><%= label %></label>
+              <div class="public-theme-combobox" data-controller="combobox" data-combobox-compact-value="true">
+                <%= hidden_field_tag "city[]", "", id: nil %>
+                <div class="public-theme-combobox__trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-labelledby="public-filter-<%= key %>-label">
+                  <div class="public-theme-combobox__field">
+                    <span class="public-theme-combobox__tags"></span>
+                    <input class="public-theme-combobox__input" type="text" placeholder="Selecione" aria-label="<%= label %>" aria-autocomplete="list">
+                  </div>
+                  <i class="public-theme-combobox__caret bi bi-chevron-down" aria-hidden="true"></i>
+                </div>
+                <div class="public-theme-combobox__panel" role="listbox">
+                  <% options.each do |option| %>
+                    <% option_label = key == "neighborhood" ? option[:label].split(" - ").first : option[:label] %>
+                    <div class="public-theme-combobox__option" role="option" data-value="<%= option[:value] %>" data-search="<%= option[:label].parameterize(separator: " ") %>">
+                      <span class="public-theme-combobox__label"><%= option_label %></span>
+                      <% if key == "neighborhood" && option[:label].include?(" - ") %><small class="public-theme-combobox__hint"><%= option[:label].split(" - ", 2).last %></small><% end %>
+                    </div>
+                  <% end %>
+                  <div class="public-theme-combobox__empty" hidden><%= empty_label %></div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="public-theme-filter-drawer__field public-theme-filter-drawer__range">
+          <label class="public-theme-filter-drawer__label">Faixa de valor</label>
+          <%
+            sale_bounds = public_price_slider_bounds("venda")
+            rental_bounds = public_price_slider_bounds("aluguel")
+            price_bounds = transaction_type == "aluguel" ? rental_bounds : sale_bounds
+          %>
+          <%# Limites pelo estoque da conta (PublicSite::PriceRanges); o controller troca venda/aluguel. %>
+          <div class="public-theme-filter-drawer__range-track" data-range="valor"
+               data-min="<%= price_bounds[:min] %>" data-max="<%= price_bounds[:max] %>" data-step="<%= price_bounds[:step] %>"
+               data-sale-min="<%= sale_bounds[:min] %>" data-sale-max="<%= sale_bounds[:max] %>" data-sale-step="<%= sale_bounds[:step] %>"
+               data-rental-min="<%= rental_bounds[:min] %>" data-rental-max="<%= rental_bounds[:max] %>" data-rental-step="<%= rental_bounds[:step] %>" data-money="1">
+            <div class="public-theme-filter-drawer__range-fill" data-range-fill></div>
+            <input type="range" class="public-theme-filter-drawer__range-lo" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= price_bounds[:min] %>" aria-label="Valor mínimo" data-range-lo data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
+            <input type="range" class="public-theme-filter-drawer__range-hi" min="<%= price_bounds[:min] %>" max="<%= price_bounds[:max] %>" step="<%= price_bounds[:step] %>" value="<%= price_bounds[:max] %>" aria-label="Valor máximo" data-range-hi data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
+          </div>
+          <div class="public-theme-filter-drawer__range-values"><span class="public-theme-filter-drawer__range-value" data-range-out-lo><%= number_to_currency(price_bounds[:min], unit: "R$", precision: 0) %></span><span class="public-theme-filter-drawer__range-value" data-range-out-hi><%= number_to_currency(price_bounds[:max], unit: "R$", precision: 0) %> +</span></div>
+        </div>
+
+        <div class="public-theme-filter-drawer__field public-theme-filter-drawer__range">
+          <label class="public-theme-filter-drawer__label">Metragem privativa</label>
+          <div class="public-theme-filter-drawer__range-track" data-range="area" data-min="0" data-max="700" data-step="10" data-suffix="m² +">
+            <div class="public-theme-filter-drawer__range-fill" data-range-fill></div>
+            <input type="range" class="public-theme-filter-drawer__range-lo" min="0" max="700" step="10" value="0" aria-label="Área mínima" data-range-lo data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
+            <input type="range" class="public-theme-filter-drawer__range-hi" min="0" max="700" step="10" value="700" aria-label="Área máxima" data-range-hi data-action="input->filter-drawer#drawRange pointerdown->filter-drawer#raiseRangeThumb">
+          </div>
+          <div class="public-theme-filter-drawer__range-values"><span class="public-theme-filter-drawer__range-value" data-range-out-lo>0 m²</span><span class="public-theme-filter-drawer__range-value" data-range-out-hi>700 m² +</span></div>
+        </div>
+
+        <div class="public-theme-filter-drawer__field public-theme-filter-drawer__grid public-theme-filter-drawer__grid--3">
+          <% count_groups.each do |group| %>
+            <div>
+              <label class="public-theme-filter-drawer__label"><%= group[:label] %></label>
+              <% active_name, active_value = [group[:exact_name], group[:min_name]].filter_map { |name| [name, params[name].to_s] if params[name].present? }.first %>
+              <div class="public-theme-filter-drawer__pills" data-pill-group="<%= group[:exact_name] %>">
+                <%= hidden_field_tag active_name || group[:exact_name], active_value.to_s, id: nil, data: { pill_input: group[:exact_name] } %>
+                <% (1..3).each do |number| %>
+                  <button type="button" class="public-theme-filter-drawer__pill" data-name="<%= group[:exact_name] %>" data-value="<%= number %>" aria-pressed="<%= active_name == group[:exact_name] && active_value == number.to_s %>" aria-label="<%= number %> <%= group[:label].downcase %>" data-action="click->filter-drawer#setPill"><%= number %></button>
+                <% end %>
+                <button type="button" class="public-theme-filter-drawer__pill" data-name="<%= group[:min_name] %>" data-value="4" aria-pressed="<%= active_name == group[:min_name] && active_value == "4" %>" aria-label="4 ou mais <%= group[:label].downcase %>" data-action="click->filter-drawer#setPill">4+</button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <fieldset class="public-theme-filter-drawer__field">
+          <legend class="public-theme-filter-drawer__label">Buscas rápidas</legend>
+          <div class="public-theme-filter-drawer__quick">
+            <% quick_filter_options.each do |value, label, icon| %>
+              <label class="public-theme-filter-drawer__chip">
+                <%= check_box_tag "characteristics[]", value, selected_characteristics.include?(value),
+                      id: checkbox_id.call("quick-#{value}"),
+                      class: "public-theme-filter-drawer__quick-input" %>
+                <i class="public-theme-filter-drawer__chip-icon bi <%= icon %>" aria-hidden="true"></i>
+                <%= label %>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+
+        <div class="public-theme-filter-drawer__field">
+          <span class="public-theme-filter-drawer__label">Destaques</span>
+          <div class="public-theme-filter-drawer__toggles">
+            <% highlight_options.each do |value, label| %>
+              <label class="public-theme-filter-drawer__toggle" for="<%= checkbox_id.call(value) %>">
+                <span class="public-theme-filter-drawer__toggle-label"><%= label %></span>
+                <%= check_box_tag "characteristics[]", value, selected_characteristics.include?(value),
+                      id: checkbox_id.call(value),
+                      class: "public-theme-filter-drawer__toggle-input" %>
+                <span class="public-theme-filter-drawer__toggle-track" aria-hidden="true"></span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="public-theme-filter-drawer__field">
+          <span class="public-theme-filter-drawer__label">Características</span>
+          <div class="public-theme-filter-drawer__toggles">
+            <% characteristic_options.each do |value, label| %>
+              <label class="public-theme-filter-drawer__toggle" for="<%= checkbox_id.call(value) %>">
+                <span class="public-theme-filter-drawer__toggle-label"><%= label %></span>
+                <%= check_box_tag "characteristics[]", value, selected_characteristics.include?(value),
+                      id: checkbox_id.call(value),
+                      class: "public-theme-filter-drawer__toggle-input" %>
+                <span class="public-theme-filter-drawer__toggle-track" aria-hidden="true"></span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="public-theme-filter-drawer__actions">
+          <button type="reset" class="public-theme-filter-drawer__clear">Limpar</button>
+          <button type="submit" class="public-theme-filter-drawer__submit">
+            <i class="public-theme-filter-drawer__submit-icon bi bi-search" aria-hidden="true"></i>
+            Buscar imóveis
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

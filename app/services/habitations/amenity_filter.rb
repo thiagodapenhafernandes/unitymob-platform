@@ -32,6 +32,7 @@ module Habitations
       when /sol.*manha/ then @scope.sol_manha.or(textual_match)
       when /sol.*tarde/ then @scope.sol_tarde.or(textual_match)
       when /sol.*dia.*todo/ then @scope.sol_dia_todo.or(textual_match)
+      when /(carro|veiculo)s? eletric|recarga|wallbox|eletroposto/ then @scope.carro_eletrico
       else textual_match
       end
     end

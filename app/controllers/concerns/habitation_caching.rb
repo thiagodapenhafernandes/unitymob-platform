@@ -15,7 +15,8 @@ module HabitationCaching
 
   def cache_show_page(habitation)
     fresh_when(
-      etag: [habitation, public_show_asset_cache_key],
+      # O detalhe também mostra dados do empreendimento do imóvel.
+      etag: [habitation, habitation.empreendimento, @show_development_identity, public_show_asset_cache_key],
       last_modified: habitation.updated_at,
       public: true
     )

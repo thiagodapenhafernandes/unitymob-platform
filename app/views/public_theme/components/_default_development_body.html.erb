@@ -1,3 +1,5 @@
+<%# Detalhe do empreendimento (default) — contrato: .public-theme-development-
+    about/features/location/units (+ --<variante>). Variants mantêm os ganchos. %>
 <div class="public-development-show bg-gray-50 min-h-screen">
   
   <!-- Hero Section with Background Image -->
@@ -247,7 +249,8 @@
                       data-action="collapsible-text#toggle"
                       aria-controls="<%= description_id %>"
                       hidden>
-                Exibir mais +
+                <span data-collapsible-text-label>Ler mais</span>
+                <i class="public-collapsible-text__icon bi bi-chevron-down" aria-hidden="true"></i>
               </button>
             </div>
           </section>

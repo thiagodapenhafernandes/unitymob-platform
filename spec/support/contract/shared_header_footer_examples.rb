@@ -3,6 +3,7 @@ RSpec.shared_examples "contrato do cabeçalho e rodapé públicos" do
     expect(header_standard_source).to include("public-theme-header--default")
     expect(header_standard_source).to include("public-theme-header__brand")
     expect(header_standard_source).to include("public-theme-header__nav")
+    expect(header_standard_source).to include("public-theme-header__phone")
     expect(footer_standard_source).to include("public-theme-site-footer--default")
   end
 
@@ -10,6 +11,7 @@ RSpec.shared_examples "contrato do cabeçalho e rodapé públicos" do
     expect(header_luxury_source).to include("public-theme-header--")
     expect(header_luxury_source).to include("public-theme-header__brand")
     expect(header_luxury_source).to include("public-theme-header__nav")
+    expect(header_luxury_source).to include("public-theme-header__phone")
     expect(footer_luxury_source).to include("public-theme-site-footer--")
   end
 

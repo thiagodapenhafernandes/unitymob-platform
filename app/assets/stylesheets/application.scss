@@ -7,6 +7,9 @@
 @use "components/public_property_card";
 @use "components/public_form_modal";
 @use "components/public_global_search_drawer";
+@use "components/public_theme_listing";
+@use "components/public_theme_home";
+@use "components/public_theme_navigation_overlay";
 @use "pagination";
 @use "public_habitations_show_refresh";
 
@@ -465,11 +468,18 @@ form.is-submitting button.is-submitting:has([data-submit-guard-hidden="true"])::
 
 /* Global overrides for legacy components if needed */
 .container-custom {
-  max-width: 1280px;
+  max-width: 1440px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1rem;
   padding-right: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .container-custom {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 /* Public accessibility: icon-only controls must be large enough for touch and keyboard users. */

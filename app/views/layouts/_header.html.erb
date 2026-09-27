@@ -34,7 +34,7 @@
           <% end %>
         <% end %>
         <% if public_contact_setting.show_phone_in_header? && public_phone.present? %>
-          <div class="hidden lg:flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <div class="public-theme-header__phone hidden lg:flex items-center gap-2 text-sm font-semibold text-gray-700">
             <i class="bi bi-telephone"></i>
             <span><%= format_phone(public_phone) %></span>
           </div>
@@ -65,7 +65,7 @@
         <button type="button"
                 class="text-blue-three p-2"
                 data-header-part="toggle"
-                data-action="click->navbar#toggleDesktopMenu"
+                data-action="click->navbar#openMenu"
                 aria-label="Abrir menu principal">
           <i class="bi bi-list text-2xl" aria-hidden="true"></i>
         </button>
@@ -75,33 +75,19 @@
       <button type="button"
               class="lg:hidden text-blue-three p-2"
               data-header-part="toggle"
-                data-action="click->navbar#toggleMobile"
+              data-action="click->navbar#openMenu"
               aria-label="Abrir menu principal">
         <i class="bi bi-list text-2xl" aria-hidden="true"></i>
       </button>
       
     </div>
     
-    <!-- Desktop Dropdown Menu (hidden by default) -->
-    <div class="hidden" data-header-part="panel" data-navbar-target="desktopMenu">
-      <nav class="public-theme-header__nav py-4 border-t">
-        <ul class="flex flex-col gap-3">
-          <% menu_entries.each do |entry| %>
-            <li><%= link_to entry.url, class: "text-gray-700 hover:text-blue-three", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %></li>
-          <% end %>
-        </ul>
-      </nav>
-    </div>
-    
-    <!-- Mobile Menu -->
-    <div class="hidden lg:hidden" data-header-part="panel" data-navbar-target="mobileMenu">
-      <nav class="public-theme-header__nav py-4 border-t">
-        <ul class="flex flex-col gap-3">
-          <% menu_entries.each do |entry| %>
-            <li><%= link_to entry.url, class: "text-gray-700 hover:text-blue-three py-2", **public_menu_link_attrs(entry) do %><%= public_menu_label(entry) %><% end %></li>
-          <% end %>
-        </ul>
-      </nav>
-    </div>
   </div>
 </header>
+
+<%= render "public_theme/components/navigation_overlay",
+      id: "publicNavigationMenu",
+      variant: "default",
+      site_name: public_identity.name,
+      logo: (@layout_setting.logo if @layout_setting&.logo&.attached?),
+      **public_navigation_overlay_data(menu_entries, home_setting: @home_setting, contact_setting: public_contact_setting) %>

@@ -1,0 +1,16 @@
+<%# Botão flutuante "Filtrar imóveis" — compartilhado por todos os temas.
+    Contrato: .public-theme-filter-fab(--<variante>) com __icon, __divider e
+    __label; abre o drawer pelo controller filter-drawer. O tema só estiliza
+    a variante (--default, --salute-luxury); estados do luxury (--visible,
+    --hero, --fading) são postos pelo controller salute-luxury-theme. %>
+<button type="button"
+        class="public-theme-filter-fab public-theme-filter-fab--<%= variant %>"
+        data-filter-drawer-target="trigger"
+        data-action="click->filter-drawer#open"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="public-global-search-drawer">
+  <i class="public-theme-filter-fab__icon bi bi-sliders" aria-hidden="true"></i>
+  <span class="public-theme-filter-fab__divider" aria-hidden="true"></span>
+  <span class="public-theme-filter-fab__label">Filtrar imóveis</span>
+</button>

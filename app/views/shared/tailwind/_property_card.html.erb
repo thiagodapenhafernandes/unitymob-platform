@@ -1,3 +1,8 @@
+<%# Card do imóvel (default) — contrato: família .public-theme-property-card__*
+    (__media, __badges, __price*, __body, __location, __specs, __whatsapp,
+    __opportunity) + data-* de marketing-tracker, lead-capture e favorito.
+    Lista completa em docs/public-theme-contract.md (Contrato v2); cobertura em
+    spec/views/public_theme/property_card_contract_spec.rb. %>
 <% property_title = property.display_title %>
 <% property_constructor = property.effective_constructor %>
 <% property_path = public_habitation_detail_path(property) %>
@@ -7,7 +12,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v7",
+    "public-property-card-v8",
     public_tenant.id,
     request.host,
     property.cache_key_with_version,
@@ -18,7 +23,7 @@
 %>
 <% cache card_cache_key, expires_in: 5.minutes do %>
 
-<div class="public-property-card group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col relative cursor-pointer"
+<div class="public-property-card group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col h-full relative cursor-pointer"
      data-controller="clickable-card"
      data-clickable-card-url-value="<%= property_path %>"
      data-property-id="<%= property.id %>">
@@ -147,7 +152,7 @@
 
     <!-- Title -->
     <div class="mb-3 min-h-[3rem]">
-      <h3 class="text-base font-bold text-blue-three line-clamp-2 leading-tight group-hover:text-blue-one transition-colors">
+      <h3 class="public-theme-property-card__title text-base font-bold text-blue-three line-clamp-2 leading-tight group-hover:text-blue-one transition-colors">
         <%= property_title %>
       </h3>
     </div>
@@ -235,18 +240,18 @@
       vagas_label = property.card_vagas_text
       dorms_label = property.card_dormitorios_text
     %>
-    <div class="public-theme-card__specs grid grid-cols-3 gap-2 mb-4 border-t border-gray-100 pt-4">
+    <div class="public-theme-card__specs grid grid-cols-3 gap-2 mt-auto mb-4 border-t border-gray-100 pt-4">
       <div class="public-theme-card__spec flex flex-col items-center justify-center text-center">
         <i class="bi bi-arrows-fullscreen text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= area_label.presence || "—" %></span>
       </div>
       <div class="public-theme-card__spec flex flex-col items-center justify-center text-center border-l border-gray-100">
         <i class="bi bi-car-front text-golden-one text-xl mb-1"></i>
-        <span class="text-xs text-gray-500 font-medium"><%= vagas_label.present? ? "#{vagas_label} Vagas" : "—" %></span>
+        <span class="text-xs text-gray-500 font-medium"><%= vagas_label.present? ? "#{vagas_label} #{vagas_label == "1" ? "Vaga" : "Vagas"}" : "—" %></span>
       </div>
       <div class="public-theme-card__spec flex flex-col items-center justify-center text-center border-l border-gray-100">
         <i class="bi bi-door-closed text-golden-one text-xl mb-1"></i>
-        <span class="text-xs text-gray-500 font-medium"><%= dorms_label.present? ? "#{dorms_label} Quartos" : "—" %></span>
+        <span class="text-xs text-gray-500 font-medium"><%= dorms_label.present? ? "#{dorms_label} #{dorms_label == "1" ? "Quarto" : "Quartos"}" : "—" %></span>
       </div>
     </div>
 

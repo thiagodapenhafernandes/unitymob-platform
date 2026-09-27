@@ -283,6 +283,8 @@ class HabitationsController < ApplicationController
       end
     end
     
+    load_property_page_context
+
     # Links privados por token não devem ser armazenados por cache compartilhado.
     if cache_shared_property_page?
       no_store
@@ -478,6 +480,37 @@ class HabitationsController < ApplicationController
     public_tenant.habitations
   end
 
+  # Blocos do detalhe no formato "página de imóvel completa": empreendimento
+  # do imóvel (fotos, lazer, faixas), mais imóveis no mesmo bairro e links de
+  # imóveis por cidade.
+  def load_property_page_context
+    development = @habitation.empreendimento
+    @property_development = development if development && development.id != @habitation.id
+    @show_development_identity = PublicSiteProfile.current(tenant: public_tenant).show_development_identity?
+
+    @neighborhood_properties = []
+    neighborhood = @habitation.public_neighborhood
+    city = @habitation.address&.cidade.presence || @habitation.cidade
+    if neighborhood.present? && city.present?
+      excluded_ids = [@habitation.id, *Array(@related_properties).map(&:id)]
+      price_column = @habitation.valor_venda_cents.to_i.positive? ? :valor_venda_cents : :valor_locacao_cents
+      @neighborhood_properties = public_habitation_scope
+        .public_property_listable
+        .by_public_locations(["#{neighborhood} - #{city}"])
+        .where(price_column => 1..)
+        .where.not(id: excluded_ids)
+        .includes(:address, { constructor: { logo_attachment: :blob } }, { empreendimento: { constructor: { logo_attachment: :blob } } })
+        .newest_first
+        .limit(6)
+        .to_a
+      PublicSite::CardPhotoPreloader.new(@neighborhood_properties, limit: 3).call
+    end
+
+    @city_link_groups = Rails.cache.fetch("public_city_link_groups_v1/tenant/#{public_tenant.id}", expires_in: 6.hours) do
+      public_habitation_scope.public_city_link_groups
+    end
+  end
+
   def public_habitation_lookup_scope
     public_habitation_scope.with_attached_photos.includes(
       :address,
@@ -517,6 +550,9 @@ class HabitationsController < ApplicationController
       :min_suites,
       :min_bathrooms,
       :min_parking,
+      :bedrooms,
+      :suites,
+      :parking,
       :min_area,
       :max_area,
       :min_price,

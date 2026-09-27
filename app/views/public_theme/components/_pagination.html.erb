@@ -7,8 +7,8 @@
     renderer: WillPaginate::ActionView::TailwindLinkRenderer,
     inner_window: local_assigns.fetch(:inner_window, 2),
     outer_window: local_assigns.fetch(:outer_window, 0),
-    previous_label: local_assigns.fetch(:previous_label, public_svg_icon("chevron-left")),
-    next_label: local_assigns.fetch(:next_label, public_svg_icon("chevron-right"))
+    previous_label: local_assigns.fetch(:previous_label, public_icon("chevron-left")),
+    next_label: local_assigns.fetch(:next_label, public_icon("chevron-right"))
   }
   pagination_options[:path_helper] = path_helper if path_helper.respond_to?(:call)
 %>

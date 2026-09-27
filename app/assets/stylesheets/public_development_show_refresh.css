@@ -150,7 +150,7 @@
   line-height: 1.76;
 }
 
-.public-development-show__prose.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+.public-development-show__prose.is-collapsible .public-collapsible-text__content::after {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 78%);
 }
 

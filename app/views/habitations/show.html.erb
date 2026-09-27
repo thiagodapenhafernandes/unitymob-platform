@@ -21,11 +21,10 @@
   <%= json_ld_tag(real_estate_listing_schema(@habitation)) %>
   <%= json_ld_tag({
     "@context" => "https://schema.org", "@type" => "BreadcrumbList",
-    "itemListElement" => [
-      { "@type" => "ListItem", "position" => 1, "name" => "Início", "item" => root_url },
-      { "@type" => "ListItem", "position" => 2, "name" => "Imóveis", "item" => habitations_url },
-      { "@type" => "ListItem", "position" => 3, "name" => @habitation.codigo, "item" => @canonical_url }
-    ]
+    "itemListElement" => public_property_breadcrumb_items(@habitation).each_with_index.map { |item, index|
+      { "@type" => "ListItem", "position" => index + 1, "name" => item[:label],
+        "item" => item[:path] ? "#{request.base_url}#{item[:path]}" : @canonical_url }
+    }
   }) %>
   <% if primary_image_url.present? %>
     <link rel="preload"

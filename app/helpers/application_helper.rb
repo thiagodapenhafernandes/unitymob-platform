@@ -1,10 +1,19 @@
 module ApplicationHelper
+  # Faixas da busca pública (hero e listagem): personalizadas pela conta no
+  # Perfil público; senão calculadas pelo estoque (PublicSite::PriceRanges);
+  # senão as faixas padrão abaixo.
   def public_price_range_options(transaction_type = nil)
+    rental = public_rental_transaction?(transaction_type)
     profile = PublicSiteProfile.current(tenant: public_tenant)
-    configured = transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar]) ? profile.rental_price_options : profile.sale_price_options
-    return [["Todos os Valores", ""], *configured] if configured.any?
+    if profile.custom_price_ranges?
+      configured = rental ? profile.rental_price_options : profile.sale_price_options
+      return [["Todos os Valores", ""], *configured] if configured.any?
+    end
 
-    if transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar])
+    automatic = PublicSite::PriceRanges.for(public_tenant).dig(rental ? "aluguel" : "venda", :ranges)
+    return [["Todos os Valores", ""], *automatic] if automatic.present?
+
+    if rental
       [
         ["Todos os Valores", ""],
         ["até R$5.000", "0-5000"],
@@ -25,6 +34,18 @@ module ApplicationHelper
         ["a partir de R$10.000.000", "10000000-"]
       ]
     end
+  end
+
+  # Limites do slider de valor do drawer, pelo estoque da conta (com padrão).
+  def public_price_slider_bounds(transaction_type)
+    rental = public_rental_transaction?(transaction_type)
+    defaults = rental ? { min: 5_000, max: 50_000, step: 1_000 } : { min: 1_000_000, max: 50_000_000, step: 100_000 }
+    stats = PublicSite::PriceRanges.for(public_tenant)[rental ? "aluguel" : "venda"]
+    stats ? stats.slice(:min, :max, :step) : defaults
+  end
+
+  def public_rental_transaction?(transaction_type)
+    transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar])
   end
 
   def public_pwa_icon_path(size: 512)

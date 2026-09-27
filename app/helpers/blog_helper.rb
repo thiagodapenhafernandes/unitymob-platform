@@ -53,6 +53,17 @@ module BlogHelper
     end
   end
 
+  # Resumo do card sem o rabicho "[…] Leia mais…" que vem do WordPress.
+  def blog_card_excerpt(article, length: 170)
+    article.excerpt.to_s.sub(/\s*\[(?:…|\.\.\.)\]\s*(?:Leia mais\s*(?:…|\.\.\.)?)?\s*\z/i, "…").squish.truncate(length, separator: " ")
+  end
+
+  # Categoria que identifica o artigo no card: a primeira que não seja "Geral".
+  def blog_card_category(article)
+    names = article.blog_categories.map(&:name)
+    names.find { |name| !name.casecmp?("Geral") } || names.first
+  end
+
   def blog_cover(article, hero: false, archive: false)
     return unless article.cover.attached?
 

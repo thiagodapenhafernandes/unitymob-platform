@@ -197,7 +197,7 @@ export default class extends Controller {
   }
 
   scrollToLocation(event) {
-    if (!event?.currentTarget?.closest(".public-habitations-show__media-actions")) return
+    if (!event?.currentTarget?.closest(".public-habitations-show__media-actions, .public-theme-property-gallery__actions")) return
 
     document.getElementById("localizacao-imovel")?.scrollIntoView({ behavior: "smooth", block: "center" })
   }

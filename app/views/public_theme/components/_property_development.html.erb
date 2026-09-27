@@ -1,0 +1,100 @@
+<%# "Sobre o empreendimento" no detalhe do imóvel — mesmo HTML em todos os
+    temas (contrato public-theme-property-development__*). Usa o registro do
+    empreendimento vinculado (codigo_empreendimento): fotos do prédio, faixas
+    das unidades, unidades disponíveis, endereço e link para a página dele.
+    Por padrão é discreto: a página da unidade não revela o empreendimento
+    (sem nome, rua, descrição ou link — a descrição quase sempre cita o nome).
+    `reveal_identity: true` mostra tudo. Locals: development, habitation,
+    variant, class_name, reveal_identity. %>
+<%
+  development = local_assigns.fetch(:development)
+  # Guardrail: só revela com a opção da conta ligada E nome cadastrado; sem
+  # nome, fica no modo discreto (nunca expõe display_title como se fosse nome).
+  reveal_identity = local_assigns.fetch(:reveal_identity, false) && development.nome_empreendimento.present?
+  habitation = local_assigns[:habitation]
+  name = development.nome_empreendimento.to_s.squish
+  place_word = [development.categoria, habitation&.categoria].join(" ").match?(/condom[ií]nio/i) ? "condomínio" : "empreendimento"
+  photos = development.public_image_sources.first(24)
+  excerpt = reveal_identity ? strip_tags(development.display_description.to_s).squish.truncate(260, separator: " ") : nil
+  leisure = development.leisure_features_for_display
+  specs = [
+    ["door-closed", development.card_dormitorios_text, "quarto", "quartos"],
+    ["stars", development.card_suites_text, "suíte", "suítes"],
+    ["aspect-ratio", development.card_area_text, nil, nil],
+    ["car-front", development.card_vagas_text, "vaga", "vagas"]
+  ].filter_map do |icon, value, singular, plural|
+    next if value.blank?
+
+    label = singular ? "#{value} #{value.to_s == "1" ? singular : plural}" : value
+    [icon, label]
+  end
+  units = development.available_units_count.to_i
+  address = [(development.endereco if reveal_identity), development.public_neighborhood, development.cidade].compact_blank.join(" - ")
+  development_path = public_habitation_detail_path(development) if reveal_identity && development.exibir_no_site_flag?
+  title = reveal_identity ? name : "Conheça o #{place_word} deste imóvel"
+  photo_caption = reveal_identity ? name : "Foto do #{place_word}"
+  block_class = ["public-theme-property-development", "public-theme-property-development--#{local_assigns.fetch(:variant, "default")}", local_assigns[:class_name]].compact.join(" ")
+  gallery_group = "empreendimento-#{development.id}"
+%>
+
+<% if photos.any? || excerpt.present? || leisure.any? || specs.any? %>
+  <section class="<%= block_class %>" id="sobre-o-empreendimento" aria-labelledby="sobre-o-empreendimento-titulo">
+    <div class="public-theme-property-development__content">
+      <span class="public-theme-property-development__eyebrow">Sobre o <%= place_word %></span>
+      <h2 class="public-theme-property-development__title" id="sobre-o-empreendimento-titulo"><%= title %></h2>
+
+      <% if excerpt.present? %>
+        <p class="public-theme-property-development__excerpt"><%= excerpt %></p>
+      <% elsif leisure.any? %>
+        <p class="public-theme-property-development__excerpt"><strong>O que você vai encontrar:</strong> <%= leisure.first(10).join(", ") %></p>
+      <% end %>
+
+      <% if specs.any? %>
+        <ul class="public-theme-property-development__specs">
+          <% specs.each do |icon, label| %>
+            <li class="public-theme-property-development__spec"><%= public_icon(icon, class_name: "public-theme-property-development__icon") %><%= label %></li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <ul class="public-theme-property-development__facts">
+        <% if units.positive? %>
+          <li class="public-theme-property-development__fact"><%= public_icon("building", class_name: "public-theme-property-development__icon") %><%= units %> <%= units == 1 ? "unidade disponível" : "unidades disponíveis" %></li>
+        <% end %>
+        <% if address.present? %>
+          <li class="public-theme-property-development__fact"><%= public_icon("geo-alt", class_name: "public-theme-property-development__icon") %><%= address %></li>
+        <% end %>
+      </ul>
+
+      <% if development_path %>
+        <%= link_to development_path, class: "public-theme-property-development__link" do %>
+          Conheça o <%= place_word %>
+          <%= public_icon("arrow-right") %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if photos.any? %>
+      <div class="public-theme-property-development__gallery" data-controller="fancybox-gallery">
+        <% photos.each_with_index do |photo, index| %>
+          <% full_url = public_image_url(photo, resize_to_limit: [1920, 1440], format: :webp) %>
+          <% if index < 4 %>
+            <%= link_to full_url,
+                  class: "public-theme-property-development__photo",
+                  data: { fancybox: gallery_group, caption: photo_caption } do %>
+              <%= image_tag public_image_url(photo, resize_to_fill: [640, 480], format: :webp),
+                    alt: "#{photo_caption} #{index + 1}",
+                    width: 640, height: 480, loading: "lazy", decoding: "async",
+                    class: "public-theme-property-development__image" %>
+              <% if index == 3 && photos.size > 4 %>
+                <span class="public-theme-property-development__more">+<%= photos.size - 4 %> fotos</span>
+              <% end %>
+            <% end %>
+          <% else %>
+            <%= link_to "", full_url, class: "public-theme-property-development__photo-hidden", hidden: true, aria: { hidden: true }, tabindex: -1, data: { fancybox: gallery_group, caption: photo_caption } %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+<% end %>

@@ -289,6 +289,9 @@ module Habitation::SearchScopes
     scope :with_min_suites, ->(count) { where("suites_qtd >= ?", count) if count.present? }
     scope :with_min_bathrooms, ->(count) { where("banheiros_qtd >= ?", count) if count.present? }
     scope :with_min_parking, ->(count) { where("vagas_qtd >= ?", count) if count.present? }
+    scope :with_bedrooms, ->(count) { where(dormitorios_qtd: count.to_i) if count.present? }
+    scope :with_suites, ->(count) { where(suites_qtd: count.to_i) if count.present? }
+    scope :with_parking, ->(count) { where(vagas_qtd: count.to_i) if count.present? }
     
     # Scopes por área
     scope :with_min_area, ->(area) { where("area_total_m2 >= ?", area) if area.present? }
@@ -612,6 +615,21 @@ module Habitation::SearchScopes
             "(jsonb_typeof(infra_estrutura) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(infra_estrutura) WHERE unaccent(lower(value)) ILIKE '%piscina%'))")
     }
     
+    # Recarga de carro elétrico quase nunca vem marcada como característica;
+    # aparece no texto ("tomada para carro elétrico na garagem"), então a busca
+    # olha características, infraestrutura e as descrições do imóvel (coluna
+    # importada e o rich text descricao_web) e do empreendimento.
+    ELECTRIC_CAR_PATTERN = "(carro|veiculo)s? eletric|wallbox|eletroposto".freeze
+    scope :carro_eletrico, -> {
+      where("EXISTS (SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(caracteristicas) = 'object' THEN caracteristicas ELSE '{}'::jsonb END) WHERE unaccent(lower(value)) ~ :pattern) OR " \
+            "(jsonb_typeof(infra_estrutura) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(infra_estrutura) WHERE unaccent(lower(value)) ~ :pattern)) OR " \
+            "unaccent(lower(COALESCE(descricao_web, ''))) ~ :pattern OR " \
+            "unaccent(lower(COALESCE(descricao_empreendimento, ''))) ~ :pattern OR " \
+            "EXISTS (SELECT 1 FROM action_text_rich_texts rt WHERE rt.record_type = 'Habitation' AND rt.record_id = habitations.id " \
+            "AND rt.name = 'descricao_web' AND unaccent(lower(rt.body)) ~ :pattern)",
+            pattern: ELECTRIC_CAR_PATTERN)
+    }
+
     scope :sala_estar, -> {
       where("EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) WHERE unaccent(lower(value)) ILIKE '%sala%estar%')")
     }
@@ -696,6 +714,34 @@ module Habitation::SearchScopes
       (cities + neighborhoods)
         .uniq { |item| [item[:type], normalize_location_value(item[:value])] }
         .sort_by { |item| [item[:type] == "city" ? 0 : 1, normalize_location_value(item[:label])] }
+    end
+
+    # Cidades com mais imóveis públicos e seus bairros mais fortes, para os
+    # links "imóveis nesta cidade" do detalhe. Rótulos no mesmo formato de
+    # public_location_options, então cada link cai num filtro city[] válido.
+    def public_city_link_groups(cities: 3, neighborhoods: 5)
+      rows = public_filterable_locations
+        .left_outer_joins(:address)
+        .group(Arel.sql(LOCATION_CITY_SQL), Arel.sql(LOCATION_NEIGHBORHOOD_SQL))
+        .count
+        .map { |(city, neighborhood), count| [city.to_s.strip, neighborhood.to_s.strip, count] }
+        .reject { |city, _, _| city.empty? }
+
+      rows.group_by { |city, _, _| location_normalize_key(city) }
+        .map do |_key, city_rows|
+          city_label = titleize_location(most_common_location_label(city_rows.map(&:first)))
+          top_neighborhoods = city_rows
+            .reject { |_, neighborhood, _| neighborhood.empty? }
+            .group_by { |_, neighborhood, _| location_normalize_key(neighborhood) }
+            .map { |_nkey, n_rows| [titleize_location(most_common_location_label(n_rows.map { _1[1] })), n_rows.sum(&:last)] }
+            .sort_by { |_label, count| -count }
+            .first(neighborhoods)
+            .map { |label, count| { label: label, value: "#{label} - #{city_label}", count: count } }
+
+          { label: city_label, value: city_label, count: city_rows.sum(&:last), neighborhoods: top_neighborhoods }
+        end
+        .sort_by { |group| -group[:count] }
+        .first(cities)
     end
 
     def canonical_location_labels(values)
@@ -786,6 +832,9 @@ module Habitation::SearchScopes
       query = query.with_min_suites(params[:min_suites]) if params[:min_suites].present?
       query = query.with_min_bathrooms(params[:min_bathrooms]) if params[:min_bathrooms].present?
       query = query.with_min_parking(params[:min_parking]) if params[:min_parking].present?
+      query = query.with_bedrooms(params[:bedrooms]) if params[:bedrooms].present?
+      query = query.with_suites(params[:suites]) if params[:suites].present?
+      query = query.with_parking(params[:parking]) if params[:parking].present?
       
       # Área
       query = query.by_area_range(params[:min_area], params[:max_area]) if params[:min_area].present? || params[:max_area].present?
@@ -941,6 +990,7 @@ module Habitation::SearchScopes
         "sala_estar" => :sala_estar,
         "sala_jantar" => :sala_jantar,
         "varanda" => :varanda,
+        "carro_eletrico" => :carro_eletrico,
         "lancamento_flag" => :lancamento,
         "aceita_permuta_flag" => :aceita_permuta,
         "aceita_financiamento_flag" => :aceita_financiamento,

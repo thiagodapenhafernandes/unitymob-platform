@@ -41,7 +41,6 @@
 .public-habitations-show__mobile-price,
 .public-habitations-show__mobile-costs,
 .public-habitations-show__facts--mobile,
-.public-habitations-show__cta-label--mobile,
 .public-habitations-show__cta--mobile-only {
   display: none;
 }
@@ -415,93 +414,135 @@
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.055);
 }
 
-.public-habitations-show__map-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+/* Cartão de localização (public_theme/components/_property_map), variante
+   default: canvas comum a todos os temas + pele do tema padrão. */
+.public-theme-property-map__shell {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
 }
 
-.public-habitations-show__map-external {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--public-show-primary);
-  font-size: 0.72rem;
-  font-weight: 700;
-  white-space: nowrap;
+.public-theme-property-map__canvas {
+  position: absolute;
+  inset: 0;
+  min-height: 260px;
 }
 
-.public-habitations-show__map-tabs {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.public-habitations-show__map-tabs::-webkit-scrollbar {
+.public-theme-property-map__canvas[hidden] {
   display: none;
 }
 
-.public-habitations-show__map-tabs button {
+.public-theme-property-map__canvas .leaflet-control-attribution {
+  font-size: 10px;
+}
+
+.public-theme-property-map--default .public-theme-property-map__heading {
+  display: grid;
+  gap: 6px;
+}
+
+.public-theme-property-map--default .public-theme-property-map__eyebrow {
+  color: #94a3b8;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.public-theme-property-map--default .public-theme-property-map__title {
+  margin: 0;
+  color: var(--public-show-primary);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.public-theme-property-map--default .public-theme-property-map__note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--public-show-muted);
+  font-size: .85rem;
+}
+
+.public-theme-property-map--default .public-theme-property-map__note .public-theme-icon {
+  color: var(--public-show-accent);
+}
+
+.public-theme-property-map--default .public-theme-property-map__tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid rgba(2, 43, 58, .1);
+  border-radius: 999px;
+  background: rgba(2, 43, 58, .045);
+  scrollbar-width: none;
+}
+
+.public-theme-property-map--default .public-theme-property-map__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.public-theme-property-map--default .public-theme-property-map__tab {
   display: inline-flex;
+  flex: 1;
   min-height: 36px;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid rgba(2, 43, 58, 0.11);
-  border-radius: 9px;
-  background: #ffffff;
-  padding: 7px 10px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--public-show-muted);
-  font-size: 0.72rem;
+  font-size: .78rem;
   font-weight: 700;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
 
-.public-habitations-show__map-tabs button:hover,
-.public-habitations-show__map-tabs button.is-active {
-  border-color: rgba(2, 43, 58, 0.24);
-  background: rgba(2, 43, 58, 0.06);
+.public-theme-property-map--default .public-theme-property-map__tab:hover {
   color: var(--public-show-primary);
 }
 
-.public-habitations-show__map-shell {
-  position: relative;
-  width: 100%;
+.public-theme-property-map--default .public-theme-property-map__tab.is-active {
+  background: var(--public-show-primary);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(2, 43, 58, .18);
+}
+
+.public-theme-property-map--default .public-theme-property-map__shell {
+  margin-top: 12px;
   aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border: 1px solid rgba(2, 43, 58, 0.12);
+  border: 1px solid rgba(2, 43, 58, .12);
   border-radius: 16px;
   background:
-    linear-gradient(135deg, rgba(2, 43, 58, 0.06), rgba(191, 171, 37, 0.08)),
+    linear-gradient(135deg, rgba(2, 43, 58, .06), rgba(191, 171, 37, .08)),
     #eef4f8;
 }
 
-.public-habitations-show__map {
-  position: absolute;
-  inset: 0;
-  min-height: 260px;
+.public-theme-property-map--default .public-theme-property-map__external {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--public-show-primary);
+  font-size: .78rem;
+  font-weight: 800;
+  text-decoration: none;
 }
 
-.public-habitations-show__street-view {
-  position: absolute;
-  inset: 0;
-  min-height: 260px;
+.public-theme-property-map--default .public-theme-property-map__external .public-theme-icon {
+  color: var(--public-show-accent);
+  transition: transform .2s ease;
 }
 
-.public-habitations-show__street-view[hidden],
-.public-habitations-show__map[hidden] {
-  display: none;
-}
-
-.public-habitations-show__map .leaflet-control-attribution {
-  font-size: 10px;
-}
-
-.public-habitations-show__map-subtitle,
-.public-habitations-show__map-place {
-  color: var(--public-show-muted);
+.public-theme-property-map--default .public-theme-property-map__external:hover .public-theme-icon {
+  transform: translate(2px, -2px);
 }
 
 .public-habitations-show__feature-card > div:first-child {
@@ -526,10 +567,11 @@
 .public-collapsible-text__content {
   position: relative;
   overflow: hidden;
-  transition: max-height 180ms ease;
+  transition: max-height .45s cubic-bezier(.22, 1, .36, 1);
 }
 
-.public-collapsible-text.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+/* Degradê sobre o fim do texto recolhido: some junto com a abertura. */
+.public-collapsible-text.is-collapsible .public-collapsible-text__content::after {
   content: "";
   position: absolute;
   right: 0;
@@ -537,10 +579,16 @@
   left: 0;
   height: 72px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 82%);
+  opacity: 1;
   pointer-events: none;
+  transition: opacity .3s ease;
 }
 
-.public-habitations-show__description-card.is-collapsible:not(.is-expanded) .public-collapsible-text__content::after {
+.public-collapsible-text.is-collapsible.is-expanded .public-collapsible-text__content::after {
+  opacity: 0;
+}
+
+.public-habitations-show__description-card.is-collapsible .public-collapsible-text__content::after {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 82%);
 }
 
@@ -563,6 +611,27 @@
   display: none;
 }
 
+.public-collapsible-text__toggle {
+  gap: 6px;
+}
+
+.public-collapsible-text__icon {
+  font-size: .8em;
+  transition: transform .3s ease;
+}
+
+.public-collapsible-text.is-expanded .public-collapsible-text__icon {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-collapsible-text__content,
+  .public-collapsible-text__content::after,
+  .public-collapsible-text__icon {
+    transition: none;
+  }
+}
+
 .public-collapsible-text__toggle:hover,
 .public-collapsible-text__toggle:focus-visible {
   color: var(--public-show-accent);
@@ -574,16 +643,46 @@
   border-radius: 4px;
 }
 
-.public-habitations-show__chip-list {
-  gap: 10px;
+/* "Nesse imóvel / nesse empreendimento" (components/_property_amenities). */
+.public-theme-property-amenities--default {
+  display: grid;
+  gap: 22px;
 }
 
-.public-habitations-show__chip {
-  border-color: rgba(2, 43, 58, 0.11);
+.public-theme-property-amenities--default .public-theme-property-amenities__title {
+  margin: 0 0 12px;
+  color: #94a3b8;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.public-theme-property-amenities--default .public-theme-property-amenities__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-theme-property-amenities--default .public-theme-property-amenities__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border: 1px solid rgba(2, 43, 58, .11);
   border-radius: 999px;
-  background: #ffffff;
+  background: #fff;
   color: #344256;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
+  font-size: .85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .045);
+}
+
+.public-theme-property-amenities--default .public-theme-property-amenities__icon {
+  color: var(--public-show-accent);
 }
 
 .public-habitations-show__aside {
@@ -690,12 +789,6 @@
 .public-habitations-show__cta--whatsapp:hover,
 .public-habitations-show__cta--broker:hover {
   background: var(--public-show-primary-strong);
-}
-
-.public-habitations-show__cta--visit {
-  border-color: rgba(2, 43, 58, 0.16);
-  background: rgba(2, 43, 58, 0.045);
-  color: var(--public-show-primary);
 }
 
 .public-habitations-show__broker-card {
@@ -966,13 +1059,8 @@
     display: none;
   }
 
-  .public-habitations-show__cta-label--desktop,
   .public-habitations-show__cta--desktop-only {
     display: none;
-  }
-
-  .public-habitations-show__cta-label--mobile {
-    display: inline;
   }
 
   .public-habitations-show__cta--mobile-only {
@@ -1061,13 +1149,6 @@
     text-align: center;
   }
 
-  .public-habitations-show__map-heading {
-    display: block;
-  }
-
-  .public-habitations-show__map-external {
-    margin-top: 10px;
-  }
 }
 
 @media (max-width: 400px) {
@@ -1164,3 +1245,203 @@
     font-size: 0.86rem;
   }
 }
+
+/* ===== Página do imóvel: empreendimento, links por cidade (variante default) ===== */
+.public-theme-property-development--default {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 32px;
+  align-items: center;
+}
+
+.public-theme-property-development--default .public-theme-property-development__specs,
+.public-theme-property-development--default .public-theme-property-development__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-theme-property-development--default .public-theme-property-development__spec,
+.public-theme-property-development--default .public-theme-property-development__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-theme-property-development--default .public-theme-property-development__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  text-decoration: none;
+}
+
+.public-theme-property-development--default .public-theme-property-development__link .public-theme-icon {
+  transition: transform .25s ease;
+}
+
+.public-theme-property-development--default .public-theme-property-development__link:hover .public-theme-icon {
+  transform: translateX(3px);
+}
+
+.public-theme-property-development--default .public-theme-property-development__gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.public-theme-property-development--default .public-theme-property-development__photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.public-theme-property-development--default .public-theme-property-development__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .6s ease;
+}
+
+.public-theme-property-development--default .public-theme-property-development__photo:hover .public-theme-property-development__image {
+  transform: scale(1.05);
+}
+
+.public-theme-property-development--default .public-theme-property-development__more {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 16, 28, .55);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.public-theme-city-links--default .public-theme-city-links__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .public-theme-property-development--default {
+    grid-template-columns: 1fr;
+  }
+}
+
+.public-theme-property-development--default {
+  padding: 28px;
+  border: 1px solid rgba(2, 43, 58, .08);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .06);
+}
+
+.public-theme-property-development--default .public-theme-property-development__eyebrow {
+  color: #94a3b8;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.public-theme-property-development--default .public-theme-property-development__title {
+  margin: 8px 0 0;
+  color: var(--public-show-primary);
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.public-theme-property-development--default .public-theme-property-development__excerpt {
+  margin: 14px 0 0;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.public-theme-property-development--default .public-theme-property-development__spec,
+.public-theme-property-development--default .public-theme-property-development__fact {
+  color: #334155;
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.public-theme-property-development--default .public-theme-property-development__icon {
+  color: var(--public-show-accent);
+}
+
+.public-theme-property-development--default .public-theme-property-development__link {
+  color: var(--public-show-primary);
+  font-weight: 800;
+}
+
+.public-theme-property-development--default .public-theme-property-development__photo {
+  border-radius: 12px;
+}
+
+.public-theme-city-links--default {
+  /* Também usado na home, fora de .public-habitations-show. */
+  --public-show-primary: var(--blue-three, #053c5e);
+  --public-show-accent: var(--golden-one, #bfab25);
+  padding-top: 8px;
+}
+
+.public-theme-city-links--default .public-theme-city-links__title {
+  margin: 0 0 22px;
+  color: var(--public-show-primary);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.public-theme-city-links--default .public-theme-city-links__city {
+  padding: 22px;
+  border: 1px solid rgba(2, 43, 58, .08);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.public-theme-city-links--default .public-theme-city-links__city-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--public-show-primary);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.public-theme-city-links--default .public-theme-city-links__icon {
+  color: var(--public-show-accent);
+}
+
+.public-theme-city-links--default .public-theme-city-links__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-theme-city-links--default .public-theme-city-links__list--neighborhoods {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(2, 43, 58, .08);
+}
+
+.public-theme-city-links--default .public-theme-city-links__link {
+  color: #475569;
+  font-size: .9rem;
+  text-decoration: none;
+}
+
+.public-theme-city-links--default .public-theme-city-links__link:hover {
+  color: var(--public-show-primary);
+  text-decoration: underline;
+}
+

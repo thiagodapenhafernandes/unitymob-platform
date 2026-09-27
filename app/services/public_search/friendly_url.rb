@@ -43,6 +43,8 @@ module PublicSearch
       "sol-dia-todo" => "sol_dia_todo",
       "sol-o-dia-todo" => "sol_dia_todo",
       "varanda" => "varanda",
+      "carro-eletrico" => "carro_eletrico",
+      "recarga-carro-eletrico" => "carro_eletrico",
       "opportunity" => "opportunity",
       "oportunidade" => "opportunity",
       "ofertas" => "opportunity"

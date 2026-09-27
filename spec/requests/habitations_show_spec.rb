@@ -563,7 +563,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(paragraphs.join(" ")).to include("Este apartamento localizado em Barra Norte")
       expect(paragraphs.join(" ")).to include("A Salute Imóveis está localizada em Balneário Camboriú")
       expect(collapsible_description.at_css(".public-collapsible-text__content")["id"]).to be_present
-      expect(toggle.text.squish).to eq("Exibir mais +")
+      expect(toggle.text.squish).to eq("Ler mais")
       expect(toggle["aria-controls"]).to eq(collapsible_description.at_css(".public-collapsible-text__content")["id"])
     end
 
@@ -817,9 +817,12 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).to include("data-public-gallery-mobile-src")
       expect(response.body).to include("data-public-gallery-mobile-srcset")
       expect(response.body).not_to include("public-habitations-show__gallery-arrow")
-      expect(response.body).to include("Receber informações")
+      expect(response.body).to include("Tenho interesse")
+      expect(response.body).not_to include("Agendar visita")
       expect(response.body).to include("Condições de pagamento")
-      expect(response.body.scan('data-require-lead-form="true"').size).to eq(6)
+      expect(response.body).to include("public-habitations-show__price-code-value")
+      # 2 CTAs x 2 price cards (mobile/desktop) + atalho "Condições de pagamento".
+      expect(response.body.scan('data-require-lead-form="true"').size).to eq(5)
     end
 
     it "inclui todas as fotos no lightbox e mantém srcset apenas nas fotos visíveis" do
@@ -919,7 +922,7 @@ RSpec.describe "Habitation details", type: :request do
       get habitation_path(habitation)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Região aproximada do imóvel")
+      expect(response.body).to include("Região aproximada, num raio de")
       expect(response.body).to include("Abrir no mapa")
       expect(response.body).not_to include("Abrir no Google")
       expect(response.body).not_to include("-26.9906000")
@@ -1095,7 +1098,7 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(collapsible_description).to be_present
       expect(collapsible_description.at_css(".public-collapsible-text__content").text.squish).to include("Empreendimento com lazer completo")
-      expect(toggle.text.squish).to eq("Exibir mais +")
+      expect(toggle.text.squish).to eq("Ler mais")
       expect(toggle["aria-controls"]).to eq(collapsible_description.at_css(".public-collapsible-text__content")["id"])
     end
 

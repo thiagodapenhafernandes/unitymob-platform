@@ -1,5 +1,8 @@
 class EmpreendimentosController < ApplicationController
   MAX_PUBLIC_DEVELOPMENT_PAGE = ENV.fetch("PUBLIC_DEVELOPMENT_MAX_PAGE", 50).to_i
+  # Fase → scope de Habitation (os mesmos da busca de imóveis).
+  DEVELOPMENT_PHASES = { "lancamento" => "Lançamento", "em_construcao" => "Em obras", "pronto" => "Pronto para morar" }.freeze
+  DEVELOPMENT_SORTS = { "unidades" => "Mais unidades disponíveis", "recentes" => "Mais recentes", "nome" => "Nome (A–Z)" }.freeze
 
   def index
     return if reject_invalid_public_development_page!
@@ -7,28 +10,31 @@ class EmpreendimentosController < ApplicationController
     @page_name = 'empreendimentos'
     @strategic_landing = Seo::StrategicLanding.development(params[:seo_slug])
     
-    # Base scope: only 'Empreendimento' type
-    @empreendimentos = public_habitations.empreendimentos_publicos.left_outer_joins(:address).order(nome_empreendimento: :asc)
-    @empreendimentos = apply_strategic_landing_scope(@empreendimentos)
+    # O botão flutuante é da busca de imóveis; aqui a barra de filtros já busca.
+    @hide_global_search = true
 
-    # Filter by search term if present
-    if params[:q].present?
-      term = "%#{params[:q].downcase}%"
-      @empreendimentos = @empreendimentos.where("unaccent(nome_empreendimento) ILIKE unaccent(?)", term)
-    end
+    base_scope = public_habitations.empreendimentos_publicos.left_outer_joins(:address)
+    @development_names = base_scope.distinct.order(:nome_empreendimento).pluck(:nome_empreendimento).compact_blank
+    @development_city_options = Habitation.canonical_location_labels(
+      base_scope.distinct.pluck(Arel.sql(Habitation::LOCATION_CITY_SQL))
+    )
 
-    # Pagination
-    @empreendimentos = @empreendimentos.paginate(page: requested_public_development_page, per_page: 20)
+    @empreendimentos = apply_strategic_landing_scope(base_scope)
+    @empreendimentos = @empreendimentos.where("unaccent(nome_empreendimento) ILIKE unaccent(?)", "%#{params[:q]}%") if params[:q].present?
+    @selected_phase = DEVELOPMENT_PHASES.key?(params[:fase].to_s) ? params[:fase].to_s : nil
+    @empreendimentos = @empreendimentos.public_send(@selected_phase) if @selected_phase
+    @selected_city = params[:cidade].to_s.presence
+    @empreendimentos = apply_location_filter(@empreendimentos, [@selected_city]) if @selected_city
+    @selected_sort = DEVELOPMENT_SORTS.key?(params[:ordem].to_s) ? params[:ordem].to_s : "unidades"
+    @empreendimentos = order_developments(@empreendimentos, @selected_sort)
+
+    @empreendimentos = @empreendimentos.paginate(page: requested_public_development_page, per_page: 21)
     PublicSite::CardPhotoPreloader.new(@empreendimentos.to_a, limit: 1).call
 
-    # Calculate unit counts for the current page to avoid N+1 on the whole table
-    # We can do a group count query for all habitations that match these development codes
-    development_codes = @empreendimentos.map(&:codigo).compact
-    
-    @unit_counts = public_habitations.where.not(codigo_empreendimento: nil)
-                             .where(codigo_empreendimento: development_codes)
-                             .group(:codigo_empreendimento)
-                             .count
+    # Números dos cards em lote (uma consulta por página, não por card).
+    development_metrics = PublicSite::DevelopmentUnitMetrics.new(public_habitations, @empreendimentos.map(&:codigo))
+    @unit_counts = development_metrics.unit_counts
+    @unit_metrics = development_metrics.unit_metrics
 
     if @strategic_landing.present?
       @page_title = "#{@strategic_landing[:title]} | #{public_site_name}"
@@ -75,6 +81,17 @@ class EmpreendimentosController < ApplicationController
     )
     render plain: "Not Found", status: :not_found
     true
+  end
+
+  def order_developments(scope, sort)
+    case sort
+    when "recentes" then scope.order(created_at: :desc, id: :desc)
+    when "nome" then scope.order(nome_empreendimento: :asc)
+    else
+      units_sql = "(SELECT COUNT(*) FROM habitations units WHERE units.tenant_id = habitations.tenant_id " \
+                  "AND units.codigo_empreendimento = habitations.codigo)"
+      scope.order(Arel.sql("#{units_sql} DESC"), nome_empreendimento: :asc)
+    end
   end
 
   def apply_strategic_landing_scope(scope)

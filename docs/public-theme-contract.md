@@ -5,11 +5,19 @@
 > como fallback universal. Layout atual de Salute/Conexão preservado como verdade
 > visual; referência de restore em
 > `/Users/thiagodap.fernandes/worksapces/public-layout-backup-20260924-fptc/`.
+>
+> **Superada pelo Contrato v2 (mesmo dia, seção abaixo): HTML livre por tema,
+> classes como API.** A Opção A vale só como histórico; a regra vigente é:
+> partial próprio por tema via `theme_component`, mesmos nomes de classes e
+> `data-*`, fallback para o `default`. Nada aqui autoriza markup novo com
+> ganchos fora do contrato.
 
 ## Hooks semânticos (aditivos, sem risco visual)
 
 Classes de *papel* no markup público. Temas novos estilizam estas classes;
-nunca markup novo, helpers ou branches por chave:
+partial próprio por tema é via `theme_component` (mantendo os ganchos do
+contrato) — nunca ganchos novos fora do contrato nem branches por chave no
+markup compartilhado:
 
 | Hook | Onde |
 | --- | --- |
@@ -89,7 +97,7 @@ Levantado por inspeção das 4 folhas e das views que elas estilizam.
 | Header/nav/footer | seeds `ps-topbar`, `ps-nav`, `ps-brand`, `ps-footer` emitidos, **zero CSS mirando** | **sem seletores** (herda base) | aliases de token | próprio |
 | Tokens | `public-theme-primary/accent/surface/border` emitidos | usa próprios | remap p/ brand | próprios |
 
-Conclusões: seeds `ps-*`/`public-theme-*` não são consumidos por nenhuma folha (contrato a construir na fase 2); Conexão sem header/footer próprios e sem faixa OPORTUNIDADE (fase 3); detalhe e hero da Conexão já têm famílias BEM vivas candidatas a ganchos canônicos.
+Conclusões (histórico da fase — contrato construído no v2 e na Fase 5 acima): seeds `ps-*`/`public-theme-*` não eram consumidos por nenhuma folha; Conexão sem header/footer próprios e sem faixa OPORTUNIDADE (fase 3); detalhe e hero da Conexão já tinham famílias BEM vivas candidatas a ganchos canônicos.
 
 ## Fase 5 — variante luxury formalizada (2026-09-24)
 
@@ -100,7 +108,7 @@ e `spec/views/public_theme/luxury_*_spec.rb`.
 | Superfície | Markup luxury | Classes canônicas obrigatórias |
 |---|---|---|
 | Shell | `_luxury_shell` | `public-theme-shell`, `public-theme-shell--salute-luxury` |
-| Header | `components/_site_header` | `public-theme-header`, `public-theme-header--<variante>`, `__container`, `__brand`, `__logo`, `__nav`, `__bar`, `__actions`, `__mobile` |
+| Header | `components/_site_header` | `public-theme-header`, `public-theme-header--<variante>`, `__container`, `__brand`, `__logo`, `__phone`, `__nav`, `__bar`, `__actions`, `__mobile` |
 | Footer | `components/_site_footer` | `public-theme-site-footer`, `public-theme-site-footer--<variante>` |
 | Hero (home) | `components/_hero` + `_luxury_home_hero` | `public-theme-hero`, `public-theme-hero--<variante>`, `__title`, `__lead`, `__search`, `__overlay`, `__background` |
 | Listagem | `components/_property_grid` | `public-theme-property-grid`, `public-theme-property-grid--<variante>` |
@@ -127,3 +135,62 @@ Manual (pendente do dono, contra o backup
 - [ ] Conexão: busca com imóvel de preço reduzido (faixa OPORTUNIDADE pill
       dourada), detalhe, header 1430px, hero-search em pill
 - [ ] Default: regressão básica
+
+## Filtro global (FAB + drawer) — 2026-09-25
+
+Um único HTML para todos os temas (`theme_component(:filter_trigger)` e
+`theme_component(:filter_panel)` apontam para os mesmos componentes); cada tema
+só estiliza a própria variante. O HTML emite **apenas** as classes abaixo —
+apelidos de tema (ex.: `.sl-*`) só podem aparecer agrupados no seletor do CSS
+do tema, nunca no markup. Garantido por `spec/lib/public_filter_class_contract_spec.rb`.
+
+| Peça | Arquivo | Classes |
+| --- | --- | --- |
+| FAB | `public_theme/components/_filter_trigger` | `public-theme-filter-fab`, `--<variante>`, `__icon`, `__divider`, `__label`; estados `--visible`, `--hero`, `--fading`, `--measuring` |
+| Drawer | `public_theme/components/_filter_drawer` | `public-theme-filter-drawer`, `--<variante>`, `.open`; `__scrim`, `__panel`, `__media`, `__image`, `__grade`, `__ghost`, `__logo`, `__copy`, `__eyebrow`, `__headline`, `__rule`, `__body`, `__close`, `__close-icon`, `__title`, `__title-accent`, `__form`, `__actions`, `__clear`, `__submit`, `__submit-icon` |
+| Campos | idem | `__field`, `__label`, `__input`, `__grid`, `__grid--3`, `__search`, `__suggestions`, `__segment`, `__segment-option`, `__range`, `__range-track`, `__range-fill`, `__range-lo`, `__range-hi`, `__range-values`, `__range-value`, `__pills`, `__pill`, `__quick`, `__chip`, `__chip-icon`, `__quick-input`, `__toggles`, `__toggle`, `__toggle-label`, `__toggle-input`, `__toggle-track` |
+| Combobox | drawer + busca do hero luxury | `public-theme-combobox`, `.open`; `__trigger`, `__field`, `__tags`, `__tag`, `__tag-label`, `__tag-remove`, `__count`, `__input`, `__caret`, `__panel`, `__option` (`.active`, `.selected`), `__label`, `__hint`, `__check`, `__empty` |
+
+Estados de checkbox usam `:has()` no próprio item (`__chip:has(__quick-input:checked)`,
+`__toggle:has(__toggle-input:checked)`), sem depender de irmão (`+`).
+
+Comportamento: controllers `filter-drawer` (abrir/fechar, faixas, pills,
+finalidade, reset), `combobox` (selects múltiplos) e `autocomplete` (sugestões
+da busca livre). O wrapper `shared/_global_property_search_drawer` fica dentro do
+shell do tema, porque o luxury controla o FAB (visibilidade/hero enxuto).
+
+Estilo por tema: variante `default` (default, saluteimoveis, conexaoimobiliaria)
+em `components/_public_global_search_drawer.scss`, com a paleta da conta
+(`--color-primary`/`--color-accent`); `salute-luxury` em `salute_luxury.css`.
+Tema novo: estilizar `.public-theme-filter-drawer--<variante>` e
+`.public-theme-filter-fab--<variante>` e registrar os dois componentes.
+
+Quartos/Suítes/Vagas: 1, 2, 3 = quantidade exata (`bedrooms`/`suites`/`parking`);
+4+ = mínimo (`min_*`).
+
+## Regra de todos os temas (existentes e futuros)
+
+Ajuste, correção ou desenvolvimento em template do site público cobre **todos**
+os temas da pasta `public_site_themes/`, nunca só o do chamado. Cada entrega
+traz veredito explícito por tema: corrigido ou "já legível, sem mudança".
+Motivo: com HTML livre por tema, nada se propaga sozinho — o que corrige num
+variant não corrige nos outros.
+
+A regra vale para temas futuros: tema novo entra no padrão estabelecido, com
+seu próprio CSS, sem travas só para os atuais.
+
+## Novo tema (checklist)
+
+1. Criar `<chave>.css` em `app/assets/stylesheets/public_site_themes/` via
+   `rails g public_theme <chave> --label="Rótulo" --tenant-slugs=conta1,conta2`
+   (sem slugs = global). Escopo no CSS sempre via
+   `data-public-site-theme="<chave>"` no body.
+2. Registrar os componentes em `Tenant::PUBLIC_SITE_THEME_METADATA` (só o que
+   diverge; o resto herda do `default` via `theme_component`).
+3. Declarar `tenant_slugs` para amarrar às contas (fora isso o tema não aparece
+   no `select` de Modelo visual).
+4. Emitir os ganchos do contrato em cada partial próprio (tabelas acima; detalhe
+   em `spec/support/contract/`) e cobrir com `it_behaves_like` por superfície em
+   `spec/views/public_theme/`.
+5. Contas novas nascem no tema `default` (`Tenant#public_site_theme_key` cai para
+   `DEFAULT_PUBLIC_SITE_THEME` quando vazio) — nenhum passo extra é preciso.

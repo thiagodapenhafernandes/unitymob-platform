@@ -99,6 +99,22 @@ module HabitationsHelper
     public_property_address_label(property).presence || public_property_area_label(property)
   end
 
+  # Trilha do detalhe: Início / Imóveis / Cidade / Bairro / Tipo / Código,
+  # cada nível linkando para a busca já filtrada. Usada no HTML de todos os
+  # temas e no JSON-LD (BreadcrumbList).
+  def public_property_breadcrumb_items(property)
+    city = property.address&.cidade.presence || property.cidade.presence
+    neighborhood = property.public_neighborhood.presence
+    location = neighborhood && city ? "#{neighborhood} - #{city}" : city
+    items = [{ label: "Início", path: root_path }, { label: "Imóveis", path: habitations_path }]
+    items << { label: city, path: habitations_path(city: [city]) } if city
+    items << { label: neighborhood, path: habitations_path(city: [location]) } if neighborhood && city
+    if property.categoria.present?
+      items << { label: property.categoria, path: habitations_path({ city: [location].compact, category: [property.categoria] }.compact_blank) }
+    end
+    items << { label: property.codigo, path: nil }
+  end
+
   def public_property_area_label(property)
     [property&.public_neighborhood, property&.cidade, property&.uf].compact_blank.join(" - ")
   end
@@ -150,7 +166,8 @@ module HabitationsHelper
     'sol_manha' => { label: 'Sol da manhã', icon: 'bi-sunrise' },
     'sol_tarde' => { label: 'Sol da tarde', icon: 'bi-sunset' },
     'sol_dia_todo' => { label: 'Sol o dia todo', icon: 'bi-sun' },
-    'varanda' => { label: 'Varanda', icon: 'bi-door-open' }
+    'varanda' => { label: 'Varanda', icon: 'bi-door-open' },
+    'carro_eletrico' => { label: 'Ponto de recarga para veículo elétrico', icon: 'bi-ev-station' }
   }.freeze
   
   # Retorna contador de imóveis com determinada característica.

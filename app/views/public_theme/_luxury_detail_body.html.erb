@@ -1,32 +1,239 @@
-<%# Corpo do detalhe luxury com dados da plataforma (sem CMS de blocos). %>
+<%# Corpo do detalhe luxury — mesma estrutura do composer do unitymob-crm
+    (breadcrumb, galeria em largura total, duas colunas com identificação +
+    informações à esquerda e valores/contato/mapa à direita, semelhantes e
+    contato flutuante no mobile), com blocos fixos: a plataforma não tem o CMS
+    de blocos. Preload da foto e JSON-LD ficam na habitations/show. %>
 <%
   hab = @habitation
-  d_images = hab.public_image_sources
-  d_address = [hab.endereco, hab.public_neighborhood, hab.cidade].compact_blank.join(" - ")
-  d_primary_url = public_image_url(d_images.first, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if d_images.first
-  d_primary_srcset = public_image_srcset(d_images.first, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if d_images.first
+  images = local_assigns[:images] || hab.public_image_sources
+  title = local_assigns[:title].presence || hab.display_title
+  address_text = local_assigns[:address_text].presence || [hab.endereco, hab.public_neighborhood, hab.cidade].compact_blank.join(" - ")
+  area_text = local_assigns.key?(:area_text) ? local_assigns[:area_text] : hab.public_area_m2
+  has_sale_price = local_assigns.key?(:has_sale_price) ? local_assigns[:has_sale_price] : hab.valor_venda_cents.to_i.positive?
+  has_rent_price = local_assigns.key?(:has_rent_price) ? local_assigns[:has_rent_price] : hab.valor_locacao_cents.to_i.positive?
+  has_discount = local_assigns.key?(:has_discount) ? local_assigns[:has_discount] : hab.sale_discount?
+  has_rent_discount = local_assigns.key?(:has_rent_discount) ? local_assigns[:has_rent_discount] : hab.rent_discount?
+  public_media_url = local_assigns.key?(:public_media_url) ? local_assigns[:public_media_url] : public_property_media_url(hab)
+  map_visible = @public_map&.visible?
+  map_coordinates = local_assigns[:map_coordinates] || (@public_map.center_coordinates if map_visible)
+  street_view_coordinates = local_assigns[:street_view_coordinates] || (@public_map.street_view_coordinates if @public_map&.street_view_enabled?)
+  primary_image_url = local_assigns[:primary_image_url] || (public_image_url(images.first, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if images.first)
+  primary_image_srcset = local_assigns[:primary_image_srcset] || (public_image_srcset(images.first, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if images.first)
+
+  feature_items = []
+  feature_items << { label: "Área", value: "#{number_with_precision(area_text, precision: 0, delimiter: ".")} m²", icon: "arrows-fullscreen" } if area_text.to_f.positive?
+  feature_items << { label: "Quartos", value: hab.dormitorios_qtd.to_i, icon: "door-closed" } if hab.dormitorios_qtd.to_i.positive?
+  feature_items << { label: "Suítes", value: hab.suites_qtd.to_i, icon: "stars" } if hab.suites_qtd.to_i.positive?
+  feature_items << { label: "Vagas", value: hab.vagas_qtd.to_i, icon: "car-front" } if hab.vagas_qtd.to_i.positive?
+
+  selos = []
+  selos << (hab.numero_prestacoes.to_i.positive? ? "Parcelamento em #{hab.numero_prestacoes}x" : "Parcelamento direto") if hab.aceita_parcelamento_flag?
+  selos << "Aceita financiamento" if hab.aceita_financiamento_flag?
+  selos << "Aceita permuta" if hab.aceita_permuta_flag?
 %>
-<%= render "public_theme/components/property_gallery",
-      habitation: hab, images: d_images, variant: "salute-luxury",
-      title: hab.display_title, address_text: d_address,
-      has_sale_price: hab.valor_venda_cents.to_i.positive?,
-      has_rent_price: hab.valor_locacao_cents.to_i.positive?,
-      primary_image_url: d_primary_url, primary_image_srcset: d_primary_srcset %>
-<%= render "public_theme/components/property_info",
-      habitation: hab, images: d_images, variant: "salute-luxury",
-      public_map: @public_map, public_media_url: public_property_media_url(hab),
-      feature_items: [] %>
-<%= render "public_theme/components/property_contact_box",
-      habitation: hab, variant: "salute-luxury", title: hab.display_title %>
-<% if @public_map&.visible? %>
-  <%= render "public_theme/components/property_map", public_map: @public_map, variant: "salute-luxury" %>
-<% end %>
-<% if @related_properties&.any? %>
-  <section class="sl-section sl-detail__related">
+<% content_for :public_shell_class, "sl-detail public-habitations-show" %>
+
+<div class="sl-detail__page"
+     data-property-id="<%= hab.id %>"
+     <% if map_visible %>
+       data-controller="public-property-map"
+       data-public-property-map-provider-value="<%= @public_map.provider %>"
+       data-public-property-map-api-key-value="<%= @public_map.api_key %>"
+       data-public-property-map-latitude-value="<%= format('%.7f', map_coordinates.first) if map_coordinates %>"
+       data-public-property-map-longitude-value="<%= format('%.7f', map_coordinates.last) if map_coordinates %>"
+       data-public-property-map-street-latitude-value="<%= format('%.7f', street_view_coordinates.first) if street_view_coordinates %>"
+       data-public-property-map-street-longitude-value="<%= format('%.7f', street_view_coordinates.last) if street_view_coordinates %>"
+       data-public-property-map-radius-value="<%= @public_map.radius_meters %>"
+       data-public-property-map-zoom-value="<%= @public_map.zoom %>"
+       data-public-property-map-satellite-enabled-value="<%= @public_map.satellite_enabled? %>"
+       data-public-property-map-street-view-enabled-value="<%= @public_map.street_view_enabled? %>"
+     <% end %>>
+  <nav class="sl-detail__breadcrumb sl-container" aria-label="Navegação estrutural">
+    <% public_property_breadcrumb_items(hab).each_with_index do |item, index| %>
+      <% if index.positive? %><span aria-hidden="true">/</span><% end %>
+      <% if item[:path] %>
+        <%= link_to item[:label], item[:path] %>
+      <% else %>
+        <strong aria-current="page"><%= item[:label] %></strong>
+      <% end %>
+    <% end %>
+  </nav>
+
+  <%
+    # Pílulas sob a galeria (Vídeo/Mapa/Rua/fotos). O botão de fotos precisa
+    # viver dentro da galeria por causa do fancybox; Mapa e Rua usam o
+    # controller do mapa no wrapper da página.
+    gallery_actions = capture do
+  %>
+    <% if public_media_url.present? %>
+      <%= link_to public_media_url, target: "_blank", rel: "noopener noreferrer" do %>
+        <%= public_icon("play-circle") %>
+        <span><%= hab.tour_virtual.present? && public_media_url == hab.tour_virtual ? "Tour 360" : "Vídeo" %></span>
+      <% end %>
+    <% end %>
+    <% if map_visible %>
+      <button type="button" data-action="click->public-property-map#showMap"><%= public_icon("map") %><span>Mapa</span></button>
+    <% end %>
+    <% if @public_map&.street_view_enabled? %>
+      <button type="button" data-action="click->public-property-map#showStreetView"><%= public_icon("person-standing") %><span>Rua</span></button>
+    <% end %>
+    <%= render "habitations/payment_conditions_action", habitation: hab, title: title %>
+    <% if images.any? %>
+      <button type="button" data-gallery-open><%= public_icon("images") %><span><span class="sl-detail__pill-prefix">Ver </span><%= images.size %> fotos</span></button>
+    <% end %>
+  <% end %>
+
+  <div class="sl-detail__gallery-wrap sl-container">
+    <%= render "public_theme/components/property_gallery",
+          habitation: hab,
+          images: images,
+          title: title,
+          address_text: address_text,
+          has_sale_price: has_sale_price,
+          has_rent_price: has_rent_price,
+          primary_image_url: primary_image_url,
+          primary_image_srcset: primary_image_srcset,
+          variant: "salute-luxury",
+          class_name: "sl-detail__gallery",
+          share: render("shared/broker_share_menu", property: hab),
+          actions: gallery_actions %>
+  </div>
+
+  <%# Valores logo abaixo das fotos, só no mobile (o cartão do aside some ali). %>
+  <div class="sl-detail__mobile-price sl-container">
+    <%= render "habitations/price_card",
+          habitation: hab,
+          title: title,
+          show_ctas: false,
+          has_sale_price: has_sale_price,
+          has_rent_price: has_rent_price,
+          has_discount: has_discount,
+          has_rent_discount: has_rent_discount %>
+  </div>
+
+  <div class="sl-detail__layout sl-container">
+    <main class="sl-detail__main">
+      <header class="sl-detail__card sl-detail__headline">
+        <div class="sl-detail__ident">
+          <span class="sl-detail__code"><%= hab.codigo %></span>
+          <% selos.each do |selo| %>
+            <span class="sl-detail__badge"><%= selo %></span>
+          <% end %>
+        </div>
+        <h1><%= title %></h1>
+        <% if address_text.present? %>
+          <p><%= public_icon("geo-alt") %><%= address_text %><%= "/#{hab.uf}" if hab.uf.present? %></p>
+        <% end %>
+      </header>
+
+      <%= render "public_theme/components/property_info",
+            habitation: hab,
+            images: images,
+            public_map: @public_map,
+            public_media_url: public_media_url,
+            feature_items: feature_items,
+            development: @property_development,
+            show_media_actions: false,
+            variant: "salute-luxury",
+            class_name: "sl-detail__card sl-detail__info" %>
+    </main>
+
+    <aside class="sl-detail__aside">
+      <%= render "public_theme/components/property_contact_box",
+            habitation: hab,
+            title: title,
+            has_sale_price: has_sale_price,
+            has_rent_price: has_rent_price,
+            has_discount: has_discount,
+            has_rent_discount: has_rent_discount,
+            shared_broker: @shared_broker,
+            split_ctas: true,
+            show_info: false,
+            class_name: ("sl-detail__contact-box--empty-on-mobile" if @shared_broker.blank?),
+            share_token: @lead_share_token,
+            variant: "salute-luxury" %>
+
+      <% if @public_map %>
+        <%# Com coordenadas mostra o mapa; sem elas, a região em texto. %>
+        <%= render "public_theme/components/property_map",
+              public_map: @public_map,
+              place_label: public_property_map_place_label(hab, exact: @public_map.display_mode == "exact"),
+              variant: "salute-luxury",
+              class_name: "sl-detail__side-card" %>
+      <% end %>
+    </aside>
+  </div>
+
+  <% if @property_development %>
     <div class="sl-container">
-      <%= render "public_theme/components/property_grid",
-            properties: @related_properties, variant: "salute-luxury",
-            empty_message: "Nenhum imóvel semelhante no momento." %>
+      <%= render "public_theme/components/property_development",
+            development: @property_development,
+            reveal_identity: @show_development_identity,
+            habitation: hab,
+            variant: "salute-luxury",
+            class_name: "sl-detail__card" %>
     </div>
-  </section>
-<% end %>
+  <% end %>
+
+  <% if @related_properties&.any? %>
+    <section class="sl-section sl-detail__similar">
+      <div class="sl-container">
+        <div class="public-theme-section__head public-theme-section__head--split">
+          <div>
+            <span class="public-theme-section__eyebrow">Continue pesquisando</span>
+            <h2>Mais imóveis como este</h2>
+            <div class="public-theme-section__rule"></div>
+          </div>
+        </div>
+
+        <%= render "public_theme/components/property_grid",
+              properties: @related_properties,
+              variant: "salute-luxury",
+              empty_message: "Nenhum imóvel encontrado." %>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @neighborhood_properties&.any? %>
+    <section class="sl-section sl-detail__similar">
+      <div class="sl-container">
+        <div class="public-theme-section__head public-theme-section__head--split">
+          <div>
+            <span class="public-theme-section__eyebrow">Mesma região</span>
+            <h2>Mais imóveis em <%= hab.public_neighborhood %></h2>
+            <div class="public-theme-section__rule"></div>
+          </div>
+        </div>
+
+        <%= render "public_theme/components/property_grid",
+              properties: @neighborhood_properties,
+              variant: "salute-luxury",
+              empty_message: "Nenhum imóvel encontrado." %>
+      </div>
+    </section>
+  <% end %>
+
+  <div class="sl-container">
+    <%= render "public_theme/components/property_city_links",
+          groups: @city_link_groups,
+          variant: "salute-luxury",
+          class_name: "sl-detail__card" %>
+  </div>
+
+  <%# Contato flutuante do mobile: substitui o cartão de contato do aside, que
+      fica escondido nessa faixa. Cai no mesmo modal de captura (lead-capture). %>
+  <div class="sl-detail__floating-cta">
+    <button type="button"
+            class="sl-detail__floating-cta-button"
+            data-action="click->lead-capture#open"
+            data-property-id="<%= hab.id %>"
+            data-property-code="<%= hab.codigo %>"
+            data-property-title="<%= title %>"
+            data-negotiation-type="<%= hab.whatsapp_negotiation_type %>"
+            data-require-lead-form="true"
+            data-whatsapp-message="Olá, estou interessado no imóvel <%= title %> (Código: <%= hab.codigo %>). Gostaria de mais informações.">
+      <i class="bi bi-whatsapp" aria-hidden="true"></i>
+      <span>Entrar em contato</span>
+    </button>
+  </div>
+</div>

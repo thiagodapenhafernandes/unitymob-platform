@@ -11,10 +11,14 @@
     context: PublicHeaderMenu::Context.new(controller_name: controller_name, params: params))
   luxury_logo = luxury_logo(luxury_layout)
   luxury_phone = luxury_contact.show_phone_in_header? ? luxury_identity.phone : nil
-  luxury_items = luxury_nav_items(luxury_menu)
   luxury_bar_items = luxury_nav_items(luxury_menu, bar_only: true)
 %>
-<div class="public-theme-shell public-theme-shell--salute-luxury salute-luxury-theme" data-controller="salute-luxury-theme">
+<%# Páginas podem pedir classes extras no shell (ex.: detalhe usa `sl-detail`
+    para header sólido e fundo claro) via content_for(:public_shell_class) —
+    a view é renderizada antes do layout, então o valor já existe aqui. %>
+<%# Fora da home não há hero escuro por trás do header: ele nasce sólido. %>
+<% luxury_solid_header = !(controller_name == "home" && action_name == "index") %>
+<div class="<%= ["public-theme-shell public-theme-shell--salute-luxury salute-luxury-theme", ("sl-shell--solid-header" if luxury_solid_header), content_for(:public_shell_class)].compact_blank.join(" ") %>" data-controller="salute-luxury-theme">
   <%= render "public_theme/components/site_header",
         variant: "salute-luxury",
         class_name: "sl-header",
@@ -29,12 +33,15 @@
         phone: luxury_phone,
         nav_items: luxury_bar_items,
         data: { salute_luxury_theme_target: "header" } %>
-  <%= render "public_theme/components/salute_luxury_mobile_nav",
-        close_class: "sl-mobile-nav__close",
-        close_action: "click->salute-luxury-theme#closeMenu",
-        nav_items: luxury_items,
+  <%= render "public_theme/components/navigation_overlay",
+        id: "saluteLuxuryMenu",
+        variant: "salute-luxury",
+        class_name: "sl-mobile-nav",
         site_name: luxury_identity.name,
-        phone: luxury_phone %>
+        logo: luxury_logo,
+        media_logo: luxury_logo,
+        tagline: "Curadoria imobiliária para escolhas à altura do seu patrimônio.",
+        **public_navigation_overlay_data(luxury_menu, home_setting: @home_setting, contact_setting: luxury_contact) %>
   <main role="main">
     <%= render "shared/flash_messages", toast: true if flash.any? %>
     <%= yield %>
