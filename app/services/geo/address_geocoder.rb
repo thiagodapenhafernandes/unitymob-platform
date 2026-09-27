@@ -6,9 +6,21 @@ require "net/http"
 module Geo
   class AddressGeocoder
     Result = Data.define(:latitude, :longitude, :display_name, :house_number, :provider, :precision)
+    # Status do Google que indicam problema de configuração/cota (não "endereço não achado").
+    GOOGLE_BLOCKING_STATUSES = %w[REQUEST_DENIED OVER_DAILY_LIMIT OVER_QUERY_LIMIT INVALID_REQUEST].freeze
 
-    def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil", api_key: nil)
+    # Último status/erro da chamada ao Google, para quem precisa diagnosticar
+    # (ex.: chave com restrição de referenciador devolve REQUEST_DENIED).
+    attr_reader :google_status, :google_error
+
+    # Nominatim (OpenStreetMap) aceita no máximo 1 requisição por segundo.
+    NOMINATIM_INTERVAL = 1.1
+
+    # provider: "leaflet" usa só o Nominatim (gratuito, OpenStreetMap), sem
+    # cair numa chave Google do ambiente; nil mantém Google com fallback.
+    def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil", api_key: nil, provider: nil)
       @api_key = api_key
+      @provider = provider.to_s
       @address = address.to_s.strip
       @number = number.to_s.strip
       @neighborhood = neighborhood.to_s.strip
@@ -19,6 +31,7 @@ module Geo
     end
 
     def call
+      return nominatim_result if @provider == "leaflet"
       return google_result if @api_key.present?
 
       google_result || nominatim_result
@@ -38,7 +51,12 @@ module Geo
         components: google_components,
         key:
       )
-      return nil unless data.is_a?(Hash) && data["status"] == "OK"
+      @google_status = data.is_a?(Hash) ? data["status"] : "INVALID_RESPONSE"
+      @google_error = data["error_message"] if data.is_a?(Hash)
+      if @google_status.in?(GOOGLE_BLOCKING_STATUSES)
+        Rails.logger.warn("[geo.address_geocoder] google_#{@google_status.downcase} message=#{@google_error}")
+      end
+      return nil unless @google_status == "OK"
 
       first = data["results"]&.first
       location = first&.dig("geometry", "location")
@@ -58,7 +76,8 @@ module Geo
     end
 
     def nominatim_result
-      nominatim_requests.each do |request|
+      nominatim_requests.each_with_index do |request, index|
+        sleep(NOMINATIM_INTERVAL) if index.positive?
         data = json_get("https://nominatim.openstreetmap.org/search", request)
         next unless data.is_a?(Array) && data.first
 

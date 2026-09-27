@@ -21,7 +21,7 @@ class Address < ApplicationRecord
     return unless previous_changes.keys.intersect?(%w[id logradouro numero bairro cidade uf cep])
 
     setting = GoogleMapsIntegrationSetting.for(addressable.tenant)
-    return unless setting.configured? && setting.provider == "google"
+    return unless setting.configured? # Google ou Leaflet (Nominatim)
 
     HabitationGeocodeJob.perform_later(addressable_id, tenant_id: addressable.tenant_id)
   end

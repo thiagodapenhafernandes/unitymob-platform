@@ -10,13 +10,15 @@ class HabitationGeocodeJob < ApplicationJob
       # Preserve coordinates already provided by an import or a manual map pin.
       return if habitation.latitude.present? && habitation.longitude.present?
 
+      # Google (chave da conta) ou Leaflet (Nominatim/OpenStreetMap, gratuito).
       setting = GoogleMapsIntegrationSetting.for(tenant)
-      return unless setting.configured? && setting.provider == "google"
+      return unless setting.configured?
 
       snapshot = address.attributes.slice("logradouro", "numero", "bairro", "cidade", "uf", "cep")
       result = Geo::AddressGeocoder.new(
         address: address.logradouro, number: address.numero, neighborhood: address.bairro,
-        city: address.cidade, state: address.uf, zip_code: address.cep, api_key: setting.api_key
+        city: address.cidade, state: address.uf, zip_code: address.cep,
+        api_key: (setting.api_key if setting.provider == "google"), provider: setting.provider
       ).call
       return unless result && result.latitude.present? && result.longitude.present?
       return unless result.latitude.to_f.between?(-90, 90) && result.longitude.to_f.between?(-180, 180)

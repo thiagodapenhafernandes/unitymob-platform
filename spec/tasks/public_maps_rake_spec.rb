@@ -15,11 +15,13 @@ RSpec.describe "public_maps:geocode_missing" do
 
   let(:tenant) { Tenant.create!(name: "Mapas", slug: "mapas-backfill") }
   let!(:missing) { create(:habitation, tenant: tenant, latitude: nil, longitude: nil) }
+  let(:geocoder) { instance_double(Geo::AddressGeocoder, call: nil, google_status: "OK", google_error: nil) }
   let!(:located) { create(:habitation, tenant: tenant, latitude: -26.99, longitude: -48.63) }
 
   before do
-    setting = instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "google")
+    setting = instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "google", api_key: "chave")
     allow(GoogleMapsIntegrationSetting).to receive(:for).and_return(setting)
+    allow(Geo::AddressGeocoder).to receive(:new).and_return(geocoder)
     ENV["TENANT"] = tenant.slug
     clear_enqueued_jobs
   end
@@ -42,5 +44,31 @@ RSpec.describe "public_maps:geocode_missing" do
 
     geocode_jobs = enqueued_jobs.select { |job| job[:job] == HabitationGeocodeJob }
     expect(geocode_jobs.map { |job| job[:args].first }).to eq([missing.id])
+  end
+
+  it "não enfileira nada quando o Google recusa a chave (ex.: restrição de referenciador)" do
+    ENV["APPLY"] = "1"
+    allow(geocoder).to receive_messages(google_status: "REQUEST_DENIED",
+                                        google_error: "API keys with referer restrictions cannot be used with this API.")
+
+    expect { Rake::Task["public_maps:geocode_missing"].invoke }
+      .to output(/Google recusou a chave \(REQUEST_DENIED: API keys with referer restrictions.*Nada foi enfileirado/).to_stdout
+    expect(enqueued_jobs.count { |job| job[:job] == HabitationGeocodeJob }).to eq(0)
+  end
+
+  it "com Leaflet enfileira pelo OpenStreetMap, um job a cada 4s e sem teste de chave" do
+    ENV["APPLY"] = "1"
+    other = create(:habitation, tenant: tenant, latitude: nil, longitude: nil)
+    allow(GoogleMapsIntegrationSetting).to receive(:for)
+      .and_return(instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "leaflet", api_key: nil))
+    clear_enqueued_jobs
+
+    expect { Rake::Task["public_maps:geocode_missing"].invoke }.to output(/2 geocodificações enfileiradas \(OpenStreetMap\)/).to_stdout
+
+    expect(Geo::AddressGeocoder).not_to have_received(:new)
+    runs = enqueued_jobs.select { |job| job[:job] == HabitationGeocodeJob }.map { _1[:at].to_f }.sort
+    expect(runs.size).to eq(2)
+    expect(runs.last - runs.first).to be_within(1).of(4)
+    expect(enqueued_jobs.map { _1[:args].first }).to include(missing.id, other.id)
   end
 end
