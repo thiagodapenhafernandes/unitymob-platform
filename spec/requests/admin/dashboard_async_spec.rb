@@ -21,8 +21,10 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(document.at_css(".ax-dashboard-tabs__item.is-active").text).to include("Leads")
     expect(document.css(".ax-dashboard-tabs__badge")).to be_empty
     expect(response.body).to include('id="admin_dashboard_charts"')
+    expect(response.body).to include('id="admin_dashboard_pool_ranking"')
     expect(response.body).to include('id="admin_dashboard_broker_performance"')
     expect(response.body).to include('id="admin_dashboard_campaign_performance"')
+    expect(response.body.index('id="admin_dashboard_pool_ranking"')).to be < response.body.index('id="admin_dashboard_broker_performance"')
     expect(response.body).not_to include("Decisão operacional")
     expect(response.body).not_to include("IA textual")
     expect(response.body).not_to include("Diagnóstico da semana")
@@ -34,6 +36,39 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).not_to include("Leads hoje")
     expect(response.body).not_to include("Regras de distribuição")
     expect(response.body).not_to include("Módulo Campo desativado")
+  end
+
+  it "ranqueia capturas do bolsão por corretor com tempo de assumir e atender" do
+    fabio = create(:admin_user, tenant: admin.tenant, name: "Fábio Bolsão")
+    levi = create(:admin_user, tenant: admin.tenant, name: "Levi Bolsão")
+    fabio_lead = create(:lead, tenant: admin.tenant, admin_user: fabio, status: Lead.status_value(:em_atendimento), created_at: 2.hours.ago)
+    fabio_lead.activities.create!(tenant: admin.tenant, kind: "pocket_pool_ready", created_at: 2.hours.ago)
+    fabio_lead.activities.create!(tenant: admin.tenant, kind: "accepted", metadata: { shark_tank: true }, created_at: 90.minutes.ago)
+    fabio_lead.activities.create!(tenant: admin.tenant, kind: "note", metadata: { contact_kind: "whatsapp", contact_result: "falou_com_cliente", body: "Atendeu." }, created_at: 60.minutes.ago)
+    fabio_second_lead = create(:lead, tenant: admin.tenant, admin_user: fabio, status: Lead.status_value(:novo), created_at: 3.hours.ago)
+    fabio_second_lead.activities.create!(tenant: admin.tenant, kind: "pocket_pool_ready", created_at: 3.hours.ago)
+    fabio_second_lead.activities.create!(tenant: admin.tenant, kind: "accepted", metadata: { shark_tank: true }, created_at: 3.hours.ago + 10.minutes)
+    levi_lead = create(:lead, tenant: admin.tenant, admin_user: levi, status: Lead.status_value(:novo), created_at: 4.hours.ago)
+    levi_lead.activities.create!(tenant: admin.tenant, kind: "pocket_pool_ready", created_at: 4.hours.ago)
+    levi_lead.activities.create!(tenant: admin.tenant, kind: "accepted", metadata: { shark_tank: true }, created_at: 4.hours.ago + 5.minutes)
+    rotary_lead = create(:lead, tenant: admin.tenant, admin_user: levi, status: Lead.status_value(:novo), created_at: 5.hours.ago)
+    rotary_lead.activities.create!(tenant: admin.tenant, kind: "distributed", metadata: { admin_user_id: levi.id }, created_at: 5.hours.ago)
+    rotary_lead.activities.create!(tenant: admin.tenant, kind: "accepted", created_at: 5.hours.ago + 1.minute)
+
+    get admin_dashboard_section_path("pool_ranking", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_pool_ranking" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ranking do Bolsão")
+    expect(response.body).to include("Pegos no bolsão")
+    expect(response.body).to include("Assume em média")
+    expect(response.body).to include("Atende em média")
+    fabio_position = response.body.index("Fábio Bolsão")
+    levi_position = response.body.index("Levi Bolsão")
+    expect(fabio_position).not_to be_nil
+    expect(levi_position).not_to be_nil
+    expect(fabio_position).to be < levi_position
+    expect(response.body).to include("20 min")
+    expect(response.body).to include("30 min")
   end
 
   it "redireciona acesso direto ao slice do site para o dashboard completo" do
@@ -395,10 +430,16 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Visão geral", "Leads", "Imóveis", "Site público")
     expect(response.body).not_to include('id="admin_dashboard_broker_performance"')
     expect(response.body).not_to include('id="admin_dashboard_campaign_performance"')
+    expect(response.body).not_to include('id="admin_dashboard_pool_ranking"')
     expect(response.body).not_to include(admin_profiles_path)
 
     get admin_dashboard_section_path("broker_performance", tab: "leads"),
         headers: { "Turbo-Frame" => "admin_dashboard_broker_performance" }
+
+    expect(response).to have_http_status(:forbidden)
+
+    get admin_dashboard_section_path("pool_ranking", tab: "leads"),
+        headers: { "Turbo-Frame" => "admin_dashboard_pool_ranking" }
 
     expect(response).to have_http_status(:forbidden)
 

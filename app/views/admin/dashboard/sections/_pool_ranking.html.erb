@@ -1,0 +1,43 @@
+<%= turbo_frame_tag "admin_dashboard_pool_ranking" do %>
+  <% if @can_view_pool_ranking && %w[all leads].include?(@dashboard_tab) %>
+    <article class="ax-dashboard-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Bolsão · <%= @dashboard_period %> dias</span>
+          <h2>Ranking do Bolsão</h2>
+          <p class="ax-dashboard-performance__subtitle">Quem mais assumiu leads do bolsão, em quanto tempo assumiu e em quanto tempo atendeu após assumir.</p>
+        </div>
+        <%= link_to "Ver bolsão", lead_pool_admin_leads_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
+      </div>
+
+      <% if @pool_ranking.any? %>
+        <div class="ax-dashboard-table-wrap">
+          <table class="ax-table ax-dashboard-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Corretor</th>
+                <th class="ax-num">Pegos no bolsão</th>
+                <th class="ax-num">Assume em média</th>
+                <th class="ax-num">Atende em média</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pool_ranking.each_with_index do |row, index| %>
+                <tr>
+                  <td class="ax-strong"><%= index + 1 %>º</td>
+                  <td class="ax-strong"><%= row[:name] %></td>
+                  <td class="ax-num"><%= row[:pool_count] %></td>
+                  <td class="ax-num"><%= row[:assume_label] %></td>
+                  <td class="ax-num"><%= row[:attend_label] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="ax-dashboard-performance__subtitle">Nenhum lead do bolsão assumido no período e escopo do painel.</p>
+      <% end %>
+    </article>
+  <% end %>
+<% end %>
