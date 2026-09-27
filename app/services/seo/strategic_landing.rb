@@ -171,10 +171,13 @@ module Seo
       TEXT
     end
 
+    # Páginas de bairro/cidade (Centro, Barra Sul, Praia Brava...) valem para a
+    # conta que tem imóvel publicado ali — pelo estoque, não pelo nome ou slug
+    # da conta. Cache de 1h por conta (estoque de região muda devagar).
     def self.localized_pages(source, tenant:, location_slugs:)
       tenant ||= Tenant.public_for
-      pages = source
-      pages = pages.except(*location_slugs) unless tenant.slug == Tenant::DEFAULT_SLUG
+      served = served_location_slugs(source.slice(*location_slugs), tenant: tenant)
+      pages = source.except(*(location_slugs - served))
 
       identity = Tenants::PublicIdentity.new(tenant)
       city = identity.primary_city.presence || "sua região"
@@ -190,9 +193,15 @@ module Seo
       end
     end
 
+    def self.served_location_slugs(location_pages, tenant:)
+      Rails.cache.fetch("strategic_landing_locations_v1/tenant/#{tenant.id}/#{location_pages.keys.join(',')}", expires_in: 1.hour) do
+        location_pages.select { |_slug, data| tenant.habitations.public_property_search(data[:params]).exists? }.keys
+      end
+    end
+
     def self.current_tenant
       Current.tenant || Tenant.public_for
     end
-    private_class_method :localized_pages, :current_tenant, :available_links
+    private_class_method :localized_pages, :current_tenant, :available_links, :served_location_slugs
   end
 end
