@@ -55,7 +55,9 @@ body.no-scroll { overflow: hidden; }
 .public-theme-navigation-overlay--default {
   position: fixed;
   inset: 0;
-  z-index: 160;
+  // Acima de tudo da página: header com z-index próprio da conta (CSS do
+  // header no admin, ex.: Conexão com 997) e o botão do filtro global.
+  z-index: 2147482000;
   display: grid;
   grid-template-columns: minmax(320px, 38vw) minmax(0, 1fr);
   visibility: hidden;

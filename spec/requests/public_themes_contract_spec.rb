@@ -97,4 +97,18 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
       expect(component_rules.reject { _1.include?("--default") }).to be_empty, "#{file}: #{component_rules.reject { _1.include?('--default') }.first}"
     end
   end
+
+  it "o menu em tela cheia fica acima de qualquer header personalizado no admin" do
+    # CSS do header é livre por conta (a Conexão usa z-index: 997); o menu
+    # precisa ficar acima dele e do botão do filtro global em todos os temas.
+    sources = {
+      "default" => Rails.root.join("app/assets/stylesheets/components/_public_theme_navigation_overlay.scss").read,
+      "salute-luxury" => Rails.root.join("app/assets/stylesheets/public_site_themes/salute_luxury.css").read
+    }
+    sources.each do |variant, css|
+      z = css[/\.public-theme-navigation-overlay(?:--default)? \{[^}]*?z-index: (\d+)/m, 1].to_i
+      expect(z).to be > 2_147_481_000, "menu da variante #{variant} com z-index #{z}"
+    end
+  end
 end
+

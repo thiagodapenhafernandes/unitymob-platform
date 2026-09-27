@@ -481,7 +481,9 @@ body.no-scroll { overflow: hidden; }
 .public-theme-navigation-overlay {
   position: fixed;
   inset: 0;
-  z-index: 160;
+  /* Acima do header (inclusive z-index vindo do CSS do header no admin) e do
+     botão do filtro global. */
+  z-index: 2147482000;
   display: grid;
   grid-template-columns: minmax(360px, 42vw) minmax(0, 1fr);
   align-items: stretch;
