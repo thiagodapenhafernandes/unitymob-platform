@@ -32,6 +32,19 @@ namespace :public_maps do
         next
       end
 
+      # Uma chamada de teste antes de enfileirar: chave com restrição de
+      # referenciador (feita para o mapa no navegador) é recusada pelo Google
+      # no servidor, e os jobs terminariam sem gravar nada.
+      sample = missing.first.address
+      probe = Geo::AddressGeocoder.new(address: sample.logradouro, number: sample.numero, neighborhood: sample.bairro,
+                                       city: sample.cidade, state: sample.uf, zip_code: sample.cep, api_key: setting.api_key)
+      probe.call
+      if probe.google_status.in?(Geo::AddressGeocoder::GOOGLE_BLOCKING_STATUSES)
+        puts "#{tenant.slug}: Google recusou a chave (#{probe.google_status}: #{probe.google_error}). " \
+             "Use uma chave de servidor (restrição por IP) com a Geocoding API habilitada. Nada foi enfileirado."
+        next
+      end
+
       # Espaça as chamadas (~10/s) para não esbarrar no limite da Geocoding API.
       missing.pluck(:id).each_with_index do |habitation_id, index|
         HabitationGeocodeJob.set(wait: (index / 10).seconds).perform_later(habitation_id, tenant_id: tenant.id)

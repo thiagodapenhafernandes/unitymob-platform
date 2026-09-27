@@ -6,6 +6,12 @@ require "net/http"
 module Geo
   class AddressGeocoder
     Result = Data.define(:latitude, :longitude, :display_name, :house_number, :provider, :precision)
+    # Status do Google que indicam problema de configuração/cota (não "endereço não achado").
+    GOOGLE_BLOCKING_STATUSES = %w[REQUEST_DENIED OVER_DAILY_LIMIT OVER_QUERY_LIMIT INVALID_REQUEST].freeze
+
+    # Último status/erro da chamada ao Google, para quem precisa diagnosticar
+    # (ex.: chave com restrição de referenciador devolve REQUEST_DENIED).
+    attr_reader :google_status, :google_error
 
     def initialize(address:, number:, neighborhood:, city:, state:, zip_code:, country: "Brasil", api_key: nil)
       @api_key = api_key
@@ -38,7 +44,12 @@ module Geo
         components: google_components,
         key:
       )
-      return nil unless data.is_a?(Hash) && data["status"] == "OK"
+      @google_status = data.is_a?(Hash) ? data["status"] : "INVALID_RESPONSE"
+      @google_error = data["error_message"] if data.is_a?(Hash)
+      if @google_status.in?(GOOGLE_BLOCKING_STATUSES)
+        Rails.logger.warn("[geo.address_geocoder] google_#{@google_status.downcase} message=#{@google_error}")
+      end
+      return nil unless @google_status == "OK"
 
       first = data["results"]&.first
       location = first&.dig("geometry", "location")
