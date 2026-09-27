@@ -239,6 +239,12 @@
   <% end %>
 
   <% if @dashboard_tab == "leads" %>
+  <% if @can_view_pool_ranking %>
+    <%= turbo_frame_tag "admin_dashboard_pool_ranking", src: admin_dashboard_section_path("pool_ranking", dashboard_filter_params), loading: "lazy" do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Ranking do Bolsão", eyebrow: "Velocidade no bolsão", rows: 6, compact: true %>
+    <% end %>
+  <% end %>
+
   <% if @can_view_broker_performance %>
     <%= turbo_frame_tag "admin_dashboard_broker_performance", src: admin_dashboard_section_path("broker_performance", dashboard_filter_params), loading: "lazy" do %>
       <%= render "admin/dashboard/sections/loading_panel", title: "Performance dos Corretores", eyebrow: "Inteligência comercial", rows: 6, compact: true %>

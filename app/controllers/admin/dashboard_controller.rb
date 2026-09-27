@@ -4,7 +4,7 @@ require "zlib"
 class Admin::DashboardController < Admin::BaseController
   include DeviceRequest
 
-  DASHBOARD_SECTIONS = %w[charts acquisition funnel status service broker_performance campaign_performance rankings operations support site].freeze
+  DASHBOARD_SECTIONS = %w[charts acquisition funnel status service pool_ranking broker_performance campaign_performance rankings operations support site].freeze
   DASHBOARD_TABS = %w[leads overview properties site field].freeze
   DASHBOARD_TAB_RESOURCES = {
     "leads" => :dashboard_leads,
@@ -28,6 +28,7 @@ class Admin::DashboardController < Admin::BaseController
   DASHBOARD_PERIOD_PRESETS = %w[yesterday this_week this_month last_7 last_14 last_30 last_6_months custom].freeze
   DASHBOARD_BUSINESS_TYPES = %w[sale rental].freeze
   DASHBOARD_REPORT_SECTION_RESOURCES = {
+    "pool_ranking" => :dashboard_pool_ranking,
     "broker_performance" => :dashboard_broker_performance,
     "campaign_performance" => :dashboard_campaign_performance
   }.freeze
@@ -116,6 +117,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def set_dashboard_context
     @is_admin_view = tenant_owner?
+    @can_view_pool_ranking = can_view_dashboard_report?(:dashboard_pool_ranking)
     @can_view_broker_performance = can_view_dashboard_report?(:dashboard_broker_performance)
     @can_view_campaign_performance = can_view_dashboard_report?(:dashboard_campaign_performance)
     resolve_dashboard_period!
@@ -302,6 +304,97 @@ class Admin::DashboardController < Admin::BaseController
 
   def load_broker_performance_slice
     @broker_performance = @can_view_broker_performance ? broker_performance_rows : []
+  end
+
+  def load_pool_ranking_slice
+    @pool_ranking = @can_view_pool_ranking ? pool_ranking_rows : []
+  end
+
+  # Ranking do bolsão: só leads que passaram pelo pool no período, por corretor
+  # responsável. "Assume em" = entrada no bolsão até aceitar; "atende em" =
+  # aceitar até a primeira tentativa de contato ou resposta do cliente.
+  def pool_ranking_rows
+    period_scope = valid_dashboard_leads_scope(scoped_dashboard_report_leads(:dashboard_pool_ranking))
+      .where(leads: { created_at: dashboard_window_start..dashboard_window_end })
+      .where.not(admin_user_id: nil)
+    leads = period_scope.order("leads.created_at DESC").to_a
+    return [] if leads.empty?
+
+    lead_ids = leads.map(&:id)
+    pool_ids = LeadActivity
+      .where(lead_id: lead_ids, kind: %w[pocket_pool_ready accepted])
+      .where("lead_activities.kind = ? OR lead_activities.metadata ->> 'shark_tank' = ?", "pocket_pool_ready", "true")
+      .distinct
+      .pluck(:lead_id)
+      .to_set
+    pool_leads = leads.select { |lead| pool_ids.include?(lead.id) }
+    return [] if pool_leads.empty?
+
+    pool_lead_ids = pool_leads.map(&:id)
+    pool_events = LeadActivity
+      .where(lead_id: pool_lead_ids, kind: %w[pocket_pool_ready shark_tank_ready accepted])
+      .order(:created_at)
+      .to_a
+    entry_starts = broker_performance_entry_starts(pool_leads, pool_ids, pool_events)
+    captured_at_by_lead = pool_ranking_captured_at(pool_leads, pool_events, entry_starts)
+    first_contact_at_by_lead = pool_ranking_first_contact_at(pool_lead_ids, captured_at_by_lead)
+    names = current_tenant.admin_users
+      .where(id: pool_leads.map(&:admin_user_id).compact.uniq)
+      .pluck(:id, :name).to_h
+
+    pool_leads.group_by(&:admin_user_id).map do |broker_id, row_leads|
+      assume_seconds = row_leads.filter_map do |lead|
+        captured_at = captured_at_by_lead[lead.id]
+        next if captured_at.blank?
+
+        captured_at - (entry_starts[lead.id] || lead.created_at)
+      end
+      attend_seconds = row_leads.filter_map do |lead|
+        captured_at = captured_at_by_lead[lead.id]
+        first_contact_at = first_contact_at_by_lead[lead.id]
+        next if captured_at.blank? || first_contact_at.blank?
+
+        first_contact_at - captured_at
+      end
+      {
+        id: broker_id,
+        name: names[broker_id] || "Corretor",
+        pool_count: row_leads.size,
+        assume_label: assume_seconds.empty? ? "sem tempo médio" : duration_label(assume_seconds.sum.to_f / assume_seconds.size),
+        attend_label: attend_seconds.empty? ? "sem tempo médio" : duration_label(attend_seconds.sum.to_f / attend_seconds.size)
+      }
+    end.sort_by { |row| -row[:pool_count] }
+  end
+
+  def pool_ranking_captured_at(pool_leads, events, entry_starts)
+    events_by_lead = events.group_by(&:lead_id)
+
+    pool_leads.each_with_object({}) do |lead, captured|
+      entry_started_at = entry_starts[lead.id] || lead.created_at
+      captured_at = (events_by_lead[lead.id] || [])
+        .select { |activity| activity.kind == "accepted" && activity.created_at >= entry_started_at }
+        .map(&:created_at)
+        .min
+      captured[lead.id] = captured_at if captured_at.present?
+    end
+  end
+
+  def pool_ranking_first_contact_at(pool_lead_ids, captured_at_by_lead)
+    attempts = broker_performance_contact_attempt_scope
+      .where(lead_id: pool_lead_ids)
+      .order(:created_at)
+      .to_a
+    responses = LeadActivity
+      .where(lead_id: pool_lead_ids, kind: "whatsapp_in")
+      .order(:created_at)
+      .to_a
+    (attempts + responses).group_by(&:lead_id).each_with_object({}) do |(lead_id, activities), first_contact|
+      captured_at = captured_at_by_lead[lead_id]
+      next if captured_at.blank?
+
+      first_at = activities.map(&:created_at).select { |at| at >= captured_at }.min
+      first_contact[lead_id] = first_at if first_at.present?
+    end
   end
 
   def load_operations_slice

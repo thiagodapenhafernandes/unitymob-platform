@@ -25,7 +25,8 @@ class Profile < ApplicationRecord
   INTERNAL_PERMISSION_SECTION_BY_RESOURCE = {
     "lead_reports" => :product,
     "dashboard_broker_performance" => :product,
-    "dashboard_campaign_performance" => :product
+    "dashboard_campaign_performance" => :product,
+    "dashboard_pool_ranking" => :product
   }.freeze
 
   belongs_to :tenant
@@ -109,6 +110,7 @@ class Profile < ApplicationRecord
     { key: "lead_reports",       label: "Relatórios de leads",    icon: "bi-filetype-xlsx",    actions: %w[view],              scopeable: false, parent_section: "leads", description: "Gerar relatórios e exportações da carteira de leads" },
     { key: "dashboard_broker_performance", label: "Performance dos Corretores", icon: "bi-person-lines-fill", actions: %w[view], scopeable: true, parent_section: "dashboard_leads", description: "Bloco e relatório de ciclo dos leads por corretor no dashboard" },
     { key: "dashboard_campaign_performance", label: "Performance de Campanhas", icon: "bi-signpost-split", actions: %w[view], scopeable: true, parent_section: "dashboard_leads", description: "Bloco e relatório de campanhas, canais e avanço comercial no dashboard" },
+    { key: "dashboard_pool_ranking", label: "Ranking do Bolsão", icon: "bi-trophy", actions: %w[view], scopeable: true, parent_section: "dashboard_leads", description: "Ranking de capturas do bolsão com tempo de assumir e atender por corretor no dashboard" },
     { key: "comercial",          label: "Comercial",              icon: "bi-briefcase",        actions: %w[view manage],       scopeable: true,  sidebar_section: "operation", sidebar_actions: %w[view], sidebar_items: [
       { group: "Comercial", icon: "bi-briefcase", controllers: %w[tasks appointments proposals commercial_contract_proposals], children: [
         { label: "Minhas Tarefas", icon: "bi-check2-square", path: "admin_tasks_path", controllers: %w[tasks] },
@@ -238,13 +240,14 @@ class Profile < ApplicationRecord
       { label: "Apresentações WhatsApp", icon: "bi-person-badge", path: "admin_presentation_audit_logs_path", controllers: %w[presentation_audit_logs], permission: [:view, :access_audit] }
     ], description: "Dados, marca, perfis, segurança e auditorias da conta" },
     { key: "inbound_webhooks",   label: "Webhook de entrada",     icon: "bi-box-arrow-in-down", actions: %w[manage],           scopeable: false, parent_section: "integracoes", description: "Token pessoal para receber leads por webhook dentro da seção Integrações" },
-    { key: "dashboard",          label: "Dashboard principal",    icon: "bi-speedometer2",     actions: %w[view],              scopeable: false, sidebar_section: "product", sidebar_actions: %w[view], sidebar_items: [
+    { key: "dashboard",          label: "Painel",                 icon: "bi-speedometer2",     actions: %w[view],              scopeable: false, sidebar_section: "product", sidebar_actions: %w[view], sidebar_items: [
       { dynamic: "dashboard_home", icon: "bi-speedometer2", controllers: %w[dashboard] }
     ], description: "Página inicial do admin" },
     { key: "dashboard_leads",    label: "Aba Leads",             icon: "bi-megaphone",        actions: %w[view],              scopeable: false, parent_section: "dashboard", permission_items: [
       { label: "Aba Leads", description: "Performance, aquisição, gráficos, status e funil", items: [
         { label: "Performance dos Corretores", resource: "dashboard_broker_performance" },
         { label: "Performance de Campanhas", resource: "dashboard_campaign_performance" },
+        { label: "Ranking do Bolsão", resource: "dashboard_pool_ranking" },
         { label: "Aquisição, gráficos, status e funil", inherits: "dashboard_leads" }
       ] }
     ], description: "Performance, aquisição, gráficos, status e funil do dashboard" },
@@ -340,6 +343,7 @@ class Profile < ApplicationRecord
       "lead_reports" => { "view" => true },
       "dashboard_broker_performance" => { "view" => true, "scope" => "all" },
       "dashboard_campaign_performance" => { "view" => true, "scope" => "all" },
+      "dashboard_pool_ranking" => { "view" => true, "scope" => "all" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "all" },
       "commercial_contracts" => { "manage" => true },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "all" },
@@ -367,6 +371,7 @@ class Profile < ApplicationRecord
       "lead_reports" => { "view" => true },
       "dashboard_broker_performance" => { "view" => true, "scope" => "team" },
       "dashboard_campaign_performance" => { "view" => true, "scope" => "team" },
+      "dashboard_pool_ranking" => { "view" => true, "scope" => "team" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "team" },

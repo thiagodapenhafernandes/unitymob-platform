@@ -128,6 +128,7 @@ RSpec.describe "phones:normalize" do
       "crm_appointments" => %w[business_id],
       "crm_contacts" => %w[show_phone_on_web],
       "distribution_rules" => %w[business_type notify_whatsapp],
+      "external_lead_integrations" => %w[accept_lead_without_phone],
       "habitation_interactions" => %w[business_id],
       "home_settings" => %w[mobile_search_filter_display_mode],
       "lead_settings" => %w[lead_whatsapp_conversation_enabled secure_link_whatsapp],

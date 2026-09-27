@@ -52,9 +52,10 @@ module Geo
       nil
     end
 
+    # Leaflet: só OpenStreetMap. Google: se não resolver (chave recusada,
+    # cota, endereço não achado), tenta a rua no OpenStreetMap antes de desistir.
     def call
       return nominatim_result if @provider == "leaflet"
-      return google_result if @api_key.present?
 
       google_result || nominatim_result
     end
