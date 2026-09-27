@@ -7,7 +7,10 @@ class PublicSiteProfile
     primary_city sale_price_ranges rental_price_ranges legal_name legal_document legal_address privacy_email creci
     institutional_mission institutional_vision institutional_values useful_links
     show_development_identity custom_price_ranges
+    financing_simulator_enabled financing_rate_source financing_custom_rate
   ].freeze
+  # Fontes da taxa do simulador: séries do Banco Central ou taxa fixa da conta.
+  FINANCING_RATE_SOURCES = (Financing::CentralBankRate::SERIES.keys + ["custom"]).freeze
 
   attribute :primary_city, :string
   attribute :sale_price_ranges, :string
@@ -28,12 +31,20 @@ class PublicSiteProfile
   # true = usa as faixas digitadas. Contas antigas com faixas e sem a opção
   # gravada continuam personalizadas (custom_price_ranges?).
   attribute :custom_price_ranges, :boolean
+  # Simulador de financiamento (/simulador e bloco na página do imóvel à venda).
+  # nil = ligado: as contas já tinham a página antes da opção existir.
+  attribute :financing_simulator_enabled, :boolean
+  attribute :financing_rate_source, :string
+  attribute :financing_custom_rate, :decimal
 
   attr_reader :tenant
 
   validates :privacy_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
   validate :validate_price_ranges
   validate :validate_useful_links
+  validates :financing_rate_source, inclusion: { in: FINANCING_RATE_SOURCES }, allow_blank: true
+  validates :financing_custom_rate, numericality: { greater_than: 0, less_than_or_equal_to: 30 },
+                                    if: -> { financing_rate_source == "custom" }
 
   def self.current(tenant: Current.tenant || Tenant.public_for)
     values = FIELDS.to_h { |field| [field, Setting.tenant_get("#{PREFIX}.#{field}", nil, tenant: tenant)] }
@@ -57,6 +68,22 @@ class PublicSiteProfile
 
   def show_development_identity?
     show_development_identity == true
+  end
+
+  # Aceita "9,5" (vírgula decimal) além de "9.5".
+  def financing_custom_rate=(value)
+    super(value.is_a?(String) ? value.strip.tr(",", ".") : value)
+  end
+
+  def financing_simulator_enabled?
+    financing_simulator_enabled != false
+  end
+
+  # Taxa anual (% a.a.) e origem para o simulador.
+  def financing_rate
+    return Financing::CentralBankRate::Result.new(annual_rate: financing_custom_rate.to_f, reference_date: nil, source: "custom", fallback: false) if financing_rate_source == "custom" && financing_custom_rate.to_f.positive?
+
+    Financing::CentralBankRate.fetch(financing_rate_source.presence || Financing::CentralBankRate::DEFAULT_SOURCE)
   end
 
   def custom_price_ranges?

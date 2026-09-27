@@ -1,6 +1,8 @@
 <%# Detalhe do imóvel (default) — contrato: .public-theme-property-gallery/info/
     contact-box/map (+ --<variante>). data-controller public-property-map e
     data-property-id são consumidos pelo JS; variants mantêm ambos. %>
+<%# Simulador de financiamento: recurso da conta, só para imóvel à venda com preço. %>
+<% show_financing = has_sale_price && public_financing_enabled? %>
 <div class="public-habitations-show bg-gray-50 min-h-screen pb-14 habitation-details"
      data-property-id="<%= @habitation.id %>"
      data-controller="<%= "public-property-map" if @public_map.visible? %>"
@@ -162,6 +164,9 @@
       <% end %>
 
       <%= render "habitations/payment_conditions_action", habitation: @habitation, title: title, class_name: "public-habitations-show__media-action" %>
+      <% if show_financing %>
+        <a href="#simulador-financiamento" class="public-habitations-show__media-action"><i class="bi bi-calculator"></i><span>Simular financiamento</span></a>
+      <% end %>
 
       <% if images.any? %>
         <button type="button" class="public-habitations-show__media-action public-habitations-show__gallery-open-action" data-gallery-open>
@@ -285,6 +290,10 @@
             </button>
           </div>
         </section>
+
+        <% if show_financing %>
+          <%= render "public_theme/components/financing_simulator", variant: "default", rate: public_financing_rate, property: @habitation %>
+        <% end %>
 
         <%= display_banner('property_detail', container_class: 'w-full my-8') %>
 

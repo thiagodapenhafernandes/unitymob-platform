@@ -16,6 +16,7 @@ require 'factory_bot_rails'
 require 'shoulda/matchers'
 
 # Add additional requires below this line. Rails is not loaded until this point!
+require_relative "support/central_bank_rate_stub"
 
 module DeviseCurrentTenantSync
   def sign_in(resource, *args, **kwargs)

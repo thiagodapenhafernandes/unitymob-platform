@@ -46,8 +46,15 @@ class PagesController < ApplicationController
     submit_parcerias
   end
 
+  # Simulador de financiamento: recurso ligado por conta (Perfil público).
   def simulador
-    # Página "Simule um Financiamento"
+    profile = PublicSiteProfile.current(tenant: public_tenant)
+    raise ActionController::RoutingError, "Simulador desligado" unless profile.financing_simulator_enabled?
+
+    @public_site_profile = profile
+    @page_name = "simulador"
+    @page_title = "Simulador de financiamento imobiliário | #{Tenants::PublicIdentity.new(public_tenant).name}"
+    @page_description = "Simule o financiamento do seu imóvel pelos sistemas SAC e Price com a taxa média de mercado do Banco Central."
   end
 
   def links_uteis

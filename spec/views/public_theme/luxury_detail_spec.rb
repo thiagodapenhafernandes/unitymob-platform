@@ -10,6 +10,8 @@ RSpec.describe "public_theme/_luxury_detail_body.html.erb", type: :view do
     end
     assign(:public_map, nil)
     assign(:related_properties, [])
+    # O controller entrega o perfil público (simulador de financiamento ligado por padrão).
+    assign(:public_site_profile, PublicSiteProfile.new({}, tenant: tenant))
   end
 
   it "renderiza detalhe luxury com a estrutura de página do tema" do

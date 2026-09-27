@@ -50,6 +50,35 @@
       <% end %>
     </div>
 
+    <%
+      financing_source = @profile.financing_rate_source.presence || Financing::CentralBankRate::DEFAULT_SOURCE
+      financing_choices = Financing::CentralBankRate::SERIES.map do |source, series|
+        rate = @financing_rates[source]
+        label = "Banco Central — #{series[:label]}"
+        label += " (#{number_with_precision(rate.annual_rate, precision: 2, separator: ",")}% a.a.#{", #{I18n.l(rate.reference_date, format: "%b/%Y").downcase}" if rate.reference_date})" unless rate.fallback
+        [label, source]
+      end + [["Taxa própria da imobiliária", "custom"]]
+    %>
+    <%= ax_form_section(title: "Simulador de financiamento", eyebrow: "Site", icon: "calculator") do %>
+      <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+        <%= ax_switch_field(form: f, method: :financing_simulator_enabled, class_name: "ax-switch--card",
+              input_html: { checked: @profile.financing_simulator_enabled? },
+              label: "Mostrar o simulador no site",
+              description: "Página /simulador, item \"Simule um financiamento\" do menu e bloco \"Simule o financiamento deste imóvel\" nos imóveis à venda. Desligado, tudo some do site.") %>
+        <div class="public-site-profile__fields">
+          <%= ax_select_field(form: f, method: :financing_rate_source, label: "Taxa de juros sugerida", choices: financing_choices,
+                select_options: { selected: financing_source },
+                html_options: { data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
+          <div data-conditional-reveal-target="panel" data-conditional-reveal-values="custom" <%= "hidden" unless financing_source == "custom" %>>
+            <%= ax_text_field(form: f, method: :financing_custom_rate, label: "Taxa própria (% ao ano)", type: :number,
+                  step: "0.01", min: "0.01", max: "30", placeholder: "Ex.: 10,5",
+                  hint: "Por exemplo, a taxa do banco parceiro da imobiliária.") %>
+          </div>
+        </div>
+        <p class="public-site-profile__hint tw-mb-0">O Banco Central publica a média do mercado com 2 a 3 meses de atraso; o site atualiza sozinho. O visitante pode alterar a taxa na simulação.</p>
+      </div>
+    <% end %>
+
     <%= ax_form_section(title: "Dados jurídicos", eyebrow: "Privacidade", icon: "file-earmark-lock") do %>
       <% if legal_gaps.any? %>
         <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true, body: "Falta preencher: #{legal_gaps.join(', ')}.") %>

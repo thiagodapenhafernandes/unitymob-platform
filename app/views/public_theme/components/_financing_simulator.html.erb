@@ -1,0 +1,116 @@
+<%# Simulador de financiamento — mesmo HTML em todos os temas (contrato
+    public-theme-financing-simulator__*); cada tema estiliza a variante.
+    Página /simulador e bloco da página do imóvel à venda. Só renderiza com o
+    recurso ligado na conta (Perfil público). Cálculo SAC e Price no navegador
+    (controller financing-simulator); o botão final usa a captura de lead do
+    site com os valores simulados na mensagem.
+    Locals: variant, rate (Financing::CentralBankRate::Result), property
+    (opcional, preenche o valor), heading_tag, class_name. %>
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  rate = local_assigns.fetch(:rate)
+  property = local_assigns[:property]
+  price = property ? property.valor_venda_cents.to_i / 100 : 500_000
+  property_label = property ? "#{property.display_title} (Código: #{property.codigo})" : nil
+  heading_tag = local_assigns.fetch(:heading_tag, :h2)
+  section_class = ["public-theme-financing-simulator", "public-theme-financing-simulator--#{variant}",
+                   ("public-theme-financing-simulator--property" if property), local_assigns[:class_name]].compact.join(" ")
+  rate_value = format("%.2f", rate.annual_rate)
+%>
+<section id="simulador-financiamento" class="<%= section_class %>"
+         data-controller="financing-simulator"
+         data-financing-simulator-property-label-value="<%= property_label %>">
+  <header class="public-theme-financing-simulator__head">
+    <span class="public-theme-financing-simulator__eyebrow">Simulador de financiamento</span>
+    <%= content_tag heading_tag, (property ? "Simule o financiamento deste imóvel" : "Simule seu financiamento"), class: "public-theme-financing-simulator__title" %>
+    <p class="public-theme-financing-simulator__lead">Ajuste entrada e prazo e veja a parcela nos dois sistemas que os bancos usam.</p>
+  </header>
+
+  <div class="public-theme-financing-simulator__body">
+    <form class="public-theme-financing-simulator__form" data-action="input->financing-simulator#calculate change->financing-simulator#calculate submit->financing-simulator#prevent" novalidate>
+      <div class="public-theme-financing-simulator__field">
+        <label class="public-theme-financing-simulator__label" for="simulador-valor">Valor do imóvel</label>
+        <div class="public-theme-financing-simulator__money">
+          <span aria-hidden="true">R$</span>
+          <input id="simulador-valor" class="public-theme-financing-simulator__input" type="text" inputmode="numeric" autocomplete="off"
+                 value="<%= number_with_delimiter(price, delimiter: ".") %>" data-financing-simulator-target="price"
+                 data-action="blur->financing-simulator#formatPrice">
+        </div>
+      </div>
+
+      <div class="public-theme-financing-simulator__field">
+        <label class="public-theme-financing-simulator__label" for="simulador-entrada">
+          Entrada <output class="public-theme-financing-simulator__output" data-financing-simulator-target="downLabel">20%</output>
+        </label>
+        <input id="simulador-entrada" class="public-theme-financing-simulator__range" type="range" min="0" max="90" step="5" value="20"
+               data-financing-simulator-target="down">
+      </div>
+
+      <div class="public-theme-financing-simulator__grid">
+        <div class="public-theme-financing-simulator__field">
+          <label class="public-theme-financing-simulator__label" for="simulador-prazo">Prazo</label>
+          <select id="simulador-prazo" class="public-theme-financing-simulator__input" data-financing-simulator-target="years">
+            <% [10, 15, 20, 25, 30, 35].each do |years| %>
+              <option value="<%= years %>" <%= "selected" if years == 30 %>><%= years %> anos</option>
+            <% end %>
+          </select>
+        </div>
+        <div class="public-theme-financing-simulator__field">
+          <label class="public-theme-financing-simulator__label" for="simulador-taxa">Juros ao ano (%)</label>
+          <input id="simulador-taxa" class="public-theme-financing-simulator__input" type="number" inputmode="decimal" min="0" max="30" step="0.01"
+                 value="<%= rate_value %>" data-financing-simulator-target="rate">
+        </div>
+      </div>
+      <p class="public-theme-financing-simulator__hint"><%= public_icon("info-circle") %><span>Taxa sugerida: <%= public_financing_rate_note(rate) %>.</span></p>
+    </form>
+
+    <div class="public-theme-financing-simulator__results" aria-live="polite">
+      <div class="public-theme-financing-simulator__systems">
+        <article class="public-theme-financing-simulator__system">
+          <span class="public-theme-financing-simulator__system-name">SAC <small>parcelas decrescentes</small></span>
+          <span class="public-theme-financing-simulator__caption">1ª parcela</span>
+          <strong class="public-theme-financing-simulator__value" data-financing-simulator-target="sacFirst">—</strong>
+          <span class="public-theme-financing-simulator__caption">Última parcela: <b data-financing-simulator-target="sacLast">—</b></span>
+          <span class="public-theme-financing-simulator__caption">Total de juros: <b data-financing-simulator-target="sacInterest">—</b></span>
+        </article>
+        <article class="public-theme-financing-simulator__system public-theme-financing-simulator__system--price">
+          <span class="public-theme-financing-simulator__system-name">Price <small>parcelas fixas</small></span>
+          <span class="public-theme-financing-simulator__caption">Parcela</span>
+          <strong class="public-theme-financing-simulator__value" data-financing-simulator-target="pricePayment">—</strong>
+          <span class="public-theme-financing-simulator__caption">Total de juros: <b data-financing-simulator-target="priceInterest">—</b></span>
+        </article>
+      </div>
+
+      <dl class="public-theme-financing-simulator__metrics">
+        <div><dt>Valor financiado</dt><dd data-financing-simulator-target="financed">—</dd></div>
+        <div><dt>Entrada</dt><dd data-financing-simulator-target="downValue">—</dd></div>
+        <div><dt>Renda familiar sugerida</dt><dd data-financing-simulator-target="income">—</dd></div>
+      </dl>
+
+      <p class="public-theme-financing-simulator__warning" data-financing-simulator-target="warning" hidden>
+        <%= public_icon("exclamation-circle") %><span>Os bancos costumam exigir ao menos 20% de entrada.</span>
+      </p>
+
+      <button type="button" class="public-theme-financing-simulator__cta"
+              data-financing-simulator-target="cta"
+              data-action="click->lead-capture#open"
+              data-require-lead-form="true"
+              data-negotiation-type="sale"
+              data-lead-origin="Simulador de financiamento"
+              <% if property %>
+                data-property-id="<%= property.id %>"
+                data-property-code="<%= property.codigo %>"
+                data-property-title="<%= property.display_title %>"
+              <% end %>
+              data-whatsapp-message="Olá, fiz uma simulação de financiamento no site e gostaria de falar com um especialista.">
+        <%= public_icon("chat-dots") %><span>Quero falar com um especialista</span>
+      </button>
+    </div>
+  </div>
+
+  <p class="public-theme-financing-simulator__disclaimer">
+    Simulação com juros efetivos anuais convertidos para mensais. Não inclui seguros obrigatórios (MIP e DFI), tarifas
+    nem correção por TR, e depende da análise de crédito de cada banco. A taxa do Banco Central é a média do mercado,
+    não uma oferta de instituição.
+  </p>
+</section>

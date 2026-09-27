@@ -188,86 +188,6 @@
   color: var(--sl-navy-900);
 }
 
-.public-theme-shell--salute-luxury .public-theme-financing-simulator {
-  background: var(--sl-paper);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__container {
-  width: min(var(--sl-max), calc(100% - 48px));
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__eyebrow,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__highlights article > span {
-  color: var(--sl-gold);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__content h2,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__card h3,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__highlights strong {
-  color: var(--sl-navy-900);
-  font-family: var(--sl-serif);
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__content > p,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__highlights p,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__metrics dt,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__disclaimer {
-  color: var(--sl-muted);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__highlights article,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__card,
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__metrics div {
-  border-color: rgba(190, 155, 71, .24);
-  background: rgba(255, 255, 255, .78);
-  box-shadow: 0 22px 54px rgba(10, 24, 38, .07);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__highlights article > span {
-  background: rgba(190, 155, 71, .12);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator label {
-  color: var(--sl-muted);
-  font-family: var(--sl-sans);
-  font-size: 10.5px;
-  letter-spacing: .16em;
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator input {
-  border-color: rgba(10, 24, 38, .16);
-  border-radius: 18px;
-  background: #fff;
-  color: var(--sl-ink);
-  font-family: var(--sl-sans);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator button[type="submit"] {
-  border: 1px solid var(--sl-navy-800);
-  background: var(--sl-navy-800);
-  color: #fff;
-  font-family: var(--sl-sans);
-  font-size: 12px;
-  font-weight: 600;
-  transition: background .25s ease, border-color .25s ease, color .25s ease;
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator button[type="submit"]:hover {
-  border-color: var(--sl-gold);
-  background: var(--sl-gold);
-  color: var(--sl-navy-900);
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__result {
-  background: linear-gradient(135deg, var(--sl-navy-900), var(--sl-navy-800));
-}
-
-.public-theme-shell--salute-luxury .public-theme-financing-simulator__metrics dd {
-  color: var(--sl-ink);
-}
-
 .public-theme-shell--salute-luxury .public-favorites {
   background: var(--sl-paper);
 }
@@ -4962,3 +4882,52 @@ body.no-scroll { overflow: hidden; }
 .public-theme-navigation-overlay__media-name { display: block; margin-bottom: 18px; color: #fff; font-family: var(--sl-serif); font-size: 34px; font-weight: 500; }
 .salute-luxury-theme .public-theme-navigation-overlay__contact a { display: inline-flex; align-items: center; gap: 8px; }
 .salute-luxury-theme .public-theme-navigation-overlay a[aria-current="page"] { color: var(--sl-gold-soft); }
+
+/* Simulador de financiamento (contrato public-theme-financing-simulator__*). */
+.public-theme-financing-page--salute-luxury { padding-bottom: 88px; background: var(--sl-paper); }
+.public-theme-financing-simulator--salute-luxury {
+  display: grid; gap: 28px; padding: clamp(24px, 3.4vw, 40px); border: 1px solid rgba(190, 155, 71, .22);
+  border-radius: 24px; background: #fff; box-shadow: 0 22px 54px rgba(10, 24, 38, .07);
+}
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__head { display: grid; gap: 10px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__eyebrow { color: var(--sl-gold-deep, #9c7c33); font-family: var(--sl-sans); font-size: 10.5px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__title { margin: 0; color: var(--sl-navy-800); font-family: var(--sl-serif); font-size: clamp(28px, 3.4vw, 40px); font-weight: 500; line-height: 1.08; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__lead { margin: 0; color: var(--sl-muted); font-family: var(--sl-sans); font-weight: 300; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px; align-items: start; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__form { display: grid; gap: 20px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__field { display: grid; gap: 9px; min-width: 0; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__label { display: flex; align-items: center; justify-content: space-between; color: var(--sl-muted); font-family: var(--sl-sans); font-size: 10.5px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__output { color: var(--sl-navy-800); font-family: var(--sl-numeric); font-size: 14px; letter-spacing: 0; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__money { position: relative; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__money > span { position: absolute; top: 50%; left: 18px; color: var(--sl-gold); transform: translateY(-50%); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__input { width: 100%; min-height: 50px; padding: 0 18px; border: 1px solid rgba(10, 24, 38, .16); border-radius: 999px; background: #fff; color: var(--sl-ink); font-family: var(--sl-numeric); font-size: 15px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__money .public-theme-financing-simulator__input { padding-left: 50px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__input:focus { border-color: var(--sl-gold); outline: none; box-shadow: 0 0 0 3px rgba(190, 155, 71, .16); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__range { width: 100%; accent-color: var(--sl-gold); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__hint { display: flex; gap: 8px; margin: 0; color: var(--sl-muted); font-size: 12.5px; line-height: 1.6; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__hint .public-theme-icon { color: var(--sl-gold); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__results { display: grid; gap: 16px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__systems { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__system { display: grid; gap: 5px; align-content: start; padding: 22px; border-radius: 20px; background: linear-gradient(135deg, var(--sl-navy-900), var(--sl-navy-800)); color: #fff; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__system--price { background: var(--sl-navy-700); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__system-name { color: var(--sl-gold-soft); font-family: var(--sl-sans); font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__system-name small { display: block; color: rgba(255, 255, 255, .6); font-weight: 400; letter-spacing: .02em; text-transform: none; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__caption { color: rgba(255, 255, 255, .72); font-family: var(--sl-sans); font-size: 12.5px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__caption b { color: #fff; font-family: var(--sl-numeric); font-weight: 500; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__value { color: #fff; font-family: var(--sl-numeric); font-size: clamp(24px, 2.6vw, 30px); font-weight: 500; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics div { padding: 14px 16px; border: 1px solid rgba(190, 155, 71, .22); border-radius: 16px; background: rgba(247, 244, 238, .6); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics dt { color: var(--sl-muted); font-family: var(--sl-sans); font-size: 10px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics dd { margin: 5px 0 0; color: var(--sl-navy-800); font-family: var(--sl-numeric); font-size: 16px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__warning { display: flex; gap: 8px; margin: 0; padding: 10px 14px; border-radius: 14px; background: rgba(190, 155, 71, .1); color: var(--sl-gold-deep, #9c7c33); font-size: 13px; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__cta { display: inline-flex; min-height: 52px; align-items: center; justify-content: center; gap: 10px; padding: 0 28px; border: 1px solid var(--sl-navy-800); border-radius: 999px; background: var(--sl-navy-800); color: #fff; font-family: var(--sl-sans); font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; cursor: pointer; transition: background .25s ease, border-color .25s ease, color .25s ease; }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__cta:hover { border-color: var(--sl-gold); background: var(--sl-gold); color: var(--sl-navy-900); }
+.public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__disclaimer { margin: 0; color: var(--sl-muted); font-size: 12px; line-height: 1.7; }
+@media (max-width: 900px) {
+  .public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__body { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__systems,
+  .public-theme-financing-simulator--salute-luxury .public-theme-financing-simulator__metrics { grid-template-columns: 1fr; }
+}

@@ -9,7 +9,8 @@ class PublicHeaderMenu
   URL_FORMAT = %r{\A(/[^\s]*|https?://[^\s]+|mailto:[^\s]+|tel:[^\s]+)\z}i
 
   # bar: aparece na barra do desktop (todos os visíveis entram no menu suspenso e no celular).
-  # requires: item só existe quando a conta tem o dado (blog, canal do YouTube).
+  # requires: item só existe quando a conta tem o dado (blog, canal do YouTube) ou
+  # o recurso ligado (simulador de financiamento).
   SYSTEM_ITEMS = {
     "home"         => { label: "Home", path: -> { ROUTES.root_path } },
     "comprar"      => { label: "Comprar", bar: true, path: -> { ROUTES.habitations_path(transaction_type: "venda") }, active: ->(c) { c.buying? } },
@@ -22,7 +23,7 @@ class PublicHeaderMenu
     "parceria"     => { label: "Parceria", path: -> { ROUTES.parcerias_path } },
     "corretor"     => { label: "Fale com um corretor", path: -> { ROUTES.brokers_path } },
     "galpoes"      => { label: "Galpões", path: -> { ROUTES.corporativos_path } },
-    "financiamento" => { label: "Simule um financiamento", path: -> { ROUTES.simulador_path } },
+    "financiamento" => { label: "Simule um financiamento", requires: :financing },
     "trabalhe"     => { label: "Trabalhe conosco", path: -> { ROUTES.trabalhe_conosco_path } },
     "sobre"        => { label: "Sobre nós", path: -> { ROUTES.sobre_path } },
     "youtube"      => { label: "YouTube", requires: :youtube },
@@ -51,14 +52,14 @@ class PublicHeaderMenu
   end
 
   # Lista completa (sistema + próprios) na ordem gravada; itens de sistema novos entram no fim.
-  def self.entries(saved, blog_url: nil, youtube_url: nil, context: nil)
+  def self.entries(saved, blog_url: nil, youtube_url: nil, financing_url: nil, context: nil)
     saved = Array(saved).select { |item| item.is_a?(Hash) }.map { |item| item.stringify_keys }
     ordered = saved.select { |item| item["key"].to_s.in?(SYSTEM_ITEMS.keys) || custom_item?(item) }
     missing = SYSTEM_ITEMS.keys - ordered.map { |item| item["key"] }
     ordered += missing.map { |key| { "key" => key } }
 
     ordered.filter_map do |item|
-      custom_item?(item) ? custom_entry(item) : system_entry(item, blog_url:, youtube_url:, context:)
+      custom_item?(item) ? custom_entry(item) : system_entry(item, blog_url:, youtube_url:, financing_url:, context:)
     end.uniq(&:key)
   end
 
@@ -100,12 +101,13 @@ class PublicHeaderMenu
               bar: item["bar"] == true, new_tab: item["new_tab"] == true, custom: true, available: true, active: false)
   end
 
-  def self.system_entry(item, blog_url:, youtube_url:, context:)
+  def self.system_entry(item, blog_url:, youtube_url:, financing_url:, context:)
     key = item["key"]
     definition = SYSTEM_ITEMS.fetch(key)
     url = case definition[:requires]
           when :blog then blog_url
           when :youtube then youtube_url
+          when :financing then financing_url
           else definition[:path].call
           end
 
