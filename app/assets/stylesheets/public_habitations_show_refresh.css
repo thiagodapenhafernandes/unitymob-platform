@@ -51,9 +51,16 @@
   box-shadow: 0 22px 52px rgba(15, 23, 42, 0.13);
 }
 
+/* Um só espaçamento no mosaico: foto principal ↔ miniaturas e entre as
+   miniaturas (antes 1px de um lado e o gap-2 do Tailwind do outro). Cada tema
+   ajusta só a variável. */
+.public-habitations-show__gallery-grid,
+.public-habitations-show__gallery-thumbs {
+  gap: var(--public-show-gallery-gap, 8px);
+}
+
 .public-habitations-show__gallery-grid {
-  gap: 1px;
-  background: rgba(2, 43, 58, 0.08);
+  background: transparent;
 }
 
 .public-habitations-show__gallery-primary,
