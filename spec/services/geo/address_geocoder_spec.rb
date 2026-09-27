@@ -44,4 +44,36 @@ RSpec.describe Geo::AddressGeocoder do
   ensure
     ENV["GOOGLE_MAPS_API_KEY"] = previous
   end
+
+  describe "#neighborhood_call" do
+    let(:neighborhood_geocoder) do
+      described_class.new(address: "Rua Nova", number: "1", neighborhood: "Praia Brava de Itajaí", city: "Itajaí",
+                          state: "SC", zip_code: "", provider: "leaflet")
+    end
+
+    before { allow(neighborhood_geocoder).to receive(:sleep) }
+
+    it "aceita só bairro/localidade da mesma cidade e marca como aproximado" do
+      allow(neighborhood_geocoder).to receive(:json_get) do |_url, params|
+        expect(params).to include(featureType: "settlement")
+        expect(params[:q]).not_to include("Brasil")
+        [
+          { "lat" => "-26.9", "lon" => "-48.6", "display_name" => "Praia Brava, Balneário Camboriú", "address" => { "city" => "Balneário Camboriú" } },
+          { "lat" => "-26.94", "lon" => "-48.63", "display_name" => "Praia Brava, Itajaí", "address" => { "city" => "Itajaí" } }
+        ]
+      end
+
+      result = neighborhood_geocoder.neighborhood_call
+
+      expect(result.latitude).to eq("-26.94")
+      expect(result.precision).to eq("neighborhood")
+    end
+
+    it "sem bairro na mesma cidade, não devolve nada" do
+      allow(neighborhood_geocoder).to receive(:json_get)
+        .and_return([{ "lat" => "-26.9", "lon" => "-48.6", "address" => { "city" => "Balneário Camboriú" } }])
+
+      expect(neighborhood_geocoder.neighborhood_call).to be_nil
+    end
+  end
 end

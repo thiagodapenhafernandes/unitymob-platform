@@ -5,7 +5,8 @@ namespace :public_maps do
   # mapa. Esta task enfileira o HabitationGeocodeJob para eles — o job é
   # idempotente (pula quem já tem coordenada). Usa o provedor da conta: Google
   # (chave de servidor) ou Leaflet, que geocodifica pelo Nominatim/OpenStreetMap
-  # sem custo (mais lento: 1 imóvel a cada 4s).
+  # sem custo (mais lento: 1 imóvel a cada 5s). Rua não encontrada vira o
+  # centro do bairro, marcado como aproximado (APPROXIMATE=1 tenta de novo).
   #
   #   bin/rails public_maps:geocode_missing                 # só conta (dry run)
   #   bin/rails public_maps:geocode_missing APPLY=1         # enfileira
@@ -24,10 +25,16 @@ namespace :public_maps do
       end
       google = setting.provider == "google"
 
+      # APPROXIMATE=1 também refaz os que ficaram só com o centro do bairro
+      # (ex.: depois de configurar uma chave Google de servidor).
       missing = tenant.habitations.public_property_listable
         .joins(:address)
-        .where(addresses: { latitude: nil })
         .where("habitations.latitude IS NULL OR habitations.longitude IS NULL")
+      missing = if ENV["APPROXIMATE"] == "1"
+                  missing.where("addresses.latitude IS NULL OR addresses.coordinates_precision = ?", Address::NEIGHBORHOOD_PRECISION)
+                else
+                  missing.where(addresses: { latitude: nil })
+                end
 
       count = missing.count
       unless apply
@@ -51,9 +58,9 @@ namespace :public_maps do
       end
 
       # Espaça os jobs: Google ~10/s; Nominatim no máximo 1 requisição/s e cada
-      # job pode tentar até 3 variações do endereço, então 1 job a cada 4s.
+      # job pode fazer até 4 (3 variações da rua + bairro), então 1 job a cada 5s.
       missing.pluck(:id).each_with_index do |habitation_id, index|
-        wait = google ? (index / 10).seconds : (index * 4).seconds
+        wait = google ? (index / 10).seconds : (index * 5).seconds
         HabitationGeocodeJob.set(wait: wait).perform_later(habitation_id, tenant_id: tenant.id)
       end
       provider_label = google ? "Google" : "OpenStreetMap"

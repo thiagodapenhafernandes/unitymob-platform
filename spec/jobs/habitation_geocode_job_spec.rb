@@ -43,6 +43,35 @@ RSpec.describe HabitationGeocodeJob do
     expect(Geo::AddressGeocoder).to have_received(:new).with(hash_including(api_key: nil, provider: "leaflet"))
     expect(habitation.address.reload.latitude.to_f).to eq(-26.99)
   end
+
+  describe "rua não encontrada" do
+    let(:habitation) { create(:habitation, latitude: nil, longitude: nil) }
+    let(:neighborhood) { Geo::AddressGeocoder::Result.new(latitude: -26.95, longitude: -48.62, display_name: "Praia Brava", house_number: nil, provider: "osm", precision: "neighborhood") }
+    let(:street) { Geo::AddressGeocoder::Result.new(latitude: -26.96, longitude: -48.63, display_name: "Rua", house_number: "1", provider: "google", precision: "rooftop") }
+    let(:geocoder) { instance_double(Geo::AddressGeocoder, call: nil, neighborhood_call: neighborhood) }
+
+    before do
+      allow(GoogleMapsIntegrationSetting).to receive(:for)
+        .and_return(instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "leaflet", api_key: nil))
+      allow(Geo::AddressGeocoder).to receive(:new).and_return(geocoder)
+    end
+
+    it "usa o centro do bairro marcado como aproximado e troca quando a rua for encontrada depois" do
+      described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id)
+      address = habitation.address.reload
+      expect(address.latitude.to_f).to eq(-26.95)
+      expect(address).to be_neighborhood_coordinates
+
+      described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id)
+      expect(geocoder).to have_received(:neighborhood_call).once
+
+      allow(geocoder).to receive(:call).and_return(street)
+      described_class.perform_now(habitation.id, tenant_id: habitation.tenant_id)
+      address.reload
+      expect(address.latitude.to_f).to eq(-26.96)
+      expect(address.coordinates_precision).to be_nil
+    end
+  end
 end
 
 RSpec.describe Address do
@@ -54,5 +83,14 @@ RSpec.describe Address do
       .and_return(instance_double(GoogleMapsIntegrationSetting, configured?: true, provider: "leaflet"))
 
     expect { habitation.address.update!(logradouro: "Rua Nova") }.to have_enqueued_job(HabitationGeocodeJob)
+  end
+
+  it "ponto ajustado à mão deixa de ser aproximado" do
+    habitation = create(:habitation, latitude: nil, longitude: nil)
+    habitation.address.update!(latitude: -26.95, longitude: -48.62, coordinates_precision: Address::NEIGHBORHOOD_PRECISION)
+
+    habitation.address.update!(latitude: -26.97, longitude: -48.64)
+
+    expect(habitation.address.reload.coordinates_precision).to be_nil
   end
 end

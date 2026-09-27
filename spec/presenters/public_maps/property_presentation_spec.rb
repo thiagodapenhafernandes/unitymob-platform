@@ -136,4 +136,15 @@ RSpec.describe PublicMaps::PropertyPresentation do
     expect(presentation.street_view_coordinates).to eq([-26.9906, -48.6348])
     expect(presentation.center_coordinates).not_to eq(presentation.street_view_coordinates)
   end
+
+  it "coordenada do centro do bairro nunca vira pino exato: região aproximada de 1 km, sem Street View" do
+    property.update!(public_map_display_mode: "exact", public_street_view_mode: "enabled")
+    property.address.update!(coordinates_precision: Address::NEIGHBORHOOD_PRECISION)
+    presentation = described_class.new(property.reload, setting: setting)
+
+    expect(presentation).to be_approximate
+    expect(presentation.radius_meters).to eq(1000)
+    expect(presentation.center_coordinates).not_to eq([-26.9906, -48.6348])
+    expect(presentation.street_view_enabled?).to be(false)
+  end
 end

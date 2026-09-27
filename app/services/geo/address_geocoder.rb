@@ -30,6 +30,28 @@ module Geo
       @country = country.to_s.strip.presence || "Brasil"
     end
 
+    # Último recurso: centro do bairro pelo OpenStreetMap (precision
+    # "neighborhood"). Só para mostrar região aproximada no mapa.
+    def neighborhood_call
+      return if neighborhood.blank? || city.blank?
+
+      sleep(NOMINATIM_INTERVAL) # costuma vir logo depois das tentativas da rua
+      # Só bairros/localidades (featureType=settlement) e sem o país no texto:
+      # busca livre casava com comércio ("Brasil Atacadista") e praias vizinhas.
+      data = json_get("https://nominatim.openstreetmap.org/search",
+                      q: [neighborhood, city, state].select(&:present?).join(", "),
+                      format: "json", limit: 3, countrycodes: "br", layer: "address",
+                      featureType: "settlement", addressdetails: 1)
+      match = Array(data).find { |item| item.is_a?(Hash) && same_city?(item["address"]) }
+      return unless match
+
+      Result.new(latitude: match["lat"], longitude: match["lon"], display_name: match["display_name"],
+                 house_number: nil, provider: "osm", precision: "neighborhood")
+    rescue StandardError => e
+      Rails.logger.warn("[geo.address_geocoder] neighborhood_failed class=#{e.class} message=#{e.message}")
+      nil
+    end
+
     def call
       return nominatim_result if @provider == "leaflet"
       return google_result if @api_key.present?
@@ -119,6 +141,13 @@ module Geo
       street_line = [address, number].select(&:present?).join(", ")
       city_line = [city, state].select(&:present?).join("/")
       [street_line, neighborhood, city_line, zip_code.presence, country].select(&:present?).join(" - ")
+    end
+
+    # O bairro precisa estar na cidade do cadastro (evita ponto em outra cidade).
+    def same_city?(address_details)
+      normalize = ->(value) { I18n.transliterate(value.to_s).downcase.strip }
+      found = %w[city town municipality village].filter_map { |key| address_details.to_h[key] }
+      found.any? { |value| normalize.call(value) == normalize.call(city) }
     end
 
     def google_components

@@ -1,4 +1,4 @@
-\restrict Tm5TzluFdL9GSZ8ceft0GK3nPjdXRObKl4AcRni1mUB6W7GqbgHX3ZcuGi7QwXO
+\restrict UtsDUgD4FTZf3hOsinHDHFr2km9lLtHmMqiILwa5RYG8GuaM5PaIySglvyYbVkp
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -721,7 +721,8 @@ CREATE TABLE public.addresses (
     longitude numeric(10,7),
     imediacoes text[] DEFAULT '{}'::text[] NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    coordinates_precision character varying
 );
 
 
@@ -19611,11 +19612,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Tm5TzluFdL9GSZ8ceft0GK3nPjdXRObKl4AcRni1mUB6W7GqbgHX3ZcuGi7QwXO
+\unrestrict UtsDUgD4FTZf3hOsinHDHFr2km9lLtHmMqiILwa5RYG8GuaM5PaIySglvyYbVkp
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260927120000'),
 ('20260927090000'),
 ('20260925120000'),
 ('20260922110000'),
