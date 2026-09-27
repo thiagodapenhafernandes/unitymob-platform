@@ -253,6 +253,15 @@ module Habitation::SearchScopes
         all
       end
     }
+    # Construtora pelo nome exato (sem diferenciar caixa/acento), como aparece
+    # no catálogo do menu (PublicSite::CatalogNavigation).
+    scope :by_constructor, ->(names) {
+      values = Array(names).map { |name| name.to_s.strip }.reject(&:empty?)
+      next all if values.empty?
+
+      where("unaccent(LOWER(TRIM(habitations.construtora))) IN (#{(['unaccent(LOWER(?))'] * values.size).join(', ')})", *values)
+    }
+
     scope :by_development, ->(development) {
       terms = normalize_location_values(development)
 
@@ -824,6 +833,7 @@ module Habitation::SearchScopes
         query = query.by_neighborhood(params[:neighborhood])
       end
       query = query.by_development(params[:development]) if params[:development].present?
+      query = query.by_constructor(params[:constructor]) if params[:constructor].present?
       query = query.where(codigo: Array(params[:property_codes]).compact_blank.map(&:to_s)) if params[:property_codes].present?
       query = query.by_state(params[:state]) if params[:state].present?
       

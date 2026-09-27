@@ -35,6 +35,7 @@ module PublicSite
           item("Casas", category: HOUSES),
           item("Terrenos", category: ["Terreno", "Terreno em Condomínio"])
         ]),
+        dynamic_group("Construtoras", top_constructors.map { |name, count| item_payload(name, count, constructor: name) }),
         group("Apartamentos", filters: { category: ["Apartamento"] }, action_label: "ver todos", items: [
           item("Apartamentos 1 Dormitório", category: ["Apartamento"], bedrooms: 1),
           item("Apartamentos 2 Dormitórios", category: ["Apartamento"], bedrooms: 2),
@@ -93,6 +94,15 @@ module PublicSite
       tenant.habitations.public_property_search(filters).unscope(:order).count
     end
 
+    def top_constructors
+      tenant.habitations.public_property_listable
+        .where.not(construtora: [nil, ""])
+        .group(:construtora)
+        .count
+        .sort_by { |name, count| [-count, name.to_s] }
+        .first(limit)
+    end
+
     # Rótulo canônico (mesma grafia do filtro de localização), então o link filtra.
     def top_cities
       tenant.habitations.public_city_link_groups(cities: limit, neighborhoods: 0).map { |group| [group[:value], group[:count]] }
@@ -100,7 +110,7 @@ module PublicSite
 
     def cache_key
       updated_at = tenant.habitations.maximum(:updated_at)&.utc&.to_i || 0
-      "public_catalog_navigation_v1/tenant/#{tenant.id}/#{updated_at}/#{limit}"
+      "public_catalog_navigation_v2/tenant/#{tenant.id}/#{updated_at}/#{limit}"
     end
   end
 end

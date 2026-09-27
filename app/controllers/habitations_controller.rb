@@ -545,6 +545,7 @@ class HabitationsController < ApplicationController
       :neighborhood,
       :development,
       :empreendimento,
+      :constructor,
       :state,
       :min_bedrooms,
       :min_suites,

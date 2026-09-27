@@ -144,14 +144,17 @@
             </section>
           <% end %>
 
+          <% related_links = Seo::StrategicLanding.available_property_links %>
+          <% if related_links.any? %>
           <nav class="public-habitations-index__strategic-links bg-white border border-gray-100 rounded-xl p-5 shadow-sm" aria-label="Buscas estratégicas">
             <h2 class="public-habitations-index__section-title text-sm font-bold text-blue-three uppercase tracking-wide mb-3">Buscas relacionadas</h2>
             <div class="public-habitations-index__strategic-list flex flex-wrap gap-2">
-              <% Seo::StrategicLanding.property_links.each do |link| %>
+              <% related_links.each do |link| %>
                 <%= link_to link[:label], link[:path], class: "public-habitations-index__strategic-link inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-golden-one hover:text-blue-three transition-colors" %>
               <% end %>
             </div>
           </nav>
+          <% end %>
         </div>
       <% else %>
         <!-- Empty State -->
@@ -165,7 +168,7 @@
           </p>
           <div class="flex flex-wrap justify-center gap-2">
             <%= link_to "Limpar filtros", habitations_path, class: "public-habitations-index__primary-link btn-primary inline-flex items-center gap-2" %>
-            <% Seo::StrategicLanding.property_links.first(4).each do |link| %>
+            <% Seo::StrategicLanding.available_property_links.first(4).each do |link| %>
               <%= link_to link[:label], link[:path], class: "public-habitations-index__empty-link inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-three hover:text-blue-three transition-colors" %>
             <% end %>
           </div>

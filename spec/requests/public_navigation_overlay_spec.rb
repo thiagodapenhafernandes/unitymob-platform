@@ -75,4 +75,19 @@ RSpec.describe "Menu de navegação em tela cheia", type: :request do
     expect(overlay["class"]).not_to include("public-theme-navigation-overlay--no-media")
     expect(overlay.at_css("[data-navigation-overlay-target='media']")["data-src"]).to include("menu.png")
   end
+
+  it "lista construtoras no menu e o link filtra a busca por elas" do
+    create(:habitation, tenant:, exibir_no_site_flag: true, construtora: "Embraed", titulo_anuncio: "Torre da Embraed")
+    create(:habitation, tenant:, exibir_no_site_flag: true, construtora: "Outra Construtora", titulo_anuncio: "Casa da Outra")
+
+    get root_path
+    group = overlay.css(".public-theme-navigation-overlay__catalog-group").find { _1.at_css("h2").text.include?("Construtoras") }
+    link = group.css("nav a").find { _1.text.include?("Embraed") }
+    expect(link.at_css("em").text).to eq("1")
+
+    get link["href"]
+    expect(response).to have_http_status(:ok)
+    cards = Nokogiri::HTML(response.body).css("[data-property-id]").map { _1["data-property-id"] }.uniq
+    expect(cards).to eq([Habitation.find_by(titulo_anuncio: "Torre da Embraed").id.to_s])
+  end
 end
