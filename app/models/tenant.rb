@@ -23,21 +23,21 @@ class Tenant < ApplicationRecord
     "saluteimoveis" => {
       label: "Salute Imóveis",
       description: "Mantém o desenho atual do site e herda cores, logo e conteúdo da conta.",
-      tenant_slugs: ["salute"],
+      tenant_slugs: ["salute", "saluteimoveis"],
       variant: "default",
       components: DEFAULT_THEME_COMPONENTS
     },
     "conexaoimobiliaria" => {
       label: "Conexão Imobiliária",
       description: "Usa os mesmos componentes públicos com uma expressão visual própria para a Conexão.",
-      tenant_slugs: ["conexao"],
+      tenant_slugs: ["conexao", "conexaoimobiliaria"],
       variant: "default",
       components: DEFAULT_THEME_COMPONENTS
     },
     "salute_luxury" => {
       label: "Salute Imóveis - Luxury",
       description: "Desenho premium da Salute com identidade própria.",
-      tenant_slugs: ["salute"],
+      tenant_slugs: ["salute", "saluteimoveis"],
       variant: "salute-luxury",
       components: {
         hero: "public_theme/luxury_home_hero",
@@ -200,10 +200,14 @@ class Tenant < ApplicationRecord
 
   # Modelos que esta conta pode escolher: o Padrão, o modelo da própria identidade (nome/slug)
   # e o que já está em uso. Skins de outros clientes nunca aparecem.
+  # tenant_slugs de um tema casam com o slug da conta OU com o nome dela em
+  # forma compacta ("Salute Imóveis" → "saluteimoveis"): contas principais de
+  # cada servidor usam o slug "default", então o nome é quem identifica a marca.
   def available_public_site_themes
     keys = [DEFAULT_PUBLIC_SITE_THEME, inferred_public_site_theme_key, public_site_theme_key].uniq
+    account_keys = [slug.to_s, *public_site_theme_identity_candidates].compact_blank
     keys |= PUBLIC_SITE_THEMES.keys.select do |key|
-      Array(PUBLIC_SITE_THEMES[key][:tenant_slugs]).include?(slug)
+      (Array(PUBLIC_SITE_THEMES[key][:tenant_slugs]) & account_keys).any?
     end
     PUBLIC_SITE_THEMES.slice(*keys)
   end

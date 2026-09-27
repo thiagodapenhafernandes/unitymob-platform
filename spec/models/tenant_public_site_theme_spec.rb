@@ -51,4 +51,19 @@ RSpec.describe Tenant, type: :model do
       expect(tenant.public_site_theme).to eq("conexaoimobiliaria")
     end
   end
+
+  describe "#available_public_site_themes" do
+    it "libera os temas da marca pelo nome da conta quando o slug é default (produção)" do
+      tenant = described_class.new(name: "Salute Imóveis", slug: "default")
+
+      expect(tenant.available_public_site_themes.keys).to include("salute_luxury", "saluteimoveis", "default")
+    end
+
+    it "continua liberando pelo slug e não libera tema de outra marca" do
+      expect(described_class.new(name: "Qualquer", slug: "salute").available_public_site_themes.keys).to include("salute_luxury")
+      expect(described_class.new(name: "Imobiliária Litoral", slug: "default").available_public_site_themes.keys)
+        .not_to include("salute_luxury", "saluteimoveis", "conexaoimobiliaria")
+    end
+  end
 end
+
