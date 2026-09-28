@@ -6,6 +6,7 @@ Rails.application.routes.draw do
 
   devise_for :admin_users, path: 'admin', controllers: {
     sessions: 'admin/sessions',
+    passwords: 'admin/passwords',
     omniauth_callbacks: 'admin/omniauth_callbacks'
   }
 

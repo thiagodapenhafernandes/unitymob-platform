@@ -15,6 +15,9 @@ module Leads
       @setting = LeadSetting.instance(tenant: lead.tenant)
     end
 
+    # Quantos leads anteriores examinar na busca do dono elegível mais recente.
+    MAX_PREVIOUS_LEADS = 25
+
     def corretor
       return nil unless @setting.stickiness_enabled?
 
@@ -29,15 +32,29 @@ module Leads
 
     private
 
+    # Dono elegível mais recente: recência pela criação (estável — um toque
+    # incidental como sync externo, automação ou nota não rouba a fidelização)
+    # e, se o dono mais recente for inelegível, tenta os anteriores em ordem
+    # em vez de desistir direto para o rodízio.
     def previous_owner_id
       scope = base_scope
       return nil if scope.nil?
 
-      previous_lead = scope.reorder(updated_at: :desc).select(:admin_user_id, :lead_pipeline_stage_id).first
-      return nil if previous_lead.blank?
-      return nil if @setting.non_fidelizing_stage_for_stickiness?(previous_lead.lead_pipeline_stage_id)
+      owner_ids = scope.reorder(created_at: :desc, id: :desc)
+                       .select(:admin_user_id, :lead_pipeline_stage_id)
+                       .limit(MAX_PREVIOUS_LEADS)
+                       .filter_map do |previous_lead|
+                         next if @setting.non_fidelizing_stage_for_stickiness?(previous_lead.lead_pipeline_stage_id)
 
-      previous_lead.admin_user_id
+                         previous_lead.admin_user_id
+                       end.uniq
+      return nil if owner_ids.empty?
+
+      users_by_id = @lead.tenant.admin_users.where(id: owner_ids).index_by(&:id)
+      owner_ids.each do |owner_id|
+        return owner_id if eligible?(users_by_id[owner_id])
+      end
+      nil
     end
 
     # Leads anteriores (não o atual) com corretor atribuído, aplicando match,
