@@ -322,7 +322,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       body: definition.fetch(:body),
       waba_id: integration.waba_id,
       status: "PENDING",
-      buttons: [],
+      buttons: definition.fetch(:buttons, []),
       carousel_cards: [],
       flow_config: {},
       example_values: Whatsapp::LeadAlertTemplate::EXAMPLE_VALUES

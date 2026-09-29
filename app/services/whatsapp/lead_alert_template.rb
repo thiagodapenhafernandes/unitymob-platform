@@ -45,6 +45,23 @@ module Whatsapp
 
       Mensagem automática da plataforma.
     BODY
+    POOL_UTILITY_BODY = <<~BODY.strip.freeze
+      Lead disponível para atendimento no bolsão.
+
+      *{{1}}*, há um lead aguardando aceite no bolsão. Ao aceitar, o atendimento ficará vinculado ao seu usuário.
+
+      Detalhes do envio:
+      • Nome: *{{3}}*
+      • Origem: *{{2}}*
+      • Telefone/link: *{{4}}*
+      • Email/link: *{{5}}*
+      • Outros dados: *{{6}}*
+
+      Mensagem automática da plataforma.
+    BODY
+    DISTRIBUTION_V2_TEMPLATE_NAME = "lead_distribution_alert_v2".freeze
+    POOL_UTILITY_V2_TEMPLATE_NAME = "lead_pool_alert_utility_v2".freeze
+    VCARD_BUTTONS = [{ "kind" => "quick_reply", "text" => "Salvar contato" }].freeze
     EXAMPLE_VALUES = ["Thiago", "Facebook", "Thiago", "21990872427", "iprodutora@gmail.com", "Form name"].freeze
     EDITABLE_STATUSES = ["", "DRAFT", "REJECTED"].freeze
     DEFINITIONS = {
@@ -62,6 +79,18 @@ module Whatsapp
         label: "Aviso de bolsão",
         description: "Enviado aos corretores quando o lead fica disponível no bolsão.",
         body: POOL_BODY
+      },
+      DISTRIBUTION_V2_TEMPLATE_NAME => {
+        label: "Aviso de rodízio com cartão",
+        description: "Mesmo aviso do rodízio, com botão Salvar contato. Usado quando o cartão de contato está ligado.",
+        body: DISTRIBUTION_BODY,
+        buttons: VCARD_BUTTONS
+      },
+      POOL_UTILITY_V2_TEMPLATE_NAME => {
+        label: "Aviso de bolsão com cartão",
+        description: "Mesmo aviso do bolsão, com botão Salvar contato. Usado quando o cartão de contato está ligado.",
+        body: POOL_UTILITY_BODY,
+        buttons: VCARD_BUTTONS
       }
     }.freeze
 
@@ -123,7 +152,7 @@ module Whatsapp
       record.header_media_handle = nil
       record.body = definition.fetch(:body) if record.body.blank?
       record.footer_text = nil
-      record.buttons = []
+      record.buttons = definition.fetch(:buttons, []) if record.buttons.blank?
       record.carousel_cards = []
       record.flow_config = {}
       record.allow_category_change = true if record.allow_category_change.nil?
