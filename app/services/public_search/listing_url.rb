@@ -114,6 +114,12 @@ module PublicSearch
         merge_parsed(result, parsed)
       end
 
+      # Mínimo vence exatos (espelha o build): sem isso o backend aplicaria
+      # AND entre eles (ex.: IN (2) AND >= 4) e a página sairia sempre vazia.
+      EXACT_TO_MIN_DIMENSION.each do |exact, minimum|
+        result.delete(exact) if result[minimum].to_i.positive? && result[exact].present?
+      end
+
       result
     end
 
@@ -264,13 +270,27 @@ module PublicSearch
     end
 
     def category_lookup
-      @category_lookup ||= tenant.habitations.public_property_types.index_by { |value| self.class.slug(value) }
+      @category_lookup ||= cached_property_types.index_by { |value| self.class.slug(value) }
     end
 
     def location_lookup
-      @location_lookup ||= tenant.habitations.public_location_options
+      @location_lookup ||= cached_location_options
         .map { |option| option[:value].to_s }
         .index_by { |value| self.class.slug(value) }
+    end
+
+    # Mesmas entradas do load_filter_options (12h/6h): o parse roda em todo
+    # hit de URL amigável e não pode pagar distinct pluck a cada request.
+    def cached_property_types
+      Rails.cache.fetch(Habitation.public_filter_property_types_cache_key(tenant.id), expires_in: 12.hours) do
+        tenant.habitations.public_property_types
+      end
+    end
+
+    def cached_location_options
+      Rails.cache.fetch(Habitation.public_filter_location_options_cache_key(tenant.id), expires_in: 6.hours) do
+        tenant.habitations.public_location_options
+      end
     end
 
     class << self

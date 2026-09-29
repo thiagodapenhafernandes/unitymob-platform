@@ -89,6 +89,13 @@ RSpec.describe PublicSearch::ListingUrl do
       expect(parsed).not_to have_key(:bedrooms)
     end
 
+    it "mínimo vence exatos no mesmo parse (evita AND impossível)" do
+      parsed = described_class.new(tenant:).params_for("venda", "2-quartos+4-mais-quartos")
+
+      expect(parsed).to include(min_bedrooms: 4)
+      expect(parsed).not_to have_key(:bedrooms)
+    end
+
     it "unifica flags avulsas no bloco de características" do
       path = described_class.build(
         transaction_type: "aluguel",

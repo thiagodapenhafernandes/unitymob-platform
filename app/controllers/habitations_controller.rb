@@ -815,10 +815,12 @@ class HabitationsController < ApplicationController
     categories = normalize_filter_values(params[:category])
     return if categories.empty?
 
-    known_categories = public_tenant.habitations.public_property_types
-      .map { |value| PublicSearch::ListingUrl.slug(value) }
-    location_lookup = public_tenant.habitations.public_location_options
-      .map { |option| option[:value].to_s }
+    known_categories = Rails.cache.fetch(Habitation.public_filter_property_types_cache_key(public_tenant.id), expires_in: 12.hours) do
+      public_tenant.habitations.public_property_types
+    end.map { |value| PublicSearch::ListingUrl.slug(value) }
+    location_lookup = Rails.cache.fetch(Habitation.public_filter_location_options_cache_key(public_tenant.id), expires_in: 6.hours) do
+      public_tenant.habitations.public_location_options
+    end.map { |option| option[:value].to_s }
       .index_by { |value| PublicSearch::ListingUrl.slug(value) }
 
     moved, kept = categories.partition do |label|
@@ -831,16 +833,10 @@ class HabitationsController < ApplicationController
     params[:city] = (normalize_filter_values(params[:city]) + moved.map { location_lookup[PublicSearch::ListingUrl.slug(_1)] }).uniq
   end
 
-  def todos_in_friendly_path?
-    %i[friendly_categories friendly_locations friendly_characteristics].any? do |key|
-      params[key].to_s.split("+").any? { |part| PublicSearch::ListingUrl.blank_segment?(part) }
-    end
-  end
-
   def todos_in_listing_path?
     params[:listing_filters].to_s.split("/").any? do |segment|
       segment.to_s.split("+").any? { |part| PublicSearch::ListingUrl.blank_segment?(part) }
-    end || todos_in_friendly_path?
+    end
   end
 
   # Filtros consumidos pelo path novo; o resto (page, sort e escapes como

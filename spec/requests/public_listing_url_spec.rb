@@ -68,11 +68,11 @@ RSpec.describe "Public listing friendly URLs (novo core)", type: :request do
     expect(response).to redirect_to("/imoveis/aluguel/apartamento")
   end
 
-  it "redireciona oportunidade para a URL nova" do
+  it "mantém oportunidade no alvo legado (venda + aluguel)" do
     get "/imoveis-com-oportunidade"
 
     expect(response).to have_http_status(:moved_permanently)
-    expect(response).to redirect_to("/imoveis/venda/oportunidade")
+    expect(response.location).to include("/imoveis?characteristics[]=opportunity")
   end
 
   it "limpa segmentos todos com 301 preservando page e sort" do

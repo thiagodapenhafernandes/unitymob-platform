@@ -19,7 +19,7 @@
         is_active = params[:characteristics]&.include?(filter[:key])
       %>
       
-      <%= link_to habitations_path(params.permit!.merge(characteristics: toggle_characteristic(params[:characteristics], filter[:key]), v: "2")), 
+      <%= link_to habitations_path(params.permit!.merge(characteristics: toggle_characteristic(params[:characteristics], filter[:key]), v: "2")),
         class: "quick-filter-pill #{is_active ? 'active' : ''}", 
         data: { turbo_frame: "properties-list" } do %>
         <i class="<%= filter[:icon] %>"></i>

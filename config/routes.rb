@@ -679,7 +679,7 @@ Rails.application.routes.draw do
     end
   end
 
-  get 'imoveis-com-oportunidade', to: redirect('/imoveis/venda/oportunidade')
+  get 'imoveis-com-oportunidade', to: redirect('/imoveis?characteristics[]=opportunity')
   
   # Form submissions
   resources :contacts, only: [:create]
