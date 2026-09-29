@@ -76,7 +76,9 @@
          data-bulk-publish-filters-json-value='<%= filters_json %>'<% end %>>
 <%
   pwa_habitation_nav_counts = @pwa_habitation_nav_counts || {}
-  pwa_habitation_tab_params = request.query_parameters.slice("visualizacao")
+  # Abas trocam só o recorte próprio (ownership/status/scope): preservam cidade,
+  # categoria, dorms, vagas etc. para não apagar a busca ao alternar Meus/Todos.
+  pwa_habitation_tab_params = request.query_parameters.except("page", "status", "scope", "ownership", "intake_review", "clear_filters")
   pwa_habitation_search_params = request.query_parameters.slice("visualizacao")
   pwa_habitation_status_values = selected_status_filter_values.map { |status| Habitation.normalize_status(status) }
   pwa_habitation_active_tab =
@@ -369,10 +371,16 @@
 <%
   ownership_base_params = request.query_parameters.except("ownership", "intake_review", "page")
   all_active = @ownership_scope == "all" && @intake_review.blank?
+  mine_active = @ownership_scope == "mine" && @intake_review.blank?
   pending_review_active = @intake_review == "pending"
 %>
 <div class="habitations-workspace-scopebar">
   <div class="ax-view-toggle habitations-view-toggle habitations-view-toggle--scope" role="group" aria-label="Escopo dos imóveis">
+    <%# Mesmo par Meus/Todos das abas PWA: o corretor abre em "mine" e precisa ver e trocar o escopo sem perder filtros. %>
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "mine", intake_review: "all")), class: "ax-view-toggle__item habitations-view-toggle__item #{mine_active ? 'is-active' : ''}" do %>
+      <i class="bi bi-house-door"></i>
+      <span>Meus</span>
+    <% end %>
     <%# Catálogo: todos podem navegar todos os imóveis (curadoria). %>
     <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "all")), class: "ax-view-toggle__item habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
       <i class="bi bi-collection"></i>
