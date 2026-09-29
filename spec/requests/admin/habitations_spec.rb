@@ -663,7 +663,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
     tabs = html.css('.habitations-view-toggle--scope a')
-    expect(tabs.map { |tab| tab.text.squish }).to eq(["Todos", "Pendente de revisão", "Revisão administrativa"])
+    expect(tabs.map { |tab| tab.text.squish }).to eq(["Meus", "Todos", "Pendente de revisão", "Revisão administrativa"])
     expect(tabs.last["class"]).to include("is-active")
     expect(response.body).to include(submitted.titulo_anuncio)
     [approved, draft, outside].each { |record| expect(response.body).not_to include(record.titulo_anuncio) }
@@ -3333,7 +3333,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     end
   end
 
-  it "mantém as abas PWA livres dos filtros aplicados" do
+  it "abas PWA preservam os filtros aplicados e trocam só o recorte da aba" do
     get admin_habitations_path(
       ownership: "all",
       status: "Venda",
@@ -3349,17 +3349,102 @@ RSpec.describe "Admin::Habitations", type: :request do
       memo[link.at_css(".habitations-pwa-tab__label").text.squish] = link["href"]
     end
 
-    expect(tabs.fetch("Venda")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: "Venda"))
-    expect(tabs.fetch("Locação")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: "Aluguel"))
-    expect(tabs.fetch("Todos")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: ""))
-    expect(tabs.fetch("Meus")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "mine", status: ""))
-    expect(tabs.fetch("Oportunidades")).to eq(admin_habitations_path(visualizacao: "cards", ownership: "all", status: "", scope: "oportunidade"))
+    preserved = {
+      q: "termo antigo",
+      empreendimento_codigo: ["name:Vermont"],
+      min_price: "1400000",
+      visualizacao: "cards"
+    }
 
-    tabs.values.each do |href|
-      expect(href).not_to include("q=")
-      expect(href).not_to include("min_price")
-      expect(href).not_to include("empreendimento_codigo")
+    expect(tabs.fetch("Venda")).to eq(admin_habitations_path(preserved.merge(ownership: "all", status: "Venda")))
+    expect(tabs.fetch("Locação")).to eq(admin_habitations_path(preserved.merge(ownership: "all", status: "Aluguel")))
+    expect(tabs.fetch("Todos")).to eq(admin_habitations_path(preserved.merge(ownership: "all", status: "")))
+    expect(tabs.fetch("Meus")).to eq(admin_habitations_path(preserved.merge(ownership: "mine", status: "")))
+    expect(tabs.fetch("Oportunidades")).to eq(admin_habitations_path(preserved.merge(ownership: "all", status: "", scope: "oportunidade")))
+  end
+
+  it "exibe o escopo Meus/Todos no desktop com o rótulo do cabeçalho coerente" do
+    agent = create(:admin_user, email: "agent-scope-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    sign_out admin
+    sign_in agent
+
+    get admin_habitations_path(ownership: "mine", cidade: "Balneário Camboriú")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    pills = document.css(".habitations-workspace-scopebar .habitations-view-toggle__item").to_h do |link|
+      [link.text.squish, link]
     end
+
+    expect(pills.keys).to include("Meus", "Todos")
+    expect(pills.fetch("Meus")["class"]).to include("is-active")
+    expect(pills.fetch("Todos")["class"]).not_to include("is-active")
+    expect(pills.fetch("Meus")["href"]).to include("ownership=mine")
+    expect(pills.fetch("Meus")["href"]).to include("cidade=")
+    expect(pills.fetch("Todos")["href"]).to include("ownership=all")
+    expect(pills.fetch("Todos")["href"]).to include("cidade=")
+    expect(document.at_css(".habitations-workspace-heading__scope").text.squish).to eq("Meus imóveis")
+
+    # status explícito em branco (como a aba Todos do PWA) evita o restore da
+    # sessão de filtros ao navegar só com ownership.
+    get admin_habitations_path(ownership: "all", status: "")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    pills = document.css(".habitations-workspace-scopebar .habitations-view-toggle__item").to_h do |link|
+      [link.text.squish, link]
+    end
+
+    expect(pills.fetch("Todos")["class"]).to include("is-active")
+    expect(document.at_css(".habitations-workspace-heading__scope").text.squish).to eq("Todos")
+  end
+
+  it "limpar filtros avançados remove a busca rápida grudada" do
+    get filter_inspector_admin_habitations_path(ownership: "all", scope: "oportunidade", dorms_min: "3"),
+        headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("2 filtros")
+
+    clear_link = Nokogiri::HTML(response.body).css("a").find { |link| link.text.squish == "Limpar filtros avançados" }
+
+    expect(clear_link).to be_present
+    expect(clear_link["href"]).to eq(admin_habitations_path(ownership: "all"))
+  end
+
+  it "filtro de empreendimento tolera espaços extras no nome armazenado" do
+    spaced_unit = create(
+      :habitation,
+      tenant: admin.tenant,
+      codigo: "DEV-SPACE-UNIT-#{SecureRandom.hex(4)}",
+      nome_empreendimento: "Eldorado Biarritz"
+    )
+    spaced_unit.update_column(:nome_empreendimento, "  Eldorado  Biarritz  ")
+
+    spaced_development = create(
+      :habitation,
+      tenant: admin.tenant,
+      tipo: "Empreendimento",
+      codigo: "DEV-SPACE-#{SecureRandom.hex(4)}",
+      nome_empreendimento: "Residencial Atlântico"
+    )
+    spaced_development.update_column(:nome_empreendimento, "  Residencial  Atlântico  ")
+    linked_unit = create(
+      :habitation,
+      tenant: admin.tenant,
+      codigo: "DEV-SPACE-LINKED-#{SecureRandom.hex(4)}",
+      codigo_empreendimento: spaced_development.codigo
+    )
+
+    get admin_habitations_path(
+      ownership: "all",
+      empreendimento_codigo: ["name:Eldorado Biarritz", "name:Residencial Atlântico"]
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(spaced_unit.codigo)
+    expect(response.body).to include(linked_unit.codigo)
   end
 
   it "renderiza o catálogo em workspace com sidebar global e filtros no inspector" do

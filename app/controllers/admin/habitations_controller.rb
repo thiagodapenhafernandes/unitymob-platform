@@ -1341,6 +1341,7 @@ class Admin::HabitationsController < Admin::BaseController
       dorms_min dorms_max suites_min suites_max vagas_min vagas_max banheiros_min banheiros_max
       empreendimento_codigo corretor_id
       dashboard_quality
+      scope
     ]
 
     if can_view_habitation_administrative_filters?
@@ -1957,7 +1958,7 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     if matched_names.any?
-      clauses << "LOWER(unaccent(COALESCE(habitations.nome_empreendimento, ''))) IN (:names)"
+      clauses << "#{development_name_match_sql("COALESCE(habitations.nome_empreendimento, '')")} IN (:names)"
       binds[:names] = matched_names
     end
 
@@ -1966,9 +1967,19 @@ class Admin::HabitationsController < Admin::BaseController
     scope.where(clauses.join(" OR "), binds)
   end
 
+  # Normalização única do nome de empreendimento para o filtro: mesma regra dos
+  # dois lados (caixa, acento e espaços extras), espelhando o squish aplicado
+  # em Ruby ao valor vindo do dropdown.
+  def development_name_match_sql(column_expr)
+    "LOWER(unaccent(regexp_replace(TRIM(#{column_expr}), '\\s+', ' ', 'g')))"
+  end
+
   def matching_developments_for_filter(type, value)
     developments = current_tenant.habitations.empreendimentos
-    named_match = developments.where("LOWER(unaccent(nome_empreendimento)) = LOWER(unaccent(:name))", name: value)
+    named_match = developments.where(
+      "#{development_name_match_sql("COALESCE(nome_empreendimento, '')")} = LOWER(unaccent(:name))",
+      name: value.to_s.squish
+    )
 
     case type
     when :development
@@ -2074,7 +2085,9 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def intake_review_label
-    INTAKE_REVIEW_LABELS[@intake_review] || "Todos"
+    return INTAKE_REVIEW_LABELS[@intake_review] if @intake_review.present?
+
+    @ownership_scope == "mine" ? "Meus imóveis" : "Todos"
   end
 
   def authorize_administrative_review_filter!
