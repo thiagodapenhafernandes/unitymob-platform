@@ -48,6 +48,7 @@
                   data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do |f| %>
 
       <input type="hidden" name="transaction_type" id="transaction_type_input" value="<%= params[:transaction_type] || 'venda' %>" data-search-tabs-target="input">
+      <input type="hidden" name="v" value="2">
       <% selected_characteristics = Array(params[:characteristics]).map(&:to_s) %>
       <% price_range_options = public_price_range_options(params[:transaction_type]) %>
 

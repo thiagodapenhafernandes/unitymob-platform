@@ -298,9 +298,10 @@ module Habitation::SearchScopes
     scope :with_min_suites, ->(count) { where("suites_qtd >= ?", count) if count.present? }
     scope :with_min_bathrooms, ->(count) { where("banheiros_qtd >= ?", count) if count.present? }
     scope :with_min_parking, ->(count) { where("vagas_qtd >= ?", count) if count.present? }
-    scope :with_bedrooms, ->(count) { where(dormitorios_qtd: count.to_i) if count.present? }
-    scope :with_suites, ->(count) { where(suites_qtd: count.to_i) if count.present? }
-    scope :with_parking, ->(count) { where(vagas_qtd: count.to_i) if count.present? }
+    scope :with_bedrooms, ->(count) { where(dormitorios_qtd: Array(count).map(&:to_i)) if Array(count).compact_blank.present? }
+    scope :with_suites, ->(count) { where(suites_qtd: Array(count).map(&:to_i)) if Array(count).compact_blank.present? }
+    scope :with_parking, ->(count) { where(vagas_qtd: Array(count).map(&:to_i)) if Array(count).compact_blank.present? }
+    scope :with_bathrooms, ->(count) { where(banheiros_qtd: Array(count).map(&:to_i)) if Array(count).compact_blank.present? }
     
     # Scopes por área
     scope :with_min_area, ->(area) { where("area_total_m2 >= ?", area) if area.present? }
@@ -841,6 +842,7 @@ module Habitation::SearchScopes
       query = query.with_min_bedrooms(params[:min_bedrooms]) if params[:min_bedrooms].present?
       query = query.with_min_suites(params[:min_suites]) if params[:min_suites].present?
       query = query.with_min_bathrooms(params[:min_bathrooms]) if params[:min_bathrooms].present?
+      query = query.with_bathrooms(params[:bathrooms]) if params[:bathrooms].present?
       query = query.with_min_parking(params[:min_parking]) if params[:min_parking].present?
       query = query.with_bedrooms(params[:bedrooms]) if params[:bedrooms].present?
       query = query.with_suites(params[:suites]) if params[:suites].present?

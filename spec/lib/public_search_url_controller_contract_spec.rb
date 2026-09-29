@@ -3,15 +3,17 @@ require "rails_helper"
 RSpec.describe "public_search_url_controller.js" do
   let(:source) { Rails.root.join("app/javascript/controllers/public_search_url_controller.js").read }
 
-  it "gera URLs amigáveis preservando filtros avançados em query string" do
+  it "delega a montagem da URL amigável ao servidor via marcador v=2" do
     expect(source).to include(
-      'const FRIENDLY_KEYS = new Set',
+      'input[name="v"]',
       '"/imoveis"',
-      '"category[]"',
-      '"city[]"',
-      '"characteristics[]"',
-      'segments.push(this.segmentFor(categories))',
-      'query.append(key, cleaned)'
+      "PublicSearch::ListingUrl"
+    )
+    expect(source).not_to include(
+      "preventDefault",
+      "window.location.href",
+      "segmentFor",
+      "friendlyPath"
     )
   end
 end

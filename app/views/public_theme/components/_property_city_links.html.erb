@@ -19,14 +19,14 @@
         <div class="public-theme-city-links__city">
           <h3 class="public-theme-city-links__city-name"><%= public_icon("geo-alt", class_name: "public-theme-city-links__icon") %><%= group[:label] %></h3>
           <ul class="public-theme-city-links__list">
-            <li><%= link_to "Imóveis à venda", habitations_path(city: [group[:value]], transaction_type: "venda"), class: "public-theme-city-links__link" %></li>
-            <li><%= link_to "Imóveis para alugar", habitations_path(city: [group[:value]], transaction_type: "aluguel"), class: "public-theme-city-links__link" %></li>
+            <li><%= link_to "Imóveis à venda", habitations_path(city: [group[:value]], transaction_type: "venda", v: "2"), class: "public-theme-city-links__link" %></li>
+            <li><%= link_to "Imóveis para alugar", habitations_path(city: [group[:value]], transaction_type: "aluguel", v: "2"), class: "public-theme-city-links__link" %></li>
             <li><%= link_to "Empreendimentos", empreendimentos_path(cidade: group[:value]), class: "public-theme-city-links__link" %></li>
           </ul>
           <% if group[:neighborhoods].present? %>
             <ul class="public-theme-city-links__list public-theme-city-links__list--neighborhoods">
               <% group[:neighborhoods].each do |neighborhood| %>
-                <li><%= link_to "Imóveis em #{neighborhood[:label]}", habitations_path(city: [neighborhood[:value]]), class: "public-theme-city-links__link" %></li>
+                <li><%= link_to "Imóveis em #{neighborhood[:label]}", habitations_path(city: [neighborhood[:value]], v: "2"), class: "public-theme-city-links__link" %></li>
               <% end %>
             </ul>
           <% end %>

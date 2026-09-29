@@ -649,6 +649,12 @@ Rails.application.routes.draw do
   get 'favoritos', to: 'habitations#favorites', as: :favorite_habitations
   
   # Habitations - SEO friendly routes
+  # Core novo (/imoveis/venda/... gramática completa): captura só URLs na
+  # gramática nova; o legado abaixo segue intacto para campanhas em migração.
+  get "imoveis/:listing_transaction/*listing_filters",
+      to: "habitations#index",
+      as: :listing_habitations,
+      constraints: ->(request) { PublicSearch::ListingUrl.matches?(request.path) }
   get "imoveis/:friendly_transaction(/:friendly_categories)(/:friendly_locations)(/:friendly_characteristics)",
       to: "habitations#index",
       as: :friendly_habitations,
@@ -668,7 +674,7 @@ Rails.application.routes.draw do
     end
   end
 
-  get 'imoveis-com-oportunidade', to: redirect('/imoveis?characteristics[]=opportunity')
+  get 'imoveis-com-oportunidade', to: redirect('/imoveis/venda/oportunidade')
   
   # Form submissions
   resources :contacts, only: [:create]
@@ -678,10 +684,10 @@ Rails.application.routes.draw do
   post 'salute-parcerias/submit', to: 'pages#submit_legacy_partnerships'
   # Alternative routes for SEO
   get 'imovel/:id', to: 'habitations#show', as: :property
-  get 'venda', to: 'habitations#index', defaults: { transaction_type: 'venda' }, as: :venda
-  get 'venda/:category', to: 'habitations#index', defaults: { transaction_type: 'venda' }, as: :venda_category
-  get 'aluguel', to: 'habitations#index', defaults: { transaction_type: 'aluguel' }, as: :aluguel
-  get 'aluguel/:category', to: 'habitations#index', defaults: { transaction_type: 'aluguel' }, as: :aluguel_category
+  get 'venda', to: redirect('/imoveis/venda'), as: :venda
+  get 'venda/:category', to: redirect { |params| "/imoveis/venda/#{params[:category]}" }, as: :venda_category
+  get 'aluguel', to: redirect('/imoveis/aluguel'), as: :aluguel
+  get 'aluguel/:category', to: redirect { |params| "/imoveis/aluguel/#{params[:category]}" }, as: :aluguel_category
   
   # API namespace (opcional, para futuras APIs)
   namespace :api do
