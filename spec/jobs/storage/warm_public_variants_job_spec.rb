@@ -38,11 +38,24 @@ RSpec.describe Storage::WarmPublicVariantsJob, type: :job do
       { resize_to_fill: [720, 520], format: :webp },
       { resize_to_limit: [1440, 360] },
       { resize_to_limit: [768, 360] },
-      { resize_to_fill: [1400, 820], format: :webp },
       { resize_to_limit: [640, 1138], format: :webp },
       { resize_to_fill: [720, 860], format: :webp },
       { resize_to_fill: [560, 640], format: :webp }
     )
+  end
+
+  it "cobre os tamanhos de miniatura/hero calculados pelo srcset (antes ausentes e vistos lentos em produção)" do
+    expect(described_class::SETS).to include(
+      { resize_to_fill: [360, 260], format: :webp },
+      { resize_to_fill: [520, 376], format: :webp },
+      { resize_to_fill: [640, 480], format: :webp },
+      { resize_to_limit: [1920, 1440], format: :webp },
+      { resize_to_limit: [640, 360], format: :webp },
+      { resize_to_limit: [960, 540], format: :webp },
+      { resize_to_limit: [1400, 788], format: :webp },
+      { resize_to_limit: [520, 400], format: :webp }
+    )
+    expect(described_class::SETS).not_to include({ resize_to_fill: [1400, 820], format: :webp })
   end
 
   it "ignora fotos de imóveis inativos" do

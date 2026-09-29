@@ -3,6 +3,21 @@ require "rails_helper"
 RSpec.describe MetaLeadProcessingJob, type: :job do
   before { allow_any_instance_of(Lead).to receive(:route_lead) }
 
+  def create_meta_setup(tenant, page_id:)
+    admin = create(:admin_user, :admin, tenant: tenant)
+    integration = create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "user-token")
+    create(:meta_facebook_page, user_meta_integration: integration, page_id: page_id, access_token: "page-token")
+  end
+
+  def process_meta_lead(leadgen_id, page_id, form_id, field_data)
+    service = instance_double(
+      Facebook::MetaService,
+      get_lead_details: { "id" => leadgen_id, "field_data" => field_data }
+    )
+    allow(Facebook::MetaService).to receive(:new).and_return(service)
+    described_class.perform_now(leadgen_id, page_id, form_id)
+  end
+
   it "identifica empreendimento pelo nome sem escolher uma unidade ou outra conta" do
     property = create(:habitation, tipo: "Empreendimento", nome_empreendimento: "Gralha Azul Condomínio Residencial", status: "Venda", exibir_no_site_flag: true)
     tenant = property.tenant
@@ -264,6 +279,122 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     })
 
     expect(attributes[:phone]).to eq("990872427")
+  end
+
+  it "ignora reprocessamento do mesmo leadgen_id Meta" do
+    tenant = Tenant.create!(name: "Conta Meta Dedupe #{SecureRandom.hex(3)}", slug: "conta-meta-dedupe-#{SecureRandom.hex(3)}")
+    create_meta_setup(tenant, page_id: "page-meta-dedupe")
+    fields = [
+      { "name" => "full_name", "values" => ["Cliente Duplo"] },
+      { "name" => "phone_number", "values" => ["5547999990001"] }
+    ]
+
+    expect {
+      process_meta_lead("lead-meta-duplo", "page-meta-dedupe", "form-meta-duplo", fields)
+    }.to change { tenant.leads.count }.by(1)
+
+    expect {
+      process_meta_lead("lead-meta-duplo", "page-meta-dedupe", "form-meta-duplo", fields)
+    }.not_to change { tenant.leads.count }
+  end
+
+  it "ignora leadgen_id guardado nas chaves aninhadas da migração C2S" do
+    tenant = Tenant.create!(name: "Conta Meta C2S #{SecureRandom.hex(3)}", slug: "conta-meta-c2s-#{SecureRandom.hex(3)}")
+    create_meta_setup(tenant, page_id: "page-meta-c2s")
+    variants = [
+      [{ "facebook_attributes" => { "leadgen_id" => "lead-c2s-1", "form_id" => "form-c2s" } }, {}],
+      [{ "external_lead_payload" => { "facebook_attributes" => { "leadgen_id" => "lead-c2s-2", "form_id" => "form-c2s" } } }, {}],
+      [{ "data" => { "facebook_attributes" => { "leadgen_id" => "lead-c2s-3", "form_id" => "form-c2s" } } }, {}],
+      [{}, { "facebook" => { "leadgen_id" => "lead-c2s-4", "form_id" => "form-c2s" } }]
+    ]
+
+    variants.each_with_index do |(other_information, attribution_data), index|
+      # Telefone diferente do webhook: quem barra é o leadgen_id, não o fallback.
+      create(
+        :lead,
+        tenant: tenant,
+        phone: "554791111000#{index}",
+        origin: "Migração externa",
+        other_information: other_information,
+        attribution_data: attribution_data
+      )
+      leadgen_id = "lead-c2s-#{index + 1}"
+      fields = [
+        { "name" => "full_name", "values" => ["Cliente C2S #{index}"] },
+        { "name" => "phone_number", "values" => ["554792222000#{index}"] }
+      ]
+
+      expect {
+        process_meta_lead(leadgen_id, "page-meta-c2s", "form-c2s", fields)
+      }.not_to change { tenant.leads.count }, "variante #{index}"
+    end
+  end
+
+  it "ignora reentrega tardia pelo fallback telefone + formulário" do
+    tenant = Tenant.create!(name: "Conta Meta Fallback #{SecureRandom.hex(3)}", slug: "conta-meta-fallback-#{SecureRandom.hex(3)}")
+    create_meta_setup(tenant, page_id: "page-meta-fallback")
+    create(
+      :lead,
+      tenant: tenant,
+      phone: "5547999990002",
+      origin: "Migração externa",
+      other_information: { "facebook_attributes" => { "leadgen_id" => "lead-antigo", "form_id" => "form-c2s-fallback" } },
+      attribution_data: {}
+    )
+    fields = [
+      { "name" => "full_name", "values" => ["Cliente Fallback"] },
+      { "name" => "phone_number", "values" => ["+55 (47) 99999-0002"] }
+    ]
+
+    expect {
+      process_meta_lead("lead-novo-outro-id", "page-meta-fallback", "form-c2s-fallback", fields)
+    }.not_to change { tenant.leads.count }
+  end
+
+  it "cria o lead quando o telefone coincide mas o formulário é outro" do
+    tenant = Tenant.create!(name: "Conta Meta Outro Form #{SecureRandom.hex(3)}", slug: "conta-meta-outro-form-#{SecureRandom.hex(3)}")
+    create_meta_setup(tenant, page_id: "page-meta-outro-form")
+    create(
+      :lead,
+      tenant: tenant,
+      phone: "5547999990003",
+      origin: "Migração externa",
+      other_information: { "facebook_attributes" => { "leadgen_id" => "lead-antigo", "form_id" => "form-antigo" } },
+      attribution_data: {}
+    )
+    fields = [
+      { "name" => "full_name", "values" => ["Cliente Outro Form"] },
+      { "name" => "phone_number", "values" => ["5547999990003"] }
+    ]
+
+    expect {
+      process_meta_lead("lead-novo-form", "page-meta-outro-form", "form-novo", fields)
+    }.to change { tenant.leads.count }.by(1)
+  end
+
+  it "restringe o dedupe ao tenant da integração" do
+    tenant_a = Tenant.create!(name: "Conta Meta A #{SecureRandom.hex(3)}", slug: "conta-meta-a-#{SecureRandom.hex(3)}")
+    tenant_b = Tenant.create!(name: "Conta Meta B #{SecureRandom.hex(3)}", slug: "conta-meta-b-#{SecureRandom.hex(3)}")
+    create_meta_setup(tenant_a, page_id: "page-meta-shared")
+    create_meta_setup(tenant_b, page_id: "page-meta-shared")
+    create(
+      :lead,
+      tenant: tenant_b,
+      phone: "5547999990004",
+      origin: "Facebook Lead Ads",
+      other_information: { "meta_leadgen_id" => "lead-shared", "meta_form_id" => "form-shared" },
+      attribution_data: {}
+    )
+    fields = [
+      { "name" => "full_name", "values" => ["Cliente Compartilhado"] },
+      { "name" => "phone_number", "values" => ["5547999990004"] }
+    ]
+
+    expect {
+      process_meta_lead("lead-shared", "page-meta-shared", "form-shared", fields)
+    }.to change { tenant_a.leads.count }.by(1)
+
+    expect(tenant_b.leads.count).to eq(1)
   end
 
   it "registra payload bruto quando o lead da Meta nao pode ser salvo" do

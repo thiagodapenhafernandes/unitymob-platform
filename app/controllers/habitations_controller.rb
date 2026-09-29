@@ -246,8 +246,26 @@ class HabitationsController < ApplicationController
         )
         .to_a
       PublicSite::CardPhotoPreloader.new(@development_units, limit: 3).call
+
+      # Sem isso, a página de empreendimento nunca ganhava Cache-Control
+      # público nem suporte a 304 (ao contrário do imóvel comum, que já usa
+      # cache_show_page): todo hit processava a página inteira de novo, com
+      # ETag baseado no próprio habitation + na lista de unidades (muda se
+      # uma unidade for adicionada/removida/atualizada sem o habitation
+      # "pai" mudar).
+      if cache_shared_property_page?
+        no_store
+      else
+        fresh_when(
+          etag: [@habitation, @development_units, public_show_asset_cache_key],
+          last_modified: @habitation.updated_at,
+          public: true
+        )
+      end
+
       # Usar template específico para empreendimentos
-      render 'empreendimento_show' and return
+      render 'empreendimento_show' unless performed?
+      return
     end
     
     # Imóveis relacionados (mesma região, quartos e faixa de preço ±20%)
