@@ -108,7 +108,7 @@ class HabitationsController < ApplicationController
     @page_title = "Imóveis favoritos | #{public_site_name}"
     @page_description = "Consulte os imóveis que você salvou para revisar depois."
   end
-  
+
   # POST /imoveis/:id/schedule_visit
   def schedule_visit
     webhook_data = visit_params.to_h
@@ -268,39 +268,8 @@ class HabitationsController < ApplicationController
       return
     end
     
-    # Imóveis relacionados (mesma região, quartos e faixa de preço ±20%)
-    @related_properties = []
-    
-    if @habitation.present?
-      # Calcular faixa de preço (±20%)
-      base_price = @habitation.valor_venda_cents || @habitation.valor_locacao_cents
-      
-      if base_price && base_price > 0
-        min_price = (base_price * 0.8).to_i
-        max_price = (base_price * 1.2).to_i
-        
-        @related_properties = public_habitation_scope
-          .active
-          .includes(
-            :address,
-            { constructor: { logo_attachment: :blob } },
-            { empreendimento: { constructor: { logo_attachment: :blob } } }
-          )
-          .left_outer_joins(:address)
-          .where("COALESCE(addresses.cidade, habitations.cidade) = ?", @habitation.cidade) # Mesma cidade
-          .where(dormitorios_qtd: @habitation.dormitorios_qtd)  # Mesmos quartos
-          .where.not(id: @habitation.id)  # Excluir o imóvel atual
-          .where(
-            "(valor_venda_cents BETWEEN ? AND ?) OR (valor_locacao_cents BETWEEN ? AND ?)",
-            min_price, max_price, min_price, max_price
-          )
-          .newest_first
-          .limit(6)
-          .to_a
-        PublicSite::CardPhotoPreloader.new(@related_properties, limit: 3).call
-      end
-    end
-    
+    load_related_properties
+
     load_property_page_context
 
     # Links privados por token não devem ser armazenados por cache compartilhado.
@@ -498,19 +467,42 @@ class HabitationsController < ApplicationController
     public_tenant.habitations
   end
 
-  # Blocos do detalhe no formato "página de imóvel completa": empreendimento
-  # do imóvel (fotos, lazer, faixas), mais imóveis no mesmo bairro e links de
-  # imóveis por cidade.
-  def load_property_page_context
-    development = @habitation.empreendimento
-    @property_development = development if development && development.id != @habitation.id
-    @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
-    @show_development_identity = @public_site_profile.show_development_identity?
-    # Simulador na página (e na ETag): muda quando a conta liga/desliga ou a taxa muda.
-    @financing_cache_key = if @public_site_profile.financing_simulator_enabled?
-                             [@public_site_profile.financing_rate.cache_key, @public_site_profile.financing_market_rate.cache_key].join("|")
-                           end
+  # Imóveis relacionados (mesma região, quartos e faixa de preço ±20%).
+  def load_related_properties
+    @related_properties = []
 
+    if @habitation.present?
+      # Calcular faixa de preço (±20%)
+      base_price = @habitation.valor_venda_cents || @habitation.valor_locacao_cents
+
+      if base_price && base_price > 0
+        min_price = (base_price * 0.8).to_i
+        max_price = (base_price * 1.2).to_i
+
+        @related_properties = public_habitation_scope
+          .active
+          .includes(
+            :address,
+            { constructor: { logo_attachment: :blob } },
+            { empreendimento: { constructor: { logo_attachment: :blob } } }
+          )
+          .left_outer_joins(:address)
+          .where("COALESCE(addresses.cidade, habitations.cidade) = ?", @habitation.cidade) # Mesma cidade
+          .where(dormitorios_qtd: @habitation.dormitorios_qtd)  # Mesmos quartos
+          .where.not(id: @habitation.id)  # Excluir o imóvel atual
+          .where(
+            "(valor_venda_cents BETWEEN ? AND ?) OR (valor_locacao_cents BETWEEN ? AND ?)",
+            min_price, max_price, min_price, max_price
+          )
+          .newest_first
+          .limit(6)
+          .to_a
+        PublicSite::CardPhotoPreloader.new(@related_properties, limit: 3).call
+      end
+    end
+  end
+
+  def load_neighborhood_properties
     @neighborhood_properties = []
     neighborhood = @habitation.public_neighborhood
     city = @habitation.address&.cidade.presence || @habitation.cidade
@@ -528,6 +520,22 @@ class HabitationsController < ApplicationController
         .to_a
       PublicSite::CardPhotoPreloader.new(@neighborhood_properties, limit: 3).call
     end
+  end
+
+  # Blocos do detalhe no formato "página de imóvel completa": empreendimento
+  # do imóvel (fotos, lazer, faixas), mais imóveis no mesmo bairro e links de
+  # imóveis por cidade.
+  def load_property_page_context
+    development = @habitation.empreendimento
+    @property_development = development if development && development.id != @habitation.id
+    @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
+    @show_development_identity = @public_site_profile.show_development_identity?
+    # Simulador na página (e na ETag): muda quando a conta liga/desliga ou a taxa muda.
+    @financing_cache_key = if @public_site_profile.financing_simulator_enabled?
+                             [@public_site_profile.financing_rate.cache_key, @public_site_profile.financing_market_rate.cache_key].join("|")
+                           end
+
+    load_neighborhood_properties
 
     @city_link_groups = Rails.cache.fetch("public_city_link_groups_v1/tenant/#{public_tenant.id}", expires_in: 6.hours) do
       public_habitation_scope.public_city_link_groups
@@ -983,7 +991,19 @@ class HabitationsController < ApplicationController
     [base, description].reject(&:blank?).join(" - ").truncate(220)
   end
 
+  # Metatag og:image: só dados (sem HTML), com cache — evita repetir
+  # resolução de variantes a cada hit do detalhe.
   def share_image_metadata_for(habitation)
+    Rails.cache.fetch(
+      ["social_image_v1", habitation.id, habitation.updated_at.to_i,
+       Digest::MD5.hexdigest(habitation.pictures.to_s)].join("/"),
+      expires_in: 12.hours
+    ) do
+      uncached_share_image_metadata_for(habitation)
+    end
+  end
+
+  def uncached_share_image_metadata_for(habitation)
     source = habitation.primary_image_source
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
 

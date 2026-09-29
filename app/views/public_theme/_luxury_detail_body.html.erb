@@ -182,6 +182,7 @@
     </div>
   <% end %>
 
+  <% cache ['detail_related_v1', @habitation.tenant.public_site_theme_key, @habitation.id, @habitation.updated_at.to_i, Array(@related_properties).map(&:id), Array(@related_properties).map(&:updated_at).max, Array(@neighborhood_properties).map(&:id), Array(@neighborhood_properties).map(&:updated_at).max] do %>
   <% if @related_properties&.any? %>
     <section class="sl-section sl-detail__similar">
       <div class="sl-container">
@@ -218,6 +219,7 @@
               empty_message: "Nenhum imóvel encontrado." %>
       </div>
     </section>
+  <% end %>
   <% end %>
 
   <div class="sl-container">

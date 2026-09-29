@@ -1,0 +1,19 @@
+<%# Mídia pesada da seção (carrossel/vídeo). Usada inline pela primeira
+    seção pesada (SEO/LCP) e via turbo-frame pelas demais — mesmo markup. %>
+<% case part %>
+<% when "properties" %>
+  <% properties = Array(payload[:records]) %>
+  <% cache ['home_section_media_v8', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+    <%= render 'shared/property_carousel', properties: properties, card_partial: theme_component_path(:property_card), variant: theme_variant %>
+  <% end %>
+<% when "property_videos" %>
+  <% properties = Array(payload[:records]) %>
+  <% cache ['home_section_videos_v8', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+    <%= render 'home/video_properties_section', section: section, properties: properties, bg_class: bg_class %>
+  <% end %>
+<% when "developments" %>
+  <% developments = Array(payload[:records]) %>
+  <% cache ['home_section_developments_v8', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, developments.map(&:id), developments.map(&:updated_at).max, payload[:unit_counts], payload[:unit_metrics]] do %>
+    <%= render 'shared/development_carousel', developments: developments, unit_counts: payload[:unit_counts], unit_metrics: payload[:unit_metrics] %>
+  <% end %>
+<% end %>
