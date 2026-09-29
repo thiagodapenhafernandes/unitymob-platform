@@ -1118,7 +1118,7 @@ RSpec.describe "Habitation details", type: :request do
         content_type: "image/png"
       )
       development.reload
-      development.photos.first.blob.variant(resize_to_fill: [1400, 820], format: :webp).processed
+      development.photos.first.blob.variant(resize_to_limit: [1920, 1080], format: :webp).processed
 
       get empreendimento_details_path(development)
 
