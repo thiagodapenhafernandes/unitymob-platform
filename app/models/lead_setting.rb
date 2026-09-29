@@ -84,6 +84,10 @@ class LeadSetting < ApplicationRecord
     stickiness_enabled
   end
 
+  def vcard_enabled?
+    vcard_enabled
+  end
+
   def match_phone?
     stickiness_match == "phone"
   end

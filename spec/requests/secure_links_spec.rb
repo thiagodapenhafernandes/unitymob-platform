@@ -185,4 +185,41 @@ RSpec.describe "SecureLinks", type: :request do
     expect(lead.reload.admin_user_id).to eq(outro_corretor.id)
     expect(lead.activities.where(kind: "accepted")).to be_empty
   end
+
+  it "baixa o vCard e marca como atendido no link seguro" do
+    lead = create(:lead, name: "Cliente Agenda", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
+    LeadSetting.instance(tenant: lead.tenant).update!(vcard_enabled: true)
+    link = SecureLink.link_for(lead, :vcard, expiry_days: 7, issued_to: corretor)
+
+    get secure_link_path(link.token)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.content_type).to include("text/vcard")
+    expect(response.body).to include("FN:[Unitymob] Cliente Agenda")
+    expect(lead.reload.status).to eq(Lead.status_value(:em_atendimento))
+    expect(lead.activities.where(kind: "accepted")).to exist
+  end
+
+  it "recusa vCard com link expirado" do
+    lead = create(:lead, name: "Cliente Expirado", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
+    LeadSetting.instance(tenant: lead.tenant).update!(vcard_enabled: true)
+    link = SecureLink.link_for(lead, :vcard, expiry_days: 7, issued_to: corretor)
+    link.update!(expires_at: 1.hour.ago)
+
+    get secure_link_path(link.token)
+
+    expect(response).to have_http_status(:gone)
+    expect(lead.reload.status).to eq(Lead.status_value(:waiting_acceptance))
+  end
+
+  it "recusa vCard com o recurso desligado na conta" do
+    lead = create(:lead, name: "Cliente Desligado", phone: "11999999999", status: :waiting_acceptance, admin_user: corretor)
+    link = SecureLink.link_for(lead, :vcard, expiry_days: 7, issued_to: corretor)
+
+    get secure_link_path(link.token)
+
+    expect(response).to have_http_status(:gone)
+    expect(response.body).to include("Recurso desligado")
+    expect(lead.reload.status).to eq(Lead.status_value(:waiting_acceptance))
+  end
 end

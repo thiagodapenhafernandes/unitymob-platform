@@ -1671,6 +1671,11 @@
           <i class="bi bi-telephone"></i><span>Ligar</span>
         <% end %>
       <% end %>
+      <% if @lead_vcard_enabled && (@lead.display_phone.present? || @lead.display_email.present?) %>
+        <%= link_to vcard_admin_lead_path(@lead), class: "lead-pwa-detail__action", title: "Salvar contato na agenda do celular" do %>
+          <i class="bi bi-person-plus"></i><span>Salvar contato</span>
+        <% end %>
+      <% end %>
     </div>
   </article>
 

@@ -2768,4 +2768,55 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(lead.activities.where(kind: "property_suggestions")).to exist
     end
   end
+
+  describe "GET /admin/leads/:id/vcard" do
+    it "baixa o vCard com nome padronizado" do
+      LeadSetting.instance(tenant: admin.tenant).update!(vcard_enabled: true)
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "João da Silva",
+        phone: "5515997750237", email: "joao@example.com")
+
+      get vcard_admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.content_type).to include("text/vcard")
+      expect(response.headers["Content-Disposition"]).to include("attachment", ".vcf")
+      expect(response.body).to include("FN:[Unitymob] João da Silva")
+      expect(response.body).to include("TEL;TYPE=CELL,VOICE:+5515997750237")
+    end
+
+    it "redireciona com aviso quando o lead não tem contato" do
+      LeadSetting.instance(tenant: admin.tenant).update!(vcard_enabled: true)
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      lead.update_columns(phone: nil, email: nil, client_phone: nil, client_email: nil)
+
+      get vcard_admin_lead_path(lead)
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(flash[:alert]).to include("sem telefone ou e-mail")
+    end
+
+    it "mostra o botão salvar contato na ficha" do
+      LeadSetting.instance(tenant: admin.tenant).update!(vcard_enabled: true)
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, phone: "11999999999")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Salvar contato")
+      expect(response.body).to include(vcard_admin_lead_path(lead))
+    end
+
+    it "bloqueia download e botão com o recurso desligado na conta" do
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin, phone: "11999999999")
+
+      get vcard_admin_lead_path(lead)
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(flash[:alert]).to include("desligado")
+
+      get admin_lead_path(lead)
+
+      expect(response.body).not_to include("Salvar contato")
+    end
+  end
 end

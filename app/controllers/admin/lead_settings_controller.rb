@@ -60,6 +60,7 @@ module Admin
         :secure_link_whatsapp,
         :secure_link_email,
         :secure_link_push,
+        :vcard_enabled,
         :push_lead_click_action,
         :notify_on_distribution,
         :notify_on_sticky,
