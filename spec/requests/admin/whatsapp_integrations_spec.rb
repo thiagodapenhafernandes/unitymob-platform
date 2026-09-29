@@ -285,6 +285,29 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(Whatsapp::TemplateSubmission).to have_received(:call)
   end
 
+  it "envia a variante v2 com botão Salvar contato para analise da Meta" do
+    integration = current_whatsapp_integration!(
+      waba_id: "waba-lead-v2-submit",
+      phone_number_id: "phone-lead-v2-submit",
+      access_token: "token-lead-v2-submit"
+    )
+    allow(Whatsapp::SyncTemplatesJob).to receive(:perform_now).with(admin.tenant.id).and_return({ ok: true, synced: 0 })
+    allow(Whatsapp::TemplateSubmission).to receive(:call) do |template:, client:|
+      expect(template.name).to eq("lead_distribution_alert_v2")
+      expect(template.body).to eq(Whatsapp::LeadAlertTemplate::DISTRIBUTION_BODY)
+      expect(template.meta_create_payload[:components].pluck(:type)).to eq(["BODY", "BUTTONS"])
+      template.update!(status: "PENDING", meta_id: "tpl-lead-v2")
+      { ok: true, template: template }
+    end
+
+    post submit_lead_alert_template_admin_whatsapp_integration_path, params: { template_name: "lead_distribution_alert_v2" }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path(anchor: "lead-alert-template"))
+    template = admin.tenant.whatsapp_templates.find_by!(name: "lead_distribution_alert_v2", waba_id: integration.waba_id)
+    expect(template.status).to eq("PENDING")
+    expect(Whatsapp::TemplateSubmission).to have_received(:call)
+  end
+
   it "nao reenvia lead_alert quando o sync ja encontra template aprovado" do
     integration = current_whatsapp_integration!(waba_id: "waba-lead-alert-approved")
     admin.tenant.whatsapp_templates.create!(
