@@ -30,9 +30,11 @@ module AdminUsers
 
     # Propriedade/carteira de trabalho → transferida para o admin destino.
     REASSIGN = {
+      "ai_property_share_collections" => %w[admin_user_id], # links ativos: novo dono mantém o acesso (NOT NULL)
       "appointments"               => %w[admin_user_id],
       "captacoes"                  => %w[corretor_id],
       "client_property_interests"  => %w[admin_user_id],
+      "commercial_contract_proposals" => %w[admin_user_id], # corretor responsável (NOT NULL, como proposals)
       "crm_appointments"           => %w[admin_user_id],
       "habitations"                => %w[admin_user_id],
       "leads"                      => %w[admin_user_id],
@@ -43,18 +45,26 @@ module AdminUsers
     }.freeze
 
     # Dados pessoais/operacionais do usuário → apagados.
+    # Ordem importa: operational_user_events antes de operational_user_sessions
+    # (events referencia sessions sem cascade).
     DESTROY = {
       # Convite multi-conta: a associação morre com o titular (primary) OU com o
       # espelho (member) — sem qualquer dos dois lados ela não faz sentido. Os
       # refs de auditoria (invited_by/revoked_by) e manager são NULLIFY abaixo.
       "account_memberships"          => %w[primary_admin_user_id member_admin_user_id],
+      "ai_property_search_histories" => %w[admin_user_id], # histórico pessoal de buscas
       "distribution_rule_agents"     => %w[admin_user_id],
       "habitation_broker_assignments" => %w[admin_user_id],
       "habitation_exports"           => %w[admin_user_id], # arquivos de export do usuário (auditoria própria não tem FK)
+      "habitation_photo_shares"      => %w[admin_user_id], # links de fotos criados pelo usuário
+      "in_app_notifications"         => %w[admin_user_id], # caixa de entrada pessoal
       "inbound_webhook_tokens"       => %w[admin_user_id], # credencial pessoal: morre com o usuário
+      "lead_favorites"               => %w[admin_user_id], # favoritos pessoais
       "lead_labels"                  => %w[admin_user_id], # etiquetas privadas (labelings limpas antes)
       "location_pings"               => %w[admin_user_id],
       "manual_checkin_requests"      => %w[admin_user_id],
+      "operational_user_events"      => %w[admin_user_id], # antes das sessions (FK sem cascade)
+      "operational_user_sessions"    => %w[admin_user_id], # sessões do usuário excluído
       "push_delivery_events"         => %w[admin_user_id], # telemetria de push
       "push_subscriptions"           => %w[admin_user_id],
       "user_meta_integrations"       => %w[admin_user_id]
@@ -63,6 +73,7 @@ module AdminUsers
     # Referências secundárias/atores → nulificadas (histórico preservado sem dono).
     NULLIFY = {
       "access_control_rules"          => %w[created_by_id],
+      "ai_property_share_audit_events" => %w[admin_user_id], # trilha de auditoria preservada
       # primary_admin_user_id (auto-ref do espelho): nulificar orfaniza os
       # espelhos do usuário excluído em OUTRAS contas com segurança — DESTROY
       # deletaria o admin_user espelho e orfanaria os dados dele no tenant
@@ -74,24 +85,31 @@ module AdminUsers
       "client_interactions"           => %w[admin_user_id],
       "habitation_interactions"       => %w[admin_user_id],
       "habitations"                   => %w[admin_reviewed_by_id],
-      "leads"                         => %w[shared_by_admin_user_id],
+      "leads"                         => %w[shared_by_admin_user_id archived_by_admin_user_id],
       "manual_checkin_requests"       => %w[reviewed_by_admin_user_id],
+      "open_ai_usage_events"          => %w[admin_user_id], # histórico de uso/custo preservado
       "photography_schedule_blocks"   => %w[created_by_id],
       "property_settings"             => %w[broker_capture_fallback_admin_user_id],
       "seo_change_logs"               => %w[admin_user_id],
       "seo_redirects"                 => %w[created_by_admin_user_id],
       "trusted_devices"               => %w[created_by_id],
+      "whatsapp_attendances"          => %w[admin_user_id closed_by_id], # histórico de atendimento preservado
       "whatsapp_business_integrations" => %w[connected_by_admin_user_id],
       "whatsapp_conversations"        => %w[assigned_admin_user_id],
+      "whatsapp_response_flows"       => %w[created_by_id], # ativo da conta (como automation_workflows)
       "whatsapp_messages"             => %w[admin_user_id],
       "automation_workflows"          => %w[created_by_id],
       "automation_workflow_versions"  => %w[created_by_id published_by_id],
+      "commercial_contract_events"    => %w[admin_user_id], # log de eventos da proposta
+      "external_lead_integrations"    => %w[connected_by_admin_user_id], # quem conectou (como whatsapp_business_integrations)
       # cartões pessoais viram órfãos invisíveis (available_for exige dono ou
       # system); DELETE quebraria a FK de whatsapp_messages.presentation_card_id
       "presentation_cards"            => %w[admin_user_id],
       "whatsapp_campaign_recipients"  => %w[admin_user_id],
       "whatsapp_campaign_unsubscribes" => %w[reenabled_by_id]
     }.freeze
+
+    Result = Struct.new(:leads_count, :habitations_count, keyword_init: true)
 
     def self.call(user:, target:)
       new(user, target).call
@@ -108,14 +126,15 @@ module AdminUsers
 
       verify_coverage!
 
+      counts = Hash.new(0)
       ActiveRecord::Base.transaction do
-        REASSIGN.each { |table, cols| cols.each { |col| update_col(table, col, @target.id) } }
+        REASSIGN.each { |table, cols| cols.each { |col| counts["#{table}.#{col}"] += update_col(table, col, @target.id) } }
         NULLIFY.each  { |table, cols| cols.each { |col| update_col(table, col, nil) } }
         delete_lead_labelings_of_user_labels # antes de lead_labels (FK sem cascade)
         DESTROY.each  { |table, cols| cols.each { |col| delete_rows(table, col) } }
         @user.destroy!
       end
-      true
+      Result.new(leads_count: counts["leads.admin_user_id"], habitations_count: counts["habitations.admin_user_id"])
     end
 
     private
