@@ -224,31 +224,74 @@ RSpec.describe Leads::NotificationDispatcher do
     end
   end
 
-  it "resolve lead_vcard_or_link para o link seguro do cartão de contato" do
-    LeadSetting.instance.update!(secure_link_whatsapp: true, vcard_enabled: true)
+  describe "variante v2 com botão Salvar contato" do
+    let(:whatsapp_rule) { create(:distribution_rule, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false) }
+    let(:whatsapp_lead) do
+      create(:lead, name: "Cliente V2", phone: "21999999999", origin: "landing",
+        status: :waiting_acceptance, admin_user: corretor, distribution_rule: whatsapp_rule)
+    end
+    let(:client) { instance_double(Whatsapp::CloudClient) }
 
-    value = described_class.new(lead).send(:whatsapp_variable_value, "lead_vcard_or_link")
+    before do
+      NotificationTemplateSetting.where(tenant_id: Tenant.default.id).delete_all
+      Tenant.default.whatsapp_templates.create!(
+        name: "lead_distribution_base", language: "pt_BR", category: "UTILITY",
+        body: "Lead {{1}} para {{2}}", status: "APPROVED", template_type: "text", header_format: "none"
+      ).tap do |template|
+        Tenant.default.notification_template_settings.create!(
+          purpose: "lead_distribution_broker_rotary", whatsapp_template: template,
+          variable_mapping: { "1" => "lead_name", "2" => "broker_name" }
+        )
+      end
+      sender = create(:whatsapp_business_integration, tenant: Tenant.default, connected_by_admin_user: corretor)
+      transport = Notifications::TransportResolver::Result.new(sender: sender, source: :tenant)
+      allow(Notifications::TransportResolver).to receive(:whatsapp).with(Tenant.default).and_return(transport)
+      allow(Whatsapp::CloudClient).to receive(:new).with(sender).and_return(client)
+      allow(client).to receive(:send_template).and_return(ok: true, message_id: "wamid.test")
+    end
 
-    expect(value).to include("/s/")
-    expect(SecureLink.find_by(token: value.split("/s/").last)&.vcard?).to be(true)
+    def create_v2(status: "APPROVED")
+      Tenant.default.whatsapp_templates.create!(
+        name: "lead_distribution_base_v2", language: "pt_BR", category: "UTILITY",
+        body: "Lead {{1}} para {{2}}", status: status, template_type: "text", header_format: "none",
+        buttons: [{ "kind" => "quick_reply", "text" => "Salvar contato" }]
+      )
+    end
+
+    it "usa a v2 aprovada quando o cartão está ligado" do
+      create_v2
+      LeadSetting.instance.update!(vcard_enabled: true)
+
+      described_class.deliver(whatsapp_lead)
+
+      expect(client).to have_received(:send_template) do |args|
+        expect(args[:name]).to eq("lead_distribution_base_v2")
+      end
+    end
+
+    it "usa o padrão quando o cartão está desligado" do
+      create_v2
+      LeadSetting.instance.update!(vcard_enabled: false)
+
+      described_class.deliver(whatsapp_lead)
+
+      expect(client).to have_received(:send_template) do |args|
+        expect(args[:name]).to eq("lead_distribution_base")
+      end
+    end
+
+    it "usa o padrão quando a v2 não está aprovada" do
+      create_v2(status: "PENDING")
+      LeadSetting.instance.update!(vcard_enabled: true)
+
+      described_class.deliver(whatsapp_lead)
+
+      expect(client).to have_received(:send_template) do |args|
+        expect(args[:name]).to eq("lead_distribution_base")
+      end
+    end
   end
 
-  it "omite lead_vcard_or_link com o recurso desligado na conta" do
-    LeadSetting.instance.update!(secure_link_whatsapp: true, vcard_enabled: false)
-
-    expect(described_class.new(lead).send(:whatsapp_variable_value, "lead_vcard_or_link")).to be_nil
-  end
-
-  it "resolve lead_vcard_or_link no bolsão sem expor o contato" do
-    LeadSetting.instance.update!(secure_link_whatsapp: true, vcard_enabled: true)
-    shark_rule = create(:distribution_rule, distribution_mode: :shark_tank, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
-    pool_lead = create(:lead, name: "Cliente Pool", phone: "11999999999", status: :waiting_acceptance, admin_user: nil, distribution_rule: shark_rule)
-
-    value = described_class.new(pool_lead).send(:whatsapp_variable_value, "lead_vcard_or_link")
-
-    expect(value).to include("/s/")
-    expect(value).not_to include("11999999999")
-  end
 
   it "usa a finalidade de rodizio para escolher o template WhatsApp" do
     whatsapp_rule = create(:distribution_rule, distribution_mode: :rotary, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)

@@ -9,6 +9,10 @@ module Leads
       new(lead).content
     end
 
+    def self.card(lead)
+      new(lead).card
+    end
+
     def self.filename(lead)
       safe_name = I18n.transliterate("#{NAME_PREFIX} #{lead.display_name}".strip).gsub(/[^\w\-+. \[\]]/, "").squish
       "#{safe_name}.vcf"
@@ -25,6 +29,21 @@ module Leads
       lines << "ORG:#{escape(@lead.tenant&.name.to_s)}" if @lead.tenant&.name.present?
       lines << "END:VCARD"
       lines.join("\r\n") + "\r\n"
+    end
+
+    # Cartão de contato nativo da Cloud API (botão "Salvar contato" no aviso).
+    def card
+      parts = @lead.display_name.to_s.split
+      {
+        name: {
+          formatted_name: full_name,
+          first_name: parts.first.to_s,
+          last_name: parts.size > 1 ? parts.last.to_s : ""
+        },
+        phones: phone.present? ? [{ phone: phone, type: "CELL" }] : [],
+        emails: email.present? ? [{ email: email, type: "WORK" }] : [],
+        org: { company: @lead.tenant&.name.to_s }
+      }.compact_blank
     end
 
     private

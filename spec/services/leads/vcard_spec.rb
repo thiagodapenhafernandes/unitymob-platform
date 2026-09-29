@@ -27,4 +27,16 @@ RSpec.describe Leads::Vcard do
 
     expect(described_class.filename(lead)).to eq("[Unitymob] Joao da Silva.vcf")
   end
+
+  it "monta o cartão nativo da Cloud API" do
+    lead = create(:lead, tenant: tenant, name: "João da Silva",
+      phone: "5515997750237", email: "joao@example.com")
+
+    card = described_class.card(lead)
+
+    expect(card[:name]).to eq({ formatted_name: "[Unitymob] João da Silva", first_name: "João", last_name: "Silva" })
+    expect(card[:phones]).to eq([{ phone: "+5515997750237", type: "CELL" }])
+    expect(card[:emails]).to eq([{ email: "joao@example.com", type: "WORK" }])
+    expect(card[:org]).to eq({ company: tenant.name })
+  end
 end

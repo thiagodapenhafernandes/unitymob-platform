@@ -5,6 +5,9 @@ module Leads
   #
   # Todas as entregas são best-effort (erro em uma não bloqueia as outras).
   class NotificationDispatcher
+    # Sufixo da variante do template com botão "Salvar contato" (mesmo corpo).
+    VCARD_TEMPLATE_SUFFIX = "_v2".freeze
+
     def self.deliver(lead, sticky: false)
       new(lead, sticky: sticky).deliver
     end
@@ -330,12 +333,13 @@ module Leads
       return log_notification(:whatsapp, :skipped, reason: "broker_phone_blank") if phone.blank?
 
       template_setting = whatsapp_template_setting
-      template_params = whatsapp_template_params(template_setting)
+      template_record = effective_template_record(template_setting)
+      template_params = whatsapp_template_params(template_setting, template_record)
       components = template_params.present? ? [{ type: "body", parameters: template_params }] : []
 
       result = Whatsapp::CloudClient.new(sender).send_template(
         to: phone,
-        name: whatsapp_template_name(sender, template_setting),
+        name: whatsapp_template_name(sender, template_setting, template_record),
         language: "pt_BR",
         components: components
       )
@@ -367,10 +371,33 @@ module Leads
       NotificationTemplateSetting.setting_for(tenant: @lead.tenant, purpose: "lead_distribution_broker")
     end
 
-    def whatsapp_template_name(sender, setting = nil)
-      setting&.whatsapp_template&.name.presence ||
+    def whatsapp_template_name(sender, setting = nil, template_record = nil)
+      (template_record || setting&.whatsapp_template)&.name.presence ||
         (sender.respond_to?(:template_name) && sender.template_name.presence) ||
         default_whatsapp_template_name
+    end
+
+    # Template efetivo do aviso: com o cartão de contato ligado, usa a variante
+    # v2 (mesmo corpo + botão "Salvar contato") quando ela existir e estiver
+    # aprovada; senão, o template configurado. Contas sem v2 não mudam nada.
+    def effective_template_record(setting)
+      standard = setting&.whatsapp_template
+      return standard if standard.nil? || !vcard_enabled?
+
+      vcard_variant = standard.tenant.whatsapp_templates.approved.find_by(name: "#{standard.name}#{VCARD_TEMPLATE_SUFFIX}")
+      if vcard_variant.nil?
+        Rails.logger.info("[LeadNotify] sem variante vCard aprovada para #{standard.name} (tenant #{standard.tenant_id}); usando o padrão")
+        return standard
+      end
+      if vcard_variant.variable_count != standard.variable_count
+        Rails.logger.warn("[LeadNotify] variante #{vcard_variant.name} com #{vcard_variant.variable_count} vars x #{standard.variable_count} do padrão; usando o padrão")
+        return standard
+      end
+      vcard_variant
+    end
+
+    def vcard_enabled?
+      LeadSetting.instance(tenant: @lead.tenant).vcard_enabled?
     end
 
     def default_whatsapp_template_name
@@ -382,10 +409,11 @@ module Leads
     # {{1}} cliente · {{2}} origem · {{3}} nome · {{4}} telefone · {{5}} email · {{6}} outros dados.
     # Com "link seguro" ligado, telefone/email/dados viram links /s/token (só o nome
     # fica visível) e o clique vira o evento de atendimento (sistema intermediário).
-    def whatsapp_template_params(setting = nil)
-      return default_whatsapp_template_params unless setting&.whatsapp_template
+    def whatsapp_template_params(setting = nil, template_record = nil)
+      template_record ||= setting&.whatsapp_template
+      return default_whatsapp_template_params unless template_record
 
-      count = setting.whatsapp_template.variable_count
+      count = template_record.variable_count
       return [] if count.zero?
 
       mapping = setting.variable_mapping
@@ -425,13 +453,6 @@ module Leads
         return pool_contact_value(links, :view) if pool_push?
 
         links.secure?(:whatsapp) ? links.url(:view) : (@lead.product.presence || @lead.origin)
-      when "lead_vcard_or_link"
-        return nil unless LeadSetting.instance(tenant: @lead.tenant).vcard_enabled?
-        return pool_contact_value(links, :vcard) if pool_push?
-
-        # Um arquivo não cabe num parâmetro de template: sempre link seguro,
-        # que o corretor toca para baixar o vCard e salvar na agenda.
-        links.url(:vcard)
       when "broker_name"
         @corretor.name
       when "broker_phone"
