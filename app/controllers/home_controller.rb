@@ -39,6 +39,26 @@ class HomeController < ApplicationController
     end
   end
   
+  # Slides 2..N do hero servidos após o primeiro byte (turbo-frame lazy).
+  # O 1º slide (LCP) continua inline no _hero.
+  def hero_slides
+    home_setting = HomeSetting.instance(tenant: public_tenant)
+    @hero_slide_images = build_hero_images(home_setting).drop(1)
+    render layout: false
+  end
+
+  # Mídia pesada da home (carrossel/vídeo) servida após o primeiro byte
+  # (turbo-frame lazy). Shell, títulos e CTAs continuam server-side no
+  # index. Escopo por tenant; exclude replica a deduplicação entre seções.
+  def home_section
+    section = public_tenant.home_sections.active.find(params[:id])
+    @home_shown_property_ids = params[:exclude].to_s.split(",").map(&:to_i)
+    payload = build_home_section_payloads([section])[section.id] || {}
+    bg_class = params[:i].to_i.odd? ? 'public-theme-home-section public-theme-home-section--alt' : 'public-theme-home-section'
+    render "home_section_frame", layout: false,
+      locals: { section:, payload:, part: params[:part].to_s, bg_class: }
+  end
+
   def sobre
     load_public_identity
     @page_name = 'sobre'

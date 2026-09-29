@@ -107,7 +107,7 @@
         
         <div class="public-habitations-index__sort flex items-center gap-2">
           <label for="public-habitations-sort" class="public-habitations-index__sort-label text-sm text-gray-500">Ordenar por:</label>
-          <select id="public-habitations-sort" class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" onchange="window.location.href = this.value">
+          <select id="public-habitations-sort" class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" data-controller="public-listing-nav" data-public-listing-nav-frame-value="public-listing-grid" data-action="change->public-listing-nav#sort">
             <option value="<%= public_listing_path(sort: 'newest', page: nil) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
             <option value="<%= public_listing_path(sort: 'price_desc', page: nil) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
             <option value="<%= public_listing_path(sort: 'price_asc', page: nil) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
@@ -127,12 +127,17 @@
   <div class="public-habitations-index__results results-section mt-8">
       
       <% if @habitations.any? %>
+        <%= turbo_frame_tag "public-listing-grid", data: { turbo_action: "advance", controller: "public-listing-nav", public_listing_nav_frame_value: "public-listing-grid", action: "click->public-listing-nav#follow" } do %>
+        <% listing_query = request.query_parameters.except("share_token", "gclid", "fbclid").reject { |key, _| key.start_with?("utm_") }.sort.to_h.to_query %>
+        <% cache ['listing_grid_v1', public_tenant.public_site_theme_key, request.path, listing_query, @habitations.map(&:id), @habitations.map(&:updated_at).max] do %>
         <%= theme_component(:property_grid, properties: @habitations) %>
         
         <!-- Pagination -->
         <div class="public-habitations-index__pagination flex justify-center mt-8">
           <%= theme_component(:pagination, collection: @habitations, path_helper: ->(page) { public_listing_path(page: page) }) %>
         </div>
+        <% end %>
+        <% end %>
 
         <% listing_seo = current_public_seo_setting %>
         <div class="public-habitations-index__supporting-content">

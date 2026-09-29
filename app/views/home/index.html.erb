@@ -10,11 +10,14 @@
 <%= display_banner('home_after_hero') %>
 
 <!-- Dynamic Home Sections (ordered by order_position) -->
+<% shown_ids = [] %>
+<% heavy_seen = false %>
 <% @home_sections.each_with_index do |section, index| %>
   <%# Fundo alternado pelo tema (contrato public-theme-home-section--alt). %>
   <% bg_class = index.odd? ? 'public-theme-home-section public-theme-home-section--alt' : 'public-theme-home-section' %>
   <% payload = @home_section_payloads[section.id] || {} %>
-  
+  <% exclude_ids = payload[:kind] == "property_videos" ? [] : shown_ids.dup %>
+
   <% case payload[:kind] %>
   <% when 'blog' %>
     <%= render 'home/blog_section', section: section, articles: payload[:records], bg_class: bg_class if payload[:records].present? %>
@@ -34,7 +37,7 @@
   <% when 'properties' %>
     <% properties = payload[:records] || [] %>
     <% if properties.present? %>
-      <% cache ['home_section_properties_v7', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
+      <% inline_media = !heavy_seen; heavy_seen = true %>
         <section class="home-deferred-section public-theme-home-section--<%= theme_variant %> <%= bg_class %>"
                  data-public-home-section="<%= section.id %>"
                  data-public-home-section-type="<%= section.section_type %>"
@@ -42,7 +45,13 @@
           <div class="container-custom">
             <%= render "public_theme/components/section_head", title: section.title, lead: section.subtitle, variant: theme_variant %>
 
-<%= render 'shared/property_carousel', properties: properties, card_partial: theme_component_path(:property_card), variant: theme_variant %>
+            <% if inline_media %>
+              <%= render 'home/home_section_media', section: section, payload: payload, part: "properties", bg_class: bg_class %>
+            <% else %>
+              <%= turbo_frame_tag "home-section-#{section.id}", src: frames_home_section_path(section, part: "properties", exclude: exclude_ids.join(","), i: index), loading: "lazy" do %>
+                <div class="public-theme-section__loading" style="min-height:320px" aria-busy="true"></div>
+              <% end %>
+            <% end %>
 
             <div class="public-theme-section__actions">
               <%= link_to payload[:cta_path] || habitations_path,
@@ -57,25 +66,30 @@
             </div>
           </div>
         </section>
-      <% end %>
 
       <% if payload[:corporate_records].present? %>
         <%= render 'shared/corporate_showcase', properties: payload[:corporate_records] %>
       <% end %>
+      <% shown_ids.concat(properties.map(&:id)) %>
     <% end %>
 
   <% when 'property_videos' %>
     <% properties = payload[:records] || [] %>
     <% if properties.present? || section.home_section_items.active.video_items.exists? %>
-      <% cache ['home_section_property_videos_v5', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), properties.map(&:updated_at).max] do %>
-        <%= render 'home/video_properties_section', section: section, properties: properties, bg_class: bg_class %>
+      <% inline_media = !heavy_seen; heavy_seen = true %>
+      <% if inline_media %>
+        <%= render 'home/home_section_media', section: section, payload: payload, part: "property_videos", bg_class: bg_class %>
+      <% else %>
+        <%= turbo_frame_tag "home-section-#{section.id}", src: frames_home_section_path(section, part: "property_videos", i: index), loading: "lazy" do %>
+          <div class="public-theme-section__loading" style="min-height:320px" aria-busy="true"></div>
+        <% end %>
       <% end %>
     <% end %>
-    
+
   <% when 'developments' %>
     <% developments = payload[:records] || [] %>
     <% if developments.present? %>
-      <% cache ['home_section_developments_v6', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, developments.map(&:id), developments.map(&:updated_at).max, payload[:unit_counts], payload[:unit_metrics]] do %>
+      <% inline_media = !heavy_seen; heavy_seen = true %>
         <section class="home-deferred-section public-theme-home-section--<%= theme_variant %> <%= bg_class %>"
                  data-public-home-section="<%= section.id %>"
                  data-public-home-section-type="<%= section.section_type %>"
@@ -83,7 +97,13 @@
           <div class="container-custom">
             <%= render "public_theme/components/section_head", title: section.title, lead: section.subtitle, variant: theme_variant %>
 
-            <%= render 'shared/development_carousel', developments: developments, unit_counts: payload[:unit_counts], unit_metrics: payload[:unit_metrics] %>
+            <% if inline_media %>
+              <%= render 'home/home_section_media', section: section, payload: payload, part: "developments", bg_class: bg_class %>
+            <% else %>
+              <%= turbo_frame_tag "home-section-#{section.id}", src: frames_home_section_path(section, part: "developments", exclude: exclude_ids.join(","), i: index), loading: "lazy" do %>
+                <div class="public-theme-section__loading" style="min-height:320px" aria-busy="true"></div>
+              <% end %>
+            <% end %>
 
             <div class="public-theme-section__actions">
               <%= link_to payload[:cta_path] || empreendimentos_path,
@@ -98,9 +118,8 @@
             </div>
           </div>
         </section>
-      <% end %>
     <% end %>
-    
+
   <% else %>
     <% case section.section_type %>
     <% when 'services' %>

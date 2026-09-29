@@ -8,13 +8,26 @@ export default class extends Controller {
 
   connect() {
     this.index = 0
-    if (this.slideTargets.length <= 1) return
-
-    this.startInterval()
+    this.boundFrameLoaded = this.frameLoaded.bind(this)
+    document.addEventListener("turbo:frame-load", this.boundFrameLoaded)
+    this.maybeStart()
   }
 
   disconnect() {
     this.stopInterval()
+    document.removeEventListener("turbo:frame-load", this.boundFrameLoaded)
+  }
+
+  // Slides 2..N chegam via turbo-frame lazy depois do connect.
+  frameLoaded() {
+    this.maybeStart()
+  }
+
+  maybeStart() {
+    if (this.timer) return
+    if (this.slideTargets.length <= 1) return
+
+    this.startInterval()
   }
 
   startInterval() {
