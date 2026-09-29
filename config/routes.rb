@@ -647,6 +647,11 @@ Rails.application.routes.draw do
   # Quick search by code
   get 'buscar-codigo', to: 'habitations#search_by_code', as: :search_by_code
   get 'favoritos', to: 'habitations#favorites', as: :favorite_habitations
+
+  # Frames lazy do site público (primeiro byte rápido; conteúdo pesado
+  # depois). Escopo por tenant nas actions; sem layout.
+  get "frames/home_hero_slides", to: "home#hero_slides", as: :frames_home_hero_slides
+  get "frames/home_sections/:id", to: "home#home_section", as: :frames_home_section
   
   # Habitations - SEO friendly routes
   get "imoveis/:friendly_transaction(/:friendly_categories)(/:friendly_locations)(/:friendly_characteristics)",

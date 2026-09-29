@@ -363,6 +363,7 @@
             class_name: "public-habitations-show__development mt-14" %>
     <% end %>
 
+    <% cache ['detail_related_v1', @habitation.tenant.public_site_theme_key, @habitation.id, @habitation.updated_at.to_i, Array(@related_properties).map(&:id), Array(@related_properties).map(&:updated_at).max, Array(@neighborhood_properties).map(&:id), Array(@neighborhood_properties).map(&:updated_at).max] do %>
     <% if @related_properties&.any? %>
       <section class="public-habitations-show__related mt-14">
         <h2 class="public-habitations-show__related-title mb-6 text-2xl font-bold text-gray-900">Mais imóveis como este</h2>
@@ -383,6 +384,7 @@
           <% end %>
         </div>
       </section>
+    <% end %>
     <% end %>
 
     <%= render "public_theme/components/property_city_links",

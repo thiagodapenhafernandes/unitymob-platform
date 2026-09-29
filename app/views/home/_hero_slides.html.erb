@@ -1,0 +1,24 @@
+<%# Slides 2..N do hero (pesados: resolução de variantes). Servido via
+    turbo-frame lazy (HomeController#hero_slides); o 1º slide fica inline
+    no _hero (LCP). Mesmo markup do loop original. %>
+<% Array(hero_images).each do |image| %>
+  <% hero_source = image[:source] %>
+  <% desktop_source = public_image_url(hero_source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true).presence || public_image_url(hero_source).presence || hero_source %>
+  <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
+  <div class="hero-slide" data-hero-slider-target="slide">
+    <%= image_tag(placeholder,
+                  class: "hero-image",
+                  alt: image[:alt],
+                  width: 1920,
+                  height: 1080,
+                  sizes: "100vw",
+                  fetchpriority: "low",
+                  loading: "lazy",
+                  decoding: "async",
+                  data: {
+                    hero_slider_image: true,
+                    src: desktop_source,
+                    srcset: "#{desktop_source} 900w, #{desktop_source} 1920w"
+                  }) %>
+  </div>
+<% end %>
