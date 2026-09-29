@@ -129,6 +129,35 @@ RSpec.describe Whatsapp::InboundProcessor do
     expect(lead.other_information).to eq("keep" => true)
   end
 
+  it "trata o botão Salvar contato do aviso sem criar conversa de cliente" do
+    tenant = integration.tenant
+    profile = tenant.profiles.find_by!(key: "agent")
+    broker = create(:admin_user, tenant: tenant, profile: profile, active: true, phone: "21988887777")
+    allow_any_instance_of(Lead).to receive(:route_lead)
+    lead = create(:lead, tenant: tenant, name: "Cliente Botao", phone: "11999999999",
+      status: :waiting_acceptance, admin_user: broker)
+    lead.activities.create!(kind: "notification_sent",
+      metadata: { channel: "whatsapp", message_id: "wamid.aviso", admin_user_id: broker.id })
+    LeadSetting.instance(tenant: tenant).update!(vcard_enabled: true)
+    transport = Notifications::TransportResolver::Result.new(sender: integration, source: :tenant)
+    client = instance_double(Whatsapp::CloudClient)
+    allow(Notifications::TransportResolver).to receive(:whatsapp).with(tenant).and_return(transport)
+    allow(Whatsapp::CloudClient).to receive(:new).with(integration).and_return(client)
+    allow(client).to receive(:send_contacts).and_return(ok: true, message_id: "wamid.card")
+
+    expect {
+      described_class.call(payload(
+        contacts: [{ "wa_id" => "5521988887777", "profile" => { "name" => broker.name } }],
+        messages: [{ "id" => "wamid.tap", "from" => "5521988887777", "type" => "interactive",
+          "interactive" => { "button_reply" => { "id" => "Salvar contato", "title" => "Salvar contato" } },
+          "context" => { "id" => "wamid.aviso" } }]
+      ))
+    }.not_to change(WhatsappConversation, :count)
+
+    expect(client).to have_received(:send_contacts)
+    expect(lead.reload.status).to eq(Lead.status_value(:em_atendimento))
+  end
+
 end
 
 RSpec.describe Whatsapp::CloudClient do

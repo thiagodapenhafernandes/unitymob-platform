@@ -68,6 +68,14 @@ module Whatsapp
       post_message(to: to, type: "template", template: template)
     end
 
+    # Cartão de contato nativo (ex.: corretor tocou "Salvar contato" no aviso
+    # de distribuição). Destinatário toca no cartão e salva na agenda.
+    def send_contacts(to:, contacts:, context_message_id: nil)
+      payload = { type: "contacts", contacts: Array(contacts) }
+      payload[:context] = { message_id: context_message_id } if context_message_id.present?
+      post_message(to: to, **payload)
+    end
+
     def send_media(to:, type:, media_id: nil, link: nil, caption: nil, filename: nil, context_message_id: nil)
       media_type = type.to_s.presence || "image"
       media_payload = {}

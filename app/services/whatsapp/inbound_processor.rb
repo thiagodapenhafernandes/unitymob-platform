@@ -99,6 +99,13 @@ module Whatsapp
       contact = contacts[phone.to_s] || contacts[bsuid.to_s] || {}
       name = contact[:name]
 
+      # Botão "Salvar contato" do aviso ao corretor: responde com o cartão e
+      # não entra no fluxo de cliente (sem conversa, sem lead, sem sino).
+      if Leads::VcardButtonReply.call(tenant: tenant, msg: msg)
+        Rails.logger.info("[wa inbound] vcard button tratado wa_message_id=#{msg["id"].inspect}")
+        return
+      end
+
       conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name, entry_message: msg)
       extend_free_entry_point_window(conversation, msg)
       remember_receiving_number(conversation, phone_number_id)
