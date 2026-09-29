@@ -22,10 +22,25 @@ module Storage
       { resize_to_fill: [720, 520], format: :webp },
       { resize_to_limit: [1440, 360] },
       { resize_to_limit: [768, 360] },
-      { resize_to_fill: [1400, 820], format: :webp },
       { resize_to_limit: [640, 1138], format: :webp },
       { resize_to_fill: [720, 860], format: :webp },
-      { resize_to_fill: [560, 640], format: :webp }
+      { resize_to_fill: [560, 640], format: :webp },
+      # Miniaturas de galeria com aspect_ratio 720/520 (imóvel e empreendimento):
+      # o helper calcula a altura por largura e faltavam justamente essas duas
+      # combinações — cada foto nova pagava o processamento na hora (visto no
+      # log de produção: pedidos de 1.5-3s no redirect do ActiveStorage).
+      { resize_to_fill: [360, 260], format: :webp },
+      { resize_to_fill: [520, 376], format: :webp },
+      # Miniatura do "empreendimento deste imóvel" embutida na página do
+      # imóvel (mesmo motivo: pedido comum, fora do set aquecido).
+      { resize_to_fill: [640, 480], format: :webp },
+      { resize_to_limit: [1920, 1440], format: :webp },
+      # Hero do empreendimento (aspect 16:9, breakpoints do srcset responsivo).
+      { resize_to_limit: [640, 360], format: :webp },
+      { resize_to_limit: [960, 540], format: :webp },
+      { resize_to_limit: [1400, 788], format: :webp },
+      # Miniatura de galeria do empreendimento no tema luxury.
+      { resize_to_limit: [520, 400], format: :webp }
     ].freeze
 
     MAX_BLOBS = 300

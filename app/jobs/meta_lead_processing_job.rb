@@ -3,6 +3,25 @@ class MetaLeadProcessingJob < ApplicationJob
   PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?)\s*[:#-]?\s*(\d{2,})/i.freeze
   AMBIGUOUS_PROPERTY_CODE_PATTERN = /(?:\bCOD(?:IGO)?\.?)\s*[:#-]?\s*\d{2,}\s*(?:e|,|\/|\+|&)\s*\d{2,}/i.freeze
 
+  # Locais onde o leadgen_id da Meta pode estar guardado: topo (leads criados
+  # por este job) e chaves aninhadas dos registros vindos da migração C2S.
+  DUPLICATE_LEADGEN_PATHS = [
+    "other_information ->> 'meta_leadgen_id'",
+    "other_information -> 'facebook_attributes' ->> 'leadgen_id'",
+    "other_information -> 'external_lead_payload' -> 'facebook_attributes' ->> 'leadgen_id'",
+    "other_information -> 'data' -> 'facebook_attributes' ->> 'leadgen_id'",
+    "attribution_data -> 'facebook' ->> 'leadgen_id'"
+  ].freeze
+
+  # Mesmos locais para o form_id (fallback telefone + formulário por conta).
+  DUPLICATE_FORM_PATHS = [
+    "other_information ->> 'meta_form_id'",
+    "other_information -> 'facebook_attributes' ->> 'form_id'",
+    "other_information -> 'external_lead_payload' -> 'facebook_attributes' ->> 'form_id'",
+    "other_information -> 'data' -> 'facebook_attributes' ->> 'form_id'",
+    "attribution_data -> 'facebook' ->> 'form_id'"
+  ].freeze
+
   # Detalhes do lead indisponíveis na Graph API (oscilação, rate limit, token
   # expirado): fetch_lead_details engole erros por candidato, então esta classe
   # é o que materializa a falha para o retry do ActiveJob.
@@ -21,7 +40,8 @@ class MetaLeadProcessingJob < ApplicationJob
   # (integrações diferentes). O lead é criado uma vez POR TENANT que possui a
   # página ativa — nunca por integração (dois usuários da mesma conta com a
   # mesma página ≠ dois leads). Dedupe por leadgen_id dentro de cada tenant
-  # cobre retries do webhook e o fan-out.
+  # cobre retries do webhook, o fan-out e reentregas tardias (inclui as
+  # chaves aninhadas da migração C2S e o fallback telefone + formulário).
   def perform(lead_id, page_id, form_id)
     Rails.logger.info "[MetaLeadProcessingJob] Iniciando processamento do Lead: #{lead_id} (Form: #{form_id})"
 
@@ -161,9 +181,11 @@ class MetaLeadProcessingJob < ApplicationJob
     Current.set(tenant: tenant) do
       auto_add_form_to_distribution_rules(tenant, page_id, form_id)
 
-      # Idempotência por conta: retries do webhook e fan-out não duplicam.
-      if tenant.leads.where("other_information->>'meta_leadgen_id' = ?", lead_id.to_s).exists?
-        Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já existe no tenant #{tenant_id} — ignorado."
+      # Idempotência por conta: retries do webhook, fan-out e reentregas
+      # tardias da Meta não duplicam — inclusive contra registros vindos da
+      # migração C2S, que guardam os IDs Meta em chaves aninhadas.
+      if (duplicate_reason = duplicate_lead_reason(tenant, lead_id:, form_id:, phone: attributes[:phone]))
+        Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já existe no tenant #{tenant_id} (#{duplicate_reason}) — ignorado."
         next
       end
 
@@ -210,6 +232,30 @@ class MetaLeadProcessingJob < ApplicationJob
         Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já criado concorrentemente no tenant #{tenant_id} — ignorado."
       end
     end
+  end
+
+  # Retorna o motivo do match ou nil. Primeiro o leadgen_id exato em
+  # qualquer chave conhecida; depois o fallback telefone + formulário
+  # (dígitos, para cobrir registros com formatação legada).
+  def duplicate_lead_reason(tenant, lead_id:, form_id:, phone:)
+    leadgen = lead_id.to_s
+    return "leadgen_id #{leadgen}" if leadgen.present? && tenant.leads.where(or_equals(DUPLICATE_LEADGEN_PATHS, leadgen)).exists?
+
+    digits = phone.to_s.gsub(/\D/, "")
+    form = form_id.to_s
+    return nil if digits.blank? || form.blank?
+
+    phone_match = "(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = ? " \
+      "OR regexp_replace(COALESCE(client_phone, ''), '\\D', '', 'g') = ?)"
+    if tenant.leads.where(phone_match, digits, digits).where(or_equals(DUPLICATE_FORM_PATHS, form)).exists?
+      return "telefone + formulário #{form}"
+    end
+
+    nil
+  end
+
+  def or_equals(paths, value)
+    [paths.map { |path| "(#{path} = ?)" }.join(" OR "), *Array.new(paths.size, value)]
   end
 
   def create_property_interest!(lead, property)
