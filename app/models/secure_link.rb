@@ -2,9 +2,10 @@ class SecureLink < ApplicationRecord
   belongs_to :lead
   belongs_to :issued_to_admin_user, class_name: "AdminUser", optional: true
 
-  # Ações ao abrir o link: telefone (WhatsApp), email (mailto), ver o lead ou
-  # aceitar (push — o clique vale como atendimento, dentro do prazo).
-  enum action_type: { phone: 0, email: 1, view: 2, attend: 3 }
+  # Ações ao abrir o link: telefone (WhatsApp), email (mailto), ver o lead,
+  # aceitar (push — o clique vale como atendimento, dentro do prazo) ou baixar
+  # o cartão de contato (vCard) para salvar na agenda do celular.
+  enum action_type: { phone: 0, email: 1, view: 2, attend: 3, vcard: 4 }
 
   scope :active_links, -> { where(active: true) }
   scope :not_expired, -> { where("expires_at IS NULL OR expires_at > ?", Time.current) }

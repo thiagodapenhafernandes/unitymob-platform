@@ -1,4 +1,4 @@
-\restrict UtsDUgD4FTZf3hOsinHDHFr2km9lLtHmMqiILwa5RYG8GuaM5PaIySglvyYbVkp
+\restrict tWPY1HXqoU84W9OLUEVW1jbwsTetM25lxBff97e4HnuDsIvWJQAk0aItIfGyAmH
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -4389,6 +4389,7 @@ CREATE TABLE public.lead_settings (
     reminder_end_time character varying DEFAULT '18:00'::character varying NOT NULL,
     first_contact_sla_minutes integer DEFAULT 240 NOT NULL,
     stickiness_non_fidelizing_stage_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
+    vcard_enabled boolean DEFAULT false NOT NULL,
     CONSTRAINT lead_settings_first_contact_sla_minutes_range CHECK (((first_contact_sla_minutes >= 1) AND (first_contact_sla_minutes <= 43200))),
     CONSTRAINT lead_settings_reminder_first_minutes_range CHECK (((reminder_first_minutes >= 1) AND (reminder_first_minutes <= 10080))),
     CONSTRAINT lead_settings_reminder_hours CHECK ((((reminder_start_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_end_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_start_time)::text < (reminder_end_time)::text))),
@@ -19612,11 +19613,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict UtsDUgD4FTZf3hOsinHDHFr2km9lLtHmMqiILwa5RYG8GuaM5PaIySglvyYbVkp
+\unrestrict tWPY1HXqoU84W9OLUEVW1jbwsTetM25lxBff97e4HnuDsIvWJQAk0aItIfGyAmH
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260928120000'),
 ('20260927120000'),
 ('20260927090000'),
 ('20260925120000'),

@@ -11,6 +11,7 @@ class NotificationTemplateSetting < ApplicationRecord
     "lead_phone_or_link" => "Telefone do lead ou link seguro",
     "lead_email_or_link" => "Email do lead ou link seguro",
     "lead_other_or_link" => "Produto/origem ou link seguro",
+    "lead_vcard_or_link" => "Cartão de contato (vCard) para salvar na agenda",
     "broker_name" => "Nome do corretor",
     "broker_phone" => "Telefone do corretor",
     "broker_email" => "Email do corretor"

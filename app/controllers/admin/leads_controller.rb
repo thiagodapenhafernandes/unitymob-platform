@@ -122,8 +122,8 @@ class Admin::LeadsController < Admin::BaseController
   requires_permission :edit, :leads, only: [:update]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -398,6 +398,7 @@ class Admin::LeadsController < Admin::BaseController
     @shared_interest_property_statuses = @lead.shared_property_statuses
     @interest_settings = InterestIntelligence::Settings.current
     load_lead_favorite_context
+    @lead_vcard_enabled = LeadSetting.instance(tenant: current_tenant).vcard_enabled?
   end
 
   def toggle_favorite
@@ -411,6 +412,24 @@ class Admin::LeadsController < Admin::BaseController
     end
 
     redirect_back fallback_location: admin_lead_path(@lead), notice: notice
+  end
+
+  # Cartão de contato (vCard) para o corretor salvar o lead na agenda do
+  # celular com nome padronizado. Mesmo recorte de acesso da ficha + toggle
+  # por conta nas Configurações do lead.
+  def vcard
+    unless LeadSetting.instance(tenant: current_tenant).vcard_enabled?
+      return redirect_to admin_lead_path(@lead), alert: "Cartão de contato desligado nas Configurações do lead."
+    end
+
+    if @lead.display_phone.blank? && @lead.display_email.blank?
+      return redirect_to admin_lead_path(@lead), alert: "Lead sem telefone ou e-mail para salvar na agenda."
+    end
+
+    send_data Leads::Vcard.content(@lead),
+              type: "text/vcard; charset=utf-8",
+              disposition: "attachment",
+              filename: Leads::Vcard.filename(@lead)
   end
 
   # Destino do clique na notificação push de novo lead. Decide no momento do

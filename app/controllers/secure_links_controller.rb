@@ -23,6 +23,7 @@ class SecureLinksController < ApplicationController
     when "phone" then handle_phone
     when "email" then handle_email
     when "attend" then handle_attend
+    when "vcard" then handle_vcard
     else handle_view
     end
   end
@@ -77,6 +78,24 @@ class SecureLinksController < ApplicationController
 
   def handle_view
     render :show, layout: false
+  end
+
+  # Cartão de contato (vCard): o corretor salva o lead na agenda do celular
+  # com nome padronizado. Como telefone/e-mail, o gesto vale como atendimento.
+  def handle_vcard
+    unless LeadSetting.instance(tenant: @lead.tenant).vcard_enabled?
+      @reason = :disabled
+      return render :invalid, status: :gone, layout: false
+    end
+
+    mark_attended!(via: "whatsapp")
+    return render_lost_turn if link_no_longer_available?
+    return render :show, layout: false if @lead.display_phone.blank? && @lead.display_email.blank?
+
+    send_data Leads::Vcard.content(@lead),
+              type: "text/vcard; charset=utf-8",
+              disposition: "attachment",
+              filename: Leads::Vcard.filename(@lead)
   end
 
   def handle_contact_click(contact)
@@ -232,7 +251,7 @@ class SecureLinksController < ApplicationController
     return "push_ack" if params[:ack].present?
     return "push" if params[:details].present? || @link.attend?
     return "email" if params[:contact].to_s == "email" || @link.email?
-    return "whatsapp" if params[:contact].to_s.in?(%w[attend whatsapp]) || @link.phone?
+    return "whatsapp" if params[:contact].to_s.in?(%w[attend whatsapp]) || @link.phone? || @link.vcard?
 
     "secure_link"
   end

@@ -8,6 +8,7 @@
     { id: "lead-tab-reminders", icon: "alarm", label: "Lembretes", hint: "Tarefas, agenda e visitas" },
     { id: "lead-tab-sla", icon: "stopwatch", label: "Prazos e automação", hint: "SLA de 1º contato e varredura" },
     { id: "lead-tab-privacy", icon: "shield-lock", label: "Privacidade", hint: "Contato atrás de link seguro" },
+    { id: "lead-tab-vcard", icon: "person-vcard", label: "Cartão de contato", hint: "vCard na agenda do corretor" },
     { id: "lead-tab-how", icon: "info-circle", label: "Como funciona", hint: "Fluxo e regras de aviso" }
   ]
   distribution_events = [
@@ -223,6 +224,18 @@
           </div>
         <% end %>
 
+        <%# ===== Cartão de contato ===== %>
+        <%= ax_studio_section(id: "lead-tab-vcard", icon: "person-vcard",
+                              title: "Cartão de contato (vCard)",
+                              subtitle: "O corretor salva o lead na agenda do celular com nome padronizado ([Unitymob] Nome): botão na ficha do lead e variável lead_vcard_or_link no WhatsApp da distribuição.",
+                              actions: ax_badge(@lead_setting.vcard_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.vcard_enabled? ? :green : :gray, dot: true)) do %>
+          <div class="ax-studio-group">
+            <%= ax_switch_field(form: f, method: :vcard_enabled, label: "Ativar cartão de contato",
+                                description: "Botão na ficha + link seguro do vCard no WhatsApp. O download pelo link seguro conta como atendimento.",
+                                class_name: "ax-switch--card") %>
+          </div>
+        <% end %>
+
         <%# ===== Como funciona ===== %>
         <%= ax_studio_section(id: "lead-tab-how", icon: "info-circle",
                               title: "Como funciona",
@@ -274,6 +287,7 @@
             { label: "Automação de etapas", value: ax_badge("a cada #{@lead_setting.stage_automation_sweep_interval_minutes_value} min", tone: :blue) },
             { label: "Conversa no lead", value: ax_badge(@lead_setting.lead_whatsapp_conversation_enabled? ? "Ligada" : "Desligada", tone: @lead_setting.lead_whatsapp_conversation_enabled? ? :green : :gray, dot: true) },
             { label: "Link seguro", value: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) },
+            { label: "vCard", value: ax_badge(@lead_setting.vcard_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.vcard_enabled? ? :green : :gray, dot: true) },
             { label: "Clique no push", value: ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) }
           ]) %>
           <% if @lead_setting.secure_links_enabled? %>

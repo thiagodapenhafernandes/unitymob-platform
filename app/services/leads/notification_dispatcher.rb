@@ -425,6 +425,13 @@ module Leads
         return pool_contact_value(links, :view) if pool_push?
 
         links.secure?(:whatsapp) ? links.url(:view) : (@lead.product.presence || @lead.origin)
+      when "lead_vcard_or_link"
+        return nil unless LeadSetting.instance(tenant: @lead.tenant).vcard_enabled?
+        return pool_contact_value(links, :vcard) if pool_push?
+
+        # Um arquivo não cabe num parâmetro de template: sempre link seguro,
+        # que o corretor toca para baixar o vCard e salvar na agenda.
+        links.url(:vcard)
       when "broker_name"
         @corretor.name
       when "broker_phone"

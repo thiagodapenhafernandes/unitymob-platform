@@ -269,6 +269,7 @@ Rails.application.routes.draw do
       get :lead_pool, on: :collection
       get :report, on: :collection
       get :attend, on: :member
+      get :vcard, on: :member
       patch :toggle_favorite, on: :member
       post :log_contact, on: :member
       get :interest_intelligence, on: :member

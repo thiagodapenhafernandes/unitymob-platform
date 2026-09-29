@@ -224,6 +224,32 @@ RSpec.describe Leads::NotificationDispatcher do
     end
   end
 
+  it "resolve lead_vcard_or_link para o link seguro do cartão de contato" do
+    LeadSetting.instance.update!(secure_link_whatsapp: true, vcard_enabled: true)
+
+    value = described_class.new(lead).send(:whatsapp_variable_value, "lead_vcard_or_link")
+
+    expect(value).to include("/s/")
+    expect(SecureLink.find_by(token: value.split("/s/").last)&.vcard?).to be(true)
+  end
+
+  it "omite lead_vcard_or_link com o recurso desligado na conta" do
+    LeadSetting.instance.update!(secure_link_whatsapp: true, vcard_enabled: false)
+
+    expect(described_class.new(lead).send(:whatsapp_variable_value, "lead_vcard_or_link")).to be_nil
+  end
+
+  it "resolve lead_vcard_or_link no bolsão sem expor o contato" do
+    LeadSetting.instance.update!(secure_link_whatsapp: true, vcard_enabled: true)
+    shark_rule = create(:distribution_rule, distribution_mode: :shark_tank, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
+    pool_lead = create(:lead, name: "Cliente Pool", phone: "11999999999", status: :waiting_acceptance, admin_user: nil, distribution_rule: shark_rule)
+
+    value = described_class.new(pool_lead).send(:whatsapp_variable_value, "lead_vcard_or_link")
+
+    expect(value).to include("/s/")
+    expect(value).not_to include("11999999999")
+  end
+
   it "usa a finalidade de rodizio para escolher o template WhatsApp" do
     whatsapp_rule = create(:distribution_rule, distribution_mode: :rotary, notify_push: false, notify_whatsapp: true, notify_email: false, notify_webhook: false)
     whatsapp_lead = create(

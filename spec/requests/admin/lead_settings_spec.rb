@@ -19,7 +19,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     sections = html.css(".ax-studio__stage > .ax-studio-section")
 
     expect(tabs.map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
-      %w[#lead-tab-stickiness #lead-tab-notify #lead-tab-reminders #lead-tab-sla #lead-tab-privacy #lead-tab-how]
+      %w[#lead-tab-stickiness #lead-tab-notify #lead-tab-reminders #lead-tab-sla #lead-tab-privacy #lead-tab-vcard #lead-tab-how]
     )
     expect(sections.map { |section| section["id"] }).to eq(tabs.map { |tab| tab["data-ax-tabs-target-param"].delete_prefix("#") })
     expect(sections.reject { |section| section.key?("hidden") }.map { |section| section["id"] }).to eq(["lead-tab-stickiness"])
@@ -30,7 +30,7 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     get edit_admin_lead_setting_path
 
     html = Nokogiri::HTML(response.body)
-    %w[stickiness_enabled secure_links_enabled notify_on_distribution lead_whatsapp_conversation_enabled reminder_due_enabled].each do |field|
+    %w[stickiness_enabled secure_links_enabled vcard_enabled notify_on_distribution lead_whatsapp_conversation_enabled reminder_due_enabled].each do |field|
       expect(html.at_css("input[type='checkbox'][name='lead_setting[#{field}]'].ax-switch__input")).to be_present, "faltou o interruptor #{field}"
     end
     %w[stickiness_window_days reminder_first_minutes stage_automation_sweep_interval_minutes secure_link_expiry_days].each do |field|
@@ -43,9 +43,9 @@ RSpec.describe "Admin::LeadSettings", type: :request do
   end
 
   it "salva a configuracao do tenant autenticado" do
-    patch admin_lead_setting_path, params: { lead_setting: { stickiness_enabled: "1", stickiness_window_days: "45" } }
+    patch admin_lead_setting_path, params: { lead_setting: { stickiness_enabled: "1", stickiness_window_days: "45", vcard_enabled: "1" } }
 
     expect(response).to redirect_to(edit_admin_lead_setting_path)
-    expect(LeadSetting.instance(tenant: admin.tenant)).to have_attributes(stickiness_enabled: true, stickiness_window_days: 45)
+    expect(LeadSetting.instance(tenant: admin.tenant)).to have_attributes(stickiness_enabled: true, stickiness_window_days: 45, vcard_enabled: true)
   end
 end
