@@ -18,6 +18,7 @@ class HabitationsController < ApplicationController
   # GET /habitations
   # GET /imoveis
   def index
+    return if apply_listing_url_params
     apply_friendly_search_params
     apply_strategic_landing_params
     return if reject_invalid_public_listing_page!
@@ -585,6 +586,7 @@ class HabitationsController < ApplicationController
       :bedrooms,
       :suites,
       :parking,
+      :bathrooms,
       :min_area,
       :max_area,
       :min_price,
@@ -600,7 +602,11 @@ class HabitationsController < ApplicationController
       city: [],
       development: [],
       empreendimento: [],
-      characteristics: []
+      characteristics: [],
+      bedrooms: [],
+      suites: [],
+      parking: [],
+      bathrooms: []
     )
     permitted.delete(:page)
     permitted.delete(:seo_slug)
@@ -734,6 +740,127 @@ class HabitationsController < ApplicationController
     PublicSearch::FriendlyUrl.new(tenant: public_tenant).params_for(params).each do |key, value|
       params[key] = value
     end
+  end
+
+  # Core novo de URLs amigáveis (/imoveis/venda/... gramática completa).
+  # Retorna true quando respondeu (404 de slug desconhecido ou 301 de
+  # limpeza de `todos`); senão injeta os filtros no params e retorna false.
+  # O legado abaixo segue intacto.
+  def apply_listing_url_params
+    return true if redirect_canonical_listing_search?
+
+    if params[:listing_transaction].present?
+      parsed = PublicSearch::ListingUrl.new(tenant: public_tenant)
+        .params_for(params[:listing_transaction], params[:listing_filters])
+      if parsed.nil?
+        render plain: "Not Found", status: :not_found
+        return true
+      end
+
+      parsed.each { |key, value| params[key] = value }
+    elsif params[:friendly_transaction].blank?
+      return false
+    else
+      apply_friendly_search_params
+      repair_friendly_location_categories
+      # Consome os segmentos para o apply_friendly do index não refazer o
+      # parse por cima (desfaria o reparo acima).
+      params.delete(:friendly_transaction)
+      params.delete(:friendly_categories)
+      params.delete(:friendly_locations)
+      params.delete(:friendly_characteristics)
+    end
+
+    return false unless todos_in_listing_path?
+
+    redirect_to canonical_listing_url, status: :moved_permanently
+    true
+  end
+
+  # Submit dos forms públicos (marcador v=2): redireciona o GET /imoveis
+  # com filtros para a gramática nova. URLs antigas (sem marcador)
+  # continuam respondendo 200 em paralelo — nada quebra para campanhas.
+  def redirect_canonical_listing_search?
+    return false unless params[:v].to_s == "2"
+    return false unless request.get? && request.format.html?
+    return false if params[:listing_transaction].present?
+    return false if params[:seo_slug].present?
+
+    # Links com v=2 vindos de página legada trazem friendly_* na query:
+    # injeta primeiro para não perder transação/categoria/cidade.
+    apply_friendly_search_params if params[:friendly_transaction].present?
+
+    filters = search_params
+    if listing_filters_present?(filters)
+      redirect_to canonical_listing_url, status: :moved_permanently
+    else
+      redirect_to habitations_path, status: :moved_permanently
+    end
+    true
+  end
+
+  def listing_filters_present?(filters)
+    %i[
+      transaction_type category city bedrooms min_bedrooms suites min_suites
+      parking min_parking bathrooms min_bathrooms min_area max_area min_price max_price
+      characteristics furnished accepts_exchange accepts_financing search
+    ].any? { |key| filters[key].present? }
+  end
+
+  # O legado lê o 2º segmento sempre como categoria; quando o rótulo não
+  # é um tipo de imóvel mas é uma localidade do tenant (ex:
+  # /imoveis/venda/itapema, forma que o canônico novo também emite),
+  # reclassifica para city em vez de devolver página vazia.
+  def repair_friendly_location_categories
+    categories = normalize_filter_values(params[:category])
+    return if categories.empty?
+
+    known_categories = public_tenant.habitations.public_property_types
+      .map { |value| PublicSearch::ListingUrl.slug(value) }
+    location_lookup = public_tenant.habitations.public_location_options
+      .map { |option| option[:value].to_s }
+      .index_by { |value| PublicSearch::ListingUrl.slug(value) }
+
+    moved, kept = categories.partition do |label|
+      slug = PublicSearch::ListingUrl.slug(label)
+      known_categories.exclude?(slug) && location_lookup.key?(slug)
+    end
+    return if moved.empty?
+
+    params[:category] = kept
+    params[:city] = (normalize_filter_values(params[:city]) + moved.map { location_lookup[PublicSearch::ListingUrl.slug(_1)] }).uniq
+  end
+
+  def todos_in_friendly_path?
+    %i[friendly_categories friendly_locations friendly_characteristics].any? do |key|
+      params[key].to_s.split("+").any? { |part| PublicSearch::ListingUrl.blank_segment?(part) }
+    end
+  end
+
+  def todos_in_listing_path?
+    params[:listing_filters].to_s.split("/").any? do |segment|
+      segment.to_s.split("+").any? { |part| PublicSearch::ListingUrl.blank_segment?(part) }
+    end || todos_in_friendly_path?
+  end
+
+  # Filtros consumidos pelo path novo; o resto (page, sort e escapes como
+  # development) continua como query string no redirect canônico.
+  LISTING_PATH_FILTER_KEYS = %w[
+    transaction_type finalidade category tipo city cidade
+    bedrooms min_bedrooms suites min_suites parking min_parking bathrooms min_bathrooms
+    min_area max_area min_price max_price price_range
+    characteristics furnished accepts_exchange accepts_financing
+    frente_mar quadra_mar varanda search q seo_slug
+    friendly_transaction friendly_categories friendly_locations friendly_characteristics
+    listing_transaction listing_filters v
+  ].freeze
+
+  def canonical_listing_url
+    path = PublicSearch::ListingUrl.build(search_params)
+    query = request.query_parameters.except(*LISTING_PATH_FILTER_KEYS).compact_blank
+    query.delete("page") if query["page"].to_i <= 1
+    query_string = query.to_query
+    query_string.present? ? "#{path}?#{query_string}" : path
   end
 
   def load_share_context

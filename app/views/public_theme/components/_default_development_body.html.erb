@@ -49,7 +49,7 @@
           <div class="public-development-show__breadcrumb flex items-center gap-2 text-sm mb-6 text-white/80">
             <%= link_to "Início", root_path, class: "hover:text-golden-one transition" %>
             <i class="bi bi-chevron-right text-xs"></i>
-            <%= link_to "Empreendimentos", habitations_path(category: 'Empreendimento'), class: "hover:text-golden-one transition" %>
+            <%= link_to "Empreendimentos", habitations_path(category: 'Empreendimento', v: "2"), class: "hover:text-golden-one transition" %>
             <i class="bi bi-chevron-right text-xs"></i>
             <span class="text-golden-one font-semibold"><%= @habitation.nome_empreendimento %></span>
           </div>
