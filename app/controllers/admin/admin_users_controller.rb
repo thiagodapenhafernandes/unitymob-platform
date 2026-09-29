@@ -273,11 +273,18 @@ module Admin
         return
       end
 
-      AdminUsers::HardDeleter.call(user: @admin_user, target: target)
+      result = AdminUsers::HardDeleter.call(user: @admin_user, target: target)
+      AdminUsers::PortfolioReassignmentNotifier.call(
+        target: target,
+        leads_count: result.leads_count,
+        habitations_count: result.habitations_count,
+        from_user_name: @admin_user.name
+      )
       redirect_to admin_admin_users_path,
                   notice: "Usuário excluído. Carteira (leads, imóveis, tarefas...) reatribuída para #{target.name}."
     rescue AdminUsers::HardDeleter::Error, ActiveRecord::RecordNotDestroyed, ActiveRecord::InvalidForeignKey => e
-      redirect_to admin_admin_users_path, alert: "Não foi possível excluir o usuário: #{e.message}"
+      # Mensagem truncada: o texto integral no flash estourou o cookie de sessão (4KB) e virou 500.
+      redirect_to admin_admin_users_path, alert: "Não foi possível excluir o usuário: #{e.message.to_s.truncate(300)}"
     end
 
     def inactivate
@@ -301,10 +308,16 @@ module Admin
         notice << " Carteira desvinculada: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."
       else
         notice << " Carteira transferida para #{target.name}: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."
+        AdminUsers::PortfolioReassignmentNotifier.call(
+          target: target,
+          leads_count: result.leads_count,
+          habitations_count: result.habitations_count,
+          from_user_name: @admin_user.name
+        )
       end
       redirect_to admin_admin_users_path(status: "inactive"), notice: notice
     rescue AdminUsers::InactivationTransfer::Error, ActiveRecord::RecordInvalid => e
-      redirect_to admin_admin_users_path, alert: "Não foi possível remover o acesso do usuário: #{e.message}"
+      redirect_to admin_admin_users_path, alert: "Não foi possível remover o acesso do usuário: #{e.message.to_s.truncate(300)}"
     end
 
     def revoke_access

@@ -96,6 +96,17 @@ module ApplicationHelper
     { partial: default_meta[:components][name.to_sym], variant: "default" }
   end
 
+  # URL da listagem pública preservando a busca atual: o path (URLs
+  # amigáveis /imoveis/venda/... e landings /imoveis/:seo_slug guardam
+  # filtros no path) mais os query params mesclados com overrides.
+  # Paginação e ordenação usam este helper para não perder a referência.
+  def public_listing_path(overrides = {})
+    query = request.query_parameters.merge(overrides.transform_keys(&:to_s)).compact_blank
+    query.delete("page") if query["page"].to_i <= 1
+    query_string = query.to_query
+    query_string.present? ? "#{request.path}?#{query_string}" : request.path
+  end
+
   def public_habitation_detail_path(property)
     return "#" if property.blank?
 

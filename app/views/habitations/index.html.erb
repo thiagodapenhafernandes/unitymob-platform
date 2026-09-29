@@ -108,9 +108,9 @@
         <div class="public-habitations-index__sort flex items-center gap-2">
           <label for="public-habitations-sort" class="public-habitations-index__sort-label text-sm text-gray-500">Ordenar por:</label>
           <select id="public-habitations-sort" class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" onchange="window.location.href = this.value">
-            <option value="<%= habitations_path(request.query_parameters.merge(sort: 'newest', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
-            <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_desc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
-            <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_asc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
+            <option value="<%= public_listing_path(sort: 'newest', page: nil) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
+            <option value="<%= public_listing_path(sort: 'price_desc', page: nil) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
+            <option value="<%= public_listing_path(sort: 'price_asc', page: nil) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
           </select>
         </div>
       </div>
@@ -131,7 +131,7 @@
         
         <!-- Pagination -->
         <div class="public-habitations-index__pagination flex justify-center mt-8">
-          <%= theme_component(:pagination, collection: @habitations, path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) }) %>
+          <%= theme_component(:pagination, collection: @habitations, path_helper: ->(page) { public_listing_path(page: page) }) %>
         </div>
 
         <% listing_seo = current_public_seo_setting %>
