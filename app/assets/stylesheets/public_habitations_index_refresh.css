@@ -599,3 +599,14 @@
   }
 }
 
+/* Feedback de navegação da grade (ordenar/paginar via turbo-frame): o Turbo
+   não mostra progresso em visitas de frame; o controller sinaliza aqui. */
+#public-listing-grid.is-loading {
+  opacity: .55;
+  transition: opacity .2s ease;
+  cursor: wait;
+}
+@media (prefers-reduced-motion: reduce) {
+  #public-listing-grid.is-loading { transition: none; }
+}
+

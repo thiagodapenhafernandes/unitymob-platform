@@ -74,3 +74,66 @@ a.public-theme-section__cta--default:hover {
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / .1);
   transform: translateY(-2px);
 }
+
+// Skeleton das seções diferidas da home (turbo-frames lazy): faixa de
+// cards-esqueleto com sheen, espelhando o padrão ax-skeleton do admin.
+// Estrutura comum; cada tema estiliza a própria variante.
+.public-theme-section-skeleton__strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .public-theme-section-skeleton__strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .public-theme-section-skeleton__strip { grid-template-columns: minmax(0, 1fr); }
+}
+.public-theme-section-skeleton__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.public-theme-section-skeleton__media,
+.public-theme-section-skeleton__line {
+  position: relative;
+  overflow: hidden;
+  background: #e7ecf3;
+}
+.public-theme-section-skeleton__media {
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+}
+.public-theme-section-skeleton__body {
+  display: grid;
+  gap: 10px;
+}
+.public-theme-section-skeleton__line {
+  height: 12px;
+  border-radius: 999px;
+}
+.public-theme-section-skeleton__line--title {
+  height: 16px;
+  width: 72%;
+}
+.public-theme-section-skeleton__line--short {
+  width: 46%;
+}
+.public-theme-section-skeleton__media::after,
+.public-theme-section-skeleton__line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .72), transparent);
+  animation: public-theme-skeleton-sheen 1.35s ease-in-out infinite;
+}
+@keyframes public-theme-skeleton-sheen {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-section-skeleton__media::after,
+  .public-theme-section-skeleton__line::after { animation: none; }
+}

@@ -1,0 +1,24 @@
+<%# Skeleton das seções diferidas da home (Contrato v2: estrutura
+    public-theme-section-skeleton__* comum a todos os temas; cada tema
+    estiliza a própria variante). Substitui a caixa vazia dos turbo-frames
+    lazy até os cards chegarem. %>
+<%
+  variant = local_assigns.fetch(:variant, "default")
+  cards = local_assigns.fetch(:cards, 3).to_i.clamp(1, 6)
+  label = local_assigns.fetch(:label, "Carregando imóveis")
+%>
+<div class="public-theme-section-skeleton public-theme-section-skeleton--<%= variant %>"
+     role="status" aria-label="<%= label %>">
+  <div class="public-theme-section-skeleton__strip" aria-hidden="true">
+    <% cards.times do %>
+      <div class="public-theme-section-skeleton__card">
+        <span class="public-theme-section-skeleton__media"></span>
+        <span class="public-theme-section-skeleton__body">
+          <span class="public-theme-section-skeleton__line public-theme-section-skeleton__line--title"></span>
+          <span class="public-theme-section-skeleton__line"></span>
+          <span class="public-theme-section-skeleton__line public-theme-section-skeleton__line--short"></span>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>
