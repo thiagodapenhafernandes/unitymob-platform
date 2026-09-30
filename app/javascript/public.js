@@ -73,6 +73,7 @@ application.register("transaction-toggle", TransactionToggleController)
 const pageScopedControllers = [
   ["advanced-filters", () => import("controllers/advanced_filters_controller")],
   ["collapsible-text", () => import("controllers/collapsible_text_controller")],
+  ["currency-mask", () => import("controllers/currency_mask_controller")],
   ["financing-simulator", () => import("controllers/financing_simulator_controller")],
   ["financing-modal", () => import("controllers/financing_modal_controller")],
   ["financing-modal-trigger", () => import("controllers/financing_modal_trigger_controller")],
