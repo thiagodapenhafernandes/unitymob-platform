@@ -107,6 +107,12 @@ module ApplicationHelper
     query_string.present? ? "#{request.path}?#{query_string}" : request.path
   end
 
+  # Monta path da gramática nova (/imoveis/venda/...) a partir dos filtros
+  # internos — fonte única server-side (PublicSearch::ListingUrl).
+  def build_public_listing_path(filters = {})
+    PublicSearch::ListingUrl.build(filters)
+  end
+
   def public_habitation_detail_path(property)
     return "#" if property.blank?
 
