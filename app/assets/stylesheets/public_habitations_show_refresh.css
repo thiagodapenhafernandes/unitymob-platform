@@ -532,6 +532,29 @@
     #eef4f8;
 }
 
+/* Spinner enquanto a biblioteca do mapa (CDN) carrega; comum a todos os
+   temas, cada variante ajusta só as cores. */
+.public-theme-property-map__loader {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  border: 3px solid rgba(2, 43, 58, .15);
+  border-top-color: #0b6b8f;
+  animation: public-theme-map-loader-spin .8s linear infinite;
+}
+.public-theme-property-map__loader[hidden] { display: none; }
+@keyframes public-theme-map-loader-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-property-map__loader { animation: none; }
+}
+
 .public-theme-property-map--default .public-theme-property-map__external {
   display: inline-flex;
   align-items: center;

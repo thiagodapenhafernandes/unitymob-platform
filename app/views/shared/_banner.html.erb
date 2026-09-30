@@ -18,6 +18,8 @@
         <%= image_tag mobile_source.presence || desktop_source,
               alt: banner.title,
               class: image_classes,
+              width: 768,
+              height: 360,
               loading: "lazy",
               decoding: "async",
               sizes: "100vw" %>
@@ -28,7 +30,9 @@
           <% end %>
           <%= image_tag desktop_source,
                 alt: banner.title,
-                class: image_classes,
+                class: [image_classes, "public-theme-banner__image", ("public-theme-banner__image--responsive" if mobile_image&.attached? && mobile_source.present?)].compact.join(" "),
+                width: 1440,
+                height: 360,
                 loading: "lazy",
                 decoding: "async",
                 sizes: "100vw" %>

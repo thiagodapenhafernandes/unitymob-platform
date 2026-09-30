@@ -35,6 +35,8 @@
             class: public_gallery_image_class(images.first),
             data: { public_gallery_mobile_target: "primaryImage" },
             style: public_gallery_image_style(images.first, primary: true),
+            width: 1200,
+            height: 900,
             fetchpriority: "high",
             loading: "eager",
             decoding: "async",
@@ -56,6 +58,8 @@
                 alt: "#{title} - Foto #{index + 2}",
                 class: public_gallery_image_class(photo),
                 style: public_gallery_image_style(photo),
+                width: 560,
+                height: 420,
                 loading: "lazy",
                 decoding: "async" %>
           </a>

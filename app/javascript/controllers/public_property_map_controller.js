@@ -4,7 +4,7 @@ const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
 
 export default class extends Controller {
-  static targets = ["map", "streetView", "mapButton", "satelliteButton", "streetViewButton", "shell"]
+  static targets = ["map", "streetView", "mapButton", "satelliteButton", "streetViewButton", "shell", "loader"]
   static values = {
     provider: { type: String, default: "leaflet" },
     apiKey: String,
@@ -20,6 +20,10 @@ export default class extends Controller {
 
   connect() {
     if (!this.hasMapTarget || !this.hasValidCoordinates) return
+
+    // Biblioteca de mapa (CDN) carrega sob demanda: sinaliza até o primeiro render.
+    if (this.hasLoaderTarget) this.loaderTarget.hidden = false
+    if (this.hasShellTarget) this.shellTarget.setAttribute("aria-busy", "true")
 
     this.intersectionObserver = new IntersectionObserver((entries) => {
       if (!entries.some((entry) => entry.isIntersecting)) return
@@ -78,11 +82,20 @@ export default class extends Controller {
   }
 
   async loadMap() {
-    if (this.providerValue === "google" && this.hasApiKeyValue) {
-      await this.loadGoogleMap()
-    } else {
-      await this.loadLeafletMap()
+    try {
+      if (this.providerValue === "google" && this.hasApiKeyValue) {
+        await this.loadGoogleMap()
+      } else {
+        await this.loadLeafletMap()
+      }
+    } finally {
+      this.hideLoader()
     }
+  }
+
+  hideLoader() {
+    if (this.hasLoaderTarget) this.loaderTarget.hidden = true
+    if (this.hasShellTarget) this.shellTarget.removeAttribute("aria-busy")
   }
 
   async loadGoogleMap() {

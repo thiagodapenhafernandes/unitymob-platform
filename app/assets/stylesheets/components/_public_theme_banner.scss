@@ -1,0 +1,7 @@
+// Reserva de espaço anti-CLS do banner público: o <img> carrega
+// width/height do desktop (4:1); quando há <source> mobile (32:15 até
+// 768px), a proporção acompanha o breakpoint. Geometria, não pele:
+// vale igual para todos os temas.
+@media (max-width: 768px) {
+  .public-theme-banner__image--responsive { aspect-ratio: 32 / 15; }
+}

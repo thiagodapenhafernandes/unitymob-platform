@@ -4966,3 +4966,10 @@ body.no-scroll { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .public-theme-financing-trigger--salute-luxury::after { animation: none; }
 }
+/* Skeleton das seções diferidas (home): mesma estrutura do default, pele escura. */
+.public-theme-section-skeleton--salute-luxury .public-theme-section-skeleton__media,
+.public-theme-section-skeleton--salute-luxury .public-theme-section-skeleton__line { background: rgba(190, 155, 71, .16); }
+.public-theme-section-skeleton--salute-luxury .public-theme-section-skeleton__media::after,
+.public-theme-section-skeleton--salute-luxury .public-theme-section-skeleton__line::after { background: linear-gradient(90deg, transparent, rgba(190, 155, 71, .24), transparent); }
+/* Spinner do mapa: mesma estrutura do default, pele dourada. */
+.public-theme-property-map--salute-luxury .public-theme-property-map__loader { border-color: rgba(190, 155, 71, .2); border-top-color: var(--sl-gold, #be9b47); }

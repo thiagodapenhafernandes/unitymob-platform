@@ -19,7 +19,30 @@ export default class extends Controller {
   }
 
   go(url) {
+    this.setFrameBusy(true)
     if (window.Turbo) window.Turbo.visit(url, { frame: this.frameValue, action: "advance" })
     else window.location.href = url
+  }
+
+  // Turbo não mostra progresso em navegação de frame: sinaliza na grade
+  // (classe + aria-busy) e limpa ao carregar ou falhar a requisição.
+  setFrameBusy(busy) {
+    const frame = document.getElementById(this.frameValue)
+    if (!frame) return
+
+    frame.classList.toggle("is-loading", busy)
+    if (!busy) {
+      frame.removeAttribute("aria-busy")
+      return
+    }
+
+    frame.setAttribute("aria-busy", "true")
+    const done = () => {
+      frame.removeEventListener("turbo:frame-load", done)
+      document.removeEventListener("turbo:fetch-request-error", done)
+      this.setFrameBusy(false)
+    }
+    frame.addEventListener("turbo:frame-load", done)
+    document.addEventListener("turbo:fetch-request-error", done)
   }
 }
