@@ -57,27 +57,13 @@
     <% if nav_items.any? %>
       <nav class="<%= nav_class %>" aria-label="<%= local_assigns.fetch(:aria_label, "Menu principal") %>">
         <% nav_items.each do |item| %>
-          <% if (item[:action_type] || item["action_type"]).to_s == "form_modal" %>
-            <%= button_tag type: "button",
-                  data: {
-                    controller: "public-form-trigger",
-                    action: "click->public-form-trigger#open",
-                    public_form_trigger_form_type_value: item[:url] || item["url"]
-                  } do %>
-              <% if (item[:icon] || item["icon"]).present? %>
-                <%= public_icon(item[:icon] || item["icon"]) %>
-              <% end %>
-              <span><%= item[:label] || item["label"] %></span>
+          <%= link_to item[:url] || item["url"],
+                      target: item[:target] || item["target"],
+                      rel: item[:rel] || item["rel"] do %>
+            <% if (item[:icon] || item["icon"]).present? %>
+              <%= public_icon(item[:icon] || item["icon"]) %>
             <% end %>
-          <% else %>
-            <%= link_to item[:url] || item["url"],
-                        target: item[:target] || item["target"],
-                        rel: item[:rel] || item["rel"] do %>
-              <% if (item[:icon] || item["icon"]).present? %>
-                <%= public_icon(item[:icon] || item["icon"]) %>
-              <% end %>
-              <span><%= item[:label] || item["label"] %></span>
-            <% end %>
+            <span><%= item[:label] || item["label"] %></span>
           <% end %>
         <% end %>
       </nav>
