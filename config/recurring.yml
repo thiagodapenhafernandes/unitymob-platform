@@ -66,7 +66,7 @@ production:
   warm_public_variants:
     class: Storage::WarmPublicVariantsJob
     queue: media
-    schedule: every 2 hours at minute 20
+    schedule: every 30 minutes
   critical_blob_integrity:
     class: Storage::CriticalBlobIntegrityJob
     queue: checkin

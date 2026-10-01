@@ -30,6 +30,17 @@ RSpec.describe Storage::WarmPublicVariantsJob, type: :job do
       .not_to have_enqueued_job(Storage::TransformVariantJob)
   end
 
+  it "limita os jobs enfileirados por varredura e continua do ponto em que parou" do
+    stub_const("#{described_class}::MAX_ENQUEUE_PER_RUN", 5)
+    attach_photo(create(:habitation, tenant: tenant))
+
+    expect { described_class.perform_now }
+      .to have_enqueued_job(Storage::TransformVariantJob).exactly(5).times
+
+    expect { described_class.perform_now }
+      .to have_enqueued_job(Storage::TransformVariantJob).exactly(5).times
+  end
+
   it "cobre os sets da galeria e dos banners do detalhe" do
     expect(described_class::SETS).to include(
       { resize_to_limit: [1200, 900], format: :webp },

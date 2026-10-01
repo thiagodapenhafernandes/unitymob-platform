@@ -5523,3 +5523,7 @@ body.no-scroll { overflow: hidden; }
 .public-theme-hero-bar--salute-luxury .public-theme-combobox__input:focus,
 .public-theme-hero-bar--salute-luxury .public-theme-combobox__input:focus-visible { border: 0 !important; outline: none !important; box-shadow: none !important; }
 .public-theme-hero-bar--salute-luxury .public-theme-combobox__trigger:focus-visible { outline: 2px solid var(--sl-gold); outline-offset: -2px; border-radius: 999px; }
+
+/* Vídeos da home: botão "Ver imóvel" do modal no estilo luxury (vidro escuro, filete dourado, serifada). */
+.home-video-section--salute-luxury .home-video-modal__cta { border-radius: 2px; border: 1px solid var(--sl-gold, #c9a45c); background: rgba(10, 20, 30, .55); backdrop-filter: blur(10px); color: #fff; font-family: var(--sl-serif, Georgia, serif); font-size: .85rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; box-shadow: none; }
+.home-video-section--salute-luxury .home-video-modal__cta:hover { background: var(--sl-gold, #c9a45c); color: #0a1420; filter: none; }
