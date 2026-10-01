@@ -1,4 +1,5 @@
 class PublicForm < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   # Só "published" está no ar. Só "draft" salva sozinho no editor visual.
   include PublishableStatus

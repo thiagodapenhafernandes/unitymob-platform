@@ -1,4 +1,5 @@
 class WhatsappBusinessIntegration < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   include PhoneNormalizable
 

@@ -1,4 +1,5 @@
 class HomeSetting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
 
   SEARCH_FILTER_DISPLAY_MODES = %w[hero floating both].freeze

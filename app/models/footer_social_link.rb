@@ -1,4 +1,5 @@
 class FooterSocialLink < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   validates :platform, :url, presence: true
   default_scope { order(position: :asc) }
   
@@ -14,4 +15,11 @@ class FooterSocialLink < ApplicationRecord
     else 'bi-share'
     end
   end
+
+  private
+
+  def public_page_version_tenant_id
+    FooterSetting.unscoped.where(id: footer_setting_id).pick(:tenant_id)
+  end
+
 end

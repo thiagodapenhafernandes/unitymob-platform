@@ -8,6 +8,12 @@ module Seo
       new(controller).track!
     end
 
+    # Página servida do cache (PublicPageCache): o HTML não passou pelo controller, mas a
+    # visita (com consentimento) precisa contar como antes. Só registra; não descobre nem altera SEO.
+    def self.record_visit!(controller)
+      new(controller).record_visit_only!
+    end
+
     def self.enabled?(tenant: Current.tenant)
       Setting.tenant_get(AUTO_INVENTORY_SETTING, "1", tenant: tenant) == "1"
     end
@@ -45,6 +51,17 @@ module Seo
 
       enqueue_ai_generation(seo) if created && self.class.auto_ai?(tenant: tenant) && Ai::SeoContentService.connected?(tenant: tenant)
       seo
+    rescue => e
+      Rails.logger.warn("[Seo::PageTracker] #{e.class}: #{e.message}")
+      nil
+    end
+
+    def record_visit_only!
+      return unless trackable?
+
+      identity = PageIdentity.new(@controller).to_h
+      seo = page_tenant.seo_settings.find_by(canonical_key: identity[:canonical_key])
+      record_page_visit(seo) if seo
     rescue => e
       Rails.logger.warn("[Seo::PageTracker] #{e.class}: #{e.message}")
       nil

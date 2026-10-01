@@ -1,4 +1,5 @@
 class FooterSetting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   include PhoneNormalizable
 

@@ -5,6 +5,7 @@
 # é só a entrada de rodapé do site de marketing. Vínculo opcional via
 # `footer_store_id` quando a mesma loja aparece nos dois lugares.
 class Store < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   include PhoneNormalizable
 

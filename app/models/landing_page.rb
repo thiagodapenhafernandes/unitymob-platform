@@ -1,4 +1,5 @@
 class LandingPage < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   include PublicRootSlug
   # Só "published" está no ar (active é derivado do status).

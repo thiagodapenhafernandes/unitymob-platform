@@ -1,4 +1,5 @@
 class WebhookSetting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   LEAD_CAPTURE_CACHE_KEY = "public_site:lead_capture_enabled".freeze
   FORM_DELIVERY_SCOPES = {

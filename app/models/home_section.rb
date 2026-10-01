@@ -1,4 +1,5 @@
 class HomeSection < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   SECTION_TYPE_LABELS = {
     "blog" => "Blog",

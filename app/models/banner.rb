@@ -1,4 +1,5 @@
 class Banner < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   # ActiveStorage attachments
   has_one_attached :image_desktop
