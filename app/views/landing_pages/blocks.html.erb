@@ -1,0 +1,46 @@
+<%# Página montada por blocos (construtor de páginas). Cada bloco é um componente com variante por tema
+    (public_theme/blocks/_<tipo>). O H1 da página é de quem abre a página: a capa, a vitrine interativa ou o
+    cabeçalho padrão — nunca dois. Em páginas de 2 ou 3 colunas, blocos consecutivos com largura de coluna formam
+    uma linha em grade; os demais ocupam a linha inteira. Locals via ivars: @landing_page, @blocks, @showcases. %>
+<%
+  variant = theme_variant
+  first = @blocks.first
+  h1_owner = if first&.block_type == "cover" then :cover elsif first&.interactive_showcase? then :showcase else :page end
+  columns = @landing_page.layout_columns.to_i.clamp(1, 3)
+
+  render_block = lambda do |block|
+    render("public_theme/blocks/#{block.block_type}", block: block, page: @landing_page, variant: variant,
+           showcase: @showcases[block.object_id], h1: (block.equal?(@blocks.first) && h1_owner != :page))
+  end
+  # Ocupa só parte da linha? (span menor que as colunas da página)
+  in_column = ->(block) { columns > 1 && block.span && block.span < columns }
+  units = @blocks.chunk_while { |a, b| in_column.(a) && in_column.(b) }.to_a
+%>
+<div class="public-landing-page public-landing-page--<%= variant %> public-header-offset mt-[72px]" data-controller="sidebar advanced-filters">
+  <% if h1_owner == :page %>
+    <div class="container-custom py-10">
+      <%= render "public_theme/components/page_head", title: @landing_page.title, lead: @landing_page.description, variant: variant %>
+    </div>
+  <% end %>
+
+  <% units.each do |unit| %>
+    <% if in_column.(unit.first) %>
+      <div class="container-custom">
+        <div class="public-landing-page__row has-cols-<%= columns %>">
+          <% unit.each do |block| %>
+            <% rendered = render_block.(block) %>
+            <% next if rendered.to_s.strip.empty? && !@preview_mode %>
+            <%= tag.div(rendered, class: "public-landing-page__cell is-span-#{block.span}#{" lp-preview-block" if @preview_mode}", data: { block_position: (block.position if @preview_mode) }) %>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <% unit.each do |block| %>
+        <% rendered = render_block.(block) %>
+        <% next if rendered.to_s.strip.empty? && !@preview_mode %>
+        <%# Na prévia do admin cada bloco ganha um invólucro clicável (o editor abre o cartão do bloco clicado). %>
+        <%= @preview_mode ? tag.div(rendered, class: "lp-preview-block", data: { block_position: block.position }) : rendered %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

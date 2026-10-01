@@ -6,7 +6,7 @@ class PublicHeaderMenu
   ROUTES = Rails.application.routes.url_helpers
   MAX_CUSTOM_ITEMS = 12
   LABEL_LIMIT = 40
-  URL_FORMAT = %r{\A(/[^\s]*|https?://[^\s]+|mailto:[^\s]+|tel:[^\s]+)\z}i
+  URL_FORMAT = %r{\A(/[^\s]*|https?://[^\s]+|mailto:[^\s]+|tel:[^\s]+|#modal-[a-z0-9-]+)\z}i
 
   # bar: aparece na barra do desktop (todos os visíveis entram no menu suspenso e no celular).
   # requires: item só existe quando a conta tem o dado (blog, canal do YouTube) ou
@@ -33,7 +33,7 @@ class PublicHeaderMenu
 
   DEFAULT_CTA_LABEL = "Fale Conosco".freeze
 
-  Entry = Struct.new(:key, :label, :default_label, :url, :visible, :bar, :new_tab, :custom, :icon, :active, :available, keyword_init: true) do
+  Entry = Struct.new(:key, :label, :default_label, :url, :default_url, :visible, :bar, :new_tab, :custom, :icon, :active, :available, keyword_init: true) do
     alias_method :custom?, :custom
     alias_method :visible?, :visible
     alias_method :bar?, :bar
@@ -83,7 +83,13 @@ class PublicHeaderMenu
       label = row["label"].to_s.squish.first(LABEL_LIMIT).presence
 
       if SYSTEM_ITEMS.key?(key)
-        { "key" => key, "label" => (label unless label == SYSTEM_ITEMS[key][:label]), "visible" => visible, "bar" => bar }.compact
+        # Endereço próprio é opcional: vazio, inválido ou igual ao padrão da página volta ao padrão do sistema.
+        url = row["url"].to_s.strip
+        url = nil unless url.match?(URL_FORMAT) && url != SYSTEM_ITEMS[key][:path]&.call
+        # Nova aba: guarda só quando difere do padrão do item (YouTube abre em nova aba; os demais, na mesma).
+        new_tab = ActiveModel::Type::Boolean.new.cast(row["new_tab"])
+        new_tab = nil if new_tab.nil? || new_tab == (SYSTEM_ITEMS[key][:requires] == :youtube)
+        { "key" => key, "label" => (label unless label == SYSTEM_ITEMS[key][:label]), "url" => url, "new_tab" => new_tab, "visible" => visible, "bar" => bar }.compact
       elsif row["url"].to_s.strip.match?(URL_FORMAT) && label && (custom_seen += 1) <= MAX_CUSTOM_ITEMS
         { "key" => key.presence&.first(40) || "custom-#{SecureRandom.hex(3)}", "custom" => true, "label" => label,
           "url" => row["url"].to_s.strip, "visible" => visible, "bar" => bar,
@@ -97,23 +103,26 @@ class PublicHeaderMenu
   end
 
   def self.custom_entry(item)
-    Entry.new(key: item["key"], label: item["label"], default_label: item["label"], url: item["url"], visible: item["visible"] != false,
+    Entry.new(key: item["key"], label: item["label"], default_label: item["label"], url: item["url"], default_url: item["url"], visible: item["visible"] != false,
               bar: item["bar"] == true, new_tab: item["new_tab"] == true, custom: true, available: true, active: false)
   end
 
   def self.system_entry(item, blog_url:, youtube_url:, financing_url:, context:)
     key = item["key"]
     definition = SYSTEM_ITEMS.fetch(key)
-    url = case definition[:requires]
-          when :blog then blog_url
-          when :youtube then youtube_url
-          when :financing then financing_url
-          else definition[:path].call
-          end
+    default_url = case definition[:requires]
+                  when :blog then blog_url
+                  when :youtube then youtube_url
+                  when :financing then financing_url
+                  else definition[:path].call
+                  end
+    # Endereço próprio da conta (inclusive #modal-<id> para abrir um formulário) vale mais que o padrão da página.
+    override = item["url"].to_s.strip
+    url = override.match?(URL_FORMAT) ? override : default_url
 
-    Entry.new(key: key, label: item["label"].presence || definition[:label], default_label: definition[:label], url: url,
+    Entry.new(key: key, label: item["label"].presence || definition[:label], default_label: definition[:label], url: url, default_url: default_url,
               visible: item.fetch("visible", true) != false, bar: item.fetch("bar", definition[:bar] == true) == true,
-              new_tab: definition[:requires] == :youtube || (definition[:requires] == :blog && blog_url.to_s.start_with?("http")),
+              new_tab: item.key?("new_tab") ? item["new_tab"] == true : (definition[:requires] == :youtube || (definition[:requires] == :blog && blog_url.to_s.start_with?("http"))),
               custom: false, icon: definition[:icon], active: context ? definition[:active]&.call(context) == true : false,
               available: definition[:requires].nil? || url.present?)
   end

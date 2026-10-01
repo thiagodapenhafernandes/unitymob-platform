@@ -150,7 +150,7 @@
 }
 
 [data-public-site-theme="conexaoimobiliaria"] :where(.container-custom) {
-  max-width: 1440px;
+  max-width: 1550px;
 }
 
 [data-public-site-theme="conexaoimobiliaria"] #hero {
@@ -245,6 +245,31 @@
 [data-public-site-theme="conexaoimobiliaria"] #hero .hero-search [data-search-tabs-target="tab"][aria-pressed="true"]:hover {
   background: var(--conexao-gold) !important;
   transform: none;
+}
+
+/* Busca por voz: o botão Voz é uma terceira aba (mesmo desenho de Comprar/Alugar). No modo voz o dourado sai de Comprar/Alugar
+   e vai para o Voz; tocar em Comprar/Alugar volta aos filtros. */
+[data-public-site-theme="conexaoimobiliaria"] #hero .hero-search .public-theme-hero-voice__toggle {
+  min-width: 138px;
+  min-height: 42px;
+  background: transparent !important;
+  color: rgba(255, 255, 255, .86) !important;
+  text-transform: uppercase;
+  box-shadow: none !important;
+  transition: background-color .24s ease, color .24s ease, box-shadow .24s ease;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] #hero .hero-search .public-theme-hero-voice__toggle[aria-pressed="true"] {
+  background: var(--conexao-gold) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 26px rgba(6, 18, 26, .2) !important;
+}
+
+[data-public-site-theme="conexaoimobiliaria"] #hero .hero-search[data-voice="on"] [data-search-tabs-target="tab"].active-tab,
+[data-public-site-theme="conexaoimobiliaria"] #hero .hero-search[data-voice="on"] [data-search-tabs-target="tab"][aria-pressed="true"] {
+  background: transparent !important;
+  color: rgba(255, 255, 255, .86) !important;
+  box-shadow: none !important;
 }
 
 [data-public-site-theme="conexaoimobiliaria"] #hero .hero-search .public-theme-search__panel {

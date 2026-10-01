@@ -31,6 +31,8 @@ export default class extends Controller {
 
     this.overlayTarget.hidden = true
     document.body.style.overflow = ""
+    // Um #modal-ID na URL reabriria o modal ao recarregar: some da barra de endereço ao fechar.
+    if (window.location.hash.startsWith("#modal-")) window.history.replaceState(null, "", window.location.pathname + window.location.search)
   }
 
   closeOnEscape(event) {
@@ -40,6 +42,12 @@ export default class extends Controller {
   async submit(event) {
     event.preventDefault()
     if (!this.hasFormTarget) return
+
+    const fileError = this.fileError()
+    if (fileError) {
+      this.showFeedback(fileError, true)
+      return
+    }
 
     this.setSubmitting(true)
     this.clearFeedback()
@@ -74,6 +82,20 @@ export default class extends Controller {
     } finally {
       this.setSubmitting(false)
     }
+  }
+
+  // Confere tamanho e quantidade antes de subir (o servidor valida de novo).
+  fileError() {
+    for (const input of this.formTarget.querySelectorAll("input[type='file']")) {
+      const files = Array.from(input.files || [])
+      const maxBytes = Number(input.dataset.maxMb || 10) * 1024 * 1024
+      const maxFiles = Number(input.dataset.maxFiles || 1)
+
+      if (files.length > maxFiles) return `Envie no máximo ${maxFiles} arquivo(s).`
+      const tooBig = files.find((file) => file.size > maxBytes)
+      if (tooBig) return `${tooBig.name} passa do limite de ${input.dataset.maxMb} MB.`
+    }
+    return null
   }
 
   csrfToken() {

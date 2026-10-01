@@ -3,7 +3,7 @@ class Admin::HomeSettingsController < Admin::BaseController
   before_action :set_home_setting
   
   def edit
-    # @home_setting já está definido
+    load_home_sections
   end
   
   def update
@@ -13,12 +13,18 @@ class Admin::HomeSettingsController < Admin::BaseController
       append_hero_slides(uploaded_hero_slide_images)
       redirect_to edit_admin_home_setting_path, notice: 'Configurações atualizadas com sucesso!'
     else
+      load_home_sections
       render :edit, status: :unprocessable_entity
     end
   end
   
   private
-  
+
+  # A aba Seções usa a mesma listagem de /admin/home_sections (a tela também renderiza ao falhar a validação).
+  def load_home_sections
+    @home_sections = current_tenant.home_sections.ordered.includes(:home_section_items)
+  end
+
   def set_home_setting
     @home_setting = HomeSetting.instance(tenant: current_tenant)
   end
@@ -30,6 +36,10 @@ class Admin::HomeSettingsController < Admin::BaseController
       :hero_title_font_size,
       :hero_subtitle_font_size,
       :hero_cta_text,
+      :hero_layout,
+      :hero_search_align,
+      :hero_ai_search_enabled,
+      :hero_ai_suggestions,
       :overlay_opacity,
       :overlay_color,
       :hero_background_desktop,

@@ -196,6 +196,15 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/leads(?:\.[\w-]+)?\z})
   end
 
+  # --- Busca por descrição/voz do hero (IA paga): 12 por 10 min por IP, e teto global por minuto ---
+  throttle("public/ai_search/ip", limit: 12, period: 10.minutes) do |req|
+    req.ip if req.post? && req.path == "/busca-ia"
+  end
+
+  throttle("public/ai_search/burst", limit: 3, period: 10.seconds) do |req|
+    req.ip if req.post? && req.path == "/busca-ia"
+  end
+
   # --- GET públicos de imóveis — proteção contra crawler/flood de listagem ---
   # Os limites são intencionalmente mais largos para navegação real e mais
   # apertados para paginação profunda, que costuma ser padrão de crawler.

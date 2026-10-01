@@ -9,6 +9,17 @@
                                      financing_url: (simulador_path if PublicSiteProfile.current(tenant: current_tenant).financing_simulator_enabled?))
   brand_name = layout_setting&.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
   cta_label = @home_setting.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL
+  theme_config = Tenant::PUBLIC_SITE_THEMES.fetch(current_tenant.public_site_theme_key)
+  theme_label = theme_config[:label]
+  luxury_header = (theme_config[:variant] || "default") == "salute-luxury"
+  # Mesma cadeia do site: fixo, WhatsApp principal ou WhatsApp do rodapé.
+  header_phone = @contact_setting.phone.presence || @contact_setting.whatsapp_primary.presence || FooterSetting.find_by(tenant: current_tenant)&.whatsapp.presence
+  phone_source = if @contact_setting.phone.present? then "Telefone fixo"
+                 elsif @contact_setting.whatsapp_primary.present? then "WhatsApp principal"
+                 elsif header_phone.present? then "Rodapé"
+                 end
+  overlay_phone = @contact_setting.whatsapp_primary.presence || @contact_setting.phone.presence
+  bar_entries = entries.select(&:visible?).select(&:bar?)
   studio_items = [
     { id: "header-tab-menu", icon: "list-ul", label: "Menu", hint: "Links, ordem e o que fica na barra" },
     { id: "header-tab-action", icon: "telephone-outbound", label: "Botão e telefone", hint: "Chamada em destaque do topo" },
@@ -23,12 +34,14 @@
         subtitle: "O que o visitante vê no cabeçalho de todas as páginas: links, botão de ação, telefone e cores.",
         actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")
       ) %>
+  <p class="hps-theme">Tema do site: <b><%= theme_label %></b> · <%= link_to "Trocar em Identidade", edit_admin_public_identity_path, class: "ax-link" %></p>
 
   <%= form_with(model: @home_setting, url: admin_public_header_path, method: :patch, local: true,
                 html: { data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } }) do |f| %>
     <%= ax_error_summary(@home_setting) %>
 
     <div class="ax-studio ax-studio--home hps-workspace" data-controller="live-preview header-menu-preview"
+         data-theme-variant="<%= theme_config[:variant] || "default" %>"
          data-action="input->live-preview#sync change->live-preview#sync input->header-menu-preview#render change->header-menu-preview#render click->header-menu-preview#render">
       <div class="ax-studio__nav">
         <%= ax_studio_nav(items: studio_items, panels_selector: "#header-studio-sections", label: "Seções do topo do site") %>
@@ -56,32 +69,51 @@
         <%= ax_studio_section(id: "header-tab-action", icon: "telephone-outbound",
                               title: "Botão e telefone",
                               subtitle: "A chamada em destaque do topo e o telefone ao lado da logo.") do %>
-          <%= ax_studio_group(title: "Botão de ação", subtitle: "Aparece no desktop, ao lado do menu. Sem preencher, usa “Fale Conosco” e leva à página de contato.") do %>
+          <%= ax_studio_group(title: "Botão de ação", subtitle: "Aparece no desktop, ao lado do menu, e no menu em tela cheia. Sem preencher, usa “Fale Conosco” e leva à página de contato.") do %>
+            <% if luxury_header %>
+              <p class="hps-limited__note"><span class="hps-limited__badge">Tema <%= theme_label %></span> Aqui o botão aparece só no menu em tela cheia, não na barra.</p>
+            <% end %>
             <%= ax_field_grid do %>
               <div class="ax-span-5">
                 <%= ax_text_field(form: f, method: :header_cta_label, label: "Texto do botão", placeholder: PublicHeaderMenu::DEFAULT_CTA_LABEL, maxlength: 30,
                                   data: { live_text: "cta" }) %>
               </div>
               <div class="ax-span-7">
-                <%= ax_text_field(form: f, method: :header_cta_url, label: "Destino", placeholder: "/contato ou https://wa.me/…", hint: "Página do site (/contato) ou endereço completo.") %>
+                <%= ax_text_field(form: f, method: :header_cta_url, label: "Destino", placeholder: "/contato ou https://wa.me/…", hint: PublicForm.modal_link_problem(tenant: current_tenant, url: @home_setting.header_cta_url) || "Página do site (/contato), endereço completo ou #modal-ID de um formulário.") %>
               </div>
             <% end %>
           <% end %>
 
-          <%= ax_studio_group(title: "Telefone", subtitle: "Número principal, definido em Contato. Aparece ao lado da logo em telas largas.") do %>
+          <%= ax_studio_group(title: "Telefone", subtitle: "Número ao lado da logo em telas largas. Vale também no menu em tela cheia.") do %>
             <%= fields_for :contact_setting, @contact_setting do |cf| %>
-              <%= ax_switch_field(form: cf, method: :show_phone_in_header, label: "Mostrar o telefone no topo",
-                                  description: @contact_setting.phone.present? ? "Mostra #{@contact_setting.phone}." : "Cadastre o telefone em Contato para ele aparecer.",
-                                  class_name: "ax-switch--card", input_html: { data: { live_flag: "phone" } }) %>
+              <%= ax_field_grid do %>
+                <div class="ax-span-6">
+                  <%= ax_text_field(form: cf, method: :phone, label: "Número principal", type: :tel, placeholder: "+55 00 00000-0000",
+                                    hint: "Também editável em Contato → Canais.",
+                                    data: { controller: "phone-input", live_text: "phone" }) %>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_switch_field(form: cf, method: :show_phone_in_header, label: "Mostrar o telefone no topo",
+                                      class_name: "ax-switch--card", input_html: { data: { live_flag: "phone" } }) %>
+                </div>
+              <% end %>
             <% end %>
-            <p class="ax-field__hint"><%= link_to "Editar telefone e WhatsApp em Contato", edit_admin_contact_setting_path, class: "ax-link" %></p>
+            <% if header_phone.present? %>
+              <p class="ax-field__hint">No topo aparece <b><%= format_phone(header_phone) %></b> · do <%= phone_source %>.</p>
+            <% else %>
+              <p class="ax-field__hint">Nenhum número para o topo — preencha aqui ou em Contato.</p>
+            <% end %>
+            <p class="ax-field__hint">WhatsApp e outros canais ficam em <%= link_to "Contato", edit_admin_contact_setting_path, class: "ax-link" %>.</p>
           <% end %>
         <% end %>
 
         <%= ax_studio_section(id: "header-tab-style", icon: "palette2",
                               title: "Aparência",
                               subtitle: "Cores do topo sobre o hero. Campo vazio mantém a cor herdada do modelo visual.") do %>
-          <%= ax_studio_group(title: "Cores do topo", subtitle: "Texto do menu e botão de ação, em repouso e no hover.") do %>
+          <%= ax_studio_group(title: "Cores do topo", subtitle: "Texto do menu e botão de ação, em repouso e no hover.", class_name: ("hps-limited" if luxury_header)) do %>
+            <% if luxury_header %>
+              <p class="hps-limited__note"><span class="hps-limited__badge">Sem efeito no tema <%= theme_label %></span> Aqui o topo usa as cores fixas do modelo. Ficam guardadas caso o tema mude.</p>
+            <% end %>
             <%= ax_field_grid do %>
               <% HomeSetting::HEADER_COLOR_FIELDS.each do |field, label| %>
                 <% inherited = header_defaults.fetch(field) %>
@@ -98,8 +130,11 @@
             <% end %>
           <% end %>
 
-          <details class="ax-studio-advanced">
+          <details class="ax-studio-advanced<%= " hps-limited" if luxury_header %>">
             <summary><i class="bi bi-code-slash"></i> Avançado: CSS aplicado no topo <i class="bi bi-chevron-down"></i></summary>
+            <% if luxury_header %>
+              <p class="hps-limited__note"><span class="hps-limited__badge">Sem efeito no tema <%= theme_label %></span> Aqui o topo usa o desenho fixo do modelo.</p>
+            <% end %>
             <%= ax_text_field(form: f, method: :public_header_css, type: :textarea, label: "CSS aplicado no topo",
                               hint: "Apenas declarações CSS. Aplicadas ao elemento header do site público desta conta.",
                               rows: 9, class: "ax-control--code",
@@ -112,22 +147,21 @@
         <div class="hps-preview hm-preview">
           <div class="lss-preview__label"><span class="lss-preview__live"></span> Prévia ao vivo</div>
           <div class="hm-web" role="img" aria-label="Prévia do topo do site">
-            <header class="hm-web__bar">
-              <div class="hm-web__row">
-                <strong class="hm-web__brand"><%= brand_name %></strong>
-                <span class="hm-web__phone" data-live-flag-target="phone" <%= "hidden" unless @contact_setting.show_phone_in_header? && @contact_setting.phone.present? %>><i class="bi bi-telephone"></i> <%= @contact_setting.phone.presence || "(00) 0000-0000" %></span>
-                <span class="hm-web__cta" data-live-text-target="cta"><%= cta_label %></span>
-                <i class="bi bi-list hm-web__toggle"></i>
-              </div>
-              <nav class="hm-web__links" aria-label="Barra do desktop" data-header-menu-preview-target="bar"></nav>
-            </header>
+            <%= render "admin/shared/preview_site_header", brand: brand_name, logo: layout_setting&.logo,
+                  entries: bar_entries, cta_label: cta_label,
+                  phone: (format_phone(header_phone) if header_phone.present?), phone_visible: @contact_setting.show_phone_in_header?,
+                  luxury: luxury_header, static: true, live_bar: true %>
             <div class="hm-web__panel">
-              <small>Menu suspenso e celular</small>
+              <small>Menu em tela cheia e celular</small>
               <ul data-header-menu-preview-target="menu"></ul>
+              <div class="hm-web__panel-foot">
+                <span class="hm-web__panel-phone"<%= " hidden" unless overlay_phone.present? %>><i class="bi bi-<%= @contact_setting.whatsapp_primary.present? ? "whatsapp" : "telephone" %>"></i> <span data-live-text-target="phone"><%= format_phone(overlay_phone) %></span></span>
+                <span class="hm-web__panel-cta" data-live-text-target="cta"><%= cta_label %></span>
+              </div>
             </div>
             <div class="hm-web__hero"><span></span><span></span></div>
           </div>
-          <p class="lss-preview__note">A barra e o menu acompanham os ajustes ao lado. Blog e YouTube só aparecem se a conta tiver o endereço.</p>
+          <p class="lss-preview__note">A barra e o menu em tela cheia acompanham os ajustes — passe o mouse sobre links e botão para ver o hover. Blog e YouTube só aparecem se a conta tiver o endereço; catálogo e loja só existem no site.</p>
         </div>
       </aside>
     </div>

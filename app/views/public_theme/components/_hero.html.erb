@@ -27,7 +27,7 @@
   end
 %>
 
-<%= tag.section id: local_assigns[:id], class: hero_class, data: section_data.presence do %>
+<%= tag.section id: local_assigns[:id], class: hero_class, style: local_assigns[:style].presence, data: section_data.presence do %>
   <% if slides.any? %>
     <div class="public-theme-hero__slides" aria-hidden="true">
       <% slides.each_with_index do |slide, index| %>

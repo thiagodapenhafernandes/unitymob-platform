@@ -14,6 +14,17 @@ class HomeSetting < ApplicationRecord
     ["Hero + botão flutuante", "both"]
   ].freeze
 
+  # Layouts do hero: cada um é um componente de render (public_theme/components/hero_<layout>) com a identidade de cada tema.
+  # "classic" é o hero de sempre (nada muda para quem não escolher outro).
+  HERO_LAYOUTS = {
+    "classic" => { label: "Clássico", icon: "image", description: "Título e subtítulo centralizados sobre a foto, com a busca embaixo. O hero de sempre." },
+    "bar" => { label: "Barra", icon: "distribute-horizontal", description: "Título grande e uma barra de busca em linha, com Comprar/Alugar, localização, tipo e quartos." },
+    "card" => { label: "Cartão", icon: "layout-sidebar-inset", description: "Um cartão de busca sobre a foto, com abas, filtros, atalhos e (opcional) busca por descrição com IA e voz." }
+  }.freeze
+  HERO_LAYOUT_OPTIONS = HERO_LAYOUTS.map { |key, meta| [meta[:label], key] }.freeze
+  HERO_SEARCH_ALIGN_OPTIONS = [["Esquerda", "left"], ["Centro", "center"], ["Direita", "right"]].freeze
+  HERO_AI_SUGGESTION_LIMIT = 3
+
   HEADER_COLOR_FIELDS = {
     header_menu_color: "Texto e ícones",
     header_menu_hover_color: "Texto e ícones — hover e foco",
@@ -37,6 +48,9 @@ class HomeSetting < ApplicationRecord
   accepts_nested_attributes_for :hero_slides, allow_destroy: true
   
   # Validations
+  validates :hero_layout, inclusion: { in: HERO_LAYOUTS.keys }
+  validates :hero_search_align, inclusion: { in: HERO_SEARCH_ALIGN_OPTIONS.map(&:last) }
+  validates :hero_ai_suggestions, length: { maximum: 600 }
   validates :hero_title, presence: true
   validates :hero_subtitle, presence: true
   validates :search_filter_background_color,
@@ -59,7 +73,7 @@ class HomeSetting < ApplicationRecord
   validates :mobile_search_filter_display_mode, inclusion: { in: MOBILE_SEARCH_FILTER_DISPLAY_MODES }
   validates :public_header_css, length: { maximum: 2000 }, allow_blank: true
   validates :header_cta_label, length: { maximum: 30 }
-  validates :header_cta_url, format: { with: PublicHeaderMenu::URL_FORMAT, message: "deve começar com / ou http(s)://" }, allow_blank: true
+  validates :header_cta_url, format: { with: PublicHeaderMenu::URL_FORMAT, message: "deve começar com /, http(s):// ou #modal-..." }, allow_blank: true
   validate :public_header_css_must_be_declarations_only
   validate :navigation_menu_image_must_be_web_image
   
@@ -79,21 +93,33 @@ class HomeSetting < ApplicationRecord
       hero_button_color: '#BFAB25', # Default brand accent
       hero_button_text_color: '#FFFFFF', # Default white text
       search_filter_background_color: '#FFFFFF',
-      search_filter_background_opacity: 0.9,
+      search_filter_background_opacity: 0.25, # Padrão = preset Vidro (translúcido sobre a foto)
       search_filter_border_enabled: true,
       search_filter_border_color: '#FFFFFF',
       search_filter_border_opacity: 0.45,
       search_filter_text_color: '#022B3A',
       search_filter_field_background_color: '#FFFFFF',
-      search_filter_field_background_opacity: 0.85,
+      search_filter_field_background_opacity: 0.25,
       search_filter_backdrop_blur: 16,
-      search_filter_border_radius: 22,
+      search_filter_border_radius: 35,
       hero_title_font_size: 72,
       hero_subtitle_font_size: 20,
       search_filter_display_mode: "hero",
       mobile_search_filter_display_mode: "hero",
       public_header_css: nil
     )
+  end
+
+  def hero_layout_classic? = hero_layout == "classic"
+
+  # Frases de exemplo do modo "Descreva seu imóvel" (uma por linha, até 3).
+  def hero_ai_suggestion_list
+    hero_ai_suggestions.to_s.lines.map { |line| line.squish.first(120) }.compact_blank.first(HERO_AI_SUGGESTION_LIMIT)
+  end
+
+  # Busca por voz/descrição no hero (qualquer layout): ligada aqui E com a IA de busca da conta pronta (chave + recurso ativo).
+  def hero_ai_search_available?
+    hero_ai_search_enabled? && Ai::PropertySearch::PublicQuery.available?(tenant: tenant)
   end
 
   def search_filter_in_hero?
@@ -152,11 +178,11 @@ class HomeSetting < ApplicationRecord
   end
 
   def search_filter_background_rgba
-    color_with_alpha(search_filter_background_color.presence || '#FFFFFF', search_filter_background_opacity.presence || 0.9)
+    color_with_alpha(search_filter_background_color.presence || '#FFFFFF', search_filter_background_opacity.presence || 0.25)
   end
 
   def search_filter_field_background_rgba
-    color_with_alpha(search_filter_field_background_color.presence || '#FFFFFF', search_filter_field_background_opacity.presence || 0.85)
+    color_with_alpha(search_filter_field_background_color.presence || '#FFFFFF', search_filter_field_background_opacity.presence || 0.25)
   end
 
   def search_filter_border_color_value
@@ -176,7 +202,7 @@ class HomeSetting < ApplicationRecord
   end
 
   def search_filter_border_radius_value
-    (search_filter_border_radius.presence || 22).to_i.clamp(0, 40)
+    (search_filter_border_radius.presence || 35).to_i.clamp(0, 40)
   end
 
   def active_hero_slides

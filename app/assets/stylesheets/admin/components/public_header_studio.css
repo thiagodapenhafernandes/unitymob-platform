@@ -46,21 +46,21 @@ details[open] .hm-row__chev { transform: rotate(180deg); }
 
 .hm-preview { display: grid; gap: 10px; }
 .hm-web { overflow: hidden; border: 1px solid var(--ab-line); border-radius: 10px; background: #fff; color: #1f2733; font-size: 9px; }
-.hm-web__bar { display: grid; gap: 6px; padding: 9px 10px; box-shadow: 0 1px 4px rgb(0 0 0 / .1); }
-.hm-web__row { display: flex; align-items: center; gap: 8px; }
-.hm-web__row .hm-web__cta { margin-left: auto; }
-.hm-web__brand { font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #022b3a; }
-.hm-web__phone { display: inline-flex; align-items: center; gap: 3px; color: #374151; font-weight: 700; white-space: nowrap; }
-.hm-web__phone[hidden] { display: none; }
-.hm-web__links { display: flex; flex-wrap: wrap; gap: 2px 10px; min-width: 0; padding-top: 6px; border-top: 1px solid #eef1f5; }
-.hm-web__links span { color: var(--hps-h-menu, #374151); font-weight: 700; white-space: nowrap; transition: color .2s; }
-.hm-web__links span:last-child { color: var(--hps-h-hover, var(--hps-h-menu, #374151)); text-decoration: underline; text-underline-offset: 2px; }
-.hm-web__cta { flex: none; padding: 4px 9px; border-radius: 99px; background: var(--hps-h-cta, #022b3a); color: #fff; font-weight: 800; white-space: nowrap; transition: background-color .2s; }
-.hm-web__toggle { color: var(--hps-h-menu, #022b3a); font-size: 15px; }
 .hm-web__panel { display: grid; gap: 4px; padding: 8px 10px; border-top: 1px solid #e3e7ee; background: #f7f9fc; }
 .hm-web__panel small { color: #64748b; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .hm-web__panel ul { display: flex; flex-wrap: wrap; gap: 3px 10px; margin: 0; padding: 0; list-style: none; }
 .hm-web__panel li { color: #374151; }
+/* Rodapé do menu em tela cheia: fone (WhatsApp primeiro, como no site) e CTA dourado. */
+.hm-web__panel-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding-top: 6px; border-top: 1px solid #eef1f5; }
+.hm-web__panel-phone { display: inline-flex; align-items: center; gap: 3px; color: #374151; font-weight: 700; white-space: nowrap; }
+.hm-web__panel-phone[hidden] { display: none; }
+.hm-web__panel-cta { margin-left: auto; padding: 3px 9px; border-radius: 99px; background: #be9b47; color: #0a0f1e; font-weight: 800; white-space: nowrap; }
+/* Variante luxury: menu escuro; o CTA dourado vale nos dois temas. */
+.hps-workspace[data-theme-variant="salute-luxury"] .hm-web__panel { background: #0a1826; border-color: #1c2f45; }
+.hps-workspace[data-theme-variant="salute-luxury"] .hm-web__panel small { color: rgb(255 255 255 / .6); }
+.hps-workspace[data-theme-variant="salute-luxury"] .hm-web__panel li,
+.hps-workspace[data-theme-variant="salute-luxury"] .hm-web__panel-phone { color: #fff; }
+.hps-workspace[data-theme-variant="salute-luxury"] .hm-web__panel-foot { border-color: rgb(255 255 255 / .12); }
 .hm-web__hero { display: grid; gap: 5px; padding: 18px 12px; background: linear-gradient(135deg, #022b3a, #053c5e); }
 .hm-web__hero span { height: 6px; border-radius: 3px; background: rgb(255 255 255 / .75); }
 .hm-web__hero span + span { width: 55%; opacity: .5; }

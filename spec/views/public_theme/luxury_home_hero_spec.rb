@@ -18,6 +18,39 @@ RSpec.describe "public_theme/_luxury_home_hero.html.erb", type: :view do
   end
 end
 
+RSpec.describe "public_theme/_luxury_home_hero.html.erb modes", type: :view do
+  def render_luxury_hero(desktop_mode:, mobile_mode:)
+    tenant = Tenant.create!(name: "Salute Lux #{SecureRandom.hex(3)}", slug: "lux-modes-#{SecureRandom.hex(3)}")
+    view.define_singleton_method(:public_tenant) { tenant }
+    setting = HomeSetting.instance(tenant: tenant)
+    setting.update!(search_filter_display_mode: desktop_mode, mobile_search_filter_display_mode: mobile_mode)
+    assign(:hero_images, [{ source: "https://img.ex/hero.jpg", mobile_source: "https://img.ex/hero-m.jpg" }])
+    assign(:property_types, ["Apartamento"])
+    assign(:location_options, ["Centro"])
+    assign(:home_setting, setting)
+
+    render("public_theme/luxury_home_hero")
+  end
+
+  it "omite switch e formulário quando o filtro sai do hero" do
+    render_luxury_hero(desktop_mode: "floating", mobile_mode: "floating")
+
+    expect(rendered).to include("sl-hero")
+    expect(rendered).not_to include("sl-search")
+    expect(rendered).not_to include("sl-transaction")
+  end
+
+  it "restringe o formulário por dispositivo como o hero padrão" do
+    render_luxury_hero(desktop_mode: "hero", mobile_mode: "floating")
+
+    expect(rendered).to include("public-hero-search--desktop-only", "sl-search")
+
+    render_luxury_hero(desktop_mode: "floating", mobile_mode: "hero")
+
+    expect(rendered).to include("public-hero-search--mobile-only", "sl-search")
+  end
+end
+
 RSpec.describe "public_theme/_luxury_home_hero.html.erb attachments", type: :view do
   it "renderiza hero luxury com anexos ActiveStorage reais (sem chamar map no anexo)" do
     tenant = Tenant.create!(name: "Salute Lux #{SecureRandom.hex(3)}", slug: "lux-hero-#{SecureRandom.hex(3)}")

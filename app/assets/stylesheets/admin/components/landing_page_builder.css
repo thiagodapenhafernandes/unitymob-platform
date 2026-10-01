@@ -1,0 +1,103 @@
+/* Editor de páginas por blocos (Páginas). A prévia reaproveita o visual de .public-form-preview. */
+.landing-page-guided .ax-guided-layout { grid-template-columns: minmax(380px, 5fr) minmax(0, 7fr); }
+
+.lp-templates { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.lp-template { text-decoration: none; color: inherit; }
+.lp-template.is-current { border-color: var(--ax-accent-blue, #2563eb); box-shadow: 0 0 0 2px rgb(37 99 235 / .18); }
+
+.lp-blocks { display: grid; gap: 10px; }
+.lp-blocks__empty { margin: 0; padding: 14px; border: 1px dashed #cbd5e1; border-radius: 12px; color: #667085; text-align: center; font-size: 13px; }
+
+.lp-block { border: 1px solid #d8e1ec; border-radius: 12px; background: #fff; }
+.lp-block[open] { border-color: #b8c4d6; }
+.lp-block__head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.lp-block__head::-webkit-details-marker { display: none; }
+.lp-block__icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 9px; background: #eef2ff; color: #4338ca; }
+.lp-block__title { display: grid; min-width: 0; flex: 1; }
+.lp-block__title strong { font-size: 14px; font-weight: 800; color: #1f2733; }
+.lp-block__title small { overflow: hidden; color: #667085; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.lp-block__tools { display: inline-flex; align-items: center; gap: 4px; }
+.lp-block__btn, .lp-block__visible { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: #f2f4f7; color: #475467; cursor: pointer; }
+.lp-block__btn:hover, .lp-block__visible:hover { background: #e4e7ec; }
+.lp-block__btn--danger:hover { background: #fee4e2; color: #b42318; }
+.lp-block__visible input { position: absolute; opacity: 0; pointer-events: none; }
+.lp-block__visible:has(input:not(:checked)) { color: #98a2b3; background: #fff; box-shadow: inset 0 0 0 1px #d0d5dd; }
+.lp-block__visible:has(input:not(:checked)) i::before { content: "\f341"; } /* bi-eye-slash */
+.lp-block__body { display: grid; gap: 14px; padding: 4px 14px 16px; border-top: 1px solid #edf1f6; padding-top: 14px; }
+.lp-block__remove-image { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: #475467; }
+
+
+.lp-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.lp-add__item { display: grid; gap: 4px; justify-items: start; padding: 12px; border: 2px dashed #cbd5e1; border-radius: 12px; background: transparent; text-align: left; cursor: pointer; transition: border-color .15s, background-color .15s; }
+.lp-add__item:hover { border-color: #2563eb; background: rgb(37 99 235 / .05); }
+.lp-add__item i { font-size: 18px; color: #2563eb; }
+.lp-add__item strong { font-size: 13px; color: #1f2733; }
+.lp-add__item small { font-size: 12px; color: #667085; line-height: 1.3; }
+
+[data-admin-theme="dark"] .lp-block { background: var(--ax-dark-surface, #161b22); border-color: var(--ax-dark-border, #30363d); }
+[data-admin-theme="dark"] .lp-block__title strong, [data-admin-theme="dark"] .lp-add__item strong { color: #e6edf3; }
+[data-admin-theme="dark"] .lp-block__btn, [data-admin-theme="dark"] .lp-block__visible { background: #21262d; color: #c9d1d9; }
+
+@media (max-width: 1100px) {
+  .landing-page-guided .ax-guided-layout { grid-template-columns: 1fr; }
+}
+
+/* ---- Edição na prévia: ferramentas, barra de texto, menu de blocos e arrasto ---- */
+.public-form-preview__stage { position: relative; }
+.lp-tools { position: absolute; z-index: 30; display: inline-flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid #d0d5dd; border-radius: 10px; background: #fff; box-shadow: 0 6px 18px rgb(16 24 40 / .18); }
+.lp-tools[hidden], .lp-richbar[hidden], .lp-menu[hidden], .lp-dropline[hidden], .lp-dragshield[hidden] { display: none; }
+.lp-tools__group { display: inline-flex; align-items: center; gap: 2px; padding-left: 4px; margin-left: 2px; border-left: 1px solid #e4e7ec; }
+.lp-tools__group[hidden], .lp-tools__btn[hidden] { display: none; }
+.lp-tools__btn { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #344054; cursor: pointer; }
+.lp-tools__btn:hover { background: #eef2f7; }
+.lp-tools__btn.is-active { background: #dbeafe; color: #1d4ed8; }
+.lp-tools__btn--danger:hover { background: #fee4e2; color: #b42318; }
+.lp-tools__grip { cursor: grab; }
+.lp-tools__select { height: 28px; border: 1px solid #d0d5dd; border-radius: 7px; background: #fff; font-size: 12px; color: #344054; }
+.lp-richbar { position: absolute; z-index: 31; display: inline-flex; gap: 2px; padding: 4px; border-radius: 10px; background: #1f2733; box-shadow: 0 6px 18px rgb(16 24 40 / .3); }
+.lp-richbar button { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #fff; cursor: pointer; }
+.lp-richbar button:hover { background: rgb(255 255 255 / .16); }
+.lp-menu { position: absolute; z-index: 32; display: grid; gap: 2px; min-width: 220px; max-height: 70%; overflow-y: auto; padding: 6px; border: 1px solid #d0d5dd; border-radius: 12px; background: #fff; box-shadow: 0 10px 28px rgb(16 24 40 / .22); }
+.lp-menu strong { padding: 4px 8px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #667085; }
+.lp-menu button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 700; color: #1f2733; text-align: left; cursor: pointer; }
+.lp-menu button:hover { background: #eef2ff; }
+.lp-dropline { position: absolute; z-index: 29; left: 0; right: 0; height: 4px; background: #2563eb; box-shadow: 0 0 0 3px rgb(37 99 235 / .25); pointer-events: none; }
+.lp-dragshield { position: absolute; inset: 0; z-index: 28; cursor: grabbing; }
+[data-admin-theme="dark"] .lp-tools, [data-admin-theme="dark"] .lp-menu { background: var(--ax-dark-surface, #161b22); border-color: var(--ax-dark-border, #30363d); }
+[data-admin-theme="dark"] .lp-tools__btn, [data-admin-theme="dark"] .lp-menu button { color: #c9d1d9; }
+[data-admin-theme="dark"] .lp-tools__select { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+
+/* ---- Alça de arrastar do cartão e destino do arrasto ---- */
+.lp-block__grip { display: grid; place-items: center; flex: none; width: 22px; height: 34px; margin-left: -4px; border-radius: 6px; color: #98a2b3; cursor: grab; }
+.lp-block__grip:hover { background: #eef2f7; color: #475467; }
+.lp-block__grip:active { cursor: grabbing; }
+.lp-block.is-dragging { opacity: .45; }
+.lp-block { position: relative; }
+.lp-block.is-drop-before::before,
+.lp-block.is-drop-after::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 3px; background: #2563eb; box-shadow: 0 0 0 3px rgb(37 99 235 / .25); pointer-events: none; }
+.lp-block.is-drop-before::before { top: -8px; }
+.lp-block.is-drop-after::after { bottom: -8px; }
+
+/* ---- Menu "Adicionar bloco" (dropdown próprio) ---- */
+.lp-dropdown { position: relative; display: inline-block; margin-top: 12px; }
+.lp-dropdown__toggle { gap: 8px; }
+.lp-dropdown__toggle, .lp-dropdown__toggle span, .lp-dropdown__toggle i { color: #fff; }
+.lp-dropdown__caret { font-size: 11px; transition: transform .15s; }
+.lp-dropdown__toggle[aria-expanded="true"] .lp-dropdown__caret { transform: rotate(180deg); }
+.lp-dropdown__menu { position: absolute; z-index: 40; left: 0; bottom: calc(100% + 6px); display: grid; gap: 2px; width: min(380px, calc(100vw - 48px)); max-height: 60vh; padding: 6px; overflow-y: auto; border: 1px solid #d0d5dd; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgb(16 24 40 / .22); }
+.lp-dropdown__menu[hidden] { display: none; }
+.lp-dropdown__item { display: flex; align-items: flex-start; gap: 12px; padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; text-align: left; cursor: pointer; }
+.lp-dropdown__item:hover, .lp-dropdown__item:focus-visible { background: #eef2ff; outline: none; }
+.lp-dropdown__icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 9px; background: #eef2ff; color: #4338ca; }
+.lp-dropdown__item strong { display: block; font-size: 13px; color: #1f2733; }
+.lp-dropdown__item small { display: block; margin-top: 1px; font-size: 12px; line-height: 1.35; color: #667085; }
+[data-admin-theme="dark"] .lp-dropdown__menu { background: var(--ax-dark-surface, #161b22); border-color: var(--ax-dark-border, #30363d); }
+[data-admin-theme="dark"] .lp-dropdown__item strong { color: #e6edf3; }
+
+/* ---- Filtros da vitrine dentro do cartão: ritmo vertical e flags em colunas que se ajustam à largura ---- */
+.lp-filters { display: grid; gap: 14px; }
+.lp-filters__title { display: flex; align-items: center; gap: 8px; margin: 4px 0 -4px; color: #344054; font-size: 13px; font-weight: 800; }
+.lp-filters__title .bi { color: var(--ax-accent-amber, #d98a1e); }
+.lp-filters__title em { margin-left: auto; color: #98a2b3; font-size: 11px; font-style: normal; font-weight: 700; }
+.lp-filters .ax-chip-section + .ax-chip-section { margin-top: 0; }
+.lp-filters .lp-flags { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }

@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 const CHOICE_TYPES = new Set(["select", "radio", "checkbox"])
+const MASKABLE_TYPES = new Set(["text", "tel", "number", "currency"])
 const TYPE_LABELS = {
   text: "Texto",
   email: "E-mail",
@@ -20,6 +21,7 @@ const TYPE_LABELS = {
   select: "Seleção",
   radio: "Múltipla escolha",
   checkbox: "Checkbox",
+  file: "Anexo",
   hidden: "Campo oculto"
 }
 const PLACEHOLDERS = {
@@ -39,6 +41,7 @@ const PLACEHOLDERS = {
   range: "",
   textarea: "Digite os detalhes",
   select: "Selecione",
+  file: "",
   hidden: ""
 }
 const DEFAULT_OPTIONS = {
@@ -96,6 +99,56 @@ export default class extends Controller {
     }
   }
 
+  // Atalho de formato: preenche a máscara do campo (e zera o seletor).
+  maskPreset(event) {
+    const select = event.currentTarget
+    const input = this.fieldFromEvent(event)?.querySelector("[data-public-form-builder-target~='maskInput']")
+    if (!input || !select.value) return
+
+    input.value = select.value
+    select.value = ""
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+
+  toggle(event) {
+    const field = this.fieldFromEvent(event)
+    if (!field) return
+
+    const open = field.classList.toggle("is-open")
+    event.currentTarget.setAttribute("aria-expanded", open)
+  }
+
+  dragStart(event) {
+    this.dragged = this.fieldFromEvent(event)
+    if (!this.dragged) return
+
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", "")
+    event.dataTransfer.setDragImage(this.dragged, 20, 20)
+    this.dragged.classList.add("is-dragging")
+  }
+
+  dragOver(event) {
+    if (!this.dragged) return
+
+    event.preventDefault()
+    const before = this.visibleFields()
+      .filter((field) => field !== this.dragged)
+      .find((field) => {
+        const rect = field.getBoundingClientRect()
+        return event.clientY < rect.top + rect.height / 2
+      })
+
+    if (before) this.listTarget.insertBefore(this.dragged, before)
+    else this.listTarget.appendChild(this.dragged)
+  }
+
+  dragEnd() {
+    this.dragged?.classList.remove("is-dragging")
+    this.dragged = null
+    this.refresh()
+  }
+
   duplicate(event) {
     const source = this.fieldFromEvent(event)
     if (!source) return
@@ -108,6 +161,14 @@ export default class extends Controller {
     this.nameInput(field).dataset.autoName = "true"
     this.placeholderInput(field).value = this.placeholderInput(source)?.value || ""
     this.optionsInput(field).value = this.optionsInput(source)?.value || DEFAULT_OPTIONS[type] || ""
+    this.requiredInput(field).checked = Boolean(this.requiredInput(source)?.checked)
+    source.querySelectorAll("[data-file-setting], [data-config-setting]").forEach((input) => {
+      const setting = input.dataset.fileSetting ? `[data-file-setting='${input.dataset.fileSetting}']` : `[data-config-setting='${input.dataset.configSetting}']`
+      const copy = field.querySelector(setting)
+      if (!copy) return
+      if (input.type === "checkbox") copy.checked = input.checked
+      else copy.value = input.value
+    })
 
     source.insertAdjacentElement("afterend", field)
     this.refresh()
@@ -201,6 +262,7 @@ export default class extends Controller {
     this.optionsInput(field).value = overrides.options ?? DEFAULT_OPTIONS[type] ?? ""
     this.requiredInput(field).checked = Boolean(overrides.required)
     field.dataset.fieldType = type
+    field.classList.add("is-open")
     this.syncChoiceState(field)
 
     return field
@@ -220,20 +282,36 @@ export default class extends Controller {
       const type = this.typeInput(field)?.value || "text"
 
       if (title) title.textContent = label || "Novo campo"
-      if (meta) meta.textContent = `${position}. ${TYPE_LABELS[type] || type}`
+      const required = this.requiredInput(field)?.checked
+      if (meta) meta.textContent = `${position}. ${TYPE_LABELS[type] || type}${required ? " · obrigatório" : ""}`
       this.syncChoiceState(field)
     })
 
     if (this.hasEmptyTarget) this.emptyTarget.hidden = fields.length > 0
     if (this.hasCounterTarget) this.counterTarget.textContent = `${fields.length} ${fields.length === 1 ? "campo" : "campos"}`
+    this.element.dispatchEvent(new CustomEvent("public-form-builder:changed"))
   }
 
   syncChoiceState(field) {
     const type = this.typeInput(field)?.value || "text"
     const block = field.querySelector("[data-public-form-builder-target~='optionsBlock']")
-    if (!block) return
+    if (block) block.classList.toggle("is-hidden", !CHOICE_TYPES.has(type))
 
-    block.classList.toggle("is-hidden", !CHOICE_TYPES.has(type))
+    // Campos desabilitados não são enviados: a config de arquivo só vale para o tipo "file".
+    // Máscara só para tipos de texto/número/telefone/moeda; desabilitado não é enviado.
+    const maskBlock = field.querySelector("[data-public-form-builder-target~='maskBlock']")
+    if (maskBlock) {
+      const maskable = MASKABLE_TYPES.has(type)
+      maskBlock.classList.toggle("is-hidden", !maskable)
+      maskBlock.querySelectorAll("[data-public-form-builder-target~='maskInput']").forEach((input) => { input.disabled = !maskable })
+    }
+
+    const fileBlock = field.querySelector("[data-public-form-builder-target~='fileBlock']")
+    if (fileBlock) {
+      const isFile = type === "file"
+      fileBlock.classList.toggle("is-hidden", !isFile)
+      fileBlock.querySelectorAll("[data-public-form-builder-target~='fileInput']").forEach((input) => { input.disabled = !isFile })
+    }
   }
 
   visibleFields() {

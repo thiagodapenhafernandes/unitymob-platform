@@ -20,8 +20,8 @@
   --sl-ink: #12202f;
   --sl-muted: #5f6d7e;
   --sl-line: rgba(190, 155, 71, .28);
-  /* Mesma largura útil da .container-custom da home (1440px - 2 x 32px). */
-  --sl-max: 1376px;
+  /* Mesma largura útil da .container-custom da home (1550px - 2 x 32px). */
+  --sl-max: 1486px;
   --sl-serif: "Cormorant Garamond", Georgia, serif;
   --sl-sans: "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --sl-numeric: var(--sl-sans);
@@ -294,6 +294,11 @@ body.no-scroll { overflow: hidden; }
    altura medida pelo controller, com um valor seguro antes do JS. */
 .sl-shell--solid-header .public-header-offset {
   margin-top: var(--sl-header-height, 96px);
+}
+
+/* Listagem: a barra de filtros gruda logo abaixo do header medido do luxury (e não a 72px, a altura do header padrão). */
+.sl-shell--solid-header .public-habitations-index {
+  --listing-header-h: var(--sl-header-height, 96px);
 }
 
 .sl-header__bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: nowrap; }
@@ -4553,13 +4558,13 @@ body.no-scroll { overflow: hidden; }
   overflow: hidden;
 }
 
-.public-form-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
+/* O wrapper .public-form-modal só guarda o gatilho e o overlay (fica em linha); quem cobre a tela é o __overlay
+   (fixed, com [hidden] tratado em components/_public_form_modal.scss). Só a pele luxury do fundo e do respiro. */
+.public-form-modal__overlay {
   padding: 24px;
+}
+
+.public-form-modal__backdrop {
   background: rgba(5, 15, 28, .72);
   backdrop-filter: blur(10px);
 }
@@ -4574,6 +4579,132 @@ body.no-scroll { overflow: hidden; }
   background: var(--sl-paper);
   box-shadow: 0 30px 90px rgba(0, 0, 0, .35);
 }
+
+/* Layouts e tamanhos: mesma escala da variante default, pele luxury. */
+.public-form-modal__dialog--basic {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.public-form-modal__dialog--basic .public-form-modal__body header {
+  margin-right: 40px;
+  text-align: center;
+}
+
+.public-form-modal__dialog--basic .public-form-modal__form {
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+.public-form-modal__dialog--size-small {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(560px, 100%);
+}
+
+.public-form-modal__dialog--size-small .public-form-modal__aside {
+  min-height: auto;
+  padding: 26px;
+}
+
+.public-form-modal__dialog--size-small .public-form-modal__benefits {
+  display: none;
+}
+
+.public-form-modal__dialog--size-small .public-form-modal__form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.public-form-modal__dialog--size-default {
+  width: min(720px, 100%);
+}
+
+.public-form-modal__dialog--size-large {
+  width: min(960px, 100%);
+}
+
+.public-form-modal__dialog--size-xl {
+  width: min(1180px, 100%);
+}
+
+.public-form-modal__overlay:has(.public-form-modal__dialog--size-fullscreen) {
+  padding: 0;
+}
+
+.public-form-modal__dialog--size-fullscreen {
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+
+.public-form-modal__aside {
+  background: var(--pfm-aside-bg, var(--sl-navy-900));
+  color: var(--pfm-aside-fg, #fff);
+}
+
+.public-form-modal__body {
+  background: var(--pfm-body-bg, transparent);
+}
+
+.public-form-modal__aside h2,
+.public-form-modal__eyebrow,
+.public-form-modal__benefits i {
+  color: var(--pfm-aside-accent, var(--sl-gold-soft));
+}
+
+.public-form-modal__aside h2 {
+  font-family: var(--sl-serif);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+.public-form-modal__aside h2 { hyphens: manual; overflow-wrap: normal; }
+
+.public-form-modal__form .public-form-modal__consent {
+  color: var(--sl-muted);
+  font-family: var(--sl-sans);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.public-form-modal__benefits li {
+  color: var(--pfm-aside-fg, #fff);
+  font-family: var(--sl-sans);
+  font-weight: 500;
+}
+
+.public-form-modal__subtitle {
+  color: var(--sl-muted);
+  font-family: var(--sl-sans);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.public-form-modal__aside-subtitle {
+  margin: 16px 0 0;
+  color: var(--pfm-aside-fg, rgba(255, 255, 255, .8));
+  font-family: var(--sl-sans);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.public-form-modal__rich > :first-child { margin-top: 0; }
+
+.public-form-modal__rich > :last-child { margin-bottom: 0; }
+
+.public-form-modal__rich ul,
+.public-form-modal__rich ol { margin: .5em 0; padding-left: 1.3em; }
+
+.public-form-modal__rich ul { list-style: disc; }
+
+.public-form-modal__rich ol { list-style: decimal; }
+
+.public-form-modal__rich a { color: inherit; text-decoration: underline; }
+
+.public-form-modal__rich blockquote { margin: .5em 0; padding-left: .9em; border-left: 3px solid currentColor; opacity: .85; }
+
+.public-form-modal__rich h1 { margin: .4em 0; font-size: 1.25em; font-weight: 800; line-height: 1.2; }
 
 .public-form-modal__close {
   position: absolute;
@@ -4624,13 +4755,14 @@ body.no-scroll { overflow: hidden; }
   line-height: 1.65;
 }
 
+/* O <form> só empilha o grid de campos, o botão e o aviso; as colunas ficam no __grid (components/_public_form_modal.scss).
+   Com colunas aqui, o grid inteiro cairia na primeira metade e o botão ficaria mais largo que os campos. */
 .public-form-modal__form {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 14px;
+  gap: 18px;
 }
 
-.public-form-modal__field--textarea {
+.public-form-modal__field--w-full {
   grid-column: 1 / -1;
 }
 
@@ -4656,6 +4788,127 @@ body.no-scroll { overflow: hidden; }
   transition: border-color .18s ease, box-shadow .18s ease;
 }
 
+/* Campo de anexo: área de clique/arraste + lista dos arquivos escolhidos (pele luxury). */
+.public-file {
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.public-file__drop {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 18px 14px;
+  border: 1.5px dashed rgba(10, 24, 38, .24);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--sl-ink);
+  font: 600 14px/1.4 var(--sl-sans);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.public-file__drop:hover,
+.public-file__drop.is-over {
+  border-color: var(--sl-gold);
+  background: rgba(190, 155, 71, .07);
+}
+
+.public-file:focus-within .public-file__drop {
+  border-color: var(--sl-gold);
+  box-shadow: 0 0 0 4px rgba(190, 155, 71, .16);
+}
+
+.public-file__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.public-file__icon {
+  color: var(--sl-gold);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.public-file__hint {
+  color: var(--sl-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.public-file__list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-file__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(10, 24, 38, .14);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--sl-ink);
+  font: 500 13px/1.35 var(--sl-sans);
+}
+
+.public-file__item i { color: var(--sl-gold); font-size: 17px; }
+
+.public-file__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-file__size {
+  color: var(--sl-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.public-file__remove {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sl-muted);
+  cursor: pointer;
+}
+
+.public-file__remove:hover { background: rgba(10, 24, 38, .06); color: #9f1239; }
+
+.public-file__item.is-invalid { border-color: #fda4af; background: #fff1f2; }
+
+.public-file__error {
+  margin: 0;
+  color: #9f1239;
+  font: 700 12.5px/1.4 var(--sl-sans);
+}
+
+.public-form-modal__field small {
+  color: var(--sl-ink);
+  font-size: 12px;
+  opacity: .65;
+}
+
 .public-form-modal__control:is(textarea) {
   min-height: 118px;
   resize: vertical;
@@ -4672,8 +4925,8 @@ body.no-scroll { overflow: hidden; }
   margin-top: 6px;
   border: 0;
   border-radius: 999px;
-  background: var(--sl-navy-800);
-  color: #fff;
+  background: var(--pfm-submit-bg, var(--sl-navy-800));
+  color: var(--pfm-submit-fg, #fff);
   font-family: var(--sl-sans);
   font-size: 13px;
   font-weight: 800;
@@ -4682,17 +4935,13 @@ body.no-scroll { overflow: hidden; }
 }
 
 @media (max-width: 640px) {
-  .public-form-modal {
+  .public-form-modal__overlay {
     padding: 12px;
   }
 
   .public-form-modal__dialog {
     max-height: calc(100dvh - 24px);
     border-radius: 22px;
-  }
-
-  .public-form-modal__form {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -4973,3 +5222,304 @@ body.no-scroll { overflow: hidden; }
 .public-theme-section-skeleton--salute-luxury .public-theme-section-skeleton__line::after { background: linear-gradient(90deg, transparent, rgba(190, 155, 71, .24), transparent); }
 /* Spinner do mapa: mesma estrutura do default, pele dourada. */
 .public-theme-property-map--salute-luxury .public-theme-property-map__loader { border-color: rgba(190, 155, 71, .2); border-top-color: var(--sl-gold, #be9b47); }
+
+
+/* ===== Construtor de páginas: blocos (variante salute-luxury) ===== */
+.public-theme-block-cover--salute-luxury { position: relative; display: grid; min-height: clamp(320px, 46vw, 520px); padding: 72px 24px; overflow: hidden; background: var(--sl-navy-800); color: #fff; }
+.public-theme-block-cover--salute-luxury.is-align-center { place-items: center; text-align: center; }
+.public-theme-block-cover--salute-luxury.is-align-left { place-items: center start; text-align: left; }
+.public-theme-block-cover--salute-luxury.is-align-right { place-items: center end; text-align: right; }
+.public-theme-block-cover--salute-luxury .public-theme-block-cover__media,
+.public-theme-block-cover--salute-luxury .public-theme-block-cover__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.public-theme-block-cover--salute-luxury.has-image::after { content: ""; position: absolute; inset: 0; background: rgba(10, 24, 38, var(--cover-overlay, .45)); }
+.public-theme-block-cover--salute-luxury .public-theme-block-cover__inner { position: relative; z-index: 1; display: grid; gap: 18px; max-width: 780px; }
+.public-theme-block-cover--salute-luxury .public-theme-block-cover__title { margin: 0; font-family: var(--sl-serif); font-size: clamp(38px, 5.4vw, 66px); font-weight: 500; line-height: 1.02; text-wrap: balance; }
+.public-theme-block-cover--salute-luxury .public-theme-block-cover__subtitle { margin: 0; font-family: var(--sl-sans); font-size: clamp(16px, 1.8vw, 19px); line-height: 1.6; opacity: .9; }
+.public-theme-block-cover--salute-luxury .public-theme-block-cover__button { justify-self: start; padding: 14px 32px; border-radius: 999px; background: var(--sl-gold); color: var(--sl-navy-900); font-family: var(--sl-sans); font-size: 13px; font-weight: 700; letter-spacing: .14em; text-decoration: none; text-transform: uppercase; }
+.public-theme-block-cover--salute-luxury.is-align-center .public-theme-block-cover__button { justify-self: center; }
+.public-theme-block-cover--salute-luxury.is-align-right .public-theme-block-cover__button { justify-self: end; }
+
+.public-theme-block-text--salute-luxury { padding: 72px 0; background: var(--sl-paper); }
+.public-theme-block-text--salute-luxury .public-theme-block-text__inner { margin: 0 auto; max-width: 760px; }
+.public-theme-block-text--salute-luxury.is-wide .public-theme-block-text__inner { max-width: 1100px; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__heading { margin: 0 0 22px; color: var(--sl-navy-800); font-family: var(--sl-serif); font-size: clamp(30px, 3.6vw, 44px); font-weight: 500; line-height: 1.08; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body { color: var(--sl-muted); font-family: var(--sl-sans); font-size: 17px; line-height: 1.8; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body > :first-child { margin-top: 0; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body > :last-child { margin-bottom: 0; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body h1,
+.public-theme-block-text--salute-luxury .public-theme-block-text__body h2,
+.public-theme-block-text--salute-luxury .public-theme-block-text__body h3 { margin: 1.4em 0 .5em; color: var(--sl-navy-800); font-family: var(--sl-serif); font-weight: 500; line-height: 1.15; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body ul { list-style: disc; padding-left: 1.4em; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body ol { list-style: decimal; padding-left: 1.4em; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body a { color: var(--sl-gold-deep, #9c7c33); text-decoration: underline; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body blockquote { margin: 1.2em 0; padding-left: 1em; border-left: 3px solid var(--sl-gold); color: var(--sl-navy-800); font-family: var(--sl-serif); font-size: 1.15em; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body img { max-width: 100%; height: auto; border-radius: 16px; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body table { width: 100%; border-collapse: collapse; }
+.public-theme-block-text--salute-luxury .public-theme-block-text__body th,
+.public-theme-block-text--salute-luxury .public-theme-block-text__body td { padding: 8px 10px; border: 1px solid rgba(10, 24, 38, .14); text-align: left; }
+
+.public-theme-block-button--salute-luxury { padding: 32px 0; background: var(--sl-paper); }
+.public-theme-block-button--salute-luxury.is-align-left .container-custom { text-align: left; }
+.public-theme-block-button--salute-luxury.is-align-center .container-custom { text-align: center; }
+.public-theme-block-button--salute-luxury.is-align-right .container-custom { text-align: right; }
+.public-theme-block-button--salute-luxury .public-theme-block-button__link { display: inline-flex; align-items: center; justify-content: center; padding: 15px 38px; border: 1.5px solid var(--sl-navy-800); border-radius: 999px; font-family: var(--sl-sans); font-size: 13px; font-weight: 700; letter-spacing: .16em; text-decoration: none; text-transform: uppercase; transition: background-color .2s ease, color .2s ease; }
+.public-theme-block-button--salute-luxury .is-primary { background: var(--sl-navy-800); color: #fff; }
+.public-theme-block-button--salute-luxury .is-primary:hover { background: var(--sl-navy-900); }
+.public-theme-block-button--salute-luxury .is-secondary { border-color: var(--sl-gold); background: var(--sl-gold); color: var(--sl-navy-900); }
+.public-theme-block-button--salute-luxury .is-outline { background: transparent; color: var(--sl-navy-800); }
+.public-theme-block-button--salute-luxury .is-outline:hover { background: var(--sl-navy-800); color: #fff; }
+
+/* ---- Colunas da página e blocos de mídia (imagem, vídeo, iframe) — luxury ---- */
+.public-landing-page--salute-luxury .public-landing-page__row { display: grid; gap: 40px; padding: 32px 0; align-items: start; }
+.public-landing-page--salute-luxury .public-landing-page__row.has-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.public-landing-page--salute-luxury .public-landing-page__row.has-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.public-landing-page--salute-luxury .public-landing-page__row > .is-span-1 { grid-column: span 1; }
+.public-landing-page--salute-luxury .public-landing-page__row > .is-span-2 { grid-column: span 2; }
+.public-landing-page--salute-luxury .public-landing-page__cell .container-custom { max-width: none; padding-left: 0; padding-right: 0; }
+.public-landing-page--salute-luxury .public-landing-page__cell > section, .public-landing-page--salute-luxury .public-landing-page__cell > figure, .public-landing-page--salute-luxury .public-landing-page__cell > div { padding-top: 0; padding-bottom: 0; }
+@media (max-width: 767px) {
+  .public-landing-page--salute-luxury .public-landing-page__row.has-cols-2,
+  .public-landing-page--salute-luxury .public-landing-page__row.has-cols-3 { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .public-landing-page--salute-luxury .public-landing-page__row > .is-span-1,
+  .public-landing-page--salute-luxury .public-landing-page__row > .is-span-2 { grid-column: auto; }
+}
+
+.public-theme-block-image--salute-luxury { margin: 0; padding: 48px 0; background: var(--sl-paper); }
+.public-theme-block-image--salute-luxury .public-theme-block-image__img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.public-theme-block-image--salute-luxury.is-fit-fill .public-theme-block-image__img { width: 100%; }
+.public-theme-block-image--salute-luxury.is-rounded .public-theme-block-image__img { border-radius: 18px; }
+.public-theme-block-image--salute-luxury .public-theme-block-image__caption { margin-top: 12px; color: var(--sl-muted); font-family: var(--sl-sans); font-size: 14px; text-align: center; }
+.public-theme-block-image--salute-luxury .public-theme-block-image__placeholder,
+.public-theme-block-video--salute-luxury .public-theme-block-video__placeholder,
+.public-theme-block-embed--salute-luxury .public-theme-block-embed__placeholder { display: grid; place-items: center; gap: 6px; min-height: 160px; border: 1px dashed rgba(10, 24, 38, .3); background: rgba(10, 24, 38, .03); color: var(--sl-muted); font-family: var(--sl-sans); font-size: 14px; text-align: center; }
+
+.public-theme-block-video--salute-luxury { margin: 0; padding: 48px 0; background: var(--sl-paper); }
+.public-theme-block-video--salute-luxury .public-theme-block-video__frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; }
+.public-theme-block-video--salute-luxury .public-theme-block-video__frame iframe,
+.public-theme-block-video--salute-luxury .public-theme-block-video__thumb { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+.public-theme-block-video--salute-luxury .public-theme-block-video__play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 64px; text-shadow: 0 2px 16px rgba(0, 0, 0, .6); }
+.public-theme-block-video--salute-luxury .public-theme-block-video__placeholder { position: absolute; inset: 0; }
+.public-theme-block-video--salute-luxury .public-theme-block-video__caption { margin-top: 12px; color: var(--sl-muted); font-family: var(--sl-sans); font-size: 14px; text-align: center; }
+
+.public-theme-block-embed--salute-luxury { padding: 48px 0; background: var(--sl-paper); }
+.public-theme-block-embed--salute-luxury .public-theme-block-embed__frame { display: block; width: 100%; border: 0; }
+.public-theme-block-embed--salute-luxury.is-height-300 .public-theme-block-embed__frame { height: 300px; }
+.public-theme-block-embed--salute-luxury.is-height-450 .public-theme-block-embed__frame { height: 450px; }
+.public-theme-block-embed--salute-luxury.is-height-600 .public-theme-block-embed__frame { height: 600px; }
+.public-theme-block-embed--salute-luxury.is-height-800 .public-theme-block-embed__frame { height: 800px; }
+
+/* ---- Layouts do hero (Barra e Cartão) — luxury ---- */
+.public-theme-hero-bar--salute-luxury,
+.public-theme-hero-card--salute-luxury { position: relative; display: flex; align-items: center; min-height: min(92dvh, 900px); overflow: hidden; background: var(--sl-navy-900, #08131e); color: #fff; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__media,
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__media img,
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__media,
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__overlay,
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, var(--hero-overlay-start, rgba(5, 12, 20, .6)), var(--hero-overlay-end, rgba(5, 12, 20, .35))); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__container,
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__container { position: relative; z-index: 2; width: 100%; max-width: 1280px; margin: 0 auto; padding: 128px 32px 80px; }
+
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__inner { display: grid; gap: 34px; }
+.public-theme-hero-bar--salute-luxury.is-align-center .public-theme-hero-bar__inner { text-align: center; }
+.public-theme-hero-bar--salute-luxury.is-align-left .public-theme-hero-bar__inner { text-align: left; }
+.public-theme-hero-bar--salute-luxury.is-align-right .public-theme-hero-bar__inner { text-align: right; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero__title { margin: 0; font-family: var(--sl-serif); font-size: clamp(34px, 5.2vw, var(--hero-title-configured-size, 72px)); font-weight: 500; line-height: 1.06; text-transform: uppercase; letter-spacing: .01em; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero__lead { margin: -16px 0 0; max-width: 700px; font-family: var(--sl-sans); font-size: clamp(15px, 1.5vw, var(--hero-subtitle-configured-size, 19px)); opacity: .88; }
+.public-theme-hero-bar--salute-luxury.is-align-center .public-theme-hero__lead { margin-inline: auto; }
+.public-theme-hero-bar--salute-luxury.is-align-right .public-theme-hero__lead { margin-left: auto; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__search { width: 100%; max-width: 1140px; }
+.public-theme-hero-bar--salute-luxury.is-align-center .public-theme-hero-bar__search { margin-inline: auto; }
+.public-theme-hero-bar--salute-luxury.is-align-right .public-theme-hero-bar__search { margin-left: auto; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__form { display: grid; grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .95fr) minmax(0, 1.2fr) auto; align-items: center; gap: 6px; padding: 8px; border-radius: 999px; background: #fff; box-shadow: 0 24px 64px rgba(0, 0, 0, .4); color: var(--sl-navy-800); font-family: var(--sl-sans); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__tabs { display: inline-flex; padding: 4px; border-radius: 999px; background: #e9ecef; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__tab { padding: 13px 24px; border: 0; border-radius: 999px; background: transparent; color: #4a5560; font-size: 15px; cursor: pointer; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__tab[aria-pressed="true"] { background: var(--sl-navy-800); color: #fff; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__field { display: block; min-width: 0; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__field + .public-theme-hero-bar__field { border-left: 1px solid rgba(10, 24, 38, .12); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__control { width: 100%; height: 54px; padding: 0 16px; border: 0; background: transparent; color: var(--sl-navy-800); font-size: 15px; text-overflow: ellipsis; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__control:focus-visible { outline: 2px solid var(--sl-gold); outline-offset: -2px; border-radius: 999px; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__submit { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 54px; padding: 0 34px; border: 0; border-radius: 999px; background: var(--sl-navy-800); color: #fff; font-family: var(--sl-sans); font-size: 15px; cursor: pointer; transition: background-color .2s; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__submit:hover { background: var(--sl-gold-deep, #9c7c33); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__detail { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; padding: 6px 4px; border: 0; background: transparent; color: #fff; font-family: var(--sl-sans); font-size: 14px; cursor: pointer; opacity: .9; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__detail:hover { opacity: 1; text-decoration: underline; }
+@media (max-width: 1023px) {
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__form { grid-template-columns: 1fr 1fr; border-radius: 22px; padding: 14px; gap: 10px; }
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__tabs { grid-column: 1 / -1; justify-self: start; }
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__field { border: 1px solid rgba(10, 24, 38, .14); border-radius: 12px; }
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__field + .public-theme-hero-bar__field { border-left: 1px solid rgba(10, 24, 38, .14); }
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__field--text,
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__submit { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) { .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__form { grid-template-columns: 1fr; } }
+
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__inner { display: flex; }
+.public-theme-hero-card--salute-luxury.is-align-left .public-theme-hero-card__inner { justify-content: flex-start; }
+.public-theme-hero-card--salute-luxury.is-align-center .public-theme-hero-card__inner { justify-content: center; }
+.public-theme-hero-card--salute-luxury.is-align-right .public-theme-hero-card__inner { justify-content: flex-end; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__panel { width: 100%; max-width: 640px; padding: 34px; border-top: 3px solid var(--sl-gold); background: var(--sl-paper, #fff); box-shadow: 0 34px 90px rgba(0, 0, 0, .5); color: var(--sl-navy-800); font-family: var(--sl-sans); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__tabs { display: inline-flex; border-bottom: 1px solid rgba(10, 24, 38, .15); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__tab { padding: 10px 22px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--sl-muted); font-size: 14px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__tab[aria-pressed="true"] { border-bottom-color: var(--sl-gold); color: var(--sl-navy-800); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__title { margin: 26px 0 8px; color: var(--sl-navy-800); font-family: var(--sl-serif); font-size: clamp(28px, 3.2vw, 40px); font-weight: 500; line-height: 1.08; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__lead { margin: 0 0 22px; color: var(--sl-muted); font-size: 15px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__filters { display: grid; gap: 12px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__filters[hidden] { display: none; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__field { position: relative; display: block; min-width: 0; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__field > i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--sl-gold-deep, #9c7c33); pointer-events: none; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__control { width: 100%; height: 50px; padding: 0 14px 0 40px; border: 1px solid rgba(10, 24, 38, .2); background: #fff; color: var(--sl-navy-800); font-size: 14.5px; text-overflow: ellipsis; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__control:focus-visible { outline: 2px solid var(--sl-gold); outline-offset: 1px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__label { margin: 8px 0 0; color: var(--sl-muted); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__chip-option { cursor: pointer; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__chip { display: inline-flex; align-items: center; padding: 7px 14px; border: 1px solid rgba(10, 24, 38, .2); background: transparent; color: var(--sl-muted); font-size: 13px; transition: background-color .15s, color .15s; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__chip-option input:checked + .public-theme-hero-card__chip { border-color: var(--sl-navy-800); background: var(--sl-navy-800); color: #fff; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__chip-option input:focus-visible + .public-theme-hero-card__chip { outline: 2px solid var(--sl-gold); outline-offset: 2px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__submit { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 54px; margin-top: 8px; border: 0; background: var(--sl-navy-800); color: #fff; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; transition: background-color .2s; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__submit:hover { background: var(--sl-gold-deep, #9c7c33); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__submit.is-busy { opacity: .7; cursor: progress; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__footer { margin: 20px -34px -34px; padding: 14px 34px; background: rgba(10, 24, 38, .05); color: var(--sl-muted); font-size: 14px; text-align: center; }
+@media (max-width: 640px) {
+  .public-theme-hero-card--salute-luxury .public-theme-hero-card__container { padding: 104px 14px 40px; }
+  .public-theme-hero-card--salute-luxury .public-theme-hero-card__panel { padding: 22px; }
+  .public-theme-hero-card--salute-luxury .public-theme-hero-card__grid { grid-template-columns: 1fr; }
+  .public-theme-hero-card--salute-luxury .public-theme-hero-card__footer { margin: 18px -22px -22px; padding: 12px 22px; }
+}
+
+/* ---- Buscador por voz do hero (Clássico e Barra) — luxury ---- */
+/* Mesma casca da barra de busca do luxury (.sl-search): vidro, borda fina e botão dourado colado à direita, no lugar do BUSCAR. */
+.public-theme-hero-voice--salute-luxury { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 10px; max-width: 900px; margin-top: 28px; font-family: var(--sl-sans); color: #fff; }
+.public-theme-hero-voice--salute-luxury[hidden],
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__error[hidden] { display: none; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__bar { display: flex; align-items: stretch; overflow: hidden; border: 1px solid rgba(255, 255, 255, .14); border-radius: 22px; background: rgba(255, 255, 255, .07); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__cancel { display: grid; place-items: center; flex: none; width: 68px; border: 0; border-right: 1px solid rgba(255, 255, 255, .12); background: transparent; color: rgba(255, 255, 255, .7); font-size: 18px; cursor: pointer; transition: color .2s, background-color .2s; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__cancel:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__field { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; min-height: 70px; padding: 0 24px; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__wave { flex: 1; min-width: 0; height: 36px; color: var(--sl-gold-soft); }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__timer { flex: none; color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; letter-spacing: .14em; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__text { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: #fff; font-size: 15px; outline: none; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__text::placeholder { color: rgba(255, 255, 255, .55); }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__status { flex: 1; min-width: 0; overflow: hidden; color: var(--sl-gold-soft); font-size: 12px; letter-spacing: .14em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__send { display: grid; place-items: center; flex: none; min-width: 150px; border: 0; background: var(--sl-gold); color: var(--sl-navy-900); font-size: 24px; cursor: pointer; transition: background-color .2s; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__send:hover { background: var(--sl-gold-soft); }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__send:disabled { cursor: progress; opacity: .8; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__send i.bi-arrow-repeat { animation: public-theme-hero-spin 1s linear infinite; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__error { margin: 0; padding: 8px 14px; border-radius: 12px; background: rgba(180, 35, 24, .85); color: #fff; font-size: 14px; }
+.public-theme-hero-voice--salute-luxury .public-theme-hero-voice__note { margin: 0; color: rgba(255, 255, 255, .6); font-size: 12px; letter-spacing: .02em; }
+
+.public-theme-hero-voice--salute-luxury[data-state="idle"] .public-theme-hero-voice__wave,
+.public-theme-hero-voice--salute-luxury[data-state="idle"] .public-theme-hero-voice__timer,
+.public-theme-hero-voice--salute-luxury[data-state="idle"] .public-theme-hero-voice__text,
+.public-theme-hero-voice--salute-luxury[data-state="busy"] .public-theme-hero-voice__wave,
+.public-theme-hero-voice--salute-luxury[data-state="busy"] .public-theme-hero-voice__timer,
+.public-theme-hero-voice--salute-luxury[data-state="busy"] .public-theme-hero-voice__text,
+.public-theme-hero-voice--salute-luxury[data-state="recording"] .public-theme-hero-voice__text,
+.public-theme-hero-voice--salute-luxury[data-state="recording"] .public-theme-hero-voice__status,
+.public-theme-hero-voice--salute-luxury[data-state="text"] .public-theme-hero-voice__wave,
+.public-theme-hero-voice--salute-luxury[data-state="text"] .public-theme-hero-voice__timer,
+.public-theme-hero-voice--salute-luxury[data-state="text"] .public-theme-hero-voice__status { display: none; }
+.public-theme-hero-voice--salute-luxury[data-state="recording"] .public-theme-hero-voice__timer::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 10px; border-radius: 50%; background: #e5484d; animation: public-theme-hero-pulse 1.2s infinite; }
+
+.public-theme-hero-voice__toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* Voz é uma terceira aba, exclusiva como Comprar/Alugar: no modo voz a cor ativa (dourado) sai delas e vai para o Voz. */
+.public-theme-transaction-switch--salute-luxury .public-theme-hero-voice__toggle[aria-pressed="true"] { border-color: var(--sl-gold) !important; background: var(--sl-gold) !important; color: var(--sl-navy-900, #0a1826) !important; }
+[data-voice="on"] .public-theme-transaction-switch--salute-luxury .sl-transaction__button:not(.public-theme-hero-voice__toggle) { border: 1px solid rgba(255, 255, 255, .4) !important; background: transparent !important; color: #fff !important; }
+
+/* Barra: no modo voz, a barra de gravação ocupa o lugar dos campos e do botão. */
+.public-theme-hero-bar--salute-luxury [data-voice="on"] .public-theme-hero-bar__field,
+.public-theme-hero-bar--salute-luxury [data-voice="on"] .public-theme-hero-bar__submit { display: none; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar { grid-column: 2 / -1; max-width: none; margin-top: 0; color: var(--sl-navy-800); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__bar { border-color: rgba(10, 24, 38, .12); border-radius: 999px; background: #f1efe9; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__cancel { border-right-color: rgba(10, 24, 38, .12); color: var(--sl-muted); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__field { min-height: 54px; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__wave { color: var(--sl-navy-800); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__timer,
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__text { color: var(--sl-navy-800); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__status { color: var(--sl-muted); }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__send { min-width: 120px; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar .public-theme-hero-voice__note { display: none; }
+
+@keyframes public-theme-hero-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .public-theme-hero-voice--salute-luxury .public-theme-hero-voice__cancel { width: 48px; }
+  .public-theme-hero-voice--salute-luxury .public-theme-hero-voice__field { gap: 12px; padding: 0 14px; }
+  .public-theme-hero-voice--salute-luxury .public-theme-hero-voice__send { min-width: 72px; }
+  .public-theme-hero-bar--salute-luxury .public-theme-hero-voice--in-bar { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-hero-voice--salute-luxury .public-theme-hero-voice__send i.bi-arrow-repeat,
+  .public-theme-hero-voice--salute-luxury[data-state="recording"] .public-theme-hero-voice__timer::before { animation: none; }
+}
+
+/* O formulário de filtros some quando o buscador por voz assume o lugar dele (o display do tema ganharia do [hidden]). */
+.public-theme-search[hidden],
+.sl-search[hidden] { display: none !important; }
+
+/* Cartão: a barra de gravação fica sobre o papel claro do cartão (texto escuro). */
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card { max-width: none; margin-top: 0; color: var(--sl-navy-800); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__bar { border-color: rgba(10, 24, 38, .2); border-radius: 0; background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__cancel { border-right-color: rgba(10, 24, 38, .12); color: var(--sl-muted); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__field { min-height: 54px; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__wave { color: var(--sl-navy-800); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__timer,
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__text { color: var(--sl-navy-800); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__text::placeholder { color: var(--sl-muted); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__status { color: var(--sl-muted); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__send { min-width: 110px; background: var(--sl-navy-800); color: #fff; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__send:hover { background: var(--sl-gold-deep, #9c7c33); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__note { color: var(--sl-muted); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__suggestions { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__suggestion { width: 100%; padding: 11px 14px; border: 1px solid rgba(10, 24, 38, .16); background: #fff; color: var(--sl-navy-800); font-size: 14px; text-align: left; cursor: pointer; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card .public-theme-hero-voice__suggestion:hover { border-color: var(--sl-gold); }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card[data-state="recording"] .public-theme-hero-voice__suggestions,
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice--in-card[data-state="busy"] .public-theme-hero-voice__suggestions { display: none; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-card__tabs { flex-wrap: wrap; }
+.public-theme-hero-card--salute-luxury .public-theme-hero-voice__toggle[aria-pressed="true"] { border-bottom-color: var(--sl-gold) !important; background: transparent !important; color: var(--sl-navy-800) !important; }
+
+/* Voz como aba exclusiva na Barra e no Cartão (mesmo estilo de "ativo" de cada um). */
+[data-voice="on"] .public-theme-hero-bar--salute-luxury .public-theme-hero-bar__tab:not(.public-theme-hero-voice__toggle),
+.public-theme-hero-bar--salute-luxury[data-voice="on"] .public-theme-hero-bar__tab:not(.public-theme-hero-voice__toggle) { background: transparent; color: #4a5560; }
+.public-theme-hero-bar--salute-luxury .public-theme-hero-voice__toggle[aria-pressed="true"] { background: var(--sl-navy-800) !important; color: #fff !important; }
+[data-voice="on"] .public-theme-hero-card--salute-luxury .public-theme-hero-card__tab:not(.public-theme-hero-voice__toggle),
+.public-theme-hero-card--salute-luxury [data-voice="on"] .public-theme-hero-card__tab:not(.public-theme-hero-voice__toggle) { border-bottom-color: transparent; color: var(--sl-muted); }
+.public-theme-hero-bar--salute-luxury [data-voice="on"] .public-theme-hero-bar__tab[aria-pressed="true"]:not(.public-theme-hero-voice__toggle) { background: transparent; color: #4a5560; }
+.public-theme-hero-card--salute-luxury [data-voice="on"] .public-theme-hero-card__tab[aria-pressed="true"]:not(.public-theme-hero-voice__toggle) { border-bottom-color: transparent; color: var(--sl-muted); }
+
+/* ---- Combobox (autocomplete) dentro da Barra — luxury (sobrepõe o estilo escuro do hero) ---- */
+.public-theme-hero-bar--salute-luxury .public-theme-hero-bar__field { position: relative; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox { position: relative; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox.open { z-index: 80; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__trigger { display: flex; align-items: center; gap: 8px; min-width: 0; height: 54px; padding: 0 16px; cursor: text; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__field { display: flex; align-items: center; flex: 1; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__tags { display: contents; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__tag { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; max-width: 100%; padding: 3px 4px 3px 10px; border: 0; border-radius: 999px; background: rgba(190, 155, 71, .2); color: var(--sl-navy-800); font-size: 13px; font-weight: 700; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__tag-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__tag-remove { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__tag-remove:hover { background: rgba(0, 0, 0, .12); color: inherit; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__count { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--sl-navy-800); color: #fff; font-size: 12px; font-weight: 800; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__input { flex: 1; min-width: 40px; padding: 0; border: 0; background: transparent; color: var(--sl-navy-800); font-size: 15px; outline: none; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__input::placeholder { color: #6b7280; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__caret { flex: none; margin-left: auto; color: var(--sl-gold-deep, #9c7c33); font-size: 13px; transition: transform .2s; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox.open .public-theme-combobox__caret { transform: rotate(180deg); }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__panel { position: absolute; top: calc(100% + 10px); left: 0; z-index: 80; min-width: 280px; max-height: 320px; padding: 6px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; box-shadow: 0 20px 56px rgba(2, 20, 30, .3); color: var(--sl-navy-800); opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none; transition: opacity .15s, transform .15s, visibility 0s linear .15s; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox.open .public-theme-combobox__panel { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; background: transparent; color: var(--sl-navy-800); font-size: 14px; cursor: pointer; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__option .public-theme-combobox__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__option:hover,
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__option.active { background: rgba(190, 155, 71, .14); color: var(--sl-navy-800); }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__option.selected { color: var(--sl-navy-800); font-weight: 700; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__check { flex: none; margin-left: auto; color: var(--sl-gold); font-size: 16px; opacity: 0; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__option.selected .public-theme-combobox__check { opacity: 1; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__empty { padding: 14px; text-align: center; color: #6b7280; font-size: 13px; }
+@media (max-width: 1023px) {
+  .public-theme-hero-bar--salute-luxury .public-theme-combobox__trigger { height: 50px; }
+  .public-theme-hero-bar--salute-luxury .public-theme-combobox__panel { right: 0; min-width: 0; }
+}
+
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__trigger,
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__panel { text-align: left; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__input:focus,
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__input:focus-visible { border: 0 !important; outline: none !important; box-shadow: none !important; }
+.public-theme-hero-bar--salute-luxury .public-theme-combobox__trigger:focus-visible { outline: 2px solid var(--sl-gold); outline-offset: -2px; border-radius: 999px; }

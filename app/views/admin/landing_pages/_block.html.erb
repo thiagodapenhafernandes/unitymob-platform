@@ -1,0 +1,55 @@
+<%# Um bloco no editor. locals: bf (fields_for :blocks), open. Campos vêm do catálogo LandingPages::BlockTypes. %>
+<% block = bf.object %>
+<% definition = block.definition %>
+<% data = OpenStruct.new(block.data.to_h) %>
+<details class="lp-block" data-landing-page-builder-target="block" data-block-type="<%= block.block_type %>" <%= "open" if open %>>
+  <summary class="lp-block__head">
+    <span class="lp-block__grip" draggable="true" title="Arraste para reordenar" aria-label="Arrastar para reordenar o bloco" data-action="dragstart->landing-page-builder#cardDragStart dragend->landing-page-builder#cardDragEnd click->landing-page-builder#stopToggle"><i class="bi bi-grip-vertical" aria-hidden="true"></i></span>
+    <span class="lp-block__icon"><i class="bi bi-<%= definition.icon %>" aria-hidden="true"></i></span>
+    <span class="lp-block__title">
+      <strong><%= definition.label %></strong>
+      <small data-landing-page-builder-target="summary"></small>
+    </span>
+    <span class="lp-block__tools">
+      <label class="lp-block__visible" title="Mostrar este bloco na página">
+        <%= bf.check_box :visible, class: "lp-block__visible-input" %>
+        <span><i class="bi bi-eye" aria-hidden="true"></i></span>
+      </label>
+      <button type="button" class="lp-block__btn" title="Subir" aria-label="Subir bloco" data-action="landing-page-builder#up"><i class="bi bi-arrow-up"></i></button>
+      <button type="button" class="lp-block__btn" title="Descer" aria-label="Descer bloco" data-action="landing-page-builder#down"><i class="bi bi-arrow-down"></i></button>
+      <button type="button" class="lp-block__btn lp-block__btn--danger" title="Remover" aria-label="Remover bloco" data-action="landing-page-builder#remove"><i class="bi bi-trash"></i></button>
+    </span>
+  </summary>
+  <div class="lp-block__body">
+    <%= bf.hidden_field :block_type %>
+    <%= bf.hidden_field :position, data: { landing_page_builder_target: "position" } %>
+    <%= bf.hidden_field :_destroy, value: "0", data: { landing_page_builder_target: "destroy" } %>
+
+    <%= bf.fields_for :data, data do |df| %>
+      <%= ax_field_grid do %>
+        <% definition.fields.each do |field| %>
+          <div class="<%= field.type.in?(%i[text rich filters url string embed]) ? "ax-span-12" : "ax-span-6" %>">
+            <%= render "admin/landing_pages/block_field", df: df, field: field, bf: bf, data: data %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <% uploads = { "cover" => { image_desktop: "Imagem de fundo (desktop)", image_mobile: "Imagem de fundo (celular, opcional)" }, "image" => { image_desktop: "Imagem (JPG, PNG ou WebP)" } }[block.block_type] %>
+    <% if uploads %>
+      <%= ax_field_grid do %>
+        <% uploads.each do |attachment, label| %>
+          <div class="ax-span-6">
+            <%= ax_field_label(bf, attachment, text: label) %>
+            <%= bf.file_field attachment, class: "ax-control", accept: "image/png,image/jpeg,image/webp", data: { landing_page_builder_target: "file" } %>
+            <% if block.persisted? && block.public_send(attachment).attached? %>
+              <label class="lp-block__remove-image">
+                <%= bf.check_box "remove_#{attachment}" %> Remover a imagem atual
+              </label>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</details>

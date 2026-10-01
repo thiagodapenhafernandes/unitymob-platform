@@ -23,6 +23,7 @@ class HomeController < ApplicationController
     @hero_images = build_hero_images(@home_setting)
     @hero_preload_source = @hero_images.first&.fetch(:source, nil)
     @hero_preload_mobile_source = @hero_images.first&.fetch(:mobile_source, nil)
+    @hero_listing_count = Rails.cache.fetch("hero_listing_count:tenant:#{public_tenant.id}", expires_in: 1.hour) { public_habitations.active.count } unless @home_setting.hero_layout_classic?
     @announce_property_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_ANNOUNCE_SLUG) if PublicForm.table_exists?
     
     # SEO

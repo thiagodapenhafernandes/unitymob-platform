@@ -17,13 +17,21 @@
   ["Seleção", "select"],
   ["Múltipla escolha", "radio"],
   ["Checkbox", "checkbox"],
+  ["Anexo (upload de arquivo)", "file"],
   ["Oculto", "hidden"]
 ] %>
 
-<% field_palette = [
+<% common_palette = [
   ["text", "input-cursor-text", "Texto"],
   ["email", "envelope", "E-mail"],
   ["tel", "telephone", "Telefone"],
+  ["textarea", "textarea-t", "Texto longo"],
+  ["select", "list-ul", "Seleção"],
+  ["radio", "record-circle", "Rádio"],
+  ["checkbox", "check-square", "Checkbox"],
+  ["file", "paperclip", "Anexo"]
+] %>
+<% more_palette = [
   ["url", "link-45deg", "URL"],
   ["search", "search", "Busca"],
   ["number", "123", "Número"],
@@ -35,39 +43,136 @@
   ["week", "calendar-week", "Semana"],
   ["color", "palette", "Cor"],
   ["range", "sliders", "Faixa"],
-  ["textarea", "textarea-t", "Texto longo"],
-  ["select", "list-ul", "Select"],
-  ["radio", "record-circle", "Rádio"],
-  ["checkbox", "check-square", "Checkbox"],
   ["hidden", "eye-slash", "Oculto"]
 ] %>
 
-<%= form_with(model: [:admin, public_form], local: true, class: "ax-field-grid", data: { controller: "public-form-builder" }) do |f| %>
-  <%= ax_error_summary(public_form) %>
+<% editing = public_form.persisted? %>
 
-  <div class="ax-span-8">
-    <%= ax_operational_panel(eyebrow: "Configuração", title: "Identidade do formulário") do %>
-      <%= ax_field_grid do %>
-        <%= ax_text_field(form: f, method: :name, label: "Nome interno", class_name: "ax-span-6") %>
-        <%= ax_text_field(form: f, method: :slug, label: "Slug", hint: "Usado no endpoint e no origin_form do webhook.", class_name: "ax-span-6") %>
-        <%= ax_select_field(form: f, method: :category, label: "Categoria", choices: PublicForm::CATEGORIES.map { |value, label| [label, value] }, class_name: "ax-span-6") %>
-        <%= ax_text_field(form: f, method: :submit_label, label: "Texto do botão", class_name: "ax-span-6") %>
-        <%= ax_text_field(form: f, method: :title, label: "Título público", class_name: "ax-span-6") %>
-        <%= ax_text_field(form: f, method: :subtitle, label: "Subtítulo público", class_name: "ax-span-6") %>
-        <%= ax_text_field(form: f, method: :success_message, label: "Mensagem de sucesso", class_name: "ax-span-6") %>
-        <%= ax_text_field(form: f, method: :redirect_url, label: "URL pós-envio", type: :url, hint: "Opcional. Se vazio, mantém o usuário na página.", class_name: "ax-span-6") %>
+<%= form_with(model: [:admin, public_form], local: true, class: "ax-guided public-form-guided",
+              data: {
+                controller: "public-form-builder public-form-preview public-form-setup",
+                public_form_preview_url_value: preview_admin_public_forms_path,
+                public_form_setup_auto_slug_value: public_form.new_record?,
+                public_form_preview_saved_status_value: (public_form.new_record? ? "new" : public_form.status),
+                action: "input->public-form-preview#schedule change->public-form-preview#schedule public-form-builder:changed->public-form-preview#schedule " \
+                        "input->public-form-setup#refreshProgress change->public-form-setup#refreshProgress public-form-builder:changed->public-form-setup#refreshProgress " \
+                        "trix-change->public-form-preview#schedule trix-file-accept->public-form-setup#blockFiles focusin->public-form-setup#focusStep change->public-form-setup#sync"
+              }) do |f| %>
+  <% if public_form.errors.any? %>
+    <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %>
+      <%= public_form.errors.full_messages.to_sentence %>
+    <% end %>
+  <% end %>
+
+  <%= ax_guided_header(controller: "public-form-setup", icon: "bi-ui-checks-grid",
+                       title: (editing ? "Ajuste seu formulário" : "Vamos criar seu formulário"),
+                       subtitle: "Escolha o modal, escreva os textos e monte os campos. O resultado aparece ao lado, do jeito que o visitante vai ver.",
+                       progress_label: "Comece pelo nome",
+                       steps: [["Modal", "bi-layout-text-window"], ["Identidade", "bi-card-heading"], ["Como abrir", "bi-link-45deg"], ["Campos", "bi-ui-checks-grid"], ["Saída", "bi-send"], ["Publicação", "bi-toggles"], ["Salvar", "bi-check2-circle"]]) %>
+
+  <div class="ax-guided-layout">
+    <div class="ax-guided-steps">
+      <%= ax_guided_step(number: 1, color: :blue, title: "Tipo de modal", subtitle: "Define o desenho e o tamanho da janela que abre no site.", collapsible: true, collapsed: !public_form.errors.any?) do %>
+        <fieldset class="ax-guided-fieldset">
+          <legend>Modelo</legend>
+          <%= ax_choice_group(form: f, method: :modal_layout, variant: :cards, selected: public_form.modal_layout, aria_label: "Modelo do modal",
+                              input_data: { action: "change->public-form-setup#sync change->public-form-preview#schedule" },
+                              choices: [
+                                { value: "premium", label: "Premium", icon: "bi-layout-sidebar", description: "Lateral com chamada, título, texto principal e benefícios ao lado do formulário." },
+                                { value: "basic", label: "Básico", icon: "bi-window", description: "Só o formulário, com título e texto principal no topo." }
+                              ]) %>
+        </fieldset>
+        <fieldset class="ax-guided-fieldset">
+          <legend>Tamanho</legend>
+          <%= ax_choice_group(form: f, method: :modal_size, variant: :segment, selected: public_form.modal_size, aria_label: "Tamanho do modal",
+                              input_data: { action: "change->public-form-preview#schedule" },
+                              choices: PublicForm::MODAL_SIZES.map { |value, label| { value: value, label: label } }) %>
+        </fieldset>
+        <% modal_config = public_form.modal_config.to_h %>
+        <fieldset class="ax-guided-fieldset">
+          <legend>Conteúdo do modal</legend>
+          <div class="ax-guided-grid public-form-content-grid">
+            <div class="ax-field" data-public-form-setup-target="aside" <%= "hidden" if public_form.basic_layout? %>>
+              <%= label_tag "public_form_modal_config_eyebrow", "Chamada", class: "ax-label" %>
+              <%= text_field_tag "public_form[modal_config][eyebrow]", modal_config["eyebrow"], class: "ax-control", placeholder: "Ex: Anuncie seu imóvel" %>
+              <p class="ax-field__hint">Linha pequena acima do título.</p>
+            </div>
+            <div class="ax-field" data-public-form-setup-target="aside" <%= "hidden" if public_form.basic_layout? %>>
+              <%= label_tag "public_form_modal_config_headline", "Título", class: "ax-label" %>
+              <%= text_area_tag "public_form[modal_config][headline]", modal_config["headline"], rows: 2, class: "ax-control", placeholder: public_form.title.presence || "Ex: Vamos começar?" %>
+              <p class="ax-field__hint">Título grande da lateral. Em branco, usa o título do formulário.</p>
+            </div>
+            <div class="ax-field ax-guided-span-2 public-form-rich">
+              <%= label_tag "public_form_subtitle", "Texto principal", class: "ax-label" %>
+              <%= hidden_field_tag "public_form[subtitle]", public_form.subtitle, id: "public_form_subtitle" %>
+              <trix-editor input="public_form_subtitle" class="ax-control ax-rich-text-control" aria-label="Texto principal" placeholder="Ex: Preencha os dados e entraremos em contato."></trix-editor>
+              <p class="ax-field__hint">Aparece abaixo do título (na lateral do Premium ou no topo do Básico). Aceita negrito, itálico, listas e links.</p>
+            </div>
+            <div class="ax-field ax-guided-span-2" data-public-form-setup-target="aside" <%= "hidden" if public_form.basic_layout? %>>
+              <span class="ax-label">Benefícios</span>
+              <%= hidden_field_tag "public_form[modal_config][benefits]", public_form.benefits_json, id: "public_form_benefits_json" %>
+              <%= render "admin/public_forms/benefits_editor", input_id: "public_form_benefits_json" %>
+              <p class="ax-field__hint">Cada linha é um benefício; escolha o ícone ao lado dele. Aparecem na lateral do modelo Premium.</p>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset class="ax-guided-fieldset">
+          <legend>Cores do modal <em>opcional</em></legend>
+          <div class="public-form-colors">
+            <% [["aside_bg", "Fundo da lateral"], ["aside_accent", "Título e destaques"], ["aside_fg", "Texto da lateral"],
+                ["body_bg", "Fundo do formulário"], ["submit_bg", "Fundo do botão"], ["submit_fg", "Texto do botão"]].each do |key, label| %>
+              <div class="public-form-color">
+                <span class="ax-label"><%= label %></span>
+                <div class="public-form-color__control">
+                  <input type="color" value="<%= modal_config[key].presence || "#000000" %>" aria-label="<%= label %>"
+                         data-color-picker="<%= key %>" data-action="input->public-form-setup#pickColor">
+                  <%= text_field_tag "public_form[modal_config][#{key}]", modal_config[key], class: "ax-control", placeholder: "Padrão do tema", maxlength: 7,
+                                     id: "public_form_modal_config_#{key}", data: { color_text: key, action: "input->public-form-setup#syncColor" } %>
+                  <button type="button" class="ax-icon-btn" title="Voltar ao padrão do tema" aria-label="Voltar ao padrão: <%= label %>"
+                          data-color-key="<%= key %>" data-action="public-form-setup#clearColor"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <p class="ax-guided-hint">Em branco, vale a cor do tema do site. Também dá para ajustar direto no preview, passando o mouse sobre cada parte.</p>
+        </fieldset>
       <% end %>
 
-      <div class="tw-grid md:tw-grid-cols-2 tw-gap-3 tw-mt-4">
-        <%= ax_switch_field(label: "Ativo no site", form: f, method: :active) %>
-        <%= ax_switch_field(label: "Disponível para modal", form: f, method: :modal_enabled) %>
-      </div>
-    <% end %>
+      <%= ax_guided_step(number: 2, color: :violet, title: "Identidade do formulário", subtitle: "Nome interno, título e os textos do botão e da confirmação.", collapsible: true, collapsed: !public_form.errors.any?) do %>
+        <div class="ax-guided-grid">
+          <%= ax_text_field(form: f, method: :name, label: "Nome interno", placeholder: "Ex: Anuncie seu imóvel", hint: "Só a equipe vê. Ajuda a achar o formulário na lista.",
+                            class_name: "ax-guided-span-2", data: { public_form_setup_target: "name", action: "input->public-form-setup#nameChanged" }) %>
+          <%= ax_text_field(form: f, method: :title, label: "Título do formulário", placeholder: "Ex: Vamos começar?", hint: "Título do modelo Básico e da lista de formulários. No Premium, é o título da lateral quando o campo Título do bloco Tipo de modal está em branco.", class_name: "ax-guided-span-2") %>
+          <%= ax_text_field(form: f, method: :submit_label, label: "Texto do botão") %>
+          <%= ax_text_field(form: f, method: :success_message, label: "Mensagem de sucesso") %>
+        </div>
+      <% end %>
 
-    <%= ax_operational_panel(eyebrow: "Campos", title: "Builder HTML do formulário", class_name: "tw-mt-4") do %>
+      <%= ax_guided_step(number: 3, color: :amber, title: "Como abrir", subtitle: "O ID do modal para usar em links, botões, menu e banners do site.", collapsible: true, collapsed: !public_form.errors.any?) do %>
+          <%= ax_text_field(form: f, method: :slug, label: "ID (slug)", placeholder: "gerado a partir do nome",
+                            hint: "Também é o endpoint de envio e o origin do webhook.",
+                            data: { public_form_setup_target: "slug", action: "input->public-form-setup#slugChanged" }) %>
+          <div class="public-form-trigger">
+            <span class="ax-label">Use no href de qualquer link, botão, menu ou banner do site</span>
+            <div class="public-form-trigger__row">
+              <code data-public-form-setup-target="anchor">#modal-<%= public_form.slug.presence || "…" %></code>
+              <button type="button" class="ax-btn ax-btn--secondary ax-btn--sm" data-action="public-form-setup#copy">
+                <i class="bi bi-clipboard ax-ico" aria-hidden="true"></i>
+                <span data-public-form-setup-target="copyLabel">Copiar</span>
+              </button>
+            </div>
+            <p class="public-form-modal-warning" data-public-form-setup-target="linkWarning" role="status" <%= "hidden" if public_form.published? && public_form.modal_enabled? %>>
+              <i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span data-public-form-setup-target="linkWarningText"></span>
+            </p>
+            <small class="tw-text-ink-muted">Ex.: <code>&lt;a href="<span data-public-form-setup-target="example">#modal-<%= public_form.slug.presence || "…" %></span>"&gt;Fale conosco&lt;/a&gt;</code>. No menu, no CTA do header e nos banners, cole só o valor acima no campo de link.</small>
+          </div>
+
+      <% end %>
+
+      <%= ax_guided_step(number: 4, color: :green, title: "Campos do formulário", subtitle: "Adicione, reordene (arraste) e configure. Inclui anexo de arquivos, que vai para o armazenamento da conta.", collapsible: true, collapsed: !public_form.errors.any?) do %>
       <div class="public-form-builder">
         <div class="public-form-builder__palette" aria-label="Adicionar campos">
-          <% field_palette.each do |type, icon, label| %>
+          <% common_palette.each do |type, icon, label| %>
             <button type="button"
                     class="public-form-builder__palette-button"
                     data-field-type="<%= type %>"
@@ -77,6 +182,24 @@
             </button>
           <% end %>
         </div>
+
+        <details class="public-form-builder__bulk">
+          <summary>
+            <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+            Mais tipos de campo
+          </summary>
+          <div class="public-form-builder__palette public-form-builder__palette--more">
+            <% more_palette.each do |type, icon, label| %>
+              <button type="button"
+                      class="public-form-builder__palette-button"
+                      data-field-type="<%= type %>"
+                      data-action="public-form-builder#add">
+                <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+                <span><%= label %></span>
+              </button>
+            <% end %>
+          </div>
+        </details>
 
         <div class="public-form-builder__bar">
           <div>
@@ -117,10 +240,10 @@
         <div class="public-form-builder__empty" data-public-form-builder-target="empty">
           <i class="bi bi-ui-checks-grid" aria-hidden="true"></i>
           <strong>Nenhum campo criado</strong>
-          <span>Use a paleta acima para montar qualquer formulário com tipos HTML seguros.</span>
+          <span>Use a paleta acima para montar o formulário. Inclui campo de anexo (upload de arquivos).</span>
         </div>
 
-        <div class="public-form-builder__list" data-public-form-builder-target="list">
+        <div class="public-form-builder__list" data-public-form-builder-target="list" data-action="dragover->public-form-builder#dragOver">
           <%= f.fields_for :fields do |field_form| %>
             <%= render "admin/public_forms/field_fields", field_form: field_form, field_type_options: field_type_options %>
           <% end %>
@@ -132,36 +255,277 @@
           <% end %>
         </template>
       </div>
-    <% end %>
-  </div>
+      <% end %>
 
-  <div class="ax-span-4">
-    <%= ax_operational_panel(eyebrow: "Modal", title: "Texto lateral") do %>
-      <% modal_config = public_form.modal_config.to_h %>
-      <div class="tw-grid tw-gap-3">
-        <div>
-          <%= label_tag "public_form_modal_config_eyebrow", "Chamada", class: "ax-label" %>
-          <%= text_field_tag "public_form[modal_config][eyebrow]", modal_config["eyebrow"], class: "ax-control" %>
-        </div>
-        <div>
-          <%= label_tag "public_form_modal_config_headline", "Texto principal", class: "ax-label" %>
-          <%= text_area_tag "public_form[modal_config][headline]", modal_config["headline"], rows: 3, class: "ax-control" %>
-        </div>
-        <div>
-          <%= label_tag "public_form_modal_config_benefits", "Benefícios", class: "ax-label" %>
-          <%= text_area_tag "public_form[modal_config][benefits]", Array(modal_config["benefits"]).join("\n"), rows: 4, class: "ax-control", placeholder: "Um por linha" %>
-        </div>
-      </div>
-    <% end %>
+      <%= ax_guided_step(number: 5, color: :pink, title: "Saída dos dados", subtitle: "O que acontece depois do envio e para onde vai cada resposta.", collapsible: true, collapsed: !public_form.errors.any?) do %>
+          <div class="ax-guided-grid">
+            <%= ax_text_field(form: f, method: :redirect_url, label: "URL pós-envio", type: :url, hint: "Opcional. Se vazio, mantém o visitante na página.", class_name: "ax-guided-span-2") %>
+            <%= ax_text_field(form: f, method: :webhook_url, label: "Webhook do formulário", type: :url, placeholder: "https://…",
+                              hint: "Opcional. Substitui o webhook da conta para este formulário.") %>
+            <%= ax_select_field(form: f, method: :distribution_rule_id, label: "Regra de distribuição",
+                                choices: current_tenant.distribution_rules.active.order(:name).map { |rule| [rule.name, rule.id] },
+                                select_options: { include_blank: "Não distribuir" }) %>
+          </div>
+          <p class="ax-guided-hint">Com regra, cada envio com telefone cria um lead distribuído pela roleta. O payload sai com <code class="tw-text-primary"><%= editing ? public_form.webhook_origin : "public_form:{slug}" %></code>. Sem URL própria, vale o webhook da conta.</p>
 
-    <%= ax_operational_panel(eyebrow: "Webhook", title: "Contrato de saída", class_name: "tw-mt-4") do %>
-      <div class="tw-grid tw-gap-2">
-        <span class="tw-text-sm tw-text-ink-muted">Ao enviar, o payload sai com:</span>
-        <code class="tw-text-primary"><%= public_form.persisted? ? public_form.webhook_origin : "public_form:{slug}" %></code>
-        <span class="tw-text-sm tw-text-ink-muted">Em Webhooks, filtre por categoria ou por este formulário.</span>
-      </div>
-    <% end %>
+      <% end %>
 
-    <%= ax_form_actions(form: f, submit_label: "Salvar formulário", cancel_path: admin_public_forms_path, sticky: false) %>
+      <%= ax_guided_step(number: 6, color: :teal, title: "Publicação", subtitle: "Liga o formulário no site e define a classificação.", collapsible: true, collapsed: !public_form.errors.any?) do %>
+          <fieldset class="ax-guided-fieldset">
+            <legend>Status</legend>
+            <%= ax_choice_group(form: f, method: :status, variant: :cards, selected: public_form.status, aria_label: "Status do formulário",
+                                input_data: { action: "change->public-form-preview#statusChanged" },
+                                choices: [
+                                  { value: "draft", label: "Rascunho", icon: "bi-pencil-square", description: "Em edição. Salva sozinho e não aparece no site." },
+                                  { value: "published", label: "Publicado", icon: "bi-broadcast", description: "No ar e recebendo envios. Mudanças só valem ao clicar em Salvar." },
+                                  { value: "inactive", label: "Inativo", icon: "bi-slash-circle", description: "Fora do ar. Não aparece nem recebe envios." }
+                                ]) %>
+          </fieldset>
+          <%= ax_switch_field(form: f, method: :modal_enabled, label: "Disponível para modal", class_name: "ax-switch--card",
+                              description: "Permite abrir este formulário por links #modal-… em qualquer página do site.") %>
+          <details class="public-form-guided__advanced">
+            <summary>Classificação (opcional)</summary>
+            <%= ax_select_field(form: f, method: :category, label: "Categoria",
+                                choices: PublicForm::CATEGORIES.map { |value, label| [label, value] },
+                                tooltip: "Não muda o comportamento do formulário. Serve só para agrupar e para filtrar envios por categoria nos Webhooks. Na dúvida, deixe Personalizado.") %>
+          </details>
+      <% end %>
+
+      <%= ax_guided_review(number: 7, color: :slate, title: "Tudo certo para salvar?", subtitle: "Confira o resumo. Você pode voltar e ajustar quando quiser.",
+                           submit_label: "Salvar formulário", submit_icon: "bi-check2", cancel_path: admin_public_forms_path,
+                           checks: [["title", "Nome e título"], ["fields", "Pelo menos um campo"], ["slug", "ID do modal"]]) %>
+    </div>
+
+    <aside class="ax-guided-aside" aria-label="Pré-visualização do modal">
+      <section class="public-form-preview" data-public-form-preview-target="panel" data-action="keydown@window->public-form-preview#escape">
+        <header class="public-form-preview__bar">
+          <div class="public-form-preview__quick">
+            <div class="public-form-preview__devices" role="group" aria-label="Modelo do modal">
+              <% PublicForm::MODAL_LAYOUTS.each do |value, text| %>
+                <button type="button" class="public-form-preview__device" aria-pressed="<%= public_form.modal_layout == value %>"
+                        data-radio-name="public_form[modal_layout]" data-value="<%= value %>" data-public-form-preview-target="layoutButton"
+                        data-action="public-form-preview#setRadio"><%= text %></button>
+              <% end %>
+            </div>
+            <div class="public-form-preview__devices public-form-preview__sizes" role="group" aria-label="Tamanho do modal">
+              <% PublicForm::MODAL_SIZES.each do |value, text| %>
+                <button type="button" class="public-form-preview__device" aria-pressed="<%= public_form.modal_size == value %>"
+                        data-radio-name="public_form[modal_size]" data-value="<%= value %>" data-public-form-preview-target="sizeButton"
+                        data-action="public-form-preview#setRadio"><%= text %></button>
+              <% end %>
+            </div>
+            <div class="public-form-preview__devices" role="group" aria-label="Status do formulário">
+              <% PublicForm::STATUSES.each do |value, text| %>
+                <button type="button" class="public-form-preview__device public-form-preview__status-btn" data-status="<%= value %>"
+                        aria-pressed="<%= public_form.status == value %>" data-public-form-preview-target="statusButton"
+                        data-action="public-form-preview#setStatus"><%= text %></button>
+              <% end %>
+            </div>
+            <div class="public-form-preview__savegroup" role="group" aria-label="Salvar">
+              <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-public-form-preview-target="saveButton"
+                      data-action="public-form-preview#saveNow" title="Salva e continua editando">
+                <i class="bi bi-check2 ax-ico" aria-hidden="true"></i><span>Salvar</span>
+              </button>
+              <button type="submit" class="ax-btn ax-btn--primary ax-btn--sm" data-public-form-preview-target="saveExitButton"
+                      title="Salva e sai do editor">
+                <i class="bi bi-box-arrow-right ax-ico" aria-hidden="true"></i><span>Salvar e sair</span>
+              </button>
+            </div>
+            <span class="public-form-preview__save" data-public-form-preview-target="saveStatus" role="status" aria-live="polite"></span>
+          </div>
+          <div class="public-form-preview__devices" role="group" aria-label="Dispositivo">
+            <button type="button" class="public-form-preview__device" aria-pressed="true" data-device="desktop"
+                    data-public-form-preview-target="device" data-action="public-form-preview#switchDevice">
+              <i class="bi bi-display" aria-hidden="true"></i> Desktop
+            </button>
+            <button type="button" class="public-form-preview__device" aria-pressed="false" data-device="mobile"
+                    data-public-form-preview-target="device" data-action="public-form-preview#switchDevice">
+              <i class="bi bi-phone" aria-hidden="true"></i> Mobile
+            </button>
+            <button type="button" class="public-form-preview__device public-form-preview__expand" aria-pressed="false"
+                    title="Ocupar a tela toda para editar (Esc fecha)" data-public-form-preview-target="fullscreenButton"
+                    data-action="public-form-preview#toggleFullscreen">
+              <i class="bi bi-arrows-angle-expand" aria-hidden="true"></i> <span>Expandir</span>
+            </button>
+          </div>
+        </header>
+        <div class="public-form-preview__stage" data-public-form-preview-target="stage" data-action="mouseleave->public-form-preview#stageLeave">
+          <iframe class="public-form-preview__frame" title="Pré-visualização do modal" sandbox="allow-same-origin"
+                  data-public-form-preview-target="frame"></iframe>
+
+          <%# Ferramentas flutuantes: aparecem ao passar o mouse sobre cada região do preview (montadas dos <template data-tool>). %>
+          <div class="public-form-tools" data-public-form-preview-target="tools" hidden
+               data-action="click->public-form-preview#toolClick input->public-form-preview#toolInput change->public-form-preview#toolChange mousedown->public-form-preview#toolMouseDown mouseenter->public-form-preview#keepTools mousemove->public-form-preview#toolsMove mouseleave->public-form-preview#toolsLeave focusin->public-form-preview#pinTools"></div>
+
+          <%# Mini builder do preview: tipo e detalhes do campo, benefícios e saída dos dados. Sem name: nada daqui é enviado no form. %>
+          <aside class="public-form-inspector" data-public-form-preview-target="inspector" aria-label="Edição do preview" hidden
+                 data-action="keydown->public-form-preview#editorKey input->public-form-preview#proxyInput change->public-form-preview#proxyInput">
+            <header class="public-form-inspector__head">
+              <strong data-public-form-preview-target="inspectorTitle">Novo campo</strong>
+              <button type="button" class="ax-icon-btn" title="Fechar" aria-label="Fechar" data-action="public-form-preview#closeInspector">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+              </button>
+            </header>
+
+            <div class="public-form-inspector__picker" data-mode="picker">
+              <p>Escolha o tipo do campo. Você ajusta os detalhes em seguida.</p>
+              <div class="public-form-inspector__types">
+                <% (common_palette + more_palette).each do |type, icon, label| %>
+                  <button type="button" class="public-form-builder__palette-button" data-field-type="<%= type %>" data-action="public-form-preview#addField">
+                    <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+                    <span><%= label %></span>
+                  </button>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="public-form-inspector__editor" data-mode="editor" hidden>
+              <div class="public-form-inspector__grid">
+                <label class="ax-label">Tipo
+                  <select class="ax-control" data-proxy="type">
+                    <% field_type_options.each do |text, value| %><option value="<%= value %>"><%= text %></option><% end %>
+                  </select>
+                </label>
+                <label class="ax-label">Rótulo
+                  <input type="text" class="ax-control" data-proxy="label" placeholder="Texto visível para o visitante">
+                </label>
+                <label class="ax-label">Placeholder
+                  <input type="text" class="ax-control" data-proxy="placeholder">
+                </label>
+                <label class="ax-label">Ajuda
+                  <input type="text" class="ax-control" data-proxy="hint">
+                </label>
+                <label class="ax-label">Largura no modal
+                  <select class="ax-control" data-proxy="width">
+                    <% PublicFormField::WIDTHS.each do |value, text| %><option value="<%= value %>"><%= text %></option><% end %>
+                  </select>
+                </label>
+                <label class="public-form-builder__check">
+                  <input type="checkbox" data-proxy="required"> Campo obrigatório
+                </label>
+                <div class="public-form-inspector__wide public-form-inspector__mask" data-public-form-preview-target="maskRow" hidden>
+                  <label class="ax-label">Máscara de digitação
+                    <input type="text" class="ax-control" maxlength="40" data-proxy="mask" placeholder="Ex.: 00-0000 ou (00) 00000-0000">
+                  </label>
+                  <label class="ax-label">Atalhos
+                    <select class="ax-control" data-action="change->public-form-preview#maskPreset">
+                      <option value="">Escolher um formato…</option>
+                      <% PublicFormField::MASK_PRESETS.each do |label, pattern| %><option value="<%= pattern %>"><%= label %></option><% end %>
+                    </select>
+                  </label>
+                  <small class="tw-text-ink-muted">0 = dígito · A = letra · * = letra ou número · outros símbolos ficam fixos · money = dinheiro.</small>
+                </div>
+                <label class="ax-label public-form-inspector__wide" data-public-form-preview-target="choiceRow" hidden>Opções (uma por linha, Label ou Label|valor)
+                  <textarea class="ax-control" rows="3" data-proxy="options"></textarea>
+                </label>
+                <div class="public-form-inspector__wide public-form-inspector__file" data-public-form-preview-target="fileRow" hidden>
+                  <label class="ax-label">Tipos aceitos
+                    <select class="ax-control" data-proxy="kind">
+                      <% PublicFormField::FILE_KIND_LABELS.each do |value, text| %><option value="<%= value %>"><%= text %></option><% end %>
+                    </select>
+                  </label>
+                  <label class="ax-label">Tamanho máx. (MB)
+                    <input type="number" class="ax-control" min="1" max="<%= PublicFormField::FILE_MAX_MB_LIMIT %>" data-proxy="max_mb">
+                  </label>
+                  <label class="public-form-builder__check">
+                    <input type="checkbox" data-proxy="multiple"> Permitir vários arquivos
+                  </label>
+                </div>
+              </div>
+              <div class="public-form-inspector__actions">
+                <button type="button" class="ax-btn ax-btn--sm" data-action="public-form-preview#duplicateField"><i class="bi bi-files ax-ico" aria-hidden="true"></i> Duplicar</button>
+                <button type="button" class="ax-btn ax-btn--sm public-form-builder__remove" data-action="public-form-preview#removeField"><i class="bi bi-trash ax-ico" aria-hidden="true"></i> Remover</button>
+                <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-action="public-form-preview#closeInspector">Concluir</button>
+              </div>
+            </div>
+
+            <div class="public-form-inspector__panel" data-mode="benefits" hidden>
+              <span class="ax-label">Benefícios da lateral</span>
+              <%= render "admin/public_forms/benefits_editor", input_id: "public_form_benefits_json" %>
+              <div class="public-form-inspector__actions">
+                <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-action="public-form-preview#closeInspector">Concluir</button>
+              </div>
+            </div>
+
+            <div class="public-form-inspector__panel" data-mode="output" hidden>
+              <div class="public-form-inspector__grid">
+                <label class="ax-label public-form-inspector__wide">Mensagem de sucesso
+                  <input type="text" class="ax-control" data-bind="public_form[success_message]">
+                </label>
+                <label class="ax-label">URL pós-envio
+                  <input type="url" class="ax-control" placeholder="Em branco: fica na página" data-bind="public_form[redirect_url]">
+                </label>
+                <label class="ax-label">Webhook do formulário
+                  <input type="url" class="ax-control" placeholder="Em branco: webhook da conta" data-bind="public_form[webhook_url]">
+                </label>
+                <label class="ax-label public-form-inspector__wide">Regra de distribuição
+                  <select class="ax-control" data-bind="public_form[distribution_rule_id]">
+                    <option value="">Não distribuir</option>
+                    <% current_tenant.distribution_rules.active.order(:name).each do |rule| %><option value="<%= rule.id %>"><%= rule.name %></option><% end %>
+                  </select>
+                </label>
+              </div>
+              <div class="public-form-inspector__actions">
+                <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-action="public-form-preview#closeInspector">Concluir</button>
+              </div>
+            </div>
+          </aside>
+
+          <%# Modelos das ferramentas por região. data-color: chave em modal_config; data-live: variável CSS aplicada na hora no preview. %>
+          <% swatch = ->(label, key, var, from, aside_only: false) {
+               tag.label(class: "public-form-tools__swatch", title: label, data: { aside_only: (true if aside_only) }) do
+                 safe_join([tag.input(type: "color", data: { color: key, live: var, default_from: from }, aria: { label: label }), tag.span(label)])
+               end
+             } %>
+          <% edit_button = ->(text = "Editar") { tag.button(type: "button", class: "public-form-tools__btn", data: { tool_action: "edit" }) { safe_join([tag.i(class: "bi bi-pencil", aria: { hidden: true }), tag.span(text)]) } } %>
+          <% panel_button = ->(text, panel, icon) { tag.button(type: "button", class: "public-form-tools__btn", data: { tool_action: "panel", panel: panel }) { safe_join([tag.i(class: "bi bi-#{icon}", aria: { hidden: true }), tag.span(text)]) } } %>
+          <template data-tool="aside">
+            <span class="public-form-tools__label">Lateral</span>
+            <%= swatch.call("Fundo", "aside_bg", "--pfm-aside-bg", "aside|backgroundColor") %>
+            <%= swatch.call("Texto", "aside_fg", "--pfm-aside-fg", "aside|color") %>
+            <%= swatch.call("Destaque", "aside_accent", "--pfm-aside-accent", "title|color") %>
+          </template>
+          <template data-tool="body">
+            <span class="public-form-tools__label">Formulário</span>
+            <%= swatch.call("Fundo", "body_bg", "--pfm-body-bg", "body|backgroundColor") %>
+          </template>
+          <template data-tool="eyebrow">
+            <%= edit_button.call %>
+            <%= swatch.call("Cor", "aside_accent", "--pfm-aside-accent", "title|color", aside_only: true) %>
+          </template>
+          <template data-tool="title">
+            <%= edit_button.call %>
+            <%= swatch.call("Cor", "aside_accent", "--pfm-aside-accent", "title|color", aside_only: true) %>
+          </template>
+          <template data-tool="subtitle">
+            <%= edit_button.call %>
+            <%= swatch.call("Cor", "aside_fg", "--pfm-aside-fg", "aside|color", aside_only: true) %>
+          </template>
+          <template data-tool="submit">
+            <%= edit_button.call("Texto") %>
+            <%= swatch.call("Fundo", "submit_bg", "--pfm-submit-bg", "submit|backgroundColor") %>
+            <%= swatch.call("Texto", "submit_fg", "--pfm-submit-fg", "submit|color") %>
+          </template>
+          <template data-tool="benefits">
+            <%= panel_button.call("Editar benefícios", "benefits", "list-check") %>
+          </template>
+          <template data-tool="output">
+            <%= panel_button.call("Saída dos dados", "output", "send") %>
+          </template>
+          <template data-tool="field">
+            <button type="button" class="public-form-tools__btn" data-tool-action="field-edit"><i class="bi bi-sliders" aria-hidden="true"></i><span>Campo</span></button>
+            <button type="button" class="public-form-tools__btn" data-tool-action="width" title="Alternar entre meia coluna e linha inteira" aria-label="Alternar largura"><i class="bi bi-distribute-horizontal" aria-hidden="true"></i></button>
+            <button type="button" class="public-form-tools__btn" data-tool-action="duplicate" title="Duplicar" aria-label="Duplicar"><i class="bi bi-files" aria-hidden="true"></i></button>
+            <button type="button" class="public-form-tools__btn public-form-tools__btn--danger" data-tool-action="remove" title="Remover" aria-label="Remover"><i class="bi bi-trash" aria-hidden="true"></i></button>
+          </template>
+          <template data-tool="format">
+            <% [["bold", "type-bold", "Negrito"], ["italic", "type-italic", "Itálico"], ["underline", "type-underline", "Sublinhado"], ["insertUnorderedList", "list-ul", "Lista"]].each do |command, icon, title| %>
+              <button type="button" class="public-form-tools__btn" data-exec="<%= command %>" title="<%= title %>" aria-label="<%= title %>"><i class="bi bi-<%= icon %>" aria-hidden="true"></i></button>
+            <% end %>
+          </template>
+        </div>
+      </section>
+      <p class="ax-guided-aside__hint">Passe o mouse para editar: textos, cores, campos (arraste para reordenar), botão e saída dos dados.</p>
+    </aside>
   </div>
 <% end %>

@@ -1,0 +1,35 @@
+<%# Miniatura fiel da barra do topo do site público — compartilhada entre a prévia
+    da Home (/admin/home_setting/edit) e de Topo e menu (/admin/public_header/edit).
+    Locals: brand, logo (anexo ou nil), entries (links da barra), cta_label,
+    phone (formatado ou nil), phone_visible (liga/desliga), luxury (variante),
+    static (fora do hero), live_bar (o JS redesenha os links).
+    Ganchos live-* sem escritor na tela são inertes. %>
+<%
+  brand = local_assigns.fetch(:brand)
+  logo = local_assigns[:logo]
+  entries = Array(local_assigns[:entries])
+  cta_label = local_assigns[:cta_label]
+  phone = local_assigns[:phone]
+  phone_visible = local_assigns.fetch(:phone_visible, false)
+  luxury = local_assigns.fetch(:luxury, false)
+  static = local_assigns.fetch(:static, false)
+  live_bar = local_assigns.fetch(:live_bar, false)
+%>
+<header class="hps-header<%= " hps-header--static" if static %><%= " hps-header--luxury" if luxury %>">
+  <% if logo&.attached? %>
+    <% if logo.content_type == "image/svg+xml" || logo.filename.to_s.downcase.end_with?(".svg") %>
+      <%= image_tag logo, class: "hps-header__logo", alt: "" %>
+    <% else %>
+      <%= image_tag logo.variant(resize_to_limit: [160, 40]), class: "hps-header__logo", alt: "" %>
+    <% end %>
+  <% else %>
+    <strong><%= brand %></strong>
+  <% end %>
+  <span class="hps-header__phone" data-live-flag-target="phone"<%= " hidden" unless phone_visible && phone.present? %>><i class="bi bi-telephone"></i> <span data-live-text-target="phone"><%= phone %></span></span>
+  <nav class="hps-header__links" aria-label="Barra do desktop"<% if live_bar %> data-header-menu-preview-target="bar"<% end %>><% entries.each do |entry| %><span class="hps-header__link"><%= entry.label %></span><% end %></nav>
+  <% unless luxury %>
+    <span class="hps-header__search"><i class="bi bi-search"></i></span>
+    <span class="hps-header__cta" data-live-text-target="cta"><%= cta_label %></span>
+  <% end %>
+  <i class="bi bi-list hps-header__toggle"></i>
+</header>

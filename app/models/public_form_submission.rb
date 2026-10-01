@@ -4,6 +4,8 @@ class PublicFormSubmission < ApplicationRecord
   STATUSES = %w[received delivered failed].freeze
 
   belongs_to :public_form
+  belongs_to :lead, optional: true
+  has_many_attached :files
 
   validates :payload, :source, presence: true
   validates :status, inclusion: { in: STATUSES }
@@ -13,6 +15,13 @@ class PublicFormSubmission < ApplicationRecord
   before_validation :extract_normalized_contact
 
   scope :recent, -> { order(created_at: :desc) }
+  scope :searching, ->(term) {
+    sanitized = ActiveRecord::Base.sanitize_sql_like(term.to_s.strip)
+    where("normalized_name ILIKE :q OR normalized_email ILIKE :q OR normalized_phone ILIKE :q", q: "%#{sanitized}%")
+  }
+  scope :within_period, ->(days) {
+    where(created_at: days.to_i.days.ago..) if days.to_s.in?(%w[7 30])
+  }
 
   private
 

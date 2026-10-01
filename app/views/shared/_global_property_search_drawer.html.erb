@@ -41,8 +41,12 @@
 
 <%# Filtro global: FAB + drawer, iguais em estrutura para todos os temas
     (theme_component resolve a variante). Fica dentro do shell do tema. %>
-<div class="public-global-search <%= drawer_visibility_class %>" data-controller="filter-drawer">
-  <%= theme_component(:filter_trigger) %>
+<div class="public-global-search" data-controller="filter-drawer">
+  <%# A visibilidade por aparelho vale só para o botão flutuante: o drawer abre também pelo "Filtro detalhado" do hero em Barra,
+      em qualquer aparelho (com a classe no wrapper, o drawer sumia no desktop quando só o celular usa o botão flutuante). %>
+  <% if @home_setting&.renders_floating_search_filter? %>
+    <div class="<%= drawer_visibility_class %>"><%= theme_component(:filter_trigger) %></div>
+  <% end %>
 
   <%= theme_component(:filter_panel,
         drawer_transaction_type: drawer_transaction_type,

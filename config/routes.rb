@@ -155,7 +155,9 @@ Rails.application.routes.draw do
         post "inbound_tokens/:token_id/regenerate", to: "webhook_settings#regenerate_inbound_token", as: :regenerate_inbound_token
       end
     end
-    resources :public_forms
+    resources :public_forms do
+      post :preview, on: :collection
+    end
     resource :whatsapp_integration, only: [:show, :update]
     resource :whatsapp_service_setting, only: [:edit, :update]
     get "manifest", to: "manifests#show", as: :manifest, defaults: { format: :json }
@@ -495,6 +497,7 @@ Rails.application.routes.draw do
     resources :landing_pages do
       get :preview, on: :collection
       get :filter_options, on: :collection
+      post :render_preview, on: :collection
     end
 
     # === Lojas físicas (módulo field) ===
@@ -684,6 +687,7 @@ Rails.application.routes.draw do
   # Form submissions
   resources :contacts, only: [:create]
   post "formularios/:slug", to: "public_form_submissions#create", as: :public_form_submissions
+  post "busca-ia", to: "public_ai_searches#create", as: :public_ai_search
   post 'trabalhe-conosco/submit', to: 'pages#submit_trabalhe_conosco', as: :submit_trabalhe_conosco
   post 'parcerias/submit', to: 'pages#submit_parcerias', as: :submit_parcerias
   post 'salute-parcerias/submit', to: 'pages#submit_legacy_partnerships'

@@ -283,8 +283,9 @@ RSpec.describe "Public branding pages", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(hero_search.at_css("form")).to be_present
-    expect(drawer["class"]).to include("public-global-search--mobile-only")
-    expect(drawer.at_css(".public-theme-filter-fab").text.squish).to eq("Filtrar imóveis")
+    # A classe de aparelho vale só para o botão flutuante; o drawer em si abre em qualquer aparelho (também pelo "Filtro detalhado" do hero).
+    expect(drawer["class"]).not_to include("mobile-only")
+    expect(drawer.at_css(".public-global-search--mobile-only .public-theme-filter-fab").text.squish).to eq("Filtrar imóveis")
   end
 
   it "permite filtro no hero e botão flutuante juntos no mobile" do
@@ -303,8 +304,9 @@ RSpec.describe "Public branding pages", type: :request do
     expect(hero_search.at_css("form")).to be_present
     expect(hero_search["class"]).not_to include("public-hero-search--desktop-only")
     expect(hero_search["class"]).not_to include("public-hero-search--mobile-only")
-    expect(drawer["class"]).to include("public-global-search--mobile-only")
-    expect(drawer.at_css(".public-theme-filter-fab").text.squish).to eq("Filtrar imóveis")
+    # A classe de aparelho vale só para o botão flutuante; o drawer em si abre em qualquer aparelho (também pelo "Filtro detalhado" do hero).
+    expect(drawer["class"]).not_to include("mobile-only")
+    expect(drawer.at_css(".public-global-search--mobile-only .public-theme-filter-fab").text.squish).to eq("Filtrar imóveis")
   end
 
   it "renderiza crédito global da Unitymob dentro do footer público" do

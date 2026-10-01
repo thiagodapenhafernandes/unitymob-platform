@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <%= stylesheet_link_tag "vendor/bootstrap-icons", preload_links_header: false %>
+    <%= stylesheet_link_tag "tailwind", preload_links_header: false %>
+    <%= stylesheet_link_tag "application", preload_links_header: false %>
+    <%= stylesheet_link_tag current_tenant.public_site_stylesheet, preload_links_header: false %>
+    <%# Prévia do construtor: a página real, sem cabeçalho do site e sem navegação (links não saem do editor). %>
+    <style>
+      .public-landing-page { margin-top: 0 !important; }
+      /* Sem o cabeçalho do site, a barra de filtros gruda no topo da prévia (e não 72px abaixo). */
+      .sticky.top-\[72px\] { top: 0 !important; }
+      /* Prévia clicável: o clique escolhe o bloco no editor (os links não navegam: ver landing_page_builder). */
+      .lp-preview-block { position: relative; cursor: pointer; outline: 2px solid transparent; outline-offset: -2px; transition: outline-color .15s; }
+      .lp-preview-block:hover { outline-color: rgba(37, 99, 235, .55); outline-style: dashed; }
+      .lp-preview-block.is-selected { outline-color: #2563eb; outline-style: solid; }
+      /* Inserir bloco entre dois blocos (o + aparece ao passar o mouse na emenda). */
+      .lp-insert { position: relative; z-index: 6; height: 0; }
+      .lp-insert::before { content: ""; position: absolute; left: 0; right: 0; top: -14px; height: 28px; }
+      .lp-insert__btn { position: absolute; left: 50%; top: -14px; display: grid; place-items: center; width: 28px; height: 28px; margin-left: -14px; border: 0; border-radius: 50%; background: #2563eb; color: #fff; font: 700 18px/1 system-ui, sans-serif; cursor: pointer; opacity: 0; transform: scale(.7); transition: opacity .15s, transform .15s; box-shadow: 0 2px 8px rgb(0 0 0 / .3); }
+      .lp-insert::after { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: #2563eb; opacity: 0; transition: opacity .15s; }
+      .lp-insert:hover .lp-insert__btn { opacity: 1; transform: none; }
+      .lp-insert:hover::after { opacity: .6; }
+      .lp-insert--first .lp-insert__btn { top: 6px; }
+      .lp-insert--empty { height: 120px; display: grid; place-items: center; }
+      .lp-insert--empty .lp-insert__btn { position: static; width: auto; height: auto; margin: 0; padding: 12px 20px; border-radius: 12px; font-size: 15px; opacity: 1; transform: none; }
+      .lp-preview-block [contenteditable] { outline: 2px solid #2563eb; outline-offset: 3px; border-radius: 4px; cursor: text; min-width: 20px; }
+    </style>
+  </head>
+  <body class="antialiased public-site-theme public-site-theme--<%= current_tenant.public_site_theme_key %>"
+        data-public-site-theme="<%= current_tenant.public_site_theme_key %>">
+    <%= yield %>
+  </body>
+</html>

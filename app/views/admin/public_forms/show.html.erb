@@ -2,7 +2,7 @@
       eyebrow: "Site público · Formulários",
       icon: "inbox",
       title: @public_form.name,
-      pills: [@public_form.active? ? "Ativo" : "Inativo", @public_form.category_label],
+      pills: [@public_form.status_label, @public_form.category_label],
       subtitle: "Envios recebidos e contrato do formulário.",
       metrics: [
         { value: number_with_delimiter(@public_form.submissions.count), label: "envios" },
@@ -16,6 +16,15 @@
 
 <div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-[minmax(0,1fr)_360px] tw-gap-4">
   <%= ax_operational_panel(eyebrow: "Submissões", title: "Envios recebidos") do %>
+    <%= form_with url: admin_public_form_path(@public_form), method: :get, class: "ax-filter-bar" do %>
+      <%= search_field_tag :q, params[:q], class: "ax-search", placeholder: "Buscar por nome, e-mail ou telefone…", aria: { label: "Buscar envios" } %>
+      <%= select_tag :period, options_for_select([["Qualquer data", ""], ["Últimos 7 dias", "7"], ["Últimos 30 dias", "30"]], params[:period]),
+                     class: "ax-control", aria: { label: "Filtrar por período" } %>
+      <%= ax_button("Filtrar", nil, variant: :secondary, size: :sm, type: :submit) %>
+      <% if params[:q].present? || params[:period].present? %>
+        <%= link_to "Limpar", admin_public_form_path(@public_form), class: "ax-link" %>
+      <% end %>
+    <% end %>
     <div class="ax-table-wrap">
       <table class="ax-table">
         <thead>
@@ -31,6 +40,9 @@
               <td>
                 <div class="ax-strong"><%= submission.normalized_name.presence || "Sem nome" %></div>
                 <div class="tw-text-2xs tw-text-ink-faint"><%= [submission.normalized_email, submission.normalized_phone].compact_blank.join(" · ") %></div>
+                <% if submission.lead_id.present? %>
+                  <div><%= link_to "Ver lead", admin_lead_path(submission.lead_id), class: "ax-link" %></div>
+                <% end %>
               </td>
               <td>
                 <div class="tw-flex tw-flex-wrap tw-gap-1">
@@ -38,6 +50,15 @@
                     <span class="ax-badge ax-badge--gray"><%= key %>: <%= truncate(Array(value).join(", "), length: 40) %></span>
                   <% end %>
                 </div>
+                <% if submission.files.attached? %>
+                  <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-2">
+                    <% submission.files.each do |file| %>
+                      <%= link_to rails_blob_path(file, disposition: "attachment"), class: "ax-link tw-text-2xs" do %>
+                        <i class="bi bi-paperclip" aria-hidden="true"></i> <%= file.filename %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                <% end %>
               </td>
               <td><%= l(submission.created_at, format: :short) %></td>
             </tr>

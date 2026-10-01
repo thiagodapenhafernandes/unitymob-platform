@@ -7,7 +7,8 @@ import { Controller } from "@hotwired/stimulus"
 //   data-live-flag="chave"   checkbox: mostra/esconde [data-live-flag-target="chave"]
 //   data-live-meter="chave"  campos de --hps-overlay-*: atualiza [data-live-meter-target="chave"] (data-level low|ok|high)
 //   data-live-focus="area"   numa seção/painel: destaca [data-live-focus-target="area"] na prévia e rola até ele
-//   data-live-fill='{"campo[nome]":"valor"}'  botão (click->live-preview#fill): preenche campos e dispara input
+//   data-live-fill='{"campo[nome]":"valor"}'  botão (click->live-preview#fill): preenche campos e dispara input;
+//   edição manual num campo do mapa limpa o aria-pressed dos botões (sync)
 //   data-live-image="url"    botão (click->live-preview#image): troca a imagem [data-live-image-target] da prévia
 // O elemento aplica tudo ao conectar (valores salvos) e a cada input/change:
 //   <div data-controller="live-preview" data-action="input->live-preview#sync change->live-preview#sync">
@@ -28,7 +29,26 @@ export default class extends Controller {
 
   sync(event) {
     const control = event.target.closest?.(CONTROLS)
-    if (control) this.apply(control)
+    if (!control) return
+    this.apply(control)
+    // Editou um campo de ponto de partida na mão: nenhum preset representa mais.
+    // fill() marca o clicado DEPOIS de disparar input/change, então sobrevive.
+    if (control.name && this.presetFieldNames().has(control.name)) {
+      this.element.querySelectorAll("[data-live-fill]").forEach((button) => button.setAttribute("aria-pressed", "false"))
+      this.setPresetCustomNote(true)
+    }
+  }
+
+  setPresetCustomNote(show) {
+    this.element.querySelectorAll("[data-preset-custom-note]").forEach((note) => { note.hidden = !show })
+  }
+
+  presetFieldNames() {
+    const names = new Set()
+    this.element.querySelectorAll("[data-live-fill]").forEach((button) => {
+      Object.keys(JSON.parse(button.dataset.liveFill || "{}")).forEach((name) => names.add(name))
+    })
+    return names
   }
 
   apply(control) {
@@ -105,6 +125,7 @@ export default class extends Controller {
       field.dispatchEvent(new Event("change", { bubbles: true }))
     })
     this.element.querySelectorAll("[data-live-fill]").forEach((button) => button.setAttribute("aria-pressed", String(button === event.currentTarget)))
+    this.setPresetCustomNote(false)
   }
 
   image(event) {

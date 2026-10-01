@@ -64,6 +64,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "progress" => "ax-progress",
     "presentation_cards" => "pc-manager",
     "proposal_form_modal" => "proposal-form-modal",
+    "landing_page_builder" => "lp-block",
     "public_form_builder" => "public-form-builder",
     "public_header_studio" => "hm-editor",
     "quick_modal" => "ax-quick-modal",
@@ -283,7 +284,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     %w[
       banners/index.html.erb
       data_export_audit_logs/index.html.erb
-      home_sections/index.html.erb
+      home_sections/_sections_table.html.erb
       marketing_properties/index.html.erb
       proprietors/index.html.erb
       attribute_options/index.html.erb
@@ -674,6 +675,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   let(:home_sections_index_view) do
     File.read(File.expand_path("../../../app/views/admin/home_sections/index.html.erb", __dir__))
+  end
+
+  let(:home_sections_table_view) do
+    File.read(File.expand_path("../../../app/views/admin/home_sections/_sections_table.html.erb", __dir__))
   end
 
   let(:home_section_workspace_views) do
@@ -2836,7 +2841,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(home_settings_edit_view).to include("home-settings-slide-thumb__image", "home-settings-mobile-preview")
     expect(home_settings_edit_view).not_to match(/\b(tab-content|tab-pane|position-relative|position-absolute|img-fluid|alert-link|tw-[a-z])/)
     expect(live_preview_controller).to include("style.setProperty", "data-live-var")
+    expect(live_preview_controller).to include("dataset.previewDevice = device")
+    expect(home_settings_edit_view).to include('data-device-only="desktop"', 'data-device-only="mobile"')
     expect(home_studio_stylesheet).to include(".home-settings-overlay-preview", ".home-settings-slide-item__content", "@media (max-width: 760px)")
+    expect(home_studio_stylesheet).to include(
+      '.hps-workspace:not([data-preview-device="mobile"]) [data-device-only="mobile"]',
+      '.hps-workspace[data-preview-device="mobile"] [data-device-only="desktop"]'
+    )
     expect(home_studio_stylesheet).not_to match(/html\[data-admin-theme/)
     expect(stylesheet).not_to include(".home-settings-overlay-preview")
   end
@@ -3614,11 +3625,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
   it "compoe e ordena as secoes da home com a tabela compartilhada" do
     expect(home_sections_index_view).not_to match(/\bstyle\s*=/i)
-    expect(home_sections_index_view).not_to include("form: { style:")
-    expect(home_sections_index_view).to include("ax_workspace_heading(", "ax_operational_panel(", 'class="ax-table-wrap"', "ax_empty_state(")
-    expect(home_sections_index_view).to include('data-controller="home-sections-sort"', "update_order_admin_home_sections_path")
-    expect(home_sections_index_view).to include("toggle_active_admin_home_section_path(section)", "turbo_confirm:")
-    expect(home_sections_index_view).to include("ax-table__col--w-80", "ax-table__col--w-120", "ax-table__row--sortable")
+    expect(home_sections_index_view).to include("ax_workspace_heading(", "ax_operational_panel(", 'render "sections_table"')
+    expect(home_sections_table_view).not_to match(/\bstyle\s*=/i)
+    expect(home_sections_table_view).not_to include("form: { style:", "button_to")
+    expect(home_sections_table_view).to include('class="ax-table-wrap"', "ax_empty_state(")
+    expect(home_sections_table_view).to include('data-controller="home-sections-sort"', "update_order_admin_home_sections_path")
+    expect(home_sections_table_view).to include("toggle_active_admin_home_section_path(section", "turbo_confirm:", "turbo_method: :patch")
+    expect(home_sections_table_view).to include("ax-table__col--w-80", "ax-table__col--w-120", "ax-table__row--sortable")
     expect(table_stylesheet).to include(".ax-table__row--sortable", ".ax-table__row--sortable:active")
   end
 
@@ -3984,22 +3997,20 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(combined_view).not_to include('class="ax-card', "custom-checkbox-card", "form-check", "spinner-border")
     expect(new_view).to include("ax_workspace_heading(", "render 'form'")
     expect(edit_view).to include("ax_workspace_heading(", "render 'form'")
-    expect(form_view.scan(/ax_operational_panel\(/).size).to eq(1)
-    expect(form_view.scan(/ax_studio_group\(/).size).to eq(5)
-    expect(form_view).to include("ax_error_summary(", "ax_input_group(", "ax_chip_grid(", "ax_chip_section(", "ax_toggle_chip(", "ax_switch_field(", "ax_studio_savebar(")
-    expect(form_view.scan(/ax_text_field\(/).size).to eq(7)
-    expect(form_view.scan(/ax_autocomplete_select_field\(/).size).to eq(5)
-    expect(form_view.scan(/ax_select_field\(/).size).to eq(1)
-    expect(form_view.scan(/ax_number_field\(/).size).to eq(4)
-    expect(form_view.scan(/ax_measure_field\(/).size).to eq(1)
-    expect(form_view.scan(/(?:f|fp)\.(?:label|select|text_area|number_field)/).size).to eq(0)
-    expect(form_view.scan(/f\.text_field/).size).to eq(1)
-    expect(form_view).to include('controller: "property-page-preview seo-snippet', 'data-property-page-preview-target="count"', 'data-property-page-preview-target="results"', 'aria-live="polite"', 'aria-busy="true"')
-    expect(form_view).to include('name: "landing_page[filter_params][characteristics][]"', "include_hidden: false", 'change->property-page-preview#refresh', "@property_categories", "@property_cities", "@property_neighborhoods", "filter_options_admin_landing_pages_path", ":property_codes", ":development")
-    expect(stylesheet).to include(".landing-page-preview", ".landing-page-preview__count", ".landing-page-preview__loading", ".landing-page-preview__actions", ".landing-page-preview__hero", ".landing-page-preview__stat", ".landing-page-preview__progress", ".landing-page-preview__empty", ".landing-page-preview__match")
-    expect(stylesheet).to match(/@media \(max-width: 900px\)[\s\S]*?\.landing-page-preview \{ position: static; \}/)
-    expect(property_page_preview_controller).to include('new AbortController()', 'escapeHtml(value)', 'renderItem(item)', 'class="landing-page-preview__progress"', 'role="alert"', 'this.countTarget.hidden = false', 'this.resultsTarget.setAttribute("aria-busy", "false")')
-    expect(property_page_preview_controller).not_to include("console.log", "alert alert-danger", "text-center py-5", "preview-stat-card", 'style="')
+    block_view = File.read(File.expand_path("../../../app/views/admin/landing_pages/_block.html.erb", __dir__))
+    filters_view = File.read(File.expand_path("../../../app/views/admin/landing_pages/_showcase_filters.html.erb", __dir__))
+    field_view = File.read(File.expand_path("../../../app/views/admin/landing_pages/_block_field.html.erb", __dir__))
+    builder = File.read(File.expand_path("../../../app/javascript/controllers/landing_page_builder_controller.js", __dir__))
+
+    expect(File.read(File.expand_path("../../../app/views/admin/landing_pages/_form.html.erb", __dir__))).to be_present
+    expect([block_view, filters_view, field_view].join("\n")).not_to match(/\bstyle\s*=/i)
+    expect(form_view.scan(/ax_guided_step\(/).size).to eq(3)
+    expect(form_view).to include("ax_guided_header(", "ax_error_summary(", "ax_input_group(", "ax_choice_group(", "ax_text_field(", 'controller: "landing-page-builder"', "render_preview_admin_landing_pages_path")
+    expect(filters_view).to include("ax_chip_section(", "ax_chip_grid(", "ax_toggle_chip(", "ax_autocomplete_select_field(", "ax_measure_field(", "ax_number_field(", "include_hidden: false", "filter_options_admin_landing_pages_path", "@property_categories", "@property_cities", "@property_neighborhoods")
+    expect(field_view).to include("ax_switch_field(", "ax_select_field(", "ax_text_field(")
+    expect(stylesheet).to include(".landing-page-preview", ".landing-page-preview__count")
+    expect(builder).to include("new AbortController()", "ResizeObserver", "renderProgress(", "fetch(this.previewUrlValue")
+    expect(builder).not_to include("console.log")
   end
 
   it "mantem a listagem de landing pages sem geometria inline" do

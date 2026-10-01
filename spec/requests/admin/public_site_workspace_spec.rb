@@ -316,8 +316,9 @@ RSpec.describe "Admin public site workspace", type: :request do
     tabs = html.css(".ax-studio-nav [role='tab'], .ax-studio-nav [data-ax-tabs-target='tab']")
     sections = html.css(".ax-studio__stage > .ax-studio-section")
     expect(tabs.map { |tab| tab["data-ax-tabs-target-param"] }).to eq(
-      %w[#home-tab-hero #home-tab-search #home-tab-after]
+      %w[#home-tab-hero #home-tab-sections]
     )
+    expect(tabs.map { |tab| tab.at_css("strong")&.text }).to eq(["Hero", "Seções"])
     expect(sections.map { |section| section["id"] }).to eq(tabs.map { |tab| tab["data-ax-tabs-target-param"].delete_prefix("#") })
     expect(sections.reject { |section| section.key?("hidden") }.map { |section| section["id"] }).to eq(["home-tab-hero"])
     expect(html.at_css(".ax-studio__aside .hps-site")).to be_present
@@ -325,13 +326,47 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(html.css(".ax-studio-group").map(&:text).map(&:squish)).to include(
       a_string_including("Sobreposição da imagem"),
       a_string_including("Fundo e forma"),
-      a_string_including("Pontos de partida"),
+      a_string_including("Pontos de partida")
+    )
+    expect(html.css(".ax-collapse-card__trigger").map(&:text).map(&:squish)).to include(
+      a_string_including("Customização avançada"),
+      a_string_including("Textos do Hero"),
+      a_string_including("Slides para desktop"),
+      a_string_including("Imagem para mobile"),
       a_string_including("Ordem da página")
     )
+    expect(html.text).not_to include("Blocos da página inicial")
+    %w[hero-texts hero-mobile-image home-page-order].each do |collapse_id|
+      expect(html.at_css("##{collapse_id}_trigger")["aria-expanded"]).to eq("true"), collapse_id
+      expect(html.at_css("##{collapse_id}").key?("hidden")).to be(false), collapse_id
+    end
+    expect(html.at_css("#hero-slides_trigger")["aria-expanded"]).to eq("false")
+    expect(html.at_css("#hero-slides").key?("hidden")).to be(true)
+    sections_panel = html.at_css("#home-tab-sections")
+    expect(sections_panel.at_css("#home-page-order .hps-story__table #home-sections-table")).to be_present
+    expect(sections_panel.at_css("#home-page-order_trigger .ax-badge")&.text).to include("ativas")
+    expect(sections_panel.at_css('a[href="#home-sections-table"]')).to be_nil
+    expect(sections_panel.at_css('[data-controller="home-sections-sort"]')).to be_present
+    expect(sections_panel.css("form")).to be_empty
+    expect(sections_panel.at_css('.ax-collapse-card__actions a[href*="new"][href*="return_to=home_settings"]')).to be_present
     expect(html.css(".ax-studio-nav__caption")).to be_empty
     expect(html.at_css(".hps-meter[data-live-meter-target='overlay']")).to be_present
     expect(html.css("[data-live-fill]").size).to eq(3)
-    expect(html.css("section[data-live-focus]").map { |section| section["data-live-focus"] }).to eq(%w[hero search after])
+    expect(html.css("section[data-live-focus]").map { |section| section["data-live-focus"] }).to eq(%w[hero sections])
+    hero_panel = html.at_css("#home-tab-hero")
+    advanced = hero_panel.at_css('[data-live-focus="search"]')
+    expect(advanced).to be_present
+    expect(advanced.at_css("#hero-advanced_trigger")["aria-expanded"]).to eq("false")
+    expect(advanced.at_css("#hero-advanced").key?("hidden")).to be(true)
+    expect(advanced.at_css("#hero-advanced_trigger").text).to include("Customização avançada")
+    expect(advanced.at_css('input[name="home_setting[search_filter_backdrop_blur]"]')).to be_present
+    expect(advanced.at_css(".hps-presets")).to be_present
+    expect(advanced.at_css("#input-overlay-opacity")).to be_present
+    expect(advanced.at_css('[data-live-focus="hero"] h3')&.text).to eq("Sobreposição da imagem")
+    hero_html = hero_panel.to_html
+    expect(hero_html.index("hero-advanced")).to be < hero_html.index("Textos do Hero")
+    expect(hero_panel.at_css('[data-device-only="desktop"] #hero-slides_trigger')&.text).to include("Slides para desktop")
+    expect(hero_panel.at_css('[data-device-only="mobile"] #hero-mobile-image_trigger')&.text).to include("Imagem para mobile")
     expect(html.at_css('input[type="file"][name="home_setting[hero_slide_images][]"][multiple]')).to be_present
     expect(html.at_css('#input-overlay-opacity[type="number"]')).to be_present
     expect(html.at_css('textarea[name="home_setting[public_header_css]"]')).to be_nil
@@ -340,6 +375,130 @@ RSpec.describe "Admin public site workspace", type: :request do
     expect(html.css(".tab-content, .tab-pane, .card, .form-control, .alert-link")).to be_empty
     expect(response.body).to include("Nenhuma imagem desktop carregada", "Nenhuma imagem mobile carregada", "ax-studio-savebar")
     expect(response.body).not_to include("bg-white", "bg-light")
+  end
+
+  it "espelha o filtro real na prévia do hero com os modos salvos" do
+    setting = HomeSetting.instance(tenant: admin.tenant)
+    setting.update!(search_filter_display_mode: "floating", mobile_search_filter_display_mode: "both")
+
+    get edit_admin_home_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    workspace = html.at_css(".hps-workspace")
+    expect(workspace["data-search-filter-mode"]).to eq("floating")
+    expect(workspace["data-mobile-filter-mode"]).to eq("both")
+    expect(html.at_css("section.hps-advanced #hero-advanced")).to be_present
+    filter = html.at_css(".hps-site .hps-filter")
+    expect(filter["data-live-focus-target"]).to eq("search")
+    expect(filter.at_css(".hps-filter__tabs-box .is-active")&.text).to eq("Comprar")
+    expect(filter.css(".hps-filter__panel .hps-filter__field").size).to eq(3)
+    expect(filter.at_css(".hps-filter__button [data-live-text-target='hero-cta']")).to be_present
+    expect(filter.at_css(".hps-filter__shortcuts")&.text).to include("Avançado", "Por código")
+  end
+
+  it "apaga os grupos sem efeito e mostra o filtro fixo no tema luxury" do
+    admin.tenant.update!(public_site_theme: "salute_luxury")
+
+    get edit_admin_home_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    expect(html.at_css(".hps-workspace")["data-theme-variant"]).to eq("salute-luxury")
+    expect(html.at_css(".hps-theme")&.text).to include("Salute Imóveis - Luxury", "Trocar em Identidade")
+    expect(html.at_css('.hps-theme a[href*="public_identity"]')).to be_present
+    hero_panel = html.at_css("#home-tab-hero")
+    expect(hero_panel.css(".hps-limited .hps-limited__note").size).to eq(5)
+    expect(hero_panel.css(".hps-limited__note").size).to eq(8)
+    expect(hero_panel.css(".ax-studio-group.hps-limited h3").map(&:text)).to contain_exactly(
+      "Sobreposição da imagem", "Pontos de partida", "Fundo e forma",
+      "Campos e textos", "Borda"
+    )
+    search_button_group = hero_panel.css(".ax-studio-group").find { |group| group.at_css("h3")&.text == "Botão de busca" }
+    expect(search_button_group.at_css(".hps-limited__note")&.text).to include("Só a Cor do texto vale")
+    expect(search_button_group.at_css('.hps-limited [name="home_setting[hero_cta_text]"]')).to be_present
+    expect(search_button_group.at_css('.hps-limited [name="home_setting[hero_button_color]"]')).to be_present
+    expect(search_button_group.at_css('.ax-span-4:not(.hps-limited) [name="home_setting[hero_button_text_color]"]')).to be_present
+    # Valores continuam editáveis (guardados para outros temas), só apagados.
+    expect(hero_panel.at_css('input[name="home_setting[search_filter_backdrop_blur]"]')).to be_present
+    luxury_filter = html.at_css(".hps-site .hps-filter--luxury")
+    expect(luxury_filter["data-live-focus-target"]).to eq("search")
+    expect(luxury_filter.css(".hps-filter__luxfield").size).to eq(3)
+    expect(luxury_filter.at_css(".hps-filter__luxgo")&.text).to include("Buscar")
+    expect(html.at_css(".hps-site .hps-filter__panel")).to be_nil
+  end
+
+  it "marca o preset conforme os valores salvos (Vidro é o padrão)" do
+    get edit_admin_home_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    pressed = html.css(".hps-preset").to_h { |button| [button.at_css("strong").text, button["aria-pressed"]] }
+    expect(pressed).to eq({ "Vidro" => "true", "Sólido claro" => "false", "Sólido escuro" => "false" })
+    expect(html.at_css('input[name="home_setting[search_filter_background_opacity]"]')["value"]).to eq("0.25")
+    expect(html.at_css('input[name="home_setting[search_filter_field_background_opacity]"]')["value"]).to eq("0.25")
+    expect(html.at_css('input[name="home_setting[search_filter_border_radius]"]')["value"]).to eq("35")
+    expect(html.at_css("[data-live-text-target='hero-cta']").text).to eq("Buscar")
+    expect(html.at_css(".hps-preset-custom").key?("hidden")).to be(true)
+
+    HomeSetting.instance(tenant: admin.tenant).update!(
+      search_filter_background_color: "#FFFFFF", search_filter_background_opacity: 0.95,
+      search_filter_backdrop_blur: 0, search_filter_border_radius: 14,
+      search_filter_field_background_color: "#F4F6F9", search_filter_field_background_opacity: 1,
+      search_filter_text_color: "#022B3A"
+    )
+
+    get edit_admin_home_setting_path
+
+    html = Nokogiri::HTML(response.body)
+    pressed = html.css(".hps-preset").to_h { |button| [button.at_css("strong").text, button["aria-pressed"]] }
+    expect(pressed).to eq({ "Vidro" => "false", "Sólido claro" => "true", "Sólido escuro" => "false" })
+
+    HomeSetting.instance(tenant: admin.tenant).update!(search_filter_background_opacity: 0.9)
+
+    get edit_admin_home_setting_path
+
+    html = Nokogiri::HTML(response.body)
+    expect(html.css('.hps-preset[aria-pressed="true"]')).to be_empty
+    custom_note = html.at_css(".hps-preset-custom")
+    expect(custom_note.key?("hidden")).to be(false)
+    expect(custom_note.text).to include("Personalizado")
+  end
+
+  it "reusa o topo do site na prévia da Home" do
+    ContactSetting.instance(tenant: admin.tenant).update!(phone: "+554832220000", show_phone_in_header: true)
+
+    get edit_admin_home_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    header = html.at_css(".hps-site .hps-header")
+    expect(header.at_css(".hps-header__search")).to be_present
+    expect(header.at_css(".hps-header__toggle")).to be_present
+    phone = header.at_css(".hps-header__phone")
+    expect(phone.key?("hidden")).to be(false)
+    expect(phone.text).to include("55 (48) 3222-0000")
+
+    ContactSetting.instance(tenant: admin.tenant).update!(show_phone_in_header: false)
+
+    get edit_admin_home_setting_path
+
+    expect(Nokogiri::HTML(response.body).at_css(".hps-site .hps-header__phone").key?("hidden")).to be(true)
+  end
+
+  it "mostra tudo ativo e o filtro reativo no tema padrão" do
+    get edit_admin_home_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    expect(html.at_css(".hps-workspace")["data-theme-variant"]).to eq("default")
+    expect(html.at_css(".hps-theme")&.text).to include("Padrão", "Trocar em Identidade")
+    expect(html.css(".hps-limited")).to be_empty
+    expect(html.css(".hps-limited__note")).to be_empty
+    expect(html.at_css(".hps-site .hps-filter__panel")).to be_present
+    expect(html.at_css(".hps-site .hps-filter--luxury")).to be_nil
+    hints = html.css("#home-tab-hero .ax-field__hint").map(&:text).join(" ")
+    expect(hints).to include("temas padrão", "modal de vídeos")
   end
 
   it "salva a Home somente no tenant autenticado" do
@@ -381,23 +540,22 @@ RSpec.describe "Admin public site workspace", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("Cidade Exclusiva Outro Tenant")
-    expect(response.body).to include("Quais imóveis aparecem", "Como o Google vê", "Resumo do conjunto")
-    expect(response.body).to include('data-controller="property-page-preview seo-snippet', 'data-property-page-preview-target="count"')
-    expect(response.body.scan('name="landing_page[filter_params][characteristics][]"').size).to eq(20)
-    expect(response.body).not_to include('type="hidden" name="landing_page[filter_params][characteristics][]"')
+    expect(response.body).to include("Quais imóveis aparecem", "Como o Google vê", "Blocos")
+    expect(response.body).to include('data-controller="landing-page-builder"')
+    expect(response.body.scan('name="landing_page[blocks_attributes][0][data][filters][characteristics][]"').size).to eq(20)
+    expect(response.body).not_to include('type="hidden" name="landing_page[blocks_attributes][0][data][filters][characteristics][]"')
     html = Nokogiri::HTML(response.body)
     expect(html.at_css('.ax-field input[name="landing_page[title]"]')).to be_present
-    expect(html.at_css('.ax-field input[name="landing_page[filter_params][q]"]')).to be_present
+    expect(html.at_css('.ax-field input[name="landing_page[blocks_attributes][0][data][filters][q]"]')).to be_present
     expect(html.at_css('.ax-input-group input[name="landing_page[slug]"]')).to be_present
-    expect(html.css('select.ax-autocomplete-select[multiple]').map { |select| select["name"] }).to contain_exactly(
-      "landing_page[filter_params][property_codes][]",
-      "landing_page[filter_params][category][]",
-      "landing_page[filter_params][city][]",
-      "landing_page[filter_params][neighborhood][]",
-      "landing_page[filter_params][development][]"
+    expect(html.css('[data-landing-page-builder-target="list"] select.ax-autocomplete-select[multiple]').map { |select| select["name"] }).to contain_exactly(
+      "landing_page[blocks_attributes][0][data][filters][property_codes][]",
+      "landing_page[blocks_attributes][0][data][filters][category][]",
+      "landing_page[blocks_attributes][0][data][filters][city][]",
+      "landing_page[blocks_attributes][0][data][filters][neighborhood][]",
+      "landing_page[blocks_attributes][0][data][filters][development][]"
     )
-    expect(html.at_css('.ax-measure-field input[name="landing_page[filter_params][min_area]"]')).to be_present
-    expect(html.at_css(".ax-studio-savebar")).to be_present
+    expect(html.at_css('.ax-measure-field input[name="landing_page[blocks_attributes][0][data][filters][min_area]"]')).to be_present
     expect(html.css(".form-group, .form-control, .tab-pane, .card")).to be_empty
 
     get filter_options_admin_landing_pages_path, params: { type: "property_codes", q: property.codigo }, as: :json

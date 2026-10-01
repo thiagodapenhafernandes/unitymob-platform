@@ -13,23 +13,29 @@
   --phi-radius: 14px;
   background: var(--phi-soft);
   color: var(--phi-ink);
-  overflow-x: hidden;
-  margin-top: 0;
+  /* clip (e não hidden): hidden transforma o bloco em contêiner de rolagem e a barra de filtros deixa de grudar no header
+     (o sticky passava a valer dentro do bloco, empurrando a barra para baixo no topo da página). */
+  overflow-x: clip;
+  /* Altura do header fixo do tema (72px no padrão; o luxury publica a altura medida em --listing-header-h). */
+  --listing-header-h: calc(72px + env(safe-area-inset-top));
+  margin-top: var(--listing-header-h);
   font-family: "Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .public-habitations-index .container-custom {
-  max-width: 1440px;
+  max-width: 1550px;
 }
 
 .public-habitations-index__filterbar {
   position: sticky;
-  top: calc(72px + env(safe-area-inset-top));
+  top: var(--listing-header-h, calc(72px + env(safe-area-inset-top)));
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid var(--phi-line);
   box-shadow: 0 10px 28px rgba(2, 43, 58, 0.08);
   backdrop-filter: blur(12px);
-  margin-bottom: 72px;
+  /* Sem margem embaixo: o título vem logo depois da barra. (A margem de 72px existia por causa do sticky antigo, que
+     deslocava a barra para baixo e deixava um vão por cima; agora a barra fica na posição natural.) */
+  margin-bottom: 0;
 }
 
 .public-habitations-index__filter-form {

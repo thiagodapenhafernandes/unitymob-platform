@@ -1,4 +1,4 @@
-\restrict tWPY1HXqoU84W9OLUEVW1jbwsTetM25lxBff97e4HnuDsIvWJQAk0aItIfGyAmH
+\restrict Ro1BuNaAWJBwhrzrFcO6oW0GD8XTsWAiP1FNQLQZ3EpFbEjzYt4a9EzNpdgMSBv
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -3691,7 +3691,13 @@ CREATE TABLE public.home_settings (
     header_colors jsonb DEFAULT '{}'::jsonb NOT NULL,
     header_menu jsonb DEFAULT '[]'::jsonb NOT NULL,
     header_cta_label character varying,
-    header_cta_url character varying
+    header_cta_url character varying,
+    hero_layout character varying DEFAULT 'classic'::character varying NOT NULL,
+    hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
+    hero_ai_search_enabled boolean DEFAULT false NOT NULL,
+    hero_ai_suggestions text,
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
 );
 
 
@@ -3822,6 +3828,42 @@ ALTER SEQUENCE public.instagram_messages_id_seq OWNED BY public.instagram_messag
 
 
 --
+-- Name: landing_page_blocks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.landing_page_blocks (
+    id bigint NOT NULL,
+    landing_page_id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    block_type character varying NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    visible boolean DEFAULT true NOT NULL,
+    data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: landing_page_blocks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.landing_page_blocks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: landing_page_blocks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.landing_page_blocks_id_seq OWNED BY public.landing_page_blocks.id;
+
+
+--
 -- Name: landing_pages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3837,7 +3879,10 @@ CREATE TABLE public.landing_pages (
     description text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    status character varying DEFAULT 'published'::character varying NOT NULL,
+    layout_columns integer DEFAULT 1 NOT NULL,
+    CONSTRAINT landing_pages_layout_columns_range CHECK (((layout_columns >= 1) AND (layout_columns <= 3)))
 );
 
 
@@ -5473,7 +5518,8 @@ CREATE TABLE public.public_form_submissions (
     normalized_phone character varying,
     status character varying DEFAULT 'received'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    lead_id bigint
 );
 
 
@@ -5516,7 +5562,12 @@ CREATE TABLE public.public_forms (
     modal_config jsonb DEFAULT '{}'::jsonb NOT NULL,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    webhook_url character varying,
+    distribution_rule_id bigint,
+    modal_layout character varying DEFAULT 'premium'::character varying NOT NULL,
+    modal_size character varying DEFAULT 'xl'::character varying NOT NULL,
+    status character varying DEFAULT 'published'::character varying NOT NULL
 );
 
 
@@ -8394,6 +8445,13 @@ ALTER TABLE ONLY public.instagram_messages ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: landing_page_blocks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.landing_page_blocks ALTER COLUMN id SET DEFAULT nextval('public.landing_page_blocks_id_seq'::regclass);
+
+
+--
 -- Name: landing_pages id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9663,6 +9721,14 @@ ALTER TABLE ONLY public.inbound_webhook_tokens
 
 ALTER TABLE ONLY public.instagram_messages
     ADD CONSTRAINT instagram_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: landing_page_blocks landing_page_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.landing_page_blocks
+    ADD CONSTRAINT landing_page_blocks_pkey PRIMARY KEY (id);
 
 
 --
@@ -13877,6 +13943,27 @@ CREATE UNIQUE INDEX index_instagram_messages_on_lead_id_and_message_id ON public
 
 
 --
+-- Name: index_landing_page_blocks_on_landing_page_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_page_blocks_on_landing_page_id ON public.landing_page_blocks USING btree (landing_page_id);
+
+
+--
+-- Name: index_landing_page_blocks_on_landing_page_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_page_blocks_on_landing_page_id_and_position ON public.landing_page_blocks USING btree (landing_page_id, "position");
+
+
+--
+-- Name: index_landing_page_blocks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_page_blocks_on_tenant_id ON public.landing_page_blocks USING btree (tenant_id);
+
+
+--
 -- Name: index_landing_pages_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13888,6 +13975,13 @@ CREATE INDEX index_landing_pages_on_tenant_id ON public.landing_pages USING btre
 --
 
 CREATE UNIQUE INDEX index_landing_pages_on_tenant_id_and_slug ON public.landing_pages USING btree (tenant_id, slug);
+
+
+--
+-- Name: index_landing_pages_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_pages_on_tenant_id_and_status ON public.landing_pages USING btree (tenant_id, status);
 
 
 --
@@ -15018,6 +15112,13 @@ CREATE INDEX index_public_form_fields_on_public_form_id_and_position ON public.p
 
 
 --
+-- Name: index_public_form_submissions_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_public_form_submissions_on_lead_id ON public.public_form_submissions USING btree (lead_id);
+
+
+--
 -- Name: index_public_form_submissions_on_normalized_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15060,6 +15161,13 @@ CREATE INDEX index_public_form_submissions_on_tenant_id_and_created_at ON public
 
 
 --
+-- Name: index_public_forms_on_distribution_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_forms_on_distribution_rule_id ON public.public_forms USING btree (distribution_rule_id);
+
+
+--
 -- Name: index_public_forms_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15085,6 +15193,13 @@ CREATE INDEX index_public_forms_on_tenant_id_and_category ON public.public_forms
 --
 
 CREATE UNIQUE INDEX index_public_forms_on_tenant_id_and_slug ON public.public_forms USING btree (tenant_id, slug);
+
+
+--
+-- Name: index_public_forms_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_forms_on_tenant_id_and_status ON public.public_forms USING btree (tenant_id, status);
 
 
 --
@@ -17314,6 +17429,14 @@ ALTER TABLE ONLY public.data_export_audit_logs
 
 
 --
+-- Name: landing_page_blocks fk_rails_33bd8f72ba; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.landing_page_blocks
+    ADD CONSTRAINT fk_rails_33bd8f72ba FOREIGN KEY (landing_page_id) REFERENCES public.landing_pages(id);
+
+
+--
 -- Name: profiles fk_rails_350dbd643d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18106,6 +18229,14 @@ ALTER TABLE ONLY public.proposals
 
 
 --
+-- Name: public_forms fk_rails_8076f74ae5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_forms
+    ADD CONSTRAINT fk_rails_8076f74ae5 FOREIGN KEY (distribution_rule_id) REFERENCES public.distribution_rules(id);
+
+
+--
 -- Name: habitations fk_rails_80a7cb3f5d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18618,6 +18749,14 @@ ALTER TABLE ONLY public.seo_settings
 
 
 --
+-- Name: public_form_submissions fk_rails_aaaec78514; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_submissions
+    ADD CONSTRAINT fk_rails_aaaec78514 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: commercial_contract_events fk_rails_ac64d95b71; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18687,6 +18826,14 @@ ALTER TABLE ONLY public.operational_user_events
 
 ALTER TABLE ONLY public.whatsapp_campaign_recipients
     ADD CONSTRAINT fk_rails_b3ebdb9b63 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: landing_page_blocks fk_rails_b487c98ba3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.landing_page_blocks
+    ADD CONSTRAINT fk_rails_b487c98ba3 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -19613,11 +19760,18 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict tWPY1HXqoU84W9OLUEVW1jbwsTetM25lxBff97e4HnuDsIvWJQAk0aItIfGyAmH
+\unrestrict Ro1BuNaAWJBwhrzrFcO6oW0GD8XTsWAiP1FNQLQZ3EpFbEjzYt4a9EzNpdgMSBv
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261001130000'),
+('20260930140000'),
+('20260930130000'),
+('20260930120000'),
+('20260930110000'),
+('20260930100000'),
+('20260930090000'),
 ('20260928120000'),
 ('20260927120000'),
 ('20260927090000'),

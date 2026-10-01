@@ -89,6 +89,7 @@
  *= require admin/components/system_workspace
  *= require admin/components/workflow
  *= require admin/components/public_form_builder
+ *= require admin/components/landing_page_builder
  *= require admin/components/lead_migration_integration
  *= require admin/components/lead_pipeline_stages
  *= require admin/components/public_header_studio

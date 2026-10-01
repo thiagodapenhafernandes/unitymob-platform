@@ -1,11 +1,26 @@
-<%# Etapa numerada do formulário guiado (cor via --step). Uso: ax_guided_step(number:, color: (:blue, :violet, :green, :amber, :teal… ou CSS), title:, subtitle:, optional:) { ... } %>
-<section class="ax-guided-step" data-guided-step="<%= number %>" style="--step:<%= color.is_a?(Symbol) ? "var(--ax-accent-#{color})" : color %>">
-  <header class="ax-guided-step__head">
+<%# Etapa numerada do formulário guiado (cor via --step). Uso: ax_guided_step(number:, color: (:blue, :violet, :green, :amber, :teal… ou CSS), title:, subtitle:, optional:, collapsible:, collapsed:) { ... }
+    collapsible: o cabeçalho abre/fecha o corpo (ax-disclosure); collapsed: já nasce fechada. %>
+<%
+  collapsible = local_assigns.fetch(:collapsible, false)
+  collapsed = collapsible && local_assigns.fetch(:collapsed, false)
+  section_options = { class: "ax-guided-step#{" is-collapsible" if collapsible}#{" is-open" if collapsible && !collapsed}", data: { guided_step: number }, style: "--step:#{color.is_a?(Symbol) ? "var(--ax-accent-#{color})" : color}" }
+  section_options[:data].merge!(controller: "ax-disclosure", ax_disclosure_open_value: !collapsed) if collapsible
+%>
+<%= tag.section(**section_options) do %>
+  <header class="ax-guided-step__head"<%= tag.attributes(data: { action: "click->ax-disclosure#toggle" }) if collapsible %>>
     <span class="ax-guided-step__num"><b><%= number %></b><i class="bi bi-check-lg"></i></span>
     <div>
       <h2><%= title %><% if local_assigns[:optional] %> <em>opcional</em><% end %></h2>
       <p><%= subtitle %></p>
     </div>
+    <% if collapsible %>
+      <button type="button" class="ax-guided-step__toggle" aria-label="Alternar etapa <%= title %>" aria-expanded="<%= !collapsed %>"
+              data-ax-disclosure-target="trigger">
+        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+      </button>
+    <% end %>
   </header>
-  <div class="ax-guided-step__body"><%= body %></div>
-</section>
+  <%= tag.div(class: "ax-guided-step__body", hidden: (collapsed || nil), data: (collapsible ? { ax_disclosure_target: "content" } : nil)) do %>
+    <%= body %>
+  <% end %>
+<% end %>

@@ -9,28 +9,59 @@
   desktop_image = active_slide&.image || (@home_setting.hero_background_desktop if @home_setting.hero_background_desktop.attached?)
   mobile_image = (@home_setting.hero_background_mobile if @home_setting.hero_background_mobile.attached?) || desktop_image
   hero_ready = @home_setting.hero_title.present? && @home_setting.hero_subtitle.present? && desktop_image.present?
-  header_entries = PublicHeaderMenu.visible(@home_setting.header_menu, blog_url: nil, youtube_url: nil).select(&:bar?).first(4)
+  header_entries = PublicHeaderMenu.visible(@home_setting.header_menu, blog_url: nil, youtube_url: nil).select(&:bar?)
   header_cta = @home_setting.header_cta_label.presence || PublicHeaderMenu::DEFAULT_CTA_LABEL
+  header_contact = ContactSetting.find_by(tenant: current_tenant)
+  header_phone = header_contact&.phone.presence || header_contact&.whatsapp_primary.presence || FooterSetting.find_by(tenant: current_tenant)&.whatsapp.presence
+  header_show_phone = header_contact.nil? || header_contact.show_phone_in_header?
   studio_items = [
-    { id: "home-tab-hero", icon: "image", label: "Abertura", hint: hero_ready ? "Mensagem, #{active_slides.size.positive? ? pluralize(active_slides.size, 'slide') : 'imagem'} e sobreposição" : "Falta título, subtítulo ou imagem" },
-    { id: "home-tab-search", icon: "search", label: "A busca", hint: @home_setting.search_filter_in_hero? ? "Filtro dentro do hero" : "Botão flutuante que abre a busca" },
-    { id: "home-tab-after", icon: "layout-three-columns", label: "Depois do hero", hint: "#{pluralize(active_sections.size, 'seção', 'seções')} ativas · #{pluralize(banners_after_hero.size + banners_before_footer.size, 'banner', 'banners')}" }
+    { id: "home-tab-hero", icon: "image", label: "Hero", hint: hero_ready ? "Mensagem, #{active_slides.size.positive? ? pluralize(active_slides.size, 'slide') : 'imagem'} e sobreposição" : "Falta título, subtítulo ou imagem" },
+    { id: "home-tab-sections", icon: "layout-text-sidebar", label: "Seções", hint: "#{active_sections.size} de #{@home_sections.size} ativas · arraste para ordenar" }
   ]
   # Atributos data-live-* (ver live_preview_controller): ligam cada campo à prévia sem JS por tela.
   live = ->(var, kind, fallback, unit = nil) { { live_var: var, live_kind: kind, live_fallback: fallback, live_unit: unit }.compact }
   overlay_live = ->(var, kind, fallback) { live.call(var, kind, fallback).merge(live_meter: "overlay") }
   preview_brand = layout_setting&.site_name.presence || current_tenant&.name.presence || "Sua imobiliária"
+  # O hero luxury tem desenho próprio e fixo: sobreposição, filtro, botão e tamanhos
+  # não valem nele. Chaveado pela variante (família), não pelo tema: tema novo nasce
+  # na variante default e herda a customização completa.
+  theme_config = Tenant::PUBLIC_SITE_THEMES.fetch(current_tenant.public_site_theme_key)
+  theme_label = theme_config[:label]
+  fixed_design_hero = (theme_config[:variant] || "default") == "salute-luxury"
+  theme_note = ->(text) do
+    next "".html_safe unless fixed_design_hero
+    tag.p(safe_join([tag.span("Sem efeito no tema #{theme_label}", class: "hps-limited__badge"), " #{text}"]), class: "hps-limited__note")
+  end
   hero_defaults = { title: "Encontre o imóvel dos seus sonhos", subtitle: "As melhores oportunidades" }
+  # Preset ativo = valores salvos idênticos aos do ponto de partida (nada ativo = customizado).
+  preset_match = ->(values) do
+    values.all? do |attr, expected|
+      actual = @home_setting.public_send(attr)
+      next false if actual.nil?
+      expected = expected.to_s.strip
+      if expected.match?(/\A\d+(\.\d+)?\z/)
+        actual.to_f == expected.to_f
+      else
+        actual.to_s.casecmp?(expected)
+      end
+    end
+  end
   filter_presets = [
-    ["Vidro", "Translúcido com desfoque, sobre a foto", { "search_filter_background_color" => "#FFFFFF", "search_filter_background_opacity" => "0.25", "search_filter_backdrop_blur" => "16", "search_filter_border_radius" => "22", "search_filter_field_background_color" => "#FFFFFF", "search_filter_field_background_opacity" => "0.85", "search_filter_text_color" => "#022B3A" }],
+    ["Vidro", "Translúcido com desfoque, sobre a foto", { "search_filter_background_color" => "#FFFFFF", "search_filter_background_opacity" => "0.25", "search_filter_backdrop_blur" => "16", "search_filter_border_radius" => "35", "search_filter_field_background_color" => "#FFFFFF", "search_filter_field_background_opacity" => "0.25", "search_filter_text_color" => "#022B3A" }],
     ["Sólido claro", "Painel branco, campos limpos", { "search_filter_background_color" => "#FFFFFF", "search_filter_background_opacity" => "0.95", "search_filter_backdrop_blur" => "0", "search_filter_border_radius" => "14", "search_filter_field_background_color" => "#F4F6F9", "search_filter_field_background_opacity" => "1", "search_filter_text_color" => "#022B3A" }],
     ["Sólido escuro", "Painel escuro que destaca o botão", { "search_filter_background_color" => "#022B3A", "search_filter_background_opacity" => "0.92", "search_filter_backdrop_blur" => "8", "search_filter_border_radius" => "14", "search_filter_field_background_color" => "#0B4A63", "search_filter_field_background_opacity" => "1", "search_filter_text_color" => "#FFFFFF" }]
-  ].map { |label, about, values| [label, about, values.transform_keys { |key| "home_setting[#{key}]" }.to_json] }
+  ].map { |label, about, values| [label, about, values.transform_keys { |key| "home_setting[#{key}]" }.to_json, preset_match.call(values)] }
 %>
 <div class="public-site-workspace hps-workspace"
      data-controller="live-preview"
-     data-action="input->live-preview#sync change->live-preview#sync focusin->live-preview#focus ax:tab-shown->live-preview#focus">
-  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "house-gear", title: "Home", subtitle: "Abertura, busca e o que vem depois dela. O topo do site fica em Topo e menu.", actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")) %>
+     data-action="input->live-preview#sync change->live-preview#sync focusin->live-preview#focus ax:tab-shown->live-preview#focus"
+     data-hero-layout="<%= @home_setting.hero_layout %>"
+     data-hero-align="<%= @home_setting.hero_search_align %>"
+     data-search-filter-mode="<%= @home_setting.search_filter_display_mode %>"
+     data-mobile-filter-mode="<%= @home_setting.mobile_search_filter_display_mode %>"
+     data-theme-variant="<%= theme_config[:variant] || "default" %>">
+  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "house-gear", title: "Home", subtitle: "Hero, busca e seções na ordem do site. O topo fica em Topo e menu.", actions: ax_button("Voltar", admin_root_path, variant: :secondary, icon: "arrow-left")) %>
+  <p class="hps-theme">Tema do site: <b><%= theme_label %></b> · <%= link_to "Trocar em Identidade", edit_admin_public_identity_path, class: "ax-link" %><% if fixed_design_hero %> · o hero usa desenho próprio — grupos apagados não valem nele<% end %></p>
 
   <%= form_with(model: @home_setting, url: admin_home_setting_path, local: true,
                 html: { multipart: true, data: { controller: "ax-dirty-form", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } }) do |f| %>
@@ -42,13 +73,187 @@
       </div>
 
       <div class="ax-studio__stage" id="home-studio-sections">
-        <%# ===== Abertura ===== %>
+        <%# ===== Hero ===== %>
         <%= ax_studio_section(id: "home-tab-hero", icon: "image", active: true, data: { live_focus: "hero" },
-                              title: "Abertura",
+                              title: "Hero",
                               subtitle: "A primeira dobra: o que o visitante lê, a foto por trás e o quanto ela é escurecida para o texto continuar legível.") do %>
 
+          <%# Layout do hero: escolhe o tipo primeiro; depois só aparecem as opções daquele layout. %>
+          <div class="ax-studio-group hps-layout" data-live-focus="hero">
+            <div class="ax-studio-group__head"><h3>Layout do hero</h3><p>Como a primeira dobra apresenta a busca. Cada tema desenha o layout com a própria identidade. O Clássico é o hero de sempre; título, subtítulo, imagem e sobreposição continuam valendo nos três.</p></div>
+            <%= ax_choice_group(form: f, method: :hero_layout, variant: :cards, selected: @home_setting.hero_layout, aria_label: "Layout do hero",
+                                input_data: { live_attr: "heroLayout" },
+                                choices: HomeSetting::HERO_LAYOUTS.map { |key, meta| { value: key, label: meta[:label], icon: "bi-#{meta[:icon]}", description: meta[:description] } }) %>
+
+            <div class="hps-layout__options" data-only-layouts="bar card">
+              <fieldset class="ax-guided-fieldset">
+                <legend>Posição da busca</legend>
+                <%= ax_choice_group(form: f, method: :hero_search_align, variant: :segment, selected: @home_setting.hero_search_align, aria_label: "Posição horizontal da busca",
+                                    input_data: { live_attr: "heroAlign" },
+                                    choices: [{ value: "left", label: "Esquerda", icon: "bi-align-start" }, { value: "center", label: "Centro", icon: "bi-align-center" }, { value: "right", label: "Direita", icon: "bi-align-end" }]) %>
+                <p class="ax-guided-hint">No Cartão, move o cartão sobre a foto. Na Barra, alinha o título e a barra (a barra tem largura máxima, então a posição aparece em telas largas).</p>
+              </fieldset>
+            </div>
+
+            <div class="hps-layout__options">
+              <% ai_ready = Ai::PropertySearch::PublicQuery.available?(tenant: current_tenant) %>
+              <fieldset class="ax-guided-fieldset">
+                <legend>Busca por voz e descrição com IA <span class="ax-badge ax-badge--amber">Novo</span></legend>
+                <%= ax_switch_field(form: f, method: :hero_ai_search_enabled, label: "Mostrar a busca por voz/descrição no site", class_name: "ax-switch--card",
+                                    description: "Vale para qualquer layout. No Clássico e na Barra aparece um botão de voz antes de Comprar, que troca o filtro pelo buscador por voz; no Cartão, o modo “Descreva seu imóvel ideal”. Desligado, nada disso aparece para o visitante.") %>
+                <% unless ai_ready %>
+                  <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                    A IA de busca desta conta ainda não está pronta (chave da OpenAI e “Ativar busca inteligente”). Configure em <%= link_to "Imóveis → Configurações", edit_admin_property_setting_path, class: "ax-link" %>; enquanto isso, o modo não aparece no site.
+                  <% end %>
+                <% end %>
+                <%= ax_text_field(form: f, method: :hero_ai_suggestions, type: :textarea, rows: 3, label: "Frases de sugestão (uma por linha, até 3)",
+                                  placeholder: "Apartamento 2 quartos perto do mar, aceita pet\nCasa com quintal em condomínio, até R$ 600 mil\nStudio mobiliado para investimento",
+                                  hint: "Aparecem abaixo do campo. O visitante clica e a frase vai para a busca. O microfone só aparece se a busca por voz estiver ativa na conta e o navegador permitir.") %>
+              </fieldset>
+            </div>
+          </div>
+
+          <div data-live-focus="search">
+            <%= ax_collapsible_card(title: "Customização avançada", collapse_id: "hero-advanced", icon: "sliders", collapsed: true, class_name: "hps-advanced") do %>
+              <div class="ax-studio-group__head"><p>Ajustes finos do hero: sobreposição da imagem e aparência da busca. Modo atual da busca: <%= @home_setting.search_filter_in_hero? ? "filtro dentro do hero" : "botão flutuante que abre a busca" %> — o lugar onde o filtro aparece fica em Identidade → Configurações.<%= " No tema #{theme_label}, o formulário sempre aparece no hero com desenho próprio." if fixed_design_hero %></p></div>
+          <div class="ax-studio-group<%= " hps-limited" if fixed_design_hero %>" data-live-focus="hero">
+            <%= theme_note.call("Fica guardado caso o tema mude.") %>
+            <div class="ax-studio-group__head"><h3>Sobreposição da imagem</h3><p>Escurece (ou tinge) a foto para o texto continuar legível.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= ax_measure_field(form: f, method: :overlay_opacity, label: "Opacidade", unit: "0–1", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: live.call("--hps-overlay-opacity", "number", "0.7")) %>
+              </div>
+              <div class="ax-span-8">
+                <%= ax_color_field(
+                      form: f,
+                      method: :overlay_color,
+                      label: "Cor da sobreposição",
+                      value: @home_setting.overlay_color || "#000000",
+                      color_options: { id: "input-overlay-color-picker", data: live.call("--hps-overlay-color", "color", "#000000") },
+                      text_options: { id: "input-overlay-color-text", data: live.call("--hps-overlay-color", "color", "#000000") }
+                    ) %>
+              </div>
+            <% end %>
+            <div class="hps-meter" data-live-meter-target="overlay" data-level="ok"
+                 data-text-low="Fraca: o texto branco pode se perder em fotos claras." data-text-ok="Boa: texto legível e a foto continua viva." data-text-high="Forte: a foto quase some, aproveite menos opacidade.">
+              <i class="hps-meter__bar" data-meter-bar></i><span data-meter-text></span>
+            </div>
+          </div>
+          <div class="ax-studio-group<%= " hps-limited" if fixed_design_hero %>">
+            <%= theme_note.call("Fica guardado caso o tema mude.") %>
+            <div class="ax-studio-group__head"><h3>Pontos de partida</h3><p>Aplica um conjunto de ajustes de uma vez. Você continua afinando cada campo abaixo.</p></div>
+            <div class="hps-presets" role="group" aria-label="Pontos de partida do filtro">
+              <% filter_presets.each do |label, about, values, active| %>
+                <button type="button" class="hps-preset" data-live-fill="<%= values %>" data-action="click->live-preview#fill" aria-pressed="<%= active %>">
+                  <strong><%= label %></strong><small><%= about %></small>
+                </button>
+              <% end %>
+            </div>
+            <p class="hps-preset-custom" data-preset-custom-note<%= " hidden" if filter_presets.any? { |_, _, _, active| active } %>><span class="ax-badge ax-badge--gray">Personalizado</span> Os ajustes atuais não correspondem a um ponto de partida — clique num card para aplicar um conjunto.</p>
+          </div>
+
+          <div class="ax-studio-group<%= " hps-limited" if fixed_design_hero %>">
+            <%= theme_note.call("Fica guardado caso o tema mude.") %>
+            <div class="ax-studio-group__head"><h3>Fundo e forma</h3><p>Cor, transparência, desfoque e arredondamento do painel que segura os campos.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-3">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_background_color, label: "Cor do fundo",
+                      value: @home_setting.search_filter_background_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-f-bg", "color", "#FFFFFF") },
+                      text_options: { id: "search-filter-background-text", data: live.call("--hps-f-bg", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", unit: "0–1", value: @home_setting.search_filter_background_opacity || 0.25, step: 0.05, min: 0, max: 1, placeholder: "0.25", data: live.call("--hps-f-bg-opacity", "number", "0.25")) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16", data: live.call("--hps-f-blur", "number", "16")) %>
+              </div>
+              <div class="ax-span-3">
+                <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio", unit: "px", value: @home_setting.search_filter_border_radius || 35, min: 0, max: 40, step: 1, placeholder: "35", data: live.call("--hps-f-radius", "number", "35")) %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="ax-studio-group<%= " hps-limited" if fixed_design_hero %>">
+            <%= theme_note.call("Fica guardado caso o tema mude.") %>
+            <div class="ax-studio-group__head"><h3>Campos e textos</h3><p>Aparência dos campos dentro do filtro e das palavras sobre ele.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_field_background_color, label: "Cor dos campos",
+                      value: @home_setting.search_filter_field_background_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-f-field", "color", "#FFFFFF") },
+                      text_options: { id: "search-filter-field-background-text", data: live.call("--hps-f-field", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_measure_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", unit: "0–1", value: @home_setting.search_filter_field_background_opacity || 0.25, step: 0.05, min: 0, max: 1, placeholder: "0.25", data: live.call("--hps-f-field-opacity", "number", "0.25")) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_text_color, label: "Cor dos textos/links",
+                      value: @home_setting.search_filter_text_color || "#022B3A",
+                      color_options: { data: live.call("--hps-f-text", "color", "#022B3A") },
+                      text_options: { id: "search-filter-text-text", data: live.call("--hps-f-text", "color", "#022B3A") }
+                    ) %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="ax-studio-group<%= " hps-limited" if fixed_design_hero %>">
+            <%= theme_note.call("Fica guardado caso o tema mude.") %>
+            <div class="ax-studio-group__head"><h3>Borda</h3><p>Contorno fino ao redor do painel de busca. Cor e opacidade só valem com a borda ligada.</p></div>
+            <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro", class_name: "ax-switch--card", input_html: { data: { live_attr: "filterBorder" } }) %>
+            <%= ax_field_grid class_name: "home-settings-dependent" do %>
+              <div class="ax-span-6">
+                <%= ax_color_field(
+                      form: f, method: :search_filter_border_color, label: "Cor da borda",
+                      value: @home_setting.search_filter_border_color || "#FFFFFF",
+                      color_options: { data: live.call("--hps-f-border", "color", "#FFFFFF") },
+                      text_options: { id: "search-filter-border-text", data: live.call("--hps-f-border", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_measure_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", unit: "0–1", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45", data: live.call("--hps-f-border-opacity", "number", "0.45")) %>
+              </div>
+            <% end %>
+          </div>
+
           <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Textos do Hero</h3><p>Título e subtítulo aparecem centralizados sobre a imagem.</p></div>
+            <%= theme_note.call("Só a Cor do texto vale (botão de contato no modal de vídeos).") %>
+            <div class="ax-studio-group__head"><h3>Botão de busca</h3><p>Cada campo vale num lugar do site — indicado abaixo de cada um.</p></div>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4<%= " hps-limited" if fixed_design_hero %>">
+                <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis", hint: "Rótulo do botão do filtro do hero (temas padrão).", data: { live_text: "hero-cta" }) %>
+              </div>
+              <div class="ax-span-4<%= " hps-limited" if fixed_design_hero %>">
+                <%= ax_color_field(
+                      form: f, method: :hero_button_color, label: "Cor do botão",
+                      value: @home_setting.hero_button_color || "#BFAB25",
+                      hint: "Fundo do botão e da aba ativa (temas padrão).",
+                      color_options: { data: live.call("--hps-btn-bg", "color", "#BFAB25") },
+                      text_options: { data: live.call("--hps-btn-bg", "color", "#BFAB25") }
+                    ) %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_color_field(
+                      form: f, method: :hero_button_text_color, label: "Cor do texto",
+                      value: @home_setting.hero_button_text_color || "#FFFFFF",
+                      hint: "Texto do botão de contato no modal de vídeos (todos os temas).",
+                      color_options: { data: live.call("--hps-btn-text", "color", "#FFFFFF") },
+                      text_options: { data: live.call("--hps-btn-text", "color", "#FFFFFF") }
+                    ) %>
+              </div>
+            <% end %>
+          </div>
+            <% end %>
+          </div>
+
+          <%= ax_collapsible_card(title: "Textos do Hero", collapse_id: "hero-texts", icon: "type", class_name: "hps-block-card") do %>
+            <div class="ax-studio-group__head"><p>Título e subtítulo aparecem centralizados sobre a imagem.</p></div>
+            <%= theme_note.call("Só título e subtítulo valem — os tamanhos são fixos.") %>
             <%= ax_field_grid do %>
               <div class="ax-span-9">
                 <%= ax_text_field(form: f, method: :hero_title, type: :textarea, label: "Título principal", hint: "Texto principal que aparece no topo da Home.", rows: 2, placeholder: "Compre ou alugue com atendimento especializado", data: { live_text: "hero-title" }) %>
@@ -63,10 +268,12 @@
                 <%= ax_measure_field(form: f, method: :hero_subtitle_font_size, label: "Tamanho do subtítulo", unit: "px", value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1, data: live.call("--hps-subtitle-size", "number", "20")) %>
               </div>
             <% end %>
-          </div>
+          <% end %>
 
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Slides para desktop</h3><p>Arraste para ordenar; slides desativados não entram no carrossel.</p></div>
+          <div data-device-only="desktop">
+            <%= ax_collapsible_card(title: "Slides para desktop", collapse_id: "hero-slides", icon: "images", class_name: "hps-block-card", collapsed: true) do %>
+            <div class="ax-studio-group__head"><p>Arraste para ordenar; slides desativados não entram no carrossel.</p></div>
+            <%= theme_note.call("Só a primeira imagem ativa aparece (sem carrossel).") %>
             <%= ax_file_field(form: f, method: :hero_slide_images, label: "Imagens do Hero", hint: "Envie uma ou mais imagens. O sistema redimensiona até 1920x1080px e otimiza para web.", accept: "image/*", multiple: true, input_id: "home-setting-hero-slide-images", button_label: "Adicionar imagens") %>
 
             <% if @home_setting.hero_slides.any? %>
@@ -124,10 +331,12 @@
                     compact: true
                   ) %>
             <% end %>
+            <% end %>
           </div>
 
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Imagem para mobile</h3><p>Formato vertical. Sem ela, o celular reaproveita a imagem do desktop.</p></div>
+          <div data-device-only="mobile">
+            <%= ax_collapsible_card(title: "Imagem para mobile", collapse_id: "hero-mobile-image", icon: "phone", class_name: "hps-block-card") do %>
+              <div class="ax-studio-group__head"><p>Formato vertical. Sem ela, o celular reaproveita a imagem do desktop.</p></div>
             <div class="home-settings-mobile-row">
               <% if @home_setting.hero_background_mobile.attached? %>
                 <div class="home-settings-mobile-preview">
@@ -143,155 +352,22 @@
               <% end %>
               <%= ax_file_field(form: f, method: :hero_background_mobile, label: "Imagem de fundo", hint: "Formato recomendado: 768x1024px, orientação vertical.", accept: "image/*", button_label: "Escolher imagem") %>
             </div>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Sobreposição da imagem</h3><p>Escurece (ou tinge) a foto para o texto continuar legível.</p></div>
-            <%= ax_field_grid do %>
-              <div class="ax-span-4">
-                <%= ax_measure_field(form: f, method: :overlay_opacity, label: "Opacidade", unit: "0–1", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: live.call("--hps-overlay-opacity", "number", "0.7")) %>
-              </div>
-              <div class="ax-span-8">
-                <%= ax_color_field(
-                      form: f,
-                      method: :overlay_color,
-                      label: "Cor da sobreposição",
-                      value: @home_setting.overlay_color || "#000000",
-                      color_options: { id: "input-overlay-color-picker", data: live.call("--hps-overlay-color", "color", "#000000") },
-                      text_options: { id: "input-overlay-color-text", data: live.call("--hps-overlay-color", "color", "#000000") }
-                    ) %>
-              </div>
-            <% end %>
-            <div class="hps-meter" data-live-meter-target="overlay" data-level="ok"
-                 data-text-low="Fraca: o texto branco pode se perder em fotos claras." data-text-ok="Boa: texto legível e a foto continua viva." data-text-high="Forte: a foto quase some, aproveite menos opacidade.">
-              <i class="hps-meter__bar" data-meter-bar></i><span data-meter-text></span>
-            </div>
-          </div>
-        <% end %>
-
-        <%# ===== A busca ===== %>
-        <%= ax_studio_section(id: "home-tab-search", icon: "search", data: { live_focus: "search" },
-                              title: "A busca",
-                              subtitle: "Como ele se parece sobre a imagem e o botão que fecha a ação. O lugar onde o filtro aparece fica em Identidade → Configurações.") do %>
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Pontos de partida</h3><p>Aplica um conjunto de ajustes de uma vez. Você continua afinando cada campo abaixo.</p></div>
-            <div class="hps-presets" role="group" aria-label="Pontos de partida do filtro">
-              <% filter_presets.each do |label, about, values| %>
-                <button type="button" class="hps-preset" data-live-fill="<%= values %>" data-action="click->live-preview#fill" aria-pressed="false">
-                  <strong><%= label %></strong><small><%= about %></small>
-                </button>
-              <% end %>
-            </div>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Fundo e forma</h3><p>Cor, transparência, desfoque e arredondamento do painel que segura os campos.</p></div>
-            <%= ax_field_grid do %>
-              <div class="ax-span-3">
-                <%= ax_color_field(
-                      form: f, method: :search_filter_background_color, label: "Cor do fundo",
-                      value: @home_setting.search_filter_background_color || "#FFFFFF",
-                      color_options: { data: live.call("--hps-f-bg", "color", "#FFFFFF") },
-                      text_options: { id: "search-filter-background-text", data: live.call("--hps-f-bg", "color", "#FFFFFF") }
-                    ) %>
-              </div>
-              <div class="ax-span-3">
-                <%= ax_measure_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", unit: "0–1", value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, placeholder: "0.9", data: live.call("--hps-f-bg-opacity", "number", "0.9")) %>
-              </div>
-              <div class="ax-span-3">
-                <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16", data: live.call("--hps-f-blur", "number", "16")) %>
-              </div>
-              <div class="ax-span-3">
-                <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio", unit: "px", value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, placeholder: "22", data: live.call("--hps-f-radius", "number", "22")) %>
-              </div>
-            <% end %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Campos e textos</h3><p>Aparência dos campos dentro do filtro e das palavras sobre ele.</p></div>
-            <%= ax_field_grid do %>
-              <div class="ax-span-4">
-                <%= ax_color_field(
-                      form: f, method: :search_filter_field_background_color, label: "Cor dos campos",
-                      value: @home_setting.search_filter_field_background_color || "#FFFFFF",
-                      color_options: { data: live.call("--hps-f-field", "color", "#FFFFFF") },
-                      text_options: { id: "search-filter-field-background-text", data: live.call("--hps-f-field", "color", "#FFFFFF") }
-                    ) %>
-              </div>
-              <div class="ax-span-4">
-                <%= ax_measure_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", unit: "0–1", value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, placeholder: "0.85", data: live.call("--hps-f-field-opacity", "number", "0.85")) %>
-              </div>
-              <div class="ax-span-4">
-                <%= ax_color_field(
-                      form: f, method: :search_filter_text_color, label: "Cor dos textos/links",
-                      value: @home_setting.search_filter_text_color || "#022B3A",
-                      color_options: { data: live.call("--hps-f-text", "color", "#022B3A") },
-                      text_options: { id: "search-filter-text-text", data: live.call("--hps-f-text", "color", "#022B3A") }
-                    ) %>
-              </div>
-            <% end %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Borda</h3><p>Contorno fino ao redor do painel de busca. Cor e opacidade só valem com a borda ligada.</p></div>
-            <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro", class_name: "ax-switch--card", input_html: { data: { live_attr: "filterBorder" } }) %>
-            <%= ax_field_grid class_name: "home-settings-dependent" do %>
-              <div class="ax-span-6">
-                <%= ax_color_field(
-                      form: f, method: :search_filter_border_color, label: "Cor da borda",
-                      value: @home_setting.search_filter_border_color || "#FFFFFF",
-                      color_options: { data: live.call("--hps-f-border", "color", "#FFFFFF") },
-                      text_options: { id: "search-filter-border-text", data: live.call("--hps-f-border", "color", "#FFFFFF") }
-                    ) %>
-              </div>
-              <div class="ax-span-6">
-                <%= ax_measure_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", unit: "0–1", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45", data: live.call("--hps-f-border-opacity", "number", "0.45")) %>
-              </div>
-            <% end %>
-          </div>
-
-          <div class="ax-studio-group">
-            <div class="ax-studio-group__head"><h3>Botão de busca</h3><p>Aparece dentro do filtro do hero e no botão flutuante.</p></div>
-            <%= ax_field_grid do %>
-              <div class="ax-span-4">
-                <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis", data: { live_text: "hero-cta" }) %>
-              </div>
-              <div class="ax-span-4">
-                <%= ax_color_field(
-                      form: f, method: :hero_button_color, label: "Cor do botão",
-                      value: @home_setting.hero_button_color || "#BFAB25",
-                      color_options: { data: live.call("--hps-btn-bg", "color", "#BFAB25") },
-                      text_options: { data: live.call("--hps-btn-bg", "color", "#BFAB25") }
-                    ) %>
-              </div>
-              <div class="ax-span-4">
-                <%= ax_color_field(
-                      form: f, method: :hero_button_text_color, label: "Cor do texto",
-                      value: @home_setting.hero_button_text_color || "#FFFFFF",
-                      color_options: { data: live.call("--hps-btn-text", "color", "#FFFFFF") },
-                      text_options: { data: live.call("--hps-btn-text", "color", "#FFFFFF") }
-                    ) %>
-              </div>
             <% end %>
           </div>
         <% end %>
 
-        <%# ===== Depois do hero ===== %>
-        <%= ax_studio_section(id: "home-tab-after", icon: "layout-three-columns", data: { live_focus: "after" },
-                              title: "Depois do hero",
-                              subtitle: "O que o visitante encontra rolando a página, na ordem em que aparece. Cada bloco é gerenciado na sua própria tela.") do %>
-          <%= ax_studio_group(title: "Ordem da página", subtitle: "Da abertura ao rodapé.", actions: link_to("Gerenciar seções", admin_home_sections_path, class: "ax-btn ax-btn--sm")) do %>
+        <%# ===== Seções ===== %>
+        <%= ax_studio_section(id: "home-tab-sections", icon: "layout-text-sidebar", data: { live_focus: "sections" },
+                              title: "Seções",
+                              subtitle: "Os blocos da página na ordem do site. Ordene, publique e configure sem sair da Home.") do %>
+          <%= ax_collapsible_card(title: "Ordem da página", collapse_id: "home-page-order", icon: "list-ol", class_name: "hps-block-card", badge: "#{active_sections.size} de #{@home_sections.size} ativas", actions: ax_button("Nova seção", new_admin_home_section_path(return_to: "home_settings"), variant: :primary, size: :sm, icon: "plus-lg")) do %>
+            <div class="ax-studio-group__head"><p>Do hero ao rodapé. Arraste para ordenar; Novo e Editar voltam para esta aba.</p></div>
             <ol class="hps-story">
-              <li class="hps-story__step is-fixed"><i class="bi bi-image"></i><div><strong>Abertura e busca</strong><small>Editadas nas duas etapas anteriores.</small></div></li>
+              <li class="hps-story__step is-fixed"><i class="bi bi-image"></i><div><strong>Hero e busca</strong><small>Editados nas duas etapas anteriores.</small></div></li>
               <% if banners_after_hero.any? %>
                 <li class="hps-story__step"><i class="bi bi-image-alt"></i><div><strong>Banners após o hero</strong><small><%= banners_after_hero.map(&:title).to_sentence %></small></div><%= link_to "Banners", admin_banners_path, class: "ax-link" %></li>
               <% end %>
-              <% active_sections.each do |section| %>
-                <li class="hps-story__step"><i class="bi bi-<%= section.property_content_section? ? "buildings" : "card-text" %>"></i><div><strong><%= section.title.presence || HomeSection::SECTION_TYPE_LABELS[section.section_type] %></strong><small><%= HomeSection::SECTION_TYPE_LABELS[section.section_type] %></small></div><%= link_to "Editar", edit_admin_home_section_path(section), class: "ax-link" %></li>
-              <% end %>
-              <% if active_sections.empty? %>
-                <li class="hps-story__step is-empty"><i class="bi bi-layout-text-sidebar"></i><div><strong>Nenhuma seção ativa</strong><small>A Home mostra só a abertura e a busca.</small></div><%= link_to "Criar seção", new_admin_home_section_path, class: "ax-link" %></li>
-              <% end %>
+              <li class="hps-story__table"><%= render "admin/home_sections/sections_table", sections: @home_sections, return_to: "home_settings" %></li>
               <% if banners_before_footer.any? %>
                 <li class="hps-story__step"><i class="bi bi-image-alt"></i><div><strong>Banners antes do rodapé</strong><small><%= banners_before_footer.map(&:title).to_sentence %></small></div><%= link_to "Banners", admin_banners_path, class: "ax-link" %></li>
               <% end %>
@@ -323,30 +399,57 @@
               </div>
               <div class="hps-hero__overlay"></div>
 
-              <header class="hps-header">
-                <strong><%= preview_brand %></strong>
-                <% header_entries.each_with_index do |entry, index| %>
-                  <span class="hps-header__link<%= " hps-header__link--hover" if index == header_entries.size - 1 %>"><%= entry.label %></span>
-                <% end %>
-                <span class="hps-header__cta"><%= header_cta %></span>
-              </header>
+              <%= render "admin/shared/preview_site_header", brand: preview_brand, logo: layout_setting&.logo,
+                    entries: header_entries, cta_label: header_cta,
+                    phone: (format_phone(header_phone) if header_phone.present?), phone_visible: header_show_phone,
+                    luxury: fixed_design_hero %>
 
               <div class="hps-hero__copy">
                 <h4 data-live-text-target="hero-title"><%= @home_setting.hero_title.presence || hero_defaults[:title] %></h4>
                 <p data-live-text-target="hero-subtitle"><%= @home_setting.hero_subtitle.presence || hero_defaults[:subtitle] %></p>
               </div>
 
-              <div class="hps-filter" data-live-focus-target="search">
-                <span class="hps-filter__field"><i class="bi bi-geo-alt"></i>Cidade</span>
-                <span class="hps-filter__field"><i class="bi bi-house"></i>Tipo</span>
-                <span class="hps-filter__field hps-filter__field--wide"><i class="bi bi-currency-dollar"></i>Valor</span>
-                <span class="hps-filter__button"><i class="bi bi-search"></i><span data-live-text-target="hero-cta"><%= @home_setting.hero_cta_text.presence || "Buscar imóveis" %></span></span>
+              <%# Esquema dos layouts Barra e Cartão (o Clássico usa o título e o filtro abaixo). Só um aparece, conforme data-hero-layout. %>
+              <div class="hps-lay hps-lay--bar" data-live-focus-target="search" aria-hidden="true">
+                <h4 data-live-text-target="hero-title"><%= @home_setting.hero_title.presence || hero_defaults[:title] %></h4>
+                <span class="hps-lay__bar"><i class="is-active">Comprar</i><i>Alugar</i><b>Localização</b><b>Tipo</b><b>Quartos</b><u><i class="bi bi-search"></i></u></span>
               </div>
+              <div class="hps-lay hps-lay--card" data-live-focus-target="search" aria-hidden="true">
+                <span class="hps-lay__card">
+                  <span class="hps-lay__tabs"><i class="is-active">Comprar</i><i>Alugar</i></span>
+                  <h4 data-live-text-target="hero-title"><%= @home_setting.hero_title.presence || hero_defaults[:title] %></h4>
+                  <span class="hps-lay__grid"><b>Localização</b><b>Tipo</b><b>Quartos</b><b>Valor</b></span>
+                  <u>Buscar imóveis</u>
+                </span>
+              </div>
+
+              <% if fixed_design_hero %>
+                <div class="hps-filter hps-filter--luxury" data-live-focus-target="search">
+                  <span class="hps-filter__tabs"><span class="hps-filter__tabs-box hps-filter__tabs-box--luxury"><i class="is-active">Comprar</i><i>Alugar</i></span></span>
+                  <span class="hps-filter__luxpanel">
+                    <span class="hps-filter__luxfield"><b>Tipo</b><i>Todos os tipos</i></span>
+                    <span class="hps-filter__luxfield"><b>Localização</b><i>Cidade ou bairro</i></span>
+                    <span class="hps-filter__luxfield"><b>Valores</b><i>Todos os valores</i></span>
+                    <span class="hps-filter__luxgo">Buscar<i class="bi bi-search"></i></span>
+                  </span>
+                </div>
+              <% else %>
+                <div class="hps-filter" data-live-focus-target="search">
+                  <span class="hps-filter__tabs"><span class="hps-filter__tabs-box"><i class="is-active">Comprar</i><i>Alugar</i></span></span>
+                  <span class="hps-filter__panel">
+                    <span class="hps-filter__field"><i class="bi bi-building"></i>Tipos</span>
+                    <span class="hps-filter__field"><i class="bi bi-geo-alt"></i>Localização</span>
+                    <span class="hps-filter__field"><i class="bi bi-currency-dollar"></i>Valores</span>
+                    <span class="hps-filter__button"><i class="bi bi-search"></i><span data-live-text-target="hero-cta"><%= @home_setting.hero_cta_text.presence || "Buscar" %></span></span>
+                  </span>
+                  <span class="hps-filter__shortcuts"><i>Avançado</i><i>Por código</i><i>Empreend.</i></span>
+                </div>
+              <% end %>
 
               <span class="hps-fab"><i class="bi bi-search"></i></span>
             </div>
 
-            <div class="hps-body" data-live-focus-target="after">
+            <div class="hps-body" data-live-focus-target="sections">
               <% if banners_after_hero.any? %><div class="hps-banner"><i class="bi bi-image-alt"></i><b><%= banners_after_hero.first.title %></b></div><% end %>
               <% active_sections.each do |section| %>
                 <div class="hps-block"><i class="bi bi-<%= section.property_content_section? ? "buildings" : "card-text" %>"></i><b><%= section.title.presence || HomeSection::SECTION_TYPE_LABELS[section.section_type] %></b>

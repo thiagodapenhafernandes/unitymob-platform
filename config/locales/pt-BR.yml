@@ -56,6 +56,35 @@ pt-BR:
   
   activerecord:
     attributes:
+      public_form:
+        name: "Nome interno"
+        slug: "ID do modal"
+        title: "Título"
+        subtitle: "Texto principal"
+        category: "Classificação"
+        submit_label: "Texto do botão"
+        success_message: "Mensagem de sucesso"
+        redirect_url: "URL pós-envio"
+        webhook_url: "Webhook"
+        distribution_rule: "Regra de distribuição"
+        modal_layout: "Modelo do modal"
+        modal_size: "Tamanho do modal"
+        status: "Status"
+        fields: "Campos"
+      public_form/fields:
+        label: "Rótulo"
+        name: "Nome técnico"
+        field_type: "Tipo"
+        options: "Opções"
+        position: "Posição"
+        mask: "Máscara"
+      public_form_field:
+        label: "Rótulo"
+        name: "Nome técnico"
+        field_type: "Tipo"
+        options: "Opções"
+        position: "Posição"
+        mask: "Máscara"
       habitation:
         codigo: "Código"
         categoria: "Categoria"

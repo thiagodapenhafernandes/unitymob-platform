@@ -1,0 +1,39 @@
+<%# Buscador por voz do hero (Clássico e Barra), no estilo do WhatsApp: ao tocar no botão de voz o formulário de filtros dá lugar
+    a esta barra, que já começa a gravar. Mostra a onda sonora real e o cronômetro; o botão de ação (no lugar do Buscar) vira
+    "enviar". Sem gravação possível (conta sem voz ou navegador sem suporte) a barra vira um campo de texto.
+    Contrato: .public-theme-hero-voice(--<variante>) com __bar, __cancel, __field, __wave, __timer, __text, __status, __send,
+    __suggestions, __suggestion, __error e __note. O estado vem em data-state (idle | recording | busy | text).
+    Locals: variant, class_name (opcional), voice (microfone liberado na conta), suggestions (frases de exemplo, opcional). %>
+<%
+  voice = local_assigns[:voice]
+  idle_text = voice ? "Toque para falar o que você procura." : "Descreva o imóvel que você procura."
+%>
+<div class="public-theme-hero-voice public-theme-hero-voice--<%= variant %> <%= local_assigns[:class_name] %>"
+     data-hero-search-target="aiPanel" data-state="<%= voice ? "idle" : "text" %>" hidden>
+  <div class="public-theme-hero-voice__bar">
+    <button type="button" class="public-theme-hero-voice__cancel" data-action="click->hero-search#cancelVoice" aria-label="Cancelar e voltar aos filtros" title="Cancelar">
+      <i class="bi bi-trash3" aria-hidden="true"></i>
+    </button>
+    <div class="public-theme-hero-voice__field">
+      <% if voice %>
+        <canvas class="public-theme-hero-voice__wave" data-hero-search-target="wave" aria-hidden="true"></canvas>
+        <span class="public-theme-hero-voice__timer" data-hero-search-target="timer" aria-hidden="true">0:00</span>
+      <% end %>
+      <input type="text" class="public-theme-hero-voice__text" data-hero-search-target="aiText" maxlength="300" autocomplete="off"
+             data-action="keydown.enter->hero-search#primary"
+             placeholder="Ex.: apartamento 2 quartos perto da praia, até R$ 3 milhões" aria-label="Descreva o imóvel que você procura">
+      <span class="public-theme-hero-voice__status" data-hero-search-target="status" role="status" aria-live="polite" data-idle="<%= idle_text %>"><%= idle_text %></span>
+    </div>
+    <button type="button" class="public-theme-hero-voice__send" data-hero-search-target="action" data-action="click->hero-search#primary"
+            aria-label="<%= voice ? "Gravar a descrição do imóvel" : "Buscar" %>"><i class="bi bi-<%= voice ? "mic-fill" : "send-fill" %>" aria-hidden="true"></i></button>
+  </div>
+  <% if Array(local_assigns[:suggestions]).any? %>
+    <ul class="public-theme-hero-voice__suggestions">
+      <% Array(local_assigns[:suggestions]).each do |text| %>
+        <li><button type="button" class="public-theme-hero-voice__suggestion" data-action="click->hero-search#suggestion"><%= text %></button></li>
+      <% end %>
+    </ul>
+  <% end %>
+  <p class="public-theme-hero-voice__error" data-hero-search-target="error" role="alert" hidden></p>
+  <% if voice %><p class="public-theme-hero-voice__note">O áudio é enviado só para transcrição e não é guardado.</p><% end %>
+</div>

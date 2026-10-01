@@ -25,22 +25,37 @@
         lead: @home_setting.hero_subtitle,
         lead_class: "sl-lead"
       } do %>
-  <%= render "public_theme/components/transaction_switch",
-        variant: "salute-luxury",
-        class_name: "sl-transaction hero-cta",
-        button_class: "public-theme-button sl-transaction__button btn fin",
-        action: "click->salute-luxury-theme#setTransaction",
-        default_value: "venda",
-        options: [
-          { label: "Comprar", value: "venda" },
-          { label: "Alugar", value: "aluguel" }
-        ] %>
-  <%= render "public_theme/components/search_form",
-        url: habitations_path,
-        variant: "salute-luxury",
-        class_name: "public-theme-search public-theme-hero__search sl-search search",
-        property_types: Array(@property_types),
-        location_options: Array(@location_options),
-        price_options: public_price_range_options,
-        transaction_default: "venda" %>
+  <%# Mesmo respeito aos modos de exibição do hero padrão: sem filtro no hero,
+      nem switch nem formulário renderizam; a classe de visibilidade restringe
+      por dispositivo. Com os modos default, a saída é idêntica à anterior. %>
+  <% if @home_setting.renders_hero_search_filter? %>
+    <% voice_ai = @home_setting.hero_ai_search_available? %>
+    <% voice_mic = voice_ai && Ai::PropertySearch::PublicQuery.voice_available?(tenant: public_tenant) %>
+    <%= tag.div class: @home_setting.hero_search_filter_visibility_class,
+                data: (voice_ai ? { controller: "hero-search", hero_search_ai_url_value: public_ai_search_path, hero_search_voice_value: voice_mic } : nil) do %>
+      <%= render "public_theme/components/transaction_switch",
+            variant: "salute-luxury",
+            class_name: "sl-transaction hero-cta",
+            button_class: "public-theme-button sl-transaction__button btn fin",
+            action: "click->salute-luxury-theme#setTransaction",
+            default_value: "venda",
+            voice_toggle: (voice_ai ? { icon: (voice_mic ? "mic" : "stars"), label: (voice_mic ? "Voz" : "Descrever"), aria_label: (voice_mic ? "Buscar por voz" : "Descrever o imóvel que procuro") } : nil),
+            options: [
+              { label: "Comprar", value: "venda" },
+              { label: "Alugar", value: "aluguel" }
+            ] %>
+      <%= render "public_theme/components/search_form",
+            url: habitations_path,
+            variant: "salute-luxury",
+            class_name: "public-theme-search public-theme-hero__search sl-search search",
+            property_types: Array(@property_types),
+            location_options: Array(@location_options),
+            price_options: public_price_range_options,
+            transaction_default: "venda",
+            form_data: (voice_ai ? { hero_search_target: "filtersPanel" } : nil) %>
+      <% if voice_ai %>
+        <%= render "public_theme/components/hero_voice", variant: "salute-luxury", voice: voice_mic %>
+      <% end %>
+    <% end %>
+  <% end %>
 <% end %>

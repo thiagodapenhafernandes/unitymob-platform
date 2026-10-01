@@ -1,9 +1,8 @@
-<%= ax_workspace_heading(
-      eyebrow: "Site público · Formulários",
-      icon: "ui-checks-grid",
-      title: "Novo formulário",
-      subtitle: "Defina estrutura, campos e comportamento do envio.",
-      actions: ax_button("Voltar", admin_public_forms_path, variant: :ghost, size: :sm, icon: "arrow-left")
-    ) %>
+<% content_for :admin_contextbar_title, "Novo formulário" %>
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_public_forms_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+  <% end %>
+<% end %>
 
 <%= render "form", public_form: @public_form %>

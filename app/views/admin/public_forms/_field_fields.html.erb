@@ -2,7 +2,9 @@
 <% choice_field = field.choice_field? %>
 <% auto_name = field.name.blank? %>
 
-<section class="public-form-builder__field"
+<% file_config = field.config.to_h %>
+
+<section class="public-form-builder__field<%= " is-open" if field.new_record? %>"
          data-public-form-builder-target="field"
          data-field-type="<%= field.field_type.presence || "text" %>">
   <%= field_form.hidden_field :id if field.persisted? %>
@@ -10,16 +12,21 @@
   <%= field_form.hidden_field :position, value: field.position.presence, data: { public_form_builder_target: "positionInput" } %>
 
   <div class="public-form-builder__field-header">
-    <button type="button"
-            class="public-form-builder__drag-handle"
-            title="Mover campo"
-            aria-label="Mover campo">
+    <span class="public-form-builder__drag-handle"
+          role="img"
+          draggable="true"
+          title="Arraste para reordenar"
+          aria-label="Arraste para reordenar"
+          data-action="dragstart->public-form-builder#dragStart dragend->public-form-builder#dragEnd">
       <i class="bi bi-grip-vertical" aria-hidden="true"></i>
-    </button>
-    <div class="public-form-builder__field-title">
+    </span>
+    <button type="button"
+            class="public-form-builder__field-title"
+            aria-expanded="<%= field.new_record? %>"
+            data-action="public-form-builder#toggle">
       <strong data-public-form-builder-target="fieldTitle"><%= field.label.presence || "Novo campo" %></strong>
       <span data-public-form-builder-target="fieldMeta"><%= field.field_type.presence || "text" %></span>
-    </div>
+    </button>
     <div class="public-form-builder__field-actions">
       <button type="button"
               class="ax-icon-btn"
@@ -105,8 +112,33 @@
             label: "Obrigatório",
             form: field_form,
             method: :required,
-            input_html: { data: { public_form_builder_target: "requiredInput" } }
+            input_html: { data: { public_form_builder_target: "requiredInput", action: "change->public-form-builder#refresh" } }
           ) %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--width">
+      <label class="ax-label">Largura no modal
+        <%= select_tag "#{field_form.object_name}[config][width]",
+                       options_for_select(PublicFormField::WIDTHS.map { |value, label| [label, value] }, field.width_setting),
+                       id: nil, class: "ax-control", data: { config_setting: "width" } %>
+      </label>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--mask <%= "is-hidden" unless field.maskable? %>"
+         data-public-form-builder-target="maskBlock">
+      <label class="ax-label">Máscara de digitação
+        <%= text_field_tag "#{field_form.object_name}[config][mask]", field.config.to_h["mask"],
+                           id: nil, maxlength: 40, class: "ax-control", placeholder: "Ex.: 00-0000 ou (00) 00000-0000",
+                           disabled: !field.maskable?,
+                           data: { config_setting: "mask", public_form_builder_target: "maskInput" } %>
+      </label>
+      <label class="ax-label">Atalhos
+        <select class="ax-control" data-action="change->public-form-builder#maskPreset">
+          <option value="">Escolher um formato…</option>
+          <% PublicFormField::MASK_PRESETS.each do |label, pattern| %><option value="<%= pattern %>"><%= label %></option><% end %>
+        </select>
+      </label>
+      <small class="tw-text-ink-muted">0 = dígito · A = letra · * = letra ou número · os demais símbolos ficam fixos. "money" = dinheiro (R$ 1.234,56). O campo do tipo Moeda já usa dinheiro sozinho.</small>
     </div>
 
     <div class="public-form-builder__cell public-form-builder__cell--options <%= "is-hidden" unless choice_field %>"
@@ -118,6 +150,30 @@
                                placeholder: "Uma por linha. Ex: Venda|venda",
                                data: { public_form_builder_target: "optionsInput" } %>
       <small class="tw-text-ink-muted">Use uma opção por linha. O formato aceito é Label ou Label|valor.</small>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--file <%= "is-hidden" unless field.file_field? %>"
+         data-public-form-builder-target="fileBlock">
+      <% config_name = "#{field_form.object_name}[config]" %>
+      <label class="ax-label">Tipos aceitos
+        <%= select_tag "#{config_name}[kind]",
+                       options_for_select(PublicFormField::FILE_KIND_LABELS.map { |value, label| [label, value] }, field.file_kind),
+                       id: nil, class: "ax-control", disabled: !field.file_field?,
+                       data: { file_setting: "kind", public_form_builder_target: "fileInput" } %>
+      </label>
+      <label class="ax-label">Tamanho máx. (MB)
+        <%= number_field_tag "#{config_name}[max_mb]", field.file_max_mb,
+                             id: nil, min: 1, max: PublicFormField::FILE_MAX_MB_LIMIT, class: "ax-control", disabled: !field.file_field?,
+                             data: { file_setting: "max_mb", public_form_builder_target: "fileInput" } %>
+      </label>
+      <label class="public-form-builder__check">
+        <%= hidden_field_tag "#{config_name}[multiple]", "0", id: nil, disabled: !field.file_field?, data: { public_form_builder_target: "fileInput" } %>
+        <%= check_box_tag "#{config_name}[multiple]", "1", field.file_multiple?,
+                          id: nil, disabled: !field.file_field?,
+                          data: { file_setting: "multiple", public_form_builder_target: "fileInput" } %>
+        Permitir vários arquivos (até <%= PublicFormField::FILE_MAX_FILES %>)
+      </label>
+      <small class="tw-text-ink-muted">Os arquivos enviados no site vão para o armazenamento de documentos configurado na conta.</small>
     </div>
   </div>
 </section>

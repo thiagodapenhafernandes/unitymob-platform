@@ -1,0 +1,18 @@
+<%# Bloco "Conteúdo incorporado": iframe de um endereço https, isolado (sandbox) e com carga tardia. Na prévia do admin
+    mostra só o endereço. Locals: block, variant. %>
+<% src = block.embed_url %>
+<% if src || @preview_mode %>
+  <div class="public-theme-block-embed public-theme-block-embed--<%= variant %> is-height-<%= block.value(:height) %><%= " is-empty" unless src %>">
+    <div class="container-custom">
+      <% if src && @preview_mode %>
+        <div class="public-theme-block-embed__frame public-theme-block-embed__placeholder"><i class="bi bi-window-stack" aria-hidden="true"></i> <%= URI.parse(src).host rescue src %></div>
+      <% elsif src %>
+        <iframe class="public-theme-block-embed__frame" src="<%= src %>" title="<%= block.value(:title).presence || "Conteúdo incorporado" %>" loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-presentation"></iframe>
+      <% else %>
+        <div class="public-theme-block-embed__frame public-theme-block-embed__placeholder"><i class="bi bi-window-stack" aria-hidden="true"></i> Cole o endereço (https) ou o código do iframe</div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
