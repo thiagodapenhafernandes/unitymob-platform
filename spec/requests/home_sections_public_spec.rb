@@ -34,6 +34,32 @@ RSpec.describe "Seções da home", type: :request do
     expect(html.at_css("[data-public-home-section='#{second.id}']")["class"]).to include("public-theme-home-section--alt")
   end
 
+  it "só carrega associações e fotos dos cards quando o fragmento da seção não está em cache" do
+    create_list(:habitation, 2, tenant:, exibir_no_site_flag: true)
+    tenant.home_sections.create!(section_type: :featured_properties, title: "Destaques", active: true, order_position: 1, property_filters: { "exibir_no_site" => "1" })
+    store = ActiveSupport::Cache::MemoryStore.new
+    previous = [Rails.cache, ActionController::Base.cache_store, ActionController::Base.perform_caching]
+    Rails.cache = store
+    ActionController::Base.cache_store = store
+    ActionController::Base.perform_caching = true
+
+    begin
+      allow(PublicSite::CardPhotoPreloader).to receive(:new).and_call_original
+      get root_path
+      expect(response).to have_http_status(:ok)
+      expect(PublicSite::CardPhotoPreloader).to have_received(:new).at_least(:once)
+      first_cards = html.css("[data-property-id]").map { _1["data-property-id"] }
+
+      RSpec::Mocks.space.proxy_for(PublicSite::CardPhotoPreloader).reset
+      expect(PublicSite::CardPhotoPreloader).not_to receive(:new)
+      get root_path
+      expect(response).to have_http_status(:ok)
+      expect(html.css("[data-property-id]").map { _1["data-property-id"] }).to eq(first_cards)
+    ensure
+      Rails.cache, ActionController::Base.cache_store, ActionController::Base.perform_caching = previous
+    end
+  end
+
   it "mostra a seção Explore por cidade com links que filtram de verdade" do
     create(:habitation, tenant:, exibir_no_site_flag: true,
                         address_attributes: { logradouro: "Rua 1", numero: "1", bairro: "Centro", cidade: "Itajaí", uf: "SC" })
