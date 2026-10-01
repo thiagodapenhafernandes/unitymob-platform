@@ -495,8 +495,9 @@
     .home-video-modal__info {
       position: absolute;
       right: 1.4rem;
-      bottom: 1.4rem;
+      bottom: 4.6rem; /* acima da barra do player embutido (Mais vídeos / YouTube) */
       left: 1.4rem;
+      z-index: 3; /* acima do iframe/vídeo (z-index 1), senão o botão some ao carregar */
       display: grid;
       gap: .3rem;
       pointer-events: none;
@@ -533,15 +534,23 @@
       justify-self: start;
       display: inline-flex;
       align-items: center;
-      gap: .55rem;
+      gap: .6rem;
       margin-top: .8rem;
+      border: 1px solid rgba(255, 255, 255, .28);
       border-radius: 999px;
-      padding: .82rem 1.25rem;
-      background: var(--golden-one, var(--public-theme-accent, var(--color-accent, #bfab25)));
+      padding: .8rem 1.35rem;
+      background: var(--color-accent, var(--public-theme-accent, #bfab25));
       color: var(--color-hero-button-text, #fff);
-      font-weight: 850;
+      font-size: .95rem;
+      font-weight: 800;
       text-decoration: none;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+      transition: transform .18s ease, filter .18s ease;
     }
+
+    .home-video-modal__cta:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .home-video-modal__cta i { transition: transform .18s ease; }
+    .home-video-modal__cta:hover i { transform: translateX(3px); }
 
     .home-video-modal__close,
     .home-video-modal__nav {

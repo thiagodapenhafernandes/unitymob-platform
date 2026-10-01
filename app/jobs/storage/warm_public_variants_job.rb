@@ -44,14 +44,21 @@ module Storage
     ].freeze
 
     MAX_BLOBS = 300
+    # Teto de jobs por varredura: o ImageMagick satura a CPU do servidor (web, banco
+    # e fila dividem 4 núcleos). Lotes pequenos e frequentes evitam a rajada de
+    # ~2.500 jobs que deixou a home em 9 s; o que sobra entra na próxima varredura.
+    MAX_ENQUEUE_PER_RUN = 300
     RECENT_WINDOW = 30.days
     SWEEP_DEDUP_TTL = 20.hours
 
     def perform
       enqueued = 0
       candidate_blobs.each do |blob|
+        break if enqueued >= MAX_ENQUEUE_PER_RUN
         next unless blob.variable?
         SETS.each do |transformations|
+          break if enqueued >= MAX_ENQUEUE_PER_RUN
+
           variant = blob.variant(**transformations)
           next if variant_processed?(variant)
           next unless sweep_claim(blob.id, transformations)
