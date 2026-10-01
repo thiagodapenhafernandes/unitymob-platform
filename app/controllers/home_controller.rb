@@ -1,4 +1,6 @@
 class HomeController < ApplicationController
+  helper_method :prepare_home_cards
+
   def index
     @public_identity = public_identity
 
@@ -162,9 +164,9 @@ class HomeController < ApplicationController
 
     kind = videos ? "property_videos" : "properties"
     payload = home_property_cta(section).merge(kind:, records: properties)
-    payload[:corporate_records] = cached_home_properties(section, "corporate_properties") do
+    payload[:corporate_records] = prepare_home_cards(cached_home_properties(section, "corporate_properties") do
       public_habitations.active.home_corporate.limit(3).pluck(:id)
-    end if section.corporate_showcase? && section.selected_property_ids.empty?
+    end) if section.corporate_showcase? && section.selected_property_ids.empty?
     payload
   end
 
@@ -187,14 +189,31 @@ class HomeController < ApplicationController
     ].join("/")
   end
 
+  # Só os registros (id/updated_at servem de chave dos fragmentos e de dedupe
+  # entre seções). Associações e fotos dos cards vêm de prepare_home_cards,
+  # chamado dentro do cache da view: no hit do fragmento (ou nas seções que o
+  # turbo-frame renderiza depois) esse custo não é pago.
   def load_home_properties(ids)
     ids = Array(ids).compact
     return [] if ids.empty?
 
-    records = public_property_card_scope(public_habitations.where(id: ids)).to_a
-    PublicSite::CardPhotoPreloader.new(records, limit: 3).call
-    records_by_id = records.index_by(&:id)
+    records_by_id = public_habitations.where(id: ids).index_by(&:id)
     ids.filter_map { |id| records_by_id[id] }
+  end
+
+  def prepare_home_cards(records)
+    records = Array(records)
+    return records if records.empty?
+
+    ActiveRecord::Associations::Preloader.new(
+      records: records,
+      associations: [
+        :address,
+        { constructor: { logo_attachment: :blob } },
+        { empreendimento: { constructor: { logo_attachment: :blob } } }
+      ]
+    ).call
+    PublicSite::CardPhotoPreloader.new(records, limit: 3).call
   end
 
   def public_property_card_scope(scope)
