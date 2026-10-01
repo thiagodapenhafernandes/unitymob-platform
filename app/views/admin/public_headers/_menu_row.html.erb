@@ -5,6 +5,9 @@
   name = ->(field) { "home_setting[header_menu][#{index}][#{field}]" }
   dom = ->(field) { "home_setting_header_menu_#{index}_#{field}" }
   typed_label = entry && (entry.custom? || entry.label != entry.default_label) ? entry.label : ""
+  # Item do sistema: o endereço próprio só aparece quando difere do padrão da página (que fica como sugestão).
+  typed_url = custom ? entry&.url : (entry && entry.url != entry.default_url ? entry.url : "")
+  url_pattern = '(/\S*|https?://\S+|mailto:\S+|tel:\S+|#modal-[a-z0-9\-]+)'
   head_title = typed_label.presence || entry&.default_label || "Novo link"
   head_dest = custom ? entry&.url.presence || "Sem endereço" : entry&.url
 %>
@@ -36,14 +39,17 @@
       </div>
       <div>
         <label class="ax-field__label" for="<%= dom.call(:url) %>">Endereço</label>
-        <% if custom %>
-          <input type="text" class="ax-control hm-row__url" id="<%= dom.call(:url) %>" name="<%= name.call(:url) %>" value="<%= entry&.url %>"
-                 placeholder="/pagina ou https://..." spellcheck="false" data-role="url">
-        <% else %>
-          <input type="text" class="ax-control" id="<%= dom.call(:url) %>" value="<%= entry&.url %>" disabled readonly aria-label="Endereço fixo da página">
-        <% end %>
+        <input type="text" class="ax-control hm-row__url" id="<%= dom.call(:url) %>" name="<%= name.call(:url) %>" value="<%= typed_url %>"
+               placeholder="<%= custom ? "/pagina ou https://..." : entry&.default_url %>" spellcheck="false" autocomplete="off"
+               pattern="<%= url_pattern %>" title="Use /página, https://…, mailto:, tel: ou #modal-ID"
+               data-role="url" data-default="<%= custom ? "" : entry&.default_url %>">
       </div>
     </div>
+    <small class="ax-field__hint"><i class="bi bi-link-45deg"></i> Aceita <code>/página</code>, <code>https://…</code>, <code>mailto:</code>, <code>tel:</code> ou <code>#modal-ID</code> (abre um formulário em janela, veja o ID em Formulários).<%= " Em branco, vale o endereço padrão da página." unless custom %></small>
+    <% modal_problem = PublicForm.modal_link_problem(tenant: current_tenant, url: entry&.url) %>
+    <% if modal_problem %>
+      <small class="ax-field__hint hm-row__warn"><i class="bi bi-exclamation-triangle"></i> <%= modal_problem %></small>
+    <% end %>
     <% if entry&.key.in?(%w[blog youtube financiamento]) %>
       <small class="ax-field__hint"><i class="bi bi-info-circle"></i> Só aparece quando a conta tem <%= { "blog" => "blog ou endereço do blog", "youtube" => "canal do YouTube", "financiamento" => "o simulador de financiamento ligado (Perfil público)" }[entry.key] %></small>
     <% end %>
@@ -53,10 +59,8 @@
       <%= ax_switch_field(name: name.call(:visible), id: dom.call(:visible), checked: entry ? entry.visible? : true, label: "Mostrar", class_name: "hm-row__switch", input_html: { data: { role: "visible" } }) %>
       <%= hidden_field_tag name.call(:bar), "0", id: nil %>
       <%= ax_switch_field(name: name.call(:bar), id: dom.call(:bar), checked: entry ? entry.bar? : false, label: "Na barra", class_name: "hm-row__switch", input_html: { data: { role: "bar" } }) %>
-      <% if custom %>
-        <%= hidden_field_tag name.call(:new_tab), "0", id: nil %>
-        <%= ax_switch_field(name: name.call(:new_tab), id: dom.call(:new_tab), checked: entry ? entry.new_tab : false, label: "Nova aba", class_name: "hm-row__switch") %>
-      <% end %>
+      <%= hidden_field_tag name.call(:new_tab), "0", id: nil %>
+      <%= ax_switch_field(name: name.call(:new_tab), id: dom.call(:new_tab), checked: entry ? entry.new_tab : false, label: "Nova aba", class_name: "hm-row__switch") %>
       <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm hm-row__remove" data-action="nested-form#remove" title="Excluir link" aria-label="Excluir link"><i class="bi bi-trash"></i> Excluir</button>
     </div>
     <% unless custom %>

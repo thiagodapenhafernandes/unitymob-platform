@@ -100,6 +100,20 @@ Estados de checkbox com `:has()` no próprio item. Controllers `filter-drawer`,
 (`bedrooms`/`suites`/`parking`); 4+ = mínimo (`min_*`). Foto do painel:
 `HomeSetting#filter_panel_background`.
 
+### Layouts do hero da home (Barra e Cartão)
+
+Além do hero Clássico (o de sempre), a Home escolhe o layout em `home_settings.hero_layout` (`classic`, `bar`, `card`).
+Cada layout é um componente com HTML único em `public_theme/components/hero_<layout>.html.erb`, que usa o `components/hero`
+(fundo, sobreposição) e emite as mesmas classes em todos os temas:
+
+- `public-theme-hero-bar(--<variante>)`: `__container`, `__inner`, `__search`, `__form`, `__tabs`, `__tab`, `__field`, `__control`, `__submit`, `__detail`.
+- `public-theme-hero-card(--<variante>)`: `__container`, `__inner`, `__panel`, `__tabs`, `__tab`, `__title`, `__lead`, `__modes`, `__mode`, `__filters`, `__grid`, `__field`, `__control`, `__chips`, `__chip`, `__submit`, `__ai`, `__textarea`, `__mic`, `__suggestion`, `__error`, `__footer`.
+- A posição horizontal da busca (`hero_search_align`) vira o modificador `is-align-left|center|right` na raiz.
+- Variante `default`: `components/_public_theme_hero_layouts.scss`; luxury: bloco "Layouts do hero" de `public_site_themes/salute_luxury.css`.
+- Comportamento (abas, voz) fica no controller `hero-search`, igual para todos os temas e layouts (Clássico, Barra e Cartão).
+- Buscador por voz (`components/hero_voice`, `.public-theme-hero-voice(--<variante>)`): o botão `.public-theme-hero-voice__toggle` entra como primeiro botão do grupo de finalidade (antes de Comprar) e troca o formulário de filtros por uma barra no estilo do WhatsApp — já grava, mostra a onda sonora real (Web Audio em `canvas`) e o cronômetro, e o botão de ação (`__send`, no lugar do Buscar) vira "enviar". `data-state` (idle | recording | busy | text) comanda o que aparece; sem microfone vira campo de texto. Liga/desliga em `home_settings.hero_ai_search_enabled`.
+- A busca por descrição/voz fala com `POST /busca-ia`, que só devolve a URL da listagem com os filtros (nunca imóveis). Exige o recurso ligado na Home **e** a IA de busca da conta pronta.
+
 ## Temas e contas
 
 | Tema | Variante | Contas (`tenant_slugs`) |

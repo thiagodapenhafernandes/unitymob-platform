@@ -1016,8 +1016,8 @@ module Admin::UiHelper
     render "admin/shared/ui/guided_header", icon:, title:, subtitle:, steps:, controller:, progress_label:
   end
 
-  def ax_guided_step(number:, color:, title:, subtitle:, optional: false, &block)
-    render "admin/shared/ui/guided_step", number:, color:, title:, subtitle:, optional:, body: capture(&block)
+  def ax_guided_step(number:, color:, title:, subtitle:, optional: false, collapsible: false, collapsed: false, &block)
+    render "admin/shared/ui/guided_step", number:, color:, title:, subtitle:, optional:, collapsible:, collapsed:, body: capture(&block)
   end
 
   def ax_guided_review(number:, title:, subtitle:, checks:, submit_label:, cancel_path:, submit_icon: "bi-send-check", color: :teal)

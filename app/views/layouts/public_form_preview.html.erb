@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <%= stylesheet_link_tag "vendor/bootstrap-icons", preload_links_header: false %>
+    <%= stylesheet_link_tag "tailwind", preload_links_header: false %>
+    <%= stylesheet_link_tag "application", preload_links_header: false %>
+    <%= stylesheet_link_tag current_tenant.public_site_stylesheet, preload_links_header: false %>
+    <style>
+      html, body { height: 100%; margin: 0; overflow: hidden; }
+      .public-form-modal { display: block; height: 100%; }
+      .public-form-modal__overlay { position: absolute; z-index: 0; align-items: center !important; padding: 20px !important; }
+      .public-form-modal__backdrop { background: rgba(6, 19, 31, .38); backdrop-filter: none; }
+      .public-form-modal__dialog { max-height: 100% !important; border-radius: 20px !important; }
+      .public-form-modal__close { pointer-events: none; }
+      /* Tela cheia: a janela do preview é a "tela", sem margem nem cantos. */
+      .public-form-modal__overlay:has(.public-form-modal__dialog--size-fullscreen) { padding: 0 !important; }
+      .public-form-modal__dialog--size-fullscreen { width: 100% !important; height: 100% !important; max-height: none !important; border-radius: 0 !important; }
+      /* Preview interativo: o admin liga cliques e arrastar (public_form_preview_controller). */
+      .public-form-modal__add { grid-column: 1 / -1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 12px; border: 2px dashed #94a3b8; border-radius: 14px; background: transparent; color: #475569; font-size: 15px; font-weight: 700; cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+      .public-form-modal__add:hover { border-color: #2563eb; background: rgba(37, 99, 235, .06); color: #1d4ed8; }
+      [data-preview-field] { position: relative; padding: 8px; margin: -8px; border-radius: 14px; outline: 2px solid transparent; cursor: grab; transition: outline-color .15s, background-color .15s, opacity .15s; }
+      [data-preview-field]:hover { outline: 2px dashed rgba(37, 99, 235, .55); }
+      [data-preview-field].is-selected { outline: 2px solid #2563eb; background: rgba(37, 99, 235, .05); }
+      [data-preview-field].is-dragging { opacity: .4; }
+      /* Destino do arrasto: barra vertical = ao lado (mesma linha); barra horizontal = linha nova acima/abaixo. */
+      [data-preview-field].is-drop-side-before::before,
+      [data-preview-field].is-drop-side-after::after,
+      [data-preview-field].is-drop-above::before,
+      [data-preview-field].is-drop-below::after { content: ""; position: absolute; z-index: 2; background: #2563eb; border-radius: 3px; box-shadow: 0 0 0 3px rgba(37, 99, 235, .25); }
+      [data-preview-field].is-drop-side-before::before { top: 0; bottom: 0; left: -10px; width: 4px; }
+      [data-preview-field].is-drop-side-after::after { top: 0; bottom: 0; right: -10px; width: 4px; }
+      [data-preview-field].is-drop-above::before { top: -10px; left: 0; right: 0; height: 4px; }
+      [data-preview-field].is-drop-below::after { bottom: -10px; left: 0; right: 0; height: 4px; }
+      [data-preview-field] .public-form-modal__control,
+      [data-preview-field] input,
+      [data-preview-field] label { pointer-events: none; }
+    </style>
+  </head>
+  <body class="antialiased public-site-theme public-site-theme--<%= current_tenant.public_site_theme_key %>"
+        data-public-site-theme="<%= current_tenant.public_site_theme_key %>">
+    <%= yield %>
+  </body>
+</html>

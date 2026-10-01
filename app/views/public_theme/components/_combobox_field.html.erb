@@ -1,0 +1,25 @@
+<%# Campo com autocomplete e escolha por lista, no motor combobox dos filtros públicos (hero luxury e drawer): digitar filtra, clicar
+    marca e desmarca, multi-seleção vira tags e a escolha única (single) troca a anterior. Grava em campos ocultos com o name dado.
+    Contrato: .public-theme-combobox (__trigger, __field, __tags, __input, __caret, __panel, __option, __label, __check, __empty).
+    Locals: name, label (acessível), placeholder, options ([[rótulo, valor]]), id; single, compact (opcionais). %>
+<%
+  single = local_assigns.fetch(:single, false)
+  compact = local_assigns.fetch(:compact, !single)
+  field_id = local_assigns.fetch(:id)
+%>
+<div class="public-theme-combobox" data-controller="combobox" data-combobox-compact-value="<%= compact %>" data-combobox-single-value="<%= single %>">
+  <%= hidden_field_tag name, "", id: nil %>
+  <div class="public-theme-combobox__trigger" tabindex="0" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-controls="<%= field_id %>_panel">
+    <div class="public-theme-combobox__field">
+      <span class="public-theme-combobox__tags"></span>
+      <input id="<%= field_id %>" class="public-theme-combobox__input" type="text" placeholder="<%= placeholder %>" aria-label="<%= label %>" aria-autocomplete="list" autocomplete="off">
+    </div>
+    <i class="public-theme-combobox__caret bi bi-chevron-down" aria-hidden="true"></i>
+  </div>
+  <div id="<%= field_id %>_panel" class="public-theme-combobox__panel" role="listbox" aria-label="<%= label %>">
+    <% Array(options).each do |option_label, option_value| %>
+      <div class="public-theme-combobox__option" role="option" data-value="<%= option_value %>" data-search="<%= option_label.to_s.parameterize(separator: " ") %>"><span class="public-theme-combobox__label"><%= option_label %></span></div>
+    <% end %>
+    <div class="public-theme-combobox__empty" hidden>Nada encontrado</div>
+  </div>
+</div>

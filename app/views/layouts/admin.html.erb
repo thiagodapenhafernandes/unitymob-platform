@@ -35,7 +35,8 @@
     <%
       admin_controller_path = controller_path.to_s
       admin_action_name = action_name.to_s
-      admin_rich_text_assets = admin_controller_path == "admin/habitations" && %w[new edit].include?(admin_action_name)
+      admin_rich_text_assets = (admin_controller_path == "admin/habitations" && %w[new edit].include?(admin_action_name)) ||
+                               (%w[admin/public_forms admin/landing_pages].include?(admin_controller_path) && %w[new edit create update].include?(admin_action_name))
       admin_fancybox_assets = (
         admin_controller_path == "admin/habitations" && %w[new edit show].include?(admin_action_name)
       ) || admin_controller_path == "admin/habitation_media" ||

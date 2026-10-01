@@ -174,7 +174,7 @@ class Profile < ApplicationRecord
       { label: "Imóveis com Potencial", icon: "bi-house-heart", path: "admin_marketing_properties_path", controllers: %w[marketing_properties] },
       { label: "Alertas", icon: "bi-exclamation-triangle", path: "admin_marketing_alerts_path", controllers: %w[marketing_alerts] }
     ], description: "Banners, landing, SEO, home, rodapé" },
-    { key: "site_publico",       label: "Site público",           icon: "bi-globe2",           actions: %w[manage],            scopeable: false, section: true, sidebar_section: "public_site", sidebar_actions: %w[manage], included_items: ["Dashboard SEO", "Páginas SEO", "Redirecionamentos SEO", "Formulários", "Blog", "Landing Pages", "Banners", "Seções da Home", "Identidade", "Topo e menu", "Home", "Contato", "Rodapé", "Perfil público"], sidebar_items: [
+    { key: "site_publico",       label: "Site público",           icon: "bi-globe2",           actions: %w[manage],            scopeable: false, section: true, sidebar_section: "public_site", sidebar_actions: %w[manage], included_items: ["Dashboard SEO", "Páginas SEO", "Redirecionamentos SEO", "Formulários", "Blog", "Páginas", "Banners", "Identidade", "Topo e menu", "Home", "Contato", "Rodapé", "Perfil público"], sidebar_items: [
       { caption: "SEO" },
       { label: "Dashboard SEO", icon: "bi-graph-up-arrow", path: "admin_seo_dashboard_path", controllers: %w[seo_dashboard] },
       { label: "Páginas SEO", icon: "bi-search", path: "admin_seo_settings_path", controllers: %w[seo_settings] },
@@ -182,14 +182,13 @@ class Profile < ApplicationRecord
       { caption: "Conteúdo" },
       { label: "Formulários", icon: "bi-ui-checks-grid", path: "admin_public_forms_path", controllers: %w[public_forms] },
       { label: "Blog", icon: "bi-journal-richtext", path: "admin_blog_articles_path", controllers: %w[blog_articles] },
-      { label: "Landing Pages", icon: "bi-file-earmark-post", path: "admin_landing_pages_path", controllers: %w[landing_pages] },
+      { label: "Páginas", icon: "bi-file-earmark-post", path: "admin_landing_pages_path", controllers: %w[landing_pages] },
       { label: "Banners", icon: "bi-image", path: "admin_banners_path", controllers: %w[banners] },
-      { label: "Seções da Home", icon: "bi-layout-text-sidebar", path: "admin_home_sections_path", controllers: %w[home_sections] },
       { label: "Páginas institucionais", icon: "bi-file-earmark-text", path: "edit_admin_institutional_page_path", controllers: %w[institutional_pages] },
       { caption: "Estrutura" },
       { label: "Identidade", icon: "bi-stars", path: "edit_admin_public_identity_path", controllers: %w[public_identities] },
       { label: "Topo e menu", icon: "bi-layout-text-window", path: "edit_admin_public_header_path", controllers: %w[public_headers] },
-      { label: "Home", icon: "bi-house-door", path: "edit_admin_home_setting_path", controllers: %w[home_settings] },
+      { label: "Home", icon: "bi-house-door", path: "edit_admin_home_setting_path", controllers: %w[home_settings home_sections home_section_items] },
       { label: "Contato", icon: "bi-telephone", path: "edit_admin_contact_setting_path", controllers: %w[contact_settings] },
       { label: "Rodapé", icon: "bi-layout-sidebar", path: "edit_admin_footer_setting_path", controllers: %w[footer_settings] },
       { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] }

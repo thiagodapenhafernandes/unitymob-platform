@@ -126,8 +126,16 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       custom = rows.detect { |row| row.at_css("input[data-role='custom']")["value"] == "1" }
       system = rows.detect { |row| row.at_css("input[data-role='custom']")["value"] == "0" }
       expect(custom.at_css("input[data-role='url']")).to be_present
-      expect(system.at_css("input[data-role='url']")).to be_nil
-      expect(system.at_css(".hm-row__body input[disabled][readonly]")).to be_present
+      # Qualquer item é editável: o do sistema também tem endereço (vazio = padrão da página) e nova aba.
+      system_url = system.at_css("input[data-role='url']")
+      expect(system_url).to be_present
+      expect(system_url["disabled"]).to be_nil
+      expect(system_url["readonly"]).to be_nil
+      expect(system_url["name"]).to match(/\[url\]\z/)
+      expect(system_url["placeholder"]).to start_with("/")
+      expect(system_url["value"]).to be_blank
+      expect(system.at_css("input[type='checkbox'][name$='[new_tab]']")).to be_present
+      expect(system.at_css(".hm-row__body input[disabled][readonly]")).to be_nil
     end
 
     it "grava ordem, rótulos, visibilidade, link próprio e botão" do
@@ -156,10 +164,154 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       expect(ContactSetting.instance(tenant: admin.tenant).show_phone_in_header).to be(true)
     end
 
+    it "deixa trocar o endereço de um item do sistema por #modal-ID e o link sai no topo do site" do
+      patch admin_public_header_path, params: {
+        home_setting: {
+          header_menu: {
+            "0" => { key: "trabalhe", position: "1", label: "", url: "#modal-trabalhe-conosco", visible: "1", bar: "1", new_tab: "0" }
+          }
+        }
+      }
+
+      expect(response).to redirect_to(edit_admin_public_header_path)
+      saved = HomeSetting.instance(tenant: admin.tenant).reload.header_menu.first
+      expect(saved).to include("key" => "trabalhe", "url" => "#modal-trabalhe-conosco", "bar" => true)
+
+      get edit_admin_public_header_path
+      row = Nokogiri::HTML(response.body).css(".hm-rows .hm-row").detect { |node| node.at_css("input[name$='[key]']")["value"] == "trabalhe" }
+      expect(row.at_css("input[data-role='url']")["value"]).to eq("#modal-trabalhe-conosco")
+      expect(row.at_css("input[data-role='url']")["placeholder"]).to eq(Rails.application.routes.url_helpers.trabalhe_conosco_path)
+      expect(row.at_css("[data-role='dest']").text.strip).to eq("#modal-trabalhe-conosco")
+
+      get root_path
+      link = Nokogiri::HTML(response.body).css("a").detect { |a| a["href"] == "#modal-trabalhe-conosco" && a.text.include?("Trabalhe conosco") }
+      expect(link).to be_present
+    end
+
+    it "endereço inválido num item do sistema é ignorado e a página volta ao padrão" do
+      patch admin_public_header_path, params: {
+        home_setting: { header_menu: { "0" => { key: "trabalhe", position: "1", label: "", url: "javascript:alert(1)", visible: "1", bar: "0" } } }
+      }
+
+      saved = HomeSetting.instance(tenant: admin.tenant).reload.header_menu.first
+      expect(saved).not_to include("url")
+    end
+
     it "recusa destino do botão que não seja página ou endereço válido" do
       patch admin_public_header_path, params: { home_setting: { header_cta_url: "javascript:alert(1)" } }
 
       expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "salva o número do topo junto do toggle sem vazar outro tenant" do
+      other = Tenant.create!(name: "Outra topo #{SecureRandom.hex(3)}", slug: "outra-topo-#{SecureRandom.hex(3)}")
+      ContactSetting.instance(tenant: other).update!(phone: "+5511311112222")
+
+      patch admin_public_header_path, params: {
+        contact_setting: { phone: "(48) 99999-0000", show_phone_in_header: "1" }
+      }
+
+      expect(response).to redirect_to(edit_admin_public_header_path)
+      expect(ContactSetting.instance(tenant: admin.tenant).reload.phone).to eq("5548999990000")
+      expect(ContactSetting.instance(tenant: other).reload.phone).to eq("5511311112222")
+    end
+
+    it "espelha a barra real com fone resolvido e drawer" do
+      ContactSetting.instance(tenant: admin.tenant).update!(phone: "+554832220000", show_phone_in_header: true)
+      LayoutSetting.instance(tenant: admin.tenant).logo.attach(
+        io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+        filename: "logo.png", content_type: "image/png"
+      )
+
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      expect(html.at_css(".hps-workspace")["data-theme-variant"]).to eq("default")
+      expect(html.at_css(".hps-theme")&.text).to include("Padrão", "Trocar em Identidade")
+      header = html.at_css(".hm-web .hps-header")
+      expect(header["class"]).not_to include("luxury")
+      expect(header.at_css(".hps-header__logo")).to be_present
+      expect(header.at_css(".hps-header__search")).to be_present
+      expect(header.at_css(".hps-header__toggle")).to be_present
+      expect(header.at_css(".hps-header__cta")&.text).to include("Fale Conosco")
+      expect(header.at_css(".hps-header__links")["data-header-menu-preview-target"]).to eq("bar")
+      expect(header.css(".hps-header__link")).not_to be_empty
+      phone = header.at_css(".hps-header__phone")
+      expect(phone.key?("hidden")).to be(false)
+      expect(phone.text).to include("55 (48) 3222-0000")
+      expect(html.at_css('input[name="contact_setting[phone]"]')["data-live-text"]).to eq("phone")
+      expect(html.text).to include("do Telefone fixo")
+      panel = html.at_css(".hm-web__panel")
+      expect(panel.at_css(".hm-web__panel-cta")&.text).to include("Fale Conosco")
+      expect(panel.at_css(".hm-web__panel-phone").key?("hidden")).to be(false)
+    end
+
+    it "renderiza logo SVG sem variant na prévia" do
+      LayoutSetting.instance(tenant: admin.tenant).logo.attach(
+        io: StringIO.new('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+        filename: "logo.svg", content_type: "image/svg+xml"
+      )
+
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      logo = Nokogiri::HTML(response.body).at_css(".hps-header__logo")
+      expect(logo["src"]).to include("blobs")
+    end
+
+    it "resolve o fone do WhatsApp e ignora o toggle no drawer" do
+      ContactSetting.instance(tenant: admin.tenant).update!(
+        phone: nil, whatsapp_primary: "+5548999990000", show_phone_in_header: false
+      )
+
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      expect(html.at_css(".hm-web .hps-header__phone").key?("hidden")).to be(true)
+      panel_phone = html.at_css(".hm-web__panel-phone")
+      expect(panel_phone.key?("hidden")).to be(false)
+      expect(panel_phone.text).to include("55 (48) 99999-0000")
+      expect(panel_phone.at_css(".bi-whatsapp")).to be_present
+      expect(html.text).to include("do WhatsApp principal")
+    end
+
+    it "liga as 4 cores do topo no hover real da prévia" do
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      {
+        "home_setting[header_menu_color]" => "--hps-h-menu",
+        "home_setting[header_menu_hover_color]" => "--hps-h-hover",
+        "home_setting[header_cta_background]" => "--hps-h-cta",
+        "home_setting[header_cta_hover_background]" => "--hps-h-cta-hover"
+      }.each do |name, var|
+        expect(html.at_css(%(input[name="#{name}"][data-live-var="#{var}"]))).to be_present, name
+      end
+      expect(html.css(".hps-header__link--hover")).to be_empty
+      stylesheet = File.read(Rails.root.join("app/assets/stylesheets/admin/components/home_studio.css"))
+      expect(stylesheet).to include(".hps-header__link:hover", ".hps-header__cta:hover")
+    end
+
+    it "apaga a aparência e tira o CTA da barra no luxury" do
+      admin.tenant.update!(public_site_theme: "salute_luxury")
+      ContactSetting.instance(tenant: admin.tenant).update!(phone: "+554832220000", show_phone_in_header: true)
+
+      get edit_admin_public_header_path
+
+      expect(response).to have_http_status(:ok)
+      html = Nokogiri::HTML(response.body)
+      expect(html.at_css(".hps-workspace")["data-theme-variant"]).to eq("salute-luxury")
+      header = html.at_css(".hm-web .hps-header")
+      expect(header["class"]).to include("luxury")
+      expect(header.at_css(".hps-header__cta")).to be_nil
+      expect(header.at_css(".hps-header__search")).to be_nil
+      expect(html.at_css(".hm-web__panel-cta")).to be_present
+      expect(html.text).to include("só no menu em tela cheia")
+      expect(html.css(".ax-studio-group.hps-limited .hps-limited__note")).not_to be_empty
+      expect(html.at_css("details.ax-studio-advanced.hps-limited")).to be_present
     end
   end
 
@@ -219,6 +371,35 @@ RSpec.describe "Admin Site público: identidade, topo e contato", type: :request
       expect(bar).not_to include("Comprar")
       cta = header.at_css("[data-header-part='cta']")
       expect([cta.text.squish, cta["href"]]).to eq(["Agende agora", "/simulador-financiamento"])
+    end
+  end
+
+  describe "Topo: aviso de destino #modal-ID sem modal no site" do
+    before do
+      admin.tenant.public_forms.create!(name: "Fale conosco", slug: "fale-conosco", category: "custom", title: "T",
+                                        submit_label: "Enviar", success_message: "Ok", status: "draft")
+    end
+
+    it "avisa no botão do topo quando o formulário está em rascunho" do
+      patch admin_public_header_path, params: { home_setting: { header_cta_label: "Fale Conosco", header_cta_url: "#modal-fale-conosco" } }
+
+      get edit_admin_public_header_path
+
+      hint = Nokogiri::HTML(response.body).at_css("input[name='home_setting[header_cta_url]']").ancestors(".ax-field").first.text
+      expect(hint).to include("Fale conosco", "Rascunho", "publique")
+    end
+
+    it "avisa na linha do menu e some depois de publicar" do
+      patch admin_public_header_path, params: {
+        home_setting: { header_menu: { "0" => { key: "trabalhe", position: "1", label: "", url: "#modal-fale-conosco", visible: "1", bar: "1" } } }
+      }
+
+      get edit_admin_public_header_path
+      expect(Nokogiri::HTML(response.body).css(".hm-row__warn").map(&:text).join).to include("Rascunho")
+
+      admin.tenant.public_forms.find_by!(slug: "fale-conosco").update!(status: "published")
+      get edit_admin_public_header_path
+      expect(Nokogiri::HTML(response.body).css(".hm-row__warn")).to be_empty
     end
   end
 end

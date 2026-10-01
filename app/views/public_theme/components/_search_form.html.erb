@@ -12,7 +12,7 @@
   form_class = ["public-theme-search", "public-theme-search--#{variant}", local_assigns[:class_name]].compact.join(" ")
 %>
 
-<%= form_with url: url, method: :get, class: form_class, role: "search", local: true, autocomplete: "off" do %>
+<%= form_with url: url, method: :get, class: form_class, role: "search", local: true, autocomplete: "off", data: local_assigns[:form_data] do %>
   <%= hidden_field_tag :transaction_type, transaction_default, data: { salute_luxury_theme_target: "transactionInput" } %>
   <%= hidden_field_tag :v, "2", id: nil %>
 

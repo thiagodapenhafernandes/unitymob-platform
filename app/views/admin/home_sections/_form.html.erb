@@ -15,6 +15,7 @@
         class: "ax-studio-form ax-studio__stage",
         data: { controller: "conditional-reveal ax-dirty-form", conditional_reveal_kind_value: "select", action: "input->ax-dirty-form#mark change->ax-dirty-form#mark" } do |f| %>
     <%= ax_error_summary(@home_section) %>
+    <%= hidden_field_tag :return_to, @return_to if @return_to.present? %>
 
     <%= ax_studio_group(title: "Conteúdo", subtitle: "O que a seção mostra e como ela é apresentada na página inicial.", icon: "layout-text-window") do %>
       <div class="tw-mb-3">

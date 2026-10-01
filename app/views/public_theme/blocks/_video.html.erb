@@ -1,0 +1,22 @@
+<%# Bloco "Vídeo do YouTube": 16:9, no modo de privacidade (youtube-nocookie). Na prévia do admin (iframe sem scripts)
+    mostra a miniatura em vez do player. Link ausente: nada no site, convite na prévia. Locals: block, variant. %>
+<% video_id = block.youtube_id %>
+<% if video_id || @preview_mode %>
+  <figure class="public-theme-block-video public-theme-block-video--<%= variant %><%= " is-empty" unless video_id %>">
+    <div class="container-custom">
+      <div class="public-theme-block-video__frame">
+        <% if video_id && @preview_mode %>
+          <img class="public-theme-block-video__thumb" src="https://img.youtube.com/vi/<%= video_id %>/hqdefault.jpg" alt="<%= block.value(:title) %>">
+          <span class="public-theme-block-video__play" aria-hidden="true"><i class="bi bi-play-fill"></i></span>
+        <% elsif video_id %>
+          <iframe src="https://www.youtube-nocookie.com/embed/<%= video_id %>?rel=0" title="<%= block.value(:title).presence || "Vídeo do YouTube" %>"
+                  loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"></iframe>
+        <% else %>
+          <div class="public-theme-block-video__placeholder"><i class="bi bi-youtube" aria-hidden="true"></i> Cole o link do vídeo do YouTube</div>
+        <% end %>
+      </div>
+      <% if block.value(:caption).present? %><figcaption class="public-theme-block-video__caption"><%= block.value(:caption) %></figcaption><% end %>
+    </div>
+  </figure>
+<% end %>

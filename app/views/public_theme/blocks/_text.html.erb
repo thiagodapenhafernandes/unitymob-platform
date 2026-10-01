@@ -1,0 +1,13 @@
+<%# Bloco "Texto": título e texto formatado (sempre sanitizado na saída). Locals: block, variant. %>
+<section class="public-theme-block-text public-theme-block-text--<%= variant %> is-<%= block.value(:width) %>">
+  <div class="container-custom">
+    <div class="public-theme-block-text__inner">
+      <% if block.value(:heading).present? %><h2 class="public-theme-block-text__heading"><%= block.value(:heading) %></h2><% end %>
+      <% if block.value(:body).present? %>
+        <div class="public-theme-block-text__body seo-text-rich">
+          <%= sanitize block.value(:body), tags: LandingPages::BlockTypes::RICH_TAGS, attributes: LandingPages::BlockTypes::RICH_ATTRIBUTES %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</section>

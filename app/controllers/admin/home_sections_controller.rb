@@ -2,6 +2,14 @@ class Admin::HomeSectionsController < Admin::BaseController
   requires_permission :manage, :site_publico
   before_action :set_home_section, only: [:show, :edit, :update, :destroy]
   before_action :set_property_options, only: [:new, :edit, :create, :update]
+  before_action :set_return_to, only: [:show, :new, :edit, :create, :update, :destroy, :toggle_active]
+
+  # Token de retorno para a aba Seções de /admin/home_setting/edit. Token fixo
+  # (nunca URL livre) para não virar open redirect.
+  HOME_SETTINGS_RETURN = "home_settings"
+  HOME_SETTINGS_SECTIONS_ANCHOR = "home-tab-sections"
+
+  helper_method :sections_back_path
   
   def index
     @home_sections = current_tenant.home_sections.ordered.includes(:home_section_items)
@@ -18,7 +26,7 @@ class Admin::HomeSectionsController < Admin::BaseController
     @home_section = current_tenant.home_sections.new(home_section_params)
     
     if @home_section.save
-      redirect_to admin_home_sections_path, notice: 'Seção criada com sucesso!'
+      redirect_to sections_back_path, notice: 'Seção criada com sucesso!'
     else
       render :new, status: :unprocessable_entity
     end
@@ -29,7 +37,7 @@ class Admin::HomeSectionsController < Admin::BaseController
   
   def update
     if @home_section.update(home_section_params)
-      redirect_to admin_home_sections_path, notice: 'Seção atualizada com sucesso!'
+      redirect_to sections_back_path, notice: 'Seção atualizada com sucesso!'
     else
       render :edit, status: :unprocessable_entity
     end
@@ -37,7 +45,7 @@ class Admin::HomeSectionsController < Admin::BaseController
   
   def destroy
     @home_section.destroy
-    redirect_to admin_home_sections_path, notice: 'Seção removida com sucesso!'
+    redirect_to sections_back_path, notice: 'Seção removida com sucesso!'
   end
   
   # Prévia ao vivo do formulário: o que a Home mostraria com os valores atuais (sem salvar).
@@ -51,7 +59,7 @@ class Admin::HomeSectionsController < Admin::BaseController
   def toggle_active
     @home_section = current_tenant.home_sections.find(params[:id])
     @home_section.update(active: !@home_section.active)
-    redirect_to admin_home_sections_path, notice: "Seção #{@home_section.active? ? 'ativada' : 'desativada'} com sucesso!"
+    redirect_to sections_back_path, notice: "Seção #{@home_section.active? ? 'ativada' : 'desativada'} com sucesso!"
   end
   
   def update_order
@@ -65,6 +73,20 @@ class Admin::HomeSectionsController < Admin::BaseController
 
   def set_home_section
     @home_section = current_tenant.home_sections.find(params[:id])
+  end
+
+  def set_return_to
+    @return_to = params[:return_to] if params[:return_to] == HOME_SETTINGS_RETURN
+  end
+
+  # Volta para a aba Seções da Home quando a ação partiu de lá (o hash ativa
+  # a aba via ax-tabs); senão mantém a listagem.
+  def sections_back_path
+    if @return_to == HOME_SETTINGS_RETURN
+      edit_admin_home_setting_path(anchor: HOME_SETTINGS_SECTIONS_ANCHOR)
+    else
+      admin_home_sections_path
+    end
   end
 
   # A prévia sempre monta uma seção nova e descartável (não sabe nem qual está sendo editada:

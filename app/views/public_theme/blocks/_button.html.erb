@@ -1,0 +1,9 @@
+<%# Bloco "Botão": leva a uma página, link externo ou abre um formulário (#modal-ID, tratado pelo gatilho global).
+    Locals: block, variant. %>
+<section class="public-theme-block-button public-theme-block-button--<%= variant %> is-align-<%= block.value(:align) %>">
+  <div class="container-custom">
+    <a href="<%= block.value(:url) %>"
+       class="public-theme-block-button__link is-<%= block.value(:style) %>"
+       <%= tag.attributes(target: ("_blank" if block.value(:new_tab)), rel: ("noopener" if block.value(:new_tab))) %>><%= block.value(:label) %></a>
+  </div>
+</section>

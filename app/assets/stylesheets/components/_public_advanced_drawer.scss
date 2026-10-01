@@ -1,0 +1,13 @@
+// Drawer de filtros (listagem, landing e vitrine das Páginas): cobre o header do site em qualquer tema.
+// Os headers fixos têm z-index próprio (50 no padrão, 100 no luxury) e, com o drawer em z-50, escondiam o título e o botão
+// de fechar. O drawer fica acima do header, mas abaixo do menu em tela cheia (2147482000). Seletor duplo para vencer o
+// utilitário z-50 sem !important; na listagem o drawer passa a ocupar a altura toda (não depende da altura do header).
+.public-advanced-drawer-overlay.z-50 { z-index: 2147481100; }
+
+.public-advanced-drawer.z-50 { z-index: 2147481200; }
+
+.public-habitations-index__drawer.public-advanced-drawer {
+  top: 0;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+}

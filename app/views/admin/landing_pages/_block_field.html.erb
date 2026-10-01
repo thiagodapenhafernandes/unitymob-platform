@@ -1,0 +1,25 @@
+<%# Um campo do bloco, desenhado pelo tipo declarado no catálogo. locals: df, field, bf, data %>
+<% name = field.name %>
+<% case field.type %>
+<% when :string %>
+  <%= ax_text_field(form: df, method: name, label: field.label, placeholder: field.placeholder, hint: field.hint, maxlength: field.limit,
+                    data: { landing_page_builder_summary: (name.in?(%i[title heading label alt]) ? "1" : nil) }) %>
+<% when :embed %>
+  <%= ax_text_field(form: df, method: name, label: field.label, placeholder: field.placeholder, hint: field.hint, data: { landing_page_builder_summary: "1" }) %>
+<% when :url %>
+  <%= ax_text_field(form: df, method: name, label: field.label, placeholder: "/pagina, https://… ou #modal-ID", hint: field.hint) %>
+<% when :text %>
+  <%= ax_text_field(form: df, method: name, label: field.label, type: :textarea, rows: 2, maxlength: field.limit, hint: field.hint) %>
+<% when :rich %>
+  <div class="public-form-rich">
+  <%= ax_field_label(nil, nil, text: field.label) %>
+  <% rich_id = "#{df.object_name.gsub(/[^a-zA-Z0-9_]/, "_")}_#{name}" %>
+  <%= rich_text_area_tag "#{df.object_name}[#{name}]", data.public_send(name), id: rich_id, input: "#{rich_id}_input" %>
+  </div>
+<% when :select, :integer %>
+  <%= ax_select_field(form: df, method: name, label: field.label, choices: field.options) %>
+<% when :boolean %>
+  <%= ax_switch_field(form: df, method: name, label: field.label, description: field.hint, class_name: "ax-switch--card") %>
+<% when :filters %>
+  <%= render "admin/landing_pages/showcase_filters", df: df, filters: (data.public_send(name) || {}) %>
+<% end %>

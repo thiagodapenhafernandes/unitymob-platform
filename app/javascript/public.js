@@ -15,8 +15,10 @@ import ComboboxController from "controllers/combobox_controller"
 import FiltersController from "controllers/filters_controller"
 import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
 import FilterDrawerController from "controllers/filter_drawer_controller"
+import HeroSearchController from "controllers/hero_search_controller"
 import HeroSliderController from "controllers/hero_slider_controller"
 import HomeVideoShowcaseController from "controllers/home_video_showcase_controller"
+import InputMaskController from "controllers/input_mask_controller"
 import LeadCaptureController from "controllers/lead_capture_controller"
 import LgpdConsentController from "controllers/lgpd_consent_controller"
 import LocationFilterController from "controllers/location_filter_controller"
@@ -29,6 +31,8 @@ import PropertyCarouselController from "controllers/property_carousel_controller
 import PublicPropertyMapController from "controllers/public_property_map_controller"
 import PublicInterestTrackerController from "controllers/public_interest_tracker_controller"
 import PublicFormModalController from "controllers/public_form_modal_controller"
+import PublicFileFieldController from "controllers/public_file_field_controller"
+import PublicModalTriggerController from "controllers/public_modal_trigger_controller"
 import PublicSearchUrlController from "controllers/public_search_url_controller"
 import SearchFormController from "controllers/search_form_controller"
 import SearchTabsController from "controllers/search_tabs_controller"
@@ -45,8 +49,10 @@ application.register("combobox", ComboboxController)
 application.register("filters", FiltersController)
 application.register("fancybox-gallery", FancyboxGalleryController)
 application.register("filter-drawer", FilterDrawerController)
+application.register("hero-search", HeroSearchController)
 application.register("hero-slider", HeroSliderController)
 application.register("home-video-showcase", HomeVideoShowcaseController)
+application.register("input-mask", InputMaskController)
 application.register("lead-capture", LeadCaptureController)
 application.register("lgpd-consent", LgpdConsentController)
 application.register("location-filter", LocationFilterController)
@@ -59,6 +65,8 @@ application.register("property-carousel", PropertyCarouselController)
 application.register("public-property-map", PublicPropertyMapController)
 application.register("public-interest-tracker", PublicInterestTrackerController)
 application.register("public-form-modal", PublicFormModalController)
+application.register("public-file-field", PublicFileFieldController)
+application.register("public-modal-trigger", PublicModalTriggerController)
 application.register("public-search-url", PublicSearchUrlController)
 application.register("search-form", SearchFormController)
 application.register("search-tabs", SearchTabsController)

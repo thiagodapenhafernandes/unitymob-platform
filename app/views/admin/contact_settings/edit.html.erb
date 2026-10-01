@@ -29,7 +29,7 @@
       <div class="ax-studio__stage" id="contact-studio-sections">
         <%= ax_studio_section(id: "contact-tab-channels", icon: "telephone", active: true,
                               title: "Canais",
-                              subtitle: "Aparecem na página Contato, no rodapé e nos botões do site. O telefone no topo é ligado em Topo e menu.") do %>
+                              subtitle: "Aparecem na página Contato, no rodapé e nos botões do site. O número do topo também é editado em Topo e menu; a exibição é ligada lá.") do %>
           <%= ax_studio_group(title: "Telefones e e-mails") do %>
             <%= ax_field_grid do %>
               <div class="ax-span-6"><%= phone_field.call(f, :whatsapp_primary, "WhatsApp principal", autocomplete: "tel", hint: "Código do país + DDD + número.") %></div>

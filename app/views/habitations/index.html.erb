@@ -2,9 +2,9 @@
 <div data-controller="sidebar advanced-filters" class="public-habitations-index public-header-offset mt-[72px]"> <!-- Added margin-top to compensate for fixed header -->
 
   <!-- Advanced Filters Sidebar (Off-canvas) -->
-  <div data-advanced-filters-target="overlay" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity duration-300" data-action="click->advanced-filters#close"></div>
+  <div data-advanced-filters-target="overlay" class="public-advanced-drawer-overlay fixed inset-0 bg-black/50 z-50 hidden transition-opacity duration-300" data-action="click->advanced-filters#close"></div>
   
-  <div data-advanced-filters-target="sidebar" role="dialog" aria-modal="true" aria-labelledby="public-filters-title" class="public-habitations-index__drawer fixed top-[calc(72px+env(safe-area-inset-top))] right-0 h-[calc(100svh-72px-env(safe-area-inset-top))] w-full max-w-md bg-white z-50 hidden transform translate-x-full transition-transform duration-300 shadow-2xl overflow-y-auto overscroll-contain">
+  <div data-advanced-filters-target="sidebar" role="dialog" aria-modal="true" aria-labelledby="public-filters-title" class="public-advanced-drawer public-habitations-index__drawer fixed top-[calc(72px+env(safe-area-inset-top))] right-0 h-[calc(100svh-72px-env(safe-area-inset-top))] w-full max-w-md bg-white z-50 hidden transform translate-x-full transition-transform duration-300 shadow-2xl overflow-y-auto overscroll-contain">
     <div class="public-habitations-index__drawer-body p-6">
       <div class="public-habitations-index__drawer-header flex justify-between items-center mb-6">
         <h3 id="public-filters-title" class="public-habitations-index__drawer-title text-xl font-bold text-blue-three">Filtrar imóveis</h3>

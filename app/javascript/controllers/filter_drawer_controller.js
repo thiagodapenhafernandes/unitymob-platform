@@ -9,10 +9,17 @@ export default class extends Controller {
 
   connect() {
     this.handleKeydown = this.handleKeydown.bind(this)
+    // Outros pontos da página (ex.: "Filtro detalhado" do hero em Barra) abrem o drawer por evento, sem depender do botão flutuante.
+    this.handleExternalOpen = (event) => {
+      if (event.detail) event.detail.handled = true
+      this.open()
+    }
+    window.addEventListener("public-filter-drawer:open", this.handleExternalOpen)
     this.drawAllRanges()
   }
 
   disconnect() {
+    window.removeEventListener("public-filter-drawer:open", this.handleExternalOpen)
     document.removeEventListener("keydown", this.handleKeydown)
     this.unlockScroll()
   }

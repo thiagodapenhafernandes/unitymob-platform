@@ -172,8 +172,15 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-bottom: 1px solid #edf1f6;
   background: #fbfcfe;
+}
+
+.public-form-builder__field.is-open .public-form-builder__field-header {
+  border-bottom: 1px solid #edf1f6;
+}
+
+.public-form-builder__field:not(.is-open) .public-form-builder__field-grid {
+  display: none;
 }
 
 .public-form-builder__drag-handle {
@@ -181,17 +188,31 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  border: 0;
   border-radius: 6px;
   background: transparent;
   color: #98a2b3;
-  cursor: default;
+  cursor: grab;
+}
+
+.public-form-builder__drag-handle:hover {
+  background: #eef2f7;
+  color: #475467;
+}
+
+.public-form-builder__field.is-dragging {
+  opacity: .5;
+  border-style: dashed;
 }
 
 .public-form-builder__field-title {
   display: grid;
   gap: 2px;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
 .public-form-builder__field-title strong,
@@ -236,24 +257,24 @@
 }
 
 .public-form-builder__cell--type {
-  grid-column: span 3;
+  grid-column: span 6;
 }
 
 .public-form-builder__cell--name {
-  grid-column: span 3;
+  grid-column: span 6;
 }
 
 .public-form-builder__cell--label {
-  grid-column: span 6;
+  grid-column: 1 / -1;
 }
 
 .public-form-builder__cell--placeholder,
 .public-form-builder__cell--hint {
-  grid-column: span 5;
+  grid-column: span 6;
 }
 
 .public-form-builder__cell--required {
-  grid-column: span 2;
+  grid-column: 1 / -1;
   align-self: end;
 }
 
@@ -261,8 +282,179 @@
   grid-column: 1 / -1;
 }
 
-.public-form-builder__cell--options.is-hidden {
+.public-form-builder__cell--options.is-hidden,
+.public-form-builder__cell--mask.is-hidden,
+.public-form-builder__cell--file.is-hidden {
   display: none;
+}
+
+.public-form-builder__cell--width {
+  grid-column: 1 / -1;
+}
+
+.public-form-builder__cell--width .ax-label {
+  display: grid;
+  gap: 4px;
+  max-width: 280px;
+}
+
+.public-form-builder__cell--mask {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed #b9c7d8;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.public-form-builder__cell--mask .ax-label {
+  display: grid;
+  gap: 4px;
+}
+
+.public-form-builder__cell--mask small {
+  grid-column: 1 / -1;
+}
+
+.public-form-builder__cell--file {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed #b9c7d8;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.public-form-builder__cell--file small {
+  grid-column: 1 / -1;
+}
+
+.public-form-builder__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.public-form-builder__palette--more {
+  padding: 12px;
+  border-top: 1px solid #edf1f6;
+}
+
+/* ---- Preview ao vivo (coluna de apoio do formulário guiado) ---- */
+/* O aside guiado padrão é estreito; aqui o preview ganha a maior parte da largura. */
+.public-form-guided .ax-guided-layout {
+  grid-template-columns: minmax(380px, 5fr) minmax(0, 7fr);
+}
+
+.public-form-preview {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: calc(100dvh - var(--ax-navbar-h, 48px) - var(--ax-contextbar-h, 40px) - 96px);
+  min-height: 460px;
+  border: 1px solid #d8e1ec;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.public-form-preview__status {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 700;
+}
+
+.public-form-preview__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #edf1f6;
+  background: #fbfcfe;
+}
+
+.public-form-preview__bar strong {
+  display: block;
+  color: #1f2733;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+/* O rótulo do botão principal da barra (Salvar/Publicar) é sempre branco. */
+.public-form-preview__savegroup {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.public-form-preview__savegroup .ax-btn[disabled] {
+  opacity: .65;
+  cursor: progress;
+}
+
+.public-form-preview__bar .ax-btn--primary,
+.public-form-preview__bar .ax-btn--primary span,
+.public-form-preview__bar .ax-btn--primary i {
+  color: #fff;
+}
+
+.public-form-preview__devices {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #eef2f7;
+}
+
+.public-form-preview__device {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.public-form-preview__device[aria-pressed="true"] {
+  background: #fff;
+  color: #1f2733;
+  box-shadow: 0 1px 2px rgb(16 24 40 / .12);
+}
+
+.public-form-preview__stage {
+  position: relative;
+  overflow: hidden;
+  background: #e5e9ef;
+}
+
+.public-form-preview__frame {
+  position: absolute;
+  top: 0;
+  border: 0;
+  background: transparent;
+  transform-origin: top left;
+}
+
+@media (max-width: 1100px) {
+  .public-form-guided .ax-guided-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .public-form-preview {
+    height: 70dvh;
+  }
 }
 
 @media (max-width: 900px) {
@@ -312,6 +504,10 @@
   color: var(--ax-dark-text);
 }
 
+[data-admin-theme="dark"] .public-form-builder__cell--mask,
+[data-admin-theme="dark"] .public-form-preview,
+[data-admin-theme="dark"] .public-form-preview__bar,
+[data-admin-theme="dark"] .public-form-builder__cell--file,
 [data-admin-theme="dark"] .public-form-builder__bar,
 [data-admin-theme="dark"] .public-form-builder__empty,
 [data-admin-theme="dark"] .public-form-builder__bulk,
@@ -339,4 +535,549 @@
 [data-admin-theme="dark"] .public-form-builder__empty span,
 [data-admin-theme="dark"] .public-form-builder__field-title span {
   color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .public-form-preview__bar strong,
+[data-admin-theme="dark"] .public-form-builder__check {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .public-form-preview__devices,
+[data-admin-theme="dark"] .public-form-preview__device[aria-pressed="true"] {
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+
+/* ---- Como abrir (ID do modal) ---- */
+.public-form-trigger {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.public-form-trigger__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed #b9c7d8;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.public-form-trigger__row code {
+  overflow-wrap: anywhere;
+  color: var(--admin-primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+[data-admin-theme="dark"] .public-form-trigger__row {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+.public-form-guided__advanced {
+  border: 1px solid var(--ax-guided-line, #d5dbe4);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.public-form-guided__advanced summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.public-form-guided__advanced[open] summary {
+  margin-bottom: 10px;
+}
+
+/* ---- Conteúdo do modal (Tipo de modal): grid de campos de texto ---- */
+.public-form-content-grid {
+  align-items: start;
+  row-gap: 16px;
+}
+
+.public-form-content-grid > .ax-field {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.public-form-content-grid .ax-field__hint {
+  margin: 0;
+}
+
+.public-form-content-grid textarea.ax-control {
+  min-height: 0;
+  resize: vertical;
+}
+
+.public-form-rich trix-editor {
+  min-height: 140px;
+}
+
+/* Texto principal é só texto formatado: sem botão de anexo. */
+.public-form-rich trix-toolbar .trix-button-group--file-tools {
+  display: none;
+}
+
+/* ---- Mini builder dentro do preview (inspetor) ---- */
+.public-form-inspector {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: grid;
+  gap: 10px;
+  max-height: 62%;
+  padding: 12px 14px 14px;
+  overflow: auto;
+  border-top: 1px solid #d8e1ec;
+  border-radius: 14px 14px 0 0;
+  background: #fff;
+  box-shadow: 0 -12px 32px rgb(16 24 40 / .18);
+}
+
+.public-form-inspector[hidden] {
+  display: none;
+}
+
+.public-form-inspector__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.public-form-inspector__head strong {
+  overflow: hidden;
+  color: #1f2733;
+  font-size: 14px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-form-inspector__picker p {
+  margin: 0 0 8px;
+  color: #667085;
+  font-size: 12.5px;
+}
+
+.public-form-inspector__types {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+
+.public-form-inspector__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.public-form-inspector__grid .ax-label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.public-form-inspector__wide,
+.public-form-inspector__file {
+  grid-column: 1 / -1;
+}
+
+.public-form-inspector__file {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  padding: 10px;
+  border: 1px dashed #b9c7d8;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.public-form-inspector__mask {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  padding: 10px;
+  border: 1px dashed #b9c7d8;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.public-form-inspector__mask small {
+  grid-column: 1 / -1;
+}
+
+.public-form-inspector__file[hidden],
+.public-form-inspector__mask[hidden],
+.public-form-inspector__wide[hidden] {
+  display: none;
+}
+
+.public-form-inspector__file .public-form-builder__check {
+  grid-column: 1 / -1;
+}
+
+.public-form-inspector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+[data-admin-theme="dark"] .public-form-inspector {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .public-form-inspector__head strong {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .public-form-inspector__mask,
+[data-admin-theme="dark"] .public-form-inspector__file {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+/* ---- Barra do preview: modelo, tamanho e estado do autosave ---- */
+.public-form-preview__bar {
+  justify-content: space-between;
+}
+
+.public-form-preview__quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.public-form-preview__save {
+  overflow: hidden;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-form-preview__save[data-state="saving"] { color: #b54708; }
+.public-form-preview__save[data-state="saved"] { color: #067647; }
+.public-form-preview__save[data-state="error"] { color: #b42318; }
+
+/* ---- Ferramentas flutuantes sobre cada região do preview ---- */
+.public-form-tools {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 8px);
+  padding: 4px;
+  border: 1px solid #d8e1ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(16 24 40 / .22);
+}
+
+.public-form-tools[hidden] {
+  display: none;
+}
+
+/* Zona de ponte invisível: o mouse "entra" na ferramenta um pouco antes, sem perder o hover da região. */
+/* z-index negativo: fica atrás dos botões (a ferramenta cria o próprio contexto de empilhamento), então
+   amplia a área de hover sem cobrir os cliques. */
+.public-form-tools::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -10px;
+}
+
+.public-form-tools__label {
+  padding: 0 6px;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.public-form-tools__btn,
+.public-form-tools__swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.public-form-tools__btn:hover,
+.public-form-tools__swatch:hover {
+  background: #eef2f7;
+}
+
+.public-form-tools__btn--danger {
+  color: #b42318;
+}
+
+.public-form-tools__swatch input[type="color"] {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #d0d5dd;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.public-form-tools__swatch input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.public-form-tools__swatch input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+
+.public-form-inspector__panel {
+  display: grid;
+  gap: 10px;
+}
+
+.public-form-inspector__panel[hidden] {
+  display: none;
+}
+
+/* ---- Cores do modal (bloco Tipo de modal) ---- */
+.public-form-colors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.public-form-color {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.public-form-color__control {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.public-form-color__control input[type="color"] {
+  width: 36px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+[data-admin-theme="dark"] .public-form-tools {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .public-form-tools__btn,
+[data-admin-theme="dark"] .public-form-tools__swatch,
+[data-admin-theme="dark"] .public-form-tools__label {
+  color: var(--ax-dark-text);
+}
+
+@media (max-width: 720px) {
+  .public-form-colors {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Editor em tela cheia ---- */
+/* Tela cheia nativa: o painel ocupa a tela e a barra de botões fica no topo. */
+.public-form-preview:fullscreen {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.public-form-preview:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Reserva (sem tela cheia nativa): cobertura fixa. */
+.public-form-preview.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  height: 100dvh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+html.public-form-preview-locked,
+html.public-form-preview-locked body {
+  overflow: hidden;
+}
+
+.public-form-preview__expand[aria-pressed="true"] {
+  background: #fff;
+  color: #1f2733;
+  box-shadow: 0 1px 2px rgb(16 24 40 / .12);
+}
+
+/* ---- Editor de benefícios (texto + ícone por linha) ---- */
+.benefits-editor {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.benefits-editor__list {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.benefits-editor__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.benefits-editor__row.is-dragging {
+  opacity: .45;
+}
+
+.benefits-editor__handle {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 34px;
+  color: #98a2b3;
+  cursor: grab;
+}
+
+.benefits-editor__icon {
+  position: relative;
+}
+
+.benefits-editor__icon summary {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 34px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-primary, #365f8f);
+  font-size: 16px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.benefits-editor__icon summary::-webkit-details-marker {
+  display: none;
+}
+
+.benefits-editor__icon[open] summary {
+  border-color: var(--admin-primary, #365f8f);
+  box-shadow: 0 0 0 3px rgb(54 95 143 / .15);
+}
+
+.benefits-editor__icons {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: repeat(4, 34px);
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #d8e1ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgb(16 24 40 / .22);
+}
+
+.benefits-editor__icons button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #344054;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.benefits-editor__icons button:hover {
+  background: #eef2f7;
+  color: var(--admin-primary, #365f8f);
+}
+
+.benefits-editor__remove {
+  color: #b42318;
+}
+
+[data-admin-theme="dark"] .benefits-editor__icon summary,
+[data-admin-theme="dark"] .benefits-editor__icons {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .benefits-editor__icons button {
+  color: var(--ax-dark-text);
+}
+
+/* Aviso de destino #modal-ID que não abre nada no site (formulário em rascunho, inativo ou fora do modal). */
+.hm-row__warn,
+.public-form-modal-warning {
+  color: var(--ax-warning-text, #b54708);
+}
+
+.public-form-modal-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ax-warning-text, #b54708) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ax-warning-text, #b54708) 8%, transparent);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.public-form-modal-warning[hidden] {
+  display: none;
 }

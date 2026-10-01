@@ -37,7 +37,7 @@ module Admin
     end
 
     def phone_params
-      params.fetch(:contact_setting, {}).permit(:show_phone_in_header)
+      params.fetch(:contact_setting, {}).permit(:show_phone_in_header, :phone)
     end
   end
 end

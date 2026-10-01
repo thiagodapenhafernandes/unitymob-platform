@@ -1,26 +1,43 @@
 class Admin::LandingPagesController < Admin::BaseController
+  include LandingPageShowcases
+
   requires_permission :manage, :site_publico
   before_action :set_landing_page, only: [:edit, :update, :destroy]
   before_action :load_filter_options, only: [:new, :create, :edit, :update]
+  helper_method :property_code_options_for
 
   def index
-    @landing_pages = current_tenant.landing_pages.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
-    @page_title = "Páginas SEO e Dinâmicas"
-    @page_subtitle = "Gerencie páginas de busca personalizada e otimização para o Google."
+    @landing_pages = current_tenant.landing_pages.includes(:blocks).order(created_at: :desc).paginate(page: params[:page], per_page: 20)
+    @page_title = "Páginas"
+    @page_subtitle = "Monte páginas com blocos: seleção de imóveis, textos, capas e botões."
   end
 
   def new
-    @landing_page = current_tenant.landing_pages.new
+    @template = LandingPages::Templates.find(params[:template])
+    @landing_page = current_tenant.landing_pages.new(status: "draft")
+    @template.blocks.each_with_index do |attrs, index|
+      @landing_page.blocks.build(attrs.merge(position: index, tenant: current_tenant))
+    end
     @page_title = "Nova Página"
   end
 
+  # JSON = autosave do editor: só rascunho, sempre criado como rascunho e sem mudar o status.
   def create
-    @landing_page = current_tenant.landing_pages.new(landing_page_params)
+    attrs = landing_page_params
+    attrs = attrs.merge(status: "draft") if request.format.json?
+    @landing_page = current_tenant.landing_pages.new(attrs)
     if @landing_page.save
-      redirect_to admin_landing_pages_path, notice: "Página criada com sucesso!"
+      respond_to do |format|
+        format.html { redirect_to after_save_path, notice: "Página criada com sucesso!" }
+        format.json { render json: autosave_payload, status: :created }
+      end
     else
+      @template = LandingPages::Templates.find(params[:template])
       load_filter_options
-      render :new, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_entity }
+        format.json { render json: { ok: false, errors: autosave_errors }, status: :unprocessable_entity }
+      end
     end
   end
 
@@ -29,11 +46,24 @@ class Admin::LandingPagesController < Admin::BaseController
   end
 
   def update
-    if @landing_page.update(landing_page_params)
-      redirect_to admin_landing_pages_path, notice: "Página atualizada com sucesso!"
+    attrs = landing_page_params
+    if request.format.json?
+      return render json: { ok: false, errors: ["Só rascunhos salvam sozinhos. Clique em Salvar para aplicar."] }, status: :conflict unless @landing_page.draft?
+
+      attrs = attrs.except(:status)
+    end
+
+    if @landing_page.update(attrs)
+      respond_to do |format|
+        format.html { redirect_to after_save_path, notice: "Página atualizada com sucesso!" }
+        format.json { render json: autosave_payload }
+      end
     else
       load_filter_options
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: { ok: false, errors: autosave_errors }, status: :unprocessable_entity }
+      end
     end
   end
 
@@ -80,7 +110,34 @@ class Admin::LandingPagesController < Admin::BaseController
     render json: landing_page_filter_options
   end
 
+  # Mesma tela do site (blocos, CSS e tema da conta) com o que está no editor e ainda não foi salvo.
+  def render_preview
+    @public_tenant = current_tenant
+    @preview_mode = true
+    @landing_page = current_tenant.landing_pages.new(preview_page_params)
+    @landing_page.slug = "previa" # só para os links da vitrine (paginação/filtros) terem um endereço
+    @blocks = preview_blocks.select(&:visible?)
+    @showcases = build_showcases(@blocks, habitations: current_tenant.habitations)
+    render "landing_pages/blocks", layout: "public_page_preview"
+  end
+
   private
+
+  # Ids dos blocos por posição: o editor os grava nos cartões para o próximo autosave atualizar em vez de duplicar.
+  def autosave_payload
+    { ok: true, edit_url: edit_admin_landing_page_path(@landing_page), update_url: admin_landing_page_path(@landing_page),
+      slug: @landing_page.slug, blocks: @landing_page.blocks.reload.map { |block| { position: block.position, id: block.id } } }
+  end
+
+  def autosave_errors
+    block_errors = @landing_page.blocks.flat_map { |block| block.errors.full_messages }.uniq
+    block_errors.presence || @landing_page.errors.full_messages
+  end
+
+  # "Salvar" continua no editor; "Salvar e sair" volta à lista.
+  def after_save_path
+    params[:continue].present? ? edit_admin_landing_page_path(@landing_page) : admin_landing_pages_path
+  end
 
   def set_landing_page
     @landing_page = current_tenant.landing_pages.friendly.find(params[:id])
@@ -88,9 +145,30 @@ class Admin::LandingPagesController < Admin::BaseController
 
   def landing_page_params
     params.require(:landing_page).permit(
-      :title, :slug, :description, :content, :meta_title, :meta_description, :active, 
-      filter_params: [:q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status, category: [], city: [], neighborhood: [], development: [], property_codes: [], characteristics: []]
+      :title, :slug, :description, :content, :meta_title, :meta_description, :status, :layout_columns,
+      filter_params: [:q, :search, :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status, category: [], city: [], neighborhood: [], development: [], property_codes: [], characteristics: []],
+      blocks_attributes: BLOCK_PARAMS
     )
+  end
+
+  BLOCK_PARAMS = [:id, :block_type, :position, :visible, :_destroy, :image_desktop, :image_mobile, :remove_image_desktop, :remove_image_mobile, { data: {} }].freeze
+
+  def preview_page_params
+    params.fetch(:landing_page, ActionController::Parameters.new).slice(:title, :description, :layout_columns).permit(:title, :description, :layout_columns)
+  end
+
+  # Blocos do editor, na ordem da tela. Bloco já salvo reaproveita as imagens guardadas; os novos ainda não têm imagem.
+  def preview_blocks
+    raw = params.fetch(:landing_page, ActionController::Parameters.new).slice(:blocks_attributes).permit(blocks_attributes: BLOCK_PARAMS)[:blocks_attributes]
+    saved = params[:id].present? ? current_tenant.landing_pages.friendly.find(params[:id]).blocks.index_by { |block| block.id.to_s } : {}
+
+    raw.to_h.values.reject { |attrs| ActiveModel::Type::Boolean.new.cast(attrs["_destroy"]) }.sort_by { |attrs| attrs["position"].to_i }.filter_map do |attrs|
+      block = saved[attrs["id"].to_s] || LandingPageBlock.new(tenant: current_tenant, landing_page: @landing_page)
+      block.assign_attributes(attrs.slice("block_type", "visible", "data").merge("position" => attrs["position"].to_i))
+      block if block.valid?
+    end
+  rescue ActiveRecord::RecordNotFound
+    []
   end
 
   def preview_params
@@ -127,8 +205,6 @@ class Admin::LandingPagesController < Admin::BaseController
     @property_categories = scope.distinct.pluck(:categoria).compact.sort
     @property_cities = scope.distinct.pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)")).compact.sort
     @property_neighborhoods = scope.distinct.pluck(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)")).compact.uniq.sort
-    @selected_property_code_options = property_code_options_for(selected_filter_values("property_codes"), exact: true)
-    @selected_development_options = selected_filter_values("development").map { |name| [name, name] }
   end
 
   def landing_page_filter_options
@@ -182,10 +258,6 @@ class Admin::LandingPagesController < Admin::BaseController
 
   def property_code_option_label(habitation)
     ["##{habitation.codigo}", habitation.display_title, habitation.nome_empreendimento].compact_blank.join(" · ")
-  end
-
-  def selected_filter_values(key)
-    Array(@landing_page&.filter_params&.[](key)).compact_blank.map(&:to_s)
   end
 
   def option_payload(options)

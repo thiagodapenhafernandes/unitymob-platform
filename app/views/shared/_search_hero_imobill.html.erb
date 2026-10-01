@@ -12,14 +12,25 @@
 <% search_filter_right_border_style = "border-right: var(--search-filter-border);" %>
 <% search_filter_chip_border_style = "border: var(--search-filter-border);" %>
 
+<% voice_ai = @home_setting.hero_ai_search_available? %>
+<% voice_mic = voice_ai && Ai::PropertySearch::PublicQuery.voice_available?(tenant: public_tenant) %>
 <div class="hero-search w-full max-w-5xl mx-auto relative z-20"
-     data-controller="search-tabs"
+     data-controller="search-tabs<%= " hero-search" if voice_ai %>"
+     <%= tag.attributes(data: { hero_search_ai_url_value: public_ai_search_path, hero_search_voice_value: voice_mic }) if voice_ai %>
      data-search-tabs-sale-price-options-value="<%= json_escape(public_price_range_options("venda").to_json) %>"
      data-search-tabs-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
 
   <!-- Tabs (Comprar / Alugar) - Outside and Centered -->
   <div class="public-theme-search__tabs flex justify-center mb-3 md:mb-4">
     <div class="public-theme-search__tabs-box inline-flex rounded-full border border-white/40 bg-white/85 p-1.5 shadow-[0_12px_34px_rgba(8,31,48,0.18)] backdrop-blur-xl">
+      <% if voice_ai %>
+        <button type="button"
+                class="public-theme-hero-voice__toggle px-5 sm:px-6 py-2 rounded-full text-sm font-bold text-gray-600 hover:text-blue-three transition-all"
+                data-hero-search-target="voiceToggle"
+                data-action="click->hero-search#toggleVoice"
+                aria-pressed="false"
+                aria-label="<%= voice_mic ? "Buscar por voz" : "Descrever o imóvel que procuro" %>"><i class="bi bi-<%= voice_mic ? "mic" : "stars" %>" aria-hidden="true"></i> <%= voice_mic ? "Voz" : "Descrever" %></button>
+      <% end %>
       <button type="button"
               class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-blue-three bg-hero-button shadow-sm transition-all active-tab"
               data-search-tabs-target="tab"
@@ -45,7 +56,7 @@
     <%= form_with url: habitations_path,
                   method: :get,
                   class: "p-3 sm:p-4",
-                  data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do |f| %>
+                  data: { controller: "public-search-url", action: "submit->public-search-url#submit", hero_search_target: ("filtersPanel" if voice_ai) }.compact do |f| %>
 
       <input type="hidden" name="transaction_type" id="transaction_type_input" value="<%= params[:transaction_type] || 'venda' %>" data-search-tabs-target="input">
       <input type="hidden" name="v" value="2">
@@ -272,6 +283,10 @@
         </div>
       </div>
 
+    <% end %>
+    <% if voice_ai %>
+      <%# O respiro vem da própria barra (--in-panel): um wrapper com padding sobrava como "barriga" com a barra escondida. %>
+      <%= render "public_theme/components/hero_voice", variant: "default", class_name: "public-theme-hero-voice--in-panel", voice: voice_mic %>
     <% end %>
   </div>
 

@@ -153,6 +153,16 @@ body.admin-layout:has(.ax-guided),
 
 .ax-guided-step[data-state="done"] .ax-guided-step__num i { opacity: 1; transform: none; }
 
+.ax-guided-step.is-collapsible > .ax-guided-step__head { cursor: pointer; user-select: none; }
+
+.ax-guided-step.is-collapsible:not(.is-open) > .ax-guided-step__head { border-bottom-color: transparent; }
+
+.ax-guided-step__toggle { display: grid; place-items: center; flex: none; width: 30px; height: 30px; margin-left: auto; border: 1px solid var(--ax-guided-line); border-radius: 8px; background: var(--ax-guided-surface); color: var(--ax-guided-muted); }
+
+.ax-guided-step__toggle i { transition: transform 200ms var(--ax-guided-ease); }
+
+.ax-guided-step.is-open > .ax-guided-step__head .ax-guided-step__toggle i { transform: rotate(180deg); }
+
 .ax-guided-step__body { display: grid; gap: 14px; padding: 16px; }
 
 

@@ -4,7 +4,8 @@ import { Controller } from "@hotwired/stimulus"
 // de todos os temas). Marcação: .public-theme-combobox > input[type=hidden] +
 // __trigger (__tags + __input) + __panel (__option[data-value] > __label).
 export default class extends Controller {
-  static values = { compact: Boolean }
+  // single: escolha única (a nova seleção troca a anterior e o painel fecha), usada onde o parâmetro não é uma lista (ex.: dormitórios).
+  static values = { compact: Boolean, single: Boolean }
 
   connect() {
     const combobox = this.element
@@ -17,6 +18,7 @@ export default class extends Controller {
     const options = Array.from(panel.querySelectorAll(".public-theme-combobox__option"))
     const placeholder = input.getAttribute("placeholder") || ""
     const compactSelection = this.compactValue
+    const single = this.singleValue
     const selected = new Map()
 
     options.forEach((option) => {
@@ -100,6 +102,10 @@ export default class extends Controller {
         selected.delete(value)
         if (option) option.classList.remove("selected")
       } else {
+        if (single) {
+          selected.clear()
+          options.forEach((candidate) => candidate.classList.remove("selected"))
+        }
         selected.set(value, label)
         if (option) option.classList.add("selected")
       }
@@ -109,7 +115,12 @@ export default class extends Controller {
       toggle(option.dataset.value, option.dataset.raw)
       input.value = ""
       filter()
-      input.focus()
+      if (single) {
+        close()
+        input.blur()
+      } else {
+        input.focus()
+      }
     }
 
     options.forEach((option) => {

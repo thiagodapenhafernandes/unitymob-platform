@@ -4,7 +4,12 @@
 <% end %>
 
 <!-- Hero Section -->
-<%= theme_component(:hero) %>
+<% case @home_setting.hero_layout %>
+<% when "bar", "card" %>
+  <%= render "public_theme/components/hero_#{@home_setting.hero_layout}", variant: theme_variant %>
+<% else %>
+  <%= theme_component(:hero) %>
+<% end %>
 
 <!-- Banner Após Hero -->
 <%= display_banner('home_after_hero') %>

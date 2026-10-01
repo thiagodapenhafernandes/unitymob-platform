@@ -446,4 +446,16 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(response.body).not_to include(admin_whatsapp_campaigns_path)
     expect(response.body).not_to include(admin_admin_users_path)
   end
+
+  it "leva Seções da Home para dentro da Home em vez do Conteúdo" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(edit_admin_home_setting_path)
+    expect(response.body).not_to include("Seções da Home")
+    expect(response.body).not_to include(%(href="#{admin_home_sections_path}"))
+  end
 end

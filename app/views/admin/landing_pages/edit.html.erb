@@ -1,4 +1,4 @@
 <div class="public-site-workspace">
-<%= ax_workspace_heading(eyebrow: "Site público · Landing Pages", icon: "pencil-square", title: @landing_page.title, pills: [@landing_page.active? ? "Ativa" : "Offline"], subtitle: "Edite conteúdo, filtros, publicação e preview.", actions: ax_button("Voltar", admin_landing_pages_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
+<%= ax_workspace_heading(eyebrow: "Site público · Páginas", icon: "pencil-square", title: @landing_page.title, pills: [@landing_page.status_label], subtitle: "Edite os blocos, o endereço e a publicação.", actions: ax_button("Voltar", admin_landing_pages_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 <%= render 'form' %>
 </div>

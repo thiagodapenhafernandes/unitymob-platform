@@ -1,0 +1,12 @@
+<%# Editor de benefícios da lateral do modal: uma linha por benefício, com ícone. Grava JSON no input oculto
+    (input_id); pode haver mais de um editor na tela (bloco e painel do preview) e todos ficam sincronizados. %>
+<div class="benefits-editor" data-controller="benefits-editor"
+     data-benefits-editor-input-value="#<%= input_id %>"
+     data-benefits-editor-icons-value="<%= json_escape(PublicForm::BENEFIT_ICONS.to_json) %>"
+     data-benefits-editor-default-icon-value="<%= PublicForm::DEFAULT_BENEFIT_ICON %>">
+  <ul class="benefits-editor__list" data-benefits-editor-target="list"
+      data-action="dragover->benefits-editor#dragOver drop->benefits-editor#drop"></ul>
+  <button type="button" class="ax-btn ax-btn--sm" data-action="benefits-editor#add">
+    <i class="bi bi-plus-lg ax-ico" aria-hidden="true"></i> Adicionar benefício
+  </button>
+</div>

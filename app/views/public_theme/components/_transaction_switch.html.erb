@@ -7,6 +7,15 @@
 %>
 
 <div class="<%= switch_class %>" role="group" aria-label="<%= local_assigns.fetch(:aria_label, "Finalidade") %>">
+  <%# Busca por voz/descrição (opcional): primeiro botão, antes de Comprar. O controller hero-search troca o formulário por ele. %>
+  <% if local_assigns[:voice_toggle] %>
+    <button type="button"
+            class="<%= button_class %> public-theme-hero-voice__toggle"
+            data-hero-search-target="voiceToggle"
+            data-action="click->hero-search#toggleVoice"
+            aria-pressed="false"
+            aria-label="<%= local_assigns[:voice_toggle][:aria_label] %>"><i class="bi bi-<%= local_assigns[:voice_toggle][:icon] %>" aria-hidden="true"></i> <%= local_assigns[:voice_toggle][:label] %></button>
+  <% end %>
   <% options.each do |option| %>
     <%
       label = option[:label] || option["label"]

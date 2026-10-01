@@ -1,0 +1,291 @@
+// Layouts do hero da home — variante `default` (Padrão, Salute, Conexão): Barra e Cartão. Usa a paleta da conta
+// (--color-primary / --color-accent). A variante luxury vive em public_site_themes/salute_luxury.css.
+
+// ---- Base comum (fundo, sobreposição e contêiner) ----
+.public-theme-hero-bar--default,
+.public-theme-hero-card--default {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: min(88dvh, 860px);
+  overflow: hidden;
+  background: var(--color-primary, #022b3a);
+  color: #fff;
+}
+
+.public-theme-hero-bar--default .public-theme-hero-bar__media,
+.public-theme-hero-bar--default .public-theme-hero-bar__media img,
+.public-theme-hero-card--default .public-theme-hero-card__media,
+.public-theme-hero-card--default .public-theme-hero-card__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-theme-hero-bar--default .public-theme-hero-bar__overlay,
+.public-theme-hero-card--default .public-theme-hero-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--hero-overlay-start, rgba(0, 0, 0, .55)), var(--hero-overlay-end, rgba(0, 0, 0, .25)));
+}
+
+.public-theme-hero-bar--default .public-theme-hero-bar__container,
+.public-theme-hero-card--default .public-theme-hero-card__container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 112px 24px 72px;
+}
+
+// ---- Barra ----
+.public-theme-hero-bar--default .public-theme-hero-bar__inner { display: grid; gap: 28px; }
+.public-theme-hero-bar--default.is-align-center .public-theme-hero-bar__inner { text-align: center; }
+.public-theme-hero-bar--default.is-align-left .public-theme-hero-bar__inner { text-align: left; }
+.public-theme-hero-bar--default.is-align-right .public-theme-hero-bar__inner { text-align: right; }
+
+.public-theme-hero-bar--default .public-theme-hero__title {
+  margin: 0;
+  font-size: clamp(32px, 5vw, var(--hero-title-configured-size, 72px));
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.01em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .35);
+}
+
+.public-theme-hero-bar--default .public-theme-hero__lead {
+  margin: -12px 0 0;
+  max-width: 720px;
+  font-size: clamp(15px, 1.6vw, var(--hero-subtitle-configured-size, 20px));
+  opacity: .92;
+}
+.public-theme-hero-bar--default.is-align-center .public-theme-hero__lead { margin-inline: auto; }
+.public-theme-hero-bar--default.is-align-right .public-theme-hero__lead { margin-left: auto; }
+
+.public-theme-hero-bar--default .public-theme-hero-bar__search { width: 100%; max-width: 1120px; }
+.public-theme-hero-bar--default.is-align-center .public-theme-hero-bar__search { margin-inline: auto; }
+.public-theme-hero-bar--default.is-align-right .public-theme-hero-bar__search { margin-left: auto; }
+
+.public-theme-hero-bar--default .public-theme-hero-bar__form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .95fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 22px 60px rgba(2, 20, 30, .35);
+  color: #1f2937;
+}
+
+.public-theme-hero-bar--default .public-theme-hero-bar__tabs { display: inline-flex; padding: 4px; border-radius: 999px; background: #eef1f5; }
+.public-theme-hero-bar--default .public-theme-hero-bar__tab { padding: 12px 22px; border: 0; border-radius: 999px; background: transparent; color: #4b5563; font-size: 15px; font-weight: 700; cursor: pointer; transition: background-color .15s, color .15s; }
+.public-theme-hero-bar--default .public-theme-hero-bar__tab[aria-pressed="true"] { background: var(--color-primary, #022b3a); color: #fff; }
+
+.public-theme-hero-bar--default .public-theme-hero-bar__field { display: block; min-width: 0; }
+.public-theme-hero-bar--default .public-theme-hero-bar__control { width: 100%; height: 52px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: #1f2937; font-size: 15px; text-overflow: ellipsis; }
+.public-theme-hero-bar--default select.public-theme-hero-bar__control { cursor: pointer; }
+.public-theme-hero-bar--default .public-theme-hero-bar__control:focus-visible { outline: 2px solid var(--color-primary, #022b3a); outline-offset: -2px; }
+.public-theme-hero-bar--default .public-theme-hero-bar__field + .public-theme-hero-bar__field { border-left: 1px solid #e5e7eb; }
+
+.public-theme-hero-bar--default .public-theme-hero-bar__submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 30px; border: 0; border-radius: 999px; background: var(--color-accent, #bfab25); color: var(--color-primary, #022b3a); font-size: 15px; font-weight: 800; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.public-theme-hero-bar--default .public-theme-hero-bar__submit:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0, 0, 0, .25); }
+
+.public-theme-hero-bar--default .public-theme-hero-bar__detail { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 6px 4px; border: 0; background: transparent; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; opacity: .9; }
+.public-theme-hero-bar--default .public-theme-hero-bar__detail:hover { opacity: 1; text-decoration: underline; }
+
+@media (max-width: 1023px) {
+  .public-theme-hero-bar--default .public-theme-hero-bar__form { grid-template-columns: 1fr 1fr; border-radius: 24px; padding: 14px; gap: 10px; }
+  .public-theme-hero-bar--default .public-theme-hero-bar__tabs { grid-column: 1 / -1; justify-self: start; }
+  .public-theme-hero-bar--default .public-theme-hero-bar__field { border: 1px solid #e5e7eb; border-radius: 14px; }
+  .public-theme-hero-bar--default .public-theme-hero-bar__field + .public-theme-hero-bar__field { border-left: 1px solid #e5e7eb; }
+  .public-theme-hero-bar--default .public-theme-hero-bar__field--text,
+  .public-theme-hero-bar--default .public-theme-hero-bar__submit { grid-column: 1 / -1; }
+  .public-theme-hero-bar--default .public-theme-hero-bar__control { border-radius: 14px; }
+}
+@media (max-width: 560px) {
+  .public-theme-hero-bar--default .public-theme-hero-bar__form { grid-template-columns: 1fr; }
+}
+
+// ---- Cartão ----
+.public-theme-hero-card--default .public-theme-hero-card__inner { display: flex; }
+.public-theme-hero-card--default.is-align-left .public-theme-hero-card__inner { justify-content: flex-start; }
+.public-theme-hero-card--default.is-align-center .public-theme-hero-card__inner { justify-content: center; }
+.public-theme-hero-card--default.is-align-right .public-theme-hero-card__inner { justify-content: flex-end; }
+
+.public-theme-hero-card--default .public-theme-hero-card__panel {
+  width: 100%;
+  max-width: 640px;
+  padding: 28px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(2, 20, 30, .4);
+  color: #1f2937;
+}
+
+.public-theme-hero-card--default .public-theme-hero-card__tabs { display: inline-flex; padding: 4px; border-radius: 999px; background: #eef1f5; }
+.public-theme-hero-card--default .public-theme-hero-card__tab { padding: 10px 24px; border: 0; border-radius: 999px; background: transparent; color: #6b7280; font-size: 15px; font-weight: 700; cursor: pointer; transition: background-color .15s, color .15s; }
+.public-theme-hero-card--default .public-theme-hero-card__tab[aria-pressed="true"] { background: #fff; color: #111827; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+
+.public-theme-hero-card--default .public-theme-hero-card__title { margin: 22px 0 6px; color: #111827; font-size: clamp(24px, 3vw, 34px); font-weight: 800; line-height: 1.12; letter-spacing: -.01em; }
+.public-theme-hero-card--default .public-theme-hero-card__lead { margin: 0 0 18px; color: #6b7280; font-size: 15px; }
+
+
+.public-theme-hero-card--default .public-theme-hero-card__filters { display: grid; gap: 10px; }
+.public-theme-hero-card--default .public-theme-hero-card__filters[hidden] { display: none; }
+.public-theme-hero-card--default .public-theme-hero-card__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.public-theme-hero-card--default .public-theme-hero-card__field { position: relative; display: block; min-width: 0; }
+.public-theme-hero-card--default .public-theme-hero-card__field > i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6b7280; pointer-events: none; }
+.public-theme-hero-card--default .public-theme-hero-card__control { width: 100%; height: 50px; padding: 0 14px 0 40px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; color: #1f2937; font-size: 14.5px; text-overflow: ellipsis; }
+.public-theme-hero-card--default .public-theme-hero-card__control:focus-visible { outline: 2px solid var(--color-primary, #022b3a); outline-offset: 1px; }
+
+.public-theme-hero-card--default .public-theme-hero-card__label { margin: 8px 0 0; color: #6b7280; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.public-theme-hero-card--default .public-theme-hero-card__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.public-theme-hero-card--default .public-theme-hero-card__chip-option { cursor: pointer; }
+.public-theme-hero-card--default .public-theme-hero-card__chip { display: inline-flex; align-items: center; padding: 7px 14px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; color: #4b5563; font-size: 13px; font-weight: 600; transition: background-color .15s, color .15s, border-color .15s; }
+.public-theme-hero-card--default .public-theme-hero-card__chip-option input:checked + .public-theme-hero-card__chip { border-color: var(--color-primary, #022b3a); background: var(--color-primary, #022b3a); color: #fff; }
+.public-theme-hero-card--default .public-theme-hero-card__chip-option input:focus-visible + .public-theme-hero-card__chip { outline: 2px solid var(--color-primary, #022b3a); outline-offset: 2px; }
+
+.public-theme-hero-card--default .public-theme-hero-card__submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 52px; margin-top: 8px; border: 0; border-radius: 999px; background: var(--color-primary, #022b3a); color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary, #022b3a) 35%, transparent); transition: transform .15s; }
+.public-theme-hero-card--default .public-theme-hero-card__submit:hover { transform: translateY(-1px); }
+.public-theme-hero-card--default .public-theme-hero-card__submit.is-busy { opacity: .7; cursor: progress; }
+
+
+.public-theme-hero-card--default .public-theme-hero-card__footer { margin: 18px -28px -28px; padding: 14px 28px; border-radius: 0 0 24px 24px; background: #f8fafc; color: #4b5563; font-size: 14px; text-align: center; }
+
+@keyframes public-theme-hero-pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .5); } 70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+
+@media (max-width: 640px) {
+  .public-theme-hero-card--default .public-theme-hero-card__container { padding: 96px 14px 40px; }
+  .public-theme-hero-card--default .public-theme-hero-card__panel { padding: 20px; border-radius: 20px; }
+  .public-theme-hero-card--default .public-theme-hero-card__grid { grid-template-columns: 1fr; }
+  .public-theme-hero-card--default .public-theme-hero-card__footer { margin: 16px -20px -20px; padding: 12px 20px; }
+}
+
+// ---- Buscador por voz do hero (Clássico e Barra) — variante default ----
+// Barra de gravação no estilo do WhatsApp: [cancelar] [onda sonora + cronômetro] [enviar]. Ocupa o lugar do formulário.
+.public-theme-hero-voice--default { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; color: inherit; }
+.public-theme-hero-voice--default[hidden],
+.public-theme-hero-voice--default .public-theme-hero-voice__error[hidden] { display: none; }
+.public-theme-hero-voice--default .public-theme-hero-voice__bar { display: flex; align-items: center; gap: 10px; }
+.public-theme-hero-voice--default .public-theme-hero-voice__cancel { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border: 0; border-radius: 50%; background: #eef0f3; color: #6b7280; font-size: 18px; cursor: pointer; transition: background-color .15s, color .15s; }
+.public-theme-hero-voice--default .public-theme-hero-voice__cancel:hover { background: #fde8e8; color: #b91c1c; }
+.public-theme-hero-voice--default .public-theme-hero-voice__field { position: relative; display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; height: 52px; padding: 0 22px; border: 0; border-radius: 999px; background: #eef0f3; color: var(--color-primary, #022b3a); }
+.public-theme-hero-voice--default .public-theme-hero-voice__wave { flex: 1; min-width: 0; height: 32px; color: var(--color-primary, #022b3a); }
+.public-theme-hero-voice--default .public-theme-hero-voice__timer { flex: none; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.public-theme-hero-voice--default .public-theme-hero-voice__text { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: #1f2937; font-size: 15px; outline: none; }
+.public-theme-hero-voice--default .public-theme-hero-voice__status { flex: 1; min-width: 0; overflow: hidden; color: #4b5563; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.public-theme-hero-voice--default .public-theme-hero-voice__send { display: grid; place-items: center; flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 999px; background: var(--color-primary, #022b3a); color: #fff; font-size: 22px; cursor: pointer; transition: transform .15s, background-color .15s; }
+.public-theme-hero-voice--default .public-theme-hero-voice__send:hover { transform: translateY(-1px); }
+.public-theme-hero-voice--default .public-theme-hero-voice__send:disabled { cursor: progress; opacity: .75; }
+.public-theme-hero-voice--default .public-theme-hero-voice__send i.bi-arrow-repeat { animation: public-theme-hero-spin 1s linear infinite; }
+.public-theme-hero-voice--default .public-theme-hero-voice__error { margin: 0; padding: 8px 14px; border-radius: 12px; background: #fef2f2; color: #b91c1c; font-size: 14px; }
+.public-theme-hero-voice--default .public-theme-hero-voice__note { margin: 0; padding-left: 62px; font-size: 12px; opacity: .65; }
+
+// Estados: o campo mostra onda + cronômetro gravando; o texto só no modo escrita; o status nos demais.
+.public-theme-hero-voice--default[data-state="idle"] .public-theme-hero-voice__wave,
+.public-theme-hero-voice--default[data-state="idle"] .public-theme-hero-voice__timer,
+.public-theme-hero-voice--default[data-state="idle"] .public-theme-hero-voice__text,
+.public-theme-hero-voice--default[data-state="busy"] .public-theme-hero-voice__wave,
+.public-theme-hero-voice--default[data-state="busy"] .public-theme-hero-voice__timer,
+.public-theme-hero-voice--default[data-state="busy"] .public-theme-hero-voice__text,
+.public-theme-hero-voice--default[data-state="recording"] .public-theme-hero-voice__text,
+.public-theme-hero-voice--default[data-state="recording"] .public-theme-hero-voice__status,
+.public-theme-hero-voice--default[data-state="recording"] .public-theme-hero-voice__note,
+.public-theme-hero-voice--default[data-state="busy"] .public-theme-hero-voice__note,
+.public-theme-hero-voice--default[data-state="text"] .public-theme-hero-voice__wave,
+.public-theme-hero-voice--default[data-state="text"] .public-theme-hero-voice__timer,
+.public-theme-hero-voice--default[data-state="text"] .public-theme-hero-voice__status { display: none; }
+.public-theme-hero-voice--default[data-state="recording"] .public-theme-hero-voice__send { background: var(--color-accent, #bfab25); color: var(--color-primary, #022b3a); }
+.public-theme-hero-voice--default[data-state="recording"] .public-theme-hero-voice__timer::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #dc2626; animation: public-theme-hero-pulse 1.2s infinite; }
+
+// Botão "Voz" junto das abas Comprar/Alugar (Clássico e Barra).
+.public-theme-hero-voice__toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.public-theme-hero-voice__toggle[aria-pressed="true"] { background: var(--color-accent, #bfab25) !important; color: var(--color-primary, #022b3a) !important; }
+
+// Barra: no modo voz, a barra de gravação ocupa o lugar dos campos e do botão.
+.public-theme-hero-bar--default [data-voice="on"] .public-theme-hero-bar__field,
+.public-theme-hero-bar--default [data-voice="on"] .public-theme-hero-bar__submit { display: none; }
+.public-theme-hero-bar--default .public-theme-hero-voice--in-bar { grid-column: 2 / -1; }
+.public-theme-hero-bar--default .public-theme-hero-voice--in-bar .public-theme-hero-voice__field,
+.public-theme-hero-bar--default .public-theme-hero-voice--in-bar .public-theme-hero-voice__cancel { background: #f3f4f6; }
+.public-theme-hero-bar--default .public-theme-hero-voice--in-bar .public-theme-hero-voice__note { display: none; }
+
+@keyframes public-theme-hero-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .public-theme-hero-voice--default .public-theme-hero-voice__bar { gap: 6px; }
+  .public-theme-hero-voice--default .public-theme-hero-voice__cancel,
+  .public-theme-hero-voice--default .public-theme-hero-voice__send { width: 46px; height: 46px; }
+  .public-theme-hero-voice--default .public-theme-hero-voice__field { height: 46px; }
+  .public-theme-hero-voice--default .public-theme-hero-voice__field { padding: 0 14px; }
+  .public-theme-hero-voice--default .public-theme-hero-voice__note { padding-left: 0; text-align: center; }
+  .public-theme-hero-bar--default .public-theme-hero-voice--in-bar { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-hero-voice--default .public-theme-hero-voice__send i.bi-arrow-repeat,
+  .public-theme-hero-voice--default[data-state="recording"] .public-theme-hero-voice__timer::before { animation: none; }
+}
+
+// Cartão: a barra de gravação fica sobre o painel claro (campo cinza claro, sem a sombra da barra).
+.public-theme-hero-card--default .public-theme-hero-voice--in-card .public-theme-hero-voice__note { padding-left: 62px; color: #6b7280; opacity: 1; }
+.public-theme-hero-card--default .public-theme-hero-voice--in-card .public-theme-hero-voice__suggestions { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.public-theme-hero-card--default .public-theme-hero-voice--in-card .public-theme-hero-voice__suggestion { width: 100%; padding: 11px 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; color: #374151; font-size: 14px; text-align: left; cursor: pointer; }
+.public-theme-hero-card--default .public-theme-hero-voice--in-card .public-theme-hero-voice__suggestion:hover { border-color: var(--color-primary, #022b3a); }
+.public-theme-hero-card--default .public-theme-hero-voice--in-card[data-state="recording"] .public-theme-hero-voice__suggestions,
+.public-theme-hero-card--default .public-theme-hero-voice--in-card[data-state="busy"] .public-theme-hero-voice__suggestions { display: none; }
+.public-theme-hero-card--default .public-theme-hero-card__tabs { flex-wrap: wrap; }
+@media (max-width: 640px) { .public-theme-hero-card--default .public-theme-hero-voice--in-card .public-theme-hero-voice__note { padding-left: 0; } }
+
+// Voz é uma terceira aba, exclusiva como Comprar/Alugar: no modo voz a cor ativa sai de Comprar/Alugar e vai para o botão Voz,
+// com o mesmo estilo de "ativo" de cada layout. Tocar em Comprar/Alugar volta aos filtros (ver hero_search_controller).
+.hero-search[data-voice="on"] .public-theme-search__tabs-box [data-search-tabs-target="tab"] { background: transparent !important; color: #4b5563 !important; box-shadow: none !important; }
+.public-theme-hero-bar--default [data-voice="on"] .public-theme-hero-bar__tab:not(.public-theme-hero-voice__toggle) { background: transparent; color: #4b5563; }
+.public-theme-hero-bar--default .public-theme-hero-voice__toggle[aria-pressed="true"] { background: var(--color-primary, #022b3a) !important; color: #fff !important; }
+.public-theme-hero-card--default [data-voice="on"] .public-theme-hero-card__tab:not(.public-theme-hero-voice__toggle) { background: transparent; color: #6b7280; box-shadow: none; }
+.public-theme-hero-card--default .public-theme-hero-voice__toggle[aria-pressed="true"] { background: #fff !important; color: #111827 !important; box-shadow: 0 1px 4px rgba(0, 0, 0, .14) !important; }
+
+// Hero Clássico: a barra de voz fica dentro do painel dos filtros; o respiro é dela (some junto quando está escondida).
+.public-theme-hero-voice--in-panel { padding: 12px 14px; }
+@media (min-width: 640px) { .public-theme-hero-voice--in-panel { padding: 14px 16px; } }
+
+// ---- Combobox (autocomplete) dentro da Barra — variante default ----
+.public-theme-hero-bar--default .public-theme-hero-bar__field { position: relative; }
+.public-theme-hero-bar--default .public-theme-combobox { position: relative; }
+.public-theme-hero-bar--default .public-theme-combobox.open { z-index: 80; }
+.public-theme-hero-bar--default .public-theme-combobox__trigger { display: flex; align-items: center; gap: 8px; min-width: 0; height: 54px; padding: 0 16px; cursor: text; }
+.public-theme-hero-bar--default .public-theme-combobox__field { display: flex; align-items: center; flex: 1; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+.public-theme-hero-bar--default .public-theme-combobox__tags { display: contents; }
+.public-theme-hero-bar--default .public-theme-combobox__tag { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; max-width: 100%; padding: 3px 4px 3px 10px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--color-primary, #022b3a) 12%, #fff); color: var(--color-primary, #022b3a); font-size: 13px; font-weight: 700; }
+.public-theme-hero-bar--default .public-theme-combobox__tag-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.public-theme-hero-bar--default .public-theme-combobox__tag-remove { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.public-theme-hero-bar--default .public-theme-combobox__tag-remove:hover { background: rgba(0, 0, 0, .12); color: inherit; }
+.public-theme-hero-bar--default .public-theme-combobox__count { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--color-primary, #022b3a); color: #fff; font-size: 12px; font-weight: 800; }
+.public-theme-hero-bar--default .public-theme-combobox__input { flex: 1; min-width: 40px; padding: 0; border: 0; background: transparent; color: #1f2937; font-size: 15px; outline: none; }
+.public-theme-hero-bar--default .public-theme-combobox__input::placeholder { color: #6b7280; }
+.public-theme-hero-bar--default .public-theme-combobox__caret { flex: none; margin-left: auto; color: #6b7280; font-size: 13px; transition: transform .2s; }
+.public-theme-hero-bar--default .public-theme-combobox.open .public-theme-combobox__caret { transform: rotate(180deg); }
+.public-theme-hero-bar--default .public-theme-combobox__panel { position: absolute; top: calc(100% + 10px); left: 0; z-index: 80; min-width: 280px; max-height: 320px; padding: 6px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #e5e7eb; border-radius: 16px; background: #fff; box-shadow: 0 20px 56px rgba(2, 20, 30, .3); color: #1f2937; opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none; transition: opacity .15s, transform .15s, visibility 0s linear .15s; }
+.public-theme-hero-bar--default .public-theme-combobox.open .public-theme-combobox__panel { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }
+.public-theme-hero-bar--default .public-theme-combobox__option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: transparent; color: #1f2937; font-size: 14px; cursor: pointer; }
+.public-theme-hero-bar--default .public-theme-combobox__option .public-theme-combobox__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.public-theme-hero-bar--default .public-theme-combobox__option:hover,
+.public-theme-hero-bar--default .public-theme-combobox__option.active { background: #f3f4f6; color: #1f2937; }
+.public-theme-hero-bar--default .public-theme-combobox__option.selected { color: var(--color-primary, #022b3a); font-weight: 700; }
+.public-theme-hero-bar--default .public-theme-combobox__check { flex: none; margin-left: auto; color: var(--color-accent, #bfab25); font-size: 16px; opacity: 0; }
+.public-theme-hero-bar--default .public-theme-combobox__option.selected .public-theme-combobox__check { opacity: 1; }
+.public-theme-hero-bar--default .public-theme-combobox__empty { padding: 14px; text-align: center; color: #6b7280; font-size: 13px; }
+@media (max-width: 1023px) {
+  .public-theme-hero-bar--default .public-theme-combobox__trigger { height: 50px; }
+  .public-theme-hero-bar--default .public-theme-combobox__panel { right: 0; min-width: 0; }
+}
+
+.public-theme-hero-bar--default .public-theme-combobox__trigger,
+.public-theme-hero-bar--default .public-theme-combobox__panel { text-align: left; }
+.public-theme-hero-bar--default .public-theme-combobox__input:focus,
+.public-theme-hero-bar--default .public-theme-combobox__input:focus-visible { border: 0 !important; outline: none !important; box-shadow: none !important; }
+.public-theme-hero-bar--default .public-theme-combobox__trigger:focus-visible { outline: 2px solid var(--color-primary, #022b3a); outline-offset: -2px; border-radius: 999px; }

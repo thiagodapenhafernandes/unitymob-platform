@@ -85,6 +85,40 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(html.at_css(".public-theme-dev-card")).to be_present
         expect(html.at_css(".public-theme-navigation-overlay--#{variant}")).to be_present
       end
+
+      it "página por blocos: vídeo, iframe, imagem e colunas na variante" do
+        page = tenant.landing_pages.create!(title: "Mídia #{theme_key}", slug: "midia-#{theme_key.dasherize}", status: "published", layout_columns: 2)
+        page.blocks.create!(block_type: "text", position: 1, data: { "heading" => "Esquerda", "span" => "1" })
+        page.blocks.create!(block_type: "video", position: 2, data: { "url" => "https://youtu.be/dQw4w9WgXcQ", "span" => "1" })
+        page.blocks.create!(block_type: "embed", position: 3, data: { "url" => "https://example.com/mapa" })
+        image = page.blocks.create!(block_type: "image", position: 4, data: { "alt" => "Foto" })
+        image.image_desktop.attach(io: StringIO.new(File.binread(Rails.root.join("public/icon.png"))), filename: "f.png", content_type: "image/png")
+
+        get public_landing_page_path(page.slug)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.at_css(".public-landing-page__row.has-cols-2 .public-theme-block-video--#{variant} iframe[src*='youtube-nocookie.com/embed/dQw4w9WgXcQ']")).to be_present
+        expect(html.at_css(".public-theme-block-embed--#{variant} iframe[sandbox][src='https://example.com/mapa']")).to be_present
+        expect(html.at_css(".public-theme-block-image--#{variant} img[alt='Foto']")).to be_present
+      end
+
+      it "página por blocos: capa, texto, vitrine e botão na variante, com um único H1" do
+        create(:habitation, tenant:, slug: "bloco-#{theme_key.dasherize}", categoria: "Apartamento", exibir_no_site_flag: true, address_attributes: address)
+        page = tenant.landing_pages.create!(title: "Página #{theme_key}", slug: "pagina-#{theme_key.dasherize}", status: "published")
+        page.blocks.create!(block_type: "cover", position: 1, data: { "subtitle" => "Subtítulo", "button_label" => "Fale", "button_url" => "#modal-fale" })
+        page.blocks.create!(block_type: "text", position: 2, data: { "heading" => "Sobre", "body" => "<p>Texto <strong>forte</strong></p>" })
+        page.blocks.create!(block_type: "property_showcase", position: 3, data: { "heading" => "Vitrine", "visitor_filters" => false })
+        page.blocks.create!(block_type: "button", position: 4, data: { "label" => "Quero", "url" => "/contato" })
+
+        get public_landing_page_path(page.slug)
+
+        expect(response).to have_http_status(:ok)
+        expect(html.css("h1").size).to eq(1)
+        expect(html.at_css(".public-theme-block-cover--#{variant} h1.public-theme-block-cover__title")).to be_present
+        expect(html.at_css(".public-theme-block-text--#{variant} .public-theme-block-text__body strong").text).to eq("forte")
+        expect(html.at_css(".public-theme-block-showcase--#{variant} [data-property-id]")).to be_present
+        expect(html.at_css(".public-theme-block-button--#{variant} a[href='/contato']").text).to eq("Quero")
+      end
     end
   end
 

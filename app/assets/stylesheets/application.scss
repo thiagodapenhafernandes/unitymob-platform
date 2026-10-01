@@ -12,6 +12,9 @@
 @use "components/public_theme_navigation_overlay";
 @use "components/public_theme_financing_simulator";
 @use "components/public_theme_banner";
+@use "components/public_theme_blocks";
+@use "components/public_theme_hero_layouts";
+@use "components/public_advanced_drawer";
 @use "pagination";
 @use "public_habitations_show_refresh";
 
@@ -470,7 +473,7 @@ form.is-submitting button.is-submitting:has([data-submit-guard-hidden="true"])::
 
 /* Global overrides for legacy components if needed */
 .container-custom {
-  max-width: 1440px;
+  max-width: 1550px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1rem;

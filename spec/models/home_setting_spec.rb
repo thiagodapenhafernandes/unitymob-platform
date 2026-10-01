@@ -34,6 +34,26 @@ RSpec.describe HomeSetting, type: :model do
     expect(setting.errors[:public_header_css]).to include("deve conter apenas declarações CSS, sem seletores ou tags")
   end
 
+  it "usa o preset Vidro como padrão do filtro" do
+    tenant = Tenant.create!(name: "Conta Vidro #{SecureRandom.hex(3)}", slug: "conta-vidro-#{SecureRandom.hex(3)}")
+    setting = described_class.instance(tenant: tenant)
+
+    expect(setting.search_filter_background_opacity.to_f).to eq(0.25)
+    expect(setting.search_filter_field_background_opacity.to_f).to eq(0.25)
+    expect(setting.search_filter_border_radius).to eq(35)
+    expect(setting.search_filter_background_rgba).to include("0.25")
+
+    setting.update!(
+      search_filter_background_opacity: nil,
+      search_filter_field_background_opacity: nil,
+      search_filter_border_radius: nil
+    )
+
+    expect(setting.search_filter_background_rgba).to include("0.25")
+    expect(setting.search_filter_field_background_rgba).to include("0.25")
+    expect(setting.search_filter_border_radius_value).to eq(35)
+  end
+
   it "controla onde o filtro público de imóveis aparece" do
     setting = described_class.new(
       tenant: Tenant.default,
