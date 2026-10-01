@@ -1,4 +1,9 @@
 class Setting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
+
+  # Chaves de estado operacional (sincronizações, descoberta de SEO): mudam toda hora e não
+  # aparecem no HTML público. As demais invalidam o cache de página da conta.
+  OPERATIONAL_KEY_PREFIXES = %w[dwv_ seo_discovery_].freeze
   # Key-value com escopo por CONTA e fallback global:
   # - leitura: linha do tenant vence; sem ela, vale a global; sem ambas, default.
   # - escrita: com tenant no contexto grava escopado; sem tenant (console,
@@ -120,4 +125,11 @@ class Setting < ApplicationRecord
     # Derruba o marcador para a próxima leitura refazer o bulk (1 query).
     cache.delete([:__bulk_settings__, scope_tenant&.id])
   end
+
+  private
+
+  def public_page_version_relevant?
+    key.to_s.start_with?(*OPERATIONAL_KEY_PREFIXES) ? false : true
+  end
+
 end

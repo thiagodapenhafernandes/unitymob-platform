@@ -1,4 +1,5 @@
 class HomeSectionItem < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   VIDEO_CONTENT_TYPES = %w[video/mp4 video/quicktime video/webm video/ogg video/3gpp].freeze
   VIDEO_MAX_BYTES = 200.megabytes

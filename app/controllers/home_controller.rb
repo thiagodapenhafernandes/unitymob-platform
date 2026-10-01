@@ -1,5 +1,8 @@
 class HomeController < ApplicationController
-  helper_method :prepare_home_cards
+  include PublicPageCache
+  skip_before_action :load_layout_settings, only: :index
+  public_page_cache :index
+  helper_method :prepare_home_cards, :home_cards_stamp
 
   def index
     @public_identity = public_identity
@@ -199,6 +202,12 @@ class HomeController < ApplicationController
 
     records_by_id = public_habitations.where(id: ids).index_by(&:id)
     ids.filter_map { |id| records_by_id[id] }
+  end
+
+  # Carimbo da chave dos fragmentos. Time vira texto em segundos na chave do
+  # cache; em microssegundos, edições no mesmo segundo não colidem.
+  def home_cards_stamp(records)
+    records.filter_map(&:updated_at).max&.utc&.strftime("%s%6N")
   end
 
   def prepare_home_cards(records)

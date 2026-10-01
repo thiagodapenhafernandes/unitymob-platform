@@ -1,4 +1,5 @@
 class TenantDomain < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   SSL_MODES = {
     "not_configured" => "Não configurado",
     "shared_wildcard" => "Wildcard compartilhado",

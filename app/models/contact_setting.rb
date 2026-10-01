@@ -1,4 +1,5 @@
 class ContactSetting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   include PhoneNormalizable
 

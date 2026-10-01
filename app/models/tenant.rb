@@ -1,4 +1,5 @@
 class Tenant < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   DEFAULT_SLUG = "default".freeze
   DEFAULT_PUBLIC_SITE_THEME = "default".freeze
   PUBLIC_SITE_THEME_DIR = Rails.root.join("app/assets/stylesheets/public_site_themes").freeze
@@ -358,4 +359,11 @@ class Tenant < ApplicationRecord
       value.to_s.parameterize.delete("-").presence
     end.uniq
   end
+
+  private
+
+  def public_page_version_tenant_id
+    id
+  end
+
 end

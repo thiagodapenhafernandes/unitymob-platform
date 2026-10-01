@@ -1,4 +1,5 @@
 class PublicFormField < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   FIELD_TYPES = %w[
     text email tel url search number currency date time datetime-local month week
     color range textarea select radio checkbox hidden file
@@ -215,4 +216,11 @@ class PublicFormField < ApplicationRecord
 
     errors.add(:options, "precisa ter ao menos uma opção")
   end
+
+  private
+
+  def public_page_version_tenant_id
+    PublicForm.unscoped.where(id: public_form_id).pick(:tenant_id)
+  end
+
 end

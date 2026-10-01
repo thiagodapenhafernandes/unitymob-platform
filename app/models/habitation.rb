@@ -511,6 +511,8 @@ class Habitation < ApplicationRecord
 
   def self.clear_public_home_cache_for_tenant(tenant_id)
     return if tenant_id.blank?
+
+    Rails.cache.delete("hero_listing_count:tenant:#{tenant_id}")
     return unless Rails.cache.respond_to?(:delete_matched)
 
     Rails.cache.delete_matched("public_home/tenant/#{tenant_id}/*")
@@ -832,6 +834,9 @@ class Habitation < ApplicationRecord
   before_save :sync_flags_from_features
   before_save :sync_intake_answers
   after_save :clear_cache
+  # Depois do commit (não no after_save): senão uma requisição concorrente reconstruiria a
+  # página com dados antigos sob a versão nova. Cobre também touch (foto anexada/removida).
+  after_commit { PublicSite::PageVersion.bump(tenant_id) }
   after_destroy :clear_cache
   after_create_commit :record_auto_audit_create, unless: :skip_auto_audit?
   after_update_commit :record_auto_audit_update, unless: :skip_auto_audit?

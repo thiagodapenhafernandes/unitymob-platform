@@ -1,4 +1,5 @@
 class BlogCategory < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   has_many :blog_categorizations, dependent: :destroy
   has_many :blog_articles, through: :blog_categorizations

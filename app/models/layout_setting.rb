@@ -1,4 +1,5 @@
 class LayoutSetting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   include TenantScoped
   has_one_attached :logo
   has_one_attached :favicon
