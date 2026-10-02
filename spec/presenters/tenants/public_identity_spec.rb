@@ -25,6 +25,16 @@ RSpec.describe Tenants::PublicIdentity do
     expect(described_class.new(first).primary_city).to eq("Curitiba")
   end
 
+  it "expõe telefones do schema em E.164 sem duplicar nem atravessar tenants" do
+    first = Tenant.create!(name: "Imobiliária Leste", slug: "leste-#{SecureRandom.hex(3)}")
+    second = Tenant.create!(name: "Imobiliária Oeste", slug: "oeste-#{SecureRandom.hex(3)}")
+    ContactSetting.instance(tenant: first).update!(phone: "(47) 3311-1067", whatsapp_primary: "+55 (47) 98811-3063", whatsapp_secondary: "(47) 3311-1067")
+    ContactSetting.instance(tenant: second).update!(phone: "(11) 4002-8922")
+
+    expect(described_class.new(first).schema_phones).to eq(["+554733111067", "+5547988113063"])
+    expect(described_class.new(second).schema_phones).to eq(["+551140028922"])
+  end
+
   it "não cria identidade ou contatos da Salute em um tenant novo" do
     tenant = Tenant.create!(name: "Nova Operação", slug: "nova-operacao-#{SecureRandom.hex(3)}")
 
