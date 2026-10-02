@@ -283,6 +283,16 @@
             <option value="<%= value %>" <%= "selected" if local_assigns[:stage_type].presence == value %>><%= label %></option>
           <% end %>
         </select>
+        <select class="ax-control ax-control--sm"
+                data-lead-status-field="meta_conversion_event"
+                data-controller="ax-tooltip"
+                data-ax-tooltip-text-value="Evento enviado à Meta quando o lead entra nesta etapa (só leads do Meta Ads, com conversões ativas). Em branco = não envia."
+                aria-label="Evento Meta da etapa">
+          <option value="">Evento Meta: nenhum</option>
+          <% LeadPipelineStage::META_CONVERSION_EVENTS.each do |value, label| %>
+            <option value="<%= value %>" <%= "selected" if local_assigns[:meta_conversion_event].presence == value %>><%= label %></option>
+          <% end %>
+        </select>
         <div class="lead-status-row__color-field"
              data-controller="ax-tooltip"
              data-ax-tooltip-text-value="Cor usada para identificar visualmente esta etapa no funil.">

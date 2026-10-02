@@ -52,6 +52,7 @@ class Admin::AppointmentsController < Admin::BaseController
       LeadActivity.log!(lead: @appointment.lead, kind: "appointment_updated", metadata: appointment_meta.merge(by: current_admin_user&.name)) if @appointment.lead_id
       if !was_done && @appointment.realizado? && @appointment.lead_id
         LeadActivity.log!(lead: @appointment.lead, kind: "appointment_done", metadata: appointment_meta)
+        Meta::ConversionDispatcher.call(lead: @appointment.lead, milestone: :visit_done) if @appointment.kind == "visita"
       end
       respond_to do |format|
         format.html { redirect_back fallback_location: admin_appointments_path, notice: "Compromisso atualizado." }

@@ -3,7 +3,7 @@ class Setting < ApplicationRecord
 
   # Chaves de estado operacional (sincronizações, descoberta de SEO): mudam toda hora e não
   # aparecem no HTML público. As demais invalidam o cache de página da conta.
-  OPERATIONAL_KEY_PREFIXES = %w[dwv_ seo_discovery_].freeze
+  OPERATIONAL_KEY_PREFIXES = %w[dwv_ seo_discovery_ site_cache.].freeze
   # Key-value com escopo por CONTA e fallback global:
   # - leitura: linha do tenant vence; sem ela, vale a global; sem ambas, default.
   # - escrita: com tenant no contexto grava escopado; sem tenant (console,

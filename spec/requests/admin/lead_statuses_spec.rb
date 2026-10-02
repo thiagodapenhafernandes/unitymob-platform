@@ -96,6 +96,27 @@ RSpec.describe "Admin::LeadStatuses", type: :request do
     expect(pipeline.stages.find_by!(name: "Retorno futuro")).to be_present
   end
 
+  it "salva o evento Meta por etapa e ignora valor inválido" do
+    pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
+    stage = pipeline.stages.create!(tenant: admin.tenant, name: "Visita #{SecureRandom.hex(4)}")
+
+    post bulk_update_admin_lead_statuses_path,
+         params: {
+           lead_pipeline_id: pipeline.id,
+           statuses: [
+             { id: stage.id, name: stage.name, stage_type: "open", meta_conversion_event: "Schedule" },
+             { name: "Fechamento", stage_type: "won", meta_conversion_event: "Purchase" },
+             { name: "Etapa inválida", stage_type: "open", meta_conversion_event: "EventoInventado" }
+           ]
+         },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(stage.reload.meta_conversion_event).to eq("Schedule")
+    expect(pipeline.stages.find_by!(name: "Fechamento").meta_conversion_event).to eq("Purchase")
+    expect(pipeline.stages.find_by!(name: "Etapa inválida").meta_conversion_event).to be_nil
+  end
+
   it "renomeia etapa mantendo os leads vinculados reconciliados" do
     pipeline = LeadPipeline.ensure_default!(tenant: admin.tenant)
     stage = pipeline.stages.create!(tenant: admin.tenant, name: "Visita #{SecureRandom.hex(4)}")

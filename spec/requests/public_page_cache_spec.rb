@@ -11,7 +11,7 @@ RSpec.describe "Cache de página pública (home)", type: :request do
     host! "localhost"
     Tenants::LocalPublicHostOverride.clear!
     allow(Rails).to receive(:cache).and_return(store)
-    allow(PublicPageCache).to receive(:mode).and_return(mode)
+    Setting.set(PublicPageCache::MODE_SETTING_KEY, mode, tenant:)
     tenant.home_sections.create!(section_type: :cta_contact, title: "Vamos conversar?", active: true, order_position: 1)
     ContactSetting.instance(tenant:).update!(whatsapp_primary: "(47) 99123-4567")
     # O primeiro acesso de uma conta cria a SeoSetting da home (rastreador de SEO) e sobe a versão uma vez.
@@ -163,7 +163,6 @@ RSpec.describe "Cache de página pública (home)", type: :request do
 
     it "loga divergência quando o conteúdo muda sem que a versão suba" do
       get root_path
-      Setting.where(tenant_id: tenant.id).delete_all
       ContactSetting.where(tenant_id: tenant.id).update_all(whatsapp_primary: "(47) 90000-0000") # update_all não dispara callbacks
       allow(Rails.logger).to receive(:warn).and_call_original
 

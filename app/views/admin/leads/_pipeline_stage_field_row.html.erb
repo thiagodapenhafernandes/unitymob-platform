@@ -3,6 +3,7 @@
   stage_name = local_assigns[:name].to_s
   stage_description = local_assigns[:description].to_s
   stage_type = local_assigns[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open"
+  meta_conversion_event = local_assigns[:meta_conversion_event].presence_in(LeadPipelineStage::META_CONVERSION_EVENTS.keys)
 %>
 
 <div class="lead-status-row" data-lead-pipeline-form-target="stageRow">
@@ -31,6 +32,15 @@
             aria-label="Tipo da etapa">
       <% LeadPipelineStage::STAGE_TYPES.each do |value, label| %>
         <option value="<%= value %>" <%= "selected" if stage_type == value %>><%= label %></option>
+      <% end %>
+    </select>
+    <select class="ax-control ax-control--sm"
+            name="stages[<%= stage_index %>][meta_conversion_event]"
+            id="lead_pipeline_stage_<%= stage_index %>_meta_conversion_event"
+            aria-label="Evento Meta da etapa">
+      <option value="">Evento Meta: nenhum</option>
+      <% LeadPipelineStage::META_CONVERSION_EVENTS.each do |value, label| %>
+        <option value="<%= value %>" <%= "selected" if meta_conversion_event == value %>><%= label %></option>
       <% end %>
     </select>
   </div>
