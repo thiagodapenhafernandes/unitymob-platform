@@ -176,3 +176,9 @@
 [data-admin-theme="dark"] .ax-table--media-list tbody tr:nth-child(even) td { background: var(--ax-dark-surface); }
 [data-admin-theme="dark"] .ax-table--media-list tbody tr:hover td,
 [data-admin-theme="dark"] .ax-table--media-list tbody tr:focus-within td { background: var(--ax-dark-surface-hover); }
+
+.ax-table--comfortable { font-size: 14px; }
+.ax-table--comfortable thead th { padding: 12px 16px; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.ax-table--comfortable tbody td { padding: 13px 16px; }
+.ax-table--comfortable thead th { background: var(--admin-surface-header); color: var(--ab-muted); }
+.ax-table--comfortable tbody td { color: var(--admin-ink); border-color: var(--ax-border-soft); }

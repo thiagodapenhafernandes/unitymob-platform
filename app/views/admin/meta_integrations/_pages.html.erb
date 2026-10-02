@@ -1,16 +1,25 @@
 <div id="meta_pages">
   <% pages_actions = capture do %>
-    <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--sm" do %>
+    <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
       <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Atualizar páginas
     <% end %>
+    <% if impersonating_admin_user? %>
+      <%= button_tag "Selecionar páginas", type: "button", class: "ax-btn", data: {ax_modal_open: "metaPageSelectionModal"} %>
+    <% end %>
   <% end %>
-  <%= ax_form_section(title: "Suas páginas e formulários", icon: "facebook", class_name: "ax-integration-section", actions: pages_actions, tooltip: "Cada formulário de anúncio das páginas abaixo envia os contatos para o CRM.") do %>
+  <% if impersonating_admin_user? %>
+    <%= turbo_stream_from "meta_selection_#{@integration.id}" %>
+    <%= ax_quick_modal(id: "metaPageSelectionModal", title: "Selecionar páginas") do %>
+      <%= render "admin/meta_integrations/page_selection", integration: @integration %>
+    <% end %>
+  <% end %>
+  <%= ax_form_section(title: "Páginas conectadas", subtitle: "Escolha as páginas da sua imobiliária. Os formulários e as mensagens do Instagram seguem a sua seleção.", class_name: "ax-form-section--comfortable", icon: "facebook", actions: pages_actions, tooltip: "Cada formulário de anúncio das páginas abaixo envia os contatos para o CRM.") do %>
     <div class="tw-flex tw-flex-col tw-gap-3">
       <% pages.each do |page| %>
-        <details class="ax-disclosure-card meta-integration-page">
+        <details class="ax-disclosure-card ax-disclosure-card--comfortable meta-integration-page" <%= "open" if pages.size == 1 %>>
           <summary class="ax-disclosure-card__summary">
             <span class="tw-flex tw-items-center tw-gap-3 tw-min-w-0">
-              <span class="ax-navbar__avatar meta-integration-avatar meta-integration-avatar--page" aria-hidden="true"><i class="bi bi-facebook tw-text-blue-600"></i></span>
+              <span class="ax-navbar__avatar meta-integration-avatar meta-integration-avatar--page" aria-hidden="true"><%= ax_brand_icon("facebook") %></span>
               <span>
                 <span class="ax-strong tw-block tw-break-words"><%= page.name %></span>
                 <span class="tw-text-2xs tw-text-ink-faint"><%= page.category.presence || "Página do Facebook" %></span>
@@ -26,13 +35,18 @@
             </span>
           </summary>
           <div class="ax-disclosure-card__body">
-            <%= render "admin/meta_integrations/instagram", page: page %>
-            <div class="ax-stat-label"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários de anúncio</div>
+            <details class="ax-disclosure-card ax-disclosure-card--comfortable">
+              <summary class="ax-disclosure-card__summary"><strong>Formulários de lead desta página</strong><i class="bi bi-chevron-down ax-disclosure-card__chevron" aria-hidden="true"></i></summary>
+              <div class="ax-disclosure-card__body">
+                <p class="tw-text-sm tw-text-ink-muted">Os contatos enviados pelos formulários desta página são recebidos no CRM.</p>
             <turbo-frame id="page_forms_<%= page.id %>" src="<%= list_forms_admin_meta_integrations_path(page_id: page.id) %>" loading="lazy">
               <div class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-py-3 tw-text-ink-faint tw-text-2xs" role="status" aria-live="polite">
                 <span class="ax-spinner" aria-hidden="true"></span><span>Carregando formulários…</span>
               </div>
             </turbo-frame>
+              </div>
+            </details>
+            <%= render "admin/meta_integrations/instagram", page: page %>
           </div>
         </details>
       <% end %>

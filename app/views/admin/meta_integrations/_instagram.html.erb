@@ -11,12 +11,13 @@ end %>
 <%= ax_record_item(title: "Mensagens do Instagram", icon: "instagram", meta: page.instagram_username.presence || "Perfil profissional vinculado à página", actions: ax_badge(state, tone: tone, dot: ready)) %>
 <% if page.instagram_sync_error.present? %>
   <p class="tw-text-sm tw-text-ink-muted" role="status"><%= page.instagram_sync_error %></p>
+  <%= render "admin/meta_integrations/resolution" %>
 <% elsif ready && page.instagram_received_at.present? %>
   <p class="tw-text-sm tw-text-ink-muted">Última mensagem recebida em <%= l(page.instagram_received_at, format: "%d/%m/%Y %H:%M") %>.</p>
 <% elsif ready %>
   <p class="tw-text-sm tw-text-ink-muted">Tudo pronto. Assim que chegar a primeira mensagem, ela aparece no CRM.</p>
 <% elsif page.instagram_checked_at.present? && page.instagram_id.blank? %>
-  <p class="tw-text-sm tw-text-ink-muted">Não encontramos um Instagram profissional ligado a esta página.</p>
+  <p class="tw-text-sm tw-text-ink-muted">Não encontramos um Instagram profissional ligado a esta página. No Facebook, abra Configurações da página → Contas vinculadas → Instagram e conecte o perfil profissional. Depois, volte aqui e clique em Atualizar páginas.</p>
 <% else %>
   <p class="tw-text-sm tw-text-ink-muted">O sistema confere e prepara o recebimento sozinho, em segundo plano.</p>
 <% end %>

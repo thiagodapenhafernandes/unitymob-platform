@@ -28,6 +28,9 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Resultados dos anúncios", "Venda fechada", "metaDatasetInfoModal", "caixa postal")
+    forms_frame = Nokogiri::HTML(response.body).at_css("turbo-frame#page_forms_#{page.id}")
+    expect(forms_frame["loading"]).to eq("lazy")
+    expect(forms_frame.ancestors("details").first["open"]).to be_nil
   end
 
   it "oculta o catálogo e bloqueia seleção e consultas amplas fora da impersonação" do
@@ -238,11 +241,16 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("ax-integration-sections", "meta-integration-avatar--page")
-    expect(response.body).to include("ax-integration-hero", "ax-integration-section", "ax-disclosure-card")
+    document = Nokogiri::HTML(response.body)
+    expect(document.css("[data-ax-tabs-target='tab']").map(&:text).map(&:strip)).to eq(["Páginas e formulários", "Contas de anúncios", "Resultados dos anúncios", "Acesso e suporte"])
+    expect(document.css("#meta-integration-panels > section[hidden]").size).to eq(3)
+    expect(document.at_css("#meta-pages-tab #meta_pages")).to be_present
+    expect(response.body).to include("ax-workspace-heading--plain", "ax-disclosure-card")
+    expect(response.body).not_to include("ax-integration-hero", "ax-integration-section--")
     expect(response.body).to include("Atualizar páginas", "Desconectar", page.name)
     expect(response.body).to include("Informações para o suporte", "https://app.saluteimoveis.com.br/webhooks/meta")
     expect(response.body).to include("Recebendo contatos") if page.active?
-    expect(Nokogiri::HTML(response.body).at_css(".meta-integration-workspace").to_html).not_to match(/\bstyle\s*=/i)
+    expect(Nokogiri::HTML(response.body).at_css(".ax-integration-layout").to_html).not_to match(/\bstyle\s*=/i)
   end
 
   it "pagina a listagem de formularios da pagina" do
@@ -253,9 +261,10 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     get list_forms_admin_meta_integrations_path(page_id: page.id)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body.scan("bi-file-earmark-text").size).to eq(25)
+    expect(Nokogiri::HTML(response.body).css(".ax-table tbody tr").size).to eq(10)
     expect(response.body).to include("page_forms_#{page.id}_page_2")
     expect(response.body).to include("Carregando mais formulários")
+    expect(Nokogiri::HTML(response.body).css("tbody tr td:first-child").map(&:text)).to eq((0...10).map { |i| "Form #{i}" })
     expect(response.body).not_to include("spinner-border", "list-unstyled", "border-bottom-dashed")
   end
 
@@ -268,7 +277,8 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(%(turbo-frame id="page_forms_#{page.id}_page_2"))
-    expect(response.body.scan("bi-file-earmark-text").size).to eq(5)
+    expect(Nokogiri::HTML(response.body).css("turbo-stream template tr").size).to eq(10)
+    expect(response.body).not_to include("<table", "<thead")
   end
 
   it "limita a pagina solicitada e gera o frame no servidor" do
@@ -279,9 +289,10 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     get list_forms_admin_meta_integrations_path(page_id: page.id, page: 999, frame_id: "frame_injetado")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(%(turbo-frame id="page_forms_#{page.id}_page_2"))
+    expect(response.body).to include(%(turbo-frame id="page_forms_#{page.id}_page_3"))
     expect(response.body).not_to include("frame_injetado")
-    expect(response.body.scan("bi-file-earmark-text").size).to eq(5)
+    expect(Nokogiri::HTML(response.body).css("turbo-stream template tr").size).to eq(10)
+    expect(response.body).not_to include("<table", "<thead")
   end
 
   it "nao acessa paginas vinculadas a integracao de outro usuario" do
@@ -341,7 +352,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
   it "exibe pendências sem anunciar sucesso completo" do
     integration.update!(sync_status: "partial", sync_message: "Webhook da página: inscrição pendente.")
     get admin_meta_integrations_path
-    expect(response.body).to include("Atualizado, mas com pendências", "inscrição pendente")
+    expect(response.body).to include("Atualizado, mas com pendências", "inscrição pendente", "Como resolver", "Conferir acesso", "Renovar acesso", "#meta-access-tab")
     expect(response.body).not_to include("Tudo atualizado!")
   end
 

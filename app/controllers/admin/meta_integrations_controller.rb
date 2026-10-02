@@ -3,7 +3,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   before_action :set_integration
   before_action :require_meta_impersonation!, only: [:selected_pages]
   before_action :set_page, only: [:list_forms]
-  FORMS_PER_PAGE = 25
+  FORMS_PER_PAGE = 10
 
   def index
     # Show status and link to Facebook Login if not integrated

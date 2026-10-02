@@ -18,7 +18,7 @@ RSpec.describe "Interação do card público de imóvel" do
 
   it "mantém somente as três primeiras imagens do card sem depender de representation proxy" do
     expect(card_partial).to include("property.card_image_sources(3)")
-    expect(card_partial).to include("public_image_url(pic)")
+    expect(card_partial).to include("public_image_url(pic, resize_to_fill: [720, 540], format: :webp)")
     expect(card_partial).not_to include("force_variant: true")
     expect(card_partial).not_to include("representation_proxy: true")
     expect(card_partial).to include("eager_card_image = priority_image && index.zero?")

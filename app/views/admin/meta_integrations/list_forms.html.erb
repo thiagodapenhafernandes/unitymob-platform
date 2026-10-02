@@ -1,22 +1,19 @@
 <turbo-frame id="<%= @frame_id %>">
   <% if @forms.any? %>
     <% if @page_number == 1 %>
-      <div class="tw-flex tw-justify-between tw-items-center tw-mt-2 tw-mb-1">
-        <span class="tw-text-2xs tw-text-ink-muted">
-          Mostrando <strong><%= [@forms_per_page, @forms_total_count].min %></strong> de <strong><%= @forms_total_count %></strong> formulários
-        </span>
+      <p class="tw-text-2xs tw-text-ink-muted tw-mb-2"><strong><%= @forms_total_count %></strong> formulários · Mais recentes primeiro</p>
+      <div class="ax-table-wrap">
+        <table class="ax-table ax-table--comfortable">
+          <caption class="ax-table__caption--sr-only">Formulários de anúncio de <%= @page.name %></caption>
+          <thead><tr><th scope="col">Nome do formulário</th><th scope="col">Criado em</th></tr></thead>
+          <tbody id="page_forms_rows_<%= @page.id %>"><%= render "form_rows", forms: @forms %></tbody>
+        </table>
       </div>
-    <% end %>
-
-    <div class="ax-record-list tw-mt-2">
-      <% @forms.each do |form| %>
-        <%= ax_record_item(
-              title: form.name,
-              meta: form.facebook_created_at&.strftime("%d/%m, %H:%M"),
-              icon: "file-earmark-text"
-            ) %>
+    <% else %>
+      <%= turbo_stream.append "page_forms_rows_#{@page.id}" do %>
+        <%= render "form_rows", forms: @forms %>
       <% end %>
-    </div>
+    <% end %>
 
     <% if @next_page %>
       <% next_frame_id = "page_forms_#{@page.id}_page_#{@next_page}" %>

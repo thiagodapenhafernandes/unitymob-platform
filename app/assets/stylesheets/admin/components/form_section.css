@@ -196,3 +196,21 @@
     transition: none;
   }
 }
+
+.ax-form-section__heading { min-width: 0; }
+.ax-form-section__subtitle { margin: 8px 0 0; color: var(--admin-text-muted, #657386); font-size: 14px; line-height: 1.5; max-width: 75ch; }
+.ax-form-section--comfortable .ax-form-section__header { padding: 20px; gap: 20px; }
+.ax-form-section--comfortable .ax-form-section__title { font-size: 16px; gap: 14px; }
+.ax-form-section--comfortable .ax-form-section__title .ax-form-section__icon { width: 32px; height: 32px; background: transparent; }
+.ax-form-section--comfortable .ax-form-section__icon .ax-brand-icon { width: 28px; height: 28px; }
+.ax-form-section--comfortable .ax-form-section__body { padding: 20px; }
+@media (max-width: 640px) {
+  .ax-form-section--comfortable .ax-form-section__header { flex-wrap: wrap; padding: 16px; gap: 12px; }
+  .ax-form-section--comfortable .ax-form-section__body { padding: 12px; }
+}
+.ax-form-section--comfortable .ax-form-section__header { background: var(--admin-surface-header); }
+.ax-form-section--comfortable .ax-form-section__heading { flex: 1 1 auto; }
+.ax-form-section--comfortable .ax-form-section__subtitle { padding-left: 46px; }
+.ax-form-section--comfortable .ax-form-section__meta { flex: 0 0 auto; }
+.ax-form-section--comfortable .ax-form-section__actions .ax-btn { min-height: 38px; padding-inline: 16px; }
+@media (max-width: 640px) { .ax-form-section--comfortable .ax-form-section__subtitle { padding-left: 0; } }

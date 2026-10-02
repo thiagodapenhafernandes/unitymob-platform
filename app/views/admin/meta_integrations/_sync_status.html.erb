@@ -1,6 +1,6 @@
 <div id="meta_sync_status" class="tw-w-full">
   <% if integration&.last_sync_error.present? && integration.sync_status.in?(%w[partial failed]) %>
-    <%= render "admin/shared/ui/issue_summary", title: "A atualização encontrou pendências", messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
+    <%= render "admin/shared/ui/issue_summary", title: "A atualização encontrou pendências", resolution: render("admin/meta_integrations/resolution"), messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
   <% end %>
 
   <% if integration&.sync_status == 'processing' %>
@@ -16,11 +16,13 @@
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
       <div class="tw-text-sm tw-font-bold">Atualizado, mas com pendências</div>
       <p class="tw-text-sm"><%= integration.sync_message %></p>
+      <%= render "admin/meta_integrations/resolution" %>
     <% end %>
   <% elsif integration&.sync_status == 'failed' && integration.last_sync_error.blank? %>
     <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle-fill") do %>
       <div class="tw-text-sm tw-font-bold">Não conseguimos atualizar agora. Tente de novo em instantes.</div>
       <p class="tw-text-sm"><%= integration.sync_message %></p>
+      <%= render "admin/meta_integrations/resolution" %>
     <% end %>
   <% end %>
 </div>

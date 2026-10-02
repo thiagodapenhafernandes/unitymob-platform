@@ -23,9 +23,10 @@
 %>
 <%= tag.section(**section_options) do %>
   <header class="ax-form-section__header">
+    <div class="ax-form-section__heading">
     <h3 class="ax-form-section__title">
       <% if local_assigns[:icon].present? %>
-        <i class="bi bi-<%= icon %> ax-form-section__icon" aria-hidden="true"></i>
+        <span class="ax-form-section__icon" aria-hidden="true"><%= ax_brand_icon(icon) %></span>
       <% end %>
       <span><%= title %></span>
       <% if local_assigns[:tooltip].present? %>
@@ -38,6 +39,8 @@
         </button>
       <% end %>
     </h3>
+    <% if local_assigns[:subtitle].present? %><p class="ax-form-section__subtitle"><%= subtitle %></p><% end %>
+    </div>
     <% if local_assigns[:eyebrow].present? || local_assigns[:actions].present? || section_collapse_id.present? %>
       <div class="ax-form-section__meta">
         <% if local_assigns[:eyebrow].present? %>

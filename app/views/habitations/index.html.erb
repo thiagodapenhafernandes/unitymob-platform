@@ -132,7 +132,7 @@
         <%= turbo_frame_tag "public-listing-grid", data: { turbo_action: "advance", controller: "public-listing-nav", public_listing_nav_frame_value: "public-listing-grid", action: "click->public-listing-nav#follow" } do %>
         <% listing_query = request.query_parameters.except("share_token", "gclid", "fbclid").reject { |key, _| key.start_with?("utm_") }.sort.to_h.to_query %>
         <% cache ['listing_grid_v1', public_tenant.public_site_theme_key, request.path, listing_query, @habitations.map(&:id), @habitations.map(&:updated_at).max] do %>
-        <%= theme_component(:property_grid, properties: @habitations) %>
+        <%= theme_component(:property_grid, properties: @habitations, priority_images: true) %>
         
         <!-- Pagination -->
         <div class="public-habitations-index__pagination flex justify-center mt-8">

@@ -1,27 +1,29 @@
 <%# Navegação do estúdio. items: [{ id:, icon:, label:, hint:, caption: (título opcional de grupo antes do item) }]; a primeira seção começa ativa (o hash da URL prevalece). %>
-<ul class="ax-studio-nav ax-studio-nav--<%= orientation %>"
-    role="tablist"
+<% linked = items.any? { |item| item[:url].present? } %>
+<ul class="ax-studio-nav ax-studio-nav--<%= orientation %><%= " ax-studio-nav--#{variant}" if local_assigns[:variant].present? %>"
+    role="<%= linked ? "list" : "tablist" %>"
     aria-label="<%= label %>"
     aria-orientation="<%= orientation %>"
-    data-controller="ax-tabs"
-    data-ax-tabs-panel-selector-value="<%= panels_selector %>">
+    <%= tag.attributes(data: {controller: "ax-tabs", ax_tabs_panel_selector_value: panels_selector}) unless linked %>>
   <% items.each_with_index do |item, index| %>
     <% if item[:caption].present? %>
       <li class="ax-studio-nav__caption" role="presentation"><%= item[:caption] %></li>
     <% end %>
     <li>
-      <button type="button"
-              class="ax-studio-nav__item<%= " active" if index.zero? %>"
-              data-ax-tabs-target="tab"
-              data-ax-tabs-target-param="#<%= item[:id] %>"
-              data-action="click->ax-tabs#select"
-              aria-selected="<%= index.zero? %>">
-        <span class="ax-studio-nav__icon"><i class="bi bi-<%= item[:icon] %>"></i></span>
+      <% item_body = capture do %>
+        <span class="ax-studio-nav__icon"><%= ax_brand_icon(item[:icon]) %></span>
         <span class="ax-studio-nav__text">
           <strong><%= item[:label] %></strong>
           <% if item[:hint].present? %><small><%= item[:hint] %></small><% end %>
         </span>
-      </button>
+      <% end %>
+      <% if linked %>
+        <%= link_to item_body, item.fetch(:url), class: "ax-studio-nav__item#{' active' if item[:active]}", aria: {current: ("page" if item[:active])} %>
+      <% else %>
+        <%= button_tag item_body, type: "button", class: "ax-studio-nav__item#{' active' if index.zero?}",
+              data: {ax_tabs_target: "tab", ax_tabs_target_param: "##{item[:id]}", action: "click->ax-tabs#select"},
+              aria: {selected: index.zero?} %>
+      <% end %>
     </li>
   <% end %>
 </ul>

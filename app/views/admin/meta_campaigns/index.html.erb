@@ -1,116 +1,134 @@
-<%# Meta Ads — investimento (Meta) + funil por campanha (join CRM). %>
-<%= ax_workspace_heading(
-      eyebrow: "Marketing · Meta Ads",
-      icon: "bar-chart-line",
-      title: "Meta Ads",
-      subtitle: "Investimento e resultado por campanha. O funil cruza o gasto da Meta com qualificados, visitas e vendas do CRM.",
-      actions: button_to("Atualizar agora", sync_now_admin_meta_campaigns_path(tab: @tab, period: @period_days),
-                         method: :post, class: "ax-btn ax-btn--sm ax-btn--primary",
-                         form_class: "tw-inline")
-    ) %>
+<div class="ax-integration-layout">
+  <%= ax_workspace_heading(title: "Meta Ads", icon: "meta", class_name: "ax-workspace-heading--plain",
+        subtitle: "Acompanhe o investimento dos anúncios e os resultados das campanhas no CRM.",
+        metrics: [{label: "Últimos #{@period_days} dias", value: "#{l(@starts_at.to_date)} a #{l(@ends_at.to_date)}"}],
+        actions: button_to("Atualizar agora", sync_now_admin_meta_campaigns_path(tab: @tab, period: @period_days, account: @account_id),
+          method: :post, class: "ax-btn ax-btn--primary", form_class: "tw-inline")) %>
 
-<div class="tw-flex tw-flex-wrap tw-items-center tw-gap-1.5 tw-mb-3">
-  <%= link_to "Funil por campanha", admin_meta_campaigns_path(tab: "funnel", period: @period_days, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'funnel'}" %>
-  <%= link_to "Investimento", admin_meta_campaigns_path(tab: "spend", period: @period_days, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'spend'}" %>
-  <span class="tw-inline-block tw-w-3"></span>
-  <%= link_to "7 dias", admin_meta_campaigns_path(tab: @tab, period: 7, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 7}" %>
-  <%= link_to "30 dias", admin_meta_campaigns_path(tab: @tab, period: 30, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 30}" %>
-  <% if @account_options.size > 1 %>
-    <span class="tw-inline-block tw-w-3"></span>
-    <%= form_with url: admin_meta_campaigns_path, method: :get, class: "tw-flex tw-items-center tw-gap-1.5" do %>
-      <%= hidden_field_tag :tab, @tab %>
-      <%= hidden_field_tag :period, @period_days %>
-      <%= select_tag :account, options_for_select([["Todas as contas", ""]] + @account_options, @account_id),
-                     class: "ax-control ax-control--sm", aria: { label: "Conta de anúncios" }, onchange: "this.form.submit()" %>
+  <%= ax_studio_nav(items: [
+        {label: "Funil por campanha", icon: "funnel", url: admin_meta_campaigns_path(tab: "funnel", period: @period_days, account: @account_id), active: @tab == "funnel"},
+        {label: "Investimento", icon: "meta", url: admin_meta_campaigns_path(tab: "spend", period: @period_days, account: @account_id), active: @tab == "spend"}
+      ], label: "Relatórios de campanhas", orientation: :horizontal, variant: :underline) %>
+
+  <%= ax_filter_form(url: admin_meta_campaigns_path, submit_label: "Aplicar filtros", filter_label: "Período e conta de anúncios") do %>
+    <%= hidden_field_tag :tab, @tab %>
+    <%= ax_standalone_select_field(name: :period, id: "meta_campaign_period", label: "Período", choices: [["Últimos 7 dias", 7], ["Últimos 30 dias", 30]], selected: @period_days) %>
+    <%= ax_standalone_select_field(name: :account, id: "meta_campaign_account", label: "Conta de anúncios", choices: [["Todas as contas", ""]] + @account_options, selected: @account_id) %>
+  <% end %>
+
+  <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-3">
+    <%= ax_metric_card(label: "Investimento", value: @spend_rows.any? ? number_to_currency(@totals[:spend], unit: "R$", separator: ",", delimiter: ".") : "—", hint: "Dados da Meta · #{@period_days} dias", icon: "cash-coin") %>
+    <%= ax_metric_card(label: "Custo por lead", value: meta_campaign_cost(@totals[:spend], @totals[:meta_leads]), hint: @spend_rows.any? ? "#{@totals[:meta_leads]} leads informados pela Meta" : "Aguardando dados da Meta", icon: "funnel") %>
+    <%= ax_metric_card(label: "Leads no CRM", value: @totals[:crm_leads], hint: "#{@totals[:qualified]} qualificados · #{@totals[:visits]} com visita", icon: "people") %>
+    <%= ax_metric_card(label: "Vendas no CRM", value: @totals[:sales], hint: "Conversão de leads: #{meta_campaign_rate(@totals[:sales], @totals[:crm_leads])}", icon: "trophy", tone: :green) %>
+  </div>
+
+  <%= ax_inline_notice(tone: :neutral, icon: "clock-history") do %>
+    <strong>Última sincronização:</strong> <%= @last_sync_at ? l(@last_sync_at, format: :short) : "ainda não realizada" %>.
+    Os resultados da Meta podem ser revistos após a sincronização.
+  <% end %>
+
+  <% if @spend_rows.blank? %>
+    <%= ax_inline_notice(tone: :warning, icon: "info-circle") do %>
+      <strong>Sem dados da Meta ainda</strong>
+      <p class="tw-text-sm tw-text-ink-muted">Não há investimento sincronizado para este período e conta. Confira os filtros ou conecte sua conta de anúncios.</p>
+      <p class="tw-text-sm tw-text-ink-muted"><strong>Como resolver:</strong> abra Integrações → Meta Leads → Contas de anúncios, selecione a conta e volte aqui para clicar em <strong>Atualizar agora</strong>. Se o acesso estiver pendente, confira Acesso e suporte na integração.</p>
+      <%= link_to "Configurar contas de anúncios", admin_meta_integrations_path(anchor: "meta-ads-tab"), class: "ax-btn", data: {turbo: false} if can?(:manage, :integracoes) %>
     <% end %>
   <% end %>
-</div>
 
-<div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-3 tw-mb-3">
-  <%= ax_metric_card(label: "Investimento", value: number_to_currency(@totals[:spend], unit: "R$", separator: ",", delimiter: "."),
-                     hint: "#{@period_days} dias · Meta Ads", icon: "cash-coin") %>
-  <%= ax_metric_card(label: "CPL", value: @totals[:cpl] ? number_to_currency(@totals[:cpl], unit: "R$", separator: ",", delimiter: ".") : "—",
-                     hint: "#{@totals[:meta_leads]} leads na Meta", icon: "funnel") %>
-  <%= ax_metric_card(label: "Custo por venda", value: @totals[:cost_per_sale] ? number_to_currency(@totals[:cost_per_sale], unit: "R$", separator: ",", delimiter: ".") : "—",
-                     hint: "#{@totals[:sales]} vendas atribuídas", icon: "trophy", tone: :green) %>
-  <%= ax_metric_card(label: "Funil", value: "#{@totals[:qualified]}/#{@totals[:visits]}/#{@totals[:sales]}",
-                     hint: "qualificados / visitas / vendas", icon: "kanban") %>
-</div>
-
-<% if @spend_rows.blank? %>
-  <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
-    Sem dados da Meta ainda. A sincronização roda todo dia de manhã; use <strong>Atualizar agora</strong> para buscar na hora. É preciso ter conta de anúncios conectada em Integrações → Meta.
-  <% end %>
-<% elsif @tab == "funnel" %>
-  <%= ax_operational_panel(eyebrow: "Atribuição CRM", title: "Funil por campanha") do %>
+<% if @tab == "funnel" %>
+  <%= ax_form_section(title: "Funil por campanha", subtitle: "Compare qualificação, visitas e vendas dos leads que entraram no CRM neste período.", icon: "funnel", class_name: "ax-form-section--comfortable") do %>
     <div class="ax-table-wrap">
-      <table class="ax-table">
+      <table class="ax-table ax-table--comfortable">
+        <caption class="ax-table__caption--sr-only"><%= @tab == "funnel" ? "Funil por campanha no CRM" : "Investimento por campanha na Meta" %></caption>
         <thead>
           <tr>
-            <th>Campanha</th>
-            <th class="ax-num">Invest.</th>
-            <th class="ax-num">Leads</th>
-            <th class="ax-num">Qualif.</th>
-            <th class="ax-num">Visitas</th>
-            <th class="ax-num">Vendas</th>
-            <th class="ax-num">Custo/venda</th>
+            <th scope="col">Campanha</th>
+            <th scope="col" class="ax-num">Investimento</th>
+            <th scope="col" class="ax-num">Leads no CRM</th>
+            <th scope="col" class="ax-num">Qualificados</th>
+            <th scope="col" class="ax-num">Visitas</th>
+            <th scope="col" class="ax-num">Vendas</th>
+            <th scope="col" class="ax-num">Custo por venda</th>
+            <th scope="col" class="ax-num">Qualificação</th>
+            <th scope="col" class="ax-num">Conversão em venda</th>
           </tr>
         </thead>
         <tbody>
-          <% @funnel_rows.each do |row| %>
+          <% @campaign_rows.each do |row| %>
             <tr>
               <td><div class="ax-strong"><%= row[:campaign_name] %></div></td>
-              <td class="ax-num"><%= number_to_currency(row[:spend], unit: "R$", separator: ",", delimiter: ".") %></td>
+              <td class="ax-num"><%= row[:spend] ? number_to_currency(row[:spend], unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
               <td class="ax-num"><%= row[:leads] %></td>
               <td class="ax-num"><%= row[:qualified] %></td>
               <td class="ax-num"><%= row[:visits] %></td>
               <td class="ax-num"><%= row[:sales] %></td>
-              <td class="ax-num"><%= row[:sales].positive? ? number_to_currency(row[:spend] / row[:sales], unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
+              <td class="ax-num"><%= meta_campaign_cost(row[:spend], row[:sales]) %></td>
+              <td class="ax-num"><%= meta_campaign_rate(row[:qualified], row[:leads]) %></td>
+              <td class="ax-num"><%= meta_campaign_rate(row[:sales], row[:leads]) %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
+    <%= ax_pagination @campaign_rows, params: request.query_parameters %>
     <% if @funnel_rows.blank? %>
-      <p class="tw-text-sm tw-text-ink-muted tw-mt-2">Nenhum lead do período com campanha identificada. O vínculo aparece após o enriquecimento (Integrações → Meta, conta de anúncios selecionada).</p>
+      <p class="tw-text-sm tw-text-ink-muted tw-mt-2">Nenhum lead do período com campanha identificada. Para resolver, abra Integrações → Meta Leads → Contas de anúncios e confira a conta selecionada para identificar a campanha dos contatos.</p>
     <% end %>
   <% end %>
 <% else %>
-  <%= ax_operational_panel(eyebrow: "Meta Ads", title: "Investimento por campanha") do %>
+  <%= ax_form_section(title: "Investimento por campanha", subtitle: "Entenda quanto cada campanha entrega e o custo dos resultados informados pela Meta.", icon: "meta", class_name: "ax-form-section--comfortable") do %>
     <div class="ax-table-wrap">
-      <table class="ax-table">
+      <table class="ax-table ax-table--comfortable">
+        <caption class="ax-table__caption--sr-only"><%= @tab == "funnel" ? "Funil por campanha no CRM" : "Investimento por campanha na Meta" %></caption>
         <thead>
           <tr>
-            <th>Campanha</th>
-            <th class="ax-num">Invest.</th>
-            <th class="ax-num">Impressões</th>
-            <th class="ax-num">Cliques</th>
-            <th class="ax-num">CTR</th>
-            <th class="ax-num">CPC</th>
-            <th class="ax-num">Leads</th>
-            <th class="ax-num">CPL</th>
+            <th scope="col">Campanha</th>
+            <th scope="col" class="ax-num">Investimento</th>
+            <th scope="col" class="ax-num">Impressões</th>
+            <th scope="col" class="ax-num">Cliques</th>
+            <th scope="col" class="ax-num">CTR · taxa de cliques</th>
+            <th scope="col" class="ax-num">CPC · custo por clique</th>
+            <th scope="col" class="ax-num">Leads na Meta</th>
+            <th scope="col" class="ax-num">CPL · custo por lead</th>
+            <th scope="col" class="ax-num">CPM · mil impressões</th>
           </tr>
         </thead>
         <tbody>
-          <% @spend_rows.each do |row| %>
+          <% @campaign_rows.each do |row| %>
             <tr>
               <td><div class="ax-strong"><%= row.campaign_name %></div></td>
               <td class="ax-num"><%= number_to_currency(row.spend.to_f, unit: "R$", separator: ",", delimiter: ".") %></td>
               <td class="ax-num"><%= number_with_delimiter(row.impressions.to_i, delimiter: ".") %></td>
               <td class="ax-num"><%= number_with_delimiter(row.clicks.to_i, delimiter: ".") %></td>
-              <td class="ax-num"><%= row.impressions.to_i.positive? ? number_to_percentage(row.clicks.to_f / row.impressions.to_i * 100, precision: 2, separator: ",") : "—" %></td>
-              <td class="ax-num"><%= row.clicks.to_i.positive? ? number_to_currency(row.spend.to_f / row.clicks.to_i, unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
+              <td class="ax-num"><%= meta_campaign_rate(row.clicks, row.impressions) %></td>
+              <td class="ax-num"><%= meta_campaign_cost(row.spend.to_f, row.clicks.to_i) %></td>
               <td class="ax-num"><%= row.leads.to_i %></td>
-              <td class="ax-num"><%= row.leads.to_i.positive? ? number_to_currency(row.spend.to_f / row.leads.to_i, unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
+              <td class="ax-num"><%= meta_campaign_cost(row.spend.to_f, row.leads.to_i) %></td>
+              <td class="ax-num"><%= meta_campaign_cost(row.spend.to_f * 1000, row.impressions.to_i) %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
+    <%= ax_pagination @campaign_rows, params: request.query_parameters %>
   <% end %>
 <% end %>
 
-<p class="tw-text-sm tw-text-ink-muted tw-mt-3">
-  Última sincronização: <%= @last_sync_at ? l(@last_sync_at, format: :short) : "nunca" %> ·
-  Números da Meta podem se ajustar por até ~48h (janela de atribuição).
-</p>
+  <%= ax_form_section(title: "Indicadores para o Marketing", icon: "graph-up", collapse_id: "meta-marketing-indicators", collapsed: false) do %>
+    <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-3">
+      <%= ax_metric_card(label: "Impressões", value: @spend_rows.any? ? number_with_delimiter(@totals[:impressions], delimiter: ".") : "—", hint: "Exibições dos anúncios · Meta", icon: "eye") %>
+      <%= ax_metric_card(label: "Taxa de cliques", value: meta_campaign_rate(@totals[:clicks], @totals[:impressions]), hint: @spend_rows.any? ? "#{number_with_delimiter(@totals[:clicks], delimiter: ".")} cliques · todos os cliques" : "Aguardando dados da Meta", icon: "cursor") %>
+      <%= ax_metric_card(label: "Custo por qualificado", value: meta_campaign_cost(@spend_rows.any? ? @totals[:spend] : nil, @totals[:qualified]), hint: "Investimento / qualificados no CRM", icon: "person-check") %>
+      <%= ax_metric_card(label: "Custo por visita", value: meta_campaign_cost(@spend_rows.any? ? @totals[:spend] : nil, @totals[:visits]), hint: "Investimento / leads com visita realizada", icon: "calendar-check") %>
+    </div>
+  <% end %>
+
+  <%= ax_form_section(title: "Como interpretar os números", icon: "info-circle", collapse_id: "meta-campaign-methodology", collapsed: true) do %>
+    <p class="tw-text-sm tw-text-ink-muted"><strong>Meta:</strong> investimento, impressões, todos os cliques e leads informados pela plataforma no período filtrado. Impressões são exibições; não representam pessoas únicas.</p>
+    <p class="tw-text-sm tw-text-ink-muted"><strong>CRM:</strong> leads criados no período com campanha identificada. Qualificados têm qualificação do corretor ou gestor; visitas contam leads com visita realizada; vendas contam leads com proposta aceita, etapa ganha ou status concluído.</p>
+    <p class="tw-text-sm tw-text-ink-muted"><strong>Conversões:</strong> qualificados ou vendas divididos pelos leads da campanha no CRM. Os custos cruzam o investimento do período com os resultados desse grupo de leads, que podem evoluir depois. Leads na Meta e no CRM têm critérios diferentes e podem divergir.</p>
+    <p class="tw-text-sm tw-text-ink-muted">Um traço indica que não há base para calcular o indicador. Receita, ROAS e alcance único ainda não são medidos neste relatório.</p>
+  <% end %>
+</div>

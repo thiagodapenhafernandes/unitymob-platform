@@ -1,0 +1,3 @@
+<% forms.each do |form| %>
+  <tr id="meta_form_<%= form.id %>"><td><%= form.name %></td><td><%= form.facebook_created_at&.strftime("%d/%m/%Y, %H:%M") || "—" %></td></tr>
+<% end %>

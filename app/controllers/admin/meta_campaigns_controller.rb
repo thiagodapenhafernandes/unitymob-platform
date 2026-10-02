@@ -13,14 +13,19 @@ class Admin::MetaCampaignsController < Admin::BaseController
     @account_options = account_options
     @account_id = params[:account].presence_in(@account_options.map(&:second).map(&:to_s))
 
-    spend_by_campaign = spend_totals.index_by { |row| row.campaign_id.to_s }
-    @spend_rows = spend_totals.sort_by { |row| -row.spend.to_f }
+    @spend_rows = spend_totals.to_a.sort_by { |row| [-row.spend.to_f, row.campaign_id.to_s] }
+    spend_by_campaign = @spend_rows.index_by { |row| row.campaign_id.to_s }
     @funnel_rows = Meta::CampaignFunnelQuery.new(tenant: current_tenant, starts_at: @starts_at, ends_at: @ends_at).call.rows
     campaign_accounts = campaign_account_map
-    @funnel_rows.each { |row| row[:spend] = spend_by_campaign[row[:campaign_id].to_s]&.spend.to_f }
+    @funnel_rows.each { |row| row[:spend] = spend_by_campaign[row[:campaign_id].to_s]&.spend&.to_f }
     @funnel_rows.select! { |row| campaign_accounts[row[:campaign_id].to_s] == @account_id } if @account_id
-    @funnel_rows.sort_by! { |row| [-row[:sales], -row[:visits], -row[:leads]] }
+    @funnel_rows.sort_by! { |row| [-row[:sales], -row[:visits], -row[:leads], row[:campaign_id].to_s] }
     @totals = build_totals(spend_by_campaign)
+    rows = @tab == "funnel" ? @funnel_rows : @spend_rows
+    page_number = [[params[:page].to_i, 1].max, [(rows.size / 10.0).ceil, 1].max].min
+    @campaign_rows = WillPaginate::Collection.create(page_number, 10, rows.size) do |collection|
+      collection.replace(rows.slice(collection.offset, collection.per_page) || [])
+    end
     @page_title = "Meta Ads"
   end
 
@@ -56,7 +61,7 @@ class Admin::MetaCampaignsController < Admin::BaseController
     UserMetaIntegration.owned_by_tenant(current_tenant.id).find_each do |integration|
       names.merge!(integration.selected_ad_accounts)
     end
-    ids.map { |id| ["#{names[id].presence || "Conta #{id}"} (#{id})", id] }
+    (ids + names.keys.map(&:to_s)).uniq.sort.map { |id| ["#{names[id].presence || "Conta #{id}"} (#{id})", id] }
   end
 
   def campaign_account_map
@@ -75,6 +80,8 @@ class Admin::MetaCampaignsController < Admin::BaseController
     sales = @funnel_rows.sum { |row| row[:sales] }
     {
       spend: spend, meta_leads: meta_leads, crm_leads: crm_leads,
+      impressions: @spend_rows.sum { |row| row.impressions.to_i },
+      clicks: @spend_rows.sum { |row| row.clicks.to_i },
       qualified: qualified, visits: visits, sales: sales,
       cpl: meta_leads.positive? ? spend / meta_leads : nil,
       cost_per_sale: sales.positive? ? spend / sales : nil

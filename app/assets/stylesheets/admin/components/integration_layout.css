@@ -131,3 +131,16 @@
 [data-admin-theme="dark"] .ax-integration-step { background: radial-gradient(90% 160% at 0% 0%, color-mix(in srgb, var(--st-tone) 18%, transparent), transparent 64%), var(--ax-dark-surface); border-color: color-mix(in srgb, var(--st-tone) 30%, var(--ax-dark-border-soft)); }
 [data-admin-theme="dark"] .ax-integration-step > strong { color: var(--ax-dark-text); }
 [data-admin-theme="dark"] .ax-integration-step__icon { background: color-mix(in srgb, var(--st-tone) 26%, var(--ax-dark-surface)); }
+
+.ax-integration-steps--plain .ax-integration-step { border-color: var(--ax-border-soft); border-radius: 8px; background: var(--ax-panel-bg, #fff); }
+.ax-integration-steps--plain .ax-integration-step__icon { background: var(--admin-primary-softer); color: var(--admin-primary); }
+
+/* Brand colors stay on the existing Bootstrap icons, not section surfaces. */
+.ax-integration-layout .bi-meta,
+.ax-integration-layout .bi-facebook { color: var(--ax-accent-blue, #1877f2); }
+.ax-integration-layout .bi-instagram { color: var(--ax-accent-violet, #7c3aed); }
+.ax-integration-layout .bi-megaphone { color: var(--ax-accent-green, #16a34a); }
+.ax-integration-layout .bi-graph-up-arrow { color: var(--ax-accent-violet, #7c3aed); }
+.ax-integration-layout .bi-shield-check { color: var(--ax-accent-amber, #d97706); }
+.ax-integration-layout--comfortable { padding-inline: 18px; gap: 20px; }
+@media (max-width: 640px) { .ax-integration-layout--comfortable { padding-inline: 0; } }

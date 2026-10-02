@@ -48,10 +48,11 @@
     </div>
   <% else %>
     <div class="<%= grid_class %>">
-      <% properties.each do |property| %>
+      <% properties.each_with_index do |property, index| %>
         <%= render card_partial,
               property: property,
               variant: variant,
+              priority_image: local_assigns.fetch(:priority_images, false) && index < 2,
               unit_count: unit_counts[property.codigo],
               unit_metric: unit_metrics[property.codigo] %>
       <% end %>
