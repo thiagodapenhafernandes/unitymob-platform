@@ -14,6 +14,9 @@ class PortalIntegration < ApplicationRecord
 
   PORTALS = PORTAL_DEFINITIONS.keys.freeze
   BUSINESS_TYPES = %w[venda aluguel].freeze
+  # Portais cobertos pelo webhook de leads do Grupo OLX (uma SECRET por CRM,
+  # um endpoint para todos — o payload não distingue o portal de origem).
+  GRUPOZAP_PORTALS = %w[zapimoveis vivareal_vrsync imovelweb imovelweb_2].freeze
 
   # Documentação e instruções para cada portal — exibidas na UI para ajudar o usuário
   PORTAL_HELP = {
@@ -193,6 +196,14 @@ class PortalIntegration < ApplicationRecord
   def masked_webhook_secret
     return nil if webhook_secret.blank?
     "********#{webhook_secret.to_s.last(4)}"
+  end
+
+  def grupozap_family?
+    GRUPOZAP_PORTALS.include?(portal.to_s)
+  end
+
+  def leads_receiving?
+    enabled? && leads_enabled?
   end
 
   def title

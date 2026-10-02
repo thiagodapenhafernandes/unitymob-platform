@@ -1,4 +1,4 @@
-\restrict aEe0bFDjQaQeg0hwDC7KypVaLVGkNX7otJQrvJ8WXTH4NtW1k78pcs30FteUlvp
+\restrict QuOBKPaOtNgXSkf78nDbg2G6Cp2E7Ab9nhSyptp510kB2MDkhBa3aSFjPIfh7QH
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -3696,8 +3696,8 @@ CREATE TABLE public.home_settings (
     hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
 );
 
 
@@ -5088,7 +5088,9 @@ CREATE TABLE public.portal_integrations (
     last_webhook_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint
+    tenant_id bigint,
+    leads_enabled boolean DEFAULT false NOT NULL,
+    last_lead_at timestamp(6) without time zone
 );
 
 
@@ -14607,6 +14609,13 @@ CREATE INDEX index_leads_on_tenant_pipeline_stage ON public.leads USING btree (t
 
 
 --
+-- Name: index_leads_on_tenant_portal_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_tenant_portal_lead_id ON public.leads USING btree (tenant_id, ((other_information ->> 'portal_lead_id'::text))) WHERE ((other_information ->> 'portal_lead_id'::text) IS NOT NULL);
+
+
+--
 -- Name: index_leads_on_vista_import_batch_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -19908,11 +19917,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict aEe0bFDjQaQeg0hwDC7KypVaLVGkNX7otJQrvJ8WXTH4NtW1k78pcs30FteUlvp
+\unrestrict QuOBKPaOtNgXSkf78nDbg2G6Cp2E7Ab9nhSyptp510kB2MDkhBa3aSFjPIfh7QH
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002160000'),
 ('20261002150000'),
 ('20261002140000'),
 ('20261002130000'),
