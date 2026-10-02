@@ -1,4 +1,4 @@
-\restrict Ro1BuNaAWJBwhrzrFcO6oW0GD8XTsWAiP1FNQLQZ3EpFbEjzYt4a9EzNpdgMSBv
+\restrict XnQ31amrpT3Nzywv9QWx2f6kUFlgCLy12cHDwC4GpeeOpPERmmCaXh8D2iKzREO
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -4299,7 +4299,8 @@ CREATE TABLE public.lead_pipeline_stages (
     active boolean DEFAULT true NOT NULL,
     "position" integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    meta_conversion_event character varying
 );
 
 
@@ -4676,6 +4677,80 @@ CREATE SEQUENCE public.marketing_campaigns_id_seq
 --
 
 ALTER SEQUENCE public.marketing_campaigns_id_seq OWNED BY public.marketing_campaigns.id;
+
+
+--
+-- Name: meta_campaign_insights; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.meta_campaign_insights (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    ad_account_id character varying DEFAULT ''::character varying NOT NULL,
+    campaign_id character varying DEFAULT ''::character varying NOT NULL,
+    campaign_name character varying DEFAULT ''::character varying NOT NULL,
+    date date NOT NULL,
+    spend numeric(12,2) DEFAULT 0.0 NOT NULL,
+    impressions integer DEFAULT 0 NOT NULL,
+    clicks integer DEFAULT 0 NOT NULL,
+    leads integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: meta_campaign_insights_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.meta_campaign_insights_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: meta_campaign_insights_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.meta_campaign_insights_id_seq OWNED BY public.meta_campaign_insights.id;
+
+
+--
+-- Name: meta_conversion_configs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.meta_conversion_configs (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    dataset_id character varying DEFAULT ''::character varying NOT NULL,
+    dataset_name character varying,
+    test_event_code character varying,
+    enabled boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: meta_conversion_configs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.meta_conversion_configs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: meta_conversion_configs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.meta_conversion_configs_id_seq OWNED BY public.meta_conversion_configs.id;
 
 
 --
@@ -8585,6 +8660,20 @@ ALTER TABLE ONLY public.marketing_campaigns ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: meta_campaign_insights id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_campaign_insights ALTER COLUMN id SET DEFAULT nextval('public.meta_campaign_insights_id_seq'::regclass);
+
+
+--
+-- Name: meta_conversion_configs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_conversion_configs ALTER COLUMN id SET DEFAULT nextval('public.meta_conversion_configs_id_seq'::regclass);
+
+
+--
 -- Name: meta_facebook_pages id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9881,6 +9970,22 @@ ALTER TABLE ONLY public.manual_checkin_requests
 
 ALTER TABLE ONLY public.marketing_campaigns
     ADD CONSTRAINT marketing_campaigns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: meta_campaign_insights meta_campaign_insights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_campaign_insights
+    ADD CONSTRAINT meta_campaign_insights_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: meta_conversion_configs meta_conversion_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_conversion_configs
+    ADD CONSTRAINT meta_conversion_configs_pkey PRIMARY KEY (id);
 
 
 --
@@ -14650,6 +14755,34 @@ CREATE INDEX index_marketing_campaigns_on_utm_campaign ON public.marketing_campa
 
 
 --
+-- Name: index_meta_campaign_insights_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_meta_campaign_insights_on_tenant_id ON public.meta_campaign_insights USING btree (tenant_id);
+
+
+--
+-- Name: index_meta_campaign_insights_on_tenant_id_and_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_meta_campaign_insights_on_tenant_id_and_date ON public.meta_campaign_insights USING btree (tenant_id, date);
+
+
+--
+-- Name: index_meta_campaign_insights_unique_row; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_meta_campaign_insights_unique_row ON public.meta_campaign_insights USING btree (tenant_id, campaign_id, date);
+
+
+--
+-- Name: index_meta_conversion_configs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_meta_conversion_configs_on_tenant_id ON public.meta_conversion_configs USING btree (tenant_id);
+
+
+--
 -- Name: index_meta_facebook_pages_on_user_meta_integration_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -19117,6 +19250,14 @@ ALTER TABLE ONLY public.layout_settings
 
 
 --
+-- Name: meta_campaign_insights fk_rails_c79aaf4035; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_campaign_insights
+    ADD CONSTRAINT fk_rails_c79aaf4035 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: leads fk_rails_c8056365d4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19589,6 +19730,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: meta_conversion_configs fk_rails_ed48835334; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_conversion_configs
+    ADD CONSTRAINT fk_rails_ed48835334 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_activities fk_rails_ee14909c06; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19760,11 +19909,14 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Ro1BuNaAWJBwhrzrFcO6oW0GD8XTsWAiP1FNQLQZ3EpFbEjzYt4a9EzNpdgMSBv
+\unrestrict XnQ31amrpT3Nzywv9QWx2f6kUFlgCLy12cHDwC4GpeeOpPERmmCaXh8D2iKzREO
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002140000'),
+('20261002130000'),
+('20261002120000'),
 ('20261001130000'),
 ('20260930140000'),
 ('20260930130000'),

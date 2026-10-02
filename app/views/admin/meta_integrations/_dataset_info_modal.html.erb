@@ -1,0 +1,14 @@
+<%
+  dataset_body = capture do %>
+    <p>É a <strong>"caixa postal" da sua imobiliária dentro da Meta</strong>: tudo que acontece com seus anúncios e leads é organizado ali.</p>
+    <p class="tw-mt-2">Quando você escolhe o Dataset aqui, cada marco do funil — <strong>lead qualificado, visita realizada e venda</strong> — é avisado à Meta. Com isso ela aprende quais campanhas trazem seus melhores clientes e passa a buscar mais pessoas parecidas com eles.</p>
+    <p class="tw-mt-2">Cada imobiliária tem o seu Dataset. Os dados enviados são protegidos e cobrem apenas leads vindos do Meta Ads.</p>
+    <p class="tw-mt-2 tw-text-sm tw-text-ink-muted">O ID está em business.facebook.com → Gerenciador de Eventos.</p>
+  <% end
+
+  dataset_footer = capture do %>
+    <button type="button" class="ax-btn ax-btn--primary" data-action="ax-modal#close">Entendi</button>
+  <% end
+%>
+
+<%= ax_quick_modal(id: "metaDatasetInfoModal", title: "O que é o Dataset?", size: :md, body: dataset_body, footer: dataset_footer) %>
