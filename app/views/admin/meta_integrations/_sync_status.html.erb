@@ -1,25 +1,25 @@
 <div id="meta_sync_status" class="tw-w-full">
   <% if integration&.last_sync_error.present? && integration.sync_status.in?(%w[partial failed]) %>
-    <%= render "admin/shared/ui/issue_summary", title: "Sincronização com pendências", messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
+    <%= render "admin/shared/ui/issue_summary", title: "A atualização encontrou pendências", messages: integration.last_sync_error.split(/(?=(?:Formulários|Webhook|Instagram|Gateway) d[ao] )/).reject(&:blank?) %>
   <% end %>
 
   <% if integration&.sync_status == 'processing' %>
     <%= render "admin/shared/ui/progress_panel",
-          title: integration.sync_message.presence || "Aguardando início da sincronização…",
+          title: integration.sync_message.presence || "Preparando a atualização…",
           value: integration.sync_progress || 0,
-          description: "Você pode sair desta tela. A sincronização continua em segundo plano." %>
+          description: "Você pode sair desta tela. A atualização continua sozinha." %>
   <% elsif integration&.sync_status == 'completed' %>
     <%= ax_inline_notice(tone: :success, icon: "check-circle-fill") do %>
-      <div class="tw-text-sm tw-font-bold">Sincronização concluída com sucesso!</div>
+      <div class="tw-text-sm tw-font-bold">Tudo atualizado!</div>
     <% end %>
   <% elsif integration&.sync_status == 'partial' && integration.last_sync_error.blank? %>
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
-      <div class="tw-text-sm tw-font-bold">Sincronização concluída com pendências</div>
+      <div class="tw-text-sm tw-font-bold">Atualizado, mas com pendências</div>
       <p class="tw-text-sm"><%= integration.sync_message %></p>
     <% end %>
   <% elsif integration&.sync_status == 'failed' && integration.last_sync_error.blank? %>
     <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle-fill") do %>
-      <div class="tw-text-sm tw-font-bold">Erro na sincronização. Tente novamente em instantes.</div>
+      <div class="tw-text-sm tw-font-bold">Não conseguimos atualizar agora. Tente de novo em instantes.</div>
       <p class="tw-text-sm"><%= integration.sync_message %></p>
     <% end %>
   <% end %>

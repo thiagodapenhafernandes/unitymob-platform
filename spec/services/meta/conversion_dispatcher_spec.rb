@@ -8,7 +8,7 @@ RSpec.describe Meta::ConversionDispatcher do
   let(:lead) { create(:lead, tenant: tenant, attribution_channel: "meta_ads") }
 
   it "enfileira o evento com id estável por lead" do
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999")
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
 
     expect do
@@ -21,7 +21,7 @@ RSpec.describe Meta::ConversionDispatcher do
   end
 
   it "aceita event_name direto do mapeamento da etapa" do
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999")
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
 
     expect do
@@ -39,7 +39,7 @@ RSpec.describe Meta::ConversionDispatcher do
   end
 
   it "ignora lead de outra origem, config ausente/inativa e marco desconhecido" do
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999", enabled: false)
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }], enabled: false)
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
     other = create(:lead, tenant: tenant, origin: "site")
 

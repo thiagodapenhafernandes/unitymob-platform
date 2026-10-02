@@ -1,83 +1,107 @@
 <% content_for :mobile_detail_header do %>
   <%= render "admin/shared/ui/mobile_detail_header", title: "Meta Leads", back_path: admin_root_path, icon: "meta" %>
 <% end %>
+<%
+  pages = @pages.to_a
+  active_pages = pages.count(&:active)
+  instagram_ready = pages.count { |page| page.active? && page.instagram_enabled? && page.instagram_sync_error.blank? }
+  status_label, status_tone =
+    if @integration.blank? then ["Não conectada", :gray]
+    elsif @integration.expired? then ["Precisa renovar o acesso", :red]
+    elsif @integration.sync_status == "processing" then ["Atualizando…", :amber]
+    elsif @integration.sync_status.in?(%w[partial failed]) then ["Precisa de atenção", :amber]
+    else ["Tudo certo", :green]
+    end
+%>
 <div class="ax-integration-layout">
 <div class="integration-workspace meta-integration-workspace">
-<%= ax_workspace_heading(icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Gerencie formulários, Instagram Direct e a identificação de campanhas.", actions: capture do %>
-  <% if @integration %>
-    <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
-    <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Desconectar esta conta da Meta?\n\nO CRM removerá a conexão, o token, as páginas e formulários sincronizados, os vínculos de Instagram e conta de anúncios e os avisos de falha desta integração. O recebimento por esta conexão será interrompido.\n\nOs leads e as mensagens já recebidos serão preservados. A autorização e as inscrições na Meta não serão removidas.\n\nAo reconectar, será necessário sincronizar e configurar os vínculos novamente." } do %>
-      <i class="bi bi-box-arrow-right ax-ico" aria-hidden="true"></i><span>Desconectar conta</span>
+
+<% if @integration %>
+  <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
+  <%= ax_integration_hero(
+        icon: "meta",
+        tone: :blue,
+        eyebrow: "Integrações · Facebook e Instagram",
+        title: @integration.name,
+        subtitle: "#{@integration.email.presence || "Conta conectada"} · Os contatos dos seus anúncios e mensagens chegam direto no CRM.",
+        status: status_label,
+        status_tone: status_tone,
+        stats: [
+          { icon: "facebook", label: "Páginas recebendo contatos", value: "#{active_pages} de #{pages.size}" },
+          { icon: "instagram", label: "Instagram pronto", value: instagram_ready },
+          { icon: "megaphone", label: "Contas de anúncios", value: @integration.ad_account_ids.size },
+          { icon: "shield-check", label: "Acesso", value: (@integration.expired? ? "Renovar" : "Em dia") }
+        ],
+        actions: capture do %>
+    <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm", data: { turbo_confirm: "Desconectar esta conta do Facebook?\n\nO CRM deixa de receber contatos por esta conexão e remove as páginas, formulários e vínculos que estavam sincronizados.\n\nOs contatos e mensagens que já chegaram continuam salvos. A autorização continua ativa no seu Facebook, e você pode retirá-la por lá.\n\nPara voltar a receber, conecte de novo e escolha as páginas outra vez." } do %>
+      <i class="bi bi-box-arrow-right ax-ico" aria-hidden="true"></i><span>Desconectar</span>
     <% end %>
-  <% end %>
-<% end) %>
+  <% end) %>
+<% else %>
+  <%= ax_integration_hero(
+        icon: "meta",
+        tone: :blue,
+        eyebrow: "Integrações · Facebook e Instagram",
+        title: "Facebook e Instagram",
+        subtitle: "Receba no CRM os contatos dos seus anúncios e as mensagens do Instagram.",
+        status: status_label,
+        status_tone: status_tone
+      ) %>
+<% end %>
 
-<div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
-  <div class="lg:tw-col-span-12">
-    <div class="ax-integration-sections">
-    <%= render "sync_status", integration: @integration %>
-        <% if @integration %>
-          <%= ax_record_item(
-                title: "Conectado como #{@integration.name}",
-                meta: @integration.email,
-                icon: "person-fill",
-                class_name: "meta-integration-account",
-                actions: safe_join([
-                  ax_badge(@integration.expired? ? "Autorização expirada" : "Conta conectada", tone: @integration.expired? ? :amber : :green)
-                ], " ")
-              ) %>
+<div class="ax-integration-sections">
+  <%= render "sync_status", integration: @integration %>
 
-          <% if impersonating_admin_user? %>
-            <%= turbo_stream_from "meta_selection_#{@integration.id}" %>
-            <%= render "admin/meta_integrations/page_selection", integration: @integration %>
-          <% end %>
-          <%= render "pages", pages: @pages %>
+  <% if @integration %>
+    <% if impersonating_admin_user? %>
+      <%= turbo_stream_from "meta_selection_#{@integration.id}" %>
+      <%= render "admin/meta_integrations/page_selection", integration: @integration %>
+    <% end %>
 
-          <%= ax_form_section(title: "Contas de anúncios", tooltip: "Usadas para buscar informações de anúncios e campanhas dos leads.") do %>
-            <%= turbo_frame_tag "meta_ad_accounts", src: ad_accounts_admin_meta_integrations_path do %>
-              <p class="tw-text-sm tw-text-ink-muted" role="status">Consultando contas de anúncios na Meta...</p>
-            <% end %>
-          <% end %>
+    <%= render "pages", pages: @pages %>
 
-          <%= render "admin/meta_integrations/conversion_config", config: @conversion_config %>
+    <%= ax_form_section(title: "Contas de anúncios", icon: "megaphone", class_name: "ax-integration-section ax-integration-section--green", tooltip: "Servem para mostrar de qual campanha veio cada contato.") do %>
+      <%= turbo_frame_tag "meta_ad_accounts", src: ad_accounts_admin_meta_integrations_path do %>
+        <p class="tw-text-sm tw-text-ink-muted" role="status">Buscando suas contas de anúncios…</p>
+      <% end %>
+    <% end %>
 
-          <%= render "admin/meta_integrations/permissions", check: nil %>
+    <%= render "admin/meta_integrations/conversion_config", config: @conversion_config %>
 
-          <% if @meta_webhook_callback_url.present? && @meta_webhook_verify_token.present? %>
-            <%= ax_form_section(title: "Configuração técnica", collapse_id: "meta-webhook-settings", collapsed: true, tooltip: @meta_webhook_mode_description) do %>
-              <% if @meta_webhook_mode == "gateway" %>
-                <p class="tw-text-sm tw-text-ink-muted">O sistema gerencia a entrega pelo gateway Unitymob. Nenhuma configuração manual é necessária nesta tela.</p>
-              <% else %>
-              <p class="tw-text-sm tw-text-ink-muted">Dados para o responsável pelo aplicativo Meta próprio desta conta.</p>
-              <div class="ax-integration-fields">
-              <div class="ax-field"><%= label_tag :meta_webhook_callback, "Endereço de recebimento", class: "ax-label" %><%= text_field_tag :meta_webhook_callback, @meta_webhook_callback_url, class: "ax-control", readonly: true %></div>
-              <div class="ax-field"><%= label_tag :meta_webhook_verify, "Token de verificação", class: "ax-label" %><%= text_field_tag :meta_webhook_verify, @meta_webhook_verify_token, class: "ax-control", readonly: true %></div>
-              </div>
-              <% end %>
-            <% end %>
-          <% end %>
+    <%= render "admin/meta_integrations/permissions", check: nil %>
 
+    <% if @meta_webhook_callback_url.present? && @meta_webhook_verify_token.present? %>
+      <%= ax_form_section(title: "Informações para o suporte", icon: "life-preserver", class_name: "ax-integration-section ax-integration-section--slate", collapse_id: "meta-webhook-settings", collapsed: true, tooltip: "Só é preciso se o suporte pedir.") do %>
+        <% if @meta_webhook_mode == "gateway" %>
+          <p class="tw-text-sm tw-text-ink-muted">O sistema cuida da conexão com o Facebook por você. Não há nada para configurar aqui.</p>
         <% else %>
-          <%= render("admin/shared/ui/integration_onboarding",
-                title: "Conecte Facebook e Instagram ao CRM",
-                description: "Use seu login do Facebook para autorizar os recursos da Meta que sua empresa utiliza.",
-                features: [
-                  ["Formulários de anúncios", "Receba no CRM os leads enviados pelos formulários das páginas autorizadas."],
-                  ["Instagram Direct", "O sistema prepara automaticamente o recebimento de mensagens do perfil profissional vinculado à página selecionada."],
-                  ["Campanhas e anúncios", "Selecione uma conta de anúncios para identificar campanhas dos leads, inclusive de anúncios que abrem o WhatsApp (CTWA)."]
-                ],
-                note: "O WhatsApp exige conexão própria em Integrações → WhatsApp.",
-                action: capture do %>
-            <%= button_to admin_user_facebook_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "ax-btn ax-btn--primary" do %>
-              <i class="bi bi-facebook ax-ico" aria-hidden="true"></i> Continuar com Facebook
-            <% end %>
-            <p class="ax-integration-onboarding__hint">Após autorizar, confira as páginas e os recursos disponíveis. O sistema mostra as permissões pendentes e como liberá-las.</p>
-          <% end) %>
+          <p class="tw-text-sm tw-text-ink-muted">Dados para quem cuida do aplicativo do Facebook desta conta. Só use se o suporte pedir.</p>
+          <div class="ax-integration-fields">
+            <div class="ax-field"><%= label_tag :meta_webhook_callback, "Endereço que recebe os avisos do Facebook", class: "ax-label" %><%= text_field_tag :meta_webhook_callback, @meta_webhook_callback_url, class: "ax-control", readonly: true %></div>
+            <div class="ax-field"><%= label_tag :meta_webhook_verify, "Código de confirmação", class: "ax-label" %><%= text_field_tag :meta_webhook_verify, @meta_webhook_verify_token, class: "ax-control", readonly: true %></div>
+          </div>
         <% end %>
-    </div>
-  </div>
+      <% end %>
+    <% end %>
+
+  <% else %>
+    <%= render("admin/shared/ui/integration_onboarding",
+          title: "Conecte seu Facebook e Instagram ao CRM",
+          description: "Entre com o seu Facebook e escolha o que o CRM pode usar. Leva menos de um minuto.",
+          features: [
+            ["Contatos dos anúncios", "Quem preenche o formulário do seu anúncio aparece direto no CRM, sem copiar nada."],
+            ["Mensagens do Instagram", "As conversas do perfil profissional ligado à sua página chegam ao CRM automaticamente."],
+            ["De qual campanha veio", "Escolha suas contas de anúncios para saber qual campanha trouxe cada contato, inclusive os anúncios que abrem o WhatsApp."]
+          ],
+          note: "O WhatsApp tem conexão própria em Integrações → WhatsApp.",
+          action: capture do %>
+      <%= button_to admin_user_facebook_omniauth_authorize_path, method: :post, data: { turbo: false }, class: "ax-btn ax-btn--primary" do %>
+        <i class="bi bi-facebook ax-ico" aria-hidden="true"></i> Continuar com o Facebook
+      <% end %>
+      <p class="ax-integration-onboarding__hint">Depois de entrar, mostramos suas páginas e o que ainda falta liberar, com o passo a passo.</p>
+    <% end) %>
+  <% end %>
+</div>
 
 </div>
-</div>
-
 </div>

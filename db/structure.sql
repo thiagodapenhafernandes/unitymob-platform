@@ -1,4 +1,4 @@
-\restrict XnQ31amrpT3Nzywv9QWx2f6kUFlgCLy12cHDwC4GpeeOpPERmmCaXh8D2iKzREO
+\restrict aEe0bFDjQaQeg0hwDC7KypVaLVGkNX7otJQrvJ8WXTH4NtW1k78pcs30FteUlvp
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -4725,12 +4725,11 @@ ALTER SEQUENCE public.meta_campaign_insights_id_seq OWNED BY public.meta_campaig
 CREATE TABLE public.meta_conversion_configs (
     id bigint NOT NULL,
     tenant_id bigint NOT NULL,
-    dataset_id character varying DEFAULT ''::character varying NOT NULL,
-    dataset_name character varying,
     test_event_code character varying,
     enabled boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    datasets jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -19909,11 +19908,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XnQ31amrpT3Nzywv9QWx2f6kUFlgCLy12cHDwC4GpeeOpPERmmCaXh8D2iKzREO
+\unrestrict aEe0bFDjQaQeg0hwDC7KypVaLVGkNX7otJQrvJ8WXTH4NtW1k78pcs30FteUlvp
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261002150000'),
 ('20261002140000'),
 ('20261002130000'),
 ('20261002120000'),

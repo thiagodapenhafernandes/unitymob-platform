@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe Meta::ConversionService do
   let(:admin) { create(:admin_user, :admin) }
   let(:tenant) { admin.tenant }
-  let(:config) { MetaConversionConfig.create!(tenant: tenant, dataset_id: "999") }
+  let(:config) { MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999", "name" => "Loja" }, { "id" => "888" }]) }
   let(:lead) do
     create(:lead, tenant: tenant, name: "Maria Silva", email: "Maria@Exemplo.com.br",
                   phone: "+55 (47) 99999-0000", attribution_channel: "meta_ads")
@@ -22,9 +22,9 @@ RSpec.describe Meta::ConversionService do
     )
 
     expect(result).to eq(:sent)
-    expect(graph).to have_received(:graph_call) do |path, payload, method|
-      expect(path).to eq("999/events")
-      expect(method).to eq("post")
+    expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post")
+    expect(graph).to have_received(:graph_call).with("888/events", kind_of(Hash), "post")
+    expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
       event = payload["data"].first
       expect(event["event_name"]).to eq("Schedule")
       expect(event["event_id"]).to eq("evt-1")
@@ -45,7 +45,7 @@ RSpec.describe Meta::ConversionService do
       lead: lead, event_name: "Purchase", event_id: "evt-2", occurred_at: Time.current, value: 850000.0
     )
 
-    expect(graph).to have_received(:graph_call) do |_path, payload, _method|
+    expect(graph).to have_received(:graph_call).with("999/events", kind_of(Hash), "post") do |_, payload, _|
       event = payload["data"].first
       expect(event["custom_data"]).to eq({ "value" => 850000.0, "currency" => "BRL" })
       expect(payload["test_event_code"]).to eq("TEST123")
@@ -70,6 +70,6 @@ RSpec.describe Meta::ConversionService do
       described_class.new(config).send_event(
         lead: lead, event_name: "Schedule", event_id: "evt-4", occurred_at: Time.current
       )
-    end.to raise_error(Meta::ConversionService::ConversionError, /CAPI Schedule lead_id=#{lead.id}/)
+    end.to raise_error(Meta::ConversionService::ConversionError, /CAPI Schedule lead_id=#{lead.id} dataset=999/)
   end
 end

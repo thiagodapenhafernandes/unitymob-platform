@@ -5,7 +5,7 @@ RSpec.describe Proposal, type: :model do
   let(:tenant) { admin.tenant }
 
   it "enfileira Purchase com valor ao aceitar proposta de lead Meta" do
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999")
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
     lead = create(:lead, tenant: tenant, attribution_channel: "meta_ads", admin_user: admin)
     proposal = Proposal.create!(lead: lead, admin_user: admin, status: "enviada",
@@ -17,7 +17,7 @@ RSpec.describe Proposal, type: :model do
   end
 
   it "não enfileira ao recusar nem para lead de outra origem" do
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999")
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
     meta_lead = create(:lead, tenant: tenant, attribution_channel: "meta_ads", admin_user: admin)
     other = create(:lead, tenant: tenant, origin: "site", admin_user: admin)

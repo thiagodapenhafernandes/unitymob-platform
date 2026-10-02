@@ -920,6 +920,11 @@ module Admin::UiHelper
   end
 
   # icon:/tone: (:blue :green :amber :red :violet :teal) são opcionais e dão o KPI colorido com tile de ícone.
+  # Cabeçalho colorido de integração (Meta, WhatsApp, Google...): marca, conta, situação e números.
+  def ax_integration_hero(icon:, title:, tone: :blue, eyebrow: nil, subtitle: nil, status: nil, status_tone: :green, actions: nil, stats: [])
+    render "admin/shared/ui/integration_hero", icon:, title:, tone:, eyebrow:, subtitle:, status:, status_tone:, actions:, stats:
+  end
+
   def ax_metric_card(label:, value:, badge: nil, hint: nil, progress: nil, class_name: nil, icon: nil, tone: nil)
     render "admin/shared/ui/metric_card", label:, value:, badge:, hint:, progress:, class_name:, icon:, tone:
   end

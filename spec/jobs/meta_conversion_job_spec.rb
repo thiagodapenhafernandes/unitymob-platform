@@ -7,7 +7,7 @@ RSpec.describe MetaConversionJob, type: :job do
   let(:service) { instance_double(Meta::ConversionService, send_event: :sent) }
 
   before do
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999")
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok")
     allow(Meta::ConversionService).to receive(:new).and_return(service)
   end
