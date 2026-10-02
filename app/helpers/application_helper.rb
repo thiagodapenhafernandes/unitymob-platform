@@ -168,29 +168,49 @@ module ApplicationHelper
     identity = Tenants::PublicIdentity.new(public_tenant)
     layout = LayoutSetting.instance(tenant: public_tenant)
     logo_url = public_image_url({ attachment: layout.logo }) if layout.logo.attached?
+    schema_phones = identity.schema_phones
+    home_seo = SeoSetting.for_page("home", tenant: public_tenant)
+    home_description = home_seo.meta_description.presence if home_seo&.public_applicable?
+    map_address = identity.locations.first&.dig(:address).presence
+    primary_city = identity.primary_city.presence
+    location_entries = identity.locations.map do |location|
+      {
+        "@type" => "Place",
+        "name" => location[:name],
+        "address" => {
+          "@type" => "PostalAddress",
+          "streetAddress" => location[:address],
+          "addressLocality" => primary_city,
+          "postalCode" => location[:postal_code],
+          "addressCountry" => "BR"
+        }.compact
+      }
+    end
 
     {
       "@context" => "https://schema.org",
       "@type" => ["RealEstateAgent", "LocalBusiness"],
+      "@id" => "#{request.base_url}#organization",
       "name" => identity.name,
+      "description" => home_description,
       "url" => request.base_url,
       "logo" => absolute_public_url(logo_url),
-      "telephone" => identity.phone,
+      "telephone" => schema_phones.first.presence || identity.phone,
       "email" => identity.email,
+      "address" => location_entries.first&.dig("address"),
       "sameAs" => identity.social_urls.presence,
-      "location" => identity.locations.map do |location|
+      "contactPoint" => schema_phones.map do |phone|
         {
-          "@type" => "Place",
-          "name" => location[:name],
-          "address" => {
-            "@type" => "PostalAddress",
-            "streetAddress" => location[:address],
-            "addressLocality" => identity.primary_city,
-            "postalCode" => location[:postal_code],
-            "addressCountry" => "BR"
-          }.compact
+          "@type" => "ContactPoint",
+          "telephone" => phone,
+          "contactType" => "customer service",
+          "areaServed" => "BR",
+          "availableLanguage" => "Portuguese"
         }
-      end.presence
+      end.presence,
+      "areaServed" => ({"@type" => "City", "name" => primary_city} if primary_city),
+      "hasMap" => ("https://maps.google.com/?q=#{ERB::Util.url_encode(map_address)}" if map_address),
+      "location" => location_entries.presence
     }.compact
   end
 

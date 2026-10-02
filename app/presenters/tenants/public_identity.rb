@@ -18,6 +18,13 @@ module Tenants
       contact.phone.presence || contact.whatsapp_primary.presence || footer.whatsapp.presence
     end
 
+    def schema_phones
+      [contact.phone, contact.whatsapp_primary, contact.whatsapp_secondary, footer.whatsapp]
+        .filter_map { |number| Phones::Normalizer.call(number).presence }
+        .uniq
+        .map { |digits| "+#{digits}" }
+    end
+
     def address
       contact.address.presence
     end
