@@ -98,10 +98,6 @@ production:
     class: MetaSyncEnabledIntegrationsJob
     queue: sync
     schedule: every 15 minutes
-  meta_insights_daily_sync:
-    class: MetaInsightsSyncAllTenantsJob
-    queue: sync
-    schedule: every day at 5:10am
   seo_discovery:
     class: SeoDiscoveryJob
     queue: sync

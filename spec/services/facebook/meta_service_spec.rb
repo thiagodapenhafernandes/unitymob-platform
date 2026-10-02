@@ -50,48 +50,6 @@ RSpec.describe Facebook::MetaService do
     end
   end
 
-  describe "#ad_account_pixels" do
-    it "lista datasets do ad account e tolera falha de API" do
-      graph = fake_graph(
-        ["act_123", "adspixels"] => connection([{ "id" => "pix-1", "name" => "Pixel Loja" }])
-      )
-      allow(Koala::Facebook::API).to receive(:new).with("token").and_return(graph)
-
-      expect(described_class.new("token").ad_account_pixels("123")).to eq([{ "id" => "pix-1", "name" => "Pixel Loja" }])
-    end
-
-    it "retorna vazio quando a Meta recusa" do
-      graph = instance_double(Koala::Facebook::API)
-      allow(graph).to receive(:get_connections).and_raise(Koala::Facebook::APIError.new(400, nil, { "code" => 100 }))
-      allow(Koala::Facebook::API).to receive(:new).with("token").and_return(graph)
-
-      expect(described_class.new("token").ad_account_pixels("123")).to eq([])
-    end
-  end
-
-  describe "#campaign_insights" do
-    it "busca linhas diárias por campanha na janela" do
-      rows = [{ "campaign_id" => "c1", "spend" => "10" }]
-      graph = fake_graph(["act_123", "insights"] => connection(rows))
-      allow(Koala::Facebook::API).to receive(:new).with("token").and_return(graph)
-
-      result = described_class.new("token").campaign_insights("123", start_date: Date.current - 7, end_date: Date.current)
-
-      expect(result).to eq(rows)
-    end
-  end
-
-  describe ".lead_count_from_actions" do
-    it "soma só ações de lead" do
-      actions = [{ "action_type" => "lead", "value" => "2" },
-                 { "action_type" => "onsite_conversion.lead_grouped", "value" => "1" },
-                 { "action_type" => "link_click", "value" => "9" }]
-
-      expect(described_class.lead_count_from_actions(actions)).to eq(3)
-      expect(described_class.lead_count_from_actions(nil)).to eq(0)
-    end
-  end
-
   def fake_graph(responses)
     instance_double(Koala::Facebook::API).tap do |graph|
       allow(graph).to receive(:get_connections) do |object, connection_name, **|

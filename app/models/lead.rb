@@ -346,12 +346,6 @@ class Lead < ApplicationRecord
       broker_qualification_status != manager_qualification_status
   end
 
-  def meta_ads_origin?
-    info = other_information.to_h
-    facebook = attribution_data.to_h["facebook"]
-    attribution_channel == "meta_ads" || info["meta_leadgen_id"].present? || facebook.present?
-  end
-
   def self.origin_options(scope: all, tenant: Current.tenant)
     raise ArgumentError, "Tenant obrigatório para listar origens de leads" if tenant.blank?
 
@@ -633,7 +627,7 @@ class Lead < ApplicationRecord
     info = other_information.to_h
     facebook = attribution_data.to_h["facebook"]
     facebook = {} unless facebook.is_a?(Hash)
-    return unless meta_ads_origin?
+    return unless attribution_channel == "meta_ads" || info["meta_leadgen_id"].present? || facebook.present?
     return unless info["meta_leadgen_id"].present? || info["ad_id"].present? || info["campaign_id"].present? ||
       info["meta_form_id"].present? || attribution_data.to_h.values_at("ad_id", "campaign_id").any?(&:present?) ||
       facebook.values_at("ad_id", "campaign_id", "leadgen_id", "form_id").any?(&:present?)
