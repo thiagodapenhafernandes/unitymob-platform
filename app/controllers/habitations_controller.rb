@@ -950,8 +950,8 @@ class HabitationsController < ApplicationController
     end
     
     # Select a template deterministically based on page content to avoid SEO flickering
-    # Using params hash ensures the same search always yields the same title
-    seed = params.to_s.chars.sum(&:ord)
+    # Normalized filters keep campaign parameters out of the title selection
+    seed = Seo::PageIdentity.new(self).to_h.fetch(:normalized_params, {}).to_json.chars.sum(&:ord)
     selected_title = templates[seed % templates.length]
     
     # Append minimal suffix
@@ -981,7 +981,7 @@ class HabitationsController < ApplicationController
     ]
     
     # Select deterministically
-    seed = params.to_s.chars.sum(&:ord)
+    seed = Seo::PageIdentity.new(self).to_h.fetch(:normalized_params, {}).to_json.chars.sum(&:ord)
     intro = intros[seed % intros.length]
     cta = ctas[(seed + 1) % ctas.length]
     

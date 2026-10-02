@@ -170,7 +170,7 @@ class Profile < ApplicationRecord
     { key: "marketing",          label: "Marketing e conteúdo",   icon: "bi-megaphone-fill",   actions: %w[manage],            scopeable: false, section: true, sidebar_section: "growth", sidebar_actions: %w[manage], included_items: ["Oportunidades", "Campanhas", "Meta Ads", "UTM Builder", "Imóveis com Potencial", "Alertas"], sidebar_items: [
       { label: "Oportunidades", icon: "bi-lightbulb", path: "admin_marketing_opportunities_path", controllers: %w[marketing_opportunities] },
       { label: "Campanhas", icon: "bi-bullseye", path: "admin_marketing_campaigns_path", controllers: %w[marketing_campaigns] },
-      { label: "Meta Ads", icon: "bi-bar-chart-line", path: "admin_meta_campaigns_path", controllers: %w[meta_campaigns] },
+      { label: "Meta Ads", icon: "bi-meta", path: "admin_meta_campaigns_path", controllers: %w[meta_campaigns] },
       { label: "UTM Builder", icon: "bi-link-45deg", path: "admin_marketing_tools_path", controllers: %w[marketing_tools] },
       { label: "Imóveis com Potencial", icon: "bi-house-heart", path: "admin_marketing_properties_path", controllers: %w[marketing_properties] },
       { label: "Alertas", icon: "bi-exclamation-triangle", path: "admin_marketing_alerts_path", controllers: %w[marketing_alerts] }
@@ -197,12 +197,12 @@ class Profile < ApplicationRecord
     ], description: "SEO, páginas, blog e estrutura do site público" },
     { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
       { label: "Portais", icon: "bi-building", path: "admin_portal_integrations_path", controllers: %w[portal_integrations] },
-      { label: "Loft Soft", icon: "bi-hdd-rack", path: "admin_loft_integrations_path", controllers: %w[loft_integrations] },
-      { label: "DWV", icon: "bi-hdd-network", path: "admin_dwv_integrations_path", controllers: %w[dwv_integrations] },
+      { label: "Loft Soft", icon: "loft", path: "admin_loft_integrations_path", controllers: %w[loft_integrations] },
+      { label: "DWV", icon: "dwv", path: "admin_dwv_integrations_path", controllers: %w[dwv_integrations] },
       { label: "WhatsApp", icon: "bi-whatsapp", path: "admin_whatsapp_integration_path", controllers: %w[whatsapp_integrations] },
       { label: "Meta Leads", icon: "bi-meta", path: "admin_meta_integrations_path", controllers: %w[meta_integrations] },
-      { label: "RD Station", icon: "bi-envelope-paper", path: "admin_rd_station_integration_path", controllers: %w[rd_station_integrations] },
-      { label: "Lovers", icon: "bi-heart", path: "admin_lovers_integration_path", controllers: %w[lovers_integrations] },
+      { label: "RD Station", icon: "rdstation", path: "admin_rd_station_integration_path", controllers: %w[rd_station_integrations] },
+      { label: "Lovers", icon: "lovers", path: "admin_lovers_integration_path", controllers: %w[lovers_integrations] },
       { label: "Google", icon: "bi-google", path: "admin_google_integration_path", controllers: %w[google_integrations] },
       { label: "Rastreamento", icon: "bi-bullseye", path: "admin_tracking_integration_path", controllers: %w[tracking_integrations] },
       { label: "Migração de Leads", icon: "bi-arrow-left-right", path: "admin_external_lead_integration_path", controllers: %w[external_lead_integrations] },
@@ -230,7 +230,7 @@ class Profile < ApplicationRecord
       { label: "Meu SMTP", icon: "bi-envelope-at", path: "edit_admin_email_setting_path", controllers: %w[email_settings] },
       { caption: "WhatsApp" },
       { label: "Importados CSV", icon: "bi-table", path: "admin_whatsapp_campaign_recipients_path", controllers: %w[whatsapp_campaign_recipients] },
-      { label: "Descadastros WhatsApp", icon: "bi-person-dash", path: "admin_whatsapp_campaign_unsubscribes_path", controllers: %w[whatsapp_campaign_unsubscribes] },
+      { label: "Descadastros WhatsApp", icon: "bi-whatsapp", path: "admin_whatsapp_campaign_unsubscribes_path", controllers: %w[whatsapp_campaign_unsubscribes] },
       { caption: "Segurança" },
       { label: "Segurança de Acesso", icon: "bi-fingerprint", path: "admin_access_security_path", controllers: %w[access_security], permission: [:manage, :access_security] },
       { caption: "Auditorias" },
@@ -238,7 +238,7 @@ class Profile < ApplicationRecord
       { label: "Auditoria de Campo", icon: "bi-shield-lock-fill", path: "admin_field_audit_logs_path", controller_paths: %w[admin/field/audit_logs], permission: [:view, :field_audit] },
       { label: "Auditoria de Acessos", icon: "bi-person-lock", path: "admin_access_audit_logs_path", controllers: %w[access_audit_logs], permission: [:view, :access_audit] },
       { label: "Auditoria de Exportações", icon: "bi-file-earmark-arrow-down", path: "admin_data_export_audit_logs_path", controllers: %w[data_export_audit_logs], permission: [:view, :data_export_audit] },
-      { label: "Apresentações WhatsApp", icon: "bi-person-badge", path: "admin_presentation_audit_logs_path", controllers: %w[presentation_audit_logs], permission: [:view, :access_audit] }
+      { label: "Apresentações WhatsApp", icon: "bi-whatsapp", path: "admin_presentation_audit_logs_path", controllers: %w[presentation_audit_logs], permission: [:view, :access_audit] }
     ], description: "Dados, marca, perfis, segurança e auditorias da conta" },
     { key: "inbound_webhooks",   label: "Webhook de entrada",     icon: "bi-box-arrow-in-down", actions: %w[manage],           scopeable: false, parent_section: "integracoes", description: "Token pessoal para receber leads por webhook dentro da seção Integrações" },
     { key: "dashboard",          label: "Painel",                 icon: "bi-speedometer2",     actions: %w[view],              scopeable: false, sidebar_section: "product", sidebar_actions: %w[view], sidebar_items: [

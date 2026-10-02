@@ -13,6 +13,9 @@ RSpec.describe "Admin sidebar", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Conta")
+    %w[meta whatsapp google rdstation loft dwv lovers].each do |brand|
+      expect(response.body).to match(/(?:bootstrap-brands|lead-origins)\/#{brand}[^" ]*\.(?:svg|png|ico)/)
+    end
     expect(response.body).to include("Segurança")
     expect(response.body).to include("Segurança de Acesso")
     expect(response.body).to include("Configurações de Campo")

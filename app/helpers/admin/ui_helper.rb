@@ -46,13 +46,12 @@ module Admin::UiHelper
   def ax_brand_icon(name)
     key = name.to_s.delete_prefix("bi-")
     origin_assets = { "zap" => "zap.png", "imovelweb" => "imovelweb.png", "vivareal" => "vivareal.png",
-      "rdstation" => "rdstation.ico", "chaves" => "chaves.ico" }
+      "rdstation" => "rdstation.ico", "chaves" => "chaves.ico",
+      "loft" => "loft.png", "dwv" => "dwv.png", "lovers" => "lovers.png" }
     if origin_assets.key?(key)
       image_tag("lead-origins/#{origin_assets.fetch(key)}", class: "ax-brand-icon", alt: "", aria: { hidden: true })
     elsif %w[meta google microsoft instagram whatsapp tiktok linkedin pinterest twitter-x youtube facebook bing telegram].include?(key)
       image_tag("bootstrap-brands/#{key}.svg", class: "ax-brand-icon", alt: "", aria: { hidden: true })
-    elsif key == "lovers"
-      ax_icon("heart", class_name: "ax-brand-icon")
     else
       ax_icon(key, class_name: "ax-brand-icon")
     end
@@ -294,11 +293,12 @@ module Admin::UiHelper
     )
   end
 
-  def ax_form_section(title:, eyebrow: nil, icon: nil, actions: nil, collapsed: false, collapse_id: nil, class_name: nil, tooltip: nil, body: nil, &block)
+  def ax_form_section(title:, subtitle: nil, eyebrow: nil, icon: nil, actions: nil, collapsed: false, collapse_id: nil, class_name: nil, tooltip: nil, body: nil, &block)
     render(
       "admin/shared/ui/form_section",
       eyebrow:,
       title:,
+      subtitle:,
       icon:,
       actions:,
       collapsed:,
@@ -991,8 +991,8 @@ module Admin::UiHelper
 
   # ---- Estúdio de configuração (settings_studio.css): navegação por seções + palco + prévia ----
   # items: [{ id:, icon:, label:, hint: }]. Usa ax-tabs (hash na URL, teclado, aria).
-  def ax_studio_nav(items:, panels_selector:, label: "Seções", orientation: :vertical)
-    render "admin/shared/ui/studio_nav", items:, panels_selector:, label:, orientation:
+  def ax_studio_nav(items:, panels_selector: nil, label: "Seções", orientation: :vertical, variant: nil)
+    render "admin/shared/ui/studio_nav", items:, panels_selector:, label:, orientation:, variant:
   end
 
   # Linha de atalho de um cartão de hub (ícone + rótulo + seta). Uso dentro de .ax-hub-links.

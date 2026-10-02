@@ -4,7 +4,6 @@ module Admin
     DASHBOARD_TITLE_SETTING = "captacao_dashboard_title".freeze
     DEFAULT_DASHBOARD_EYEBROW = "Palavra do Ano".freeze
     DEFAULT_DASHBOARD_TITLE = "Captação".freeze
-    EFFECTIVE_CAPTURE_INTAKE_STATUSES = %w[admin_approved internal published].freeze
 
     requires_permission :view, :captacoes, except: %i[dashboard update_dashboard_title]
     requires_permission :view, :captacao_dashboard, only: [:dashboard]
@@ -20,12 +19,16 @@ module Admin
       resolve_dashboard_period!
       @target_month_label = target_month_label(@month_filter)
 
-      scope = captacao_habitation_scope
       captacao_owner_ids = visible_owner_ids(:captacoes)
-      scope = scope.where(admin_user_id: captacao_owner_ids) unless captacao_owner_ids.nil?
 
-      venda_scope = scope.where("COALESCE(habitations.valor_venda_cents, 0) > 0")
-      locacao_scope = scope.where("COALESCE(habitations.valor_locacao_cents, 0) > 0")
+      venda_scope = Dashboard::CaptacaoScope.call(
+        tenant: current_tenant, starts_at: @period_start, ends_at: @period_end,
+        kind: "venda", owner_ids: captacao_owner_ids
+      )
+      locacao_scope = Dashboard::CaptacaoScope.call(
+        tenant: current_tenant, starts_at: @period_start, ends_at: @period_end,
+        kind: "locacao", owner_ids: captacao_owner_ids
+      )
 
       @total_venda   = venda_scope.count
       @total_locacao = locacao_scope.count
@@ -241,12 +244,8 @@ module Admin
     def effective_capture_scope
       current_tenant.habitations
         .broker_intakes
-        .where(intake_status: EFFECTIVE_CAPTURE_INTAKE_STATUSES)
-        .where("#{effective_capture_timestamp_sql} BETWEEN ? AND ?", @period_start.beginning_of_day, @period_end.end_of_day)
-    end
-
-    def effective_capture_timestamp_sql
-      "COALESCE(habitations.admin_reviewed_at, habitations.broker_released_at)"
+        .where(intake_status: Dashboard::CaptacaoScope::EFFECTIVE_INTAKE_STATUSES)
+        .where("#{Dashboard::CaptacaoScope::APPROVAL_TIMESTAMP_SQL} BETWEEN ? AND ?", @period_start.beginning_of_day, @period_end.end_of_day)
     end
 
     def release_effective_timestamp_sql

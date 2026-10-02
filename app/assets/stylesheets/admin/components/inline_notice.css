@@ -124,3 +124,9 @@
 
 /* Links dentro do aviso acompanham a cor do tom (o azul padrão some sobre âmbar/vermelho). */
 .ax-inline-notice a { color: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
+
+.ax-issue-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; min-width: 0; font-size: 13px; }
+.ax-issue-summary > strong { font-weight: 600; }
+.ax-issue-summary details { min-width: 0; }
+.ax-issue-summary summary { cursor: pointer; }
+.ax-issue-summary details[open] { flex-basis: 100%; }

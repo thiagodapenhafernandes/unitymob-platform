@@ -12,7 +12,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v8",
+    "public-property-card-v9",
     public_tenant.id,
     request.host,
     property.cache_key_with_version,
@@ -77,10 +77,12 @@
          style="overflow: hidden !important;">
       <div class="swiper-wrapper" style="display: flex !important; width: 100% !important;">
         <% card_images = property.card_image_sources(3).filter_map do |pic|
-             public_image_url(pic).presence
+             url = public_image_url(pic, resize_to_fill: [720, 540], format: :webp).presence
+             { url: url, source: pic } if url
            end %>
         <% if card_images.present? %>
-          <% card_images.each_with_index do |image_source, index| %>
+          <% card_images.each_with_index do |card_image, index|
+               image_source = card_image[:url] %>
             <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
               <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
               <% eager_card_image = priority_image && index.zero? %>
@@ -94,6 +96,7 @@
                     fetchpriority: (eager_card_image ? "high" : nil),
                     decoding: "async",
                     sizes: "(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw",
+                    srcset: (public_image_srcset(card_image[:source], widths: [360, 540, 720], aspect_ratio: 4.0 / 3, crop: true, format: :webp) if visible_card_image),
                     data: (visible_card_image ? {} : { src: image_source })) %>
             </div>
           <% end %>

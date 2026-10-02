@@ -25,7 +25,7 @@ module Admin::SidebarHelper
     tag.li do
       link_to(path, class: "ax-nav__link #{'active' if active}") do
         safe_join([
-          tag.i(class: "bi #{item.fetch(:icon)}"),
+          ax_brand_icon(item.fetch(:icon)),
           tag.span(item.fetch(:label))
         ])
       end
@@ -43,7 +43,7 @@ module Admin::SidebarHelper
       safe_join([
         tag.button(type: "button", class: "ax-nav__link ax-nav__link--group", data: { action: "ax-disclosure#toggle", ax_disclosure_target: "trigger" }, aria: { expanded: open }) do
           safe_join([
-            tag.i(class: "bi #{item.fetch(:icon)}"),
+            ax_brand_icon(item.fetch(:icon)),
             tag.span(item.fetch(:group)),
             tag.i(class: "bi bi-chevron-down ax-nav__chevron")
           ])
@@ -72,7 +72,7 @@ module Admin::SidebarHelper
     tag.li do
       link_to(path, class: "ax-nav__link #{'active' if request.path == path}") do
         safe_join([
-          tag.i(class: "bi #{item.fetch(:icon)}"),
+          ax_brand_icon(item.fetch(:icon)),
           tag.span(label)
         ])
       end
@@ -92,7 +92,7 @@ module Admin::SidebarHelper
       safe_join([
         tag.button(type: "button", class: "ax-nav__link ax-nav__link--group", data: { action: "ax-disclosure#toggle", ax_disclosure_target: "trigger" }, aria: { expanded: open }) do
           safe_join([
-            tag.i(class: "bi #{item.fetch(:icon)}"),
+            ax_brand_icon(item.fetch(:icon)),
             tag.span(item.fetch(:group)),
             tag.i(class: "bi bi-chevron-down ax-nav__chevron")
           ])

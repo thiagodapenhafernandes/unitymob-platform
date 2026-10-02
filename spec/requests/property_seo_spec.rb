@@ -31,6 +31,18 @@ RSpec.describe "Property SEO", type: :request do
     expect(response.body).not_to include("Disallow: /imoveis?")
   end
 
+  it "keeps listing metadata stable across campaign parameters" do
+    create(:habitation)
+    get habitations_path
+    original = Nokogiri::HTML(response.body)
+    get habitations_path, params: { utm_source: "google", gclid: "campaign-click", fbclid: "social-click" }
+    campaign = Nokogiri::HTML(response.body)
+
+    %w[title meta[name='description'] link[rel='canonical']].each do |selector|
+      expect(campaign.at_css(selector).to_s).to eq(original.at_css(selector).to_s)
+    end
+  end
+
   it "uses the property's tenant brand even outside the current tenant" do
     tenant = Tenant.create!(name: "Outra conta", slug: "seo-other")
     LayoutSetting.instance(tenant: tenant).update!(site_name: "Outra marca")

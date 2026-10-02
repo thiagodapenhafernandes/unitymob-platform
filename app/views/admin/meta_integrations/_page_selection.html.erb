@@ -1,5 +1,5 @@
 <div id="meta_page_selection">
-  <%= ax_form_section(title: "Páginas desta conta", icon: "check2-square", class_name: "ax-integration-section") do %>
+  <%= ax_form_section(title: "Páginas desta conta", icon: "check2-square", ) do %>
     <p class="tw-text-sm tw-text-ink-muted">Escolha as páginas desta imobiliária. Os formulários e o Instagram seguem a sua escolha.</p>
     <% pages = integration.meta_facebook_pages.order(:name) %>
     <% if pages.any? %>

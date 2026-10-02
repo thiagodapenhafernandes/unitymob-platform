@@ -1,5 +1,5 @@
 <%= turbo_frame_tag "meta_permissions" do %>
-  <%= ax_form_section(title: "O Facebook está liberado?", icon: "shield-check", class_name: "ax-integration-section ax-integration-section--amber", collapse_id: "meta-access-settings", collapsed: check.nil?) do %>
+  <%= ax_form_section(title: "O Facebook está liberado?", icon: "shield-check", collapse_id: "meta-access-settings", collapsed: check.nil?) do %>
     <% if check && check[:error] %>
       <p role="alert"><%= check[:error] %></p>
     <% elsif check %>

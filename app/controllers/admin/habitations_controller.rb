@@ -1345,6 +1345,7 @@ class Admin::HabitationsController < Admin::BaseController
       dorms_min dorms_max suites_min suites_max vagas_min vagas_max banheiros_min banheiros_max
       empreendimento_codigo corretor_id
       dashboard_quality
+      captacao_dashboard dashboard_kind dashboard_inicio dashboard_fim
       scope
     ]
 
@@ -1586,6 +1587,10 @@ class Admin::HabitationsController < Admin::BaseController
     @intake_review = params[:intake_review].presence_in(INTAKE_REVIEW_LABELS.keys)
     @captacao_inicio = params[:captacao_inicio]
     @captacao_fim = params[:captacao_fim]
+    @captacao_dashboard = params[:captacao_dashboard]
+    @dashboard_kind = params[:dashboard_kind].to_s.presence_in(Dashboard::CaptacaoScope::KINDS)
+    @dashboard_inicio = params[:dashboard_inicio]
+    @dashboard_fim = params[:dashboard_fim]
     @atualizacao_inicio = params[:atualizacao_inicio]
     @atualizacao_fim = params[:atualizacao_fim]
     @dashboard_quality = params[:dashboard_quality].presence_in(DASHBOARD_QUALITY_FILTERS)
@@ -1653,6 +1658,11 @@ class Admin::HabitationsController < Admin::BaseController
         )
       end
     end
+
+    # Drill-down do dashboard de captações: mesmo conjunto do painel
+    # (Dashboard::CaptacaoScope), para os totais baterem. Ignora os demais
+    # filtros do catálogo, exceto adm e publicado no site.
+    return dashboard_captacao_scope(scope) if dashboard_captacao_drill_down?
 
     scope = if @intake_review == "administrative"
               administrative_intake_review_scope(scope)
@@ -2056,6 +2066,32 @@ class Admin::HabitationsController < Admin::BaseController
       id: current_admin_user.id,
       name: "%#{broker_name}%"
     )
+  end
+
+  def dashboard_captacao_drill_down?
+    return false unless @captacao_dashboard == "1"
+    return false if @dashboard_kind.blank?
+
+    dashboard_drill_period.present?
+  end
+
+  def dashboard_drill_period
+    inicio = parse_date_param(@dashboard_inicio)
+    fim = parse_date_param(@dashboard_fim)
+    return nil if inicio.blank? || fim.blank?
+
+    [inicio, fim].sort
+  end
+
+  def dashboard_captacao_scope(scope)
+    inicio, fim = dashboard_drill_period
+    drill = Dashboard::CaptacaoScope.call(
+      tenant: current_tenant, starts_at: inicio, ends_at: fim,
+      kind: @dashboard_kind, owner_ids: visible_owner_ids(:captacoes)
+    )
+    scope = scope.where(habitations: { id: drill.select(:id) })
+    scope = apply_boolean_filter(scope, @rental_management, :rental_management_flag)
+    apply_boolean_filter(scope, @exibir_no_site, :exibir_no_site_flag)
   end
 
   def catalog_visible_habitations_scope(scope)

@@ -7,7 +7,7 @@
   actions = local_assigns[:actions]
 %>
 <header class="ax-workspace-heading<%= " ax-workspace-heading--icon" if icon.present? %> <%= local_assigns[:class_name] %>">
-  <% if icon.present? %><span class="ax-workspace-heading__icon" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span><% end %>
+  <% if icon.present? %><span class="ax-workspace-heading__icon" aria-hidden="true"><%= ax_brand_icon(icon) %></span><% end %>
   <div class="ax-workspace-heading__main">
     <% if eyebrow.present? %>
       <div class="ax-workspace-heading__eyebrow">

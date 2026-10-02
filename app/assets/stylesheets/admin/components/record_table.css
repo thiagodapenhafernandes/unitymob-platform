@@ -133,7 +133,8 @@
   height:20px;
   flex:none;
   font-size:18px;
-  line-height:20px
+  line-height:20px;
+  object-fit:contain
 }
 
 .ax-record-origin--blue {

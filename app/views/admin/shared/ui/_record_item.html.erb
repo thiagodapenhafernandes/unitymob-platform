@@ -6,7 +6,7 @@
   <div class="ax-record-item__main">
     <% if icon.present? %>
       <span class="ax-record-item__icon" aria-hidden="true">
-        <i class="bi bi-<%= icon %>"></i>
+        <%= ax_brand_icon(icon) %>
       </span>
     <% end %>
     <div class="ax-record-item__copy">

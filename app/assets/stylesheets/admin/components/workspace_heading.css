@@ -216,3 +216,25 @@
   background: var(--ax-dark-surface-hover);
   color: var(--ax-dark-text);
 }
+
+/* Neutral heading for operational settings. */
+.ax-workspace-heading.ax-workspace-heading--plain { padding: 16px 0; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ax-workspace-heading--plain .ax-workspace-heading__icon { background: var(--ax-panel-bg, #fff); color: var(--admin-primary); border: 1px solid var(--ax-border-soft); box-shadow: none; }
+.ax-workspace-heading--plain .ax-workspace-heading__side { min-width: 0; }
+.ax-workspace-heading--plain p { font-size: 13px; line-height: 1.5; }
+.ax-workspace-heading--plain.ax-workspace-heading--icon { column-gap: 20px; }
+.ax-workspace-heading--plain .ax-workspace-heading__icon { width: 72px; height: 72px; border-radius: 14px; }
+.ax-workspace-heading--plain .ax-workspace-heading__icon .ax-brand-icon { width: 40px; height: 40px; }
+.ax-workspace-heading.ax-workspace-heading--plain h1 { font-family: inherit; font-size: 26px; font-weight: 700; line-height: 1.2; }
+.ax-workspace-heading--plain p { margin-top: 6px; font-size: 14px; }
+.ax-workspace-heading--plain .ax-workspace-heading__side { gap: 12px; }
+.ax-workspace-heading--plain .ax-workspace-heading__toolbar { order: -1; }
+.ax-workspace-heading--plain .ax-workspace-heading__meta > span { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 4px; padding: 0; border: 0; background: transparent; box-shadow: none; font-size: 12px; font-weight: 400; color: var(--ab-muted); }
+.ax-workspace-heading--plain .ax-workspace-heading__meta strong { margin: 0; font-size: 14px; font-weight: 700; color: var(--admin-ink); }
+@media (max-width: 640px) {
+  .ax-workspace-heading--plain .ax-workspace-heading__icon { width: 52px; height: 52px; }
+  .ax-workspace-heading--plain .ax-workspace-heading__icon .ax-brand-icon { width: 30px; height: 30px; }
+  .ax-workspace-heading.ax-workspace-heading--plain h1 { font-size: 23px; }
+  .ax-workspace-heading--plain .ax-workspace-heading__meta > span { align-items: flex-start; }
+}
+.ax-workspace-heading--plain p { max-width: none; }

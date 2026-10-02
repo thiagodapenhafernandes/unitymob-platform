@@ -9,7 +9,8 @@
   context_label = property.categoria.to_s.match?(/condom[ií]nio/i) ? "Condomínio" : "Empreendimento"
   show_context = context_name.present? && !title.to_s.downcase.include?(context_name.downcase)
   gallery_limit = local_assigns.fetch(:gallery_limit, 3)
-  image_loading = local_assigns.fetch(:image_loading, "lazy")
+  priority_image = local_assigns.fetch(:priority_image, false)
+  image_loading = local_assigns.fetch(:image_loading, priority_image ? "eager" : "lazy")
   defer_initial_image = local_assigns.fetch(:defer_initial_image, false)
   card_images = property.card_image_sources(gallery_limit)
   placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
@@ -64,6 +65,7 @@
                   width: 720,
                   height: 540,
                   loading: index.zero? ? image_loading : "lazy",
+                  fetchpriority: ("high" if priority_image && index.zero? && !image_deferred),
                   decoding: "async",
                   sizes: "(max-width: 760px) 100vw, 33vw",
                   srcset: (image_variant[:srcset] if !image_deferred && index.zero?),
