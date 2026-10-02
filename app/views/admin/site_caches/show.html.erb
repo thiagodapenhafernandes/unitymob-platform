@@ -1,0 +1,65 @@
+<%
+  ready_samples = 30
+  equal = @stats[:equal]
+  diverged = @stats[:diverged]
+  mode_tone = { "off" => :gray, "shadow" => :blue, "on" => :green }.fetch(@mode)
+%>
+<div class="public-site-workspace">
+  <%= ax_workspace_heading(
+        eyebrow: "Site público · Estrutura",
+        icon: "speedometer2",
+        title: "Desempenho",
+        subtitle: "Guarda o HTML da home e responde em milissegundos. Qualquer mudança feita no admin aparece na hora, sem esperar.",
+        pills: [PublicPageCache::MODE_LABELS.fetch(@mode)]
+      ) %>
+
+  <%= ax_panel(title: "Cache da home", subtitle: "Vale só para esta conta.", actions: ax_badge(PublicPageCache::MODE_LABELS.fetch(@mode).downcase, tone: mode_tone)) do %>
+    <% case @mode %>
+    <% when "off" %>
+      <%= ax_inline_notice(tone: :neutral, icon: "power") do %>
+        Desativado: cada visita monta a página do zero. Comece pelo <strong>Teste</strong>: o site continua igual para os visitantes e o sistema compara a página guardada com a real.
+      <% end %>
+    <% when "shadow" %>
+      <% if diverged.positive? %>
+        <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
+          Encontrei <strong><%= diverged %></strong> diferença(s) entre a página guardada e a real. Não ative ainda: algo que aparece na home não está avisando o cache quando muda.
+        <% end %>
+      <% elsif equal >= ready_samples %>
+        <%= ax_inline_notice(tone: :success, icon: "check-circle-fill") do %>
+          Pronto para ativar: <strong><%= equal %></strong> comparações, nenhuma diferença.
+        <% end %>
+      <% else %>
+        <%= ax_inline_notice(tone: :info, icon: "hourglass-split") do %>
+          Coletando comparações (<%= equal %> de <%= ready_samples %>). Deixe rodar com visitas reais e volte aqui.
+        <% end %>
+      <% end %>
+    <% else %>
+      <%= ax_inline_notice(tone: :success, icon: "lightning-charge-fill") do %>
+        Ativo: o HTML é servido do cache e renovado automaticamente a cada alteração (e em no máximo 10 minutos).
+      <% end %>
+    <% end %>
+
+    <div class="tw-grid tw-gap-3 tw-grid-cols-2 md:tw-grid-cols-4 tw-mt-4">
+      <% if @mode == "on" %>
+        <%= ax_metric_card(label: "Servidas do cache", value: @stats[:hit], icon: "lightning-charge", tone: :green) %>
+        <%= ax_metric_card(label: "Páginas montadas", value: @stats[:miss], icon: "arrow-repeat") %>
+      <% else %>
+        <%= ax_metric_card(label: "Comparações iguais", value: equal, icon: "check2-circle", tone: :green) %>
+        <%= ax_metric_card(label: "Diferenças", value: diverged, icon: "exclamation-triangle", tone: (diverged.positive? ? :red : nil)) %>
+      <% end %>
+    </div>
+
+    <% if diverged.positive? && @stats[:last_divergence].present? %>
+      <p class="ax-field__hint tw-mt-3"><strong>Última diferença:</strong> <code><%= @stats[:last_divergence] %></code></p>
+    <% end %>
+
+    <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-5">
+      <% { "off" => ["Desativar", "ax-btn--secondary"], "shadow" => [@mode == "shadow" ? "Reiniciar teste" : "Iniciar teste", "ax-btn--secondary"], "on" => ["Ativar", "ax-btn--primary"] }.each do |mode, (label, css)| %>
+        <% next if mode == @mode && mode != "shadow" %>
+        <%= button_to label, admin_site_cache_path, method: :patch, params: { mode: mode }, class: "ax-btn #{css}",
+              form: { data: (mode == "on" && diverged.positive? ? { turbo_confirm: "Há diferenças no teste. Ativar mesmo assim?" } : {}) } %>
+      <% end %>
+      <%= button_to "Limpar cache agora", clear_admin_site_cache_path, method: :post, class: "ax-btn ax-btn--secondary" %>
+    </div>
+  <% end %>
+</div>

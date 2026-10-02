@@ -1,0 +1,35 @@
+<%= turbo_frame_tag "meta_conversion_config" do %>
+  <%= form_with url: conversion_config_admin_meta_integrations_path, scope: :meta_conversion_config, method: :patch do |form| %>
+    <div class="ax-integration-fields">
+      <div class="ax-field">
+        <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+          <%= form.label :dataset_id, "Dataset (pixel)", class: "ax-label" %>
+          <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-ax-modal-open="#metaDatasetInfoModal">
+            <i class="bi bi-question-circle"></i> O que é isso?
+          </button>
+        </div>
+        <p class="tw-text-sm tw-text-ink-muted">Container de eventos da imobiliária na Meta. O ID está em business.facebook.com → Gerenciador de Eventos.</p>
+        <% if datasets.any? %>
+          <%= form.select :dataset_id, options_for_select(datasets.map { |dataset| ["#{dataset[:name]} (#{dataset[:id]})", dataset[:id]] }, config.dataset_id), { include_blank: "Selecione..." }, class: "ax-control" %>
+        <% else %>
+          <%= form.text_field :dataset_id, value: config.dataset_id, class: "ax-control", placeholder: "ID do Dataset (nenhum encontrado nas contas conectadas)", autocomplete: "off" %>
+          <p class="tw-text-sm tw-text-ink-muted">Nenhum dataset nas contas de anúncios conectadas — confira a seleção acima ou informe o ID manualmente.</p>
+        <% end %>
+      </div>
+      <div class="ax-field">
+        <%= form.label :test_event_code, "Código de teste (opcional)", class: "ax-label" %>
+        <%= form.text_field :test_event_code, value: config.test_event_code, class: "ax-control", placeholder: "Ex.: TEST12345", autocomplete: "off" %>
+      </div>
+      <div class="ax-field">
+        <label class="ax-check">
+          <%= form.check_box :enabled, checked: config.enabled? %>
+          <span>Envio ativado</span>
+        </label>
+      </div>
+    </div>
+    <div class="ax-integration-actions">
+      <%= form.submit "Salvar conversões", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+      <%= ax_badge(config.active? ? "Enviando eventos" : "Inativo", tone: config.active? ? :green : :gray) %>
+    </div>
+  <% end %>
+<% end %>

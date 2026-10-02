@@ -50,7 +50,7 @@ module Admin
       rows = params.permit(
         :lead_pipeline_id,
         statuses: [
-          :id, :name, :description, :stage_type, :color, :active, :replacement_stage_id, :_destroy,
+          :id, :name, :description, :stage_type, :meta_conversion_event, :color, :active, :replacement_stage_id, :_destroy,
           automations: [
             :id, :trigger, :after_amount, :after_unit, :auto_advance_to_stage_id, :action_type, :active, :_destroy,
             action_config: {}
@@ -109,6 +109,7 @@ module Admin
       name = row[:name].to_s.strip
       description = row[:description].to_s.strip
       stage_type = row[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open"
+      meta_conversion_event = row[:meta_conversion_event].presence_in(LeadPipelineStage::META_CONVERSION_EVENTS.keys)
       color = row[:color].to_s.strip.presence
       destroy = ActiveModel::Type::Boolean.new.cast(row[:_destroy])
 
@@ -120,7 +121,7 @@ module Admin
           transfer_leads_before_destroy!(stage, row[:replacement_stage_id])
           stage.destroy!
         else
-          stage.update!(name: name, description: description, stage_type: stage_type, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
+          stage.update!(name: name, description: description, stage_type: stage_type, meta_conversion_event: meta_conversion_event, color: color, active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true, position: index)
           sync_policy!(stage, row[:policy])
           sync_transitions!(stage, row[:next_stage_ids])
           sync_automations!(stage, row[:automations])
@@ -131,6 +132,7 @@ module Admin
           name: name,
           description: description,
           stage_type: stage_type,
+          meta_conversion_event: meta_conversion_event,
           color: color,
           active: row.key?(:active) ? ActiveModel::Type::Boolean.new.cast(row[:active]) : true,
           position: index

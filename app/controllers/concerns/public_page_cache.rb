@@ -5,8 +5,9 @@
 # agendada não escreve no banco). O TTL de MAX_AGE é só rede de segurança caso alguma
 # dependência escape da lista de modelos: o pior caso fica igual ao de antes do cache.
 #
-# PUBLIC_PAGE_CACHE: off (padrão) | shadow (renderiza sempre e compara com o cacheado,
-# logando divergências) | on (serve do cache).
+# Modo por conta, em Admin > Site público > Desempenho (Setting "site_cache.mode"):
+# off (padrão) | shadow ("Teste": renderiza sempre e compara com o cacheado, contando
+# divergências) | on (serve do cache). Sem variável de ambiente.
 #
 # Por visitante, fora do HTML compartilhado: token CSRF (trocado no serve), consentimento
 # LGPD (na chave), flash e admin logado (não usam cache) e o registro de visita de SEO
@@ -15,14 +16,19 @@ module PublicPageCache
   extend ActiveSupport::Concern
 
   MODES = %w[off shadow on].freeze
+  MODE_LABELS = { "off" => "Desativado", "shadow" => "Em teste", "on" => "Ativo" }.freeze
   MAX_AGE = 10.minutes
   CSRF_PLACEHOLDER = "__PUBLIC_PAGE_CSRF__".freeze
   CSRF_META = /(<meta name="csrf-token" content=")[^"]*(")/
   CSRF_INPUT = /(<input[^>]*name="authenticity_token"[^>]*value=")[^"]*(")/
 
-  def self.mode
-    value = ENV["PUBLIC_PAGE_CACHE"].to_s.downcase
+  MODE_SETTING_KEY = "site_cache.mode".freeze
+
+  def self.mode(tenant)
+    value = Setting.tenant_get(MODE_SETTING_KEY, "off", tenant: tenant).to_s.downcase
     MODES.include?(value) ? value : "off"
+  rescue StandardError
+    "off"
   end
 
   def self.normalize(html)
@@ -40,7 +46,7 @@ module PublicPageCache
   private
 
   def cache_public_page(&block)
-    mode = PublicPageCache.mode
+    mode = PublicPageCache.mode(public_tenant)
     key = public_page_cache_key unless mode == "off"
     entry = read_public_page_entry(key) if key
 
@@ -87,6 +93,7 @@ module PublicPageCache
   def serve_cached_public_page(entry)
     response.headers["Cache-Control"] = entry[:cache_control] if entry[:cache_control].present?
     response.headers["X-Public-Page-Cache"] = "hit"
+    PublicSite::PageCacheStats.record(public_tenant.id, :hit)
     html = entry[:html].gsub(CSRF_PLACEHOLDER) { form_authenticity_token }
     render html: html.html_safe, layout: false
     Seo::PageTracker.record_visit!(self)
@@ -97,9 +104,14 @@ module PublicPageCache
 
     html = PublicPageCache.normalize(response.body)
     if mode == "shadow" && previous && previous[:html] != html
-      Rails.logger.warn("[public_page_cache][shadow] DIVERGENCIA key=#{key} #{public_page_diff_summary(previous[:html], html)}")
+      summary = public_page_diff_summary(previous[:html], html)
+      Rails.logger.warn("[public_page_cache][shadow] DIVERGENCIA key=#{key} #{summary}")
+      PublicSite::PageCacheStats.record(public_tenant.id, :diverged, detail: summary)
     elsif mode == "shadow" && previous
       Rails.logger.info("[public_page_cache][shadow] igual key=#{key}")
+      PublicSite::PageCacheStats.record(public_tenant.id, :equal)
+    elsif mode == "on"
+      PublicSite::PageCacheStats.record(public_tenant.id, :miss)
     end
     response.headers["X-Public-Page-Cache"] = previous ? "shadow-compared" : "miss" if mode != "off"
     Rails.cache.write(key, { html: html, cache_control: response.headers["Cache-Control"] }, expires_in: MAX_AGE)

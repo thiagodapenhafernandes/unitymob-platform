@@ -167,9 +167,10 @@ class Profile < ApplicationRecord
       { label: "Metas de Captação", icon: "bi-bullseye", path: "admin_captacao_goals_path", controllers: %w[captacao_goals] }
     ], description: "Metas anuais por tipo" },
     { key: "catalogos",          label: "Catálogos dinâmicos",    icon: "bi-tags",             actions: %w[view manage],       scopeable: false, parent_section: "configuracoes", description: "Opções de atributos" },
-    { key: "marketing",          label: "Marketing e conteúdo",   icon: "bi-megaphone-fill",   actions: %w[manage],            scopeable: false, section: true, sidebar_section: "growth", sidebar_actions: %w[manage], included_items: ["Oportunidades", "Campanhas", "UTM Builder", "Imóveis com Potencial", "Alertas"], sidebar_items: [
+    { key: "marketing",          label: "Marketing e conteúdo",   icon: "bi-megaphone-fill",   actions: %w[manage],            scopeable: false, section: true, sidebar_section: "growth", sidebar_actions: %w[manage], included_items: ["Oportunidades", "Campanhas", "Meta Ads", "UTM Builder", "Imóveis com Potencial", "Alertas"], sidebar_items: [
       { label: "Oportunidades", icon: "bi-lightbulb", path: "admin_marketing_opportunities_path", controllers: %w[marketing_opportunities] },
       { label: "Campanhas", icon: "bi-bullseye", path: "admin_marketing_campaigns_path", controllers: %w[marketing_campaigns] },
+      { label: "Meta Ads", icon: "bi-bar-chart-line", path: "admin_meta_campaigns_path", controllers: %w[meta_campaigns] },
       { label: "UTM Builder", icon: "bi-link-45deg", path: "admin_marketing_tools_path", controllers: %w[marketing_tools] },
       { label: "Imóveis com Potencial", icon: "bi-house-heart", path: "admin_marketing_properties_path", controllers: %w[marketing_properties] },
       { label: "Alertas", icon: "bi-exclamation-triangle", path: "admin_marketing_alerts_path", controllers: %w[marketing_alerts] }
@@ -191,7 +192,8 @@ class Profile < ApplicationRecord
       { label: "Home", icon: "bi-house-door", path: "edit_admin_home_setting_path", controllers: %w[home_settings home_sections home_section_items] },
       { label: "Contato", icon: "bi-telephone", path: "edit_admin_contact_setting_path", controllers: %w[contact_settings] },
       { label: "Rodapé", icon: "bi-layout-sidebar", path: "edit_admin_footer_setting_path", controllers: %w[footer_settings] },
-      { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] }
+      { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] },
+      { label: "Desempenho", icon: "bi-speedometer2", path: "admin_site_cache_path", controllers: %w[site_caches] }
     ], description: "SEO, páginas, blog e estrutura do site público" },
     { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
       { label: "Portais", icon: "bi-building", path: "admin_portal_integrations_path", controllers: %w[portal_integrations] },
