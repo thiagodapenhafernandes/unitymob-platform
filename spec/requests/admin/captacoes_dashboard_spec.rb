@@ -279,4 +279,16 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
 
     expect(response).to redirect_to(admin_root_path)
   end
+
+  it "linka totais e adm para a listagem com o mesmo escopo" do
+    get dashboard_admin_captacoes_path(month: 9, start_date: "2026-09-01", end_date: "2026-09-30")
+
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    links = page.css("a.ax-dashboard-panel__link[href*='captacao_dashboard=1']").map { |a| a["href"] }
+    expect(links).not_to be_empty
+    expect(links.any? { |href| href.include?("dashboard_kind=venda") }).to be(true)
+    expect(links.any? { |href| href.include?("dashboard_kind=locacao") && !href.include?("rental_management") }).to be(true)
+    expect(links.any? { |href| href.include?("dashboard_kind=locacao") && href.include?("rental_management=1") }).to be(true)
+  end
 end

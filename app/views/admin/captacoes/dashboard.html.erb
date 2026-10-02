@@ -265,6 +265,7 @@
               <div class="capt-mini-stat-percent capt-mini-stat-value--primary"><%= @captacao_adm_locacao_percent %>%</div>
             </div>
             <div class="tw-text-ink-muted tw-text-sm">de <%= @total_locacao %> captações de locação</div>
+            <%= link_to "Ver imóveis", admin_habitations_path(captacao_dashboard: "1", dashboard_kind: "locacao", dashboard_inicio: @period_start, dashboard_fim: @period_end, rental_management: "1"), class: "ax-dashboard-panel__link" %>
           </div>
         </div>
       </div>
@@ -364,6 +365,7 @@
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Captação Venda</div>
                 <div class="capt-summary-value"><%= @total_venda %></div>
+                <%= link_to "Ver imóveis", admin_habitations_path(captacao_dashboard: "1", dashboard_kind: "venda", dashboard_inicio: @period_start, dashboard_fim: @period_end), class: "ax-dashboard-panel__link" %>
               </div>
             </div>
             <div class="ax-span-6">
@@ -451,6 +453,7 @@
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Captação Locação</div>
                 <div class="capt-summary-value"><%= @total_locacao %></div>
+                <%= link_to "Ver imóveis", admin_habitations_path(captacao_dashboard: "1", dashboard_kind: "locacao", dashboard_inicio: @period_start, dashboard_fim: @period_end), class: "ax-dashboard-panel__link" %>
               </div>
             </div>
             <div class="ax-span-6">

@@ -352,4 +352,35 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     expect(response.body).not_to include("Destaque Web: Sim")
     expect(response.body).not_to include("Região foco?: Sim")
   end
+
+  it "drill-down do dashboard reproduz o mesmo conjunto (aprovação, corretor, tipo)" do
+    tenant = admin.tenant
+    reviewed = Time.zone.local(2026, 9, 10, 12)
+    mk = lambda do |codigo, **attrs|
+      create(:habitation, :broker_intake, tenant: tenant, codigo: codigo,
+             intake_status: "published", admin_reviewed_at: reviewed,
+             valor_locacao_cents: 200_000, valor_venda_cents: 0, **attrs)
+    end
+    mk.call("DRILL-1", rental_management_flag: true)
+    mk.call("DRILL-2", intake_status: "admin_approved")
+    mk.call("DRILL-3", data_cadastro_crm: Time.zone.local(2026, 8, 20), created_at: Time.zone.local(2026, 8, 20))
+    mk.call("DRILL-X1", admin_reviewed_at: Time.zone.local(2026, 8, 15, 12))
+    create(:habitation, tenant: tenant, codigo: "DRILL-X2", admin_reviewed_at: reviewed,
+           valor_locacao_cents: 200_000, valor_venda_cents: 0)
+
+    get admin_habitations_path(captacao_dashboard: "1", dashboard_kind: "locacao",
+                               dashboard_inicio: "2026-09-01", dashboard_fim: "2026-09-30")
+
+    expect(response).to have_http_status(:ok)
+    %w[DRILL-1 DRILL-2 DRILL-3].each { |codigo| expect(response.body).to include(codigo) }
+    %w[DRILL-X1 DRILL-X2].each { |codigo| expect(response.body).not_to include(codigo) }
+
+    get admin_habitations_path(captacao_dashboard: "1", dashboard_kind: "locacao",
+                               dashboard_inicio: "2026-09-01", dashboard_fim: "2026-09-30",
+                               rental_management: "1")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("DRILL-1")
+    %w[DRILL-2 DRILL-3].each { |codigo| expect(response.body).not_to include(codigo) }
+  end
 end
