@@ -267,6 +267,13 @@ module Admin::HabitationsHelper
     { label:, title: names.join(" | "), names: }
   end
 
+  # Agrupamento "por corretor" dos relatórios de impressão: usa o captador
+  # vinculado (assignment > responsável > DWV > nome legado), mesma origem do
+  # filtro "Captador responsável" do catálogo — nunca só o corretor_nome.
+  def print_broker_group_name(habitation)
+    habitation.primary_captador_name.to_s.strip.presence || "Sem corretor"
+  end
+
   def habitation_feature_options(habitation, category:, catalog:)
     selected = category == "feature" ? habitation.property_features_for_display : habitation.leisure_features_for_display
     standard = habitation.category_checklist_options(category)

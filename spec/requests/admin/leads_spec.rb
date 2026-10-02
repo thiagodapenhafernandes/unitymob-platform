@@ -81,7 +81,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(desktop_header).to be_present
       expect(desktop_header.to_html).to include("A fazer", "Visitas", "Futuras", "Favoritos", "Todos")
       expect(desktop_header.to_html).to include(
-        "Leads novos ou em atendimento, sem contato registrado",
+        "Tarefas vencidas ou sem data",
         "Leads com visita marcada",
         "Leads com retorno ou tarefa marcada"
       )
@@ -394,7 +394,7 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(document.at_css('.lead-pwa-list__loader[data-offset="10"][data-has-more="true"]')).to be_present
     end
 
-    it "inclui em A Fazer o lead aceito sem acao e exclui atendimentos ja trabalhados" do
+    it "inclui em A Fazer o lead aceito sem acao e a tarefa sem data" do
       allow_any_instance_of(Lead).to receive(:route_lead)
       make = ->(name) { create(:lead, tenant: admin.tenant, admin_user: admin, name: name, status: "Em Atendimento") }
       untouched = make.call("Aceito sem acao")
@@ -413,18 +413,18 @@ RSpec.describe "Admin::Leads", type: :request do
       Proposal.create!(lead: proposed, admin_user: admin, status: "rascunho")
       closed = make.call("Lead encerrado sem acao")
       closed.update!(status: "Concluido")
-      excluded = [noted, undated, completed, meeting, proposed, closed].map(&:name)
+      excluded = [noted, completed, meeting, proposed, closed].map(&:name)
 
       get admin_leads_path(view: "list", mobile_tab: "todo", lead_tab: "todo")
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
       [document.at_css(".lead-list").text, document.css(".lead-pwa-card").map(&:text).join].each do |text|
-        expect(text).to include(untouched.name)
+        expect(text).to include(untouched.name, undated.name)
         expect(text).not_to include(*excluded)
       end
       get pwa_leads_page_admin_leads_path(mobile_tab: "todo", offset: 0), headers: {"Accept" => "application/json"}
-      expect(response.parsed_body["total"]).to eq(1)
-      expect(response.parsed_body["html"]).to include(untouched.name)
+      expect(response.parsed_body["total"]).to eq(2)
+      expect(response.parsed_body["html"]).to include(untouched.name, undated.name)
     end
 
     it "separa A Fazer por ações pendentes sem incluir atendimentos intocados" do
@@ -434,10 +434,15 @@ RSpec.describe "Admin::Leads", type: :request do
       create(:task, tenant: admin.tenant, admin_user: admin, lead: due, due_at: Time.current)
       future = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Retorno agendado", status: "Em Atendimento")
       create(:task, tenant: admin.tenant, admin_user: admin, lead: future, due_at: 1.day.from_now)
+      undated = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Tarefa sem data", status: "Em Atendimento")
+      create(:task, tenant: admin.tenant, admin_user: admin, lead: undated, due_at: nil)
+      mixed = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Vencida e futura", status: "Em Atendimento")
+      create(:task, tenant: admin.tenant, admin_user: admin, lead: mixed, due_at: 1.hour.ago)
+      create(:task, tenant: admin.tenant, admin_user: admin, lead: mixed, due_at: 1.day.from_now)
       visit = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Visita agendada", status: "Em Atendimento")
       create(:appointment, tenant: admin.tenant, admin_user: admin, lead: visit, kind: "visita")
       create(:lead_favorite, tenant: admin.tenant, admin_user: admin, lead: future)
-      {"todo" => [due, future], "future" => [future], "visits" => [visit], "favorites" => [future], "all" => [untouched, due, future, visit]}.each do |tab, leads|
+      {"todo" => [due, undated, mixed], "future" => [future, mixed], "visits" => [visit], "favorites" => [future], "all" => [untouched, due, future, undated, mixed, visit]}.each do |tab, leads|
         get pwa_leads_page_admin_leads_path(mobile_tab: tab, offset: 0), headers: {"Accept" => "application/json"}
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body["total"]).to eq(leads.size)
@@ -818,7 +823,7 @@ RSpec.describe "Admin::Leads", type: :request do
         tabs_by_label = document.css(".lead-pwa-tab").index_by { |tab| tab.at_css(".lead-pwa-tab__label")&.text&.strip }
 
         expect(tabs_by_label.fetch("Futuras").text).to include("1/2")
-        expect(tabs_by_label.fetch("A fazer").text).to include("2")
+        expect(tabs_by_label.fetch("A fazer").text).to include("0")
         expect(tabs_by_label.fetch("Todos").text).to include("3")
         expect(document.at_css(".lead-pwa-clear-filter")).to be_present
         expect(document.at_css(".lead-pwa-clear-filter")["href"]).to eq(admin_leads_path(view: "list", mobile_tab: "future"))

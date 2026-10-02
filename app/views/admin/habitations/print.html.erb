@@ -1140,7 +1140,7 @@
                      report_title: @report_title,
                      page_number: page_number,
                      total_pages: @report_total_pages %>
-          <% grouped = records.group_by { |h| h.corretor_nome.to_s.strip.presence || "Sem corretor" } %>
+          <% grouped = records.group_by { |h| print_broker_group_name(h) } %>
           <% grouped.each do |broker_name, broker_habitations| %>
             <div class="broker-group">
               <div class="broker-name">Corretor: <%= broker_name %></div>

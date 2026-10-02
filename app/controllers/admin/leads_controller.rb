@@ -2630,10 +2630,13 @@ class Admin::LeadsController < Admin::BaseController
   def pwa_actionable_leads(base_scope)
     operational_scope = base_scope.where("leads.status IS NULL OR leads.status NOT IN (?)", pwa_future_excluded_status_values + closed_lead_status_values + ["Concluido"])
 
+    # A fazer = trabalho vencido (due_at <= agora) ou sem data, mais os
+    # intocados. Tarefa futura estaciona em Futuras (due_at > agora em
+    # pwa_scheduled_leads) e o lead volta sozinho ao A fazer quando vencer.
     task_ids = Task
       .where(tenant_id: current_tenant.id, admin_user_id: current_admin_user&.id)
       .pendentes
-      .where.not(due_at: nil)
+      .where("tasks.due_at IS NULL OR tasks.due_at <= ?", Time.current)
       .where(lead_id: operational_scope.select(:id))
       .select(:lead_id)
 

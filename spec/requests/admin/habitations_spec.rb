@@ -3981,6 +3981,35 @@ RSpec.describe "Admin::Habitations", type: :request do
     end
   end
 
+  it "agrupa a listagem por corretor pelo captador vinculado mesmo com corretor_nome em branco" do
+    broker = create(:admin_user, tenant: admin.tenant, name: "Corretor Fabiano Print")
+    other = create(:admin_user, tenant: admin.tenant, name: "Corretora Outra Print")
+    mine = create(:habitation, tenant: admin.tenant, corretor_nome: nil)
+    mine.broker_assignments.create!(admin_user: broker, role: "captador")
+    other_property = create(:habitation, tenant: admin.tenant, corretor_nome: nil)
+    other_property.broker_assignments.create!(admin_user: other, role: "captador")
+
+    get print_admin_habitations_path(report_type: "property_list_by_broker", corretor_id: broker.id, full_print: "1")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Corretor: #{broker.name}")
+    expect(response.body).to include(mine.codigo)
+    expect(response.body).not_to include("Sem corretor")
+    expect(response.body).not_to include(other_property.codigo)
+  end
+
+  it "resume imóveis por corretor pelo captador vinculado mesmo com corretor_nome em branco" do
+    broker = create(:admin_user, tenant: admin.tenant, name: "Corretor Resumo Print")
+    property = create(:habitation, tenant: admin.tenant, corretor_nome: nil)
+    property.broker_assignments.create!(admin_user: broker, role: "captador")
+
+    get print_admin_habitations_path(report_type: "property_count_by_broker", corretor_id: broker.id, full_print: "1")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(broker.name)
+    expect(response.body).not_to include("Sem corretor")
+  end
+
   it "abre a ficha de visita com campos de avaliação e assinatura" do
     habitation = create(
       :habitation,
