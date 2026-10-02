@@ -56,7 +56,9 @@ class Admin::HabitationsController < Admin::BaseController
     "capture_sheet_land" => 1,
     "property_list" => 24,
     "property_list_with_m2" => 24,
-    "property_list_by_broker" => 14
+    # Por corretor usa menos linhas que as listas simples porque cada grupo
+    # repete cabeçalho + barra do corretor; o teto é a altura útil do A4.
+    "property_list_by_broker" => 20
   }.freeze
   INDEX_PAGE_SIZE_OPTIONS = [10, 20].freeze
   DEFAULT_INDEX_PAGE_SIZE = 10
@@ -258,6 +260,7 @@ class Admin::HabitationsController < Admin::BaseController
     @public_site_profile = PublicSiteProfile.current(tenant: current_tenant)
 
     scope = apply_habitation_catalog_order(filtered_habitations_scope)
+      .includes(:admin_user, broker_assignments: :admin_user)
     ids = single_habitation_sheet_report? ? [] : sanitized_selected_ids
     scope = scope.where(id: ids) if ids.any?
 
@@ -276,10 +279,11 @@ class Admin::HabitationsController < Admin::BaseController
     if single_habitation_sheet_report?
       setup_single_habitation_sheet_report(scope)
     elsif @report_type == "property_count_by_broker"
-      @broker_rows = scope.reorder(nil)
-        .group("COALESCE(NULLIF(TRIM(corretor_nome), ''), 'Sem corretor')")
-        .order(Arel.sql("COUNT(*) DESC"))
-        .count
+      broker_tally = Hash.new(0)
+      scope.reorder(nil).find_each do |habitation|
+        broker_tally[helpers.print_broker_group_name(habitation)] += 1
+      end
+      @broker_rows = broker_tally.sort_by { |_, total| -total }.to_h
     elsif @report_type == "sale_rent_total_values"
       grouped_rows = scope.to_a.group_by { |h| h.categoria.to_s.strip.presence || "Sem categoria" }
       @summary_rows = grouped_rows.map do |category, rows|
