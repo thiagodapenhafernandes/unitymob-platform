@@ -1,8 +1,0 @@
-<%= ax_form_section(title: "Conversões (CRM → Meta)", tooltip: "Devolve à Meta os marcos do funil de leads vindos do Meta Ads: qualificado, visita realizada e venda.") do %>
-  <p class="tw-text-sm tw-text-ink-muted">Escolha o Dataset (pixel) desta imobiliária. O envio usa a conexão Meta existente, sem token novo. Eventos: <strong>QualifiedLead</strong> ao qualificar, <strong>Schedule</strong> na visita realizada e <strong>Purchase</strong> na proposta aceita ou etapa ganha.</p>
-  <%= turbo_frame_tag "meta_conversion_config", src: conversion_config_form_admin_meta_integrations_path do %>
-    <p class="tw-text-sm tw-text-ink-muted" role="status">Consultando datasets na Meta...</p>
-  <% end %>
-<% end %>
-
-<%= render "admin/meta_integrations/dataset_info_modal" %>

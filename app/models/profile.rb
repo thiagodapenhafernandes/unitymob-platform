@@ -167,10 +167,9 @@ class Profile < ApplicationRecord
       { label: "Metas de Captação", icon: "bi-bullseye", path: "admin_captacao_goals_path", controllers: %w[captacao_goals] }
     ], description: "Metas anuais por tipo" },
     { key: "catalogos",          label: "Catálogos dinâmicos",    icon: "bi-tags",             actions: %w[view manage],       scopeable: false, parent_section: "configuracoes", description: "Opções de atributos" },
-    { key: "marketing",          label: "Marketing e conteúdo",   icon: "bi-megaphone-fill",   actions: %w[manage],            scopeable: false, section: true, sidebar_section: "growth", sidebar_actions: %w[manage], included_items: ["Oportunidades", "Campanhas", "Meta Ads", "UTM Builder", "Imóveis com Potencial", "Alertas"], sidebar_items: [
+    { key: "marketing",          label: "Marketing e conteúdo",   icon: "bi-megaphone-fill",   actions: %w[manage],            scopeable: false, section: true, sidebar_section: "growth", sidebar_actions: %w[manage], included_items: ["Oportunidades", "Campanhas", "UTM Builder", "Imóveis com Potencial", "Alertas"], sidebar_items: [
       { label: "Oportunidades", icon: "bi-lightbulb", path: "admin_marketing_opportunities_path", controllers: %w[marketing_opportunities] },
       { label: "Campanhas", icon: "bi-bullseye", path: "admin_marketing_campaigns_path", controllers: %w[marketing_campaigns] },
-      { label: "Meta Ads", icon: "bi-bar-chart-line", path: "admin_meta_campaigns_path", controllers: %w[meta_campaigns] },
       { label: "UTM Builder", icon: "bi-link-45deg", path: "admin_marketing_tools_path", controllers: %w[marketing_tools] },
       { label: "Imóveis com Potencial", icon: "bi-house-heart", path: "admin_marketing_properties_path", controllers: %w[marketing_properties] },
       { label: "Alertas", icon: "bi-exclamation-triangle", path: "admin_marketing_alerts_path", controllers: %w[marketing_alerts] }

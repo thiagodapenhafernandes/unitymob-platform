@@ -39,8 +39,6 @@
             <% end %>
           <% end %>
 
-          <%= render "admin/meta_integrations/conversion_config", config: @conversion_config %>
-
           <%= render "admin/meta_integrations/permissions", check: nil %>
 
           <% if @meta_webhook_callback_url.present? && @meta_webhook_verify_token.present? %>

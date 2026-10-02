@@ -73,33 +73,6 @@ module Facebook
       @graph.get_object("act_#{account_id}", fields: "account_id,name")
     end
 
-    def ad_account_pixels(account_id)
-      paginated_connections(@graph, "act_#{account_id}", "adspixels", fields: "id,name")
-    rescue Koala::Facebook::APIError => e
-      Rails.logger.warn "MetaService: adspixels indisponíveis para act_#{account_id}: #{e.message}"
-      []
-    end
-
-    LEAD_ACTION_TYPES = %w[lead onsite_conversion.lead_grouped].freeze
-
-    # Insights diários por campanha (investimento + entrega + leads). Uma
-    # linha por campanha por dia; actions traz os leads por tipo de ação.
-    def campaign_insights(account_id, start_date:, end_date:)
-      paginated_connections(
-        @graph, "act_#{account_id}", "insights",
-        fields: "campaign_id,campaign_name,spend,impressions,clicks,actions",
-        level: "campaign",
-        time_increment: 1,
-        time_range: { since: start_date.to_date.iso8601, until: end_date.to_date.iso8601 }.to_json
-      )
-    end
-
-    def self.lead_count_from_actions(actions)
-      Array(actions).sum do |action|
-        LEAD_ACTION_TYPES.include?(action["action_type"].to_s) ? action["value"].to_i : 0
-      end
-    end
-
     def ad_details(ad_id)
       @graph.get_object(ad_id, fields: "id,name,account_id,campaign{id,name},adset{id,name}")
     end

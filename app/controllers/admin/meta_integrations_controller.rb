@@ -8,7 +8,6 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   def index
     # Show status and link to Facebook Login if not integrated
     @pages = @integration ? @integration.meta_facebook_pages.enabled.where(page_id: @integration.selected_page_ids) : []
-    @conversion_config = MetaConversionConfig.instance(tenant: current_tenant)
     @meta_webhook_mode = Meta::WebhookConfiguration.mode
     @meta_webhook_mode_description = Meta::WebhookConfiguration.description
     @meta_webhook_callback_url = Meta::WebhookConfiguration.callback_url
@@ -56,25 +55,6 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
   def sync_pages
     trigger_sync(notice: "A sincronização foi iniciada em segundo plano.")
-  end
-
-  def conversion_config_form
-    @conversion_config = MetaConversionConfig.instance(tenant: current_tenant)
-    @conversion_datasets = conversion_dataset_options
-    render layout: false
-  end
-
-  def conversion_config
-    config = MetaConversionConfig.instance(tenant: current_tenant)
-    attrs = params.require(:meta_conversion_config).permit(:dataset_id, :test_event_code, :enabled)
-    found = conversion_dataset_options.find { |dataset| dataset[:id] == attrs[:dataset_id].to_s }
-    attrs[:dataset_name] = found ? found[:name] : (config.dataset_id == attrs[:dataset_id] ? config.dataset_name : nil)
-
-    if config.update(attrs)
-      redirect_to admin_meta_integrations_path, notice: "Configuração de conversões salva."
-    else
-      redirect_to admin_meta_integrations_path, alert: config.errors.full_messages.to_sentence
-    end
   end
 
   def sync_forms
@@ -173,26 +153,6 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
   def set_integration
     @integration = UserMetaIntegration.find_by(admin_user: current_admin_user, tenant_id: current_tenant.id)
-  end
-
-  # Datasets (pixels) das contas de anúncios conectadas nesta conta, via o
-  # token OAuth existente — sem segredo novo. Falha de API vira lista vazia
-  # (o form oferece o ID manual) em vez de quebrar a tela.
-  def conversion_dataset_options
-    @conversion_dataset_options ||= begin
-      options = []
-      UserMetaIntegration.owned_by_tenant(current_tenant.id).where.not(access_token: [nil, ""]).find_each do |integration|
-        service = Facebook::MetaService.new(integration.access_token)
-        integration.ad_account_ids.each do |account_id|
-          service.ad_account_pixels(account_id).each do |pixel|
-            options << { id: pixel["id"].to_s, name: pixel["name"].to_s.presence || pixel["id"].to_s }
-          end
-        end
-      rescue StandardError => e
-        Rails.logger.warn "[MetaIntegrations] datasets indisponíveis integração=#{integration.id}: #{e.class}"
-      end
-      options.uniq { |option| option[:id] }.sort_by { |option| option[:name].downcase }
-    end
   end
 
   def set_page

@@ -564,7 +564,6 @@ class Admin::LeadsController < Admin::BaseController
         LeadActivity.log!(lead: @lead, kind: "status_change", metadata: { from: previous_status, to: @lead.status, by: current_admin_user&.name })
       end
       log_qualification_change! if @lead.saved_change_to_broker_qualification_status? || @lead.saved_change_to_manager_qualification_status?
-      dispatch_meta_funnel_conversions!
       if @lead.saved_change_to_admin_user_id? && @lead.admin_user_id.present?
         Leads::NotificationDispatcher.notify_reassignment(@lead, @lead.admin_user)
       end
@@ -2445,27 +2444,6 @@ class Admin::LeadsController < Admin::BaseController
         by: current_admin_user&.name
       }.compact
     )
-  end
-
-  # Loop CRM -> Meta (Conversions API): dispara no máximo um evento por marco;
-  # o Dispatcher filtra origem/config e o event_id estável dedupa na Meta.
-  def dispatch_meta_funnel_conversions!
-    qualification_changes = [@lead.saved_change_to_broker_qualification_status,
-                             @lead.saved_change_to_manager_qualification_status].compact
-    if qualification_changes.any? { |(_, to)| to == "qualified" }
-      Meta::ConversionDispatcher.call(lead: @lead, milestone: :qualified)
-    end
-
-    if @lead.saved_change_to_lead_pipeline_stage_id?
-      # Lookup fresco: a associação pode estar com a etapa antiga em cache.
-      # O evento vem do mapeamento da etapa (modal de funil); em branco = nada.
-      new_stage = current_tenant.lead_pipeline_stages.find_by(id: @lead.lead_pipeline_stage_id)
-      if new_stage&.meta_conversion_event.present?
-        Meta::ConversionDispatcher.call(lead: @lead, event_name: new_stage.meta_conversion_event)
-      end
-    elsif @lead.saved_change_to_status? && @lead.status == Lead.status_value(:concluido, tenant: current_tenant)
-      Meta::ConversionDispatcher.call(lead: @lead, milestone: :sale)
-    end
   end
 
   def load_lead_pipeline_context

@@ -138,7 +138,6 @@ export default class extends Controller {
         name: row.querySelector('[data-lead-status-field="name"]')?.value.trim() || "",
         description: row.querySelector('[data-lead-status-field="description"]')?.value.trim() || "",
         stage_type: row.querySelector('[data-lead-status-field="stage_type"]')?.value || "open",
-        meta_conversion_event: row.querySelector('[data-lead-status-field="meta_conversion_event"]')?.value || "",
         color: row.querySelector('[data-lead-status-field="color"]')?.value || "",
         active: row.querySelector('[data-lead-status-field="active"]')?.checked ?? true,
         policy: this.policyFor(row),

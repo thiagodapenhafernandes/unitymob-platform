@@ -7,13 +7,6 @@ class LeadPipelineStage < ApplicationRecord
     "lost" => "Perdida",
     "archived" => "Arquivada"
   }.freeze
-  # Evento enviado à Meta (Conversions API) quando o lead ENTRA na etapa.
-  # Em branco = nenhum envio. Mesmos nomes do Meta::ConversionDispatcher.
-  META_CONVERSION_EVENTS = {
-    "QualifiedLead" => "Lead qualificado",
-    "Schedule" => "Visita realizada",
-    "Purchase" => "Venda"
-  }.freeze
   HEX_COLOR = /\A#\h{6}\z/
   DEFAULT_COLORS = %w[#2f80a0 #365f8f #8a63d2 #d97706 #08875d #e0402f #667085].freeze
 
@@ -46,7 +39,6 @@ class LeadPipelineStage < ApplicationRecord
 
   validates :name, presence: true, uniqueness: { scope: [:tenant_id, :lead_pipeline_id], case_sensitive: false }
   validates :stage_type, inclusion: { in: STAGE_TYPES.keys }
-  validates :meta_conversion_event, inclusion: { in: META_CONVERSION_EVENTS.keys }, allow_blank: true
   validates :color, format: { with: HEX_COLOR, message: "inválida" }, allow_blank: true
   validate :pipeline_must_belong_to_tenant
 

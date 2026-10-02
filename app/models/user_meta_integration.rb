@@ -12,11 +12,6 @@ class UserMetaIntegration < ApplicationRecord
   validates :access_token, presence: true
   validates :facebook_user_id, presence: true
 
-  scope :owned_by_tenant, ->(tenant_id) {
-    by_owner = where(admin_user_id: AdminUser.where(tenant_id: tenant_id).select(:id))
-    column_names.include?("tenant_id") ? where(tenant_id: tenant_id).or(by_owner) : by_owner
-  }
-
   # Tenant efetivo mesmo pré-migration.
   def owner_tenant_id
     (tenant_id if has_attribute?(:tenant_id)) || admin_user&.tenant_id
