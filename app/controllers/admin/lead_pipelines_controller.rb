@@ -58,14 +58,15 @@ module Admin
       rows.filter_map do |row|
         next unless row.respond_to?(:to_h)
 
-        permitted = ActionController::Parameters.new(row.to_h).permit(:name, :description, :stage_type)
+        permitted = ActionController::Parameters.new(row.to_h).permit(:name, :description, :stage_type, :meta_conversion_event)
         name = permitted[:name].to_s.strip
         next if name.blank?
 
         {
           name: name,
           description: permitted[:description].to_s.strip,
-          stage_type: permitted[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open"
+          stage_type: permitted[:stage_type].presence_in(LeadPipelineStage::STAGE_TYPES.keys) || "open",
+          meta_conversion_event: permitted[:meta_conversion_event].presence_in(LeadPipelineStage::META_CONVERSION_EVENTS.keys)
         }
       end
     end
@@ -112,6 +113,7 @@ module Admin
           name: stage[:name],
           description: stage[:description],
           stage_type: stage[:stage_type],
+          meta_conversion_event: stage[:meta_conversion_event],
           position: index
         )
       end

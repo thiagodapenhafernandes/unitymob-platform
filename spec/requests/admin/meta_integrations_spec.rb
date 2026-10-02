@@ -22,6 +22,14 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
+  it "exibe a seção de conversões com modal explicativo do Dataset" do
+    page
+    get admin_meta_integrations_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Conversões (CRM → Meta)", "metaDatasetInfoModal", "caixa postal")
+  end
+
   it "oculta o catálogo e bloqueia seleção e consultas amplas fora da impersonação" do
     page
     other = create(:meta_facebook_page, user_meta_integration: integration, name: "Outra imobiliária", active: true)

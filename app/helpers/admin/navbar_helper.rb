@@ -17,6 +17,7 @@ module Admin::NavbarHelper
     "whatsapp_campaign_recipients" => "Importados CSV",
     "whatsapp_campaign_unsubscribes" => "Descadastros WhatsApp",
     "marketing_campaigns" => "Campanhas",
+    "meta_campaigns" => "Meta Ads",
     "marketing_opportunities" => "Oportunidades",
     "marketing_properties" => "Marketing",
     "seo_dashboard" => "Dashboard SEO",

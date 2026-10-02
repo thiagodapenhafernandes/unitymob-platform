@@ -2,7 +2,7 @@
   default_create_stages = [
     { name: "Novo", stage_type: "open" },
     { name: "Em Atendimento", stage_type: "open" },
-    { name: "Negócio fechado", stage_type: "won" },
+    { name: "Negócio fechado", stage_type: "won", meta_conversion_event: "Purchase" },
     { name: "Descartado", stage_type: "lost" }
   ]
 
@@ -40,7 +40,8 @@
                      index: index,
                      name: stage[:name],
                      description: "",
-                     stage_type: stage[:stage_type] %>
+                     stage_type: stage[:stage_type],
+                     meta_conversion_event: stage[:meta_conversion_event] %>
         <% end %>
       </div>
 

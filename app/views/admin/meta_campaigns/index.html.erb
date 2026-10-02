@@ -1,0 +1,107 @@
+<%# Meta Ads — investimento (Meta) + funil por campanha (join CRM). %#>
+<%= ax_workspace_heading(
+      eyebrow: "Marketing · Meta Ads",
+      icon: "bar-chart-line",
+      title: "Meta Ads",
+      subtitle: "Investimento e resultado por campanha. O funil cruza o gasto da Meta com qualificados, visitas e vendas do CRM.",
+      actions: button_to("Atualizar agora", sync_now_admin_meta_campaigns_path(tab: @tab, period: @period_days),
+                         method: :post, class: "ax-btn ax-btn--sm ax-btn--primary",
+                         form_class: "tw-inline")
+    ) %>
+
+<div class="tw-flex tw-flex-wrap tw-items-center tw-gap-1.5 tw-mb-3">
+  <%= link_to "Funil por campanha", admin_meta_campaigns_path(tab: "funnel", period: @period_days), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'funnel'}" %>
+  <%= link_to "Investimento", admin_meta_campaigns_path(tab: "spend", period: @period_days), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'spend'}" %>
+  <span class="tw-inline-block tw-w-3"></span>
+  <%= link_to "7 dias", admin_meta_campaigns_path(tab: @tab, period: 7), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 7}" %>
+  <%= link_to "30 dias", admin_meta_campaigns_path(tab: @tab, period: 30), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 30}" %>
+</div>
+
+<div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-3 tw-mb-3">
+  <%= ax_metric_card(label: "Investimento", value: number_to_currency(@totals[:spend], unit: "R$", separator: ",", delimiter: "."),
+                     hint: "#{@period_days} dias · Meta Ads", icon: "cash-coin") %>
+  <%= ax_metric_card(label: "CPL", value: @totals[:cpl] ? number_to_currency(@totals[:cpl], unit: "R$", separator: ",", delimiter: ".") : "—",
+                     hint: "#{@totals[:meta_leads]} leads na Meta", icon: "funnel") %>
+  <%= ax_metric_card(label: "Custo por venda", value: @totals[:cost_per_sale] ? number_to_currency(@totals[:cost_per_sale], unit: "R$", separator: ",", delimiter: ".") : "—",
+                     hint: "#{@totals[:sales]} vendas atribuídas", icon: "trophy", tone: :green) %>
+  <%= ax_metric_card(label: "Funil", value: "#{@totals[:qualified]}/#{@totals[:visits]}/#{@totals[:sales]}",
+                     hint: "qualificados / visitas / vendas", icon: "kanban") %>
+</div>
+
+<% if @spend_rows.blank? %>
+  <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
+    Sem dados da Meta ainda. A sincronização roda todo dia de manhã; use <strong>Atualizar agora</strong> para buscar na hora. É preciso ter conta de anúncios conectada em Integrações → Meta.
+  <% end %>
+<% elsif @tab == "funnel" %>
+  <%= ax_operational_panel(eyebrow: "Atribuição CRM", title: "Funil por campanha") do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Campanha</th>
+            <th class="ax-num">Invest.</th>
+            <th class="ax-num">Leads</th>
+            <th class="ax-num">Qualif.</th>
+            <th class="ax-num">Visitas</th>
+            <th class="ax-num">Vendas</th>
+            <th class="ax-num">Custo/venda</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @funnel_rows.each do |row| %>
+            <tr>
+              <td><div class="ax-strong"><%= row[:campaign_name] %></div></td>
+              <td class="ax-num"><%= number_to_currency(row[:spend], unit: "R$", separator: ",", delimiter: ".") %></td>
+              <td class="ax-num"><%= row[:leads] %></td>
+              <td class="ax-num"><%= row[:qualified] %></td>
+              <td class="ax-num"><%= row[:visits] %></td>
+              <td class="ax-num"><%= row[:sales] %></td>
+              <td class="ax-num"><%= row[:sales].positive? ? number_to_currency(row[:spend] / row[:sales], unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if @funnel_rows.blank? %>
+      <p class="tw-text-sm tw-text-ink-muted tw-mt-2">Nenhum lead do período com campanha identificada. O vínculo aparece após o enriquecimento (Integrações → Meta, conta de anúncios selecionada).</p>
+    <% end %>
+  <% end %>
+<% else %>
+  <%= ax_operational_panel(eyebrow: "Meta Ads", title: "Investimento por campanha") do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Campanha</th>
+            <th class="ax-num">Invest.</th>
+            <th class="ax-num">Impressões</th>
+            <th class="ax-num">Cliques</th>
+            <th class="ax-num">CTR</th>
+            <th class="ax-num">CPC</th>
+            <th class="ax-num">Leads</th>
+            <th class="ax-num">CPL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @spend_rows.each do |row| %>
+            <tr>
+              <td><div class="ax-strong"><%= row.campaign_name %></div></td>
+              <td class="ax-num"><%= number_to_currency(row.spend.to_f, unit: "R$", separator: ",", delimiter: ".") %></td>
+              <td class="ax-num"><%= number_with_delimiter(row.impressions.to_i, delimiter: ".") %></td>
+              <td class="ax-num"><%= number_with_delimiter(row.clicks.to_i, delimiter: ".") %></td>
+              <td class="ax-num"><%= row.impressions.to_i.positive? ? number_to_percentage(row.clicks.to_f / row.impressions.to_i * 100, precision: 2, separator: ",") : "—" %></td>
+              <td class="ax-num"><%= row.clicks.to_i.positive? ? number_to_currency(row.spend.to_f / row.clicks.to_i, unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
+              <td class="ax-num"><%= row.leads.to_i %></td>
+              <td class="ax-num"><%= row.leads.to_i.positive? ? number_to_currency(row.spend.to_f / row.leads.to_i, unit: "R$", separator: ",", delimiter: ".") : "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+<% end %>
+
+<p class="tw-text-sm tw-text-ink-muted tw-mt-3">
+  Última sincronização: <%= @last_sync_at ? l(@last_sync_at, format: :short) : "nunca" %> ·
+  Números da Meta podem se ajustar por até ~48h (janela de atribuição).
+</p>

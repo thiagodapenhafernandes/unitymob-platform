@@ -208,6 +208,9 @@ Rails.application.routes.draw do
     post "image_migration_status/sync", to: "image_migration_status#sync", as: :sync_image_migration
     post "image_migration_status/retry_failed", to: "image_migration_status#retry_failed", as: :retry_failed_image_migration
     resources :marketing_campaigns, except: :show
+    resources :meta_campaigns, only: [:index] do
+      post :sync_now, on: :collection
+    end
     resources :seo_settings, except: :show do
       collection do
         patch :update_strategy
@@ -432,6 +435,8 @@ Rails.application.routes.draw do
       collection do
         post :sync_pages
         patch :selected_pages
+        patch :conversion_config
+        get :conversion_config_form
         post :sync_forms
         get :ad_accounts
         patch :ad_account
