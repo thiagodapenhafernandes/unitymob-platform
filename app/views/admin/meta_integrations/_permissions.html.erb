@@ -1,39 +1,39 @@
 <%= turbo_frame_tag "meta_permissions" do %>
-  <%= ax_form_section(title: "Acesso e permissões", collapse_id: "meta-access-settings", collapsed: check.nil?) do %>
+  <%= ax_form_section(title: "O Facebook está liberado?", icon: "shield-check", class_name: "ax-integration-section ax-integration-section--amber", collapse_id: "meta-access-settings", collapsed: check.nil?) do %>
     <% if check && check[:error] %>
       <p role="alert"><%= check[:error] %></p>
     <% elsif check %>
-      <p class="tw-text-sm tw-text-ink-muted">Verificado em <%= l(check[:checked_at], format: "%d/%m/%Y %H:%M") %>. O resultado confirma permissões do token, não a ativação dos canais.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Conferido em <%= l(check[:checked_at], format: "%d/%m/%Y %H:%M") %>. Isso mostra o que o Facebook autorizou, não se cada recurso já está funcionando.</p>
       <% pending, granted = check[:permissions].partition { |permission| permission[:status] != "granted" } %>
       <% pending.each do |permission| %>
         <%= ax_record_item(title: permission[:label], meta: permission[:description], actions: ax_badge("Pendente", tone: :amber)) %>
       <% end %>
       <details class="ax-disclosure-card">
-        <summary class="ax-disclosure-card__summary"><%= granted.size %> permissões concedidas · Ver detalhes</summary>
+        <summary class="ax-disclosure-card__summary"><%= granted.size %> autorizações liberadas · Ver detalhes</summary>
         <div class="ax-disclosure-card__body">
           <% granted.each do |permission| %>
-            <%= ax_record_item(title: permission[:label], meta: permission[:description], actions: ax_badge("Concedida", tone: :green)) %>
+            <%= ax_record_item(title: permission[:label], meta: permission[:description], actions: ax_badge("Liberada", tone: :green)) %>
           <% end %>
         </div>
       </details>
     <% else %>
-      <p class="tw-text-sm tw-text-ink-muted">Consulte as permissões ou renove o acesso desta conexão.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Confira se o CRM tem autorização para ler seus formulários e mensagens, ou renove o acesso.</p>
     <% end %>
     <div class="ax-integration-actions">
-      <%= link_to "Verificar permissões", permissions_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>
-      <%= button_to "Atualizar autorização", admin_user_facebook_omniauth_authorize_path, method: :post, params: {auth_type: "rerequest"}, data: {turbo: false}, class: "ax-btn ax-btn--sm ax-btn--primary" %>
+      <%= link_to "Conferir acesso", permissions_admin_meta_integrations_path, class: "ax-btn ax-btn--sm" %>
+      <%= button_to "Renovar acesso", admin_user_facebook_omniauth_authorize_path, method: :post, params: {auth_type: "rerequest"}, data: {turbo: false}, class: "ax-btn ax-btn--sm ax-btn--primary" %>
     </div>
     <details class="ax-integration-help">
       <summary>Como liberar o acesso</summary>
       <div class="ax-integration-help__content">
         <ol>
-          <li>Use <strong>Atualizar autorização</strong> e entre com o Facebook que administra as páginas.</li>
-          <li>Mantenha autorizadas todas as empresas conectadas. Escolha as páginas de cada conta em <strong>Páginas desta conta</strong>.</li>
-          <li>Volte e use <strong>Verificar permissões</strong>. Se faltar acesso, confira suas atribuições com o administrador da página.</li>
+          <li>Clique em <strong>Renovar acesso</strong> e entre com o Facebook que administra as suas páginas.</li>
+          <li>Deixe marcadas todas as empresas e páginas que aparecerem. Depois, escolha quais páginas entregam contatos a esta conta.</li>
+          <li>Volte e clique em <strong>Conferir acesso</strong>. Se algo continuar faltando, peça ao administrador da página para liberar o seu usuário.</li>
         </ol>
-        <p>O Direct é preparado automaticamente para o Instagram profissional vinculado à página. Acompanhe o resultado em <strong>Recursos das páginas</strong>.</p>
-        <p>Permissão indisponível ou aplicativo sem aprovação? Contate o suporte para conferir a configuração na Meta.</p>
-        <%= link_to "Requisitos oficiais da Meta", "https://www.postman.com/meta/messenger-platform-api/folder/22794852-255610cd-47f5-4f4d-b3fa-71aec360be9a", target: "_blank", rel: "noopener noreferrer" %>
+        <p>As mensagens do Instagram são preparadas sozinhas para o perfil profissional ligado à página. Acompanhe em <strong>Suas páginas e formulários</strong>.</p>
+        <p>Não consegue liberar algum item? Fale com o suporte.</p>
+        <%= link_to "Ajuda oficial do Facebook", "https://www.postman.com/meta/messenger-platform-api/folder/22794852-255610cd-47f5-4f4d-b3fa-71aec360be9a", target: "_blank", rel: "noopener noreferrer" %>
       </div>
     </details>
   <% end %>

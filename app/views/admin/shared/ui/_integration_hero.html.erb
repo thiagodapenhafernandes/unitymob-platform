@@ -1,0 +1,33 @@
+<%# Cabeçalho de integração: marca, conta conectada, situação em uma palavra e números-chave. %>
+<%
+  status_tone = (local_assigns[:status_tone].presence || :green).to_s
+  stats = Array(local_assigns[:stats]).compact
+%>
+<header class="ax-integration-hero" data-tone="<%= local_assigns[:tone].presence || "blue" %>">
+  <div class="ax-integration-hero__top">
+    <div class="ax-integration-hero__brand">
+      <span class="ax-integration-hero__icon" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span>
+      <div class="ax-integration-hero__text">
+        <% if local_assigns[:eyebrow].present? %><span class="ax-integration-hero__eyebrow"><%= eyebrow %></span><% end %>
+        <h2 class="ax-integration-hero__title"><%= title %></h2>
+        <% if local_assigns[:subtitle].present? %><p class="ax-integration-hero__subtitle"><%= subtitle %></p><% end %>
+      </div>
+    </div>
+    <div class="ax-integration-hero__side">
+      <% if local_assigns[:status].present? %>
+        <span class="ax-integration-hero__status ax-integration-hero__status--<%= status_tone %>" role="status"><%= status %></span>
+      <% end %>
+      <% if local_assigns[:actions].present? %><div class="ax-integration-hero__actions"><%= actions %></div><% end %>
+    </div>
+  </div>
+  <% if stats.any? %>
+    <dl class="ax-integration-hero__stats">
+      <% stats.each do |stat| %>
+        <div class="ax-integration-hero__stat">
+          <dt><% if stat[:icon].present? %><i class="bi bi-<%= stat[:icon] %>" aria-hidden="true"></i><% end %><%= stat[:label] %></dt>
+          <dd><%= stat[:value] %></dd>
+        </div>
+      <% end %>
+    </dl>
+  <% end %>
+</header>

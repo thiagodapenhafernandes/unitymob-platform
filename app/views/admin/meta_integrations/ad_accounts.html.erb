@@ -1,22 +1,22 @@
 <%= turbo_frame_tag "meta_ad_accounts" do %>
   <% if @ad_accounts_error %>
-    <div class="ax-integration-message" role="alert"><strong>Não foi possível consultar as contas</strong><p><%= @ad_accounts_error %></p></div>
+    <div class="ax-integration-message" role="alert"><strong>Não conseguimos buscar suas contas de anúncios</strong><p><%= @ad_accounts_error.to_s.sub(/\AA Meta recusou o token\./, "O Facebook recusou o acesso.").gsub(/\bMeta\b/, "Facebook").gsub(/\btoken\b/i, "acesso").sub(/\bAtualize a autorização com o Facebook acima\b/i, "Clique em Renovar acesso, mais abaixo, e tente de novo") %></p></div>
   <% else %>
     <% choices = @ad_accounts.map { |account| ["#{account['name']} (#{account['account_id']})", account['account_id']] } %>
     <% missing = @integration.selected_ad_accounts.reject { |id, _| choices.any? { |_, choice_id| choice_id.to_s == id } } %>
     <% missing.each do |id, name| %>
-      <% choices.unshift(["#{name.presence || id} — vínculo atual, não retornado pela Meta", id]) %>
+      <% choices.unshift(["#{name.presence || id} — escolhida antes, não apareceu agora", id]) %>
     <% end %>
     <% if missing.any? %>
-      <p class="tw-text-sm tw-text-ink-muted">Há contas vinculadas que não apareceram nesta consulta. Os vínculos foram preservados; confira seu acesso com o administrador do negócio antes de alterá-los.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Algumas contas que você já tinha escolhido não apareceram agora. Mantivemos a sua escolha; confirme o acesso com o administrador do Facebook antes de mudar.</p>
     <% end %>
     <% if @ad_accounts.empty? %>
       <div class="ax-integration-message">
         <strong>Nenhuma conta de anúncios encontrada</strong>
-        <p><%= params[:all] == "1" ? "A Meta não retornou contas acessíveis para este login." : "Não encontramos contas nos negócios das páginas selecionadas. Solicite ao suporte a conferência dos vínculos desta imobiliária." %></p>
+        <p><%= params[:all] == "1" ? "O Facebook não mostrou nenhuma conta de anúncios para este login." : "Não encontramos contas de anúncios ligadas às suas páginas. Fale com o suporte para conferir." %></p>
       </div>
     <% else %>
-      <p class="tw-text-sm tw-text-ink-muted">Escolha as contas usadas nas campanhas desta imobiliária. O WhatsApp mantém sua conexão própria.</p>
+      <p class="tw-text-sm tw-text-ink-muted">Escolha as contas de anúncios que a sua imobiliária usa. Assim sabemos de qual campanha veio cada contato.</p>
     <% end %>
     <% if choices.any? %>
       <%= form_with url: ad_account_admin_meta_integrations_path, scope: :meta_integration, method: :patch, data: { turbo_frame: "_top" } do |form| %>

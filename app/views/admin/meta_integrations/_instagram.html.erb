@@ -4,19 +4,19 @@
 elsif ready
   [page.instagram_received_at.present? ? "Recebendo mensagens" : "Pronto para receber", :green]
 elsif page.instagram_checked_at.present? && page.instagram_id.blank?
-  ["Sem perfil vinculado", :gray]
+  ["Sem Instagram profissional", :gray]
 else
-  ["Aguardando verificação", :gray]
+  ["Verificando…", :gray]
 end %>
-<%= ax_record_item(title: "Instagram Direct", icon: "instagram", meta: page.instagram_username.presence || "Perfil profissional vinculado à página", actions: ax_badge(state, tone: tone, dot: ready)) %>
+<%= ax_record_item(title: "Mensagens do Instagram", icon: "instagram", meta: page.instagram_username.presence || "Perfil profissional vinculado à página", actions: ax_badge(state, tone: tone, dot: ready)) %>
 <% if page.instagram_sync_error.present? %>
   <p class="tw-text-sm tw-text-ink-muted" role="status"><%= page.instagram_sync_error %></p>
 <% elsif ready && page.instagram_received_at.present? %>
   <p class="tw-text-sm tw-text-ink-muted">Última mensagem recebida em <%= l(page.instagram_received_at, format: "%d/%m/%Y %H:%M") %>.</p>
 <% elsif ready %>
-  <p class="tw-text-sm tw-text-ink-muted">Configuração confirmada. Aguardando a primeira mensagem.</p>
+  <p class="tw-text-sm tw-text-ink-muted">Tudo pronto. Assim que chegar a primeira mensagem, ela aparece no CRM.</p>
 <% elsif page.instagram_checked_at.present? && page.instagram_id.blank? %>
-  <p class="tw-text-sm tw-text-ink-muted">A Meta não retornou um Instagram profissional vinculado a esta página.</p>
+  <p class="tw-text-sm tw-text-ink-muted">Não encontramos um Instagram profissional ligado a esta página.</p>
 <% else %>
-  <p class="tw-text-sm tw-text-ink-muted">O sistema verifica e prepara o recebimento automaticamente em segundo plano.</p>
+  <p class="tw-text-sm tw-text-ink-muted">O sistema confere e prepara o recebimento sozinho, em segundo plano.</p>
 <% end %>
