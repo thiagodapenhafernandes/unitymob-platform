@@ -25,4 +25,13 @@ RSpec.describe "shared/tailwind/_development_card.html.erb", type: :view do
     expect(card.at_css(".public-theme-dev-card__logo")).to be_nil
     expect(card.at_css(".public-theme-dev-card__cta")).to be_present
   end
+
+  it "escapa do turbo-frame da seção para abrir a página do empreendimento" do
+    development = create(:habitation, tenant: tenant, nome_empreendimento: "Residencial Aurora", tipo: "Empreendimento")
+
+    render "shared/tailwind/development_card", development: development, unit_count: 0, unit_metric: nil
+
+    link = Nokogiri::HTML(rendered).at_css("a.public-development-card-link")
+    expect(link["data-turbo-frame"]).to eq("_top")
+  end
 end

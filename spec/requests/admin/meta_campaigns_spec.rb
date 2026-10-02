@@ -45,6 +45,15 @@ RSpec.describe "Admin::MetaCampaigns", type: :request do
     expect(response.body).to include("Todas as contas")
   end
 
+  it "exibe cabeçalho com botão Atualizar agora" do
+    get admin_meta_campaigns_path(tab: "funnel", period: 30)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("ax-workspace-heading")
+    expect(response.body).to include("sync_now")
+    expect(response.body.scan("Atualizar agora").size).to be >= 2
+  end
+
   it "mostra estado vazio sem sync e enfileira atualização" do
     get admin_meta_campaigns_path
 

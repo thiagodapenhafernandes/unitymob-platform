@@ -44,6 +44,21 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(block.css("[data-property-id]")).to be_present
       end
 
+      it "home: links dos cards escapam do turbo-frame (navegação de página cheia)" do
+        create_list(:habitation, 2, tenant:, exibir_no_site_flag: true, address_attributes: address)
+        tenant.home_sections.create!(section_type: :featured_properties, title: "Destaques", active: true,
+                                    order_position: 1, property_filters: { "exibir_no_site" => "1" })
+
+        get root_path
+
+        expect(response).to have_http_status(:ok)
+        card_links = html.css("[data-property-id] a[href]")
+        expect(card_links).to be_present
+        card_links.each do |link|
+          expect(link["data-turbo-frame"]).to eq("_top")
+        end
+      end
+
       it "página do imóvel: bloco do empreendimento, bairro, cidades e mapa na variante" do
         development = create(:habitation, codigo: "DEV-#{theme_key}", tipo: "Empreendimento", categoria: "Apartamento",
                                           nome_empreendimento: "Residencial Contrato", address_attributes: address)
