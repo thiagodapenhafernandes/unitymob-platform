@@ -30,7 +30,7 @@ module Webhooks
     private
 
     def valid_secret_key?
-      configured = Setting.get("grupozap_secret_key", ENV["GRUPOZAP_SECRET_KEY"]).to_s
+      configured = Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY, ENV["GRUPOZAP_SECRET_KEY"]).to_s
       return false if configured.blank?
 
       provided = basic_password

@@ -17,6 +17,9 @@ class PortalIntegration < ApplicationRecord
   # Portais cobertos pelo webhook de leads do Grupo OLX (uma SECRET por CRM,
   # um endpoint para todos — o payload não distingue o portal de origem).
   GRUPOZAP_PORTALS = %w[zapimoveis vivareal_vrsync imovelweb imovelweb_2].freeze
+  # SECRET_KEY por CRM (não por conta): autentica que o POST veio do Grupo
+  # OLX. Configurada na tela de Portais; nunca exibida de volta.
+  GRUPOZAP_SECRET_KEY = "grupozap_secret_key".freeze
 
   # Documentação e instruções para cada portal — exibidas na UI para ajudar o usuário
   PORTAL_HELP = {

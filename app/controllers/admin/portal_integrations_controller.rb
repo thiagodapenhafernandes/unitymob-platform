@@ -16,6 +16,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
       }
     end
     @listing_states = scoped_listing_states.where(portal: @active_portal).order(last_received_at: :desc).limit(20)
+    @grupozap_key_configured = Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY, ENV["GRUPOZAP_SECRET_KEY"]).present?
   end
 
   def preview_feed
@@ -56,6 +57,20 @@ class Admin::PortalIntegrationsController < Admin::BaseController
     @integration.update(last_feed_at: Time.current, operational_status: "tested")
 
     redirect_to admin_portal_integrations_path(portal: @portal), notice: "Teste de feed concluído: elegíveis=#{preview[:eligible_count]}, rejeitados=#{preview[:rejected_count]}."
+  end
+
+  # Chave por CRM (vale para todos os portais OLX e contas): grava global,
+  # nunca exibe o valor de volta — só o status configurada/não configurada.
+  def grupozap_key
+    secret = params[:grupozap_secret_key].to_s.strip
+    portal = normalize_portal(params[:portal])
+
+    if secret.blank?
+      return redirect_to admin_portal_integrations_path(portal: portal), alert: "Informe a chave enviada pelo Grupo OLX."
+    end
+
+    Setting.set(PortalIntegration::GRUPOZAP_SECRET_KEY, secret, tenant: nil)
+    redirect_to admin_portal_integrations_path(portal: portal), notice: "Chave do Grupo OLX salva com sucesso."
   end
 
   private

@@ -79,4 +79,34 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     integration = PortalIntegration.find_by!(tenant: admin.tenant, portal: "zapimoveis")
     expect(integration).to be_leads_receiving
   end
+
+  it "mostra o cartão da chave do CRM só nos portais Grupo OLX, sem exibir o valor" do
+    Setting.set(PortalIntegration::GRUPOZAP_SECRET_KEY, "chave-secreta-123", tenant: nil)
+
+    get admin_portal_integrations_path(portal: "zapimoveis")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Chave do CRM — Grupo OLX")
+    expect(response.body).to include("Configurada")
+    expect(response.body).not_to include("chave-secreta-123")
+
+    get admin_portal_integrations_path(portal: "chavesnamao")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Chave do CRM — Grupo OLX")
+  end
+
+  it "salva a chave do CRM global e rejeita em branco" do
+    post grupozap_key_admin_portal_integrations_path,
+         params: { portal: "vivareal_vrsync", grupozap_secret_key: "nova-chave-456" }
+
+    expect(response).to redirect_to(admin_portal_integrations_path(portal: "vivareal_vrsync"))
+    expect(Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY)).to eq("nova-chave-456")
+
+    post grupozap_key_admin_portal_integrations_path,
+         params: { portal: "vivareal_vrsync", grupozap_secret_key: "  " }
+
+    expect(response).to redirect_to(admin_portal_integrations_path(portal: "vivareal_vrsync"))
+    expect(Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY)).to eq("nova-chave-456")
+  end
 end
