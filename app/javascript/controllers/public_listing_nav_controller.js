@@ -9,6 +9,7 @@ export default class extends Controller {
   follow(event) {
     const link = event.target.closest("a[href]")
     if (!link) return
+    if (link.getAttribute("data-turbo-frame") === "_top") return
 
     event.preventDefault()
     this.go(link.href)

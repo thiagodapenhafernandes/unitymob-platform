@@ -27,6 +27,12 @@ RSpec.describe "Public frames (lazy)", type: :request do
     expect(response.body).to include("home-section-#{section.id}")
     expect(response.body).to include("FRAME-A")
     expect(response.body).to include("FRAME-B")
+
+    card_links = Nokogiri::HTML(response.body).css("turbo-frame a[href]")
+    expect(card_links).to be_present
+    card_links.each do |link|
+      expect(link["data-turbo-frame"]).to eq("_top")
+    end
   end
 
   it "primeira seção pesada inline e demais em lazy frame" do
