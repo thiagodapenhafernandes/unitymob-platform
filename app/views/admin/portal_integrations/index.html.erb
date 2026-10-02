@@ -122,6 +122,17 @@
               <%= ax_switch_field(form: f, method: :require_exibir_no_site, label: "Enviar apenas imóveis exibidos no site") %>
               <small class="portal-integrations-help">Recomendado. Evita publicar imóveis ocultos do site público.</small>
             </div>
+
+            <% if current_integration.grupozap_family? %>
+              <div class="ax-span-12">
+                <%= ax_switch_field(form: f, method: :leads_enabled, label: "Receber leads deste portal") %>
+                <small class="portal-integrations-help">Os interessados nos seus anúncios entram sozinhos no funil de leads, pela distribuição normal da conta. Não precisa configurar nada no portal: a chave de segurança é gerenciada pela Unitymob.</small>
+                <small class="portal-integrations-help">
+                  Último lead recebido:
+                  <strong><%= current_integration.last_lead_at.present? ? l(current_integration.last_lead_at, format: :short) : "nenhum ainda" %></strong>
+                </small>
+              </div>
+            <% end %>
           <% end %>
 
           <%= ax_form_actions(sticky: false) do %>

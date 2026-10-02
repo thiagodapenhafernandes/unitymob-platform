@@ -768,6 +768,7 @@ Rails.application.routes.draw do
     get "whatsapp", to: "whatsapp#verify"
     post "whatsapp", to: "whatsapp#receive"
     post "portals/:portal/events", to: "portals#events", as: :portal_events
+    post "portal_leads/grupozap", to: "portal_leads#grupozap", as: :portal_leads_grupozap
   end
 
   namespace :integrations do

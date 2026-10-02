@@ -26,6 +26,7 @@ module Leads
       "linkedin" => "linkedin_ads", "pinterest" => "pinterest_ads", "x" => "x_ads", "youtube" => "youtube_ads"
     }.freeze
     CHANNEL_LABELS = {
+      "portal" => "Portais",
       "google_ads" => "Google Ads", "microsoft_ads" => "Microsoft Ads", "meta_ads" => "Meta Ads",
       "tiktok_ads" => "TikTok Ads", "linkedin_ads" => "LinkedIn Ads", "pinterest_ads" => "Pinterest Ads",
       "x_ads" => "X Ads", "youtube_ads" => "YouTube Ads", "paid_campaign" => "Outras campanhas pagas",

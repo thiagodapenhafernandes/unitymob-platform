@@ -88,6 +88,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
     params.require(:portal_integration).permit(
       :enabled,
       :require_exibir_no_site,
+      :leads_enabled,
       :feed_token,
       :account_id,
       :publisher_id,

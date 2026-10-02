@@ -57,4 +57,26 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
 
     expect(response).to redirect_to(admin_root_path)
   end
+
+  it "mostra o interruptor de leads só nos portais Grupo OLX" do
+    get admin_portal_integrations_path(portal: "zapimoveis")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Receber leads deste portal")
+    expect(response.body).to include("Último lead recebido")
+
+    get admin_portal_integrations_path(portal: "chavesnamao")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Receber leads deste portal")
+  end
+
+  it "liga o recebimento de leads do portal" do
+    patch admin_portal_integration_path("zapimoveis"),
+          params: { portal_integration: { enabled: "1", leads_enabled: "1", account_id: "42" } }
+
+    expect(response).to redirect_to(admin_portal_integrations_path(portal: "zapimoveis"))
+    integration = PortalIntegration.find_by!(tenant: admin.tenant, portal: "zapimoveis")
+    expect(integration).to be_leads_receiving
+  end
 end
