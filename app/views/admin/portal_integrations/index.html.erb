@@ -126,7 +126,7 @@
             <% if current_integration.grupozap_family? %>
               <div class="ax-span-12">
                 <%= ax_switch_field(form: f, method: :leads_enabled, label: "Receber leads deste portal") %>
-                <small class="portal-integrations-help">Os interessados nos seus anúncios entram sozinhos no funil de leads, pela distribuição normal da conta. Não precisa configurar nada no portal: a chave de segurança é gerenciada pela Unitymob.</small>
+                <small class="portal-integrations-help">Os interessados nos seus anúncios entram sozinhos no funil de leads, pela distribuição normal da conta. Informe a chave do CRM na seção abaixo (uma única vez).</small>
                 <small class="portal-integrations-help">
                   Último lead recebido:
                   <strong><%= current_integration.last_lead_at.present? ? l(current_integration.last_lead_at, format: :short) : "nenhum ainda" %></strong>
@@ -140,6 +140,28 @@
           <% end %>
         <% end %>
       </div>
+    <% end %>
+
+    <!-- Chave do CRM para leads (Grupo OLX) -->
+    <% if current_integration.grupozap_family? %>
+      <%= ax_operational_panel(eyebrow: "Leads", title: "Chave do CRM — Grupo OLX", class_name: "tw-mb-3") do %>
+        <div class="ax-panel-body">
+          <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
+            Chave única enviada pelo Grupo OLX na homologação. Vale para ZAP, VivaReal e Imovelweb:
+            sem ela, os leads são recusados. Por segurança, o valor nunca é exibido — só o status.
+            <%= ax_badge(@grupozap_key_configured ? "Configurada" : "Não configurada", tone: (@grupozap_key_configured ? :green : :amber)) %>
+          </p>
+          <%= form_with url: grupozap_key_admin_portal_integrations_path, method: :post, local: true, class: "tw-flex tw-flex-wrap tw-items-end tw-gap-2" do %>
+            <%= hidden_field_tag :portal, @active_portal %>
+            <div class="tw-flex-1 tw-min-w-[240px]">
+              <%= label_tag :grupozap_secret_key, "SECRET_KEY", class: "ax-label" %>
+              <%= password_field_tag :grupozap_secret_key, nil, class: "ax-control", autocomplete: "off",
+                                     placeholder: (@grupozap_key_configured ? "Já configurada. Preencha para substituir." : "Cole aqui a chave enviada pelo Grupo OLX") %>
+            </div>
+            <%= submit_tag "Salvar chave", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+        </div>
+      <% end %>
     <% end %>
 
     <!-- URL do Feed em destaque (ação principal) -->

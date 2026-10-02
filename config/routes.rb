@@ -490,6 +490,7 @@ Rails.application.routes.draw do
     resources :portal_integrations, only: [:index, :update], param: :portal do
       post :test_feed, on: :member
       get :preview_feed, on: :member
+      post :grupozap_key, on: :collection
     end
     resource :scheduling_integration, only: [:show, :update] do
       get "pendentes/:id", action: :pending_property, as: :pending_property
