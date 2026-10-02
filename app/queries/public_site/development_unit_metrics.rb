@@ -15,7 +15,13 @@ module PublicSite
     def unit_counts
       return {} if codes.empty?
 
-      @unit_counts ||= scope.where(codigo_empreendimento: codes).group(:codigo_empreendimento).count
+      # Mesmo conjunto das faixas do card (unit_metrics): só unidades
+      # visíveis no site e com preço. Sem isso o card exibe o total do
+      # cadastro (ex.: 35) em vez das unidades consultáveis.
+      @unit_counts ||= scope.publicly_listable
+        .with_public_listing_price
+        .where(codigo_empreendimento: codes)
+        .group(:codigo_empreendimento).count
     end
 
     def unit_metrics
