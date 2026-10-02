@@ -31,6 +31,20 @@ RSpec.describe "Admin::MetaCampaigns", type: :request do
     expect(response.body).to include("CTR", "CPC")
   end
 
+  it "filtra por conta de anúncios" do
+    MetaCampaignInsight.create!(tenant: tenant, ad_account_id: "123", campaign_id: "c1",
+                                campaign_name: "Campanha A", date: Date.current, spend: 100, leads: 2)
+    MetaCampaignInsight.create!(tenant: tenant, ad_account_id: "456", campaign_id: "c2",
+                                campaign_name: "Campanha B", date: Date.current, spend: 50, leads: 1)
+
+    get admin_meta_campaigns_path(tab: "spend", account: "456")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Campanha B")
+    expect(response.body).not_to include("Campanha A")
+    expect(response.body).to include("Todas as contas")
+  end
+
   it "mostra estado vazio sem sync e enfileira atualização" do
     get admin_meta_campaigns_path
 

@@ -1,7 +1,26 @@
-<%= ax_form_section(title: "Conversões (CRM → Meta)", tooltip: "Devolve à Meta os marcos do funil de leads vindos do Meta Ads: qualificado, visita realizada e venda.") do %>
-  <p class="tw-text-sm tw-text-ink-muted">Escolha o Dataset (pixel) desta imobiliária. O envio usa a conexão Meta existente, sem token novo. Eventos: <strong>QualifiedLead</strong> ao qualificar, <strong>Schedule</strong> na visita realizada e <strong>Purchase</strong> na proposta aceita ou etapa ganha.</p>
+<%= ax_form_section(title: "Resultados dos anúncios", icon: "graph-up-arrow", class_name: "ax-integration-section ax-integration-section--violet", tooltip: "Quando um contato dos anúncios avança no funil, o CRM avisa o Facebook. Assim ele aprende quais anúncios trazem os melhores clientes.") do %>
+  <p class="tw-text-sm tw-text-ink-muted">Quando um contato que veio dos anúncios avança no funil, o CRM avisa o Facebook automaticamente. Com isso ele aprende quais anúncios trazem os seus melhores clientes e passa a mostrá-los para pessoas parecidas.</p>
+
+  <ol class="ax-integration-steps" aria-label="Quando o Facebook é avisado">
+    <li class="ax-integration-step ax-integration-step--blue">
+      <span class="ax-integration-step__icon" aria-hidden="true"><i class="bi bi-person-check"></i></span>
+      <strong>Contato qualificado</strong>
+      <span>Quando o contato passa para uma etapa de qualificação.</span>
+    </li>
+    <li class="ax-integration-step ax-integration-step--amber">
+      <span class="ax-integration-step__icon" aria-hidden="true"><i class="bi bi-door-open"></i></span>
+      <strong>Visita realizada</strong>
+      <span>Quando a visita ao imóvel acontece.</span>
+    </li>
+    <li class="ax-integration-step ax-integration-step--green">
+      <span class="ax-integration-step__icon" aria-hidden="true"><i class="bi bi-trophy"></i></span>
+      <strong>Venda fechada</strong>
+      <span>Quando a proposta é aceita ou o contato chega à etapa de venda.</span>
+    </li>
+  </ol>
+
   <%= turbo_frame_tag "meta_conversion_config", src: conversion_config_form_admin_meta_integrations_path do %>
-    <p class="tw-text-sm tw-text-ink-muted" role="status">Consultando datasets na Meta...</p>
+    <p class="tw-text-sm tw-text-ink-muted" role="status">Buscando seus dados no Facebook…</p>
   <% end %>
 <% end %>
 

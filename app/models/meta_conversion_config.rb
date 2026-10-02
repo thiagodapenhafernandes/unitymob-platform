@@ -1,8 +1,8 @@
 class MetaConversionConfig < ApplicationRecord
   include TenantScoped
 
-  validates :dataset_id, presence: true
   validates :tenant_id, uniqueness: true
+  validate :datasets_must_have_selection
 
   def self.instance(tenant:)
     for_tenant(tenant).first_or_initialize
@@ -19,7 +19,22 @@ class MetaConversionConfig < ApplicationRecord
       .pick(:access_token)
   end
 
+  def dataset_list
+    Array(self[:datasets]).filter_map do |entry|
+      id = entry["id"] || entry[:id]
+      next if id.blank?
+
+      { "id" => id.to_s, "name" => (entry["name"] || entry[:name]).to_s.presence || id.to_s }
+    end.uniq { |entry| entry["id"] }
+  end
+
   def active?
-    enabled? && dataset_id.present? && sending_token.present?
+    enabled? && dataset_list.any? && sending_token.present?
+  end
+
+  private
+
+  def datasets_must_have_selection
+    errors.add(:datasets, :blank) if dataset_list.blank?
   end
 end

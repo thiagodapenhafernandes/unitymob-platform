@@ -10,11 +10,20 @@
     ) %>
 
 <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-1.5 tw-mb-3">
-  <%= link_to "Funil por campanha", admin_meta_campaigns_path(tab: "funnel", period: @period_days), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'funnel'}" %>
-  <%= link_to "Investimento", admin_meta_campaigns_path(tab: "spend", period: @period_days), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'spend'}" %>
+  <%= link_to "Funil por campanha", admin_meta_campaigns_path(tab: "funnel", period: @period_days, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'funnel'}" %>
+  <%= link_to "Investimento", admin_meta_campaigns_path(tab: "spend", period: @period_days, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @tab == 'spend'}" %>
   <span class="tw-inline-block tw-w-3"></span>
-  <%= link_to "7 dias", admin_meta_campaigns_path(tab: @tab, period: 7), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 7}" %>
-  <%= link_to "30 dias", admin_meta_campaigns_path(tab: @tab, period: 30), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 30}" %>
+  <%= link_to "7 dias", admin_meta_campaigns_path(tab: @tab, period: 7, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 7}" %>
+  <%= link_to "30 dias", admin_meta_campaigns_path(tab: @tab, period: 30, account: @account_id), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @period_days == 30}" %>
+  <% if @account_options.size > 1 %>
+    <span class="tw-inline-block tw-w-3"></span>
+    <%= form_with url: admin_meta_campaigns_path, method: :get, class: "tw-flex tw-items-center tw-gap-1.5" do %>
+      <%= hidden_field_tag :tab, @tab %>
+      <%= hidden_field_tag :period, @period_days %>
+      <%= select_tag :account, options_for_select([["Todas as contas", ""]] + @account_options, @account_id),
+                     class: "ax-control ax-control--sm", aria: { label: "Conta de anúncios" }, onchange: "this.form.submit()" %>
+    <% end %>
+  <% end %>
 </div>
 
 <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-3 tw-mb-3">

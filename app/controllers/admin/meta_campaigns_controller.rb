@@ -10,11 +10,15 @@ class Admin::MetaCampaignsController < Admin::BaseController
     @ends_at = Time.current
     @starts_at = @period_days.days.ago.beginning_of_day
     @last_sync_at = MetaCampaignInsight.for_tenant(current_tenant).maximum(:updated_at)
+    @account_options = account_options
+    @account_id = params[:account].presence_in(@account_options.map(&:second).map(&:to_s))
 
     spend_by_campaign = spend_totals.index_by { |row| row.campaign_id.to_s }
     @spend_rows = spend_totals.sort_by { |row| -row.spend.to_f }
     @funnel_rows = Meta::CampaignFunnelQuery.new(tenant: current_tenant, starts_at: @starts_at, ends_at: @ends_at).call.rows
+    campaign_accounts = campaign_account_map
     @funnel_rows.each { |row| row[:spend] = spend_by_campaign[row[:campaign_id].to_s]&.spend.to_f }
+    @funnel_rows.select! { |row| campaign_accounts[row[:campaign_id].to_s] == @account_id } if @account_id
     @funnel_rows.sort_by! { |row| [-row[:sales], -row[:visits], -row[:leads]] }
     @totals = build_totals(spend_by_campaign)
     @page_title = "Meta Ads"
@@ -22,21 +26,44 @@ class Admin::MetaCampaignsController < Admin::BaseController
 
   def sync_now
     MetaInsightsSyncJob.perform_later(current_tenant.id)
-    redirect_to admin_meta_campaigns_path(tab: params[:tab], period: params[:period]),
+    redirect_to admin_meta_campaigns_path(tab: params[:tab], period: params[:period], account: params[:account]),
                 notice: "Sincronização com a Meta iniciada. Os números atualizam em instantes."
   end
 
   private
 
+  def insights_scope
+    scope = MetaCampaignInsight.for_tenant(current_tenant).where(date: @starts_at.to_date..@ends_at.to_date)
+    scope = scope.where(ad_account_id: @account_id) if @account_id
+    scope
+  end
+
   def spend_totals
+    insights_scope
+      .group(:campaign_id)
+      .select(
+        "campaign_id, MAX(campaign_name) AS campaign_name, " \
+        "SUM(spend) AS spend, SUM(impressions) AS impressions, " \
+        "SUM(clicks) AS clicks, SUM(leads) AS leads"
+      )
+  end
+
+  def account_options
+    ids = MetaCampaignInsight.for_tenant(current_tenant)
+                             .where(date: @starts_at.to_date..@ends_at.to_date)
+                             .distinct.pluck(:ad_account_id).reject(&:blank?).sort
+    names = {}
+    UserMetaIntegration.owned_by_tenant(current_tenant.id).find_each do |integration|
+      names.merge!(integration.selected_ad_accounts)
+    end
+    ids.map { |id| ["#{names[id].presence || "Conta #{id}"} (#{id})", id] }
+  end
+
+  def campaign_account_map
     MetaCampaignInsight.for_tenant(current_tenant)
                        .where(date: @starts_at.to_date..@ends_at.to_date)
-                       .group(:campaign_id)
-                       .select(
-                         "campaign_id, MAX(campaign_name) AS campaign_name, " \
-                         "SUM(spend) AS spend, SUM(impressions) AS impressions, " \
-                         "SUM(clicks) AS clicks, SUM(leads) AS leads"
-                       )
+                       .order(date: :desc).pluck(:campaign_id, :ad_account_id)
+                       .each_with_object({}) { |(campaign_id, account_id), memo| memo[campaign_id.to_s] ||= account_id.to_s }
   end
 
   def build_totals(spend_by_campaign)

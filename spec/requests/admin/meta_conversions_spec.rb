@@ -10,7 +10,7 @@ RSpec.describe "Admin::MetaConversions", type: :request do
   before do
     host! "localhost"
     sign_in admin
-    MetaConversionConfig.create!(tenant: tenant, dataset_id: "999")
+    MetaConversionConfig.create!(tenant: tenant, datasets: [{ "id" => "999" }])
     create(:user_meta_integration, admin_user: admin, tenant: tenant, access_token: "tok",
                                    ad_accounts: { "123" => "Conta Anúncios" })
   end
@@ -28,38 +28,39 @@ RSpec.describe "Admin::MetaConversions", type: :request do
     expect(response.body).to include("Pixel Loja (111)")
   end
 
-  it "salva o dataset escolhido com nome resolvido" do
-    stub_datasets([{ "id" => "111", "name" => "Pixel Loja" }])
+  it "salva múltiplos datasets com nomes resolvidos" do
+    stub_datasets([{ "id" => "111", "name" => "Pixel Loja" }, { "id" => "222", "name" => "Pixel Filial" }])
 
     patch conversion_config_admin_meta_integrations_path,
-          params: { meta_conversion_config: { dataset_id: "111", test_event_code: "T1", enabled: "1" } }
+          params: { meta_conversion_config: { dataset_ids: ["111", "222"], test_event_code: "T1", enabled: "1" } }
 
     expect(response).to redirect_to(admin_meta_integrations_path)
     config = MetaConversionConfig.for_tenant(tenant).first
-    expect(config.dataset_id).to eq("111")
-    expect(config.dataset_name).to eq("Pixel Loja")
+    expect(config.dataset_list).to eq([{ "id" => "111", "name" => "Pixel Loja" },
+                                       { "id" => "222", "name" => "Pixel Filial" }])
     expect(config.test_event_code).to eq("T1")
   end
 
-  it "aceita ID manual quando a descoberta falha" do
+  it "aceita IDs manuais quando a descoberta falha" do
+    MetaConversionConfig.for_tenant(tenant).first.update_column(:datasets, [])
     stub_datasets([])
 
     get conversion_config_form_admin_meta_integrations_path
-    expect(response.body).to include("informe o ID manualmente")
+    expect(response.body).to include("digite o código se você já o tem")
 
     patch conversion_config_admin_meta_integrations_path,
-          params: { meta_conversion_config: { dataset_id: "222", enabled: "1" } }
+          params: { meta_conversion_config: { dataset_ids_manual: "333, 444", enabled: "1" } }
 
     config = MetaConversionConfig.for_tenant(tenant).first
-    expect(config.dataset_id).to eq("222")
-    expect(config.dataset_name).to be_nil
+    expect(config.dataset_list).to eq([{ "id" => "333", "name" => "333" },
+                                       { "id" => "444", "name" => "444" }])
   end
 
   it "rejeita config CAPI sem dataset" do
-    stub_datasets([])
+    stub_datasets([{ "id" => "111", "name" => "Pixel Loja" }])
 
     patch conversion_config_admin_meta_integrations_path,
-          params: { meta_conversion_config: { dataset_id: "", enabled: "1" } }
+          params: { meta_conversion_config: { dataset_ids: [], enabled: "1" } }
 
     expect(response).to redirect_to(admin_meta_integrations_path)
     expect(flash[:alert]).to be_present

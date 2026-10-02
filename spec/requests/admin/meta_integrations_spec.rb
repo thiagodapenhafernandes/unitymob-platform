@@ -22,12 +22,12 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     sign_in admin
   end
 
-  it "exibe a seção de conversões com modal explicativo do Dataset" do
+  it "exibe a seção de resultados dos anúncios com modal explicativo" do
     page
     get admin_meta_integrations_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Conversões (CRM → Meta)", "metaDatasetInfoModal", "caixa postal")
+    expect(response.body).to include("Resultados dos anúncios", "Venda fechada", "metaDatasetInfoModal", "caixa postal")
   end
 
   it "oculta o catálogo e bloqueia seleção e consultas amplas fora da impersonação" do
@@ -73,7 +73,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
   it "apresenta os recursos da conexão e preserva o login por POST" do
     get admin_meta_integrations_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Instagram Direct", "Formulários de anúncios", "Campanhas e anúncios", "O WhatsApp exige conexão própria")
+    expect(response.body).to include("Mensagens do Instagram", "Contatos dos anúncios", "De qual campanha veio", "O WhatsApp tem conexão própria")
     document = Nokogiri::HTML(response.body)
     form = document.at_css(".ax-integration-onboarding form")
     expect(form["method"]).to eq("post")
@@ -121,7 +121,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     expect(Facebook::PermissionCheck).to receive(:call).with(integration).and_return({error: "Consulta indisponível"})
     get permissions_admin_meta_integrations_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("meta_permissions", "Como liberar o acesso", "Atualizar autorização", "rerequest")
+    expect(response.body).to include("meta_permissions", "Como liberar o acesso", "Renovar acesso", "rerequest")
     expect(response.body).not_to include(integration.access_token)
   end
 
@@ -196,7 +196,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     integration.update!(ad_account_id: nil)
     service = instance_double(Facebook::MetaService)
     get admin_meta_integrations_path
-    expect(response.body).to include(ad_accounts_admin_meta_integrations_path, "Consultando contas")
+    expect(response.body).to include(ad_accounts_admin_meta_integrations_path, "Buscando suas contas")
     allow(Facebook::MetaService).to receive(:new).with(integration.access_token).and_return(service)
     allow(service).to receive(:ad_accounts).and_return([{"account_id" => "123456", "name" => "Empresa"}])
     get ad_accounts_admin_meta_integrations_path
@@ -208,7 +208,7 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
     integration.update!(ad_account_id: "123456", ad_account_name: "Atual")
     allow_any_instance_of(Facebook::MetaService).to receive(:ad_accounts).and_return([])
     get ad_accounts_admin_meta_integrations_path
-    expect(response.body).to include("vínculo atual", "administrador do negócio")
+    expect(response.body).to include("escolhida antes", "administrador do Facebook")
     expect(integration.reload.ad_account_id).to eq("123456")
   end
 
@@ -238,10 +238,10 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("ax-integration-sections", "meta-integration-avatar--page")
-    expect(response.body).to include("ax-record-item", "meta-integration-account", "ax-disclosure-card")
-    expect(response.body).to include("Sincronizar Páginas", "Desconectar conta", page.name)
-    expect(response.body).to include("Configuração técnica", "https://app.saluteimoveis.com.br/webhooks/meta")
-    expect(response.body).to include("Página selecionada") if page.active?
+    expect(response.body).to include("ax-integration-hero", "ax-integration-section", "ax-disclosure-card")
+    expect(response.body).to include("Atualizar páginas", "Desconectar", page.name)
+    expect(response.body).to include("Informações para o suporte", "https://app.saluteimoveis.com.br/webhooks/meta")
+    expect(response.body).to include("Recebendo contatos") if page.active?
     expect(Nokogiri::HTML(response.body).at_css(".meta-integration-workspace").to_html).not_to match(/\bstyle\s*=/i)
   end
 
@@ -334,15 +334,15 @@ RSpec.describe "Admin::MetaIntegrations", type: :request do
 
     get admin_meta_integrations_path
 
-    expect(response.body).to include("Sincronização concluída com sucesso!")
-    expect(response.body).not_to include("Sincronização com pendências", "registro pendente")
+    expect(response.body).to include("Tudo atualizado!")
+    expect(response.body).not_to include("A atualização encontrou pendências", "registro pendente")
   end
 
   it "exibe pendências sem anunciar sucesso completo" do
     integration.update!(sync_status: "partial", sync_message: "Webhook da página: inscrição pendente.")
     get admin_meta_integrations_path
-    expect(response.body).to include("Sincronização concluída com pendências", "inscrição pendente")
-    expect(response.body).not_to include("Sincronização concluída com sucesso!")
+    expect(response.body).to include("Atualizado, mas com pendências", "inscrição pendente")
+    expect(response.body).not_to include("Tudo atualizado!")
   end
 
   it "anuncia o progresso da sincronizacao sem spinner legado" do

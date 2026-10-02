@@ -10,6 +10,9 @@ module Meta
       @config = config
     end
 
+    # Envia para todos os datasets configurados (mesmo event_id: a Meta
+    # dedupa por dataset). Falha em qualquer um aborta com retry; o event_id
+    # estável evita duplicar nos que já receberam.
     def send_event(lead:, event_name:, event_id:, occurred_at:, value: nil)
       user_data = build_user_data(lead)
       if user_data["em"].blank? && user_data["ph"].blank?
@@ -17,26 +20,30 @@ module Meta
         return :skipped
       end
 
-      payload = {
-        "data" => [
-          {
-            "event_name" => event_name,
-            "event_time" => occurred_at.to_i,
-            "event_id" => event_id,
-            "action_source" => "system_generated",
-            "user_data" => user_data,
-            "custom_data" => build_custom_data(event_name, value)
-          }.compact
-        ]
-      }
-      payload["test_event_code"] = @config.test_event_code if @config.test_event_code.present?
+      event = {
+        "event_name" => event_name,
+        "event_time" => occurred_at.to_i,
+        "event_id" => event_id,
+        "action_source" => "system_generated",
+        "user_data" => user_data,
+        "custom_data" => build_custom_data(event_name, value)
+      }.compact
 
-      response = graph.graph_call("#{@config.dataset_id}/events", payload, "post")
-      Rails.logger.info("[Meta::ConversionService] lead_id=#{lead.id} event=#{event_name} " \
-                        "received=#{response&.dig("events_received")} trace=#{response&.dig("fbtrace_id")}")
+      @config.dataset_list.each do |dataset|
+        payload = { "data" => [event] }
+        payload["test_event_code"] = @config.test_event_code if @config.test_event_code.present?
+
+        begin
+          response = graph.graph_call("#{dataset["id"]}/events", payload, "post")
+          Rails.logger.info("[Meta::ConversionService] lead_id=#{lead.id} event=#{event_name} " \
+                            "dataset=#{dataset["id"]} received=#{response&.dig("events_received")} " \
+                            "trace=#{response&.dig("fbtrace_id")}")
+        rescue Koala::Facebook::APIError => e
+          raise ConversionError, "CAPI #{event_name} lead_id=#{lead.id} dataset=#{dataset["id"]}: #{e.fb_error_code} #{e.fb_error_type}"
+        end
+      end
+
       :sent
-    rescue Koala::Facebook::APIError => e
-      raise ConversionError, "CAPI #{event_name} lead_id=#{lead.id}: #{e.fb_error_code} #{e.fb_error_type}"
     end
 
     private

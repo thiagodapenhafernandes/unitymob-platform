@@ -66,9 +66,14 @@ class Admin::MetaIntegrationsController < Admin::BaseController
 
   def conversion_config
     config = MetaConversionConfig.instance(tenant: current_tenant)
-    attrs = params.require(:meta_conversion_config).permit(:dataset_id, :test_event_code, :enabled)
-    found = conversion_dataset_options.find { |dataset| dataset[:id] == attrs[:dataset_id].to_s }
-    attrs[:dataset_name] = found ? found[:name] : (config.dataset_id == attrs[:dataset_id] ? config.dataset_name : nil)
+    attrs = params.require(:meta_conversion_config).permit(:test_event_code, :enabled, :dataset_ids_manual, dataset_ids: [])
+    selected = Array(attrs.delete(:dataset_ids)).map(&:to_s).reject(&:blank?).uniq
+    selected |= attrs.delete(:dataset_ids_manual).to_s.split(/[,\s]+/).reject(&:blank?).uniq
+    known = conversion_dataset_options.index_by { |dataset| dataset[:id] }
+    preserved = config.dataset_list.index_by { |dataset| dataset["id"] }
+    attrs[:datasets] = selected.map do |id|
+      { "id" => id, "name" => known[id]&.dig(:name) || preserved[id]&.dig("name") || id }
+    end
 
     if config.update(attrs)
       redirect_to admin_meta_integrations_path, notice: "Configuração de conversões salva."
