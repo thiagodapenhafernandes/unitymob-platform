@@ -79,7 +79,7 @@
       final_image_type = @page_image_type.presence || ("image/png" if using_social_fallback_image)
       final_image_width = @page_image_width.presence || (512 if using_social_fallback_image)
       final_image_height = @page_image_height.presence || (512 if using_social_fallback_image)
-      canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : request.original_url))
+      canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : (@public_page_canonical_url.presence || request.original_url)))
       social_url = sanitize_utf8.call(@social_url.presence || canonical_url)
       og_title = sanitize_utf8.call(property_page ? (@social_title.presence || effective_title) : ((seo_public && !page_title_wins ? seo.og_title.presence : nil) || effective_title))
       og_description = strip_tags(property_page ? (@social_description.presence || effective_description) : ((seo_public && !page_description_wins ? seo.og_description.presence : nil) || effective_description))
