@@ -37,7 +37,7 @@ RSpec.describe "global submit guard" do
   end
 
   it "does not force modulepreload for non-entrypoint shared imports" do
-    expect(importmap_source).to include('pin "public", preload: false')
+    expect(importmap_source).to include('pin "public", preload: "public"')
     expect(importmap_source).to include('pin "ax_toast", preload: false')
     expect(importmap_source).to include('pin "submit_guard", preload: false')
     expect(importmap_source).to include('pin "@rails/actioncable", to: "actioncable.esm.js", preload: false')

@@ -6,6 +6,7 @@ import "pwa_scope_guard"
 // Controllers presentes na home / above-the-fold / modais sempre no DOM:
 // registro eager para evitar qualquer regressao no fluxo publico principal.
 import AutocompleteController from "controllers/autocomplete_controller"
+import CategoryFilterController from "controllers/category_filter_controller"
 import CardSwiperController from "controllers/card_swiper_controller"
 import ClickableCardController from "controllers/clickable_card_controller"
 import CodeSearchController from "controllers/code_search_controller"
@@ -31,6 +32,7 @@ import SearchTabsController from "controllers/search_tabs_controller"
 import TransactionToggleController from "controllers/transaction_toggle_controller"
 
 application.register("autocomplete", AutocompleteController)
+application.register("category-filter", CategoryFilterController)
 application.register("card-swiper", CardSwiperController)
 application.register("clickable-card", ClickableCardController)
 application.register("code-search", CodeSearchController)
@@ -62,7 +64,6 @@ application.register("transaction-toggle", TransactionToggleController)
 // acordar controllers dormentes de proposito (ex.: public-interest-tracker).
 const pageScopedControllers = [
   ["broker-share", () => import("controllers/broker_share_controller")],
-  ["category-filter", () => import("controllers/category_filter_controller")],
   ["fancybox-gallery", () => import("controllers/fancybox_gallery_controller")],
   ["home-video-showcase", () => import("controllers/home_video_showcase_controller")],
   ["photo-gallery", () => import("controllers/photo_gallery_controller")],

@@ -3,7 +3,7 @@
 # Preload do entrypoint só nos layouts que o usam (admin/field/wizard) — evita
 # o waterfall HTML -> application.js -> controllers no boot de cada full load.
 pin "application", preload: "application"
-pin "public", preload: false
+pin "public", preload: "public"
 pin "ax_toast", preload: false
 pin "submit_guard", preload: false
 pin "pwa_scope_guard", preload: false
@@ -29,3 +29,12 @@ pin "intl-tel-input", to: "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/+
 
 pin "lib/navigation_loader", to: "lib/navigation_loader.js", preload: "application"
 pin "lib/lead_attribution", to: "lib/lead_attribution.js"
+
+# Os módulos da busca começam a baixar junto com o HTML público.
+pin "controllers/application", to: "controllers/application.js", preload: "public"
+pin "controllers/hero_search_controller", to: "controllers/hero_search_controller.js", preload: "public"
+pin "controllers/hero_slider_controller", to: "controllers/hero_slider_controller.js", preload: "public"
+pin "controllers/search_tabs_controller", to: "controllers/search_tabs_controller.js", preload: "public"
+pin "controllers/category_filter_controller", to: "controllers/category_filter_controller.js", preload: "public"
+pin "controllers/location_filter_controller", to: "controllers/location_filter_controller.js", preload: "public"
+pin "controllers/filter_drawer_controller", to: "controllers/filter_drawer_controller.js", preload: "public"
