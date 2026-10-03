@@ -11,6 +11,10 @@ Rails.application.config.after_initialize do
       Storage::ActiveStorageRegistry.register_if_available!
     end
   end
+
+  ActiveStorage::TransformJob.after_perform do |job|
+    Storage::PublicImageVariants.publish(*job.arguments)
+  end
 end
 
 module ActiveStorageDynamicServices

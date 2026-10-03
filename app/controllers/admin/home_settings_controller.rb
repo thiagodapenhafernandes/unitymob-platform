@@ -9,13 +9,16 @@ class Admin::HomeSettingsController < Admin::BaseController
   def update
     uploaded_hero_slide_images = Array(params.dig(:home_setting, :hero_slide_images)).reject(&:blank?)
 
-    if @home_setting.update(home_setting_params)
+    HomeSetting.transaction do
+      @home_setting.update!(home_setting_params)
       append_hero_slides(uploaded_hero_slide_images)
-      redirect_to edit_admin_home_setting_path, notice: 'Configurações atualizadas com sucesso!'
-    else
-      load_home_sections
-      render :edit, status: :unprocessable_entity
     end
+    redirect_to edit_admin_home_setting_path, notice: 'Configurações atualizadas com sucesso!'
+  rescue ActiveRecord::RecordInvalid => error
+    @home_setting.errors.add(:base, error.record.errors.full_messages.to_sentence) unless error.record == @home_setting
+    @home_setting.hero_slides.reset
+    load_home_sections
+    render :edit, status: :unprocessable_entity
   end
   
   private
@@ -72,24 +75,13 @@ class Admin::HomeSettingsController < Admin::BaseController
 
     files.each do |file|
       next_position += 1
-      optimized_file = HomeHeroSlide.optimized_upload_file(file)
       slide = @home_setting.hero_slides.build(
         position: next_position,
         active: true,
         alt_text: "#{current_tenant.name} - Imagem #{next_position}"
       )
-      slide.image.attach(
-        io: optimized_file,
-        filename: HomeHeroSlide.optimized_filename(file),
-        content_type: "image/jpeg"
-      )
+      slide.image.attach(file)
       slide.save!
-      slide.image.blob.update!(metadata: slide.image.blob.metadata.merge("optimized_for_web" => true))
-    rescue StandardError => e
-      Rails.logger.error("[HomeHeroSlide] Falha ao otimizar imagem do hero: #{e.class} - #{e.message}")
-    ensure
-      optimized_file&.close
-      optimized_file&.unlink
     end
   end
 end

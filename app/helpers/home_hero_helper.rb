@@ -5,15 +5,31 @@ module HomeHeroHelper
     ["mobiliado", "Mobiliado"], ["pronto", "Pronto morar"], ["na_planta", "Na planta"]
   ].freeze
 
-  # Locals do componente public_theme/components/hero a partir da primeira imagem do hero (mesma regra do hero luxury).
+  # Preload e todos os layouts usam as mesmas URLs e breakpoints.
+  def hero_image_sources
+    @hero_image_sources ||= begin
+      image = Array(@hero_images).first || {}
+      source = image[:source]
+      mobile = image[:mobile_source] || source
+      urls = Storage::PublicImageVariants::HERO.map do |options|
+        selected = options[:resize_to_limit].first <= 900 ? mobile : source
+        public_image_url(selected, **options).presence || public_image_url(selected).presence || selected
+      end
+      {
+        mobile: urls[0], desktop: urls[3],
+        mobile_srcset: "#{urls[0]} 640w, #{urls[1]} 900w",
+        desktop_srcset: "#{urls[2]} 1440w, #{urls[3]} 1920w"
+      }
+    end
+  end
+
   def hero_background_locals
-    image = Array(@hero_images).first || {}
-    source = image[:source]
-    mobile_source = image[:mobile_source] || source
-    background = public_image_url(source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(source).presence || source
-    mobile = public_image_url(mobile_source, resize_to_limit: [900, 1600], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(mobile_source).presence || mobile_source
+    sources = hero_image_sources
     {
-      background_url: background, background_mobile_srcset: mobile, background_sizes: "100vw", background_alt: ""
+      background_url: sources[:desktop],
+      background_srcset: sources[:desktop_srcset],
+      background_mobile_srcset: sources[:mobile_srcset],
+      background_sizes: "100vw", background_alt: ""
     }
   end
 

@@ -62,6 +62,7 @@ module UnitymobCrm
 
     # Active Storage configuration
     config.active_storage.variant_processor = :mini_magick
+    config.active_storage.queues.transform = :media
     config.active_storage.content_types_allowed_inline << "image/svg+xml"
     config.active_storage.content_types_to_serve_as_binary.delete("image/svg+xml")
 

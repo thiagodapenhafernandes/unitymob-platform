@@ -2,8 +2,12 @@ class Banner < ApplicationRecord
   include PublicSite::BumpsPageVersion
   include TenantScoped
   # ActiveStorage attachments
-  has_one_attached :image_desktop
-  has_one_attached :image_mobile
+  has_one_attached :image_desktop do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::BANNER)
+  end
+  has_one_attached :image_mobile do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::BANNER)
+  end
   
   # Positions as array (can be in multiple places)
   POSITIONS = {

@@ -699,8 +699,12 @@ class Habitation < ApplicationRecord
     foreign_key: 'codigo_empreendimento'
   
   # Active Storage Photos (For manual upload)
-  has_many_attached :photos
-  has_many_attached :watermark_photos
+  has_many_attached :photos do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::CARD)
+  end
+  has_many_attached :watermark_photos do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::CARD)
+  end
 
   scope :with_local_photos, -> {
     where(<<~SQL.squish)

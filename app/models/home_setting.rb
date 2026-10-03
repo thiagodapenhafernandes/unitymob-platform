@@ -36,8 +36,12 @@ class HomeSetting < ApplicationRecord
   validates(*HEADER_COLOR_FIELDS.keys, format: { with: /\A#[0-9a-f]{6}(?:[0-9a-f]{2})?\z/i }, allow_blank: true)
 
   # ActiveStorage attachments
-  has_one_attached :hero_background_desktop
-  has_one_attached :hero_background_mobile
+  has_one_attached :hero_background_desktop do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::HERO)
+  end
+  has_one_attached :hero_background_mobile do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::HERO)
+  end
   has_one_attached :filter_panel_background
   # Foto lateral do menu em tela cheia (navigation-overlay). Sem ela, o menu usa a do hero.
   has_one_attached :navigation_menu_image

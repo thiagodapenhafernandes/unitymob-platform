@@ -27,7 +27,7 @@ export default class extends Controller {
       this.observer?.disconnect()
       this.observer = null
       this.initializeSwiper()
-    }, { rootMargin: "700px 0px" })
+    }, { rootMargin: "200px 0px" })
 
     this.observer.observe(this.element)
   }
