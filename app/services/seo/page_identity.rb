@@ -11,7 +11,9 @@ module Seo
     INDEXABLE_PROPERTY_FILTERS = %w[transaction_type category tipo city cidade neighborhood bairro characteristics price_range].freeze
     INDEXABLE_DEVELOPMENT_FILTERS = %w[city cidade neighborhood bairro characteristics].freeze
 
-    IGNORED_PARAMS = /\A(utm_.*|fbclid|gclid|msclkid|_gl|commit|authenticity_token|controller|action)\z/
+    TRACKING_PARAMS = /\A(utm_(source|medium|campaign|term|content|id)|fbclid|gclid|msclkid|_gl|gbraid|wbraid|gad_source|gad_campaignid|ttclid)\z/
+
+    IGNORED_PARAMS = Regexp.union(TRACKING_PARAMS, /\A(utm_.*|commit|authenticity_token|controller|action)\z/)
 
     attr_reader :controller
 

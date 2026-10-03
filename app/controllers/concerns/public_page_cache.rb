@@ -20,6 +20,8 @@ module PublicPageCache
   MAX_AGE = 10.minutes
   CSRF_PLACEHOLDER = "__PUBLIC_PAGE_CSRF__".freeze
   CSRF_META = /(<meta name="csrf-token" content=")[^"]*(")/
+  PAGE_URL_PLACEHOLDER = "__PUBLIC_PAGE_URL__".freeze
+  PAGE_URL_INPUT = /(<input[^>]*name="page_url"[^>]*value=")[^"]*(")/
   CSRF_INPUT = /(<input[^>]*name="authenticity_token"[^>]*value=")[^"]*(")/
 
   MODE_SETTING_KEY = "site_cache.mode".freeze
@@ -32,7 +34,7 @@ module PublicPageCache
   end
 
   def self.normalize(html)
-    html.gsub(CSRF_META) { "#{$1}#{CSRF_PLACEHOLDER}#{$2}" }.gsub(CSRF_INPUT) { "#{$1}#{CSRF_PLACEHOLDER}#{$2}" }
+    html.gsub(PAGE_URL_INPUT) { "#{$1}#{PAGE_URL_PLACEHOLDER}#{$2}" }.gsub(CSRF_META) { "#{$1}#{CSRF_PLACEHOLDER}#{$2}" }.gsub(CSRF_INPUT) { "#{$1}#{CSRF_PLACEHOLDER}#{$2}" }
   end
 
   class_methods do
@@ -55,6 +57,7 @@ module PublicPageCache
       return
     end
 
+    @public_page_canonical_url = "#{request.base_url}#{request.path}" if key
     load_layout_settings
     block.call
     store_public_page(key, entry, mode) if key
@@ -62,14 +65,15 @@ module PublicPageCache
 
   def public_page_cache_key
     return unless request.get? && request.format.html? && !request.xhr?
-    return if request.query_string.present? || request.headers["Turbo-Frame"].present?
+    return if request.headers["Turbo-Frame"].present?
+    return unless request.query_parameters.keys.all? { |name| name.match?(Seo::PageIdentity::TRACKING_PARAMS) }
     return if flash.any? || current_admin_user.present?
 
     tenant = public_tenant
     version = PublicSite::PageVersion.current(tenant.id)
     return if version.blank?
 
-    ["public_page/v1", tenant.id, request.host, request.path, public_page_consent_state, version, public_page_blog_stamp(tenant)].join("/")
+    ["public_page/v2", tenant.id, request.host, request.path, public_page_consent_state, version, public_page_blog_stamp(tenant)].join("/")
   end
 
   def public_page_consent_state
@@ -95,6 +99,7 @@ module PublicPageCache
     response.headers["X-Public-Page-Cache"] = "hit"
     PublicSite::PageCacheStats.record(public_tenant.id, :hit)
     html = entry[:html].gsub(CSRF_PLACEHOLDER) { form_authenticity_token }
+      .gsub(PAGE_URL_PLACEHOLDER) { ERB::Util.html_escape(request.original_url) }
     render html: html.html_safe, layout: false
     Seo::PageTracker.record_visit!(self)
   end

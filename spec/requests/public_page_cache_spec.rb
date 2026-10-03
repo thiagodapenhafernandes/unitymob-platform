@@ -84,9 +84,26 @@ RSpec.describe "Cache de página pública (home)", type: :request do
       expect(cache_status).to eq("hit")
     end
 
-    it "não usa cache com query string" do
+    it "não usa cache com filtros ou parâmetros desconhecidos" do
       get root_path
-      get root_path, params: { utm_source: "teste" }
+      get root_path, params: { city: "teste" }
+      expect(cache_status).to be_nil
+    end
+
+    it "reutiliza a home em links de anúncios sem misturar a origem dos formulários" do
+      PublicForm.ensure_default_announce_property!(tenant: tenant)
+      cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "accepted"
+      allow(Seo::ConversionTracker).to receive(:record!).and_return(nil)
+      get root_path, params: { utm_source: "google", utm_campaign: "first", gclid: "primeiro" }
+      get root_path, params: { utm_source: "meta", utm_campaign: "second", fbclid: "segundo", gbraid: "teste" }
+      expect(cache_status).to eq("hit")
+      expect(response.body).not_to include("primeiro", PublicPageCache::PAGE_URL_PLACEHOLDER)
+      urls = Nokogiri::HTML(response.body).css('input[name="page_url"]').map { |input| input["value"] }
+      expect(Seo::ConversionTracker).to have_received(:record!).with(event_type: "campaign_click", request: anything, metadata: hash_including(page_url: include("utm_campaign=second")))
+      expect(urls).to be_present
+      expect(urls).to all(include("fbclid=segundo"))
+      expect(Nokogiri::HTML(response.body).at_css('link[rel="canonical"]')["href"]).not_to include("fbclid", "gclid", "gbraid")
+      get root_path, params: { unknown: "1" }
       expect(cache_status).to be_nil
     end
 
