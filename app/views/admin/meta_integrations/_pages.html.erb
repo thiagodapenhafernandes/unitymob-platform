@@ -3,11 +3,11 @@
     <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
       <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Atualizar páginas
     <% end %>
-    <% if impersonating_admin_user? %>
+    <% if respond_to?(:impersonating_admin_user?) && impersonating_admin_user? %>
       <%= button_tag "Selecionar páginas", type: "button", class: "ax-btn", data: {ax_modal_open: "metaPageSelectionModal"} %>
     <% end %>
   <% end %>
-  <% if impersonating_admin_user? %>
+  <% if respond_to?(:impersonating_admin_user?) && impersonating_admin_user? %>
     <%= turbo_stream_from "meta_selection_#{@integration.id}" %>
     <%= ax_quick_modal(id: "metaPageSelectionModal", title: "Selecionar páginas") do %>
       <%= render "admin/meta_integrations/page_selection", integration: @integration %>
