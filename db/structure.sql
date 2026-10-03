@@ -5394,7 +5394,10 @@ CREATE TABLE public.property_settings (
     ai_property_search_temperature numeric(3,2) DEFAULT 0.2 NOT NULL,
     ai_property_search_top_p numeric(3,2) DEFAULT 0.8 NOT NULL,
     ai_property_search_frequency_penalty numeric(3,2) DEFAULT 0.5 NOT NULL,
-    ai_property_search_presence_penalty numeric(3,2) DEFAULT 0.2 NOT NULL
+    ai_property_search_presence_penalty numeric(3,2) DEFAULT 0.2 NOT NULL,
+    card_cta_enabled boolean DEFAULT true NOT NULL,
+    card_cta_title character varying DEFAULT 'Gostou deste imóvel?'::character varying NOT NULL,
+    card_cta_label character varying DEFAULT 'Ver mais fotos'::character varying NOT NULL
 );
 
 
@@ -19922,6 +19925,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261003223000'),
 ('20261002160000'),
 ('20261002150000'),
 ('20261002140000'),

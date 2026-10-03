@@ -229,3 +229,21 @@
     grid-template-columns: 1fr;
   }
 }
+
+// Estrutura compartilhada: carregamento progressivo e chamada final do card.
+.public-theme-load-more { text-align: center; margin: 2rem 0; }
+.public-theme-load-more__button { display: inline-flex; align-items: center; justify-content: center; padding: 1rem 2rem; font-weight: 700; text-decoration: none; }
+.public-theme-load-more__button[aria-disabled="true"] { opacity: .65; cursor: wait; }
+.public-theme-load-more__button:focus-visible, .public-theme-card-cta__button:focus-visible { outline: 3px solid currentColor; outline-offset: 4px; }
+.public-theme-load-more__status { min-height: 1.5em; margin-top: .75rem; }
+.public-theme-card-cta { position: relative; height: 100%; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.public-theme-card-cta__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.public-theme-card-cta__content { position: relative; z-index: 1; display: grid; justify-items: center; gap: 1rem; text-align: center; padding: 2rem 3rem; }
+.public-theme-card-cta__brand { font-size: .75rem; font-weight: 700; letter-spacing: .05em; }
+.public-theme-card-cta__title { font-size: clamp(1.2rem, 2vw, 1.8rem); line-height: 1.2; }
+.public-theme-card-cta__button { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem 1rem; text-decoration: none; font-weight: 700; }
+.public-theme-card-cta::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.public-theme-load-more--default .public-theme-load-more__button { border-radius: .75rem; background: var(--color-primary); color: #fff; }
+.public-theme-card-cta--default { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: #fff; }
+.public-theme-card-cta--default::after { background: color-mix(in srgb, var(--color-primary) 60%, transparent); }
+.public-theme-card-cta--default .public-theme-card-cta__button { background: #fff; color: var(--color-primary); border-radius: .5rem; }

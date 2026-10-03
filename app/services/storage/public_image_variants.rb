@@ -15,7 +15,8 @@ module Storage
       "HomeHeroSlide" => %w[image],
       "HomeSetting" => %w[hero_background_desktop hero_background_mobile],
       "Banner" => %w[image_desktop image_mobile],
-      "Habitation" => %w[photos watermark_photos]
+      "Habitation" => %w[photos watermark_photos],
+      "PropertySetting" => %w[card_cta_image]
     }.freeze
 
     def self.define(attachment, transformations)

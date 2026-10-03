@@ -1,6 +1,7 @@
 require "mini_magick"
 
 class PropertySetting < ApplicationRecord
+  include PublicSite::BumpsPageVersion
   AI_PROPERTY_SEARCH_DATA_SOURCES = %w[database external_api imported_xml json_feed].freeze
   AI_PROPERTY_SEARCH_SORTS = %w[relevance price_asc price_desc recent area_desc].freeze
   AI_PROPERTY_SEARCH_DATA_SOURCE_LABELS = {
@@ -296,7 +297,15 @@ class PropertySetting < ApplicationRecord
   }.freeze
 
   has_one_attached :watermark_image
+  has_one_attached :card_cta_image do |attachment|
+    Storage::PublicImageVariants.define(attachment, Storage::PublicImageVariants::CARD)
+  end
+  attr_accessor :remove_card_cta_image
+  after_save { card_cta_image.purge_later if ActiveModel::Type::Boolean.new.cast(remove_card_cta_image) }
+  validates :card_cta_title, presence: true, length: { maximum: 80 }
+  validates :card_cta_label, presence: true, length: { maximum: 40 }
   validate :validate_watermark_upload
+  validate { validate_watermark_upload(:card_cta_image) }
   belongs_to :broker_capture_fallback_admin_user, class_name: "AdminUser", optional: true
   has_many :property_review_policies, dependent: :destroy
 
@@ -454,17 +463,21 @@ class PropertySetting < ApplicationRecord
 
   private
 
-  def validate_watermark_upload
-    change = attachment_changes["watermark_image"]
+  def validate_watermark_upload(attribute = :watermark_image)
+    change = attachment_changes[attribute.to_s]
     return unless change.is_a?(ActiveStorage::Attached::Changes::CreateOne)
 
     blob = change.blob
     if blob.persisted? && blob.metadata["tenant_id"].present? && blob.metadata["tenant_id"].to_s != tenant_id.to_s
-      errors.add(:watermark_image, "não pertence a esta conta")
+      errors.add(attribute, "não pertence a esta conta")
+      return
+    end
+    if attribute == :card_cta_image && blob.persisted? && blob.attachments.any? { |attachment| attachment.record.try(:tenant_id) != tenant_id }
+      errors.add(attribute, "não pertence a esta conta")
       return
     end
     unless %w[image/png image/jpeg image/webp].include?(blob.content_type) && blob.byte_size <= 5.megabytes
-      errors.add(:watermark_image, "deve ser PNG, JPEG ou WebP de até 5 MB")
+      errors.add(attribute, "deve ser PNG, JPEG ou WebP de até 5 MB")
       return
     end
 
@@ -476,19 +489,19 @@ class PropertySetting < ApplicationRecord
     end
     if io
       io.rewind
-      validate_watermark_image_content(io.read)
+      validate_watermark_image_content(io.read, attribute)
       io.rewind
     else
-      blob.open { |file| validate_watermark_image_content(file.read) }
+      blob.open { |file| validate_watermark_image_content(file.read, attribute) }
     end
   rescue ActiveStorage::FileNotFoundError, MiniMagick::Error
-    errors.add(:watermark_image, "não pôde ser lida; envie uma imagem válida")
+    errors.add(attribute, "não pôde ser lida; envie uma imagem válida")
   end
 
-  def validate_watermark_image_content(bytes)
+  def validate_watermark_image_content(bytes, attribute = :watermark_image)
     image = MiniMagick::Image.read(bytes)
     unless image.valid? && %w[PNG JPEG WEBP].include?(image.type) && image.width * image.height <= 25_000_000
-      errors.add(:watermark_image, "deve ser uma imagem PNG, JPEG ou WebP válida de até 25 megapixels")
+      errors.add(attribute, "deve ser uma imagem PNG, JPEG ou WebP válida de até 25 megapixels")
     end
   ensure
     image&.destroy!

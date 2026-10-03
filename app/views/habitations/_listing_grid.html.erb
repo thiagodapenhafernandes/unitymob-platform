@@ -1,13 +1,10 @@
         <%= turbo_frame_tag "public-listing-grid", data: { turbo_action: "advance", controller: "public-listing-nav", public_listing_nav_frame_value: "public-listing-grid", action: "click->public-listing-nav#follow" } do %>
         <% if @habitations.any? %>
         <% listing_query = request.query_parameters.except("share_token").sort.to_h.to_query %>
-        <% cache_if current_admin_user.blank? && params[:share_token].blank?, ['listing_grid_v3', public_tenant.id, request.host, PublicSite::PageVersion.current(public_tenant.id), public_tenant.public_site_theme_key, request.path, listing_query, @habitations.map(&:id), @habitations.map(&:updated_at).max] do %>
-        <%= theme_component(:property_grid, properties: @habitations, priority_images: true) %>
+        <% cache_if current_admin_user.blank? && params[:share_token].blank?, ['listing_grid_v4', public_tenant.id, request.host, PublicSite::PageVersion.current(public_tenant.id), public_tenant.public_site_theme_key, request.path, listing_query, @habitations.map(&:id), @habitations.map(&:updated_at).max] do %>
+        <%= theme_component(:property_grid, properties: @habitations, priority_images: @habitations.current_page == 1) %>
         
-        <!-- Pagination -->
-        <div class="public-habitations-index__pagination flex justify-center mt-8">
-          <%= theme_component(:pagination, collection: @habitations, max_pages: HabitationsController::MAX_PUBLIC_LISTING_PAGE, path_helper: ->(page) { public_listing_path(page: page) }) %>
-        </div>
+        <%= theme_component(:load_more, collection: @habitations) %>
         <% end %>
         <% else %>
           <%= render "listing_empty" %>

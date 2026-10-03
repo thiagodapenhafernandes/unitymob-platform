@@ -107,6 +107,11 @@ module ApplicationHelper
   # amigáveis /imoveis/venda/... e landings /imoveis/:seo_slug guardam
   # filtros no path) mais os query params mesclados com overrides.
   # Paginação e ordenação usam este helper para não perder a referência.
+  def public_property_card_settings(tenant = public_tenant)
+    @public_property_card_settings ||= {}
+    @public_property_card_settings[tenant.id] ||= PropertySetting.where(tenant_id: tenant.id).with_attached_card_cta_image.first || PropertySetting.new(tenant: tenant)
+  end
+
   def public_listing_path(overrides = {})
     query = request.query_parameters.merge(overrides.transform_keys(&:to_s)).compact_blank
     query.delete("page") if query["page"].to_i <= 1

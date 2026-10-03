@@ -89,6 +89,7 @@ export default class extends Controller {
     this.frameTargets.forEach((frame, frameIndex) => {
       const active = frameIndex === nextIndex
       frame.classList.toggle("is-active", active)
+      frame.inert = !active
       frame.setAttribute("aria-hidden", active ? "false" : "true")
     })
 

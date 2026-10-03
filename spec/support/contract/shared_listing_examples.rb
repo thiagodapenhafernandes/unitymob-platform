@@ -14,7 +14,7 @@ RSpec.shared_examples "contrato da listagem pública" do
 
   it "ordena resultados antes de paginação, SEO e buscas relacionadas" do
     grid_position = listing_source.index("theme_component(:property_grid")
-    pagination_position = listing_source.index("public-habitations-index__pagination")
+    pagination_position = listing_source.index("theme_component(:load_more")
     seo_position = listing_source.index("public-habitations-index__seo-intro")
     related_position = listing_source.index("public-habitations-index__strategic-links")
 

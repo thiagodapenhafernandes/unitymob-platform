@@ -1,0 +1,15 @@
+<% setting = local_assigns.fetch(:setting) %>
+<% if setting.card_cta_enabled? %>
+  <div class="public-theme-card-cta public-theme-card-cta--<%= variant %>">
+    <% if setting.card_cta_image.attached? %>
+      <%= image_tag "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", width: 720, height: 540, alt: "", class: "public-theme-card-cta__image", loading: "lazy", fetchpriority: "low", data: { src: public_image_url(setting.card_cta_image, resize_to_fill: [720, 540], format: :webp), public_card_gallery_target: "image" } %>
+    <% end %>
+    <div class="public-theme-card-cta__content">
+      <span class="public-theme-card-cta__brand"><%= (@layout_setting&.site_name.presence || local_assigns.fetch(:brand_name)) %></span>
+      <strong class="public-theme-card-cta__title"><%= setting.card_cta_title %></strong>
+      <%= link_to local_assigns.fetch(:property_url), class: "public-theme-card-cta__button", data: { turbo_frame: "_top" } do %>
+        <%= public_icon("camera") %> <%= setting.card_cta_label %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

@@ -6,7 +6,7 @@ RSpec.describe "Public habitations mobile listing contract" do
 
   it "renders results before SEO and related-search content" do
     grid_position = view_source.index("theme_component(:property_grid")
-    pagination_position = view_source.index("public-habitations-index__pagination")
+    pagination_position = view_source.index("theme_component(:load_more")
     seo_position = view_source.index("public-habitations-index__seo-intro")
     related_position = view_source.index("public-habitations-index__strategic-links")
 

@@ -39,6 +39,7 @@
 
     <%
       studio_items = [
+        { id: "property-settings-card", icon: "collection", label: "Card", hint: "Fotos e chamada para o imóvel", caption: "Site público" },
         { id: "property-settings-media", icon: "image", label: "Marca d'água", hint: "Mídia e prévia das fotos", caption: "Mídia" },
         { id: "property-settings-ai-activation", icon: "toggles", label: "Ativação", hint: "Recursos e execução base", caption: "Busca inteligente por IA" },
         { id: "property-settings-ai-interpretation", icon: "chat-left-text", label: "Interpretação", hint: "Instruções e mensagens" },
@@ -56,6 +57,21 @@
       </div>
 
       <div class="ax-studio__stage" id="property-studio-sections">
+        <%= ax_studio_section(id: "property-settings-card", icon: "collection", title: "Card do imóvel", subtitle: "Até três fotos reais e uma chamada final com a identidade da sua conta.") do %>
+          <%= ax_studio_group(title: "Chamada final do carrossel", subtitle: "Sem upload, usamos as cores e o nome da conta. A imagem personalizada é opcional e será otimizada no upload.") do %>
+            <%= ax_switch_field(form: f, method: :card_cta_enabled, label: "Exibir chamada para ver mais fotos") %>
+            <%= ax_field_grid do %>
+              <%= ax_text_field(form: f, method: :card_cta_title, label: "Título", maxlength: 80) %>
+              <%= ax_text_field(form: f, method: :card_cta_label, label: "Texto do botão", maxlength: 40) %>
+            <% end %>
+            <%= ax_file_field(form: f, method: :card_cta_image, label: "Imagem de fundo personalizada", accept: "image/png,image/jpeg,image/webp", hint: "PNG, JPEG ou WebP até 5 MB. Proporção 4:3; o texto e o botão ficam sobre a imagem.") %>
+            <% if @property_setting.card_cta_image.attached? %>
+              <%= image_tag @property_setting.card_cta_image, width: 240, alt: "Imagem atual da chamada do card" %>
+              <%= ax_check_field(form: f, method: :remove_card_cta_image, label: "Remover imagem e usar o padrão da conta") %>
+            <% end %>
+          <% end %>
+        <% end %>
+
         <%= ax_studio_section(id: "property-settings-media", icon: "image", active: true,
                               title: "Marca d'água das fotos",
                               subtitle: "Arquivo, posição e intensidade aplicados quando o envio de fotos solicitar marca d'água.",
