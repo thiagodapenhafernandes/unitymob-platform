@@ -11,6 +11,14 @@ const context = vm.createContext({
 })
 vm.runInContext(source, context)
 const drawer = new context.Drawer()
+let mounted = 0
+const controls = { selectedCity: "Balneário Camboriú" }
+drawer.hasContentTarget = true
+drawer.contentTarget = { content: controls, replaceWith(content) {
+  assert.equal(content, controls)
+  mounted += 1
+  drawer.hasContentTarget = false
+} }
 drawer.hasVisualTarget = true
 drawer.visualTarget = { dataset: { backgroundUrl: "https://cdn.example.com/fundo.webp" }, style: {} }
 drawer.drawerTarget = { classList: { add() {} }, setAttribute() {} }
@@ -18,8 +26,12 @@ drawer.triggerTargets = []
 drawer.lockScroll = drawer.drawAllRanges = () => {}
 assert.equal(drawer.visualTarget.style.backgroundImage, undefined)
 drawer.open()
+assert.equal(mounted, 1)
+assert.equal(controls.selectedCity, "Balneário Camboriú")
 assert.equal(drawer.visualTarget.style.backgroundImage, 'url("https://cdn.example.com/fundo.webp")')
 assert.equal(drawer.visualTarget.dataset.backgroundUrl, undefined)
 drawer.open()
+assert.equal(mounted, 1)
+assert.equal(controls.selectedCity, "Balneário Camboriú")
 assert.equal(drawer.visualTarget.style.backgroundImage, 'url("https://cdn.example.com/fundo.webp")')
 console.log("Imagem do filtro: carregamento na abertura e reabertura OK")

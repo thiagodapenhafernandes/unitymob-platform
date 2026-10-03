@@ -72,6 +72,7 @@
                     local: true,
                     autocomplete: "off",
                     data: { filter_drawer_target: "form", action: "reset->filter-drawer#reset" } do %>
+        <template data-filter-drawer-target="content">
         <%= hidden_field_tag :transaction_type, transaction_type, id: nil, data: { segmented_input: "transaction" } %>
         <%= hidden_field_tag :v, "2", id: nil %>
         <%= hidden_field_tag :min_price, "", id: nil, data: { range_hidden: "valor-min" } %>
@@ -248,6 +249,7 @@
             Buscar imóveis
           </button>
         </div>
+        </template>
       <% end %>
     </div>
   </div>
