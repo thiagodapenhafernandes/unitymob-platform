@@ -1085,6 +1085,13 @@ class HabitationsController < ApplicationController
     end
   end
 
+  def public_page_cache_key
+    # Links de paginação preservam a query do visitante, inclusive atribuição.
+    return if request.query_parameters.present?
+
+    super
+  end
+
   def selected_categories
     normalize_filter_values(params[:category])
   end
