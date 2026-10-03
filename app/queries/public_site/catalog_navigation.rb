@@ -108,12 +108,9 @@ module PublicSite
       tenant.habitations.public_city_link_groups(cities: limit, neighborhoods: 0).map { |group| [group[:value], group[:count]] }
     end
 
-    # O total entra na chave porque excluir um imóvel antigo não muda o maior
-    # updated_at, e a contagem do menu ficaria velha até o TTL. O updated_at vai
-    # em microssegundos: em segundos, duas edições no mesmo segundo colidiam.
+    # A versão já muda no commit do imóvel, inclusive exclusões.
     def cache_key
-      updated_at, total = tenant.habitations.pick(Arel.sql("MAX(updated_at)"), Arel.sql("COUNT(*)"))
-      "public_catalog_navigation_v3/tenant/#{tenant.id}/#{updated_at ? updated_at.utc.strftime("%s%6N") : 0}/#{total.to_i}/#{limit}"
+      "public_catalog_navigation_v4/tenant/#{tenant.id}/#{PublicSite::PageVersion.current(tenant.id)}/#{limit}"
     end
   end
 end

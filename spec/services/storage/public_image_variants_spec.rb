@@ -19,12 +19,14 @@ RSpec.describe Storage::PublicImageVariants do
     options = described_class::HERO.last
     allow(Storage::PublicPropertyPhoto).to receive(:public_photos_enabled?).with(tenant: tenant).and_return(true)
     allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!).and_return(true)
+    version_before = PublicSite::PageVersion.current(tenant.id)
 
     ActiveStorage::TransformJob.perform_now(blob, options)
 
     variant_blob = blob.variant(**options).image.blob
     expect(variant_blob.content_type).to eq("image/webp")
     expect(variant_blob.metadata["public_web_image"]).to be(true)
+    expect(PublicSite::PageVersion.current(tenant.id)).not_to eq(version_before)
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_blob!).with(variant_blob)
     expect(blob.reload.attributes.values_at("key", "checksum", "content_type")).to eq([original_key, original_checksum, "image/png"])
     expect(ActiveStorage::TransformJob.new.queue_name).to eq("media")

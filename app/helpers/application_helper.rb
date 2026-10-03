@@ -58,6 +58,11 @@ module ApplicationHelper
   end
 
   def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, format: nil, quality: nil, strip: nil, saver: { quality: 82 }, force_variant: false, proxy: true, representation_proxy: false)
+    profile = Storage::PublicImageVariants::CARD.find { |item| item[:resize_to_fill] == resize_to_fill } if format.to_s == "webp"
+    if profile
+      quality ||= profile[:quality]
+      strip = profile[:strip] if strip.nil?
+    end
     Storage::PublicCdnImageUrl.resolve(
       source,
       resize_to_limit:,

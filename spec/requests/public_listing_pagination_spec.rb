@@ -45,6 +45,24 @@ RSpec.describe "Public listing pagination", type: :request do
     expect(response.body).not_to include("ALUGUEL-PAG-")
   end
 
+  it "entrega só a grade ao Turbo, preservando os imóveis filtrados" do
+    get "/imoveis/venda?page=2", headers: { "Turbo-Frame" => "public-listing-grid" }
+
+    expect(response).to have_http_status(:ok)
+    expect(result_codes.size).to eq(1)
+    expect(result_codes.first).to start_with("VENDA-PAG-")
+    expect(response.body).to include('id="public-listing-grid"')
+    expect(response.body).not_to include("<!DOCTYPE", "advanced-filters-form", "ALUGUEL-PAG-")
+  end
+
+  it "não oferece páginas que ultrapassam a proteção do servidor" do
+    allow_any_instance_of(HabitationsController).to receive(:cached_listing_total_entries).and_return(1200)
+    get "/imoveis/venda"
+
+    expect(pagination_hrefs).to include("/imoveis/venda?page=50")
+    expect(pagination_hrefs.none? { |href| href.match?(/page=(?:5[1-9]|[6-9]\d|\d{3,})\b/) }).to be(true)
+  end
+
   it "não emite page=1 nos links de retorno" do
     get "/imoveis/venda?page=2"
 

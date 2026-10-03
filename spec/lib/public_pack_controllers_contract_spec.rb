@@ -23,7 +23,7 @@ RSpec.describe "public.js gated controllers" do
   end
 
   it "mantém a fiação data-controller na ordenação e grade da listagem" do
-    index = Rails.root.join("app/views/habitations/index.html.erb").read
+    index = Rails.root.join("app/views/habitations/index.html.erb").read.sub('render "listing_grid"', Rails.root.join("app/views/habitations/_listing_grid.html.erb").read)
 
     expect(index).to include("change->public-listing-nav#sort")
     expect(index).to include("click->public-listing-nav#follow")

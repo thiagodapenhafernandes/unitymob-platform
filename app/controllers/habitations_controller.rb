@@ -45,8 +45,6 @@ class HabitationsController < ApplicationController
     total_entries = cached_listing_total_entries(listing_scope, filter_params)
     return if reject_public_listing_page_beyond_total!(total_entries)
 
-    load_filter_options
-
     @habitations = listing_scope
       .includes(
         :address,
@@ -55,6 +53,11 @@ class HabitationsController < ApplicationController
       )
       .paginate(page: requested_public_listing_page, per_page: PUBLIC_LISTING_PER_PAGE, total_entries: total_entries)
     PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 3).call
+    if request.headers["Turbo-Frame"] == "public-listing-grid" && request.format.html?
+      return render partial: "listing_grid", layout: false
+    end
+
+    load_filter_options
     
     # SEO page name
     @page_name = 'imoveis'
