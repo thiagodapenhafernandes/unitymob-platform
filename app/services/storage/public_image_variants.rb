@@ -44,7 +44,11 @@ module Storage
         Storage::PublicCdnImageUrl.variant_existence_cache_key(blob.id, variant_blob.id),
         true, expires_in: Storage::PublicCdnImageUrl::VARIANT_EXISTING_TTL
       )
-      PublicSite::PageVersion.bump(tenant.id)
+      # A URL de fallback continua válida. Agrupa a troca para URLs diretas durante
+      # lotes de imagens, sem invalidar o HTML a cada tamanho processado.
+      if Rails.cache.write("public_image_page_refresh/v1/tenant/#{tenant.id}", true, expires_in: 30.seconds, unless_exist: true)
+        PublicSite::PageVersion.bump(tenant.id)
+      end
     end
   end
 end
