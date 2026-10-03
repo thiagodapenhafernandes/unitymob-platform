@@ -1,6 +1,14 @@
 require "rails_helper"
 
 RSpec.describe Storage::PublicImageVariants do
+  around do |example|
+    previous = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = previous
+  end
+
   let(:tenant) { Tenant.create!(name: "Fotos Web", slug: "fotos-web-#{SecureRandom.hex(3)}") }
   let(:setting) { HomeSetting.instance(tenant: tenant) }
 
@@ -26,6 +34,7 @@ RSpec.describe Storage::PublicImageVariants do
     variant_blob = blob.variant(**options).image.blob
     expect(variant_blob.content_type).to eq("image/webp")
     expect(variant_blob.metadata["public_web_image"]).to be(true)
+    expect(Rails.cache.read(Storage::PublicCdnImageUrl.variant_existence_cache_key(blob.id, variant_blob.id))).to be(true)
     expect(PublicSite::PageVersion.current(tenant.id)).not_to eq(version_before)
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_blob!).with(variant_blob)
     expect(blob.reload.attributes.values_at("key", "checksum", "content_type")).to eq([original_key, original_checksum, "image/png"])

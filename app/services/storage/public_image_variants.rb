@@ -40,6 +40,10 @@ module Storage
       return unless Storage::PublicPropertyPhoto.publish_blob!(variant_blob)
 
       variant_blob.update!(metadata: variant_blob.metadata.merge("public_web_image" => true))
+      Rails.cache.write(
+        Storage::PublicCdnImageUrl.variant_existence_cache_key(blob.id, variant_blob.id),
+        true, expires_in: Storage::PublicCdnImageUrl::VARIANT_EXISTING_TTL
+      )
       PublicSite::PageVersion.bump(tenant.id)
     end
   end
