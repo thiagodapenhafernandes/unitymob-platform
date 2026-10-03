@@ -19,9 +19,17 @@ module Storage
     end
 
     def public_url_for_blob(blob, tenant: Current.tenant)
-      base_url = public_base_url(blob, tenant: tenant)
-      return if base_url.blank? || blob.blank? || blob.key.blank?
+      return if blob.blank? || blob.key.blank?
       return unless s3_blob?(blob)
+
+      # Serviços legados mantêm o bucket original, mesmo após trocar o
+      # armazenamento configurado da conta. Não misture os dois endereços.
+      if StorageIntegrationSetting::LEGACY_DO_SERVICE_NAMES.include?(blob.service_name.to_sym)
+        return blob.service.send(:object_for, blob.key).public_url
+      end
+
+      base_url = public_base_url(blob, tenant: tenant)
+      return if base_url.blank?
 
       "#{base_url}/#{escaped_key(blob.key)}"
     end
