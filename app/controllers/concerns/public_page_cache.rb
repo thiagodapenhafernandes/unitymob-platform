@@ -1,4 +1,4 @@
-# Cache do HTML completo de páginas públicas anônimas (hoje: home).
+# Cache do HTML completo de páginas públicas anônimas: home e listagens canônicas.
 #
 # Sem atraso: a chave inclui a versão da conta (PublicSite::PageVersion), que sobe no
 # commit de qualquer registro que apareça na página, e o estado do blog (publicação
