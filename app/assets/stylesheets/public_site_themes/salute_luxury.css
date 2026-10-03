@@ -5527,3 +5527,8 @@ body.no-scroll { overflow: hidden; }
 /* Vídeos da home: botão "Ver imóvel" do modal no estilo luxury (vidro escuro, filete dourado, serifada). */
 .home-video-section--salute-luxury .home-video-modal__cta { border-radius: 2px; border: 1px solid var(--sl-gold, #c9a45c); background: rgba(10, 20, 30, .55); backdrop-filter: blur(10px); color: #fff; font-family: var(--sl-serif, Georgia, serif); font-size: .85rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; box-shadow: none; }
 .home-video-section--salute-luxury .home-video-modal__cta:hover { background: var(--sl-gold, #c9a45c); color: #0a1420; filter: none; }
+
+.public-theme-load-more--salute-luxury .public-theme-load-more__button { background: var(--sl-navy-800); color: #fff; border: 1px solid var(--sl-gold); border-radius: 999px; font-family: var(--sl-sans); }
+.public-theme-card-cta--salute-luxury { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: #fff; font-family: var(--sl-sans); }
+.public-theme-card-cta--salute-luxury::after { background: color-mix(in srgb, var(--color-primary) 60%, transparent); }
+.public-theme-card-cta--salute-luxury .public-theme-card-cta__button { background: var(--sl-gold); color: var(--sl-navy-800); border-radius: 999px; }

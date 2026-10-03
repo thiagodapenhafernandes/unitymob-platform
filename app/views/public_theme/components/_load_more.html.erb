@@ -1,0 +1,10 @@
+<% collection = local_assigns.fetch(:collection) %>
+<% next_page = collection.next_page %>
+<div class="public-theme-load-more public-theme-load-more--<%= variant %>" data-public-listing-footer>
+  <% if next_page && next_page <= HabitationsController::MAX_PUBLIC_LISTING_PAGE %>
+    <%= link_to "Carregar mais imóveis", public_listing_path(page: next_page), class: "public-theme-load-more__button", data: { public_listing_more: true, action: "click->public-listing-nav#loadMore" } %>
+  <% else %>
+    <p class="public-theme-load-more__end"><%= next_page ? "Refine os filtros para encontrar mais imóveis." : "Você viu todos os imóveis desta busca." %></p>
+  <% end %>
+  <p class="public-theme-load-more__status" role="status" aria-live="polite"></p>
+</div>

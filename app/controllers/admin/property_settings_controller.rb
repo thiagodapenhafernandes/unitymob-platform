@@ -2,6 +2,7 @@ module Admin
   class PropertySettingsController < BaseController
     RETURN_ANCHORS = %w[
       property-settings-media
+      property-settings-card
       property-settings-ai-search
       property-settings-ai-activation
       property-settings-ai-interpretation
@@ -134,6 +135,7 @@ module Admin
 
     def property_setting_params
       params.require(:property_setting).permit(
+        :card_cta_enabled, :card_cta_title, :card_cta_label, :card_cta_image, :remove_card_cta_image,
         :watermark_position,
         :watermark_size_percentage,
         :watermark_opacity_percentage,

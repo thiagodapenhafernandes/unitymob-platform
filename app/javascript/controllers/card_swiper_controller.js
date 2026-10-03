@@ -74,9 +74,11 @@ export default class extends Controller {
         // Stop clicks from bubbling to card link
         on: {
           init: (swiper) => {
+            this.setActiveSlide(swiper)
             this.loadSlide(swiper.activeIndex)
           },
           slideChange: (swiper) => {
+            this.setActiveSlide(swiper)
             this.loadSlide(swiper.activeIndex)
             this.loadSlide(swiper.activeIndex + 1)
           },
@@ -100,6 +102,12 @@ export default class extends Controller {
 
   keepInside(event) {
     event.stopPropagation()
+  }
+
+  setActiveSlide(swiper) {
+    this.element.querySelectorAll(".swiper-slide").forEach((slide, index) => {
+      slide.inert = index !== swiper.activeIndex
+    })
   }
 
   loadSlide(index) {

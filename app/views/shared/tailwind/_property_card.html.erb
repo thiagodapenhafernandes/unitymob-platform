@@ -3,6 +3,7 @@
     __opportunity) + data-* de marketing-tracker, lead-capture e favorito.
     Lista completa em docs/public-theme-contract.md (Contrato v2); cobertura em
     spec/views/public_theme/property_card_contract_spec.rb. %>
+<% card_tenant = public_tenant %>
 <% property_title = property.display_title %>
 <% property_constructor = property.effective_constructor %>
 <% property_path = public_habitation_detail_path(property) %>
@@ -12,7 +13,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v10",
+    "public-property-card-v11",
     PublicSite::PageVersion.current(public_tenant.id),
     public_tenant.id,
     request.host,
@@ -106,6 +107,11 @@
             <div class="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
               <i class="bi bi-image text-4xl"></i>
             </div>
+          </div>
+        <% end %>
+        <% if public_property_card_settings(card_tenant).card_cta_enabled? %>
+          <div class="swiper-slide w-full aspect-[4/3]" inert style="width: 100% !important; flex-shrink: 0 !important;">
+            <%= render("public_theme/components/card_cta", property_url: property_path, setting: public_property_card_settings(card_tenant), variant: "default", brand_name: card_tenant.name) %>
           </div>
         <% end %>
       </div>

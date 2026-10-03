@@ -16,7 +16,7 @@ RSpec.describe "Public listing pagination", type: :request do
   end
 
   def pagination_hrefs
-    Nokogiri::HTML(response.body).css(".public-theme-pagination a[href]").map { |node| node["href"] }
+    Nokogiri::HTML(response.body).css("[data-public-listing-more][href]").map { |node| node["href"] }
   end
 
   before do
@@ -59,7 +59,7 @@ RSpec.describe "Public listing pagination", type: :request do
     allow_any_instance_of(HabitationsController).to receive(:cached_listing_total_entries).and_return(1200)
     get "/imoveis/venda"
 
-    expect(pagination_hrefs).to include("/imoveis/venda?page=50")
+    expect(pagination_hrefs).to include("/imoveis/venda?page=2")
     expect(pagination_hrefs.none? { |href| href.match?(/page=(?:5[1-9]|[6-9]\d|\d{3,})\b/) }).to be(true)
   end
 
@@ -72,11 +72,16 @@ RSpec.describe "Public listing pagination", type: :request do
     expect(doc.at_css(".public-habitations-index__primary-link")["data-turbo-frame"]).to eq("_top")
   end
 
-  it "não emite page=1 nos links de retorno" do
+  it "encerra o carregamento na última página" do
     get "/imoveis/venda?page=2"
+    expect(pagination_hrefs).to be_empty
+    expect(response.body).to include("Você viu todos os imóveis desta busca.")
+  end
 
-    expect(pagination_hrefs).to include("/imoveis/venda")
-    expect(pagination_hrefs.none? { |href| href.include?("page=1") }).to be(true)
+  it "não oferece mais resultados ao atingir o limite do servidor" do
+    allow_any_instance_of(HabitationsController).to receive(:cached_listing_total_entries).and_return(1200)
+    get "/imoveis/venda?page=50", headers: { "Turbo-Frame" => "public-listing-grid" }
+    expect(pagination_hrefs).to be_empty
   end
 
   it "preserva query params na paginação de busca por query string" do

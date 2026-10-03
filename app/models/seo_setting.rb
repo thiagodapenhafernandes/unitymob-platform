@@ -3,7 +3,7 @@ require "uri"
 class SeoSetting < ApplicationRecord
   include PublicSite::BumpsPageVersion
 
-  # Só a SeoSetting da home e só atributos que mudam o HTML (contadores de acesso e
+  # Home/listagem: só atributos que mudam o HTML (contadores de acesso e
   # descoberta não contam).
   PAGE_CONTENT_ATTRIBUTES = %w[meta_title meta_description meta_keywords og_title og_description og_image canonical_url canonical_path robots_index robots_follow intro_text active apply_to_public].freeze
   include TenantScoped
@@ -308,7 +308,7 @@ class SeoSetting < ApplicationRecord
   private
 
   def public_page_version_relevant?
-    page_name == "home" && (saved_changes.keys & PAGE_CONTENT_ATTRIBUTES).any?
+    (page_name == "home" || page_type == "property_listing") && (saved_changes.keys & PAGE_CONTENT_ATTRIBUTES).any?
   end
 
 end
