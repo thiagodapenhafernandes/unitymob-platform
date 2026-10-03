@@ -12,7 +12,8 @@ instalados, ActiveJob e a fila `media` do SolidQueue.
    em background após o commit. Nenhuma compressão roda no salvamento do hero.
 3. Hero gera WebP de 640, 900, 1440 e 1920 px; banners, 768 e 1440 px. Ambos
    usam qualidade 82 e removem metadados apenas da derivada. Cards geram WebP
-   360×270, 540×405 e 720×540, mantendo o perfil já usado pelas views.
+   360×270, 540×405 e 720×540, com qualidade 82 e remoção de metadados.
+   A publicação renova a versão do HTML público para retirar URLs antigas dos fragmentos.
 4. A derivada de um anexo público pode ser publicada no storage e entregue
    diretamente, sem passar pelo redirecionamento do Rails. A opção da conta
    `public_photos_enabled?` precisa permitir isso. Falha na ACL mantém a rota

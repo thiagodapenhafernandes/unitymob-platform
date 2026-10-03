@@ -1,5 +1,8 @@
 <%
   collection = local_assigns.fetch(:collection)
+  if local_assigns[:max_pages] && collection.total_pages > local_assigns[:max_pages]
+    collection = WillPaginate::Collection.new(collection.current_page, collection.per_page, local_assigns[:max_pages] * collection.per_page)
+  end
   variant = local_assigns.fetch(:variant, "default")
   pagination_class = ["public-theme-pagination", "public-theme-pagination--#{variant}", local_assigns[:class_name]].compact.join(" ")
   path_helper = local_assigns[:path_helper]

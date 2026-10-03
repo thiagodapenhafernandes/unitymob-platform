@@ -12,7 +12,8 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v9",
+    "public-property-card-v10",
+    PublicSite::PageVersion.current(public_tenant.id),
     public_tenant.id,
     request.host,
     property.cache_key_with_version,

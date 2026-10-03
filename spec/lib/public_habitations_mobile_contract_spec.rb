@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Public habitations mobile listing contract" do
-  let(:view_source) { Rails.root.join("app/views/habitations/index.html.erb").read }
+  let(:view_source) { Rails.root.join("app/views/habitations/index.html.erb").read.sub('render "listing_grid"', Rails.root.join("app/views/habitations/_listing_grid.html.erb").read) }
   let(:style_source) { Rails.root.join("app/assets/stylesheets/public_habitations_index_refresh.css").read }
 
   it "renders results before SEO and related-search content" do

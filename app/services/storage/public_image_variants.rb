@@ -6,7 +6,7 @@ module Storage
       { resize_to_limit: size, format: :webp, quality: 82, strip: true }
     end.freeze
     CARD = [[360, 270], [540, 405], [720, 540]].map do |size|
-      { resize_to_fill: size, format: :webp }
+      { resize_to_fill: size, format: :webp, quality: 82, strip: true }
     end.freeze
     BANNER = [[1440, 360], [768, 360]].map do |size|
       { resize_to_limit: size, format: :webp, quality: 82, strip: true }
@@ -40,6 +40,7 @@ module Storage
       return unless Storage::PublicPropertyPhoto.publish_blob!(variant_blob)
 
       variant_blob.update!(metadata: variant_blob.metadata.merge("public_web_image" => true))
+      PublicSite::PageVersion.bump(tenant.id)
     end
   end
 end
