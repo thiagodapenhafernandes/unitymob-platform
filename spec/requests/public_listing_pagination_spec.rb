@@ -63,6 +63,15 @@ RSpec.describe "Public listing pagination", type: :request do
     expect(pagination_hrefs.none? { |href| href.match?(/page=(?:5[1-9]|[6-9]\d|\d{3,})\b/) }).to be(true)
   end
 
+  it "entrega o estado vazio no frame e limpa os filtros pela página completa" do
+    get "/imoveis", params: { search: "zzzz-sem-imovel" }, headers: { "Turbo-Frame" => "public-listing-grid" }
+
+    doc = Nokogiri::HTML(response.body)
+    expect(response).to have_http_status(:ok)
+    expect(doc.at_css("#public-listing-grid").text).to include("Nenhum imóvel encontrado")
+    expect(doc.at_css(".public-habitations-index__primary-link")["data-turbo-frame"]).to eq("_top")
+  end
+
   it "não emite page=1 nos links de retorno" do
     get "/imoveis/venda?page=2"
 

@@ -8,9 +8,9 @@
             Tente remover alguns filtros ou navegar por buscas próximas para encontrar oportunidades semelhantes.
           </p>
           <div class="flex flex-wrap justify-center gap-2">
-            <%= link_to "Limpar filtros", habitations_path, class: "public-habitations-index__primary-link btn-primary inline-flex items-center gap-2" %>
+            <%= link_to "Limpar filtros", habitations_path, data: { turbo_frame: "_top" }, class: "public-habitations-index__primary-link btn-primary inline-flex items-center gap-2" %>
             <% Seo::StrategicLanding.available_property_links.first(4).each do |link| %>
-              <%= link_to link[:label], link[:path], class: "public-habitations-index__empty-link inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-three hover:text-blue-three transition-colors" %>
+              <%= link_to link[:label], link[:path], data: { turbo_frame: "_top" }, class: "public-habitations-index__empty-link inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-three hover:text-blue-three transition-colors" %>
             <% end %>
           </div>
         </div>

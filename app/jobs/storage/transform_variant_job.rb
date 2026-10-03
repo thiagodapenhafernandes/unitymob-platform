@@ -1,6 +1,7 @@
 module Storage
   class TransformVariantJob < ApplicationJob
     queue_as :media
+    queue_with_priority(-5)
 
     discard_on ActiveJob::DeserializationError
     discard_on ActiveStorage::IntegrityError
