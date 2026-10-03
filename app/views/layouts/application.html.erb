@@ -183,6 +183,9 @@
     <noscript><%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload", preload_links_header: false %></noscript>
     
     <%# JS with Defer %>
+    <% %w[application hero_search_controller hero_slider_controller search_tabs_controller category_filter_controller location_filter_controller filter_drawer_controller].each do |controller| %>
+      <%= tag.link rel: "modulepreload", href: asset_path("controllers/#{controller}.js"), crossorigin: "anonymous" %>
+    <% end %>
     <%= javascript_importmap_tags "public" %>
   </head>
 
