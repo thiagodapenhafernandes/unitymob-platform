@@ -39,6 +39,7 @@ RSpec.describe Storage::PublicImageVariants do
     expect(Storage::PublicPropertyPhoto).to have_received(:publish_blob!).with(variant_blob)
     expect(blob.reload.attributes.values_at("key", "checksum", "content_type")).to eq([original_key, original_checksum, "image/png"])
     expect(ActiveStorage::TransformJob.new.queue_name).to eq("media")
+    expect(ActiveStorage::TransformJob.new.priority).to eq(-10)
   end
 
   it "não publica anexos privados, mesmo com os mesmos tamanhos" do
