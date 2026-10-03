@@ -15,6 +15,12 @@ module PublicSite
       new(tenant:, limit:).call
     end
 
+    def self.invalidate(tenant_id)
+      Rails.cache.delete_matched("public_catalog_navigation_v5/tenant/#{tenant_id}/*")
+    rescue StandardError => error
+      Rails.logger.warn("[public_catalog_navigation] invalidation tenant_id=#{tenant_id} error=#{error.class}")
+    end
+
     def initialize(tenant:, limit:)
       @tenant = tenant
       @limit = limit.to_i.positive? ? limit.to_i : 5
@@ -108,9 +114,9 @@ module PublicSite
       tenant.habitations.public_city_link_groups(cities: limit, neighborhoods: 0).map { |group| [group[:value], group[:count]] }
     end
 
-    # A versão já muda no commit do imóvel, inclusive exclusões.
+    # Fotos publicadas renovam o HTML, sem reconstruir as contagens do menu.
     def cache_key
-      "public_catalog_navigation_v4/tenant/#{tenant.id}/#{PublicSite::PageVersion.current(tenant.id)}/#{limit}"
+      "public_catalog_navigation_v5/tenant/#{tenant.id}/#{limit}"
     end
   end
 end

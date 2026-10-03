@@ -841,6 +841,7 @@ class Habitation < ApplicationRecord
   # Depois do commit (não no after_save): senão uma requisição concorrente reconstruiria a
   # página com dados antigos sob a versão nova. Cobre também touch (foto anexada/removida).
   after_commit { PublicSite::PageVersion.bump(tenant_id) }
+  after_commit { PublicSite::CatalogNavigation.invalidate(tenant_id) }
   after_destroy :clear_cache
   after_create_commit :record_auto_audit_create, unless: :skip_auto_audit?
   after_update_commit :record_auto_audit_update, unless: :skip_auto_audit?

@@ -7,6 +7,14 @@ RSpec.describe PublicSite::CatalogNavigation do
 
   def total_count = described_class.call(tenant:).first&.dig(:count).to_i
 
+  it "mantém o catálogo aquecido quando apenas a publicação de imagens renova o HTML" do
+    create(:habitation, tenant:, exibir_no_site_flag: true)
+    before_count = total_count
+    expect_any_instance_of(described_class).not_to receive(:build_groups)
+    PublicSite::PageVersion.bump(tenant.id)
+    expect(total_count).to eq(before_count)
+  end
+
   it "reflete na hora um imóvel excluído, mesmo sendo o mais antigo (maior updated_at não muda)" do
     older = create(:habitation, tenant:, exibir_no_site_flag: true)
     create(:habitation, tenant:, exibir_no_site_flag: true)
