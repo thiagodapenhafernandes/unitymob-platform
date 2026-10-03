@@ -1488,9 +1488,9 @@ body.no-scroll { overflow: hidden; }
   pointer-events: auto;
 }
 .sl-property-card__media img,
-.public-theme-property-card--salute-luxury .public-theme-property-card__media img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.public-theme-property-card--salute-luxury .public-theme-property-card__media img { width: 100%; height: 100%; object-fit: cover; transition: filter .35s ease; }
 .sl-property-card:hover img,
-.public-theme-property-card--salute-luxury:hover img { transform: scale(1.04); }
+.public-theme-property-card--salute-luxury:hover img { filter: brightness(1.035); }
 .sl-property-card__media::after,
 .public-theme-property-card--salute-luxury .public-theme-property-card__media::after { content: ""; position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent 40%, rgba(6, 16, 28, .72)); }
 .public-theme-property-card--salute-luxury .public-theme-property-card__badges,
