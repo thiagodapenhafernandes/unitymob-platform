@@ -38,6 +38,8 @@ RSpec.describe "Cache de listagens canônicas", type: :request do
     get "/imoveis", params: { transaction_type: "locacao" }
     expect(response.headers["X-Public-Page-Cache"]).to be_nil
     expect(codes).not_to include("CACHE-VENDA")
+    get "/imoveis/venda", params: { utm_campaign: "campanha-atual" }
+    expect(response.headers["X-Public-Page-Cache"]).to be_nil
     get "/imoveis/venda", headers: { "Turbo-Frame" => "public-listing-grid" }
     expect(response.headers["X-Public-Page-Cache"]).to be_nil
     expect(response.body).not_to include("<!DOCTYPE")
