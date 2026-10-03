@@ -210,7 +210,10 @@ RSpec.describe "Habitation details", type: :request do
         content_type: "image/png"
       )
       habitation.reload
-      habitation.photos.first.blob.variant(resize_to_limit: [1200, 900], format: :webp).processed
+      blob = habitation.photos.first.blob
+      variant = blob.variant(resize_to_limit: [1200, 900], format: :webp).processed
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      Storage::PublicCdnImageUrl.new(blob).verify_variant(variant)
 
       get habitation_path(habitation)
 
@@ -1118,7 +1121,10 @@ RSpec.describe "Habitation details", type: :request do
         content_type: "image/png"
       )
       development.reload
-      development.photos.first.blob.variant(resize_to_limit: [1920, 1080], format: :webp).processed
+      blob = development.photos.first.blob
+      variant = blob.variant(resize_to_limit: [1920, 1080], format: :webp).processed
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      Storage::PublicCdnImageUrl.new(blob).verify_variant(variant)
 
       get empreendimento_details_path(development)
 

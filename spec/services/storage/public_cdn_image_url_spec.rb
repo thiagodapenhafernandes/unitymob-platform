@@ -185,6 +185,7 @@ RSpec.describe Storage::PublicCdnImageUrl do
       key: "missing-variant-key",
       service_name: blob.service_name,
       service: instance_double(ActiveStorage::Service, exist?: false),
+      metadata: {},
       reload: true,
       attachments: double("attachments", exists?: false),
       destroy: true
@@ -217,6 +218,9 @@ RSpec.describe Storage::PublicCdnImageUrl do
     result = described_class.resolve(blob, resize_to_fill: [640, 480], format: :webp)
 
     expect(result).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    expect(variant_blob.service).not_to have_received(:exist?)
+    expect(Storage::BlobAuditRecorder).not_to have_received(:record!)
+    described_class.new(blob).verify_variant(variant)
     expect(Storage::BlobAuditRecorder).to have_received(:record!).with(
       blob: variant_blob,
       action: "missing_variant_cleaned",

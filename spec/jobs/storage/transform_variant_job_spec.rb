@@ -7,9 +7,22 @@ RSpec.describe Storage::TransformVariantJob do
     transformations = { "resize_to_fill" => [640, 480] }
 
     allow(blob).to receive(:variant).with(resize_to_fill: [640, 480]).and_return(variant)
-    expect(variant).to receive(:processed)
+    allow_any_instance_of(Storage::PublicCdnImageUrl).to receive(:verify_variant).and_return(true)
+    expect(variant).to receive(:processed).and_return(variant)
 
     described_class.new.perform(blob, transformations)
+  end
+
+  it "regenera na fila uma variante ausente no storage" do
+    blob = instance_double(ActiveStorage::Blob, id: 124)
+    variant = instance_double(ActiveStorage::VariantWithRecord)
+    resolver = instance_double(Storage::PublicCdnImageUrl)
+    allow(blob).to receive(:variant).and_return(variant)
+    allow(Storage::PublicCdnImageUrl).to receive(:new).and_return(resolver)
+    expect(variant).to receive(:processed).twice.and_return(variant)
+    expect(resolver).to receive(:verify_variant).with(variant).twice.and_return(false, true)
+    expect(Storage::PublicImageVariants).to receive(:publish).with(blob, { "resize_to_fill" => [640, 480] })
+    described_class.new.perform(blob, { "resize_to_fill" => [640, 480] })
   end
 
   it "coloca a variante em quarentena quando o blob falha na integridade" do

@@ -85,6 +85,10 @@ module Storage
       end
     end
 
+    def verify_variant(variant)
+      variant_blob_exists?(variant, verify: true)
+    end
+
     def initialize(source, **options)
       @source = source
       @options = options
@@ -204,7 +208,7 @@ module Storage
       variant.respond_to?(:processed?, true) && variant.send(:processed?)
     end
 
-    def variant_blob_exists?(variant)
+    def variant_blob_exists?(variant, verify: false)
       return false unless variant.respond_to?(:image)
 
       variant_blob = variant.image&.blob
@@ -213,7 +217,12 @@ module Storage
 
       cache_key = self.class.variant_existence_cache_key(variant.blob.id, variant_blob.id)
       cached = Rails.cache.read(cache_key)
-      return cached if cached == true || cached == false
+      return cached if !verify && (cached == true || cached == false)
+
+      # Publicação concluída já confirmou a derivada. Variantes legadas sem
+      # confirmação usam o original enquanto a fila verifica o storage.
+      return true if !verify && variant_blob.metadata["public_web_image"]
+      return false unless verify
 
       exists = variant_blob.service.exist?(variant_blob.key)
       if exists

@@ -33,16 +33,30 @@ RSpec.describe "Cache de listagens canônicas", type: :request do
     expect(response.headers["X-Public-Page-Cache"]).to eq("miss")
   end
 
-  it "não compartilha query de filtro nem resposta do Turbo com a página inteira" do
+  it "separa filtros e atribuição e não compartilha respostas do Turbo" do
     warm("/imoveis/venda")
     get "/imoveis", params: { transaction_type: "locacao" }
-    expect(response.headers["X-Public-Page-Cache"]).to be_nil
+    expect(response.headers["X-Public-Page-Cache"]).to eq("miss")
     expect(codes).not_to include("CACHE-VENDA")
+    warm("/imoveis?transaction_type=locacao")
     get "/imoveis/venda", params: { utm_campaign: "campanha-atual" }
-    expect(response.headers["X-Public-Page-Cache"]).to be_nil
+    expect(response.headers["X-Public-Page-Cache"]).to eq("miss")
+    warm("/imoveis/venda?utm_campaign=campanha-atual")
     get "/imoveis/venda", headers: { "Turbo-Frame" => "public-listing-grid" }
     expect(response.headers["X-Public-Page-Cache"]).to be_nil
     expect(response.body).not_to include("<!DOCTYPE")
     expect(codes).to include("CACHE-VENDA")
   end
+  it "acelera detalhes sem servir imóveis retirados do site ou links privados" do
+    property = tenant.habitations.find_by!(codigo: "CACHE-VENDA")
+    path = "/imoveis/#{property.to_param}"
+    warm(path)
+    get path, params: { share_token: "invalido" }
+    expect(response.headers["X-Public-Page-Cache"]).to be_nil
+    property.update!(exibir_no_site_flag: false)
+    get path
+    expect(response).to redirect_to(habitations_path)
+    expect(response.headers["X-Public-Page-Cache"]).to be_nil
+  end
+
 end
