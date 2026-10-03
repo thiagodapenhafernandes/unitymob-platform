@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe Storage::PublicImageVariants do
+  include ActiveSupport::Testing::TimeHelpers
   around do |example|
     previous = Rails.cache
     Rails.cache = ActiveSupport::Cache::MemoryStore.new
@@ -40,6 +41,14 @@ RSpec.describe Storage::PublicImageVariants do
     expect(blob.reload.attributes.values_at("key", "checksum", "content_type")).to eq([original_key, original_checksum, "image/png"])
     expect(ActiveStorage::TransformJob.new.queue_name).to eq("media")
     expect(ActiveStorage::TransformJob.new.priority).to eq(-10)
+
+    published_version = PublicSite::PageVersion.current(tenant.id)
+    ActiveStorage::TransformJob.perform_now(blob, described_class::HERO.first)
+    expect(PublicSite::PageVersion.current(tenant.id)).to eq(published_version)
+    travel 31.seconds do
+      ActiveStorage::TransformJob.perform_now(blob, described_class::HERO.second)
+      expect(PublicSite::PageVersion.current(tenant.id)).not_to eq(published_version)
+    end
   end
 
   it "não publica anexos privados, mesmo com os mesmos tamanhos" do
