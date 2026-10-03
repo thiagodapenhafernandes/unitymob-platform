@@ -1,4 +1,4 @@
-# Cache do HTML completo de páginas públicas anônimas: home e listagens canônicas.
+# Cache do HTML completo de páginas públicas anônimas: home, buscas e detalhes de imóveis.
 #
 # Sem atraso: a chave inclui a versão da conta (PublicSite::PageVersion), que sobe no
 # commit de qualquer registro que apareça na página, e o estado do blog (publicação
@@ -66,7 +66,7 @@ module PublicPageCache
   def public_page_cache_key
     return unless request.get? && request.format.html? && !request.xhr?
     return if request.headers["Turbo-Frame"].present?
-    return unless request.query_parameters.keys.all? { |name| name.match?(Seo::PageIdentity::TRACKING_PARAMS) }
+    return unless public_page_cache_query_allowed?
     return if flash.any? || current_admin_user.present?
 
     tenant = public_tenant
@@ -74,6 +74,10 @@ module PublicPageCache
     return if version.blank?
 
     ["public_page/v2", tenant.id, request.host, request.path, public_page_consent_state, version, public_page_blog_stamp(tenant)].join("/")
+  end
+
+  def public_page_cache_query_allowed?
+    request.query_parameters.keys.all? { |name| name.match?(Seo::PageIdentity::TRACKING_PARAMS) }
   end
 
   def public_page_consent_state

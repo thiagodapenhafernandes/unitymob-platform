@@ -10,11 +10,11 @@ class HabitationsController < ApplicationController
 
   include HabitationCaching
   include PublicPageCache
-  skip_before_action :load_layout_settings, only: :index
-  public_page_cache :index
+  skip_before_action :load_layout_settings, only: %i[index show]
   include ActionView::Helpers::NumberHelper
   before_action :set_habitation, only: [:show, :schedule_visit]
   before_action :redirect_to_canonical_habitation_url, only: [:show]
+  public_page_cache :index, :show
   before_action :authenticate_admin_user!, only: [:share_link]
   before_action :set_shareable_habitation, only: [:share_link]
   
@@ -1085,11 +1085,16 @@ class HabitationsController < ApplicationController
     end
   end
 
-  def public_page_cache_key
-    # Links de paginação preservam a query do visitante, inclusive atribuição.
-    return if request.query_parameters.present?
+  def public_page_cache_query_allowed?
+    !request.query_parameters.key?("share_token")
+  end
 
-    super
+  def public_page_cache_key
+    base = super
+    return unless base
+
+    # Cada busca e atribuição tem sua entrada: os links continuam com a query correta.
+    [base, Digest::SHA256.hexdigest(request.query_parameters.sort.to_h.to_query)].join("/")
   end
 
   def selected_categories
