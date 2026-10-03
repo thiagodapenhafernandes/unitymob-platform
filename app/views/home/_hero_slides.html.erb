@@ -3,7 +3,7 @@
     no _hero (LCP). Mesmo markup do loop original. %>
 <% Array(hero_images).each do |image| %>
   <% hero_source = image[:source] %>
-  <% desktop_source = public_image_url(hero_source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true).presence || public_image_url(hero_source).presence || hero_source %>
+  <% desktop_source = public_image_url(hero_source, **Storage::PublicImageVariants::HERO.last).presence || public_image_url(hero_source).presence || hero_source %>
   <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
   <div class="hero-slide" data-hero-slider-target="slide">
     <%= image_tag(placeholder,

@@ -1,12 +1,5 @@
 <%# Hero luxury da home com dados da plataforma (sem CMS de blocos). %>
-<%
-  luxury_hero_images = Array(@hero_images)
-  luxury_first_hero = luxury_hero_images.first || {}
-  luxury_hero_src = luxury_first_hero[:source] || luxury_first_hero["source"]
-  luxury_hero_mobile_src = luxury_first_hero[:mobile_source] || luxury_first_hero["mobile_source"] || luxury_hero_src
-  luxury_hero_bg = public_image_url(luxury_hero_src, resize_to_limit: [1920, 1080], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(luxury_hero_src).presence || luxury_hero_src
-  luxury_hero_mobile = public_image_url(luxury_hero_mobile_src, resize_to_limit: [900, 1600], format: :webp, force_variant: true, representation_proxy: true).presence || public_image_url(luxury_hero_mobile_src).presence || luxury_hero_mobile_src
-%>
+<% sources = hero_image_sources %>
 <%= render layout: "public_theme/components/hero",
       locals: {
         id: "top",
@@ -14,8 +7,9 @@
         class_name: "sl-hero",
         container_class: "sl-container",
         inner_class: "public-theme-hero__copy sl-hero__inner",
-        background_url: luxury_hero_bg,
-        background_mobile_srcset: luxury_hero_mobile,
+        background_url: sources[:desktop],
+        background_srcset: sources[:desktop_srcset],
+        background_mobile_srcset: sources[:mobile_srcset],
         background_sizes: "100vw",
         background_alt: "",
         background_class: "public-theme-hero__bg sl-hero__bg",

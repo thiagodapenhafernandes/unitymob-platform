@@ -46,7 +46,7 @@ module Storage
       :FotoPequena
     ].freeze
 
-    TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill format].freeze
+    TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill format quality strip].freeze
     BLOCKED_EXTERNAL_IMAGE_HOSTS = [
       "cdn.vistahost.com.br"
     ].freeze
@@ -174,7 +174,14 @@ module Storage
       return if transform_failed?(blob)
 
       variant = blob.variant(**variant_transformations)
-      return representation_path(variant) if variant_processed?(variant) && variant_blob_exists?(variant)
+      if variant_processed?(variant) && variant_blob_exists?(variant)
+        variant_blob = variant.image.blob
+        if variant_blob.metadata["public_web_image"] && Storage::PublicPropertyPhoto.public_photos_enabled?
+          url = Storage::PublicPropertyPhoto.public_url_for_blob(variant_blob)
+          return url if url.present?
+        end
+        return representation_path(variant)
+      end
 
       enqueue_variant_processing(blob)
       nil

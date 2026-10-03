@@ -12,21 +12,16 @@
   <div class="hero-slider-container">
     <% if @hero_images.present? %>
       <% first_image = @hero_images.first %>
-      <% hero_source = first_image[:source] %>
-      <% hero_mobile_source = first_image[:mobile_source] || hero_source %>
-      <% desktop_source = public_image_url(hero_source, resize_to_limit: [1920, 1080], format: :webp, force_variant: true).presence || public_image_url(hero_source).presence || hero_source %>
-      <% desktop_source_1440 = public_image_url(hero_source, resize_to_limit: [1440, 810], format: :webp, force_variant: true).presence || desktop_source %>
-      <% mobile_source_640 = public_image_url(hero_mobile_source, resize_to_limit: [640, 1138], format: :webp, force_variant: true).presence || public_image_url(hero_mobile_source).presence || hero_mobile_source %>
-      <% mobile_source_900 = public_image_url(hero_mobile_source, resize_to_limit: [900, 1600], format: :webp, force_variant: true).presence || mobile_source_640 %>
+      <% sources = hero_image_sources %>
       <div class="hero-slide active" data-hero-slider-target="slide">
         <picture>
           <source media="(max-width: 767px)"
-                  srcset="<%= "#{mobile_source_640} 640w, #{mobile_source_900} 900w" %>"
+                  srcset="<%= sources[:mobile_srcset] %>"
                   sizes="100vw">
           <source media="(min-width: 768px)"
-                  srcset="<%= "#{desktop_source_1440} 1440w, #{desktop_source} 1920w" %>"
+                  srcset="<%= sources[:desktop_srcset] %>"
                   sizes="100vw">
-          <%= image_tag(desktop_source,
+          <%= image_tag(sources[:desktop],
                         class: "hero-image",
                         alt: first_image[:alt],
                         width: 1920,

@@ -53,4 +53,23 @@ RSpec.describe "Admin::HomeSettings layout do hero", type: :request do
 
     expect(response.body).not_to include("ainda não está pronta")
   end
+
+  it "salva o original e enfileira a preparação das imagens do hero" do
+    upload = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/watermark.png"), "image/png")
+    expect {
+      patch admin_home_setting_path, params: { home_setting: { hero_slide_images: [upload] } }
+    }.to have_enqueued_job(ActiveStorage::TransformJob).exactly(4).times
+    expect(response).to have_http_status(:redirect)
+    expect(HomeSetting.find_by!(tenant_id: tenant.id).hero_slides.last.image.blob.content_type).to eq("image/png")
+  end
+
+  it "recusa arquivo incompatível sem salvar parcialmente a configuração" do
+    setting = HomeSetting.instance(tenant: tenant)
+    title = setting.hero_title
+    upload = Rack::Test::UploadedFile.new(StringIO.new("texto"), "text/plain", original_filename: "invalido.txt")
+    patch admin_home_setting_path, params: { home_setting: { hero_title: "Não salvar", hero_slide_images: [upload] } }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(setting.reload.hero_title).to eq(title)
+    expect(setting.hero_slides).to be_empty
+  end
 end

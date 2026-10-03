@@ -46,7 +46,8 @@
   <div class="public-theme-filter-drawer__scrim" data-action="click->filter-drawer#close"></div>
   <div class="public-theme-filter-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="public-global-search-title">
     <aside class="public-theme-filter-drawer__media">
-      <div class="public-theme-filter-drawer__image"<% if panel_visual_url.present? %> style="background-image: url('<%= j panel_visual_url %>')"<% end %>></div>
+      <%= tag.div class: "public-theme-filter-drawer__image",
+            data: { filter_drawer_target: "visual", background_url: panel_visual_url } %>
       <div class="public-theme-filter-drawer__grade"></div>
       <div class="public-theme-filter-drawer__ghost" aria-hidden="true"><%= panel_site_name.first.upcase %></div>
       <%= image_tag panel_logo, class: "public-theme-filter-drawer__logo", alt: panel_site_name if panel_logo.present? %>

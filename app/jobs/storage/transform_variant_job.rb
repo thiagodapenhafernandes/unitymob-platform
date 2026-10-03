@@ -8,6 +8,7 @@ module Storage
     def perform(blob, transformations)
       Storage::ActiveStorageRegistry.register_if_available! if defined?(Storage::ActiveStorageRegistry)
       blob.variant(**transformations.deep_symbolize_keys).processed
+      Storage::PublicImageVariants.publish(blob, transformations)
     rescue ActiveStorage::FileNotFoundError => error
       Storage::PublicCdnImageUrl.mark_transform_failed(
         blob: blob,

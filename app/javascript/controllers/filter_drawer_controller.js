@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 // do formulário: finalidade (__segment), faixas (__range-track), pills de quantidade.
 // Os selects múltiplos são o controller `combobox`.
 export default class extends Controller {
-  static targets = ["drawer", "form", "trigger"]
+  static targets = ["drawer", "form", "trigger", "visual"]
 
   connect() {
     this.handleKeydown = this.handleKeydown.bind(this)
@@ -26,6 +26,10 @@ export default class extends Controller {
 
   open(event) {
     event?.preventDefault()
+    if (this.hasVisualTarget && this.visualTarget.dataset.backgroundUrl) {
+      this.visualTarget.style.backgroundImage = `url(${JSON.stringify(this.visualTarget.dataset.backgroundUrl)})`
+      delete this.visualTarget.dataset.backgroundUrl
+    }
     this.lastTrigger = event?.currentTarget || null
     this.drawerTarget.classList.add("open")
     this.drawerTarget.setAttribute("aria-hidden", "false")
