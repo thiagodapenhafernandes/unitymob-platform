@@ -37,6 +37,7 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(response.body).to include("public_site_themes/#{theme_key}")
         expect(html.at_css(".public-theme-navigation-overlay--#{variant}[data-controller='navigation-overlay']")).to be_present
         expect(html.at_css(".public-theme-filter-drawer--#{variant}")).to be_present
+        expect(html.css("link[rel=modulepreload]").map { |link| link["href"] }.join).to include("category_filter_controller")
         deferred_filter = html.at_css("#filtroForm > template[data-filter-drawer-target=content]")
         expect(deferred_filter).to be_present
         expect(deferred_filter.at_css("button[type=submit]")).to be_present

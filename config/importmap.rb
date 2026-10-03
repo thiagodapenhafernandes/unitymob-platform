@@ -29,12 +29,3 @@ pin "intl-tel-input", to: "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/+
 
 pin "lib/navigation_loader", to: "lib/navigation_loader.js", preload: "application"
 pin "lib/lead_attribution", to: "lib/lead_attribution.js"
-
-# Os módulos da busca começam a baixar junto com o HTML público.
-pin "controllers/application", to: "controllers/application.js", preload: "public"
-pin "controllers/hero_search_controller", to: "controllers/hero_search_controller.js", preload: "public"
-pin "controllers/hero_slider_controller", to: "controllers/hero_slider_controller.js", preload: "public"
-pin "controllers/search_tabs_controller", to: "controllers/search_tabs_controller.js", preload: "public"
-pin "controllers/category_filter_controller", to: "controllers/category_filter_controller.js", preload: "public"
-pin "controllers/location_filter_controller", to: "controllers/location_filter_controller.js", preload: "public"
-pin "controllers/filter_drawer_controller", to: "controllers/filter_drawer_controller.js", preload: "public"
