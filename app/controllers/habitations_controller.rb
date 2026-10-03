@@ -9,6 +9,9 @@ class HabitationsController < ApplicationController
   MAX_PUBLIC_LISTING_PAGE = ENV.fetch("PUBLIC_LISTING_MAX_PAGE", 50).to_i
 
   include HabitationCaching
+  include PublicPageCache
+  skip_before_action :load_layout_settings, only: :index
+  public_page_cache :index
   include ActionView::Helpers::NumberHelper
   before_action :set_habitation, only: [:show, :schedule_visit]
   before_action :redirect_to_canonical_habitation_url, only: [:show]
