@@ -1,6 +1,10 @@
 // Layout utilizável antes de baixar/inicializar o Swiper, em todos os temas.
 .property-carousel {
   overflow: hidden;
+  // Reserve space for hover elevation and shadows without exposing adjacent slides.
+  padding: 24px 16px 72px;
+  margin: -24px -16px -72px;
+  width: calc(100% + 32px);
 
   > .swiper-wrapper {
     display: flex;
@@ -71,4 +75,18 @@
 .card-swiper .swiper-pagination-bullet-active {
   background: white;
   opacity: 1;
+}
+
+.public-theme-property-card__photo {
+  transition: filter .35s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .public-property-card:hover .public-theme-property-card__photo {
+    filter: brightness(1.035);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-property-card__photo { transition: none; }
 }
