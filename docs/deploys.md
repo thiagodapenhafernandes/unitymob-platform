@@ -62,6 +62,14 @@ Configuração: `config/deploy.rb` e `config/deploy/*.rb`; branch `master`.
 Verificar `<diretório>/current/.mina_git_revision`, symlink `current`, serviços,
 `https://saluteimoveis.com.br/up` ou `https://app.conexaobc.com/up`, além do fluxo alterado.
 
+`config/database.yml` é compartilhado: alterações no arquivo do repositório não
+atualizam esse arquivo nos servidores. O pool compartilhado deve usar
+`ENV.fetch("DB_POOL") { Integer(ENV.fetch("RAILS_MAX_THREADS", 5)) + 4 }`.
+Ao ajustar capacidade, preservar banco/credenciais, criar backup no servidor e
+validar o pool Rails com o ambiente efetivo do serviço, após reiniciá-lo.
+Em 04/10/2026, os pools foram alinhados a 9 na Salute e 10 na Conexão;
+os valores são por processo, não o total de conexões da instância.
+
 ## Central: Mina próprio
 
 ```bash
