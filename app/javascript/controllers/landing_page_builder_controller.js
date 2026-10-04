@@ -110,6 +110,13 @@ export default class extends Controller {
   toggleAddMenu(event) {
     event.stopPropagation()
     const open = this.addMenuListTarget.hidden
+    if (open) {
+      const rect = event.currentTarget.getBoundingClientRect()
+      const above = rect.top - 16
+      const below = window.innerHeight - rect.bottom - 16
+      this.addMenuListTarget.classList.toggle("is-below", below > above)
+      this.addMenuListTarget.style.setProperty("--lp-menu-space", `${Math.max(0, Math.max(above, below))}px`)
+    }
     this.addMenuListTarget.hidden = !open
     event.currentTarget.setAttribute("aria-expanded", open)
   }
