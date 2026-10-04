@@ -42,11 +42,13 @@ module Tenants
     end
 
     def locations
+      public_stores = footer.footer_stores.index_by(&:id)
       stores.filter_map do |store|
         next if store.address.blank?
 
         {
           id: "#{store.class.model_name.singular}-#{store.id}",
+          creci: (store.creci.presence if store.respond_to?(:creci)) || (public_stores[store.footer_store_id]&.creci.presence if store.respond_to?(:footer_store_id)),
           name: store.name.presence || name,
           address: store.respond_to?(:footer_address_line) ? store.footer_address_line : store.address,
           city: store.respond_to?(:city) ? store.city.presence : nil,

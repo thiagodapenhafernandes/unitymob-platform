@@ -16,7 +16,8 @@ RSpec.describe ApplicationHelper, type: :helper do
     helper.define_singleton_method(:public_tenant) { tenant }
     layout = LayoutSetting.instance(tenant: tenant)
     layout.logo.attach(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "logo.png", content_type: "image/png")
-    tenant.stores.create!(name: "Recife", address: "Rua A", city: "Recife", state: "PE")
+    branch = FooterSetting.instance(tenant: tenant).footer_stores.create!(name: "Recife", address: "Rua A", creci: "5678-J")
+    tenant.stores.create!(name: "Recife", address: "Rua A", city: "Recife", state: "PE", footer_store: branch)
     tenant.stores.create!(name: "Curitiba", address: "Rua B", city: "Curitiba", state: "PR")
     profile = PublicSiteProfile.current(tenant: tenant)
     profile.creci = "4321-J"
@@ -28,6 +29,7 @@ RSpec.describe ApplicationHelper, type: :helper do
     expect(helper.public_website_schema["publisher"]["@id"]).to eq(schema["@id"])
     expect(schema["logo"]).to be_present
     expect(schema["logo"]).to include("logo.png")
+    expect(schema["subOrganization"].first.dig("identifier", "value")).to eq("5678-J")
     expect(schema["subOrganization"].map { |branch| branch["@id"] }.uniq.size).to eq(2)
     expect(schema["subOrganization"].map { |branch| branch["@type"] }).to eq(["RealEstateAgent", "RealEstateAgent"])
     expect(schema["location"].map { |l| l["address"]["addressLocality"] }).to eq(["Recife", "Curitiba"])
