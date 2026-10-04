@@ -10,9 +10,7 @@ module Storage
     # Sets que renderizam acima da dobra (cards + hero). Detalhe/logo
     # aquecem no primeiro acesso (1 foto por vez, custo irrelevante).
     SETS = [
-      { resize_to_fill: [720, 540], format: :webp },
-      { resize_to_fill: [540, 405], format: :webp },
-      { resize_to_fill: [360, 270], format: :webp },
+      *Storage::PublicImageVariants::CARD,
       { resize_to_limit: [1920, 1080], format: :webp },
       { resize_to_limit: [1440, 810], format: :webp },
       { resize_to_limit: [900, 1600], format: :webp },

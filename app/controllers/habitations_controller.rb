@@ -227,6 +227,10 @@ class HabitationsController < ApplicationController
       return
     end
 
+    ActiveRecord::Associations::Preloader.new(
+      records: @habitation.photos_attachments.map(&:blob),
+      associations: { variant_records: { image_attachment: :blob } }
+    ).call
     load_share_context
     @public_map = PublicMaps::PropertyPresentation.new(@habitation)
 
@@ -472,7 +476,7 @@ class HabitationsController < ApplicationController
     identifier = identifier.to_s.strip
     return nil if identifier.blank?
 
-    lookup_scope = scope.with_attached_photos.includes(:address)
+    lookup_scope = scope.includes(:address, photos_attachments: :blob)
     lookup_scope.find_by(slug: identifier) ||
       lookup_scope.find_by(codigo: identifier) ||
       find_habitation_by_friendly_id(identifier, lookup_scope) ||
@@ -565,7 +569,8 @@ class HabitationsController < ApplicationController
   end
 
   def public_habitation_lookup_scope
-    public_habitation_scope.with_attached_photos.includes(
+    public_habitation_scope.includes(
+      { photos_attachments: :blob },
       :address,
       { constructor: { logo_attachment: :blob } },
       { empreendimento: { constructor: { logo_attachment: :blob } } }
