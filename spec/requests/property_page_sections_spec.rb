@@ -51,6 +51,28 @@ RSpec.describe "Página do imóvel — seções no formato completo", type: :req
     expect(breadcrumb_json["itemListElement"].map { _1["name"] }).to include("Balneário Camboriú", "Centro")
   end
 
+  it "loads linked development image variants in bulk while keeping its photos" do
+    development = create(:habitation, tipo: "Empreendimento", codigo: "DEV-PRELOAD", address_attributes: address)
+    4.times do |index|
+      development.photos.attach(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "photo-#{index}.png", content_type: "image/png")
+    end
+    unit = create(:habitation, codigo_empreendimento: development.codigo, address_attributes: address)
+    variant_lookups = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+      sql = payload[:sql].to_s
+      variant_lookups << sql if sql.include?("active_storage_variant_records") && sql.include?("variation_digest") && sql.start_with?("SELECT")
+    end
+    begin
+      get habitation_path(unit)
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).css(".public-theme-property-development__photo").size).to eq(4)
+    expect(variant_lookups).to be_empty
+  end
+
   describe "identidade do empreendimento por conta" do
     def create_unit_with_development(name:)
       development = create(:habitation, codigo: "DEV-ID-#{SecureRandom.hex(3)}", tipo: "Empreendimento", categoria: "Apartamento",

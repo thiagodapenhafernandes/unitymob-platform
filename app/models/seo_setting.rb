@@ -184,6 +184,8 @@ class SeoSetting < ApplicationRecord
   end
 
   def clear_seo_cache
+    return if !destroyed? && (saved_changes.keys - %w[updated_at last_generated_from_path]).empty?
+
     Rails.cache.delete("seo_setting_tenant_#{tenant_id}_#{page_name}")
     Rails.cache.delete("seo_setting_tenant_#{tenant_id}_#{canonical_key}")
     Footer::QuickLinksService.clear_cache if defined?(Footer::QuickLinksService)
