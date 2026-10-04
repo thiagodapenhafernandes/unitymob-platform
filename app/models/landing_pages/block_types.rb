@@ -32,6 +32,7 @@ module LandingPages
 
       def coerce(field, value)
         case field.type
+        when :public_form then value.to_i.positive? ? value.to_i : nil
         when :string then value.to_s.squish.first(field.limit || 200)
         when :text then value.to_s.strip.first(field.limit || 2000)
         when :rich then ActionController::Base.helpers.sanitize(value.to_s, tags: RICH_TAGS, attributes: RICH_ATTRIBUTES).strip
@@ -70,6 +71,10 @@ module LandingPages
                            hint: "Só vale em páginas com 2 ou 3 colunas. Blocos em coluna ficam lado a lado.")
 
     RAW = [
+      Definition.new(
+        key: "form", label: "Formulário", icon: "ui-checks", description: "Formulário publicado da sua conta, exibido diretamente na página.",
+        fields: [Field.new(name: :form_id, type: :public_form, label: "Formulário", default: nil)]
+      ),
       Definition.new(
         key: "cover", label: "Capa", icon: "image", description: "Faixa de abertura com título, imagem de fundo e botão.",
         fields: [

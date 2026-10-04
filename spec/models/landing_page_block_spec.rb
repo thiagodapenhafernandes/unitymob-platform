@@ -51,8 +51,8 @@ RSpec.describe LandingPageBlock do
 
   describe "catálogo de tipos" do
     it "tem os blocos de conteúdo, mídia e vitrine, todos com a largura na linha" do
-      expect(LandingPages::BlockTypes.keys).to eq(%w[cover text property_showcase button image video embed])
-      expect(LandingPages::BlockTypes.options.map(&:first)).to eq(["Capa", "Texto", "Vitrine de imóveis", "Botão", "Imagem", "Vídeo do YouTube", "Conteúdo incorporado (iframe)"])
+      expect(LandingPages::BlockTypes.keys).to eq(%w[form cover text property_showcase button image video embed])
+      expect(LandingPages::BlockTypes.options.map(&:first)).to eq(["Formulário", "Capa", "Texto", "Vitrine de imóveis", "Botão", "Imagem", "Vídeo do YouTube", "Conteúdo incorporado (iframe)"])
       expect(LandingPages::BlockTypes::ALL.map { |definition| definition.fields.last.name }.uniq).to eq([:span])
     end
 

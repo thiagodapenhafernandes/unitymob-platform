@@ -81,9 +81,9 @@ module PublicFormsHelper
     end
   end
 
-  def public_form_field_input(form_builder, field)
+  def public_form_field_input(form_builder, field, dom_id: field.public_form_id)
     name = "public_form_submission[#{field.name}]"
-    id = "public_form_#{field.public_form_id}_#{field.name}"
+    id = "public_form_#{dom_id}_#{field.name}"
     common = {
       id: id,
       name: name,

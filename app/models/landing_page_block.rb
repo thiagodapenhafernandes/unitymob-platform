@@ -43,6 +43,10 @@ class LandingPageBlock < ApplicationRecord
   # Endereço do iframe só se for https (nada de javascript:, data: ou http).
   def embed_url = value(:url).to_s.match?(%r{\Ahttps://[^\s"'<>]+\z}) ? value(:url).to_s : nil
 
+  def public_form
+    tenant&.public_forms&.active&.includes(:fields)&.find_by(id: value(:form_id)) if block_type == "form"
+  end
+
   def label = definition&.label || block_type.to_s.humanize
 
   private
@@ -66,6 +70,8 @@ class LandingPageBlock < ApplicationRecord
 
   def required_fields_for_type
     case block_type
+    when "form"
+      errors.add(:base, "Selecione um formulário publicado desta conta") unless public_form
     when "button"
       errors.add(:base, "O botão precisa de texto e de destino válido") if value(:label).blank? || value(:url).blank?
     when "video"
