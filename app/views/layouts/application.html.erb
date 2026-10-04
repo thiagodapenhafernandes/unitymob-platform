@@ -17,6 +17,7 @@
       seo ||= SeoSetting.for_page(@page_name || 'home') unless property_page || blog_page
       seo_public = seo&.public_applicable?
       # Página que traz o próprio título/descrição (ex.: Páginas do construtor) vence o SEO automático, não o manual.
+      page_title_wins = @page_title_priority && !seo&.manual_mode?
       page_description_wins = @page_description_priority && !seo&.manual_mode?
       effective_title = public_seo_title(seo, property_page: property_page)
       effective_description = if property_page
