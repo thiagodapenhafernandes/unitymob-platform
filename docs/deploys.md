@@ -70,6 +70,9 @@ validar o pool Rails com o ambiente efetivo do serviço, após reiniciá-lo.
 Em 04/10/2026, os pools foram alinhados a 9 na Salute e 10 na Conexão;
 os valores são por processo, não o total de conexões da instância.
 
+Monitoramento, recuperação limitada e rollback dos guards: [ops/shared/README.md](../ops/shared/README.md).
+O deploy aguarda `/healthz` saudável e aquece home/listagem; o HTML cacheado é separado por release.
+
 ## Central: Mina próprio
 
 ```bash

@@ -86,7 +86,7 @@
           <% card_images.each_with_index do |card_image, index|
                image_source = card_image[:url] %>
             <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
-              <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
+              <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" %>
               <% eager_card_image = priority_image && index.zero? %>
               <% visible_card_image = index.zero? %>
               <%= image_tag(visible_card_image ? image_source : placeholder,

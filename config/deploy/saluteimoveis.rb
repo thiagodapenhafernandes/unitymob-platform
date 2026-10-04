@@ -8,3 +8,5 @@ set :deploy_to, "/home/salute/deploy"
 
 set :puma_service, "puma_salute_imoveis_v3_production"
 set :solid_queue_service, "solid_queue_salute_imoveis_v3_production"
+
+set :public_host, "saluteimoveis.com.br"

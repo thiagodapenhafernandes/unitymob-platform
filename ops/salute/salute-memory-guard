@@ -17,6 +17,12 @@ readonly LOCK_FILE="$STATE_DIR/lock"
 readonly PUMA_UNIT="${PUMA_UNIT:-puma_salute_imoveis_v3_production.service}"
 readonly QUEUE_UNIT="${QUEUE_UNIT:-solid_queue_salute_imoveis_v3_production.service}"
 
+# O deploy já faz uma troca controlada de processos; não competir com ela.
+if [[ -n "${DEPLOY_MARKER:-}" && -f "$DEPLOY_MARKER" ]] &&
+   (( $(date +%s) - $(stat -c %Y "$DEPLOY_MARKER") < 600 )); then
+  exit 0
+fi
+
 mkdir -p "$STATE_DIR"
 exec 9>"$LOCK_FILE"
 flock -n 9 || exit 0

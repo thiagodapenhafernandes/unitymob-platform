@@ -8,3 +8,5 @@ set :deploy_to, "/home/conexao/deploy"
 
 set :puma_service, "puma_conexao_imobiliaria_production"
 set :solid_queue_service, "solid_queue_conexao_imobiliaria_production"
+
+set :public_host, "conexaobc.com"

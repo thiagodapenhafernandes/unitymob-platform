@@ -41,6 +41,19 @@ RSpec.describe "Cache de página pública (home)", type: :request do
       expect(PublicPageCache.normalize(response.body)).to eq(PublicPageCache.normalize(first_body))
     end
 
+    it "renova o HTML ao trocar a release sem limpar os demais caches" do
+      get root_path
+      get root_path
+      expect(cache_status).to eq("hit")
+      store.write("cache_preservado", "ok")
+      stub_const("PublicPageCache::RELEASE", "nova-release")
+      get root_path
+      expect(cache_status).to eq("miss")
+      get root_path
+      expect(cache_status).to eq("hit")
+      expect(store.read("cache_preservado")).to eq("ok")
+    end
+
     it "mostra na hora a mudança feita no admin (configuração de contato)" do
       get root_path
       get root_path

@@ -15,7 +15,7 @@
   image_loading = local_assigns.fetch(:image_loading, priority_image ? "eager" : "lazy")
   defer_initial_image = local_assigns.fetch(:defer_initial_image, false)
   card_images = property.card_image_sources(gallery_limit)
-  placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+  placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
   image_variants = card_images.map do |photo|
     {
       url: public_image_url(photo, resize_to_fill: [720, 540], format: :webp),
