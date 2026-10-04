@@ -220,7 +220,7 @@ module ApplicationHelper
       "url" => request.base_url,
       "logo" => absolute_public_url(logo_url),
       "telephone" => schema_phones.first.presence || identity.phone,
-      "email" => identity.email,
+      "email" => identity.footer_email,
       "address" => location_entries.first&.dig("address"),
       "sameAs" => identity.social_urls.presence,
       "contactPoint" => schema_phones.map do |phone|
