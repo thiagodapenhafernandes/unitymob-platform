@@ -20,3 +20,17 @@ test('card navega uma vez mesmo dentro de um ancestral com data-action; controle
   card.handleClick(event(outerAction));
   assert.equal(clicks, 1);
 });
+
+ test('fallback respeita Drive desativado no público e ativado no admin', () => {
+  const card = new ctx.Card();
+  card.element = { contains: () => false, querySelector: () => null };
+  card.urlValue = '/imoveis/apartamento';
+  const visits = [];
+  ctx.Turbo = { session: { drive: false }, visit: url => visits.push(['turbo', url]) };
+  ctx.window = { location: { assign: url => visits.push(['document', url]) } };
+  const event = { target: { closest: () => null } };
+  card.handleClick(event);
+  ctx.Turbo.session.drive = true;
+  card.handleClick(event);
+  assert.deepEqual(visits, [['document', card.urlValue], ['turbo', card.urlValue]]);
+});

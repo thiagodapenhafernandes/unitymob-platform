@@ -117,7 +117,11 @@ export default class extends Controller {
       if (trackingLink) {
         trackingLink.click()
       } else {
-        Turbo.visit(this.urlValue)
+        if (Turbo.session.drive) {
+          Turbo.visit(this.urlValue)
+        } else {
+          window.location.assign(this.urlValue)
+        }
       }
     }
   }

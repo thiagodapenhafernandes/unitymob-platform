@@ -36,7 +36,7 @@
   current_price_label = current_price.positive? ? "#{number_to_currency(current_price / 100.0, precision: 0)}#{price_suffix}" : "Sob consulta"
   previous_price_label = reduced_price ? "#{number_to_currency(previous_price / 100.0, precision: 0)}#{price_suffix}" : nil
   card_tracking_data = {
-    turbo_frame: "_top",
+    turbo: false, turbo_frame: "_top",
     controller: "marketing-tracker",
     action: "click->marketing-tracker#track",
     marketing_tracker_event_type_value: "property_card_click",
