@@ -1717,12 +1717,16 @@ class Habitation < ApplicationRecord
     end
   end
 
-  def own_public_image_sources
+  def own_public_image_sources(limit: nil)
     all_photos = ordered_photos
     hidden_ids = Array(site_hidden_photo_ids).map(&:to_i)
-    attached_images = all_photos.reject { |photo| hidden_ids.include?(photo.id) }.filter_map do |photo|
+    attached_images = []
+    all_photos.each do |photo|
+      next if hidden_ids.include?(photo.id)
+
       source = { "attachment" => photo }
-      source if public_attachment_source_available?(photo, source)
+      attached_images << source if public_attachment_source_available?(photo, source)
+      return attached_images if limit && attached_images.size >= limit
     end
     api_images = image_payload_sources
 
@@ -2873,7 +2877,10 @@ class Habitation < ApplicationRecord
   end
 
   def has_public_photo?
-    public_image_sources.any?
+    return true if own_public_image_sources(limit: 1).any?
+    return false unless use_development_photos?
+
+    empreendimento&.own_public_image_sources(limit: 1).present? || development_image_payload_sources.any?
   end
 
   def has_public_price?

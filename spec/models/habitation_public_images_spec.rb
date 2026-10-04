@@ -13,6 +13,17 @@ RSpec.describe Habitation, type: :model do
       }
     end
 
+    it "verifica disponibilidade só até a primeira foto pública válida" do
+      habitation = build(:habitation, pictures: [], site_hidden_photo_ids: [1])
+      hidden, valid, remaining = [1, 2, 3].map { |id| double("foto", id: id) }
+      allow(habitation).to receive(:ordered_photos).and_return([hidden, valid, remaining])
+      expect(habitation).not_to receive(:public_attachment_source_available?).with(hidden, anything)
+      expect(habitation).to receive(:public_attachment_source_available?).with(valid, anything).once.and_return(true)
+      expect(habitation).not_to receive(:public_attachment_source_available?).with(remaining, anything)
+
+      expect(habitation.send(:has_public_photo?)).to be(true)
+    end
+
     it "prioriza fotos anexadas na base para imóveis vindos do Vista" do
       habitation = create(:habitation, codigo: unique_code("VISTA"), address_attributes: address_attributes("Vista 1"), pictures: [vista_picture], imovel_dwv: "Nao")
       blob = ActiveStorage::Blob.create_and_upload!(
@@ -116,6 +127,7 @@ RSpec.describe Habitation, type: :model do
 
       expect(unit.public_image_sources).to be_present
       expect(unit.has_any_photo?).to be(true)
+      expect(unit.send(:has_public_photo?)).to be(true)
     end
 
     it "usa fotos do empreendimento vinculado quando a unidade optou pelo fallback e não tem fotos próprias" do
