@@ -24,6 +24,9 @@ module PublicPageCache
   PAGE_URL_INPUT = /(<input[^>]*name="page_url"[^>]*value=")[^"]*(")/
   CSRF_INPUT = /(<input[^>]*name="authenticity_token"[^>]*value=")[^"]*(")/
 
+  # Uma release nova nunca reutiliza HTML com assets/markup da release anterior.
+  RELEASE = Rails.root.join(".mina_git_revision").then { |path| path.file? ? path.read.strip : "local" }.freeze
+
   MODE_SETTING_KEY = "site_cache.mode".freeze
 
   def self.mode(tenant)
@@ -73,7 +76,7 @@ module PublicPageCache
     version = PublicSite::PageVersion.current(tenant.id)
     return if version.blank?
 
-    ["public_page/v2", tenant.id, request.host, request.path, public_page_consent_state, version, public_page_blog_stamp(tenant)].join("/")
+    ["public_page/v3", PublicPageCache::RELEASE, tenant.id, request.host, request.path, public_page_consent_state, version, public_page_blog_stamp(tenant)].join("/")
   end
 
   def public_page_cache_query_allowed?

@@ -178,10 +178,22 @@ task restart: :remote_environment do
   # processo. Como o Mina limpa releases antigas antes do launch, esse caminho
   # pode deixar de existir e fazer o Puma cair no Restart=always do systemd.
   # Um restart após a troca do symlink current sempre nasce na release atual.
+  command %(mkdir -p #{fetch(:deploy_to)}/shared/tmp && touch #{fetch(:deploy_to)}/shared/tmp/deploy-in-progress)
   comment "Restarting Puma..."
   command %(sudo systemctl restart #{fetch(:puma_service)})
   comment "Restarting Solid Queue..."
   command %(sudo systemctl restart #{fetch(:solid_queue_service)})
+  command %{
+    ready=0
+    for attempt in $(seq 1 30); do
+      if curl -fsS --max-time 5 -H 'Host: #{fetch(:public_host)}' -H 'X-Forwarded-Proto: https' http://127.0.0.1:9292/healthz >/dev/null; then ready=1; break; fi
+      sleep 2
+    done
+    if [ "$ready" != 1 ]; then echo "Application health check failed after restart"; exit 1; fi
+    rm -f #{fetch(:deploy_to)}/shared/tmp/deploy-in-progress
+    curl -fsS --max-time 30 -H 'Host: #{fetch(:public_host)}' -H 'X-Forwarded-Proto: https' -H 'Accept: text/html' http://127.0.0.1:9292/ >/dev/null
+    curl -fsS --max-time 30 -H 'Host: #{fetch(:public_host)}' -H 'X-Forwarded-Proto: https' -H 'Accept: text/html' http://127.0.0.1:9292/imoveis >/dev/null
+  }
 end
 
 desc "Mostra os logs da aplicação (Puma) em tempo real"
