@@ -22,7 +22,9 @@ endereços reais e CRECI cadastrado. Horários livres permanecem na página de c
 no `llms.txt`; turnos operacionais não são publicados como horários de atendimento.
 
 Listagens usam H1 contextual e URLs canônicas preservam todos os filtros múltiplos.
-Os cadastros manuais de SEO continuam tendo prioridade sobre os fallbacks automáticos.
+Títulos e descrições manuais de SEO continuam tendo prioridade sobre os fallbacks automáticos.
+Canonical e a proteção de buscas vazias funcionam mesmo com a descoberta automática
+desativada ou quando o visitante é um rastreador.
 
 ## Operação externa
 

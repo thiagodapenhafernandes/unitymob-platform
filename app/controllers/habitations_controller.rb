@@ -78,8 +78,15 @@ class HabitationsController < ApplicationController
       @page_keywords = [@strategic_landing[:label], "imóveis", default_public_city, public_site_name].compact_blank.join(", ")
     end
     
+    listing_identity = Seo::PageIdentity.new(self).to_h
+    @page_robots = "noindex, follow, max-image-preview:large" unless listing_identity[:robots_index]
+    if listing_identity[:normalized_params].present?
+      @canonical_url = "#{public_tenant.public_base_url(fallback_base_url: request.base_url)}#{listing_identity[:canonical_path]}"
+      @page_title_priority = @page_description_priority = true
+    end
+
     if requested_public_listing_page > 1
-      canonical_params = request.query_parameters.except("share_token", "gclid", "fbclid").reject { |key, _| key.start_with?("utm_") }
+      canonical_params = request.query_parameters.except("share_token").reject { |key, _| key.match?(Seo::PageIdentity::IGNORED_PARAMS) }
       canonical_params["page"] = requested_public_listing_page
       @canonical_url = "#{request.base_url}#{request.path}?#{canonical_params.to_query}"
     end

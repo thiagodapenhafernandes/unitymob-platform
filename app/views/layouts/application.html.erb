@@ -33,7 +33,7 @@
       if (property_page || @page_name == "imoveis") && !effective_robots.match?(/noindex|(?:no|max-image-)preview/)
         effective_robots = "#{effective_robots}, max-image-preview:large"
       end
-      effective_robots = @page_robots if blog_page && @page_robots.present?
+      effective_robots = @page_robots if (blog_page || @page_name == "imoveis") && @page_robots.present?
     %>
     
     <%# Dynamic Metadata %>
