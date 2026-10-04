@@ -12,6 +12,17 @@ RSpec.describe SeoSetting, type: :model do
     expect(seo.sanitized_canonical_path).to eq("/imoveis?city=Recife")
   end
 
+  it "preserves footer cache when only the last discovered URL changes" do
+    seo = described_class.create!(page_name: "trace-cache", canonical_key: "trace-cache", canonical_path: "/imoveis")
+    allow(Footer::QuickLinksService).to receive(:clear_cache)
+
+    seo.update!(last_generated_from_path: "/imoveis?utm_source=google")
+    expect(Footer::QuickLinksService).not_to have_received(:clear_cache)
+
+    seo.update!(meta_title: "Imóveis disponíveis")
+    expect(Footer::QuickLinksService).to have_received(:clear_cache).once
+  end
+
   describe "#social_image_url" do
     it "prioriza a imagem específica da página sobre a imagem global" do
       seo_setting = described_class.new(og_image: "/icon.png")

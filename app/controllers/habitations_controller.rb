@@ -544,6 +544,12 @@ class HabitationsController < ApplicationController
   def load_property_page_context
     development = @habitation.empreendimento
     @property_development = development if development && development.id != @habitation.id
+    if @property_development
+      ActiveRecord::Associations::Preloader.new(
+        records: [@property_development],
+        associations: { photos_attachments: { blob: { variant_records: { image_attachment: :blob } } } }
+      ).call
+    end
     @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
     @show_development_identity = @public_site_profile.show_development_identity?
     # Simulador na página (e na ETag): muda quando a conta liga/desliga ou a taxa muda.
