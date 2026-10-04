@@ -101,3 +101,8 @@
 .lp-filters__title em { margin-left: auto; color: #98a2b3; font-size: 11px; font-style: normal; font-weight: 700; }
 .lp-filters .ax-chip-section + .ax-chip-section { margin-top: 0; }
 .lp-filters .lp-flags { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+
+/* O painel só libera o recorte enquanto seu menu estiver aberto. */
+.landing-page-guided .ax-guided-step:has(.lp-dropdown__menu:not([hidden])) { overflow: visible; position: relative; z-index: 50; }
+.lp-dropdown__menu { max-height: min(60vh, var(--lp-menu-space, 60vh)); }
+.lp-dropdown__menu.is-below { top: calc(100% + 6px); bottom: auto; }
