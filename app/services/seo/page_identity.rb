@@ -221,7 +221,7 @@ module Seo
       return path if normalized.blank?
 
       pairs = normalized.flat_map do |key, value|
-        Array(value).map { |item| [key, item] }
+        Array(value).map { |item| [Array(value).size > 1 ? "#{key}[]" : key, item] }
       end
       query = URI.encode_www_form(pairs)
       "#{path}?#{query}"

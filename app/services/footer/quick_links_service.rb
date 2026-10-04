@@ -3,7 +3,7 @@ module Footer
     Link = Struct.new(:label, :url, keyword_init: true)
 
     LIMIT = 10
-    CACHE_KEY = "footer_quick_links_v2"
+    CACHE_KEY = "footer_quick_links_v3"
 
     class << self
       def call(limit: LIMIT)

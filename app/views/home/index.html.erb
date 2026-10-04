@@ -1,5 +1,6 @@
 <% content_for :head do %>
   <%= json_ld_tag(real_estate_agent_schema) %>
+  <%= json_ld_tag(public_website_schema) %>
   <%= stylesheet_link_tag "blog" if @home_sections.any?(&:blog?) %>
 <% end %>
 

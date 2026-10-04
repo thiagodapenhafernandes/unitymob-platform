@@ -299,6 +299,10 @@ class SeoSetting < ApplicationRecord
                end
                .sort
 
+    pairs = pairs.group_by(&:first).flat_map do |key, values|
+      values = values.uniq
+      values.map { |_, val| [values.size > 1 ? "#{key}[]" : key, val] }
+    end
     query = pairs.any? ? "?#{URI.encode_www_form(pairs)}" : ""
     "#{path}#{query}"
   rescue URI::InvalidURIError
