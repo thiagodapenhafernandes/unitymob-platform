@@ -620,6 +620,7 @@ Rails.application.routes.draw do
   # Root
   root 'home#index'
   post "marketing/events", to: "marketing_events#create", as: :marketing_events
+  get "llms.txt", to: "llms#show", defaults: { format: :text }, as: :llms
   get "robots.txt", to: "robots#show", defaults: { format: :text }, as: :robots
   get "sitemap.xml", to: "sitemaps#show", defaults: { format: :xml }, as: :sitemap
   

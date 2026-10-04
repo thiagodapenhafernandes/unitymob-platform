@@ -1,0 +1,55 @@
+# <%= strip_tags(@identity.name).squish %>
+
+> <%= strip_tags(@footer.about_text.to_s).squish.truncate(1200) %>
+
+## Sobre a empresa
+
+Site: <%= @base_url %>
+<% if @profile.creci.present? %>
+CRECI: <%= strip_tags(@profile.creci).squish %>
+<% end %>
+<% if @identity.phone.present? %>
+Telefone: <%= @identity.phone %>
+<% end %>
+<% if @contact.whatsapp_primary.present? %>
+WhatsApp: <%= @contact.whatsapp_primary %>
+<% end %>
+<% if @identity.footer_email.present? %>
+Email: <%= @identity.footer_email %>
+<% end %>
+<% @identity.locations.each do |location| %>
+Endereço (<%= strip_tags(location[:name]).squish %>): <%= [location[:address], location[:city], location[:state], location[:postal_code]].compact_blank.map { |value| strip_tags(value.to_s).squish }.join(" — ") %>
+<% end %>
+
+<% if @cities.any? %>
+## Localizações com imóveis no catálogo público
+
+<%= @cities.join(", ") %>.
+
+<% end %>
+## Páginas importantes
+
+- [Busca de imóveis](<%= @base_url %><%= habitations_path %>): Catálogo público e filtros de busca.
+- [Imóveis à venda](<%= @base_url %>/imoveis/venda): Consulta de imóveis disponíveis para compra.
+- [Locação](<%= @base_url %>/imoveis/aluguel): Consulta de imóveis disponíveis para locação.
+- [Empreendimentos](<%= @base_url %><%= empreendimentos_path %>): Projetos e empreendimentos do catálogo.
+- [Sobre a empresa](<%= @base_url %><%= sobre_path %>): Informações institucionais da conta.
+- [Contato](<%= @base_url %><%= contato_path %>): Atendimento e canais públicos de contato.
+<% if @articles.any? %>
+- [Blog](<%= @base_url %><%= blog_path %>): Guias e conteúdos publicados pela empresa.
+
+## Artigos recentes
+
+<% @articles.each do |article| %>
+- [<%= strip_tags(article.title).squish.gsub(/[\[\]]/, "") %>](<%= @base_url %><%= public_landing_page_path(article.slug) %>)
+<% end %>
+<% end %>
+
+## Informações sobre o catálogo
+
+Preços, disponibilidade e condições podem mudar. Consulte a página atual do imóvel e confirme as condições com a empresa. Este arquivo resume somente informações públicas da conta; não representa todo o catálogo.
+
+## Optional
+
+- [Sitemap](<%= @base_url %><%= sitemap_path %>): URLs públicas para descoberta do conteúdo.
+- [Política de privacidade](<%= @base_url %><%= privacy_policy_path %>): Tratamento de dados pessoais.

@@ -14,6 +14,7 @@ RSpec.describe "Public SEO rendering", type: :request do
     host! "localhost"
     get "/"
     expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css('link[rel="describedby"]')["href"]).to eq("/llms.txt")
     expect(response.body).to include("<title>home da conta</title>", 'content="home compartilhado"')
     create(:habitation, tenant: tenant)
     get "/imoveis"
