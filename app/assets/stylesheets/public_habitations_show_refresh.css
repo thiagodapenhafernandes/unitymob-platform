@@ -80,7 +80,7 @@
 
 .public-habitations-show__gallery-primary img,
 .public-habitations-show__gallery-thumb img {
-  background: #ffffff;
+  background-color: #ffffff;
   display: block;
   object-position: center center;
 }
