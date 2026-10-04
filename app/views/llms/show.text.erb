@@ -17,6 +17,9 @@ WhatsApp: <%= @contact.whatsapp_primary %>
 <% if @identity.footer_email.present? %>
 Email: <%= @identity.footer_email %>
 <% end %>
+<% if @contact.business_hours.present? %>
+Horário de atendimento: <%= strip_tags(@contact.business_hours).squish %>
+<% end %>
 <% @identity.locations.each do |location| %>
 Endereço (<%= strip_tags(location[:name]).squish %>): <%= [location[:address], location[:city], location[:state], location[:postal_code]].compact_blank.map { |value| strip_tags(value.to_s).squish }.join(" — ") %>
 <% end %>

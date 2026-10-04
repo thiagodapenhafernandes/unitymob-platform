@@ -14,5 +14,9 @@
       <article class="blog-prose"><%= body %></article>
     </div>
   <% end %>
+  <section class="blog-related" aria-labelledby="blog-catalog-title">
+    <h2 id="blog-catalog-title">Explore imóveis relacionados</h2>
+    <div class="blog-prose"><ul><% blog_catalog_links(@blog_article).each do |link| %><li><%= link_to link[:label], link[:path] %></li><% end %></ul></div>
+  </section>
   <% if @related_articles.any? %><section class="blog-related"><h2>Continue explorando</h2><div class="blog-grid"><%= render partial: "blog/card", collection: @related_articles, as: :article %></div></section><% end %>
 </div>

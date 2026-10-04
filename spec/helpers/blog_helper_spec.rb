@@ -1,5 +1,16 @@
 require "rails_helper"
 RSpec.describe BlogHelper, type: :helper do
+  it "links regional articles only to locations in this account's public catalog" do
+    article = Tenant.default.blog_articles.create!(title: "Como morar em Recife", content: "Texto")
+    helper.define_singleton_method(:public_filter_location_options) { [] }
+    allow(helper).to receive(:public_filter_location_options).and_return([{ type: "city", label: "Recife", value: "Recife" }, { type: "city", label: "Curitiba", value: "Curitiba" }])
+    links = helper.blog_catalog_links(article)
+    expect(links.map { |link| link[:label] }).to eq(["Imóveis em Recife"])
+    expect(Rack::Utils.parse_nested_query(URI.parse(links.first[:path]).query)).to eq("city" => ["Recife"])
+    article.title = "Como escolher seu apartamento"
+    expect(helper.blog_catalog_links(article)).to eq([{ label: "Consultar imóveis disponíveis", path: "/imoveis" }])
+  end
+
   it "preserves selected text formatting after saving and sanitizes public font sizes" do
     article = Tenant.default.blog_articles.create!(title: "Formatado", content: '<p><u>Sublinhado</u> <strong>Negrito</strong> <em>Itálico</em> <u style="font-size: 1.25em">Maior</u> <span style="font-size: 0.85em">Menor</span> <a href="https://example.com">Link</a></p>')
     html, = helper.blog_article_body(article.reload)

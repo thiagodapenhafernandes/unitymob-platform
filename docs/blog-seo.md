@@ -11,6 +11,19 @@ O sistema monta o SEO por tenant, sem exigir preenchimento adicional em cada art
 - robots.txt permite proxies assinados das imagens públicas, mantendo as demais exclusões. Isso não muda autorização de anexos nem torna o bucket público.
 - Conteúdo e links são renderizados no servidor; os rastreadores não precisam executar o editor JavaScript.
 
+## Vínculos regionais e identidade
+
+Artigos exibem links para pesquisas de cidades citadas no título, resumo ou categorias,
+somente quando a cidade existe no catálogo público da própria conta. Artigos sem
+correspondência oferecem o catálogo geral. O sistema não inventa guias ou dados regionais.
+
+A home identifica o site (`WebSite`), a imobiliária e suas unidades com IDs estáveis,
+endereços reais e CRECI cadastrado. Horários livres permanecem na página de contato e
+no `llms.txt`; turnos operacionais não são publicados como horários de atendimento.
+
+Listagens usam H1 contextual e URLs canônicas preservam todos os filtros múltiplos.
+Os cadastros manuais de SEO continuam tendo prioridade sobre os fallbacks automáticos.
+
 ## Operação externa
 
 Após deploy, validar o domínio real no Google Rich Results Test e Search Console e no Bing Webmaster Tools, cadastrando /sitemap.xml. Essas ferramentas exigem acesso à conta/propriedade do cliente. Não foram configuradas nem enviadas URLs externamente nesta implementação.

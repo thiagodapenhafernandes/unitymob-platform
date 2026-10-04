@@ -1,6 +1,17 @@
 require "rails_helper"
 
 RSpec.describe "Public SEO rendering", type: :request do
+  it "uses the selected locations in the heading and preserves both in the canonical" do
+    host! "localhost"
+    create(:habitation, tenant: Tenant.default)
+    get "/imoveis", params: { city: ["Balneário Camboriú", "Itajaí"], transaction_type: "venda" }
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    expect(html.at_css("h1").text).to include("à venda", "Balneário Camboriú", "Itajaí")
+    canonical = html.at_css('link[rel="canonical"]')["href"]
+    expect(Rack::Utils.parse_nested_query(URI.parse(canonical).query)["city"]).to match_array(["Balneário Camboriú", "Itajaí"])
+  end
+
   it "renders active account SEO and Open Graph metadata on home and listing" do
     tenant = Tenant.default
     %w[home imoveis].each do |page|

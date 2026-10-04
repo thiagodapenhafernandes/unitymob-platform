@@ -37,6 +37,16 @@ module BlogHelper
     { "@context" => "https://schema.org", "@graph" => graph }
   end
 
+  def blog_catalog_links(article)
+    text = I18n.transliterate([article.title, article.excerpt, *article.blog_categories.map(&:name)].join(" ")).downcase
+    cities = public_filter_location_options.select do |option|
+      option[:type] == "city" && text.match?(/(?<![a-z])#{Regexp.escape(I18n.transliterate(option[:label]).downcase)}(?![a-z])/)
+    end.first(3)
+    cities.map do |city|
+      { label: "Imóveis em #{city[:label]}", path: habitations_path(city: [city[:value]]) }
+    end.presence || [{ label: "Consultar imóveis disponíveis", path: habitations_path }]
+  end
+
   def blog_article_path(article)
     public_landing_page_path(article.slug)
   end

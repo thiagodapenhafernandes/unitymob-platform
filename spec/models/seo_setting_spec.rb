@@ -1,6 +1,17 @@
 require "rails_helper"
 
 RSpec.describe SeoSetting, type: :model do
+  it "preserves multiple filters through URL sanitization and repeated saves" do
+    seo = described_class.new(canonical_path: "/imoveis?characteristics=frente_mar&characteristics=mobiliado&characteristics=quadra_mar&utm_source=google")
+    2.times do
+      path = seo.sanitized_canonical_path
+      expect(Rack::Utils.parse_nested_query(URI.parse(path).query)).to eq("characteristics" => %w[frente_mar mobiliado quadra_mar])
+      seo.canonical_path = path
+    end
+    seo.canonical_path = "/imoveis?city%5B%5D=Recife"
+    expect(seo.sanitized_canonical_path).to eq("/imoveis?city=Recife")
+  end
+
   describe "#social_image_url" do
     it "prioriza a imagem específica da página sobre a imagem global" do
       seo_setting = described_class.new(og_image: "/icon.png")

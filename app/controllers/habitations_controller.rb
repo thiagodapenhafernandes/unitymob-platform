@@ -67,10 +67,12 @@ class HabitationsController < ApplicationController
     @discounted_results_present = discounted_results_present?
     
     # Definir meta tags para SEO
+    @listing_heading = [category_label, { "venda" => "à venda", "aluguel" => "para alugar", "locacao" => "para alugar" }[params[:transaction_type]], "em", selected_locations.presence&.to_sentence || location_label].compact.join(" ")
     @page_title = build_index_title
     @page_description = build_index_description
     @page_keywords = build_index_keywords
     if @strategic_landing.present?
+      @listing_heading = @strategic_landing[:title]
       @page_title = "#{@strategic_landing[:title]} | #{public_site_name}"
       @page_description = @strategic_landing[:description]
       @page_keywords = [@strategic_landing[:label], "imóveis", default_public_city, public_site_name].compact_blank.join(", ")

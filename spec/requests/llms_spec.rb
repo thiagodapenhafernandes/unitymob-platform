@@ -13,13 +13,14 @@ RSpec.describe "Account llms.txt", type: :request do
     FooterSetting.instance(tenant: tenant).update!(about_text: "<p>Equipe imobiliária local.</p>", email: "publico@example.com")
     profile = PublicSiteProfile.current(tenant: tenant)
     profile.creci = "1234-J"
+    ContactSetting.instance(tenant: tenant).update!(business_hours: "Segunda a sexta, das 9h às 18h")
     expect(profile.save).to eq(true)
     tenant.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
     host! "localhost"
     get "/llms.txt"
     expect(response).to have_http_status(:ok)
     expect(response.media_type).to eq("text/plain")
-    expect(response.body).to include("# Imóveis & Companhia", "> Equipe imobiliária local.", "CRECI: 1234-J", "publico@example.com", "https://conexaobc.com/imoveis", "https://conexaobc.com/sitemap.xml")
+    expect(response.body).to include("# Imóveis & Companhia", "> Equipe imobiliária local.", "CRECI: 1234-J", "Horário de atendimento: Segunda a sexta, das 9h às 18h", "publico@example.com", "https://conexaobc.com/imoveis", "https://conexaobc.com/sitemap.xml")
     expect(response.body).not_to include("<html", "<p>", "localhost", "40.000", "Salute Imóveis")
   end
 

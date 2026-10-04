@@ -33,8 +33,9 @@ class HomeController < ApplicationController
     
     # SEO
     @page_name = 'home'
-    @page_title = "#{public_identity.name} | Encontre seu Imóvel Ideal"
-    @page_description = 'Os melhores imóveis para venda e locação. Apartamentos, casas, terrenos e mais.'
+    region = public_identity.primary_city.presence
+    @page_title = [public_identity.name, "Imóveis#{" em #{region}" if region}"].join(" | ")
+    @page_description = "Encontre imóveis para venda e locação#{" em #{region} e região" if region}. Consulte o catálogo e fale com a equipe da #{public_identity.name}."
     
     # Cache da página (Browser)
     if @home_sections.any?(&:blog?)

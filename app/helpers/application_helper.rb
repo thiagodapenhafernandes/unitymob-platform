@@ -191,14 +191,18 @@ module ApplicationHelper
     identity = Tenants::PublicIdentity.new(public_tenant)
     layout = LayoutSetting.instance(tenant: public_tenant)
     logo_url = public_image_url(layout.logo) if layout.logo.attached?
+    base_url = public_tenant.public_base_url(fallback_base_url: request.base_url)
+    profile = PublicSiteProfile.current(tenant: public_tenant)
     schema_phones = identity.schema_phones
     home_seo = SeoSetting.for_page("home", tenant: public_tenant)
     home_description = home_seo.meta_description.presence if home_seo&.public_applicable?
+    home_description ||= @page_description
     map_address = identity.locations.first&.dig(:address).presence
     primary_city = identity.primary_city.presence
     location_entries = identity.locations.map do |location|
       {
         "@type" => "Place",
+        "@id" => "#{base_url}/#branch-#{location[:id] || "main"}",
         "name" => location[:name],
         "address" => {
           "@type" => "PostalAddress",
@@ -214,10 +218,10 @@ module ApplicationHelper
     {
       "@context" => "https://schema.org",
       "@type" => ["RealEstateAgent", "LocalBusiness"],
-      "@id" => "#{request.base_url}#organization",
+      "@id" => "#{base_url}/#organization",
       "name" => identity.name,
       "description" => home_description,
-      "url" => request.base_url,
+      "url" => base_url,
       "logo" => absolute_public_url(logo_url),
       "telephone" => schema_phones.first.presence || identity.phone,
       "email" => identity.footer_email,
@@ -234,8 +238,20 @@ module ApplicationHelper
       end.presence,
       "areaServed" => ({"@type" => "City", "name" => primary_city} if primary_city),
       "hasMap" => ("https://maps.google.com/?q=#{ERB::Util.url_encode(map_address)}" if map_address),
+      "identifier" => ({ "@type" => "PropertyValue", "propertyID" => "CRECI", "value" => profile.creci } if profile.creci.present?),
+      "subOrganization" => location_entries.map { |location| location.merge("@type" => "RealEstateAgent", "parentOrganization" => { "@id" => "#{base_url}/#organization" }) }.presence,
       "location" => location_entries.presence
     }.compact
+  end
+
+  def public_website_schema
+    base_url = public_tenant.public_base_url(fallback_base_url: request.base_url)
+    {
+      "@context" => "https://schema.org", "@type" => "WebSite",
+      "@id" => "#{base_url}/#website", "url" => base_url,
+      "name" => Tenants::PublicIdentity.new(public_tenant).name,
+      "inLanguage" => "pt-BR", "publisher" => { "@id" => "#{base_url}/#organization" }
+    }
   end
 
   def real_estate_listing_schema(habitation)

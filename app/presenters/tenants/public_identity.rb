@@ -46,6 +46,7 @@ module Tenants
         next if store.address.blank?
 
         {
+          id: "#{store.class.model_name.singular}-#{store.id}",
           name: store.name.presence || name,
           address: store.respond_to?(:footer_address_line) ? store.footer_address_line : store.address,
           city: store.respond_to?(:city) ? store.city.presence : nil,
