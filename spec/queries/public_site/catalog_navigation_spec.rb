@@ -33,4 +33,29 @@ RSpec.describe PublicSite::CatalogNavigation do
 
     expect(total_count).to eq(0)
   end
+
+  it "preserva filtros e contagens quando muda apenas o estado da sincronização" do
+    property = create(:habitation, tenant:, exibir_no_site_flag: true)
+    total_count
+    filter_key = Habitation.public_filter_location_options_cache_key(tenant.id)
+    Rails.cache.write(filter_key, ["cache aquecido"])
+    expect_any_instance_of(described_class).not_to receive(:build_groups)
+
+    property.update!(last_sync_at: Time.current, last_sync_status: "success", last_sync_message: "Sincronizado")
+
+    expect(Rails.cache.read(filter_key)).to eq(["cache aquecido"])
+    expect(total_count).to be >= 1
+  end
+
+  it "renova filtros e contagens quando a sincronização também muda o imóvel" do
+    property = create(:habitation, tenant:, exibir_no_site_flag: true)
+    total_count
+    filter_key = Habitation.public_filter_location_options_cache_key(tenant.id)
+    Rails.cache.write(filter_key, ["cache aquecido"])
+
+    property.update!(last_sync_at: Time.current, exibir_no_site_flag: false)
+
+    expect(Rails.cache.read(filter_key)).to be_nil
+    expect(total_count).to eq(0)
+  end
 end
