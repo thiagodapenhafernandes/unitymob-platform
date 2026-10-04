@@ -11,6 +11,7 @@ class RobotsController < ApplicationController
     base_url = public_tenant.public_base_url(fallback_base_url: request.base_url)
 
     <<~ROBOTS
+      User-agent: OAI-SearchBot
       User-agent: *
       Disallow: /admin/
       Disallow: /rails/

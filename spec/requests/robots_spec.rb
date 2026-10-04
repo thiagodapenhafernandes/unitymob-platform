@@ -5,6 +5,7 @@ RSpec.describe "Robots", type: :request do
     host! "localhost"
 
     get "/robots.txt"
+    expect(response.body).to include("User-agent: OAI-SearchBot\nUser-agent: *\nDisallow: /admin/\nDisallow: /rails/")
 
     expect(response).to have_http_status(:ok)
     expect(response.media_type).to eq("text/plain")
