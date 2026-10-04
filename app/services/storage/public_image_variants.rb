@@ -37,10 +37,11 @@ module Storage
       return unless Storage::PublicPropertyPhoto.public_photos_enabled?(tenant: tenant)
 
       variant_blob = blob.variant(**transformations.deep_symbolize_keys).image.blob
-      return if variant_blob.metadata["public_web_image"]
+      return if variant_blob.metadata["public_web_image"] && variant_blob.metadata["public_web_cache"]
       return unless Storage::PublicPropertyPhoto.publish_blob!(variant_blob)
 
-      variant_blob.update!(metadata: variant_blob.metadata.merge("public_web_image" => true))
+      Storage::PublicPropertyPhoto.cache_public_blob!(variant_blob)
+      variant_blob.update!(metadata: variant_blob.metadata.merge("public_web_image" => true, "public_web_cache" => true, "public_web_cdn" => Storage::PublicPropertyPhoto.public_cdn_available?(variant_blob)))
       Rails.cache.write(
         Storage::PublicCdnImageUrl.variant_existence_cache_key(blob.id, variant_blob.id),
         true, expires_in: Storage::PublicCdnImageUrl::VARIANT_EXISTING_TTL

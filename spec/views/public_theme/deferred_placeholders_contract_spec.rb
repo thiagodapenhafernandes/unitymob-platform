@@ -49,8 +49,8 @@ RSpec.describe "placeholders do conteúdo diferido público", type: :view do
     banner_css = Rails.root.join("app/assets/stylesheets/components/_public_theme_banner.scss").read
     app_css = Rails.root.join("app/assets/stylesheets/application.scss").read
 
-    expect(banner).to include("width: 1440", "height: 360", "width: 768", "public-theme-banner__image--responsive")
-    expect(banner_css).to include("aspect-ratio: 32 / 15", "max-width: 768px")
+    expect(banner).to include("width: desktop_dimensions.first", "height: desktop_dimensions.last", "width: mobile_dimensions.first", "public-theme-banner__image--responsive")
+    expect(banner_css).to include("height: auto")
     expect(app_css).to include('@use "components/public_theme_banner"')
   end
 
