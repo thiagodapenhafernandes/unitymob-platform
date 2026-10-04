@@ -41,6 +41,7 @@ export default class extends Controller {
 
   async submit(event) {
     event.preventDefault()
+    if (this.element.closest(".lp-preview-block")) return
     if (!this.hasFormTarget) return
 
     const fileError = this.fileError()

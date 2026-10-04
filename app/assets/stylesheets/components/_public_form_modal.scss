@@ -492,3 +492,14 @@ textarea.public-form-modal__control {
   max-height: 100dvh;
   border-radius: 0;
 }
+
+/* O mesmo formulário e envio, dentro da página, sem overlay ou recorte vertical. */
+.public-form-modal--inline {
+  display: block;
+  .public-form-modal__overlay { position: static; inset: auto; z-index: auto; padding: 0; }
+  .public-form-modal__dialog { width: 100%; max-height: none; }
+  .public-form-modal__body { overflow: visible; max-height: none; }
+}
+.public-form-modal--inline .public-form-modal__dialog:not(.public-form-modal__dialog--basic) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}

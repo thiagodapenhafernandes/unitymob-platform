@@ -1,6 +1,8 @@
+<% inline = local_assigns.fetch(:inline, false) %>
+<% form_dom_id = local_assigns.fetch(:form_dom_id, form.id) %>
 <% preview = local_assigns.fetch(:preview, false) %>
 <div <%= tag.attributes(data: { controller: ("public-form-modal" unless preview), public_form_modal_success_message_value: form.success_message }) %>
-     class="public-form-modal">
+     class="public-form-modal<%= " public-form-modal--inline" if inline %>">
   <% if local_assigns.fetch(:trigger, true) %>
     <button type="button"
             class="<%= trigger_class %>"
@@ -10,15 +12,15 @@
     </button>
   <% end %>
 
-  <div class="public-form-modal__overlay" id="modal-<%= form.slug %>" <%= "hidden" unless preview %> data-public-form-modal-target="overlay" data-modal-slug="<%= form.slug %>">
-    <div class="public-form-modal__backdrop" data-action="click->public-form-modal#close"></div>
-    <section class="public-form-modal__dialog public-form-modal__dialog--<%= form.modal_layout %> public-form-modal__dialog--size-<%= form.modal_size %>" role="dialog" aria-modal="true" aria-labelledby="public-form-modal-title-<%= form.id %>" <%= tag.attributes(style: public_form_modal_style(form).presence) %>>
+  <div class="public-form-modal__overlay" id="<%= inline ? "inline-form-#{form_dom_id}" : "modal-#{form.slug}" %>" <%= "hidden" unless preview || inline %> <%= tag.attributes(data: { public_form_modal_target: ("overlay" unless inline) }) %> <%= tag.attributes(data: { modal_slug: (form.slug unless inline) }) %>>
+    <% unless inline %><div class="public-form-modal__backdrop" data-action="click->public-form-modal#close"></div><% end %>
+    <section class="public-form-modal__dialog public-form-modal__dialog--<%= form.modal_layout %> public-form-modal__dialog--size-<%= form.modal_size %>" <%= tag.attributes(role: ("dialog" unless inline), aria: { modal: (true unless inline) }) %> aria-labelledby="public-form-modal-title-<%= form_dom_id %>" <%= tag.attributes(style: public_form_modal_style(form).presence) %>>
       <% modal_config = form.modal_config.to_h %>
       <% unless form.basic_layout? %>
         <aside class="public-form-modal__aside" <%= public_form_edit_attrs(preview, "aside") %>>
           <div>
             <span class="public-form-modal__eyebrow" <%= public_form_edit_attrs(preview, "eyebrow", bind: "public_form[modal_config][eyebrow]", mode: "text") %>><%= modal_config["eyebrow"].presence || form.name %></span>
-            <h2 id="public-form-modal-title-<%= form.id %>" <%= public_form_edit_attrs(preview, "title", bind: "public_form[modal_config][headline]", mode: "text") %>><%= modal_config["headline"].presence || form.title %></h2>
+            <h2 id="public-form-modal-title-<%= form_dom_id %>" <%= public_form_edit_attrs(preview, "title", bind: "public_form[modal_config][headline]", mode: "text") %>><%= modal_config["headline"].presence || form.title %></h2>
             <% if form.subtitle.present? %><div class="public-form-modal__aside-subtitle public-form-modal__rich" <%= public_form_edit_attrs(preview, "subtitle", mode: "rich") %>><%= public_form_rich_text(form.subtitle) %></div><% end %>
           </div>
 
@@ -37,13 +39,13 @@
       <% end %>
 
       <div class="public-form-modal__body" <%= public_form_edit_attrs(preview, "body") %>>
-        <button type="button" class="public-form-modal__close" data-action="click->public-form-modal#close" aria-label="Fechar">
+        <% unless inline %><button type="button" class="public-form-modal__close" data-action="click->public-form-modal#close" aria-label="Fechar">
           <i class="bi bi-x-lg" aria-hidden="true"></i>
-        </button>
+        </button><% end %>
 
         <% if form.basic_layout? %>
           <header>
-            <h3 id="public-form-modal-title-<%= form.id %>" <%= public_form_edit_attrs(preview, "title", bind: "public_form[title]", mode: "text") %>><%= form.title %></h3>
+            <h3 id="public-form-modal-title-<%= form_dom_id %>" <%= public_form_edit_attrs(preview, "title", bind: "public_form[title]", mode: "text") %>><%= form.title %></h3>
             <% if form.subtitle.present? %><div class="public-form-modal__subtitle public-form-modal__rich" <%= public_form_edit_attrs(preview, "subtitle", mode: "rich") %>><%= public_form_rich_text(form.subtitle) %></div><% end %>
           </header>
         <% end %>
@@ -68,10 +70,10 @@
             <% form.fields.each do |field| %>
               <% next if field.hidden? %>
               <div class="public-form-modal__field public-form-modal__field--<%= field.field_type %> public-form-modal__field--w-<%= field.effective_width %>" <%= tag.attributes(data: { preview_field: (field.preview_key if preview) }) %>>
-                <label for="public_form_<%= field.public_form_id %>_<%= field.name %>">
+                <label for="public_form_<%= form_dom_id %>_<%= field.name %>">
                   <%= field.label %><%= tag.span(" *", class: "public-form-modal__required") if field.required? %>
                 </label>
-                <%= public_form_field_input(nil, field) %>
+                <%= public_form_field_input(nil, field, dom_id: form_dom_id) %>
                 <% if field.hint.present? %><small><%= field.hint %></small><% end %>
               </div>
             <% end %>
@@ -85,12 +87,12 @@
           </div>
 
           <% form.fields.select(&:hidden?).each do |field| %>
-            <%= public_form_field_input(nil, field) %>
+            <%= public_form_field_input(nil, field, dom_id: form_dom_id) %>
           <% end %>
 
           <div class="public-form-modal__feedback" data-public-form-modal-target="feedback" hidden></div>
 
-          <button type="submit" class="public-form-modal__submit" data-public-form-modal-target="submit" <%= public_form_edit_attrs(preview, "submit", bind: "public_form[submit_label]", mode: "text") %><%= tag.attributes(data: { edit_text: ("span" if preview) }) %>>
+          <button type="submit" <%= "disabled" if inline && @preview_mode %> class="public-form-modal__submit" data-public-form-modal-target="submit" <%= public_form_edit_attrs(preview, "submit", bind: "public_form[submit_label]", mode: "text") %><%= tag.attributes(data: { edit_text: ("span" if preview) }) %>>
             <span><%= form.submit_label %></span>
             <i class="bi bi-arrow-right" aria-hidden="true"></i>
           </button>

@@ -1,0 +1,9 @@
+<% if (form = block.public_form) %>
+  <section class="public-theme-block-form public-theme-block-form--<%= variant %> py-8">
+    <div class="container-custom">
+      <%= render "shared/public_form_modal", form: form, trigger: false, inline: true, form_dom_id: "block-#{block.id || block.position}" %>
+    </div>
+  </section>
+<% elsif @preview_mode %>
+  <div class="container-custom py-8">Selecione um formulário publicado no painel deste bloco.</div>
+<% end %>
