@@ -1,4 +1,5 @@
-import "@hotwired/turbo-rails"
+import { Turbo } from "@hotwired/turbo-rails"
+Turbo.session.drive = false
 import { application } from "controllers/application"
 import "ax_toast"
 import "pwa_scope_guard"

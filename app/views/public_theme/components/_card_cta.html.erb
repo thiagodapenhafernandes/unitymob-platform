@@ -7,7 +7,7 @@
     <div class="public-theme-card-cta__content">
       <span class="public-theme-card-cta__brand"><%= (@layout_setting&.site_name.presence || local_assigns.fetch(:brand_name)) %></span>
       <strong class="public-theme-card-cta__title"><%= setting.card_cta_title %></strong>
-      <%= link_to local_assigns.fetch(:property_url), class: "public-theme-card-cta__button", data: { turbo_frame: "_top" } do %>
+      <%= link_to local_assigns.fetch(:property_url), class: "public-theme-card-cta__button", data: { turbo: false, turbo_frame: "_top" } do %>
         <%= public_icon("camera") %> <%= setting.card_cta_label %>
       <% end %>
     </div>

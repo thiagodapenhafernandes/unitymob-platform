@@ -73,6 +73,7 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
         expect(card_links).to be_present
         card_links.each do |link|
           expect(link["data-turbo-frame"]).to eq("_top")
+          expect(link["data-turbo"]).to eq("false")
         end
       end
 

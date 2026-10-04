@@ -26,7 +26,7 @@
 <%= link_to public_habitation_detail_path(development),
     class: "public-development-card-link group block h-full rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-golden-one focus-visible:ring-offset-2",
     aria: { label: title },
-    data: { turbo_frame: "_top" } do %>
+    data: { turbo: false, turbo_frame: "_top" } do %>
   <article class="public-development-card public-theme-dev-card public-theme-dev-card--<%= variant %> relative h-full min-h-[440px] overflow-hidden rounded-xl bg-blue-three shadow-[0_18px_40px_rgba(2,43,58,0.16)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_26px_56px_rgba(2,43,58,0.22)]">
     <% if image.present? %>
       <% image_source = public_image_url(image, resize_to_fill: [720, 860], format: :webp, force_variant: true).presence || public_image_url(image).presence || image %>

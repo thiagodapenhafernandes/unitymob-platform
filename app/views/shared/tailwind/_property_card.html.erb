@@ -13,7 +13,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v11",
+    "public-property-card-v12",
     PublicSite::PageVersion.current(public_tenant.id),
     public_tenant.id,
     request.host,
@@ -140,7 +140,7 @@
                 class: "absolute inset-0 z-10 pointer-events-none",
                 aria: { label: "Ver detalhes de #{property_title}" },
                 data: {
-                  turbo_frame: "_top",
+                  turbo: false, turbo_frame: "_top",
                   clickable_card_tracking_link: true,
                   controller: "marketing-tracker",
                   action: "click->marketing-tracker#track",
