@@ -11,6 +11,10 @@ module Tenants
     end
 
     def email
+      contact.email_primary.presence || footer.email.presence
+    end
+
+    def footer_email
       footer.email.presence || contact.email_primary.presence
     end
 

@@ -71,7 +71,7 @@
     end
     luxury_wa_value = luxury_footer_setting.whatsapp.presence || luxury_contact.whatsapp_primary.presence
     luxury_wa_digits = Phones::Normalizer.call(luxury_wa_value)
-    luxury_email = luxury_identity.email
+    luxury_email = luxury_identity.footer_email
     luxury_phone_value = luxury_contact.phone.presence
     luxury_phone_digits = Phones::Normalizer.call(luxury_phone_value)
     luxury_contact_items = [
