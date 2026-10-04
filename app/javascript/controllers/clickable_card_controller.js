@@ -98,7 +98,8 @@ export default class extends Controller {
 
     // Não intercepta elementos interativos internos
     const target = event.target
-    if (target.closest('a, button, input, select, textarea, label, .dropdown, .dropdown-menu, [data-action]')) {
+    const interactive = target.closest('a, button, input, select, textarea, label, .dropdown, .dropdown-menu, [data-action]')
+    if (interactive && this.element.contains(interactive)) {
       return
     }
 

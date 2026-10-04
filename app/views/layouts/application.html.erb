@@ -165,18 +165,13 @@
       end
     %>
     <% public_page_stylesheets.each do |stylesheet| %>
-      <%= stylesheet_link_tag stylesheet, "data-turbo-track": "reload", preload_links_header: false %>
+      <%= stylesheet_link_tag stylesheet, "data-turbo-track": "dynamic", preload_links_header: false %>
     <% end %>
     <%= stylesheet_link_tag public_tenant.public_site_stylesheet, "data-turbo-track": "reload", preload_links_header: false %>
     <% if @layout_setting&.public_custom_logo_css.present? %>
       <style id="custom-logo-css"><%= @layout_setting.public_custom_logo_css.html_safe %></style>
     <% end %>
-    <link rel="preload"
-          href="<%= asset_path("ax_toast.css") %>"
-          as="style"
-          onload="this.onload=null;this.rel='stylesheet'"
-          data-turbo-track="reload">
-    <noscript><%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload", preload_links_header: false %></noscript>
+    <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload", preload_links_header: false %>
     
     <%# JS with Defer %>
     <%= javascript_importmap_tags "public" %>

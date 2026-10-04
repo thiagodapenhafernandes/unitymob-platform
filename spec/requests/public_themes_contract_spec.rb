@@ -26,6 +26,18 @@ RSpec.describe "Contrato dos temas públicos", type: :request do
     context "tema #{theme_key} (variante #{variant})" do
       before { tenant.update_columns(public_site_theme: theme_key) }
 
+      it "mantém os assets de reload estáveis entre home, busca e detalhe" do
+        property = create(:habitation, tenant:, exibir_no_site_flag: true, address_attributes: address)
+        tracked_assets = [root_path, habitations_path, habitation_path(property)].map do |path|
+          get path
+          expect(response).to have_http_status(:ok)
+          links = html.css('head link[data-turbo-track="reload"]')
+          expect(links).to all(satisfy { |link| link["rel"] == "stylesheet" && link["onload"].nil? })
+          links.map(&:to_html).sort
+        end
+        expect(tracked_assets.uniq.size).to eq(1)
+      end
+
       it "home: folha do tema, menu, filtro global e seções com o cabeçalho do contrato" do
         create_list(:habitation, 2, tenant:, exibir_no_site_flag: true, address_attributes: address)
         section = tenant.home_sections.create!(section_type: :featured_properties, title: "Destaques", active: true,
