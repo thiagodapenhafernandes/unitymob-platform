@@ -30,6 +30,15 @@ RSpec.describe Storage::WarmPublicVariantsJob, type: :job do
       .not_to have_enqueued_job(Storage::TransformVariantJob)
   end
 
+  it "warms the same card profile served publicly instead of a duplicate legacy variant" do
+    attach_photo(create(:habitation, tenant: tenant))
+
+    expect { described_class.perform_now }
+      .to have_enqueued_job(Storage::TransformVariantJob)
+      .with(anything, Storage::PublicImageVariants::CARD.first)
+    expect(described_class::SETS).not_to include(resize_to_fill: [360, 270], format: :webp)
+  end
+
   it "limita os jobs enfileirados por varredura e continua do ponto em que parou" do
     stub_const("#{described_class}::MAX_ENQUEUE_PER_RUN", 5)
     attach_photo(create(:habitation, tenant: tenant))

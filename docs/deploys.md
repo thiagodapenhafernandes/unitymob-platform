@@ -145,3 +145,35 @@ em execução; não inferir a revisão pela data dos arquivos.
 - Se um alvo falhar, informar quais concluíram e quais ficaram pendentes.
 - Não repetir migrations/alterações destrutivas automaticamente. Rollback deve considerar
   compatibilidade do banco e a revisão/imagem anterior, além do código.
+
+## Prioridade de CPU na Conexão
+
+Em 04/10/2026, os processos do Solid Queue disputavam CPU com o Puma e a VM
+registrava até 25% de CPU steal durante a bateria de requests. Para favorecer
+as respostas web sob contenção, sem limitar a fila quando houver CPU livre:
+
+```sh
+systemctl set-property puma_conexao_imobiliaria_production.service CPUWeight=200
+systemctl set-property solid_queue_conexao_imobiliaria_production.service CPUWeight=25
+```
+
+Aplicado como root, sem restart. O systemd persiste os drop-ins em
+`/etc/systemd/system.control/`; continuam válidos após os deploys Mina.
+Rollback: executar os mesmos comandos com `CPUWeight=100` nos dois serviços.
+Essa prioridade reduz competição entre serviços locais; não elimina CPU steal
+do hypervisor. Não impor um limite absoluto aos jobs de leads.
+
+A fila da Conexão também usa o drop-in `zzzz-image-cpu.conf` em
+`/etc/systemd/system/solid_queue_conexao_imobiliaria_production.service.d/`:
+
+```ini
+[Service]
+Environment=MAGICK_THREAD_LIMIT=1
+Environment=OMP_NUM_THREADS=1
+```
+
+O ImageMagick anunciava quatro threads; uma transformação podia disputar todos
+os vCPUs com web e banco. O limite de uma thread preserva a transformação e
+reduz o pico de CPU, com maior duração individual do job. Ativar após
+`systemctl daemon-reload` e restart da fila (o deploy Mina já o executa).
+Rollback: remover apenas esse drop-in, recarregar systemd e reiniciar a fila.

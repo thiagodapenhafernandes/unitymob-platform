@@ -21,6 +21,37 @@ RSpec.describe "Habitation details", type: :request do
   end
 
   describe "GET /imoveis/:id" do
+    it "does not preload image variants on a cached detail and still rejects unavailable properties" do
+      store = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(store)
+      tenant = Tenant.default
+      Setting.set(PublicPageCache::MODE_SETTING_KEY, "on", tenant: tenant)
+      get root_path # Initialize public settings before measuring the detail cache.
+      property = create(:habitation, tenant: tenant)
+      property.photos.attach(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "photo.png", content_type: "image/png")
+      get habitation_path(property)
+      get habitation_path(property)
+      expect(response.headers["X-Public-Page-Cache"]).to eq("hit")
+
+      variants = []
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+        variants << payload[:sql] if payload[:sql].to_s.include?("active_storage_variant_records")
+      end
+      begin
+        get habitation_path(property)
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
+      expect(response).to have_http_status(:ok)
+      expect(response.headers["X-Public-Page-Cache"]).to eq("hit")
+      expect(variants).to be_empty
+
+      property.update!(exibir_no_site_flag: false)
+      get habitation_path(property)
+      expect(response).to redirect_to(habitations_path)
+      expect(response.headers["X-Public-Page-Cache"]).not_to eq("hit")
+    end
+
     it "renders a public habitation by slug" do
       habitation = create(:habitation, codigo: "8397", slug: "casa-em-condominio-8397")
 
