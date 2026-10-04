@@ -53,7 +53,7 @@
     luxury_links_src = Array(@footer_links).presence || luxury_footer_setting.footer_links.to_a.presence || Footer::QuickLinksService.call
     luxury_link_groups = [{ title: luxury_footer_setting.links_title,
                             links: luxury_links_src.map { |l| { label: l.label, url: l.url } } }]
-    luxury_stores_src = Array(@footer_stores).presence || public_tenant.stores.active.order(:id).to_a.presence || luxury_footer_setting.footer_stores.to_a
+    luxury_stores_src = Array(@footer_stores).presence || luxury_identity.stores
     luxury_stores = luxury_stores_src.map do |store|
       lines = []
       if store.respond_to?(:footer_address_line)
@@ -71,7 +71,7 @@
     end
     luxury_wa_value = luxury_footer_setting.whatsapp.presence || luxury_contact.whatsapp_primary.presence
     luxury_wa_digits = Phones::Normalizer.call(luxury_wa_value)
-    luxury_email = luxury_footer_setting.email.presence || luxury_contact.email_primary.presence
+    luxury_email = luxury_identity.email
     luxury_phone_value = luxury_contact.phone.presence
     luxury_phone_digits = Phones::Normalizer.call(luxury_phone_value)
     luxury_contact_items = [

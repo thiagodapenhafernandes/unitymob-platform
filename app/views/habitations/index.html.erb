@@ -166,7 +166,7 @@
   <%= raw({
     "@context" => "https://schema.org",
     "@type" => "ItemList",
-    "name" => @page_title.presence || "Imóveis #{@layout_setting&.site_name.presence || 'Unitymob'}",
+    "name" => public_seo_title(current_public_seo_setting),
     "numberOfItems" => @habitations.size,
     "itemListElement" => @habitations.each_with_index.map do |property, index|
       item = {

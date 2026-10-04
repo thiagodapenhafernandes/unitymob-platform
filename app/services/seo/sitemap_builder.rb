@@ -50,8 +50,12 @@ module Seo
                 .where.not(canonical_url: [nil, ""])
                 .order(access_count: :desc, updated_at: :desc)
                 .filter_map do |seo|
+        url = seo.public_url(@base_url)
+        if %w[property_show development_show].include?(seo.page_type) || seo.canonical_key.to_s.start_with?("property:")
+          next unless public_property_urls.include?(url)
+        end
         add_entry(
-          loc: seo.public_url(@base_url),
+          loc: url,
           lastmod: seo.updated_at,
           changefreq: changefreq_for(seo.page_type),
           priority: priority_for(seo.page_type)
@@ -60,19 +64,26 @@ module Seo
     end
 
     def property_entries
-      @habitation_scope
-        .active
-        .select(:id, :slug, :tipo, :updated_at)
-        .find_each
-        .filter_map do |habitation|
-          path = habitation.empreendimento? ? @url_helpers.empreendimento_details_path(habitation) : @url_helpers.habitation_path(habitation)
-          add_entry(
-            loc: absolute_url(path),
-            lastmod: habitation.updated_at,
-            changefreq: "weekly",
-            priority: habitation.empreendimento? ? 0.8 : 0.7
-          )
-        end
+      public_properties.filter_map do |habitation|
+        path = habitation.empreendimento? ? @url_helpers.empreendimento_details_path(habitation) : @url_helpers.habitation_path(habitation)
+        add_entry(
+          loc: absolute_url(path),
+          lastmod: habitation.updated_at,
+          changefreq: "weekly",
+          priority: habitation.empreendimento? ? 0.8 : 0.7
+        )
+      end
+    end
+
+    def public_properties
+      @public_properties ||= @habitation_scope.active.select(:id, :slug, :tipo, :updated_at).to_a
+    end
+
+    def public_property_urls
+      @public_property_urls ||= public_properties.map do |property|
+        path = property.empreendimento? ? @url_helpers.empreendimento_details_path(property) : @url_helpers.habitation_path(property)
+        absolute_url(path)
+      end.to_set
     end
 
     def landing_page_entries

@@ -3,10 +3,10 @@
   <% public_contact_setting = @contact_setting || ContactSetting.instance(tenant: public_tenant) %>
   <% footer_setting = @footer_setting || FooterSetting.instance(tenant: public_tenant) %>
   <% footer_links = Array(@footer_links).presence || footer_setting.footer_links.to_a.presence || Footer::QuickLinksService.call %>
-  <% footer_stores = Array(@footer_stores).presence || public_tenant.stores.active.order(:id).to_a.presence || footer_setting.footer_stores.to_a %>
+  <% footer_stores = Array(@footer_stores).presence || public_identity.stores %>
   <% footer_social_links = Array(@footer_social_links).presence || footer_setting.footer_social_links.where(enabled: true).to_a.presence || public_contact_setting.footer_social_links %>
   <% footer_whatsapp_value = footer_setting.whatsapp.presence || public_contact_setting.whatsapp_primary.presence %>
-  <% footer_email_value = footer_setting.email.presence || public_contact_setting.email_primary.presence %>
+  <% footer_email_value = public_identity.email %>
   <% footer_phone_value = public_contact_setting.phone.presence %>
   <% footer_secondary_whatsapp_value = public_contact_setting.whatsapp_secondary.presence %>
   <% footer_whatsapp = Phones::Normalizer.call(footer_whatsapp_value) %>

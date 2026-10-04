@@ -164,10 +164,12 @@ module Seo
     end
 
     def self.development_intro(data, tenant: current_tenant)
+      city = Tenants::PublicIdentity.new(tenant).primary_city.presence
+      region = city ? "#{city} e região" : "sua região"
       <<~TEXT.squish
-        #{data[:title]} apresentam opções para quem deseja comprar para morar, investir ou acompanhar novos projetos em regiões valorizadas do litoral catarinense. Um empreendimento pode estar em fase de lançamento, obras ou pronto para morar, e cada estágio atende a uma intenção diferente: planejamento patrimonial, valorização futura, mudança imediata ou escolha de uma unidade específica.
+        #{data[:title]} apresentam opções para quem deseja comprar para morar, investir ou acompanhar novos projetos em #{region}. Um empreendimento pode estar em fase de lançamento, obras ou pronto para morar, e cada estágio atende a uma intenção diferente: planejamento patrimonial, valorização futura, mudança imediata ou escolha de uma unidade específica.
 
-        Nesta listagem, você pode comparar projetos por localização, estágio, disponibilidade de unidades e diferenciais como vista mar, frente mar, lazer, padrão construtivo e proximidade com a praia. Use a busca por nome do empreendimento ou navegue pelos bairros estratégicos para encontrar oportunidades alinhadas ao seu perfil, seja para uso próprio ou investimento imobiliário.
+        Nesta listagem, você pode comparar projetos por localização, estágio, disponibilidade de unidades e diferenciais como vista mar, frente mar, lazer, padrão construtivo e proximidade com serviços. Use a busca por nome do empreendimento ou navegue pelos bairros estratégicos para encontrar oportunidades alinhadas ao seu perfil, seja para uso próprio ou investimento imobiliário.
       TEXT
     end
 
