@@ -448,6 +448,11 @@ class HabitationsController < ApplicationController
     return if @habitation&.publicly_viewable?
     return if valid_share_token_for?(@habitation)
 
+    unless @habitation
+      render plain: "Imóvel não encontrado.", status: :not_found
+      return
+    end
+
     reason = @habitation&.public_unavailable_reason || "nao encontrado"
     Rails.logger.info("[HabitationPublicShow] id=#{params[:id].inspect} indisponivel: #{reason}")
     redirect_to habitations_path, alert: 'Imóvel não encontrado ou indisponível no momento.'

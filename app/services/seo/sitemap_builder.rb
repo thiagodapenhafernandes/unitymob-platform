@@ -51,12 +51,24 @@ module Seo
                 .order(access_count: :desc, updated_at: :desc)
                 .filter_map do |seo|
         url = seo.public_url(@base_url)
-        if %w[property_show development_show].include?(seo.page_type) || seo.canonical_key.to_s.start_with?("property:")
+        route = public_route(url)
+        next unless route
+        next if route[:controller] == "pages" && route[:action] == "simulador" && !public_profile.financing_simulator_enabled?
+        next if route[:controller] == "pages" && route[:action] == "links_uteis" && public_profile.useful_link_options.empty?
+        query = Rack::Utils.parse_nested_query(URI.parse(url).query.to_s)
+        next if seo.page_type == "property_listing" && !Seo::PageIdentity.indexable_property_filters?(query)
+        next if seo.page_type == "developments_index" && !Seo::PageIdentity.indexable_development_filters?(query)
+        if route[:controller] == "landing_pages"
+          slug = URI.parse(url).path.delete_prefix("/")
+          next unless published_page_slugs.include?(slug)
+          url = absolute_url(@url_helpers.public_landing_page_path(slug))
+        end
+        if (route[:controller] == "habitations" && route[:action] == "show") || %w[property_show development_show].include?(seo.page_type) || seo.canonical_key.to_s.start_with?("property:")
           next unless public_property_urls.include?(url)
         end
         add_entry(
           loc: url,
-          lastmod: seo.updated_at,
+          lastmod: [seo.updated_at, public_property_lastmods[url]].compact.max,
           changefreq: changefreq_for(seo.page_type),
           priority: priority_for(seo.page_type)
         )
@@ -76,14 +88,33 @@ module Seo
     end
 
     def public_properties
-      @public_properties ||= @habitation_scope.active.select(:id, :slug, :tipo, :updated_at).to_a
+      @public_properties ||= @habitation_scope.active.where.not(slug: [nil, ""]).select(:id, :slug, :tipo, :updated_at).to_a
+    end
+
+    def public_profile
+      @public_profile ||= PublicSiteProfile.current(tenant: @tenant)
+    end
+
+    def public_route(url)
+      path = URI.parse(url).path
+      (@public_routes ||= {})[path] ||= Rails.application.routes.recognize_path(path, method: :get)
+    rescue ActionController::RoutingError, URI::InvalidURIError
+      nil
+    end
+
+    def published_page_slugs
+      @published_page_slugs ||= (@tenant.landing_pages.active.pluck(:slug) + @tenant.blog_articles.publicly_visible.pluck(:slug)).to_set
+    end
+
+    def public_property_lastmods
+      @public_property_lastmods ||= public_properties.to_h do |property|
+        path = property.empreendimento? ? @url_helpers.empreendimento_details_path(property) : @url_helpers.habitation_path(property)
+        [absolute_url(path), property.updated_at]
+      end
     end
 
     def public_property_urls
-      @public_property_urls ||= public_properties.map do |property|
-        path = property.empreendimento? ? @url_helpers.empreendimento_details_path(property) : @url_helpers.habitation_path(property)
-        absolute_url(path)
-      end.to_set
+      @public_property_urls ||= public_property_lastmods.keys.to_set
     end
 
     def landing_page_entries

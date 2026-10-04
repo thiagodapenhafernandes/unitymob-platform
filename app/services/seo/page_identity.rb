@@ -63,7 +63,7 @@ module Seo
       page_name = normalized.any? ? "imoveis:#{digest}" : "imoveis"
       canonical_key = normalized.any? ? "properties_index:#{digest}" : "imoveis"
       noindex = controller.instance_variable_get(:@habitations).try(:total_entries).to_i.zero?
-      indexable = !noindex && indexable_property_filters?(normalized)
+      indexable = !noindex && self.class.indexable_property_filters?(normalized)
 
       {
         canonical_key: canonical_key,
@@ -87,7 +87,7 @@ module Seo
       page_name = normalized.any? ? "empreendimentos:#{digest}" : "empreendimentos"
       canonical_key = normalized.any? ? "developments_index:#{digest}" : "empreendimentos"
       noindex = controller.instance_variable_get(:@empreendimentos).try(:total_entries).to_i.zero?
-      indexable = !noindex && indexable_development_filters?(normalized)
+      indexable = !noindex && self.class.indexable_development_filters?(normalized)
 
       {
         canonical_key: canonical_key,
@@ -192,7 +192,7 @@ module Seo
     end
 
     def normalized_generic_params
-      normalize_hash(params.to_unsafe_h.except("id", "page").reject { |key, _| key.to_s.match?(IGNORED_PARAMS) })
+      normalize_hash(params.to_unsafe_h.except("id", "page", *request.path_parameters.keys.map(&:to_s)).reject { |key, _| key.to_s.match?(IGNORED_PARAMS) })
     end
 
     def normalize_hash(hash)
@@ -235,7 +235,7 @@ module Seo
       @strategic_development_page ||= Seo::StrategicLanding.development(params[:seo_slug])
     end
 
-    def indexable_property_filters?(normalized)
+    def self.indexable_property_filters?(normalized)
       return true if normalized.blank?
       return false if normalized.key?("search")
       return false if (normalized.keys - INDEXABLE_PROPERTY_FILTERS).any?
@@ -247,7 +247,7 @@ module Seo
         normalized.key?("tipo")
     end
 
-    def indexable_development_filters?(normalized)
+    def self.indexable_development_filters?(normalized)
       return true if normalized.blank?
       return false if normalized.key?("q")
       return false if (normalized.keys - INDEXABLE_DEVELOPMENT_FILTERS).any?

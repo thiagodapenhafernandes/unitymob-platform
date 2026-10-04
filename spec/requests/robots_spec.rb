@@ -13,6 +13,13 @@ RSpec.describe "Robots", type: :request do
     expect(response.body).not_to include("saluteimoveis")
   end
 
+  it "returns 304 for unchanged discovery content" do
+    host! "localhost"
+    get "/robots.txt"
+    get "/robots.txt", headers: { "If-None-Match" => response.headers.fetch("ETag") }
+    expect(response).to have_http_status(:not_modified)
+  end
+
   it "usa o domínio público configurado no sitemap anunciado" do
     Tenant.default.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
     host! "localhost"
