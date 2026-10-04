@@ -21,6 +21,48 @@ RSpec.describe Seo::SitemapBuilder do
       expect(xml).not_to include("/imoveis/#{hidden.slug}", "/imoveis/#{foreign.slug}")
     end
 
+    it "keeps the latest property change when SEO already lists its URL" do
+      tenant = Tenant.default
+      property = create(:habitation, tenant: tenant)
+      tenant.seo_settings.create!(page_name: "property-date", canonical_key: "property:#{property.codigo}", page_type: "property_show", canonical_path: "/imoveis/#{property.slug}", canonical_url: "https://example.test/imoveis/#{property.slug}", active: true, apply_to_public: true, robots_index: true, updated_at: 2.days.ago)
+      property.update_columns(updated_at: 1.hour.ago)
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      entry = Nokogiri::XML(xml).remove_namespaces!.xpath("//url").find { |node| node.at_xpath("loc").text.end_with?(property.slug) }
+      expect(entry.at_xpath("lastmod").text).to eq(property.reload.updated_at.iso8601)
+    end
+
+    it "excludes unpublished pages left in the SEO inventory" do
+      tenant = Tenant.default
+      tenant.seo_settings.create!(page_name: "deleted-page", canonical_key: "landing_pages_show:deleted", page_type: "landing_pages_show", canonical_path: "/deleted-page", canonical_url: "https://example.test/deleted-page?slug=deleted-page", active: true, apply_to_public: true, robots_index: true)
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      expect(xml).not_to include("deleted-page")
+    end
+
+    it "excludes obsolete detail aliases even when their SEO page type is wrong" do
+      tenant = Tenant.default
+      property = create(:habitation, tenant: tenant, codigo: "123456789")
+      tenant.seo_settings.create!(page_name: "obsolete-alias", canonical_key: "obsolete-alias", page_type: "property_listing", canonical_path: "/imoveis/#{property.codigo}", canonical_url: "https://example.test/imoveis/#{property.codigo}", active: true, apply_to_public: true, robots_index: true)
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      expect(xml).not_to include("<loc>https://example.test/imoveis/#{property.codigo}</loc>")
+      expect(xml).to include("<loc>https://example.test/imoveis/#{property.slug}</loc>")
+    end
+
+    it "excludes the financing simulator when disabled for the tenant" do
+      tenant = Tenant.default
+      allow(PublicSiteProfile).to receive(:current).with(tenant: tenant).and_return(double(financing_simulator_enabled?: false))
+      tenant.seo_settings.create!(page_name: "simulator", canonical_key: "simulator", page_type: "pages_simulador", canonical_path: "/simulador-financiamento", canonical_url: "https://example.test/simulador-financiamento", active: true, apply_to_public: true, robots_index: true)
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      expect(xml).not_to include("simulador-financiamento")
+    end
+
+    it "does not publish internal IDs for properties without a public slug" do
+      tenant = Tenant.default
+      property = create(:habitation, tenant: tenant)
+      property.update_columns(slug: nil)
+      xml = described_class.new(base_url: "https://example.test", url_helpers: Rails.application.routes.url_helpers, tenant: tenant).to_xml
+      expect(xml).not_to include("<loc>https://example.test/imoveis/#{property.id}</loc>")
+    end
+
     it "limits property entries to the provided habitation scope" do
       public_tenant = Tenant.default
       other_tenant = Tenant.create!(

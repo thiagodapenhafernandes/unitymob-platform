@@ -99,14 +99,19 @@ RSpec.describe "Habitation details", type: :request do
       expect(page_text).to include("R$ 8.500")
     end
 
+    it "returns 404 for a property that does not exist" do
+      get "/imoveis/inexistente-999999999"
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to include("Imóvel não encontrado.")
+    end
+
     it "não renderiza imóvel público de outro tenant pelo slug" do
       other_tenant = Tenant.create!(name: "Outro hab public #{SecureRandom.hex(3)}", slug: "outro-hab-public-#{SecureRandom.hex(3)}")
       habitation = create(:habitation, tenant: other_tenant, codigo: "TENANT-X", slug: "imovel-outro-tenant")
 
       get habitation_path(habitation)
 
-      expect(response).to redirect_to(habitations_path)
-      expect(flash[:alert]).to eq("Imóvel não encontrado ou indisponível no momento.")
+      expect(response).to have_http_status(:not_found)
     end
 
     it "não encontra imóvel de outro tenant pela busca por código" do
@@ -183,6 +188,16 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).to include(%(property="og:image:height" content="512"))
       expect(response.body).to include(%(rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=))
       expect(response.body).to include(%(property="og:title" content="OG-IMG - ))
+    end
+
+    it "does not change the SEO modification date for tracking parameters alone" do
+      habitation = create(:habitation, codigo: "SEO-LASTMOD", slug: "apartamento-seo-lastmod")
+      Setting.set(Seo::PageTracker::AUTO_INVENTORY_SETTING, "1", tenant: habitation.tenant)
+      get habitation_path(habitation)
+      seo = habitation.tenant.seo_settings.find_by!(canonical_key: "property:#{habitation.codigo}")
+      expect {
+        get habitation_path(habitation), params: { utm_source: "google" }
+      }.not_to change { seo.reload.updated_at }
     end
 
     it "não cria inventário SEO ao abrir imóvel por link compartilhado" do

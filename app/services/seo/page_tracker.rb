@@ -43,10 +43,12 @@ module Seo
         return seo
       end
 
-      seo.assign_attributes(attributes_for(identity, created))
+      attributes = attributes_for(identity, created)
+      attributes[:canonical_url] = seo.canonical_url if !created && seo.public_url(public_base_url) == attributes[:canonical_url]
+      seo.assign_attributes(attributes)
       # Evita callbacks e invalidação do cache global do rodapé quando a
       # descoberta não alterou metadados. O acesso é registrado separadamente.
-      seo.save! if created || seo.changed?
+      seo.save! if created || seo.changes.except("last_generated_from_path").any?
       record_page_visit(seo)
 
       enqueue_ai_generation(seo) if created && self.class.auto_ai?(tenant: tenant) && Ai::SeoContentService.connected?(tenant: tenant)

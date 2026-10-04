@@ -2,7 +2,8 @@ class RobotsController < ApplicationController
   skip_before_action :apply_seo_redirect
 
   def show
-    render plain: robots_content, content_type: "text/plain"
+    content = robots_content
+    render plain: content, content_type: "text/plain" if stale?(etag: content, public: true)
   end
 
   private

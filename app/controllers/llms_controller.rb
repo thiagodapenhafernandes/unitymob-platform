@@ -15,6 +15,6 @@ class LlmsController < ApplicationController
       @cities = public_filter_location_options.select { |option| option[:type] == "city" }.map { |option| option[:label] }
       CGI.unescapeHTML(render_to_string(:show, formats: [:text], layout: false))
     end
-    render plain: content, content_type: "text/plain; charset=utf-8"
+    render plain: content, content_type: "text/plain; charset=utf-8" if stale?(etag: content, public: true)
   end
 end

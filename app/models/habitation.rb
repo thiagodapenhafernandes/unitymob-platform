@@ -471,7 +471,7 @@ class Habitation < ApplicationRecord
 
   def self.public_sitemap_cache_key(tenant_id, base_url = nil)
     host_digest = ActiveSupport::Digest.hexdigest(base_url.to_s)
-    "public_sitemap_xml_v3/tenant/#{tenant_id}/#{host_digest}"
+    "public_sitemap_xml_v4/tenant/#{tenant_id}/#{host_digest}"
   end
 
   def self.public_listing_count_cache_key(tenant_id, filters)
@@ -495,7 +495,7 @@ class Habitation < ApplicationRecord
     return if tenant_id.blank?
     return unless Rails.cache.respond_to?(:delete_matched)
 
-    Rails.cache.delete_matched("public_sitemap_xml_v3/tenant/#{tenant_id}/*")
+    Rails.cache.delete_matched("public_sitemap_xml_v4/tenant/#{tenant_id}/*")
   rescue NotImplementedError
     nil
   end

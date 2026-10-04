@@ -1,6 +1,13 @@
 require "rails_helper"
 
 RSpec.describe "Sitemaps", type: :request do
+  it "returns 304 when the sitemap has not changed" do
+    host! "localhost"
+    get "/sitemap.xml"
+    get "/sitemap.xml", headers: { "If-None-Match" => response.headers.fetch("ETag") }
+    expect(response).to have_http_status(:not_modified)
+  end
+
   it "publica URLs no domínio público do tenant" do
     tenant = Tenant.default
     tenant.tenant_domains.create!(hostname: "conexaobc.com", primary_domain: true)
