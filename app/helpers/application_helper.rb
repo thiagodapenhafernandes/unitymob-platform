@@ -204,6 +204,7 @@ module ApplicationHelper
         "@type" => "Place",
         "@id" => "#{base_url}/#branch-#{location[:id] || "main"}",
         "name" => location[:name],
+        "identifier" => ({ "@type" => "PropertyValue", "propertyID" => "CRECI", "value" => location[:creci] } if location[:creci].present?),
         "address" => {
           "@type" => "PostalAddress",
           "streetAddress" => location[:address],
@@ -212,7 +213,7 @@ module ApplicationHelper
           "postalCode" => location[:postal_code],
           "addressCountry" => "BR"
         }.compact
-      }
+      }.compact
     end
 
     {
