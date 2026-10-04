@@ -841,7 +841,7 @@ class Habitation < ApplicationRecord
   # Depois do commit (não no after_save): senão uma requisição concorrente reconstruiria a
   # página com dados antigos sob a versão nova. Cobre também touch (foto anexada/removida).
   after_commit { PublicSite::PageVersion.bump(tenant_id) }
-  after_commit { PublicSite::CatalogNavigation.invalidate(tenant_id) }
+  after_commit { PublicSite::CatalogNavigation.invalidate(tenant_id) unless sync_status_only_change? }
   after_destroy :clear_cache
   after_create_commit :record_auto_audit_create, unless: :skip_auto_audit?
   after_update_commit :record_auto_audit_update, unless: :skip_auto_audit?
@@ -2959,12 +2959,20 @@ class Habitation < ApplicationRecord
     Rails.cache.delete(cache_key)
     Rails.cache.delete([self.class.name, id])
     Rails.cache.delete("habitation_#{id}")
-    self.class.clear_public_filter_cache_for_tenant(tenant_id)
+    self.class.clear_public_filter_cache_for_tenant(tenant_id) unless sync_status_only_change?
     
     # Limpar cache da view materializada se for um imóvel em destaque
     if destaque_web_flag_changed? || exibir_no_site_flag_changed?
       refresh_materialized_view
     end
+  end
+
+  # O estado da integração não altera filtros, preços ou contagens do catálogo.
+  # O HTML continua sendo renovado, pois updated_at também aparece no site.
+  def sync_status_only_change?
+    operational_fields = %w[last_sync_at last_sync_status last_sync_message]
+    changes = saved_changes.keys
+    changes.intersect?(operational_fields) && (changes - operational_fields - ["updated_at"]).empty? && !destroyed?
   end
   
   def refresh_materialized_view
