@@ -22,7 +22,7 @@ RSpec.describe "Property SEO", type: :request do
 
   it "keeps page three crawlable with its own canonical" do
     create_list(:habitation, 25)
-    get habitations_path, params: { page: 3, utm_source: "campaign" }
+    get habitations_path, params: { page: 3, utm_source: "campaign", gbraid: "tracking", gad_campaignid: "tracking" }
     expect(response).to have_http_status(:ok)
     page = Nokogiri::HTML(response.body)
     expect(page.at_css('meta[name="robots"]')["content"]).not_to include("noindex")
