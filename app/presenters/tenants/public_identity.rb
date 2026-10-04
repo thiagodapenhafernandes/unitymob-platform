@@ -11,7 +11,7 @@ module Tenants
     end
 
     def email
-      contact.email_primary.presence || footer.email.presence
+      footer.email.presence || contact.email_primary.presence
     end
 
     def phone
@@ -33,11 +33,21 @@ module Tenants
       [contact.instagram_url, contact.facebook_url, contact.youtube_url, contact.linkedin_url].compact_blank.uniq
     end
 
+    def stores
+      @stores ||= tenant.stores.active.order(:id).to_a.presence || footer.footer_stores.to_a
+    end
+
     def locations
-      footer.footer_stores.filter_map do |store|
+      stores.filter_map do |store|
         next if store.address.blank?
 
-        { name: store.name.presence || name, address: store.address, postal_code: store.zip_code }
+        {
+          name: store.name.presence || name,
+          address: store.respond_to?(:footer_address_line) ? store.footer_address_line : store.address,
+          city: store.respond_to?(:city) ? store.city.presence : nil,
+          state: store.respond_to?(:state) ? store.state.presence : nil,
+          postal_code: store.zip_code
+        }
       end.presence || [{ name: name, address: address, postal_code: nil }].select { |location| location[:address].present? }
     end
 

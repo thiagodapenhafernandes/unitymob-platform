@@ -176,10 +176,21 @@ module ApplicationHelper
     tag.script(json_escape(payload.to_json).html_safe, type: "application/ld+json")
   end
 
+  def public_seo_title(seo, property_page: false)
+    title = if property_page
+      @page_title
+    elsif seo&.public_applicable? && !(@page_title_priority && !seo.manual_mode?)
+      seo.meta_title.presence || @page_title
+    else
+      @page_title
+    end
+    title.presence || "#{@layout_setting&.site_name.presence || public_tenant.name} - Encontre seu Imóvel Ideal"
+  end
+
   def real_estate_agent_schema
     identity = Tenants::PublicIdentity.new(public_tenant)
     layout = LayoutSetting.instance(tenant: public_tenant)
-    logo_url = public_image_url({ attachment: layout.logo }) if layout.logo.attached?
+    logo_url = public_image_url(layout.logo) if layout.logo.attached?
     schema_phones = identity.schema_phones
     home_seo = SeoSetting.for_page("home", tenant: public_tenant)
     home_description = home_seo.meta_description.presence if home_seo&.public_applicable?
@@ -192,7 +203,8 @@ module ApplicationHelper
         "address" => {
           "@type" => "PostalAddress",
           "streetAddress" => location[:address],
-          "addressLocality" => primary_city,
+          "addressLocality" => location[:city],
+          "addressRegion" => location[:state],
           "postalCode" => location[:postal_code],
           "addressCountry" => "BR"
         }.compact

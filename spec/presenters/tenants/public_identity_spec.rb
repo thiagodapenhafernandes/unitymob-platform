@@ -1,6 +1,18 @@
 require "rails_helper"
 
 RSpec.describe Tenants::PublicIdentity do
+  it "reuses the public footer email and active stores with each branch city" do
+    tenant = Tenant.default
+    ContactSetting.instance(tenant: tenant).update!(email_primary: "old@example.test")
+    FooterSetting.instance(tenant: tenant).update!(email: "public@example.test")
+    store = tenant.stores.create!(name: "Filial", address: "Rua Um", city: "Curitiba", state: "PR")
+    tenant.stores.create!(name: "Fechada", address: "Rua Dois", city: "Recife", active: false)
+    identity = described_class.new(tenant)
+    expect(identity.email).to eq("public@example.test")
+    expect(identity.stores).to eq([store])
+    expect(identity.locations).to contain_exactly(hash_including(name: "Filial", city: "Curitiba", state: "PR"))
+  end
+
   it "consolida marca e contato sem atravessar tenants" do
     first = Tenant.create!(name: "Imobiliária Norte", slug: "norte-#{SecureRandom.hex(3)}")
     second = Tenant.create!(name: "Imobiliária Sul", slug: "sul-#{SecureRandom.hex(3)}")
