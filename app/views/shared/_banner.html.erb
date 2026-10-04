@@ -10,6 +10,8 @@
   <% mobile_image = banner.image_mobile.attached? ? banner.image_mobile : desktop_image %>
   <% desktop_source = public_image_url(desktop_image, **Storage::PublicImageVariants::BANNER.first) %>
   <% mobile_source = public_image_url(mobile_image, **Storage::PublicImageVariants::BANNER.last) %>
+  <% desktop_dimensions = public_image_dimensions({ attachment: desktop_image }) || [1440, 360] %>
+  <% mobile_dimensions = public_image_dimensions({ attachment: mobile_image }) || [768, 360] %>
   <% image_classes = "w-full rounded-lg shadow-md hover:shadow-xl transition-shadow" %>
   <% render_image_banner = desktop_image&.attached? && desktop_source.present? %>
   <% banner_body = capture do %>
@@ -18,21 +20,21 @@
         <%= image_tag mobile_source.presence || desktop_source,
               alt: banner.title,
               class: image_classes,
-              width: 768,
-              height: 360,
+              width: mobile_dimensions.first,
+              height: mobile_dimensions.last,
               loading: "lazy",
               decoding: "async",
               sizes: "100vw" %>
       <% else %>
         <picture>
           <% if mobile_image&.attached? && mobile_source.present? %>
-            <source media="(max-width: 768px)" srcset="<%= mobile_source %>">
+            <source media="(max-width: 768px)" srcset="<%= mobile_source %>" width="<%= mobile_dimensions.first %>" height="<%= mobile_dimensions.last %>">
           <% end %>
           <%= image_tag desktop_source,
                 alt: banner.title,
                 class: [image_classes, "public-theme-banner__image", ("public-theme-banner__image--responsive" if mobile_image&.attached? && mobile_source.present?)].compact.join(" "),
-                width: 1440,
-                height: 360,
+                width: desktop_dimensions.first,
+                height: desktop_dimensions.last,
                 loading: "lazy",
                 decoding: "async",
                 sizes: "100vw" %>

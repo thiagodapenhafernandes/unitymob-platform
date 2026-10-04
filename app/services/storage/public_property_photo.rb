@@ -1,4 +1,5 @@
 require "cgi"
+require "net/http"
 
 module Storage
   module PublicPropertyPhoto
@@ -25,7 +26,8 @@ module Storage
       # Serviços legados mantêm o bucket original, mesmo após trocar o
       # armazenamento configurado da conta. Não misture os dois endereços.
       if StorageIntegrationSetting::LEGACY_DO_SERVICE_NAMES.include?(blob.service_name.to_sym)
-        return blob.service.send(:object_for, blob.key).public_url
+        url = blob.service.send(:object_for, blob.key).public_url
+        return blob.metadata["public_web_cdn"] ? normalize_spaces_cdn_url(url) : url
       end
 
       base_url = public_base_url(blob, tenant: tenant)
@@ -55,6 +57,33 @@ module Storage
 
       Rails.logger.warn("[public_property_photo] blob_id=#{blob&.id} key=#{blob&.key} error=#{e.class}: #{e.message}")
       false
+    end
+
+    # Uma origem Spaces pode existir sem CDN habilitado. Verifique no job,
+    # nunca durante a renderização; mantenha a origem se o CDN falhar.
+    def public_cdn_available?(blob)
+      return false unless StorageIntegrationSetting::LEGACY_DO_SERVICE_NAMES.include?(blob.service_name.to_sym)
+
+      url = normalize_spaces_cdn_url(blob.service.send(:object_for, blob.key).public_url)
+      uri = URI.parse(url)
+      return false unless uri.scheme == "https" && uri.host.to_s.end_with?(".cdn.digitaloceanspaces.com")
+
+      Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 3, read_timeout: 3) do |http|
+        http.head(uri.request_uri).is_a?(Net::HTTPSuccess)
+      end
+    rescue StandardError
+      false
+    end
+
+    # Apenas derivadas já publicadas, com chave imutável. Preserva os metadados.
+    def cache_public_blob!(blob)
+      object = blob.service.send(:object_for, blob.key)
+      object.copy_from(
+        copy_source: "#{object.bucket_name}/#{Storage::PublicPropertyPhoto.escaped_key(blob.key)}",
+        metadata_directive: "REPLACE", metadata: object.metadata,
+        content_type: object.content_type, content_disposition: object.content_disposition,
+        cache_control: "public, max-age=31536000, immutable", acl: "public-read"
+      )
     end
 
     def public_base_url(blob = nil, tenant: Current.tenant)
@@ -110,7 +139,7 @@ module Storage
     def normalize_spaces_cdn_url(raw)
       raw.to_s
         .sub(%r{/\z}, "")
-        .sub(%r{\A(https?://)([^./]+)\.([a-z0-9-]+)\.digitaloceanspaces\.com\z}i, '\1\2.\3.cdn.digitaloceanspaces.com')
+        .sub(%r{\A(https?://)([^./]+)\.([a-z0-9-]+)\.digitaloceanspaces\.com(?=/|\z)}i, '\1\2.\3.cdn.digitaloceanspaces.com')
     end
 
     def default_cdn_base_url

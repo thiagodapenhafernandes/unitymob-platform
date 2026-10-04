@@ -50,6 +50,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <% if defined?(@hero_preload_source) && @hero_preload_source.present? %>
       <% sources = hero_image_sources %>
+      <% if sources[:mobile].to_s.start_with?("https://") %>
+        <link rel="preconnect" href="<%= URI.parse(sources[:mobile]).then { |url| "https://#{url.host}" } %>">
+      <% end %>
       <% [["(max-width: 767px)", :mobile, :mobile_srcset], ["(min-width: 768px)", :desktop, :desktop_srcset]].each do |media, href, srcset| %>
         <%= tag.link rel: "preload", as: "image", media: media,
               href: sources[href], imagesrcset: sources[srcset],

@@ -64,7 +64,7 @@ module HabitationsHelper
 
   def public_image_dimensions(source)
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
-    metadata = attachment&.blob&.metadata
+    metadata = attachment.try(:blob)&.metadata
 
     width = metadata&.fetch("width", nil).to_i
     height = metadata&.fetch("height", nil).to_i

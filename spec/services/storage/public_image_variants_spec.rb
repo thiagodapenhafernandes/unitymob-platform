@@ -28,11 +28,13 @@ RSpec.describe Storage::PublicImageVariants do
     options = described_class::HERO.last
     allow(Storage::PublicPropertyPhoto).to receive(:public_photos_enabled?).with(tenant: tenant).and_return(true)
     allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:cache_public_blob!)
     version_before = PublicSite::PageVersion.current(tenant.id)
 
     ActiveStorage::TransformJob.perform_now(blob, options)
 
     variant_blob = blob.variant(**options).image.blob
+    expect(Storage::PublicPropertyPhoto).to have_received(:cache_public_blob!).with(variant_blob)
     expect(variant_blob.content_type).to eq("image/webp")
     expect(variant_blob.metadata["public_web_image"]).to be(true)
     expect(Rails.cache.read(Storage::PublicCdnImageUrl.variant_existence_cache_key(blob.id, variant_blob.id))).to be(true)

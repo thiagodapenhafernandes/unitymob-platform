@@ -20,10 +20,11 @@
       <!-- Company Info -->
       <div>
         <% if @layout_setting&.logo&.attached? %>
+          <% logo_dimensions = public_image_dimensions({ attachment: @layout_setting.logo }) || [400, 100] %>
           <% if @layout_setting.logo.content_type == 'image/svg+xml' || @layout_setting.logo.filename.to_s.downcase.end_with?('.svg') %>
-            <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
+            <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'h-10 mb-4', width: logo_dimensions.first, height: logo_dimensions.last, loading: 'lazy', decoding: 'async', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
           <% else %>
-            <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
+            <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'h-10 mb-4', width: logo_dimensions.first, height: logo_dimensions.last, loading: 'lazy', decoding: 'async', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
           <% end %>
         <% else %>
           <div class="mb-4 leading-tight text-white">

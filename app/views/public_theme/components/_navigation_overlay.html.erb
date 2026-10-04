@@ -38,7 +38,8 @@
       <%= link_to root_path, class: "public-theme-navigation-overlay__mobile-logo", aria: { label: local_assigns[:site_name] },
                              data: { action: close_action } do %>
         <% if local_assigns[:logo].present? %>
-          <%= image_tag local_assigns[:logo], alt: local_assigns[:site_name] %>
+          <% logo_dimensions = public_image_dimensions({ attachment: local_assigns[:logo] }) || [400, 100] %>
+          <%= image_tag local_assigns[:logo], alt: local_assigns[:site_name], width: logo_dimensions.first, height: logo_dimensions.last %>
         <% else %>
           <span><%= local_assigns[:site_name] %></span>
         <% end %>
