@@ -11,7 +11,12 @@ module Storage
     BANNER = [[1440, 360], [768, 360]].map do |size|
       { resize_to_limit: size, format: :webp, quality: 82, strip: true }
     end.freeze
+    BUILDER = { resize_to_limit: [900, 900], format: :webp, quality: 82, strip: true }.freeze
+    BUILDER_CONTENT = BUILDER.merge(resize_to_limit: [1600, 1600]).freeze
+    BUILDER_COVER = BUILDER.merge(resize_to_limit: [1920, 1000]).freeze
+    BUILDER_MOBILE = BUILDER.merge(resize_to_limit: [900, 1300]).freeze
     ATTACHMENTS = {
+      "LandingPageBlock" => %w[image_desktop image_mobile item_images],
       "HomeHeroSlide" => %w[image],
       "HomeSetting" => %w[hero_background_desktop hero_background_mobile],
       "Banner" => %w[image_desktop image_mobile],
@@ -26,14 +31,17 @@ module Storage
     end
 
     def self.publish(blob, transformations)
-      return unless (HERO + CARD + BANNER).include?(transformations.deep_symbolize_keys)
+      return unless (HERO + CARD + BANNER + [BUILDER, BUILDER_CONTENT, BUILDER_COVER, BUILDER_MOBILE]).include?(transformations.deep_symbolize_keys)
       attachment = blob.attachments.detect do |item|
-        ATTACHMENTS.fetch(item.record_type, []).include?(item.name)
+        next false unless ATTACHMENTS.fetch(item.record_type, []).include?(item.name)
+
+        item.record.present?
       end
       return unless attachment
 
       record = attachment.record
-      tenant = record.respond_to?(:tenant) ? record.tenant : record.home_setting.tenant
+      tenant = record.respond_to?(:tenant) ? record.tenant : record.home_setting&.tenant
+      return if tenant.nil?
       return unless Storage::PublicPropertyPhoto.public_photos_enabled?(tenant: tenant)
 
       variant_blob = blob.variant(**transformations.deep_symbolize_keys).image.blob

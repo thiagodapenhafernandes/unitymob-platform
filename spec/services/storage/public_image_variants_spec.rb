@@ -66,6 +66,38 @@ RSpec.describe Storage::PublicImageVariants do
     described_class.publish(blob, described_class::HERO.last)
   end
 
+  it "ignora anexos órfãos e publica pela vinculação válida" do
+    habitation = create(:habitation, tenant: tenant)
+    habitation.photos.attach(
+      io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+      filename: "original.png", content_type: "image/png"
+    )
+    blob = habitation.photos.blobs.first
+    habitation.delete
+    setting.hero_background_desktop.attach(blob)
+    options = described_class::HERO.last
+    allow(Storage::PublicPropertyPhoto).to receive(:public_photos_enabled?).with(tenant: tenant).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_blob!).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:cache_public_blob!)
+    blob.variant(**options).processed
+
+    expect { described_class.publish(blob, options) }.not_to raise_error
+    expect(Storage::PublicPropertyPhoto).to have_received(:publish_blob!)
+  end
+
+  it "descarta silenciosamente blobs com apenas anexos órfãos" do
+    habitation = create(:habitation, tenant: tenant)
+    habitation.photos.attach(
+      io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")),
+      filename: "original.png", content_type: "image/png"
+    )
+    blob = habitation.photos.blobs.first
+    habitation.delete
+
+    expect(Storage::PublicPropertyPhoto).not_to receive(:publish_blob!)
+    expect { described_class.publish(blob, described_class::CARD.first) }.not_to raise_error
+  end
+
   it "mantém o fallback quando o storage não permite publicação" do
     blob = attach_image(setting, :hero_background_desktop)
     options = described_class::HERO.last
