@@ -9,8 +9,10 @@
     <span class="lp-block__title">
       <strong><%= definition.label %></strong>
       <small data-landing-page-builder-target="summary"></small>
+      <small data-column-badge hidden></small>
     </span>
     <span class="lp-block__tools">
+      <% if block.block_type == "section" %><button type="button" class="lp-block__btn" aria-label="Recolher ou expandir blocos da seção" aria-expanded="true" data-action="landing-page-builder#toggleSection"><i class="bi bi-collection" aria-hidden="true"></i></button><% end %>
       <label class="lp-block__visible" title="Mostrar este bloco na página">
         <%= bf.check_box :visible, class: "lp-block__visible-input" %>
         <span><i class="bi bi-eye" aria-hidden="true"></i></span>
@@ -21,21 +23,33 @@
     </span>
   </summary>
   <div class="lp-block__body">
+    <%= bf.hidden_field :id if block.persisted? %>
     <%= bf.hidden_field :block_type %>
     <%= bf.hidden_field :position, data: { landing_page_builder_target: "position" } %>
     <%= bf.hidden_field :_destroy, value: "0", data: { landing_page_builder_target: "destroy" } %>
 
     <%= bf.fields_for :data, data do |df| %>
       <%= ax_field_grid do %>
-        <% definition.fields.each do |field| %>
-          <div class="<%= field.type.in?(%i[text rich filters url string embed]) ? "ax-span-12" : "ax-span-6" %>">
+        <% definition.fields.reject { |field| LandingPages::BlockTypes::LAYOUT_FIELDS.include?(field) }.each do |field| %>
+          <div class="<%= field.type.in?(%i[text rich filters url string embed items boolean]) ? "ax-span-12" : "ax-span-6" %>" data-block-field="<%= field.name %>">
             <%= render "admin/landing_pages/block_field", df: df, field: field, bf: bf, data: data %>
           </div>
         <% end %>
       <% end %>
+      <details class="lp-layout-controls">
+        <summary>Layout e posição</summary>
+        <%= ax_field_grid do %>
+          <% LandingPages::BlockTypes::LAYOUT_FIELDS.each do |field| %>
+            <div class="<%= field.type == :boolean ? 'ax-span-12' : 'ax-span-6' %>" data-block-field="<%= field.name %>">
+              <%= render "admin/landing_pages/block_field", df: df, field: field, bf: bf, data: data %>
+            </div>
+          <% end %>
+        <% end %>
+        <button type="button" class="ax-btn ax-btn--secondary" data-action="landing-page-builder#resetLayout">Restaurar layout padrão</button>
+      </details>
     <% end %>
 
-    <% uploads = { "cover" => { image_desktop: "Imagem de fundo (desktop)", image_mobile: "Imagem de fundo (celular, opcional)" }, "image" => { image_desktop: "Imagem (JPG, PNG ou WebP)" } }[block.block_type] %>
+    <% uploads = { "cover" => { image_desktop: "Imagem de fundo (desktop)", image_mobile: "Imagem de fundo (celular, opcional)" }, "video" => { image_desktop: "Capa do vídeo (opcional)" }, "image" => { image_desktop: "Imagem (JPG, PNG ou WebP)" } }[block.block_type] %>
     <% if uploads %>
       <%= ax_field_grid do %>
         <% uploads.each do |attachment, label| %>

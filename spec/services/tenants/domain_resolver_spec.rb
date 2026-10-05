@@ -39,4 +39,14 @@ RSpec.describe Tenants::DomainResolver do
     expect(resolver.tenant).to eq(tenant)
     expect(resolver.matched_domain).to be_nil
   end
+  it "permite prévia explícita por conta apenas no host local" do
+    tenant = Tenant.create!(name: "Preview", slug: "preview-#{SecureRandom.hex(3)}")
+    other = Tenant.create!(name: "Other", slug: "other-#{SecureRandom.hex(3)}")
+    Tenants::LocalPublicHostOverride.activate!(other)
+    expect(described_class.new(host: "dev.unitymob.com.br", local_preview_slug: tenant.slug).tenant).to eq(tenant)
+    expect(described_class.new(host: "dev.unitymob.com.br").tenant).to eq(other)
+    other.tenant_domains.create!(hostname: "public.example.test", primary_domain: true)
+    expect(described_class.new(host: "public.example.test", local_preview_slug: tenant.slug).tenant).to eq(other)
+  end
+
 end

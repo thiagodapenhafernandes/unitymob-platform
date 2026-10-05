@@ -34,6 +34,7 @@ const maybeLoadActionText = () => {
 
 document.addEventListener("DOMContentLoaded", maybeLoadActionText)
 document.addEventListener("turbo:load", maybeLoadActionText)
+document.addEventListener("rich-text:load", maybeLoadActionText)
 maybeLoadActionText();
 
 // Compat mínimo para data-bs-* ainda usado em telas públicas não migradas.

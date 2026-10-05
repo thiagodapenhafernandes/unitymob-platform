@@ -3,7 +3,7 @@
 <% case part %>
 <% when "properties" %>
   <% properties = Array(payload[:records]) %>
-  <% cache ['home_section_media_v10', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), home_cards_stamp(properties)] do %>
+  <% cache ['home_section_media_v11', public_tenant.public_site_theme_key, section.id, section.updated_at.to_i, properties.map(&:id), home_cards_stamp(properties)] do %>
     <% prepare_home_cards(properties) %>
     <%= render 'shared/property_carousel', properties: properties, card_partial: theme_component_path(:property_card), variant: theme_variant %>
   <% end %>

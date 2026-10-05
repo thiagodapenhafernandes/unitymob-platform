@@ -13,7 +13,7 @@ module LandingPages
       target_price min_area opportunity characteristics caracteristica_unica status sort
     ].freeze
 
-    Field = Struct.new(:name, :type, :label, :hint, :default, :options, :limit, :placeholder, keyword_init: true)
+    Field = Struct.new(:name, :type, :label, :hint, :default, :options, :limit, :placeholder, :item_fields, keyword_init: true)
 
     Definition = Struct.new(:key, :label, :icon, :description, :fields, keyword_init: true) do
       def field(name) = fields.find { |field| field.name.to_s == name.to_s }
@@ -32,6 +32,21 @@ module LandingPages
 
       def coerce(field, value)
         case field.type
+        when :items
+          rows = value.respond_to?(:to_unsafe_h) ? value.to_unsafe_h : value
+          rows = rows.values if rows.is_a?(Hash)
+          Array(rows).first(50).filter_map do |row|
+            next unless row.is_a?(Hash)
+            raw = row.to_h.stringify_keys
+            item = field.item_fields.to_h { |child| [child.name.to_s, coerce(child, raw[child.name.to_s])] }
+            item["image_key"] = "" if item["remove_image"]
+            item unless item.values.all?(&:blank?)
+          end
+        when :https_image then value.to_s.strip.match?(%r{\Ahttps://[^\s"'<>]+\z}) ? value.to_s.strip.first(1000) : ""
+        when :hidden then value.to_s.match?(/\A[a-zA-Z0-9_-]{1,80}\z/) ? value.to_s : ""
+        when :icon then value.to_s.match?(/\A[a-z0-9-]{1,60}\z/) ? value.to_s : ""
+        when :color then value.to_s.match?(/\A#[0-9a-fA-F]{6}\z/) ? value.to_s : field.default
+        when :button_icon then value.to_s.match?(/\A[a-z0-9-]{1,60}\z/) ? value.to_s : ""
         when :public_form then value.to_i.positive? ? value.to_i : nil
         when :string then value.to_s.squish.first(field.limit || 200)
         when :text then value.to_s.strip.first(field.limit || 2000)
@@ -39,6 +54,7 @@ module LandingPages
         when :select then field.options.map { |_label, option| option.to_s }.include?(value.to_s) ? value.to_s : field.default.to_s
         when :boolean then ActiveModel::Type::Boolean.new.cast(value) ? true : false
         when :integer then field.options.map { |_label, option| option.to_i }.include?(value.to_i) ? value.to_i : field.default
+        when :range then value.to_i.clamp(*field.options)
         when :url then value.to_s.strip.match?(PublicHeaderMenu::URL_FORMAT) ? value.to_s.strip : ""
         when :embed then coerce_embed(value, field)
         when :filters then coerce_filters(value)
@@ -70,6 +86,30 @@ module LandingPages
     SPAN_FIELD = Field.new(name: :span, type: :select, label: "Largura na linha", options: SPANS, default: "full",
                            hint: "Só vale em páginas com 2 ou 3 colunas. Blocos em coluna ficam lado a lado.")
 
+    COLUMN_FIELD = Field.new(name: :column, type: :select, label: "Coluna dentro da seção", options: [["Coluna 1", "1"], ["Coluna 2", "2"], ["Coluna 3", "3"]], default: "1",
+                             hint: "Vale depois de um bloco Seção. Mova os blocos para baixo da seção e escolha a coluna de cada um.")
+    COLLECTIONS = {
+      "cards" => ["Cards de conteúdo", "grid", "Serviços, áreas de atuação ou cidades com imagem, texto e link."],
+      "indicators" => ["Indicadores", "123", "Números e legendas de experiência, clientes e resultados."],
+      "testimonials" => ["Depoimentos", "chat-quote", "Depoimento, nome e identificação de quem falou."],
+      "timeline" => ["Linha do tempo", "clock-history", "Ano, título e descrição dos marcos da empresa."],
+      "partners" => ["Parceiros", "buildings", "Logos de parceiros com nome e link."],
+      "team" => ["Equipe", "people", "Foto, nome, cargo e link de cada pessoa."],
+      "gallery" => ["Galeria de imagens", "images", "Imagens com legenda e link, em grade ou carrossel."]
+    }.freeze
+    ITEM_FIELDS = [
+      Field.new(name: :row_key, type: :hidden),
+      Field.new(name: :image_key, type: :hidden),
+      Field.new(name: :remove_image, type: :boolean, label: "Remover imagem enviada", default: false),
+      Field.new(name: :title, type: :string, label: "Título / nome", limit: 160),
+      Field.new(name: :label, type: :string, label: "Ano / número / cargo", limit: 120),
+      Field.new(name: :text, type: :text, label: "Descrição / depoimento", limit: 3000),
+      Field.new(name: :image, type: :https_image, label: "URL da imagem (https)", placeholder: "https://…"),
+      Field.new(name: :alt, type: :string, label: "Descrição da imagem", limit: 160),
+      Field.new(name: :url, type: :url, label: "Destino ao clicar", placeholder: "/pagina ou https://…"),
+      Field.new(name: :icon, type: :icon, label: "Ícone Bootstrap (opcional)", placeholder: "Ex.: house, people, award")
+    ].freeze
+
     RAW = [
       Definition.new(
         key: "form", label: "Formulário", icon: "ui-checks", description: "Formulário publicado da sua conta, exibido diretamente na página.",
@@ -83,6 +123,8 @@ module LandingPages
           Field.new(name: :button_label, type: :string, label: "Texto do botão", limit: 40, default: ""),
           Field.new(name: :button_url, type: :url, label: "Destino do botão", default: "", hint: "/página, https://… ou #modal-ID de um formulário."),
           Field.new(name: :align, type: :select, label: "Alinhamento", options: ALIGNS, default: "center"),
+          Field.new(name: :height, type: :select, label: "Altura da capa", options: [["Padrão", "auto"], ["Compacta", "compact"], ["Alta", "tall"]], default: "auto"),
+          Field.new(name: :focus, type: :select, label: "Ponto focal da imagem", options: [["Centro", "center"], ["Topo", "top"], ["Base", "bottom"]], default: "center"),
           Field.new(name: :overlay, type: :integer, label: "Escurecer a imagem", options: [["Nada", 0], ["Leve", 25], ["Médio", 45], ["Forte", 65]], default: 45)
         ]
       ),
@@ -91,6 +133,9 @@ module LandingPages
         fields: [
           Field.new(name: :heading, type: :string, label: "Título da seção", limit: 120, default: ""),
           Field.new(name: :body, type: :rich, label: "Texto", default: ""),
+          Field.new(name: :expandable, type: :boolean, label: "Texto complementar com Ver mais", default: false),
+          Field.new(name: :more_body, type: :rich, label: "Texto complementar", default: ""),
+          Field.new(name: :more_label, type: :string, label: "Texto de Ver mais", limit: 40, default: "Ver mais"),
           Field.new(name: :width, type: :select, label: "Largura", options: [["Estreita (leitura)", "narrow"], ["Larga", "wide"]], default: "narrow")
         ]
       ),
@@ -116,6 +161,10 @@ module LandingPages
           Field.new(name: :url, type: :url, label: "Destino", default: "", hint: "/página, https://… ou #modal-ID de um formulário."),
           Field.new(name: :style, type: :select, label: "Estilo", options: [["Principal", "primary"], ["Secundário", "secondary"], ["Contorno", "outline"]], default: "primary"),
           Field.new(name: :align, type: :select, label: "Alinhamento", options: ALIGNS, default: "center"),
+          Field.new(name: :icon, type: :button_icon, label: "Ícone", default: ""),
+          Field.new(name: :custom_colors, type: :boolean, label: "Personalizar cores do botão", default: false),
+          Field.new(name: :text_color, type: :color, label: "Cor do texto", default: "#ffffff"),
+          Field.new(name: :background_color, type: :color, label: "Cor de fundo", default: "#003344"),
           Field.new(name: :new_tab, type: :boolean, label: "Abrir em nova aba", default: false)
         ]
       ),
@@ -130,10 +179,11 @@ module LandingPages
         ]
       ),
       Definition.new(
-        key: "video", label: "Vídeo do YouTube", icon: "youtube", description: "Vídeo do YouTube em 16:9, no modo de privacidade.",
+        key: "video", label: "Vídeo (YouTube ou Vimeo)", icon: "play-btn", description: "Cole a URL do YouTube ou Vimeo. Vídeo responsivo, sem reprodução automática.",
         fields: [
-          Field.new(name: :url, type: :embed, label: "Link do YouTube", default: "", limit: 300, placeholder: "https://www.youtube.com/watch?v=…",
-                    hint: "Aceita youtube.com/watch, youtu.be, /shorts e o código de incorporar."),
+          Field.new(name: :url, type: :embed, label: "URL do YouTube ou Vimeo", default: "", limit: 300, placeholder: "https://www.youtube.com/watch?v=…",
+                    hint: "Aceita youtube.com/watch, youtu.be, /shorts, vimeo.com e códigos de incorporar."),
+          Field.new(name: :click_to_play, type: :boolean, label: "Carregar o player somente ao clicar", default: false, hint: "Mantém a página leve até o visitante querer assistir."),
           Field.new(name: :title, type: :string, label: "Título do vídeo", limit: 120, default: "", hint: "Lido por leitores de tela."),
           Field.new(name: :caption, type: :string, label: "Legenda", limit: 200, default: "")
         ]
@@ -149,7 +199,49 @@ module LandingPages
       )
     ].freeze
 
-    ALL = RAW.map { |definition| definition.tap { |item| item.fields = item.fields + [SPAN_FIELD] } }.freeze
+    SECTION = Definition.new(key: "section", label: "Seção com colunas", icon: "layout-three-columns", description: "Agrupa os blocos seguintes em até três colunas, até a próxima seção.", fields: [
+      Field.new(name: :heading, type: :string, label: "Título da seção", limit: 120, default: ""),
+      Field.new(name: :subtitle, type: :text, label: "Introdução", limit: 1000, default: ""),
+      Field.new(name: :columns, type: :integer, label: "Colunas desta seção", options: [["1 coluna", 1], ["2 colunas", 2], ["3 colunas", 3]], default: 2),
+      Field.new(name: :ratio, type: :select, label: "Proporção (duas colunas)", options: [["Iguais", "equal"], ["Primeira maior", "wide-first"], ["Segunda maior", "wide-last"]], default: "equal"),
+      Field.new(name: :align, type: :select, label: "Alinhamento vertical", options: [["Topo", "start"], ["Centro", "center"], ["Base", "end"]], default: "start"),
+      Field.new(name: :background, type: :select, label: "Fundo", options: [["Padrão", "plain"], ["Suave", "soft"], ["Cor principal da conta", "primary"]], default: "plain"),
+      Field.new(name: :spacing, type: :select, label: "Espaçamento", options: [["Compacto", "compact"], ["Normal", "normal"], ["Amplo", "wide"]], default: "normal")
+    ])
+    REPEATED = COLLECTIONS.map do |key, (label, icon, description)|
+      Definition.new(key: key, label: label, icon: icon, description: description, fields: [
+        Field.new(name: :heading, type: :string, label: "Título da seção", limit: 120, default: ""),
+        Field.new(name: :subtitle, type: :text, label: "Introdução", limit: 1000, default: ""),
+        Field.new(name: :columns, type: :integer, label: "Colunas", options: [["1", 1], ["2", 2], ["3", 3]], default: 3),
+        Field.new(name: :layout, type: :select, label: "Apresentação", options: [["Grade", "grid"], ["Carrossel com rolagem", "carousel"]], default: "grid"),
+        Field.new(name: :items, type: :items, label: "Itens", default: [], item_fields: ITEM_FIELDS.map do |field|
+          labels = {
+            "indicators" => { title: "Legenda do indicador", label: "Número (ex.: +12 anos)", text: "Complemento" },
+            "testimonials" => { title: "Nome da pessoa", label: "Identificação / cargo", text: "Depoimento" },
+            "timeline" => { title: "Título do marco", label: "Ano", text: "Descrição do marco" },
+            "partners" => { title: "Nome do parceiro", label: "Segmento", image: "URL do logo (https)" },
+            "team" => { title: "Nome da pessoa", label: "Cargo", text: "Apresentação" },
+            "gallery" => { title: "Legenda", label: "Identificação", text: "Descrição" }
+          }.fetch(key, {})
+          field.dup.tap { |copy| copy.label = labels.fetch(field.name, field.label) }
+        end)
+      ])
+    end
+
+    LAYOUT_FIELDS = [
+      Field.new(name: :layout_width, type: :select, label: "Largura do bloco", options: [["Padrão do tema", "theme"], ["Toda a coluna", "column"], ["Toda a página", "page"]], default: "theme"),
+      Field.new(name: :layout_height, type: :select, label: "Altura", options: [["Automática", "auto"], ["Altura mínima personalizada", "custom"], ["Altura da tela", "screen"]], default: "auto"),
+      Field.new(name: :layout_min_height, type: :range, label: "Altura mínima (px)", options: [0, 1200], default: 0),
+      Field.new(name: :offset_x, type: :range, label: "Deslocamento horizontal X (px)", options: [-200, 200], default: 0),
+      Field.new(name: :offset_y, type: :range, label: "Deslocamento vertical Y (px)", options: [-300, 300], default: 0),
+      Field.new(name: :layer, type: :range, label: "Camada", options: [0, 10], default: 0),
+      Field.new(name: :mobile_layout, type: :boolean, label: "Personalizar posição e altura no mobile", default: false),
+      Field.new(name: :mobile_offset_x, type: :range, label: "X no mobile (px)", options: [-40, 40], default: 0),
+      Field.new(name: :mobile_offset_y, type: :range, label: "Y no mobile (px)", options: [-100, 100], default: 0),
+      Field.new(name: :mobile_min_height, type: :range, label: "Altura mínima no mobile (px)", options: [0, 800], default: 0)
+    ].freeze
+
+    ALL = (RAW + [SECTION] + REPEATED).map { |definition| definition.tap { |item| item.fields = item.fields + [SPAN_FIELD, COLUMN_FIELD] + LAYOUT_FIELDS } }.freeze
 
     BY_KEY = ALL.index_by(&:key).freeze
 

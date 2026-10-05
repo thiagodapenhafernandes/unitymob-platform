@@ -5,12 +5,12 @@
   desktop = block.image_desktop
   mobile = block.image_mobile
 %>
-<section data-block-position="<%= block.position %>" class="public-theme-block-cover public-theme-block-cover--<%= variant %> is-align-<%= block.value(:align) %><%= " has-image" if desktop.attached? %>"
+<section data-block-position="<%= block.position %>" class="public-theme-block-cover public-theme-block-cover--<%= variant %> is-align-<%= block.value(:align) %> is-height-<%= block.value(:height) %> is-focus-<%= block.value(:focus) %><%= " has-image" if desktop.attached? %>"
          style="--cover-overlay: <%= (block.value(:overlay).to_i / 100.0).round(2) %>">
   <% if desktop.attached? %>
     <picture class="public-theme-block-cover__media">
-      <% if mobile.attached? %><source media="(max-width: 768px)" srcset="<%= url_for(mobile.variant(resize_to_limit: [900, 1300])) %>"><% end %>
-      <%= image_tag desktop.variant(resize_to_limit: [1920, 1000]), alt: "", class: "public-theme-block-cover__image", loading: (h1 ? "eager" : "lazy") %>
+      <% if mobile.attached? %><source media="(max-width: 768px)" srcset="<%= public_image_url(mobile, **Storage::PublicImageVariants::BUILDER_MOBILE) %>"><% end %>
+      <%= image_tag public_image_url(desktop, **Storage::PublicImageVariants::BUILDER_COVER), alt: "", class: "public-theme-block-cover__image", loading: (h1 ? "eager" : "lazy") %>
     </picture>
   <% end %>
   <div class="public-theme-block-cover__inner">

@@ -1,6 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "public_theme/components/_property_grid.html.erb", type: :view do
+  before { allow(view).to receive(:current_admin_user).and_return(nil) }
   it "renderiza cards luxury com dados da plataforma" do
     tenant = Tenant.create!(name: "Salute Imóveis", slug: "lux-grid")
     first = create(:habitation, tenant: tenant)

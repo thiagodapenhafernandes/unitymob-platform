@@ -8,6 +8,12 @@
           <%= sanitize block.value(:body), tags: LandingPages::BlockTypes::RICH_TAGS, attributes: LandingPages::BlockTypes::RICH_ATTRIBUTES %>
         </div>
       <% end %>
+      <% if block.value(:expandable) && block.value(:more_body).present? %>
+        <details class="public-theme-block-text__more">
+          <summary><%= block.value(:more_label).presence || "Ver mais" %></summary>
+          <div class="public-theme-block-text__body seo-text-rich"><%= sanitize block.value(:more_body), tags: LandingPages::BlockTypes::RICH_TAGS, attributes: LandingPages::BlockTypes::RICH_ATTRIBUTES %></div>
+        </details>
+      <% end %>
     </div>
   </div>
 </section>

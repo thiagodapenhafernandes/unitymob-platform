@@ -6,7 +6,7 @@ module Storage
       "HomeSetting" => %w[hero_background_desktop hero_background_mobile],
       "HomeHeroSlide" => %w[image],
       "Banner" => %w[image_desktop image_mobile],
-      "LandingPageBlock" => %w[image_desktop image_mobile],
+      "LandingPageBlock" => %w[image_desktop image_mobile item_images],
       "SeoSetting" => %w[og_image_file]
     }.freeze
 

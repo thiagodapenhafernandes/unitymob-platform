@@ -1431,3 +1431,5 @@
 [data-public-site-theme="conexaoimobiliaria"] .public-theme-property-card__opportunity--rent {
   background: rgba(168, 139, 87, .24) !important;
 }
+[data-public-site-theme="conexaoimobiliaria"] .public-property-card .public-theme-property-card__actions .broker-share__trigger { width: 44px; height: 44px; background: #fff; border: 1px solid var(--conexao-line, #e2e5e9); color: var(--conexao-gold); box-shadow: none; backdrop-filter: none; }
+[data-public-site-theme="conexaoimobiliaria"] .public-property-card .public-theme-property-card__contact { width: 100%; height: auto; min-height: 48px; border-radius: 12px; }

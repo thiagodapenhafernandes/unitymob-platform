@@ -16,6 +16,14 @@ RSpec.describe "Admin::LandingPages construtor de páginas", type: :request do
     sign_in admin
   end
 
+  it "abre a página pública na conta do registro no host local" do
+    page = tenant.landing_pages.create!(title: "Demonstração", slug: "demo", status: "published")
+    host! "dev.unitymob.com.br"
+    get admin_landing_pages_path
+    html = Nokogiri::HTML(response.body)
+    expect(html.at_css("a[title='Ver no site']")["href"]).to eq("http://dev.unitymob.com.br/demo?preview_tenant=#{tenant.slug}")
+  end
+
   describe "tela do editor" do
     it "organiza em Página, Blocos, Google e Salvar, com a prévia ao lado" do
       get new_admin_landing_page_path
@@ -28,18 +36,27 @@ RSpec.describe "Admin::LandingPages construtor de páginas", type: :request do
       expect(html.css(".ax-guided-step.is-open")).to be_empty # tudo recolhido por padrão
       expect(html.at_css("[data-landing-page-builder-target='frame']")).to be_present
       expect(html.at_css(".lp-serp [data-seo-snippet-target='url']")).to be_present
-      expect(html.css(".lp-dropdown__item").map { |node| node["data-block-type"] }).to eq(%w[form cover text property_showcase button image video embed])
+      expect(html.css(".lp-dropdown__item").map { |node| node["data-block-type"] }).to eq(%w[form cover text property_showcase button image video embed section cards indicators testimonials timeline partners team gallery])
       expect(html.css("input[name='landing_page[layout_columns]']").map { |node| node["value"] }).to eq(%w[1 2 3])
       expect(html.at_css("input[name='landing_page[layout_columns]'][checked]")["value"]).to eq("1")
     end
 
-    it "página nova nasce como rascunho com o modelo Seleção de imóveis (a vitrine de sempre)" do
+    it "página nova nasce como rascunho sem blocos" do
       get new_admin_landing_page_path
 
       html = Nokogiri::HTML(response.body)
       expect(html.at_css("input[name='landing_page[status]'][value='draft']")["checked"]).to be_present
-      expect(html.css("[data-landing-page-builder-target='list'] [data-block-type]").map { |node| node["data-block-type"] }).to eq(["property_showcase"])
-      expect(html.css(".lp-template").size).to eq(4)
+      expect(html.css("[data-landing-page-builder-target='list'] [data-block-type]").map { |node| node["data-block-type"] }).to eq([])
+      expect(html.css(".lp-template").size).to eq(LandingPages::Templates::ALL.size)
+    end
+
+    it "oferece uma demonstração genérica sem vitrine" do
+      get new_admin_landing_page_path(template: "demo")
+      html = Nokogiri::HTML(response.body)
+      types = html.css("[data-landing-page-builder-target='list'] [data-block-type]").map { |node| node["data-block-type"] }
+      expect(types).to include("gallery", "section", "text", "indicators", "cards", "button")
+      expect(types).not_to include("property_showcase")
+      expect(response.body).to include("Página de demonstração")
     end
 
     it "todos os blocos nascem recolhidos (os moldes dos blocos novos também)" do
@@ -120,8 +137,8 @@ RSpec.describe "Admin::LandingPages construtor de páginas", type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
-    it "recusa vídeo que não é do YouTube e iframe que não é https" do
-      post admin_landing_pages_path, params: { landing_page: { title: "Ruim 2", blocks_attributes: { "0" => block_params("video", { url: "https://vimeo.com/1" }) } } }
+    it "recusa vídeo fora dos provedores suportados e iframe que não é https" do
+      post admin_landing_pages_path, params: { landing_page: { title: "Ruim 2", blocks_attributes: { "0" => block_params("video", { url: "https://example.com/1" }) } } }
       expect(response.body).to include("link válido do YouTube")
 
       post admin_landing_pages_path, params: { landing_page: { title: "Ruim 3", blocks_attributes: { "0" => block_params("embed", { url: "http://example.com" }) } } }
@@ -161,6 +178,52 @@ RSpec.describe "Admin::LandingPages construtor de páginas", type: :request do
     end
   end
 
+
+  describe "itens com imagens e seções" do
+    it "salva imagem pelo admin, devolve sua chave e mantém o agrupamento após atualização" do
+      upload = fixture_file_upload("watermark.png", "image/png")
+      post admin_landing_pages_path, params: { landing_page: { title: "Nossa empresa", blocks_attributes: {
+        "0" => block_params("section", { heading: "Equipe", columns: "3" }),
+        "1" => block_params("team", { column: "2", items: { "100" => { row_key: "100", title: "Maria", label: "Corretora" } } }, position: 1, item_uploads: { "100" => upload })
+      } } }, headers: { "Accept" => "application/json" }
+      expect(response).to have_http_status(:created)
+      page = tenant.landing_pages.find_by!(title: "Nossa empresa")
+      team = page.blocks.last
+      key = team.value(:items).first["image_key"]
+      expect(key).to be_present
+      expect(team.item_image(team.value(:items).first).blob.metadata).to include("landing_page_item_key" => key)
+      expect(JSON.parse(response.body)["blocks"].last["item_image_keys"]).to eq([key])
+
+      patch admin_landing_page_path(page), params: { landing_page: { blocks_attributes: {
+        "1" => { id: team.id, data: team.data.merge("column" => "3") }
+      } } }, headers: { "Accept" => "application/json" }
+      expect(response).to have_http_status(:ok)
+      expect(team.reload.value(:column)).to eq("3")
+      expect(team.item_images.count).to eq(1)
+      get edit_admin_landing_page_path(page)
+      expect(response.body).to include(key)
+      html = Nokogiri::HTML(response.body)
+      expect(html.at_css("details[data-block-type='team'] input[name$='[id]']")["value"]).to eq(team.id.to_s)
+
+      patch admin_landing_page_path(page), params: { landing_page: { blocks_attributes: {
+        "2" => block_params("team", team.data, position: 2, copy_images_from: team.id)
+      } } }, headers: { "Accept" => "application/json" }
+      expect(response).to have_http_status(:ok)
+      copied = page.blocks.reload.last
+      expect(copied.item_image(copied.value(:items).first).blob_id).to eq(team.item_image(team.value(:items).first).blob_id)
+    end
+
+    it "não permite recuperar imagens usando uma chave de outra conta" do
+      upload = fixture_file_upload("watermark.png", "image/png")
+      other = Tenant.create!(name: "Outra conta", slug: "outra-#{SecureRandom.hex(3)}")
+      foreign_page = other.landing_pages.create!(title: "Outra conta")
+      foreign = foreign_page.blocks.create!(block_type: "team", position: 0, data: { items: [{ row_key: "0", title: "Outra pessoa" }] }, item_uploads: { "0" => upload })
+      key = foreign.value(:items).first["image_key"]
+      mine = tenant.landing_pages.create!(title: "Minha conta").blocks.create!(block_type: "team", position: 0, data: { items: [{ title: "Minha pessoa", image_key: key }] })
+      expect(mine.item_image(mine.value(:items).first)).to be_nil
+    end
+  end
+
   describe "autosave (JSON)" do
     let(:json) { { "Accept" => "application/json" } }
 
@@ -172,7 +235,7 @@ RSpec.describe "Admin::LandingPages construtor de páginas", type: :request do
       expect(page.status).to eq("draft")
       body = JSON.parse(response.body)
       expect(body).to include("ok" => true, "update_url" => admin_landing_page_path(page), "slug" => page.slug)
-      expect(body["blocks"]).to eq([{ "position" => 0, "id" => page.blocks.first.id }])
+      expect(body["blocks"]).to eq([{ "position" => 0, "id" => page.blocks.first.id, "item_image_keys" => [] }])
     end
 
     it "atualiza rascunho sem mudar o status e sem duplicar blocos já salvos" do

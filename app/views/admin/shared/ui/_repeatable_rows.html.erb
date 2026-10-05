@@ -8,8 +8,14 @@
     name = "#{input_name}[#{index}][#{field[:key]}]"
     common = { class: "ax-control", "aria-label": field[:label] }
     case field[:type]&.to_sym
+    when :hidden
+      hidden_field_tag(name, field[:key] == "row_key" ? index : value)
+    when :file
+      file_field_tag("#{field[:input_name]}[#{index}]", common.merge(accept: "image/png,image/jpeg,image/webp", data: { landing_page_builder_target: "file" }))
     when :select
       select_tag(name, options_for_select(field[:options], value), common.merge(include_blank: field[:placeholder]))
+    when :textarea
+      text_area_tag(name, value, common.merge(placeholder: field[:placeholder], rows: 3))
     when :number
       text_field_tag(name, value, common.merge(placeholder: field[:placeholder], inputmode: "numeric"))
     when :url
@@ -34,18 +40,26 @@
   <div class="ax-dynamic-list__items" data-dynamic-list-target="container">
     <% Array(rows).each_with_index do |row, index| %>
       <div class="ax-input-group ax-dynamic-list__item">
-        <% fields.each do |field| %><%= render_field.call(field, index, row[field[:key]]) %><% end %>
+        <% fields.each do |field| %><%= tag.label(class: "ax-repeatable-rows__field", hidden: field[:type] == :hidden) { tag.span(field[:label], class: "ax-repeatable-rows__label") + render_field.call(field, index, row[field[:key]]) } %><% end %>
+        <div class="ax-repeatable-rows__actions">
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="dynamic-list#move" data-direction="-1" aria-label="Subir item"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="dynamic-list#move" data-direction="1" aria-label="Descer item"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
         <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove" aria-label="Remover linha">
           <i class="bi bi-trash" aria-hidden="true"></i>
         </button>
+        </div>
       </div>
     <% end %>
   </div>
   <% if empty_hint.present? %><p class="ax-repeatable-rows__hint"><%= empty_hint %></p><% end %>
   <template data-dynamic-list-target="template">
-    <% fields.each do |field| %><%= render_field.call(field, "NEW_RECORD", nil) %><% end %>
-    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove" aria-label="Remover linha">
+    <% fields.each do |field| %><%= tag.label(class: "ax-repeatable-rows__field", hidden: field[:type] == :hidden) { tag.span(field[:label], class: "ax-repeatable-rows__label") + render_field.call(field, "NEW_RECORD", nil) } %><% end %>
+    <div class="ax-repeatable-rows__actions">
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="dynamic-list#move" data-direction="-1" aria-label="Subir item"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="dynamic-list#move" data-direction="1" aria-label="Descer item"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove" aria-label="Remover linha">
       <i class="bi bi-trash" aria-hidden="true"></i>
     </button>
+    </div>
   </template>
 </div>

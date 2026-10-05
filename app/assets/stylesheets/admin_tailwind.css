@@ -29665,3 +29665,21 @@ html[data-admin-theme="dark"] .wa-inbox-thread__scroll {
 }
 
 .automation-workflow-builder__entry-advanced[open] > summary { margin-bottom: 10px; }
+
+/* Reusable repeatable items with several fields: readable in narrow builder panels. */
+.ax-repeatable-rows__field { min-width: 0; display: block; }
+.ax-repeatable-rows__label { display: none; }
+.ax-repeatable-rows--stacked .ax-repeatable-rows__head { display: none; }
+.ax-repeatable-rows--stacked .ax-dynamic-list__item { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px; border: 1px solid var(--ax-border-soft); border-radius: 12px; }
+.ax-repeatable-rows--stacked .ax-repeatable-rows__field { display: grid; gap: 6px; grid-column: auto; }
+.ax-repeatable-rows--stacked .ax-repeatable-rows__label { display: block; font-size: 12px; font-weight: 600; color: var(--ab-muted); }
+.ax-repeatable-rows--stacked .ax-repeatable-rows__field:has(textarea) { grid-column: 1 / -1; }
+.ax-repeatable-rows--stacked .ax-dynamic-list__item > :last-child { grid-column: 1 / -1; grid-row: auto; justify-self: end; }
+@media (max-width: 575px) { .ax-repeatable-rows--stacked .ax-dynamic-list__item { grid-template-columns: minmax(0, 1fr); } }
+.ax-repeatable-rows__field[hidden] { display: none; }
+.ax-repeatable-rows__actions { display: flex; gap: 4px; justify-content: end; }
+
+.ax-icon-picker { display: grid; gap: 8px; min-width: 0; }
+.ax-icon-picker__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); max-height: 240px; overflow: auto; gap: 6px; margin-top: 8px; }
+.ax-icon-picker__grid .ax-btn { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.ax-icon-picker__grid [hidden] { display: none; }

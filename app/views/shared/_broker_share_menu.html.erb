@@ -6,13 +6,14 @@
   <button type="button"
           class="broker-share__trigger"
           data-action="click->broker-share#toggle"
-          title="Compartilhar imóvel">
+          title="Compartilhar imóvel" aria-label="Compartilhar imóvel" aria-haspopup="dialog">
     <i class="bi bi-share-fill"></i>
   </button>
 
-  <div class="broker-share__menu hidden d-none"
+  <dialog class="broker-share__menu broker-share__dialog" aria-label="Compartilhar imóvel"
        data-broker-share-target="menu">
-    <p class="broker-share__title">Compartilhar imóvel</p>
+    <div class="broker-share__header"><p class="broker-share__title">Compartilhar imóvel</p><button type="button" class="broker-share__close" data-action="broker-share#toggle" aria-label="Fechar compartilhamento"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+    <p class="broker-share__description"><%= property.display_title %></p>
 
     <div class="broker-share__actions">
       <button type="button" class="broker-share__action broker-share__action--whatsapp" data-action="click->broker-share#whatsapp" title="WhatsApp" aria-label="Compartilhar no WhatsApp">
@@ -36,9 +37,9 @@
             class="broker-share__native"
             data-action="click->broker-share#shareNative">
       <i class="bi bi-send-fill"></i>
-      Compartilhar (nativo)
+      Mais opções de compartilhamento
     </button>
 
-    <p class="broker-share__status hidden d-none" data-broker-share-target="status"></p>
-  </div>
+    <p role="status" class="broker-share__status hidden d-none" data-broker-share-target="status"></p>
+  </dialog>
 </div>

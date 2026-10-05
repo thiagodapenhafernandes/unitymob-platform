@@ -5,7 +5,7 @@
   <figure class="public-theme-block-image public-theme-block-image--<%= variant %> is-fit-<%= block.value(:fit) %><%= " is-rounded" if block.value(:rounded) %><%= " is-empty" unless image.attached? %>">
     <div class="container-custom">
       <% if image.attached? %>
-        <% picture = image_tag(image.variant(resize_to_limit: [1600, 1600]), alt: block.value(:alt).to_s, class: "public-theme-block-image__img", loading: "lazy") %>
+        <% picture = image_tag(public_image_url(image, **Storage::PublicImageVariants::BUILDER_CONTENT), alt: block.value(:alt).to_s, class: "public-theme-block-image__img", loading: "lazy") %>
         <%= block.value(:link).present? ? link_to(picture, block.value(:link), class: "public-theme-block-image__link") : picture %>
       <% else %>
         <div class="public-theme-block-image__placeholder"><i class="bi bi-card-image" aria-hidden="true"></i> Escolha a imagem deste bloco</div>

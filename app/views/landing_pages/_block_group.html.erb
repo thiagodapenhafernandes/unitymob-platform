@@ -1,0 +1,25 @@
+<%# Preserve the original page-wide column contract for blocks before the first explicit section. %>
+<%
+  columns = page.layout_columns.to_i.clamp(1, 3)
+  in_column = ->(block) { columns > 1 && block.span && block.span < columns }
+  units = blocks.chunk_while { |a, b| in_column.(a) && in_column.(b) }.to_a
+%>
+<% units.each do |unit| %>
+  <% if in_column.(unit.first) %>
+    <div class="container-custom">
+      <div class="public-landing-page__row has-cols-<%= columns %>">
+        <% unit.each do |block| %>
+          <% rendered = landing_page_block(block, page: page, variant: variant, showcases: showcases, h1: block.equal?(@blocks.first) && h1_owner != :page) %>
+          <% next if rendered.to_s.strip.empty? && !@preview_mode %>
+          <%= tag.div(rendered, class: "public-landing-page__cell is-span-#{block.span}#{" lp-preview-block" if @preview_mode}", data: { block_position: (block.position if @preview_mode) }) %>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <% unit.each do |block| %>
+      <% rendered = landing_page_block(block, page: page, variant: variant, showcases: showcases, h1: block.equal?(@blocks.first) && h1_owner != :page) %>
+      <% next if rendered.to_s.strip.empty? && !@preview_mode %>
+      <%= @preview_mode ? tag.div(rendered, class: "lp-preview-block", data: { block_position: block.position }) : rendered %>
+    <% end %>
+  <% end %>
+<% end %>

@@ -2,10 +2,20 @@ require "rails_helper"
 require_relative "../../support/contract/shared_property_card_examples"
 
 RSpec.describe "public_theme/components/_property_card.html.erb", type: :view do
+  before { allow(view).to receive(:current_admin_user).and_return(nil) }
   let(:card_partial) { "public_theme/components/property_card" }
   let(:card_variant) { "salute-luxury" }
 
   it_behaves_like "contrato do card público"
+
+  it "mantém favorito e compartilhamento no corpo, junto ao preço" do
+    render(card_partial, property: create(:habitation), variant: card_variant)
+    html = Nokogiri::HTML(rendered)
+    expect(html.at_css(".public-theme-property-card__media .public-theme-property-card__favorite")).to be_nil
+    expect(html.at_css(".public-theme-property-card__body .public-theme-property-card__price-row .public-theme-property-card__favorite")).to be_present
+    expect(html.at_css(".public-theme-property-card__body .broker-share__trigger")).to be_present
+    expect(html.at_css("dialog.broker-share__dialog")["aria-label"]).to eq("Compartilhar imóvel")
+  end
 
   it "prioritizes only the visible photo while preserving deferred gallery images" do
     property = create(:habitation)

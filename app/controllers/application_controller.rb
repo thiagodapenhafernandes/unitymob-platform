@@ -74,7 +74,7 @@ class ApplicationController < ActionController::Base
   end
 
   def public_tenant_resolver
-    @public_tenant_resolver ||= Tenants::DomainResolver.new(host: request.host, slug: public_tenant_slug)
+    @public_tenant_resolver ||= Tenants::DomainResolver.new(host: request.host, slug: public_tenant_slug, local_preview_slug: params[:preview_tenant])
   end
 
   def set_current_request_context

@@ -1,19 +1,32 @@
-<%# Bloco "Vídeo do YouTube": 16:9, no modo de privacidade (youtube-nocookie). Na prévia do admin (iframe sem scripts)
-    mostra a miniatura em vez do player. Link ausente: nada no site, convite na prévia. Locals: block, variant. %>
-<% video_id = block.youtube_id %>
-<% if video_id || @preview_mode %>
-  <figure class="public-theme-block-video public-theme-block-video--<%= variant %><%= " is-empty" unless video_id %>">
+<% src = block.video_embed_url %>
+<% if src || @preview_mode %>
+  <figure class="public-theme-block-video public-theme-block-video--<%= variant %><%= " is-empty" unless src %>">
     <div class="container-custom">
       <div class="public-theme-block-video__frame">
-        <% if video_id && @preview_mode %>
-          <img class="public-theme-block-video__thumb" src="https://img.youtube.com/vi/<%= video_id %>/hqdefault.jpg" alt="<%= block.value(:title) %>">
+        <% if src && @preview_mode %>
+          <% if block.image_desktop.attached? %>
+            <%= image_tag(public_image_url(block.image_desktop, **Storage::PublicImageVariants::BUILDER), alt: "", class: "public-theme-block-video__thumb") %>
+          <% elsif block.youtube_id %>
+            <img class="public-theme-block-video__thumb" src="https://img.youtube.com/vi/<%= block.youtube_id %>/hqdefault.jpg" alt="<%= block.value(:title) %>">
+          <% else %>
+            <div class="public-theme-block-video__placeholder">Vimeo · <%= block.value(:title).presence || block.vimeo_id %></div>
+          <% end %>
           <span class="public-theme-block-video__play" aria-hidden="true"><i class="bi bi-play-fill"></i></span>
-        <% elsif video_id %>
-          <iframe src="https://www.youtube-nocookie.com/embed/<%= video_id %>?rel=0" title="<%= block.value(:title).presence || "Vídeo do YouTube" %>"
-                  loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"></iframe>
+        <% elsif src && block.value(:click_to_play) %>
+          <a class="public-theme-block-video__start" href="<%= src %>" data-controller="public-video" data-action="public-video#play" data-public-video-title-value="<%= block.value(:title).presence || "Vídeo" %>">
+            <% if block.image_desktop.attached? %>
+              <%= image_tag(public_image_url(block.image_desktop, **Storage::PublicImageVariants::BUILDER), alt: "", loading: "lazy", class: "public-theme-block-video__thumb") %>
+            <% elsif block.youtube_id %>
+              <img class="public-theme-block-video__thumb" src="https://img.youtube.com/vi/<%= block.youtube_id %>/hqdefault.jpg" alt="" loading="lazy">
+            <% end %>
+            <span class="public-theme-block-video__start-label"><i class="bi bi-play-circle" aria-hidden="true"></i> Reproduzir <%= block.value(:title).presence || "vídeo" %></span>
+          </a>
+        <% elsif src %>
+          <iframe src="<%= src %>" title="<%= block.value(:title).presence || "Vídeo" %>" loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+                  allow="encrypted-media; picture-in-picture; fullscreen"></iframe>
         <% else %>
-          <div class="public-theme-block-video__placeholder"><i class="bi bi-youtube" aria-hidden="true"></i> Cole o link do vídeo do YouTube</div>
+          <div class="public-theme-block-video__placeholder"><i class="bi bi-play-btn" aria-hidden="true"></i> Cole a URL do YouTube ou Vimeo</div>
         <% end %>
       </div>
       <% if block.value(:caption).present? %><figcaption class="public-theme-block-video__caption"><%= block.value(:caption) %></figcaption><% end %>

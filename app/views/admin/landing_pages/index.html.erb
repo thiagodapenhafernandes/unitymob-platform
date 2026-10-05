@@ -1,6 +1,6 @@
 <%# Landing Pages — listagem compacta (.ax-*). %>
 <div class="public-site-workspace">
-<%= ax_workspace_heading(eyebrow: "Site público · Conteúdo", icon: "file-earmark-post", title: @page_title, subtitle: @page_subtitle, metrics: [{ value: @landing_pages.total_entries, label: "páginas" }], actions: ax_button("Nova página", new_admin_landing_page_path, variant: :primary, size: :sm, icon: "plus-lg")) %>
+<%= ax_workspace_heading(eyebrow: "Site público · Conteúdo", icon: "file-earmark-post", title: @page_title, subtitle: @page_subtitle, metrics: [{ value: @landing_pages.total_entries, label: "páginas" }], actions: safe_join([ax_button("Página vazia", new_admin_landing_page_path(template: "blank"), variant: :primary, size: :sm, icon: "plus-lg"), ax_button("Página de demonstração", new_admin_landing_page_path(template: "demo"), variant: :secondary, size: :sm, icon: "layout-text-window")])) %>
 
 <div class="ax-table-wrap">
   <table class="ax-table">
@@ -35,7 +35,7 @@
           </td>
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
-              <% if page.slug.present? && page.published? %><%= link_to public_landing_page_path(page.slug), target: "_blank", class: "ax-ico-btn", title: "Ver no site" do %><i class="bi bi-eye"></i><% end %><% end %>
+              <% if page.slug.present? && page.published? %><%= link_to landing_page_site_url(page), target: "_blank", class: "ax-ico-btn", title: "Ver no site" do %><i class="bi bi-eye"></i><% end %><% end %>
               <%= link_to edit_admin_landing_page_path(page), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
               <%= button_to admin_landing_page_path(page), method: :delete, form_class: "tw-inline", form: { data: { turbo_confirm: 'Tem certeza que deseja excluir esta página?' } }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
             </span>
