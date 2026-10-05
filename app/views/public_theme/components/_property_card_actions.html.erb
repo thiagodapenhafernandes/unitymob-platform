@@ -1,0 +1,15 @@
+<div class="public-theme-property-card__actions">
+  <button type="button" class="public-theme-property-card__favorite" aria-pressed="false"
+          aria-label="Favoritar imóvel"
+          data-controller="public-property-favorite" data-action="public-property-favorite#toggle"
+          data-public-property-favorite-id-value="<%= property.id %>"
+          data-public-property-favorite-url-value="<%= property_url %>"
+          data-public-property-favorite-title-value="<%= property.display_title %>"
+          data-public-property-favorite-image-url-value="<%= image_url %>"
+          data-public-property-favorite-price-value="<%= price %>"
+          data-public-property-favorite-location-value="<%= location %>">
+    <i class="bi bi-heart" aria-hidden="true" data-public-property-favorite-target="icon"></i>
+    <span class="public-theme-property-card__favorite-label" data-public-property-favorite-target="label">Favoritar imóvel</span>
+  </button>
+  <%= render "shared/broker_share_menu", property: property %>
+</div>

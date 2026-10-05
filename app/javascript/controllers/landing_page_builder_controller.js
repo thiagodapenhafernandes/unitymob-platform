@@ -25,6 +25,7 @@ const FIELD_FOR_CLASS = {
 const SAMPLE = {
   button: { label: "Fale conosco", url: "/contato" },
   text: { heading: "Título da seção", body: "<div>Escreva aqui o texto (exemplo, edite).</div>" },
+  video: { click_to_play: true },
   cover: { title: "Título da sua página" }
 }
 
@@ -95,7 +96,7 @@ export default class extends Controller {
   // ---- Blocos (cartões do editor) ----
 
   liveBlocks() {
-    return this.blockTargets.filter((block) => !block.hidden)
+    return this.blockTargets.filter((block) => block.querySelector("[name$='[_destroy]']")?.value !== "1")
   }
 
   positionOf(block) {
@@ -123,7 +124,7 @@ export default class extends Controller {
 
   closeAddMenu() {
     this.addMenuListTarget.hidden = true
-    this.addMenuTarget.querySelector("[aria-expanded]")?.setAttribute("aria-expanded", "false")
+    this.addMenuTarget.querySelectorAll("[aria-expanded]").forEach((button) => button.setAttribute("aria-expanded", "false"))
   }
 
   add(event) {
@@ -166,7 +167,7 @@ export default class extends Controller {
     this.cardDragEnd()
     if (!card || card === dragged) return
 
-    before ? card.before(dragged) : card.after(dragged)
+    this.placeBlock(dragged, card, before)
     this.reindex()
     this.selectedPosition = this.positionOf(dragged)
     this.changed()
@@ -180,7 +181,8 @@ export default class extends Controller {
 
   // Antes do primeiro cartão cujo meio está abaixo do cursor; senão, depois do último.
   dropTarget(y) {
-    const others = this.liveBlocks().filter((block) => block !== this.dragCard)
+    const members = this.sectionMembers(this.dragCard)
+    const others = this.liveBlocks().filter((block) => !members.includes(block))
     const before = others.find((block) => {
       const rect = block.getBoundingClientRect()
       return y < rect.top + rect.height / 2
@@ -198,11 +200,17 @@ export default class extends Controller {
     if (!template) return null
 
     const holder = document.createElement("template")
-    holder.innerHTML = template.innerHTML.replaceAll("__INDEX__", Date.now().toString()) // índice único para o Rails
+    this.nextBlockIndex = Math.max(Date.now(), (this.nextBlockIndex || 0) + 1)
+    holder.innerHTML = template.innerHTML.replaceAll("__INDEX__", String(this.nextBlockIndex)) // Rails nested attributes require numeric keys
     const card = holder.content.querySelector(BLOCK)
     if (values) this.copyValues(values, card)
     else this.fillSample(type, card)
     before ? before.before(card) : this.listTarget.append(card)
+    if (card.querySelector("trix-editor")) document.dispatchEvent(new Event("rich-text:load"))
+    if (type === "section" && !values) {
+      card.querySelector("[name$='[data][heading]']").value = "Conheça nossa empresa"
+      card.querySelector("[name$='[data][columns]']").value = "3"
+    }
     this.reindex()
     this.changed()
     return card
@@ -212,12 +220,34 @@ export default class extends Controller {
   fillSample(type, card) {
     Object.entries(SAMPLE[type] || {}).forEach(([field, value]) => {
       const input = card.querySelector(`[name$='[data][${field}]']`)
-      if (input && !input.value) input.value = value
+      if (input?.type === "checkbox") input.checked = value
+      else if (input && !input.value) input.value = value
     })
   }
 
   // Copia os campos [data] de um cartão para outro (duplicar).
   copyValues(from, to) {
+    const sourceItems = from.querySelector(".ax-dynamic-list__items")
+    const targetItems = to.querySelector(".ax-dynamic-list__items")
+    if (sourceItems && targetItems) {
+      const sourcePrefix = from.querySelector(POSITION).name.replace(/\[position\]$/, "")
+      const targetPrefix = to.querySelector(POSITION).name.replace(/\[position\]$/, "")
+      targetItems.innerHTML = sourceItems.innerHTML.replaceAll(sourcePrefix, targetPrefix)
+    }
+    const sourceId = from.querySelector("input[name$='[id]']")?.value
+    if (sourceId) {
+      const name = to.querySelector(POSITION).name.replace(/\[position\]$/, "[copy_images_from]")
+      to.append(Object.assign(document.createElement("input"), { type: "hidden", name, value: sourceId }))
+    }
+    from.querySelectorAll("input[type='file']").forEach((input) => {
+      const suffix = input.name.match(/\[blocks_attributes\]\[[^\]]+\](.*)$/)?.[1]
+      const target = [...to.querySelectorAll("input[type='file']")].find((item) => item.name.endsWith(suffix))
+      if (!target || !input.files.length) return
+
+      const transfer = new DataTransfer()
+      Array.from(input.files).forEach((file) => transfer.items.add(file))
+      target.files = transfer.files
+    })
     from.querySelectorAll("[name*='[data]']").forEach((input) => {
       const suffix = input.name.slice(input.name.indexOf("[data]"))
       const match = [...to.querySelectorAll("[name*='[data]']")].find((item) => item.name.endsWith(suffix) && item.type === input.type)
@@ -235,16 +265,43 @@ export default class extends Controller {
     this.removeCard(event.currentTarget.closest(BLOCK))
   }
 
-  removeCard(block) {
-    if (!block || !window.confirm("Remover este bloco da página?")) return
+  sectionMembers(card) {
+    if (card?.dataset.blockType !== "section") return card ? [card] : []
+    const blocks = this.liveBlocks()
+    const rest = blocks.slice(blocks.indexOf(card) + 1)
+    const next = rest.findIndex((block) => block.dataset.blockType === "section")
+    return [card, ...rest.slice(0, next < 0 ? rest.length : next)]
+  }
 
-    // Bloco já salvo precisa do _destroy; o novo simplesmente some.
-    if (block.querySelector("input[name$='[id]']")) {
-      block.querySelector("[data-landing-page-builder-target='destroy']").value = "1"
-      block.hidden = true
-    } else {
-      block.remove()
+  placeBlock(card, target, before) {
+    const members = this.sectionMembers(card)
+    if (members.includes(target)) return
+    if (!target) return this.listTarget.append(...members)
+
+    if (card.dataset.blockType === "section") {
+      const blocks = this.liveBlocks()
+      const owner = blocks.slice(0, blocks.indexOf(target) + 1).findLast((block) => block.dataset.blockType === "section")
+      if (owner) target = before ? owner : this.sectionMembers(owner).at(-1)
+      else {
+        target = blocks.slice(0, blocks.findIndex((block) => block.dataset.blockType === "section")).at(-1)
+        before = false
+      }
     }
+    if (!target || members.includes(target)) return
+    before ? target.before(...members) : target.after(...members)
+  }
+
+  removeCard(block) {
+    if (!block) return
+    const message = block.dataset.blockType === "section" ? "Remover esta seção e todos os seus blocos?" : "Remover este bloco da página?"
+    if (!window.confirm(message)) return
+
+    this.sectionMembers(block).forEach((member) => {
+      if (member.querySelector("input[name$='[id]']")) {
+        member.querySelector("[data-landing-page-builder-target='destroy']").value = "1"
+        member.hidden = true
+      } else member.remove()
+    })
     this.selectedPosition = null
     this.reindex()
     this.changed()
@@ -256,10 +313,13 @@ export default class extends Controller {
 
   moveCard(block, delta) {
     const blocks = this.liveBlocks()
-    const target = blocks[blocks.indexOf(block) + delta]
+    const members = this.sectionMembers(block)
+    const owner = blocks.slice(0, blocks.indexOf(block)).findLast((item) => item.dataset.blockType === "section")
+    const siblings = owner && block.dataset.blockType !== "section" ? this.sectionMembers(owner).slice(1).filter((item) => item.querySelector("[name$='[data][column]']")?.value === block.querySelector("[name$='[data][column]']")?.value) : blocks
+    const target = siblings === blocks ? blocks[delta < 0 ? blocks.indexOf(block) - 1 : blocks.indexOf(members.at(-1)) + 1] : siblings[siblings.indexOf(block) + delta]
     if (!target) return
 
-    delta < 0 ? target.before(block) : target.after(block)
+    this.placeBlock(block, target, delta < 0)
     this.reindex()
     this.selectedPosition = this.positionOf(block)
     this.changed()
@@ -274,14 +334,102 @@ export default class extends Controller {
 
   // Posição = ordem na tela; resumo = primeiro texto do bloco; estado vazio.
   reindex() {
+    this.liveBlocks().filter((block) => block.dataset.blockType === "section").forEach((section) => {
+      const count = Number(section.querySelector("[name$='[data][columns]']").value)
+      const members = this.sectionMembers(section)
+      const overflow = members.slice(1).filter((block) => Number(block.querySelector("[name$='[data][column]']")?.value) > count)
+      let tail = members.filter((block) => !overflow.includes(block)).at(-1)
+      overflow.forEach((block) => { tail.after(block); tail = block })
+    })
     const blocks = this.liveBlocks()
+    let section = null
     blocks.forEach((block, index) => {
+      if (block.dataset.blockType === "section") section = block
+      const column = block.querySelector("[name$='[data][column]']")
+      const span = block.querySelector("[name$='[data][span]']")
+      const isSection = block.dataset.blockType === "section"
+      const mobile = block.querySelector("input[type='checkbox'][name$='[data][mobile_layout]']")?.checked
+      block.querySelectorAll("[data-block-field='mobile_offset_x'],[data-block-field='mobile_offset_y'],[data-block-field='mobile_min_height']").forEach((field) => { field.hidden = !mobile })
+      block.querySelector("[data-block-field='layout_min_height']").hidden = block.querySelector("[name$='[data][layout_height]']").value !== "custom"
+      block.classList.toggle("is-section-child", Boolean(section) && !isSection)
+      block.hidden = Boolean(section?.dataset.collapsed === "true") && !isSection
+      const badge = block.querySelector("[data-column-badge]")
+      if (badge) { badge.hidden = !section || isSection; badge.textContent = `Coluna ${column?.value || 1}` }
+      if (column) {
+        column.closest(".ax-span-6").hidden = !section || isSection
+        const count = Number(section?.querySelector("[name$='[data][columns]']")?.value || 3)
+        Array.from(column.options).forEach((option) => { option.disabled = Number(option.value) > count })
+        if (Number(column.value) > count) column.value = String(count)
+      }
+      if (span) span.closest(".ax-span-6").hidden = Boolean(section) || isSection
+      if (block.dataset.blockType === "text") {
+        const expanded = block.querySelector("input[type='checkbox'][name$='[data][expandable]']")?.checked
+        block.querySelectorAll("[data-block-field='more_body'], [data-block-field='more_label']").forEach((field) => { field.hidden = !expanded })
+      }
+      if (isSection) block.querySelector("[data-block-field='ratio']").hidden = block.querySelector("[name$='[data][columns]']").value !== "2"
+      if (block.dataset.blockType === "button") {
+        const custom = block.querySelector("input[type='checkbox'][name$='[data][custom_colors]']")?.checked
+        block.querySelectorAll("[data-block-field='text_color'],[data-block-field='background_color']").forEach((field) => { field.hidden = !custom })
+      }
       block.querySelector(POSITION).value = index
       const source = block.querySelector("[data-landing-page-builder-summary='1']")
       const summary = block.querySelector("[data-landing-page-builder-target='summary']")
       if (summary) summary.textContent = source?.value?.trim() || ""
     })
-    this.emptyTarget.hidden = blocks.length > 0
+    this.emptyTarget.hidden = false
+    const ordinals = ["primeiro", "segundo", "terceiro", "quarto", "quinto", "sexto", "sétimo", "oitavo", "nono", "décimo"]
+    this.emptyTarget.querySelector("[data-next-block-label]").textContent = `Adicionar ${ordinals[blocks.length] || `${blocks.length + 1}º`} bloco`
+    this.listTarget.querySelectorAll(".lp-column-slots").forEach((slots) => slots.remove())
+    blocks.filter((block) => block.dataset.blockType === "section").forEach((section) => {
+      const members = this.sectionMembers(section).slice(1)
+      let tail = section
+      const count = Number(section.querySelector("[name$='[data][columns]']").value)
+      for (let column = 1; column <= count; column++) {
+        const columnBlocks = members.filter((block) => Number(block.querySelector("[name$='[data][column]']")?.value || 1) === column)
+        columnBlocks.forEach((block) => { tail.after(block); tail = block })
+        if (columnBlocks.length) continue
+        const slots = document.createElement("div")
+        slots.className = "lp-column-slots"
+        slots.hidden = section.dataset.collapsed === "true"
+        const button = document.createElement("button")
+        button.type = "button"
+        button.className = "ax-btn ax-btn--secondary"
+        button.textContent = `Coluna ${column} · Adicionar bloco nesta coluna`
+        button.dataset.sectionPosition = this.positionOf(section)
+        button.dataset.column = column
+        button.dataset.action = "landing-page-builder#openColumnMenu"
+        slots.append(button)
+        tail.after(slots)
+        tail = slots
+      }
+    })
+    this.liveBlocks().forEach((block, index) => { block.querySelector(POSITION).value = index })
+  }
+
+  openColumnMenu(event) {
+    this.menuSection = this.cardAt(event.currentTarget.dataset.sectionPosition)
+    this.menuColumn = event.currentTarget.dataset.column
+    this.menuTarget.hidden = false
+    this.menuTarget.style.left = "8px"
+    this.menuTarget.style.top = "8px"
+    this.menuTarget.querySelector("[data-block-type='section']").hidden = true
+  }
+
+  toggleSection(event) {
+    event.preventDefault()
+    const section = event.currentTarget.closest(BLOCK)
+    section.dataset.collapsed = section.dataset.collapsed !== "true" ? "true" : "false"
+    event.currentTarget.setAttribute("aria-expanded", String(section.dataset.collapsed !== "true"))
+    this.reindex()
+  }
+
+  resetLayout(event) {
+    const block = event.currentTarget.closest(BLOCK)
+    const defaults = { layout_width: "theme", layout_height: "auto", layout_min_height: 0, offset_x: 0, offset_y: 0, layer: 0, mobile_offset_x: 0, mobile_offset_y: 0, mobile_min_height: 0 }
+    Object.entries(defaults).forEach(([key, value]) => { block.querySelectorAll(`[name$='[data][${key}]']`).forEach((input) => { input.value = value }) })
+    block.querySelector("input[type='checkbox'][name$='[data][mobile_layout]']").checked = false
+    block.querySelectorAll("input[type='range']").forEach((input) => { input.value = 0 })
+    this.changed()
   }
 
   // O texto formatado do cartão é só texto: sem anexos/imagens arrastados para dentro.
@@ -367,7 +515,10 @@ export default class extends Controller {
       })
       if (!response.ok) throw new Error(response.status)
 
-      const html = await response.text()
+      const preview = new DOMParser().parseFromString(await response.text(), "text/html")
+      // A prévia usa sandbox sem scripts; inclusive scripts injetados por ferramentas de diagnóstico.
+      preview.querySelectorAll("script").forEach((script) => script.remove())
+      const html = `<!DOCTYPE html>${preview.documentElement.outerHTML}`
       // Só troca o corpo se o documento da prévia já tem as folhas de estilo (senão, carrega tudo de novo).
       if (this.frameReady && this.doc?.querySelector("link[rel='stylesheet']")) this.morph(html)
       else {
@@ -492,9 +643,11 @@ export default class extends Controller {
     this.previewUrlValue = `${this.previewUrlValue.split("?")[0]}?id=${encodeURIComponent(data.slug)}`
 
     this.blockTargets.filter((block) => block.hidden).forEach((block) => block.remove()) // removidos: já saíram do banco
-    data.blocks.forEach(({ position, id }) => {
+    data.blocks.forEach(({ position, id, item_image_keys }) => {
       const card = this.cardAt(position)
-      if (!card || card.querySelector("input[name$='[id]']")) return
+      if (!card) return
+      card.querySelectorAll("input[name$='[image_key]']").forEach((input, index) => { input.value = item_image_keys?.[index] || "" })
+      if (card.querySelector("input[name$='[id]']")) return
 
       const name = card.querySelector(POSITION).name.replace(/\[position\]$/, "[id]")
       const input = Object.assign(document.createElement("input"), { type: "hidden", name, value: id })
@@ -502,6 +655,7 @@ export default class extends Controller {
     })
     // Imagens enviadas e remoções já foram aplicadas: não reenviar no próximo autosave.
     this.fileTargets.forEach((input) => { input.value = "" })
+    this.element.querySelectorAll("select[name$='[remove_image]']").forEach((input) => { input.value = "false" })
     this.element.querySelectorAll("input[type='checkbox'][name*='[remove_image_']:checked").forEach((box) => box.closest("label")?.remove())
   }
 
@@ -708,7 +862,15 @@ export default class extends Controller {
     tools.querySelectorAll("[data-for]").forEach((group) => { group.hidden = !group.dataset.for.split(" ").includes(type) })
     tools.querySelectorAll("[data-only-for]").forEach((item) => { item.hidden = item.dataset.onlyFor !== type })
     const span = card.querySelector("[name$='[data][span]']")
-    if (span) tools.querySelector("[data-tool='span']").value = span.value
+    const section = this.liveBlocks().slice(0, this.liveBlocks().indexOf(card)).findLast((block) => block.dataset.blockType === "section")
+    const spanTool = tools.querySelector("[data-tool='span']")
+    spanTool.hidden = Boolean(section) || type === "section"
+    if (span) spanTool.value = span.value
+    const columnTool = tools.querySelector("[data-tool='column']")
+    columnTool.hidden = !section || type === "section"
+    const columnCount = Number(section?.querySelector("[name$='[data][columns]']")?.value || 3)
+    Array.from(columnTool.options).forEach((option) => { option.disabled = Number(option.value) > columnCount })
+    columnTool.value = card.querySelector("[name$='[data][column]']")?.value || "1"
     tools.querySelectorAll("[data-not-for]").forEach((button) => { button.hidden = button.dataset.notFor === type })
     const align = card.querySelector("[name$='[data][align]']")?.value
     tools.querySelectorAll("[data-tool='align']").forEach((button) => button.classList.toggle("is-active", button.dataset.value === align))
@@ -718,7 +880,9 @@ export default class extends Controller {
     tools.hidden = false
     const left = this.frameLeft + rect.right * this.scale - tools.offsetWidth - 8
     tools.style.left = `${Math.max(4, left)}px`
-    tools.style.top = `${Math.max(4, rect.top * this.scale + 8)}px`
+    const above = rect.top * this.scale - tools.offsetHeight - 6
+    const top = above >= 4 ? above : rect.bottom * this.scale + 6
+    tools.style.top = `${Math.max(4, Math.min(top, this.stageTarget.clientHeight - tools.offsetHeight - 4))}px`
   }
 
   toolMouseDown(event) {
@@ -744,8 +908,10 @@ export default class extends Controller {
         this.status("Bloco oculto. Para mostrar de novo, use o olho no cartão do editor.")
         return
       case "duplicate": {
-        const copy = this.addBlock(card.dataset.blockType, card.nextElementSibling, card)
-        if (copy) this.selectedPosition = this.positionOf(copy)
+        const members = this.sectionMembers(card)
+        const before = members.at(-1).nextElementSibling
+        const copies = members.map((member) => this.addBlock(member.dataset.blockType, before, member))
+        if (copies[0]) this.selectedPosition = this.positionOf(copies[0])
         return
       }
       case "remove": return this.removeCard(card)
@@ -779,6 +945,14 @@ export default class extends Controller {
     const doc = this.doc
     const root = doc?.querySelector(".public-landing-page")
     if (!root) return
+    doc.querySelectorAll("[data-section-column]").forEach((column) => {
+      const insert = doc.createElement("div")
+      insert.className = "lp-insert lp-insert--empty"
+      insert.dataset.sectionPosition = column.dataset.sectionPosition
+      insert.dataset.column = column.dataset.sectionColumn
+      insert.innerHTML = '<button type="button" class="lp-insert__btn">+ Adicionar bloco nesta coluna</button>'
+      column.append(insert)
+    })
 
     // Unidades da página: bloco de linha inteira ou linha de colunas (que guarda vários blocos).
     const firstPosition = (unit) => (unit.classList.contains("lp-preview-block") ? unit : unit.querySelector(".lp-preview-block"))?.dataset.blockPosition
@@ -797,7 +971,11 @@ export default class extends Controller {
   }
 
   openMenu(button, event) {
-    this.menuBefore = button.closest(".lp-insert").dataset.before
+    const insert = button.closest(".lp-insert")
+    this.menuSection = insert.dataset.sectionPosition ? this.cardAt(insert.dataset.sectionPosition) : null
+    this.menuColumn = insert.dataset.column
+    this.menuTarget.querySelector("[data-block-type='section']").hidden = Boolean(this.menuSection)
+    this.menuBefore = insert.dataset.before
     const rect = button.getBoundingClientRect()
     const menu = this.menuTarget
     menu.hidden = false
@@ -810,8 +988,16 @@ export default class extends Controller {
     if (!button) return
 
     this.menuTarget.hidden = true
-    const before = this.menuBefore === "end" ? null : this.cardAt(this.menuBefore)
+    const owner = this.menuSection
+    const before = owner ? this.sectionMembers(owner).at(-1).nextElementSibling?.closest(BLOCK) : this.menuBefore === "end" ? null : this.cardAt(this.menuBefore)
     const card = this.addBlock(button.dataset.blockType, before)
+    if (owner && card) {
+      this.sectionMembers(owner).at(-1).after(card)
+      card.querySelector("[name$='[data][column]']").value = this.menuColumn
+      this.reindex()
+      this.changed()
+    }
+    this.menuSection = null
     if (card) this.selectedPosition = this.positionOf(card)
   }
 
@@ -843,6 +1029,27 @@ export default class extends Controller {
     const x = (event.clientX - stage.left - this.frameLeft) / this.scale
     const pageWidth = this.doc.documentElement.clientWidth
     const wrappers = [...this.doc.querySelectorAll(".lp-preview-block")]
+    this.dragging.column = null
+    const column = this.dragging.card.dataset.blockType !== "section" && [...this.doc.querySelectorAll("[data-section-column]")].find((element) => {
+      const rect = element.getBoundingClientRect()
+      const grid = element.parentElement.getBoundingClientRect()
+      return x >= rect.left && x <= rect.right && y >= grid.top && y <= grid.bottom
+    })
+    if (column) {
+      const children = [...column.querySelectorAll(".lp-preview-block")].filter((item) => item.dataset.blockPosition !== this.positionOf(this.dragging.card))
+      const next = children.find((item) => y < item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2)
+      this.dragging.column = column.dataset.sectionColumn
+      this.dragging.section = column.dataset.sectionPosition
+      this.dragging.before = next?.dataset.blockPosition || null
+      const rect = column.getBoundingClientRect()
+      this.droplineTarget.hidden = false
+      this.droplineTarget.style.left = `${this.frameLeft + rect.left * this.scale}px`
+      this.droplineTarget.style.width = `${rect.width * this.scale}px`
+      this.droplineTarget.style.top = `${(next ? next.getBoundingClientRect().top : children.at(-1)?.getBoundingClientRect().bottom || rect.top) * this.scale}px`
+      return
+    }
+    this.droplineTarget.style.left = "0"
+    this.droplineTarget.style.width = "100%"
     // Blocos em coluna (estreitos): dentro da faixa vertical compara a posição horizontal; os demais, o meio vertical.
     const target = wrappers.find((wrapper) => {
       const rect = wrapper.getBoundingClientRect()
@@ -856,17 +1063,29 @@ export default class extends Controller {
   }
 
   dragEnd() {
-    const { card, before } = this.dragging
+    const { card, before, column, section } = this.dragging
     this.dragging = null
     this.shieldTarget.hidden = true
     this.droplineTarget.hidden = true
     if (before === undefined) return
 
+    if (column) {
+      const owner = this.cardAt(section)
+      if (!owner) return
+      const target = before != null ? this.cardAt(before) : this.sectionMembers(owner).at(-1)
+      if (target !== card) this.placeBlock(card, target, before != null)
+      card.querySelector("[name$='[data][column]']").value = column
+      this.reindex()
+      this.selectedPosition = this.positionOf(card)
+      this.changed()
+      return
+    }
+
     const target = before === "end" ? null : this.cardAt(before)
     if (target === card || target === card.nextElementSibling) return
 
     // Fim da lista = depois do último cartão visível.
-    target ? target.before(card) : this.liveBlocks().at(-1).after(card)
+    this.placeBlock(card, target, true)
     this.reindex()
     this.selectedPosition = this.positionOf(card)
     this.changed()
@@ -879,6 +1098,22 @@ export default class extends Controller {
     const doc = this.doc
     if (!doc) return
 
+    this.liveBlocks().forEach((block) => {
+      block.querySelectorAll("input[type='file'][name*='[item_uploads]']").forEach((input) => {
+        const file = input.files?.[0]
+        const key = input.closest(".ax-dynamic-list__item")?.querySelector("input[name$='[row_key]']")?.value
+        const item = doc.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(block)}'] [data-item-row-key='${key}']`)
+        if (!file || !item) return
+
+        let img = item.querySelector(".public-theme-block-collection__image")
+        if (!img) {
+          img = Object.assign(doc.createElement("img"), { className: "public-theme-block-collection__image", alt: "" })
+          item.prepend(img)
+        }
+        img.src = URL.createObjectURL(file)
+      })
+    })
+
     this.liveBlocks().filter((block) => block.dataset.blockType === "image").forEach((block) => {
       const file = block.querySelector("input[type='file'][name$='[image_desktop]']")?.files?.[0]
       const figure = doc.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(block)}'] .public-theme-block-image`)
@@ -889,6 +1124,18 @@ export default class extends Controller {
         img = Object.assign(doc.createElement("img"), { className: "public-theme-block-image__img", alt: "" })
         figure.querySelector(".public-theme-block-image__placeholder")?.replaceWith(img)
         figure.classList.remove("is-empty")
+      }
+      img.src = URL.createObjectURL(file)
+    })
+
+    this.liveBlocks().filter((block) => block.dataset.blockType === "video").forEach((block) => {
+      const file = block.querySelector("input[type='file'][name$='[image_desktop]']")?.files?.[0]
+      const frame = doc.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(block)}'] .public-theme-block-video__frame`)
+      if (!file || !frame) return
+      let img = frame.querySelector(".public-theme-block-video__thumb")
+      if (!img) {
+        img = Object.assign(doc.createElement("img"), { className: "public-theme-block-video__thumb", alt: "" })
+        frame.prepend(img)
       }
       img.src = URL.createObjectURL(file)
     })

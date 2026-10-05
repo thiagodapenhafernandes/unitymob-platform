@@ -11,7 +11,7 @@ RSpec.shared_examples "contrato do card público" do
     expect(rendered).to include("9.900.000")
     expect(rendered).to include("10%")
     expect(rendered).to include("OPORTUNIDADE")
-    expect(rendered).to include("Tenho interesse")
+    expect(rendered).to include("Conversar no WhatsApp")
     expect(rendered).to include('data-require-lead-form="true"')
     expect(rendered).to include(property.codigo)
     expect(rendered).to include('marketing-tracker-placement-value="property_card"')

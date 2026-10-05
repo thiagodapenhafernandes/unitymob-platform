@@ -13,7 +13,7 @@
 <% priority_image = local_assigns.fetch(:priority_image, false) %>
 <%
   card_cache_key = [
-    "public-property-card-v12",
+    "public-property-card-v13",
     PublicSite::PageVersion.current(public_tenant.id),
     public_tenant.id,
     request.host,
@@ -56,9 +56,7 @@
       </div>
     <% end %>
 
-      <div class="z-30">
-        <%= render "shared/broker_share_menu", property: property %>
-      </div>
+
     </div>
 
     <!-- Development Units Badge (Bottom Left) -->
@@ -178,7 +176,8 @@
       current_price = is_rental ? property.valor_locacao_cents : property.valor_venda_cents
       previous_price = is_rental ? property.valor_locacao_anterior_cents : property.valor_venda_anterior_cents
     %>
-    <div class="mb-4">
+    <div class="public-theme-property-card__price-row mb-4">
+      <div class="public-theme-property-card__price-content">
       <% if previous_price.present? && current_price.present? && previous_price > current_price && current_price.to_f > 0 %>
         <% desconto_percentual = (((previous_price - current_price).to_f / previous_price) * 100).round %>
         
@@ -198,24 +197,7 @@
           <p class="text-xl font-bold text-gray-800">
             Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
           </p>
-          <button type="button"
-                  class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
-                  data-action="click->marketing-tracker#track click->lead-capture#open"
-                  data-controller="marketing-tracker"
-                  data-marketing-tracker-event-type-value="whatsapp_click"
-                  data-marketing-tracker-placement-value="property_card"
-                  data-marketing-tracker-label-value="<%= property_title %>"
-                  data-marketing-tracker-target-url-value="<%= property_path %>"
-                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
-                  data-property-id="<%= property.id %>"
-                  data-property-code="<%= property.codigo %>"
-                  data-property-title="<%= property_title %>"
-                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
-                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
-                  title="Falar no WhatsApp"
-                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
-            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i>
-          </button>
+
         </div>
       <% else %>
         <!-- Preço Normal -->
@@ -223,26 +205,11 @@
           <p class="text-lg font-bold text-gray-800">
             <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
           </p>
-          <button type="button"
-                  class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
-                  data-action="click->marketing-tracker#track click->lead-capture#open"
-                  data-controller="marketing-tracker"
-                  data-marketing-tracker-event-type-value="whatsapp_click"
-                  data-marketing-tracker-placement-value="property_card"
-                  data-marketing-tracker-label-value="<%= property_title %>"
-                  data-marketing-tracker-target-url-value="<%= property_path %>"
-                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
-                  data-property-id="<%= property.id %>"
-                  data-property-code="<%= property.codigo %>"
-                  data-property-title="<%= property_title %>"
-                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
-                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
-                  title="Falar no WhatsApp"
-                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
-            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i>
-          </button>
+
         </div>
       <% end %>
+      </div>
+      <%= render "public_theme/components/property_card_actions", property: property, property_url: property_path, price: number_to_currency(current_price.to_f / 100, precision: 0), image_url: card_images.first&.dig(:url).to_s, location: property.public_location_label %>
     </div>
 
     <!-- Features Grid -->
@@ -266,6 +233,24 @@
       </div>
     </div>
 
+          <button type="button"
+                  class="public-theme-property-card__contact"
+                  data-action="click->marketing-tracker#track click->lead-capture#open"
+                  data-controller="marketing-tracker"
+                  data-marketing-tracker-event-type-value="whatsapp_click"
+                  data-marketing-tracker-placement-value="property_card"
+                  data-marketing-tracker-label-value="<%= property_title %>"
+                  data-marketing-tracker-target-url-value="<%= property_path %>"
+                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
+                  data-property-id="<%= property.id %>"
+                  data-property-code="<%= property.codigo %>"
+                  data-property-title="<%= property_title %>"
+                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
+                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  title="Falar no WhatsApp"
+                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
+            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i><span>Conversar no WhatsApp</span>
+          </button>
   </div>
 
   <!-- Opportunity Banner (Bottom) - Reduced sale or rent prices -->

@@ -5532,3 +5532,23 @@ body.no-scroll { overflow: hidden; }
 .public-theme-card-cta--salute-luxury { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: #fff; font-family: var(--sl-sans); }
 .public-theme-card-cta--salute-luxury::after { background: color-mix(in srgb, var(--color-primary) 60%, transparent); }
 .public-theme-card-cta--salute-luxury .public-theme-card-cta__button { background: var(--sl-gold); color: var(--sl-navy-800); border-radius: 999px; }
+
+/* Institutional builder skin; structure and responsive behavior are shared across all themes. */
+.public-theme-block-section--salute-luxury,
+.public-theme-block-collection--salute-luxury { color: var(--color-primary, #022b3a); background: #fff; }
+.public-theme-block-section--salute-luxury.is-background-soft { background: #f8f7f4; }
+.public-theme-block-section--salute-luxury.is-background-primary { background: var(--color-primary, #022b3a); color: #fff; }
+.public-theme-block-section--salute-luxury.is-background-primary :is(.public-theme-block-text__heading, .public-theme-block-text__body, .public-theme-block-collection) { color: inherit; }
+.public-theme-block-collection--salute-luxury .public-theme-block-collection__item { background: #f8f7f4; border-radius: 24px; }
+.public-theme-block-collection--salute-luxury :is(.public-theme-block-collection__label, .public-theme-block-collection__icon) { color: var(--color-accent, #bfab25); }
+
+/* Card: preço e ações no corpo, preservando a identidade luxury. */
+.public-theme-property-card--salute-luxury .public-theme-property-card__price-wrap { position: static; background: transparent; padding: 0; box-shadow: none; }
+.public-theme-property-card--salute-luxury .public-theme-property-card__price-row .public-theme-property-card__price { color: var(--sl-ink); }
+.public-theme-property-card--salute-luxury .public-theme-property-card__actions .public-theme-property-card__favorite,
+.public-theme-property-card--salute-luxury .public-theme-property-card__actions .broker-share__trigger { color: var(--sl-gold); }
+.public-theme-property-card--salute-luxury .public-theme-property-card__whatsapp { width: 100%; }
+.public-theme-property-card--salute-luxury .public-theme-property-card__price-row .public-theme-property-card__previous-price,
+.public-theme-property-card--salute-luxury .public-theme-property-card__price-row .public-theme-property-card__price-label { color: var(--sl-muted); }
+.public-theme-property-card--salute-luxury .public-theme-property-card__actions .public-theme-property-card__favorite { position: static; width: 44px; height: 44px; border: 1px solid rgba(12,32,55,.12); border-radius: 50%; background: #fff; opacity: 1; filter: none; }
+.public-theme-property-card--salute-luxury .public-theme-property-card__actions .public-theme-property-card__favorite.is-active { color: var(--sl-favorite-active); }

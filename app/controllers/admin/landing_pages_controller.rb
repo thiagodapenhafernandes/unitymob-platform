@@ -116,7 +116,7 @@ class Admin::LandingPagesController < Admin::BaseController
     @preview_mode = true
     @landing_page = current_tenant.landing_pages.new(preview_page_params)
     @landing_page.slug = "previa" # só para os links da vitrine (paginação/filtros) terem um endereço
-    @blocks = preview_blocks.select(&:visible?)
+    @blocks = LandingPageBlock.visible_composition(preview_blocks)
     @showcases = build_showcases(@blocks, habitations: current_tenant.habitations)
     render "landing_pages/blocks", layout: "public_page_preview"
   end
@@ -126,7 +126,7 @@ class Admin::LandingPagesController < Admin::BaseController
   # Ids dos blocos por posição: o editor os grava nos cartões para o próximo autosave atualizar em vez de duplicar.
   def autosave_payload
     { ok: true, edit_url: edit_admin_landing_page_path(@landing_page), update_url: admin_landing_page_path(@landing_page),
-      slug: @landing_page.slug, blocks: @landing_page.blocks.reload.map { |block| { position: block.position, id: block.id } } }
+      slug: @landing_page.slug, blocks: @landing_page.blocks.reload.map { |block| { position: block.position, id: block.id, item_image_keys: Array(block.value(:items)).map { |item| item["image_key"] } } } }
   end
 
   def autosave_errors
@@ -151,7 +151,7 @@ class Admin::LandingPagesController < Admin::BaseController
     )
   end
 
-  BLOCK_PARAMS = [:id, :block_type, :position, :visible, :_destroy, :image_desktop, :image_mobile, :remove_image_desktop, :remove_image_mobile, { data: {} }].freeze
+  BLOCK_PARAMS = [:id, :block_type, :position, :visible, :_destroy, :image_desktop, :image_mobile, :remove_image_desktop, :remove_image_mobile, :copy_images_from, { data: {}, item_uploads: {} }].freeze
 
   def preview_page_params
     params.fetch(:landing_page, ActionController::Parameters.new).slice(:title, :description, :layout_columns).permit(:title, :description, :layout_columns)

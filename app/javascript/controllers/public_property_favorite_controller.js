@@ -1,7 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-const FAVORITES_KEY = "public:favorite-properties"
-const FAVORITES_CHANGED_EVENT = "public:favorites-changed"
+import { readFavorites, writeFavorites, dispatchFavoritesChanged, onFavoritesChanged, offFavoritesChanged } from "controllers/public_favorites_storage"
 
 export default class extends Controller {
   static targets = ["icon", "label"]
@@ -16,12 +15,12 @@ export default class extends Controller {
 
   connect() {
     this.render = this.render.bind(this)
-    window.addEventListener(FAVORITES_CHANGED_EVENT, this.render)
+    onFavoritesChanged(this.render)
     this.render()
   }
 
   disconnect() {
-    window.removeEventListener(FAVORITES_CHANGED_EVENT, this.render)
+    offFavoritesChanged(this.render)
   }
 
   toggle(event) {
@@ -37,8 +36,8 @@ export default class extends Controller {
       favorites.unshift(this.propertyData())
     }
 
-    window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites))
-    window.dispatchEvent(new CustomEvent(FAVORITES_CHANGED_EVENT))
+    writeFavorites(favorites)
+    dispatchFavoritesChanged()
   }
 
   render() {
@@ -49,7 +48,9 @@ export default class extends Controller {
     this.iconTarget.classList.toggle("is-active", active)
     this.iconTarget.classList.toggle("bi-heart", !active)
     this.iconTarget.classList.toggle("bi-heart-fill", active)
-    this.labelTarget.textContent = active ? "Remover dos favoritos" : "Favoritar imóvel"
+    const label = active ? "Remover dos favoritos" : "Favoritar imóvel"
+    this.labelTarget.textContent = label
+    this.element.setAttribute("aria-label", label)
   }
 
   propertyData() {
@@ -64,11 +65,6 @@ export default class extends Controller {
   }
 
   readFavorites() {
-    try {
-      const favorites = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || "[]")
-      return Array.isArray(favorites) ? favorites : []
-    } catch (_error) {
-      return []
-    }
+    return readFavorites()
   }
 }

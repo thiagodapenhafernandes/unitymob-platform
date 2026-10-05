@@ -1,6 +1,21 @@
 <%# Um campo do bloco, desenhado pelo tipo declarado no catálogo. locals: df, field, bf, data %>
 <% name = field.name %>
 <% case field.type %>
+<% when :range %>
+  <div class="ax-field" data-controller="ax-range">
+    <%= ax_field_label(df, name, text: field.label) %>
+    <%= df.range_field name, name: nil, id: "#{df.object_name.gsub(/[^a-zA-Z0-9_]/, '_')}_#{name}_range", min: field.options.first, max: field.options.last, data: { ax_range_target: "range", action: "input->ax-range#sync" }, "aria-label": field.label %>
+    <%= df.number_field name, class: "ax-control", min: field.options.first, max: field.options.last, data: { ax_range_target: "number", action: "input->ax-range#sync" }, "aria-label": "#{field.label} — valor" %>
+  </div>
+<% when :color %>
+  <%= ax_color_field(form: df, method: name, label: field.label, value: data.public_send(name)) %>
+<% when :button_icon %>
+  <%= render "admin/shared/ui/icon_picker", form: df, method: name, label: field.label %>
+<% when :items %>
+  <%= ax_repeatable_rows(label: field.label, rows: data.public_send(name), input_name: "#{df.object_name}[#{name}]",
+        fields: field.item_fields.map { |child| { key: child.name.to_s, label: child.label, placeholder: child.placeholder || child.label, options: (child.type == :boolean ? [["Manter imagem", false], ["Remover imagem", true]] : nil), type: (child.type == :hidden ? :hidden : child.type == :boolean ? :select : child.type == :text ? :textarea : :text) } } +
+          [{ key: "upload", label: "Enviar imagem (JPG, PNG ou WebP, até 20 MB)", type: :file, input_name: "#{bf.object_name}[item_uploads]" }],
+        add_label: "Adicionar item", empty_hint: "Adicione os itens na ordem em que devem aparecer. Até 50 por bloco.", class_name: "ax-repeatable-rows--stacked") %>
 <% when :public_form %>
   <%= ax_select_field(form: df, method: name, label: field.label, choices: current_tenant.public_forms.active.order(:name).pluck(:name, :id), select_options: { include_blank: "Selecione um formulário" }, tooltip: "Gerencie os campos e o destino dos envios em Site público → Formulários.") %>
 <% when :string %>

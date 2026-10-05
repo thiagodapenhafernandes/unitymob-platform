@@ -259,4 +259,71 @@ RSpec.describe "Páginas por blocos", type: :request do
       expect(html.at_css(".public-theme-block-showcase--default")).to be_nil
     end
   end
+  describe "composição institucional em todos os temas" do
+    Tenant::PUBLIC_SITE_THEMES.each_key do |theme|
+      it "agrupa blocos por coluna, separa seções e renderiza coleções no tema #{theme}" do
+        tenant.update!(public_site_theme: theme)
+        page = page_with([
+          ["section", { "heading" => "Nossa empresa", "columns" => 2, "ratio" => "wide-first" }],
+          ["text", { "heading" => "Apresentação", "column" => "1", "expandable" => true, "more_body" => "<p>História da empresa</p>", "offset_y" => -80, "layout_height" => "custom", "layout_min_height" => 300 }],
+          ["button", { "label" => "Contato", "url" => "/contato", "column" => "1", "icon" => "whatsapp", "custom_colors" => true, "text_color" => "#ffffff", "background_color" => "#123456" }],
+          ["video", { "url" => "https://vimeo.com/123456789", "column" => "2" }],
+          ["section", { "heading" => "Valores", "columns" => 3 }],
+          *LandingPages::BlockTypes::COLLECTIONS.keys.map { |kind| [kind, { "heading" => kind, "column" => "3", "layout" => "carousel", "items" => [{ "title" => "Dado desta conta", "label" => "2026", "text" => "Descrição", "image" => "https://example.com/photo.webp", "alt" => "Equipe", "url" => "/contato" }] }] }
+        ])
+        get public_landing_page_path(page.slug)
+        expect(response).to have_http_status(:ok)
+        sections = html.css(".public-theme-block-section")
+        expect(sections.size).to eq(2)
+        columns = sections.first.css(".public-theme-block-section__column")
+        expect(columns.first.text).to include("Apresentação", "Contato", "História da empresa")
+        expect(columns.first.at_css(".public-theme-block-layout.is-height-custom")["style"]).to include("--lp-offset-y:-80px", "--lp-layout-min-height:300px")
+        expect(columns.first.at_css(".public-theme-block-button__link")["style"]).to include("background-color:#123456")
+        expect(columns.first.at_css(".public-theme-block-button__link .bi-whatsapp")).to be_present
+        expect(columns.last.at_css("iframe")["src"]).to eq("https://player.vimeo.com/video/123456789?dnt=1")
+        expect(html.css("details.public-theme-block-text__more summary").text).to eq("Ver mais")
+        expect(html.css(".public-theme-block-collection").size).to eq(7)
+        expect(html.css(".public-theme-block-collection__image").map { |image| image["loading"] }.uniq).to eq(["lazy"])
+        expect(html.css("h1").size).to eq(1)
+      end
+    end
+  end
+
+  it "mantém o player fora do carregamento inicial quando configurado para clicar" do
+    page = page_with([["video", { "url" => "https://youtu.be/dQw4w9WgXcQ", "title" => "Tour da empresa", "click_to_play" => true }]])
+    get public_landing_page_path(page.slug)
+    expect(html.css(".public-theme-block-video iframe")).to be_empty
+    expect(html.at_css("[data-controller='public-video']")["href"]).to eq("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0")
+    expect(response.body).to include("Reproduzir Tour da empresa")
+  end
+
+  it "separa um bloco de largura total em uma linha própria dentro da seção" do
+    page = page_with([
+      ["section", { "columns" => 2 }],
+      ["text", { "heading" => "Antes", "column" => "1" }],
+      ["button", { "label" => "Largura total", "url" => "/contato", "layout_width" => "page" }],
+      ["text", { "heading" => "Depois", "column" => "2" }]
+    ])
+    get public_landing_page_path(page.slug)
+    expect(response).to have_http_status(:ok)
+    wide = html.at_css(".public-theme-block-layout.is-width-page")
+    expect(wide.text).to include("Largura total")
+    expect(wide.ancestors(".public-theme-block-section__column")).to be_empty
+    expect(html.css(".public-theme-block-section__grid").size).to eq(2)
+    expect(response.body.index("Antes")).to be < response.body.index("Largura total")
+    expect(response.body.index("Largura total")).to be < response.body.index("Depois")
+  end
+
+  it "não repete a imagem anexada do item anterior em um item sem imagem" do
+    page = page_with([["team", { "items" => [{ "title" => "Com foto", "image_key" => "photo-1" }, { "title" => "Sem foto" }] }]])
+    block = page.blocks.first
+    block.item_images.attach(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "watermark.png", content_type: "image/png", metadata: { landing_page_item_key: "photo-1" })
+
+    get public_landing_page_path(page.slug)
+
+    items = html.css(".public-theme-block-collection__item")
+    expect(items.first.css("img").size).to eq(1)
+    expect(items.last.css("img")).to be_empty
+  end
+
 end

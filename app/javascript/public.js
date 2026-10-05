@@ -64,6 +64,8 @@ application.register("transaction-toggle", TransactionToggleController)
 // Padrao gated (querySelector) em vez de lazyLoadControllersFrom para NAO
 // acordar controllers dormentes de proposito (ex.: public-interest-tracker).
 const pageScopedControllers = [
+  ["public-video", () => import("controllers/public_video_controller")],
+  ["public-scroll-carousel", () => import("controllers/public_scroll_carousel_controller")],
   ["broker-share", () => import("controllers/broker_share_controller")],
   ["fancybox-gallery", () => import("controllers/fancybox_gallery_controller")],
   ["home-video-showcase", () => import("controllers/home_video_showcase_controller")],

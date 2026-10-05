@@ -10,6 +10,12 @@ export default class extends Controller {
 
   connect() {
     this.sharedUrl = null
+    this.onBackdropClick = (event) => {
+      if (event.target !== this.menuTarget) return
+      const bounds = this.menuTarget.getBoundingClientRect()
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) this.hideMenu()
+    }
+    if (this.hasMenuTarget) this.menuTarget.addEventListener("click", this.onBackdropClick)
     this.onOutsideClick = this.handleOutsideClick.bind(this)
     if (this.hasMenuTarget) {
       document.addEventListener("click", this.onOutsideClick)
@@ -18,6 +24,8 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("click", this.onOutsideClick)
+    if (this.hasMenuTarget) this.menuTarget.removeEventListener("click", this.onBackdropClick)
+    clearTimeout(this._statusTimer)
   }
 
   toggle(event) {
@@ -48,7 +56,7 @@ export default class extends Controller {
         this.flashStatus("Compartilhado")
         return
       } catch (error) {
-        // user canceled native share; continue silently
+        if (error.name === "AbortError") return
       }
     }
 
@@ -103,8 +111,7 @@ export default class extends Controller {
 
   async ensureSharedUrl() {
     if (!this.generateUrlValue) {
-      this.flashStatus("Erro ao gerar link")
-      return null
+      return this.fallbackUrlValue || null
     }
     if (this.sharedUrl && this.sharedUrl.includes("share_token=")) return this.sharedUrl
 
@@ -196,16 +203,19 @@ export default class extends Controller {
 
   menuVisible() {
     if (!this.hasMenuTarget) return false
+    if (this.menuTarget.tagName === "DIALOG") return this.menuTarget.open
     return !this.menuTarget.hidden && !this.menuTarget.classList.contains("hidden") && !this.menuTarget.classList.contains("tw-hidden")
   }
 
   showMenu() {
     if (!this.hasMenuTarget) return
+    if (this.menuTarget.tagName === "DIALOG") { this.menuTarget.showModal(); return }
     this.showElement(this.menuTarget)
   }
 
   hideMenu() {
     if (!this.hasMenuTarget) return
+    if (this.menuTarget.tagName === "DIALOG") { this.menuTarget.close(); return }
     this.hideElement(this.menuTarget)
   }
 

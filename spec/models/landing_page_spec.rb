@@ -75,4 +75,13 @@ RSpec.describe LandingPage do
       expect(record).to be_valid
     end
   end
+  it "ocultar uma seção oculta seus filhos até a próxima seção" do
+    record = page(status: "draft").tap(&:save!)
+    record.blocks.create!(block_type: "section", position: 0, visible: false)
+    record.blocks.create!(block_type: "text", position: 1, data: { heading: "Oculto" })
+    record.blocks.create!(block_type: "section", position: 2)
+    record.blocks.create!(block_type: "text", position: 3, data: { heading: "Visível" })
+    expect(record.reload.visible_blocks.map(&:position)).to eq([2, 3])
+  end
+
 end

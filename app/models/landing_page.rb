@@ -31,14 +31,14 @@ class LandingPage < ApplicationRecord
   end
 
   def visible_blocks
-    blocks.select(&:visible?)
+    LandingPageBlock.visible_composition(blocks)
   end
 
   private
 
   # A vitrine com filtros do visitante e paginação usa `?page=`: só pode haver uma por página.
   def single_interactive_showcase
-    interactive = blocks.reject(&:marked_for_destruction?).count(&:interactive_showcase?)
+    interactive = LandingPageBlock.visible_composition(blocks.reject(&:marked_for_destruction?)).count(&:interactive_showcase?)
     errors.add(:base, "Só uma vitrine por página pode ter filtros do visitante e paginação. Desligue em uma delas.") if interactive > 1
   end
 

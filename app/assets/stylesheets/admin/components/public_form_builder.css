@@ -618,7 +618,16 @@
 
 .public-form-rich trix-editor {
   min-height: 140px;
+  width: 100%;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border: 1px solid var(--ax-border, #d0d5dd);
+  border-radius: 10px;
 }
+
+.public-form-rich { display: grid; gap: 8px; min-width: 0; }
+.public-form-rich trix-toolbar .trix-button-row { flex-wrap: wrap; gap: 4px; }
+.public-form-rich trix-toolbar .trix-button-group { margin-bottom: 0; }
 
 /* Texto principal é só texto formatado: sem botão de anexo. */
 .public-form-rich trix-toolbar .trix-button-group--file-tools {

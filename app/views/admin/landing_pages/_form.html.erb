@@ -57,7 +57,7 @@
               <legend>Colunas do conteúdo</legend>
               <%= ax_choice_group(form: f, method: :layout_columns, variant: :chips, selected: @landing_page.layout_columns, aria_label: "Colunas do conteúdo",
                                   choices: [{ value: 1, label: "1 coluna", icon: "bi-square" }, { value: 2, label: "2 colunas", icon: "bi-layout-split" }, { value: 3, label: "3 colunas", icon: "bi-layout-three-columns" }]) %>
-              <p class="ax-guided-hint">Com 2 ou 3 colunas, os blocos com largura "1 coluna" ou "2 colunas" ficam lado a lado. Os de "Linha inteira" ocupam a largura toda. No celular tudo vira uma coluna.</p>
+              <p class="ax-guided-hint">Com 2 ou 3 colunas, os blocos com largura "1 coluna" ou "2 colunas" ficam lado a lado. Os de "Linha inteira" ocupam a largura toda. Em blocos Seção, valem as colunas da própria seção. No celular tudo vira uma coluna.</p>
             </fieldset>
           </div>
           <div class="ax-span-12">
@@ -76,18 +76,17 @@
         </fieldset>
       <% end %>
 
-      <%= ax_guided_step(number: 2, color: :violet, title: "Blocos", subtitle: "A página é a pilha de blocos abaixo, de cima para baixo.", collapsible: true, collapsed: !@landing_page.errors.any?) do %>
+      <%= ax_guided_step(number: 2, color: :violet, title: "Blocos", subtitle: "A página segue os blocos de cima para baixo. Uma Seção agrupa os blocos seguintes até a próxima Seção.", collapsible: true, collapsed: !@landing_page.errors.any?) do %>
         <div class="lp-blocks" data-landing-page-builder-target="list" data-action="dragover->landing-page-builder#cardDragOver drop->landing-page-builder#cardDrop">
           <%= f.fields_for :blocks do |bf| %>
             <%= render "admin/landing_pages/block", bf: bf, open: bf.object.errors.any? %>
           <% end %>
         </div>
-        <p class="lp-blocks__empty" data-landing-page-builder-target="empty" hidden>Nenhum bloco ainda. Adicione o primeiro abaixo.</p>
 
         <%# Menu próprio (não é <select>): cada tipo com ícone e descrição. O JS abre, fecha e insere o bloco. %>
         <div class="lp-dropdown" data-landing-page-builder-target="addMenu">
-          <button type="button" class="ax-btn ax-btn--primary lp-dropdown__toggle" aria-haspopup="menu" aria-expanded="false" data-action="landing-page-builder#toggleAddMenu">
-            <i class="bi bi-plus-lg ax-ico" aria-hidden="true"></i><span>Adicionar bloco</span><i class="bi bi-chevron-down lp-dropdown__caret" aria-hidden="true"></i>
+          <button type="button" class="lp-blocks__empty" data-landing-page-builder-target="empty" aria-haspopup="menu" aria-expanded="false" data-action="landing-page-builder#toggleAddMenu" hidden>
+            <i class="bi bi-plus-lg" aria-hidden="true"></i> <span data-next-block-label>Adicionar primeiro bloco</span> <i class="bi bi-chevron-down" aria-hidden="true"></i>
           </button>
           <div class="lp-dropdown__menu" role="menu" hidden data-landing-page-builder-target="addMenuList">
             <% LandingPages::BlockTypes::ALL.each do |definition| %>
@@ -180,6 +179,9 @@
             <span class="lp-tools__group" data-for="text">
               <button type="button" class="lp-tools__btn" data-tool="width" title="Alternar largura (estreita/larga)" aria-label="Largura"><i class="bi bi-arrows-expand-vertical"></i></button>
             </span>
+            <select class="lp-tools__select" data-tool="column" aria-label="Coluna dentro da seção" title="Coluna dentro da seção" hidden>
+              <option value="1">Coluna 1</option><option value="2">Coluna 2</option><option value="3">Coluna 3</option>
+            </select>
             <select class="lp-tools__select" data-tool="span" aria-label="Largura na linha" title="Largura na linha (páginas de 2 ou 3 colunas)">
               <option value="full">Linha inteira</option><option value="1">1 coluna</option><option value="2">2 colunas</option>
             </select>

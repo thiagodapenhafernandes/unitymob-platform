@@ -40,11 +40,26 @@ export default class extends Controller {
     }
 
     this.containerTarget.appendChild(wrapper)
+    this.element.dispatchEvent(new Event("change", { bubbles: true }))
+  }
+
+  move(event) {
+    event.preventDefault()
+    const item = event.currentTarget.closest(".ax-dynamic-list__item")
+    const previous = Number(event.currentTarget.dataset.direction) < 0
+    const neighbor = previous ? item?.previousElementSibling : item?.nextElementSibling
+    if (!neighbor) return
+
+    previous ? neighbor.before(item) : neighbor.after(item)
+    this.element.dispatchEvent(new Event("change", { bubbles: true }))
   }
 
   remove(event) {
     event.preventDefault()
     const item = event.target.closest('.ax-dynamic-list__item, .input-group')
-    if (item) item.remove()
+    if (item) {
+      item.remove()
+      this.element.dispatchEvent(new Event("change", { bubbles: true }))
+    }
   }
 }
