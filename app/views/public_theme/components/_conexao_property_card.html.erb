@@ -29,7 +29,7 @@
      data-controller="clickable-card"
      data-clickable-card-url-value="<%= property_path %>"
      data-property-id="<%= property.id %>">
-  
+
   <!-- Image Carousel Area -->
   <div class="public-theme-card__media relative h-[320px] overflow-hidden bg-gray-100">
     <!-- Badges (Top Left) - Dynamic with max 2 -->
@@ -47,7 +47,7 @@
       <span class="px-2.5 py-1.5 bg-white/60 backdrop-blur-md text-blue-three text-[10px] font-bold rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.1)] border border-white/50">
         <%= property.codigo %>
       </span>
-      
+
     <% if property_constructor&.favicon_url.present? %>
       <div class="w-8 h-8 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100 flex items-center justify-center transition-transform hover:scale-110" title="<%= property_constructor.name %>">
         <img src="<%= property_constructor.favicon_url %>"
@@ -115,7 +115,7 @@
           </div>
         <% end %>
       </div>
-      
+
       <!-- Navigation (Visible on Hover) -->
       <button type="button"
               class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md"
@@ -127,13 +127,13 @@
               style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"
               aria-label="Ver foto anterior de <%= property_title %>"
               data-action="pointerdown->card-swiper#keepInside click->card-swiper#keepInside"></button>
-      
+
       <!-- Pagination -->
       <div class="swiper-pagination !bottom-2 !z-30"></div>
     </div>
 
     <div class="absolute inset-0 z-[12] pointer-events-none bg-gradient-to-b from-black/10 via-transparent to-black/15"></div>
-    
+
     <!-- Link Overlay -->
     <%= link_to "",
                 property_path,
@@ -154,7 +154,7 @@
 
   <!-- Content -->
   <div class="public-theme-card__body pt-4 px-5 flex flex-col flex-1 <%= (sale_discount || rent_discount) ? 'pb-0' : 'pb-4' %>">
-    
+
     <!-- Location -->
     <div class="public-theme-card__location flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
       <i class="bi bi-geo-alt text-golden-one"></i>
@@ -173,7 +173,7 @@
       # Determinar se é venda ou aluguel baseado no status
       is_rental = property.status&.include?('Aluguel')
       is_sale = property.status&.include?('Venda')
-      
+
       # Escolher o preço correto
       current_price = is_rental ? property.valor_locacao_cents : property.valor_venda_cents
       previous_price = is_rental ? property.valor_locacao_anterior_cents : property.valor_venda_anterior_cents
@@ -181,7 +181,7 @@
     <div class="mb-4">
       <% if previous_price.present? && current_price.present? && previous_price > current_price && current_price.to_f > 0 %>
         <% desconto_percentual = (((previous_price - current_price).to_f / previous_price) * 100).round %>
-        
+
         <!-- Preço Anterior Riscado + Badge de Desconto -->
         <div class="flex items-center gap-2 mb-1">
           <span class="text-sm text-gray-600 line-through font-medium">
@@ -192,7 +192,7 @@
             <%= desconto_percentual %>%
           </span>
         </div>
-        
+
         <!-- Preço Atual Destacado -->
         <div class="flex items-center justify-between">
           <p class="text-xl font-bold text-gray-800">
