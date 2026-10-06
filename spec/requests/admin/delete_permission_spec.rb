@@ -182,6 +182,12 @@ RSpec.describe "Admin delete permission", type: :request do
       expect(Profile::ACTION_LABELS["delete"]).to eq("Excluir")
     end
 
+    it "expõe delete como ação configurável de proprietários" do
+      resource = Profile::RESOURCES.find { |res| res[:key] == "proprietarios" }
+
+      expect(resource[:actions]).to include("view", "manage", "delete")
+    end
+
     it "não concede delete por herança de manage" do
       profile = build_profile(imoveis_permissions(delete: false, scope: "all"))
 

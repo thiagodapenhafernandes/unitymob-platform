@@ -377,6 +377,123 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(Proprietor.last.phone_primary).to eq("14155552671")
   end
 
+  it "aceita telefone boliviano na criação rápida quando vem com DDI explícito" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: { proprietor: { name: "Owner Boliviano", phone_primary: "+591 63595977", city: "La Paz" } },
+           headers: { "ACCEPT" => "application/json" }
+    }.to change(Proprietor, :count).by(1)
+
+    expect(response).to have_http_status(:created)
+    expect(Proprietor.last.phone_primary).to eq("59163595977")
+  end
+
+  it "aceita telefone estrangeiro na atualização rápida quando vem com DDI explícito" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    proprietor = create(:proprietor, tenant: admin.tenant, name: "Owner Sem Telefone", city: "La Paz")
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: { proprietor: { phone_primary: "+59163595977", city: "Agustín Codazzi - La Paz - Bolívia" } },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(proprietor.reload.phone_primary).to eq("59163595977")
+  end
+
+  it "aceita segundo telefone na criação rápida" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: {
+             proprietor: {
+               name: "Dono Dois Telefones",
+               phone_primary: "(47) 99999-1111",
+               mobile_phone: "(48) 98888-2222",
+               city: "Itajaí"
+             }
+           },
+           headers: { "ACCEPT" => "application/json" }
+    }.to change(Proprietor, :count).by(1)
+
+    expect(response).to have_http_status(:created)
+    created = Proprietor.order(:id).last
+    expect(created).to have_attributes(phone_primary: "5547999991111", mobile_phone: "5548988882222")
+    expect(JSON.parse(response.body)).to include("phone_secondary" => "5548988882222")
+  end
+
+  it "aceita segundo telefone estrangeiro na criação rápida" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    post quick_create_admin_proprietors_path,
+         params: {
+           proprietor: {
+             name: "Dono Celular Gringo",
+             phone_primary: "(47) 99999-1111",
+             mobile_phone: "+591 63595977",
+             city: "Itajaí"
+           }
+         },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:created)
+    expect(Proprietor.order(:id).last.mobile_phone).to eq("59163595977")
+  end
+
+  it "rejeita segundo telefone inválido na criação rápida" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: {
+             proprietor: {
+               name: "Dono Celular Ruim",
+               phone_primary: "(47) 99999-1111",
+               mobile_phone: "123",
+               city: "Itajaí"
+             }
+           },
+           headers: { "ACCEPT" => "application/json" }
+    }.not_to change(Proprietor, :count)
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body).fetch("errors").join).to include("Telefone inválido")
+  end
+
+  it "atualiza segundo telefone na atualização rápida" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Atualiza Celular")
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: { proprietor: { mobile_phone: "(47) 97777-3333" } },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(proprietor.reload.mobile_phone).to eq("5547977773333")
+  end
+
+  it "aceita celular com DDD 55 na criação rápida sem confundir com DDI do Brasil" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: { proprietor: { name: "Dono Santa Maria", phone_primary: "(55) 99999-1234", city: "Santa Maria" } },
+           headers: { "ACCEPT" => "application/json" }
+    }.to change(Proprietor, :count).by(1)
+
+    expect(response).to have_http_status(:created)
+    expect(Proprietor.last.phone_primary).to eq("5555999991234")
+  end
+
   it "permite busca e criação rápida para corretor com captações sem liberar CRUD de proprietários" do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
       profile.update!(permissions: Profile.default_permissions_for("Corretor"))
@@ -455,5 +572,141 @@ RSpec.describe "Admin::Proprietors", type: :request do
     )
     expect(duplicate_payload.fetch("proprietor")).to include("id" => duplicate.id, "name" => duplicate.name)
     expect(proprietor.reload.phone_primary).to eq("5547977771111")
+  end
+
+  describe "exclusão de proprietário" do
+    def delete_profile_for(tenant, proprietarios, position: 720)
+      Profile.create!(
+        tenant: tenant,
+        name: "Perfil excluir proprietário #{SecureRandom.hex(4)}",
+        axis: Profile::AXES[:vertical],
+        position: position,
+        permissions: {
+          "admin" => false,
+          "dashboard" => { "view" => true },
+          "proprietarios" => proprietarios
+        }
+      )
+    end
+
+    def csrf_token_param
+      get admin_proprietors_path
+      token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
+      token.present? ? { authenticity_token: token } : {}
+    end
+
+    it "permite excluir proprietário sem vínculos para perfil com delete" do
+      admin = create(:admin_user, :admin)
+      manager = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true, "delete" => true }))
+      proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Sem Vínculos")
+      sign_in manager
+
+      expect {
+        delete admin_proprietor_path(proprietor), params: csrf_token_param
+      }.to change { Proprietor.exists?(proprietor.id) }.from(true).to(false)
+
+      expect(response).to redirect_to(admin_proprietors_path)
+      expect(flash[:notice]).to include("excluído")
+    end
+
+    it "transfere imóveis para outro proprietário ao excluir dono com vínculos" do
+      admin = create(:admin_user, :admin)
+      manager = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true, "delete" => true }))
+      proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Com Imóveis")
+      target = create(:proprietor, tenant: admin.tenant, name: "Dono Destino")
+      habitations = create_list(:habitation, 2, tenant: admin.tenant, proprietor: proprietor)
+      sign_in manager
+
+      expect {
+        delete admin_proprietor_path(proprietor), params: csrf_token_param.merge(transfer_to_id: target.id)
+      }.to change { Proprietor.exists?(proprietor.id) }.from(true).to(false)
+
+      expect(response).to redirect_to(admin_proprietors_path)
+      expect(habitations.map(&:reload).map(&:proprietor_id).uniq).to eq([target.id])
+    end
+
+    it "bloqueia exclusão de dono com imóveis sem destino de transferência" do
+      admin = create(:admin_user, :admin)
+      manager = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true, "delete" => true }))
+      proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Sem Destino")
+      create(:habitation, tenant: admin.tenant, proprietor: proprietor)
+      sign_in manager
+
+      expect {
+        delete admin_proprietor_path(proprietor), params: csrf_token_param
+      }.not_to change { Proprietor.exists?(proprietor.id) }
+
+      expect(response).to redirect_to(admin_proprietors_path)
+      expect(flash[:alert]).to include("imóveis vinculados")
+    end
+
+    it "não exclui quando o perfil gerencia mas não tem delete" do
+      admin = create(:admin_user, :admin)
+      manager = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true }, position: 721))
+      proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Protegido")
+      sign_in manager
+
+      expect {
+        delete admin_proprietor_path(proprietor), params: csrf_token_param
+      }.not_to change { Proprietor.exists?(proprietor.id) }
+
+      expect(response).to redirect_to(admin_proprietors_path)
+    end
+
+    it "bloqueia exclusão de proprietário sincronizado pela Vista" do
+      admin = create(:admin_user, :admin)
+      sign_in admin
+      proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Vista", vista_code: "VISTA-123")
+
+      expect {
+        delete admin_proprietor_path(proprietor), params: csrf_token_param
+      }.not_to change { Proprietor.exists?(proprietor.id) }
+
+      expect(response).to redirect_to(admin_proprietors_path)
+      expect(flash[:alert]).to include("Vista")
+    end
+
+    it "mostra o botão de excluir só para quem tem delete" do
+      admin = create(:admin_user, :admin)
+      proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Botão")
+      deleter = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true, "delete" => true }, position: 722))
+      viewer = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true }, position: 723))
+
+      sign_in deleter
+      get admin_proprietors_path
+      expect(response.body).to include("Excluir proprietário #{proprietor.name}")
+      expect(response.body).to include("transferDeleteProprietorModal")
+
+      sign_in viewer
+      get admin_proprietors_path
+      expect(response.body).not_to include("Excluir proprietário #{proprietor.name}")
+      expect(response.body).not_to include("transferDeleteProprietorModal")
+    end
+
+    it "lista opções de transferência só para quem tem delete e do mesmo tenant" do
+      admin = create(:admin_user, :admin)
+      target = create(:proprietor, tenant: admin.tenant, name: "Dono Destino Busca")
+      other_tenant = Tenant.create!(name: "Outro tenant transferência", slug: "outro-transfer-#{SecureRandom.hex(4)}")
+      create(:proprietor, tenant: other_tenant, name: "Dono Destino Outro Tenant")
+      deleter = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true, "delete" => true }, position: 724))
+      viewer = create(:admin_user, profile: delete_profile_for(admin.tenant, { "view" => true, "manage" => true }, position: 725))
+
+      sign_in deleter
+      get transfer_options_admin_proprietors_path,
+          params: { q: "Destino" },
+          headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to contain_exactly(
+        "value" => target.id, "text" => target.select_label
+      )
+
+      sign_in viewer
+      get transfer_options_admin_proprietors_path,
+          params: { q: "Destino" },
+          headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:forbidden)
+    end
   end
 end

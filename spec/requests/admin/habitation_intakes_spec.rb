@@ -363,6 +363,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(document.at_css('input[name="proprietor[name]"][data-habitation-owner-selector-target="createName"]')).to be_present
     expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="createPhone"]')).to be_present
     expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="editPhone"]')).to be_present
+    expect(document.at_css('input[type="tel"][name="proprietor[mobile_phone]"][data-controller="phone-input"][data-habitation-owner-selector-target="createPhone2"]')).to be_present
+    expect(document.at_css('input[type="tel"][name="proprietor[mobile_phone]"][data-controller="phone-input"][data-habitation-owner-selector-target="editPhone2"]')).to be_present
     expect(document.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="createCity"]')).to be_present
     expect(document.at_css('input[name="proprietor[name]"][data-habitation-owner-selector-target="createName"][required]')).to be_nil
     expect(document.at_css('input[name="proprietor[phone_primary]"][data-habitation-owner-selector-target="createPhone"][required]')).to be_nil

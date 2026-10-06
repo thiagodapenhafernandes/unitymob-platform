@@ -5001,6 +5001,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(page.at_css('[data-controller="habitation-owner-selector"]')["data-habitation-owner-selector-require-email-value"]).to eq("false")
     expect(page.at_css("#editQuickProprietorForm")).to be_present
     expect(page.at_css('input[name="proprietor[phone_primary]"][data-habitation-owner-selector-target="editPhone"]')).to be_present
+    expect(page.at_css('input[name="proprietor[mobile_phone]"][data-habitation-owner-selector-target="editPhone2"]')).to be_present
+    expect(page.at_css('input[name="proprietor[mobile_phone]"][data-habitation-owner-selector-target="createPhone2"]')).to be_present
     expect(page.at_css('input[name="proprietor[email]"][data-habitation-owner-selector-target="editEmail"]')).to be_present
     expect(page.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="editCity"]')).to be_present
     expect(page.at_css('[data-habitation-owner-selector-target="directAction"]')["hidden"]).to be_nil

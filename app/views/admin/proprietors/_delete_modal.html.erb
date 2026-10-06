@@ -1,0 +1,32 @@
+<%= ax_quick_modal(id: "transferDeleteProprietorModal", title: "Excluir proprietário", size: :md, footer: nil) do %>
+  <div data-controller="reassign-delete">
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+      <span>Você está excluindo <strong data-reassign-delete-target="name">este proprietário</strong>. Esta ação é irreversível.</span>
+    <% end %>
+
+    <p class="reassign-delete__hint" data-reassign-delete-target="summary" hidden></p>
+
+    <%= form_tag("", method: :delete, data: { reassign_delete_target: "form" }, class: "reassign-delete__form") do %>
+      <p class="reassign-delete__hint">Os imóveis vinculados serão <strong>transferidos</strong> para o proprietário escolhido. Histórico de interações, agendamentos e interesses será desvinculado.</p>
+      <div class="ax-field">
+        <label class="ax-field-label" for="transfer_to_id">Transferir imóveis para</label>
+        <%= select_tag :transfer_to_id, tag.option("", value: ""),
+              id: "transfer_to_id",
+              class: "ax-control",
+              required: true,
+              data: {
+                controller: "tom-select",
+                tom_select_url_value: transfer_options_admin_proprietors_path,
+                tom_select_min_length_value: 2,
+                placeholder: "Buscar proprietário...",
+                reassign_delete_target: "select"
+              } %>
+      </div>
+
+      <%= ax_form_actions(sticky: false) do %>
+        <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+        <button type="submit" class="ax-btn ax-btn--danger">Excluir e transferir</button>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

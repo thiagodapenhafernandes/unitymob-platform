@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["form", "name", "select"]
+  static targets = ["form", "name", "select", "summary"]
 
   prepare(event) {
     const trigger = event.currentTarget
@@ -12,6 +12,11 @@ export default class extends Controller {
     if (this.formElement && url) this.formElement.action = url
     if (this.nameElement) this.nameElement.textContent = userName
     if (this.selectElement) this.updateSelectOptions(userId)
+    if (this.hasSummaryTarget) {
+      const summary = trigger.dataset.linkedSummary || ""
+      this.summaryTarget.textContent = summary
+      this.summaryTarget.hidden = summary.length === 0
+    }
   }
 
   updateSelectOptions(userId) {

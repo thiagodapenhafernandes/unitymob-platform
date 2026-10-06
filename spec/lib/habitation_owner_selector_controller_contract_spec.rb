@@ -58,6 +58,20 @@ RSpec.describe "habitation owner selector controller" do
     expect(source).to include("return await onConflict(payload)")
   end
 
+  it "prefere o telefone de exibição ao abrir a edição rápida" do
+    expect(source).to include("this.editPhoneTarget.value = proprietor.phone_primary_display || proprietor.phone_primary")
+    expect(source).to include("this.editPhone2Target.value = proprietor.phone_secondary_display || proprietor.phone_secondary")
+  end
+
+  it "valida o segundo telefone somente quando preenchido" do
+    validate_method = source[/validateQuickFields\(prefix\) \{.*?\n  \}/m]
+
+    expect(validate_method).to include("this.hasText(phone2Field.value)")
+    expect(validate_method).to include("this.phoneValidationError(phone2Field)")
+    expect(source).to include("this.enhancePhoneField(this.createPhone2Target)")
+    expect(source).to include("this.enhancePhoneField(this.editPhone2Target)")
+  end
+
   it "mostra no erro somente os campos obrigatórios que estão faltando" do
     expect(source).to include("this.missingQuickFields(prefix)")
     expect(source).to include("this.missingQuickFieldsMessage(missingFields)")

@@ -63,6 +63,9 @@
                   icon: "pencil",
                   url: edit_admin_proprietor_path(proprietor)
                 ) %>
+            <% if can_destroy_proprietor? && proprietor.vista_code.blank? %>
+              <%= render "delete_button", proprietor: proprietor, linked_count: @habitations_count_by_proprietor[proprietor.id].to_i %>
+            <% end %>
           </td>
         </tr>
       <% end %>
@@ -77,3 +80,7 @@
 
 <%= ax_pagination @proprietors, params: request.query_parameters %>
 </div>
+
+<% if can_destroy_proprietor? %>
+  <%= render "delete_modal" %>
+<% end %>

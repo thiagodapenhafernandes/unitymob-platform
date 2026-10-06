@@ -6,7 +6,8 @@
         subtitle: "Atualize os dados cadastrais e acompanhe os imóveis vinculados.",
         metrics: [
           { value: @linked_habitations.total_entries, label: "imóveis vinculados" }
-        ]
+        ],
+        actions: (render("delete_button", proprietor: @proprietor, linked_count: @proprietor.habitations.count) if can_destroy_proprietor? && @proprietor.vista_code.blank?)
       ) %>
 
   <%= ax_operational_panel(eyebrow: "Cadastro", title: "Dados do proprietário", class_name: "tw-mb-4") do %>
@@ -115,3 +116,7 @@
                       params: { habitation_q: @habitation_q, habitation_status: @habitation_status } %>
   <% end %>
 </div>
+
+<% if can_destroy_proprietor? %>
+  <%= render "delete_modal" %>
+<% end %>

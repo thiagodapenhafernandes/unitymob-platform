@@ -25,10 +25,12 @@ export default class extends Controller {
     "error",
     "createName",
     "createPhone",
+    "createPhone2",
     "createEmail",
     "createCity",
     "editName",
     "editPhone",
+    "editPhone2",
     "editEmail",
     "editCity",
     "legacyName",
@@ -126,6 +128,7 @@ export default class extends Controller {
     this.prefillCreateFields(this.queryTarget.value.trim())
     this.hideSearchSuggestions()
     this.enhancePhoneField(this.createPhoneTarget)
+    this.enhancePhoneField(this.createPhone2Target)
     this.focusQuickField("create", this.createPanelTarget)
   }
 
@@ -162,13 +165,16 @@ export default class extends Controller {
       this.hideSearchSuggestions()
     }
     this.editNameTarget.value = proprietor.name || ""
-    this.editPhoneTarget.value = proprietor.phone_primary || proprietor.phone_primary_display || ""
+    this.editPhoneTarget.value = proprietor.phone_primary_display || proprietor.phone_primary || ""
+    this.editPhone2Target.value = proprietor.phone_secondary_display || proprietor.phone_secondary || ""
     this.editEmailTarget.value = proprietor.email || ""
     this.editCityTarget.value = proprietor.city || ""
     this.syncEditNamePermission()
     this.syncEditPhonePermission(proprietor)
     this.dispatchPhoneMask(this.editPhoneTarget)
+    this.dispatchPhoneMask(this.editPhone2Target)
     this.enhancePhoneField(this.editPhoneTarget)
+    this.enhancePhoneField(this.editPhone2Target)
     this.focusEditField(options)
   }
 
@@ -544,6 +550,7 @@ export default class extends Controller {
   prefillCreateFields(query) {
     this.createNameTarget.value = ""
     this.createPhoneTarget.value = ""
+    this.createPhone2Target.value = ""
     this.createEmailTarget.value = ""
     this.createCityTarget.value = ""
 
@@ -574,6 +581,16 @@ export default class extends Controller {
       this.showError(phoneError)
       phoneField.focus()
       return false
+    }
+
+    const phone2Field = prefix === "edit" ? this.editPhone2Target : this.createPhone2Target
+    if (this.hasText(phone2Field.value)) {
+      const phone2Error = this.phoneValidationError(phone2Field)
+      if (phone2Error) {
+        this.showError(phone2Error)
+        phone2Field.focus()
+        return false
+      }
     }
 
     this.clearError()
@@ -634,6 +651,14 @@ export default class extends Controller {
 
     if (metadata.countryIso2 && metadata.countryIso2 !== "br") {
       if (metadata.isValidNumber) return null
+
+      const e164Digits = String(metadata.e164 || "").replace(/\D/g, "")
+      if (e164Digits.length >= 8 && e164Digits.length <= 15) return null
+
+      const dialCodeLength = String(metadata.dialCode || "").replace(/\D/g, "").length
+      const estimatedLength = rawDigits.length + dialCodeLength
+      if (rawDigits.length >= 7 && estimatedLength >= 8 && estimatedLength <= 15) return null
+
       return "Telefone inválido. Selecione o país correto e informe um número válido."
     }
 
@@ -646,6 +671,13 @@ export default class extends Controller {
   normalizedPhoneValue(field) {
     const detail = { value: field.value }
     field.dispatchEvent(new CustomEvent("phone-input:normalize", { detail, bubbles: true }))
+
+    const metadata = this.phoneMetadata(field)
+    if (metadata.countryIso2 && metadata.countryIso2 !== "br") {
+      const e164 = String(metadata.e164 || "").trim()
+      if (e164.startsWith("+")) return e164
+    }
+
     if (detail.value !== field.value) return detail.value
 
     const ownerNormalizedValue = this.ownerNormalizedPhoneValue(field)
@@ -670,13 +702,56 @@ export default class extends Controller {
     field.dispatchEvent(new CustomEvent("phone-input:metadata", { detail, bubbles: true }))
     const ownerIntlTelInput = field._habitationOwnerIntlTelInput
 
-    if (ownerIntlTelInput && !detail.countryIso2) {
-      detail.countryIso2 = ownerIntlTelInput.getSelectedCountryData()?.iso2
-      detail.isValidNumber = Boolean(ownerIntlTelInput.isValidNumber?.())
-      detail.e164 = detail.isValidNumber ? ownerIntlTelInput.getNumber() : ""
+    if (ownerIntlTelInput) {
+      let ownerCountry = ""
+      let ownerDialCode = ""
+      let ownerValid = false
+      try {
+        ownerCountry = ownerIntlTelInput.getSelectedCountryData()?.iso2 || ""
+        ownerDialCode = String(ownerIntlTelInput.getSelectedCountryData()?.dialCode || "").replace(/\D/g, "")
+        ownerValid = Boolean(ownerIntlTelInput.isValidNumber?.())
+      } catch (_error) {
+        // Mantém os valores padrão quando a biblioteca ainda não responde.
+      }
+      const ownerE164 = this.ownerFallbackE164(field, ownerIntlTelInput, ownerDialCode)
+      const phoneInputCountry = detail.countryIso2 || "br"
+
+      if (ownerCountry && ownerCountry !== "br" && phoneInputCountry === "br") {
+        detail.countryIso2 = ownerCountry
+        detail.dialCode = ownerDialCode
+        detail.isValidNumber = ownerValid
+        detail.e164 = ownerE164
+      } else if (ownerValid && !detail.isValidNumber) {
+        detail.countryIso2 = ownerCountry || detail.countryIso2
+        detail.isValidNumber = true
+        detail.e164 = detail.e164 || ownerE164
+        detail.dialCode = detail.dialCode || ownerDialCode
+      } else if (!String(detail.e164 || "").startsWith("+") && ownerE164.startsWith("+")) {
+        detail.e164 = ownerE164
+        detail.dialCode = detail.dialCode || ownerDialCode
+      } else if (!detail.dialCode && ownerDialCode && (!detail.countryIso2 || detail.countryIso2 === ownerCountry)) {
+        detail.dialCode = ownerDialCode
+      }
     }
 
     return detail
+  }
+
+  ownerFallbackE164(field, ownerIntlTelInput, dialCode) {
+    let e164 = ""
+    try {
+      e164 = String(ownerIntlTelInput.getNumber?.() || "").trim()
+    } catch (_error) {
+      e164 = ""
+    }
+    if (e164.startsWith("+")) return e164
+
+    const digits = String(field.value || "").replace(/\D/g, "").replace(/^0+/, "")
+    const code = String(dialCode || "").replace(/\D/g, "")
+    if (!digits || !code) return e164
+
+    const withoutCode = digits.startsWith(code) && digits.length - code.length >= 7 ? digits.slice(code.length) : digits
+    return `+${code}${withoutCode}`
   }
 
   brazilianNationalDigits(digits) {
