@@ -3,7 +3,8 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["overlay", "form", "feedback", "submit"]
   static values = {
-    successMessage: String
+    successMessage: String,
+    whatsappUrl: String
   }
 
   connect() {
@@ -37,6 +38,20 @@ export default class extends Controller {
 
   closeOnEscape(event) {
     if (event.key === "Escape" && this.hasOverlayTarget && !this.overlayTarget.hidden) this.close()
+  }
+
+  whatsapp() {
+    if (this.element.closest(".lp-preview-block") || !this.hasFormTarget || !this.formTarget.reportValidity()) return
+    const url = new URL(this.whatsappUrlValue)
+    if (url.protocol !== "https:" || url.hostname !== "wa.me" || !/^\/\d+$/.test(url.pathname)) return
+    const lines = [...this.formTarget.querySelectorAll(".public-form-modal__field")].map((field) => {
+      const label = field.querySelector("label")?.textContent.trim()
+      const values = [...field.querySelectorAll("input, select, textarea")].filter((input) => !["hidden", "file"].includes(input.type) && (!["radio", "checkbox"].includes(input.type) || input.checked))
+        .map((input) => input.tagName === "SELECT" ? input.selectedOptions[0]?.textContent.trim() : input.value.trim()).filter(Boolean)
+      return values.length ? `${label}: ${values.join(", ")}` : null
+    }).filter(Boolean)
+    url.searchParams.set("text", [this.formTarget.dataset.publicFormTitle, ...lines].join("\n").slice(0, 6000))
+    window.open(url.toString(), "_blank", "noopener,noreferrer")
   }
 
   async submit(event) {

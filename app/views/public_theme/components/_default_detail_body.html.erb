@@ -369,7 +369,7 @@
         <h2 class="public-habitations-show__related-title mb-6 text-2xl font-bold text-gray-900">Mais imóveis como este</h2>
         <div class="public-habitations-show__related-grid grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <% @related_properties.each do |property| %>
-            <%= render 'shared/tailwind/property_card', property: property %>
+            <%= render theme_component_path(:property_card), property: property %>
           <% end %>
         </div>
       </section>
@@ -380,7 +380,7 @@
         <h2 class="public-habitations-show__related-title mb-6 text-2xl font-bold text-gray-900">Mais imóveis em <%= @habitation.public_neighborhood %></h2>
         <div class="public-habitations-show__related-grid grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <% @neighborhood_properties.each do |property| %>
-            <%= render 'shared/tailwind/property_card', property: property %>
+            <%= render theme_component_path(:property_card), property: property %>
           <% end %>
         </div>
       </section>

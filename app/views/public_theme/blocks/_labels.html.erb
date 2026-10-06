@@ -1,0 +1,8 @@
+<% if Array(block.value(:labels)).any? %>
+  <div class="public-theme-builder-labels<%= ' has-custom-colors' if block.value(:element_labels_custom_colors) %>" data-element-group="labels" style="<%= landing_page_action_color_style(block.data, "element_labels") %>">
+    <% Array(block.value(:labels)).each_with_index do |label, index| %>
+      <% next if label['title'].blank? %>
+      <span class="public-theme-builder-badge" data-label-index="<%= index %>" style="<%= landing_page_action_color_style(label, '') %>"><%= label['title'] %></span>
+    <% end %>
+  </div>
+<% end %>

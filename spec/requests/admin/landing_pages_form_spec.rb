@@ -36,7 +36,7 @@ RSpec.describe "Admin::LandingPages construtor de páginas", type: :request do
       expect(html.css(".ax-guided-step.is-open")).to be_empty # tudo recolhido por padrão
       expect(html.at_css("[data-landing-page-builder-target='frame']")).to be_present
       expect(html.at_css(".lp-serp [data-seo-snippet-target='url']")).to be_present
-      expect(html.css(".lp-dropdown__item").map { |node| node["data-block-type"] }).to eq(%w[form cover text property_showcase button image video embed section cards indicators testimonials timeline partners team gallery])
+      expect(html.css(".lp-dropdown__item").map { |node| node["data-block-type"] }).to eq(%w[form cover text property_showcase button image video embed section cards indicators testimonials timeline partners team steps gallery callout faq navigation])
       expect(html.css("input[name='landing_page[layout_columns]']").map { |node| node["value"] }).to eq(%w[1 2 3])
       expect(html.at_css("input[name='landing_page[layout_columns]'][checked]")["value"]).to eq("1")
     end

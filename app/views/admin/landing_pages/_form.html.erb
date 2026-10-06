@@ -1,14 +1,15 @@
 <%# Editor de páginas por blocos: etapas à esquerda, prévia real (a página do site) à direita. %>
 <% editing = @landing_page.persisted? %>
-<%= form_with(model: [:admin, @landing_page], local: true, multipart: true, class: "ax-guided landing-page-guided",
+<%= form_with(model: [:admin, @landing_page], local: true, multipart: true, class: "ax-guided landing-page-guided lp-canvas-editor#{' lp-fullscreen-editor' if @fullscreen_editor}",
               data: {
                 controller: "landing-page-builder",
                 landing_page_builder_preview_url_value: render_preview_admin_landing_pages_path(id: @landing_page.slug.presence),
                 landing_page_builder_saved_status_value: (editing ? @landing_page.status : "new"),
                 action: "input->landing-page-builder#schedule change->landing-page-builder#schedule input->landing-page-builder#refreshProgress " \
                         "change->landing-page-builder#refreshProgress focusin->landing-page-builder#focusStep focusin->landing-page-builder#selectBlock trix-change->landing-page-builder#schedule " \
-                        "trix-file-accept->landing-page-builder#blockFiles"
+                        "formdata->landing-page-builder#compactFormData trix-file-accept->landing-page-builder#blockFiles submit->landing-page-builder#beforeSubmit turbo:submit-end->landing-page-builder#afterSubmit"
               }) do |f| %>
+  <%= hidden_field_tag :editor_mode, "preview" if @fullscreen_editor %>
   <%= ax_error_summary(@landing_page) %>
   <% block_errors = @landing_page.blocks.flat_map { |block| block.errors.full_messages }.uniq %>
   <% if block_errors.any? %>
@@ -22,7 +23,14 @@
                        steps: [["Página", "bi-file-earmark-text"], ["Blocos", "bi-layout-three-columns"], ["Google", "bi-google"]]) %>
 
   <div class="ax-guided-layout">
-    <div class="ax-guided-steps">
+    <div class="ax-guided-steps" aria-label="Opções de edição">
+      <button type="button" class="lp-inspector-resize" aria-label="Redimensionar painel de edição" data-action="pointerdown->landing-page-builder#resizeInspector keydown->landing-page-builder#resizeInspectorKey"></button>
+      <%= render "admin/shared/ui/sortable_element" %>
+      <div class="lp-inspector-heading"><strong data-landing-page-builder-target="inspectorTitle">Editar elemento</strong><%= ax_icon_button(label: "Fechar painel", icon: "x-lg", data: { action: "landing-page-builder#closeInspector" }) %></div>
+      <div class="lp-inspector-tabs">
+        <%= ax_button("Conteúdo", nil, size: :sm, data: { action: "landing-page-builder#inspectorAppearance", panel: "content" }) %>
+        <%= ax_button("Estilo", nil, size: :sm, data: { action: "landing-page-builder#inspectorAppearance", panel: "appearance" }) %>
+      </div>
       <%= ax_guided_step(number: 1, color: :blue, title: "Página", subtitle: "Título, endereço e se ela está no ar.", collapsible: true, collapsed: !@landing_page.errors.any?) do %>
         <% unless editing %>
           <fieldset class="ax-guided-fieldset">
@@ -83,6 +91,27 @@
           <% end %>
         </div>
 
+        <details class="lp-layout-controls">
+          <summary>Adicionar seção pronta</summary>
+          <p class="ax-muted">Composições editáveis. Substitua os exemplos e envie suas imagens antes de publicar.</p>
+          <div class="ax-choice-cards" role="group" aria-label="Biblioteca de seções">
+            <% LandingPages::SectionPresets::ALL.each do |preset| %>
+              <button type="button" class="ax-choice-card" data-action="landing-page-builder#addPreset" data-preset-key="<%= preset.key %>">
+                <span class="ax-choice-card__icon"><i class="bi bi-<%= preset.icon %>" aria-hidden="true"></i></span><strong><%= preset.label %></strong>
+              </button>
+            <% end %>
+          </div>
+        </details>
+        <% LandingPages::SectionPresets::ALL.each do |preset| %>
+          <template data-landing-page-builder-target="preset" data-preset-key="<%= preset.key %>">
+            <% preset.blocks.each_with_index do |attributes, index| %>
+              <%= f.fields_for :blocks, LandingPageBlock.new(attributes.merge(visible: true)), child_index: "__PRESET_#{index}__" do |bf| %>
+                <%= render "admin/landing_pages/block", bf: bf, open: false %>
+              <% end %>
+            <% end %>
+          </template>
+        <% end %>
+
         <%# Menu próprio (não é <select>): cada tipo com ícone e descrição. O JS abre, fecha e insere o bloco. %>
         <div class="lp-dropdown" data-landing-page-builder-target="addMenu">
           <button type="button" class="lp-blocks__empty" data-landing-page-builder-target="empty" aria-haspopup="menu" aria-expanded="false" data-action="landing-page-builder#toggleAddMenu" hidden>
@@ -133,6 +162,11 @@
       <section class="public-form-preview lp-preview">
         <header class="public-form-preview__bar">
           <div class="public-form-preview__quick">
+            <% if @fullscreen_editor %><%= ax_button("Visualizar", page_preview_admin_landing_page_path(@landing_page), icon: "eye", size: :sm, data: { turbo: false }) %><% end %>
+            <%= ax_button("Adicionar", nil, icon: "plus-lg", size: :sm, data: { action: "landing-page-builder#openInspector", inspector: "add" }) %>
+            <%= ax_button("Estrutura", nil, icon: "layers", size: :sm, data: { action: "landing-page-builder#openInspector", inspector: "structure" }) %>
+            <%= ax_button("Página", nil, icon: "gear", size: :sm, data: { action: "landing-page-builder#openInspector", inspector: "page" }) %>
+            <%= ax_button("Google", nil, icon: "search", size: :sm, data: { action: "landing-page-builder#openInspector", inspector: "seo" }) %>
             <div class="public-form-preview__savegroup" role="group" aria-label="Salvar">
               <button type="submit" name="continue" value="1" class="ax-btn ax-btn--primary ax-btn--sm" title="Salva e continua editando">
                 <i class="bi bi-check2 ax-ico" aria-hidden="true"></i><span>Salvar</span>
@@ -144,6 +178,8 @@
             <span class="public-form-preview__save" data-landing-page-builder-target="saveStatus" role="status" aria-live="polite"></span>
             <span class="public-form-preview__save" data-landing-page-builder-target="status" role="status" aria-live="polite"></span>
           </div>
+          <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+            <%= ax_button("Abrir prévia", (@landing_page.persisted? ? page_preview_admin_landing_page_path(@landing_page) : "#"), icon: "box-arrow-up-right", size: :sm, target: "_blank", rel: "noopener noreferrer", title: "Abre a versão salva em nova aba, inclusive em rascunho", aria: { disabled: !@landing_page.persisted? }, hidden: !@landing_page.persisted?, data: { turbo: false, landing_page_builder_target: "openPreview" }) %>
           <div class="public-form-preview__devices" role="group" aria-label="Dispositivo">
             <button type="button" class="public-form-preview__device" aria-pressed="true" data-device="desktop"
                     data-landing-page-builder-target="device" data-action="landing-page-builder#switchDevice">
@@ -153,6 +189,7 @@
                     data-landing-page-builder-target="device" data-action="landing-page-builder#switchDevice">
               <i class="bi bi-phone" aria-hidden="true"></i> Mobile
             </button>
+          </div>
           </div>
         </header>
         <div class="public-form-preview__stage" data-landing-page-builder-target="stage">

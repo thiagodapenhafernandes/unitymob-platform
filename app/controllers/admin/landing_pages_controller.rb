@@ -2,7 +2,8 @@ class Admin::LandingPagesController < Admin::BaseController
   include LandingPageShowcases
 
   requires_permission :manage, :site_publico
-  before_action :set_landing_page, only: [:edit, :update, :destroy]
+  before_action :set_landing_page, only: [:edit, :update, :destroy, :page_preview]
+  before_action :unpack_block_data, only: [:create, :update, :render_preview]
   before_action :load_filter_options, only: [:new, :create, :edit, :update]
   helper_method :property_code_options_for
 
@@ -46,6 +47,7 @@ class Admin::LandingPagesController < Admin::BaseController
   end
 
   def update
+    @fullscreen_editor = params[:editor_mode] == "preview"
     attrs = landing_page_params
     if request.format.json?
       return render json: { ok: false, errors: ["Só rascunhos salvam sozinhos. Clique em Salvar para aplicar."] }, status: :conflict unless @landing_page.draft?
@@ -61,7 +63,7 @@ class Admin::LandingPagesController < Admin::BaseController
     else
       load_filter_options
       respond_to do |format|
-        format.html { render :edit, status: :unprocessable_entity }
+        format.html { render(@fullscreen_editor ? :page_preview_editor : :edit, layout: (@fullscreen_editor ? "landing_page_editor" : "admin"), status: :unprocessable_entity) }
         format.json { render json: { ok: false, errors: autosave_errors }, status: :unprocessable_entity }
       end
     end
@@ -106,6 +108,31 @@ class Admin::LandingPagesController < Admin::BaseController
     render json: { count: 0, items: [], metrics: { avg_price: "R$ 0,00", min_price: "R$ 0,00", max_price: "R$ 0,00", distribution: {} } }
   end
 
+  # Prévia salva e autenticada: rascunhos nunca ganham uma rota pública.
+  def page_preview
+    @public_tenant = current_tenant
+    @layout_setting = LayoutSetting.instance(tenant: current_tenant)
+    @home_setting = HomeSetting.instance(tenant: current_tenant)
+    @preview_mode = true
+    @standalone_preview = true
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    if params[:editing] == "1"
+      @fullscreen_editor = true
+      load_filter_options
+      return render :page_preview_editor, layout: "landing_page_editor"
+    end
+    @blocks = @landing_page.visible_blocks
+    if @blocks.empty? && !@landing_page.blocks?
+      @blocks = [@landing_page.blocks.build(block_type: "property_showcase", tenant: current_tenant,
+        data: (@landing_page.filter_params || {}).merge("heading" => @landing_page.title))]
+    end
+    @showcases = build_showcases(@blocks, habitations: current_tenant.habitations)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    render "landing_pages/blocks", layout: "public_page_preview"
+  end
+
   def filter_options
     render json: landing_page_filter_options
   end
@@ -113,6 +140,8 @@ class Admin::LandingPagesController < Admin::BaseController
   # Mesma tela do site (blocos, CSS e tema da conta) com o que está no editor e ainda não foi salvo.
   def render_preview
     @public_tenant = current_tenant
+    @layout_setting = LayoutSetting.instance(tenant: current_tenant)
+    @home_setting = HomeSetting.instance(tenant: current_tenant)
     @preview_mode = true
     @landing_page = current_tenant.landing_pages.new(preview_page_params)
     @landing_page.slug = "previa" # só para os links da vitrine (paginação/filtros) terem um endereço
@@ -125,7 +154,7 @@ class Admin::LandingPagesController < Admin::BaseController
 
   # Ids dos blocos por posição: o editor os grava nos cartões para o próximo autosave atualizar em vez de duplicar.
   def autosave_payload
-    { ok: true, edit_url: edit_admin_landing_page_path(@landing_page), update_url: admin_landing_page_path(@landing_page),
+    { ok: true, page_preview_url: page_preview_admin_landing_page_path(@landing_page), edit_url: edit_admin_landing_page_path(@landing_page), update_url: admin_landing_page_path(@landing_page),
       slug: @landing_page.slug, blocks: @landing_page.blocks.reload.map { |block| { position: block.position, id: block.id, item_image_keys: Array(block.value(:items)).map { |item| item["image_key"] } } } }
   end
 
@@ -136,11 +165,30 @@ class Admin::LandingPagesController < Admin::BaseController
 
   # "Salvar" continua no editor; "Salvar e sair" volta à lista.
   def after_save_path
+    if @fullscreen_editor
+      return page_preview_admin_landing_page_path(@landing_page, editing: ("1" if params[:continue].present?))
+    end
     params[:continue].present? ? edit_admin_landing_page_path(@landing_page) : admin_landing_pages_path
   end
 
   def set_landing_page
     @landing_page = current_tenant.landing_pages.friendly.find(params[:id])
+  end
+
+  def unpack_block_data
+    blocks = params.dig(:landing_page, :blocks_attributes)
+    return unless blocks.is_a?(ActionController::Parameters)
+
+    blocks.each_value do |block|
+      next unless block.is_a?(ActionController::Parameters) && block[:data_payload].present?
+      payload = block.delete(:data_payload)
+      raise ActionController::BadRequest, "Conteúdo do bloco inválido" unless payload.is_a?(String) && payload.bytesize <= 500_000
+      data = JSON.parse(payload)
+      raise ActionController::BadRequest, "Conteúdo do bloco inválido" unless data.is_a?(Hash)
+      block[:data] = data
+    end
+  rescue JSON::ParserError
+    raise ActionController::BadRequest, "Conteúdo do bloco inválido"
   end
 
   def landing_page_params

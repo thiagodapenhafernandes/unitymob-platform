@@ -29,7 +29,7 @@
           <div class="public-theme-block-video__placeholder"><i class="bi bi-play-btn" aria-hidden="true"></i> Cole a URL do YouTube ou Vimeo</div>
         <% end %>
       </div>
-      <% if block.value(:caption).present? %><figcaption class="public-theme-block-video__caption"><%= block.value(:caption) %></figcaption><% end %>
+      <% if block.value(:caption).present? %><figcaption data-element-field="caption" style="<%= landing_page_action_color_style(block.data, "element_caption") %>" class="public-theme-block-video__caption"><%= block.value(:caption) %></figcaption><% end %>
     </div>
   </figure>
 <% end %>

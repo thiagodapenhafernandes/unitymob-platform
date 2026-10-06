@@ -11,7 +11,7 @@ RSpec.describe "Formulários nas páginas", type: :request do
 
   it "exibe inline em todos os temas e usa o envio existente, mesmo sem modal habilitado" do
     page = tenant.landing_pages.create!(title: "Contato", slug: "pagina-contato", status: "published")
-    block = page.blocks.create!(block_type: "form", position: 0, data: { form_id: form.id })
+    block = page.blocks.create!(block_type: "form", position: 0, data: { form_id: form.id, form_style: "editorial", whatsapp_url: "https://wa.me/5547999999999", badge: "Análise jurídica inclusa" })
     host! "localhost"
     Tenant::PUBLIC_SITE_THEMES.each do |theme|
       tenant.update!(public_site_theme: theme)
@@ -20,6 +20,9 @@ RSpec.describe "Formulários nas páginas", type: :request do
       html = Nokogiri::HTML(response.body)
       inline = html.at_css(".public-form-modal--inline")
       expect(inline).to be_present
+      expect(inline["class"]).to include("public-form-modal--editorial")
+      expect(inline.at_css("button[data-action='public-form-modal#whatsapp']")).to be_present
+      expect(inline.at_css(".public-theme-builder-badge").text).to eq("Análise jurídica inclusa")
       expect(inline.at_css("[hidden].public-form-modal__overlay")).to be_nil
       expect(inline.at_css(".public-form-modal__close")).to be_nil
       expect(inline.at_css("form")["action"]).to eq(public_form_submissions_path(form.slug))

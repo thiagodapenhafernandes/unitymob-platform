@@ -71,50 +71,7 @@ module Leads
     end
 
     def apply_match(scope)
-      phones = phone_variants
-      emails = email_variants
-
-      case @setting.stickiness_match
-      when "phone_and_email"
-        return nil if phones.blank? || emails.blank?
-        scope.where(phone_sql, phones: phones).where(email_sql, emails: emails)
-      when "phone_or_email"
-        return nil if phones.blank? && emails.blank?
-        if phones.present? && emails.present?
-          scope.where("(#{phone_sql}) OR (#{email_sql})", phones: phones, emails: emails)
-        elsif phones.present?
-          scope.where(phone_sql, phones: phones)
-        else
-          scope.where(email_sql, emails: emails)
-        end
-      else # "phone"
-        return nil if phones.blank?
-        scope.where(phone_sql, phones: phones)
-      end
-    end
-
-    # Compara só os dígitos (ignora formatação) de phone e client_phone.
-    def phone_sql
-      "regexp_replace(coalesce(leads.phone, ''), '\\D', '', 'g') IN (:phones) OR " \
-      "regexp_replace(coalesce(leads.client_phone, ''), '\\D', '', 'g') IN (:phones)"
-    end
-
-    def email_sql
-      "lower(coalesce(leads.email, '')) IN (:emails) OR " \
-      "lower(coalesce(leads.client_email, '')) IN (:emails)"
-    end
-
-    # Variações de telefone para tolerar prefixo 55 inconsistente.
-    def phone_variants
-      raw = [@lead.client_phone, @lead.phone].map { |phone| Phones::Normalizer.call(phone).to_s }.reject(&:blank?)
-      variants = raw.flat_map do |digits|
-        [digits, digits.delete_prefix("55")]
-      end
-      variants.reject(&:blank?).uniq
-    end
-
-    def email_variants
-      [@lead.client_email, @lead.email].map { |e| e.to_s.strip.downcase }.reject(&:blank?).uniq
+      ContactMatch.apply(scope, @lead, @setting.stickiness_match)
     end
 
     def eligible?(user)

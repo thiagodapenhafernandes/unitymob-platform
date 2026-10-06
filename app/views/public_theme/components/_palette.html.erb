@@ -1,0 +1,9 @@
+    <style>
+      :root {
+        --color-primary: <%= @layout_setting&.primary_color || '#022B3A' %>;
+        --color-secondary: <%= @layout_setting&.secondary_color || '#053C5E' %>;
+        --color-accent: <%= @layout_setting&.accent_color || '#BFAB25' %>;
+        --color-hero-button: <%= @home_setting&.hero_button_color || '#BFAB25' %>;
+        --color-hero-button-text: <%= @home_setting&.hero_button_text_color || '#FFFFFF' %>;
+      }
+    </style>

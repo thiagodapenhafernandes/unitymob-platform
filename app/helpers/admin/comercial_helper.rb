@@ -38,7 +38,8 @@ module Admin::ComercialHelper
     "notification_skipped"=> { icon: "bi-slash-circle",    color: "amber", label: "Notificação ignorada" },
     "automation"         => { icon: "bi-lightning-charge", color: "amber", label: "Automação" },
     "automation_event"   => { icon: "bi-lightning-charge", color: "amber", label: "Evento observado" },
-    "interest_reprocessed" => { icon: "bi-stars",          color: "blue",  label: "Interesse reprocessado" }
+    "interest_reprocessed" => { icon: "bi-stars",          color: "blue",  label: "Interesse reprocessado" },
+    "inquiry_complemented" => { icon: "bi-plus-circle",     color: "green", label: "Nova consulta agregada" }
   }.freeze
 
   OPERATIONAL_TIMELINE_KINDS = (TIMELINE_MAP.keys - %w[
@@ -580,6 +581,9 @@ module Admin::ComercialHelper
     when "notification_sent", "notification_failed", "notification_skipped"
       notification_activity_detail(meta)
     when "interest_reprocessed" then "#{meta['matches_count'].to_i} imóvel(is) compatível(is), #{meta['confidence'].to_i}% de confiança"
+    when "inquiry_complemented"
+      property = meta["property_code"].present? ? "Imóvel #{meta['property_code']}" : "Novo contato"
+      [property, meta["inquiry_origin"].presence].compact.join(" · ").presence
     else nil
     end
   end

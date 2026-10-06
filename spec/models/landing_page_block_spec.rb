@@ -77,7 +77,7 @@ RSpec.describe LandingPageBlock do
 
   describe "catálogo de tipos" do
     it "tem os blocos de conteúdo, mídia e vitrine, todos com a largura na linha" do
-      expect(LandingPages::BlockTypes.keys).to eq(%w[form cover text property_showcase button image video embed section cards indicators testimonials timeline partners team gallery])
+      expect(LandingPages::BlockTypes.keys).to eq(%w[form cover text property_showcase button image video embed section cards indicators testimonials timeline partners team steps gallery callout faq navigation])
       expect(LandingPages::BlockTypes.options.map(&:first)).to include("Vídeo (YouTube ou Vimeo)", "Seção com colunas", "Depoimentos", "Linha do tempo")
       LandingPages::BlockTypes::ALL.each do |definition|
         expect(definition.field(:column)).to be_present
@@ -100,14 +100,14 @@ RSpec.describe LandingPageBlock do
       b = block("button", { "label" => "  Fale   conosco ", "url" => "#modal-fale-conosco", "style" => "hack", "extra" => "x", "new_tab" => "1", "text_color" => "red;background:url(x)", "icon" => "x\" onclick=x" })
       b.valid?
 
-      expect(b.data.except(*LandingPages::BlockTypes::LAYOUT_FIELDS.map { |field| field.name.to_s })).to eq("label" => "Fale conosco", "url" => "#modal-fale-conosco", "style" => "primary", "align" => "center", "new_tab" => true, "span" => "full", "column" => "1", "icon" => "", "custom_colors" => false, "text_color" => "#ffffff", "background_color" => "#003344")
+      expect(b.data.except(*(LandingPages::BlockTypes::LAYOUT_FIELDS + LandingPages::BlockTypes::APPEARANCE_FIELDS + LandingPages::BlockTypes.creative_fields("")).map { |field| field.name.to_s })).to eq("label" => "Fale conosco", "url" => "#modal-fale-conosco", "style" => "primary", "align" => "center", "new_tab" => true, "span" => "full", "column" => "1", "icon" => "", "custom_colors" => false, "text_color" => "#ffffff", "background_color" => "#003344", "custom_border" => false, "border_style" => "solid", "border_color" => "#003344", "border_width" => 1, "border_radius" => 8, "element_order" => "")
     end
 
     it "destino só aceita /página, http(s), mailto, tel e #modal-ID" do
-      valid = %w[/contato https://exemplo.com mailto:a@b.com tel:+5547999 #modal-fale-conosco]
+      valid = %w[/contato https://exemplo.com mailto:a@b.com tel:+5547999 #modal-fale-conosco #contato]
       valid.each { |url| expect(block("button", { "label" => "x", "url" => url })).to be_valid, url }
 
-      ["javascript:alert(1)", "#contato", "data:text/html,x", "ftp://x"].each do |url|
+      ["javascript:alert(1)", "#bad anchor", "data:text/html,x", "ftp://x"].each do |url|
         b = block("button", { "label" => "x", "url" => url })
         expect(b).not_to be_valid, url
         expect(b.data["url"]).to eq("")

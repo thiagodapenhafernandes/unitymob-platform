@@ -251,6 +251,17 @@ class Lead < ApplicationRecord
   def skip_automatic_routing?
     @skip_automatic_routing == true
   end
+
+  # Preenchido quando a consulta complementa um lead existente (o registro
+  # transitório é descartado em seguida). Permite aos pontos de entrada
+  # responder com o lead real.
+  attr_accessor :complemented_into_id
+
+  def complemented_target
+    return nil if complemented_into_id.blank?
+
+    tenant&.leads&.find_by(id: complemented_into_id)
+  end
   
   def display_name
     client_name.presence || name
@@ -650,6 +661,8 @@ class Lead < ApplicationRecord
   end
 
   def dispatch_automation_created
+    return if destroyed?
+
     Automation::Dispatcher.dispatch(
       :lead_created,
       self,

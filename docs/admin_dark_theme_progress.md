@@ -152,6 +152,7 @@ Legenda:
 | Modal de proposta | `proposal_form_modal.css` | Sim | Sim | Formulário modal de proposta tokenizado; sem homologação visual completa | Dark/light + campos + erros + compacto |
 | Cartões de apresentação | `presentation_cards.css` | Sim | Sim | Gerenciador do composer extraído do monólito; superfícies, foco do disclosure, danger, dark, movimento reduzido e compacto protegidos, sem homologação após a promoção | Dark/light + sistema/pessoal/vazio + modal/disclosure + hover/foco + compacto |
 | Páginas (construtor de blocos) | `landing_page_builder.css` | Sim | Sim | Editor de páginas por blocos tokenizado; sem homologação visual completa | Dark/light + blocos + adicionar bloco + prévia + compacto |
+| Elemento ordenável | `sortable_element.css` | Sim | Sim | Mini card compartilhado com edição e ordenação; homologado no builder light | Dark/light + arraste + teclado + edição |
 | Formulário público | `public_form_builder.css` | Sim | Sim | Builder de formulários públicos tokenizado; sem homologação visual completa | Dark/light + campos + preview + compacto |
 | Estúdio de cabeçalho público | `public_header_studio.css` | Sim | Sim | Menus e identidade do cabeçalho público tokenizados; sem homologação visual completa | Dark/light + menus + preview + compacto |
 | Modal rápido | `quick_modal.css` | Sim | Sim | Central do imóvel dark inspecionada | Light + compacto |

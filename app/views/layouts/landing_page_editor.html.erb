@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-admin-theme="<%= current_admin_user.effective_admin_theme_mode %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="turbo-cache-control" content="no-cache">
+  <title><%= @landing_page.title %> · Editar prévia</title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "vendor/bootstrap-icons", "vendor/admin-fonts", "vendor/trix", "admin", "admin_tailwind", "admin/components", "admin/theme_tokens" %>
+  <%= javascript_importmap_tags %>
+</head>
+<body class="ax-app admin-layout lp-preview-editor-page">
+  <%= yield %>
+</body>
+</html>

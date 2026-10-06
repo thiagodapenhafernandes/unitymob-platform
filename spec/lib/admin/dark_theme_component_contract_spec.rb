@@ -65,6 +65,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     "presentation_cards" => "pc-manager",
     "proposal_form_modal" => "proposal-form-modal",
     "landing_page_builder" => "lp-block",
+    "sortable_element" => "ax-sortable-element",
     "public_form_builder" => "public-form-builder",
     "public_header_studio" => "hm-editor",
     "quick_modal" => "ax-quick-modal",
@@ -1623,8 +1624,11 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(color_field_stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-color-control/)
     expect(color_field_stylesheet).to match(/@media \(max-width: 420px\)[\s\S]*grid-template-columns:\s*44px/)
     expect(color_field_stylesheet).to match(/@media \(prefers-reduced-motion: reduce\)[\s\S]*\.ax-color-control/)
+    expect(color_field_stylesheet).to include(".ax-color-control__swatch::-webkit-color-swatch {", ".ax-color-control__swatch::-moz-color-swatch {")
+    expect(color_field_stylesheet).not_to include("::-webkit-color-swatch,")
     expect(color_field_view).not_to include("oninput", "html_safe")
-    expect(color_field_view).to include('data-controller="ax-color-pair"', 'color_options[:id] ||= "#{form.field_id(method)}_picker"')
+    expect(File.read(Rails.root.join("app/views/admin/shared/ui/_color_control.html.erb"))).to include('data-controller="ax-color-pair"')
+    expect(color_field_view).to include('render "admin/shared/ui/color_control"', 'color_options[:id] ||= "#{form.field_id(method)}_picker"')
     expect(color_field_view).to include('color_data[:ax_color_pair_target] = "swatch"', 'text_data[:ax_color_pair_target] = "text"')
     expect(color_field_view).to include('input->ax-color-pair#sync', 'aria: { label: swatch_title.presence || "Escolha a cor de #{label}" }')
     expect(color_pair_controller).to include('static targets = ["swatch", "text"]', 'event.currentTarget === this.swatchTarget')
@@ -4016,8 +4020,8 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
   it "mantem a listagem de landing pages sem geometria inline" do
     expect(landing_pages_index_view).not_to match(/\bstyle\s*=/i)
     expect(landing_pages_index_view).to include("ax_workspace_heading(", 'class="ax-table-wrap"')
-    expect(landing_pages_index_view).to include("ax-table__col--w-220", "ax-table__col--sm", "ax-table__col--compact")
-    expect(landing_pages_index_view).to include("public_landing_page_path(page.slug)", "edit_admin_landing_page_path(page)", "admin_landing_page_path(page)")
+    expect(landing_pages_index_view).to include("ax-table__col--w-220", "ax-table__col--sm", "<details>")
+    expect(landing_pages_index_view).to include("landing_page_site_url(page)", "page_preview_admin_landing_page_path(page)", "edit_admin_landing_page_path(page)", "admin_landing_page_path(page)")
     expect(landing_pages_index_view).to include("ax_pagination @landing_pages", "turbo_confirm:")
   end
 

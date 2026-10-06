@@ -259,6 +259,7 @@ module Whatsapp
         origin: "whatsapp",
         status: Lead.default_status
       )
+      lead = lead.complemented_target || lead if lead.destroyed?
       conversation.update!(lead: lead)
       lead
     end

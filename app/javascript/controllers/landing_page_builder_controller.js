@@ -1,3 +1,5 @@
+import { applyFAQFilters } from "controllers/public_faq_controller"
+import { previewStyle } from "controllers/landing_page_preview_style"
 import { Controller } from "@hotwired/stimulus"
 import { focusStep, goToStep, renderProgress } from "controllers/ax_guided"
 
@@ -5,16 +7,16 @@ import { focusStep, goToStep, renderProgress } from "controllers/ax_guided"
 // O servidor renderiza a página real (mesmo tema do site) com o que está no editor; o iframe é da mesma origem,
 // então aqui ligamos a edição por cima dele: clicar num texto edita ali mesmo, passar o mouse num bloco mostra
 // as ferramentas (mover, alinhar, duplicar, ocultar, remover), o + entre blocos insere e o ⠿ arrasta.
-// Tudo grava nos inputs do próprio formulário (fonte única); em Rascunho salva sozinho.
+// Inputs são a fonte única. Texto e estilo atualizam no navegador; Salvar persiste no servidor.
 const DESKTOP_WIDTH = 1280
 const MOBILE_WIDTH = 390
-const AUTOSAVE_MS = 1800
 const BLOCK = "[data-landing-page-builder-target='block']"
 const POSITION = "[data-landing-page-builder-target='position']"
 
 // Elemento da prévia -> campo do cartão do bloco. rich = texto formatado (editor com barra própria).
 const FIELD_FOR_CLASS = {
   cover: { "public-theme-block-cover__title": "title", "public-theme-block-cover__subtitle": "subtitle", "public-theme-block-cover__button": "button_label" },
+  callout: { "public-theme-content-callout__heading": "heading", "public-theme-content-callout__text": { field: "text", rich: true } },
   text: { "public-theme-block-text__heading": "heading", "public-theme-block-text__body": { field: "body", rich: true } },
   button: { "public-theme-block-button__link": "label" },
   property_showcase: { "public-theme-block-showcase__title": "heading", "public-theme-block-showcase__lead": "subtitle" },
@@ -31,10 +33,10 @@ const SAMPLE = {
 
 export default class extends Controller {
   static targets = [
-    "list", "empty", "template", "block", "position", "destroy", "summary", "title", "slug", "frame", "stage", "device",
-    "status", "saveStatus", "file", "tools", "richbar", "menu", "dropline", "shield", "addMenu", "addMenuList"
+    "list", "empty", "template", "preset", "block", "position", "destroy", "summary", "title", "slug", "frame", "stage", "device",
+    "inspectorTitle", "openPreview", "status", "saveStatus", "file", "tools", "richbar", "menu", "dropline", "shield", "addMenu", "addMenuList"
   ]
-  // Status já salvo: "new" (ainda não criada), draft, published ou inactive. Só new/draft salvam sozinhas.
+  // Status persistido; alterações só são consolidadas pelo submit.
   static values = { previewUrl: String, savedStatus: String }
 
   connect() {
@@ -63,21 +65,27 @@ export default class extends Controller {
     }
     document.addEventListener("mousedown", this.onDocMouseDown)
     this.onDocPointer = (event) => {
-      if (!this.addMenuTarget.contains(event.target)) this.closeAddMenu()
+      if (this.element.dataset.inspectorMode !== "add" && !this.addMenuTarget.contains(event.target)) this.closeAddMenu()
     }
     this.onDocKey = (event) => {
-      if (event.key === "Escape") { this.closeAddMenu(); this.menuTarget.hidden = true }
+      if (event.key === "Escape" && !document.querySelector(".ax-quick-modal:not(dialog):not([hidden]), dialog[open]")) { this.closeAddMenu(); this.menuTarget.hidden = true; this.closeInspector() }
     }
     document.addEventListener("click", this.onDocPointer)
     document.addEventListener("keydown", this.onDocKey)
     // Página nova: o endereço acompanha o título até a pessoa editá-lo (ou a página ser salva).
     this.autoSlug = this.savedStatusValue === "new" && (this.slugTarget.value === "" || this.slugTarget.value === this.slugify(this.titleTarget.value))
+    this.onBeforeUnload = event => { if (this.dirty && !this.submitting) { event.preventDefault(); event.returnValue = "" } }
+    window.addEventListener("beforeunload", this.onBeforeUnload)
     this.reindex()
     this.refreshProgress()
     this.render()
   }
 
   disconnect() {
+    window.removeEventListener("beforeunload", this.onBeforeUnload)
+    this.resizeCleanup?.()
+    clearTimeout(this.previewClickTimer)
+    this.inlineRichHost?.remove()
     this.observer?.disconnect()
     this.frameTarget.removeEventListener("load", this.onFrameLoad)
     document.removeEventListener("mousedown", this.onDocMouseDown)
@@ -85,7 +93,6 @@ export default class extends Controller {
     document.removeEventListener("keydown", this.onDocKey)
     this.abort?.abort()
     clearTimeout(this.timer)
-    clearTimeout(this.saveTimer)
     clearTimeout(this.hideTimer)
   }
 
@@ -125,6 +132,24 @@ export default class extends Controller {
   closeAddMenu() {
     this.addMenuListTarget.hidden = true
     this.addMenuTarget.querySelectorAll("[aria-expanded]").forEach((button) => button.setAttribute("aria-expanded", "false"))
+  }
+
+  addPreset(event) {
+    const source = this.presetTargets.find((item) => item.dataset.presetKey === event.currentTarget.dataset.presetKey)
+    if (!source) return
+    const holder = document.createElement("template")
+    const indexes = new Map()
+    holder.innerHTML = source.innerHTML.replace(/__PRESET_(\d+)__/g, (_, key) => {
+      if (!indexes.has(key)) {
+        this.nextBlockIndex = Math.max(Date.now(), (this.nextBlockIndex || 0) + 1)
+        indexes.set(key, this.nextBlockIndex)
+      }
+      return String(indexes.get(key))
+    })
+    this.listTarget.append(holder.content)
+    document.dispatchEvent(new Event("rich-text:load"))
+    this.reindex()
+    this.changed()
   }
 
   add(event) {
@@ -330,17 +355,244 @@ export default class extends Controller {
     const step = card.closest("[data-guided-step]")
     if (step?.matches(".is-collapsible:not(.is-open)")) step.querySelector("[data-ax-disclosure-target~='trigger']")?.click()
     card.open = true
+    if (this.element.classList.contains("lp-canvas-editor")) this.inspectCard(card)
+  }
+
+  resizeInspector(event) {
+    event.preventDefault()
+    this.finishEditing()
+    const move = (pointer) => this.element.style.setProperty("--lp-inspector-width", `${Math.max(300, Math.min(window.innerWidth * .6, this.element.getBoundingClientRect().right - pointer.clientX))}px`)
+    const end = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", end); this.resizeCleanup = null }
+    this.resizeCleanup?.()
+    this.resizeCleanup = end
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", end)
+  }
+
+  resizeInspectorKey(event) {
+    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return
+    event.preventDefault()
+    const width = this.element.querySelector(".ax-guided-steps").getBoundingClientRect().width
+    this.element.style.setProperty("--lp-inspector-width", `${Math.max(300, Math.min(window.innerWidth * .6, width + (event.key === "ArrowLeft" ? 20 : -20)))}px`)
+  }
+
+  selectPreviewElement(el) {
+    this.doc.querySelectorAll(".lp-selected-element").forEach((node) => node.classList.remove("lp-selected-element"))
+    el.classList.add("lp-selected-element")
+    if (el.dataset.elementField) this.readElementStyle(el, `element_${el.dataset.elementField}_`)
+    if (this.inspectedRow) this.readElementStyle(el, this.inspectedItemKeys ? `element_${this.inspectedItemKeys[0]}_` : "", this.inspectedRow)
+    const faq = el.closest("[data-faq-row-index]")
+    if (el.dataset.elementField || el.dataset.labelIndex || el.dataset.elementGroup) {
+      this.selectedElementSelector = el.dataset.elementField ? `[data-element-field="${el.dataset.elementField}"]` : el.dataset.labelIndex ? `[data-label-index="${el.dataset.labelIndex}"]` : `[data-element-group="${el.dataset.elementGroup}"]`
+      return
+    }
+    const item = el.closest("[data-item-row-key]")
+    const className = Array.from(el.classList).find((name) => name.startsWith("public-theme-"))
+    this.selectedElementSelector = faq ? `[data-faq-row-index='${faq.dataset.faqRowIndex}'] ${el.tagName === "SUMMARY" ? "summary" : `.${className}`}` : item && className ? `[data-item-row-key='${item.dataset.itemRowKey}'] .${className}` : className ? `.${className}` : null
+  }
+
+  readElementStyle(el, prefix, scope = null) {
+    const card = scope || this.cardAt(this.selectedPosition)
+    if (!card) return
+    const computed = this.doc.defaultView.getComputedStyle(el)
+    const input = key => card.querySelector(`input[name$='[${prefix}${key}]'], select[name$='[${prefix}${key}]']`)
+    const hex = value => {
+      const channels = value.match(/\d+/g)
+      if (!channels || channels.length < 3 || (channels.length > 3 && Number(channels[3]) === 0)) return null
+      return `#${channels.slice(0, 3).map(channel => Number(channel).toString(16).padStart(2, "0")).join("")}`
+    }
+    const write = (key, value) => {
+      if (value == null) return
+      card.querySelectorAll(`input[name$='[${prefix}${key}]'], select[name$='[${prefix}${key}]']`).forEach(control => {
+        control.value = value
+        const range = control.closest("[data-controller='ax-range']")?.querySelector("input[type='range']")
+        if (range) range.value = value
+      })
+    }
+    if (input("custom_colors")?.value !== "true") {
+      let background = hex(computed.backgroundColor)
+      for (let parent = el.parentElement; !background && parent; parent = parent.parentElement) background = hex(this.doc.defaultView.getComputedStyle(parent).backgroundColor)
+      write("background_color", background || "#ffffff")
+      if (input("background_color")) input("background_color").dataset.transparentBackground = String(!hex(computed.backgroundColor))
+      write("text_color", hex(computed.color))
+    }
+    if (input("custom_border")?.value !== "true") {
+      write("border_color", hex(computed.borderColor))
+      write("border_width", Math.min(12, parseFloat(computed.borderWidth) || 0))
+      write("border_radius", Math.min(64, parseFloat(computed.borderRadius) || 0))
+      write("border_style", ["none", "solid", "dashed"].includes(computed.borderStyle) ? computed.borderStyle : "solid")
+    }
+  }
+
+  closeInspector() {
+    this.element.removeAttribute("data-inspector-mode")
+    this.inspectedFields = null
+    this.parentInspector = false
+    this.inspectedRow = null
+    this.inspectedItemKeys = null
+    delete this.element.dataset.parentInspector
+    delete this.element.dataset.elementPanel
+    this.element.querySelector(".lp-element-panel")?.remove()
+    this.element.querySelector(".lp-element-breadcrumb")?.remove()
+    this.element.querySelector(".lp-element-hierarchy")?.remove()
+    this.element.querySelectorAll("[data-inspector-group-heading]").forEach(node => node.remove())
+    this.element.querySelectorAll("[data-inspector-row]").forEach((row) => { row.hidden = false; delete row.dataset.inspectorRow })
+    this.element.querySelectorAll("[data-inspector-item-field]").forEach((field) => { field.hidden = false; delete field.dataset.inspectorItemField })
+    this.element.querySelectorAll(".lp-layout-controls").forEach((group) => { group.style.removeProperty("display") })
+    this.element.querySelectorAll(".is-inspected").forEach((card) => card.classList.remove("is-inspected"))
+    this.element.querySelectorAll("[data-inspector-filtered]").forEach((field) => {
+      field.hidden = false
+      delete field.dataset.inspectorFiltered
+    })
+  }
+
+  openInspector(event) {
+    event.stopPropagation()
+    this.closeInspector()
+    const mode = event.currentTarget.dataset.inspector
+    this.element.dataset.inspectorMode = mode
+    this.inspectorTitleTarget.textContent = { page: "Configurações da página", seo: "Como o Google vê", structure: "Estrutura da página", add: "Adicionar conteúdo" }[mode]
+    if (mode === "add") {
+      this.addMenuListTarget.hidden = false
+      this.emptyTarget.setAttribute("aria-expanded", "true")
+    }
+    const steps = this.element.querySelectorAll(".ax-guided-steps [data-guided-step]")
+    const step = steps[{ page: 0, structure: 1, add: 1, seo: 2 }[mode]]
+    if (step?.matches(".is-collapsible:not(.is-open)")) step.querySelector("[data-ax-disclosure-target~='trigger']")?.click()
+  }
+
+  inspectItemRow(card, selected, keys = null) {
+    if (!selected) return
+    this.inspectedRow = selected
+    this.inspectedItemKeys = keys
+    card.querySelectorAll(".ax-dynamic-list__item").forEach(row => {
+      row.hidden = row !== selected
+      row.dataset.inspectorRow = "true"
+    })
+    this.inspectorAppearance({ currentTarget: this.element.querySelector(".lp-inspector-tabs [data-panel='content']") })
+  }
+
+  styleField(name) {
+    return /color|border|custom_|background_|text_opacity|gradient|backdrop|surface|density|typography|motion/.test(name)
+  }
+
+  fieldEffectVisible(name, scope) {
+    const leaf = name.replace(/^(?:element_(?:title|heading|text|body|subtitle|eyebrow|badge|labels|label|caption|alt|initials)|block|button|secondary)_/, "")
+    const prefix = name.slice(0, name.length - leaf.length)
+    const setting = suffix => {
+      const controls = [...scope.querySelectorAll("input, select")].filter(control => control.name?.endsWith(`[${prefix}${suffix}]`))
+      const control = controls.find(control => control.type !== "hidden") || controls[0]
+      return control?.type === "checkbox" ? String(control.checked) : control?.value
+    }
+    if (leaf === "text_gradient_color") return ["true", "1"].includes(setting("text_gradient"))
+    if (["backdrop_blur", "backdrop_saturation"].includes(leaf)) return ["true", "1"].includes(setting("backdrop_enabled"))
+    if (["gradient_color", "gradient_kind"].includes(leaf)) return setting("background_mode") === "gradient"
+    if (leaf === "gradient_angle") return setting("background_mode") === "gradient" || ["true", "1"].includes(setting("text_gradient"))
+    if (leaf === "background_opacity") return ["solid", "gradient"].includes(setting("background_mode"))
+    return true
+  }
+
+  organizeInspectorFields(card) {
+    card.querySelectorAll("[data-inspector-group-heading]").forEach(node => node.remove())
+    const groups = new Map()
+    const fields = this.inspectedRow ? this.inspectedRow.querySelectorAll(".ax-repeatable-rows__field") : card.querySelectorAll("[data-block-field]")
+    for (const field of fields) {
+      if (field.hidden) continue
+      const name = field.dataset.blockField || field.querySelector("[name]")?.name?.match(/\[([^\]]+)\]$/)?.[1] || ""
+      const group = /font_|text_(align|decoration|transform)|line_height|letter_spacing/.test(name) ? "Tipografia" : /border/.test(name) ? "Borda" : /backdrop/.test(name) ? "Vidro" : /text_color|text_opacity|text_gradient/.test(name) ? "Cor do texto" : /background_|gradient_/.test(name) ? "Fundo" : "Conteúdo"
+      const parent = field.parentElement
+      if (!groups.has(parent)) groups.set(parent, [])
+      groups.get(parent).push({ field, name, group })
+    }
+    const order = ["Conteúdo", "Tipografia", "Fundo", "Cor do texto", "Borda", "Vidro"]
+    groups.forEach((fields, parent) => {
+      let previous
+      fields.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group) || Number(b.name.endsWith("background_mode")) - Number(a.name.endsWith("background_mode"))).forEach(({ field, group }) => {
+        if (previous !== group) {
+          const heading = document.createElement("div")
+          heading.className = "ax-field-group__header ax-span-12"
+          heading.dataset.inspectorGroupHeading = "true"
+          const label = document.createElement("h6")
+          label.className = "ax-field-group__title"
+          label.textContent = group
+          heading.append(label)
+          parent.append(heading)
+          previous = group
+        }
+        parent.append(field)
+      })
+      const actions = parent.querySelector(":scope > .ax-repeatable-rows__actions")
+      if (actions) parent.append(actions)
+    })
+  }
+
+  inspectorAppearance(event) {
+    const card = this.element.querySelector(".is-inspected")
+    if (!card) return
+    const appearance = event.currentTarget.dataset.panel === "appearance"
+    this.element.dataset.inspectorTab = appearance ? "appearance" : "content"
+    this.element.querySelectorAll(".lp-inspector-tabs button").forEach((button) => button.setAttribute("aria-pressed", String(button === event.currentTarget)))
+    card.querySelectorAll("[data-block-field]").forEach((field) => {
+      const name = field.dataset.blockField
+      const allowed = this.inspectedFields ? this.inspectedFields.includes(name) : !name.startsWith("element_")
+      const styling = this.styleField(name)
+      const repeatedScope = this.inspectedRow?.closest("[data-block-field]") === field
+      const layoutOnly = this.inspectedFields && field.closest(".lp-layout-controls") && !styling
+      if (this.parentInspector) {
+        const configuration = /^(block_|design$|align$|height$|focus$|overlay$|width$|spacing$|columns$|ratio$|background$|content_width$|density$|typography$|motion$|layout_|mobile_|offset_|layer$|surface$|anchor$|image_desktop$|image_mobile$|heading_rule$|mobile_order$)/.test(name)
+        field.hidden = this.element.dataset.elementPanel !== "configuration" || !configuration || /custom_/.test(name) || !this.fieldEffectVisible(name, card)
+        field.dataset.inspectorFiltered = "true"
+        return
+      }
+      field.hidden = /(?:^|_)custom_(?:colors|border)$/.test(name) || Boolean(layoutOnly) || !allowed || (appearance ? !styling && !repeatedScope : styling) || !this.fieldEffectVisible(name, card)
+      field.dataset.inspectorFiltered = "true"
+    })
+    if (this.inspectedRow) {
+      this.inspectedRow.querySelectorAll(".ax-repeatable-rows__field").forEach(field => {
+        const control = field.querySelector("input[name], textarea[name], select[name]")
+        if (!control) return
+        const name = control.name.match(/\[([^\]]+)\]$/)?.[1] || ""
+        const keys = this.inspectedItemKeys
+        const allowed = keys ? keys.some(key => name === key || name.startsWith(`element_${key}_`)) : !name.startsWith("element_")
+        field.hidden = control.type === "hidden" && !field.querySelector("trix-editor") || !allowed || (appearance ? !this.styleField(name) : this.styleField(name)) || !this.fieldEffectVisible(name, this.inspectedRow)
+        field.dataset.inspectorItemField = "true"
+      })
+    }
+    this.organizeInspectorFields(card)
+    this.showInspectedGroups(card)
+  }
+
+  inspectCard(card, fields = null, title = null) {
+    this.closeInspector()
+    this.element.dataset.inspectorMode = "element"
+    if (fields && title === "Editar botão") {
+      const prefix = fields.includes("label") ? "" : fields.includes("secondary_label") ? "secondary_" : "button_"
+      fields = fields.concat([...card.querySelectorAll("[data-block-field]")].map(node => node.dataset.blockField).filter(name => prefix ? name.startsWith(prefix) : !name.startsWith("block_") && (this.styleField(name) || /font_|text_(align|decoration|transform)|line_height|letter_spacing/.test(name))))
+    }
+    this.inspectedFields = fields
+    this.parentInspector = !fields
+    this.element.dataset.elementPanel = "elements"
+    card.classList.add("is-inspected")
+    this.inspectorTitleTarget.textContent = title || `Editar ${card.querySelector(".lp-block__title strong")?.textContent || "elemento"}`
+    card.open = true
+    if (fields) card.querySelectorAll("[data-block-field]").forEach((field) => {
+      field.hidden = !fields.includes(field.dataset.blockField)
+      field.dataset.inspectorFiltered = "true"
+    })
+    this.inspectorAppearance({ currentTarget: this.element.querySelector(".lp-inspector-tabs [data-panel='content']") })
+    this.renderElementPanel(card)
+  }
+
+  showInspectedGroups(card) {
+    card.querySelectorAll(".lp-layout-controls").forEach((group) => {
+      const visible = Array.from(group.querySelectorAll("[data-block-field]")).some((field) => !field.hidden)
+      group.style.display = visible ? "block" : "none"
+      group.open = visible
+    })
   }
 
   // Posição = ordem na tela; resumo = primeiro texto do bloco; estado vazio.
   reindex() {
-    this.liveBlocks().filter((block) => block.dataset.blockType === "section").forEach((section) => {
-      const count = Number(section.querySelector("[name$='[data][columns]']").value)
-      const members = this.sectionMembers(section)
-      const overflow = members.slice(1).filter((block) => Number(block.querySelector("[name$='[data][column]']")?.value) > count)
-      let tail = members.filter((block) => !overflow.includes(block)).at(-1)
-      overflow.forEach((block) => { tail.after(block); tail = block })
-    })
     const blocks = this.liveBlocks()
     let section = null
     blocks.forEach((block, index) => {
@@ -367,10 +619,6 @@ export default class extends Controller {
         block.querySelectorAll("[data-block-field='more_body'], [data-block-field='more_label']").forEach((field) => { field.hidden = !expanded })
       }
       if (isSection) block.querySelector("[data-block-field='ratio']").hidden = block.querySelector("[name$='[data][columns]']").value !== "2"
-      if (block.dataset.blockType === "button") {
-        const custom = block.querySelector("input[type='checkbox'][name$='[data][custom_colors]']")?.checked
-        block.querySelectorAll("[data-block-field='text_color'],[data-block-field='background_color']").forEach((field) => { field.hidden = !custom })
-      }
       block.querySelector(POSITION).value = index
       const source = block.querySelector("[data-landing-page-builder-summary='1']")
       const summary = block.querySelector("[data-landing-page-builder-target='summary']")
@@ -382,11 +630,10 @@ export default class extends Controller {
     this.listTarget.querySelectorAll(".lp-column-slots").forEach((slots) => slots.remove())
     blocks.filter((block) => block.dataset.blockType === "section").forEach((section) => {
       const members = this.sectionMembers(section).slice(1)
-      let tail = section
+      let tail = members.at(-1) || section
       const count = Number(section.querySelector("[name$='[data][columns]']").value)
       for (let column = 1; column <= count; column++) {
         const columnBlocks = members.filter((block) => Number(block.querySelector("[name$='[data][column]']")?.value || 1) === column)
-        columnBlocks.forEach((block) => { tail.after(block); tail = block })
         if (columnBlocks.length) continue
         const slots = document.createElement("div")
         slots.className = "lp-column-slots"
@@ -404,6 +651,7 @@ export default class extends Controller {
       }
     })
     this.liveBlocks().forEach((block, index) => { block.querySelector(POSITION).value = index })
+    if (this.element.dataset.inspectorMode === "element") this.inspectorAppearance({ currentTarget: this.element.querySelector(`.lp-inspector-tabs [data-panel='${this.element.dataset.inspectorTab === "appearance" ? "appearance" : "content"}']`) })
   }
 
   openColumnMenu(event) {
@@ -471,14 +719,44 @@ export default class extends Controller {
 
   // ---- Atualização da prévia e autosave ----
 
-  changed() {
+  changed(event) {
     this.refreshProgress()
     this.schedule()
   }
 
-  schedule() {
+  schedule(event) {
+    const control = event?.target?.tagName === "TRIX-EDITOR" ? this.element.querySelector(`[id="${event.target.getAttribute("input")}"]`) : event?.target
+    const match = control?.name?.match(/\[([^\]]*?)(background_color|text_color|border_color|border_width|border_style|border_radius)\]$/)
+    if (match) {
+      const suffix = match[2].startsWith("border_") ? "custom_border" : "custom_colors"
+      const toggleName = control.name.replace(/\[[^\]]+\]$/, `[${match[1]}${suffix}]`)
+      const toggle = Array.from(control.closest(".lp-block")?.querySelectorAll("input") || []).find(input => input.name === toggleName)
+      if (toggle) toggle.value = "true"
+      if (match[2] === "background_color" || match[2] === "text_color") {
+        const scope = control.closest(".ax-dynamic-list__item") || control.closest(".lp-block")
+        const modeName = control.name.replace(/\[[^\]]+\]$/, `[${match[1]}background_mode]`)
+        const mode = [...scope.querySelectorAll("select")].find(input => input.name === modeName)
+        if (mode?.value === "inherit") {
+          const swatch = [...scope.querySelectorAll("input")].find(input => input.name === control.name)
+          mode.value = match[2] === "background_color" ? "solid" : swatch?.dataset.transparentBackground === "true" ? "transparent" : "inherit"
+        }
+      }
+    }
+
+    if (event?.target && /\[(?:background_mode|text_gradient|backdrop_enabled)\]$/.test(event.target.name || "") && this.element.dataset.inspectorMode === "element") this.inspectorAppearance({ currentTarget: this.element.querySelector(`.lp-inspector-tabs [data-panel='${this.element.dataset.inspectorTab === "appearance" ? "appearance" : "content"}']`) })
+    this.dirty = true
+    this.saveStatus("Alterações não salvas — use Salvar")
+    if (this.applyLocalPreview(control)) {
+      this.localControls ||= new Set()
+      this.localControls.add(control)
+      this.status("Atualizado")
+      return
+    }
+    if (control && ["input", "trix-change"].includes(event?.type)) {
+      this.status("A prévia da estrutura atualiza ao concluir o campo")
+      return
+    }
     this.reindex()
-    this.queueAutosave()
     if (this.editing || this.dragging) {
       this.pendingRender = true
       return
@@ -486,7 +764,78 @@ export default class extends Controller {
 
     clearTimeout(this.timer)
     this.status("Atualizando…")
-    this.timer = setTimeout(() => this.render(), 400)
+    this.timer = setTimeout(() => this.render(), 0)
+  }
+
+  applyLocalPreview(control) {
+    if (!this.frameReady || !control) return false
+    const card = control.closest(".lp-block")
+    if (!card) return !control.name?.includes("[blocks_attributes]")
+    const wrapper = this.doc?.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(card)}']`)
+    if (!wrapper) return false
+    const key = control.name?.match(/\[([^\]]+)\]$/)?.[1]
+    if (!key) return false
+    const row = control.closest(".ax-dynamic-list__item")
+    let root = wrapper
+    if (row) {
+      const rows = [...row.parentElement.querySelectorAll(".ax-dynamic-list__item")]
+      const index = rows.indexOf(row)
+      const rowKey = row.querySelector("[name$='[row_key]']")?.value
+      root = [...wrapper.querySelectorAll("[data-item-row-key], [data-faq-row-index], [data-label-index]")].find(node =>
+        rowKey ? node.dataset.itemRowKey === rowKey : Number(node.dataset.faqRowIndex ?? node.dataset.labelIndex) === index)
+      if (!root) return false
+    }
+    const scope = row || card
+    const values = Object.fromEntries([...scope.querySelectorAll("input[name], select[name], textarea[name]")].map(input => [input.name.match(/\[([^\]]+)\]$/)?.[1], input.type === "checkbox" ? String(input.checked) : input.value]))
+    const style = key.match(/^(element_[a-z]+_|block_|button_|secondary_)?(background_mode|background_color|background_opacity|text_color|text_opacity|gradient_color|gradient_kind|gradient_angle|text_gradient|text_gradient_color|font_family|font_size|font_weight|font_style|text_align|text_decoration|text_transform|line_height|letter_spacing|custom_colors|custom_border|border_color|border_style|border_width|border_radius|backdrop_enabled|backdrop_blur|backdrop_saturation)$/)
+    if (style) {
+      const prefix = style[1] || ""
+      let node = root
+      if (prefix.startsWith("element_")) node = root.querySelector(`[data-element-field='${prefix.slice(8, -1)}'], [data-item-element='${prefix.slice(8, -1)}']`)
+      else if (prefix === "button_" || prefix === "secondary_") node = root.querySelectorAll("a.public-theme-builder-action, .public-theme-block-cover__button, .public-theme-content-callout__button")[prefix === "secondary_" ? 1 : 0]
+      else if (prefix === "block_") node = card.dataset.blockType === "callout" ? wrapper.querySelector(".public-theme-content-callout") : [...wrapper.children].find(child => !child.classList.contains("lp-column-slots"))
+      if (!node) return false
+      this.localStyles ||= new WeakMap()
+      if (!this.localStyles.has(node)) {
+        const managed = ["background", "background-color", "background-image", "background-clip", "-webkit-background-clip", "-webkit-text-fill-color", "color", "border", "border-color", "border-radius", "font-family", "font-size", "font-weight", "font-style", "text-align", "text-decoration", "text-transform", "line-height", "letter-spacing", "backdrop-filter", "-webkit-backdrop-filter"]
+        managed.forEach(name => node.style.removeProperty(name))
+        this.localStyles.set(node, node.getAttribute("style") || "")
+      }
+      if (prefix === "block_") {
+        [...wrapper.style].filter(name => name.startsWith("--lp-style-") || name.startsWith("--lp-custom-")).forEach(name => wrapper.style.removeProperty(name))
+        wrapper.classList.remove("has-custom-colors", "has-creative-style")
+        wrapper.style.removeProperty("border")
+        wrapper.style.removeProperty("border-radius")
+      }
+      node.setAttribute("style", this.localStyles.get(node))
+      const properties = previewStyle(values, prefix)
+      Object.entries(properties).forEach(([name, value]) => (prefix === "block_" && card.dataset.blockType !== "callout" && ["border", "border-radius"].includes(name) ? wrapper : node).style.setProperty(name, value))
+      this.positionTools()
+      return true
+    }
+    let node = root.querySelector(`[data-element-field='${key}'], [data-item-element='${key}']`)
+    if (row && key === "text") node ||= root.querySelector(".public-theme-block-faq__answer, .public-theme-content-callout__text")
+    if (!node || !["title", "heading", "subtitle", "body", "text", "caption", "eyebrow", "badge", "label"].includes(key)) return false
+    const trix = [...scope.querySelectorAll("trix-editor")].find(editor => editor.getAttribute("input") === control.id)
+    if (trix) {
+      // Trix HTML is untrusted until server validation. Only its formatting tags enter the canvas.
+      const fragment = new DOMParser().parseFromString(control.value, "text/html")
+      fragment.querySelectorAll("script, style, iframe, object, embed").forEach(element => element.remove())
+      fragment.body.querySelectorAll("*").forEach(element => {
+        if (!["DIV", "P", "BR", "STRONG", "EM", "DEL", "S", "PRE", "CODE", "UL", "OL", "LI", "BLOCKQUOTE", "A"].includes(element.tagName)) element.replaceWith(...element.childNodes)
+        else [...element.attributes].forEach(attribute => {
+          if (element.tagName === "A" && attribute.name === "href" && /^(https?:|mailto:|tel:|\/(?!\/)|#)/i.test(attribute.value)) return
+          element.removeAttribute(attribute.name)
+        })
+      })
+      node.innerHTML = fragment.body.innerHTML
+    } else {
+      const icon = node.querySelector("i.bi")?.cloneNode(true)
+      node.textContent = control.value
+      if (icon) node.prepend(icon, " ")
+    }
+    this.positionTools()
+    return true
   }
 
   async render() {
@@ -546,8 +895,13 @@ export default class extends Controller {
   afterRender() {
     this.decorate()
     this.applyPickedImages()
+    this.localControls?.forEach(control => { if (control.isConnected) this.applyLocalPreview(control); else this.localControls.delete(control) })
     this.markSelected(this.selectedPosition)
+    const wrapper = this.doc.querySelector(`.lp-preview-block[data-block-position='${this.selectedPosition}']`)
+    if (this.selectedElementSelector) wrapper?.querySelectorAll(this.selectedElementSelector).forEach(node => node.classList.add("lp-selected-element"))
     this.positionTools()
+    const card = this.element.querySelector(".is-inspected")
+    if (card) this.renderElementPanel(card)
   }
 
   csrfToken() {
@@ -563,7 +917,7 @@ export default class extends Controller {
   }
 
   fit() {
-    const width = this.device === "desktop" ? DESKTOP_WIDTH : MOBILE_WIDTH
+    const width = this.device === "desktop" ? (this.element.classList.contains("lp-fullscreen-editor") ? this.stageTarget.clientWidth : DESKTOP_WIDTH) : MOBILE_WIDTH
     this.scale = Math.min(1, this.stageTarget.clientWidth / width)
     const frame = this.frameTarget.style
     frame.width = `${width}px`
@@ -577,87 +931,37 @@ export default class extends Controller {
     this.statusTarget.textContent = text
   }
 
-  // ---- Autosave (só Rascunho) ----
+  // ---- Envio explícito ----
 
-  canAutosave() {
-    const selected = this.element.querySelector("input[name='landing_page[status]']:checked")?.value
-    return ["new", "draft"].includes(this.savedStatusValue) && (!selected || selected === "draft")
-  }
-
-  queueAutosave() {
-    clearTimeout(this.saveTimer)
-    if (!this.canAutosave()) {
-      this.saveStatus("Salva sozinha só em Rascunho. Use Salvar para aplicar.")
-      return
-    }
-
-    this.saveStatus("Alterações pendentes…")
-    this.saveTimer = setTimeout(() => this.autosave(), AUTOSAVE_MS)
-  }
-
-  async autosave() {
-    if (this.editing || this.dragging || this.saving) {
-      this.queueAutosave()
-      return
-    }
-    if (this.titleTarget.value.trim() === "") {
-      this.saveStatus("Dê um título para salvar sozinha")
-      return
-    }
-
-    this.saving = true
-    this.saveStatus("Salvando…", "saving")
-    const body = new FormData(this.element)
-    body.delete("landing_page[status]") // publicar/inativar é sempre explícito
-    try {
-      const response = await fetch(this.element.action, {
-        method: "POST",
-        headers: { "X-CSRF-Token": this.csrfToken(), Accept: "application/json" },
-        credentials: "same-origin",
-        body
+  // One JSON part per block avoids multipart limits as the style catalog grows.
+  compactFormData(event) {
+    const body = event.formData
+    const blocks = new Map()
+    for (const [name, value] of [...body.entries()]) {
+      if (typeof value !== "string" && value.name === "" && value.size === 0) { body.delete(name); continue }
+      const match = name.match(/^(landing_page\[blocks_attributes\]\[[^\]]+\])\[data\]((?:\[[^\]]*\])+)$/)
+      if (!match || typeof value !== "string") continue
+      const data = blocks.get(match[1]) || Object.create(null)
+      blocks.set(match[1], data)
+      const keys = [...match[2].matchAll(/\[([^\]]*)\]/g)].map(part => part[1])
+      let node = data
+      keys.forEach((key, index) => {
+        if (index === keys.length - 1) { if (Array.isArray(node)) node.push(value); else node[key] = value }
+        else node = node[key] ||= keys[index + 1] === "" ? [] : Object.create(null)
       })
-      const data = await response.json()
-      if (!response.ok || !data.ok) throw new Error((data.errors || ["erro"]).join(" "))
-
-      this.afterAutosave(data)
-      this.saveStatus("Rascunho salvo", "saved")
-    } catch (error) {
-      this.saveStatus(`Não salvou: ${error.message}`, "error")
-    } finally {
-      this.saving = false
+      body.delete(name)
     }
+    blocks.forEach((data, name) => body.set(`${name}[data_payload]`, JSON.stringify(data)))
   }
 
-  // Passa a editar a página salva: formulário vira PATCH, cartões ganham o id e a prévia enxerga as imagens salvas.
-  afterAutosave(data) {
-    if (this.savedStatusValue === "new") {
-      this.savedStatusValue = "draft"
-      this.autoSlug = false
-      this.slugTarget.value = data.slug
-      const method = document.createElement("input")
-      Object.assign(method, { type: "hidden", name: "_method", value: "patch" })
-      this.element.prepend(method)
-      window.history.replaceState({}, "", data.edit_url)
-    }
-    this.element.action = data.update_url
-    this.previewUrlValue = `${this.previewUrlValue.split("?")[0]}?id=${encodeURIComponent(data.slug)}`
-
-    this.blockTargets.filter((block) => block.hidden).forEach((block) => block.remove()) // removidos: já saíram do banco
-    data.blocks.forEach(({ position, id, item_image_keys }) => {
-      const card = this.cardAt(position)
-      if (!card) return
-      card.querySelectorAll("input[name$='[image_key]']").forEach((input, index) => { input.value = item_image_keys?.[index] || "" })
-      if (card.querySelector("input[name$='[id]']")) return
-
-      const name = card.querySelector(POSITION).name.replace(/\[position\]$/, "[id]")
-      const input = Object.assign(document.createElement("input"), { type: "hidden", name, value: id })
-      card.querySelector(POSITION).after(input)
-    })
-    // Imagens enviadas e remoções já foram aplicadas: não reenviar no próximo autosave.
-    this.fileTargets.forEach((input) => { input.value = "" })
-    this.element.querySelectorAll("select[name$='[remove_image]']").forEach((input) => { input.value = "false" })
-    this.element.querySelectorAll("input[type='checkbox'][name*='[remove_image_']:checked").forEach((box) => box.closest("label")?.remove())
+  beforeSubmit() {
+    this.finishEditing()
+    clearTimeout(this.timer)
+    this.abort?.abort()
+    this.submitting = true
   }
+
+  afterSubmit() { this.submitting = false }
 
   saveStatus(text, state = "") {
     this.saveStatusTarget.textContent = text
@@ -671,7 +975,20 @@ export default class extends Controller {
     if (!doc) return
 
     // Links e botões da página não navegam na prévia: o clique só escolhe o que editar.
-    doc.addEventListener("click", (event) => this.previewClick(event), true)
+    doc.addEventListener("click", (event) => {
+      if (this.editing?.el.contains(event.target)) return
+      const text = event.target.closest?.("summary, h1, h2, h3, .public-theme-block-faq__answer, .public-theme-block-text__body, .public-theme-content-callout__text")
+      if (!text) return this.previewClick(event)
+      event.preventDefault()
+      clearTimeout(this.previewClickTimer)
+      this.previewClickTimer = setTimeout(() => this.previewClick(event), 300)
+    }, true)
+    doc.addEventListener("dblclick", (event) => { clearTimeout(this.previewClickTimer); this.previewClick(event) }, true)
+    doc.addEventListener("input", (event) => {
+      if (!event.target.matches('[data-public-faq-target="search"]')) return
+      const faq = event.target.closest(".public-theme-block-faq")
+      applyFAQFilters(faq, faq.dataset.previewCategory || "", event.target.value)
+    })
     doc.addEventListener("submit", (event) => event.preventDefault(), true)
     doc.addEventListener("mouseover", (event) => {
       const wrapper = event.target.closest?.(".lp-preview-block")
@@ -683,8 +1000,39 @@ export default class extends Controller {
   }
 
   previewClick(event) {
-    event.preventDefault()
     const target = event.target
+    if (this.editing?.el.contains(target)) return
+    event.preventDefault()
+    const faqFilter = target.closest?.('[data-public-faq-target="filter"]')
+    if (faqFilter) {
+      const faq = faqFilter.closest(".public-theme-block-faq")
+      faq.dataset.previewCategory = faqFilter.dataset.category
+      applyFAQFilters(faq, faq.dataset.previewCategory, faq.querySelector('[data-public-faq-target="search"]')?.value || "")
+      return
+    }
+    const faqItem = target.closest?.("[data-faq-row-index]")
+    if (faqItem) {
+      const wrapper = faqItem.closest(".lp-preview-block")
+      const card = this.cardAt(wrapper.dataset.blockPosition)
+      const row = card.querySelectorAll(".ax-dynamic-list__item")[Number(faqItem.dataset.faqRowIndex)]
+      const answer = target.closest(".public-theme-block-faq__answer, .public-theme-content-callout__text")
+      const summary = target.closest("summary, [data-element-field='title']")
+      const badge = target.closest("[data-element-field='badge']")
+      if (summary?.parentElement.tagName === "DETAILS") summary.parentElement.open = true
+      const el = badge || answer || summary || faqItem.querySelector("details, .public-theme-content-callout") || faqItem
+      this.finishEditing()
+      this.markSelected(wrapper.dataset.blockPosition)
+      this.revealCard(card)
+      const key = badge ? "badge" : answer ? "text" : summary ? "title" : null
+      this.inspectCard(card, ["items"], badge ? "Editar etiqueta" : answer ? "Editar resposta" : summary ? "Editar pergunta" : "Editar card")
+      this.inspectItemRow(card, row, key ? [key] : null)
+      this.selectPreviewElement(el)
+      this.elementHierarchy(card)
+      const input = key && row?.querySelector(`[name$='[${key}]']`)
+      if (event.type === "dblclick" && input) this.startEditing(el, input, Boolean(answer), card)
+      return
+    }
+    if (target.matches?.('[data-public-faq-target="search"]')) { target.focus(); return }
     if (this.editing?.el.contains(target)) return // clique dentro do texto em edição: só move o cursor
 
     this.finishEditing()
@@ -692,10 +1040,10 @@ export default class extends Controller {
     if (insert) return this.openMenu(insert, event)
 
     const wrapper = target.closest?.(".lp-preview-block")
-    if (wrapper) this.editFromPreview(wrapper, target)
+    if (wrapper) this.editFromPreview(wrapper, target, event.type === "dblclick")
   }
 
-  editFromPreview(wrapper, target) {
+  editFromPreview(wrapper, target, inline = false) {
     const position = wrapper.dataset.blockPosition
     const block = this.cardAt(position)
     if (!block) return
@@ -703,6 +1051,72 @@ export default class extends Controller {
     this.markSelected(position)
     this.positionTools()
 
+    const element = target.closest("[data-element-field]")
+    if (element) {
+      const field = element.dataset.elementField
+      const input = block.querySelector(`[name$='[data][${field}]']`)
+      if (input) {
+        this.revealCard(block)
+        const fields = [field, ...Array.from(block.querySelectorAll("[data-block-field]")).map(node => node.dataset.blockField).filter(name => name.startsWith(`element_${field}_`))]
+        if (field === "badge") fields.push("badge_icon")
+        this.inspectCard(block, fields, `Editar ${field === "title" || field === "heading" ? "título" : field === "eyebrow" || field === "badge" ? "etiqueta" : "texto"}`)
+        this.selectPreviewElement(element)
+        this.elementHierarchy(block, field === "eyebrow" || field === "badge")
+        if (inline) this.startEditing(element, input, Boolean(block.querySelector(`trix-editor[input='${input.id}']`)), block)
+        return
+      }
+    }
+    const label = target.closest("[data-label-index]")
+    const labels = target.closest("[data-element-group='labels']")
+    if (labels) {
+      this.revealCard(block)
+      this.inspectCard(block, ["labels", ...(!label ? Array.from(block.querySelectorAll("[data-block-field]")).map(node => node.dataset.blockField).filter(name => name.startsWith("element_labels_")) : [])], label ? "Editar etiqueta" : "Editar grupo de etiquetas")
+      if (label) this.inspectItemRow(block, block.querySelector("[data-block-field='labels']").querySelectorAll(".ax-dynamic-list__item")[Number(label.dataset.labelIndex)])
+      this.selectPreviewElement(label || labels)
+      this.elementHierarchy(block, true)
+      return
+    }
+    const item = target.closest?.("[data-item-row-key]")
+    if (item) {
+      const input = [...block.querySelectorAll("[name$='[row_key]']")].find((input) => input.value === item.dataset.itemRowKey)
+      if (input) {
+        this.revealCard(block)
+        const text = target.closest(".public-theme-block-collection__text, .public-theme-block-collection__quote")
+        const title = target.closest(".public-theme-block-collection__title")
+        const label = target.closest(".public-theme-block-collection__label, .public-theme-builder-badge")
+        const key = target.closest("[data-item-element]")?.dataset.itemElement || (text ? "text" : title ? "title" : label ? (label.classList.contains("public-theme-builder-badge") ? "badge" : "label") : null)
+        const row = input.closest(".ax-dynamic-list__item")
+        this.inspectCard(block, ["items"], key ? (text ? "Editar texto" : "Editar título") : "Editar item")
+        this.inspectItemRow(block, row, key ? [key] : null)
+        this.selectPreviewElement(text || title || label || item)
+        this.elementHierarchy(block)
+        if (inline && key) this.startEditing(text || title || label || item, row.querySelector(`[name$='[${key}]']`), Boolean(text), block)
+        return
+      }
+    }
+    const button = target.closest?.("a")
+    if (button && ["callout", "cover", "button"].includes(block.dataset.blockType)) {
+      this.selectPreviewElement(button)
+      const secondary = button.className.includes("secondary")
+      const fields = block.dataset.blockType === "button" ? ["label", "url", "icon", "style", "align", "size", "custom_colors", "background_color", "text_color"] : secondary ? ["secondary_label", "secondary_url", "secondary_icon", "secondary_custom_colors", "secondary_background_color", "secondary_text_color"] : ["button_label", "button_url", "button_icon", "button_custom_colors", "button_background_color", "button_text_color"]
+      const prefix = block.dataset.blockType === "button" ? "" : secondary ? "secondary_" : "button_"
+      const custom = block.querySelector(`input[name$='[data][${prefix}custom_colors]']`)
+      if (custom?.value !== "true") {
+        const computed = this.doc.defaultView.getComputedStyle(button)
+        ;[["background_color", computed.backgroundColor], ["text_color", computed.color]].forEach(([key, value]) => {
+          const channels = value.match(/\d+/g)
+          if (!channels || channels.length < 3 || (channels.length > 3 && Number(channels[3]) === 0)) return
+          const hex = `#${channels.slice(0, 3).map((channel) => Number(channel).toString(16).padStart(2, "0")).join("")}`
+          block.querySelectorAll(`input[name$='[${prefix}${key}]']`).forEach((input) => { input.value = hex })
+        })
+      }
+      this.revealCard(block)
+      this.inspectCard(block, fields, "Editar botão")
+      this.elementHierarchy(block)
+      block.querySelector(`[data-block-field='${fields[0]}'] input`)?.focus({ preventScroll: true })
+      return
+    }
+    this.revealCard(block)
     const map = FIELD_FOR_CLASS[block.dataset.blockType] || {}
     const hit = Object.keys(map).find((name) => target.closest?.(`.${name}`))
     const spec = hit && map[hit]
@@ -710,16 +1124,213 @@ export default class extends Controller {
     const input = field && block.querySelector(`[name$='[data][${field}]']`)
 
     // Texto dos campos simples e do corpo: edita ali mesmo.
-    if (hit && input) return this.startEditing(target.closest(`.${hit}`), input, Boolean(spec.rich), block)
+    if (hit && input) {
+      this.inspectCard(block, [field, ...Array.from(block.querySelectorAll("[data-block-field]")).map(node => node.dataset.blockField).filter(name => name.startsWith(`element_${field}_`))], `Editar ${field === "heading" || field === "title" ? "título" : "texto"}`)
+      this.selectPreviewElement(target.closest(`.${hit}`))
+      this.elementHierarchy(block)
+      if (inline) this.startEditing(target.closest(`.${hit}`), input, Boolean(spec.rich), block)
+      return
+    }
 
     this.revealCard(block)
-    block.scrollIntoView({ block: "center", behavior: "smooth" })
+    this.selectedElementSelector = null
+    this.doc.querySelectorAll(".lp-selected-element").forEach(node => node.classList.remove("lp-selected-element"))
+    this.elementHierarchy(block)
+    if (!this.element.classList.contains("lp-canvas-editor")) block.scrollIntoView({ block: "center", behavior: "smooth" })
     block.querySelector("input:not([type='hidden']):not([type='checkbox']):not([type='file']), select, textarea")?.focus({ preventScroll: true })
+  }
+
+  elementHierarchy(card) {
+    this.renderElementPanel(card)
+  }
+
+  renderElementPanel(card) {
+    if (!this.element.classList.contains("lp-canvas-editor")) return
+    this.element.querySelector(".lp-element-hierarchy")?.remove()
+    this.element.querySelector(".lp-element-panel")?.remove()
+    this.element.querySelector(".lp-element-breadcrumb")?.remove()
+    const name = card.querySelector(".lp-block__title strong")?.textContent || "Bloco"
+    const level = card.dataset.blockType === "section" ? "Seção" : card.dataset.blockType === "callout" ? "Card" : "Bloco"
+    const selectedKey = this.inspectedItemKeys?.[0] || this.inspectedFields?.find(key => ["heading", "title", "text", "body", "subtitle", "badge", "eyebrow", "caption"].includes(key))
+    const selectedPart = !this.parentInspector && selectedKey ? ({ heading: "Título", title: "Título", text: "Texto", body: "Texto", subtitle: "Texto", badge: "Etiqueta", eyebrow: "Etiqueta", caption: "Legenda" }[selectedKey] || "Elemento") : null
+    this.inspectorTitleTarget.textContent = selectedPart ? `Editar ${selectedPart.toLowerCase()} · ${name}` : `${level} · ${name}`
+    const panel = document.createElement("div")
+    panel.className = "lp-element-panel"
+    const breadcrumb = document.createElement("div")
+    breadcrumb.className = "lp-element-breadcrumb"
+    breadcrumb.textContent = `Página › ${level}: ${name}${selectedPart ? ` › ${selectedPart}` : ""}`
+    const tabs = document.createElement("div")
+    tabs.className = "lp-element-panel__tabs"
+    const makeButton = (label, handler) => {
+      const button = document.createElement("button")
+      button.type = "button"
+      button.className = "ax-btn ax-btn--secondary ax-btn--sm"
+      button.textContent = label
+      button.addEventListener("click", handler)
+      return button
+    }
+    ;[["Elementos", "elements"], ["Configurações", "configuration"]].forEach(([label, mode]) => {
+      const button = makeButton(label, () => this.parentPanel(card, mode))
+      button.setAttribute("aria-pressed", String((this.element.dataset.elementPanel || "elements") === mode))
+      tabs.append(button)
+    })
+    this.inspectorTitleTarget.closest(".lp-inspector-heading").prepend(breadcrumb)
+    panel.append(tabs)
+    const hint = document.createElement("p")
+    hint.className = "lp-element-panel__hint"
+    hint.textContent = selectedPart ? `Você está editando apenas ${selectedPart.toLowerCase()}. As cores e bordas afetam este elemento.` : level === "Card" ? "Configurações alteram o card arredondado. Em Elementos, edite título, texto e botões separadamente." : `Configurações alteram ${level.toLowerCase()} inteiro. Em Elementos, selecione um item para editar somente ele.`
+    panel.append(hint)
+    const elements = this.previewElements(card)
+    if (this.element.dataset.elementPanel !== "configuration") {
+      const header = document.createElement("div")
+      header.className = "lp-element-panel__list-header"
+      const count = document.createElement("strong")
+      count.textContent = `${elements.length} elementos`
+      header.append(count, makeButton("Adicionar", () => this.addElement(card)))
+      panel.append(header)
+      const list = document.createElement("div")
+      list.className = "lp-element-panel__list"
+      elements.forEach(element => {
+        const { key, node, name: label, icon } = element
+        const row = this.element.querySelector("[data-builder-element-template]").content.firstElementChild.cloneNode(true)
+        row.dataset.elementKey = key
+        row.querySelector("strong").textContent = label
+        row.querySelector("small").textContent = node.textContent.trim().replace(/\s+/g, " ").slice(0, 100)
+        row.querySelector(".ax-sortable-element__icon i").classList.add(`bi-${icon}`)
+        const active = this.selectedElementSelector && node.matches(this.selectedElementSelector)
+        row.classList.toggle("is-selected", Boolean(active && !this.parentInspector))
+        row.querySelector("[data-element-edit]").addEventListener("click", () => {
+          this.finishEditing()
+          if (element.formRow) {
+            this.editFromPreview(node.closest(".lp-preview-block"), node)
+          } else if (element.card) {
+            this.markSelected(this.positionOf(element.card))
+            this.revealCard(element.card)
+          } else if (key === "items" || key === "actions" || key === "labels") {
+            this.inspectCard(card, key === "actions" ? ["button_label", "button_url", "button_icon", "secondary_label", "secondary_url", "secondary_icon"] : [key], `Editar ${label.toLowerCase()}`)
+            this.selectPreviewElement(node)
+            this.renderElementPanel(card)
+          } else this.editFromPreview(node.closest(".lp-preview-block"), node)
+        })
+        row.querySelector(".ax-sortable-element__grip").addEventListener("keydown", event => {
+          if (!["ArrowUp", "ArrowDown"].includes(event.key)) return
+          event.preventDefault()
+          const index = elements.findIndex(element => element.key === key)
+          const target = elements[index + (event.key === "ArrowUp" ? -1 : 1)]
+          if (target) this.moveElement(card, key, target.key)
+        })
+        row.addEventListener("dragstart", event => { this.elementDragging = key; event.dataTransfer.setData("text/plain", key); event.dataTransfer.effectAllowed = "move"; event.stopPropagation() })
+        row.addEventListener("dragover", event => { event.preventDefault(); event.stopPropagation(); row.classList.add("is-drop-target") })
+        row.addEventListener("dragleave", () => row.classList.remove("is-drop-target"))
+        row.addEventListener("drop", event => { event.preventDefault(); event.stopPropagation(); row.classList.remove("is-drop-target"); if (this.elementDragging) this.moveElement(card, this.elementDragging, key); this.elementDragging = null })
+        row.addEventListener("dragend", () => { this.elementDragging = null; list.querySelectorAll(".is-drop-target").forEach(item => item.classList.remove("is-drop-target")) })
+        list.append(row)
+      })
+      panel.append(list)
+      if (!this.parentInspector && this.inspectedFields) {
+        const context = document.createElement("div")
+        context.className = "lp-element-panel__context"
+        const field = this.inspectedFields[0]
+        const selected = elements.find(item => item.key === field)
+        const key = this.inspectedItemKeys?.[0]
+        const rowTitle = this.inspectedRow?.querySelector("[name$='[title]']")?.value
+        const partName = key ? ({ title: "Título", text: "Texto", label: "Número / legenda", badge: "Etiqueta" }[key] || "Elemento") : null
+        context.textContent = [name, rowTitle ? `Card: ${rowTitle}` : null, partName || selected?.name || (this.inspectedRow ? "Card" : "Elemento")].filter(Boolean).join(" › ")
+        panel.append(context)
+      }
+    }
+    this.inspectorTitleTarget.closest(".lp-inspector-heading").after(panel)
+    this.element.dataset.parentInspector = String(Boolean(this.parentInspector))
+  }
+
+  previewElements(card) {
+    const wrapper = this.doc?.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(card)}']`)
+    if (!wrapper) return []
+    const names = { title: ["Título", "type"], heading: ["Título", "type"], subtitle: ["Texto", "text-left"], body: ["Texto", "text-left"], text: ["Texto", "text-left"], eyebrow: ["Etiqueta", "tag"], badge: ["Etiqueta", "tag"], labels: ["Etiquetas", "tags"], items: ["Itens do bloco", "grid"], actions: ["Botões", "cursor"], caption: ["Legenda", "text-left"] }
+    const nodes = [...wrapper.querySelectorAll("[data-element-field], [data-element-group], .public-theme-block-cover__actions, .public-theme-content-callout__actions, .public-theme-block-collection__items")].filter(node => node.closest(".lp-preview-block") === wrapper && !node.closest("[data-item-row-key], [data-faq-row-index]") && node.textContent.trim())
+    const elements = nodes.filter(node => !node.classList.contains("public-theme-block-collection__items")).map(node => {
+      const key = node.dataset.elementField || node.dataset.elementGroup || (node.className.includes("__actions") ? "actions" : "items")
+      const [name, icon] = names[key] || ["Elemento", "square"]
+      return { key, node, name, icon }
+    })
+    wrapper.querySelectorAll("[data-item-row-key], [data-faq-row-index], [data-label-index]").forEach((node, index) => {
+      if (node.closest(".lp-preview-block") !== wrapper) return
+      const field = node.hasAttribute("data-label-index") ? "labels" : "items"
+      const rows = card.querySelector(`[data-block-field='${field}']`)?.querySelectorAll(".ax-dynamic-list__item") || []
+      const formRow = node.dataset.itemRowKey ? [...rows].find(row => row.querySelector("[name$='[row_key]']")?.value === node.dataset.itemRowKey) : rows[Number(node.dataset.faqRowIndex ?? node.dataset.labelIndex)]
+      if (formRow) elements.push({ key: `${field}_${index}`, node, formRow, name: field === "labels" ? "Etiqueta" : (formRow.querySelector("[name$='[title]']")?.value || "Item"), icon: field === "labels" ? "tag" : "card-text" })
+    })
+    if (card.dataset.blockType === "section") this.sectionMembers(card).slice(1).forEach(child => {
+      const node = this.doc.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(child)}']`)
+      if (node) elements.push({ key: `block_${this.positionOf(child)}`, node, card: child, name: child.querySelector(".lp-block__title strong")?.textContent.trim() || "Bloco", icon: "layout-text-window" })
+    })
+    return elements
+  }
+
+  parentPanel(card, mode = "elements") {
+    this.finishEditing()
+    this.inspectCard(card)
+    this.element.dataset.elementPanel = mode
+    if (mode === "configuration") {
+      const wrapper = this.doc?.querySelector(`.lp-preview-block[data-block-position='${this.positionOf(card)}']`)
+      const surface = (card.dataset.blockType === "callout" ? wrapper?.querySelector(".public-theme-content-callout") : wrapper?.querySelector("section")) || wrapper?.closest("section") || wrapper
+      if (surface) this.readElementStyle(surface, "block_")
+    }
+    this.inspectorAppearance({ currentTarget: this.element.querySelector(".lp-inspector-tabs [data-panel='content']") })
+    this.renderElementPanel(card)
+  }
+
+  addElement(card) {
+    if (card.dataset.blockType === "section") {
+      this.menuSection = card
+      this.menuColumn = "1"
+      this.menuBefore = "end"
+      this.menuTarget.querySelector("[data-block-type='section']").hidden = true
+      this.menuTarget.hidden = false
+      this.menuTarget.style.left = `${Math.max(8, this.stageTarget.clientWidth - this.menuTarget.offsetWidth - 8)}px`
+      this.menuTarget.style.top = "64px"
+      return
+    }
+    const fields = card.querySelector("[data-block-field='labels']") ? ["labels"] : card.querySelector("[data-block-field='items']") ? ["items"] : ["heading", "body", "subtitle", "button_label", "button_url"]
+    this.inspectCard(card, fields, "Adicionar elemento")
+    card.querySelector(`[data-block-field='${fields[0]}'] [data-action='dynamic-list#add']`)?.click()
+    this.renderElementPanel(card)
+  }
+
+  moveElement(card, source, target) {
+    const elements = this.previewElements(card)
+    const from = elements.find(item => item.key === source)
+    const to = elements.find(item => item.key === target)
+    if (!from || !to || from === to || from.node.parentElement !== to.node.parentElement) return
+    if (from.formRow && to.formRow && from.formRow.parentElement === to.formRow.parentElement) {
+      const movingDown = elements.indexOf(from) < elements.indexOf(to)
+      if (movingDown) to.formRow.after(from.formRow)
+      else to.formRow.before(from.formRow)
+      this.schedule()
+      return
+    }
+    if (from.card && to.card) {
+      this.placeBlock(from.card, to.card, elements.indexOf(from) > elements.indexOf(to))
+      this.reindex()
+      this.selectedPosition = this.positionOf(card)
+      this.changed()
+      return
+    }
+    const keys = elements.map(item => item.key)
+    const movingDown = keys.indexOf(source) < keys.indexOf(target)
+    keys.splice(keys.indexOf(source), 1)
+    keys.splice(keys.indexOf(target) + (movingDown ? 1 : 0), 0, source)
+    card.querySelector("[name$='[data][element_order]']").value = keys.join(",")
+    if (movingDown) to.node.after(from.node)
+    else to.node.before(from.node)
+    this.schedule()
+    this.renderElementPanel(card)
   }
 
   startEditing(el, input, rich, card) {
     this.editing = { el, input, rich, card, original: rich ? input.value : input.value }
-    el.contentEditable = rich ? "true" : "plaintext-only"
+    if (rich) return this.startInlineRichEditor(el, input)
+    el.contentEditable = "plaintext-only"
     el.focus()
     const range = this.doc.createRange()
     range.selectNodeContents(el)
@@ -740,7 +1351,43 @@ export default class extends Controller {
     if (rich) this.showRichbar(el)
   }
 
-  // Cada tecla grava no input do cartão (fonte única); a prévia só recarrega ao terminar.
+  startInlineRichEditor(el, input) {
+    this.fit()
+    const rect = el.getBoundingClientRect()
+    const host = document.createElement("div")
+    host.className = "lp-inline-trix"
+    host.style.left = `${this.frameLeft + rect.left * this.scale}px`
+    host.style.top = `${rect.top * this.scale}px`
+    host.style.width = `${Math.min(rect.width * this.scale, this.stageTarget.clientWidth - 16)}px`
+    const source = document.createElement("input")
+    source.type = "hidden"
+    source.id = `lp-inline-text-${Date.now()}`
+    const initialHTML = input.value
+    source.setAttribute("value", initialHTML)
+    let ready = false
+    const editor = document.createElement("trix-editor")
+    editor.setAttribute("input", source.id)
+    editor.setAttribute("aria-label", "Editar texto no elemento")
+    editor.addEventListener("trix-change", () => {
+      if (!ready || !this.editing) return
+      input.value = source.value
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    editor.addEventListener("trix-file-accept", (event) => event.preventDefault())
+    const done = document.createElement("button")
+    done.type = "button"
+    done.className = "ax-btn ax-btn--primary ax-btn--sm"
+    done.textContent = "Concluir edição"
+    done.addEventListener("click", () => this.finishEditing())
+    host.addEventListener("keydown", (event) => { if (event.key === "Escape") this.cancelEditing() })
+    host.append(source, editor, done)
+    this.inlineRichHost = host
+    this.editHandlers = {}
+    editor.addEventListener("trix-initialize", () => { editor.editor.loadHTML(initialHTML); ready = true; editor.focus() }, { once: true })
+    this.stageTarget.append(host)
+  }
+
+  // Cada tecla grava no input do cartão; o canvas permanece local durante a edição.
   writeEditing() {
     const { el, input, rich } = this.editing
     input.value = rich ? el.innerHTML : el.innerText.replace(/\n+/g, " ").trim()
@@ -754,9 +1401,11 @@ export default class extends Controller {
     Object.entries(this.editHandlers).forEach(([name, handler]) => el.removeEventListener(name, handler))
     el.removeAttribute("contenteditable")
     this.editing = null
+    this.inlineRichHost?.remove()
+    this.inlineRichHost = null
     this.richbarTarget.hidden = true
     // O Trix do cartão passa a mostrar o texto novo.
-    if (rich) card.querySelector("trix-editor")?.editor?.loadHTML(input.value)
+    if (rich) Array.from(card.querySelectorAll("trix-editor")).find((editor) => editor.getAttribute("input") === input.id)?.editor?.loadHTML(input.value)
     this.reindex()
     if (this.pendingRender) this.render()
   }
@@ -767,8 +1416,8 @@ export default class extends Controller {
     const { input, original } = this.editing
     input.value = original
     input.dispatchEvent(new Event("input", { bubbles: true }))
-    this.pendingRender = true
-    this.editing.el.blur()
+    if (this.inlineRichHost) this.finishEditing()
+    else this.editing.el.blur()
   }
 
   // ---- Barra de texto formatado ----
@@ -822,6 +1471,7 @@ export default class extends Controller {
   }
 
   markSelected(position) {
+    if (String(this.selectedPosition) !== String(position)) this.selectedElementSelector = null
     this.selectedPosition = position
     this.doc?.querySelectorAll(".lp-preview-block").forEach((item) => {
       item.classList.toggle("is-selected", position != null && item.dataset.blockPosition === String(position))
@@ -946,6 +1596,7 @@ export default class extends Controller {
     const root = doc?.querySelector(".public-landing-page")
     if (!root) return
     doc.querySelectorAll("[data-section-column]").forEach((column) => {
+      if (column.querySelector(".lp-preview-block")) return
       const insert = doc.createElement("div")
       insert.className = "lp-insert lp-insert--empty"
       insert.dataset.sectionPosition = column.dataset.sectionPosition

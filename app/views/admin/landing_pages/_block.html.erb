@@ -30,12 +30,20 @@
 
     <%= bf.fields_for :data, data do |df| %>
       <%= ax_field_grid do %>
-        <% definition.fields.reject { |field| LandingPages::BlockTypes::LAYOUT_FIELDS.include?(field) }.each do |field| %>
+        <% definition.fields.reject { |field| (LandingPages::BlockTypes::LAYOUT_FIELDS + LandingPages::BlockTypes::APPEARANCE_FIELDS).include?(field) }.each do |field| %>
           <div class="<%= field.type.in?(%i[text rich filters url string embed items boolean]) ? "ax-span-12" : "ax-span-6" %>" data-block-field="<%= field.name %>">
             <%= render "admin/landing_pages/block_field", df: df, field: field, bf: bf, data: data %>
           </div>
         <% end %>
       <% end %>
+      <details class="lp-layout-controls">
+        <summary>Aparência e navegação</summary>
+        <%= ax_field_grid do %>
+          <% LandingPages::BlockTypes::APPEARANCE_FIELDS.each do |field| %>
+            <div class="ax-span-6" data-block-field="<%= field.name %>"><%= render "admin/landing_pages/block_field", df: df, field: field, bf: bf, data: data %></div>
+          <% end %>
+        <% end %>
+      </details>
       <details class="lp-layout-controls">
         <summary>Layout e posição</summary>
         <%= ax_field_grid do %>
@@ -53,7 +61,7 @@
     <% if uploads %>
       <%= ax_field_grid do %>
         <% uploads.each do |attachment, label| %>
-          <div class="ax-span-6">
+          <div class="ax-span-6" data-block-field="<%= attachment %>">
             <%= ax_field_label(bf, attachment, text: label) %>
             <%= bf.file_field attachment, class: "ax-control", accept: "image/png,image/jpeg,image/webp", data: { landing_page_builder_target: "file" } %>
             <% if block.persisted? && block.public_send(attachment).attached? %>

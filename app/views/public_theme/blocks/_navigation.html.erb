@@ -1,0 +1,8 @@
+<nav class="public-theme-block-navigation public-theme-block-navigation--<%= variant %>" aria-label="Seções desta página">
+  <div class="container-custom">
+    <% Array(block.value(:items)).each_with_index do |item, index| %>
+      <% next unless item["title"].present? && item["url"].to_s.start_with?("#") %>
+      <%= link_to item["title"], item["url"], data: { item_row_key: item["row_key"].presence || index, item_element: "title" }, style: [landing_page_action_color_style(item, ""), landing_page_action_color_style(item, "element_title")].compact.join(";") %>
+    <% end %>
+  </div>
+</nav>

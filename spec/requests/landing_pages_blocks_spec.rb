@@ -282,7 +282,7 @@ RSpec.describe "Páginas por blocos", type: :request do
         expect(columns.first.at_css(".public-theme-block-button__link .bi-whatsapp")).to be_present
         expect(columns.last.at_css("iframe")["src"]).to eq("https://player.vimeo.com/video/123456789?dnt=1")
         expect(html.css("details.public-theme-block-text__more summary").text).to eq("Ver mais")
-        expect(html.css(".public-theme-block-collection").size).to eq(7)
+        expect(html.css(".public-theme-block-collection").size).to eq(LandingPages::BlockTypes::COLLECTIONS.size)
         expect(html.css(".public-theme-block-collection__image").map { |image| image["loading"] }.uniq).to eq(["lazy"])
         expect(html.css("h1").size).to eq(1)
       end

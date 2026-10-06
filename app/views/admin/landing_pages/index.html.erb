@@ -6,44 +6,50 @@
   <table class="ax-table">
     <thead>
       <tr>
-        <th>Título</th>
-        <th class="ax-table__col--w-220">Endereço</th>
+        <th>Página</th>
         <th class="ax-table__col--sm">Status</th>
-        <th>Blocos</th>
-        <th class="ax-num ax-table__col--compact">Ações</th>
+        <th>Conteúdo</th>
+        <th class="ax-num ax-table__col--w-220">Ações</th>
       </tr>
     </thead>
     <tbody>
       <% @landing_pages.each do |page| %>
         <tr>
-          <td class="ax-strong"><%= link_to page.title, edit_admin_landing_page_path(page) %></td>
-          <td><code class="tw-text-primary">/<%= page.slug %></code></td>
+          <td>
+            <div class="ax-strong"><%= link_to page.title, edit_admin_landing_page_path(page) %></div>
+            <div class="tw-text-xs tw-text-ink-muted tw-mt-1 tw-break-all">/<%= page.slug %></div>
+            <div class="tw-text-xs tw-text-ink-muted tw-mt-1">Atualizada em <%= l(page.updated_at, format: :short) %></div>
+          </td>
           <td>
             <% tone = { "published" => "green", "draft" => "amber", "inactive" => "gray" }.fetch(page.status, "gray") %>
             <span class="ax-badge ax-badge--<%= tone %> ax-badge--dot"><%= page.status_label %></span>
           </td>
           <td>
             <% if page.blocks.any? %>
-              <div class="tw-flex tw-flex-wrap tw-gap-1">
+              <details>
+                <summary class="tw-cursor-pointer tw-text-ink-muted"><%= pluralize(page.blocks.size, "bloco", "blocos") %></summary>
+                <div class="tw-flex tw-flex-wrap tw-gap-1 tw-mt-2">
                 <% page.blocks.group_by(&:block_type).each do |type, blocks| %>
                   <span class="ax-badge ax-badge--gray"><%= blocks.size %> <%= LandingPages::BlockTypes.find(type)&.label || type %></span>
                 <% end %>
-              </div>
+                </div>
+              </details>
             <% else %>
               <span class="ax-badge ax-badge--gray" title="Página antiga: abre no layout de lista de imóveis. Edite e salve para convertê-la em blocos.">Vitrine (layout antigo)</span>
             <% end %>
           </td>
           <td class="ax-num">
-            <span class="tw-inline-flex tw-gap-0.5">
-              <% if page.slug.present? && page.published? %><%= link_to landing_page_site_url(page), target: "_blank", class: "ax-ico-btn", title: "Ver no site" do %><i class="bi bi-eye"></i><% end %><% end %>
-              <%= link_to edit_admin_landing_page_path(page), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-              <%= button_to admin_landing_page_path(page), method: :delete, form_class: "tw-inline", form: { data: { turbo_confirm: 'Tem certeza que deseja excluir esta página?' } }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+            <span class="tw-inline-flex tw-flex-wrap tw-items-center tw-gap-1">
+              <%= ax_button("Pré-visualizar", page_preview_admin_landing_page_path(page), icon: "eye", size: :sm, target: "_blank", rel: "noopener noreferrer", title: "Pré-visualizar em nova aba", data: { turbo: false }) %>
+              <% if page.slug.present? && page.published? %><%= link_to landing_page_site_url(page), target: "_blank", rel: "noopener noreferrer", class: "ax-ico-btn", title: "Ver no site", aria: { label: "Ver no site" } do %><i class="bi bi-eye"></i><% end %><% end %>
+              <%= link_to edit_admin_landing_page_path(page), class: "ax-ico-btn", title: "Editar", aria: { label: "Editar" } do %><i class="bi bi-pencil"></i><% end %>
+              <%= button_to admin_landing_page_path(page), method: :delete, form_class: "tw-inline", form: { data: { turbo_confirm: 'Tem certeza que deseja excluir esta página?' } }, class: "ax-ico-btn", title: "Excluir", aria: { label: "Excluir" } do %><i class="bi bi-trash"></i><% end %>
             </span>
           </td>
         </tr>
       <% end %>
       <% if @landing_pages.empty? %>
-        <tr><td colspan="5"><div class="ax-empty">
+        <tr><td colspan="4"><div class="ax-empty">
           <i class="bi bi-file-earmark-plus tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhuma página criada ainda.
         </div></td></tr>
       <% end %>

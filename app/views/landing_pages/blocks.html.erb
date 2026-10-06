@@ -16,7 +16,7 @@
 
   <% landing_page_groups(@blocks).each do |section, blocks| %>
     <% if section %>
-      <%= tag.div(render("public_theme/blocks/section", block: section, blocks: blocks, page: @landing_page, variant: variant, showcases: @showcases), **landing_page_layout_attributes(section)) %>
+      <%= tag.div(landing_page_order_elements(render("public_theme/blocks/section", block: section, blocks: blocks, page: @landing_page, variant: variant, showcases: @showcases), section), **landing_page_layout_attributes(section)) %>
     <% else %>
       <%= render "landing_pages/block_group", blocks: blocks, page: @landing_page, variant: variant, showcases: @showcases, h1_owner: h1_owner %>
     <% end %>

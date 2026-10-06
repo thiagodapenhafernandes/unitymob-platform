@@ -4,6 +4,6 @@
   <div class="container-custom">
     <a href="<%= block.value(:url) %>"
        class="public-theme-block-button__link is-<%= block.value(:style) %>"
-       <%= tag.attributes(style: ("color:#{block.value(:text_color)};background-color:#{block.value(:background_color)};border-color:#{block.value(:background_color)}" if block.value(:custom_colors)), target: ("_blank" if block.value(:new_tab)), rel: ("noopener" if block.value(:new_tab))) %>><% if block.value(:icon).present? %><i class="bi bi-<%= block.value(:icon) %>" aria-hidden="true"></i> <% end %><span><%= block.value(:label) %></span></a>
+       <%= tag.attributes(style: landing_page_action_color_style(block.data, ""), target: ("_blank" if block.value(:new_tab)), rel: ("noopener" if block.value(:new_tab))) %>><% if block.value(:icon).present? %><i class="bi bi-<%= block.value(:icon) %>" aria-hidden="true"></i> <% end %><span><%= block.value(:label) %></span></a>
   </div>
 </section>

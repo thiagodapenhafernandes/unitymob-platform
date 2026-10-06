@@ -1,0 +1,35 @@
+<% items = Array(block.value(:items)).each_with_index.map { |item, index| item.merge('_preview_index' => index) }.select { |item| item['title'].present? } %>
+<% categories = items.flat_map { |item| item['categories'].to_s.split(',').map(&:strip).reject(&:blank?) }.uniq %>
+<section class="public-theme-block-faq public-theme-block-faq--<%= variant %>" data-controller="public-faq">
+  <div class="container-custom">
+    <% if block.value(:heading).present? %><h2 data-element-field="heading" style="<%= landing_page_action_color_style(block.data, "element_heading") %>"><%= block.value(:heading) %></h2><% end %>
+    <% if block.value(:filter_categories) && categories.any? %>
+      <div class="public-theme-block-faq__filters" role="group" aria-label="Categorias de perguntas">
+        <% ['Todas', *categories].each_with_index do |category, index| %>
+          <button type="button" data-public-faq-target="filter" data-category="<%= index.zero? ? '' : category %>" data-action="public-faq#filter" aria-pressed="<%= index.zero? %>"><%= category %></button>
+        <% end %>
+      </div>
+    <% end %>
+    <% if block.value(:searchable) %>
+      <label class="public-theme-block-faq__search">Buscar nas perguntas<input type="search" placeholder="Digite sua dúvida" data-public-faq-target="search" data-action="input->public-faq#update"></label>
+    <% end %>
+    <% items.each_with_index.group_by { |item, index| item['group'].to_s }.each do |group, rows| %>
+      <div class="public-theme-block-faq__group" data-public-faq-target="group">
+        <% if group.present? %><%= content_tag(block.value(:heading).present? ? :h3 : :h2, group, class: "public-theme-block-faq__group-title") %><% end %>
+        <% rows.each do |item, index| %>
+          <div data-faq-row-index="<%= item['_preview_index'] %>" data-public-faq-target="item" data-categories="<%= item['categories'] %>">
+            <% if item['featured'] %>
+              <%= render 'public_theme/components/content_callout', data: item.merge('heading' => item['title']), variant: variant, heading_field: 'title', heading_tag: (block.value(:heading).present? ? :h4 : :h3) %>
+            <% else %>
+              <details style="<%= landing_page_action_color_style(item, "") %>" class="public-theme-block-faq__item" <%= 'open' if block.value(:open_answers) %>>
+                <summary style="<%= landing_page_action_color_style(item, "element_title") %>"><%= item['title'] %><i class="bi bi-plus" aria-hidden="true"></i></summary>
+                <div style="<%= landing_page_action_color_style(item, "element_text") %>" class="public-theme-block-faq__answer"><%= simple_format(item['text']) %></div>
+              </details>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+    <p class="public-theme-block-faq__empty" data-public-faq-target="empty" role="status" hidden>Nenhuma pergunta encontrada. Tente outra palavra ou categoria.</p>
+  </div>
+</section>

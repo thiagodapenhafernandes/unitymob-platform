@@ -2,18 +2,19 @@
 <section class="public-theme-block-text public-theme-block-text--<%= variant %> is-<%= block.value(:width) %>">
   <div class="container-custom">
     <div class="public-theme-block-text__inner">
-      <% if block.value(:heading).present? %><h2 class="public-theme-block-text__heading"><%= block.value(:heading) %></h2><% end %>
+      <% if block.value(:heading).present? %><h2 data-element-field="heading" style="<%= landing_page_action_color_style(block.data, "element_heading") %>" class="public-theme-block-text__heading"><%= block.value(:heading) %></h2><% end %>
       <% if block.value(:body).present? %>
-        <div class="public-theme-block-text__body seo-text-rich">
+        <div data-element-field="body" style="<%= landing_page_action_color_style(block.data, "element_body") %>" class="public-theme-block-text__body seo-text-rich">
           <%= sanitize block.value(:body), tags: LandingPages::BlockTypes::RICH_TAGS, attributes: LandingPages::BlockTypes::RICH_ATTRIBUTES %>
         </div>
       <% end %>
       <% if block.value(:expandable) && block.value(:more_body).present? %>
         <details class="public-theme-block-text__more">
           <summary><%= block.value(:more_label).presence || "Ver mais" %></summary>
-          <div class="public-theme-block-text__body seo-text-rich"><%= sanitize block.value(:more_body), tags: LandingPages::BlockTypes::RICH_TAGS, attributes: LandingPages::BlockTypes::RICH_ATTRIBUTES %></div>
+          <div data-element-field="body" style="<%= landing_page_action_color_style(block.data, "element_body") %>" class="public-theme-block-text__body seo-text-rich"><%= sanitize block.value(:more_body), tags: LandingPages::BlockTypes::RICH_TAGS, attributes: LandingPages::BlockTypes::RICH_ATTRIBUTES %></div>
         </details>
       <% end %>
     </div>
   </div>
+<%= render "public_theme/blocks/labels", block: block %>
 </section>

@@ -1,0 +1,44 @@
+<div class="broker-share"
+     data-controller="broker-share"
+     data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(property) : '' %>"
+     data-broker-share-fallback-url-value="<%= habitation_url(property) %>"
+     data-broker-share-property-title-value="<%= property.display_title %>">
+  <button type="button"
+          class="broker-share__trigger"
+          data-action="click->broker-share#toggle"
+          title="Compartilhar imóvel">
+    <i class="bi bi-share-fill"></i>
+  </button>
+
+  <div class="broker-share__menu hidden d-none"
+       data-broker-share-target="menu">
+    <p class="broker-share__title">Compartilhar imóvel</p>
+
+    <div class="broker-share__actions">
+      <button type="button" class="broker-share__action broker-share__action--whatsapp" data-action="click->broker-share#whatsapp" title="WhatsApp" aria-label="Compartilhar no WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+      </button>
+      <button type="button" class="broker-share__action broker-share__action--email" data-action="click->broker-share#email" title="Email" aria-label="Compartilhar por email">
+        <i class="bi bi-envelope-fill"></i>
+      </button>
+      <button type="button" class="broker-share__action broker-share__action--x" data-action="click->broker-share#twitter" title="X/Twitter" aria-label="Compartilhar no X">
+        <i class="bi bi-twitter-x"></i>
+      </button>
+      <button type="button" class="broker-share__action broker-share__action--facebook" data-action="click->broker-share#facebook" title="Facebook" aria-label="Compartilhar no Facebook">
+        <i class="bi bi-facebook"></i>
+      </button>
+      <button type="button" class="broker-share__action broker-share__action--link" data-action="click->broker-share#copy" title="Copiar link" aria-label="Copiar link">
+        <i class="bi bi-link-45deg"></i>
+      </button>
+    </div>
+
+    <button type="button"
+            class="broker-share__native"
+            data-action="click->broker-share#shareNative">
+      <i class="bi bi-send-fill"></i>
+      Compartilhar (nativo)
+    </button>
+
+    <p class="broker-share__status hidden d-none" data-broker-share-target="status"></p>
+  </div>
+</div>

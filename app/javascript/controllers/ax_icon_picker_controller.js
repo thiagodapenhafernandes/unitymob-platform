@@ -1,11 +1,20 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["input", "preview"]
+  static targets = ["input", "preview", "dialog"]
+  open() { this.pendingIcon = this.inputTarget.value; this.updateSelection(); this.dialogTarget.showModal() }
+  close() { this.dialogTarget.close() }
   choose(event) {
-    this.inputTarget.value = event.currentTarget.dataset.icon
+    this.pendingIcon = event.currentTarget.dataset.icon
+    this.updateSelection()
+  }
+  updateSelection() {
+    this.element.querySelectorAll("[data-icon]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.icon === this.pendingIcon)))
+  }
+  apply() {
+    this.inputTarget.value = this.pendingIcon
     this.previewTarget.className = `bi bi-${this.inputTarget.value || "slash-circle"}`
-    this.element.querySelector("details").open = false
+    this.close()
     this.inputTarget.dispatchEvent(new Event("change", { bubbles: true }))
   }
   filter(event) {

@@ -35,7 +35,7 @@ class Tenant < ApplicationRecord
       description: "Usa os mesmos componentes públicos com uma expressão visual própria para a Conexão.",
       tenant_slugs: ["conexao", "conexaoimobiliaria"],
       variant: "default",
-      components: DEFAULT_THEME_COMPONENTS
+      components: DEFAULT_THEME_COMPONENTS.merge(property_card: "public_theme/components/conexao_property_card")
     },
     "salute_luxury" => {
       label: "Salute Imóveis - Luxury",

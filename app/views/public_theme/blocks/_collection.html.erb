@@ -1,20 +1,21 @@
-<% items = Array(block.value(:items)).reject { |item| !@preview_mode && item.except("row_key", "remove_image").values.all?(&:blank?) } %>
+<% items = Array(block.value(:items)).reject { |item| !@preview_mode && item.except("row_key", "remove_image", "rating").values.all?(&:blank?) } %>
 <% if items.any? || @preview_mode %>
-<section class="public-theme-block-collection public-theme-block-collection--<%= variant %> is-kind-<%= block.block_type %>" <%= tag.attributes(data: { controller: "public-scroll-carousel" }) if block.value(:layout) == "carousel" %>>
+<section class="public-theme-block-collection public-theme-block-collection--<%= variant %> is-kind-<%= block.block_type %> is-card-<%= block.value(:card_style) || "legacy" %> is-mobile-<%= block.value(:mobile_presentation) || "inherit" %>" <%= tag.attributes(data: { controller: "public-scroll-carousel" }) if block.value(:layout) == "carousel" || block.value(:mobile_presentation) == "carousel" %>>
   <div class="container-custom">
-    <% if block.value(:heading).present? %><h2 class="public-theme-block-collection__heading"><%= block.value(:heading) %></h2><% end %>
-    <% if block.value(:subtitle).present? %><p class="public-theme-block-collection__intro"><%= block.value(:subtitle) %></p><% end %>
+    <% if block.value(:heading).present? %><h2 data-element-field="heading" style="<%= landing_page_action_color_style(block.data, "element_heading") %>" class="public-theme-block-collection__heading"><%= block.value(:heading) %></h2><% end %>
+    <% if block.value(:subtitle).present? %><p data-element-field="subtitle" style="<%= landing_page_action_color_style(block.data, "element_subtitle") %>" class="public-theme-block-collection__intro"><%= block.value(:subtitle) %></p><% end %>
     <% if items.empty? %><p>Adicione os itens deste bloco no editor.</p><% end %>
-    <% if block.value(:layout) == "carousel" %>
-      <div class="public-theme-block-collection__controls">
+    <% if block.value(:layout) == "carousel" || block.value(:mobile_presentation) == "carousel" %>
+      <div class="public-theme-block-collection__controls<%= " is-mobile-only" unless block.value(:layout) == "carousel" %>">
         <button type="button" aria-label="Itens anteriores" data-action="public-scroll-carousel#move" data-direction="-1"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
         <button type="button" aria-label="Próximos itens" data-action="public-scroll-carousel#move" data-direction="1"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
       </div>
     <% end %>
     <div data-public-scroll-carousel-target="track" class="public-theme-block-collection__items has-cols-<%= block.value(:columns) %> is-layout-<%= block.value(:layout) %>"
-         <%= tag.attributes(tabindex: 0, role: "region", "aria-label": block.value(:heading).presence || block.label) if block.value(:layout) == "carousel" %>>
-      <% items.each do |item| %>
-        <article class="public-theme-block-collection__item" data-item-row-key="<%= item["row_key"] %>">
+         <%= tag.attributes(tabindex: 0, role: "region", "aria-label": block.value(:heading).presence || block.label) if block.value(:layout) == "carousel" || block.value(:mobile_presentation) == "carousel" %>>
+      <% items.each_with_index do |item, index| %>
+        <article style="<%= landing_page_action_color_style(item, "") %>" class="public-theme-block-collection__item" data-item-row-key="<%= item["row_key"] %>">
+          <% if block.block_type == "steps" %><span class="public-theme-block-collection__step" aria-hidden="true"><%= format("%02d", index + 1) %></span><% end %>
           <% attachment = item["image_key"].present? ? block.item_image(item) : nil %>
           <% if attachment || item["image"].present? %>
             <% picture = image_tag(attachment ? public_image_url(attachment, **Storage::PublicImageVariants::BUILDER) : item["image"], alt: item["alt"].presence || item["title"], loading: "lazy", decoding: "async", class: "public-theme-block-collection__image") %>
@@ -22,14 +23,17 @@
           <% elsif item["icon"].present? %>
             <i class="bi bi-<%= item["icon"] %> public-theme-block-collection__icon" aria-hidden="true"></i>
           <% end %>
-          <% if item["label"].present? %><p class="public-theme-block-collection__label"><%= item["label"] %></p><% end %>
+          <% if block.block_type == "testimonials" && item["rating"].to_i.positive? %><p class="public-theme-builder-rating" aria-label="<%= item["rating"] %> de 5 estrelas"><span aria-hidden="true"><% item["rating"].to_i.times do %><i class="bi bi-star-fill"></i><% end %></span></p><% end %>
+          <% if block.block_type == "testimonials" && item["initials"].present? %><span class="public-theme-builder-avatar" aria-hidden="true"><%= item["initials"] %></span><% end %>
+          <% if item["badge"].present? %><span style="<%= landing_page_action_color_style(item, "element_badge") %>" class="public-theme-builder-badge"><%= landing_page_icon_label(item["badge"], item["badge_icon"]) %></span><% end %>
+          <% if item["label"].present? %><p style="<%= landing_page_action_color_style(item, "element_label") %>" class="public-theme-block-collection__label"><%= item["label"] %></p><% end %>
           <% if block.block_type == "testimonials" && item["text"].present? %>
-            <blockquote class="public-theme-block-collection__quote"><%= simple_format(item["text"]) %></blockquote>
+            <blockquote style="<%= landing_page_action_color_style(item, "element_text") %>" class="public-theme-block-collection__quote"><%= simple_format(item["text"]) %></blockquote>
           <% end %>
           <% if item["title"].present? %>
-            <h3 class="public-theme-block-collection__title"><%= item["url"].present? ? link_to(item["title"], item["url"]) : item["title"] %></h3>
+            <h3 style="<%= landing_page_action_color_style(item, "element_title") %>" class="public-theme-block-collection__title"><%= item["url"].present? ? link_to(item["title"], item["url"]) : item["title"] %></h3>
           <% end %>
-          <% if item["text"].present? && block.block_type != "testimonials" %><div class="public-theme-block-collection__text"><%= simple_format(item["text"]) %></div><% end %>
+          <% if item["text"].present? && block.block_type != "testimonials" %><div style="<%= landing_page_action_color_style(item, "element_text") %>" class="public-theme-block-collection__text"><%= simple_format(item["text"]) %></div><% end %>
         </article>
       <% end %>
     </div>
