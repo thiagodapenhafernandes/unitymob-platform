@@ -157,7 +157,7 @@ class Profile < ApplicationRecord
     { key: "data_export_audit",  label: "Auditoria de Exportações", icon: "bi-file-earmark-arrow-down", actions: %w[view],     scopeable: true,  parent_section: "conta", description: "Exportações CSV, relatórios e impressões de dados" },
     { key: "access_security",    label: "Segurança de Acesso",    icon: "bi-fingerprint",      actions: %w[manage],            scopeable: true,  parent_section: "conta", description: "Regras de IP permitido, IP bloqueado e aparelhos confiáveis" },
     { key: "field_settings",     label: "Configurações de Campo", icon: "bi-toggles2",         actions: %w[manage],            scopeable: false, parent_section: "configuracoes", description: "Liga/desliga módulo de presença em campo" },
-    { key: "proprietarios",      label: "Proprietários",          icon: "bi-person-vcard",     actions: %w[view manage],       scopeable: false, sidebar_section: "management", sidebar_actions: %w[view], sidebar_items: [
+    { key: "proprietarios",      label: "Proprietários",          icon: "bi-person-vcard",     actions: %w[view manage delete], scopeable: false, sidebar_section: "management", sidebar_actions: %w[view], sidebar_items: [
       { label: "Proprietários", icon: "bi-person-vcard", path: "admin_proprietors_path", controllers: %w[proprietors] }
     ], description: "Cadastro de proprietários" },
     { key: "corretores",         label: "Corretores",             icon: "bi-people",           actions: %w[view manage sync], scopeable: false, sidebar_section: "management", sidebar_actions: %w[manage], sidebar_items: [

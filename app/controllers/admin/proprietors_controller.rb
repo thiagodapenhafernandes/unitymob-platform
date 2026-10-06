@@ -1,8 +1,9 @@
 module Admin
   class ProprietorsController < BaseController
     require "csv"
-    requires_permission :view, :proprietarios, except: %i[quick_search quick_create quick_update]
-    requires_permission :manage, :proprietarios, only: %i[new create edit update destroy]
+    requires_permission :view, :proprietarios, except: %i[quick_search quick_create quick_update transfer_options]
+    requires_permission :manage, :proprietarios, only: %i[new create edit update]
+    helper_method :can_destroy_proprietor?
     before_action :authorize_quick_proprietor_access!, only: %i[quick_search quick_create quick_update]
     before_action :set_quick_proprietor, only: %i[quick_update]
 
@@ -190,6 +191,22 @@ module Admin
       }
     end
 
+    def transfer_options
+      unless can_destroy_proprietor?
+        return render json: { errors: ["Você não tem permissão para excluir proprietários."] }, status: :forbidden
+      end
+
+      query = params[:q].to_s.strip
+      proprietors =
+        if query.length >= 2
+          quick_search_text_scope(current_tenant.proprietors, query).distinct.order(:name).limit(12)
+        else
+          current_tenant.proprietors.none
+        end
+
+      render json: proprietors.map { |proprietor| { value: proprietor.id, text: proprietor.select_label } }
+    end
+
     def quick_create
       permitted = quick_proprietor_params
       missing = []
@@ -197,6 +214,7 @@ module Admin
       missing << "Telefone é obrigatório." if permitted[:phone_primary].blank?
       missing << "Cidade é obrigatória." if permitted[:city].blank?
       missing << quick_phone_error(permitted[:phone_primary]) if permitted[:phone_primary].present?
+      missing << quick_phone_error(permitted[:mobile_phone]) if permitted[:mobile_phone].present?
       missing.compact!
       return render json: { errors: missing }, status: :unprocessable_entity if missing.any?
 
@@ -228,8 +246,10 @@ module Admin
 
     def quick_update
       attributes = quick_update_attributes
-      phone_error = quick_phone_error(attributes[:phone_primary]) if attributes[:phone_primary].present?
-      return render json: { errors: [phone_error] }, status: :unprocessable_entity if phone_error.present?
+      phone_errors = %i[phone_primary mobile_phone].filter_map do |field|
+        quick_phone_error(attributes[field]) if attributes[field].present?
+      end
+      return render json: { errors: phone_errors }, status: :unprocessable_entity if phone_errors.any?
 
       if (duplicate = duplicate_quick_proprietor_for(attributes))
         render json: {
@@ -253,11 +273,39 @@ module Admin
     end
 
     def destroy
-      @proprietor.destroy
-      redirect_to admin_proprietors_path, notice: "Proprietário excluído com sucesso."
+      unless can_destroy_proprietor?
+        redirect_to admin_proprietors_path, alert: "Você não tem permissão para excluir proprietários."
+        return
+      end
+
+      if @proprietor.vista_code.present?
+        redirect_to admin_proprietors_path, alert: "Este proprietário é sincronizado pela Vista e não pode ser excluído por aqui."
+        return
+      end
+
+      if @proprietor.habitations.exists?
+        target = current_tenant.proprietors.where.not(id: @proprietor.id).find_by(id: params[:transfer_to_id])
+        if target.nil?
+          redirect_to admin_proprietors_path, alert: "Este proprietário tem imóveis vinculados. Escolha outro proprietário para recebê-los."
+          return
+        end
+
+        result = Proprietors::TransferAndDeleter.call(proprietor: @proprietor, target: target)
+        redirect_to admin_proprietors_path,
+                    notice: "Proprietário excluído. #{result.habitations_count} #{'imóvel'.pluralize(result.habitations_count)} transferidos para #{target.name}."
+      else
+        @proprietor.destroy!
+        redirect_to admin_proprietors_path, notice: "Proprietário excluído com sucesso."
+      end
+    rescue Proprietors::TransferAndDeleter::Error, ActiveRecord::RecordNotDestroyed, ActiveRecord::InvalidForeignKey => e
+      redirect_to admin_proprietors_path, alert: "Não foi possível excluir o proprietário: #{e.message.to_s.truncate(300)}"
     end
 
     private
+
+    def can_destroy_proprietor?
+      can?(:delete, :proprietarios)
+    end
 
     def set_proprietor
       @proprietor = current_tenant.proprietors.find_by(id: params[:id])
@@ -332,6 +380,7 @@ module Admin
         :name,
         :email,
         :phone_primary,
+        :mobile_phone,
         :city
       )
     end
@@ -342,12 +391,14 @@ module Admin
       if @complete_unlinked_proprietor
         attributes = permitted.slice(:email, :city).select { |attribute, _| @proprietor.public_send(attribute).blank? }
         attributes[:phone_primary] = permitted[:phone_primary] if permitted[:phone_primary].present? && quick_proprietor_phone_blank?(@proprietor)
+        attributes[:mobile_phone] = permitted[:mobile_phone] if permitted[:mobile_phone].present? && @proprietor.mobile_phone.blank?
         return attributes
       end
       return permitted if admin_or_administrative_user? || quick_property_owner_permission?
 
       attributes = permitted.slice(:email, :city)
       attributes[:phone_primary] = permitted[:phone_primary] if permitted[:phone_primary].present? && quick_proprietor_phone_blank?(@proprietor)
+      attributes[:mobile_phone] = permitted[:mobile_phone] if permitted[:mobile_phone].present? && @proprietor.mobile_phone.blank?
       attributes
     end
 
@@ -435,7 +486,9 @@ module Admin
     end
 
     def quick_brazilian_national_digits(digits)
-      return digits.delete_prefix(Phones::Normalizer::BRAZIL_COUNTRY_CODE) if digits.start_with?(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
+      if digits.start_with?(Phones::Normalizer::BRAZIL_COUNTRY_CODE) && [12, 13].include?(digits.length)
+        return digits.delete_prefix(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
+      end
 
       digits
     end

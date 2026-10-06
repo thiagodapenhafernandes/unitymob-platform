@@ -1,0 +1,23 @@
+<%# locals: proprietor, linked_count %>
+<% if linked_count.positive? %>
+  <%= ax_icon_button(
+        label: "Excluir proprietário #{proprietor.name}",
+        icon: "trash",
+        variant: :danger,
+        data: {
+          controller: "reassign-delete",
+          ax_modal_open: "#transferDeleteProprietorModal",
+          reassign_delete_trigger: true,
+          action: "click->reassign-delete#prepare",
+          url: admin_proprietor_path(proprietor),
+          user_id: proprietor.id,
+          user_name: proprietor.name,
+          linked_summary: "#{linked_count} #{'imóvel'.pluralize(linked_count)} vinculados serão transferidos."
+        }
+      ) %>
+<% else %>
+  <%= button_to admin_proprietor_path(proprietor), method: :delete, form_class: "tw-inline",
+        class: "ax-ico-btn", title: "Excluir proprietário #{proprietor.name}",
+        aria: { label: "Excluir proprietário #{proprietor.name}" },
+        data: { turbo_confirm: "Excluir o proprietário #{proprietor.name}? Esta ação não pode ser desfeita." } do %><i class="bi bi-trash" aria-hidden="true"></i><% end %>
+<% end %>

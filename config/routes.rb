@@ -83,6 +83,7 @@ Rails.application.routes.draw do
         get :print
         get :export
         get :quick_search
+        get :transfer_options
         post :quick_create
       end
     end

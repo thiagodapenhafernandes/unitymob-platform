@@ -104,13 +104,14 @@ export default class extends Controller {
     if (!event.detail) return
 
     const rawValue = this.element.value.toString()
-    const validNumber = Boolean(this.iti?.isValidNumber())
+    const validNumber = this.safeIsValidNumber()
 
     event.detail.rawValue = rawValue
     event.detail.digits = rawValue.replace(/\D/g, "")
     event.detail.countryIso2 = this.selectedCountryIso2()
+    event.detail.dialCode = this.selectedCountryDialCode()
     event.detail.isValidNumber = validNumber
-    event.detail.e164 = validNumber ? this.iti.getNumber() : ""
+    event.detail.e164 = this.bestEffortE164(rawValue)
     event.detail.normalized = this.normalizeForAjax(rawValue)
   }
 
@@ -152,11 +153,14 @@ export default class extends Controller {
     const normalizedDigits = this.normalizeBrazilianMobileDigits(digits)
     const selectedCountry = this.selectedCountryIso2()
 
-    if (selectedCountry !== "br" && this.iti?.isValidNumber()) {
-      return this.iti.getNumber().replace(/\D/g, "")
+    if (selectedCountry !== "br" && this.iti) {
+      const e164 = this.bestEffortE164(rawValue)
+      if (e164) return e164
     }
 
-    if (rawValue.startsWith("+")) return normalizedDigits
+    if (rawValue.startsWith("+")) {
+      return normalizedDigits.startsWith("55") ? normalizedDigits : `+${normalizedDigits}`
+    }
 
     if (selectedCountry === "br") {
       if (normalizedDigits.startsWith("55") && [12, 13].includes(normalizedDigits.length)) return normalizedDigits
@@ -168,11 +172,44 @@ export default class extends Controller {
 
   normalizeForAjax(value) {
     const selectedCountry = this.selectedCountryIso2()
-    if (selectedCountry !== "br" && this.iti?.isValidNumber()) {
-      return this.iti.getNumber()
+    if (selectedCountry !== "br" && this.iti) {
+      const e164 = this.bestEffortE164(value)
+      if (e164) return e164
     }
 
     return this.normalizeForSubmit(value)
+  }
+
+  bestEffortE164(rawValue) {
+    if (!this.iti) return ""
+
+    try {
+      const number = this.iti.getNumber()
+      if (number && String(number).trim().startsWith("+")) return String(number).trim()
+    } catch (_error) {
+      // utils.js indisponível: monta o E.164 a partir do DDI selecionado.
+    }
+
+    if (this.selectedCountryIso2() === "br") return ""
+
+    return this.joinDialCode(rawValue ?? this.element.value, this.selectedCountryDialCode())
+  }
+
+  joinDialCode(nationalValue, dialCode) {
+    const digits = String(nationalValue ?? "").replace(/\D/g, "").replace(/^0+/, "")
+    const code = String(dialCode ?? "").replace(/\D/g, "")
+    if (!digits || !code) return ""
+
+    const withoutCode = digits.startsWith(code) && digits.length - code.length >= 7 ? digits.slice(code.length) : digits
+    return `+${code}${withoutCode}`
+  }
+
+  safeIsValidNumber() {
+    try {
+      return Boolean(this.iti?.isValidNumber?.())
+    } catch (_error) {
+      return false
+    }
   }
 
   applyDisplayMask() {
@@ -203,6 +240,14 @@ export default class extends Controller {
 
   selectedCountryIso2() {
     return this.iti?.getSelectedCountryData()?.iso2 || this.initialCountryValue
+  }
+
+  selectedCountryDialCode() {
+    try {
+      return String(this.iti?.getSelectedCountryData()?.dialCode || "").replace(/\D/g, "")
+    } catch (_error) {
+      return ""
+    }
   }
 
   findInputGroup() {

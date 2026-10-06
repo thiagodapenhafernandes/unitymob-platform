@@ -74,7 +74,11 @@ class Proprietor < ApplicationRecord
   }, prefix: true
 
   has_many :habitations, dependent: :nullify
-  has_one_attached :profile_image
+  has_many :client_interactions, dependent: :nullify
+  has_many :client_property_interests, dependent: :nullify
+  has_many :crm_appointments, dependent: :nullify
+  has_many :habitation_interactions, dependent: :nullify
+  has_one_attached :profile_image, dependent: :purge_later
 
   validates :name, presence: true
   normalize_phone_fields :phone_primary, :mobile_phone, :residential_phone, :business_phone, :spouse_phone
