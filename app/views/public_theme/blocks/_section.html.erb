@@ -1,23 +1,24 @@
 <% columns = block.value(:columns).to_i.clamp(1, 3) %>
 <section class="public-theme-block-section public-theme-block-section--<%= variant %> is-background-<%= block.value(:background) %> is-spacing-<%= block.value(:spacing) %>">
   <div class="container-custom">
-    <% if block.value(:heading).present? || block.value(:subtitle).present? || @preview_mode %>
-    <header class="public-theme-block-section__head<%= " lp-preview-block" if @preview_mode %>" <%= tag.attributes(data: { block_position: block.position }) if @preview_mode %>>
-      <% if block.value(:heading).present? %><h2><%= block.value(:heading) %></h2><% elsif @preview_mode %><p>Seção · <%= columns %> coluna(s)</p><% end %>
-      <% if block.value(:subtitle).present? %><p><%= block.value(:subtitle) %></p><% end %>
+    <% if block.value(:heading).present? || block.value(:subtitle).present? || block.value(:eyebrow).present? %>
+    <header class="public-theme-block-section__head<%= " has-heading-rule" if block.value(:heading_rule) %>">
+      <% if block.value(:eyebrow).present? %><span data-element-field="eyebrow" style="<%= landing_page_action_color_style(block.data, "element_eyebrow") %>" class="public-theme-builder-eyebrow"><%= block.value(:eyebrow) %></span><% end %>
+      <% if block.value(:heading).present? %><h2 data-element-field="heading" style="<%= landing_page_action_color_style(block.data, "element_heading") %>"><%= block.value(:heading) %></h2><% end %>
+      <% if block.value(:subtitle).present? %><p data-element-field="subtitle" style="<%= landing_page_action_color_style(block.data, "element_subtitle") %>"><%= block.value(:subtitle) %></p><% end %>
     </header>
     <% end %>
     <% blocks.chunk_while { |a, b| a.value(:layout_width) != 'page' && b.value(:layout_width) != 'page' }.to_a.presence.to_a.then { |rows| rows.empty? ? [[]] : rows }.each do |row| %>
     <% if row.first&.value(:layout_width) == 'page' %>
       <% child = row.first; rendered = landing_page_block(child, page: page, variant: variant, showcases: showcases) %>
-      <%= @preview_mode ? tag.div(rendered, class: "lp-preview-block", data: { block_position: child.position }) : rendered %>
+      <%= rendered %>
     <% else %>
-    <div class="public-theme-block-section__grid has-cols-<%= columns %> is-ratio-<%= block.value(:ratio) %> is-align-<%= block.value(:align) %>">
+    <div class="public-theme-block-section__grid has-cols-<%= columns %> is-ratio-<%= block.value(:ratio) %> is-mobile-order-<%= block.value(:mobile_order) %> is-align-<%= block.value(:align) %>">
       <% (1..columns).each do |column| %>
         <div class="public-theme-block-section__column" data-section-column="<%= column %>" data-section-position="<%= block.position %>">
           <% row.select { |child| child.value(:column).to_i.clamp(1, columns) == column }.each do |child| %>
             <% rendered = landing_page_block(child, page: page, variant: variant, showcases: showcases) %>
-            <%= @preview_mode ? tag.div(rendered, class: "lp-preview-block", data: { block_position: child.position }) : rendered %>
+            <%= rendered %>
           <% end %>
         </div>
       <% end %>

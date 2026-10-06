@@ -6,5 +6,6 @@ export default class extends Controller {
     const value = Math.max(Number(this.rangeTarget.min), Math.min(Number(this.rangeTarget.max), Number(event.target.value)))
     this.rangeTarget.value = value
     this.numberTarget.value = value
+    if (event.target === this.rangeTarget) this.numberTarget.dispatchEvent(new Event("input", { bubbles: true }))
   }
 }

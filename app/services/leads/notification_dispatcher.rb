@@ -55,6 +55,20 @@ module Leads
               url:   "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
     end
 
+    # Nova consulta da mesma pessoa dentro do tempo de atendimento: agregada
+    # ao lead existente (sem lead novo). Sempre avisa o dono — sem gate de
+    # configuração, pois ele precisa saber do interesse adicional.
+    def self.notify_complement(lead, habitation)
+      owner = lead.admin_user
+      return unless owner&.active?
+
+      property_label = habitation ? "Imóvel #{habitation.codigo}" : "Novo contato"
+      push_to(owner,
+              title: "Novo interesse de #{lead.display_name}",
+              body: "#{property_label} — #{lead.origin} (#{I18n.l(Time.current, format: :short)})",
+              url: "/admin/leads/#{lead.id}/attend", notification_context: "distribution")
+    end
+
     # Avisa o corretor que perdeu o lead por não atender no prazo (pocket).
     def self.notify_lost_turn(lead, previous_corretor)
       return unless LeadSetting.instance.notify_on_lost_turn?

@@ -10,16 +10,16 @@
       <div class="public-landing-page__row has-cols-<%= columns %>">
         <% unit.each do |block| %>
           <% rendered = landing_page_block(block, page: page, variant: variant, showcases: showcases, h1: block.equal?(@blocks.first) && h1_owner != :page) %>
-          <% next if rendered.to_s.strip.empty? && !@preview_mode %>
-          <%= tag.div(rendered, class: "public-landing-page__cell is-span-#{block.span}#{" lp-preview-block" if @preview_mode}", data: { block_position: (block.position if @preview_mode) }) %>
+          <% next if rendered.to_s.strip.empty? && !(@preview_mode && !@standalone_preview) %>
+          <%= tag.div(rendered, class: "public-landing-page__cell is-span-#{block.span}") %>
         <% end %>
       </div>
     </div>
   <% else %>
     <% unit.each do |block| %>
       <% rendered = landing_page_block(block, page: page, variant: variant, showcases: showcases, h1: block.equal?(@blocks.first) && h1_owner != :page) %>
-      <% next if rendered.to_s.strip.empty? && !@preview_mode %>
-      <%= @preview_mode ? tag.div(rendered, class: "lp-preview-block", data: { block_position: block.position }) : rendered %>
+      <% next if rendered.to_s.strip.empty? && !(@preview_mode && !@standalone_preview) %>
+      <%= rendered %>
     <% end %>
   <% end %>
 <% end %>

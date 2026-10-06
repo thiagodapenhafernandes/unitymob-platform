@@ -1,0 +1,279 @@
+<%# Card do imóvel (default) — contrato: família .public-theme-property-card__*
+    (__media, __badges, __price*, __body, __location, __specs, __whatsapp,
+    __opportunity) + data-* de marketing-tracker, lead-capture e favorito.
+    Lista completa em docs/public-theme-contract.md (Contrato v2); cobertura em
+    spec/views/public_theme/property_card_contract_spec.rb. %>
+<% card_tenant = public_tenant %>
+<% property_title = property.display_title %>
+<% property_constructor = property.effective_constructor %>
+<% property_path = public_habitation_detail_path(property) %>
+<% sale_discount = property.sale_discount? %>
+<% rent_discount = property.rent_discount? %>
+<% available_units_count = property.empreendimento? ? property.available_units_count : 0 %>
+<% priority_image = local_assigns.fetch(:priority_image, false) %>
+<%
+  card_cache_key = [
+    "conexao-property-card-original-v1",
+    PublicSite::PageVersion.current(public_tenant.id),
+    public_tenant.id,
+    request.host,
+    property.cache_key_with_version,
+    property_constructor&.cache_key_with_version,
+    current_admin_user.present?,
+    priority_image
+  ]
+%>
+<% cache_if current_admin_user.blank?, card_cache_key, expires_in: 5.minutes do %>
+
+<div class="public-property-card group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col h-full relative cursor-pointer"
+     data-controller="clickable-card"
+     data-clickable-card-url-value="<%= property_path %>"
+     data-property-id="<%= property.id %>">
+
+  <!-- Image Carousel Area -->
+  <div class="public-theme-card__media relative h-[320px] overflow-hidden bg-gray-100">
+    <!-- Badges (Top Left) - Dynamic with max 2 -->
+    <div class="public-theme-card__badges absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
+      <% property.display_badges.each do |badge| %>
+        <% badge_text_class = badge[:tailwind_color].to_s.match?(/\A(yellow|amber)-/) ? "text-blue-three" : "text-white" %>
+        <span class="px-2.5 py-1 bg-<%= badge[:tailwind_color] %> <%= badge_text_class %> text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.12)] border border-white/25">
+          <%= badge[:text] %>
+        </span>
+      <% end %>
+    </div>
+
+    <!-- Code & Constructor Badge (Top Right) -->
+    <div class="public-theme-card__code absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
+      <span class="px-2.5 py-1.5 bg-white/60 backdrop-blur-md text-blue-three text-[10px] font-bold rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.1)] border border-white/50">
+        <%= property.codigo %>
+      </span>
+
+    <% if property_constructor&.favicon_url.present? %>
+      <div class="w-8 h-8 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100 flex items-center justify-center transition-transform hover:scale-110" title="<%= property_constructor.name %>">
+        <img src="<%= property_constructor.favicon_url %>"
+             alt="<%= property_constructor.name %>"
+             class="w-full h-full object-contain filter grayscale hover:grayscale-0 transition-all">
+      </div>
+    <% end %>
+
+      <div class="z-30">
+        <%= render "public_theme/components/conexao_share_menu", property: property %>
+      </div>
+    </div>
+
+    <!-- Development Units Badge (Bottom Left) -->
+    <% if available_units_count > 0 %>
+      <div class="absolute bottom-3 left-3 z-20">
+        <span class="px-3 py-1.5 bg-blue-three text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5">
+          <i class="bi bi-building"></i>
+          <%= available_units_count %> <%= available_units_count == 1 ? 'unidade' : 'unidades' %>
+        </span>
+      </div>
+    <% end %>
+
+
+    <!-- Swiper for Images -->
+    <div class="swiper card-swiper h-full w-full"
+         data-controller="card-swiper"
+         data-card-swiper-priority-value="<%= priority_image %>"
+         style="overflow: hidden !important;">
+      <div class="swiper-wrapper" style="display: flex !important; width: 100% !important;">
+        <% card_images = property.card_image_sources(3).filter_map do |pic|
+             url = public_image_url(pic, resize_to_fill: [720, 540], format: :webp).presence
+             { url: url, source: pic } if url
+           end %>
+        <% if card_images.present? %>
+          <% card_images.each_with_index do |card_image, index|
+               image_source = card_image[:url] %>
+            <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
+              <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" %>
+              <% eager_card_image = priority_image && index.zero? %>
+              <% visible_card_image = index.zero? %>
+              <%= image_tag(visible_card_image ? image_source : placeholder,
+                    alt: property_title,
+                    width: 640,
+                    height: 480,
+                    class: "w-full h-full object-cover public-theme-property-card__photo",
+                    loading: (eager_card_image ? "eager" : "lazy"),
+                    fetchpriority: (eager_card_image ? "high" : nil),
+                    decoding: "async",
+                    sizes: "(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw",
+                    srcset: (public_image_srcset(card_image[:source], widths: [360, 540, 720], aspect_ratio: 4.0 / 3, crop: true, format: :webp) if visible_card_image),
+                    data: (visible_card_image ? {} : { src: image_source })) %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="swiper-slide">
+            <div class="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
+              <i class="bi bi-image text-4xl"></i>
+            </div>
+          </div>
+        <% end %>
+        <% if public_property_card_settings(card_tenant).card_cta_enabled? %>
+          <div class="swiper-slide w-full aspect-[4/3]" inert style="width: 100% !important; flex-shrink: 0 !important;">
+            <%= render("public_theme/components/card_cta", property_url: property_path, setting: public_property_card_settings(card_tenant), variant: "default", brand_name: card_tenant.name) %>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Navigation (Visible on Hover) -->
+      <button type="button"
+              class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md"
+              style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"
+              aria-label="Ver próxima foto de <%= property_title %>"
+              data-action="pointerdown->card-swiper#keepInside click->card-swiper#keepInside"></button>
+      <button type="button"
+              class="swiper-button-prev !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md"
+              style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"
+              aria-label="Ver foto anterior de <%= property_title %>"
+              data-action="pointerdown->card-swiper#keepInside click->card-swiper#keepInside"></button>
+
+      <!-- Pagination -->
+      <div class="swiper-pagination !bottom-2 !z-30"></div>
+    </div>
+
+    <div class="absolute inset-0 z-[12] pointer-events-none bg-gradient-to-b from-black/10 via-transparent to-black/15"></div>
+
+    <!-- Link Overlay -->
+    <%= link_to "",
+                property_path,
+                class: "absolute inset-0 z-10 pointer-events-none",
+                aria: { label: "Ver detalhes de #{property_title}" },
+                data: {
+                  turbo: false, turbo_frame: "_top",
+                  clickable_card_tracking_link: true,
+                  controller: "marketing-tracker",
+                  action: "click->marketing-tracker#track",
+                  marketing_tracker_event_type_value: "property_card_click",
+                  marketing_tracker_placement_value: "property_card_image",
+                  marketing_tracker_label_value: property_title,
+                  marketing_tracker_target_url_value: property_path,
+                  marketing_tracker_habitation_id_value: property.id
+                } %>
+  </div>
+
+  <!-- Content -->
+  <div class="public-theme-card__body pt-4 px-5 flex flex-col flex-1 <%= (sale_discount || rent_discount) ? 'pb-0' : 'pb-4' %>">
+
+    <!-- Location -->
+    <div class="public-theme-card__location flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
+      <i class="bi bi-geo-alt text-golden-one"></i>
+      <span class="truncate"><%= property.public_location_label %></span>
+    </div>
+
+    <!-- Title -->
+    <div class="mb-3 min-h-[3rem]">
+      <h3 class="public-theme-property-card__title text-base font-bold text-blue-three line-clamp-2 leading-tight group-hover:text-blue-one transition-colors">
+        <%= property_title %>
+      </h3>
+    </div>
+
+    <!-- Price with Discount Indicator -->
+    <%
+      # Determinar se é venda ou aluguel baseado no status
+      is_rental = property.status&.include?('Aluguel')
+      is_sale = property.status&.include?('Venda')
+
+      # Escolher o preço correto
+      current_price = is_rental ? property.valor_locacao_cents : property.valor_venda_cents
+      previous_price = is_rental ? property.valor_locacao_anterior_cents : property.valor_venda_anterior_cents
+    %>
+    <div class="mb-4">
+      <% if previous_price.present? && current_price.present? && previous_price > current_price && current_price.to_f > 0 %>
+        <% desconto_percentual = (((previous_price - current_price).to_f / previous_price) * 100).round %>
+
+        <!-- Preço Anterior Riscado + Badge de Desconto -->
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm text-gray-600 line-through font-medium">
+            de <%= number_to_currency(previous_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
+          </span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-700 text-white text-xs font-bold rounded">
+            <i class="bi bi-arrow-down"></i>
+            <%= desconto_percentual %>%
+          </span>
+        </div>
+
+        <!-- Preço Atual Destacado -->
+        <div class="flex items-center justify-between">
+          <p class="text-xl font-bold text-gray-800">
+            Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
+          </p>
+          <button type="button"
+                  class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
+                  data-action="click->marketing-tracker#track click->lead-capture#open"
+                  data-controller="marketing-tracker"
+                  data-marketing-tracker-event-type-value="whatsapp_click"
+                  data-marketing-tracker-placement-value="property_card"
+                  data-marketing-tracker-label-value="<%= property_title %>"
+                  data-marketing-tracker-target-url-value="<%= property_path %>"
+                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
+                  data-property-id="<%= property.id %>"
+                  data-property-code="<%= property.codigo %>"
+                  data-property-title="<%= property_title %>"
+                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
+                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  title="Falar no WhatsApp"
+                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
+            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i>
+          </button>
+        </div>
+      <% else %>
+        <!-- Preço Normal -->
+        <div class="flex items-center justify-between">
+          <p class="text-lg font-bold text-gray-800">
+            <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
+          </p>
+          <button type="button"
+                  class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
+                  data-action="click->marketing-tracker#track click->lead-capture#open"
+                  data-controller="marketing-tracker"
+                  data-marketing-tracker-event-type-value="whatsapp_click"
+                  data-marketing-tracker-placement-value="property_card"
+                  data-marketing-tracker-label-value="<%= property_title %>"
+                  data-marketing-tracker-target-url-value="<%= property_path %>"
+                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
+                  data-property-id="<%= property.id %>"
+                  data-property-code="<%= property.codigo %>"
+                  data-property-title="<%= property_title %>"
+                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
+                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  title="Falar no WhatsApp"
+                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
+            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i>
+          </button>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Features Grid -->
+    <%
+      area_label = property.card_area_text
+      vagas_label = property.card_vagas_text
+      dorms_label = property.card_dormitorios_text
+    %>
+    <div class="public-theme-card__specs grid grid-cols-3 gap-2 mt-auto mb-4 border-t border-gray-100 pt-4">
+      <div class="public-theme-card__spec flex flex-col items-center justify-center text-center">
+        <i class="bi bi-arrows-fullscreen text-golden-one text-xl mb-1"></i>
+        <span class="text-xs text-gray-500 font-medium"><%= area_label.presence || "—" %></span>
+      </div>
+      <div class="public-theme-card__spec flex flex-col items-center justify-center text-center border-l border-gray-100">
+        <i class="bi bi-car-front text-golden-one text-xl mb-1"></i>
+        <span class="text-xs text-gray-500 font-medium"><%= vagas_label.present? ? "#{vagas_label} #{vagas_label == "1" ? "Vaga" : "Vagas"}" : "—" %></span>
+      </div>
+      <div class="public-theme-card__spec flex flex-col items-center justify-center text-center border-l border-gray-100">
+        <i class="bi bi-door-closed text-golden-one text-xl mb-1"></i>
+        <span class="text-xs text-gray-500 font-medium"><%= dorms_label.present? ? "#{dorms_label} #{dorms_label == "1" ? "Quarto" : "Quartos"}" : "—" %></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Opportunity Banner (Bottom) - Reduced sale or rent prices -->
+  <% if sale_discount || rent_discount %>
+    <div class="w-full bg-green-700 py-2 px-4 flex items-center justify-center">
+      <span class="text-white text-xs font-bold uppercase tracking-widest"><%= rent_discount ? "LOCAÇÃO COM PREÇO REDUZIDO" : "OPORTUNIDADE" %></span>
+    </div>
+  <% end %>
+
+</div>
+<% end %>

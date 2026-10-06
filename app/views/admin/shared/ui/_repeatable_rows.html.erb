@@ -6,6 +6,7 @@
   columns = fields.map { |field| field[:width] || "minmax(0, 1fr)" }.push("auto").join(" ")
   render_field = lambda do |field, index, value|
     name = "#{input_name}[#{index}][#{field[:key]}]"
+    value = field[:default] if value.nil?
     common = { class: "ax-control", "aria-label": field[:label] }
     case field[:type]&.to_sym
     when :hidden
@@ -14,6 +15,18 @@
       file_field_tag("#{field[:input_name]}[#{index}]", common.merge(accept: "image/png,image/jpeg,image/webp", data: { landing_page_builder_target: "file" }))
     when :select
       select_tag(name, options_for_select(field[:options], value), common.merge(include_blank: field[:placeholder]))
+    when :color
+      render "admin/shared/ui/color_control",
+        color_input: color_field_tag(name, value.presence || "#ffffff", id: "#{name.gsub(/[^a-zA-Z0-9_]/, '_')}_picker", class: "ax-color-control__swatch", "aria-label": "Escolha a cor de #{field[:label]}", data: { ax_color_pair_target: "swatch", action: "input->ax-color-pair#sync" }),
+        text_input: text_field_tag(name, value.presence || "#ffffff", class: "ax-color-control__text", spellcheck: false, "aria-label": "#{field[:label]} — hexadecimal", data: { ax_color_pair_target: "text", action: "input->ax-color-pair#sync" })
+    when :range
+      tag.div(data: { controller: "ax-range" }) do
+        range_field_tag(nil, value, min: field[:range].first, max: field[:range].last, "aria-label": field[:label], data: { ax_range_target: "range", action: "input->ax-range#sync" }) +
+        number_field_tag(name, value, common.merge(min: field[:range].first, max: field[:range].last, data: { ax_range_target: "number", action: "input->ax-range#sync" }))
+      end
+    when :rich
+      rich_id = name.gsub(/[^a-zA-Z0-9_]/, "_")
+      rich_text_area_tag(name, value, id: rich_id, input: "#{rich_id}_input")
     when :textarea
       text_area_tag(name, value, common.merge(placeholder: field[:placeholder], rows: 3))
     when :number

@@ -17,6 +17,9 @@ module Leads
     end
 
     def distribute
+      complemented = try_complement
+      return complemented if complemented
+
       rule = find_matching_rule
       return nil unless rule
 
@@ -27,6 +30,11 @@ module Leads
       return nil unless rule
       raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
       return nil unless rule.active?
+
+      # Complemento: mesma pessoa com lead aberto no tempo de atendimento não
+      # gera lead novo — a consulta agrega ao existente e o transitório sai.
+      complemented = try_complement
+      return complemented if complemented
 
       if rule.represamento_active? && inside_holding_hours?(rule)
         @lead.update(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
@@ -122,6 +130,13 @@ module Leads
     end
 
     private
+
+    def try_complement
+      target = Leads::InquiryComplement.dissolve_into_target!(@lead)
+      return nil if target.nil?
+
+      target.distribution_rule || true
+    end
 
     # Atribui o lead ao corretor, registra a atividade, agenda o pocket e dispara
     # as notificações da distribuição normal.

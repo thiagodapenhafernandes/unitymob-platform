@@ -5,6 +5,18 @@ module LandingPages
     Template = Struct.new(:key, :label, :icon, :description, :blocks, keyword_init: true)
 
     ALL = [
+      Template.new(key: "about", label: "Sobre a empresa", icon: "people", description: "História, benefícios, indicadores e contato. Conteúdo de exemplo para editar.", blocks: [
+        { block_type: "cover", data: { design: "split", title: "Seu próximo capítulo começa aqui", subtitle: "Apresente sua empresa em uma frase. Conteúdo de exemplo.", align: "left", button_label: "Fale conosco", button_url: "/contato", secondary_label: "Conheça os imóveis", secondary_url: "/imoveis" } }
+      ] + SectionPresets.blocks("intro", "numbers", "benefits", "testimonials", "cta")),
+      Template.new(key: "announce", label: "Anuncie seu imóvel", icon: "house-add", description: "Benefícios, etapas, perguntas e chamada de contato. Conteúdo de exemplo.", blocks: [
+        { block_type: "cover", data: { title: "Seu imóvel merece uma boa apresentação", subtitle: "Conte como sua equipe ajuda proprietários a vender ou alugar. Exemplo: edite antes de publicar.", button_label: "Quero anunciar", button_url: "/contato", secondary_label: "Como funciona", secondary_url: "#como-funciona" } }
+      ] + SectionPresets.blocks("benefits", "steps").tap { |blocks| blocks.find { |b| b[:block_type] == "section" && b[:data][:heading] == "Como funciona" }[:data][:anchor] = "como-funciona" } + [
+        { block_type: "section", data: { columns: 1, background: "soft", spacing: "wide" } },
+        { block_type: "faq", data: { items: [{ title: "Como começo?", text: "Substitua pela orientação real da sua equipe." }, { title: "Quais informações devo enviar?", text: "Explique quais dados e documentos são necessários." }] } }
+      ] + SectionPresets.blocks("cta")),
+      Template.new(key: "campaign", label: "Campanha", icon: "megaphone", description: "Capa, benefícios, prova social e conversão. Conteúdo de exemplo.", blocks: [
+        { block_type: "cover", data: { title: "Uma oportunidade para seu próximo passo", subtitle: "Apresente aqui sua campanha. Conteúdo de exemplo.", button_label: "Saiba mais", button_url: "/contato", align: "left" } }
+      ] + SectionPresets.blocks("benefits", "numbers", "testimonials", "cta")),
       Template.new(
         key: "showcase", label: "Seleção de imóveis", icon: "buildings",
         description: "Lista filtrada com os filtros do visitante. É o modo vitrine de sempre.",

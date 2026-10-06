@@ -1,9 +1,9 @@
 /* Cor = campo de texto com a amostra em uma pastilha à esquerda; mesma altura dos demais controles. */
 .ax-color-control {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  height: var(--ax-form-control-height, 28px);
-  min-height: var(--ax-form-control-height, 28px);
+  grid-template-columns: 44px minmax(0, 1fr);
+  height: max(36px, var(--ax-form-control-height, 28px));
+  min-height: max(36px, var(--ax-form-control-height, 28px));
   overflow: hidden;
   border: 1px solid var(--ax-field-border);
   border-radius: var(--ax-form-control-radius, 7px);
@@ -21,13 +21,12 @@
 }
 
 .ax-color-control__swatch {
-  width: calc(100% + 2px);
-  height: calc(100% + 2px);
+  width: 100%;
+  height: 100%;
   min-height: 0 !important;
-  margin: -1px;
+  margin: 0;
   padding: 0;
   border: 0 !important;
-  border-right: 1px solid var(--ax-field-border) !important;
   border-radius: 0 !important;
   background: var(--ax-control-bg, #fff) !important;
   box-shadow: none !important;
@@ -37,20 +36,24 @@
 }
 
 .ax-color-field.ax-field input[type="color"] {
-  margin: -1px;
+  margin: 0;
   padding: 0;
 }
 
 /* A pastilha ganha contorno próprio: branco sobre branco continua visível. */
 .ax-color-control__swatch::-webkit-color-swatch-wrapper {
   height: 100%;
-  padding: 5px 5px 5px 6px;
+  padding: 7px 9px;
 }
 
-.ax-color-control__swatch::-webkit-color-swatch,
+.ax-color-control__swatch::-webkit-color-swatch {
+  border: 1px solid color-mix(in srgb, var(--ab-ink, #1f2733) 22%, transparent);
+  border-radius: 6px;
+}
+
 .ax-color-control__swatch::-moz-color-swatch {
   border: 1px solid color-mix(in srgb, var(--ab-ink, #1f2733) 22%, transparent);
-  border-radius: 5px;
+  border-radius: 6px;
 }
 
 .ax-color-control__text {
@@ -63,10 +66,10 @@
   border-radius: 0 !important;
   background: var(--ax-control-bg, #fff) !important;
   color: var(--admin-ink);
-  font-family: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: .02em;
   text-transform: uppercase;
   box-shadow: none !important;

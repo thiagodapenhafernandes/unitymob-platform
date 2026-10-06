@@ -233,7 +233,7 @@
           <div class="public-development-show__units-grid grid grid-cols-1 md:grid-cols-2 gap-6">
             <% @development_units.each_with_index do |unit, index| %>
               <div data-public-progressive-reveal-target="item"<%= " hidden".html_safe if index >= units_initial_batch %>>
-                <%= render 'shared/tailwind/property_card', property: unit, priority_image: index < 2 %>
+                <%= render theme_component_path(:property_card), property: unit, priority_image: index < 2 %>
               </div>
             <% end %>
           </div>

@@ -1,7 +1,7 @@
 <% if (form = block.public_form) %>
   <section class="public-theme-block-form public-theme-block-form--<%= variant %> py-8">
     <div class="container-custom">
-      <%= render "shared/public_form_modal", form: form, trigger: false, inline: true, form_dom_id: "block-#{block.id || block.position}" %>
+      <%= render "shared/public_form_modal", form: form, trigger: false, inline: true, form_dom_id: "block-#{block.id || block.position}", whatsapp_url: block.value(:whatsapp_url), badge: block.value(:badge), badge_icon: block.value(:badge_icon), editorial: block.value(:form_style) == "editorial" %>
     </div>
   </section>
 <% elsif @preview_mode %>

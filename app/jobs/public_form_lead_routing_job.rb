@@ -30,6 +30,10 @@ class PublicFormLeadRoutingJob < ApplicationJob
         )
         lead.skip_automatic_routing = true
         lead.save!
+        if rule.active? && (complement_target = Leads::InquiryComplement.dissolve_into_target!(lead))
+          submission.update!(lead_id: complement_target.id)
+          return
+        end
         lead.activities.create!(kind: "received", metadata: { origin: lead.origin })
         Leads::DistributorService.distribute_to(lead, rule) if rule.active?
         Automation::Dispatcher.dispatch(

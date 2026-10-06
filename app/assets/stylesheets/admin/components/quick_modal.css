@@ -199,3 +199,13 @@
   border: 0;
   box-shadow: none;
 }
+
+/* Ícones usam o top layer nativo para sair do overflow do inspector. */
+.ax-icon-picker__dialog:not([open]) { display: none; }
+.ax-icon-picker__dialog[open] { inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; border: 0; padding: 24px; background: transparent; }
+.ax-icon-picker__dialog::backdrop { background: rgb(15 23 42 / .3); }
+.ax-icon-picker__dialog .ax-quick-modal__panel { width: min(560px, 100%); }
+.ax-icon-picker__dialog .ax-icon-picker__grid { max-height: 360px; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.ax-icon-picker__dialog .ax-icon-picker__grid .ax-btn { min-height: 68px; border: 1px solid var(--admin-border, #dbe2ea); font-size: 13px; }
+.ax-icon-picker__dialog .ax-icon-picker__grid .bi { font-size: 22px; }
+.ax-icon-picker__dialog [aria-pressed="true"] { color: var(--admin-primary, #365f8f); background: #edf3fa; border-color: #365f8f !important; }

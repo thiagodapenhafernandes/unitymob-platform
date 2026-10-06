@@ -1,13 +1,21 @@
 <div data-controller="ax-icon-picker" class="ax-icon-picker">
   <%= ax_field_label(form, method, text: label) %>
   <%= form.hidden_field method, data: { ax_icon_picker_target: "input" } %>
-  <details>
-    <summary class="ax-btn ax-btn--secondary"><i data-ax-icon-picker-target="preview" class="bi bi-<%= form.object.public_send(method).presence || 'slash-circle' %>" aria-hidden="true"></i> Escolher ícone</summary>
+  <% modal_id = "#{form.field_id(method)}_icon_dialog" %>
+  <button type="button" class="ax-btn ax-btn--secondary" data-action="ax-icon-picker#open"><i data-ax-icon-picker-target="preview" class="bi bi-<%= form.object.public_send(method).presence || 'slash-circle' %>" aria-hidden="true"></i> Escolher ícone</button>
+  <dialog class="ax-quick-modal ax-icon-picker__dialog" data-ax-icon-picker-target="dialog" aria-label="Escolher ícone">
+    <div class="ax-quick-modal__panel">
+      <header class="ax-quick-modal__header"><h5 class="ax-quick-modal__title">Escolher ícone</h5><button type="button" class="ax-icon-btn" aria-label="Fechar ícones" data-action="ax-icon-picker#close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header>
+      <div class="ax-quick-modal__body">
+
     <input type="search" class="ax-control" placeholder="Buscar ícone" aria-label="Buscar ícone" data-action="input->ax-icon-picker#filter">
     <div class="ax-icon-picker__grid">
       <% { "" => "Sem ícone", "whatsapp" => "WhatsApp", "telephone" => "Telefone", "envelope" => "Email", "chat-dots" => "Conversa", "send" => "Enviar", "house" => "Casa", "buildings" => "Imóveis", "geo-alt" => "Localização", "calendar" => "Agenda", "calendar-check" => "Visita", "camera" => "Fotos", "images" => "Galeria", "play-circle" => "Vídeo", "arrow-right" => "Avançar", "arrow-up-right" => "Abrir", "info-circle" => "Informações", "check-circle" => "Confirmar", "star" => "Destaque", "heart" => "Favorito", "person" => "Pessoa", "people" => "Equipe", "search" => "Buscar", "download" => "Baixar", "file-text" => "Documento", "instagram" => "Instagram", "facebook" => "Facebook", "youtube" => "YouTube", "linkedin" => "LinkedIn", "globe" => "Site" }.each do |icon, title| %>
         <button type="button" class="ax-btn ax-btn--ghost" title="<%= title %>" aria-label="<%= title %>" data-icon="<%= icon %>" data-search="<%= title.downcase %> <%= icon %>" data-action="ax-icon-picker#choose"><i class="bi bi-<%= icon.presence || 'slash-circle' %>" aria-hidden="true"></i><span><%= title %></span></button>
       <% end %>
     </div>
-  </details>
+      </div>
+      <footer class="ax-quick-modal__footer"><button type="button" class="ax-btn ax-btn--secondary" data-action="ax-icon-picker#close">Cancelar</button><button type="button" class="ax-btn ax-btn--primary" data-action="ax-icon-picker#apply">Usar ícone</button></footer>
+    </div>
+  </dialog>
 </div>

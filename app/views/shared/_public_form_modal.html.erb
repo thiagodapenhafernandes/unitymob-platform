@@ -1,8 +1,8 @@
 <% inline = local_assigns.fetch(:inline, false) %>
 <% form_dom_id = local_assigns.fetch(:form_dom_id, form.id) %>
 <% preview = local_assigns.fetch(:preview, false) %>
-<div <%= tag.attributes(data: { controller: ("public-form-modal" unless preview), public_form_modal_success_message_value: form.success_message }) %>
-     class="public-form-modal<%= " public-form-modal--inline" if inline %>">
+<div <%= tag.attributes(data: { controller: ("public-form-modal" unless preview), public_form_modal_success_message_value: form.success_message, public_form_modal_whatsapp_url_value: local_assigns[:whatsapp_url] }) %>
+     class="public-form-modal<%= " public-form-modal--editorial" if local_assigns[:editorial] %><%= " public-form-modal--inline" if inline %>">
   <% if local_assigns.fetch(:trigger, true) %>
     <button type="button"
             class="<%= trigger_class %>"
@@ -92,6 +92,10 @@
 
           <div class="public-form-modal__feedback" data-public-form-modal-target="feedback" hidden></div>
 
+          <% if local_assigns[:whatsapp_url].to_s.match?(%r{\Ahttps://wa\.me/[0-9]+(?:\?.*)?\z}) %>
+            <button type="button" <%= "disabled" if inline && @preview_mode %> class="public-form-modal__submit public-form-modal__submit--whatsapp" data-action="public-form-modal#whatsapp"><i class="bi bi-whatsapp" aria-hidden="true"></i> Enviar pelo WhatsApp</button>
+          <% end %>
+          <% if local_assigns[:badge].present? %><span class="public-theme-builder-badge"><%= landing_page_icon_label(local_assigns[:badge], local_assigns[:badge_icon]) %></span><% end %>
           <button type="submit" <%= "disabled" if inline && @preview_mode %> class="public-form-modal__submit" data-public-form-modal-target="submit" <%= public_form_edit_attrs(preview, "submit", bind: "public_form[submit_label]", mode: "text") %><%= tag.attributes(data: { edit_text: ("span" if preview) }) %>>
             <span><%= form.submit_label %></span>
             <i class="bi bi-arrow-right" aria-hidden="true"></i>

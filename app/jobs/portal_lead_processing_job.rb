@@ -92,6 +92,10 @@ class PortalLeadProcessingJob < ApplicationJob
         "processed_at" => Time.current
       )
     )
+    if record.destroyed? && record.complemented_into_id.present?
+      Rails.logger.info "[PortalLeadProcessingJob] Lead #{lead[:origin_lead_id]} agregada ao lead #{record.complemented_into_id} (tenant #{tenant.id})."
+      return :complemented
+    end
     record.property_interests.find_or_create_by!(habitation: property) { |interest| interest.tenant = tenant }
     Rails.logger.info "[PortalLeadProcessingJob] Lead #{lead[:origin_lead_id]} criado no tenant #{tenant.id} (lead #{record.id})."
   rescue ActiveRecord::RecordNotUnique

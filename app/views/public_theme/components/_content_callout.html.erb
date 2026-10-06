@@ -1,0 +1,14 @@
+<div style="<%= [landing_page_action_color_style(data, ""), landing_page_action_color_style(data, "block")].compact.join(";") %>" class="public-theme-content-callout public-theme-content-callout--<%= variant %> is-align-<%= data['align'].presence || 'left' %>">
+  <% if data['icon'].present? %><i class="bi bi-<%= data['icon'] %> public-theme-content-callout__icon" aria-hidden="true"></i><% end %>
+  <div class="public-theme-content-callout__body">
+    <% if data['heading'].present? %><%= content_tag(local_assigns.fetch(:heading_tag, :h2), data['heading'], class: "public-theme-content-callout__heading", data: { element_field: local_assigns.fetch(:heading_field, "heading") }, style: landing_page_action_color_style(data, "element_#{local_assigns.fetch(:heading_field, 'heading')}")) %><% end %>
+    <% if data['text'].present? %><div data-element-field="text" style="<%= landing_page_action_color_style(data, "element_text") %>" class="public-theme-content-callout__text"><%= simple_format(data['text']) %></div><% end %>
+    <% if data['badge'].present? %><span data-element-field="badge" style="<%= landing_page_action_color_style(data, "element_badge") %>" class="public-theme-builder-badge"><%= landing_page_icon_label(data['badge'], data['badge_icon']) %></span><% end %>
+    <% if data['button_url'].present? || data['secondary_url'].present? %>
+      <div class="public-theme-content-callout__actions">
+        <% if data['button_url'].present? && data['button_label'].present? %><%= link_to landing_page_icon_label(data['button_label'], data['button_icon']), data['button_url'], style: landing_page_action_color_style(data), class: 'public-theme-content-callout__button' %><% end %>
+        <% if data['secondary_url'].present? && data['secondary_label'].present? %><%= link_to landing_page_icon_label(data['secondary_label'], data['secondary_icon']), data['secondary_url'], style: landing_page_action_color_style(data, 'secondary'), class: 'public-theme-content-callout__button public-theme-content-callout__button--secondary' %><% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

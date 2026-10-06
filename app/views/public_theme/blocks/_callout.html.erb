@@ -1,0 +1,6 @@
+<% if @preview_mode || %w[heading text badge button_label secondary_label].any? { |key| block.data[key].present? } %>
+<section class="public-theme-block-callout public-theme-block-callout--<%= variant %>">
+  <div class="container-custom"><%= render 'public_theme/components/content_callout', data: block.data, variant: variant %></div>
+<%= render "public_theme/blocks/labels", block: block %>
+</section>
+<% end %>

@@ -37,7 +37,13 @@ class LeadsController < ApplicationController
       end
     end
 
-    if @lead.persisted?
+    if @lead.destroyed? && @lead.complemented_into_id.present?
+      @lead = @lead.complemented_target || @lead
+      business_type = lead_business_type(habitation)
+      after_lead_complemented(habitation, business_type)
+
+      render json: lead_success_response(business_type, habitation:)
+    elsif @lead.persisted?
       habitation ||= public_tenant.habitations.find_by(id: @lead.property_id)
       business_type = lead_business_type(habitation)
       after_lead_created(habitation, business_type) if saved_new_lead
@@ -89,6 +95,26 @@ class LeadsController < ApplicationController
 
     whatsapp_message = contact_setting.property_whatsapp_message_for(business_type, lead: @lead, habitation:, fallback: lead_whatsapp_message)
     response.merge(whatsapp_url: @lead.whatsapp_url(message: whatsapp_message), whatsapp_message:)
+  end
+
+  # Consulta agregada a lead existente: mantém a sessão ligada ao lead real
+  # e avisa integrações externas, mas não conta nova conversão nem reenvia
+  # boas-vindas (a pessoa já está em atendimento).
+  def after_lead_complemented(habitation, business_type)
+    InterestIntelligence::SessionLinker.call(
+      lead: @lead,
+      token: cookies.signed[PublicNavigationSession::COOKIE_KEY]
+    )
+
+    WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
+      complemented_inquiry: true,
+      property_code: habitation&.codigo,
+      property_title: habitation&.display_title,
+      property_url: habitation ? habitation_url(habitation) : nil,
+      business_type: business_type,
+      business_type_label: Whatsapp::SiteRouting::NEGOTIATION_TYPES[business_type],
+      page_url: source_page_url
+    ).compact, request: request)
   end
 
   def after_lead_created(habitation, business_type)

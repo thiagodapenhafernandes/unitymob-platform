@@ -566,7 +566,7 @@ module Whatsapp
         end
       end
 
-      tenant.leads.create!(
+      created = tenant.leads.create!(
         name: name.presence || "Contato WhatsApp #{phone || bsuid}",
         phone: phone,
         business_scoped_user_id: bsuid,
@@ -577,6 +577,7 @@ module Whatsapp
         } },
         status: Lead.default_status
       )
+      created.destroyed? ? (created.complemented_target || created) : created
     rescue => e
       Rails.logger.warn("[wa inbound] lead link failed: #{e.message}")
       nil

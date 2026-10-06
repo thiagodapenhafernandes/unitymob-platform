@@ -257,3 +257,7 @@
 }
 .public-landing-page { overflow-x: clip; }
 .public-landing-page__cell > .public-theme-block-layout > :is(section, figure, div) { padding-top: 0; padding-bottom: 0; }
+
+/* Um bloco que ocupa a linha da seção permanece dentro da largura da seção. */
+.public-theme-block-section .public-theme-block-layout.is-width-page { width: 100%; margin-inline: 0; }
+.public-theme-block-section .public-theme-block-layout.is-width-page > section > .container-custom { max-width: none; width: 100%; padding-inline: 0; }

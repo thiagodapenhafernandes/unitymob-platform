@@ -5552,3 +5552,12 @@ body.no-scroll { overflow: hidden; }
 .public-theme-property-card--salute-luxury .public-theme-property-card__price-row .public-theme-property-card__price-label { color: var(--sl-muted); }
 .public-theme-property-card--salute-luxury .public-theme-property-card__actions .public-theme-property-card__favorite { position: static; width: 44px; height: 44px; border: 1px solid rgba(12,32,55,.12); border-radius: 50%; background: #fff; opacity: 1; filter: none; }
 .public-theme-property-card--salute-luxury .public-theme-property-card__actions .public-theme-property-card__favorite.is-active { color: var(--sl-favorite-active); }
+
+/* Recursos opcionais do builder, com a identidade editorial do tema. */
+.public-theme-block-faq--salute-luxury h2 { font-family: var(--sl-font-heading, Georgia, serif); font-weight: 400; }
+.public-theme-block-faq--salute-luxury .public-theme-block-faq__item { border-color: #ded5c8; border-radius: 8px; background: #faf8f4; }
+.public-theme-block-navigation--salute-luxury a { border-color: #ded5c8; border-radius: 4px; }
+.public-theme-block-collection--salute-luxury.is-card-outline .public-theme-block-collection__item { border-color: #ded5c8; background: #faf8f4; }
+.public-theme-content-callout--salute-luxury { border-color: #ded5c8; border-radius: 8px; background: #faf8f4; }
+.public-theme-content-callout--salute-luxury .public-theme-content-callout__heading { font-family: var(--sl-font-heading, Georgia, serif); font-weight: 400; }
+.public-theme-block-faq--salute-luxury .public-theme-block-faq__filters button { border-color: #ded5c8; }

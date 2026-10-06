@@ -5,19 +5,27 @@
   desktop = block.image_desktop
   mobile = block.image_mobile
 %>
-<section data-block-position="<%= block.position %>" class="public-theme-block-cover public-theme-block-cover--<%= variant %> is-align-<%= block.value(:align) %> is-height-<%= block.value(:height) %> is-focus-<%= block.value(:focus) %><%= " has-image" if desktop.attached? %>"
+<section data-block-position="<%= block.position %>" class="public-theme-block-cover public-theme-block-cover--<%= variant %> is-design-<%= block.value(:design) %> is-align-<%= block.value(:align) %> is-height-<%= block.value(:height) %> is-focus-<%= block.value(:focus) %><%= " has-image" if desktop.attached? && block.value(:design) != "simple" %>"
          style="--cover-overlay: <%= (block.value(:overlay).to_i / 100.0).round(2) %>">
-  <% if desktop.attached? %>
+  <% if desktop.attached? && block.value(:design) != "simple" %>
     <picture class="public-theme-block-cover__media">
       <% if mobile.attached? %><source media="(max-width: 768px)" srcset="<%= public_image_url(mobile, **Storage::PublicImageVariants::BUILDER_MOBILE) %>"><% end %>
       <%= image_tag public_image_url(desktop, **Storage::PublicImageVariants::BUILDER_COVER), alt: "", class: "public-theme-block-cover__image", loading: (h1 ? "eager" : "lazy") %>
     </picture>
   <% end %>
   <div class="public-theme-block-cover__inner">
-    <%= content_tag(h1 ? :h1 : :h2, title, class: "public-theme-block-cover__title") %>
-    <% if block.value(:subtitle).present? %><p class="public-theme-block-cover__subtitle"><%= block.value(:subtitle) %></p><% end %>
+    <% if block.value(:eyebrow).present? %><span data-element-field="eyebrow" style="<%= landing_page_action_color_style(block.data, "element_eyebrow") %>" class="public-theme-builder-eyebrow"><%= block.value(:eyebrow) %></span><% end %>
+    <%= content_tag(h1 ? :h1 : :h2, title, class: "public-theme-block-cover__title", data: { element_field: "title" }, style: landing_page_action_color_style(block.data, "element_title")) %>
+    <% if block.value(:subtitle).present? %><p data-element-field="subtitle" style="<%= landing_page_action_color_style(block.data, "element_subtitle") %>" class="public-theme-block-cover__subtitle"><%= block.value(:subtitle) %></p><% end %>
+    <% if block.value(:badge).present? %><span data-element-field="badge" style="<%= landing_page_action_color_style(block.data, "element_badge") %>" class="public-theme-builder-badge"><%= landing_page_icon_label(block.value(:badge), block.value(:badge_icon)) %></span><% end %>
+    <div class="public-theme-block-cover__actions">
     <% if block.value(:button_label).present? && block.value(:button_url).present? %>
-      <a href="<%= block.value(:button_url) %>" class="public-theme-block-cover__button"><%= block.value(:button_label) %></a>
+      <a href="<%= block.value(:button_url) %>" style="<%= landing_page_action_color_style(block.data) %>" class="public-theme-block-cover__button"><%= landing_page_icon_label(block.value(:button_label), block.value(:button_icon)) %></a>
     <% end %>
+    <% if block.value(:secondary_label).present? && block.value(:secondary_url).present? %>
+      <a href="<%= block.value(:secondary_url) %>" style="<%= landing_page_action_color_style(block.data, 'secondary') %>" class="public-theme-block-cover__button public-theme-block-cover__button--secondary"><%= landing_page_icon_label(block.value(:secondary_label), block.value(:secondary_icon)) %></a>
+    <% end %>
+    </div>
+    <%= render "public_theme/blocks/labels", block: block %>
   </div>
 </section>

@@ -504,6 +504,7 @@ Rails.application.routes.draw do
     resources :blog_uploads, only: [:create]
 
     resources :landing_pages do
+      get :page_preview, on: :member
       get :preview, on: :collection
       get :filter_options, on: :collection
       post :render_preview, on: :collection
