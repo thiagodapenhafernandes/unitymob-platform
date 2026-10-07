@@ -5090,7 +5090,10 @@ CREATE TABLE public.portal_integrations (
     updated_at timestamp(6) without time zone NOT NULL,
     tenant_id bigint,
     leads_enabled boolean DEFAULT false NOT NULL,
-    last_lead_at timestamp(6) without time zone
+    last_lead_at timestamp(6) without time zone,
+    lead_route_key character varying,
+    lead_gateway_synced_at timestamp(6) without time zone,
+    lead_gateway_error character varying
 );
 
 
@@ -14990,6 +14993,13 @@ CREATE UNIQUE INDEX index_portal_integrations_on_feed_token ON public.portal_int
 
 
 --
+-- Name: index_portal_integrations_on_lead_route_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_portal_integrations_on_lead_route_key ON public.portal_integrations USING btree (lead_route_key);
+
+
+--
 -- Name: index_portal_integrations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -19925,6 +19935,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007140000'),
 ('20261003223000'),
 ('20261002160000'),
 ('20261002150000'),

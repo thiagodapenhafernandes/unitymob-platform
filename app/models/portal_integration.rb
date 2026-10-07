@@ -15,7 +15,7 @@ class PortalIntegration < ApplicationRecord
   PORTALS = PORTAL_DEFINITIONS.keys.freeze
   BUSINESS_TYPES = %w[venda aluguel].freeze
   # Portais cobertos pelo webhook de leads do Grupo OLX (uma SECRET por CRM,
-  # um endpoint para todos — o payload não distingue o portal de origem).
+  # URLs específicas por integração — o payload não distingue o portal de origem).
   GRUPOZAP_PORTALS = %w[zapimoveis vivareal_vrsync imovelweb imovelweb_2].freeze
   # SECRET_KEY por CRM (não por conta): autentica que o POST veio do Grupo
   # OLX. Configurada na tela de Portais; nunca exibida de volta.
@@ -141,6 +141,14 @@ class PortalIntegration < ApplicationRecord
 
   before_validation :normalize_values
   before_validation :ensure_feed_token
+  before_validation do
+    self.lead_route_key ||= SecureRandom.uuid if grupozap_family?
+  end
+
+  def lead_webhook_url
+    base = Portal::LeadGatewayClient.public_gateway_url
+    "#{base}/webhooks/grupozap/#{lead_route_key}" if base.present? && lead_route_key.present?
+  end
 
   scope :enabled, -> { where(enabled: true) }
 

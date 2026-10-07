@@ -489,7 +489,6 @@ Rails.application.routes.draw do
       post :sync_images_now
     end
     resources :portal_integrations, only: [:index, :update], param: :portal do
-      post :test_feed, on: :member
       get :preview_feed, on: :member
       post :grupozap_key, on: :collection
     end
@@ -773,6 +772,7 @@ Rails.application.routes.draw do
     post "whatsapp", to: "whatsapp#receive"
     post "portals/:portal/events", to: "portals#events", as: :portal_events
     post "portal_leads/grupozap", to: "portal_leads#grupozap", as: :portal_leads_grupozap
+    post "portal_leads/grupozap/:route_key", to: "portal_leads#grupozap"
   end
 
   namespace :integrations do

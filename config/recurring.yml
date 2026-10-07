@@ -10,6 +10,10 @@
 #     schedule: at 5am every day
 
 development:
+  portal_lead_gateway_reconcile:
+    class: PortalLeadGatewayReconcileJob
+    queue: sync
+    schedule: every 15 minutes
   whatsapp_attendance_window_sweep:
     class: Whatsapp::AttendanceWindowSweepJob
     queue: default
@@ -38,6 +42,10 @@ development:
     schedule: every 5 minutes
 
 production:
+  portal_lead_gateway_reconcile:
+    class: PortalLeadGatewayReconcileJob
+    queue: sync
+    schedule: every 15 minutes
   whatsapp_attendance_window_sweep:
     class: Whatsapp::AttendanceWindowSweepJob
     queue: default

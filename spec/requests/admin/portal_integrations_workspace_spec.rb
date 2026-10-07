@@ -16,15 +16,23 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("portal-integrations-nav")
     expect(response.body).to include("portal-integrations-commandbar")
-    expect(response.body).to include("Configuração")
+    expect(response.body).to include("Enviar imóveis", "Receber leads")
+    document = Nokogiri::HTML(response.body)
+    publication = document.at_css('section[aria-label="Envio de imóveis aos portais"]')
+    reception = document.at_css('section[aria-label="Recebimento de leads do portal"]')
+    expect(publication.at_css('input[name="portal_integration[enabled]"]')).to be_present
+    expect(publication.at_css('input[name="portal_integration[leads_enabled]"]')).to be_nil
+    expect(reception.at_css('input[name="portal_integration[leads_enabled]"]')).to be_present
+    expect(reception.at_css('select[name="portal_integration[allowed_statuses][]"]')).to be_nil
     expect(response.body).to include("URL do Feed para o portal")
     expect(response.body).to include("Últimos retornos do portal")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('.portal-integrations-nav__link[aria-current="page"]')).to be_present
     expect(document.css(".ax-operational-panel").size).to be >= 3
-    expect(document.at_css(".ax-collapse-card #webhookSection[hidden]")).to be_present
+    expect(document.at_css(".ax-collapse-card #webhookSection[hidden]")).to be_nil
+    expect(response.body).not_to include("Token do Feed", "Webhook Secret", "Testar feed completo", "Visualizar amostra")
     expect(document.at_css(".ax-form-actions--static")).to be_present
-    expect(document.at_css("table.ax-table caption").text).to include("Últimos eventos recebidos")
+    expect(document.at_css("table.ax-table caption")).to be_nil
     expect(document.css('table.ax-table th[scope="col"]').size).to eq(5)
     expect(document.at_css(".portal-integrations-empty-cell .ax-empty-state--compact")).to be_present
     expect(response.body).not_to include("Como ativar este portal")
@@ -32,6 +40,31 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     expect(response.body).not_to include("Resumo do Feed")
   end
 
+
+  it "exibe a URL na aba de leads mesmo enquanto a conexão está pendente" do
+    allow(Portal::LeadGatewayClient).to receive(:gateway_url).and_return("https://webhooks.example.com")
+    allow(Portal::LeadGatewayClient).to receive(:configured?).and_return(false)
+    integration = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    get admin_portal_integrations_path(portal: "zapimoveis")
+    document = Nokogiri::HTML(response.body)
+    inputs = document.css('#portal-leads input[aria-label="URL de recebimento de leads"]')
+    expect(inputs.size).to eq(1)
+    expect(inputs.first["value"]).to eq("https://webhooks.example.com/webhooks/grupozap/#{integration.lead_route_key}")
+    expect(response.body).to include("A conexão precisa ser habilitada pelo suporte")
+  end
+
+  it "gera e exibe a URL pública para uma integração antiga sem configuração interna" do
+    allow(Portal::LeadGatewayClient).to receive(:gateway_url).and_return("")
+    allow(Portal::LeadGatewayClient).to receive(:configured?).and_return(false)
+    integration = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    integration.update_column(:lead_route_key, nil)
+    get admin_portal_integrations_path(portal: "zapimoveis")
+    expect(integration.reload.lead_route_key).to be_present
+    url = "https://webhooks.unitymob.com.br/webhooks/grupozap/#{integration.lead_route_key}"
+    expect(response.body).to include(url)
+    get admin_portal_integrations_path(portal: "zapimoveis")
+    expect(integration.reload.lead_webhook_url).to eq(url)
+  end
 
   it "isola os retornos recebidos por tenant" do
     own_code = "PORTAL-#{SecureRandom.hex(3)}"
@@ -86,8 +119,8 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     get admin_portal_integrations_path(portal: "zapimoveis")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Chave do CRM — Grupo OLX")
-    expect(response.body).to include("Configurada")
+    expect(response.body).not_to include("Chave do CRM — Grupo OLX")
+    expect(response.body).to include("Receber leads")
     expect(response.body).not_to include("chave-secreta-123")
 
     get admin_portal_integrations_path(portal: "chavesnamao")
@@ -96,17 +129,64 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     expect(response.body).not_to include("Chave do CRM — Grupo OLX")
   end
 
-  it "salva a chave do CRM global e rejeita em branco" do
+  it "impede o administrador da conta de alterar a chave global do CRM" do
     post grupozap_key_admin_portal_integrations_path,
          params: { portal: "vivareal_vrsync", grupozap_secret_key: "nova-chave-456" }
 
-    expect(response).to redirect_to(admin_portal_integrations_path(portal: "vivareal_vrsync"))
-    expect(Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY)).to eq("nova-chave-456")
+    expect(response).to have_http_status(:forbidden)
+    expect(Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY)).not_to eq("nova-chave-456")
+  end
 
-    post grupozap_key_admin_portal_integrations_path,
-         params: { portal: "vivareal_vrsync", grupozap_secret_key: "  " }
+  it "preserva as credenciais automáticas e de suporte ao salvar a configuração da conta" do
+    integration = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    integration.update!(webhook_secret: "support-secret")
+    token = integration.feed_token
+    patch admin_portal_integration_path("zapimoveis"), params: {
+      portal_integration: { enabled: "1", feed_token: "changed-token", webhook_secret: "changed-secret" }
+    }
+    expect(response).to redirect_to(admin_portal_integrations_path(portal: "zapimoveis"))
+    expect(integration.reload.feed_token).to eq(token)
+    expect(integration.webhook_secret).to eq("support-secret")
+    expect(integration).to be_enabled
+  end
 
-    expect(response).to redirect_to(admin_portal_integrations_path(portal: "vivareal_vrsync"))
-    expect(Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY)).to eq("nova-chave-456")
+  it "mantém a amostra do feed restrita ao suporte" do
+    get preview_feed_admin_portal_integration_path("zapimoveis")
+    expect(response).to have_http_status(:forbidden)
+  end
+
+  it "salva o recebimento sem alterar os filtros de publicação" do
+    integration = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    integration.update!(enabled: true, allowed_business_types: ["aluguel"])
+    patch admin_portal_integration_path("zapimoveis"), params: { portal_integration: { leads_enabled: "1" } }
+    expect(response).to redirect_to(admin_portal_integrations_path(portal: "zapimoveis"))
+    expect(integration.reload.allowed_business_types).to eq(["aluguel"])
+    expect(integration).to be_leads_receiving
+  end
+end
+
+RSpec.describe "Abas de configuração dos portais", type: :request do
+  include Devise::Test::IntegrationHelpers
+
+  it "salva a identificação na conta atual, preserva a publicação e retorna à aba de leads" do
+    admin = create(:admin_user, :admin)
+    host! "localhost"
+    sign_in admin
+    integration = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    integration.update!(allowed_business_types: ["aluguel"])
+    other = Tenant.create!(name: "Conta externa", slug: "portal-externo-#{SecureRandom.hex(4)}")
+    foreign = PortalIntegration.for_portal!("zapimoveis", tenant: other)
+    patch admin_portal_integration_path("zapimoveis"), params: {
+      section: "leads", portal_integration: { account_id: "987654", leads_enabled: "1" }
+    }
+    expect(response).to redirect_to(admin_portal_integrations_path(portal: "zapimoveis", anchor: "portal-leads"))
+    expect(integration.reload.account_id).to eq("987654")
+    expect(integration.allowed_business_types).to eq(["aluguel"])
+    expect(foreign.reload.account_id).not_to eq("987654")
+    get admin_portal_integrations_path(portal: "zapimoveis")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('.ax-studio-nav--underline')).to be_present
+    expect(document.at_css('label[for="lead_advertiser_account_id"]')).to be_present
+    expect(document.at_css('#portal-leads input[name="portal_integration[account_id]"]')['value']).to eq("987654")
   end
 end

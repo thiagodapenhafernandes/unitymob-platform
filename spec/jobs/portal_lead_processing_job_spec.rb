@@ -43,6 +43,16 @@ RSpec.describe PortalLeadProcessingJob, type: :job do
     expect(lead.property_interests.map(&:habitation_id)).to include(property.id)
   end
 
+  it "resolve códigos repetidos somente dentro da conta da integração" do
+    property = create(:habitation, tenant: tenant, codigo: "ZAP-100")
+    other = Tenant.create!(name: "Outra conta", slug: "outra-#{SecureRandom.hex(4)}")
+    create(:habitation, tenant: other, codigo: "ZAP-100")
+    integration = enable_leads!(tenant)
+    described_class.perform_now(payload, integration.id)
+    expect(tenant.leads.last.property_id).to eq(property.id)
+    expect(other.leads.count).to eq(0)
+  end
+
   it "não duplica reentrega do mesmo originLeadId" do
     create(:habitation, tenant: tenant, codigo: "ZAP-100")
     enable_leads!(tenant)
