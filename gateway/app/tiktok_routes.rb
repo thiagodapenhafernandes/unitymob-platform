@@ -22,6 +22,8 @@ module Gateway
       end
 
       app.get "/oauth/tiktok/callback" do
+        # Browser navigation from TikTok must not inherit the JSON API content type.
+        content_type :html
         state = params["state"].to_s
         code = params["auth_code"].to_s
         request.env["QUERY_STRING"] = "[FILTERED]"
