@@ -12,12 +12,16 @@ class Admin::TiktokIntegrationsController < Admin::BaseController
     end
     state = SecureRandom.hex(32)
     Tiktok::GatewayClient.register_oauth!(state: state, return_url: callback_admin_tiktok_integration_url)
-    session[:tiktok_oauth] = { state: state, tenant_id: current_tenant.id, admin_user_id: current_admin_user.id, expires_at: 10.minutes.from_now.to_i }
+    cookies.encrypted[:tiktok_oauth] = {
+      value: { state: state, tenant_id: current_tenant.id, admin_user_id: current_admin_user.id, expires_at: 10.minutes.from_now.to_i },
+      expires: 10.minutes.from_now, httponly: true, secure: request.ssl?, same_site: :lax
+    }
     redirect_to Tiktok::Client.new.authorization_url(state: state), allow_other_host: true
   end
 
   def callback
-    oauth = session.delete(:tiktok_oauth)&.with_indifferent_access
+    oauth = cookies.encrypted[:tiktok_oauth]&.with_indifferent_access
+    cookies.delete(:tiktok_oauth)
     unless oauth && oauth[:expires_at].to_i > Time.current.to_i && oauth[:tenant_id] == current_tenant.id &&
         oauth[:admin_user_id] == current_admin_user.id && params[:state].present? &&
         ActiveSupport::SecurityUtils.secure_compare(oauth[:state], params[:state].to_s)

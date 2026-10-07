@@ -46,7 +46,12 @@ RSpec.describe "TikTok integration", type: :request do
     end
     expect(client).to receive(:exchange_code).with("valid-code").once.and_return({ "access_token" => "private-token" })
     allow(client).to receive(:accounts).and_return([{ "advertiser_id" => "123", "advertiser_name" => "Conta" }])
+    get admin_tiktok_integration_path
+    session_key = Rails.application.config.session_options.fetch(:key)
+    previous_session_cookie = cookies[session_key]
     post connect_admin_tiktok_integration_path
+    # A response from another admin tab can restore the pre-connect session cookie.
+    cookies[session_key] = previous_session_cookie
     get callback_admin_tiktok_integration_path, params: { state: state, auth_code: "valid-code" }
     expect(response).to redirect_to(admin_tiktok_integration_path)
     connected = TiktokIntegration.find_by!(tenant: admin.tenant)
@@ -54,6 +59,25 @@ RSpec.describe "TikTok integration", type: :request do
     expect(connected.admin_user).to eq(admin)
     get callback_admin_tiktok_integration_path, params: { state: state, auth_code: "valid-code" }
     expect(flash[:alert]).to include("validar")
+  end
+
+  it "rejects an OAuth cookie when another administrator completes the callback" do
+    allow(TiktokIntegration).to receive(:configured?).and_return(true)
+    allow(Tiktok::GatewayClient).to receive(:register_oauth!)
+    state = nil
+    allow_any_instance_of(Tiktok::Client).to receive(:authorization_url) do |_, **args|
+      state = args.fetch(:state)
+      "https://business-api.tiktok.com/portal/auth?state=#{state}"
+    end
+    expect_any_instance_of(Tiktok::Client).not_to receive(:exchange_code)
+    post connect_admin_tiktok_integration_path
+    oauth_cookie = cookies[:tiktok_oauth]
+    sign_out admin
+    sign_in create(:admin_user, :admin, tenant: admin.tenant)
+    cookies[:tiktok_oauth] = oauth_cookie
+    get callback_admin_tiktok_integration_path, params: { state: state, auth_code: "code" }
+    expect(flash[:alert]).to include("validar")
+    expect(TiktokIntegration.find_by(tenant: admin.tenant)).to be_nil
   end
 
   it "does not expose another tenant's advertisers" do
