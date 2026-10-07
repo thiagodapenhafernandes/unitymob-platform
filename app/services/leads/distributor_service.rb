@@ -230,6 +230,8 @@ module Leads
     def matches_filters?(rule)
       return false unless matches_webhook_tags?(rule)
       return false unless matches_meta_scope?(rule)
+      return false unless matches_tiktok_scope?(rule)
+      return false unless matches_linkedin_scope?(rule)
 
       if rule.min_price.present?
          lead_value = @lead.respond_to?(:value) ? @lead.value.to_f : 0.0
@@ -251,6 +253,30 @@ module Leads
         end
       end
       true
+    end
+
+    def matches_tiktok_scope?(rule)
+      return true unless @lead.attribution_channel == "tiktok_ads"
+      integration = @tiktok_integration ||= TiktokIntegration.find_by(tenant: tenant)
+      info = @lead.other_information.to_h
+      return false unless integration&.connected? && integration.selected_account_ids.include?(info["tiktok_advertiser_id"].to_s)
+      accounts = Array(rule.tiktok_account_ids).compact_blank
+      forms = Array(rule.tiktok_form_ids).compact_blank
+      (accounts.empty? || accounts.include?(info["tiktok_advertiser_id"].to_s)) &&
+        (forms.empty? || forms.include?(info["tiktok_form_id"].to_s))
+    end
+
+    def matches_linkedin_scope?(rule)
+      return true unless rule.source_linkedin? && @lead.attribution_channel == "linkedin_ads"
+
+      integration = @linkedin_integration ||= LinkedinIntegration.find_by(tenant: tenant)
+      return false unless integration&.connected?
+      info = @lead.other_information || {}
+      return false unless integration.selected_account_ids.include?(info["linkedin_account_id"].to_s)
+      campaigns = Array(rule.linkedin_campaign_ids).compact_blank
+      forms = Array(rule.linkedin_form_ids).compact_blank
+      (campaigns.empty? || campaigns.include?(info["linkedin_campaign_id"].to_s)) &&
+        (forms.empty? || forms.include?(info["linkedin_form_id"].to_s))
     end
 
     # Regra Meta com páginas/formulários selecionados só aceita leads DAQUELA
@@ -328,6 +354,8 @@ module Leads
     def matches_source?(rule)
       origin = @lead.origin.to_s.downcase
 
+      return rule.source_tiktok? if @lead.attribution_channel == "tiktok_ads"
+      return true if rule.source_linkedin? && @lead.attribution_channel == "linkedin_ads" && @lead.attribution_source == "linkedin"
       return true if rule.source_meta? && meta_origin?(origin)
       return true if rule.source_rd_station? && rd_station_origin?(origin)
       return true if rule.source_lovers? && lovers_origin?(origin)

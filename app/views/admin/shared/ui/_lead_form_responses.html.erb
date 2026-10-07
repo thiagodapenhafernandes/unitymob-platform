@@ -1,0 +1,15 @@
+<% answers = lead.other_information.to_h["linkedin_answers"] || lead.other_information.to_h["tiktok_answers"] %>
+<% if answers.is_a?(Hash) && answers.any? %>
+  <%= ax_operational_panel(eyebrow: "Captação", title: "Respostas do formulário #{lead.other_information.to_h.key?('tiktok_answers') ? 'TikTok' : 'LinkedIn'}") do %>
+    <div class="ax-panel-body">
+      <%= ax_field_grid do %>
+        <% answers.each do |question, answer| %>
+          <div class="ax-span-6 ax-field">
+            <span class="ax-field-label"><%= question %></span>
+            <p><%= answer.presence || "Não informado" %></p>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

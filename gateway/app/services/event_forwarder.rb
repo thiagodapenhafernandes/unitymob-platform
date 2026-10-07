@@ -40,6 +40,9 @@ module Gateway
     attr_reader :event, :raw_body, :route
 
     def perform_request
+      if event.provider == "tiktok"
+        raise "TikTok route does not match event" unless route.active? && route.provider == "tiktok" && route.advertiser_id == event.advertiser_id
+      end
       if event.provider == "grupozap"
         raise "Inactive Grupo OLX route" unless route.active? && route.provider == "grupozap"
       end
@@ -53,7 +56,7 @@ module Gateway
       uri = URI(route.target_url)
       request = Net::HTTP::Post.new(uri)
       request["Content-Type"] = "application/json"
-      signed_body = event.provider == "grupozap" ? "#{route.client_key}\n#{raw_body}" : raw_body
+      signed_body = %w[grupozap tiktok].include?(event.provider) ? "#{route.client_key}\n#{raw_body}" : raw_body
       request["X-Unitymob-Gateway-Signature"] = InternalSignature.sign(signed_body, secret: route.forwarding_secret)
       request["X-Unitymob-Gateway-Event-Id"] = event.id.to_s
       request["X-Unitymob-Gateway-Provider"] = event.provider

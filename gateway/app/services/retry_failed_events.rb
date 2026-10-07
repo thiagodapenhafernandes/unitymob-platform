@@ -25,7 +25,7 @@ module Gateway
 
       retryable_events.each do |event|
         retried += 1
-        if event.provider == "grupozap"
+        if %w[grupozap tiktok].include?(event.provider)
           event.with_lock do
             EventForwarder.call(event:, raw_body: raw_body_for(event)) unless event.forwarded?
           end
@@ -46,7 +46,7 @@ module Gateway
       scope = provider ? WebhookEvent.where(provider: provider) : WebhookEvent.all
       scope
         .includes(:webhook_route)
-        .where("webhook_events.status = 'failed' OR (webhook_events.provider = 'grupozap' AND webhook_events.status = 'received' AND webhook_events.received_at <= ?)", now - 60)
+        .where("webhook_events.status = 'failed' OR (webhook_events.provider IN ('grupozap', 'tiktok') AND webhook_events.status = 'received' AND webhook_events.received_at <= ?)", now - 60)
         .where("attempts < ?", max_attempts)
         .where("next_retry_at IS NULL OR next_retry_at <= ?", now)
         .where.not(webhook_route_id: nil)

@@ -2,6 +2,8 @@ class Admin::DistributionRulesController < Admin::BaseController
   requires_permission :manage, :distribution_rules
   before_action :set_rule, only: [:show, :edit, :update, :destroy, :toggle_active, :reorder_agents]
   before_action :load_meta_options, only: [:new, :create, :edit, :update]
+  before_action :load_tiktok_options, only: [:new, :create, :edit, :update]
+  before_action :load_linkedin_options, only: [:new, :create, :edit, :update]
   before_action :load_team_structure, only: [:new, :create, :edit, :update]
 
   def index
@@ -308,13 +310,21 @@ class Admin::DistributionRulesController < Admin::BaseController
     end
   end
 
+  def load_tiktok_options
+    @tiktok_structure = TiktokIntegration.find_by(tenant: current_tenant)&.form_structure || {}
+  end
+
+  def load_linkedin_options
+    @linkedin_structure = LinkedinIntegration.find_by(tenant: current_tenant)&.campaign_structure || {}
+  end
+
   def rule_params
     # For JSONB fields like represamento_schedule, we permit the whole hash.
     # Os agentes da fila são tratados em sync_agents (fonte = agent_select), por
     # isso distribution_rule_agents_attributes NÃO é permitido aqui.
     params.require(:distribution_rule).permit(
       :name, :business_type, :active,
-      :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
+      :source_tiktok, :source_linkedin, :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
       :distribution_mode,
       :pocket_active, :pocket_time,
       :pocket_to_shark_tank, :pool_renotify_mode, :pool_renotify_minutes,
@@ -325,6 +335,10 @@ class Admin::DistributionRulesController < Admin::BaseController
       :require_active_checkin, :require_inside_radius, :require_active_shift, :exclude_suspicious_checkins,
       :auto_update_agents_enabled, :auto_update_shuffle_agents,
       admin_user_ids: [],
+      tiktok_account_ids: [],
+      tiktok_form_ids: [],
+      linkedin_campaign_ids: [],
+      linkedin_form_ids: [],
       meta_forms: [],
       meta_page_ids: [],
       webhook_tags: [],
@@ -338,7 +352,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     ).tap do |perms|
       # Selects multiplos enviam um "" inicial (hidden field do Rails). Limpar para
       # não poluir os arrays JSONB (que viram chips vazios fantasmas ao reabrir).
-      %i[meta_forms meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
+      %i[tiktok_account_ids tiktok_form_ids linkedin_campaign_ids linkedin_form_ids meta_forms meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
         perms[key] = Array(perms[key]).compact_blank if perms[key].is_a?(Array)
       end
 

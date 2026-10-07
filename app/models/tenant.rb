@@ -122,6 +122,10 @@ class Tenant < ApplicationRecord
   has_many :email_settings, dependent: :destroy
   has_one :google_calendar_integration_setting, dependent: :destroy
   has_one :google_maps_integration_setting, dependent: :destroy
+  has_one :tiktok_integration, dependent: :destroy
+  has_many :tiktok_lead_receipts, dependent: :delete_all
+  has_one :linkedin_integration, dependent: :destroy
+  has_many :linkedin_lead_receipts, dependent: :delete_all
   has_one :external_lead_integration, dependent: :destroy
   has_many :lead_pipelines, dependent: :restrict_with_error
   has_many :lead_pipeline_stages, dependent: :restrict_with_error

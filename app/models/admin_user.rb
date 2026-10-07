@@ -99,6 +99,9 @@ class AdminUser < ApplicationRecord
   before_validation :clear_account_context_for_system_admin
   before_validation :assign_default_tenant
   before_validation :assign_default_vertical_profile
+  has_many :tiktok_integrations, dependent: :destroy
+  has_many :linkedin_integrations, dependent: :destroy
+
   before_destroy :ensure_not_last_active_tenant_owner
 
   # Discovery do app híbrido: mantém o gateway central sabendo em qual

@@ -446,6 +446,18 @@ Rails.application.routes.draw do
         get :permissions
       end
     end
+    resource :tiktok_integration, only: [:show, :update] do
+      post :connect
+      get :callback
+      post :sync
+      delete :disconnect
+    end
+    resource :linkedin_integration, only: [:show, :update] do
+      post :connect
+      get :callback
+      post :sync
+      delete :disconnect
+    end
     resource :rd_station_integration, only: [:show, :update] do
       get :connect
       get :callback
@@ -766,6 +778,7 @@ Rails.application.routes.draw do
     post "inbound/leads", to: "inbound#leads", as: :inbound_leads
     post "external_leads/:token", to: "external_leads#receive", as: :external_lead
     post "rd_station/:token", to: "rd_station#receive", as: :rd_station
+    post "tiktok/:route_key", to: "tiktok#create"
     post "meta", to: "meta#receive_leads"
     get "meta", to: "meta#receive_leads"
     get "whatsapp", to: "whatsapp#verify"

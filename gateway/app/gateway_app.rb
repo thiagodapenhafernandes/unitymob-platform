@@ -4,10 +4,12 @@ require "json"
 require "sinatra/base"
 require_relative "discovery_routes"
 require_relative "admin_routes"
+require_relative "tiktok_routes"
 
 module Gateway
   class App < Sinatra::Base
     register Gateway::DiscoveryRoutes
+    register Gateway::TiktokRoutes
     register Gateway::AdminRoutes
     configure do
       set :show_exceptions, false

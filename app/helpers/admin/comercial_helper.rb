@@ -208,6 +208,8 @@ module Admin::ComercialHelper
       case channel
       when :google_ads then "Convertido via Google Ads"
       when :meta, :meta_ads then "Convertido via Meta Ads#{" — formulário #{info['meta_form_id']}" if info['meta_form_id'].present?}"
+      when :tiktok_ads then "Convertido via TikTok Ads#{" — formulário #{info['tiktok_form_name']}" if info['tiktok_form_name'].present?}"
+      when :linkedin_ads then "Convertido via LinkedIn Ads#{" — formulário #{info['linkedin_form_name']}" if info['linkedin_form_name'].present?}"
       when :microsoft_ads then "Convertido via Microsoft Ads"
       when :organic_search then "Convertido por busca orgânica"
       when :organic_social then "Convertido por rede social"
@@ -227,6 +229,8 @@ module Admin::ComercialHelper
       case channel
       when :google_ads then "Criado por um anúncio no Google Ads"
       when :meta, :meta_ads then "Criado por um anúncio no Meta Ads (Facebook/Instagram)"
+      when :tiktok_ads then "Criado por um formulário de anúncio no TikTok"
+      when :linkedin_ads then "Criado por um formulário de anúncio no LinkedIn"
       when :microsoft_ads then "Criado por um anúncio no Microsoft Ads"
       when :organic_search then "Criado por uma busca orgânica (#{channel_label})"
       when :organic_social then "Criado por acesso social (#{channel_label})"

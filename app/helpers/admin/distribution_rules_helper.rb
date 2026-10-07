@@ -35,6 +35,8 @@ module Admin::DistributionRulesHelper
   def distribution_rule_enabled_sources(rule)
     [
       ["Meta Ads", rule.source_meta?],
+      ["TikTok Ads", rule.source_tiktok?],
+      ["LinkedIn Ads", rule.source_linkedin?],
       ["RD Station", rule.source_rd_station?],
       ["Lovers", rule.source_lovers?],
       ["Site/WhatsApp", rule.source_site?],

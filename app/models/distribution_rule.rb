@@ -42,6 +42,9 @@ class DistributionRule < ApplicationRecord
             if: :pool_renotify_interval?
   validate :validate_auto_update_triggers, if: :has_auto_update_trigger_column?
 
+  validate :validate_tiktok_selection
+  validate :validate_linkedin_selection
+
   scope :active, -> { where(active: true) }
 
   def pool_timeline_participants
@@ -343,6 +346,32 @@ class DistributionRule < ApplicationRecord
   end
 
   private
+
+  def validate_tiktok_selection
+    return unless source_tiktok?
+    structure = TiktokIntegration.find_by(tenant: tenant)&.form_structure || {}
+    accounts = Array(tiktok_account_ids).compact_blank.map(&:to_s)
+    forms = Array(tiktok_form_ids).compact_blank.map(&:to_s)
+    errors.add(:tiktok_account_ids, "contém anunciantes indisponíveis nesta conta") if (accounts - structure.keys).any?
+    allowed = (accounts.empty? ? structure : structure.slice(*accounts)).values.flat_map { |account| Array(account["forms"]).pluck("id") }
+    errors.add(:tiktok_form_ids, "contém formulários fora dos anunciantes selecionados") if (forms - allowed).any?
+  end
+
+  def validate_linkedin_selection
+    return unless source_linkedin?
+
+    integration = LinkedinIntegration.find_by(tenant: tenant)
+    unless integration&.connected? && integration.selected_account_ids.any?
+      errors.add(:base, "Conecte o LinkedIn e selecione contas de anúncios em Integrações → LinkedIn.")
+      return
+    end
+    campaigns = Array(linkedin_campaign_ids).compact_blank.map(&:to_s)
+    forms = Array(linkedin_form_ids).compact_blank.map(&:to_s)
+    structure = integration.campaign_structure
+    errors.add(:linkedin_campaign_ids, "contém campanhas indisponíveis nesta conta") if (campaigns - structure.keys).any?
+    allowed = integration.form_ids_for(campaigns.presence || structure.keys)
+    errors.add(:linkedin_form_ids, "contém formulários fora das campanhas selecionadas") if (forms - allowed).any?
+  end
 
   def set_defaults
     self.custom_filters ||= []

@@ -37,6 +37,10 @@ module Admin::LeadOriginHelper
     brand, label, subtype = lead_origin_identity(raw, ctwa: ctwa)
     if !ctwa && !imported && lead.attribution_channel == "meta_ads"
       brand, label = "meta", "Meta Ads"
+    elsif !ctwa && !imported && lead.attribution_channel == "tiktok_ads"
+      brand, label = "tiktok", "TikTok Ads"
+    elsif !ctwa && !imported && lead.attribution_channel == "linkedin_ads"
+      brand, label = "linkedin", "LinkedIn Ads"
     end
     campaign = campaign_name.presence || info["meta_campaign_name"].presence || info["campaign_name"].presence || attribution["campaign_name"].presence || attribution["utm_campaign"].presence
     rd_campaign = info["rd_station_campaign_name"].presence || campaign
@@ -61,13 +65,17 @@ module Admin::LeadOriginHelper
     context << "Anúncio: #{ad}" if ad
     context << "Anúncio ID: #{referral['source_id']}" if ctwa && ad.blank? && referral["source_id"].present?
     reference = lead_meta_form_reference(lead)
-    form = form_name.presence || info["meta_form_name"].presence || info["form_name"].presence || reference["form_id"].presence
+    form = form_name.presence || info["tiktok_form_name"].presence || info["linkedin_form_name"].presence || info["meta_form_name"].presence || info["form_name"].presence || reference["form_id"].presence
     subtype = "Formulários" if brand == "meta" && label == "Meta Ads" && form
     details = [["Origem registrada", raw]]
     details << ["Entrada", "Importação"] if imported
     details << ["Campanha", campaign] if campaign
     details << ["Anúncio", ad] if ad
     details << ["Formulário", form] if form
+    if info["linkedin_account_id"].present?
+      details << ["Conta de anúncios", info["linkedin_account_id"]]
+      details << ["Resposta LinkedIn", info["linkedin_response_id"]]
+    end
 
     if site
       brand = "site"

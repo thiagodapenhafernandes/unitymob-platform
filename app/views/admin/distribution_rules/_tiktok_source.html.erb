@@ -1,0 +1,4 @@
+<%= render layout: "admin/shared/ui/lead_source_card", locals: { form: f, brand: "tiktok", title: "TikTok Ads", description: "Leads dos formulários de anúncios do TikTok.", source_method: :source_tiktok, toggle_action: "toggleTiktok", section_target: "tiktokSection" } do %>
+    <%= render "admin/shared/ui/source_form_selection", form: f, structure: structure, parent_method: :tiktok_account_ids, parent_label: "Anunciantes", form_method: :tiktok_form_ids, parent_hint: "Vazio = todos os anunciantes selecionados na integração.", form_hint: "Vazio = todos os formulários dos anunciantes escolhidos." %>
+    <p class="ax-field__hint">Configure a conexão em <%= link_to "Integrações → TikTok Ads", admin_tiktok_integration_path, class: "ax-link" %>. Filtros vazios incluem todos os anunciantes e formulários conectados.</p>
+<% end %>

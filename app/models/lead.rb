@@ -223,9 +223,10 @@ class Lead < ApplicationRecord
 
   validates :name, presence: true
   # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
-  # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
+  # (usuário do WhatsApp que esconde o número — recurso de username da Meta),
+  # Direct do Instagram, migração habilitada ou Lead Sync LinkedIn com e-mail válido.
   has_many :instagram_messages, dependent: :destroy
-  validates :phone, presence: true, unless: -> { business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
+  validates :phone, presence: true, unless: -> { linkedin_contact_without_phone? || tiktok_contact_without_phone? || business_scoped_user_id.present? || (instagram_account_id.present? && instagram_scoped_id.present?) || external_lead_integration&.accept_lead_without_phone? }
   validate :associated_records_must_belong_to_tenant
   validate :in_service_requires_owner
   validate :assigned_admin_user_must_be_active
@@ -361,6 +362,16 @@ class Lead < ApplicationRecord
     info = other_information.to_h
     facebook = attribution_data.to_h["facebook"]
     attribution_channel == "meta_ads" || info["meta_leadgen_id"].present? || facebook.present?
+  end
+
+  def tiktok_contact_without_phone?
+    attribution_source == "tiktok" && attribution_data&.dig("provider") == "tiktok_lead_generation" &&
+      other_information&.dig("tiktok_lead_id").present? && email.to_s.match?(URI::MailTo::EMAIL_REGEXP)
+  end
+
+  def linkedin_contact_without_phone?
+    attribution_source == "linkedin" && attribution_data&.dig("provider") == "linkedin_lead_sync" &&
+      other_information&.dig("linkedin_response_id").present? && email.to_s.match?(URI::MailTo::EMAIL_REGEXP)
   end
 
   def self.origin_options(scope: all, tenant: Current.tenant)

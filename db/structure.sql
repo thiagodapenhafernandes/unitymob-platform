@@ -1,4 +1,4 @@
-\restrict QuOBKPaOtNgXSkf78nDbg2G6Cp2E7Ab9nhSyptp510kB2MDkhBa3aSFjPIfh7QH
+\restrict XGl0xC37PYbmaTIisy2klsaRHOD090bQ57BWCpRmOfmbLr6T2fkxffJgF6e6uEG
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -2530,7 +2530,13 @@ CREATE TABLE public.distribution_rules (
     pool_renotify_mode character varying DEFAULT 'never'::character varying NOT NULL,
     pool_renotify_minutes integer DEFAULT 30 NOT NULL,
     source_rd_station boolean DEFAULT false,
-    source_lovers boolean DEFAULT false
+    source_lovers boolean DEFAULT false,
+    source_linkedin boolean DEFAULT false NOT NULL,
+    linkedin_campaign_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    linkedin_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    source_tiktok boolean DEFAULT false NOT NULL,
+    tiktok_account_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    tiktok_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -3696,8 +3702,8 @@ CREATE TABLE public.home_settings (
     hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
 );
 
 
@@ -4544,6 +4550,81 @@ CREATE SEQUENCE public.leads_id_seq
 --
 
 ALTER SEQUENCE public.leads_id_seq OWNED BY public.leads.id;
+
+
+--
+-- Name: linkedin_integrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_integrations (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    access_token text,
+    token_expires_at timestamp(6) without time zone,
+    ad_accounts jsonb DEFAULT '[]'::jsonb NOT NULL,
+    selected_account_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    account_cursors jsonb DEFAULT '{}'::jsonb NOT NULL,
+    catalog jsonb DEFAULT '{}'::jsonb NOT NULL,
+    catalog_synced_at timestamp(6) without time zone,
+    last_synced_at timestamp(6) without time zone,
+    last_lead_received_at timestamp(6) without time zone,
+    last_error character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: linkedin_integrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.linkedin_integrations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: linkedin_integrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.linkedin_integrations_id_seq OWNED BY public.linkedin_integrations.id;
+
+
+--
+-- Name: linkedin_lead_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.linkedin_lead_receipts (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint,
+    response_id character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: linkedin_lead_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.linkedin_lead_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: linkedin_lead_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.linkedin_lead_receipts_id_seq OWNED BY public.linkedin_lead_receipts.id;
 
 
 --
@@ -7212,6 +7293,81 @@ ALTER SEQUENCE public.tenants_id_seq OWNED BY public.tenants.id;
 
 
 --
+-- Name: tiktok_integrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tiktok_integrations (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    route_key character varying NOT NULL,
+    access_token text,
+    ad_accounts jsonb DEFAULT '[]'::jsonb NOT NULL,
+    selected_account_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    catalog jsonb DEFAULT '{}'::jsonb NOT NULL,
+    subscriptions jsonb DEFAULT '{}'::jsonb NOT NULL,
+    last_synced_at timestamp(6) without time zone,
+    last_lead_received_at timestamp(6) without time zone,
+    last_error character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: tiktok_integrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tiktok_integrations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tiktok_integrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tiktok_integrations_id_seq OWNED BY public.tiktok_integrations.id;
+
+
+--
+-- Name: tiktok_lead_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tiktok_lead_receipts (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint,
+    advertiser_id character varying NOT NULL,
+    external_id character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: tiktok_lead_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tiktok_lead_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tiktok_lead_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tiktok_lead_receipts_id_seq OWNED BY public.tiktok_lead_receipts.id;
+
+
+--
 -- Name: trusted_devices; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8646,6 +8802,20 @@ ALTER TABLE ONLY public.leads ALTER COLUMN id SET DEFAULT nextval('public.leads_
 
 
 --
+-- Name: linkedin_integrations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_integrations ALTER COLUMN id SET DEFAULT nextval('public.linkedin_integrations_id_seq'::regclass);
+
+
+--
+-- Name: linkedin_lead_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_lead_receipts ALTER COLUMN id SET DEFAULT nextval('public.linkedin_lead_receipts_id_seq'::regclass);
+
+
+--
 -- Name: location_pings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9098,6 +9268,20 @@ ALTER TABLE ONLY public.tenant_domains ALTER COLUMN id SET DEFAULT nextval('publ
 --
 
 ALTER TABLE ONLY public.tenants ALTER COLUMN id SET DEFAULT nextval('public.tenants_id_seq'::regclass);
+
+
+--
+-- Name: tiktok_integrations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_integrations ALTER COLUMN id SET DEFAULT nextval('public.tiktok_integrations_id_seq'::regclass);
+
+
+--
+-- Name: tiktok_lead_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_lead_receipts ALTER COLUMN id SET DEFAULT nextval('public.tiktok_lead_receipts_id_seq'::regclass);
 
 
 --
@@ -9956,6 +10140,22 @@ ALTER TABLE ONLY public.leads
 
 
 --
+-- Name: linkedin_integrations linkedin_integrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_integrations
+    ADD CONSTRAINT linkedin_integrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: linkedin_lead_receipts linkedin_lead_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_lead_receipts
+    ADD CONSTRAINT linkedin_lead_receipts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: location_pings location_pings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10521,6 +10721,22 @@ ALTER TABLE ONLY public.tenant_domains
 
 ALTER TABLE ONLY public.tenants
     ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tiktok_integrations tiktok_integrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_integrations
+    ADD CONSTRAINT tiktok_integrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tiktok_lead_receipts tiktok_lead_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_lead_receipts
+    ADD CONSTRAINT tiktok_lead_receipts_pkey PRIMARY KEY (id);
 
 
 --
@@ -14636,6 +14852,41 @@ CREATE INDEX index_leads_on_vista_payload ON public.leads USING gin (vista_paylo
 
 
 --
+-- Name: index_linkedin_integrations_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_linkedin_integrations_on_admin_user_id ON public.linkedin_integrations USING btree (admin_user_id);
+
+
+--
+-- Name: index_linkedin_integrations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_linkedin_integrations_on_tenant_id ON public.linkedin_integrations USING btree (tenant_id);
+
+
+--
+-- Name: index_linkedin_lead_receipts_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_linkedin_lead_receipts_on_lead_id ON public.linkedin_lead_receipts USING btree (lead_id);
+
+
+--
+-- Name: index_linkedin_lead_receipts_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_linkedin_lead_receipts_on_tenant_id ON public.linkedin_lead_receipts USING btree (tenant_id);
+
+
+--
+-- Name: index_linkedin_lead_receipts_on_tenant_id_and_response_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_linkedin_lead_receipts_on_tenant_id_and_response_id ON public.linkedin_lead_receipts USING btree (tenant_id, response_id);
+
+
+--
 -- Name: index_location_pings_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -16253,6 +16504,48 @@ CREATE UNIQUE INDEX index_tenants_on_slug ON public.tenants USING btree (slug);
 
 
 --
+-- Name: index_tiktok_integrations_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tiktok_integrations_on_admin_user_id ON public.tiktok_integrations USING btree (admin_user_id);
+
+
+--
+-- Name: index_tiktok_integrations_on_route_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tiktok_integrations_on_route_key ON public.tiktok_integrations USING btree (route_key);
+
+
+--
+-- Name: index_tiktok_integrations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tiktok_integrations_on_tenant_id ON public.tiktok_integrations USING btree (tenant_id);
+
+
+--
+-- Name: index_tiktok_lead_receipts_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tiktok_lead_receipts_on_lead_id ON public.tiktok_lead_receipts USING btree (lead_id);
+
+
+--
+-- Name: index_tiktok_lead_receipts_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tiktok_lead_receipts_on_tenant_id ON public.tiktok_lead_receipts USING btree (tenant_id);
+
+
+--
+-- Name: index_tiktok_receipt_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tiktok_receipt_identity ON public.tiktok_lead_receipts USING btree (tenant_id, advertiser_id, external_id);
+
+
+--
 -- Name: index_trusted_devices_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17175,6 +17468,14 @@ ALTER TABLE ONLY public.leads
 
 
 --
+-- Name: tiktok_integrations fk_rails_0fadded24b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_integrations
+    ADD CONSTRAINT fk_rails_0fadded24b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: presentation_cards fk_rails_1053763516; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17591,6 +17892,14 @@ ALTER TABLE ONLY public.landing_page_blocks
 
 
 --
+-- Name: linkedin_integrations fk_rails_33d2bd6cba; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_integrations
+    ADD CONSTRAINT fk_rails_33d2bd6cba FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: profiles fk_rails_350dbd643d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17967,6 +18276,14 @@ ALTER TABLE ONLY public.whatsapp_campaigns
 
 
 --
+-- Name: linkedin_lead_receipts fk_rails_5879a9d970; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_lead_receipts
+    ADD CONSTRAINT fk_rails_5879a9d970 FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+
+
+--
 -- Name: check_ins fk_rails_58d2ce0005; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18020,6 +18337,14 @@ ALTER TABLE ONLY public.notification_template_settings
 
 ALTER TABLE ONLY public.account_memberships
     ADD CONSTRAINT fk_rails_5bb672184e FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: tiktok_lead_receipts fk_rails_5ccf2ef7cd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_lead_receipts
+    ADD CONSTRAINT fk_rails_5ccf2ef7cd FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -18287,6 +18612,14 @@ ALTER TABLE ONLY public.automation_executions
 
 
 --
+-- Name: tiktok_lead_receipts fk_rails_780dd98946; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_lead_receipts
+    ADD CONSTRAINT fk_rails_780dd98946 FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE SET NULL;
+
+
+--
 -- Name: leads fk_rails_78a40fb132; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18436,6 +18769,14 @@ ALTER TABLE ONLY public.crm_appointments
 
 ALTER TABLE ONLY public.ai_property_share_collections
     ADD CONSTRAINT fk_rails_82e5af99b5 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: tiktok_integrations fk_rails_834d912585; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiktok_integrations
+    ADD CONSTRAINT fk_rails_834d912585 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -19183,6 +19524,14 @@ ALTER TABLE ONLY public.browser_extension_operations
 
 
 --
+-- Name: linkedin_lead_receipts fk_rails_c2b716b2fa; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_lead_receipts
+    ADD CONSTRAINT fk_rails_c2b716b2fa FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: habitation_broker_assignments fk_rails_c366289351; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19831,6 +20180,14 @@ ALTER TABLE ONLY public.whatsapp_attendances
 
 
 --
+-- Name: linkedin_integrations fk_rails_f68091e6a0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.linkedin_integrations
+    ADD CONSTRAINT fk_rails_f68091e6a0 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: public_form_fields fk_rails_f6b270450b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19930,12 +20287,14 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QuOBKPaOtNgXSkf78nDbg2G6Cp2E7Ab9nhSyptp510kB2MDkhBa3aSFjPIfh7QH
+\unrestrict XGl0xC37PYbmaTIisy2klsaRHOD090bQ57BWCpRmOfmbLr6T2fkxffJgF6e6uEG
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261007160000'),
 ('20261007140000'),
+('20261007120000'),
 ('20261003223000'),
 ('20261002160000'),
 ('20261002150000'),

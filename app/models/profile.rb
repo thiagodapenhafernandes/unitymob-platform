@@ -195,12 +195,14 @@ class Profile < ApplicationRecord
       { label: "Perfil público", icon: "bi-building-gear", path: "edit_admin_public_site_profile_path", controllers: %w[public_site_profiles] },
       { label: "Desempenho", icon: "bi-speedometer2", path: "admin_site_cache_path", controllers: %w[site_caches] }
     ], description: "SEO, páginas, blog e estrutura do site público" },
-    { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
+    { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, section: true, sidebar_section: "integrations", sidebar_actions: %w[manage], included_items: ["Portais", "Loft Soft", "DWV", "WhatsApp", "Meta Leads", "TikTok Ads", "LinkedIn", "RD Station", "Lovers", "Google", "Rastreamento", "Migração de Leads", "Armazenamento", "Agendamento", "Webhooks", "IA", "Imóveis sincronizados", "Migração de Imagens"], sidebar_items: [
       { label: "Portais", icon: "bi-building", path: "admin_portal_integrations_path", controllers: %w[portal_integrations] },
       { label: "Loft Soft", icon: "loft", path: "admin_loft_integrations_path", controllers: %w[loft_integrations] },
       { label: "DWV", icon: "dwv", path: "admin_dwv_integrations_path", controllers: %w[dwv_integrations] },
       { label: "WhatsApp", icon: "bi-whatsapp", path: "admin_whatsapp_integration_path", controllers: %w[whatsapp_integrations] },
       { label: "Meta Leads", icon: "bi-meta", path: "admin_meta_integrations_path", controllers: %w[meta_integrations] },
+      { label: "TikTok Ads", icon: "bi-tiktok", path: "admin_tiktok_integration_path", controllers: %w[tiktok_integrations] },
+      { label: "LinkedIn", icon: "bi-linkedin", path: "admin_linkedin_integration_path", controllers: %w[linkedin_integrations] },
       { label: "RD Station", icon: "rdstation", path: "admin_rd_station_integration_path", controllers: %w[rd_station_integrations] },
       { label: "Lovers", icon: "lovers", path: "admin_lovers_integration_path", controllers: %w[lovers_integrations] },
       { label: "Google", icon: "bi-google", path: "admin_google_integration_path", controllers: %w[google_integrations] },

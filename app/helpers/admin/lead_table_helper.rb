@@ -69,7 +69,7 @@ module Admin::LeadTableHelper
     return {label: "Cadastro: Extensão Unitymob", icon: "puzzle", tone: :purple, campaign: nil} if info["creation_source"] == "browser_extension"
 
     form_id = lead_meta_form_reference(lead)["form_id"]
-    form_name ||= info["meta_form_name"].presence || info["form_name"].presence
+    form_name ||= info["linkedin_form_name"].presence || info["meta_form_name"].presence || info["form_name"].presence
     form_name ||= lead.product.presence if info["meta_form_id"].present?
     campaign = info["meta_campaign_name"].presence || info["campaign_name"].presence || conversion[:campaign].presence
     if form_id.present? || form_name.present?
