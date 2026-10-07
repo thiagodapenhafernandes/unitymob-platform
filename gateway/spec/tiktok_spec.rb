@@ -77,13 +77,13 @@ RSpec.describe "TikTok OAuth gateway" do
 
   it "returns the code only to the server-registered destination and consumes state once" do
     register
-    get "/oauth/tiktok/callback?#{URI.encode_www_form(state: state, auth_code: 'private-code')}"
+    get "/oauth/tiktok/callback?#{URI.encode_www_form(state: state, auth_code: 'private-code')}", {}, { "HTTP_REFERER" => "https://business-api.tiktok.com/", "HTTP_SEC_FETCH_SITE" => "cross-site" }
     expect(last_response.status).to eq(302)
     uri = URI(last_response.headers.fetch("location"))
     expect("#{uri.scheme}://#{uri.host}#{uri.path}").to eq(target)
     expect(URI.decode_www_form(uri.query).to_h).to eq({ "state" => state, "auth_code" => "private-code" })
     expect(TiktokOauthState.count).to eq(0)
-    get "/oauth/tiktok/callback?#{URI.encode_www_form(state: state, auth_code: 'private-code')}"
+    get "/oauth/tiktok/callback?#{URI.encode_www_form(state: state, auth_code: 'private-code')}", {}, { "HTTP_REFERER" => "https://business-api.tiktok.com/", "HTTP_SEC_FETCH_SITE" => "cross-site" }
     expect(last_response.status).to eq(400)
   end
 
