@@ -1,6 +1,6 @@
 class Admin::PortalIntegrationsController < Admin::BaseController
   requires_permission :manage, :integracoes
-  before_action :set_portal, only: [:update, :test_feed, :preview_feed]
+  before_action :set_portal, only: [:update, :preview_feed]
 
   def index
     @active_portal = normalize_portal(params[:portal])
@@ -20,6 +20,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
   end
 
   def preview_feed
+    return head(:forbidden) unless current_admin_user.system_admin?
     sample = Portal::EligibilityScope.new(@integration).eligible_scope.limit(3)
 
     case @integration.feed_strategy
@@ -42,26 +43,21 @@ class Admin::PortalIntegrationsController < Admin::BaseController
 
   def update
     attrs = portal_params.to_h
-    attrs.delete("feed_token") if attrs["feed_token"].to_s.strip.blank?
     attrs.delete("webhook_secret") if attrs["webhook_secret"].to_s.strip.blank?
 
     if @integration.update(attrs)
-      redirect_to admin_portal_integrations_path(portal: @portal), notice: "Configuração de #{@portal_title} salva com sucesso."
+      @integration.update_columns(lead_gateway_synced_at: nil) if @integration.grupozap_family? && (@integration.previous_changes.keys & %w[enabled leads_enabled]).any?
+      PortalLeadGatewaySyncJob.perform_later(@integration.id) if @integration.grupozap_family?
+      redirect_to admin_portal_integrations_path(portal: @portal, anchor: ("portal-leads" if params[:section] == "leads" && @integration.grupozap_family?)), notice: "Configuração de #{@portal_title} salva com sucesso."
     else
-      redirect_to admin_portal_integrations_path(portal: @portal), alert: @integration.errors.full_messages.to_sentence
+      redirect_to admin_portal_integrations_path(portal: @portal, anchor: ("portal-leads" if params[:section] == "leads" && @integration.grupozap_family?)), alert: @integration.errors.full_messages.to_sentence
     end
-  end
-
-  def test_feed
-    preview = Portal::EligibilityScope.new(@integration).preview
-    @integration.update(last_feed_at: Time.current, operational_status: "tested")
-
-    redirect_to admin_portal_integrations_path(portal: @portal), notice: "Teste de feed concluído: elegíveis=#{preview[:eligible_count]}, rejeitados=#{preview[:rejected_count]}."
   end
 
   # Chave por CRM (vale para todos os portais OLX e contas): grava global,
   # nunca exibe o valor de volta — só o status configurada/não configurada.
   def grupozap_key
+    return head(:forbidden) unless current_admin_user.system_admin?
     secret = params[:grupozap_secret_key].to_s.strip
     portal = normalize_portal(params[:portal])
 
@@ -86,7 +82,13 @@ class Admin::PortalIntegrationsController < Admin::BaseController
   # Resolve/cria a integração do portal SEMPRE dentro do tenant corrente, para
   # que cada conta edite apenas o seu próprio registro.
   def find_integration!(portal)
-    PortalIntegration.for_portal!(portal, tenant: current_tenant)
+    PortalIntegration.for_portal!(portal, tenant: current_tenant).tap do |integration|
+      if integration.grupozap_family? && integration.lead_route_key.blank?
+        integration.with_lock do
+          integration.update!(lead_route_key: SecureRandom.uuid) if integration.lead_route_key.blank?
+        end
+      end
+    end
   end
 
   # Eventos/estados filtrados por tenant corrente — cada conta vê só os seus.
@@ -100,14 +102,14 @@ class Admin::PortalIntegrationsController < Admin::BaseController
   end
 
   def portal_params
+    support_fields = current_admin_user.system_admin? ? [:webhook_secret] : []
     params.require(:portal_integration).permit(
       :enabled,
       :require_exibir_no_site,
       :leads_enabled,
-      :feed_token,
       :account_id,
       :publisher_id,
-      :webhook_secret,
+      *support_fields,
       allowed_statuses: [],
       allowed_business_types: []
     )

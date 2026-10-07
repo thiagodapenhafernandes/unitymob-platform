@@ -1,0 +1,49 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "LinkedIn", back_path: admin_root_path, icon: "linkedin" %>
+<% end %>
+<div class="ax-integration-layout ax-integration-layout--comfortable">
+  <%= ax_workspace_heading(title: "LinkedIn", icon: "linkedin", subtitle: "Conecte o LinkedIn e escolha as contas de anúncios que enviarão leads ao CRM.") %>
+  <div class="ax-integration-sections">
+    <%= ax_operational_panel(eyebrow: "Autorização", title: "Conexão LinkedIn", actions: ax_badge(@integration&.connected? ? "Conectada" : "Não conectada", tone: @integration&.connected? ? :green : :gray)) do %>
+      <div class="ax-panel-body">
+        <% if LinkedinIntegration.configured? %>
+          <p class="ax-field__hint">Entre com um usuário que tenha acesso à conta de anúncios e à página empresarial associada.</p>
+          <%= button_to(@integration&.connected? ? "Renovar acesso ao LinkedIn" : "Conectar LinkedIn", connect_admin_linkedin_integration_path, method: :post, class: "ax-btn ax-btn--primary", data: { turbo: false }) %>
+        <% else %>
+          <%= ax_inline_notice(tone: :warning, icon: "info-circle", compact: true) do %>
+            A conexão precisa ser habilitada pelo suporte com um aplicativo aprovado para Lead Sync. Depois, basta entrar com seu LinkedIn; você não precisará informar tokens ou configurar webhooks.
+          <% end %>
+        <% end %>
+        <% if @integration&.encryption_ready? && @integration.access_token.present? %>
+          <p class="ax-field__hint">Conexão autorizada por <%= @integration.admin_user.name %>. Acesso válido até <%= l(@integration.token_expires_at, format: :short) if @integration.token_expires_at %>.</p>
+          <%= button_to "Desconectar", disconnect_admin_linkedin_integration_path, method: :delete, class: "ax-btn", data: { turbo_confirm: "Desconectar o LinkedIn? O recebimento será interrompido. Os leads já recebidos serão preservados." } %>
+        <% end %>
+      </div>
+    <% end %>
+    <% if @integration&.last_error.present? %>
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") { @integration.last_error } %>
+    <% end %>
+    <% if @integration&.connected? %>
+      <%= ax_operational_panel(eyebrow: "Recebimento", title: "Contas de anúncios") do %>
+        <div class="ax-panel-body">
+          <%= form_with model: @integration, url: admin_linkedin_integration_path, method: :patch do |form| %>
+            <%= ax_check_group(form: form, method: :selected_account_ids,
+                  choices: @integration.ad_accounts.map { |account| [account['id'], "#{account['name']} · #{account['id']}"] }, legend: "Selecione as contas que enviarão leads") %>
+            <% if @integration.ad_accounts.empty? %><p class="ax-field__hint">Nenhuma conta foi carregada. Atualize os recursos e confira as permissões do usuário conectado.</p><% end %>
+            <p class="ax-field__hint">Recebemos novos leads a partir da ativação de cada conta, com consultas automáticas a cada minuto. O histórico anterior não é importado.</p>
+            <%= form.submit "Salvar contas", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+          <%= button_to "Atualizar contas e campanhas", sync_admin_linkedin_integration_path, method: :post, class: "ax-btn" %>
+        </div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Operação", title: "Distribuição e acompanhamento") do %>
+        <div class="ax-panel-body">
+          <p>Escolha campanhas, formulários e equipe nas <%= link_to "regras de distribuição", admin_distribution_rules_path, class: "ax-link" %>.</p>
+          <p class="ax-field__hint">Última verificação: <%= @integration.last_synced_at ? l(@integration.last_synced_at, format: :short) : "Aguardando atualização" %>.</p>
+          <p class="ax-field__hint">Último lead recebido: <%= @integration.last_lead_received_at ? l(@integration.last_lead_received_at, format: :short) : "Nenhum lead recebido ainda" %>.</p>
+          <p class="ax-field__hint">Leads sem regra compatível continuam salvos no CRM sem atribuição automática.</p>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

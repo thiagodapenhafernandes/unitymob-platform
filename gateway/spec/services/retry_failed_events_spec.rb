@@ -30,6 +30,13 @@ RSpec.describe Gateway::RetryFailedEvents do
     expect(stub).to have_been_requested
   end
 
+  it "leaves other providers untouched when retrying only Grupo OLX" do
+    route = WebhookRoute.create!(client_key: "other", phone_number_id: "phone-1", target_url: "https://crm.example.com/webhooks/whatsapp", forwarding_secret: "forward-secret")
+    event = WebhookEvent.create!(webhook_route: route, provider: "whatsapp", event_type: "message", payload: {}, status: "failed", attempts: 1, received_at: Time.now - 60)
+    expect(described_class.call(provider: "grupozap").retried).to eq(0)
+    expect(event.reload.attempts).to eq(1)
+  end
+
   it "skips events that are not due yet" do
     route = WebhookRoute.create!(
       client_key: "conexao",

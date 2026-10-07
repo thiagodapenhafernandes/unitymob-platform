@@ -11,6 +11,8 @@ class WebhookRoute < ApplicationRecord
   validates :phone_number_id, uniqueness: { scope: :provider }, if: :whatsapp?
   validates :page_id, uniqueness: { scope: %i[provider form_id] }, if: :meta?
 
+  validates :advertiser_id, presence: true, if: -> { provider == "tiktok" }
+
   def whatsapp?
     provider.to_s == "whatsapp"
   end

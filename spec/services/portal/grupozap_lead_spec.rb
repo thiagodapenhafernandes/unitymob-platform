@@ -38,6 +38,12 @@ RSpec.describe Portal::GrupozapLead do
     expect(lead[:phone]).to eq("5547999999999")
   end
 
+  it "prioriza ddd e phone sobre o phoneNumber depreciado" do
+    lead = described_class.call(payload("phoneNumber" => "11988888888"))
+
+    expect(lead[:phone]).to eq("5547999999999")
+  end
+
   it "retorna nil sem originLeadId" do
     expect(described_class.call(payload("originLeadId" => "  "))).to be_nil
     expect(described_class.call({})).to be_nil

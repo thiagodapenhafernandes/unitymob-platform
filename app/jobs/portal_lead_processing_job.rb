@@ -8,20 +8,22 @@ class PortalLeadProcessingJob < ApplicationJob
   # retorno — nunca exceção, pois retry não os resolve.
   retry_on StandardError, wait: :polynomially_longer, attempts: 5
 
-  def perform(payload)
+  def perform(payload, integration_id = nil)
     lead = Portal::GrupozapLead.call(payload)
     if lead.nil?
       Rails.logger.warn "[PortalLeadProcessingJob] Payload sem originLeadId — descartado."
       return
     end
 
-    property, resolution = resolve_property(lead)
+    integration = PortalIntegration.find_by(id: integration_id) if integration_id
+    return quarantine(lead, tenant: nil, reason: "invalid_integration") if integration_id && !integration&.grupozap_family?
+    property, resolution = resolve_property(lead, integration: integration)
     if property.nil?
       return quarantine(lead, tenant: nil, reason: resolution[:reason], tenant_ids: resolution[:tenant_ids])
     end
 
     tenant = property.tenant
-    unless receiving?(tenant)
+    unless integration ? integration.enabled? && integration.leads_enabled? : receiving?(tenant)
       return quarantine(lead, tenant: tenant, reason: "leads_disabled")
     end
 
@@ -42,12 +44,13 @@ class PortalLeadProcessingJob < ApplicationJob
 
   private
 
-  def resolve_property(lead)
+  def resolve_property(lead, integration: nil)
     if lead[:listing_code].blank?
       return [nil, { reason: lead[:mcmv].present? ? "mcmv_no_listing" : "missing_listing" }]
     end
 
-    matches = Habitation.where(codigo: lead[:listing_code]).includes(:tenant).to_a
+    scope = integration ? Habitation.where(tenant_id: integration.tenant_id) : Habitation.all
+    matches = scope.where(codigo: lead[:listing_code]).includes(:tenant).to_a
     tenants = matches.map(&:tenant).compact.uniq
     return [matches.first, {}] if tenants.one?
     return [nil, { reason: "unknown_listing" }] if tenants.empty?

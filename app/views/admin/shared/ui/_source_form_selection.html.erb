@@ -1,0 +1,19 @@
+<%# Cascata compartilhada: estrutura { id => { name:, forms: [{id:, name:}] } }. %>
+<div data-controller="meta-rules" data-meta-rules-all-parents-when-empty-value="true" data-meta-rules-structure-value="<%= structure.to_json %>">
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
+      <%= ax_select_field(form: form, method: parent_method, label: parent_label,
+            choices: structure.values.any? { |row| row["account_id"].present? } ? structure.group_by { |_id, row| "#{row['account_name']} · #{row['account_id']}" }.map { |account, rows| [account, rows.map { |id, row| [row['name'], id] }] } : structure.map { |id, row| [row["name"], id] },
+            html_options: { multiple: true, data: { controller: "tom-select", meta_rules_target: "pageSelect", action: "change->meta-rules#updateForms" } }) %>
+      <p class="ax-field__hint"><%= local_assigns.fetch(:parent_hint, "Vazio = todas as campanhas das contas selecionadas na integração.") %></p>
+    </div>
+    <div class="ax-span-6">
+      <% parents = Array(form.object.public_send(parent_method)).compact_blank %>
+      <% visible = (parents.any? ? structure.slice(*parents) : structure).values.flat_map { |row| row['forms'] }.uniq { |row| row['id'] } %>
+      <%= ax_select_field(form: form, method: form_method, label: "Formulários",
+            choices: visible.map { |row| [row['name'], row['id']] },
+            html_options: { multiple: true, data: { meta_rules_target: "formSelect", action: "change->meta-rules#syncAutoSummary" } }) %>
+      <p class="ax-field__hint"><%= local_assigns.fetch(:form_hint, "Vazio = todos os formulários das campanhas escolhidas.") %></p>
+    </div>
+  <% end %>
+</div>

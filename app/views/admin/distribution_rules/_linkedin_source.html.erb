@@ -1,0 +1,10 @@
+<%= render layout: "admin/shared/ui/lead_source_card", locals: { form: f, brand: "linkedin", icon_class: "tw-text-blue-600", title: "LinkedIn Ads", description: "Leads dos formulários de anúncios do LinkedIn.", source_method: :source_linkedin, toggle_action: "toggleLinkedin", section_target: "linkedinSection" } do %>
+    <%= render "admin/shared/ui/source_form_selection", form: f, structure: structure,
+          parent_method: :linkedin_campaign_ids, parent_label: "Campanhas", form_method: :linkedin_form_ids %>
+    <p class="ax-field__hint">Conexão e contas de anúncios são configuradas em <%= link_to "Integrações → LinkedIn", admin_linkedin_integration_path, class: "ax-link" %>. Novas campanhas e formulários entram automaticamente quando o respectivo filtro está vazio.</p>
+    <% if structure.empty? %>
+      <%= ax_inline_notice(tone: :warning, icon: "info-circle", compact: true) do %>
+        Nenhuma campanha com formulário está disponível. Confira as contas selecionadas, as permissões e a última atualização na integração LinkedIn.
+      <% end %>
+    <% end %>
+<% end %>

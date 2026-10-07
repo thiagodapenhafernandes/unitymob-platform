@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["represamentoSection", "pocketSection", "poolRenotifySection", "poolRenotifyIntervalField",
-                    "metaSection", "webhookSection", "notifyWebhookSection",
+                    "metaSection", "tiktokSection", "linkedinSection", "webhookSection", "notifyWebhookSection",
                     "notifyWebhookSelect", "notifyWebhookError",
                     "channelModal", "channelModalName", "channelModalInstructions", "channelModalLink",
                     "checkinStoreSelect", "storeContextSection"]
@@ -12,7 +12,8 @@ export default class extends Controller {
     this.togglePocket()
     this.togglePoolRenotify()
     this.toggleMeta()
-    this.toggleMeta()
+    this.toggleTiktok()
+    this.toggleLinkedin()
     this.toggleWebhook()
     this.toggleNotifyWebhook()
     this.toggleMode()
@@ -59,6 +60,18 @@ export default class extends Controller {
     const checkbox = event ? event.target : this.findCheckbox('[name="distribution_rule[source_meta]"]')
     if (this.hasMetaSectionTarget && checkbox) {
       this.setVisible(this.metaSectionTarget, checkbox.checked)
+    }
+  }
+
+  toggleTiktok(event) {
+    const checkbox = event ? event.target : this.findCheckbox('[name="distribution_rule[source_tiktok]"]')
+    if (this.hasTiktokSectionTarget && checkbox) this.setVisible(this.tiktokSectionTarget, checkbox.checked)
+  }
+
+  toggleLinkedin(event) {
+    const checkbox = event ? event.target : this.findCheckbox('[name="distribution_rule[source_linkedin]"]')
+    if (this.hasLinkedinSectionTarget && checkbox) {
+      this.setVisible(this.linkedinSectionTarget, checkbox.checked)
     }
   }
 

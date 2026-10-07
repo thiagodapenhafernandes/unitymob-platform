@@ -1,0 +1,44 @@
+<% content_for :mobile_detail_header do %>
+  <%= render "admin/shared/ui/mobile_detail_header", title: "TikTok Ads", back_path: admin_root_path, icon: "tiktok" %>
+<% end %>
+<div class="ax-integration-layout ax-integration-layout--comfortable">
+  <%= ax_workspace_heading(title: "TikTok Ads", icon: "tiktok", subtitle: "Receba leads dos formulários de anúncios diretamente no CRM.") %>
+  <div class="ax-integration-sections">
+    <%= ax_operational_panel(eyebrow: "Autorização", title: "Conexão TikTok", actions: ax_badge(@integration&.connected? ? "Conectada" : "Não conectada", tone: @integration&.connected? ? :green : :gray)) do %>
+      <div class="ax-panel-body">
+        <% if TiktokIntegration.configured? %>
+          <p class="ax-field__hint">Conecte com um usuário que tenha acesso de administrador aos anunciantes.</p>
+          <%= button_to(@integration&.connected? ? "Renovar acesso ao TikTok" : "Conectar TikTok", connect_admin_tiktok_integration_path, method: :post, class: "ax-btn ax-btn--primary", data: { turbo: false }) %>
+        <% else %>
+          <%= ax_inline_notice(tone: :warning, icon: "info-circle", compact: true) { "A conexão precisa ser habilitada pelo suporte. Depois, basta autorizar sua conta TikTok." } %>
+        <% end %>
+        <% if @integration&.connected? %>
+          <%= button_to "Desconectar", disconnect_admin_tiktok_integration_path, method: :delete, class: "ax-btn", data: { turbo_confirm: "Desconectar o TikTok e interromper o recebimento? Os leads já recebidos serão preservados." } %>
+        <% end %>
+      </div>
+    <% end %>
+    <% if @integration&.last_error.present? %>
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") { @integration.last_error } %>
+    <% end %>
+    <% if @integration&.connected? %>
+      <%= ax_operational_panel(eyebrow: "Recebimento", title: "Anunciantes") do %>
+        <div class="ax-panel-body">
+          <%= form_with model: @integration, url: admin_tiktok_integration_path, method: :patch do |form| %>
+            <%= ax_check_group(form: form, method: :selected_account_ids, choices: @integration.ad_accounts.map { |account| [account['advertiser_id'].to_s, "#{account['advertiser_name']} · #{account['advertiser_id']}"] }, legend: "Selecione os anunciantes que enviarão leads") %>
+            <p class="ax-field__hint">O recebimento começa após a ativação. O histórico anterior não é importado.</p>
+            <%= form.submit "Salvar anunciantes", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+          <%= button_to "Atualizar anunciantes e formulários", sync_admin_tiktok_integration_path, method: :post, class: "ax-btn" %>
+        </div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Operação", title: "Distribuição e acompanhamento") do %>
+        <div class="ax-panel-body">
+          <p>Escolha anunciantes, formulários e equipe nas <%= link_to "regras de distribuição", admin_distribution_rules_path, class: "ax-link" %>.</p>
+          <p class="ax-field__hint">Última atualização: <%= @integration.last_synced_at ? l(@integration.last_synced_at, format: :short) : "Aguardando atualização" %>.</p>
+          <p class="ax-field__hint">Último lead recebido: <%= @integration.last_lead_received_at ? l(@integration.last_lead_received_at, format: :short) : "Nenhum lead recebido ainda" %>.</p>
+          <p class="ax-field__hint">Leads sem regra compatível permanecem salvos sem atribuição automática.</p>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

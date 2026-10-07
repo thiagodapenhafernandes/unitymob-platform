@@ -77,6 +77,24 @@
             <% end %>
           </div>
 
+          <% if @rule.source_tiktok? %>
+            <% structure = TiktokIntegration.find_by(tenant: current_tenant)&.form_structure || {} %>
+            <div class="distribution-rule-show__block">
+              <span class="distribution-rule-show__block-label">TikTok Ads</span>
+              <p class="distribution-rule-show__line"><strong>Anunciantes:</strong> <%= @rule.tiktok_account_ids.any? ? @rule.tiktok_account_ids.map { |id| structure.dig(id, "name") || "Anunciante indisponível (#{id})" }.to_sentence : "Todos os anunciantes conectados" %></p>
+              <p class="distribution-rule-show__line"><strong>Formulários:</strong> <%= @rule.tiktok_form_ids.any? ? @rule.tiktok_form_ids.map { |id| structure.values.flat_map { |account| account["forms"] }.find { |form| form["id"] == id }&.fetch("name") || "Formulário indisponível (#{id})" }.to_sentence : "Todos os formulários dos anunciantes selecionados" %></p>
+            </div>
+          <% end %>
+
+          <% if @rule.source_linkedin? %>
+            <% linkedin_structure = LinkedinIntegration.find_by(tenant: current_tenant)&.campaign_structure || {} %>
+            <div class="distribution-rule-show__block">
+              <span class="distribution-rule-show__block-label">LinkedIn Ads</span>
+              <p class="distribution-rule-show__line"><strong>Campanhas:</strong> <%= Array(@rule.linkedin_campaign_ids).any? ? @rule.linkedin_campaign_ids.map { |id| linkedin_structure.dig(id, "name") || "Campanha indisponível (#{id})" }.to_sentence : "Todas as campanhas das contas conectadas" %></p>
+              <p class="distribution-rule-show__line"><strong>Formulários:</strong> <%= Array(@rule.linkedin_form_ids).any? ? linkedin_structure.values.flat_map { |campaign| campaign["forms"] }.uniq { |form| form["id"] }.select { |form| @rule.linkedin_form_ids.include?(form["id"]) }.pluck("name").to_sentence : "Todos os formulários das campanhas selecionadas" %></p>
+            </div>
+          <% end %>
+
           <div class="distribution-rule-show__block">
             <span class="distribution-rule-show__block-label">Webhook personalizado</span>
             <% if @rule.source_webhook? %>

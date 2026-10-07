@@ -44,8 +44,8 @@ module Portal
     end
 
     def normalized_phone
-      full = @payload["phoneNumber"].to_s.strip.presence ||
-             [@payload["ddd"], @payload["phone"]].map { |part| part.to_s.strip }.join.presence
+      parts = [@payload["ddd"], @payload["phone"]].map { |part| part.to_s.strip }
+      full = (parts.all?(&:present?) ? parts.join : nil) || @payload["phoneNumber"].to_s.strip.presence
       return nil if full.blank?
 
       Phones::Normalizer.call(full).presence || full

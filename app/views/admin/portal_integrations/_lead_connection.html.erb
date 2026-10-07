@@ -1,0 +1,20 @@
+<div id="portal_lead_connection_<%= integration.id %>">
+  <div class="tw-mt-4 tw-space-y-3" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
+    <% if !Portal::LeadGatewayClient.configured? %>
+      <p>A conexão precisa ser habilitada pelo suporte da Unitymob.</p>
+    <% elsif integration.lead_gateway_error.present? %>
+      <%= ax_badge("Atualização pendente", tone: :amber) %>
+      <p><%= integration.lead_gateway_error %></p>
+    <% elsif !integration.enabled? || !integration.leads_enabled? %>
+      <%= ax_badge("Recebimento pausado", tone: :amber) %>
+      <p>Mantenha a integração ativa no bloco de envio e habilite o recebimento de leads neste bloco.</p>
+    <% elsif integration.lead_gateway_synced_at.blank? %>
+      <%= ax_badge("Preparando conexão", tone: :amber) %>
+      <p>A URL identifica esta conta, mas o recebimento ainda está sendo preparado automaticamente.</p>
+    <% else %>
+      <%= ax_badge(integration.last_lead_at.present? ? "Lead recebido" : "Pronta para vincular", tone: :green) %>
+      <p class="tw-mt-3">A Unitymob atualiza a conexão e tenta entregar novamente quando houver uma indisponibilidade temporária. Você não precisa renovar o acesso periodicamente.</p>
+    <% end %>
+    <p class="tw-mt-3">Último lead recebido: <%= integration.last_lead_at.present? ? l(integration.last_lead_at, format: :short) : "nenhum ainda" %>. A ausência de leads não indica desconexão.</p>
+  </div>
+</div>

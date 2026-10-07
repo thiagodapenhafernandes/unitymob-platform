@@ -10,6 +10,18 @@
 #     schedule: at 5am every day
 
 development:
+  tiktok_reconcile:
+    class: TiktokReconcileJob
+    queue: sync
+    schedule: every 15 minutes
+  portal_lead_gateway_reconcile:
+    class: PortalLeadGatewayReconcileJob
+    queue: sync
+    schedule: every 15 minutes
+  linkedin_leads_sync:
+    class: LinkedinSyncEnabledIntegrationsJob
+    queue: sync
+    schedule: every minute
   whatsapp_attendance_window_sweep:
     class: Whatsapp::AttendanceWindowSweepJob
     queue: default
@@ -38,6 +50,18 @@ development:
     schedule: every 5 minutes
 
 production:
+  tiktok_reconcile:
+    class: TiktokReconcileJob
+    queue: sync
+    schedule: every 15 minutes
+  portal_lead_gateway_reconcile:
+    class: PortalLeadGatewayReconcileJob
+    queue: sync
+    schedule: every 15 minutes
+  linkedin_leads_sync:
+    class: LinkedinSyncEnabledIntegrationsJob
+    queue: sync
+    schedule: every minute
   whatsapp_attendance_window_sweep:
     class: Whatsapp::AttendanceWindowSweepJob
     queue: default

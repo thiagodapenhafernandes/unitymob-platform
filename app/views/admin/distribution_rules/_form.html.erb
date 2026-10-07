@@ -135,6 +135,9 @@
               </div>
             </section>
 
+            <%= render "admin/distribution_rules/tiktok_source", f: f, rule: distribution_rule, structure: @tiktok_structure || {} %>
+            <%= render "admin/distribution_rules/linkedin_source", f: f, rule: distribution_rule, structure: @linkedin_structure || {} %>
+
             <%# Webhooks %>
             <section class="distribution-rule-source-card">
               <div class="distribution-rule-source__head">

@@ -65,6 +65,8 @@
           <td><span class="ax-badge ax-badge--gray tw-uppercase tw-font-mono"><%= rule.business_type %></span></td>
           <td>
             <span class="tw-inline-flex tw-gap-2 tw-text-base" aria-label="Fontes: <%= enabled_sources.presence&.to_sentence || 'nenhuma' %>">
+              <% if rule.source_tiktok? %><i class="bi bi-tiktok" title="TikTok Ads" aria-hidden="true"></i><% end %>
+              <% if rule.source_linkedin? %><i class="bi bi-linkedin tw-text-blue-600" title="LinkedIn Ads" aria-hidden="true"></i><% end %>
               <% if rule.source_meta? %><i class="bi bi-facebook tw-text-blue-600" title="Meta" aria-hidden="true"></i><% end %>
               <% if rule.source_rd_station? %><i class="bi bi-envelope-paper tw-text-green-600" title="RD Station" aria-hidden="true"></i><% end %>
               <% if rule.source_lovers? %><i class="bi bi-heart tw-text-rose-600" title="Lovers" aria-hidden="true"></i><% end %>

@@ -4,10 +4,12 @@ require "json"
 require "sinatra/base"
 require_relative "discovery_routes"
 require_relative "admin_routes"
+require_relative "tiktok_routes"
 
 module Gateway
   class App < Sinatra::Base
     register Gateway::DiscoveryRoutes
+    register Gateway::TiktokRoutes
     register Gateway::AdminRoutes
     configure do
       set :show_exceptions, false
@@ -84,6 +86,54 @@ module Gateway
     rescue JSON::ParserError
       status 400
       json(error: "invalid_json")
+    end
+
+    post "/internal/grupozap/routes" do
+      require_internal_token!
+      data = parse_json(request.body.read)
+      halt 422, json(error: "invalid_route") unless data.is_a?(Hash)
+      key = data["client_key"].to_s
+      target = URI.parse(data["target_url"].to_s)
+      unless key.match?(/\A[0-9a-f-]{36}\z/) && target.scheme == "https" && target.host.present? &&
+          target.path == "/webhooks/portal_leads/grupozap/#{key}" && target.userinfo.nil? &&
+          data["forwarding_secret"].to_s.length >= 20 && [true, false].include?(data["active"])
+        halt 422, json(error: "invalid_route")
+      end
+      route = WebhookRoute.create_or_find_by!(provider: "grupozap", client_key: key) do |record|
+        record.assign_attributes(data.slice("tenant_name", "target_url", "forwarding_secret", "active"))
+      end
+      route.update!(data.slice("tenant_name", "target_url", "forwarding_secret", "active"))
+      json(ok: true, receiving_configured: ENV["GRUPOZAP_SECRET_KEY"].to_s.present?)
+    rescue JSON::ParserError, URI::InvalidURIError
+      halt 422, json(error: "invalid_route")
+    end
+
+    post "/webhooks/grupozap/:key" do
+      secret = ENV["GRUPOZAP_SECRET_KEY"].to_s
+      auth = Rack::Auth::Basic::Request.new(request.env)
+      unless secret.present? && auth.basic? && auth.provided? && auth.credentials &&
+          Rack::Utils.secure_compare(auth.credentials.last.to_s, secret)
+        halt 401, json(error: "invalid_authentication")
+      end
+      route = WebhookRoute.find_by(provider: "grupozap", client_key: params[:key], active: true)
+      halt 404, json(error: "unknown_integration") unless route
+      raw = request.body.read
+      payload = parse_json(raw)
+      unless payload.is_a?(Hash) && payload["originLeadId"].to_s.strip.present? &&
+          (payload["leadOrigin"] == "MCMV_OLX" || payload["clientListingId"].to_s.strip.present?)
+        halt 422, json(error: "invalid_lead")
+      end
+      event = WebhookEvent.create_or_find_by!(provider: "grupozap", webhook_route: route,
+        external_id: payload["originLeadId"].to_s.strip) do |record|
+        record.assign_attributes(event_type: "lead", payload: payload, raw_body: raw,
+          received_at: Time.now, status: "received")
+      end
+      event.with_lock do
+        forward_event(event, event.raw_body) if event.status == "received"
+      end
+      json(ok: true)
+    rescue JSON::ParserError
+      halt 400, json(error: "invalid_json")
     end
 
     post "/internal/whatsapp/routes" do

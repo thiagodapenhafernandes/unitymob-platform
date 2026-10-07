@@ -11,6 +11,7 @@ require_relative "../config/environment"
 
 connection = ActiveRecord::Base.connection
 raise "Use an isolated *_test database" unless connection.select_value("SELECT current_database()").end_with?("_test")
+connection.drop_table(:tiktok_oauth_states, if_exists: true)
 connection.drop_table(:webhook_events, if_exists: true)
 connection.drop_table(:webhook_routes, if_exists: true)
 connection.drop_table(:webhook_mirrors, if_exists: true)
@@ -85,11 +86,17 @@ require_relative "../db/migrate/20260906040000_create_discovery_v2"
 ActiveRecord::Migration.suppress_messages { CreateDiscoveryV2.new.migrate(:up) }
 require_relative "../db/migrate/20260918000000_create_admin_login_challenges"
 ActiveRecord::Migration.suppress_messages { CreateAdminLoginChallenges.new.migrate(:up) }
+require_relative "../db/migrate/20261007140000_add_grupozap_routes"
+ActiveRecord::Migration.suppress_messages { AddGrupozapRoutes.new.migrate(:up) }
+
+require_relative "../db/migrate/20261007160000_add_tiktok_routes"
+ActiveRecord::Migration.suppress_messages { AddTiktokRoutes.new.migrate(:up) }
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods
 
   config.before do
+    TiktokOauthState.delete_all
     WebhookEvent.delete_all
     WebhookRoute.delete_all
     WebhookMirror.delete_all

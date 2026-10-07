@@ -446,6 +446,18 @@ Rails.application.routes.draw do
         get :permissions
       end
     end
+    resource :tiktok_integration, only: [:show, :update] do
+      post :connect
+      get :callback
+      post :sync
+      delete :disconnect
+    end
+    resource :linkedin_integration, only: [:show, :update] do
+      post :connect
+      get :callback
+      post :sync
+      delete :disconnect
+    end
     resource :rd_station_integration, only: [:show, :update] do
       get :connect
       get :callback
@@ -489,7 +501,6 @@ Rails.application.routes.draw do
       post :sync_images_now
     end
     resources :portal_integrations, only: [:index, :update], param: :portal do
-      post :test_feed, on: :member
       get :preview_feed, on: :member
       post :grupozap_key, on: :collection
     end
@@ -767,12 +778,14 @@ Rails.application.routes.draw do
     post "inbound/leads", to: "inbound#leads", as: :inbound_leads
     post "external_leads/:token", to: "external_leads#receive", as: :external_lead
     post "rd_station/:token", to: "rd_station#receive", as: :rd_station
+    post "tiktok/:route_key", to: "tiktok#create"
     post "meta", to: "meta#receive_leads"
     get "meta", to: "meta#receive_leads"
     get "whatsapp", to: "whatsapp#verify"
     post "whatsapp", to: "whatsapp#receive"
     post "portals/:portal/events", to: "portals#events", as: :portal_events
     post "portal_leads/grupozap", to: "portal_leads#grupozap", as: :portal_leads_grupozap
+    post "portal_leads/grupozap/:route_key", to: "portal_leads#grupozap"
   end
 
   namespace :integrations do

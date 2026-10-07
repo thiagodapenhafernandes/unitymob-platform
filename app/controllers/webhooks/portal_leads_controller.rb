@@ -15,7 +15,15 @@ module Webhooks
     RATE_LIMIT = 120
 
     def grupozap
-      return head(:unauthorized) unless valid_secret_key?
+      integration = nil
+      if params[:route_key].present?
+        integration = PortalIntegration.find_by(lead_route_key: params[:route_key], portal: PortalIntegration::GRUPOZAP_PORTALS)
+        return head(:not_found) unless integration
+        return head(:unauthorized) unless valid_gateway_signature?
+        return head(:conflict) unless integration.enabled? && integration.leads_enabled?
+      else
+        return head(:unauthorized) unless valid_secret_key?
+      end
       return head(:too_many_requests) unless within_rate_limit?
 
       payload = parsed_body
@@ -23,11 +31,28 @@ module Webhooks
         return render json: { error: "originLeadId ausente" }, status: :unprocessable_entity
       end
 
-      PortalLeadProcessingJob.perform_later(payload)
+      if payload["leadOrigin"] != "MCMV_OLX" && payload["clientListingId"].to_s.strip.blank?
+        return render json: { error: "clientListingId ausente" }, status: :unprocessable_entity
+      end
+
+      if integration
+        PortalLeadProcessingJob.perform_later(payload, integration.id)
+      else
+        PortalLeadProcessingJob.perform_later(payload)
+      end
       head :ok
     end
 
     private
+
+    def valid_gateway_signature?
+      secret = Portal::LeadGatewayClient.forwarding_secret
+      return false if secret.blank? || request.headers["X-Unitymob-Gateway-Provider"] != "grupozap"
+
+      # Bind the signature to this integration, not only to the lead body.
+      expected = "sha256=#{OpenSSL::HMAC.hexdigest('SHA256', secret, "#{params[:route_key]}\n#{request.raw_post}")}"
+      ActiveSupport::SecurityUtils.secure_compare(expected, request.headers["X-Unitymob-Gateway-Signature"].to_s)
+    end
 
     def valid_secret_key?
       configured = Setting.get(PortalIntegration::GRUPOZAP_SECRET_KEY, ENV["GRUPOZAP_SECRET_KEY"]).to_s
@@ -56,7 +81,8 @@ module Webhooks
       body = request.raw_post.to_s
       return {} if body.blank?
 
-      JSON.parse(body)
+      parsed = JSON.parse(body)
+      parsed.is_a?(Hash) ? parsed : {}
     rescue JSON::ParserError
       {}
     end

@@ -5,7 +5,8 @@ export default class extends Controller {
   static targets = ["pageSelect", "formSelect", "autoSync", "formCountLabel"]
   static values = {
     structure: Object, // { page_id: { forms: [{id: 1, name: "Name"}] } }
-    syncUrl: String
+    syncUrl: String,
+    allParentsWhenEmpty: Boolean
   }
 
   connect() {
@@ -45,7 +46,8 @@ export default class extends Controller {
   }
 
   refreshFormsFromSelectedPages({ preserveSelections = true } = {}) {
-    const selectedPages = this.selectedPageIds()
+    const selected = this.selectedPageIds()
+    const selectedPages = selected.length === 0 && this.allParentsWhenEmptyValue ? Object.keys(this.structureValue) : selected
     if (!this.formSelectInstance) this.initFormSelect()
     if (!this.formSelectInstance) return
 

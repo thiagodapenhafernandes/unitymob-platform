@@ -57,6 +57,8 @@ export default class extends Controller {
       shark_tank: "shark tank (primeiro a aceitar)"
     }
     const sources = []
+    if (this.checked("source_tiktok")) sources.push("TikTok Ads")
+    if (this.checked("source_linkedin")) sources.push("LinkedIn Ads")
     if (this.checked("source_meta")) sources.push("Meta Ads")
     if (this.checked("source_rd_station")) sources.push("RD Station")
     if (this.checked("source_webhook")) sources.push("Webhooks")
