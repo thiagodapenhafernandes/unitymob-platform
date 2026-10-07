@@ -73,7 +73,8 @@ namespace :webhooks do
   task :retry_failed do
     result = Gateway::RetryFailedEvents.call(
       limit: ENV.fetch("LIMIT", Gateway::RetryFailedEvents::DEFAULT_LIMIT),
-      max_attempts: ENV.fetch("MAX_ATTEMPTS", Gateway::RetryFailedEvents::DEFAULT_MAX_ATTEMPTS)
+      max_attempts: ENV.fetch("MAX_ATTEMPTS", Gateway::RetryFailedEvents::DEFAULT_MAX_ATTEMPTS),
+      provider: ENV["PROVIDER"].presence
     )
 
     puts "retried=#{result.retried} forwarded=#{result.forwarded} failed=#{result.failed}"
