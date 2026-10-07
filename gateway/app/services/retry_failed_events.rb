@@ -24,7 +24,13 @@ module Gateway
 
       retryable_events.each do |event|
         retried += 1
-        EventForwarder.call(event:, raw_body: raw_body_for(event))
+        if event.provider == "grupozap"
+          event.with_lock do
+            EventForwarder.call(event:, raw_body: raw_body_for(event)) unless event.forwarded?
+          end
+        else
+          EventForwarder.call(event:, raw_body: raw_body_for(event))
+        end
         event.reload.forwarded? ? forwarded += 1 : failed += 1
       end
 
@@ -38,7 +44,7 @@ module Gateway
     def retryable_events
       WebhookEvent
         .includes(:webhook_route)
-        .where(status: "failed")
+        .where("webhook_events.status = 'failed' OR (webhook_events.provider = 'grupozap' AND webhook_events.status = 'received' AND webhook_events.received_at <= ?)", now - 60)
         .where("attempts < ?", max_attempts)
         .where("next_retry_at IS NULL OR next_retry_at <= ?", now)
         .where.not(webhook_route_id: nil)

@@ -40,6 +40,9 @@ module Gateway
     attr_reader :event, :raw_body, :route
 
     def perform_request
+      if event.provider == "grupozap"
+        raise "Inactive Grupo OLX route" unless route.active? && route.provider == "grupozap"
+      end
       if event.provider == "meta"
         contexts = MetaLeadPayload.extract_event_contexts(JSON.parse(raw_body))
         matching = contexts.select { |context| context[:page_id].to_s == event.page_id.to_s && context[:external_id].to_s == event.external_id.to_s && context[:form_id].to_s == event.form_id.to_s }
@@ -50,7 +53,8 @@ module Gateway
       uri = URI(route.target_url)
       request = Net::HTTP::Post.new(uri)
       request["Content-Type"] = "application/json"
-      request["X-Unitymob-Gateway-Signature"] = InternalSignature.sign(raw_body, secret: route.forwarding_secret)
+      signed_body = event.provider == "grupozap" ? "#{route.client_key}\n#{raw_body}" : raw_body
+      request["X-Unitymob-Gateway-Signature"] = InternalSignature.sign(signed_body, secret: route.forwarding_secret)
       request["X-Unitymob-Gateway-Event-Id"] = event.id.to_s
       request["X-Unitymob-Gateway-Provider"] = event.provider
       request.body = raw_body

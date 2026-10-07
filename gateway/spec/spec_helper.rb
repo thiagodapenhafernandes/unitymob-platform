@@ -85,6 +85,8 @@ require_relative "../db/migrate/20260906040000_create_discovery_v2"
 ActiveRecord::Migration.suppress_messages { CreateDiscoveryV2.new.migrate(:up) }
 require_relative "../db/migrate/20260918000000_create_admin_login_challenges"
 ActiveRecord::Migration.suppress_messages { CreateAdminLoginChallenges.new.migrate(:up) }
+require_relative "../db/migrate/20261007140000_add_grupozap_routes"
+ActiveRecord::Migration.suppress_messages { AddGrupozapRoutes.new.migrate(:up) }
 
 RSpec.configure do |config|
   config.include Rack::Test::Methods
