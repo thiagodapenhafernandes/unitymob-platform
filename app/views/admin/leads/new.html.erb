@@ -7,6 +7,12 @@
       ) %>
 
   <%= ax_operational_panel(eyebrow: "Cadastro", title: "Dados do lead") do %>
+    <% if @duplicate_lead %>
+      <%= ax_inline_notice(tone: :warning) do %>
+        O telefone ou e-mail informado pertence a um lead já cadastrado.
+        <%= link_to "Abrir cadastro existente", admin_lead_path(@duplicate_lead), class: "ax-btn ax-btn--ghost ax-btn--sm" %>
+      <% end %>
+    <% end %>
     <%= render "form", lead: @lead %>
   <% end %>
 </div>

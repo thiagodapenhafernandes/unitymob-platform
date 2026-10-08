@@ -3,7 +3,7 @@ class PortalIntegration < ApplicationRecord
 
   PORTAL_DEFINITIONS = {
     "zapimoveis" => { title: "ZapImóveis", feed_strategy: "vrsync_xml" },
-    "vivareal_vrsync" => { title: "Viva Real VRSync", feed_strategy: "vrsync_xml" },
+    "vivareal_vrsync" => { title: "Viva Real", feed_strategy: "vrsync_xml" },
     "imovelweb" => { title: "Imovelweb", feed_strategy: "olx_xml" },
     "imovelweb_2" => { title: "Imovelweb 2", feed_strategy: "olx_xml" },
     "chavesnamao" => { title: "Chaves na Mão", feed_strategy: "chaves_xml" },
@@ -14,9 +14,11 @@ class PortalIntegration < ApplicationRecord
 
   PORTALS = PORTAL_DEFINITIONS.keys.freeze
   BUSINESS_TYPES = %w[venda aluguel].freeze
-  # Portais cobertos pelo webhook de leads do Grupo OLX (uma SECRET por CRM,
-  # URLs específicas por integração — o payload não distingue o portal de origem).
-  GRUPOZAP_PORTALS = %w[zapimoveis vivareal_vrsync imovelweb imovelweb_2].freeze
+  # Configurações de publicação exibidas na tela Grupo OLX.
+  # O recebimento comum usa a URL existente de zapimoveis; o payload não distingue o portal.
+  GRUPOZAP_PORTALS = %w[zapimoveis vivareal_vrsync].freeze
+  # Compatibilidade de URLs já vinculadas; não oferece novas conexões para Imovelweb.
+  LEGACY_GRUPOZAP_PORTALS = (GRUPOZAP_PORTALS + %w[imovelweb imovelweb_2]).freeze
   # SECRET_KEY por CRM (não por conta): autentica que o POST veio do Grupo
   # OLX. Configurada na tela de Portais; nunca exibida de volta.
   GRUPOZAP_SECRET_KEY = "grupozap_secret_key".freeze
@@ -44,18 +46,18 @@ class PortalIntegration < ApplicationRecord
       ]
     },
     "imovelweb" => {
-      docs_url: "https://developers.olx.com.br/anuncio/xml/real_estate/home.html",
-      summary: "Feed XML no padrão OLX (Imovelweb integra via OLX Brasil). Tags em PT-BR. Processado a cada 12h.",
+      docs_url: "https://www.imovelweb.com.br",
+      summary: "Feed XML da integração existente do Imovelweb. O recebimento de leads é independente do Grupo OLX.",
       setup_steps: [
-        "Solicite Account ID e Publisher ID ao gerente comercial do Imovelweb/OLX.",
+        "Solicite Account ID e Publisher ID ao atendimento do Imovelweb.",
         "Configure os IDs no formulário e ative a integração.",
         "Marque os imóveis com \"Publicar Imovelweb\" na ficha. Configure tipo de publicação e visibilidade do mapa.",
-        "Envie a URL do Feed para a equipe técnica do Imovelweb (suporteintegrador@olxbr.com)."
+        "Envie a URL do Feed para a equipe técnica do Imovelweb."
       ]
     },
     "imovelweb_2" => {
-      docs_url: "https://developers.olx.com.br/anuncio/xml/real_estate/home.html",
-      summary: "Segunda conta Imovelweb (mesmo XML OLX). Útil quando a empresa tem 2 contratos no portal.",
+      docs_url: "https://www.imovelweb.com.br",
+      summary: "Segunda conta Imovelweb, com o mesmo formato de feed da integração existente.",
       setup_steps: [
         "Solicite Account ID e Publisher ID da SEGUNDA conta Imovelweb.",
         "Configure os IDs e ative a integração.",
@@ -75,7 +77,7 @@ class PortalIntegration < ApplicationRecord
     },
     "casamineira" => {
       docs_url: "https://www.casamineira.com.br/parcerias",
-      summary: "Feed XML no mesmo padrão OLX/Imovelweb. Tags em PT-BR.",
+      summary: "Feed XML da integração existente da Casa Mineira. O recebimento de leads é independente do Grupo OLX.",
       setup_steps: [
         "Solicite acesso ao programa de parceiros Casa Mineira.",
         "Ative a integração e marque os imóveis com \"Publicar Casa Mineira\".",
