@@ -75,6 +75,29 @@ RSpec.describe Lead, type: :model do
     end
   end
 
+  describe "#enqueue_c2s_export" do
+    it "enfileira exportação quando a integração está com envio ativo" do
+      create(:external_lead_integration, tenant: Tenant.default, export_enabled: true)
+      lead = build(:lead, origin: "Site")
+
+      expect {
+        lead.send(:enqueue_c2s_export)
+      }.to have_enqueued_job(ExternalLeadMigration::ExportLeadJob)
+    end
+
+    it "não enfileira sem envio ativo ou para lead vindo do C2S" do
+      create(:external_lead_integration, tenant: Tenant.default, export_enabled: false)
+
+      expect {
+        build(:lead, origin: "Site").send(:enqueue_c2s_export)
+      }.not_to have_enqueued_job(ExternalLeadMigration::ExportLeadJob)
+
+      expect {
+        build(:lead, origin: "Site", external_lead_id: "c2s-1").send(:enqueue_c2s_export)
+      }.not_to have_enqueued_job(ExternalLeadMigration::ExportLeadJob)
+    end
+  end
+
   describe "#unsuccessful_attempt_count" do
     it "conta somente tentativas deste lead desde a última resposta ou entrada na etapa" do
       lead = create(:lead, created_at: 2.days.ago)

@@ -1,10 +1,6 @@
 require "rails_helper"
 
 RSpec.describe Admin::HabitationsHelper, type: :helper do
-  before do
-    helper.remove_instance_variable(:@publication_channel_columns) if helper.instance_variable_defined?(:@publication_channel_columns)
-  end
-
   def create_helper_habitation(**attrs)
     create(
       :habitation,
@@ -30,34 +26,6 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
       property = Habitation.new(construtora: "Construtora local")
       allow(property).to receive(:captador_names).and_return(["Ana", "João"])
       expect(helper.admin_habitation_catalog_attribution(property)).to include(caption: "Captador", label: "Ana / João", title: "Ana | João")
-    end
-  end
-
-  describe "#admin_habitation_publication_channels" do
-    it "returns the site and active portal labels" do
-      habitation = Habitation.new(
-        exibir_no_site_flag: true,
-        publicar_imovelweb: true,
-        publicar_viva_real_vrsync: false,
-        publicar_loft: true
-      )
-
-      expect(helper.admin_habitation_publication_channels(habitation)).to include("Site", "Imovelweb", "Loft")
-      expect(helper.admin_habitation_publication_channels(habitation)).not_to include("Viva Real")
-    end
-
-    it "humanizes future publication flags without hardcoding the label" do
-      allow(Habitation).to receive(:column_names).and_return(Habitation.column_names + ["publicar_portal_novo"])
-      habitation = double("Habitation", publicar_portal_novo: true)
-      allow(habitation).to receive(:respond_to?) { |method_name| method_name == :publicar_portal_novo }
-
-      expect(helper.admin_habitation_publication_channels(habitation)).to include("Portal novo")
-    end
-
-    it "returns no channels when no publication flag is active" do
-      habitation = Habitation.new(exibir_no_site_flag: false)
-
-      expect(helper.admin_habitation_publication_channels(habitation)).to be_empty
     end
   end
 

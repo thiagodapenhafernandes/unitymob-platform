@@ -1,6 +1,4 @@
 module Admin::HabitationsHelper
-  BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
-
   # Card #1 (Opção B): um campo do cadastro é editável para o usuário atual se o
   # perfil dele não o travou (Habitations::FieldLockPolicy). Só o dono edita tudo.
   # Usado nos readonly/disabled das partials do formulário.
@@ -11,19 +9,6 @@ module Admin::HabitationsHelper
   def habitation_field_editable?(key)
     !habitation_field_lock_policy.field_locked?(key.to_s)
   end
-
-  PUBLICATION_CHANNEL_LABELS = {
-    exibir_no_site_flag: "Site",
-    publicar_zapimoveis: "Zapimoveis",
-    publicar_viva_real_vrsync: "Viva Real",
-    publicar_imovelweb: "Imovelweb",
-    publicar_imovelweb_2: "Imovelweb 2",
-    publicar_chaves_na_mao: "Chaves na Mão",
-    publicar_casa_mineira: "Casa Mineira",
-    publicar_lais_ai: "Lais AI",
-    publicar_netimoveis_2: "Netimoveis 2",
-    publicar_loft: "Loft"
-  }.freeze
 
   def admin_habitation_internal_path(habitation, return_to: nil)
     route_param = admin_habitation_route_param(habitation)
@@ -234,14 +219,6 @@ module Admin::HabitationsHelper
 
   def admin_habitation_address_unit_label(habitation, separator: " · ")
     admin_habitation_address_unit_parts(habitation).join(separator)
-  end
-
-  def admin_habitation_publication_channels(habitation)
-    publication_channel_columns.filter_map do |column|
-      next unless habitation.respond_to?(column) && BOOLEAN_TYPE.cast(habitation.public_send(column))
-
-      PUBLICATION_CHANNEL_LABELS[column] || publication_channel_label_for(column)
-    end
   end
 
   def admin_habitation_catalog_attribution(habitation)
@@ -609,16 +586,4 @@ module Admin::HabitationsHelper
     "#{label} #{clean_value}"
   end
 
-  def publication_channel_columns
-    return @publication_channel_columns if defined?(@publication_channel_columns)
-
-    portal_columns = Habitation::PORTAL_PUBLICATION_FIELDS.values
-    dynamic_publication_columns = Habitation.column_names.grep(/\Apublicar_/).map(&:to_sym)
-
-    @publication_channel_columns = ([:exibir_no_site_flag] + portal_columns + dynamic_publication_columns).uniq
-  end
-
-  def publication_channel_label_for(column)
-    column.to_s.sub(/\Apublicar_/, "").humanize
-  end
 end

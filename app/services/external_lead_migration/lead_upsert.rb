@@ -64,6 +64,7 @@ module ExternalLeadMigration
 
     def find_existing(mapper)
       integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id) ||
+        integration.tenant.leads.find_by(c2s_export_external_id: mapper.external_lead_id) ||
         Leads::Intake.find_received_event(tenant: integration.tenant, reference: "c2s:#{mapper.external_lead_id}")
     end
 

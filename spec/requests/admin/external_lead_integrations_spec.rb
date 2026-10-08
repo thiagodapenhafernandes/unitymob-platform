@@ -233,4 +233,40 @@ RSpec.describe "Admin::ExternalLeadIntegrations", type: :request do
     expect(integration.webhook_url).to be_nil
     expect(integration.last_error_message).to eq("HTTP 422")
   end
+
+  it "exibe o interruptor de envio sem expor o fornecedor" do
+    get admin_external_lead_integration_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Enviar leads novos à conta externa")
+    expect(response.body).to include("Endpoint de envio")
+    expect(response.body).not_to include("C2S")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css("input#external_lead_integration_export_enabled")).to be_present
+  end
+
+  it "habilita o envio com endpoint configurável" do
+    integration = create(:external_lead_integration, tenant: admin.tenant, export_enabled: false)
+
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: { export_enabled: "1", export_endpoint: "/api/v2/leads" }
+    }
+
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(integration.reload.export_enabled?).to be(true)
+    expect(integration.export_endpoint).to eq("/api/v2/leads")
+  end
+
+  it "exige token para habilitar o envio" do
+    integration = create(:external_lead_integration, tenant: admin.tenant, export_enabled: false, access_token: nil)
+
+    patch admin_external_lead_integration_path, params: {
+      external_lead_integration: { export_enabled: "1" }
+    }
+
+    expect(response).to redirect_to(admin_external_lead_integration_path)
+    expect(integration.reload.export_enabled?).to be(false)
+    follow_redirect!
+    expect(response.body).to include("envio")
+  end
 end

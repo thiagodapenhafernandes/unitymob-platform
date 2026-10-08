@@ -3254,6 +3254,31 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(card["class"]).not_to include("property-card--inactive")
   end
 
+  it "mostra Fora site quando fora do site mesmo com portais ligados" do
+    offsite = create(:habitation, codigo: "OFFSITE-#{SecureRandom.hex(6)}", status: "Aluguel",
+      exibir_no_site_flag: false, publicar_imovelweb: true, publicar_viva_real_vrsync: true,
+      titulo_anuncio: "Aluguel fora do site")
+
+    get admin_habitations_path(q: offsite.codigo)
+
+    expect(response).to have_http_status(:ok)
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(offsite.codigo) }
+    expect(card).to be_present
+    expect(card.text).to include("Fora site")
+  end
+
+  it "não mostra Fora site quando o imóvel está no site" do
+    onsite = create(:habitation, codigo: "ONSITE-#{SecureRandom.hex(6)}", status: "Aluguel",
+      exibir_no_site_flag: true, titulo_anuncio: "Aluguel no site")
+
+    get admin_habitations_path(q: onsite.codigo)
+
+    expect(response).to have_http_status(:ok)
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(onsite.codigo) }
+    expect(card).to be_present
+    expect(card.text).not_to include("Fora site")
+  end
+
   it "limpa filtros do estado vazio voltando para Todos os imóveis" do
     get admin_habitations_path(ownership: "mine", q: "sem-resultado-#{SecureRandom.hex(8)}")
 

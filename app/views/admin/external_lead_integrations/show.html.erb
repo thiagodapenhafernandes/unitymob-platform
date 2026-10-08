@@ -65,6 +65,7 @@
             <%= ax_switch_field(label: "Manter integração de leads ativa", form: f, method: :enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.enabled? }) %>
             <%= ax_switch_field(label: "Escutar novos leads automaticamente", form: f, method: :webhook_listening_enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.webhook_listening_enabled? }) %>
             <%= ax_switch_field(label: "Aceitar leads sem telefone", form: f, method: :accept_lead_without_phone, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.accept_lead_without_phone? }) %>
+            <%= ax_switch_field(label: "Enviar leads novos à conta externa", form: f, method: :export_enabled, checked_value: "1", unchecked_value: "0", input_html: { checked: @integration.export_enabled? }) %>
           </div>
 
           <%= ax_field_grid do %>
@@ -80,6 +81,23 @@
 
           <%= ax_inline_notice(tone: :info, icon: "diagram-3", compact: true) do %>
             O histórico entra sem redistribuir leads antigos. Com a escuta habilitada, novos eventos passam pelo fluxo normal usando a regra de apoio <strong><%= ExternalLeadIntegration::SUPPORT_RULE_NAME %></strong>.
+          <% end %>
+
+          <%= ax_field_grid do %>
+            <div class="ax-span-8">
+              <%= ax_field_label(f, :export_endpoint, text: "Endpoint de envio", tooltip: "Caminho da API externa usado na exportação. Contrato de escrita ainda não confirmado com o fornecedor — ajuste se ele indicar outro.") %>
+              <%= f.text_field :export_endpoint, class: "ax-control", placeholder: "/leads" %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_field_label(text: "Exportação") %>
+              <div class="lead-migration-readonly-field"><%= number_with_delimiter(@integration.exported_count.to_i) %> enviados · <%= number_with_delimiter(@integration.export_failed_count.to_i) %> falhas<%= @integration.last_exported_at ? " · último em #{l(@integration.last_exported_at, format: :short)}" : "" %></div>
+            </div>
+          <% end %>
+
+          <% if @integration.last_export_error.present? %>
+            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true) do %>
+              Último erro de envio: <%= @integration.last_export_error %>
+            <% end %>
           <% end %>
 
           <div class="lead-migration-actions">
