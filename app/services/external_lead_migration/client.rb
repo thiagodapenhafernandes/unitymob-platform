@@ -45,6 +45,12 @@ module ExternalLeadMigration
       get("/leads/#{id}")
     end
 
+    # Escrita no C2S (exportação). Contrato presumido a partir do formato de
+    # leitura — endpoint configurável por integração até validação com o C2S.
+    def create_lead(payload, path: "/leads")
+      post(path.to_s.presence || "/leads", body: payload)
+    end
+
     def subscribe!(hook_action:, hook_url:)
       post("/api/subscribe", body: { hook_action: hook_action, hook_url: hook_url })
     end

@@ -25,11 +25,19 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
     enabled_requested = extract_enabled_request(attrs)
     webhook_listening_param_present = attrs.key?("webhook_listening_enabled")
     webhook_listening_requested = extract_webhook_listening_request!(attrs)
+    # Mesmo padrão da escuta: fora do assign, para o mark_failed! do rescue
+    # não persistir o toggle quando a validação abaixo barrar o salvamento.
+    export_requested = attrs.key?("export_enabled") ? ActiveModel::Type::Boolean.new.cast(attrs.delete("export_enabled")) : nil
+    export_effective = export_requested.nil? ? @integration.export_enabled? : export_requested
+
+    raise "Endpoint de envio deve começar com / (ex.: /leads)." if attrs["export_endpoint"].present? && !attrs["export_endpoint"].to_s.start_with?("/")
 
     @integration.assign_attributes(attrs)
     @integration.access_token = token if token.present?
     @integration.connected_by_admin_user = current_admin_user if token.present?
     raise "Token da API externa obrigatório para habilitar a escuta de novos leads." if enabled_requested && webhook_listening_requested && @integration.access_token.blank?
+    raise "Token da API externa obrigatório para habilitar o envio à conta externa." if enabled_requested && export_effective && @integration.access_token.blank?
+    @integration.export_enabled = export_requested unless export_requested.nil?
 
     unless enabled_requested
       notice = deactivate_integration_locally!
@@ -116,6 +124,8 @@ class Admin::ExternalLeadIntegrationsController < Admin::BaseController
       :access_token,
       :webhook_listening_enabled,
       :accept_lead_without_phone,
+      :export_enabled,
+      :export_endpoint,
       operational_stage_mappings: [:key, :stage_id],
       operational_stage_targets: [:stage_id, { keys: [] }]
     )

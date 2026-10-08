@@ -185,6 +185,7 @@ class Lead < ApplicationRecord
   after_update :record_audit_update
   after_destroy :record_audit_destroy
   after_create_commit :enqueue_meta_enrichment
+  after_create_commit :enqueue_c2s_export
   after_create_commit :route_lead, unless: :skip_automatic_routing?
   after_create_commit :dispatch_automation_created, unless: :skip_automatic_routing?
   after_update_commit :dispatch_automation_stage_changed, unless: :skip_automatic_routing?
@@ -666,6 +667,21 @@ class Lead < ApplicationRecord
     MetaLeadEnrichmentJob.perform_later(tenant_id, id)
   rescue StandardError => error
     Rails.logger.warn("Meta enrichment enqueue failed lead_id=#{id} error=#{error.class}")
+  end
+
+  def enqueue_c2s_export
+    return if destroyed? || tenant.blank?
+    return unless tenant.external_lead_integration&.export_active?
+    return if external_lead_integration_id.present? || external_lead_id.present?
+
+    info = other_information.to_h
+    provider = ExternalLeadMigration::LeadMapper::PROVIDER_KEY
+    return if info["source"] == provider || attribution_data.to_h["provider"] == provider ||
+      Array(info["webhook_tags"]).include?(ExternalLeadIntegration::WEBHOOK_TAG)
+
+    ExternalLeadMigration::ExportLeadJob.perform_later(id, tenant_id: tenant_id)
+  rescue StandardError => error
+    Rails.logger.warn("C2S export enqueue failed lead_id=#{id} error=#{error.class}")
   end
 
   def route_lead

@@ -1,4 +1,4 @@
-\restrict r1tFUt09r8Y1pxFSnOH2ozCB2z0aMRTM3kHjmTSOs1NHXCQQlVvFVmksErB9ChT
+\restrict 8EW8B8SeSdb3A72CUd8pLmPOB3YeMIwJiMACRaKslRV6z2xM4z1kAKke0k9CcVV
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -2690,7 +2690,13 @@ CREATE TABLE public.external_lead_integrations (
     updated_at timestamp(6) without time zone NOT NULL,
     webhook_listening_enabled boolean DEFAULT false NOT NULL,
     operational_mappings jsonb DEFAULT '{}'::jsonb NOT NULL,
-    accept_lead_without_phone boolean DEFAULT false NOT NULL
+    accept_lead_without_phone boolean DEFAULT false NOT NULL,
+    export_enabled boolean DEFAULT false NOT NULL,
+    export_endpoint character varying DEFAULT '/leads'::character varying NOT NULL,
+    exported_count integer DEFAULT 0 NOT NULL,
+    export_failed_count integer DEFAULT 0 NOT NULL,
+    last_exported_at timestamp(6) without time zone,
+    last_export_error text
 );
 
 
@@ -4543,7 +4549,9 @@ CREATE TABLE public.leads (
     contingency_target_rule_id bigint,
     contingency_forwarded_at timestamp(6) without time zone,
     contingency_reason character varying,
-    contingency_pending boolean DEFAULT false NOT NULL
+    contingency_pending boolean DEFAULT false NOT NULL,
+    c2s_export_external_id character varying,
+    c2s_exported_at timestamp(6) without time zone
 );
 
 
@@ -14838,6 +14846,13 @@ CREATE INDEX index_leads_on_tenant_and_phone_digits ON public.leads USING btree 
 
 
 --
+-- Name: index_leads_on_tenant_c2s_export_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_tenant_c2s_export_id ON public.leads USING btree (tenant_id, c2s_export_external_id) WHERE (c2s_export_external_id IS NOT NULL);
+
+
+--
 -- Name: index_leads_on_tenant_external_lead_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -20389,11 +20404,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict r1tFUt09r8Y1pxFSnOH2ozCB2z0aMRTM3kHjmTSOs1NHXCQQlVvFVmksErB9ChT
+\unrestrict 8EW8B8SeSdb3A72CUd8pLmPOB3YeMIwJiMACRaKslRV6z2xM4z1kAKke0k9CcVV
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261008160000'),
 ('20261008150000'),
 ('20261008130000'),
 ('20261007160000'),

@@ -17,7 +17,6 @@
   catalog_heading_subject = development_name.presence || imovel.categoria.presence || imovel.tipo.presence || catalog_title
   catalog_heading = ["REF: #{imovel.codigo}", catalog_heading_subject].compact_blank.join(" · ")
   has_photo = image_urls.any? || imovel.has_any_photo?
-  publication_channels = admin_habitation_publication_channels(imovel)
   captador_summary = admin_habitation_catalog_attribution(imovel)
   captador_label = captador_summary[:label]
   owner_contact = admin_habitation_catalog_owner_contact(imovel)
@@ -122,7 +121,7 @@
       <% end %>
       <% if !has_photo %>
         <span class="ax-property-badge ax-property-badge--danger">Sem fotos</span>
-      <% elsif publication_channels.blank? %>
+      <% elsif !imovel.published_on_site? %>
         <span class="ax-property-badge ax-property-badge--danger">Fora site</span>
       <% end %>
     </div>

@@ -471,6 +471,34 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(result).not_to include(non_matching)
     end
 
+    it "encontra código exato de locação mesmo na aba venda" do
+      rental = create(:habitation, codigo: "972901", status: "Aluguel",
+        valor_venda_cents: 0, valor_locacao_cents: 890_200,
+        titulo_anuncio: "Apartamento locação código")
+
+      expect(Habitation.public_property_search(transaction_type: "venda", search: "972901")).to include(rental)
+      expect(Habitation.public_property_search(transaction_type: "aluguel", search: "972901")).to include(rental)
+    end
+
+    it "aceita prefixos comuns no código exato" do
+      rental = create(:habitation, codigo: "972902", status: "Aluguel",
+        valor_venda_cents: 0, valor_locacao_cents: 890_200,
+        titulo_anuncio: "Apartamento locação prefixo")
+
+      expect(Habitation.public_property_search(transaction_type: "venda", search: "REF 972902")).to include(rental)
+      expect(Habitation.public_property_search(transaction_type: "venda", search: "#972902")).to include(rental)
+    end
+
+    it "mantém o filtro de transação para texto livre e número sem código" do
+      rental = create(:habitation, codigo: "LOC-TXT-1", status: "Aluguel",
+        valor_venda_cents: 0, valor_locacao_cents: 890_200,
+        titulo_anuncio: "Apartamento mobiliado centro")
+
+      expect(Habitation.public_property_search(transaction_type: "venda", search: "mobiliado")).not_to include(rental)
+      expect(Habitation.public_property_search(transaction_type: "venda", search: "999888777")).not_to include(rental)
+      expect(Habitation.public_property_search(transaction_type: "aluguel", search: "mobiliado")).to include(rental)
+    end
+
     it "filters public neighborhood by commercial neighborhood before physical neighborhood" do
       matching = create(
         :habitation,

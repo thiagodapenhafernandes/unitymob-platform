@@ -806,10 +806,14 @@ module Habitation::SearchScopes
       # Multiselects enviam [""] (campo oculto do Rails): sem limpar, `present?` é true e o filtro vazio zera a busca.
       params.keys.each { |key| params[key] = params[key].compact_blank if params[key].is_a?(Array) }
       query = base_scope || active # active já restringe a imóveis públicos com fotos e preço.
-      
+
+      # Busca por código exato ignora a aba Comprar/Alugar: quem digitou o
+      # código quer aquele imóvel, seja de venda ou locação.
+      exact_code = exact_public_code_in(query, params[:search].presence || params[:q].presence)
+
       # Tipo de transação
-      query = query.for_sale if params[:transaction_type] == 'venda'
-      query = query.for_rent if params[:transaction_type] == 'aluguel' || params[:transaction_type] == 'locacao'
+      query = query.for_sale if params[:transaction_type] == 'venda' && !exact_code
+      query = query.for_rent if (params[:transaction_type] == 'aluguel' || params[:transaction_type] == 'locacao') && !exact_code
       
       # Categoria
       query = query.by_category(params[:category]) if params[:category].present?
@@ -948,7 +952,7 @@ module Habitation::SearchScopes
       end
       
       # Busca textual geral (título, descrição, endereço, código)
-      search_value = params[:search].presence || params[:q].presence
+      search_value = exact_code.presence || params[:search].presence || params[:q].presence
       if search_value.present?
         search_term = search_value.to_s.strip
         
@@ -976,6 +980,20 @@ module Habitation::SearchScopes
 
     def public_property_search(params = {})
       advanced_search(params, base_scope: public_property_listable)
+    end
+
+    # Código exato ("9729", "REF 9729", "#9729") que existe na base pública.
+    # Retorna o código normalizado ou nil. Termo sem correspondência exata
+    # mantém o comportamento atual.
+    def exact_public_code_in(scope, value)
+      code = value.to_s.strip.sub(/\A#/, "").strip
+        .sub(/\A(?:ref\.?|c[oó]digo)(?=[\s.]|$)/i, "").strip
+      return nil if code.blank?
+      return nil unless scope.where("codigo ILIKE ?", code).exists?
+
+      code
+    rescue StandardError
+      nil
     end
 
     def characteristic_scope_for(value)

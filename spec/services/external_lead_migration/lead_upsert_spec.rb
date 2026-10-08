@@ -462,4 +462,20 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
     expect(lead.admin_user).to eq(broker)
     expect(task.admin_user).to eq(broker)
   end
+
+  it "adota lead exportado em vez de duplicar quando o C2S devolve o evento" do
+    exported = create(:lead, tenant:, origin: "Site", phone: "+55 47 98888-0001", c2s_export_external_id: "lead-c2s-eco")
+    echo_payload = payload.deep_dup
+    echo_payload["id"] = "lead-c2s-eco"
+    echo_payload["attributes"]["customer"]["phone"] = "+55 47 98888-0001"
+
+    result = nil
+    expect {
+      result = described_class.call(integration:, payload: echo_payload, historical: false)
+    }.not_to change { tenant.leads.count }
+
+    expect(result.lead.id).to eq(exported.id)
+    expect(result.action).to eq(:updated)
+    expect(exported.reload.external_lead_id).to eq("lead-c2s-eco")
+  end
 end

@@ -20,6 +20,7 @@ class ExternalLeadIntegration < ApplicationRecord
   validates :sync_status, inclusion: { in: SYNC_STATUSES }
   validates :tenant_id, uniqueness: true
   validates :webhook_token, presence: true, uniqueness: true
+  validates :export_endpoint, format: { with: %r{\A/}, message: "deve começar com /" }, allow_blank: true
 
   scope :enabled, -> { where(enabled: true, status: "connected") }
 
@@ -78,6 +79,19 @@ class ExternalLeadIntegration < ApplicationRecord
 
   def connected?
     enabled? && status == "connected" && access_token.present?
+  end
+
+  def export_active?
+    connected? && export_enabled?
+  end
+
+  def export_endpoint_path
+    export_endpoint.presence || "/leads"
+  end
+
+  def record_export_failure!(message)
+    increment!(:export_failed_count)
+    update_columns(last_export_error: message.to_s.truncate(500), updated_at: Time.current)
   end
 
   def webhook_subscription_active?(hook_url = nil)
