@@ -390,7 +390,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def conversation_scope
-    base = current_tenant.whatsapp_conversations.includes(:assigned_admin_user, { attendances: :admin_user }, lead: { lead_labelings: :lead_label })
+    base = current_tenant.whatsapp_conversations.with_attached_contact_avatar.includes(:assigned_admin_user, { attendances: :admin_user }, lead: { lead_labelings: :lead_label })
     ids = visible_owner_ids(:whatsapp_inbox)
     return base if ids.nil?
 

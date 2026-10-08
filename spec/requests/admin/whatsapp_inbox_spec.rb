@@ -10,6 +10,17 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
     sign_in admin
   end
 
+  it "shows the stored contact photo in the inbox and conversation header with initials fallback" do
+    conversation = WhatsappConversation.create!(contact_phone: "5547999990044", contact_name: "Maria Foto")
+    conversation.contact_avatar.attach(io: File.open(Rails.root.join("spec/fixtures/files/watermark.png")), filename: "avatar.png", content_type: "image/png")
+    get admin_whatsapp_conversations_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("ax-avatar__image", "image-fallback#hide", "MF")
+    get admin_whatsapp_conversation_path(conversation)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to match(/wa-inbox-chat-header__avatar.*?ax-avatar__image/m)
+  end
+
   describe "GET index" do
     it "exibe a central de atendimento" do
       WhatsappConversation.create!(contact_phone: "5547999990001", contact_name: "Maria", last_message_preview: "Olá", unread_count: 2)

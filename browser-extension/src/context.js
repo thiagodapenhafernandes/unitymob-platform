@@ -101,3 +101,40 @@ export async function sendPropertyMessage(expected, text, preview = null) {
 export function shouldReloadContext(changed, forced, editing) {
   return changed || (forced && !editing);
 }
+
+// Runs in WhatsApp's MAIN world; never reads messages or visits another contact.
+export async function readContactPhoto(expected) {
+  const wpp = window.WPP;
+  const id = value => typeof value === "string" ? value : value?._serialized || value?.toString() || "";
+  const current = () => wpp?.isReady && wpp.version === "4.6.0" &&
+    id(wpp.conn.getMyUserId()) === expected.account && id(wpp.chat.getActiveChat()?.id) === expected.chatId;
+  if (!expected.phone || !/@(c\.us|s\.whatsapp\.net|lid)$/.test(expected.chatId) || !current()) return null;
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), 5000);
+  let bitmap;
+  try {
+    const url = await Promise.race([
+      wpp.contact.getProfilePictureUrl(expected.chatId),
+      new Promise(resolve => abort.signal.addEventListener("abort", () => resolve(null), {once:true}))
+    ]);
+    if (!url || !current() || abort.signal.aborted) return null;
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password ||
+        !/(^|\.)whatsapp\.(net|com)$/.test(parsed.hostname)) return null;
+    const response = await fetch(parsed.href, {credentials:"omit", redirect:"error", signal:abort.signal});
+    if (!response.ok || !/^image\/(jpeg|png|webp)(;|$)/i.test(response.headers.get("content-type") || "")) return null;
+    const blob = await response.blob();
+    if (blob.size > 1024 * 1024) return null;
+    bitmap = await createImageBitmap(blob);
+    if (!bitmap.width || !bitmap.height || bitmap.width > 4096 || bitmap.height > 4096) return null;
+    const canvas = new OffscreenCanvas(96, 96);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, 96, 96);
+    const png = await canvas.convertToBlob({type:"image/png"});
+    if (png.size > 128 * 1024 || !current()) return null;
+    const bytes = new Uint8Array(await png.arrayBuffer());
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return current() ? btoa(binary) : null;
+  } catch { return null; }
+  finally { clearTimeout(timeout); bitmap?.close(); }
+}

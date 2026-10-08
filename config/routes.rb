@@ -604,6 +604,7 @@ Rails.application.routes.draw do
       namespace :browser_extension, defaults: { format: :json } do
         post "session/terms", to: "sessions#accept_terms"
         resource :session, only: [:create, :show, :destroy], controller: "sessions"
+        post "conversations/avatar", to: "conversation_avatars#create"
         post "leads/resolve", to: "leads#resolve"
         post "leads", to: "operations#create_lead"
         post "leads/:id/notes", to: "operations#create_note"

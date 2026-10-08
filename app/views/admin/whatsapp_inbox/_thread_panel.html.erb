@@ -13,7 +13,7 @@
   <section class="wa-inbox-panel wa-inbox-panel--thread wa-inbox-panel--compact" aria-label="Conversa ativa">
     <div class="wa-inbox-chat-header">
       <div class="wa-inbox-chat-header__identity">
-        <span class="wa-inbox-chat-header__avatar" aria-hidden="true"><%= wa_initials(conversation.display_name) %></span>
+        <%= ax_avatar(name: conversation.display_name, image: conversation.contact_avatar, class_name: "wa-inbox-chat-header__avatar") %>
         <div class="wa-inbox-chat-header__copy">
           <strong><%= conversation.display_name %></strong>
           <span><i class="bi bi-circle-fill"></i> online</span>

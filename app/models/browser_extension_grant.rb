@@ -1,11 +1,13 @@
 # Concessão limitada à API da extensão. Não é um token Devise/mobile.
 class BrowserExtensionGrant < ApplicationRecord
   PUBLISHED_EXTENSION_IDS = %w[daliegpkkjjfjjlilajomonpkgdmgiaj].freeze
-  TERMS_VERSION = "2026-09-08.v6".freeze
+  TERMS_VERSION = "2026-10-08.v7".freeze
   TERMS_TEXT = <<~TEXT.strip.freeze
     Uso de dados e termos da extensão Unitymob para WhatsApp
 
     Para conectar sua conta, tratamos o e-mail informado, a imobiliária escolhida e uma credencial temporária de acesso. Após este aceite, a extensão acessa o nome, o telefone e identificadores técnicos da conversa individual aberta no WhatsApp Web para identificar o contato e conferir o destinatário. O telefone é enviado ao CRM da imobiliária selecionada para buscar somente os leads permitidos ao seu usuário.
+
+    A foto de perfil disponível do contato aberto também pode ser enviada e armazenada no CRM da imobiliária selecionada para identificar atendimentos aos quais você tem acesso. Não buscamos fotos de outros contatos nem importamos a agenda. Sem foto disponível, o CRM mantém as iniciais.
 
     Conforme suas permissões, você pode consultar e criar leads, registrar contatos e notas, organizar tarefas e compromissos, aplicar ou remover etiquetas existentes, alterar a etapa do lead e relacionar imóveis. As alterações que você confirma ficam registradas no CRM, associadas à sua conta e ao seu usuário. Cadastros e tarefas seguem as regras de notificações e lembretes do CRM.
 
@@ -25,7 +27,7 @@ class BrowserExtensionGrant < ApplicationRecord
 
   def capabilities
     accepted = terms_accepted?
-    { read_leads: accepted, create_leads: accepted && admin_user.can?(:create, :leads),
+    { sync_contact_avatars: accepted && admin_user.can?(:manage, :whatsapp_inbox), read_leads: accepted, create_leads: accepted && admin_user.can?(:create, :leads),
       create_notes: accepted && admin_user.can?(:edit, :leads),
       create_tasks: accepted && admin_user.can?(:manage, :comercial),
       create_appointments: accepted && admin_user.can?(:manage, :comercial),

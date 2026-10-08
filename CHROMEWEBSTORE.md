@@ -94,3 +94,9 @@ Versão encontrada no código antes desta preparação; isso não comprova a ver
 - Login real no Chrome com o pacote 0.4.13 ainda não foi exercitado nesta preparação.
 - Envio: painel do item existente → Pacote → Fazer upload de novo pacote → selecionar o ZIP → conferir os dados → enviar para análise.
 - Referência oficial: https://developer.chrome.com/docs/webstore/update
+
+## 0.4.25 — 2026-10-08
+
+Sincroniza a foto de perfil disponível do contato individual aberto com o atendimento permitido na conta conectada. A imagem é armazenada no CRM e exibida na lista e no cabeçalho, com iniciais quando indisponível. Não importa agenda nem mensagens. Requer aceite atualizado dos termos e permissão de gerenciar o inbox. Sem novas permissões de navegador.
+
+A declaração de privacidade deve incluir a foto de perfil do contato entre os dados pessoais transmitidos e armazenados pela imobiliária. Validar a captura no WhatsApp Web real antes da publicação na loja.

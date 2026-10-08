@@ -206,7 +206,7 @@ test("login survives a fresh worker with cleared session storage, and still reva
   };
   assert.equal((await send({ type: "me" })).ok, true);
   assert.equal(requests[0].options.headers.Authorization, `Bearer ${connection.token}`);
-  assert.deepEqual(stored.connection, connection);
+  assert.deepEqual(stored.connection, {...connection, syncContactAvatars:false});
   assert.equal(temporary.connection, undefined);
 });
 
@@ -450,4 +450,23 @@ test("catalog sharing never links an unconfirmed send or sends after access deni
     denied=true;
     assert.equal((await send(message)).ok,false); assert.equal(deliveries,1);
   } finally { chrome.scripting.executeScript=original; }
+});
+
+test("avatar permission failure does not disconnect or interrupt lead lookup", async () => {
+  stored.connection.syncContactAvatars = true;
+  global.fetch = async (url, options) => {
+    requests.push({url,options});
+    return url.endsWith("conversations/avatar") ? json({error:"permission_denied"},403) : json({leads:[]});
+  };
+  const result = await send({type:"resolve",tabId:1,contextKey:contextKey(projection)});
+  assert.equal(result.ok,true);
+  assert.ok(stored.connection);
+  assert.equal(requests.length,2);
+});
+
+test("does not sync an avatar for a manually searched different phone", async () => {
+  stored.connection.syncContactAvatars = true;
+  await send({type:"resolve",tabId:1,contextKey:contextKey(projection),phone:"+5511777777777"});
+  assert.equal(requests.length,1);
+  assert.ok(requests[0].url.endsWith("leads/resolve"));
 });
