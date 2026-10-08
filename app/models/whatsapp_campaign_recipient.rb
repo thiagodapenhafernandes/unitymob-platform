@@ -54,7 +54,7 @@ class WhatsappCampaignRecipient < ApplicationRecord
       admin_user_id: admin_user_id,
       distribution_rule: distribution_rule
     )
-    created_lead.save!
+    created_lead = Leads::Intake.receive!(created_lead)
 
     update!(
       lead: created_lead,

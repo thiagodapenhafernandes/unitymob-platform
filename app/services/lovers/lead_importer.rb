@@ -19,19 +19,21 @@ module Lovers
     end
 
     def call
-      lead = existing_lead || tenant.leads.new
-      was_new = lead.new_record?
-      lead.assign_attributes(lead_attributes(lead))
-      lead.save
-
-      Result.new(lead:, status: was_new ? :created : :updated, errors: lead.errors.full_messages)
+      lead = tenant.leads.new
+      lead.assign_attributes(lead_attributes)
+      begin
+        lead = Leads::Intake.receive!(lead)
+      rescue ActiveRecord::RecordInvalid => error
+        lead = error.record
+      end
+      Result.new(lead:, status: lead.intake_reused ? :updated : :created, errors: lead.errors.full_messages)
     end
 
     private
 
     attr_reader :tenant, :payload, :origin
 
-    def lead_attributes(lead)
+    def lead_attributes
       {
         tenant:,
         name: field_value("Name") || field_value("Email") || "Lead Lovers",
@@ -40,7 +42,7 @@ module Lovers
         lead_type: "lovers",
         origin:,
         product: field_value("Company", "Source", "Src"),
-        other_information: existing_information(lead).merge(
+        other_information: {
           "lovers_payload" => payload,
           "lovers_code" => field_value("Code", "Id"),
           "lovers_score" => field_value("Score"),
@@ -50,21 +52,8 @@ module Lovers
           "lovers_state" => field_value("State"),
           "lovers_registration_date" => field_value("RegistrationDate"),
           "lovers_imported_at" => Time.current.iso8601
-        ).compact
+        }.compact
       }.compact
-    end
-
-    def existing_lead
-      @existing_lead ||= begin
-        email = field_value("Email")
-        phone = Phones::Normalizer.call(field_value("Phone"))
-        by_email = tenant.leads.find_by(email:) if email.present?
-        by_email || (tenant.leads.find_by(phone:) if phone.present?)
-      end
-    end
-
-    def existing_information(lead)
-      lead.other_information.is_a?(Hash) ? lead.other_information : {}
     end
 
     def field_value(*keys)

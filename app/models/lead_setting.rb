@@ -1,5 +1,14 @@
 class LeadSetting < ApplicationRecord
   include TenantScoped
+  belongs_to :default_distribution_rule, class_name: "DistributionRule", optional: true
+  validate :valid_default_distribution_rule
+
+  def valid_default_distribution_rule
+    return if default_distribution_rule_id.blank? || !will_save_change_to_default_distribution_rule_id?
+    unless default_distribution_rule&.terminal_destination_for?(tenant)
+      errors.add(:default_distribution_rule, "deve ser uma regra ativa da conta, sem encaminhamento e com distribuição automática")
+    end
+  end
   MATCHES   = %w[phone phone_or_email phone_and_email].freeze
   OWNERS    = %w[attended any_assignment].freeze
   FALLBACKS = %w[active_in_rule active_any].freeze

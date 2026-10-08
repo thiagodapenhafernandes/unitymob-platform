@@ -17,15 +17,25 @@ module ExternalLeadMigration
       raise ArgumentError, "Payload externo sem ID do lead" if mapper.external_lead_id.blank?
 
       Current.set(tenant: integration.tenant) do
-        lead = find_existing(mapper)
-        action = lead ? :updated : :created
         attrs = mapper.lead_attributes(integration:, historical:)
-        attrs.delete(:created_at) if lead
-
-        lead ||= integration.tenant.leads.new
-        lead.skip_automatic_routing = historical
-        lead.assign_attributes(attrs)
-        lead.save!
+        lead = find_existing(mapper)
+        if lead
+          action = :updated
+          lead.with_lock do
+            attrs.delete(:created_at)
+            if lead.other_information["intake_reconciled"]
+              attrs = attrs.slice(:external_last_synced_at, :other_information)
+              attrs[:other_information] = lead.other_information.merge(attrs[:other_information] || {})
+            end
+            lead.skip_automatic_routing = historical || lead.other_information["intake_reconciled"]
+            lead.update!(attrs)
+          end
+        else
+          inquiry = integration.tenant.leads.new(attrs)
+          inquiry.skip_automatic_routing = historical
+          lead = Leads::Intake.receive!(inquiry)
+          action = lead.intake_reused ? :updated : :created
+        end
         lead.reload if should_use_local_assignment_for_enrichment?(lead:, attrs:)
         LeadEnrichment.call(lead:, integration:, mapper:, historical:)
 
@@ -53,7 +63,8 @@ module ExternalLeadMigration
     attr_reader :integration, :payload, :historical
 
     def find_existing(mapper)
-      integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id)
+      integration.tenant.leads.find_by(external_lead_id: mapper.external_lead_id) ||
+        Leads::Intake.find_received_event(tenant: integration.tenant, reference: "c2s:#{mapper.external_lead_id}")
     end
 
     def should_use_local_assignment_for_enrichment?(lead:, attrs:)

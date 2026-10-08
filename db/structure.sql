@@ -1,4 +1,4 @@
-\restrict XGl0xC37PYbmaTIisy2klsaRHOD090bQ57BWCpRmOfmbLr6T2fkxffJgF6e6uEG
+\restrict r1tFUt09r8Y1pxFSnOH2ozCB2z0aMRTM3kHjmTSOs1NHXCQQlVvFVmksErB9ChT
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -2536,7 +2536,14 @@ CREATE TABLE public.distribution_rules (
     linkedin_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     source_tiktok boolean DEFAULT false NOT NULL,
     tiktok_account_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
-    tiktok_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL
+    tiktok_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    contingency_rule_id bigint,
+    contingency_enabled boolean DEFAULT false NOT NULL,
+    contingency_triggers jsonb DEFAULT '[]'::jsonb NOT NULL,
+    contingency_unavailable_minutes integer DEFAULT 0 NOT NULL,
+    contingency_pool_minutes integer DEFAULT 30 NOT NULL,
+    contingency_acceptance_minutes integer DEFAULT 30 NOT NULL,
+    CONSTRAINT distribution_contingency_positive_times CHECK (((contingency_unavailable_minutes >= 0) AND (contingency_pool_minutes > 0) AND (contingency_acceptance_minutes > 0)))
 );
 
 
@@ -3702,8 +3709,8 @@ CREATE TABLE public.home_settings (
     hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
 );
 
 
@@ -4442,6 +4449,7 @@ CREATE TABLE public.lead_settings (
     first_contact_sla_minutes integer DEFAULT 240 NOT NULL,
     stickiness_non_fidelizing_stage_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
     vcard_enabled boolean DEFAULT false NOT NULL,
+    default_distribution_rule_id bigint,
     CONSTRAINT lead_settings_first_contact_sla_minutes_range CHECK (((first_contact_sla_minutes >= 1) AND (first_contact_sla_minutes <= 43200))),
     CONSTRAINT lead_settings_reminder_first_minutes_range CHECK (((reminder_first_minutes >= 1) AND (reminder_first_minutes <= 10080))),
     CONSTRAINT lead_settings_reminder_hours CHECK ((((reminder_start_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_end_time)::text ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text) AND ((reminder_start_time)::text < (reminder_end_time)::text))),
@@ -4529,7 +4537,13 @@ CREATE TABLE public.leads (
     manager_qualification_status character varying,
     qualification_note text,
     instagram_account_id character varying,
-    instagram_scoped_id character varying
+    instagram_scoped_id character varying,
+    distribution_cycle_started_at timestamp(6) without time zone,
+    contingency_source_rule_id bigint,
+    contingency_target_rule_id bigint,
+    contingency_forwarded_at timestamp(6) without time zone,
+    contingency_reason character varying,
+    contingency_pending boolean DEFAULT false NOT NULL
 );
 
 
@@ -13438,6 +13452,13 @@ CREATE INDEX index_distribution_rules_on_checkin_store_ids ON public.distributio
 
 
 --
+-- Name: index_distribution_rules_on_contingency_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_distribution_rules_on_contingency_rule_id ON public.distribution_rules USING btree (contingency_rule_id);
+
+
+--
 -- Name: index_distribution_rules_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14327,6 +14348,13 @@ CREATE UNIQUE INDEX index_layout_settings_on_unique_tenant_id ON public.layout_s
 
 
 --
+-- Name: index_lead_activities_on_intake_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_activities_on_intake_reference ON public.lead_activities USING btree (tenant_id, ((metadata ->> 'ingress_reference'::text))) WHERE (((kind)::text = 'inquiry_complemented'::text) AND (metadata ? 'ingress_reference'::text));
+
+
+--
 -- Name: index_lead_activities_on_lead_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14593,6 +14621,13 @@ CREATE INDEX index_lead_property_interests_on_tenant_id ON public.lead_property_
 
 
 --
+-- Name: index_lead_settings_on_default_distribution_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_settings_on_default_distribution_rule_id ON public.lead_settings USING btree (default_distribution_rule_id);
+
+
+--
 -- Name: index_lead_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14649,6 +14684,20 @@ CREATE INDEX index_leads_on_client_external_id ON public.leads USING btree (clie
 
 
 --
+-- Name: index_leads_on_contingency_source_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_contingency_source_rule_id ON public.leads USING btree (contingency_source_rule_id);
+
+
+--
+-- Name: index_leads_on_contingency_target_rule_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_contingency_target_rule_id ON public.leads USING btree (contingency_target_rule_id);
+
+
+--
 -- Name: index_leads_on_distribution_rule_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14688,6 +14737,13 @@ CREATE INDEX index_leads_on_lead_pipeline_stage_id ON public.leads USING btree (
 --
 
 CREATE INDEX index_leads_on_origin ON public.leads USING btree (origin);
+
+
+--
+-- Name: index_leads_on_pending_contingency; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_pending_contingency ON public.leads USING btree (tenant_id, contingency_pending) WHERE (contingency_pending = true);
 
 
 --
@@ -14740,6 +14796,13 @@ CREATE INDEX index_leads_on_tenant_and_client_email_lower ON public.leads USING 
 
 
 --
+-- Name: index_leads_on_tenant_and_client_email_trimmed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_client_email_trimmed ON public.leads USING btree (tenant_id, lower(btrim((COALESCE(client_email, ''::character varying))::text)));
+
+
+--
 -- Name: index_leads_on_tenant_and_client_phone_digits; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14751,6 +14814,13 @@ CREATE INDEX index_leads_on_tenant_and_client_phone_digits ON public.leads USING
 --
 
 CREATE INDEX index_leads_on_tenant_and_email_lower ON public.leads USING btree (tenant_id, lower((COALESCE(email, ''::character varying))::text));
+
+
+--
+-- Name: index_leads_on_tenant_and_email_trimmed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_email_trimmed ON public.leads USING btree (tenant_id, lower(btrim((COALESCE(email, ''::character varying))::text)));
 
 
 --
@@ -17900,6 +17970,14 @@ ALTER TABLE ONLY public.linkedin_integrations
 
 
 --
+-- Name: lead_settings fk_rails_34bc901d4c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_settings
+    ADD CONSTRAINT fk_rails_34bc901d4c FOREIGN KEY (default_distribution_rule_id) REFERENCES public.distribution_rules(id);
+
+
+--
 -- Name: profiles fk_rails_350dbd643d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18620,6 +18698,14 @@ ALTER TABLE ONLY public.tiktok_lead_receipts
 
 
 --
+-- Name: leads fk_rails_782b710e2d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_782b710e2d FOREIGN KEY (contingency_source_rule_id) REFERENCES public.distribution_rules(id);
+
+
+--
 -- Name: leads fk_rails_78a40fb132; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19068,6 +19154,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 
 --
+-- Name: distribution_rules fk_rails_997cfc0d91; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.distribution_rules
+    ADD CONSTRAINT fk_rails_997cfc0d91 FOREIGN KEY (contingency_rule_id) REFERENCES public.distribution_rules(id);
+
+
+--
 -- Name: manual_checkin_requests fk_rails_99b1cb9567; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19417,6 +19511,14 @@ ALTER TABLE ONLY public.lead_pipeline_stage_automation_executions
 
 ALTER TABLE ONLY public.automation_workflows
     ADD CONSTRAINT fk_rails_bcad8004e0 FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: leads fk_rails_bd0c4591fe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_bd0c4591fe FOREIGN KEY (contingency_target_rule_id) REFERENCES public.distribution_rules(id);
 
 
 --
@@ -20287,11 +20389,13 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XGl0xC37PYbmaTIisy2klsaRHOD090bQ57BWCpRmOfmbLr6T2fkxffJgF6e6uEG
+\unrestrict r1tFUt09r8Y1pxFSnOH2ozCB2z0aMRTM3kHjmTSOs1NHXCQQlVvFVmksErB9ChT
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261008150000'),
+('20261008130000'),
 ('20261007160000'),
 ('20261007140000'),
 ('20261007120000'),

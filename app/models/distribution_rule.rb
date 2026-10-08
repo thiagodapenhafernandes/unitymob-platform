@@ -18,6 +18,30 @@ class DistributionRule < ApplicationRecord
   }.freeze
   POOL_RENOTIFY_MODES = %w[never interval].freeze
   DEFAULT_POOL_RENOTIFY_MINUTES = 30
+  CONTINGENCY_TRIGGERS = {
+    "unavailable" => "Nenhum corretor elegível (incluindo check-in)",
+    "outside_hours" => "Fora do horário de atendimento",
+    "pool_timeout" => "Bolsão sem ninguém assumir",
+    "acceptance_timeout" => "Prazo total sem aceite",
+    "deactivated" => "Regra desativada com leads pendentes"
+  }.freeze
+  belongs_to :contingency_rule, class_name: "DistributionRule", optional: true
+  validate :valid_contingency
+  validates :contingency_unavailable_minutes, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 10_080 }
+  validates :contingency_pool_minutes, :contingency_acceptance_minutes, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 10_080 }
+
+  def contingency_for?(reason)
+    contingency_enabled? && Array(contingency_triggers).include?(reason.to_s)
+  end
+
+  def terminal_destination_for?(account)
+    account && tenant_id == account.id && active? && !contingency_enabled? && !attendance?
+  end
+
+  def contingency_destination?
+    persisted? && (tenant.distribution_rules.where(contingency_enabled: true, contingency_rule_id: id).exists? ||
+      LeadSetting.where(tenant_id: tenant_id, default_distribution_rule_id: id).exists?)
+  end
 
   after_initialize :set_defaults
   before_validation :ensure_auto_update_trigger_value, if: :has_auto_update_trigger_column?
@@ -46,6 +70,7 @@ class DistributionRule < ApplicationRecord
   validate :validate_linkedin_selection
 
   scope :active, -> { where(active: true) }
+  scope :terminal_destinations, -> { active.where(contingency_enabled: false).where.not(distribution_mode: distribution_modes[:attendance]) }
 
   def pool_timeline_participants
     admin_users.where(tenant_id: tenant_id).distinct.order(:name, :id).pluck(:id, :name).map do |id, name|
@@ -346,6 +371,23 @@ class DistributionRule < ApplicationRecord
   end
 
   private
+
+  def valid_contingency
+    if (Array(contingency_triggers) - CONTINGENCY_TRIGGERS.keys).any?
+      errors.add(:contingency_triggers, "contém situações inválidas")
+    end
+    return unless contingency_enabled?
+
+    if contingency_triggers.blank?
+      errors.add(:contingency_triggers, "selecione ao menos uma situação")
+    end
+    unless contingency_rule && contingency_rule.id != id && contingency_rule.terminal_destination_for?(tenant)
+      errors.add(:contingency_rule, "deve ser outra regra ativa da conta, sem encaminhamento e com distribuição automática")
+    end
+    if contingency_destination?
+      errors.add(:contingency_enabled, "esta regra já é destino final de outras regras ou da conta")
+    end
+  end
 
   def validate_tiktok_selection
     return unless source_tiktok?

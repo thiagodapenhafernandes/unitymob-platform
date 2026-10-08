@@ -252,7 +252,7 @@ module Whatsapp
     def ensure_lead
       return conversation.lead if conversation.lead
 
-      lead = conversation.tenant.leads.create!(
+      lead = Leads::Intake.create!(tenant: conversation.tenant,
         name: conversation.contact_name.presence || "Contato WhatsApp #{conversation.contact_phone || conversation.business_scoped_user_id}",
         phone: conversation.contact_phone,
         business_scoped_user_id: conversation.business_scoped_user_id,

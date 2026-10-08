@@ -1,6 +1,8 @@
 <% meta_form_names = lead_table_meta_form_names(leads, tenant: current_tenant) %>
 <% origin_campaign_names = lead_origin_campaign_names(leads, tenant: current_tenant) %>
 <% origin_site_events = lead_origin_site_events(leads, tenant: current_tenant) %>
+<% origin_public_forms = lead_origin_public_form_names(leads, tenant: current_tenant) %>
+<% origin_share_names = lead_origin_share_names(leads, tenant: current_tenant) %>
 <% interest_properties = lead_table_interest_properties(leads, tenant: current_tenant) %>
 <% leads.each do |lead| %>
   <%
@@ -8,7 +10,7 @@
     property = @properties_by_id[lead.property_id] || interest_properties[lead.id]
     display_name = lead.display_name.presence || lead.name
     phone_href = Phones::Normalizer.tel_href(lead.display_phone)
-    origin = lead_origin_column(lead, tenant: current_tenant, site_event: origin_site_events[lead.id], form_name: meta_form_names[lead.id], campaign_name: origin_campaign_names[lead.id])
+    origin = lead_origin_column(lead, tenant: current_tenant, site_event: origin_site_events[lead.id], form_name: meta_form_names[lead.id], campaign_name: origin_campaign_names[lead.id], public_form: origin_public_forms[lead.id], share_name: origin_share_names[lead.id])
     labels = lead.preloaded_labels_for(current_admin_user)
   %>
   <article class="ax-record-list__row" role="row" id="lead_<%= lead.id %>">

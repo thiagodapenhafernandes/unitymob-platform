@@ -229,6 +229,16 @@
       <% end %>
 
       <div class="distribution-rule-show__grid distribution-rule-show__grid--half">
+        <%= ax_operational_panel(eyebrow: "Contingência", title: "Encaminhamento para outra regra") do %>
+          <div class="distribution-rule-show__body ax-field-group-stack">
+            <%= ax_badge(@rule.contingency_enabled? ? "Ativo" : "Desligado", tone: @rule.contingency_enabled? ? :blue : :gray) %>
+            <% if @rule.contingency_enabled? %>
+              <p>Destino: <%= @rule.contingency_rule&.name || "Não configurado" %></p>
+              <p><%= Array(@rule.contingency_triggers).filter_map { |reason| DistributionRule::CONTINGENCY_TRIGGERS[reason] }.join(" · ") %></p>
+              <p class="ax-field__hint">Sem elegíveis: <%= @rule.contingency_unavailable_minutes.zero? ? "imediato" : "#{@rule.contingency_unavailable_minutes} min" %> · Bolsão: <%= @rule.contingency_pool_minutes %> min · Prazo total: <%= @rule.contingency_acceptance_minutes %> min. Os prazos só valem para situações marcadas.</p>
+            <% end %>
+          </div>
+        <% end %>
         <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e aceite") do %>
           <div class="distribution-rule-show__body">
             <dl class="distribution-rule-show__state">

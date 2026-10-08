@@ -45,8 +45,8 @@ module Leads
     end
 
     def self.email_sql
-      "lower(coalesce(leads.email, '')) IN (:emails) OR " \
-        "lower(coalesce(leads.client_email, '')) IN (:emails)"
+      "lower(btrim(coalesce(leads.email, ''))) IN (:emails) OR " \
+        "lower(btrim(coalesce(leads.client_email, ''))) IN (:emails)"
     end
   end
 end

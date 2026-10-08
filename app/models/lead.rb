@@ -31,6 +31,8 @@ class Lead < ApplicationRecord
   belongs_to :admin_user, optional: true
   belongs_to :shared_by_admin_user, class_name: "AdminUser", optional: true
   belongs_to :distribution_rule, optional: true
+  belongs_to :contingency_source_rule, class_name: "DistributionRule", optional: true
+  belongs_to :contingency_target_rule, class_name: "DistributionRule", optional: true
   belongs_to :external_lead_integration, optional: true
   belongs_to :lead_pipeline, optional: true
   belongs_to :lead_pipeline_stage, optional: true
@@ -247,6 +249,7 @@ class Lead < ApplicationRecord
             inclusion: { in: QUALIFICATION_STATUSES.keys },
             allow_blank: true
 
+  attr_accessor :intake_reused
   attr_writer :skip_automatic_routing
 
   def skip_automatic_routing?
@@ -668,7 +671,12 @@ class Lead < ApplicationRecord
   def route_lead
     return unless persisted? && !destroyed?
 
-    Leads::RoutingService.route!(self)
+    with_lock do
+      # Outra entrada pode distribuir este cadastro antes do callback da criação.
+      return if activities.where(kind: %w[received distributed dammed shark_tank_ready]).exists?
+
+      Leads::RoutingService.route!(self)
+    end
   end
 
   def dispatch_automation_created

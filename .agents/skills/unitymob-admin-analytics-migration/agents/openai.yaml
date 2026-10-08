@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unitymob Admin Analytics Migration"
+  short_description: "Migração admin para Analytics Builder"
+  default_prompt: "Use $unitymob-admin-analytics-migration para migrar ou refinar uma tela admin do Unitymob no padrão Analytics Builder."

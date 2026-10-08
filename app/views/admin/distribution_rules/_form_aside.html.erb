@@ -27,6 +27,7 @@
       header_class: "distribution-rule-aside-panel__header"
     ) do %>
   <div class="distribution-rule-aside__body">
+    <%= render "contingency_fields", f: f %>
     <%= ax_operational_panel(eyebrow: "Lógica", title: "Modo de distribuição") do %>
       <div class="ax-panel-body">
         <div class="ax-option-stack distribution-rule-modes">

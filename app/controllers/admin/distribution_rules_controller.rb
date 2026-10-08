@@ -72,8 +72,11 @@ class Admin::DistributionRulesController < Admin::BaseController
   end
 
   def toggle_active
-    @rule.update(active: !@rule.active)
-    redirect_to admin_distribution_rules_path, notice: "Status da regra atualizado."
+    if @rule.update(active: !@rule.active)
+      redirect_to admin_distribution_rules_path, notice: "Status da regra atualizado."
+    else
+      redirect_to admin_distribution_rules_path, alert: @rule.errors.full_messages.to_sentence
+    end
   end
 
   def reorder_agents
@@ -326,6 +329,8 @@ class Admin::DistributionRulesController < Admin::BaseController
       :name, :business_type, :active,
       :source_tiktok, :source_linkedin, :source_meta, :source_webhook, :source_portal, :source_site, :source_rd_station, :source_lovers,
       :distribution_mode,
+      :contingency_enabled, :contingency_rule_id,
+      :contingency_unavailable_minutes, :contingency_pool_minutes, :contingency_acceptance_minutes,
       :pocket_active, :pocket_time,
       :pocket_to_shark_tank, :pool_renotify_mode, :pool_renotify_minutes,
       :represamento_active, :auto_add_forms,
@@ -335,6 +340,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       :require_active_checkin, :require_inside_radius, :require_active_shift, :exclude_suspicious_checkins,
       :auto_update_agents_enabled, :auto_update_shuffle_agents,
       admin_user_ids: [],
+      contingency_triggers: [],
       tiktok_account_ids: [],
       tiktok_form_ids: [],
       linkedin_campaign_ids: [],
@@ -352,7 +358,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     ).tap do |perms|
       # Selects multiplos enviam um "" inicial (hidden field do Rails). Limpar para
       # não poluir os arrays JSONB (que viram chips vazios fantasmas ao reabrir).
-      %i[tiktok_account_ids tiktok_form_ids linkedin_campaign_ids linkedin_form_ids meta_forms meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
+      %i[contingency_triggers tiktok_account_ids tiktok_form_ids linkedin_campaign_ids linkedin_form_ids meta_forms meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
         perms[key] = Array(perms[key]).compact_blank if perms[key].is_a?(Array)
       end
 

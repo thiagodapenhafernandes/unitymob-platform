@@ -78,7 +78,8 @@ export default class extends Controller {
       const chips = [
         ["whatsapp", "WhatsApp", this.checked("notify_whatsapp")],
         ["clock-history", this.checked("represamento_active") ? "Represamento ativo" : "Sem represamento", this.checked("represamento_active")],
-        ["hourglass-split", this.checked("pocket_active") ? "Aceite com prazo" : "Sem aceite com prazo", this.checked("pocket_active")]
+        ["hourglass-split", this.checked("pocket_active") ? "Aceite com prazo" : "Sem aceite com prazo", this.checked("pocket_active")],
+        ["arrow-left-right", this.checked("contingency_enabled") ? "Contingência ativa" : "Sem encaminhamento", this.checked("contingency_enabled")]
       ]
       this.chipsTarget.innerHTML = chips.map(([icon, text, on]) =>
         `<span class="ax-badge ${on ? "ax-badge--green" : "ax-badge--gray"} distribution-rule-summary-chip${on ? "" : " is-off"}"><i class="bi bi-${icon}" aria-hidden="true"></i> ${text}</span>`

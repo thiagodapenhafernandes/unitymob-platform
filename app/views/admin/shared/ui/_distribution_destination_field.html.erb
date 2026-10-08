@@ -1,0 +1,13 @@
+<%
+  destinations = tenant.distribution_rules.terminal_destinations.where.not(id: local_assigns[:excluded_rule_id]).order(:name)
+  choices = destinations.pluck(:name, :id)
+  selected_id = form.object.public_send(method)
+  if selected_id.present? && choices.none? { |_, id| id == selected_id }
+    selected = tenant.distribution_rules.find_by(id: selected_id)
+    choices << ["#{selected.name} (revise a disponibilidade)", selected.id] if selected
+  end
+%>
+<%= ax_select_field(form: form, method: method, label: label, choices: choices,
+      select_options: { include_blank: "Selecione uma regra" }) %>
+<p class="ax-field__hint">O destino deve ser uma regra ativa desta conta, sem outro encaminhamento. Seus participantes, horário e check-in continuam valendo.</p>
+<p class="ax-field__hint">Para uma central que recebe por um responsável definido, prefira destino rotativo com equipe de cobertura. Bolsão ainda depende de alguém assumir.</p>

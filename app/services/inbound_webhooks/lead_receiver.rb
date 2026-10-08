@@ -26,8 +26,11 @@ module InboundWebhooks
     def call
       lead = token.admin_user.tenant.leads.new(lead_attributes.except(:tenant))
 
-      if lead.save
+      begin
+        lead = Leads::Intake.receive!(lead)
         @token.record_received!
+      rescue ActiveRecord::RecordInvalid => error
+        lead = error.record
       end
 
       Result.new(lead:, errors: lead.errors.full_messages)

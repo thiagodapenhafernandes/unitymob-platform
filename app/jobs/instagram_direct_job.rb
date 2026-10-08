@@ -20,7 +20,7 @@ class InstagramDirectJob < ApplicationJob
         return unless page.instagram_enabled? && page.instagram_id == profile_id
         lead = tenant.leads.find_or_initialize_by(instagram_account_id: profile_id, instagram_scoped_id: sender)
         lead.assign_attributes(name: "Contato Instagram", origin: "Instagram Direct", status: Lead.default_status) if lead.new_record?
-        lead.save! if lead.new_record?
+        lead = Leads::Intake.receive!(lead) if lead.new_record?
         return if lead.instagram_messages.exists?(message_id: message["mid"])
         context = {}
         referral = message["referral"] || event["referral"]

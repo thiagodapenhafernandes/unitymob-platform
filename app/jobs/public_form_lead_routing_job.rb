@@ -29,13 +29,13 @@ class PublicFormLeadRoutingJob < ApplicationJob
           origin: form.webhook_origin
         )
         lead.skip_automatic_routing = true
-        lead.save!
-        if rule.active? && (complement_target = Leads::InquiryComplement.dissolve_into_target!(lead))
-          submission.update!(lead_id: complement_target.id)
+        lead = Leads::Intake.receive!(lead, distribution_rule: rule)
+        if lead.intake_reused
+          submission.update!(lead_id: lead.id)
           return
         end
         lead.activities.create!(kind: "received", metadata: { origin: lead.origin })
-        Leads::DistributorService.distribute_to(lead, rule) if rule.active?
+        Leads::DistributorService.distribute_to(lead, rule)
         Automation::Dispatcher.dispatch(
           :lead_created, lead, source: "lead", idempotency_key: "lead_created:#{lead.id}"
         )

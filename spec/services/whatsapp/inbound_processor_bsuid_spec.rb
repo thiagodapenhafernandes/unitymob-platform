@@ -126,7 +126,8 @@ RSpec.describe Whatsapp::InboundProcessor do
     lead = create(:lead, tenant: integration.tenant, phone: "5547999028877", origin: "Site", other_information: {"keep" => true})
     described_class.call(payload(contacts: [], messages: [{"id" => "wamid.existing", "from" => lead.phone, "type" => "text", "text" => {"body" => "oi"}, "referral" => {"source_type" => "ad", "source_id" => "987654"}}]))
     expect(lead.reload.origin).to eq("Site")
-    expect(lead.other_information).to eq("keep" => true)
+    expect(lead.other_information).to include("keep" => true)
+    expect(lead.activities.find_by!(kind: "inquiry_complemented").metadata["inquiry_origin"]).to eq("whatsapp")
   end
 
   it "trata o botão Salvar contato do aviso sem criar conversa de cliente" do

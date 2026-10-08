@@ -50,6 +50,7 @@ module Admin
         :stickiness_owner,
         :stickiness_fallback,
         :stickiness_window_days,
+        :default_distribution_rule_id,
         :first_contact_sla_hours,
         :first_contact_sla_duration_value,
         :first_contact_sla_duration_unit,

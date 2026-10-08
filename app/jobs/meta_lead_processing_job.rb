@@ -14,13 +14,6 @@ class MetaLeadProcessingJob < ApplicationJob
   ].freeze
 
   # Mesmos locais para o form_id (fallback telefone + formulário por conta).
-  DUPLICATE_FORM_PATHS = [
-    "other_information ->> 'meta_form_id'",
-    "other_information -> 'facebook_attributes' ->> 'form_id'",
-    "other_information -> 'external_lead_payload' -> 'facebook_attributes' ->> 'form_id'",
-    "other_information -> 'data' -> 'facebook_attributes' ->> 'form_id'",
-    "attribution_data -> 'facebook' ->> 'form_id'"
-  ].freeze
 
   # Detalhes do lead indisponíveis na Graph API (oscilação, rate limit, token
   # expirado): fetch_lead_details engole erros por candidato, então esta classe
@@ -184,13 +177,13 @@ class MetaLeadProcessingJob < ApplicationJob
       # Idempotência por conta: retries do webhook, fan-out e reentregas
       # tardias da Meta não duplicam — inclusive contra registros vindos da
       # migração C2S, que guardam os IDs Meta em chaves aninhadas.
-      if (duplicate_reason = duplicate_lead_reason(tenant, lead_id:, form_id:, phone: attributes[:phone]))
+      if (duplicate_reason = duplicate_lead_reason(tenant, lead_id:))
         Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} já existe no tenant #{tenant_id} (#{duplicate_reason}) — ignorado."
         next
       end
 
       begin
-        lead = tenant.leads.create!(
+        lead = Leads::Intake.create!(tenant: tenant,
           # NÃO pré-atribuir ao dono da integração: o lead entra SEM corretor para
           # as regras de distribuição rodarem (RoutingService só distribui quando
           # admin_user_id é nil). O dono da integração fica auditado abaixo.
@@ -234,22 +227,12 @@ class MetaLeadProcessingJob < ApplicationJob
     end
   end
 
-  # Retorna o motivo do match ou nil. Primeiro o leadgen_id exato em
-  # qualquer chave conhecida; depois o fallback telefone + formulário
-  # (dígitos, para cobrir registros com formatação legada).
-  def duplicate_lead_reason(tenant, lead_id:, form_id:, phone:)
+  # Reentrega do mesmo evento; a identificação da pessoa fica no Intake.
+  def duplicate_lead_reason(tenant, lead_id:)
     leadgen = lead_id.to_s
     return "leadgen_id #{leadgen}" if leadgen.present? && tenant.leads.where(or_equals(DUPLICATE_LEADGEN_PATHS, leadgen)).exists?
 
-    digits = phone.to_s.gsub(/\D/, "")
-    form = form_id.to_s
-    return nil if digits.blank? || form.blank?
-
-    phone_match = "(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = ? " \
-      "OR regexp_replace(COALESCE(client_phone, ''), '\\D', '', 'g') = ?)"
-    if tenant.leads.where(phone_match, digits, digits).where(or_equals(DUPLICATE_FORM_PATHS, form)).exists?
-      return "telefone + formulário #{form}"
-    end
+    return "evento já recebido" if Leads::Intake.find_received_event(tenant: tenant, reference: "meta:#{leadgen}")
 
     nil
   end
