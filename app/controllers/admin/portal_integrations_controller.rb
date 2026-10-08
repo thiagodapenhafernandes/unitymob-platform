@@ -5,6 +5,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
   def index
     @active_portal = normalize_portal(params[:portal])
     @integrations = PortalIntegration::PORTALS.index_with { |portal| find_integration!(portal) }
+    @lead_integration = @integrations["zapimoveis"]
     @status_options = Habitation::STATUS_OPTIONS
     @business_type_options = [["Venda", "venda"], ["Aluguel", "aluguel"]]
     @previews = @integrations.transform_values { |integration| Portal::EligibilityScope.new(integration).preview }
@@ -117,6 +118,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
 
   def normalize_portal(value)
     portal = value.to_s.downcase
+    portal = "zapimoveis" if portal == "grupo_olx"
     return PortalIntegration::PORTALS.first unless PortalIntegration::PORTALS.include?(portal)
 
     portal

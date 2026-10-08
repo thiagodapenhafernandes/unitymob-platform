@@ -1,19 +1,21 @@
 <div class="ax-integration-layout">
 <% current_integration = @integrations[@active_portal] %>
+<% group_olx = current_integration.grupozap_family? %>
+<% screen_title = group_olx ? "Grupo OLX" : current_integration.title %>
 <% current_preview = @previews[@active_portal] || {} %>
 <% current_readiness = @readiness[@active_portal] || {} %>
 <% current_status = current_readiness[:status] %>
 <% current_checklist = current_readiness[:checklist] || [] %>
 <% readiness_tone = ->(color) { { "success" => :green, "danger" => :red, "warning" => :amber, "primary" => :blue }.fetch(color.to_s, :gray) } %>
 
-<%= ax_workspace_heading(eyebrow: "Integrações · Distribuição", icon: "building", title: "Portais", pills: [current_integration.title], subtitle: "Envie imóveis aos portais e receba leads na sua conta.", metrics: [{ value: current_preview[:eligible_count].to_i, label: "elegíveis" }]) %>
+<%= ax_workspace_heading(eyebrow: "Integrações · Distribuição", icon: "building", title: "Portais", pills: [screen_title], subtitle: "Envie imóveis aos portais e receba leads na sua conta.", metrics: [{ value: current_preview[:eligible_count].to_i, label: "elegíveis" }]) %>
 
 <%= ax_field_grid(columns: 12, gap: :compact) do %>
   <!-- Sidebar de portais com status visual -->
   <div class="ax-span-3">
     <%= ax_panel(title: "Portais", subtitle: "Canais disponíveis", class_name: "portal-integrations-nav-panel") do %>
       <ul class="portal-integrations-nav">
-        <% PortalIntegration::PORTALS.each do |portal_key| %>
+        <% (PortalIntegration::PORTALS - ["vivareal_vrsync"]).each do |portal_key| %>
           <% integration = @integrations[portal_key] %>
           <% portal_status = @readiness.dig(portal_key, :status) || :disabled %>
           <% portal_color = integration.readiness_color(portal_status) %>
@@ -21,11 +23,11 @@
           <% portal_eligible = @previews.dig(portal_key, :eligible_count).to_i %>
           <li class="portal-integrations-nav__item">
           <%= link_to admin_portal_integrations_path(portal: portal_key, anchor: ("portal-leads" if integration.grupozap_family?)),
-                class: ["portal-integrations-nav__link", ("is-active" if @active_portal == portal_key)].compact.join(" "),
-                aria: { current: ("page" if @active_portal == portal_key) } do %>
+                class: ["portal-integrations-nav__link", ("is-active" if @active_portal == portal_key || (group_olx && portal_key == "zapimoveis"))].compact.join(" "),
+                aria: { current: ("page" if @active_portal == portal_key || (group_olx && portal_key == "zapimoveis")) } do %>
             <div class="tw-flex tw-justify-between tw-items-start tw-gap-2">
               <div>
-                <div class="tw-font-semibold"><%= integration.title %></div>
+                <div class="tw-font-semibold"><%= portal_key == "zapimoveis" ? "Grupo OLX" : integration.title %></div>
                 <small class="portal-integrations-nav__meta <%= 'is-active' if @active_portal == portal_key %>">
                   <%= portal_eligible %> imóveis elegíveis
                 </small>
@@ -45,7 +47,7 @@
     <% pending_items = current_checklist.reject { |item| item[:ok] } %>
     <div class="portal-integrations-commandbar">
       <div class="portal-integrations-commandbar__identity">
-        <strong><%= current_integration.title %></strong>
+        <strong><%= screen_title %></strong>
         <%= ax_badge(current_integration.readiness_label(current_status), tone: readiness_tone.call(banner_color)) %>
       </div>
       <div class="portal-integrations-commandbar__metrics">
@@ -71,6 +73,16 @@
     <% end %>
     <div id="portal-integration-sections" class="tw-mt-3">
     <section id="portal-publication" aria-label="Envio de imóveis aos portais">
+    <% if group_olx %>
+      <%= ax_field_group(title: "Publicação por portal") do %>
+        <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mb-3">
+          <% PortalIntegration::GRUPOZAP_PORTALS.each do |portal| %>
+            <%= ax_button(@integrations[portal].title, admin_portal_integrations_path(portal: portal, anchor: "portal-publication"), variant: (@active_portal == portal ? :primary : :ghost), size: :sm) %>
+          <% end %>
+        </div>
+        <p class="ax-field__hint">As configurações e URLs de feed existentes são mantidas por portal. Confirme no Canal Pro quais canais recebem seus anúncios; a OLX não exige uma conexão de leads separada.</p>
+      <% end %>
+    <% end %>
     <!-- Configuração -->
     <%= ax_operational_panel(eyebrow: "Publicação", title: "Enviar imóveis", class_name: "tw-mb-3") do %>
       <div class="ax-panel-body">
@@ -231,15 +243,18 @@
 
     <% if current_integration.grupozap_family? %>
       <section id="portal-leads" aria-label="Recebimento de leads do portal" hidden>
+        <%= ax_inline_notice(tone: :neutral, class_name: "tw-mb-3") do %>
+          Uma conexão para os leads de ZAP Imóveis, Viva Real e OLX disponibilizados pelo Grupo OLX. A origem aparece como Grupo OLX e segue as regras de distribuição desta conta.
+        <% end %>
         <%= ax_field_grid(columns: 12, gap: :compact) do %>
         <div class="ax-span-8">
         <%= ax_operational_panel(eyebrow: "Leads", title: "Conta anunciante", class_name: "tw-mb-3") do %>
           <div class="ax-panel-body">
-            <%= form_with model: current_integration, url: admin_portal_integration_path(@active_portal), method: :patch, local: true do |f| %>
+            <%= form_with model: @lead_integration, url: admin_portal_integration_path("zapimoveis"), method: :patch, local: true do |f| %>
               <%= hidden_field_tag :section, "leads" %>
               <%= ax_text_field(form: f, method: :account_id, id: "lead_advertiser_account_id", label_options: { for: "lead_advertiser_account_id" }, label: "ID da conta no Grupo OLX", placeholder: "Informe o código da conta anunciante", hint: "Solicite este código ao atendimento do portal. Ele identifica a conta, mas não autentica a conexão.") %>
               <div class="tw-mt-4">
-              <%= ax_switch_field(form: f, method: :leads_enabled, label: "Receber leads deste portal") %>
+              <%= ax_switch_field(form: f, method: :leads_enabled, label: "Receber leads do Grupo OLX") %>
               <p class="portal-integrations-help">Os contatos entram nesta conta e seguem suas regras de distribuição. A Unitymob prepara e mantém a conexão automaticamente.</p>
               </div>
               <%= ax_form_actions(sticky: false) do %>
@@ -248,15 +263,15 @@
             <% end %>
             <%= ax_field_group(title: "URL para receber leads") do %>
               <div data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
-                <p class="ax-field__hint tw-mb-3">Informe esta URL ao Grupo OLX para vinculá-la à sua conta anunciante.</p>
-                <% if current_integration.lead_webhook_url.present? %>
+                <p class="ax-field__hint tw-mb-3">No Canal Pro, selecione Unitymob e vincule esta URL à sua conta anunciante.</p>
+                <% if @lead_integration.lead_webhook_url.present? %>
                   <%= ax_input_group(action: capture { %>
                     <button type="button" class="ax-btn ax-btn--primary" data-action="clipboard#copy" data-clipboard-target="button">
                       <i class="bi bi-clipboard" aria-hidden="true"></i>
                       <span data-clipboard-target="content">Copiar URL</span>
                     </button>
                   <% }) do %>
-                    <input type="text" class="ax-control" readonly aria-label="URL de recebimento de leads" value="<%= current_integration.lead_webhook_url %>" data-clipboard-target="source" data-action="focus->clipboard#select click->clipboard#select">
+                    <input type="text" class="ax-control" readonly aria-label="URL de recebimento de leads" value="<%= @lead_integration.lead_webhook_url %>" data-clipboard-target="source" data-action="focus->clipboard#select click->clipboard#select">
                   <% end %>
                   <p class="ax-field__hint tw-mt-3">O endereço é exclusivo desta conta. Consulte o status ao lado antes de disparar um lead de teste.</p>
                 <% else %>
@@ -272,8 +287,8 @@
         <div class="ax-span-4">
           <%= ax_operational_panel(title: "Status da integração", class_name: "tw-mb-3") do %>
             <div class="ax-panel-body">
-              <%= turbo_stream_from current_integration, :lead_connection %>
-              <%= render "admin/portal_integrations/lead_connection", integration: current_integration %>
+              <%= turbo_stream_from @lead_integration, :lead_connection %>
+              <%= render "admin/portal_integrations/lead_connection", integration: @lead_integration %>
             </div>
           <% end %>
           <%= ax_operational_panel(title: "Como receber os leads") do %>
@@ -281,23 +296,23 @@
               <div class="tw-space-y-3">
               <p><strong>1. Identifique a conta</strong><br>Informe o código da sua conta anunciante e salve o recebimento.</p>
               <p><strong>2. Copie a URL gerada</strong><br>A Unitymob prepara automaticamente o endereço de recebimento.</p>
-              <p><strong>3. Vincule no Grupo OLX</strong><br>Informe a URL ao atendimento do portal para vincular à conta anunciante.</p>
+              <p><strong>3. Vincule no Grupo OLX</strong><br>No Canal Pro, selecione Unitymob na integração de leads e informe esta URL.</p>
               <p class="tw-text-ink-muted">O ID sozinho não conecta a conta. Depois da vinculação, os leads seguem suas regras de distribuição.</p>
               </div>
             </div>
           <% end %>
         </div>
         <% end %>
-    <% if current_integration.grupozap_family? && current_admin_user.system_admin? %>
+    <% if @lead_integration.grupozap_family? && current_admin_user.system_admin? %>
       <%= ax_operational_panel(eyebrow: "Leads", title: "Chave do CRM — Grupo OLX", class_name: "tw-mb-3") do %>
         <div class="ax-panel-body">
           <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
-            Chave do recebimento direto neste servidor. No modo Gateway, o suporte configura a chave no Gateway central. Vale para ZAP, VivaReal e Imovelweb:
+            Chave do recebimento direto neste servidor. No modo Gateway, o suporte configura a chave no Gateway central. Vale para ZAP Imóveis, Viva Real e OLX:
             sem ela, os leads são recusados. Por segurança, o valor nunca é exibido — só o status.
             <%= ax_badge(@grupozap_key_configured ? "Configurada" : "Não configurada", tone: (@grupozap_key_configured ? :green : :amber)) %>
           </p>
           <%= form_with url: grupozap_key_admin_portal_integrations_path, method: :post, local: true, class: "tw-flex tw-flex-wrap tw-items-end tw-gap-2" do %>
-            <%= hidden_field_tag :portal, @active_portal %>
+            <%= hidden_field_tag :portal, "zapimoveis" %>
             <div class="tw-flex-1 tw-min-w-[240px]">
               <%= label_tag :grupozap_secret_key, "SECRET_KEY", class: "ax-label" %>
               <%= password_field_tag :grupozap_secret_key, nil, class: "ax-control", autocomplete: "off",

@@ -66,6 +66,31 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     expect(integration.reload.lead_webhook_url).to eq(url)
   end
 
+  it "agrupa os portais e preserva a URL existente ao alternar o feed" do
+    integration = PortalIntegration.for_portal!("zapimoveis", tenant: admin.tenant)
+    url = integration.lead_webhook_url
+    get admin_portal_integrations_path(portal: "vivareal_vrsync")
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.css('.portal-integrations-nav__link').map(&:text).join).to include("Grupo OLX")
+    expect(document.css('.portal-integrations-nav__link').size).to eq(PortalIntegration::PORTALS.size - 1)
+    expect(document.at_css('#portal-leads input[aria-label="URL de recebimento de leads"]')["value"]).to eq(url)
+    expect(document.at_css('#portal-leads form')["action"]).to eq(admin_portal_integration_path("zapimoveis"))
+    expect(document.at_css('#portal-publication form')["action"]).to eq(admin_portal_integration_path("vivareal_vrsync"))
+    expect(integration.reload.lead_webhook_url).to eq(url)
+  end
+
+  it "mantém os feeds Imovelweb separados da integração de leads OLX" do
+    %w[imovelweb imovelweb_2].each do |portal|
+      get admin_portal_integrations_path(portal: portal)
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('#portal-leads')).to be_nil
+      expect(document.at_css('#portal-publication form')["action"]).to eq(admin_portal_integration_path(portal))
+      expect(response.body).to include("URL do Feed para o portal")
+    end
+  end
+
   it "isola os retornos recebidos por tenant" do
     own_code = "PORTAL-#{SecureRandom.hex(3)}"
     foreign_code = "FORA-#{SecureRandom.hex(3)}"
@@ -95,13 +120,13 @@ RSpec.describe "Admin::PortalIntegrations workspace", type: :request do
     get admin_portal_integrations_path(portal: "zapimoveis")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Receber leads deste portal")
+    expect(response.body).to include("Receber leads do Grupo OLX")
     expect(response.body).to include("Último lead recebido")
 
     get admin_portal_integrations_path(portal: "chavesnamao")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include("Receber leads deste portal")
+    expect(response.body).not_to include("Receber leads do Grupo OLX")
   end
 
   it "liga o recebimento de leads do portal" do

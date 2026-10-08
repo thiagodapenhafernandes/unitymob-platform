@@ -157,8 +157,8 @@ module Admin::LeadOriginHelper
       ["vivareal", "VivaReal", nil]
     elsif normalized.match?(/\Aimovel_?web(?:_2)?\z/)
       ["imovelweb", "Imovelweb", nil]
-    elsif normalized == "grupo_zap"
-      ["buildings", "Grupo Zap", nil]
+    elsif normalized.in?(%w[grupo_zap grupo_olx])
+      ["buildings", "Grupo OLX", nil]
     elsif normalized.match?(/\Ard_?station(?:_api)?\z/)
       ["rdstation", "RD Station", nil]
     elsif normalized.match?(/\A(?:lead_?)?lovers\z/)

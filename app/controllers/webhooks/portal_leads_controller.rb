@@ -17,7 +17,7 @@ module Webhooks
     def grupozap
       integration = nil
       if params[:route_key].present?
-        integration = PortalIntegration.find_by(lead_route_key: params[:route_key], portal: PortalIntegration::GRUPOZAP_PORTALS)
+        integration = PortalIntegration.find_by(lead_route_key: params[:route_key], portal: PortalIntegration::LEGACY_GRUPOZAP_PORTALS)
         return head(:not_found) unless integration
         return head(:unauthorized) unless valid_gateway_signature?
         return head(:conflict) unless integration.enabled? && integration.leads_enabled?

@@ -493,7 +493,8 @@ class Admin::LeadsController < Admin::BaseController
     @lead = current_tenant.leads.new(new_lead_params)
     @lead.admin_user_id = resolved_owner_id_for_new_lead
 
-    if @lead.save
+    creation = Leads::ManualCreate.new(@lead)
+    if creation.call
       LeadActivity.log!(
         lead: @lead,
         kind: "created",
@@ -501,6 +502,7 @@ class Admin::LeadsController < Admin::BaseController
       )
       redirect_to admin_lead_path(@lead), notice: lead_created_notice
     else
+      @duplicate_lead = accessible_lead_scope_for_current_user.find_by(id: creation.duplicate.id) if creation.duplicate
       @page_title = "Novo lead"
       render :new, status: :unprocessable_entity
     end

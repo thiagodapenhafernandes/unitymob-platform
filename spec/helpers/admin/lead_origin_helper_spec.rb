@@ -25,6 +25,13 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     end
   end
 
+  it "apresenta a identidade Grupo OLX preservando a origem usada pelas regras" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "grupo_zap")
+    expect(origin(lead)).to include(brand: "buildings", label: "Grupo OLX")
+    expect(lead.origin).to eq("grupo_zap")
+    expect(helper.lead_origin_identity("Grupo OLX")).to eq(["buildings", "Grupo OLX", nil])
+  end
+
   it "exibe o anúncio recebido sem inventar plataforma ou nome de campanha" do
     lead = build_stubbed(:lead, tenant: tenant, origin: "whatsapp", other_information: {
       "whatsapp_entry" => {"referral" => {"source_type" => "ad", "source_id" => "123456", "headline" => "Conheça a unidade"}}

@@ -61,7 +61,7 @@ class PortalLeadProcessingJob < ApplicationJob
   def receiving?(tenant)
     PortalIntegration.where(
       tenant: tenant,
-      portal: PortalIntegration::GRUPOZAP_PORTALS,
+      portal: PortalIntegration::LEGACY_GRUPOZAP_PORTALS,
       enabled: true,
       leads_enabled: true
     ).exists?
@@ -114,7 +114,7 @@ class PortalLeadProcessingJob < ApplicationJob
     now = Time.current
     PortalIntegration.where(
       tenant: tenant,
-      portal: PortalIntegration::GRUPOZAP_PORTALS,
+      portal: PortalIntegration::LEGACY_GRUPOZAP_PORTALS,
       enabled: true,
       leads_enabled: true
     ).update_all(last_lead_at: now, operational_status: "lead_received", updated_at: now)
@@ -147,7 +147,7 @@ class PortalLeadProcessingJob < ApplicationJob
 
   def tenant_portal_for(tenant)
     if tenant.present?
-      found = PortalIntegration.where(tenant: tenant, portal: PortalIntegration::GRUPOZAP_PORTALS)
+      found = PortalIntegration.where(tenant: tenant, portal: PortalIntegration::LEGACY_GRUPOZAP_PORTALS)
                                .order(:portal).pick(:portal)
       return found if found.present?
     end
