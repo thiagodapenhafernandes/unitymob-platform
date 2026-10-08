@@ -43,7 +43,7 @@ RSpec.describe "Lead inquiry complement", type: :request do
     expect(Leads::NotificationDispatcher).to have_received(:notify_complement)
   end
 
-  it "cria lead novo quando o anterior saiu da janela do pocket" do
+  it "complementa o cadastro mesmo depois da janela do pocket" do
     tenant = Tenant.default
     broker = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "agent"), active: true)
     rule = create(:distribution_rule, tenant: tenant, require_active_checkin: false, pocket_active: true, pocket_time: 20)
@@ -57,9 +57,9 @@ RSpec.describe "Lead inquiry complement", type: :request do
         lead: { name: "Marilene", phone: "4799992222", lead_type: "whatsapp_modal",
                 origin: "Site", property_id: second_property.id, page_url: "http://localhost/imovel-b" }
       }, as: :json
-    end.to change(Lead, :count).by(1)
+    end.not_to change(Lead, :count)
 
     expect(response).to have_http_status(:ok)
-    expect(first.reload.property_interests).to be_empty
+    expect(first.reload.property_interests.pluck(:habitation_id)).to include(second_property.id)
   end
 end

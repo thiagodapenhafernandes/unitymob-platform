@@ -76,6 +76,50 @@ RSpec.describe ExternalLeadMigration::LeadUpsert do
 
   before { Current.tenant = tenant }
 
+  it "concilia OLX direto com C2S e preserva responsável, origem e status nos reenvios" do
+    incoming = payload.deep_dup
+    incoming["attributes"]["lead_source"] = { "name" => "Grupo Zap" }
+    original = create(:lead, tenant: tenant, phone: "47999990000", email: "maria@example.test",
+      property_id: habitation.id, admin_user: broker, origin: "grupo_zap", status: "Em Atendimento",
+      other_information: { "portal_lead_id" => "olx-original" })
+    LeadSetting.instance(tenant: tenant).update!(stickiness_enabled: true, stickiness_owner: "attended", stickiness_fallback: "active_any")
+    owner = original.admin_user_id
+    expect {
+      2.times { described_class.call(integration: integration, payload: incoming) }
+    }.not_to change { tenant.leads.count }
+    original.reload
+    expect(original.external_lead_id).to eq(incoming["id"])
+    expect(original.other_information["portal_lead_id"]).to eq("olx-original")
+    expect(original.origin).to eq("grupo_zap")
+    expect(original.admin_user_id).to eq(owner)
+    expect(original.status).to eq("Em Atendimento")
+    expect(original.activities.where(kind: "external_lead_synced").count).to eq(2)
+  end
+
+  it "reutiliza contatos antigos também entre origens externas diferentes" do
+    incoming = payload.deep_dup
+    incoming["attributes"]["lead_source"] = { "name" => "Grupo Zap" }
+    original = create(:lead, tenant: tenant, phone: "47999990000", email: "maria@example.test",
+      property_id: habitation.id, origin: "grupo_zap", created_at: 1.day.ago,
+      other_information: { "portal_lead_id" => "olx-antigo" })
+    expect { described_class.call(integration: integration, payload: incoming) }.not_to change { tenant.leads.count }
+    original.update!(created_at: Time.current)
+    different = payload.deep_dup
+    different["id"] = "different-source"
+    expect { described_class.call(integration: integration, payload: different) }.not_to change { tenant.leads.count }
+  end
+
+  it "reutiliza o cadastro mais antigo sem apagar duplicados legados" do
+    incoming = payload.deep_dup
+    incoming["attributes"]["lead_source"] = { "name" => "Grupo Zap" }
+    2.times do |index|
+      create(:lead, tenant: tenant, phone: "47999990000", email: "maria@example.test",
+        property_id: habitation.id, origin: "grupo_zap",
+        other_information: { "portal_lead_id" => "olx-#{index}" })
+    end
+    expect { described_class.call(integration: integration, payload: incoming) }.not_to change { tenant.leads.count }
+  end
+
   it "cria o lead no tenant usando o funil local replicado da origem externa" do
     stage_count = tenant.lead_pipeline_stages.where(name: "Visita agendada").count
 

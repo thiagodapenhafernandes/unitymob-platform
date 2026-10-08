@@ -550,23 +550,7 @@ module Whatsapp
     end
 
     def link_or_create_lead(phone:, bsuid:, name:, entry_message:)
-      # 1) Por BSUID (identidade estável).
-      if bsuid.present?
-        lead = tenant.leads.find_by(business_scoped_user_id: bsuid)
-        return lead if lead
-      end
-
-      # 2) Por telefone (últimos 8 dígitos), e backfill do BSUID quando o conhecemos.
-      if phone.present?
-        tail = phone.gsub(/\D/, "").last(8)
-        lead = tenant.leads.where("regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE ?", "%#{tail}").first
-        if lead
-          lead.update_column(:business_scoped_user_id, bsuid) if bsuid.present? && lead.business_scoped_user_id.blank?
-          return lead
-        end
-      end
-
-      created = tenant.leads.create!(
+      created = Leads::Intake.create!(tenant: tenant,
         name: name.presence || "Contato WhatsApp #{phone || bsuid}",
         phone: phone,
         business_scoped_user_id: bsuid,

@@ -26,6 +26,10 @@ development:
     class: Whatsapp::AttendanceWindowSweepJob
     queue: default
     schedule: every 15 minutes
+  lead_contingency_sweep:
+    class: Leads::ContingencySweepJob
+    queue: default
+    schedule: every minute
   lead_pool_renotify:
     class: Leads::PoolRenotifyJob
     queue: default
@@ -66,6 +70,10 @@ production:
     class: Whatsapp::AttendanceWindowSweepJob
     queue: default
     schedule: every 15 minutes
+  lead_contingency_sweep:
+    class: Leads::ContingencySweepJob
+    queue: default
+    schedule: every minute
   lead_pool_renotify:
     class: Leads::PoolRenotifyJob
     queue: default

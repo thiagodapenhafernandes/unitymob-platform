@@ -5,6 +5,9 @@ module Admin::ComercialHelper
     "created"            => { icon: "bi-stars",            color: "blue",  label: "Lead criado" },
     "received"           => { icon: "bi-inbox",            color: "gray",  label: "Lead recebido" },
     "assigned_directly"  => { icon: "bi-person-check",     color: "blue",  label: "Atribuído diretamente" },
+    "distribution_failed" => { icon: "bi-exclamation-triangle", color: "red", label: "Distribuição pendente" },
+    "contingency_forwarded" => { icon: "bi-arrow-left-right", color: "blue", label: "Encaminhado para outra regra" },
+    "contingency_pending" => { icon: "bi-exclamation-triangle", color: "amber", label: "Contingência aguardando disponibilidade" },
     "distributed"        => { icon: "bi-diagram-3",        color: "blue",  label: "Distribuído" },
     "dammed"             => { icon: "bi-pause-circle",     color: "amber", label: "Represado" },
     "shark_tank_ready"   => { icon: "bi-lightning",        color: "amber", label: "Liberado para Shark Tank" },
@@ -54,6 +57,8 @@ module Admin::ComercialHelper
     dammed
     shark_tank_ready
     pocket_expired
+    contingency_forwarded
+    contingency_pending
     accepted
     rejected
     status_change
@@ -584,10 +589,18 @@ module Admin::ComercialHelper
       automation_event_detail(activity, meta)
     when "notification_sent", "notification_failed", "notification_skipped"
       notification_activity_detail(meta)
+    when "distribution_failed"
+      { "no_matching_rule" => "Nenhuma regra ativa atende à nova consulta",
+        "no_eligible_agent" => "Nenhum corretor elegível na regra" }[meta["reason"]] || "Não foi possível concluir a distribuição"
+    when "contingency_forwarded"
+      reason = DistributionRule::CONTINGENCY_TRIGGERS[meta["reason"]] || "Nenhuma regra compatível"
+      [meta["source_rule_name"].presence || "Entrada sem destino", meta["target_rule_name"], reason].compact.join(" → ")
+    when "contingency_pending"
+      [meta["target_rule_name"], "Destino sem disponibilidade; novas tentativas automáticas"].compact.join(" · ")
     when "interest_reprocessed" then "#{meta['matches_count'].to_i} imóvel(is) compatível(is), #{meta['confidence'].to_i}% de confiança"
     when "inquiry_complemented"
       property = meta["property_code"].present? ? "Imóvel #{meta['property_code']}" : "Novo contato"
-      [property, meta["inquiry_origin"].presence].compact.join(" · ").presence
+      [property, meta["inquiry_origin"].presence, (meta["body"].presence if detailed)].compact.join(" · ").presence
     else nil
     end
   end

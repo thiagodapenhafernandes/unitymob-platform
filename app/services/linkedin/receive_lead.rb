@@ -47,7 +47,7 @@ module Linkedin
       Current.set(tenant: @integration.tenant) do
         LinkedinLeadReceipt.transaction(requires_new: true) do
           receipt = LinkedinLeadReceipt.create!(tenant: @integration.tenant, response_id: response_id)
-          lead = Lead.create!(tenant: @integration.tenant, name: name, client_name: name, email: email, client_email: email, phone: phone, client_phone: phone,
+          lead = Leads::Intake.create!(tenant: @integration.tenant, name: name, client_name: name, email: email, client_email: email, phone: phone, client_phone: phone,
             origin: "LinkedIn Ads", product: form["name"], attribution_channel: "linkedin_ads", attribution_source: "linkedin",
             attribution_data: { "version" => 2, "provider" => "linkedin_lead_sync", "campaign_name" => campaign_name, "campaign_id" => campaign_id, "form_id" => form_id },
             other_information: { "linkedin_response_id" => response_id, "linkedin_account_id" => account_id, "linkedin_campaign_id" => campaign_id,

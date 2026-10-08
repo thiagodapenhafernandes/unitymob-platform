@@ -2,6 +2,20 @@ require "rails_helper"
 
 RSpec.describe Admin::ComercialHelper, type: :helper do
 
+  it "mostra na linha do tempo quando uma consulta não encontrou regra de distribuição" do
+    activity = LeadActivity.new(kind: "distribution_failed", metadata: { reason: "no_matching_rule" })
+    expect(helper.lead_timeline_event_visible?(activity)).to eq(true)
+    expect(helper.timeline_entry(activity)[:detail]).to eq("Nenhuma regra ativa atende à nova consulta")
+  end
+
+  it "exibe a mensagem da nova consulta no histórico detalhado" do
+    activity = LeadActivity.new(kind: "inquiry_complemented", metadata: {
+      "property_code" => "9708", "inquiry_origin" => "grupo_zap", "body" => "Quero conhecer o imóvel"
+    })
+    expect(helper.timeline_entry(activity)[:detail]).to include("9708", "grupo_zap", "Quero conhecer o imóvel")
+    expect(helper.timeline_entry(activity, detailed: false)[:detail]).not_to include("Quero conhecer o imóvel")
+  end
+
   it "mantém eventos práticos e oculta telemetria; o detalhado mostra também a confirmação do gateway" do
     [true, false].each do |detailed|
       %w[automation_event pocket_pool_ready secure_link_accessed unknown_event].each do |kind|

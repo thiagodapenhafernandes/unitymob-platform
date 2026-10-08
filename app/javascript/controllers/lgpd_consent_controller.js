@@ -6,7 +6,9 @@ const COOKIE_MAX_AGE = 180 * 24 * 60 * 60
 let sessionChoice = null
 
 function choice() {
-  const value = document.cookie.split(";").map(cookie => cookie.trim()).find(cookie => cookie.startsWith(`${COOKIE_KEY}=`))?.split("=")[1]
+  let cookies = ""
+  try { cookies = document.cookie } catch (_) {}
+  const value = cookies.split(";").map(cookie => cookie.trim()).find(cookie => cookie.startsWith(`${COOKIE_KEY}=`))?.split("=")[1]
   return ["accepted", "rejected"].includes(value) ? value : sessionChoice
 }
 
@@ -36,7 +38,7 @@ export default class extends Controller {
 
   accept() {
     this.save("accepted")
-    document.cookie = "unitymob_interest_consent=; Max-Age=0; Path=/; SameSite=Lax"
+    try { document.cookie = "unitymob_interest_consent=; Max-Age=0; Path=/; SameSite=Lax" } catch (_) {}
     try { window.localStorage.removeItem("unitymob_interest_consent") } catch (_) {}
     window.dispatchEvent(new CustomEvent("unitymob:lgpd-consent-accepted"))
     this.render()
@@ -46,7 +48,7 @@ export default class extends Controller {
     const previouslyAccepted = choice() === "accepted"
     this.save("rejected")
     // Also withdraw the separate interest choice; do not touch authentication cookies.
-    document.cookie = "unitymob_interest_consent=rejected; Max-Age=15552000; Path=/; SameSite=Lax"
+    try { document.cookie = "unitymob_interest_consent=rejected; Max-Age=15552000; Path=/; SameSite=Lax" } catch (_) {}
     try { window.localStorage.setItem("unitymob_interest_consent", "rejected") } catch (_) {}
     window.dispatchEvent(new CustomEvent("unitymob:lgpd-consent-rejected"))
     this.render()
@@ -56,7 +58,7 @@ export default class extends Controller {
 
   save(value) {
     sessionChoice = value
-    document.cookie = `${COOKIE_KEY}=${value}; Max-Age=${COOKIE_MAX_AGE}; Path=/; SameSite=Lax`
+    try { document.cookie = `${COOKIE_KEY}=${value}; Max-Age=${COOKIE_MAX_AGE}; Path=/; SameSite=Lax` } catch (_) {}
     try { window.localStorage.setItem(STORAGE_KEY, value) } catch (_) {}
   }
 }

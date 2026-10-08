@@ -53,18 +53,17 @@
                                 class_name: "ax-switch--card", input_html: { data: { action: "change->lead-settings#toggleStickiness" } }) %>
           </div>
 
+          <%= ax_studio_group(title: "Como reconhecer a mesma pessoa", actions: tag.span("Identidade", class: "ax-badge ax-badge--gray")) do %>
+            <%= ax_radio_group(form: f, method: :stickiness_match, label: "Casar leads pelo:",
+                  choices: [
+                    ["Telefone", "phone"],
+                    ["Telefone ou e-mail", "phone_or_email"],
+                    ["Telefone e e-mail (ambos)", "phone_and_email"]
+                  ]) %>
+            <p class="ax-field__hint">Esta identificação evita cadastros duplicados em todas as entradas, mesmo com a fidelização desligada. O telefone é comparado pelos dígitos e o e-mail ignora maiúsculas e espaços.</p>
+          <% end %>
           <div class="section-toggle-container ax-field-group-stack ax-field-group-stack--settings<%= ' tw-hidden' unless @lead_setting.stickiness_enabled? %>"
                data-lead-settings-target="stickinessSection">
-            <%= ax_studio_group(title: "Como reconhecer a mesma pessoa", actions: tag.span("Identidade", class: "ax-badge ax-badge--gray")) do %>
-              <%= ax_radio_group(form: f, method: :stickiness_match, label: "Casar leads pelo:",
-                    choices: [
-                      ["Telefone", "phone"],
-                      ["Telefone ou e-mail", "phone_or_email"],
-                      ["Telefone e e-mail (ambos)", "phone_and_email"]
-                    ]) %>
-              <p class="ax-field__hint">Telefone é o mais confiável no mercado imobiliário (comparado só pelos dígitos, ignora formatação).</p>
-            <% end %>
-
             <%= ax_studio_group(title: "Quem conta como corretor da pessoa", actions: tag.span("Dono anterior", class: "ax-badge ax-badge--gray")) do %>
               <%= ax_radio_group(form: f, method: :stickiness_owner, label: "Considerar como dono:",
                     choices: [
@@ -85,7 +84,7 @@
 
             <%= ax_studio_group(title: "Por quanto tempo a fidelização vale", actions: tag.span("Janela", class: "ax-badge ax-badge--gray")) do %>
               <%= ax_measure_field(form: f, method: :stickiness_window_days, label: "Janela", unit: "dias", placeholder: "para sempre", min: 0, step: 1) %>
-              <p class="ax-field__hint">Vazio (ou 0) = para sempre. Ex.: 90 = só volta para o mesmo corretor se o atendimento foi nos últimos 90 dias.</p>
+              <p class="ax-field__hint">Vazio (ou 0) = para sempre. O prazo se renova a cada alteração ou registro de atendimento feito pelo corretor responsável. Sincronizações automáticas não renovam a fidelização.</p>
             <% end %>
 
             <%= ax_studio_group(title: "Quando redistribuir mesmo com histórico", actions: tag.span("Exceções", class: "ax-badge ax-badge--gray")) do %>
@@ -175,6 +174,11 @@
             </p>
           <% end %>
 
+          <%= ax_studio_group(title: "Entradas sem regra compatível", subtitle: "Destino padrão da conta para consultas que nenhuma regra ativa atende.") do %>
+            <%= render "admin/shared/ui/distribution_destination_field", form: f, method: :default_distribution_rule_id,
+                  label: "Regra padrão de distribuição", tenant: current_tenant %>
+            <p class="ax-field__hint">Deixe vazio para manter a triagem manual. Não altera atendimentos existentes nem importa históricos para uma nova fila.</p>
+          <% end %>
           <%= ax_studio_group(title: "Verificação das automações de etapa", subtitle: "De quanto em quanto tempo a conta verifica leads vencidos nas automações das etapas.") do %>
             <%= ax_field_grid do %>
               <div class="ax-span-4">

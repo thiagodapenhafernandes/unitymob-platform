@@ -7,6 +7,7 @@ RSpec.describe "Cadastro manual de leads: telefone ou e-mail duplicado", type: :
 
   before do
     host! "localhost"
+    LeadSetting.instance(tenant: admin.tenant).update!(stickiness_match: "phone_or_email")
     sign_in admin
   end
 

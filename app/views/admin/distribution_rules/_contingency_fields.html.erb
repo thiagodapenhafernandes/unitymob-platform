@@ -1,0 +1,34 @@
+<%= ax_operational_panel(eyebrow: "Contingência", title: "Encaminhar para outra regra") do %>
+  <div class="ax-panel-body ax-field-group-stack" data-controller="conditional-reveal">
+    <%= ax_switch_field(form: f, method: :contingency_enabled, label: "Ativar encaminhamento de contingência",
+          description: "Mantém o mesmo cadastro e encaminha quando esta regra não consegue atender.",
+          input_html: { disabled: f.object.contingency_destination? && !f.object.contingency_enabled?,
+            data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } }) %>
+    <% if f.object.contingency_destination? %>
+      <p class="ax-field__hint">Esta regra é um destino final. Para ativar outro encaminhamento, remova primeiro os vínculos nas regras de origem e no destino padrão da conta.</p>
+    <% end %>
+    <div class="ax-field-group-stack" data-conditional-reveal-target="panel" <%= "hidden" unless f.object.contingency_enabled? %>>
+      <%= render "admin/shared/ui/distribution_destination_field", form: f, method: :contingency_rule_id,
+            label: "Regra de destino", tenant: current_tenant, excluded_rule_id: f.object.id %>
+      <%= ax_check_group(form: f, method: :contingency_triggers,
+            legend: "Quando encaminhar", choices: DistributionRule::CONTINGENCY_TRIGGERS.to_a) %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-12">
+          <%= ax_measure_field(form: f, method: :contingency_unavailable_minutes,
+                label: "Espera sem corretor elegível", unit: "min", min: 0, max: 10080, step: 1) %>
+          <p class="ax-field__hint">0 encaminha imediatamente. Só vale quando a situação correspondente estiver marcada.</p>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_measure_field(form: f, method: :contingency_pool_minutes,
+                label: "Espera no bolsão sem alguém assumir", unit: "min", min: 1, max: 10080, step: 1) %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_measure_field(form: f, method: :contingency_acceptance_minutes,
+                label: "Prazo total do ciclo sem aceite", unit: "min", min: 1, max: 10080, step: 1) %>
+        </div>
+      <% end %>
+      <p class="ax-field__hint">Fora do horário e desativação encaminham imediatamente quando marcados. Tentativas e reavisos não reiniciam os prazos. Há um único encaminhamento por ciclo; atendimentos já iniciados são preservados.</p>
+      <p class="ax-field__hint">Se o destino não puder receber, o lead fica pendente, com novas tentativas automáticas e aviso à gestão. Corretor ativo no sistema não garante atendimento.</p>
+    </div>
+  </div>
+<% end %>

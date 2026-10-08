@@ -17,9 +17,10 @@ module Api
             pipeline = LeadPipeline.default_for(tenant: grant.tenant)
             stage = pipeline&.stages&.active&.detect { |item| item.name.to_s.parameterize(separator: "_") == "em_atendimento" }
             raise ArgumentError unless stage
-            lead = grant.tenant.leads.create!(attrs.merge(admin_user: grant.admin_user, origin: "WhatsApp",
+            lead = grant.tenant.leads.new(attrs.merge(admin_user: grant.admin_user, origin: "WhatsApp",
               other_information: {"creation_source" => "browser_extension"},
               lead_pipeline: pipeline, lead_pipeline_stage: stage, status: stage.name))
+            raise ActiveRecord::RecordInvalid, lead unless Leads::ManualCreate.new(lead).call
             lead.activities.create!(tenant: grant.tenant, kind: "created", metadata: actor.merge(origin: lead.origin, owner_id: grant.admin_user_id))
             { lead_id: lead.id }
           end

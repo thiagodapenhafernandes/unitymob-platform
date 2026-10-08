@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analisar Video"
+  short_description: "Lista videos, transcreve e clarifica demandas."
+  default_prompt: "$analisar_video"

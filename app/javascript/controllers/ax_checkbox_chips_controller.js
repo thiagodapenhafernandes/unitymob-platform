@@ -4,10 +4,13 @@ export default class extends Controller {
   connect() {
     this.syncAll()
     this.syncFrame = requestAnimationFrame(() => this.syncAll())
+    this.disabledObserver = new MutationObserver(() => this.syncAll())
+    this.disabledObserver.observe(this.element, { attributes: true, attributeFilter: ["disabled"], subtree: true })
   }
 
   disconnect() {
     cancelAnimationFrame(this.syncFrame)
+    this.disabledObserver.disconnect()
   }
 
   sync(event) {

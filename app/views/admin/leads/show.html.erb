@@ -1739,6 +1739,16 @@
       </div>
     <% end %>
 
+    <% @lead_origin_taxonomy ||= lead_origin_for(@lead, tenant: current_tenant) %>
+    <% if @lead_origin_taxonomy.present? %>
+      <div class="lead-pwa-detail__subsection">
+        <div class="lead-pwa-detail__section-title">
+          <span>Canal de entrada</span>
+        </div>
+        <%= render "admin/shared/ui/lead_origin", origin: @lead_origin_taxonomy, identity_only: true %>
+      </div>
+    <% end %>
+
     <div class="lead-pwa-detail__subsection lead-pwa-mobile-interests">
       <div class="lead-pwa-detail__section-title">
         <span>Imóveis de interesse</span>
@@ -1842,7 +1852,7 @@
       actions: @lead_heading_actions
     ) %>
 
-<%= render "admin/leads/origin_line", lead: @lead %>
+<%= render "admin/leads/origin_line", lead: @lead, origin: (@lead_origin_taxonomy ||= lead_origin_for(@lead, tenant: current_tenant)) %>
 <%= render "admin/shared/ui/lead_form_responses", lead: @lead %>
 
 <%# ===== Barra de funil (bate o olho e entende a etapa) ===== %>

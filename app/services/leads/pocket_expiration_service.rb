@@ -21,6 +21,9 @@ module Leads
       @lead.with_lock do
         @lead.reload
         result = expiration_blocker
+        if result.nil? && Leads::ContingencyService.check!(@lead) && @lead.reload.contingency_forwarded_at.present?
+          result = :forwarded
+        end
 
         if result.nil?
           previous_corretor = @lead.admin_user
@@ -62,7 +65,11 @@ module Leads
       Leads::NotificationDispatcher.notify_lost_turn(@lead.reload, previous_corretor)
       return notify_pool! if pool_ready
 
-      Leads::RoutingService.new(@lead.reload).route!
+      if @lead.contingency_forwarded_at.present?
+        Leads::DistributorService.distribute_to(@lead.reload, @lead.contingency_target_rule)
+      else
+        Leads::RoutingService.new(@lead.reload).route!
+      end
 
       result
     end

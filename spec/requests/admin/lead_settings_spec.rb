@@ -42,6 +42,16 @@ RSpec.describe "Admin::LeadSettings", type: :request do
     expect(html.at_css("input[type='radio'][name='lead_setting[push_lead_click_action]']")).to be_present
   end
 
+  it "mantém a identificação de duplicidade visível com fidelização desligada" do
+    LeadSetting.instance(tenant: admin.tenant).update!(stickiness_enabled: false)
+    get edit_admin_lead_setting_path
+    html = Nokogiri::HTML(response.body)
+    input = html.at_css("input[name='lead_setting[stickiness_match]']")
+    expect(input).to be_present
+    expect(input.ancestors.any? { |node| node['data-lead-settings-target'] == 'stickinessSection' }).to eq(false)
+    expect(response.body).to include("evita cadastros duplicados em todas as entradas")
+  end
+
   it "salva a configuracao do tenant autenticado" do
     patch admin_lead_setting_path, params: { lead_setting: { stickiness_enabled: "1", stickiness_window_days: "45", vcard_enabled: "1" } }
 

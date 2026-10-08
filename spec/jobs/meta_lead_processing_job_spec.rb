@@ -351,7 +351,7 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
     }.not_to change { tenant.leads.count }
   end
 
-  it "cria o lead quando o telefone coincide mas o formulário é outro" do
+  it "reutiliza o contato e registra a consulta de outro formulário" do
     tenant = Tenant.create!(name: "Conta Meta Outro Form #{SecureRandom.hex(3)}", slug: "conta-meta-outro-form-#{SecureRandom.hex(3)}")
     create_meta_setup(tenant, page_id: "page-meta-outro-form")
     create(
@@ -369,7 +369,8 @@ RSpec.describe MetaLeadProcessingJob, type: :job do
 
     expect {
       process_meta_lead("lead-novo-form", "page-meta-outro-form", "form-novo", fields)
-    }.to change { tenant.leads.count }.by(1)
+    }.not_to change { tenant.leads.count }
+    expect(tenant.leads.first.activities.where(kind: "inquiry_complemented").count).to eq(1)
   end
 
   it "restringe o dedupe ao tenant da integração" do

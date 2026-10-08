@@ -116,3 +116,9 @@ function loadPageScopedControllers() {
 document.addEventListener("turbo:load", loadPageScopedControllers)
 
 document.addEventListener("turbo:frame-load", loadPageScopedControllers)
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", loadPageScopedControllers, { once: true })
+} else {
+  loadPageScopedControllers()
+}

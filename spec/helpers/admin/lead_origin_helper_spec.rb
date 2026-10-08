@@ -45,7 +45,99 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     lead = build_stubbed(:lead, tenant: tenant, origin: "whatsapp", other_information: {
       "whatsapp_entry" => {"referral" => {"source_type" => "post", "source_id" => "123456"}}
     })
-    expect(origin(lead)).to include(subtype: nil, complements: [])
+    expect(origin(lead)).to include(label: "WhatsApp", subtype: "Conversa", complements: [])
+  end
+
+  it "diferencia os subtipos do site: formulário, WhatsApp do anúncio e contato geral" do
+    property = create(:habitation, tenant: tenant, codigo: "9001")
+
+    form_lead = create(:lead, tenant: tenant, origin: "Site")
+    SeoConversionEvent.create!(lead: form_lead, habitation: property, event_type: "lead_created", occurred_at: Time.current, source_path: "/imovel/9001")
+    form_data = origin(form_lead, site_event: helper.lead_origin_site_events([form_lead], tenant: tenant)[form_lead.id])
+    expect(form_data).to include(brand: "site", subtype: "Formulário do imóvel", complements: ["Imóvel #9001"])
+
+    wa_lead = create(:lead, tenant: tenant, origin: "Google Ads", lead_type: "whatsapp_modal", source_url: "https://site.test/imovel/9001")
+    SeoConversionEvent.create!(lead: wa_lead, habitation: property, event_type: "lead_created", occurred_at: Time.current, source_path: "/imovel/9001")
+    wa_data = origin(wa_lead, site_event: helper.lead_origin_site_events([wa_lead], tenant: tenant)[wa_lead.id])
+    expect(wa_data).to include(brand: "site", subtype: "WhatsApp do anúncio")
+
+    contact_lead = build_stubbed(:lead, tenant: tenant, origin: "Site", source_url: "https://site.test/contato")
+    expect(origin(contact_lead)).to include(brand: "site", subtype: "Contato geral", complements: ["Página: /contato"])
+  end
+
+  it "identifica o portal real do payload Grupo OLX com fallback genérico" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "grupo_zap", other_information: {
+      "lead_origin" => "ZAP", "origin_listing_id" => "ABC123", "portal_lead_id" => "999"
+    })
+    data = origin(lead)
+    expect(data).to include(brand: "zap", label: "ZAP Imóveis", subtype: "Portal")
+    expect(data[:complements]).to include("Anúncio: ABC123")
+    expect(data[:details]).to include(["Portal", "ZAP"])
+    expect(lead.origin).to eq("grupo_zap")
+
+    viva = build_stubbed(:lead, tenant: tenant, origin: "grupo_zap", other_information: {"lead_origin" => "VivaReal"})
+    expect(origin(viva)).to include(brand: "vivareal", label: "VivaReal", subtype: "Portal")
+
+    legacy = build_stubbed(:lead, tenant: tenant, origin: "VivaReal")
+    expect(origin(legacy)).to include(label: "VivaReal", subtype: "Portal")
+
+    generic = build_stubbed(:lead, tenant: tenant, origin: "grupo_zap")
+    expect(origin(generic)).to include(brand: "buildings", label: "Grupo OLX")
+  end
+
+  it "resolve formulário público pelo slug com fallback humanizado" do
+    PublicForm.ensure_default_site_forms!(tenant: tenant)
+    form = tenant.public_forms.find_by!(slug: "trabalhe-conosco")
+
+    lead = build_stubbed(:lead, tenant: tenant, origin: "public_form:trabalhe-conosco")
+    names = helper.lead_origin_public_form_names([lead], tenant: tenant)
+    data = origin(lead, public_form: names[lead.id])
+    expect(data).to include(brand: "card-checklist", label: "Formulário #{form.name}", subtype: form.category)
+
+    orphan = build_stubbed(:lead, tenant: tenant, origin: "public_form:contato_antigo")
+    expect(origin(orphan)).to include(label: "Formulário contato antigo")
+  end
+
+  it "apresenta webhook genérico como integração com tags" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "webhook", other_information: {
+      "webhook_tags" => ["parceria", "feirao"], "inbound_webhook_user_name" => "Maria"
+    })
+    data = origin(lead)
+    expect(data).to include(brand: "plug", label: "Integração")
+    expect(data[:complements]).to include("parceria", "feirao")
+    expect(data[:details]).to include(["Recebido por", "Maria"])
+  end
+
+  it "apresenta importação genérica com canal e vendedor externo" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Migração externa",
+      attribution_data: {"provider" => "external_lead_migration", "channel" => {"name" => "Portais"}},
+      other_information: {"external_lead_seller" => {"name" => "Carlos Silva"}})
+    data = origin(lead)
+    expect(data).to include(brand: "download", label: "Importação", subtype: "Portais")
+    expect(data[:complements]).to include("Vendedor externo: Carlos Silva")
+    expect(data[:details]).to include(["Entrada", "Importação"], ["Vendedor externo", "Carlos Silva"])
+    expect(lead.origin).to eq("Migração externa")
+  end
+
+  it "apresenta indicação de corretor com o nome de quem indicou" do
+    sharer = create(:admin_user, tenant: tenant, name: "Corretor Parceiro")
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Compartilhamento Corretor", shared_by_admin_user_id: sharer.id)
+    names = helper.lead_origin_share_names([lead], tenant: tenant)
+    data = origin(lead, share_name: names[lead.id])
+    expect(data).to include(brand: "share", label: "Indicação", subtype: "Corretor Parceiro")
+  end
+
+  it "detecta RD e Lovers pelo canal mesmo com origem renomeada" do
+    rd = build_stubbed(:lead, tenant: tenant, origin: "RD Custom", other_information: {
+      "rd_station_event_type" => "WEBHOOK.CONVERTED",
+      "rd_station_conversion_identifier" => "Landing Praia"
+    })
+    expect(origin(rd)).to include(brand: "rdstation", label: "RD Station", subtype: "Conversão")
+
+    lovers = build_stubbed(:lead, tenant: tenant, origin: "Base antiga", other_information: {
+      "lovers_code" => "123", "lovers_status" => "Ativo"
+    })
+    expect(origin(lovers)).to include(brand: "lovers", label: "Lovers", subtype: "Importação")
   end
 
   it "usa evento original do site mesmo após troca do imóvel atual" do

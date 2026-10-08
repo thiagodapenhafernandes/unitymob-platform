@@ -12,8 +12,31 @@ module Leads
       new(lead).distribute_to_agent(rule, admin_user)
     end
 
-    def initialize(lead)
+    def self.redistribute(lead, inquiry:, rule: nil)
+      new(lead, inquiry: inquiry).redistribute(rule)
+    end
+
+    def initialize(lead, inquiry: nil)
       @lead = lead
+      @inquiry = inquiry
+    end
+
+    def redistribute(rule = nil)
+      rule ||= find_matching_rule
+      return distribute_to(rule) if rule&.active?
+
+      # Sem regra, não abandona um atendimento ativo; entradas encerradas ficam visíveis para triagem.
+      keep_owner = operational? && @lead.admin_user&.active?
+      unless keep_owner
+        prepare_reentry!
+        @lead.save!
+        return true if rule && ContingencyService.try_forward!(@lead, rule: rule, reason: "deactivated")
+        return true if rule.nil? && ContingencyService.default!(@lead)
+      end
+      LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: {
+        reason: "no_matching_rule", inquiry_origin: @inquiry.origin, rule_id: rule&.id
+      }.compact)
+      keep_owner ? :kept : nil
     end
 
     def distribute
@@ -21,7 +44,11 @@ module Leads
       return complemented if complemented
 
       rule = find_matching_rule
-      return nil unless rule
+      unless rule
+        forwarded = ContingencyService.default!(@lead)
+        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: "no_matching_rule" }) unless forwarded
+        return forwarded
+      end
 
       distribute_to(rule)
     end
@@ -29,26 +56,46 @@ module Leads
     def distribute_to(rule)
       return nil unless rule
       raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
-      return nil unless rule.active?
+      if !@inquiry && @lead.contingency_forwarded_at.present?
+        rule = @lead.contingency_target_rule
+        return nil unless rule&.terminal_destination_for?(tenant)
+      end
+      return ContingencyService.try_forward!(@lead, rule: rule, reason: "deactivated") unless rule.active?
 
       # Complemento: mesma pessoa com lead aberto no tempo de atendimento não
       # gera lead novo — a consulta agrega ao existente e o transitório sai.
       complemented = try_complement
       return complemented if complemented
 
+      candidates = rule.candidates_filtered_by_checkin
+      sticky_user = Leads::StickyAssignment.corretor_for(@inquiry || @lead, rule, candidates: candidates) unless @lead.contingency_forwarded_at.present? && !@inquiry
+      if @inquiry && (!rule.require_active_checkin? || candidates.present?) && operational? && @lead.admin_user&.active? &&
+          ((sticky_user&.id == @lead.admin_user_id) ||
+            (!LeadSetting.instance(tenant: tenant).stickiness_enabled? && InquiryComplement.keeps_owner?(@lead, @inquiry)))
+        return :kept
+      end
+
+      prepare_reentry!
+      @lead.distribution_rule = rule
+      @lead.distribution_cycle_started_at ||= Time.current
+      @lead.save! if @lead.changed?
+
       if rule.represamento_active? && inside_holding_hours?(rule)
-        @lead.update(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
+        return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "outside_hours")
+        @lead.update!(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
         @lead.activities.create(kind: "dammed", metadata: { rule_id: rule.id, rule_name: rule.name })
         return rule
       end
 
       if rule.shark_tank?
-        candidates = rule.candidates_filtered_by_checkin
-        if rule.require_active_checkin? && candidates.empty?
+        if candidates.empty?
+          return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "unavailable")
+        end
+        if candidates.empty? && (rule.require_active_checkin? || rule.contingency_for?("unavailable"))
           return dammed_no_eligible_checkin(rule)
         end
 
-        @lead.update(
+        @lead.update!(
           admin_user_id: nil,
           status: :aguardando_aceite,
           distribution_rule_id: rule.id
@@ -59,14 +106,13 @@ module Leads
         return rule
       end
 
-      candidates = rule.candidates_filtered_by_checkin
       if rule.require_active_checkin? && candidates.empty?
+        return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "unavailable")
         return dammed_no_eligible_checkin(rule)
       end
 
       # Fidelização: pessoa já atendida volta para o mesmo corretor (config global
       # em LeadSetting). Só quando elegível; senão segue a distribuição normal.
-      sticky_user = Leads::StickyAssignment.corretor_for(@lead, rule, candidates: candidates)
       if sticky_user
         finalize_sticky_assignment(rule, admin_user_id: sticky_user.id, admin_user_name: sticky_user.name)
         return rule
@@ -81,7 +127,12 @@ module Leads
         agent = rule.next_available_agent(candidates)
         rule.rotate_queue!(agent.admin_user_id) if agent
       end
-      return nil unless agent
+      unless agent
+        return rule if ContingencyService.try_forward!(@lead, rule: rule, reason: "unavailable")
+        @lead.save!
+        LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: { reason: "no_eligible_agent", rule_id: rule.id })
+        return nil
+      end
 
       finalize_assignment(rule, admin_user_id: agent.admin_user_id, admin_user_name: agent.admin_user&.name)
 
@@ -100,6 +151,7 @@ module Leads
         rule_id: rule&.id,
         rule_name: rule&.name
       }.compact)
+      raise if @inquiry
       nil
     end
 
@@ -131,7 +183,23 @@ module Leads
 
     private
 
+    def operational?
+      @lead.archived_at.blank? && !Lead.non_operational_status_values(tenant: tenant).include?(@lead.status)
+    end
+
+    def prepare_reentry!
+      return unless @inquiry
+
+      @lead.skip_automatic_routing = true
+      @lead.assign_attributes(admin_user: nil, status: Lead.default_status(tenant: tenant, pipeline: @lead.lead_pipeline),
+        distribution_rule: nil, archived_at: nil, archived_by_admin_user: nil, archive_reason: nil, archive_note: nil,
+        distribution_cycle_started_at: Time.current, contingency_forwarded_at: nil, contingency_pending: false,
+        contingency_source_rule: nil, contingency_target_rule: nil, contingency_reason: nil)
+    end
+
     def try_complement
+      return nil if @inquiry || @lead.contingency_forwarded_at.present?
+
       target = Leads::InquiryComplement.dissolve_into_target!(@lead)
       return nil if target.nil?
 
@@ -141,7 +209,7 @@ module Leads
     # Atribui o lead ao corretor, registra a atividade, agenda o pocket e dispara
     # as notificações da distribuição normal.
     def finalize_assignment(rule, admin_user_id:, admin_user_name:)
-      @lead.update(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
+      @lead.update!(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
       rule.mark_agent_served!(admin_user_id)
 
       metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
@@ -160,7 +228,7 @@ module Leads
     end
 
     def finalize_sticky_assignment(rule, admin_user_id:, admin_user_name:)
-      @lead.update(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
+      @lead.update!(admin_user_id: admin_user_id, status: :em_atendimento, distribution_rule_id: rule.id)
 
       metadata = assignment_metadata(rule, admin_user_id: admin_user_id, admin_user_name: admin_user_name)
       metadata[:sticky] = true
@@ -184,18 +252,18 @@ module Leads
     end
 
     def log_assignment(rule, admin_user_id:, metadata:)
-      @lead.activities.create(kind: "distributed", metadata: metadata)
+      activity = @lead.activities.create!(kind: "distributed", metadata: metadata)
       Automation::Dispatcher.dispatch(
         :lead_assigned,
         @lead,
         source: "distribution",
         payload: metadata,
-        idempotency_key: "lead_assigned:#{@lead.id}:#{admin_user_id}:#{rule.id}"
+        idempotency_key: "lead_assigned:#{@lead.id}:#{activity.id}"
       )
     end
 
     def dammed_no_eligible_checkin(rule)
-      @lead.update(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
+      @lead.update!(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
       @lead.activities.create(kind: "dammed", metadata: {
         rule_id: rule.id,
         rule_name: rule.name,
@@ -214,6 +282,7 @@ module Leads
           end
         rescue => e
           Rails.logger.error "[DistributorService] Erro ao verificar regra #{rule.id}: #{e.class}: #{e.message}"
+          raise if @inquiry
           next
         end
       end
@@ -227,6 +296,10 @@ module Leads
       @tenant
     end
 
+    def routing_lead
+      @inquiry || @lead
+    end
+
     def matches_filters?(rule)
       return false unless matches_webhook_tags?(rule)
       return false unless matches_meta_scope?(rule)
@@ -234,12 +307,12 @@ module Leads
       return false unless matches_linkedin_scope?(rule)
 
       if rule.min_price.present?
-         lead_value = @lead.respond_to?(:value) ? @lead.value.to_f : 0.0
+         lead_value = routing_lead.respond_to?(:value) ? routing_lead.value.to_f : 0.0
          return false if lead_value < rule.min_price
       end
 
       if rule.max_price.present?
-         lead_value = @lead.respond_to?(:value) ? @lead.value.to_f : 0.0
+         lead_value = routing_lead.respond_to?(:value) ? routing_lead.value.to_f : 0.0
          return false if lead_value > rule.max_price
       end
 
@@ -256,9 +329,9 @@ module Leads
     end
 
     def matches_tiktok_scope?(rule)
-      return true unless @lead.attribution_channel == "tiktok_ads"
+      return true unless routing_lead.attribution_channel == "tiktok_ads"
       integration = @tiktok_integration ||= TiktokIntegration.find_by(tenant: tenant)
-      info = @lead.other_information.to_h
+      info = routing_lead.other_information.to_h
       return false unless integration&.connected? && integration.selected_account_ids.include?(info["tiktok_advertiser_id"].to_s)
       accounts = Array(rule.tiktok_account_ids).compact_blank
       forms = Array(rule.tiktok_form_ids).compact_blank
@@ -267,11 +340,11 @@ module Leads
     end
 
     def matches_linkedin_scope?(rule)
-      return true unless rule.source_linkedin? && @lead.attribution_channel == "linkedin_ads"
+      return true unless rule.source_linkedin? && routing_lead.attribution_channel == "linkedin_ads"
 
       integration = @linkedin_integration ||= LinkedinIntegration.find_by(tenant: tenant)
       return false unless integration&.connected?
-      info = @lead.other_information || {}
+      info = routing_lead.other_information || {}
       return false unless integration.selected_account_ids.include?(info["linkedin_account_id"].to_s)
       campaigns = Array(rule.linkedin_campaign_ids).compact_blank
       forms = Array(rule.linkedin_form_ids).compact_blank
@@ -285,11 +358,11 @@ module Leads
     # UI). Fail-closed: lead meta sem identificação de página não casa com
     # regra que filtra páginas.
     def matches_meta_scope?(rule)
-      return true unless rule.source_meta? && meta_origin?(@lead.origin.to_s.downcase)
+      return true unless rule.source_meta? && meta_origin?(routing_lead.origin.to_s.downcase)
 
       page_ids = Array(rule.meta_page_ids).compact_blank.map(&:to_s)
       form_ids = Array(rule.meta_forms).compact_blank.map(&:to_s)
-      info = @lead.other_information.is_a?(Hash) ? @lead.other_information : {}
+      info = routing_lead.other_information.is_a?(Hash) ? routing_lead.other_information : {}
       if info["meta_page_id"].present?
         unless defined?(@meta_page_available)
           @meta_page_available = MetaFacebookPage.available_for_distribution(tenant.id).exists?(page_id: info["meta_page_id"].to_s)
@@ -310,7 +383,7 @@ module Leads
     end
 
     def matches_webhook_tags?(rule)
-      return true unless rule.source_webhook? && webhook_origin?(@lead.origin.to_s.downcase)
+      return true unless rule.source_webhook? && webhook_origin?(routing_lead.origin.to_s.downcase)
 
       expected_tags = Array(rule.webhook_tags).map { |tag| normalize_tag(tag) }.reject(&:blank?)
       return true if expected_tags.blank?
@@ -320,7 +393,7 @@ module Leads
     end
 
     def webhook_tags_for_lead
-      info = @lead.other_information.is_a?(Hash) ? @lead.other_information : {}
+      info = routing_lead.other_information.is_a?(Hash) ? routing_lead.other_information : {}
       values = [
         info["webhook_tags"],
         info["keywords"],
@@ -340,22 +413,22 @@ module Leads
     end
 
     def get_lead_value(key)
-      if @lead.respond_to?(key) && @lead.send(key).present?
-        @lead.send(key)
-      elsif @lead.respond_to?(:answer_for) && @lead.answer_for(key).present?
-        @lead.answer_for(key)
-      elsif @lead.other_information.is_a?(Hash) && @lead.other_information.key?(key)
-        @lead.other_information[key]
+      if routing_lead.respond_to?(key) && routing_lead.send(key).present?
+        routing_lead.send(key)
+      elsif routing_lead.respond_to?(:answer_for) && routing_lead.answer_for(key).present?
+        routing_lead.answer_for(key)
+      elsif routing_lead.other_information.is_a?(Hash) && routing_lead.other_information.key?(key)
+        routing_lead.other_information[key]
       else
         ""
       end
     end
 
     def matches_source?(rule)
-      origin = @lead.origin.to_s.downcase
+      origin = routing_lead.origin.to_s.downcase
 
-      return rule.source_tiktok? if @lead.attribution_channel == "tiktok_ads"
-      return true if rule.source_linkedin? && @lead.attribution_channel == "linkedin_ads" && @lead.attribution_source == "linkedin"
+      return rule.source_tiktok? if routing_lead.attribution_channel == "tiktok_ads"
+      return true if rule.source_linkedin? && routing_lead.attribution_channel == "linkedin_ads" && routing_lead.attribution_source == "linkedin"
       return true if rule.source_meta? && meta_origin?(origin)
       return true if rule.source_rd_station? && rd_station_origin?(origin)
       return true if rule.source_lovers? && lovers_origin?(origin)
@@ -417,10 +490,10 @@ module Leads
 
     def normalized_business_type_content
       values = [
-        @lead.product,
-        @lead.origin,
-        @lead.source_url,
-        @lead.other_information,
+        routing_lead.product,
+        routing_lead.origin,
+        routing_lead.source_url,
+        routing_lead.other_information,
         habitation_business_type_signal
       ]
 
@@ -428,7 +501,7 @@ module Leads
     end
 
     def habitation_business_type_signal
-      habitation = @lead.property_id.present? ? tenant.habitations.find_by(id: @lead.property_id) : nil
+      habitation = routing_lead.property_id.present? ? tenant.habitations.find_by(id: routing_lead.property_id) : nil
       return "" unless habitation&.respond_to?(:whatsapp_negotiation_type)
 
       case habitation.whatsapp_negotiation_type

@@ -7,12 +7,16 @@ module Leads
   class InquiryComplement
     MAX_PREVIOUS_LEADS = 25
 
+    def self.keeps_owner?(target, inquiry)
+      new(inquiry).keeps_owner?(target)
+    end
+
     def self.target_for(lead)
       new(lead).target
     end
 
-    def self.complement!(target, inquiry)
-      new(inquiry).complement!(target)
+    def self.complement!(target, inquiry, notify: true, metadata: {})
+      new(inquiry).complement!(target, notify: notify, metadata: metadata)
     end
 
     # Caminho completo usado na distribuição: detecta o alvo, agrega a
@@ -43,29 +47,36 @@ module Leads
       return nil if @lead.admin_user_id.present?
       return nil if @lead.tenant.nil?
 
-      scope = @lead.tenant.leads.where.not(id: @lead.id)
+      scope = Intake.matches(@lead)
+      return nil if scope.nil?
+
+      scope = scope
         .where.not(admin_user_id: nil)
         .where(archived_at: nil)
         .where.not(status: Lead.non_operational_status_values(tenant: @lead.tenant))
-      scope = ContactMatch.apply(scope, @lead, setting.stickiness_match)
-      return nil if scope.nil?
 
       candidates = scope.reorder(created_at: :desc, id: :desc).limit(MAX_PREVIOUS_LEADS).to_a
       users_by_id = @lead.tenant.admin_users.where(id: candidates.map(&:admin_user_id)).index_by(&:id)
       candidates.find do |candidate|
-        users_by_id[candidate.admin_user_id]&.active? && within_pocket?(candidate)
+        users_by_id[candidate.admin_user_id]&.active? && keeps_owner?(candidate)
       end
     end
 
-    def complement!(target)
+    def keeps_owner?(candidate)
+      candidate.archived_at.blank? &&
+        !Lead.non_operational_status_values(tenant: candidate.tenant).include?(candidate.status) &&
+        !setting.non_fidelizing_stage_for_stickiness?(candidate.lead_pipeline_stage_id) && within_pocket?(candidate)
+    end
+
+    def complement!(target, notify: true, metadata: {})
       habitation = @lead.property_id.present? ? target.tenant.habitations.find_by(id: @lead.property_id) : nil
       target.property_interests.find_or_create_by!(habitation: habitation) { |interest| interest.tenant = target.tenant } if habitation
       fill_contact_blanks(target)
       merge_information(target)
       target.save! if target.changed?
 
-      LeadActivity.log!(lead: target, kind: "inquiry_complemented", metadata: complement_metadata(target, habitation))
-      NotificationDispatcher.notify_complement(target, habitation)
+      LeadActivity.log!(lead: target, kind: "inquiry_complemented", metadata: complement_metadata(target, habitation).merge(metadata))
+      NotificationDispatcher.notify_complement(target, habitation) if notify
       target
     end
 
@@ -97,6 +108,12 @@ module Leads
     def complement_metadata(target, habitation)
       attribution = @lead.attribution_data.to_h
       {
+        ingress_reference: Intake.event_reference(@lead),
+        inquiry_information: @lead.other_information.to_h,
+        inquiry_answers: @lead.custom_answers,
+        inquiry_contact: @lead.attributes.slice("name", "phone", "email", "client_name", "client_phone", "client_email"),
+        inquiry_attribution: @lead.attribution_data.to_h,
+        body: @lead.notes.presence,
         inquiry_origin: @lead.origin,
         inquiry_lead_type: @lead.lead_type,
         property_id: habitation&.id,

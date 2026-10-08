@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analisar Audio"
+  short_description: "Transcreve audios e transforma falas em demandas."
+  default_prompt: "$analisar_audio 01"

@@ -21,9 +21,12 @@ module RdStation
     end
 
     def call
-      lead = existing_lead || tenant.leads.new
-      lead.assign_attributes(lead_attributes)
-      lead.save
+      lead = tenant.leads.new(lead_attributes)
+      begin
+        lead = Leads::Intake.receive!(lead)
+      rescue ActiveRecord::RecordInvalid => error
+        lead = error.record
+      end
       Result.new(lead:, errors: lead.errors.full_messages)
     end
 
@@ -41,7 +44,7 @@ module RdStation
         origin: ORIGIN,
         product: product_value,
         source_url: field_value("conversion_url", "url"),
-        other_information: existing_information.merge(
+        other_information: {
           "rd_station_payload" => payload,
           "rd_station_contact_uuid" => field_value("uuid"),
           "rd_station_event_type" => payload["event_type"],
@@ -52,22 +55,8 @@ module RdStation
           "rd_station_tags" => tags,
           "rd_station_received_at" => Time.current.iso8601,
           "request_ip" => request&.remote_ip
-        ).compact
+        }.compact
       }.compact
-    end
-
-    def existing_lead
-      @existing_lead ||= begin
-        scope = tenant.leads
-        phone = Phones::Normalizer.call(field_value("mobile_phone", "personal_phone", "phone"))
-        email = field_value("email")
-        by_email = scope.find_by(email:) if email.present?
-        by_email || (scope.find_by(phone:) if phone.present?)
-      end
-    end
-
-    def existing_information
-      existing_lead&.other_information.is_a?(Hash) ? existing_lead.other_information : {}
     end
 
     def contact

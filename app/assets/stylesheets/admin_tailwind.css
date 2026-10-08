@@ -19644,6 +19644,26 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
   font-weight: 700;
   line-height: 1.35;
 }
+.lead-origin-block__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px dashed #d7dde3;
+  border-radius: 6px;
+  background: #fff;
+}
+.lead-origin-block__entry-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #98a2b3;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.lead-origin-block__entry .ax-origin { display: inline-flex; margin: 0; }
+.ax-origin--identity { display: inline-flex; }
 .lead-origin-block__facts {
   display: flex;
   flex-wrap: wrap;

@@ -86,15 +86,14 @@ class AiPropertyShareCollectionsController < ApplicationController
     phone = Phones::Normalizer.call(params[:phone]).to_s
     return if name.blank? || phone.blank?
 
-    lead = @collection.tenant.leads.where("phone = :phone OR client_phone = :phone", phone:).first
-    if lead
-      @collection.record!("visitor_matched_existing_lead", lead:, admin_user: lead.admin_user, metadata: request_metadata.merge(shared_by_admin_user_id: @collection.admin_user_id))
-      lead
-    else
-      lead = @collection.tenant.leads.create!(name:, phone:, admin_user: @collection.admin_user, shared_by_admin_user: @collection.admin_user, origin: @setting.ai_property_search_lead_origin, status: Lead.status_value(:novo, tenant: @collection.tenant))
-      @collection.record!("lead_created_from_interest", lead:, admin_user: @collection.admin_user, metadata: request_metadata)
-      lead
-    end
+    lead = Leads::Intake.create!(tenant: @collection.tenant, name: name, phone: phone,
+      admin_user: @collection.admin_user, shared_by_admin_user: @collection.admin_user,
+      origin: @setting.ai_property_search_lead_origin, status: Lead.status_value(:novo, tenant: @collection.tenant))
+    event = lead.intake_reused ? "visitor_matched_existing_lead" : "lead_created_from_interest"
+    metadata = request_metadata
+    metadata = metadata.merge(shared_by_admin_user_id: @collection.admin_user_id) if lead.intake_reused
+    @collection.record!(event, lead: lead, admin_user: lead.admin_user, metadata: metadata)
+    lead
   end
 
   def remember(lead)

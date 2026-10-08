@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluxo de Leads — Da entrada à distribuição | Unitymob</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1c2333; --muted:#5b6478;
+    --line:#e2e8f2; --accent:#2563eb;
+    --c1:#0ea5e9; --c2:#8b5cf6; --c3:#f59e0b; --c4:#10b981; --c5:#ef4444;
+    --ok:#e7f8ef; --ok-ink:#14753c; --warn:#fff7e6; --warn-ink:#9a6b0a;
+    --info:#eaf1fe; --info-ink:#1d4fd7; --dead:#fdeaea; --dead-ink:#b42323;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 20px 80px}
+  header.hero{background:linear-gradient(135deg,#1e3a8a,#2563eb 60%,#0ea5e9);
+    color:#fff;padding:44px 0 36px;margin-bottom:28px}
+  header.hero h1{margin:0 0 8px;font-size:28px}
+  header.hero p{margin:4px 0;opacity:.92;max-width:760px}
+  .meta{font-size:13px;opacity:.8;margin-top:12px}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 18px;margin:-18px 0 26px;display:flex;flex-wrap:wrap;gap:8px;
+    position:sticky;top:0;z-index:10;box-shadow:0 6px 18px rgba(20,30,60,.06)}
+  nav.toc a{font-size:13px;text-decoration:none;color:var(--ink);background:#eef2f7;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--line)}
+  nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
+  section.phase{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 26px 22px;margin:0 0 22px}
+  .phase-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .badge{flex:none;width:44px;height:44px;border-radius:12px;color:#fff;font-weight:800;
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .p0 .badge{background:#475569}.p1 .badge{background:var(--c1)}
+  .p2 .badge{background:var(--c2)}.p3 .badge{background:var(--c3)}
+  .p4 .badge{background:var(--c4)}.p5 .badge{background:var(--c5)}
+  .phase-head h2{margin:0;font-size:20px}
+  .phase-head .sub{margin:2px 0 0;color:var(--muted);font-size:14px}
+  h3{font-size:16px;margin:22px 0 10px}
+  .grid{display:grid;gap:10px}
+  .grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .grid.cols-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fbfcfe}
+  .card b.t{display:block;margin-bottom:2px}
+  .card .d{font-size:13.5px;color:var(--muted)}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;
+    padding:2px 10px;margin:2px 4px 2px 0}
+  .t-ok{background:var(--ok);color:var(--ok-ink)}
+  .t-warn{background:var(--warn);color:var(--warn-ink)}
+  .t-info{background:var(--info);color:var(--info-ink)}
+  .t-dead{background:var(--dead);color:var(--dead-ink)}
+  .t-gray{background:#eef2f7;color:#475569}
+  .flow{border-left:4px solid var(--line);margin:14px 0 6px 10px;padding-left:0}
+  .step{position:relative;padding:0 0 16px 26px}
+  .step::before{content:"";position:absolute;left:-11px;top:4px;width:18px;height:18px;
+    border-radius:50%;background:#fff;border:4px solid var(--accent)}
+  .step.decision::before{border-color:var(--c3);border-radius:4px;transform:rotate(45deg);width:14px;height:14px;left:-9px;top:6px}
+  .step.end-ok::before{border-color:var(--c4)}
+  .step.end-dead::before{border-color:var(--c5)}
+  .step .s-title{font-weight:700}
+  .step .s-body{font-size:14px;color:var(--muted)}
+  .step .s-body b{color:var(--ink)}
+  .branches{margin:8px 0 0;border:1px dashed var(--line);border-radius:10px;overflow:hidden}
+  .branch{padding:10px 14px;font-size:13.5px;border-top:1px dashed var(--line)}
+  .branch:first-child{border-top:none}
+  .branch.sim{background:#f0fdf6}
+  .branch.nao{background:#fffdf3}
+  .branch .r{font-weight:800}
+  details{border:1px solid var(--line);border-radius:12px;margin:10px 0;background:#fbfcfe}
+  details summary{cursor:pointer;padding:12px 16px;font-weight:700;font-size:14.5px}
+  details .inner{padding:0 16px 14px;font-size:14px;color:var(--muted)}
+  details .inner b{color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f5f9}
+  footer.note{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 26px;color:var(--muted);font-size:13.5px}
+  .flow-full{background:#0b0f16;border:1px solid #21262d;border-radius:var(--radius);overflow:hidden}
+  .flow-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #21262d;flex-wrap:wrap}
+  .flow-bar .t{color:#e8edf4;font-weight:700;font-size:14px;margin-right:auto}
+  .flow-bar button{background:#21262d;color:#e8edf4;border:1px solid #3a4356;border-radius:8px;
+    padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
+  .flow-bar button:hover{background:#2d333b}
+  .flow-seg{display:flex;margin-right:4px}
+  .flow-seg button{border-radius:0;margin-left:-1px}
+  .flow-seg button:first-child{border-radius:8px 0 0 8px;margin-left:0}
+  .flow-seg button:last-child{border-radius:0 8px 8px 0}
+  .flow-seg button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
+  .flowlane-t{font-size:12px !important;font-weight:800 !important;fill:#6e7681 !important;
+    letter-spacing:.08em;text-transform:uppercase}
+  .flow-canvas{position:relative;height:440px;overflow:hidden;cursor:grab;touch-action:none;
+    -webkit-user-select:none;user-select:none}
+  .flow-canvas.grabbing{cursor:grabbing}
+  .flow-canvas:focus-visible{outline:2px solid #1f6feb;outline-offset:-2px}
+  .flow-canvas svg{display:block;width:100%;height:100%}
+  .flow-canvas text{fill:#e8edf4;font-size:14px;font-weight:600;text-anchor:middle;dominant-baseline:middle}
+  .flownode rect{fill:#161b24;stroke:#3a4356;stroke-width:1.5}
+  .flownode.decision rect{stroke-dasharray:7 4}
+  .flownode.end rect{stroke:#2ea043;stroke-width:2}
+  .flowedge{fill:none;stroke:#8b949e;stroke-width:1.5}
+  .flowlabel rect{fill:#21262d;stroke:#3a4356;stroke-width:1}
+  .flowlabel text{font-size:11px;fill:#c9d1d9;font-weight:700}
+  .flow-legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid #21262d;
+    color:#8b949e;font-size:12px}
+  .flow-legend i{display:inline-block;width:26px;height:12px;border:1.5px solid #3a4356;border-radius:4px;margin-right:6px;vertical-align:-1px}
+  .flow-legend i.d{border-style:dashed}
+  .flow-legend i.e{border-color:#2ea043;border-width:2px}
+  .flow-full:fullscreen{background:#0b0f16;border-radius:0}
+  .flow-full:fullscreen .flow-canvas{height:calc(100vh - 130px)}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  @media print{
+    nav.toc{position:static}
+    header.hero{padding:24px 0}
+    section.phase{break-inside:avoid}
+    details{break-inside:avoid}
+  }
+  @media(max-width:640px){section.phase{padding:18px 16px}header.hero h1{font-size:22px}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap" style="padding-bottom:0">
+    <h1>Fluxo de Leads — Da entrada à distribuição</h1>
+    <p>Visão geral e prática de como um contato entra no sistema por qualquer canal, passa pelas proteções automáticas e chega ao corretor certo. Todos os caminhos possíveis estão mapeados abaixo, em ordem de acontecimento.</p>
+    <p class="meta">Documento didático para clientes · gerado a partir do comportamento real do sistema · outubro/2026</p>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <a href="#mapa">Mapa do fluxo</a>
+  <a href="#fase0">0 · Canais</a>
+  <a href="#fase1">1 · Recepção</a>
+  <a href="#fase2">2 · Regra</a>
+  <a href="#fase3">3 · Distribuição</a>
+  <a href="#fase4">4 · Aceite</a>
+  <a href="#status">Status</a>
+  <a href="#notif">Notificações</a>
+  <a href="#garantias">Garantias</a>
+  <a href="#config">Onde configurar</a>
+</nav>
+
+<section class="phase" id="mapa">
+  <div class="phase-head"><div class="badge" style="background:#0b0f16">→</div>
+    <div><h2>Mapa do fluxo — visão geral</h2>
+    <p class="sub">O mesmo fluxo desta página em um diagrama horizontal. Arraste para mover, use os botões ou a roda do mouse para zoom, e abra em tela cheia.</p></div>
+  </div>
+  <div class="flow-full" id="flowFull">
+    <div class="flow-bar">
+      <span class="t">Entrada → Recepção → Regra → Distribuição → Aceite</span>
+      <span class="flow-seg" role="group" aria-label="Organização do diagrama">
+        <button type="button" data-preset="horizontal" class="on">Horizontal</button>
+        <button type="button" data-preset="vertical">Vertical</button>
+        <button type="button" data-preset="fases">Por fases</button>
+      </span>
+      <button type="button" id="flowZoomOut" aria-label="Reduzir">−</button>
+      <button type="button" id="flowZoomIn" aria-label="Ampliar">+</button>
+      <button type="button" id="flowFit">Ajustar</button>
+      <button type="button" id="flowFs">Tela cheia</button>
+    </div>
+    <div class="flow-canvas" id="flowCanvas" tabindex="0" role="img" aria-label="Diagrama do fluxo de leads. Arraste para mover, setas do teclado para navegar, mais e menos para zoom."></div>
+    <div class="flow-legend">
+      <span><i></i>Etapa</span>
+      <span><i class="d"></i>Decisão (Sim / Não)</span>
+      <span><i class="e"></i>Fim de caminho</span>
+    </div>
+  </div>
+</section>
+
+<section class="phase p0" id="fase0">
+  <div class="phase-head"><div class="badge">0</div>
+    <div><h2>Canais de entrada — de onde o lead pode vir</h2>
+    <p class="sub">16 portas de entrada em 12 famílias. Todas desembocam no mesmo funil de recepção (fase 1). Na listagem e na ficha, cada lead mostra <b>Canal · Subtipo</b> — a mesma taxonomia abaixo.</p></div>
+  </div>
+  <div class="grid cols-2">
+    <div class="card"><b class="t">Site {conta}</b><div class="d">Tudo que nasce no site da imobiliária, com o imóvel/página da conversão.</div><span class="tag t-info">Formulário do imóvel</span><span class="tag t-info">WhatsApp do anúncio</span><span class="tag t-info">WhatsApp do site</span><span class="tag t-info">Contato geral</span></div>
+    <div class="card"><b class="t">Formulário {nome}</b><div class="d">Formulários e landing pages (anuncie, trabalhe conosco, contato…). Mostra o nome do formulário e a categoria.</div><span class="tag t-info">Subtipo: categoria</span></div>
+    <div class="card"><b class="t">Portais</b><div class="d">Contatos vindos dos portais, com o imóvel anunciado. Cada entrega tem código único: reenvio não duplica.</div><span class="tag t-info">ZAP</span><span class="tag t-info">VivaReal</span><span class="tag t-info">Imovelweb</span><span class="tag t-info">OLX</span><span class="tag t-gray">Grupo OLX (genérico)</span></div>
+    <div class="card"><b class="t">WhatsApp</b><div class="d">Pessoa que chama o número da imobiliária, clica em anúncio que abre conversa ou responde a um disparo.</div><span class="tag t-info">Conversa</span><span class="tag t-info">CTWA (anúncio)</span><span class="tag t-info">Campanha {nome}</span></div>
+    <div class="card"><b class="t">Meta Ads</b><div class="d">Formulários nativos dos anúncios (Facebook/Instagram), com página, formulário, campanha e anúncio.</div><span class="tag t-info">Formulário {nome}</span></div>
+    <div class="card"><b class="t">Instagram</b><div class="d">Mensagem direta no perfil profissional — funciona mesmo sem telefone.</div><span class="tag t-info">Direct</span><span class="tag t-info">CTWA</span><span class="tag t-info">Leads</span></div>
+    <div class="card"><b class="t">TikTok Ads / LinkedIn Ads</b><div class="d">Formulários dos anúncios, por anunciante/conta, campanha e formulário. No LinkedIn, e-mail válido pode dispensar o telefone.</div><span class="tag t-info">Formulário {nome}</span></div>
+    <div class="card"><b class="t">RD Station</b><div class="d">Conversões do RD via webhook exclusivo da conta, com campanha, conversão e origem/mídia.</div><span class="tag t-info">Conversão</span><span class="tag t-info">Oportunidade</span></div>
+    <div class="card"><b class="t">Lovers</b><div class="d">Contatos sincronizados da base LeadLovers, com status, score e origem original.</div><span class="tag t-info">Importação</span></div>
+    <div class="card"><b class="t">Integração</b><div class="d">Webhook genérico com token para sistemas externos (site próprio, ERP, robôs). Mostra as tags recebidas e quem recebeu.</div><span class="tag t-info">Subtipo: tags</span></div>
+    <div class="card"><b class="t">Importação</b><div class="d">Leads vindos de outro CRM ou de carga de base. Preserva fonte original, vendedor externo e dados originais.</div><span class="tag t-info">Subtipo: fonte original</span></div>
+    <div class="card"><b class="t">Indicação / Manual / Showroom</b><div class="d">Cliente que chega pelo link pessoal do corretor (já nasce com dono e pula o rodízio), cadastro do atendente no CRM ou visita à loja.</div><span class="tag t-info">Indicação {corretor}</span><span class="tag t-info">Cadastro manual</span><span class="tag t-info">Showroom</span></div>
+  </div>
+  <details><summary>Detalhe técnico: o que acontece antes da recepção, em cada canal</summary>
+    <div class="inner">
+      <b>Validação na porta:</b> webhooks conferem assinatura/token antes de aceitar (Meta, WhatsApp, portais, TikTok, RD, inbound). Token inválido = recusado, sem criar nada.<br>
+      <b>Processamento assíncrono:</b> a maioria dos canais enfileira o recebimento e responde rápido ao emissor; o trabalho pesado (baixar dados do anúncio, resolver imóvel/tenant) roda em segundo plano com tentativas automáticas.<br>
+      <b>Resolução da conta:</b> portais descobrem a imobiliária pelo código do imóvel anunciado; Meta/TikTok/LinkedIn/Instagram, pela integração conectada à página/perfil.<br>
+      <b>Enriquecimento Meta:</b> após criado, o lead de anúncio busca nome de campanha/anúncio para exibir na coluna de origem.
+    </div>
+  </details>
+</section>
+
+<section class="phase p1" id="fase1">
+  <div class="phase-head"><div class="badge">1</div>
+    <div><h2>Recepção — o funil único (antiduplicidade)</h2>
+    <p class="sub">Todo canal passa por aqui, nesta ordem. É o que impede lead duplicado e dois corretores para a mesma pessoa.</p></div>
+  </div>
+  <div class="flow">
+    <div class="step"><div class="s-title">1. Validação dos dados</div>
+      <div class="s-body">Nome e telefone são obrigatórios, <b>exceto</b> quando: mensagem de WhatsApp sem número visível, Instagram Direct, migração autorizada, ou LinkedIn/TikTok com e-mail válido. Conta (imobiliária) sempre obrigatória.</div></div>
+    <div class="step decision"><div class="s-title">2. É contato interno? (somente site)</div>
+      <div class="s-body">Se o telefone é de um usuário da equipe, o envio é <b>ignorado em silêncio</b> (teste de funcionário não vira lead).</div></div>
+    <div class="step decision"><div class="s-title">3. Este evento já foi recebido?</div>
+      <div class="s-body">Cada entrega tem uma identidade (código do anúncio/formulário/portal/mensagem). Se o <b>mesmo evento</b> chegar de novo (reenvio do portal, duplo clique, retry), o sistema <b>descarta a cópia</b> e mantém o lead original.</div></div>
+    <div class="step decision"><div class="s-title">4. A pessoa já tem lead nesta conta?</div>
+      <div class="s-body">Busca por <b>telefone</b> (tolerando formatação e o 55) e, se configurado, também por <b>e-mail</b>.</div>
+      <div class="branches">
+        <div class="branch nao"><span class="r">NÃO → lead novo.</span> Cria o cadastro e segue para a fase 2 (regra de distribuição).</div>
+        <div class="branch sim"><span class="r">SIM → complemento ou reabertura:</span>
+          <br>· <b>Lead atual ativo com corretor (dentro do prazo de atendimento):</b> não cria lead novo — o novo interesse (ex.: outro imóvel) é <b>anexado ao lead existente</b> e o dono é avisado. Uma pessoa, um corretor.
+          <br>· <b>Lead encerrado, arquivado ou sem dono:</b> o cadastro é <b>reaberto</b> (limpa dono/arquivo) e volta para a distribuição (fase 2/3).
+          <br>· <b>Cliente retornando (fidelização ativa):</b> pode voltar direto ao corretor anterior — ver fase 3.
+        </div>
+      </div></div>
+    <div class="step end-ok"><div class="s-title">5. Registro de entrada</div>
+      <div class="s-body">Todo lead recebe o carimbo <b>“recebido”</b> na timeline, com a origem. A partir daqui valem as automações de “lead criado”.</div></div>
+  </div>
+</section>
+
+<section class="phase p2" id="fase2">
+  <div class="phase-head"><div class="badge">2</div>
+    <div><h2>Regra de distribuição — qual time recebe</h2>
+    <p class="sub">A conta pode ter várias regras (ex.: “Venda Alto Padrão”, “Locação”, “Plantão”). O sistema testa uma por uma, em ordem — a primeira que combinar vence.</p></div>
+  </div>
+  <h3>Para uma regra combinar, tudo isso precisa ser verdade:</h3>
+  <div class="grid cols-3">
+    <div class="card"><b class="t">1 · Origem compatível</b><div class="d">A regra escolhe quais origens aceita: Meta, Portais, RD Station, Lovers, Webhook, TikTok, LinkedIn e/ou <b>Site</b> — Site é o coringa: pega tudo que não é uma das outras.</div></div>
+    <div class="card"><b class="t">2 · Tipo de negócio</b><div class="d">Venda, Locação ou Ambos. O sistema lê sinais no produto, origem e imóvel. Sem sinal claro (comum em Meta), regras específicas continuam elegíveis.</div></div>
+    <div class="card"><b class="t">3 · Filtros (se houver)</b><div class="d">Faixa de preço, filtros personalizados (“campo contém valor”), tags do webhook, página/formulário Meta, anunciante/formulário TikTok, campanha/formulário LinkedIn.</div></div>
+  </div>
+  <div class="flow">
+    <div class="step decision"><div class="s-title">Alguma regra ativa combinou?</div>
+      <div class="branches">
+        <div class="branch sim"><span class="r">SIM →</span> o lead entra naquela regra e segue para a fase 3.</div>
+        <div class="branch nao"><span class="r">NÃO →</span> o lead fica <b>Novo, sem dono</b>, visível para <b>triagem manual</b> do gestor (que pode atribuir a alguém). Nada é perdido; só não houve distribuição automática.</div>
+      </div></div>
+  </div>
+  <details><summary>Exemplo prático de combinação</summary>
+    <div class="inner">Lead do <b>Instagram (Meta)</b> interessado num apartamento de <b>R$ 800 mil</b> para <b>compra</b>. Regra “Venda Meta até 1MM” aceita origem Meta + Venda + preço até 1MM → <b>combina</b>. Regra “Locação Portais” não combina (origem e negócio diferentes) e nem é testada depois que a primeira venceu.</div>
+  </details>
+</section>
+
+<section class="phase p3" id="fase3">
+  <div class="phase-head"><div class="badge">3</div>
+    <div><h2>Distribuição — quem atende (dentro da regra vencedora)</h2>
+    <p class="sub">Verificações executadas nesta ordem exata. A primeira que se aplicar define o destino.</p></div>
+  </div>
+  <div class="flow">
+    <div class="step"><div class="s-title">0. Lead que já nasceu com dono</div>
+      <div class="s-body">Link pessoal do corretor ou atribuição manual na criação: <b>pula toda a distribuição</b> — só registra “atribuído diretamente” e avisa o dono.</div></div>
+    <div class="step decision"><div class="s-title">1. Fora do horário de atendimento? (represamento)</div>
+      <div class="s-body">Cada regra tem sua escala semanal. Se o lead chega fora do horário:</div>
+      <div class="branches">
+        <div class="branch sim"><span class="r">SIM → Represado.</span> Fica guardado como <b>Represado</b> e é <b>liberado sozinho</b> quando o horário abre — voltando para esta mesma distribuição.</div>
+      </div></div>
+    <div class="step decision"><div class="s-title">2. Exige check-in e ninguém está elegível?</div>
+      <div class="s-body">Regras com “só distribui para quem fez check-in” filtram por: check-in ativo, loja(s) do plantão, dentro do raio, turno ativo e sem fraude.</div>
+      <div class="branches">
+        <div class="branch sim"><span class="r">Ninguém elegível → Represado</span> (com motivo registrado na timeline). Quando houver gente em plantão, o lead é liberado.</div>
+      </div></div>
+    <div class="step decision"><div class="s-title">3. Modo Bolsão (Shark Tank)?</div>
+      <div class="s-body">Em vez de escolher um corretor, o lead vai para o <b>bolsão</b>: status <b>Aguardando Aceite</b>, sem dono, e <b>todos do time são avisados</b>.</div>
+      <div class="branches">
+        <div class="branch sim"><span class="r">O 1º que aceitar fica com o lead</span> (trava atômica: dois cliques juntos não geram dois donos) → Em Atendimento.</div>
+      </div></div>
+    <div class="step decision"><div class="s-title">4. Cliente retornando? (fidelização)</div>
+      <div class="s-body">Se a pessoa já foi atendida por um corretor (dentro das regras: chave telefone/e-mail, janela de tempo, etapas que fidelizam), ela <b>volta ao mesmo corretor</b> — direto em <b>Em Atendimento</b>, sem espera de aceite.</div>
+      <div class="branches">
+        <div class="branch nao"><span class="r">Corretor anterior inativo ou fora do time da regra →</span> segue para o sorteio normal abaixo.</div>
+      </div></div>
+    <div class="step"><div class="s-title">5. Rodízio ou performance</div>
+      <div class="s-body"><b>Rodízio:</b> próximo da fila recebe; quem atendeu vai para o fim da fila (com trava para dois leads juntos não caírem no mesmo corretor).<br><b>Performance:</b> sorteio ponderado pelo peso de cada corretor (quem tem peso maior tende a receber mais).<br>Nos dois casos o lead fica <b>Aguardando Aceite</b> com dono definido, e o prazo do <b>pocket</b> começa a contar (fase 4).</div></div>
+    <div class="step end-ok"><div class="s-title">6. Registro da entrega</div>
+      <div class="s-body">A timeline marca <b>“distribuído”</b> (regra + corretor) e dispara a automação de “lead atribuído”.</div></div>
+  </div>
+  <details><summary>Quem pode receber leads? (elegibilidade)</summary>
+    <div class="inner">Só participa do rodízio/bolsão quem: está <b>ativo</b>, pertence à <b>mesma conta</b>, tem <b>perfil de corretor</b> (vertical) e <b>não é o dono da conta</b>. Corretor desativado nunca recebe — nem por fidelização, salvo se a regra permitir “qualquer ativo”. Dono da conta nunca entra no rodízio, mesmo em regras antigas.</div>
+  </details>
+</section>
+
+<section class="phase p4" id="fase4">
+  <div class="phase-head"><div class="badge">4</div>
+    <div><h2>Aceite e pocket — garantindo o atendimento</h2>
+    <p class="sub">Distribuir não basta: o sistema cobra o atendimento dentro do prazo.</p></div>
+  </div>
+  <div class="flow">
+    <div class="step"><div class="s-title">1. Corretor avisado</div>
+      <div class="s-body">Pelos canais ligados na regra: <b>push no app, WhatsApp, e-mail e/ou webhook</b> (ver matriz abaixo). No bolsão, o aviso vai para <b>todo o time</b>.</div></div>
+    <div class="step decision"><div class="s-title">2. Atendeu no prazo? (pocket)</div>
+      <div class="s-body">Cada regra define seu prazo (ex.: 10 minutos). O aceite é abrir/atender o lead.</div>
+      <div class="branches">
+        <div class="branch sim"><span class="r">SIM → Em Atendimento.</span> O corretor é oficialmente o dono e o cronômetro para.</div>
+        <div class="branch nao"><span class="r">NÃO → perde a vez.</span> O sistema: <b>avisa o corretor</b> que perdeu o lead, tira o dono e <b>redistribui automaticamente</b> — para o próximo do rodízio <b>ou</b> para o bolsão (conforme a regra). O ciclo recomeça até alguém atender.</div>
+      </div></div>
+    <div class="step"><div class="s-title">3. Lembretes do bolsão (opcional)</div>
+      <div class="s-body">Leads parados no bolsão podem gerar <b>reavisos periódicos</b> ao time (intervalo configurável).</div></div>
+    <div class="step end-ok"><div class="s-title">4. Cópias globais (opcional)</div>
+      <div class="s-body">Se ligados, o <b>e-mail</b> e o <b>webhook global</b> da conta recebem uma cópia de <b>todo</b> lead — independente da regra.</div></div>
+  </div>
+</section>
+
+<section class="phase p5" id="status">
+  <div class="phase-head"><div class="badge">≡</div>
+    <div><h2>Status do lead — onde cada final de caminho deixa o lead</h2>
+    <p class="sub">Os nomes podem variar pelo funil configurado da conta; o comportamento é este:</p></div>
+  </div>
+  <div class="legend">
+    <span class="tag t-info">Novo — criado, ainda sem distribuição</span>
+    <span class="tag t-warn">Aguardando Aceite — com dono (ou no bolsão), esperando atendimento</span>
+    <span class="tag t-ok">Em Atendimento — corretor ativo cuidando (sempre tem dono)</span>
+    <span class="tag t-gray">Represado — guardado (fora de horário / sem plantão); libera sozinho</span>
+    <span class="tag t-dead">Descartado / Concluído — fim do ciclo (não operacional)</span>
+  </div>
+  <h3>Mapa rápido: decisão → status</h3>
+  <table>
+    <tr><th>Situação</th><th>Status resultante</th><th>O que acontece depois</th></tr>
+    <tr><td>Evento duplicado / contato interno</td><td>— (nada criado)</td><td>Ignorado com segurança</td></tr>
+    <tr><td>Nova consulta de cliente já em atendimento</td><td>Mantém o atual</td><td>Interesse anexado; dono avisado</td></tr>
+    <tr><td>Nenhuma regra combinou</td><td><b>Novo</b>, sem dono</td><td>Triagem manual do gestor</td></tr>
+    <tr><td>Fora de horário / sem plantão elegível</td><td><b>Represado</b></td><td>Liberação automática → redistribui</td></tr>
+    <tr><td>Bolsão</td><td><b>Aguardando Aceite</b>, sem dono</td><td>1º que aceitar fica</td></tr>
+    <tr><td>Rodízio / performance</td><td><b>Aguardando Aceite</b>, com dono</td><td>Aceite no prazo ou redistribui</td></tr>
+    <tr><td>Fidelização / dono direto</td><td><b>Em Atendimento</b></td><td>Atendimento imediato</td></tr>
+    <tr><td>Pocket expirado</td><td>Volta ao ciclo</td><td>Próximo do rodízio ou bolsão</td></tr>
+  </table>
+</section>
+
+<section class="phase" id="notif">
+  <div class="phase-head"><div class="badge" style="background:#0ea5e9">✉</div>
+    <div><h2>Notificações — quem é avisado, quando e por onde</h2>
+    <p class="sub">Duas camadas: a regra define <b>os canais</b>; a conta define <b>quais eventos</b> avisam.</p></div>
+  </div>
+  <table>
+    <tr><th>Evento</th><th>Quem recebe</th><th>Canais possíveis</th></tr>
+    <tr><td>Lead distribuído (rodízio/performance)</td><td>O corretor sorteado</td><td>Push + WhatsApp + e-mail + webhook</td></tr>
+    <tr><td>Lead no bolsão</td><td>Todo o time da regra</td><td>Push + WhatsApp + e-mail + webhook</td></tr>
+    <tr><td>Fidelização (cliente retornou)</td><td>O dono anterior</td><td>Push + WhatsApp + e-mail + webhook</td></tr>
+    <tr><td>Atribuição direta (link/manual)</td><td>O dono</td><td>Push</td></tr>
+    <tr><td>Novo interesse no seu lead (complemento)</td><td>O dono</td><td>Push (sempre — sem chave de desligar)</td></tr>
+    <tr><td>Perdeu o prazo (pocket)</td><td>O corretor que perdeu</td><td>Push (“você perdeu o lead…”)</td></tr>
+    <tr><td>Reatribuição pelo gestor</td><td>O novo corretor</td><td>Push</td></tr>
+  </table>
+  <p style="font-size:13.5px;color:var(--muted)">WhatsApp e e-mail usam a integração <b>da própria conta</b> (ou o remetente global, se a conta optou). Push exige o app instalado e notificações permitidas. Falha em um canal nunca bloqueia os outros.</p>
+</section>
+
+<section class="phase" id="garantias">
+  <div class="phase-head"><div class="badge" style="background:#14753c">✓</div>
+    <div><h2>Garantias do sistema — o que nunca acontece</h2>
+    <p class="sub">Proteções automáticas que valem para todos os canais e regras.</p></div>
+  </div>
+  <div class="grid cols-2">
+    <div class="card"><b class="t">Sem vazamento entre contas</b><div class="d">Tudo é separado por imobiliária: leads, regras, corretores, imóveis e notificações. Um lead nunca cai no time de outra conta.</div></div>
+    <div class="card"><b class="t">Sem lead duplicado</b><div class="d">Reenvios de portal, duplos cliques e retries geram um único cadastro — a identidade do evento barra a cópia.</div></div>
+    <div class="card"><b class="t">Uma pessoa, um corretor</b><div class="d">Consultas repetidas da mesma pessoa agregam ao atendimento atual em vez de criar disputa entre corretores.</div></div>
+    <div class="card"><b class="t">Em Atendimento sempre tem dono</b><div class="d">O sistema impede salvar atendimento sem responsável — inclusive ao remover corretores ou importar bases.</div></div>
+    <div class="card"><b class="t">Fila sem furo</b><div class="d">Travas impedem que dois leads simultâneos caiam no mesmo corretor ou que dois corretores peguem o mesmo lead do bolsão.</div></div>
+    <div class="card"><b class="t">Tudo auditado</b><div class="d">Cada decisão (recebido, distribuído, represado, bolsão, aceite, perda de prazo) fica registrada na timeline do lead.</div></div>
+  </div>
+</section>
+
+<section class="phase" id="config">
+  <div class="phase-head"><div class="badge" style="background:#475569">⚙</div>
+    <div><h2>Onde o gestor configura cada parte</h2>
+    <p class="sub">Guia rápido para ajustar o fluxo sem ajuda técnica.</p></div>
+  </div>
+  <table>
+    <tr><th>Quero ajustar…</th><th>Onde</th></tr>
+    <tr><td>Quem recebe o quê (regras, origens, filtros, modos rodízio/bolsão, escala, pocket)</td><td><b>Regras de distribuição</b></td></tr>
+    <tr><td>Cliente voltar ao mesmo corretor (liga/desliga, telefone/e-mail, prazo)</td><td><b>Config. de leads → Fidelização</b></td></tr>
+    <tr><td>Quais eventos avisam o corretor</td><td><b>Config. de leads → Notificações</b></td></tr>
+    <tr><td>Check-in / plantão / lojas / raio</td><td><b>Check-in e Lojas</b></td></tr>
+    <tr><td>Cópia de todos os leads por e-mail/webhook</td><td><b>Config. de roteamento global</b></td></tr>
+    <tr><td>Conectar Meta, portais, TikTok, LinkedIn, RD, WhatsApp…</td><td><b>Integrações</b> (uma por canal)</td></tr>
+    <tr><td>Mensagens automáticas por etapa do funil</td><td><b>Automações</b></td></tr>
+  </table>
+</section>
+
+<footer class="note">
+  <b>Como ler este documento:</b> siga as fases 0 → 4 em ordem para o caminho feliz; abra os detalhes e a tabela de status para todos os ramos alternativos. Em caso de dúvida sobre um lead específico, a <b>timeline do lead</b> no CRM mostra exatamente qual ramo ele percorreu (recebido → distribuído/represado/bolsão → aceito).
+</footer>
+</div>
+<script>
+(function(){
+  var W = 210, H = 66;
+  // Fluxo documentado na página: entrada -> recepção -> regra -> distribuição -> aceite.
+  var NODES = [
+    {id:"entrada", x:40,   y:80,  t:["Entrada válida","na conta"]},
+    {id:"anti",    x:340,  y:80,  t:["Antiduplicidade","e identificação"]},
+    {id:"d_dist",  x:640,  y:80,  d:1, t:["Precisa","distribuir?"]},
+    {id:"manter",  x:640,  y:300, e:1, t:["Mantém dono:","anexa ou avisa"]},
+    {id:"d_regra", x:940,  y:80,  d:1, t:["Encontrou","regra?"]},
+    {id:"semdono", x:940,  y:300, e:1, t:["Novo sem dono:","triagem manual"]},
+    {id:"d_hora",  x:1240, y:80,  d:1, t:["Pode atender","agora?"]},
+    {id:"repres",  x:1240, y:300, t:["Represado"]},
+    {id:"d_bolsao",x:1540, y:80,  d:1, t:["Bolsão?"]},
+    {id:"bolsao",  x:1540, y:300, e:1, t:["Bolsão:","1º que aceitar"]},
+    {id:"d_fid",   x:1840, y:80,  d:1, t:["Cliente","retornando?"]},
+    {id:"fid",     x:1840, y:300, e:1, t:["Volta ao mesmo","corretor"]},
+    {id:"rodizio", x:2140, y:80,  t:["Rodízio /","performance"]},
+    {id:"d_prazo", x:2440, y:80,  d:1, t:["Atendeu","no prazo?"]},
+    {id:"fim",     x:2740, y:80,  e:1, t:["Em Atendimento"]},
+    {id:"reexp",   x:2440, y:300, t:["Perdeu a vez:","redistribui"]}
+  ];
+  var CUR = "horizontal";
+  var POS_V = {entrada:[395,40], anti:[395,220], d_dist:[395,400], manter:[700,400],
+    d_regra:[395,580], semdono:[700,580], d_hora:[395,760], repres:[700,760],
+    d_bolsao:[395,940], bolsao:[700,940], d_fid:[395,1120], fid:[700,1120],
+    rodizio:[395,1300], d_prazo:[395,1480], fim:[395,1660], reexp:[700,1480]};
+  var LANES = [{x0:0,x1:880,t:"1 · Recepção"},{x0:880,x1:1180,t:"2 · Regra"},
+    {x0:1180,x1:2080,t:"3 · Distribuição"},{x0:2080,x1:3060,t:"4 · Aceite"}];
+  var EDGES_V = [
+    {a:"entrada", as:"b", b:"anti", bs:"t"},
+    {a:"anti", as:"b", b:"d_dist", bs:"t"},
+    {a:"d_dist", as:"r", b:"manter", bs:"l", l:"Não"},
+    {a:"d_dist", as:"b", b:"d_regra", bs:"t", l:"Sim"},
+    {a:"d_regra", as:"r", b:"semdono", bs:"l", l:"Não"},
+    {a:"d_regra", as:"b", b:"d_hora", bs:"t", l:"Sim"},
+    {a:"d_hora", as:"r", b:"repres", bs:"l", l:"Não"},
+    {a:"d_hora", as:"b", b:"d_bolsao", bs:"t", l:"Sim"},
+    {a:"d_bolsao", as:"r", b:"bolsao", bs:"l", l:"Sim"},
+    {a:"d_bolsao", as:"b", b:"d_fid", bs:"t", l:"Não"},
+    {a:"d_fid", as:"r", b:"fid", bs:"l", l:"Sim"},
+    {a:"d_fid", as:"b", b:"rodizio", bs:"t", l:"Não"},
+    {a:"rodizio", as:"b", b:"d_prazo", bs:"t"},
+    {a:"d_prazo", as:"b", b:"fim", bs:"t", l:"Sim"},
+    {a:"d_prazo", as:"r", b:"reexp", bs:"l", l:"Não"},
+    {a:"reexp", as:"r", b:"d_regra", bs:"t", via:[[980,1513],[980,540],[580,540]], to:[580,578], l:"redistribui", lat:[980,1060]},
+    {a:"repres", as:"l", b:"d_hora", bs:"r", l:"libera sozinho", lat:[652,767]}
+  ];
+  var BY_ID = {};
+  NODES.forEach(function(n){ BY_ID[n.id] = n; });
+  function P(n){
+    var p = (CUR === "vertical" && POS_V[n.id]) || [n.x, n.y];
+    return {x:p[0], y:p[1]};
+  }
+  function port(n, side){
+    var q = P(n);
+    if(side==="r") return [q.x+W, q.y+H/2];
+    if(side==="l") return [q.x, q.y+H/2];
+    if(side==="t") return [q.x+W/2, q.y];
+    return [q.x+W/2, q.y+H];
+  }
+  function activeEdges(){ return CUR === "vertical" ? EDGES_V : EDGES; }
+  var EDGES = [
+    {a:"entrada", as:"r", b:"anti", bs:"l"},
+    {a:"anti", as:"r", b:"d_dist", bs:"l"},
+    {a:"d_dist", as:"b", b:"manter", bs:"t", l:"Não"},
+    {a:"d_dist", as:"r", b:"d_regra", bs:"l", l:"Sim"},
+    {a:"d_regra", as:"b", b:"semdono", bs:"t", l:"Não"},
+    {a:"d_regra", as:"r", b:"d_hora", bs:"l", l:"Sim"},
+    {a:"d_hora", as:"b", b:"repres", bs:"t", l:"Não"},
+    {a:"d_hora", as:"r", b:"d_bolsao", bs:"l", l:"Sim"},
+    {a:"d_bolsao", as:"b", b:"bolsao", bs:"t", l:"Sim"},
+    {a:"d_bolsao", as:"r", b:"d_fid", bs:"l", l:"Não"},
+    {a:"d_fid", as:"b", b:"fid", bs:"t", l:"Sim"},
+    {a:"d_fid", as:"r", b:"rodizio", bs:"l", l:"Não"},
+    {a:"rodizio", as:"r", b:"d_prazo", bs:"l"},
+    {a:"d_prazo", as:"r", b:"fim", bs:"l", l:"Sim"},
+    {a:"d_prazo", as:"b", b:"reexp", bs:"t", l:"Não"},
+    {a:"reexp", as:"b", b:"d_regra", bs:"t", via:[[2545,540],[1210,540],[1210,40],[1045,40]], l:"redistribui", lat:[1795,540]},
+    {a:"repres", as:"l", b:"d_hora", bs:"l", via:[[1165,333],[1165,105]], to:[1238,105], l:"libera sozinho", lat:[1165,219]}
+  ];
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var canvas = document.getElementById("flowCanvas");
+  var svg = document.createElementNS(SVGNS, "svg");
+  var defs = document.createElementNS(SVGNS, "defs");
+  defs.innerHTML = '<marker id="flwArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8b949e"/></marker>';
+  svg.appendChild(defs);
+  var world = document.createElementNS(SVGNS, "g");
+  svg.appendChild(world);
+  canvas.appendChild(svg);
+
+  function el(name, attrs, parent){
+    var n = document.createElementNS(SVGNS, name);
+    for(var k in attrs) n.setAttribute(k, attrs[k]);
+    parent.appendChild(n);
+    return n;
+  }
+  function render(){
+    while(world.firstChild) world.removeChild(world.firstChild);
+    if(CUR === "fases"){
+      LANES.forEach(function(L, i){
+        if(i % 2 === 0) el("rect", {x:L.x0, y:8, width:L.x1-L.x0, height:624, fill:"#ffffff", opacity:0.025}, world);
+        el("line", {x1:L.x0, y1:8, x2:L.x0, y2:632, stroke:"#21262d", "stroke-width":1}, world);
+        var lt = el("text", {x:(L.x0+L.x1)/2, y:30, "class":"flowlane-t"}, world);
+        lt.textContent = L.t;
+      });
+    }
+    var labels = [];
+    activeEdges().forEach(function(e){
+      var p0 = port(BY_ID[e.a], e.as), p1 = e.to || port(BY_ID[e.b], e.bs);
+      var pts = [p0].concat(e.via || []).concat([p1]);
+      var d = "M" + pts.map(function(p){ return p[0]+","+p[1]; }).join(" L");
+      el("path", {d:d, "class":"flowedge", "marker-end":"url(#flwArrow)"}, world);
+      if(!e.l) return;
+      var lp = e.lat;
+      if(!lp){
+        var mx = (p0[0]+p1[0])/2, my = (p0[1]+p1[1])/2;
+        lp = (p0[1] === p1[1]) ? [mx, my-26] : [mx, my];
+      }
+      labels.push({t:e.l, x:lp[0], y:lp[1]});
+    });
+    NODES.forEach(function(n){
+      var q = P(n);
+      var g = el("g", {"class":"flownode"+(n.d?" decision":"")+(n.e?" end":"")}, world);
+      el("rect", {x:q.x, y:q.y, width:W, height:H, rx:14}, g);
+      n.t.forEach(function(line, i){
+        var ty = n.t.length === 1 ? q.y+H/2 : q.y+H/2 + (i === 0 ? -11 : 11);
+        var t = el("text", {x:q.x+W/2, y:ty}, g);
+        t.textContent = line;
+      });
+    });
+    labels.forEach(function(lb){
+      var g = el("g", {"class":"flowlabel"}, world);
+      var wdt = lb.t.length*7+22;
+      el("rect", {x:lb.x-wdt/2, y:lb.y-12, width:wdt, height:24, rx:12}, g);
+      var t = el("text", {x:lb.x, y:lb.y+1}, g);
+      t.textContent = lb.t;
+    });
+  }
+  render();
+
+  // Pan + zoom.
+  var VW = 3060, VH = 640, scale = 0.3, tx = 0, ty = 0;
+  function apply(){ world.setAttribute("transform", "translate("+tx+","+ty+") scale("+scale+")"); }
+  function fit(){
+    if(CUR === "vertical"){ VW = 1100; VH = 1800; } else { VW = 3060; VH = 640; }
+    var r = canvas.getBoundingClientRect();
+    scale = Math.min(r.width/VW, r.height/VH);
+    tx = (r.width - VW*scale)/2;
+    ty = (r.height - VH*scale)/2;
+    apply();
+  }
+  function zoomAt(cx, cy, ns){
+    ns = Math.max(0.15, Math.min(3, ns));
+    var r = canvas.getBoundingClientRect();
+    var x = cx - r.left, y = cy - r.top;
+    tx = x - (x - tx)*(ns/scale);
+    ty = y - (y - ty)*(ns/scale);
+    scale = ns;
+    apply();
+  }
+  var drag = null;
+  svg.addEventListener("pointerdown", function(ev){
+    if(ev.button !== 0) return;
+    drag = {x:ev.clientX, y:ev.clientY, tx:tx, ty:ty};
+    canvas.classList.add("grabbing");
+    svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener("pointermove", function(ev){
+    if(!drag) return;
+    tx = drag.tx + (ev.clientX - drag.x);
+    ty = drag.ty + (ev.clientY - drag.y);
+    apply();
+  });
+  function endDrag(){ drag = null; canvas.classList.remove("grabbing"); }
+  ["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){
+    svg.addEventListener(ev, endDrag);
+  });
+  canvas.addEventListener("keydown", function(ev){
+    var step = 60, c;
+    if(ev.key === "ArrowLeft"){ tx += step; apply(); ev.preventDefault(); }
+    else if(ev.key === "ArrowRight"){ tx -= step; apply(); ev.preventDefault(); }
+    else if(ev.key === "ArrowUp"){ ty += step; apply(); ev.preventDefault(); }
+    else if(ev.key === "ArrowDown"){ ty -= step; apply(); ev.preventDefault(); }
+    else if(ev.key === "+" || ev.key === "="){ c = center(); zoomAt(c[0], c[1], scale*1.25); ev.preventDefault(); }
+    else if(ev.key === "-"){ c = center(); zoomAt(c[0], c[1], scale/1.25); ev.preventDefault(); }
+    else if(ev.key === "0"){ fit(); ev.preventDefault(); }
+  });
+  svg.addEventListener("wheel", function(ev){
+    ev.preventDefault();
+    zoomAt(ev.clientX, ev.clientY, scale*(ev.deltaY < 0 ? 1.12 : 1/1.12));
+  }, {passive:false});
+  function center(){
+    var r = canvas.getBoundingClientRect();
+    return [r.left + r.width/2, r.top + r.height/2];
+  }
+  document.getElementById("flowZoomIn").addEventListener("click", function(){
+    var c = center(); zoomAt(c[0], c[1], scale*1.25);
+  });
+  document.getElementById("flowZoomOut").addEventListener("click", function(){
+    var c = center(); zoomAt(c[0], c[1], scale/1.25);
+  });
+  document.getElementById("flowFit").addEventListener("click", fit);
+  var full = document.getElementById("flowFull");
+  var fsBtn = document.getElementById("flowFs");
+  fsBtn.addEventListener("click", function(){
+    if(document.fullscreenElement) document.exitFullscreen();
+    else if(full.requestFullscreen) full.requestFullscreen();
+  });
+  document.addEventListener("fullscreenchange", function(){
+    fsBtn.textContent = document.fullscreenElement ? "Sair" : "Tela cheia";
+    setTimeout(fit, 60);
+  });
+  var segBtns = full.querySelectorAll("[data-preset]");
+  segBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var want = btn.getAttribute("data-preset");
+      if(CUR === want) return;
+      CUR = want;
+      segBtns.forEach(function(b){ b.classList.toggle("on", b === btn); });
+      render();
+      fit();
+    });
+  });
+  window.addEventListener("resize", fit);
+  fit();
+})();
+</script>
+</body>
+</html>

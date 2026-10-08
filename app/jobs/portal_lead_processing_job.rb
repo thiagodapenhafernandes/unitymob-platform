@@ -68,7 +68,7 @@ class PortalLeadProcessingJob < ApplicationJob
   end
 
   def create_lead!(tenant, property, lead)
-    record = tenant.leads.create!(
+    record = Leads::Intake.create!(tenant: tenant,
       # NÃO pré-atribuir corretor: route_lead distribui pelas regras normais.
       name: lead[:name].presence || "Lead Grupo OLX",
       email: lead[:email],

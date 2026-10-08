@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-function setup(initial = {}) {
+function setup(initial = {}, blocked = false) {
   const cookies = new Map(Object.entries(initial));
   const storage = new Map();
   const events = [];
   let reloads = 0;
   const document = {
-    get cookie() { return [...cookies].map(([key, value]) => `${key}=${value}`).join('; '); },
+    get cookie() { if (blocked) throw new Error("Cookies blocked"); return [...cookies].map(([key, value]) => `${key}=${value}`).join('; '); },
     set cookie(text) {
+      if (blocked) throw new Error("Cookies blocked");
       const [key, value] = text.split(';')[0].split('=');
       if (text.includes('Max-Age=0')) cookies.delete(key); else cookies.set(key, value);
     }
@@ -22,7 +23,7 @@ function setup(initial = {}) {
   };
   const context = vm.createContext({ document, window, Controller: class {}, CustomEvent: class { constructor(type) { this.type = type; } }, navigator: {} });
   function load(path, name) {
-    const source = readFileSync(path, 'utf8').replace(/^import .*\n/, '').replace('export default class', `this.${name} = class`);
+    const source = readFileSync(path, 'utf8').replace(/^import .*\n/gm, '').replace('export default class', `this.${name} = class`);
     vm.runInContext(source, context);
     return new context[name]();
   }
@@ -62,4 +63,16 @@ test('initial rejection stays on the page and interest events cannot bypass it',
   env.storage.set('unitymob_interest_consent', 'accepted');
   assert.equal(tracker.canTrack(), false);
   assert.equal(tracker.consentAccepted(), false);
+});
+
+test('blocked cookies still allow accepting and dismissing the banner for this visit', () => {
+  const env = setup({}, true);
+  let hidden = false;
+  env.controller.bannerTarget.classList.toggle = (name, value) => { hidden = value; };
+  env.controller.connect();
+  assert.equal(hidden, false);
+  env.controller.accept();
+  assert.equal(hidden, true);
+  assert.equal(env.window.UnitymobLgpdConsent.accepted(), true);
+  assert.ok(env.events.includes('unitymob:lgpd-consent-accepted'));
 });

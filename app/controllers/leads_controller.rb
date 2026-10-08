@@ -27,17 +27,15 @@ class LeadsController < ApplicationController
       return render json: lead_success_response(lead_business_type(habitation), habitation:)
     end
 
-    saved_new_lead = false
-    public_tenant.with_lock do
-      duplicate = recent_whatsapp_modal_duplicate(@lead)
-      if duplicate
-        @lead = duplicate
-      else
-        saved_new_lead = @lead.save
-      end
+    begin
+      @lead = Leads::Intake.receive!(@lead)
+      saved_new_lead = !@lead.intake_reused
+    rescue ActiveRecord::RecordInvalid => error
+      @lead = error.record
+      saved_new_lead = false
     end
 
-    if @lead.destroyed? && @lead.complemented_into_id.present?
+    if @lead.intake_reused || (@lead.destroyed? && @lead.complemented_into_id.present?)
       @lead = @lead.complemented_target || @lead
       business_type = lead_business_type(habitation)
       after_lead_complemented(habitation, business_type)
@@ -154,21 +152,6 @@ class LeadsController < ApplicationController
     ).compact, request: request)
 
     LeadMailer.with(lead: @lead).welcome_lead.deliver_later if @lead.email.present?
-  end
-
-  def recent_whatsapp_modal_duplicate(lead)
-    return unless lead.lead_type == "whatsapp_modal"
-
-    phone = Phones::Normalizer.call(lead.phone).to_s
-    return if phone.blank?
-
-    lead.phone = phone
-    public_tenant.leads
-                 .where(lead_type: lead.lead_type, phone:, property_id: lead.property_id, source_url: lead.source_url)
-                 .where("LOWER(TRIM(COALESCE(name, ''))) = ?", lead.name.to_s.downcase.strip)
-                 .where("created_at >= ?", 5.minutes.ago)
-                 .order(created_at: :desc)
-                 .first
   end
 
   def apply_share_attribution(lead)

@@ -150,7 +150,7 @@ module Whatsapp
         recipient = campaign.campaign_recipients.find_or_initialize_by(phone_number: row.phone)
         recipient.assign_attributes(
           source: "spreadsheet",
-          lead: find_existing_lead(row.phone),
+          lead: find_existing_lead(row),
           name: row.name,
           email: row.email,
           origin: row.origin,
@@ -164,9 +164,8 @@ module Whatsapp
       end
     end
 
-    def find_existing_lead(phone)
-      tail = phone.to_s.last(11)
-      campaign.tenant.leads.where("regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE ?", "%#{tail}").first
+    def find_existing_lead(row)
+      Leads::Intake.find_existing(campaign.tenant.leads.new(phone: row.phone, email: row.email))
     end
 
     def resolve_admin_user(data)

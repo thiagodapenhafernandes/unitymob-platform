@@ -21,7 +21,42 @@ module Admin::LeadOriginHelper
     references.each_with_object({}) { |(id, metadata), result| result[id] ||= names[metadata.to_h["whatsapp_campaign_id"].to_i] }
   end
 
-  def lead_origin_column(lead, tenant:, site_event: nil, form_name: nil, campaign_name: nil)
+  # Nomes dos formulários públicos (origin "public_form:slug") por lead.
+  def lead_origin_public_form_names(leads, tenant:)
+    scoped = leads.select { |lead| lead.tenant_id == tenant.id }
+    slugs = scoped.filter_map { |lead| lead.origin.to_s[/\Apublic_form:(.+)\z/i, 1]&.strip }.uniq
+    return {} if slugs.empty?
+
+    forms = PublicForm.where(tenant_id: tenant.id, slug: slugs).pluck(:slug, :name, :category)
+      .to_h { |slug, name, category| [slug.to_s.downcase, { "name" => name, "category" => category }] }
+    scoped.each_with_object({}) do |lead, result|
+      slug = lead.origin.to_s[/\Apublic_form:(.+)\z/i, 1]&.strip.to_s.downcase
+      result[lead.id] = forms[slug] if slug.present? && forms.key?(slug)
+    end
+  end
+
+  # Nome do corretor que indicou (share link) por lead.
+  def lead_origin_share_names(leads, tenant:)
+    scoped = leads.select { |lead| lead.tenant_id == tenant.id && lead.shared_by_admin_user_id.present? }
+    return {} if scoped.empty?
+
+    names = AdminUser.where(tenant_id: tenant.id, id: scoped.map(&:shared_by_admin_user_id).uniq).pluck(:id, :name).to_h
+    scoped.each_with_object({}) do |lead, result|
+      result[lead.id] = names[lead.shared_by_admin_user_id] if names[lead.shared_by_admin_user_id].present?
+    end
+  end
+
+  # Composição para a ficha (um lead): resolve as consultas da coluna.
+  def lead_origin_for(lead, tenant:)
+    lead_origin_column(lead, tenant: tenant,
+      site_event: lead_origin_site_events([lead], tenant: tenant)[lead.id],
+      form_name: lead_table_meta_form_names([lead], tenant: tenant)[lead.id],
+      campaign_name: lead_origin_campaign_names([lead], tenant: tenant)[lead.id],
+      public_form: lead_origin_public_form_names([lead], tenant: tenant)[lead.id],
+      share_name: lead_origin_share_names([lead], tenant: tenant)[lead.id])
+  end
+
+  def lead_origin_column(lead, tenant:, site_event: nil, form_name: nil, campaign_name: nil, public_form: nil, share_name: nil)
     return unless lead.tenant_id == tenant.id
 
     info = lead.other_information.to_h
@@ -32,8 +67,10 @@ module Admin::LeadOriginHelper
     referral = entry["referral"].is_a?(Hash) ? entry["referral"] : {}
     ctwa = referral["source_type"] == "ad" || raw.match?(/\bctwa\b/i)
     site_event = nil unless site_event&.lead_id == lead.id
-    site = site_event.present? || lead.origin.to_s.casecmp("site").zero? ||
-      (lead.lead_type.to_s.match?(/\A(?:site|whatsapp_modal|whatsapp_click)\z/i) && lead.source_url.present?)
+    public_form_lead = lead.origin.to_s.match?(/\Apublic_form:/i)
+    share_lead = lead.origin.to_s.match?(/compartilh/i)
+    site = !public_form_lead && !share_lead && (site_event.present? || lead.origin.to_s.casecmp("site").zero? ||
+      (lead.lead_type.to_s.match?(/\A(?:site|whatsapp_modal|whatsapp_click)\z/i) && lead.source_url.present?))
     brand, label, subtype = lead_origin_identity(raw, ctwa: ctwa)
     if !ctwa && !imported && lead.attribution_channel == "meta_ads"
       brand, label = "meta", "Meta Ads"
@@ -42,6 +79,18 @@ module Admin::LeadOriginHelper
     elsif !ctwa && !imported && lead.attribution_channel == "linkedin_ads"
       brand, label = "linkedin", "LinkedIn Ads"
     end
+    # RD/Lovers identificam pelo canal de entrada, não pelo nome — a origem
+    # padrão é configurável por conta e pode ter sido renomeada.
+    if !imported && lead_origin_rd_entry?(info)
+      brand, label = "rdstation", "RD Station"
+    elsif !imported && lead_origin_lovers_entry?(info)
+      brand, label = "lovers", "Lovers"
+    end
+    portal = lead_origin_portal_name(info)
+    if portal && brand == "buildings"
+      brand, label = portal
+    end
+    webhook_lead = !imported && lead.origin.to_s.casecmp("webhook").zero?
     campaign = campaign_name.presence || info["meta_campaign_name"].presence || info["campaign_name"].presence || attribution["campaign_name"].presence || attribution["utm_campaign"].presence
     rd_campaign = info["rd_station_campaign_name"].presence || campaign
     rd_conversion = info["rd_station_conversion_identifier"].presence
@@ -80,17 +129,38 @@ module Admin::LeadOriginHelper
     if site
       brand = "site"
       label = "Site #{lead_origin_site_name(tenant)}"
-      subtype = nil
       page = lead_origin_page(site_event&.source_path.presence || lead.source_url)
       property = site_event&.habitation
       property = nil unless property&.tenant_id == tenant.id
+      subtype = if lead.lead_type.to_s.match?(/whatsapp/i)
+        property ? "WhatsApp do anúncio" : "WhatsApp do site"
+      else
+        property ? "Formulário do imóvel" : "Contato geral"
+      end
       context = [property ? "Imóvel ##{property.codigo}" : page && "Página: #{page}"].compact
       details << ["Página", page] if page
       details << ["Ação", lead.lead_type] if lead.lead_type.present?
       details << ["Conversão registrada em", l(site_event.occurred_at, format: "%d/%m/%Y %H:%M")] if site_event
+    elsif public_form_lead
+      form_info = public_form.is_a?(Hash) ? public_form : {}
+      slug = lead.origin.to_s[/\Apublic_form:(.+)\z/i, 1]&.strip
+      brand = "card-checklist"
+      label = "Formulário #{form_info['name'].presence || slug.to_s.tr('_-', ' ').strip.presence || 'do site'}"
+      subtype = form_info["category"].presence
+      page = lead_origin_page(lead.source_url)
+      context = [page && "Página: #{page}"].compact
+      details << ["Formulário", form_info["name"].presence || slug] if slug.present? || form_info["name"].present?
+      details << ["Página", page] if page
+    elsif share_lead
+      brand = "share"
+      label = "Indicação"
+      subtype = share_name.presence || lead.shared_by_admin_user&.name
+      context = ["Link do corretor"]
+      details << ["Corretor", subtype] if subtype.present?
     elsif brand == "whatsapp"
       subtype ||= "Campanha" if campaign
       subtype ||= "Importação" if imported
+      subtype ||= "Conversa"
       details << ["Destino", "WhatsApp"] if ctwa
       if context.empty? && imported
         context << "Importação · Origem informada: #{raw}"
@@ -122,6 +192,28 @@ module Admin::LeadOriginHelper
       details << ["Score Lovers", lovers_score]
       details << ["Cadastro Lovers", lovers_registration]
       details << ["Origem Lovers", lovers_source]
+    elsif portal || %w[zap vivareal imovelweb].include?(brand)
+      subtype ||= "Portal"
+      listing_id = info["origin_listing_id"].presence || info["portal_lead_id"].presence
+      context << "Anúncio: #{listing_id}" if listing_id
+      details << ["Portal", info["lead_origin"]] if info["lead_origin"].present?
+      details << ["Anúncio", listing_id] if listing_id
+    elsif imported && lead_origin_import_source(lead, info, attribution).blank?
+      brand = "download"
+      label = "Importação"
+      channel = external_lead_migration_channel_label(lead, info, attribution)
+      subtype = channel unless channel == "Integração externa"
+      seller = info["external_lead_seller"].is_a?(Hash) ? info["external_lead_seller"] : {}
+      context << "Vendedor externo: #{seller['name']}" if seller["name"].present?
+      details << ["Vendedor externo", seller["name"]] if seller["name"].present?
+    elsif webhook_lead
+      brand = "plug"
+      label = "Integração"
+      subtype = raw unless raw.casecmp("webhook").zero?
+      tags = Array(info["webhook_tags"]).map { |tag| tag.to_s.strip }.reject(&:blank?).uniq.first(3)
+      context.concat(tags)
+      details << ["Recebido por", info["inbound_webhook_user_name"]] if info["inbound_webhook_user_name"].present?
+      details << ["Tags", tags.join(", ")] if tags.any?
     elsif form
       context.unshift("Formulário: #{form}")
     elsif brand == "shop"
@@ -211,5 +303,49 @@ module Admin::LeadOriginHelper
     return if value.blank?
 
     value.to_s.gsub(/\bc2s(?:bot)?\b/i, "Importação")
+  end
+
+  # Canal detectado pelas chaves gravadas na entrada (não pelo nome da
+  # origem, que é configurável): RD grava rd_station_* e Lovers, lovers_*.
+  def lead_origin_rd_entry?(info)
+    info.keys.any? { |key| key.to_s.start_with?("rd_station_") }
+  end
+
+  def lead_origin_lovers_entry?(info)
+    info.keys.any? { |key| key.to_s.start_with?("lovers_") }
+  end
+
+  # Portal real dentro do payload Grupo OLX (leadOrigin). Retorna o par
+  # [brand, label] ou nil quando genérico/ausente (mantém Grupo OLX).
+  def lead_origin_portal_name(info)
+    name = info["lead_origin"].to_s.parameterize(separator: "_")
+    return if name.blank?
+
+    return ["zap", "ZAP Imóveis"] if name.start_with?("zap")
+    return ["vivareal", "VivaReal"] if name.include?("viva")
+    return ["imovelweb", "Imovelweb"] if name.include?("imovel")
+    return ["buildings", "OLX"] if name == "olx"
+
+    nil
+  end
+
+  # Fonte específica da importação (lead_source), sem o fallback de canal:
+  # quando ausente, a coluna mostra "Importação" com o canal como subtipo,
+  # em vez do nome técnico do fornecedor. Com fonte específica, mantém o
+  # comportamento atual (ex.: WhatsApp Orgânico importado).
+  def lead_origin_import_source(lead, info, attribution)
+    candidates = [
+      lead.attribution_source,
+      attribution.dig("lead_source", "name"),
+      attribution.dig("lead_source", "alias"),
+      info.dig("external_lead_payload", "attributes", "lead_source", "name"),
+      info.dig("external_lead_payload", "attributes", "lead_source", "alias"),
+      info.dig("attributes", "lead_source", "name"),
+      info.dig("attributes", "lead_source", "alias"),
+      info.dig("c2s_payload", "attributes", "lead_source", "name"),
+      info.dig("c2s_payload", "attributes", "lead_source", "alias")
+    ]
+
+    candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence
   end
 end

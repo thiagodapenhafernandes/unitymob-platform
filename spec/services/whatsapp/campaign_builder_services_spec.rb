@@ -263,6 +263,26 @@ RSpec.describe "WhatsApp campaign builder services" do
       file&.close!
     end
 
+    it "vincula destinatários da planilha pela mesma identificação configurada nos leads" do
+      lead = create(:lead, tenant: admin.tenant, phone: "11999990000", email: "maria@example.com", admin_user: admin)
+      file = Tempfile.new(["identificacao", ".csv"])
+      file.write("nome,telefone,email\nMaria,11988880000,MARIA@example.com\n")
+      file.rewind
+      upload = Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: "identificacao.csv")
+      campaign = WhatsappCampaign.new(name: "Identificação CSV", whatsapp_template: template,
+        created_by: admin, audience_mode: "spreadsheet")
+      campaign.audience_file.attach(upload)
+      campaign.save!
+      { "phone_or_email" => lead.id, "phone_and_email" => nil, "phone" => nil }.each do |mode, expected_id|
+        LeadSetting.instance(tenant: admin.tenant).update!(stickiness_match: mode)
+        result = Whatsapp::CampaignSpreadsheetImporter.call(campaign: campaign, materialize: true, uploaded_file: upload)
+        expect(result.errors).to be_empty
+        expect(campaign.campaign_recipients.first.reload.lead_id).to eq(expected_id)
+      end
+    ensure
+      file&.close!
+    end
+
     it "materializa CSV como destinatario da campanha sem criar lead" do
       file = Tempfile.new(["leads", ".csv"])
       file.write("nome,telefone,email,origem,status,tags,responsavel_email\nMaria Silva,11999990000,maria@example.com,importacao,Novo,\"['Produto', 'Premium' 05]\",#{admin.email}\n")

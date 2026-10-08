@@ -60,18 +60,28 @@ module Leads
     # Leads anteriores (não o atual) com corretor atribuído, aplicando match,
     # dono (atendido x qualquer atribuição) e janela de tempo.
     def base_scope
-      scope = @lead.tenant.leads.where.not(id: @lead.id).where.not(admin_user_id: nil)
-
-      scope = apply_match(scope)
+      scope = Intake.matches(@lead)
+      scope = scope.where.not(admin_user_id: nil) if scope
       return nil if scope.nil?
 
       scope = scope.where(status: @setting.attended_status_values) if @setting.owner_attended_only?
-      scope = scope.where("leads.updated_at >= ?", @setting.stickiness_window_days.to_i.days.ago) unless @setting.window_forever?
+      unless @setting.window_forever?
+        # Só alterações do responsável renovam o prazo; syncs não contam.
+        scope = scope.where(<<~SQL.squish, @setting.stickiness_window_days.to_i.days.ago)
+          GREATEST(leads.created_at,
+            (SELECT MAX(lead_audit_logs.created_at) FROM lead_audit_logs
+              WHERE lead_audit_logs.tenant_id = leads.tenant_id AND lead_audit_logs.lead_id = leads.id
+                AND lead_audit_logs.admin_user_id = leads.admin_user_id
+                AND lead_audit_logs.source = 'admin'
+                AND lead_audit_logs.action IN ('updated', 'status_changed', 'assigned')),
+            (SELECT MAX(lead_activities.created_at) FROM lead_activities
+            WHERE lead_activities.tenant_id = leads.tenant_id AND lead_activities.lead_id = leads.id
+              AND (lead_activities.kind IN ('accepted', 'distributed') OR
+                (lead_activities.kind = 'note' AND lead_activities.source_category = 'human'
+                  AND lead_activities.metadata ->> 'admin_user_id' = leads.admin_user_id::text)))) >= ?
+        SQL
+      end
       scope
-    end
-
-    def apply_match(scope)
-      ContactMatch.apply(scope, @lead, @setting.stickiness_match)
     end
 
     def eligible?(user)

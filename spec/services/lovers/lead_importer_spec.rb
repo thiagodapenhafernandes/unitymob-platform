@@ -25,8 +25,9 @@ RSpec.describe Lovers::LeadImporter do
     expect(result.lead.other_information["lovers_payload"]["Email"]).to eq("cliente-lovers@example.test")
   end
 
-  it "atualiza lead existente por e-mail" do
-    lead = create(:lead, tenant:, email: "cliente-lovers@example.test", phone: "47999993333", origin: "Antiga")
+  it "complementa lead existente por e-mail conforme identificação da conta" do
+    LeadSetting.instance(tenant: tenant).update!(stickiness_match: "phone_or_email")
+    lead = create(:lead, tenant:, name: "Nome original", email: "cliente-lovers@example.test", phone: "47999993333", origin: "Antiga")
 
     result = described_class.call(
       tenant:,
@@ -41,7 +42,8 @@ RSpec.describe Lovers::LeadImporter do
     expect(result).to be_success
     expect(result.status).to eq(:updated)
     expect(result.lead.id).to eq(lead.id)
-    expect(result.lead.reload.name).to eq("Cliente Atualizado")
-    expect(result.lead.origin).to eq("Lovers")
+    expect(result.lead.reload.name).to eq("Nome original")
+    expect(result.lead.origin).to eq("Antiga")
+    expect(result.lead.activities.find_by!(kind: "inquiry_complemented").metadata["inquiry_information"]["lovers_payload"]["Name"]).to eq("Cliente Atualizado")
   end
 end

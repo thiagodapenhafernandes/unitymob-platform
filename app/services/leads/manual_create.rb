@@ -9,8 +9,7 @@ module Leads
     def call
       # ponytail: serializa cadastros manuais da conta; lock por contato se houver contenção.
       @lead.tenant.with_lock do
-        matches = ContactMatch.apply(@lead.tenant.leads, @lead, "phone_or_email")
-        @duplicate = matches&.order(:id)&.first
+        @duplicate = Intake.find_existing(@lead)
         if duplicate
           @lead.errors.add(:base, "O telefone ou e-mail informado já está cadastrado nesta conta. Utilize o lead existente ou solicite acesso ao responsável.")
           false
