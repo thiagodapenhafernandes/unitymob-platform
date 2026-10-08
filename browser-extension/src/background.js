@@ -2,7 +2,7 @@ import { shareHistoryKey, readShareHistory, recordPropertyShare } from "./share-
 import { preparePropertyPhoto } from "./property-preview.js";
 import { catalogSearchParams } from "./catalog-request.js";
 import { authorizeInTab } from "./auth-tab.js";
-import { readWhatsAppContext, sendPropertyMessage, contextKey, validateContext } from "./context.js";
+import { readWhatsAppContext, readContactPhoto, sendPropertyMessage, contextKey, validateContext } from "./context.js";
 import { isWhatsAppTab, allowedOrigin, isPanelSender, createPairing, leadId } from "./security.js";
 import { openFromToolbar, openWhatsApp, configurePanel } from "./launcher.js";
 import { crmOrigin, crmOrigins, discoveryOrigin } from "./config.js";
@@ -231,13 +231,13 @@ async function handle(message) {
     case "me": {
       const connection = await session();
       const result = await authenticatedFetch(connection, "session");
-      await chrome.storage.local.set({ connection: { ...connection, ...(result.tenant?.id ? {tenantId: result.tenant.id} : {}), termsAccepted: result.capabilities.read_leads === true } });
+      await chrome.storage.local.set({ connection: { ...connection, ...(result.tenant?.id ? {tenantId: result.tenant.id} : {}), syncContactAvatars: result.capabilities.sync_contact_avatars === true, termsAccepted: result.capabilities.read_leads === true } });
       return { ...result, origin: connection.origin };
     }
     case "accept_terms": {
       const connection = await session();
       const result = await authenticatedFetch(connection, "session/terms", { method: "POST", body: { accepted: message.accepted === true, version: message.version, digest: message.digest } });
-      await chrome.storage.local.set({ connection: { ...connection, termsAccepted: true } });
+      await chrome.storage.local.set({ connection: { ...connection, syncContactAvatars: result.capabilities.sync_contact_avatars === true, termsAccepted: true } });
       return result;
     }
     case "send_properties": {
@@ -302,6 +302,24 @@ async function handle(message) {
         const phone = message.phone || context.phone;
         if (typeof phone !== "string" || !/^\+?\d[\d ()-]{6,38}$/.test(phone)) throw new Error("invalid_phone");
         result = await authenticatedFetch(connection, "leads/resolve", { method: "POST", body: { contact_phone: phone } });
+        if (connection.syncContactAvatars && context.phone && samePhone(phone, context.phone)) {
+          // Avatar failure must not interrupt the existing lead lookup.
+          try {
+            const key = `contact-avatar:${connection.origin}:${connection.tenantId}:${context.account}:${context.phone}`;
+            const checked = (await chrome.storage.local.get(key))[key] || 0;
+            if (Date.now() - checked > 24 * 60 * 60 * 1000) {
+              const status = await crmFetch(connection.origin, "conversations/avatar", {token:connection.token, method:"POST", body:{contact_phone:context.phone}});
+              if (status.refresh) {
+                const captured = await chrome.scripting.executeScript({target:{tabId:message.tabId}, world:"MAIN", func:readContactPhoto, args:[context]});
+                const image = captured.find(item => item.frameId === 0)?.result;
+                if ((await session()).token === connection.token && typeof image === "string" && image.length <= 175000 && contextKey(await snapshot(message.tabId)) === message.contextKey) {
+                  await crmFetch(connection.origin, "conversations/avatar", {token:connection.token, method:"POST", body:{contact_phone:context.phone, image}});
+                }
+              }
+              await chrome.storage.local.set({[key]:Date.now()});
+            }
+          } catch { /* Next lookup can retry without affecting the contact. */ }
+        }
       } else if (message.type === "search_properties") {
         if (typeof message.query !== "string" || message.query.length > 100 || !["venda", "locacao", "all"].includes(message.purpose)) throw new Error("invalid_fields");
         result = await authenticatedFetch(connection, `leads/${leadId(message.leadId)}/properties/search`, {method: "POST", body: {q: message.query, purpose: message.purpose, ...catalogSearchParams(message)}});

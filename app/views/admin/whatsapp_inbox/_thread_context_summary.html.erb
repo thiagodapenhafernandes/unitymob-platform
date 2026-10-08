@@ -1,5 +1,5 @@
 <div class="wa-inbox-thread__identity">
-  <span class="wa-inbox-thread__avatar"><%= wa_initials(conversation.display_name) %></span>
+  <%= ax_avatar(name: conversation.display_name, image: conversation.contact_avatar, class_name: "wa-inbox-thread__avatar") %>
   <div class="wa-inbox-thread__identity-copy">
     <strong><%= conversation.display_name %></strong>
     <span><%= format_phone(conversation.contact_phone) %></span>

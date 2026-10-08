@@ -9,6 +9,8 @@ class WhatsappConversation < ApplicationRecord
   has_many :messages, -> { order(:created_at) }, class_name: "WhatsappMessage", dependent: :destroy
   has_many :attendances, class_name: "WhatsappAttendance", dependent: :destroy
 
+  has_one_attached :contact_avatar
+
   normalize_phone_fields :contact_phone
 
   validates :contact_phone, uniqueness: { scope: :tenant_id }, allow_nil: true
@@ -78,6 +80,22 @@ class WhatsappConversation < ApplicationRecord
 
   def open_attendance
     attendances.open_now.first
+  end
+
+  def sync_contact_avatar!(encoded)
+    raise ArgumentError unless encoded.is_a?(String) && encoded.bytesize <= 175_000
+    bytes = Base64.strict_decode64(encoded)
+    raise ArgumentError unless bytes.bytesize <= 128.kilobytes && bytes.start_with?("\x89PNG\r\n\x1a\n".b)
+    raise ArgumentError unless bytes.byteslice(16, 8)&.unpack("N2") == [96, 96]
+    image = MiniMagick::Image.read(bytes)
+    raise ArgumentError unless image.valid? && image.type == "PNG" && image.width == 96 && image.height == 96
+    with_lock do
+      return if contact_avatar.attached? && contact_avatar.blob.checksum == Digest::MD5.base64digest(bytes)
+
+      contact_avatar.attach(io: StringIO.new(bytes), filename: "contact-avatar.png", content_type: "image/png")
+    end
+  ensure
+    image&.destroy!
   end
 
   def display_name

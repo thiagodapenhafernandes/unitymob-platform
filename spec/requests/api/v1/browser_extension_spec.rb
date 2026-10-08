@@ -36,6 +36,70 @@ RSpec.describe "Browser extension API", type: :request do
     create(:lead, tenant: account, admin_user: owner, phone: phone, skip_automatic_routing: true)
   end
 
+  describe "contact avatars" do
+    let!(:conversation) { tenant.whatsapp_conversations.create!(contact_phone: "+5511999999999", assigned_admin_user: user) }
+    let(:avatar) do
+      image = MiniMagick::Image.open(Rails.root.join("spec/fixtures/files/watermark.png"))
+      image.resize "96x96!"
+      image.format "png"
+      Base64.strict_encode64(image.to_blob)
+    ensure
+      image&.destroy!
+    end
+
+    def sync_avatar(image: nil, phone: conversation.contact_phone)
+      post "/api/v1/browser_extension/conversations/avatar", params: {contact_phone: phone, image: image}.compact, headers: headers, as: :json
+    end
+
+    it "stores a bounded image on the visible conversation, deduplicates and reports freshness" do
+      sync_avatar
+      expect(response.parsed_body).to eq("refresh" => true)
+      sync_avatar(image: avatar)
+      expect(response).to have_http_status(:ok)
+      expect(conversation.reload.contact_avatar).to be_attached
+      blob_id = conversation.contact_avatar.blob.id
+      sync_avatar(image: avatar)
+      expect(conversation.reload.contact_avatar.blob.id).to eq(blob_id)
+      sync_avatar
+      expect(response.parsed_body).to eq("refresh" => false)
+    end
+
+    it "requires current consent and inbox management permission" do
+      grant.update!(terms_version: "old")
+      sync_avatar(image: avatar)
+      expect(response).to have_http_status(:forbidden)
+      expect(conversation.reload.contact_avatar).not_to be_attached
+    end
+
+    it "does not sync with read-only inbox permission" do
+      user.profile.update!(permissions: {"leads" => {"view" => true, "scope" => "own"}, "whatsapp_inbox" => {"view" => true, "scope" => "own"}})
+      sync_avatar(image: avatar)
+      expect(response).to have_http_status(:forbidden)
+      expect(conversation.reload.contact_avatar).not_to be_attached
+    end
+
+    it "does not access another user's or tenant's conversation" do
+      conversation.update!(assigned_admin_user: create(:admin_user, tenant: tenant))
+      sync_avatar(image: avatar)
+      expect(response).to have_http_status(:not_found)
+      other = Tenant.create!(name: "Avatar other", slug: "avatar-other")
+      foreign = other.whatsapp_conversations.create!(contact_phone: "+5511888888888")
+      sync_avatar(image: avatar, phone: foreign.contact_phone)
+      expect(response).to have_http_status(:not_found)
+      expect(foreign.reload.contact_avatar).not_to be_attached
+    end
+
+    it "rejects invalid or oversized images without changing the saved photo" do
+      sync_avatar(image: avatar)
+      blob_id = conversation.reload.contact_avatar.blob.id
+      ["invalid", Base64.strict_encode64("<svg></svg>"), "A" * 175_001].each do |invalid|
+        sync_avatar(image: invalid)
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(conversation.reload.contact_avatar.blob.id).to eq(blob_id)
+      end
+    end
+  end
+
   it "exchanges once and never stores the raw credential" do
     grant
     expect do

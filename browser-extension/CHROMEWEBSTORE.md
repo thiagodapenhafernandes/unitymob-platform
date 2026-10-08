@@ -130,3 +130,9 @@ TBD
 ### Upload fix — 2026-09-11
 
 The failed upload happened because a release ZIP contained the manifest inside a version folder and included a manifest `key` field. The 0.4.13 store ZIP now has `manifest.json` at the ZIP root, excludes `key`, excludes macOS metadata files, and keeps the published extension callback host `anpohhipfkehheinckhpgbphcibifocm.chromiumapp.org`.
+
+## 0.4.25 — 2026-10-08
+
+Sincroniza a foto de perfil disponível do contato individual aberto com o atendimento permitido na conta conectada. A imagem é armazenada no CRM e exibida na lista e no cabeçalho, com iniciais quando indisponível. Não importa agenda nem mensagens. Requer aceite atualizado dos termos e permissão de gerenciar o inbox. Sem novas permissões de navegador.
+
+A declaração de privacidade deve incluir a foto de perfil do contato entre os dados pessoais transmitidos e armazenados pela imobiliária. Validar a captura no WhatsApp Web real antes da publicação na loja.

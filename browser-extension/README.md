@@ -173,3 +173,11 @@ Os controles vivem em `app/javascript/lib/catalog_controls.js` e o estilo compar
 A API consulta `BrowserExtension::PropertyCatalog` sobre o escopo comercial autorizado da imobiliária. Opções, totais, filtros e paginação (20 por página) vêm do servidor. Meus considera o usuário captador e suas atribuições. A ordenação compartilha as definições do catálogo administrativo. Os filtros administrativos condicionais não são expostos pela extensão. Vincular e enviar continuam exigindo as confirmações e permissões originais.
 
 Para ativar fora da prévia, publique primeiro o backend com o novo contrato do catálogo e depois distribua o pacote da extensão. O build padrão continua apontando para `https://dev.unitymob.com.br`; não é um pacote de produção. A prévia agora usa este mesmo layout e o adaptador local apenas para dados e operações simuladas.
+
+## Fotos de contato — 0.4.25
+
+Após o aceite dos termos v7 e com permissão de gerenciar o inbox, a resolução do contato aberto tenta sincronizar sua foto disponível. A consulta manual de outro telefone não captura foto. O backend busca somente conversas existentes, visíveis e pertencentes à conta da credencial. Imagens são reduzidas para PNG de 96×96, limitadas a 128 KiB e validadas no servidor. Não há download de URL pelo backend, importação de agenda nem criação de conversa por essa sincronização.
+
+A tentativa é limitada a uma por contato, conta e sessão WhatsApp a cada 24 horas. Imagem indisponível ou erro preserva a foto já salva; sem foto salva, aparecem iniciais. Reabra ou atualize o inbox para ver a imagem sincronizada. Alterações de privacidade no WhatsApp não removem automaticamente a cópia previamente salva no CRM.
+
+Publicar o backend antes de distribuir a extensão 0.4.25. Validar em WhatsApp Web autenticado: abrir contato com foto e atendimento existente, conferir lista e cabeçalho; trocar de contato durante captura; testar contato sem foto e usuário sem permissão de gerenciar inbox. Os testes automatizados usam mocks e não confirmam disponibilidade da foto na versão atual do WhatsApp Web.

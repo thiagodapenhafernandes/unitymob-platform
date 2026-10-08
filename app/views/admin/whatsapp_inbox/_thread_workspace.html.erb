@@ -75,7 +75,7 @@
       <div class="wa-forward-modal__list" data-wa-thread-target="forwardList">
         <% current_tenant.whatsapp_conversations.recent.where.not(id: conversation.id).limit(40).each do |target| %>
           <button type="button" data-wa-forward-target-id="<%= target.id %>" data-name="<%= target.display_name.to_s.downcase %>">
-            <span class="wa-forward-modal__avatar"><%= wa_initials(target.display_name) %></span>
+            <%= ax_avatar(name: target.display_name, image: target.contact_avatar, class_name: "wa-forward-modal__avatar") %>
             <span class="wa-forward-modal__copy">
               <strong><%= target.display_name %></strong>
               <span><%= target.contact_phone.presence || target.business_scoped_user_id %></span>

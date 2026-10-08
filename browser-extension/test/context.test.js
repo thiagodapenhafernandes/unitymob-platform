@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readWhatsAppContext, sendPropertyMessage, validateContext, contextKey } from "../src/context.js";
+import { readWhatsAppContext, readContactPhoto, sendPropertyMessage, validateContext, contextKey } from "../src/context.js";
 
 function fixture({ chatId = "5511999999999@c.us", phone = "5511999999999", contact = { name: "Contato salvo", pushname: "Perfil" }, resolve } = {}) {
   const wpp = {
@@ -163,4 +163,40 @@ test("uses the prepared thumbnail without external preview services", async () =
   assert.deepEqual(result,{sent:true});
   assert.equal(raw.thumbnail,"direct-photo");
   assert.equal(raw.canonicalUrl,"https://example.com/imovel/1");
+});
+
+ test("photo capture skips unavailable photos and changed conversations", async () => {
+  const wpp = fixture();
+  const context = await readWhatsAppContext();
+  wpp.contact.getProfilePictureUrl = async () => null;
+  assert.equal(await readContactPhoto(context), null);
+  wpp.contact.getProfilePictureUrl = () => assert.fail("changed chat must not fetch");
+  wpp.chat.getActiveChat = () => ({id:"other@c.us"});
+  assert.equal(await readContactPhoto(context), null);
+});
+
+test("photo capture rejects URLs outside WhatsApp before fetching", async () => {
+  const wpp = fixture();
+  const context = await readWhatsAppContext();
+  for (const url of ["https://evil.example/photo", "http://pps.whatsapp.net/photo", "https://whatsapp.net.evil.example/photo"]) {
+    wpp.contact.getProfilePictureUrl = async () => url;
+    assert.equal(await readContactPhoto(context), null);
+  }
+});
+
+test("photo capture returns only the resized image and closes bitmap", async () => {
+  const wpp = fixture();
+  const context = await readWhatsAppContext();
+  wpp.contact.getProfilePictureUrl = async () => "https://pps.whatsapp.net/photo";
+  const original = {fetch:global.fetch, createImageBitmap:global.createImageBitmap, OffscreenCanvas:global.OffscreenCanvas};
+  let closed = false;
+  global.fetch = async () => new Response(new Blob(["photo"], {type:"image/jpeg"}), {headers:{"content-type":"image/jpeg"}});
+  global.createImageBitmap = async () => ({width:320, height:320, close(){closed=true;}});
+  global.OffscreenCanvas = class {
+    constructor(width,height){ assert.equal(width,96); assert.equal(height,96); }
+    getContext(){ return {drawImage(){}}; }
+    async convertToBlob(){ return new Blob(["small-png"]); }
+  };
+  try { assert.equal(await readContactPhoto(context), btoa("small-png")); assert.equal(closed,true); }
+  finally { Object.assign(global, original); }
 });

@@ -8,6 +8,6 @@ Rails.application.config.filter_parameters += [
   :passw, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn,
   :feed_token, :webhook_secret, :account_id, :publisher_id,
   :whatsapp, :entry, :changes, :contacts, :messages, :statuses,
-  :verifier, :challenge, :contact_phone, :expected_email,
+  :image, :verifier, :challenge, :contact_phone, :expected_email,
   /\A(?:note\.body|lead\.(?:name|email|phone)|task\.title)\z/
 ]
