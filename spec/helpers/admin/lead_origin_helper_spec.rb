@@ -259,4 +259,51 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
       )
     end.not_to raise_error
   end
+
+  it "dá preferência à Meta sobre o carimbo RD, com RD como contexto de conversão" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "RD Station",
+      attribution_channel: "meta_ads", attribution_source: "meta",
+      other_information: {
+        "rd_station_event_type" => "WEBHOOK.CONVERTED",
+        "rd_station_conversion_identifier" => "Form - Refuge",
+        "rd_station_campaign_name" => "[KD] Refuge [Leads]",
+        "meta_form_name" => "Form - Refuge"
+      })
+
+    data = origin(lead)
+
+    expect(data).to include(label: "Meta Ads", subtype: "Formulários")
+    expect(data[:complements]).to include("Conversão RD: Form - Refuge", "Campanha: [KD] Refuge [Leads]")
+    expect(data[:details]).to include(["Conversão RD", "Form - Refuge"], ["Campanha RD", "[KD] Refuge [Leads]"])
+  end
+
+  it "dá preferência ao Instagram sobre o carimbo RD" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "RD Station",
+      attribution_channel: "Internet", attribution_source: "Instagram Leads",
+      other_information: {
+        "rd_station_event_type" => "WEBHOOK.CONVERTED",
+        "rd_station_conversion_identifier" => "Form - Refuge"
+      })
+
+    data = origin(lead)
+
+    expect(data).to include(label: "Instagram")
+    expect(data[:complements]).to include("Conversão RD: Form - Refuge")
+  end
+
+  it "mantém RD Station como rótulo sem evidência Meta (guardrail)" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "RD Station",
+      other_information: {
+        "rd_station_event_type" => "WEBHOOK.CONVERTED",
+        "rd_station_conversion_identifier" => "Form - Refuge",
+        "rd_station_campaign_name" => "[KD] Refuge [Leads]"
+      })
+
+    data = origin(lead)
+
+    expect(data).to include(label: "RD Station", subtype: "Conversão")
+    expect(data[:complements]).to include(
+      "Campanha: [KD] Refuge [Leads]", "Conversão: Form - Refuge"
+    )
+  end
 end
