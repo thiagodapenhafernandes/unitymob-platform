@@ -69,9 +69,12 @@ module Leads
 
       candidates = rule.candidates_filtered_by_checkin
       sticky_user = Leads::StickyAssignment.corretor_for(@inquiry || @lead, rule, candidates: candidates) unless @lead.contingency_forwarded_at.present? && !@inquiry
+      # Inquiry duplicada dentro do pocket: o dono mantém o lead qualquer que
+      # seja o stickiness global — a consulta complementa, nunca gira a fila
+      # (girar aqui tomava o lead do corretor segundos depois de entregar).
+      # Fidelização segue intacta: lead velho está fora do pocket e redistribui.
       if @inquiry && (!rule.require_active_checkin? || candidates.present?) && operational? && @lead.admin_user&.active? &&
-          ((sticky_user&.id == @lead.admin_user_id) ||
-            (!LeadSetting.instance(tenant: tenant).stickiness_enabled? && InquiryComplement.keeps_owner?(@lead, @inquiry)))
+          ((sticky_user&.id == @lead.admin_user_id) || InquiryComplement.keeps_owner?(@lead, @inquiry))
         return :kept
       end
 

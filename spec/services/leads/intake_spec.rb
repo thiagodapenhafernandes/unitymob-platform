@@ -96,6 +96,105 @@ RSpec.describe Leads::Intake do
     expect(result.external_lead_id).to eq("c2s-primeiro")
     expect(described_class.find_received_event(tenant: tenant, reference: "c2s:c2s-segundo")).to eq(original)
   end
+
+  context "duplicata dentro do pocket (regressão: fila girava em segundos)" do
+    let(:profile) { tenant.profiles.find_by!(key: "agent") }
+    let!(:agent_a) { create(:admin_user, tenant: tenant, profile: profile, active: true) }
+    let!(:agent_b) { create(:admin_user, tenant: tenant, profile: profile, active: true) }
+    let!(:rule) do
+      rule = create(:distribution_rule, tenant: tenant, pocket_active: true, pocket_time: 20,
+        require_active_checkin: false)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_a)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_b)
+      rule
+    end
+
+    before { LeadSetting.instance(tenant: tenant).update!(stickiness_enabled: true) }
+
+    def distribute_fresh_lead
+      lead = described_class.create!(tenant: tenant, name: "Cliente", phone: phone,
+        origin: "Facebook Lead Ads", other_information: { "meta_leadgen_id" => "meta-#{SecureRandom.hex(4)}" })
+      Leads::DistributorService.distribute_to(lead, rule)
+      lead.reload
+    end
+
+    def rd_inquiry(identifier: "Form - Teste", event_ts: "2026-10-09T10:25:19.839-03:00", uuid: "uuid-#{SecureRandom.hex(4)}")
+      tenant.leads.new(name: "Cliente", phone: phone, origin: "RD Station", lead_type: "rd_station",
+        other_information: {
+          "rd_station_contact_uuid" => uuid,
+          "rd_station_conversion_identifier" => identifier,
+          "rd_station_payload" => { "event_timestamp" => event_ts }
+        })
+    end
+
+    it "mantém o dono e só complementa quando a duplicata chega com stickiness ligado" do
+      lead = distribute_fresh_lead
+      owner = lead.admin_user_id
+
+      result = described_class.receive!(rd_inquiry, distribution_rule: rule)
+
+      expect(result.id).to eq(lead.id)
+      expect(result.reload.admin_user_id).to eq(owner)
+      expect(result.status).to eq("Aguardando Aceite")
+      expect(result.activities.where(kind: "distributed").count).to eq(1)
+      expect(result.activities.where(kind: "inquiry_complemented").count).to eq(1)
+    end
+
+    it "redistribui a duplicata fora do pocket (fidelização preservada)" do
+      lead = distribute_fresh_lead
+      lead.activities.where(kind: "distributed").update_all(created_at: 1.hour.ago)
+
+      result = described_class.receive!(rd_inquiry, distribution_rule: rule)
+
+      expect(result.id).to eq(lead.id)
+      expect(result.reload.admin_user_id).not_to eq(lead.admin_user_id)
+      expect(result.activities.where(kind: "distributed").count).to eq(2)
+    end
+
+    it "pula redelivery do mesmo evento RD sem complementar de novo" do
+      lead = distribute_fresh_lead
+      payload = { "rd_station_contact_uuid" => "uuid-fixo", "rd_station_conversion_identifier" => "Form - X",
+        "rd_station_payload" => { "event_timestamp" => "2026-10-09T10:25:19.839-03:00" } }
+      first = tenant.leads.new(name: "Cliente", phone: phone, origin: "RD Station",
+        lead_type: "rd_station", other_information: payload)
+      described_class.receive!(first, distribution_rule: rule)
+      reference = described_class.event_reference(first)
+      expect(reference).to start_with("rd_station:uuid-fixo:")
+
+      expect {
+        result = described_class.receive!(
+          tenant.leads.new(name: "Cliente", phone: phone, origin: "RD Station",
+            lead_type: "rd_station", other_information: payload), distribution_rule: rule)
+        expect(result.id).to eq(lead.id)
+      }.not_to change { lead.activities.where(kind: "inquiry_complemented").count }
+      expect(lead.activities.where(kind: "distributed").count).to eq(1)
+      expect(described_class.find_received_event(tenant: tenant, reference: reference).id).to eq(lead.id)
+    end
+
+    it "complementa segundo evento RD distinto sem girar a fila" do
+      lead = distribute_fresh_lead
+      described_class.receive!(rd_inquiry(identifier: "Form - A", uuid: "uuid-mesmo"), distribution_rule: rule)
+      result = described_class.receive!(
+        rd_inquiry(identifier: "Form - B", event_ts: "2026-10-09T11:00:00.000-03:00", uuid: "uuid-mesmo"),
+        distribution_rule: rule)
+
+      expect(result.reload.admin_user_id).to eq(lead.admin_user_id)
+      expect(lead.activities.where(kind: "distributed").count).to eq(1)
+      expect(lead.activities.where(kind: "inquiry_complemented").count).to eq(2)
+    end
+  end
+
+  describe ".rd_station_reference" do
+    it "monta identidade estável e tolera payload ausente ou malformado" do
+      info = { "rd_station_contact_uuid" => "u1", "rd_station_conversion_identifier" => "F",
+        "rd_station_payload" => { "event_timestamp" => "2026-10-09T10:25:19.839-03:00" } }
+      expect(described_class.rd_station_reference(info)).to eq("u1:F:2026-10-09T10:25:19.839-03:00")
+      expect(described_class.rd_station_reference({ "rd_station_contact_uuid" => "u1" })).to eq("u1")
+      expect(described_class.rd_station_reference({})).to be_nil
+      expect(described_class.rd_station_reference({ "rd_station_contact_uuid" => "u1",
+        "rd_station_payload" => "lixo" })).to eq("u1")
+    end
+  end
 end
 
 RSpec.describe "Entrada simultânea de leads", type: :model do

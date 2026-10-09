@@ -49,8 +49,25 @@ module Leads
       {
         "meta" => info["meta_leadgen_id"], "olx" => info["portal_lead_id"],
         "linkedin" => info["linkedin_response_id"], "tiktok" => info["tiktok_lead_id"],
-        "c2s" => lead.external_lead_id, "whatsapp" => info.dig("whatsapp_entry", "message_id")
+        "c2s" => lead.external_lead_id, "whatsapp" => info.dig("whatsapp_entry", "message_id"),
+        "rd_station" => rd_station_reference(info)
       }.find { |_provider, id| id.present? }&.join(":")
+    end
+
+    # Identidade estável do evento RD: o mesmo payload reentregue gera a mesma
+    # referência (redelivery pula no already_received); conversão distinta
+    # (outro contato, formulário ou momento) gera referência nova e complementa.
+    # O lookup é pelo ingress_reference guardado no inquiry_complemented
+    # (find_received_event já cobre qualquer provider por essa chave).
+    def self.rd_station_reference(info)
+      uuid = info["rd_station_contact_uuid"].presence
+      return if uuid.blank?
+
+      payload = info["rd_station_payload"]
+      payload = payload.respond_to?(:to_h) ? payload.to_h : {}
+      event_ts = payload["event_timestamp"].presence || payload["timestamp"].presence ||
+        payload[:event_timestamp].presence || payload[:timestamp].presence
+      [uuid, info["rd_station_conversion_identifier"].presence, event_ts].compact.join(":")
     end
 
     def self.receive!(inquiry, distribution_rule: nil)
