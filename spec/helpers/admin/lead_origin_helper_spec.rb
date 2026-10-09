@@ -48,7 +48,7 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(origin(lead)).to include(label: "WhatsApp", subtype: "Conversa", complements: [])
   end
 
-  it "diferencia os subtipos do site: formulário, WhatsApp do anúncio e contato geral" do
+  it "diferencia os subtipos do site e separa origem da conversão" do
     property = create(:habitation, tenant: tenant, codigo: "9001")
 
     form_lead = create(:lead, tenant: tenant, origin: "Site")
@@ -59,10 +59,50 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     wa_lead = create(:lead, tenant: tenant, origin: "Google Ads", lead_type: "whatsapp_modal", source_url: "https://site.test/imovel/9001")
     SeoConversionEvent.create!(lead: wa_lead, habitation: property, event_type: "lead_created", occurred_at: Time.current, source_path: "/imovel/9001")
     wa_data = origin(wa_lead, site_event: helper.lead_origin_site_events([wa_lead], tenant: tenant)[wa_lead.id])
-    expect(wa_data).to include(brand: "site", subtype: "WhatsApp do anúncio")
+    expect(wa_data).to include(brand: "google", label: "Google Ads")
+    expect(wa_data[:complements]).to include("Conversão: Site · WhatsApp do anúncio · Imóvel #9001")
 
     contact_lead = build_stubbed(:lead, tenant: tenant, origin: "Site", source_url: "https://site.test/contato")
     expect(origin(contact_lead)).to include(brand: "site", subtype: "Contato geral", complements: ["Página: /contato"])
+  end
+
+  it "separa origem Instagram da conversão no site com imóvel do anúncio" do
+    property = create(:habitation, tenant: tenant, codigo: "1811")
+    lead = create(:lead, tenant: tenant, origin: "Site", lead_type: "whatsapp_modal",
+      source_url: "https://site.test/imoveis/apartamento-1811", attribution_source: "instagram")
+    SeoConversionEvent.create!(lead: lead, habitation: property, event_type: "lead_created", occurred_at: Time.current, source_path: "/imoveis/apartamento-1811")
+    data = origin(lead, site_event: helper.lead_origin_site_events([lead], tenant: tenant)[lead.id])
+
+    expect(data).to include(brand: "instagram", label: "Instagram")
+    expect(data[:complements]).to include("Conversão: Site · WhatsApp do anúncio · Imóvel #1811")
+    expect(data[:details]).to include(["Origem registrada", "instagram"])
+  end
+
+  it "separa indicação do corretor da conversão no site" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Compartilhamento Corretor",
+      lead_type: "site", source_url: "https://site.test/contato")
+    data = origin(lead, share_name: "Corretora Ana")
+
+    expect(data).to include(brand: "share", label: "Indicação", subtype: "Corretora Ana")
+    expect(data[:complements]).to include("Conversão: Site · Contato geral", "Página: /contato")
+  end
+
+  it "separa origem da importação como conversão" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Migração externa",
+      attribution_channel: "Internet", attribution_source: "Instagram Leads")
+    data = origin(lead)
+
+    expect(data).to include(brand: "instagram", label: "Instagram")
+    expect(data[:complements]).to include("Conversão: Importação · Migração")
+  end
+
+  it "marca importação de planilha como conversão" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Migração externa",
+      attribution_channel: "Importado da planilha", attribution_source: "Google")
+    data = origin(lead)
+
+    expect(data).to include(label: "Google")
+    expect(data[:complements]).to include("Conversão: Importação · Planilha")
   end
 
   it "identifica o portal real do payload Grupo OLX com fallback genérico" do
@@ -146,8 +186,8 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     event = SeoConversionEvent.create!(lead: lead, habitation: original, event_type: "lead_created", occurred_at: 1.day.ago, source_path: "/imovel/4148?token=secret")
     lead.update_column(:property_id, create(:habitation, tenant: tenant).id)
     data = origin(lead, site_event: helper.lead_origin_site_events([lead], tenant: tenant)[lead.id])
-    expect(data[:brand]).to eq("site")
-    expect(data[:complements]).to eq(["Imóvel #4148"])
+    expect(data).to include(brand: "google", label: "Google Ads")
+    expect(data[:complements]).to eq(["Conversão: Site · WhatsApp do anúncio · Imóvel #4148"])
     expect(data[:details]).to include(["Origem registrada", "Google Ads"], ["Página", "/imovel/4148"])
     expect(data.to_s).not_to include("secret")
     expect(event.reload.habitation_id).to eq(original.id)
@@ -163,12 +203,12 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(origin(lead, site_event: event)[:label]).to eq("ZAP Imóveis")
     expect(helper.lead_origin_column(lead, tenant: foreign)).to be_nil
     event.update!(lead: lead, habitation: create(:habitation, tenant: foreign), source_path: "/contato")
-    expect(origin(lead, site_event: event)[:complements]).to eq(["Página: /contato"])
+    expect(origin(lead, site_event: event)[:complements]).to eq(["Conversão: Site · Contato geral", "Página: /contato"])
   end
 
   it "mostra a página do modal sem usar o imóvel atualmente vinculado" do
     lead = build_stubbed(:lead, tenant: tenant, origin: "Google Ads", lead_type: "whatsapp_modal", source_url: "https://site.test/contato?email=secret", property_id: 123)
-    expect(origin(lead)).to include(brand: "site", complements: ["Página: /contato"])
+    expect(origin(lead)).to include(brand: "google", complements: ["Conversão: Site · WhatsApp do site", "Página: /contato"])
     lead.origin = "Internet"
     lead.lead_type = nil
     expect(origin(lead)[:brand]).not_to eq("site")
@@ -273,7 +313,7 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     data = origin(lead)
 
     expect(data).to include(label: "Meta Ads", subtype: "Formulários")
-    expect(data[:complements]).to include("Conversão RD: Form - Refuge", "Campanha: [KD] Refuge [Leads]")
+    expect(data[:complements]).to include("Conversão: RD Station · Form - Refuge", "Campanha: [KD] Refuge [Leads]")
     expect(data[:details]).to include(["Conversão RD", "Form - Refuge"], ["Campanha RD", "[KD] Refuge [Leads]"])
   end
 
@@ -288,7 +328,7 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     data = origin(lead)
 
     expect(data).to include(label: "Instagram")
-    expect(data[:complements]).to include("Conversão RD: Form - Refuge")
+    expect(data[:complements]).to include("Conversão: RD Station · Form - Refuge")
   end
 
   it "mantém RD Station como rótulo sem evidência Meta (guardrail)" do

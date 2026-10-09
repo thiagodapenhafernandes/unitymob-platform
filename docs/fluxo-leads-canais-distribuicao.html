@@ -173,10 +173,10 @@
 <section class="phase p0" id="fase0">
   <div class="phase-head"><div class="badge">0</div>
     <div><h2>Canais de entrada — de onde o lead pode vir</h2>
-    <p class="sub">16 portas de entrada em 12 famílias. Todas desembocam no mesmo funil de recepção (fase 1). Na listagem e na ficha, cada lead mostra <b>Canal · Subtipo</b> — a mesma taxonomia abaixo.</p></div>
+    <p class="sub">16 portas de entrada em 12 famílias. Todas desembocam no mesmo funil de recepção (fase 1). Na listagem e na ficha, cada lead mostra <b>Canal · Subtipo</b> — a mesma taxonomia abaixo — mais a linha <b>Conversão: …</b> quando o lugar da conversão (site, RD, importação) difere da origem: a origem nunca é escondida.</p></div>
   </div>
   <div class="grid cols-2">
-    <div class="card"><b class="t">Site {conta}</b><div class="d">Tudo que nasce no site da imobiliária, com o imóvel/página da conversão.</div><span class="tag t-info">Formulário do imóvel</span><span class="tag t-info">WhatsApp do anúncio</span><span class="tag t-info">WhatsApp do site</span><span class="tag t-info">Contato geral</span></div>
+    <div class="card"><b class="t">Site {conta}</b><div class="d">Rótulo só quando o site é a origem de fato. Com origem externa (Google, Instagram, indicação…), a origem vira o rótulo e o site aparece como conversão, com imóvel/página.</div><span class="tag t-info">Formulário do imóvel</span><span class="tag t-info">WhatsApp do anúncio</span><span class="tag t-info">WhatsApp do site</span><span class="tag t-info">Contato geral</span></div>
     <div class="card"><b class="t">Formulário {nome}</b><div class="d">Formulários e landing pages (anuncie, trabalhe conosco, contato…). Mostra o nome do formulário e a categoria.</div><span class="tag t-info">Subtipo: categoria</span></div>
     <div class="card"><b class="t">Portais</b><div class="d">Contatos vindos dos portais, com o imóvel anunciado. Cada entrega tem código único: reenvio não duplica.</div><span class="tag t-info">ZAP</span><span class="tag t-info">VivaReal</span><span class="tag t-info">Imovelweb</span><span class="tag t-info">OLX</span><span class="tag t-gray">Grupo OLX (genérico)</span></div>
     <div class="card"><b class="t">WhatsApp</b><div class="d">Pessoa que chama o número da imobiliária, clica em anúncio que abre conversa ou responde a um disparo.</div><span class="tag t-info">Conversa</span><span class="tag t-info">CTWA (anúncio)</span><span class="tag t-info">Campanha {nome}</span></div>
@@ -186,7 +186,7 @@
     <div class="card"><b class="t">RD Station</b><div class="d">Conversões do RD via webhook exclusivo da conta, com campanha, conversão e origem/mídia. Quando o lead nasceu na Meta, o rótulo é Meta Ads e o RD aparece como contexto de conversão (guardrail + campanhas).</div><span class="tag t-info">Conversão</span><span class="tag t-info">Oportunidade</span></div>
     <div class="card"><b class="t">Lovers</b><div class="d">Contatos sincronizados da base LeadLovers, com status, score e origem original.</div><span class="tag t-info">Importação</span></div>
     <div class="card"><b class="t">Integração</b><div class="d">Webhook genérico com token para sistemas externos (site próprio, ERP, robôs). Mostra as tags recebidas e quem recebeu.</div><span class="tag t-info">Subtipo: tags</span></div>
-    <div class="card"><b class="t">Importação</b><div class="d">Leads vindos de outro CRM ou de carga de base. Preserva fonte original, vendedor externo e dados originais.</div><span class="tag t-info">Subtipo: fonte original</span></div>
+    <div class="card"><b class="t">Importação</b><div class="d">Leads vindos de outro CRM ou de carga de base. Com fonte conhecida, a fonte é o rótulo e a importação (planilha/migração) aparece como conversão; sem fonte, Importação é o rótulo.</div><span class="tag t-info">Subtipo: fonte original</span></div>
     <div class="card"><b class="t">Indicação / Manual / Showroom</b><div class="d">Cliente que chega pelo link pessoal do corretor (já nasce com dono e pula o rodízio), cadastro do atendente no CRM ou visita à loja.</div><span class="tag t-info">Indicação {corretor}</span><span class="tag t-info">Cadastro manual</span><span class="tag t-info">Showroom</span></div>
   </div>
   <details><summary>Detalhe técnico: o que acontece antes da recepção, em cada canal</summary>
