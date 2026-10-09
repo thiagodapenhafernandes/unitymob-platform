@@ -2007,6 +2007,10 @@
             notice_detail: @lead_whatsapp_notice_detail %>
     <% end %>
 
+    <% if @lead.instagram_account_id.present? %>
+      <%= render "admin/leads/instagram_thread", lead: @lead %>
+    <% end %>
+
     <%# ===== Bloco: Inteligência de Interesse (navegação anterior à conversão) ===== %>
     <%= turbo_frame_tag dom_id(@lead, :interest_intelligence),
           src: interest_intelligence_admin_lead_path(@lead),
