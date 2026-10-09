@@ -373,3 +373,44 @@ RSpec.describe Admin::ComercialHelper, type: :helper do
     end
   end
 end
+
+RSpec.describe Admin::ComercialHelper, type: :helper do
+  describe "#lead_display_origin" do
+    it "não quebra quando channel/lead_source da atribuição são strings (formato do rastreamento)" do
+      lead = build_stubbed(:lead,
+        origin: "Site",
+        other_information: { "source" => "external_lead_migration" },
+        attribution_data: { "channel" => "google_ads", "lead_source" => "c2s" })
+
+      expect { helper.lead_display_origin(lead) }.not_to raise_error
+      expect(helper.lead_display_origin(lead)).to eq("Site")
+    end
+
+    it "não quebra quando payloads aninhados são strings" do
+      lead = build_stubbed(:lead,
+        origin: "Migração externa",
+        other_information: { "attributes" => "c2s", "webhook_payload" => "ping", "c2s_payload" => "ping" },
+        attribution_data: { "lead_source" => "c2s" })
+
+      expect { helper.lead_display_origin(lead) }.not_to raise_error
+    end
+
+    it "não quebra o rótulo de canal com payloads aninhados em formato string" do
+      lead = build_stubbed(:lead,
+        origin: "Migração externa",
+        other_information: { "attributes" => "c2s" },
+        attribution_data: { "channel" => "google_ads" })
+
+      expect { helper.external_lead_migration_channel_label(lead, lead.other_information, lead.attribution_data) }.not_to raise_error
+    end
+  end
+
+  describe "#hash_dig" do
+    it "navega por hashes e devolve nil quando um nível não é hash" do
+      expect(helper.hash_dig({ "a" => { "b" => "x" } }, "a", "b")).to eq("x")
+      expect(helper.hash_dig({ "a" => "x" }, "a", "b")).to be_nil
+      expect(helper.hash_dig({ "a" => nil }, "a", "b")).to be_nil
+      expect(helper.hash_dig(nil, "a")).to be_nil
+    end
+  end
+end

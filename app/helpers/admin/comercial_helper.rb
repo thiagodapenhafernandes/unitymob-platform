@@ -321,6 +321,14 @@ module Admin::ComercialHelper
     parts.compact_blank.uniq.join(" · ")
   end
 
+  # Navega payloads jsonb (other_information/attribution_data) sem presumir o
+  # formato: o rastreamento grava channel/lead_source como String ("google_ads")
+  # enquanto a migração externa usa Hash ({name, alias}). Nível que não é
+  # Hash devolve nil em vez de quebrar a página com TypeError.
+  def hash_dig(hash, *keys)
+    keys.reduce(hash) { |memo, key| memo.is_a?(Hash) ? memo[key] : nil }
+  end
+
   def lead_display_origin(lead, info = nil, attribution = nil)
     info ||= lead.other_information.is_a?(Hash) ? lead.other_information : {}
     attribution ||= lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
@@ -346,11 +354,11 @@ module Admin::ComercialHelper
       info["source"],
       info["origem"],
       info["origin"],
-      info.dig("webhook_payload", "source_name"),
-      info.dig("webhook_payload", "lead_source"),
-      info.dig("webhook_payload", "origem"),
-      info.dig("webhook_payload", "source"),
-      info.dig("webhook_payload", "utm_source")
+      hash_dig(info, "webhook_payload", "source_name"),
+      hash_dig(info, "webhook_payload", "lead_source"),
+      hash_dig(info, "webhook_payload", "origem"),
+      hash_dig(info, "webhook_payload", "source"),
+      hash_dig(info, "webhook_payload", "utm_source")
     ]
 
     candidates.find { |value| useful_generic_origin?(value) }.to_s.squish.presence
@@ -364,9 +372,9 @@ module Admin::ComercialHelper
       info["channel"],
       info["canal"],
       info["lead_channel"],
-      info.dig("webhook_payload", "channel"),
-      info.dig("webhook_payload", "canal"),
-      info.dig("webhook_payload", "utm_medium")
+      hash_dig(info, "webhook_payload", "channel"),
+      hash_dig(info, "webhook_payload", "canal"),
+      hash_dig(info, "webhook_payload", "utm_medium")
     ]
 
     raw = candidates.find { |value| useful_generic_origin?(value) }.to_s.squish
@@ -427,16 +435,16 @@ module Admin::ComercialHelper
 
     candidates = [
       lead.attribution_source,
-      attribution.dig("lead_source", "name"),
-      attribution.dig("lead_source", "alias"),
-      info.dig("external_lead_payload", "attributes", "lead_source", "name"),
-      info.dig("external_lead_payload", "attributes", "lead_source", "alias"),
-      info.dig("attributes", "lead_source", "name"),
-      info.dig("attributes", "lead_source", "alias"),
-      info.dig("c2s_payload", "attributes", "lead_source", "name"),
-      info.dig("c2s_payload", "attributes", "lead_source", "alias"),
-      attribution.dig("channel", "name"),
-      attribution.dig("channel", "alias")
+      hash_dig(attribution, "lead_source", "name"),
+      hash_dig(attribution, "lead_source", "alias"),
+      hash_dig(info, "external_lead_payload", "attributes", "lead_source", "name"),
+      hash_dig(info, "external_lead_payload", "attributes", "lead_source", "alias"),
+      hash_dig(info, "attributes", "lead_source", "name"),
+      hash_dig(info, "attributes", "lead_source", "alias"),
+      hash_dig(info, "c2s_payload", "attributes", "lead_source", "name"),
+      hash_dig(info, "c2s_payload", "attributes", "lead_source", "alias"),
+      hash_dig(attribution, "channel", "name"),
+      hash_dig(attribution, "channel", "alias")
     ]
 
     candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence
@@ -460,12 +468,12 @@ module Admin::ComercialHelper
     candidates = [
       channel["name"],
       channel["alias"],
-      info.dig("external_lead_payload", "attributes", "channel", "name"),
-      info.dig("external_lead_payload", "attributes", "channel", "alias"),
-      info.dig("attributes", "channel", "name"),
-      info.dig("attributes", "channel", "alias"),
-      info.dig("c2s_payload", "attributes", "channel", "name"),
-      info.dig("c2s_payload", "attributes", "channel", "alias")
+      hash_dig(info, "external_lead_payload", "attributes", "channel", "name"),
+      hash_dig(info, "external_lead_payload", "attributes", "channel", "alias"),
+      hash_dig(info, "attributes", "channel", "name"),
+      hash_dig(info, "attributes", "channel", "alias"),
+      hash_dig(info, "c2s_payload", "attributes", "channel", "name"),
+      hash_dig(info, "c2s_payload", "attributes", "channel", "alias")
     ]
 
     candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence || "Integração externa"
