@@ -21,6 +21,7 @@ class HabitationsController < ApplicationController
   # GET /habitations
   # GET /imoveis
   def index
+    return if redirect_exact_public_code
     return if apply_listing_url_params
     apply_friendly_search_params
     apply_strategic_landing_params
@@ -777,6 +778,18 @@ class HabitationsController < ApplicationController
   # Retorna true quando respondeu (404 de slug desconhecido ou 301 de
   # limpeza de `todos`); senão injeta os filtros no params e retorna false.
   # O legado abaixo segue intacto.
+  # Busca por código exato vai direto à página do imóvel em vez da listagem.
+  def redirect_exact_public_code
+    term = params[:search].presence || params[:q].presence
+    return false if term.blank?
+
+    property = Habitation.find_public_code_in(public_tenant.habitations.public_property_listable, term)
+    return false if property.blank?
+
+    redirect_to public_habitation_details_path(property)
+    true
+  end
+
   def apply_listing_url_params
     return true if redirect_canonical_listing_search?
 
