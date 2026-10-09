@@ -19664,6 +19664,22 @@ html[data-admin-theme="dark"] .ax-leads-board .ax-board__col-body.lead-kanban-co
 }
 .lead-origin-block__entry .ax-origin { display: inline-flex; margin: 0; }
 .ax-origin--identity { display: inline-flex; }
+.lead-ig-thread__head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.lead-ig-thread__head .bi-instagram { color: #c13584; font-size: 18px; }
+.lead-ig-thread__head strong { font-size: 14px; }
+.lead-ig-thread__window { margin-left: auto; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+.lead-ig-thread__window--open { background: #e7f8ef; color: #14753c; }
+.lead-ig-thread__window--closed { background: #f1f2f4; color: #5b6478; }
+.lead-ig-thread__messages { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin-bottom: 12px; }
+.lead-ig-thread__empty { color: #98a2b3; font-size: 13px; }
+.lead-ig-thread__msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; }
+.lead-ig-thread__msg p { margin: 0 0 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lead-ig-thread__msg small { font-size: 11px; opacity: .75; }
+.lead-ig-thread__msg--inbound { align-self: flex-start; background: #f1f2f4; border-bottom-left-radius: 4px; }
+.lead-ig-thread__msg--outbound { align-self: flex-end; background: #eaf1fe; border-bottom-right-radius: 4px; }
+.lead-ig-thread__form { display: flex; gap: 8px; align-items: flex-end; }
+.lead-ig-thread__form .ax-control { flex: 1; resize: vertical; }
+.lead-ig-thread__closed { font-size: 12.5px; color: #5b6478; background: #f8fafc; border: 1px dashed #d7dde3; border-radius: 8px; padding: 8px 12px; margin: 0; }
 .lead-origin-block__facts {
   display: flex;
   flex-wrap: wrap;

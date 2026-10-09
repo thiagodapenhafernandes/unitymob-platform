@@ -1,0 +1,38 @@
+<%# Thread do Instagram Direct com resposta. locals: lead %>
+<% messages = lead.instagram_messages.includes(:sent_by_admin_user).chronological.to_a %>
+<% window_open = Instagram::Reply.window_open?(lead) %>
+<div class="ax-card tw-mb-3" id="lead-instagram-thread">
+  <div class="ax-card__body">
+    <div class="lead-ig-thread__head">
+      <i class="bi bi-instagram"></i>
+      <strong>Instagram Direct</strong>
+      <span class="lead-ig-thread__window lead-ig-thread__window--<%= window_open ? "open" : "closed" %>">
+        <%= window_open ? "Janela de resposta aberta" : "Janela de 24h encerrada" %>
+      </span>
+    </div>
+    <div class="lead-ig-thread__messages">
+      <% if messages.empty? %>
+        <p class="lead-ig-thread__empty">Nenhuma mensagem ainda.</p>
+      <% end %>
+      <% messages.each do |message| %>
+        <div class="lead-ig-thread__msg lead-ig-thread__msg--<%= message.direction %>">
+          <p><%= message.body %></p>
+          <small>
+            <%= message.outbound? ? (message.sent_by_admin_user&.name.presence || "Equipe") : "Cliente" %>
+            · <%= l(message.occurred_at, format: :short) %>
+          </small>
+        </div>
+      <% end %>
+    </div>
+    <% if can?(:edit, :leads) %>
+      <% if window_open %>
+        <%= form_with url: reply_instagram_admin_lead_path(lead), method: :post, class: "lead-ig-thread__form" do |f| %>
+          <%= f.text_area :body, rows: 2, maxlength: 1000, placeholder: "Responder no Instagram…", class: "ax-control", aria: { label: "Responder no Instagram" } %>
+          <%= f.submit "Enviar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+        <% end %>
+      <% else %>
+        <p class="lead-ig-thread__closed">A Meta só permite responder em até 24h após a última mensagem do cliente. Aguarde um novo contato.</p>
+      <% end %>
+    <% end %>
+  </div>
+</div>

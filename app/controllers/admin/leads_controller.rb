@@ -119,11 +119,11 @@ class Admin::LeadsController < Admin::BaseController
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
   # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
-  requires_permission :edit, :leads, only: [:update]
+  requires_permission :edit, :leads, only: [:update, :reply_instagram]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity, :reply_instagram]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity, :reply_instagram]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -506,6 +506,13 @@ class Admin::LeadsController < Admin::BaseController
       @page_title = "Novo lead"
       render :new, status: :unprocessable_entity
     end
+  end
+
+  def reply_instagram
+    Instagram::Reply.call(lead: @lead, body: params[:body], admin_user: current_admin_user)
+    redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), notice: "Resposta enviada no Instagram."
+  rescue Instagram::Reply::Error => error
+    redirect_to admin_lead_path(@lead, anchor: "lead-instagram-thread"), alert: error.message
   end
 
   def log_contact

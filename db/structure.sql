@@ -1,4 +1,4 @@
-\restrict 8EW8B8SeSdb3A72CUd8pLmPOB3YeMIwJiMACRaKslRV6z2xM4z1kAKke0k9CcVV
+\restrict Ka4Xe9Z3WNGPde01s2RZ5IEdqxkKYHVJg4qWGyzmETN8hVTCa4LrLgY6wVAiMMw
 
 -- Dumped from database version 18.6 (Homebrew)
 -- Dumped by pg_dump version 18.6 (Homebrew)
@@ -3715,8 +3715,8 @@ CREATE TABLE public.home_settings (
     hero_search_align character varying DEFAULT 'center'::character varying NOT NULL,
     hero_ai_search_enabled boolean DEFAULT false NOT NULL,
     hero_ai_suggestions text,
-    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY (ARRAY[('classic'::character varying)::text, ('bar'::character varying)::text, ('card'::character varying)::text]))),
-    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY (ARRAY[('left'::character varying)::text, ('center'::character varying)::text, ('right'::character varying)::text])))
+    CONSTRAINT home_settings_hero_layout_valid CHECK (((hero_layout)::text = ANY ((ARRAY['classic'::character varying, 'bar'::character varying, 'card'::character varying])::text[]))),
+    CONSTRAINT home_settings_hero_search_align_valid CHECK (((hero_search_align)::text = ANY ((ARRAY['left'::character varying, 'center'::character varying, 'right'::character varying])::text[])))
 );
 
 
@@ -3823,7 +3823,9 @@ CREATE TABLE public.instagram_messages (
     context jsonb DEFAULT '{}'::jsonb NOT NULL,
     occurred_at timestamp(6) without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    direction character varying DEFAULT 'inbound'::character varying NOT NULL,
+    sent_by_admin_user_id bigint
 );
 
 
@@ -14300,6 +14302,13 @@ CREATE UNIQUE INDEX index_instagram_messages_on_lead_id_and_message_id ON public
 
 
 --
+-- Name: index_instagram_messages_on_sent_by_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_instagram_messages_on_sent_by_admin_user_id ON public.instagram_messages USING btree (sent_by_admin_user_id);
+
+
+--
 -- Name: index_landing_page_blocks_on_landing_page_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -20017,6 +20026,14 @@ ALTER TABLE ONLY public.support_access_sessions
 
 
 --
+-- Name: instagram_messages fk_rails_de99733805; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instagram_messages
+    ADD CONSTRAINT fk_rails_de99733805 FOREIGN KEY (sent_by_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: whatsapp_campaign_messages fk_rails_e07384f903; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20404,11 +20421,12 @@ ALTER TABLE ONLY public.whatsapp_attendances
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 8EW8B8SeSdb3A72CUd8pLmPOB3YeMIwJiMACRaKslRV6z2xM4z1kAKke0k9CcVV
+\unrestrict Ka4Xe9Z3WNGPde01s2RZ5IEdqxkKYHVJg4qWGyzmETN8hVTCa4LrLgY6wVAiMMw
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261009010000'),
 ('20261008160000'),
 ('20261008150000'),
 ('20261008130000'),

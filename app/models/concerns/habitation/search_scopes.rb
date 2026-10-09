@@ -651,8 +651,8 @@ module Habitation::SearchScopes
     # Scopes de ordenação
     scope :newest_first, -> { order(data_atualizacao_crm: :desc, created_at: :desc) }
     scope :oldest_first, -> { order(data_atualizacao_crm: :asc, created_at: :asc) }
-    scope :price_asc, -> { order(Arel.sql(public_price_sort_sql("ASC"))) }
-    scope :price_desc, -> { order(Arel.sql(public_price_sort_sql("DESC"))) }
+    scope :price_asc, ->(transaction_type = nil) { order(Arel.sql(public_price_sort_sql("ASC", transaction_type))) }
+    scope :price_desc, ->(transaction_type = nil) { order(Arel.sql(public_price_sort_sql("DESC", transaction_type))) }
     scope :area_asc, -> { order(area_total_m2: :asc) }
     scope :area_desc, -> { order(area_total_m2: :desc) }
     
@@ -786,16 +786,23 @@ module Habitation::SearchScopes
         .max_by { |value| [values.count(value), value.length] }
     end
 
-    def public_price_sort_sql(direction)
+    # Ordenação por preço segue o contexto da busca: na aba de venda ordena
+    # pelo valor de venda e na de locação pelo valor de locação. Sem filtro de
+    # transação usa a mesma regra do card público (venda primeiro, senão
+    # locação) para a ordem bater com o preço exibido. O LEAST anterior
+    # colocava imóveis de venda milionários no topo do "Menor valor" por
+    # causa de um valor residual de locação.
+    def public_price_sort_sql(direction, transaction_type = nil)
       normalized_direction = direction.to_s.upcase == "DESC" ? "DESC" : "ASC"
-      price_sql = <<~SQL.squish
-        CASE
-          WHEN COALESCE(habitations.valor_venda_cents, 0) > 0 AND COALESCE(habitations.valor_locacao_cents, 0) > 0 THEN LEAST(habitations.valor_venda_cents, habitations.valor_locacao_cents)
-          WHEN COALESCE(habitations.valor_venda_cents, 0) > 0 THEN habitations.valor_venda_cents
-          WHEN COALESCE(habitations.valor_locacao_cents, 0) > 0 THEN habitations.valor_locacao_cents
-          ELSE NULL
-        END
-      SQL
+      price_sql =
+        case transaction_type.to_s.downcase
+        when "venda"
+          "NULLIF(habitations.valor_venda_cents, 0)"
+        when "aluguel", "locacao", "locação"
+          "NULLIF(habitations.valor_locacao_cents, 0)"
+        else
+          "COALESCE(NULLIF(habitations.valor_venda_cents, 0), NULLIF(habitations.valor_locacao_cents, 0))"
+        end
 
       "#{price_sql} #{normalized_direction} NULLS LAST, habitations.data_atualizacao_crm DESC, habitations.created_at DESC"
     end
@@ -973,7 +980,7 @@ module Habitation::SearchScopes
       end
       
       # Ordenação
-      query = apply_sorting(query, params[:sort])
+      query = apply_sorting(query, params[:sort], params[:transaction_type])
       
       query
     end
@@ -1051,12 +1058,12 @@ module Habitation::SearchScopes
     end
     
     # Aplica ordenação baseada em parâmetro
-    def apply_sorting(query, sort_param)
+    def apply_sorting(query, sort_param, transaction_type = nil)
       case sort_param.to_s
       when 'price_asc'
-        query.price_asc
+        query.price_asc(transaction_type)
       when 'price_desc'
-        query.price_desc
+        query.price_desc(transaction_type)
       when 'area_asc'
         query.area_asc
       when 'area_desc'

@@ -121,6 +121,54 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(Habitation.where(id: [rent.id, sale.id, empty.id]).price_asc.to_a).to eq([rent, sale, empty])
       expect(Habitation.where(id: [rent.id, sale.id, empty.id]).price_desc.to_a).to eq([sale, rent, empty])
     end
+
+    it "sorts by sale price when filtering by sale, ignoring residual rent values" do
+      cheap = create(:habitation, codigo: "PRICE-SALE-CHEAP", valor_venda_cents: 500_000_00, valor_locacao_cents: 0)
+      mixed = create(:habitation, codigo: "PRICE-SALE-MIXED", valor_venda_cents: 800_000_00, valor_locacao_cents: 3_000_00)
+
+      result = Habitation.advanced_search(
+        { sort: "price_asc", transaction_type: "venda" },
+        base_scope: Habitation.where(id: [cheap.id, mixed.id])
+      )
+
+      expect(result.to_a).to eq([cheap, mixed])
+    end
+
+    it "sorts by rent price when filtering by rent, ignoring sale values" do
+      cheap = create(:habitation, codigo: "PRICE-RENT-CHEAP", valor_venda_cents: 0, valor_locacao_cents: 2_000_00)
+      mixed = create(:habitation, codigo: "PRICE-RENT-MIXED", valor_venda_cents: 100_000_00, valor_locacao_cents: 5_000_00)
+
+      result = Habitation.advanced_search(
+        { sort: "price_asc", transaction_type: "aluguel" },
+        base_scope: Habitation.where(id: [cheap.id, mixed.id])
+      )
+
+      expect(result.to_a).to eq([cheap, mixed])
+    end
+
+    it "prefers the sale price without transaction filter, like the public card" do
+      cheap = create(:habitation, codigo: "PRICE-NOFILTER-CHEAP", valor_venda_cents: 500_000_00, valor_locacao_cents: 0)
+      mixed = create(:habitation, codigo: "PRICE-NOFILTER-MIXED", valor_venda_cents: 800_000_00, valor_locacao_cents: 3_000_00)
+
+      result = Habitation.advanced_search(
+        { sort: "price_asc" },
+        base_scope: Habitation.where(id: [cheap.id, mixed.id])
+      )
+
+      expect(result.to_a).to eq([cheap, mixed])
+    end
+
+    it "sorts price_desc by the transaction price" do
+      cheap = create(:habitation, codigo: "PRICE-DESC-CHEAP", valor_venda_cents: 500_000_00, valor_locacao_cents: 0)
+      mixed = create(:habitation, codigo: "PRICE-DESC-MIXED", valor_venda_cents: 800_000_00, valor_locacao_cents: 3_000_00)
+
+      result = Habitation.advanced_search(
+        { sort: "price_desc", transaction_type: "venda" },
+        base_scope: Habitation.where(id: [cheap.id, mixed.id])
+      )
+
+      expect(result.to_a).to eq([mixed, cheap])
+    end
   end
 
   describe ".with_photos" do

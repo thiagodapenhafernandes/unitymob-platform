@@ -289,6 +289,7 @@ Rails.application.routes.draw do
       post :archive, on: :member
       post :close_deal, on: :member
       post :schedule_activity, on: :member
+      post :reply_instagram, on: :member
       resources :proposals, only: [:new, :create]
       resources :lead_labels, only: [:index, :create, :update, :destroy] do
         post :toggle, on: :member
