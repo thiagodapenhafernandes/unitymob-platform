@@ -986,14 +986,28 @@ module Habitation::SearchScopes
     # Retorna o código normalizado ou nil. Termo sem correspondência exata
     # mantém o comportamento atual.
     def exact_public_code_in(scope, value)
-      code = value.to_s.strip.sub(/\A#/, "").strip
-        .sub(/\A(?:ref\.?|c[oó]digo)(?=[\s.]|$)/i, "").strip
+      code = normalize_public_code_search(value)
       return nil if code.blank?
       return nil unless scope.where("codigo ILIKE ?", code).exists?
 
       code
     rescue StandardError
       nil
+    end
+
+    # Imóvel da base pública pelo código exato (para redirect direto).
+    def find_public_code_in(scope, value)
+      code = normalize_public_code_search(value)
+      return nil if code.blank?
+
+      scope.where("codigo ILIKE ?", code).first
+    rescue StandardError
+      nil
+    end
+
+    def normalize_public_code_search(value)
+      value.to_s.strip.sub(/\A#/, "").strip
+        .sub(/\A(?:ref\.?|c[oó]digo)(?=[\s.]|$)/i, "").strip.presence
     end
 
     def characteristic_scope_for(value)

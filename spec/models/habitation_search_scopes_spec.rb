@@ -489,6 +489,18 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(Habitation.public_property_search(transaction_type: "venda", search: "#972902")).to include(rental)
     end
 
+    it "localiza imóvel público pelo código exato com prefixos" do
+      rental = create(:habitation, codigo: "972903", status: "Aluguel",
+        valor_venda_cents: 0, valor_locacao_cents: 890_200)
+      scope = Habitation.public_property_listable
+
+      expect(Habitation.find_public_code_in(scope, "972903")).to eq(rental)
+      expect(Habitation.find_public_code_in(scope, "REF 972903")).to eq(rental)
+      expect(Habitation.find_public_code_in(scope, "#972903")).to eq(rental)
+      expect(Habitation.find_public_code_in(scope, "000000")).to be_nil
+      expect(Habitation.find_public_code_in(scope, " ")).to be_nil
+    end
+
     it "mantém o filtro de transação para texto livre e número sem código" do
       rental = create(:habitation, codigo: "LOC-TXT-1", status: "Aluguel",
         valor_venda_cents: 0, valor_locacao_cents: 890_200,
