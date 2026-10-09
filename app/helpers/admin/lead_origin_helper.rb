@@ -81,9 +81,16 @@ module Admin::LeadOriginHelper
     end
     # RD/Lovers identificam pelo canal de entrada, não pelo nome — a origem
     # padrão é configurável por conta e pode ter sido renomeada.
-    if !imported && lead_origin_rd_entry?(info)
+    # A Meta é o gerador original do lead e tem integração direta: com
+    # evidência Meta (atribuição ou identidade), ela vence o carimbo RD — o
+    # RD aparece como contexto de conversão. Sem evidência Meta, o RD segue
+    # como rótulo (guardrail).
+    rd_entry = !imported && lead_origin_rd_entry?(info)
+    lovers_entry = !imported && lead_origin_lovers_entry?(info)
+    meta_led = lead.attribution_channel.to_s == "meta_ads" || %w[meta instagram facebook].include?(brand)
+    if rd_entry && !meta_led
       brand, label = "rdstation", "RD Station"
-    elsif !imported && lead_origin_lovers_entry?(info)
+    elsif lovers_entry
       brand, label = "lovers", "Lovers"
     end
     portal = lead_origin_portal_name(info)
@@ -221,9 +228,20 @@ module Admin::LeadOriginHelper
       subtype = place
     end
 
+    # RD como conversão (não rótulo): o lead também passou pelo RD — contexto
+    # aditivo, vale até com conversão no site.
+    rd_context = []
+    if rd_entry && brand != "rdstation"
+      rd_context << "Conversão RD: #{rd_conversion}" if rd_conversion
+      rd_context << "Campanha: #{rd_campaign}" if rd_campaign
+      details << ["Conversão RD", rd_conversion]
+      details << ["Campanha RD", rd_campaign]
+      details << ["Origem RD", [rd_source, rd_medium].compact.join(" / ").presence]
+    end
+
     {
       label: lead_origin_public_text(label), brand: brand, icon_url: site ? lead_origin_site_icon(tenant) : nil, subtype: lead_origin_public_text(subtype),
-      complements: brand == "meta" ? [] : context.map { |text| lead_origin_public_text(text) }.compact_blank.uniq,
+      complements: (brand == "meta" ? rd_context : context + rd_context).map { |text| lead_origin_public_text(text) }.compact_blank.uniq,
       details: details.filter_map { |key, value| [key, lead_origin_public_text(value)] if value.present? }.uniq
     }
   end
