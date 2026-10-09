@@ -69,7 +69,9 @@ module Admin::LeadOriginHelper
     site_event = nil unless site_event&.lead_id == lead.id
     public_form_lead = lead.origin.to_s.match?(/\Apublic_form:/i)
     share_lead = lead.origin.to_s.match?(/compartilh/i)
-    site = !public_form_lead && !share_lead && (site_event.present? || lead.origin.to_s.casecmp("site").zero? ||
+    # Indicação entra no `site` para ganhar a linha de conversão (a origem
+    # segue Indicação); formulário público é conversão nativa do próprio form.
+    site = !public_form_lead && (site_event.present? || lead.origin.to_s.casecmp("site").zero? ||
       (lead.lead_type.to_s.match?(/\A(?:site|whatsapp_modal|whatsapp_click)\z/i) && lead.source_url.present?))
     brand, label, subtype = lead_origin_identity(raw, ctwa: ctwa)
     if !ctwa && !imported && lead.attribution_channel == "meta_ads"
@@ -133,19 +135,27 @@ module Admin::LeadOriginHelper
       details << ["Resposta LinkedIn", info["linkedin_response_id"]]
     end
 
-    if site
+    # Origem × Conversão: o site só é o rótulo quando é a origem de fato
+    # (sem origem externa registrada). Com origem externa, o site entra como
+    # linha de conversão aditiva — nunca sobrescreve o rótulo.
+    site_pure = site && (raw.blank? || raw.match?(/site|direto|desconhecid/i))
+    site_page = lead_origin_page(site_event&.source_path.presence || lead.source_url) if site
+    site_property = site_event&.habitation if site
+    site_property = nil unless site_property&.tenant_id == tenant.id
+    site_subtype = if site
+      if lead.lead_type.to_s.match?(/whatsapp/i)
+        site_property ? "WhatsApp do anúncio" : "WhatsApp do site"
+      else
+        site_property ? "Formulário do imóvel" : "Contato geral"
+      end
+    end
+    import_source = lead_origin_import_source(lead, info, attribution) if imported
+    if site_pure
       brand = "site"
       label = "Site #{lead_origin_site_name(tenant)}"
-      page = lead_origin_page(site_event&.source_path.presence || lead.source_url)
-      property = site_event&.habitation
-      property = nil unless property&.tenant_id == tenant.id
-      subtype = if lead.lead_type.to_s.match?(/whatsapp/i)
-        property ? "WhatsApp do anúncio" : "WhatsApp do site"
-      else
-        property ? "Formulário do imóvel" : "Contato geral"
-      end
-      context = [property ? "Imóvel ##{property.codigo}" : page && "Página: #{page}"].compact
-      details << ["Página", page] if page
+      subtype = site_subtype
+      context = [site_property ? "Imóvel ##{site_property.codigo}" : site_page && "Página: #{site_page}"].compact
+      details << ["Página", site_page] if site_page
       details << ["Ação", lead.lead_type] if lead.lead_type.present?
       details << ["Conversão registrada em", l(site_event.occurred_at, format: "%d/%m/%Y %H:%M")] if site_event
     elsif public_form_lead
@@ -169,11 +179,8 @@ module Admin::LeadOriginHelper
       subtype ||= "Importação" if imported
       subtype ||= "Conversa"
       details << ["Destino", "WhatsApp"] if ctwa
-      if context.empty? && imported
-        context << "Importação · Origem informada: #{raw}"
-      elsif context.empty? && raw.match?(/corretor|atendimento/i)
-        context << "Origem informada: #{raw}"
-      end
+      # Importação tem linha própria de conversão; aqui só o fallback de origem informada.
+      context << "Origem informada: #{raw}" if context.empty? && raw.match?(/corretor|atendimento/i)
     elsif ctwa
       details << ["Destino", "WhatsApp"]
     elsif brand == "rdstation"
@@ -205,7 +212,7 @@ module Admin::LeadOriginHelper
       context << "Anúncio: #{listing_id}" if listing_id
       details << ["Portal", info["lead_origin"]] if info["lead_origin"].present?
       details << ["Anúncio", listing_id] if listing_id
-    elsif imported && lead_origin_import_source(lead, info, attribution).blank?
+    elsif imported && import_source.blank?
       brand = "download"
       label = "Importação"
       channel = external_lead_migration_channel_label(lead, info, attribution)
@@ -228,20 +235,30 @@ module Admin::LeadOriginHelper
       subtype = place
     end
 
-    # RD como conversão (não rótulo): o lead também passou pelo RD — contexto
-    # aditivo, vale até com conversão no site.
-    rd_context = []
+    # Conversões aditivas: RD, site e importação entram como linhas
+    # "Conversão: …" e nunca sobrescrevem o rótulo de origem.
+    conversion_context = []
     if rd_entry && brand != "rdstation"
-      rd_context << "Conversão RD: #{rd_conversion}" if rd_conversion
-      rd_context << "Campanha: #{rd_campaign}" if rd_campaign
+      conversion_context << ["Conversão: RD Station", rd_conversion].compact.join(" · ")
+      conversion_context << "Campanha: #{rd_campaign}" if rd_campaign
       details << ["Conversão RD", rd_conversion]
       details << ["Campanha RD", rd_campaign]
       details << ["Origem RD", [rd_source, rd_medium].compact.join(" / ").presence]
     end
+    if site && !site_pure
+      conversion_context << ["Conversão: Site", site_subtype, site_property && "Imóvel ##{site_property.codigo}"].compact.join(" · ")
+      conversion_context << "Página: #{site_page}" if site_property.nil? && site_page
+      details << ["Página", site_page] if site_page
+      details << ["Ação", lead.lead_type] if lead.lead_type.present?
+      details << ["Conversão registrada em", l(site_event.occurred_at, format: "%d/%m/%Y %H:%M")] if site_event
+    end
+    if imported && import_source.present?
+      conversion_context << ["Conversão: Importação", lead_origin_import_channel_label(lead, info, attribution)].compact.join(" · ")
+    end
 
     {
-      label: lead_origin_public_text(label), brand: brand, icon_url: site ? lead_origin_site_icon(tenant) : nil, subtype: lead_origin_public_text(subtype),
-      complements: (brand == "meta" ? rd_context : context + rd_context).map { |text| lead_origin_public_text(text) }.compact_blank.uniq,
+      label: lead_origin_public_text(label), brand: brand, icon_url: site_pure ? lead_origin_site_icon(tenant) : nil, subtype: lead_origin_public_text(subtype),
+      complements: (brand == "meta" ? conversion_context : context + conversion_context).map { |text| lead_origin_public_text(text) }.compact_blank.uniq,
       details: details.filter_map { |key, value| [key, lead_origin_public_text(value)] if value.present? }.uniq
     }
   end
@@ -365,5 +382,14 @@ module Admin::LeadOriginHelper
     ]
 
     candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence
+  end
+
+  # Canal da importação para a linha de conversão: planilha, migração ou canal declarado.
+  def lead_origin_import_channel_label(lead, info, attribution)
+    return "Planilha" if lead.attribution_channel.to_s == "Importado da planilha"
+    return "Migração" if lead.origin.to_s.match?(/migra/i)
+
+    channel = external_lead_migration_channel_label(lead, info, attribution)
+    channel unless channel == "Integração externa"
   end
 end
