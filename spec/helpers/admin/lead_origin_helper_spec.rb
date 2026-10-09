@@ -239,4 +239,24 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(data[:complements]).to include("Origem original: Landing Praia", "Status: Ativo", "Score: 10")
     expect(data[:details]).to include(["Código Lovers", "123"], ["Status Lovers", "Ativo"], ["Score Lovers", "10"], ["Cadastro Lovers", "2026-09-16T10:00:00"])
   end
+
+  it "não quebra a coluna com lead de migração cujo channel/lead_source são strings" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Site",
+      other_information: { "source" => "external_lead_migration" },
+      attribution_data: { "channel" => "google_ads", "lead_source" => "c2s" })
+
+    expect { origin(lead) }.not_to raise_error
+  end
+
+  it "não quebra a fonte da importação com payloads aninhados em formato string" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Migração externa")
+
+    expect do
+      helper.lead_origin_import_source(
+        lead,
+        { "attributes" => "c2s", "c2s_payload" => "ping" },
+        { "lead_source" => "c2s" }
+      )
+    end.not_to raise_error
+  end
 end

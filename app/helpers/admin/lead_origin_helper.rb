@@ -107,7 +107,7 @@ module Admin::LeadOriginHelper
     instagram_entry = info["instagram_entry"].is_a?(Hash) ? info["instagram_entry"] : {}
     if subtype == "Direct"
       context << "Resposta a story" if instagram_entry["story_id"].present?
-      instagram_ad = instagram_entry.dig("referral", "ad_id")
+      instagram_ad = hash_dig(instagram_entry, "referral", "ad_id")
       context << "Anúncio ID: #{instagram_ad}" if instagram_ad.is_a?(String) && instagram_ad.match?(/\A[0-9]+\z/)
     end
     context << "Campanha: #{campaign}" if campaign
@@ -336,14 +336,14 @@ module Admin::LeadOriginHelper
   def lead_origin_import_source(lead, info, attribution)
     candidates = [
       lead.attribution_source,
-      attribution.dig("lead_source", "name"),
-      attribution.dig("lead_source", "alias"),
-      info.dig("external_lead_payload", "attributes", "lead_source", "name"),
-      info.dig("external_lead_payload", "attributes", "lead_source", "alias"),
-      info.dig("attributes", "lead_source", "name"),
-      info.dig("attributes", "lead_source", "alias"),
-      info.dig("c2s_payload", "attributes", "lead_source", "name"),
-      info.dig("c2s_payload", "attributes", "lead_source", "alias")
+      hash_dig(attribution, "lead_source", "name"),
+      hash_dig(attribution, "lead_source", "alias"),
+      hash_dig(info, "external_lead_payload", "attributes", "lead_source", "name"),
+      hash_dig(info, "external_lead_payload", "attributes", "lead_source", "alias"),
+      hash_dig(info, "attributes", "lead_source", "name"),
+      hash_dig(info, "attributes", "lead_source", "alias"),
+      hash_dig(info, "c2s_payload", "attributes", "lead_source", "name"),
+      hash_dig(info, "c2s_payload", "attributes", "lead_source", "alias")
     ]
 
     candidates.find { |value| useful_external_origin?(value) }.to_s.squish.presence
