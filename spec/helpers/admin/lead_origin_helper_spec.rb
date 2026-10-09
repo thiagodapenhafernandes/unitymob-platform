@@ -105,6 +105,21 @@ RSpec.describe Admin::LeadOriginHelper, type: :helper do
     expect(data[:complements]).to include("Conversão: Importação · Planilha")
   end
 
+  it "exibe nome do buscador para código de atribuição em minúsculas" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Google Ads", attribution_source: "google")
+
+    expect(origin(lead)).to include(brand: "google", label: "Google")
+  end
+
+  it "trata origem direta em inglês como site puro" do
+    lead = build_stubbed(:lead, tenant: tenant, origin: "Site", lead_type: "site",
+      source_url: "https://site.test/contato", attribution_source: "direct")
+    data = origin(lead)
+
+    expect(data).to include(brand: "site", subtype: "Contato geral")
+    expect(data[:complements]).to eq(["Página: /contato"])
+  end
+
   it "identifica o portal real do payload Grupo OLX com fallback genérico" do
     lead = build_stubbed(:lead, tenant: tenant, origin: "grupo_zap", other_information: {
       "lead_origin" => "ZAP", "origin_listing_id" => "ABC123", "portal_lead_id" => "999"

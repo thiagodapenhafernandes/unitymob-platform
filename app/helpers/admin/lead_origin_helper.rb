@@ -138,7 +138,7 @@ module Admin::LeadOriginHelper
     # Origem × Conversão: o site só é o rótulo quando é a origem de fato
     # (sem origem externa registrada). Com origem externa, o site entra como
     # linha de conversão aditiva — nunca sobrescreve o rótulo.
-    site_pure = site && (raw.blank? || raw.match?(/site|direto|desconhecid/i))
+    site_pure = site && (raw.blank? || raw.match?(/site|direto|desconhecid|\Adirect\z/i))
     site_page = lead_origin_page(site_event&.source_path.presence || lead.source_url) if site
     site_property = site_event&.habitation if site
     site_property = nil unless site_property&.tenant_id == tenant.id
@@ -298,7 +298,7 @@ module Admin::LeadOriginHelper
       ["chaves", "Chaves na Mão", nil]
     else
       brand = %w[google bing microsoft tiktok linkedin pinterest youtube telegram].find { |key| normalized.start_with?(key) }
-      [brand || "tag", raw, nil]
+      [brand || "tag", Leads::Attribution::SOURCE_LABELS[normalized] || raw, nil]
     end
   end
 
