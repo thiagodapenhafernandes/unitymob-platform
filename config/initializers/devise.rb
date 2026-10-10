@@ -233,7 +233,9 @@ Devise.setup do |config|
 
   # When set to false, does not sign a user in automatically after their password is
   # reset. Defaults to true, so a user is signed in automatically after a reset.
-  # config.sign_in_after_reset_password = true
+  # Desligado: um reset via token de e-mail não pode criar sessão sozinho —
+  # contas com TOTP passam pelo desafio em Admin::PasswordsController#update.
+  config.sign_in_after_reset_password = false
 
   # ==> Configuration for :encryptable
   # Allow you to use another hashing or encryption algorithm besides bcrypt (default).
