@@ -423,7 +423,8 @@ export default class extends Controller {
   async refreshContext({ conversation_id, visible }) {
     if (Number(conversation_id) !== this.conversationIdValue || !this.hasContextTarget) return
     if (!visible) {
-      this.contextTarget.innerHTML = "<p class='wa-inbox-thread__work-empty'>Este atendimento foi transferido e não está mais na sua fila.</p>"
+      this.disconnectCable()
+      window.location.assign("/admin/atendimento/whatsapp")
       return
     }
     // Não atropela uma anotação que está sendo digitada.
