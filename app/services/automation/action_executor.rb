@@ -192,6 +192,7 @@ module Automation
     def act_send_webhook(action)
       url = action[:url].to_s.strip
       return if url.blank?
+      return if Automation::WebhookUrlPolicy.blocked?(url)
 
       delivery = AutomationWebhookDelivery.create!(
         automation_event: @automation_event,

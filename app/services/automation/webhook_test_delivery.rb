@@ -12,6 +12,10 @@ module Automation
     end
 
     def call
+      if url.present? && Automation::WebhookUrlPolicy.blocked?(url)
+        raise ArgumentError, Automation::WebhookUrlPolicy::BLOCKED_MESSAGE
+      end
+
       delivery = AutomationWebhookDelivery.create!(
         url: url,
         http_method: http_method,
