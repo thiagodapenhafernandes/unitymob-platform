@@ -119,11 +119,11 @@ class Admin::LeadsController < Admin::BaseController
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
   # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
-  requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties]
+  requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties, :reconcile_inquiry]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
-  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity, :reply_instagram]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity, :reply_instagram]
+  before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :reconcile_inquiry, :schedule_activity, :reply_instagram]
   before_action :load_lead_pipeline_context, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report, :new, :create, :show, :update]
   before_action :authorize_lead_funnel_menu!, only: [:index, :kanban_column, :list_page, :pwa_leads_page, :report]
   before_action :load_origin_options, only: [:index, :kanban_column, :pwa_leads_page, :report, :new, :create, :show, :update]
@@ -136,7 +136,7 @@ class Admin::LeadsController < Admin::BaseController
     filtered_scope = filtered_lead_scope_for_current_user
     common_scope = hide_waiting_acceptance_from_common_scope(filtered_scope)
     common_unfiltered_scope = hide_waiting_acceptance_from_common_scope(unfiltered_scope)
-    @desktop_lead_tab = params[:lead_tab].presence_in(%w[todo visits future favorites all]) || "all"
+    @desktop_lead_tab = params[:lead_tab].presence_in(%w[todo visits future favorites verify all]) || "all"
     list_filtered_scope = hide_discarded_from_list_scope(common_scope)
     @desktop_tab_counts = lead_tab_counts_for(list_filtered_scope)
     lead_scope = lead_scope_for_tab(common_scope, @desktop_lead_tab)
@@ -801,6 +801,16 @@ class Admin::LeadsController < Admin::BaseController
     else
       redirect_to admin_lead_path(@lead), alert: @lead.errors.full_messages.to_sentence
     end
+  end
+
+  def reconcile_inquiry
+    target = accessible_lead_scope_for_current_user.find(params[:target_id])
+    Leads::InquiryReconciliation.reconcile!(inquiry: @lead, target:, actor: current_admin_user)
+    redirect_to admin_lead_path(target), notice: "Apuração vinculada ao lead #{target.display_name}."
+  rescue ActiveRecord::RecordNotFound
+    redirect_to admin_lead_path(@lead), alert: "Lead de destino não encontrado no seu escopo."
+  rescue Leads::InquiryReconciliation::Error => e
+    redirect_to admin_lead_path(@lead), alert: e.message
   end
 
   def schedule_activity
@@ -2688,6 +2698,7 @@ class Admin::LeadsController < Admin::BaseController
       "visits" => lead_scope_for_tab(base_scope, "visits").reorder(nil).count,
       "future" => lead_scope_for_tab(base_scope, "future").reorder(nil).count,
       "favorites" => lead_scope_for_tab(base_scope, "favorites").reorder(nil).count,
+      "verify" => lead_scope_for_tab(base_scope, "verify").reorder(nil).count,
       "all" => lead_scope_for_tab(base_scope, "all").reorder(nil).count
     }
   end
@@ -2702,6 +2713,8 @@ class Admin::LeadsController < Admin::BaseController
       pwa_scheduled_leads(base_scope)
     when "favorites"
       base_scope.joins(:lead_favorites).where(lead_favorites: { admin_user_id: current_admin_user&.id })
+    when "verify"
+      base_scope.unverified_inquiries
     else
       base_scope
     end

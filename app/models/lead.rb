@@ -205,6 +205,7 @@ class Lead < ApplicationRecord
   scope :concluido, -> { where(status: status_value(:concluido)) }
   scope :holding, -> { represado }
   scope :by_origin, ->(origin) { where(origin: origin) if origin.present? }
+  scope :unverified_inquiries, -> { where("(leads.other_information ->> 'unverified_inquiry') = 'true'") }
   scope :with_any_tags, ->(values) {
     normalized = normalize_tags_value(values)
     if normalized.present?
@@ -267,7 +268,12 @@ class Lead < ApplicationRecord
 
     tenant&.leads&.find_by(id: complemented_into_id)
   end
-  
+
+  def unverified_inquiry?
+    info = other_information.is_a?(Hash) ? other_information : {}
+    info["unverified_inquiry"] == true
+  end
+
   def display_name
     client_name.presence || name
   end
