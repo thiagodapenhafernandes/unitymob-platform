@@ -7512,7 +7512,8 @@ CREATE TABLE public.vista_file_assets (
     storage_byte_size bigint,
     storage_content_type character varying,
     storage_service_name character varying,
-    reused_at timestamp(6) without time zone
+    reused_at timestamp(6) without time zone,
+    tenant_id bigint
 );
 
 
@@ -11733,10 +11734,10 @@ CREATE INDEX idx_vista_file_assets_lookup_for_reuse ON public.vista_file_assets 
 
 
 --
--- Name: idx_vista_file_assets_unique_source; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_vista_file_assets_tenant_unique_source; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_vista_file_assets_unique_source ON public.vista_file_assets USING btree (vista_import_batch_id, table_name, source_path);
+CREATE UNIQUE INDEX idx_vista_file_assets_tenant_unique_source ON public.vista_file_assets USING btree (tenant_id, vista_import_batch_id, table_name, source_path);
 
 
 --
@@ -16738,6 +16739,13 @@ CREATE INDEX index_vista_file_assets_on_status_and_kind ON public.vista_file_ass
 
 
 --
+-- Name: index_vista_file_assets_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_vista_file_assets_on_tenant_id ON public.vista_file_assets USING btree (tenant_id);
+
+
+--
 -- Name: index_vista_file_assets_on_vista_import_batch_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -18015,6 +18023,14 @@ ALTER TABLE ONLY public.profiles
 
 ALTER TABLE ONLY public.seo_conversion_events
     ADD CONSTRAINT fk_rails_354f47c6c3 FOREIGN KEY (seo_setting_id) REFERENCES public.seo_settings(id);
+
+
+--
+-- Name: vista_file_assets fk_rails_374db59efb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vista_file_assets
+    ADD CONSTRAINT fk_rails_374db59efb FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -20426,6 +20442,7 @@ ALTER TABLE ONLY public.whatsapp_attendances
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261010010000'),
 ('20261009010000'),
 ('20261008160000'),
 ('20261008150000'),
