@@ -45,7 +45,7 @@ class AiPropertyShareCollectionsController < ApplicationController
     LeadActivity.log!(lead:, kind: "property_interest", metadata: { habitation_id: habitation.id, share_collection_id: @collection.id, event: })
     notify_shared_link_owner!(lead, habitation, recipient)
 
-    render json: { success: true, message: @setting.ai_property_search_interest_success_message, lead_id: lead.id }
+    render json: { success: true, message: @setting.ai_property_search_interest_success_message }
   end
 
   private
@@ -78,6 +78,7 @@ class AiPropertyShareCollectionsController < ApplicationController
 
     data = cookies.signed[IDENTITY_COOKIE]
     return unless data.is_a?(Hash) && data["tenant_id"].to_i == @collection.tenant_id
+    return unless data["collection_token"].to_s == @collection.token
     @collection.tenant.leads.find_by(id: data["lead_id"])
   end
 
@@ -86,18 +87,18 @@ class AiPropertyShareCollectionsController < ApplicationController
     phone = Phones::Normalizer.call(params[:phone]).to_s
     return if name.blank? || phone.blank?
 
-    lead = Leads::Intake.create!(tenant: @collection.tenant, name: name, phone: phone,
+    # Entrada pública não verificada: nunca funde por telefone com lead existente.
+    # Registra uma apuração separada, marcada para reconciliação posterior.
+    lead = @collection.tenant.leads.create!(name: name, phone: phone,
       admin_user: @collection.admin_user, shared_by_admin_user: @collection.admin_user,
-      origin: @setting.ai_property_search_lead_origin, status: Lead.status_value(:novo, tenant: @collection.tenant))
-    event = lead.intake_reused ? "visitor_matched_existing_lead" : "lead_created_from_interest"
-    metadata = request_metadata
-    metadata = metadata.merge(shared_by_admin_user_id: @collection.admin_user_id) if lead.intake_reused
-    @collection.record!(event, lead: lead, admin_user: lead.admin_user, metadata: metadata)
+      origin: @setting.ai_property_search_lead_origin, status: Lead.status_value(:novo, tenant: @collection.tenant),
+      other_information: { "unverified_inquiry" => true, "share_collection_id" => @collection.id })
+    @collection.record!("lead_created_from_interest", lead: lead, admin_user: lead.admin_user, metadata: request_metadata)
     lead
   end
 
   def remember(lead)
-    cookies.signed[IDENTITY_COOKIE] = { value: { tenant_id: lead.tenant_id, lead_id: lead.id }, expires: @setting.ai_property_search_visitor_recognition_days.days.from_now, httponly: true, same_site: :lax }
+    cookies.signed[IDENTITY_COOKIE] = { value: { tenant_id: lead.tenant_id, lead_id: lead.id, collection_token: @collection.token }, expires: @setting.ai_property_search_visitor_recognition_days.days.from_now, httponly: true, same_site: :lax }
   end
 
   def request_metadata

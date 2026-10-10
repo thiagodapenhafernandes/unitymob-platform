@@ -1171,6 +1171,25 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(pending.publicar_chaves_na_mao).to be(false)
   end
 
+  it "invalida o cache HTML público ao despublicar imóveis em massa do site" do
+    store = ActiveSupport::Cache::MemoryStore.new
+    allow(Rails).to receive(:cache).and_return(store)
+    habitation = create(:habitation, tenant: admin.tenant, admin_user: admin, codigo: "BULK-VERSION-#{SecureRandom.hex(6)}", exibir_no_site_flag: true)
+    # Aquece criações preguiçosas que também sobem a versão (ex.: LayoutSetting no primeiro acesso).
+    LayoutSetting.instance(tenant: admin.tenant)
+    before = PublicSite::PageVersion.current(admin.tenant_id)
+
+    post bulk_publish_admin_habitations_path, params: {
+      selected_ids: [habitation.id],
+      action_type: "despublicar",
+      channels: %w[site]
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(habitation.reload.exibir_no_site_flag).to be(false)
+    expect(PublicSite::PageVersion.current(admin.tenant_id)).not_to eq(before)
+  end
+
   it "gera link público de seleção em massa e inclui imóveis comerciais fora do site" do
     first_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Venda", exibir_no_site_flag: false)
     second_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Aluguel", exibir_no_site_flag: false)
