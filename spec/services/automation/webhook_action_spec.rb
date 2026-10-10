@@ -136,6 +136,24 @@ RSpec.describe "Automation webhook action" do
     )
   end
 
+  it "descarta acao de webhook para destino interno sem criar entrega nem enfileirar" do
+    action = { "type" => "send_webhook", "url" => "http://127.0.0.1:3000/hook", "http_method" => "post" }
+
+    expect {
+      described_executor.execute(action)
+    }.not_to change(AutomationWebhookDelivery, :count)
+
+    expect(enqueued_jobs.map { |job| job[:job] }).not_to include(Automation::WebhookDeliveryJob)
+  end
+
+  it "descarta acao de webhook para destino link-local sem criar entrega" do
+    action = { "type" => "send_webhook", "url" => "http://169.254.169.254/latest/meta-data/", "http_method" => "post" }
+
+    expect {
+      described_executor.execute(action)
+    }.not_to change(AutomationWebhookDelivery, :count)
+  end
+
   def described_executor
     Automation::ActionExecutor.new(lead, automation_event: event)
   end
