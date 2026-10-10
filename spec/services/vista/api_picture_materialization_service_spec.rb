@@ -185,4 +185,96 @@ RSpec.describe Vista::ApiPictureMaterializationService, type: :service do
       expect(own_habitation.photos).not_to be_attached
     end
   end
+
+  describe "ledger por conta (vista-api-photos-global-source-path-asset-rebind)" do
+    let(:tenant_a) { Tenant.default }
+    let(:tenant_b) { Tenant.create!(name: "Vista Ledger B", slug: "vista-ledger-b-#{SecureRandom.hex(4)}") }
+    let(:batch) { VistaImportBatch.create!(dump_dir: "api:vista", status: "completed") }
+
+    def create_photo_asset(tenant_id:, habitation:, source_path:)
+      VistaFileAsset.create!(
+        vista_import_batch: batch,
+        tenant_id: tenant_id,
+        table_name: "API_FOTO",
+        kind: "property_photo",
+        status: "downloaded",
+        source_path: source_path,
+        filename: File.basename(source_path),
+        habitation: habitation,
+        codigo_imovel: habitation.codigo
+      )
+    end
+
+    it "não reatribui linha de outra conta com o mesmo source_path" do
+      shared_path = "fotos/999/foto-ledger.jpg"
+      habitation_a = create(:habitation, tenant: tenant_a, codigo: "VISTA-LA-1")
+      asset_a = create_photo_asset(tenant_id: tenant_a.id, habitation: habitation_a, source_path: shared_path)
+
+      habitation_b = create(
+        :habitation,
+        tenant: tenant_b,
+        codigo: "VISTA-LB-1",
+        pictures: [{ "url" => "https://cdn.outro-host.com.br/#{shared_path}", "ordem" => 1 }],
+        imovel_dwv: "Nao"
+      )
+      allow_any_instance_of(described_class).to receive(:download).and_return(StringIO.new("bytes-ledger-b".b))
+
+      result = Current.set(tenant: tenant_b) do
+        described_class.new(scope: Habitation.where(id: habitation_b.id), dry_run: false).call
+      end
+
+      expect(result.failed).to eq(0)
+      expect(asset_a.reload.habitation_id).to eq(habitation_a.id)
+      expect(asset_a.reload.tenant_id).to eq(tenant_a.id)
+      asset_b = VistaFileAsset.find_by(tenant_id: tenant_b.id, source_path: shared_path)
+      expect(asset_b).to be_present
+      expect(asset_b.habitation_id).to eq(habitation_b.id)
+    end
+
+    it "não adota linha legada sem tenant de outra conta" do
+      shared_path = "fotos/555/foto-legada.jpg"
+      habitation_a = create(:habitation, tenant: tenant_a, codigo: "VISTA-LA-2")
+      legacy = create_photo_asset(tenant_id: nil, habitation: habitation_a, source_path: shared_path)
+
+      habitation_b = create(
+        :habitation,
+        tenant: tenant_b,
+        codigo: "VISTA-LB-2",
+        pictures: [{ "url" => "https://cdn.outro-host.com.br/#{shared_path}", "ordem" => 1 }],
+        imovel_dwv: "Nao"
+      )
+      allow_any_instance_of(described_class).to receive(:download).and_return(StringIO.new("bytes-legacy-b".b))
+
+      result = Current.set(tenant: tenant_b) do
+        described_class.new(scope: Habitation.where(id: habitation_b.id), dry_run: false).call
+      end
+
+      expect(result.failed).to eq(0)
+      expect(legacy.reload.habitation_id).to eq(habitation_a.id)
+      expect(legacy.reload.tenant_id).to be_nil
+      expect(VistaFileAsset.where(source_path: shared_path).count).to eq(2)
+    end
+
+    it "recusa reatribuir linha cuja habitação é de outra conta" do
+      shared_path = "fotos/111/foto-divergente.jpg"
+      habitation_a = create(:habitation, tenant: tenant_a, codigo: "VISTA-LA-3")
+      habitation_b = create(
+        :habitation,
+        tenant: tenant_b,
+        codigo: "VISTA-LB-3",
+        pictures: [{ "url" => "https://cdn.outro-host.com.br/#{shared_path}", "ordem" => 1 }],
+        imovel_dwv: "Nao"
+      )
+      asset = create_photo_asset(tenant_id: tenant_b.id, habitation: habitation_a, source_path: shared_path)
+
+      result = Current.set(tenant: tenant_b) do
+        described_class.new(scope: Habitation.where(id: habitation_b.id), dry_run: false).call
+      end
+
+      expect(result.failed).to eq(1)
+      expect(result.errors.first[:error]).to match(/outra conta/)
+      expect(asset.reload.habitation_id).to eq(habitation_a.id)
+      expect(habitation_b.reload.photos).not_to be_attached
+    end
+  end
 end

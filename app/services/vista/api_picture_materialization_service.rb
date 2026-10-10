@@ -273,10 +273,15 @@ module Vista
         ["api", "property_photo", habitation.codigo.presence || habitation.id, filename].join("/")
       asset = VistaFileAsset.find_or_initialize_by(
         vista_import_batch: api_file_asset_batch,
+        tenant_id: tenant.id,
         table_name: API_PHOTO_TABLE_NAME,
         source_path: source_path
       )
+      if asset.habitation.present? && asset.habitation.tenant_id != tenant.id
+        raise TenantMismatchError, "VistaFileAsset #{asset.id} pertence a outra conta"
+      end
       asset.assign_attributes(
+        tenant_id: tenant.id,
         habitation: habitation,
         kind: "property_photo",
         status: asset.status.presence || "pending",
