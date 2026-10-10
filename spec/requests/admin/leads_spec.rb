@@ -1650,6 +1650,98 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(csv.flatten).to include("USUÁRIO: #{admin.name}", "Cliente Relatorio", "1", "CAPTAÇÕES", "Proprietario Captacao")
     end
 
+    it "omite a secao CAPTACOES do CSV para quem nao tem escopo total de captacoes" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Gestor relatorio #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_103,
+        permissions: Profile.default_permissions_for("Gerente")
+      )
+      manager = create(:admin_user, tenant: admin.tenant, profile:, email: "gerente-report-#{SecureRandom.hex(6)}@salute.test")
+      peer = create(:admin_user, tenant: admin.tenant, profile:, email: "corretor-report-#{SecureRandom.hex(6)}@salute.test")
+      create(
+        :habitation,
+        :broker_intake,
+        tenant: admin.tenant,
+        admin_user: peer,
+        proprietario: "Dono Alheio Secreto",
+        proprietario_email: "alheio-secreto@example.com",
+        proprietario_celular: "(47) 98888-0001"
+      )
+      sign_in manager
+
+      expect {
+        get report_admin_leads_path(format: :csv, include_captacoes: "1")
+      }.not_to change(DataExportAuditLog, :count)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("CAPTAÇÕES")
+      expect(response.body).not_to include("Dono Alheio Secreto", "alheio-secreto@example.com")
+    end
+
+    it "omite a secao CAPTACOES do XLSX para quem nao tem escopo total de captacoes" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Gestor relatorio xlsx #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_104,
+        permissions: Profile.default_permissions_for("Gerente")
+      )
+      manager = create(:admin_user, tenant: admin.tenant, profile:, email: "gerente-xlsx-#{SecureRandom.hex(6)}@salute.test")
+      peer = create(:admin_user, tenant: admin.tenant, profile:, email: "corretor-xlsx-#{SecureRandom.hex(6)}@salute.test")
+      create(
+        :habitation,
+        :broker_intake,
+        tenant: admin.tenant,
+        admin_user: peer,
+        proprietario: "Dono Xlsx Secreto",
+        proprietario_email: "xlsx-secreto@example.com"
+      )
+      sign_in manager
+
+      expect {
+        get report_admin_leads_path(format: :xlsx, include_captacoes: "1")
+      }.not_to change(DataExportAuditLog, :count)
+
+      expect(response).to have_http_status(:ok)
+      xlsx = response.body.dup.force_encoding("UTF-8")
+      expect(xlsx).not_to include("CAPTAÇÕES")
+      expect(xlsx).not_to include("Dono Xlsx Secreto", "xlsx-secreto@example.com")
+    end
+
+    it "audita a exportacao da secao CAPTACOES para escopo total" do
+      create(
+        :habitation,
+        :broker_intake,
+        tenant: admin.tenant,
+        admin_user: admin,
+        proprietario: "Proprietario Auditado"
+      )
+
+      expect {
+        get report_admin_leads_path(format: :csv, include_captacoes: "1")
+      }.to change(DataExportAuditLog, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("CAPTAÇÕES", "Proprietario Auditado")
+      audit = DataExportAuditLog.order(:created_at).last
+      expect(audit).to have_attributes(resource_name: "captacoes", record_count: 1)
+      expect(audit.filename).to start_with("relatorio_leads_")
+    end
+
+    it "filtra a secao CAPTACOES pelo corretor permitido" do
+      peer = create(:admin_user, tenant: admin.tenant, email: "corretor-filtro-#{SecureRandom.hex(6)}@salute.test")
+      create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, proprietario: "Proprio Admin")
+      create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: peer, proprietario: "Dono Do Peer")
+
+      get report_admin_leads_path(format: :csv, include_captacoes: "1", broker_id: peer.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("CAPTAÇÕES", "Dono Do Peer")
+      expect(response.body).not_to include("Proprio Admin")
+    end
+
     it "usa a fonte comercial e dados de arquivamento da migracao externa" do
       lead = create(
         :lead,
