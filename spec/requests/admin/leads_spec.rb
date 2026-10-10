@@ -2322,6 +2322,75 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to redirect_to(admin_lead_path(lead))
       expect(flash[:alert]).to eq("Esta etapa permite agendar no máximo 2 dia(s) no futuro.")
     end
+
+    it "nega retorno em lead visivel nos leads mas fora do escopo comercial" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil escopo divergente #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_105,
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "comercial" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "escopo-divergente-#{SecureRandom.hex(6)}@salute.test")
+      peer = create(:admin_user, tenant: admin.tenant, email: "dono-lead-#{SecureRandom.hex(6)}@salute.test")
+      peer_lead = create(:lead, tenant: admin.tenant, admin_user: peer)
+      sign_in user
+
+      expect {
+        post schedule_activity_admin_lead_path(peer_lead),
+             params: { activity_kind: "return", due_at: 1.day.from_now.iso8601, notes: "Retorno indevido" }
+      }.not_to change(Task, :count)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "nega visita em lead visivel nos leads mas fora do escopo comercial" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil escopo divergente visita #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_107,
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "comercial" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "escopo-divergente-visita-#{SecureRandom.hex(6)}@salute.test")
+      peer = create(:admin_user, tenant: admin.tenant, email: "dono-lead-visita-#{SecureRandom.hex(6)}@salute.test")
+      peer_lead = create(:lead, tenant: admin.tenant, admin_user: peer)
+      sign_in user
+
+      expect {
+        post schedule_activity_admin_lead_path(peer_lead),
+             params: { activity_kind: "visit", starts_at: 1.day.from_now.iso8601, notes: "Visita indevida" }
+      }.not_to change(Appointment, :count)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "permite agendamento em lead proprio dentro do escopo comercial" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil escopo proprio #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_106,
+        permissions: {
+          "leads" => { "view" => true, "scope" => "all" },
+          "comercial" => { "view" => true, "manage" => true, "scope" => "own" }
+        }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "escopo-proprio-#{SecureRandom.hex(6)}@salute.test")
+      own_lead = create(:lead, tenant: admin.tenant, admin_user: user)
+      sign_in user
+
+      expect {
+        post schedule_activity_admin_lead_path(own_lead),
+             params: { activity_kind: "return", due_at: 1.day.from_now.iso8601, notes: "Retorno proprio" }
+      }.to change(Task, :count).by(1)
+
+      expect(response).to redirect_to(admin_lead_path(own_lead))
+    end
   end
 
   describe "WhatsApp no lead" do

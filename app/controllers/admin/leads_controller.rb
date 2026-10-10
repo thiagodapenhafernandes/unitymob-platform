@@ -805,6 +805,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def schedule_activity
     check_permission!(:manage, :comercial)
+    accessible_commercial_leads.find(@lead.id)
 
     case params[:activity_kind].to_s
     when "return"
