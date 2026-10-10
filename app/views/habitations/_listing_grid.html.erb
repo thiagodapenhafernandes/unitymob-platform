@@ -7,6 +7,6 @@
         <%= theme_component(:load_more, collection: @habitations) %>
         <% end %>
         <% else %>
-          <%= render "listing_empty" %>
+          <%= render "habitations/listing_empty", clear_path: local_assigns[:clear_path] %>
         <% end %>
         <% end %>

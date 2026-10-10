@@ -7,14 +7,7 @@ class BrokersController < ApplicationController
   private
 
   def fetch_brokers_from_admin_users
-    public_tenant.admin_users
-      .active
-      .displayed_on_site
-      .joins(:profile)
-      .where(profiles: { axis: Profile::AXES[:vertical], active: true })
-      .where("profiles.position > 0")
-      .with_attached_avatar
-      .order(:name)
+    public_tenant.admin_users.site_brokers.with_attached_avatar.order(:name)
   end
 
   def fetch_brokers_from_vista

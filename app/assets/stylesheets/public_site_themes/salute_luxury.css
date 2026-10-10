@@ -2404,6 +2404,174 @@ body.no-scroll { overflow: hidden; }
   }
 }
 
+/* Hero da página do corretor (variante salute-luxury): mesmo contrato do default
+   (corretor centralizado sobre a foto espelhada/embaçada), com a identidade
+   editorial — serifada, filete dourado e véu marinho. */
+.public-theme-broker-hero--salute-luxury {
+  --public-broker-hero-tint: var(--sl-navy-900);
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(120deg, var(--sl-navy-900), var(--sl-navy-800));
+  isolation: isolate;
+  color: #fff;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__bg-blur {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  filter: blur(28px) brightness(0.66) saturate(1.05);
+  transform: scale(1.18);
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 24, 38, .66) 0%, rgba(10, 24, 38, .5) 55%, rgba(10, 24, 38, .78) 100%);
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__portrait {
+  flex: none;
+  width: 120px;
+  aspect-ratio: 3 / 4;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(190, 155, 71, .5);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .4);
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__portrait-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 56px;
+  color: rgba(255, 255, 255, .6);
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__info {
+  min-width: 0;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__crumbs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .22em;
+  color: rgba(255, 255, 255, .72);
+  margin-bottom: 8px;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__crumbs a {
+  color: rgba(255, 255, 255, .72);
+  text-decoration: none;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__crumbs a:hover {
+  color: var(--sl-gold-soft);
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__crumbs .bi {
+  font-size: 9px;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__name {
+  margin: 0;
+  font-family: var(--sl-serif);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.1;
+  overflow-wrap: break-word;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__creci {
+  color: rgba(255, 255, 255, .85);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid rgba(190, 155, 71, .5);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--sl-gold-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.public-theme-broker-hero--salute-luxury .public-theme-broker-hero__contact {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (min-width: 1024px) {
+  .public-theme-broker-hero--salute-luxury .public-theme-broker-hero__inner {
+    padding-top: 36px;
+    padding-bottom: 36px;
+  }
+
+  .public-theme-broker-hero--salute-luxury .public-theme-broker-hero__portrait {
+    width: 148px;
+  }
+
+  .public-theme-broker-hero--salute-luxury .public-theme-broker-hero__name {
+    font-size: 38px;
+  }
+}
+
 .sl-contact-layout {
   display: grid;
   grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);

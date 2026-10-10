@@ -1,0 +1,67 @@
+<%# Busca do hero "Barra" (extraída do _hero_bar para reuso: home e hero do corretor).
+    Contrato: .public-theme-hero-bar__search com __tabs, __tab, __field, __control,
+    __submit e __detail — as mesmas classes do _hero_bar, o tema nem percebe a troca.
+    Locals: variant, form_url (default habitations_path), id_prefix (default "hero_bar"),
+    detail_href (default habitations_path; nil abre o drawer advanced-filters da página),
+    ai_enabled (default true; false omite voz/IA — ex.: contexto do corretor, onde a
+    busca por IA seria global e quebraria o escopo). %>
+<%
+  form_url = local_assigns.fetch(:form_url, habitations_path)
+  id_prefix = local_assigns.fetch(:id_prefix, "hero_bar")
+  detail_href = local_assigns.key?(:detail_href) ? local_assigns[:detail_href] : habitations_path
+  ai_enabled = local_assigns.fetch(:ai_enabled, true)
+  cta = @home_setting.hero_cta_text.presence || "Buscar"
+  voice_ai = ai_enabled && @home_setting.hero_ai_search_available?
+  voice_mic = voice_ai && Ai::PropertySearch::PublicQuery.voice_available?(tenant: public_tenant)
+%>
+<div class="public-theme-hero-bar__search"
+     data-controller="hero-search"
+     <%= tag.attributes(data: { hero_search_ai_url_value: public_ai_search_path, hero_search_voice_value: voice_mic }) if voice_ai %>
+     data-hero-search-sale-price-options-value="<%= json_escape(public_price_range_options("venda").to_json) %>"
+     data-hero-search-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
+  <%= form_with url: form_url, method: :get, local: true, class: "public-theme-hero-bar__form", role: "search", autocomplete: "off",
+                data: { controller: "public-search-url", action: "submit->public-search-url#submit" } do %>
+    <%= hidden_field_tag :transaction_type, "venda", id: "#{id_prefix}_transaction", data: { hero_search_target: "transaction" } %>
+    <%= hidden_field_tag :v, "2", id: nil %>
+
+    <div class="public-theme-hero-bar__tabs" role="group" aria-label="Finalidade">
+      <% if voice_ai %>
+        <button type="button" class="public-theme-hero-bar__tab public-theme-hero-voice__toggle" data-hero-search-target="voiceToggle" data-action="click->hero-search#toggleVoice"
+                aria-pressed="false" aria-label="<%= voice_mic ? "Buscar por voz" : "Descrever o imóvel que procuro" %>"><i class="bi bi-<%= voice_mic ? "mic" : "stars" %>" aria-hidden="true"></i> <%= voice_mic ? "Voz" : "Descrever" %></button>
+      <% end %>
+      <% [["Comprar", "venda"], ["Alugar", "aluguel"]].each_with_index do |(label, value), index| %>
+        <button type="button" class="public-theme-hero-bar__tab" data-hero-search-target="tab" data-value="<%= value %>"
+                data-action="click->hero-search#transaction" aria-pressed="<%= index.zero? %>"><%= label %></button>
+      <% end %>
+    </div>
+
+    <div class="public-theme-hero-bar__field">
+      <%= render "public_theme/components/combobox_field", name: "city[]", id: "#{id_prefix}_location", label: "Localização", placeholder: "Localização", options: hero_location_options %>
+    </div>
+    <div class="public-theme-hero-bar__field">
+      <%= render "public_theme/components/combobox_field", name: "category[]", id: "#{id_prefix}_category", label: "Tipo de imóvel", placeholder: "Tipo de imóvel", options: Array(@property_types).map { |type| [type, type] } %>
+    </div>
+    <div class="public-theme-hero-bar__field">
+      <%= render "public_theme/components/combobox_field", name: "min_bedrooms", id: "#{id_prefix}_bedrooms", label: "Dormitórios", placeholder: "Dormitórios", options: hero_bedroom_options.drop(1), single: true %>
+    </div>
+    <label class="public-theme-hero-bar__field public-theme-hero-bar__field--text">
+      <span class="sr-only">Código, bairro ou tipo</span>
+      <%= search_field_tag :search, nil, placeholder: "Digite código, bairro, tipo…", class: "public-theme-hero-bar__control", id: "#{id_prefix}_search" %>
+    </label>
+    <button type="submit" class="public-theme-hero-bar__submit">
+      <i class="bi bi-search" aria-hidden="true"></i><span><%= cta %></span>
+    </button>
+    <% if voice_ai %>
+      <%= render "public_theme/components/hero_voice", variant: variant, class_name: "public-theme-hero-voice--in-bar", voice: voice_mic %>
+    <% end %>
+  <% end %>
+  <% if detail_href.present? %>
+    <button type="button" class="public-theme-hero-bar__detail" data-action="click->hero-search#openFilters" data-href="<%= detail_href %>">
+      <i class="bi bi-sliders" aria-hidden="true"></i> Filtro detalhado
+    </button>
+  <% else %>
+    <button type="button" class="public-theme-hero-bar__detail" data-action="click->advanced-filters#open">
+      <i class="bi bi-sliders" aria-hidden="true"></i> Filtro detalhado
+    </button>
+  <% end %>
+</div>

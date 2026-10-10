@@ -583,4 +583,19 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(result).not_to include(physical_only)
     end
   end
+
+  describe ".by_broker" do
+    it "une vínculo direto e captador, ignorando outros papéis e corretores" do
+      broker = create(:admin_user)
+      direct = create(:habitation, codigo: "BROKER-DIRECT", admin_user: broker)
+      assigned = create(:habitation, codigo: "BROKER-CAPTADOR")
+      HabitationBrokerAssignment.create!(habitation: assigned, admin_user: broker, role: :captador)
+      promoter = create(:habitation, codigo: "BROKER-PROMOTOR")
+      HabitationBrokerAssignment.create!(habitation: promoter, admin_user: broker, role: :promotor)
+      other = create(:habitation, codigo: "BROKER-OTHER")
+
+      expect(Habitation.by_broker(broker)).to contain_exactly(direct, assigned)
+      expect(Habitation.by_broker(broker)).not_to include(promoter, other)
+    end
+  end
 end

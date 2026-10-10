@@ -1,15 +1,27 @@
 class LandingPagesController < ApplicationController
   include BlogArticlePresentation
   include LandingPageShowcases
+  include PublicListingSearch
+  include BrokerSitePage
 
   def show
     @landing_page = public_tenant.landing_pages.active.find_by(slug: params[:slug])
     unless @landing_page
       @blog_article = public_tenant.blog_articles.publicly_visible.with_rich_text_content_and_embeds.with_attached_cover.includes(:blog_categories).find_by(slug: params[:slug])
-      return render_unavailable_page unless @blog_article
+      if @blog_article
+        prepare_blog_article
+        return render "blog/show"
+      end
 
-      prepare_blog_article
-      return render "blog/show"
+      # Sem landing nem artigo: tenta a página pública do corretor (/:slug).
+      @broker = AdminUser.site_broker_for(public_tenant, params[:slug])
+      if @broker
+        return if setup_broker_site_page
+
+        return render "brokers/show"
+      end
+
+      return render_unavailable_page
     end
 
     assign_seo

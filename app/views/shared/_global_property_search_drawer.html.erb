@@ -37,14 +37,19 @@
   ]
 %>
 
-<% drawer_visibility_class = @home_setting&.floating_search_filter_visibility_class %>
+<%# Locals opcionais (reuso fora do layout, ex.: página do corretor):
+    form_url (default habitations_path), force_trigger (default false: mostra o
+    FAB em todos os aparelhos ignorando o gate de visibilidade do home_setting). %>
+<% drawer_form_url = local_assigns.fetch(:form_url, habitations_path) %>
+<% drawer_force_trigger = local_assigns.fetch(:force_trigger, false) %>
+<% drawer_visibility_class = drawer_force_trigger ? nil : @home_setting&.floating_search_filter_visibility_class %>
 
 <%# Filtro global: FAB + drawer, iguais em estrutura para todos os temas
     (theme_component resolve a variante). Fica dentro do shell do tema. %>
 <div class="public-global-search" data-controller="filter-drawer">
   <%# A visibilidade por aparelho vale só para o botão flutuante: o drawer abre também pelo "Filtro detalhado" do hero em Barra,
       em qualquer aparelho (com a classe no wrapper, o drawer sumia no desktop quando só o celular usa o botão flutuante). %>
-  <% if @home_setting&.renders_floating_search_filter? %>
+  <% if drawer_force_trigger || @home_setting&.renders_floating_search_filter? %>
     <div class="<%= drawer_visibility_class %>"><%= theme_component(:filter_trigger) %></div>
   <% end %>
 
@@ -55,5 +60,6 @@
         drawer_selected_characteristics: drawer_selected_characteristics,
         drawer_quick_filters: drawer_quick_filters,
         drawer_highlight_filters: drawer_highlight_filters,
-        drawer_feature_filters: drawer_feature_filters) %>
+        drawer_feature_filters: drawer_feature_filters,
+        form_url: drawer_form_url) %>
 </div>

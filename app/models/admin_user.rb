@@ -58,6 +58,27 @@ class AdminUser < ApplicationRecord
   scope :active,   -> { account_members.where(active: true) }
   scope :inactive, -> { account_members.where(active: false) }
   scope :displayed_on_site, -> { account_members.where(display_on_site: true) }
+  scope :site_brokers, -> {
+    active
+      .displayed_on_site
+      .joins(:profile)
+      .where(profiles: { axis: Profile::AXES[:vertical], active: true })
+      .where("profiles.position > 0")
+  }
+
+  # Corretor com página pública (/:slug): mesmo recorte da vitrine
+  # /corretores. Slug deriva do nome; sem colisões hoje — desempate por id.
+  def self.site_broker_for(tenant, slug)
+    return if slug.blank?
+
+    tenant.admin_users.site_brokers.order(:id).find do |broker|
+      broker.site_slug == slug.to_s
+    end
+  end
+
+  def site_slug
+    I18n.transliterate(name.to_s).parameterize
+  end
 
   def self.matching_access_profile(profile)
     return all if profile.blank?

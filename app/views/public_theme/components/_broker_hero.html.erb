@@ -1,0 +1,65 @@
+<%# Hero da página do corretor: corretor centralizado (retrato + nome + CRECI +
+    badges + contato) sobre a foto espelhada/embaçada cobrindo a largura — mesma
+    técnica do hero do empreendimento default (scrim tingido pela cor média via
+    public-hero-tint). Sem busca no hero e sem barra de filtros abaixo: os filtros
+    ficam no drawer, aberto pelo botão flutuante.
+    Contrato: .public-theme-broker-hero(--<variante>) com __bg-blur, __scrim, __inner,
+    __portrait, __info. O tema só estiliza a variante. Locals: broker:, variant. %>
+<%
+  broker = local_assigns.fetch(:broker)
+  variant = local_assigns.fetch(:variant, "default")
+%>
+<section class="public-theme-broker-hero public-theme-broker-hero--<%= variant %>" aria-label="Corretor <%= broker.name %>"
+         <%= tag.attributes(data: { controller: "public-hero-tint", public_hero_tint_property_value: "--public-broker-hero-tint" }) if broker.avatar.attached? %>>
+  <% if broker.avatar.attached? %>
+    <%= image_tag broker.avatar,
+          alt: "",
+          aria: { hidden: true },
+          crossorigin: "anonymous",
+          class: "public-theme-broker-hero__bg-blur",
+          loading: "lazy",
+          decoding: "async" %>
+    <div class="public-theme-broker-hero__scrim" aria-hidden="true"></div>
+  <% end %>
+
+  <div class="public-theme-container public-theme-broker-hero__inner">
+    <div class="public-theme-broker-hero__portrait">
+      <% if broker.avatar.attached? %>
+        <%= image_tag broker.avatar,
+              alt: broker.name,
+              crossorigin: "anonymous",
+              data: { public_hero_tint_target: "source" },
+              class: "public-theme-broker-hero__portrait-img",
+              fetchpriority: "high",
+              loading: "eager",
+              decoding: "async" %>
+      <% else %>
+        <div class="public-theme-broker-hero__portrait-fallback" aria-hidden="true">
+          <i class="bi bi-person-circle"></i>
+        </div>
+      <% end %>
+    </div>
+    <div class="public-theme-broker-hero__info">
+      <nav class="public-theme-broker-hero__crumbs" aria-label="Você está aqui">
+        <%= link_to "Início", root_path %>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+        <%= link_to "Corretores", brokers_path %>
+      </nav>
+      <h1 class="public-theme-broker-hero__name"><%= broker.name %></h1>
+      <p class="public-theme-broker-hero__tags">
+        <% if broker.creci.present? %>
+          <span class="public-theme-broker-hero__creci">CRECI: <%= broker.creci %></span>
+        <% end %>
+        <% if broker.sales? || broker.both? %>
+          <span class="public-theme-broker-hero__badge">Venda</span>
+        <% end %>
+        <% if broker.rentals? || broker.both? %>
+          <span class="public-theme-broker-hero__badge">Locação</span>
+        <% end %>
+      </p>
+      <div class="public-theme-broker-hero__contact">
+        <%= render "brokers/contact_buttons", broker: broker %>
+      </div>
+    </div>
+  </div>
+</section>

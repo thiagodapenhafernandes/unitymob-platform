@@ -12,7 +12,10 @@
 <% search_filter_right_border_style = "border-right: var(--search-filter-border);" %>
 <% search_filter_chip_border_style = "border: var(--search-filter-border);" %>
 
-<% voice_ai = @home_setting.hero_ai_search_available? %>
+<%# Locals opcionais (reuso no hero do corretor): form_url (default habitations_path),
+    ai_enabled (default true; false omite voz/IA, que seria global e quebraria o escopo). %>
+<% form_url = local_assigns.fetch(:form_url, habitations_path) %>
+<% voice_ai = local_assigns.fetch(:ai_enabled, true) && @home_setting.hero_ai_search_available? %>
 <% voice_mic = voice_ai && Ai::PropertySearch::PublicQuery.voice_available?(tenant: public_tenant) %>
 <div class="hero-search w-full max-w-5xl mx-auto relative z-20"
      data-controller="search-tabs<%= " hero-search" if voice_ai %>"
@@ -53,7 +56,7 @@
   <!-- Search Form Container -->
   <div class="public-theme-search__panel relative z-30 shadow-[0_24px_80px_rgba(8,31,48,0.24)]"
        style="<%= search_filter_style %>; background-color: var(--search-filter-bg); border: var(--search-filter-border); border-radius: var(--search-filter-radius); color: var(--search-filter-text); backdrop-filter: blur(var(--search-filter-blur)); -webkit-backdrop-filter: blur(var(--search-filter-blur));">
-    <%= form_with url: habitations_path,
+    <%= form_with url: form_url,
                   method: :get,
                   class: "p-3 sm:p-4",
                   data: { controller: "public-search-url", action: "submit->public-search-url#submit", hero_search_target: ("filtersPanel" if voice_ai) }.compact do |f| %>

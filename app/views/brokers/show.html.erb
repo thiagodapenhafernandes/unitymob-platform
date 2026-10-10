@@ -1,0 +1,63 @@
+<% broker_path = broker_site_path(@broker) %>
+<div data-controller="sidebar" class="public-broker-show public-header-offset mt-[72px]">
+
+  <%= render "public_theme/components/broker_hero", broker: @broker, variant: theme_variant %>
+
+  <%# Mesmo FAB + drawer "Filtro detalhado" do resto do site, com submit no
+      contexto do corretor. O drawer do layout é suprimido via @hide_global_search. %>
+  <%= render "shared/global_property_search_drawer", form_url: broker_path, force_trigger: true %>
+
+  <!-- Header -->
+  <div class="public-habitations-index__heading bg-white border-b border-gray-100 py-4">
+    <div class="container-custom">
+      <div class="public-habitations-index__heading-row flex justify-between items-end">
+        <h2 class="public-habitations-index__title text-2xl font-bold text-blue-three">
+          <%= @listing_heading %>
+        </h2>
+
+        <div class="public-habitations-index__sort flex items-center gap-2">
+          <span class="text-xs font-semibold text-gray-400 uppercase">Ordenar:</span>
+          <select id="public-habitations-sort" class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" data-controller="public-listing-nav" data-public-listing-nav-frame-value="public-listing-grid" data-action="change->public-listing-nav#sort">
+            <option value="<%= public_listing_path(sort: 'recent', page: nil) %>" <%= 'selected' if params[:sort].blank? || params[:sort] == 'recent' %>>Mais recentes</option>
+            <option value="<%= public_listing_path(sort: 'price_asc', page: nil) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
+            <option value="<%= public_listing_path(sort: 'price_desc', page: nil) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
+            <option value="<%= public_listing_path(sort: 'area_desc', page: nil) %>" <%= 'selected' if params[:sort] == 'area_desc' %>>Maior área</option>
+            <option value="<%= public_listing_path(sort: 'bedrooms_desc', page: nil) %>" <%= 'selected' if params[:sort] == 'bedrooms_desc' %>>Mais quartos</option>
+          </select>
+        </div>
+      </div>
+      <p class="text-sm text-gray-500 mt-1">
+        <%= pluralize(@habitations.total_entries, "imóvel encontrado", "imóveis encontrados") %> com <%= @broker.name.split.first %>
+        <% if params.except(:controller, :action, :page, :slug).present? %>
+          <%= link_to broker_path, class: "ml-2 inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors" do %>
+            <i class="bi bi-x-circle"></i>
+            Limpar filtros
+          <% end %>
+        <% end %>
+      </p>
+    </div>
+  </div>
+
+  <!-- Property Grid -->
+  <div class="container-custom py-8">
+    <%= render "habitations/listing_grid", clear_path: broker_path %>
+  </div>
+
+  <% if @habitations.any? %>
+    <script type="application/ld+json">
+      <%= raw({
+        "@context" => "https://schema.org",
+        "@type" => "ItemList",
+        "name" => @listing_heading,
+        "numberOfItems" => @habitations.total_entries,
+        "itemListElement" => @habitations.first(12).each_with_index.map { |property, index|
+          {
+            "@type" => "ListItem",
+            "position" => ((@habitations.current_page - 1) * @habitations.per_page) + index + 1,
+            "url" => habitation_url(property)
+          }
+        }
+      }.to_json) %>
+    </script>
+  <% end %>
+</div>

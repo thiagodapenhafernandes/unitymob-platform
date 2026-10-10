@@ -159,6 +159,14 @@ module Habitation::SearchScopes
     # Scopes por tipo de transação (baseado em preço)
     scope :for_sale, -> { where("valor_venda_cents > 0") }
     scope :for_rent, -> { where("valor_locacao_cents > 0") }
+
+    # Imóveis do corretor: vínculo direto ou captador nas atribuições
+    # (mesma união do corretor exibido no imóvel).
+    scope :by_broker, ->(broker) {
+      where(admin_user_id: broker.id).or(
+        where(id: HabitationBrokerAssignment.captador.where(admin_user_id: broker.id).select(:habitation_id))
+      )
+    }
     
     # Scopes por categoria (com unaccent)
     scope :by_category, ->(category) { 

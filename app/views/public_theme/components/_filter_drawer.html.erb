@@ -4,7 +4,9 @@
     Classes canônicas public-theme-filter-drawer__* são o contrato de estilo;
     os aliases curtos (drawer-*, dm-*, df-*) são os que o CSS do luxury usa.
     Cada tema estiliza a variante em public_site_themes/<chave>.css ou, no
-    default, em components/_public_global_search_drawer.scss. %>
+    default, em components/_public_global_search_drawer.scss.
+    Locals: drawer_* (vindas do shell) + form_url (default habitations_path;
+    ex.: página do corretor submete no contexto dele). %>
 <%
   panel_visual = @home_setting&.filter_panel_background if @home_setting&.filter_panel_background&.attached?
   panel_visual ||= @home_setting&.hero_background_desktop
@@ -65,7 +67,7 @@
 
       <h2 class="public-theme-filter-drawer__title" id="public-global-search-title">Filtro <em class="public-theme-filter-drawer__title-accent">detalhado</em></h2>
 
-      <%= form_with url: habitations_path,
+      <%= form_with url: local_assigns.fetch(:form_url, habitations_path),
                     method: :get,
                     class: "public-theme-filter-drawer__form",
                     id: "filtroForm",
