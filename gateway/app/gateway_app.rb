@@ -52,11 +52,11 @@ module Gateway
 
       payload = parse_json(raw_body)
       event_contexts = WhatsappPayload.extract_event_contexts(payload)
-      events = event_contexts.map { |context| persist_event(context, payload, raw_body) }
+      events = event_contexts.map { |context| persist_event(context, context[:payload] || payload, context[:payload] ? JSON.generate(context[:payload]) : raw_body) }
 
       alert_unrouted_events(events)
       events.each { |event| mirror_event(event, raw_body) }
-      events.each { |event| forward_event(event, raw_body) }
+      events.each { |event| forward_event(event, event.raw_body) }
 
       status 200
       json(ok: true, events: events.map { |event| event_response(event) })
@@ -140,13 +140,20 @@ module Gateway
       require_internal_token!
 
       attributes = route_attributes(parse_json(request.body.read))
-      route = WebhookRoute.find_or_initialize_by(
-        provider: attributes[:provider],
-        phone_number_id: attributes[:phone_number_id]
-      )
-      route.assign_attributes(attributes)
-      route.active = true if route.active.nil?
-      route.save!
+      route = nil
+      WebhookRoute.transaction do
+        # Serialize registrations for this number, including first registration.
+        lock_key = WebhookRoute.connection.quote("whatsapp-phone:#{attributes[:phone_number_id]}")
+        WebhookRoute.connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(#{lock_key}, 0))")
+        existing = WebhookRoute.find_by(provider: "whatsapp", phone_number_id: attributes[:phone_number_id])
+        if existing && (existing.target_url != attributes[:target_url] || existing.client_key != attributes[:client_key])
+          halt 409, json(error: "phone_destination_conflict", details: ["This number is already routed to another destination."])
+        end
+        route = existing || WebhookRoute.new(provider: "whatsapp", phone_number_id: attributes[:phone_number_id])
+        route.assign_attributes(attributes)
+        route.active = true if route.active.nil?
+        route.save!
+      end
 
       status route.previously_new_record? ? 201 : 200
       json(route: route_payload(route))

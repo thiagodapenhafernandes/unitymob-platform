@@ -42,7 +42,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       )
       refresh_current_whatsapp_connection!(integration)
       subscription = subscribe_current_whatsapp_app(integration)
-      gateway = register_current_whatsapp_gateway_route(integration)
+      gateway = register_current_whatsapp_gateway_route(integration, subscription: subscription)
 
       render json: {
         ok: true,
@@ -109,7 +109,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     if integration.save
       refresh_current_whatsapp_connection!(integration)
       subscription = subscribe_current_whatsapp_app(integration)
-      gateway = register_current_whatsapp_gateway_route(integration)
+      gateway = register_current_whatsapp_gateway_route(integration, subscription: subscription)
       flash_type = whatsapp_connection_success?(subscription, gateway) ? :notice : :alert
       flash_message = whatsapp_connection_message(subscription, gateway, success_message: "Conexão manual do WhatsApp salva.")
       redirect_to admin_whatsapp_integration_path, flash_type => flash_message
@@ -725,12 +725,37 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     "WhatsApp salvo, mas não foi possível assinar o app Unitymob na WABA: #{detail}."
   end
 
-  def register_current_whatsapp_gateway_route(integration)
+  def register_current_whatsapp_gateway_route(integration, subscription:)
+    ownership = verify_whatsapp_meta_ownership(integration)
+    return blocked_gateway_route(ownership[:error]) unless ownership[:ok]
+    unless subscription[:ok]
+      detail = subscription[:error].presence || "sem detalhes retornados pela Meta"
+      return blocked_gateway_route("não foi possível assinar o app Unitymob na WABA (#{detail}); a rota só é registrada após a assinatura.")
+    end
+
     Whatsapp::WebhookGatewayClient.new(
       integration: integration,
       tenant: current_tenant,
       target_url: webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
     ).register_route
+  end
+
+  # Prova de titularidade na Meta antes de vincular a rota do gateway: o token
+  # informado precisa ler exatamente este phone_number_id. Sem isso, qualquer
+  # tenant poderia reivindicar o número de outro e desviar o recebimento.
+  def verify_whatsapp_meta_ownership(integration)
+    unless integration.messaging_ready? && integration.waba_id.present?
+      return { ok: false, error: "integração ainda não possui WABA e Phone Number ID." }
+    end
+
+    phone = Whatsapp::CloudClient.new(integration).phone_info
+    return { ok: true } if phone[:ok]
+
+    { ok: false, error: phone[:error].presence || "não foi possível confirmar o número na Meta." }
+  end
+
+  def blocked_gateway_route(detail)
+    Whatsapp::WebhookGatewayClient::Result.new(ok?: false, skipped?: false, error: "titularidade do número não confirmada na Meta: #{detail}")
   end
 
   def whatsapp_connection_success?(subscription, gateway)
