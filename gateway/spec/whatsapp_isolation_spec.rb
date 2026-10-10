@@ -57,6 +57,37 @@ RSpec.describe 'WhatsApp destination isolation' do
     expect(requests.last).to have_been_requested.once
   end
 
+  it 'rejects rebinding a number to another client or target' do
+    route = WebhookRoute.create!(provider: 'whatsapp', client_key: 'salute', phone_number_id: 'PHONE-A', waba_id: 'WABA-1', target_url: 'https://salute.test/webhooks/whatsapp', forwarding_secret: 'secret')
+    [{client_key: 'conexao'}, {target_url: 'https://conexao.test/webhooks/whatsapp'}].each do |change|
+      payload = route.attributes.slice('client_key', 'phone_number_id', 'waba_id', 'target_url', 'forwarding_secret').merge(change.stringify_keys)
+      post '/internal/whatsapp/routes', payload.to_json, 'CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => "Bearer #{ENV.fetch('INTERNAL_API_TOKEN', 'internal-token')}"
+      expect(last_response.status).to eq(409)
+      expect(JSON.parse(last_response.body)['error']).to eq('phone_destination_conflict')
+      expect(route.reload.target_url).to eq('https://salute.test/webhooks/whatsapp')
+      expect(route.reload.client_key).to eq('salute')
+      expect(WebhookRoute.count).to eq(1)
+    end
+  end
+
+  it 'allows same-tenant re-registration of the same number and destination' do
+    route = WebhookRoute.create!(provider: 'whatsapp', client_key: 'salute', tenant_name: 'Salute', phone_number_id: 'PHONE-A', waba_id: 'WABA-1', target_url: 'https://salute.test/webhooks/whatsapp', forwarding_secret: 'old-secret')
+    payload = {
+      client_key: 'salute',
+      tenant_name: 'Salute Imoveis',
+      phone_number_id: 'PHONE-A',
+      waba_id: 'WABA-1',
+      target_url: 'https://salute.test/webhooks/whatsapp',
+      forwarding_secret: 'rotated-secret'
+    }
+
+    post '/internal/whatsapp/routes', payload.to_json, 'CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => "Bearer #{ENV.fetch('INTERNAL_API_TOKEN', 'internal-token')}"
+
+    expect(last_response.status).to eq(200)
+    expect(WebhookRoute.count).to eq(1)
+    expect(route.reload).to have_attributes(tenant_name: 'Salute Imoveis', forwarding_secret: 'rotated-secret', active: true)
+  end
+
   it 'forwards only the matching status to its own destination' do
     route = WebhookRoute.create!(provider: 'whatsapp', client_key: 'tenant-a', phone_number_id: 'PHONE-A', waba_id: 'WABA-1', target_url: 'https://tenant-a.test/webhooks/whatsapp', forwarding_secret: 'secretA')
     other = WebhookRoute.create!(provider: 'whatsapp', client_key: 'tenant-b', phone_number_id: 'PHONE-B', waba_id: 'WABA-1', target_url: 'https://tenant-b.test/webhooks/whatsapp', forwarding_secret: 'secretB')
