@@ -132,7 +132,7 @@ module Ai
       end
 
       def matching_developments
-        scope = tenant.habitations.where(tipo: "Empreendimento")
+        scope = tenant.habitations.publicly_listable.where(tipo: "Empreendimento")
         scope = scope.left_outer_joins(:address)
         scope = scope.left_outer_joins(:development_aliases) if setting.ai_property_search_development_aliases_enabled?
 
@@ -154,6 +154,7 @@ module Ai
 
       def fallback_developments
         tenant.habitations
+          .publicly_listable
           .where(tipo: "Empreendimento")
           .order(updated_at: :desc)
           .limit(limit_for(:developments) * 2)
