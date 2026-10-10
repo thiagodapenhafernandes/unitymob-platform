@@ -5,7 +5,7 @@ class HabitationDuplicateChecker
     end
   end
 
-  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil, lot: nil, block_section: nil, development_code: nil)
+  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil, lot: nil, block_section: nil, development_code: nil, owner_ids: nil)
     @street = street
     @number = number
     @building = building
@@ -19,6 +19,7 @@ class HabitationDuplicateChecker
     @block_section = block_section
     @development_code = development_code
     @tenant = tenant || Current.tenant
+    @owner_ids = owner_ids
     raise ArgumentError, "Tenant obrigatório para verificar duplicidade de imóvel" if @tenant.blank?
   end
 
@@ -51,7 +52,20 @@ class HabitationDuplicateChecker
   end
 
   def habitation_scope
-    @tenant.habitations
+    scope = @tenant.habitations
+    return scope if @owner_ids.nil?
+
+    # Recorte por dono: responsável direto ou corretor designado — mesmo
+    # critério do team_property_scope da listagem de imóveis.
+    scope.where(
+      "habitations.admin_user_id IN (:ids) OR EXISTS (
+        SELECT 1
+        FROM habitation_broker_assignments
+        WHERE habitation_broker_assignments.habitation_id = habitations.id
+          AND habitation_broker_assignments.admin_user_id IN (:ids)
+      )",
+      ids: @owner_ids
+    )
   end
 
   def complete_identity?

@@ -484,4 +484,59 @@ RSpec.describe HabitationDuplicateChecker do
     expect(result.comparison).to eq(:unit)
     expect(result.matches).to include(existing)
   end
+
+  it "restringe candidatos aos donos informados em owner_ids" do
+    owner = create(:admin_user)
+    peer = create(:admin_user, tenant: owner.tenant)
+    own_match = create(:habitation, tenant: owner.tenant, admin_user: owner, nome_empreendimento: "Edifício Solar", bloco: "501")
+    own_match.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+    peer_match = create(:habitation, tenant: owner.tenant, admin_user: peer, nome_empreendimento: "Edifício Solar", bloco: "501")
+    peer_match.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    scoped = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "501",
+      status: "Venda",
+      tenant: owner.tenant,
+      owner_ids: [owner.id]
+    ).call
+
+    expect(scoped.complete).to be(true)
+    expect(scoped.matches).to include(own_match)
+    expect(scoped.matches).not_to include(peer_match)
+
+    unscoped = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "501",
+      status: "Venda",
+      tenant: owner.tenant
+    ).call
+
+    expect(unscoped.matches).to include(own_match, peer_match)
+  end
+
+  it "inclui imóvel com corretor designado no filtro de donos" do
+    owner = create(:admin_user)
+    broker = create(:admin_user, tenant: owner.tenant)
+    assigned = create(:habitation, tenant: owner.tenant, admin_user: owner, nome_empreendimento: "Edifício Solar", bloco: "502")
+    assigned.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+    HabitationBrokerAssignment.create!(habitation: assigned, admin_user: broker, role: "captador")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "502",
+      status: "Venda",
+      tenant: owner.tenant,
+      owner_ids: [broker.id]
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to include(assigned)
+  end
 end

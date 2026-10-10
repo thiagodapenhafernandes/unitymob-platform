@@ -119,7 +119,7 @@ class Admin::LeadsController < Admin::BaseController
   # Editar exige permissão própria: antes o update só pedia :view + escopo do
   # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
   # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
-  requires_permission :edit, :leads, only: [:update, :reply_instagram]
+  requires_permission :edit, :leads, only: [:update, :reply_instagram, :share_properties, :suggest_properties]
   requires_permission :create, :leads, only: [:new, :create]
   helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :toggle_favorite, :vcard, :log_contact, :interest_intelligence, :open_whatsapp_conversation, :activate_whatsapp_template, :share_properties, :suggest_properties, :archive, :close_deal, :schedule_activity, :reply_instagram]
@@ -254,17 +254,21 @@ class Admin::LeadsController < Admin::BaseController
   def report
     assign_lead_filter_state
     scope = filtered_lead_scope_for_current_user.includes(:admin_user, :archive_reason, :lead_pipeline_stage).order(created_at: :asc)
-    include_captacoes = params[:include_captacoes].to_s == "1"
+    include_captacoes = params[:include_captacoes].to_s == "1" && can_export_captacoes?
     timestamp = Time.current.strftime("%Y%m%d_%H%M%S")
 
     if params[:format].to_s == "xlsx"
+      filename = "relatorio_leads_#{timestamp}.xlsx"
+      record_captacoes_report_export!(filename:, format: "xlsx") if include_captacoes
       send_data commercial_report_xlsx(scope, include_captacoes:),
-                filename: "relatorio_leads_#{timestamp}.xlsx",
+                filename:,
                 type: REPORT_XLSX_MIME,
                 disposition: "attachment"
     else
+      filename = "relatorio_leads_#{timestamp}.csv"
+      record_captacoes_report_export!(filename:, format: "csv_semicolon") if include_captacoes
       send_data commercial_report_csv(scope, include_captacoes:),
-                filename: "relatorio_leads_#{timestamp}.csv",
+                filename:,
                 type: "text/csv; charset=utf-8"
     end
   end
@@ -801,6 +805,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def schedule_activity
     check_permission!(:manage, :comercial)
+    accessible_commercial_leads.find(@lead.id)
 
     case params[:activity_kind].to_s
     when "return"
@@ -1689,10 +1694,54 @@ class Admin::LeadsController < Admin::BaseController
     scope = current_tenant.habitations.broker_intakes.includes(:admin_user, :address, :proprietor).order(created_at: :asc)
     scope = scope.where("habitations.created_at >= ?", parsed_start_date.beginning_of_day) if parsed_start_date.present?
     scope = scope.where("habitations.created_at <= ?", parsed_end_date.end_of_day) if parsed_end_date.present?
-    if @broker_id.present? && @broker_id != "unassigned" && permitted_admin_user_ids_for_leads.include?(@broker_id.to_i)
-      scope = scope.where(admin_user_id: @broker_id)
-    end
-    scope
+    apply_captacao_report_owner_scope(scope)
+  end
+
+  # Recorte de donos da seção CAPTAÇÕES: espelha o scoped_intakes
+  # (visíveis em :captacoes). broker_id ausente ou fora do escopo cai no
+  # escopo do viewer — nunca em "sem filtro".
+  def apply_captacao_report_owner_scope(scope)
+    broker_id = permitted_captacao_report_broker_id
+    return scope.where(admin_user_id: broker_id) if broker_id.present?
+
+    owner_ids = visible_owner_ids(:captacoes)
+    return scope if owner_ids.nil?
+
+    scope.where(admin_user_id: owner_ids)
+  end
+
+  def permitted_captacao_report_broker_id
+    return if @broker_id.blank? || @broker_id == "unassigned"
+
+    id = @broker_id.to_i
+    owner_ids = visible_owner_ids(:captacoes)
+    return id if owner_ids.nil? && current_tenant.admin_users.exists?(id: id)
+    return id if owner_ids&.include?(id)
+
+    nil
+  end
+
+  # Gate de exportação das captações no relatório — mesmo critério do
+  # #export de captações (dono da conta ou escopo total em :captacoes).
+  def can_export_captacoes?
+    tenant_owner? || owns_all_resource?(:captacoes)
+  end
+
+  # Auditoria da seção CAPTAÇÕES do relatório de leads — espelha o
+  # registro do #export de captações (Audit::DataExportRecorder).
+  def record_captacoes_report_export!(filename:, format:)
+    Audit::DataExportRecorder.call(
+      admin_user: current_admin_user,
+      request: request,
+      export_type: "csv_export",
+      resource_name: "captacoes",
+      format: format,
+      record_count: captacao_report_scope.count,
+      selected_count: 0,
+      filename: filename,
+      filters: params.to_unsafe_h.slice("broker_id", "only_mine", "start_date", "end_date", "include_captacoes"),
+      fields: commercial_report_headers
+    )
   end
 
   def report_datetime(value)
