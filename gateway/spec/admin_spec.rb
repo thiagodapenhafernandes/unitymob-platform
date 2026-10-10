@@ -105,6 +105,32 @@ RSpec.describe 'Admin panel' do
     expect(route).to have_attributes(client_key: 'dev', target_url: 'https://dev.unitymob.com.br/webhooks/meta', active: true)
   end
 
+  it 'lets the operator re-point an existing number (legitimate re-registration)' do
+    WebhookRoute.create!(provider: 'whatsapp', client_key: 'salute', tenant_name: 'Salute',
+      phone_number_id: '111', waba_id: '222', target_url: 'https://old.example.com/hook', forwarding_secret: 's' * 20)
+
+    login
+    get '/admin/login/verify'
+    post '/admin/login/verify', code: @code, authenticity_token: csrf_token
+    get '/admin'
+
+    post '/admin/routes',
+      route_provider: 'whatsapp',
+      client_key: 'salute',
+      tenant_name: 'Salute',
+      phone_number_id: '111',
+      waba_id: '222',
+      target_url: 'https://new.example.com/hook',
+      forwarding_secret: 's' * 20,
+      active: 'true',
+      authenticity_token: csrf_token
+
+    route = WebhookRoute.find_by!(provider: 'whatsapp', phone_number_id: '111')
+    expect(last_response.status).to eq(302)
+    expect(WebhookRoute.where(provider: 'whatsapp', phone_number_id: '111').count).to eq(1)
+    expect(route.target_url).to eq('https://new.example.com/hook')
+  end
+
   it 'updates the dev mirror from the admin panel' do
     login
     get '/admin/login/verify'
