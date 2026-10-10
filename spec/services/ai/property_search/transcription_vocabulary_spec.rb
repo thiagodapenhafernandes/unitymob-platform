@@ -33,4 +33,22 @@ RSpec.describe Ai::PropertySearch::TranscriptionVocabulary do
 
     expect(described_class.new(tenant: empty_tenant, setting:).call).to be_nil
   end
+
+  it "exclui empreendimentos não publicados e seus aliases do vocabulário" do
+    vocab_tenant = Tenant.create!(name: "Vocab filtro #{SecureRandom.hex(3)}", slug: "vocab-filtro-#{SecureRandom.hex(3)}")
+    published = create(:habitation, tenant: vocab_tenant, tipo: "Empreendimento", nome_empreendimento: "Residencial Vocab Public", codigo: "VOCAB-PUB")
+    DevelopmentAlias.create!(tenant: vocab_tenant, development: published, name: "Alias Vocab Public")
+    hidden = create(:habitation, tenant: vocab_tenant, tipo: "Empreendimento", nome_empreendimento: "Residencial Vocab Oculto", codigo: "VOCAB-HID", exibir_no_site_flag: false)
+    DevelopmentAlias.create!(tenant: vocab_tenant, development: hidden, name: "Alias Vocab Oculto")
+    suspended = create(:habitation, tenant: vocab_tenant, tipo: "Empreendimento", nome_empreendimento: "Residencial Vocab Suspenso", codigo: "VOCAB-SUS", status: "Suspenso", motivo_suspensao: "Venda pausada")
+    DevelopmentAlias.create!(tenant: vocab_tenant, development: suspended, name: "Alias Vocab Suspenso")
+
+    prompt = described_class.new(tenant: vocab_tenant, setting:).call.to_s
+
+    expect(prompt).to include("Residencial Vocab Public", "Alias Vocab Public")
+    expect(prompt).not_to include(
+      "Residencial Vocab Oculto", "Alias Vocab Oculto",
+      "Residencial Vocab Suspenso", "Alias Vocab Suspenso"
+    )
+  end
 end

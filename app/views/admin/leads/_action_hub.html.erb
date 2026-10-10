@@ -11,6 +11,17 @@
 <% close_deal_form_id = local_assigns[:close_deal_form_id].presence || "lead_close_deal_#{lead.id}" %>
 <% agenda_count = appointments.size + scheduled_tasks.size %>
 
+<% if lead.unverified_inquiry? && can?(:edit, :leads) %>
+  <div class="lead-pwa-detail__record">
+    <strong>Apuração não verificada.</strong>
+    <span>Confirme a identidade por fora e vincule ao lead correto pelo ID.</span>
+    <%= form_with url: reconcile_inquiry_admin_lead_path(lead), method: :post, data: { turbo: false }, class: "tw-flex tw-gap-2 tw-items-center" do |f| %>
+      <%= f.number_field :target_id, placeholder: "ID do lead", min: 1, required: true, aria: { label: "ID do lead de destino" }, class: "tw-w-32" %>
+      <%= f.submit "Vincular", class: "lead-pwa-next-actions__btn lead-pwa-next-actions__btn--neutral", data: { turbo_submits_with: "Vinculando..." } %>
+    <% end %>
+  </div>
+<% end %>
+
 <% if show_tasks && next_task %>
   <% next_badge = task_badge(next_task) %>
   <div class="lead-pwa-task-card<%= " lead-pwa-task-card--alert" if next_badge[:color] == "red" %>">

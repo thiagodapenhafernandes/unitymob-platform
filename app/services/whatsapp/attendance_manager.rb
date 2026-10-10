@@ -75,6 +75,9 @@ module Whatsapp
         notify(new_owner, conversation, "Atendimento transferido para você", "#{attendance.button_text} · #{conversation.display_name}#{" (por #{by.name})" if by}")
         notify(previous, conversation, "Atendimento transferido", "#{conversation.display_name} passou para #{new_owner.name}") if previous && previous.id != new_owner.id && previous.id != by&.id
         broadcast_change(conversation, previous, by)
+        # Quem perdeu o atendimento perde a visibilidade: corta o cable para o
+        # thread aberto parar de receber o conteúdo.
+        ::ApplicationCable::Connection.disconnect_admin_user(previous)
         schedule_acceptance(attendance)
         attendance
       end

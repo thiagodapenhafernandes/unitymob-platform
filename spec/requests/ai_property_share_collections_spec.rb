@@ -152,18 +152,42 @@ RSpec.describe "AI property share collections", type: :request do
     expect(collection.audit_events.pluck(:event_type)).to include("lead_created_from_interest", "interest_created")
   end
 
-  it "não transfere lead existente de outro corretor" do
+  it "não adota lead existente pelo telefone: cria apuração separada não verificada" do
     owner = create(:admin_user, tenant: broker.tenant)
     existing = create(:lead, tenant: broker.tenant, admin_user: owner, name: "Cliente existente", phone: "47999990000")
     collection = create_collection
 
-    post_interest(collection, habitation_id: first_property.id, name: "Cliente existente", phone: "47999990000")
+    expect {
+      post_interest(collection, habitation_id: first_property.id, name: "Visitante", phone: "47999990000")
+    }.to change { broker.tenant.leads.count }.by(1)
 
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body).not_to have_key("lead_id")
     expect(existing.reload.admin_user).to eq(owner)
-    expect(existing.interest_properties).to include(first_property)
-    event = collection.audit_events.find_by!(event_type: "visitor_matched_existing_lead")
-    expect(event.admin_user).to eq(owner)
-    expect(event.metadata["shared_by_admin_user_id"]).to eq(broker.id)
+    expect(existing.interest_properties).to be_empty
+    expect(LeadActivity.where(lead: existing, kind: "property_interest")).not_to exist
+    expect(collection.audit_events.where(event_type: "visitor_matched_existing_lead")).not_to exist
+
+    inquiry = broker.tenant.leads.order(:created_at).last
+    expect(inquiry).to have_attributes(admin_user_id: broker.id, origin: "Seleção compartilhada")
+    expect(inquiry.other_information["unverified_inquiry"]).to be(true)
+    expect(inquiry.interest_properties).to include(first_property)
+    expect(collection.audit_events.where(event_type: "lead_created_from_interest", lead: inquiry)).to exist
+  end
+
+  it "não reaproveita a identidade em outra seleção do mesmo tenant" do
+    collection = create_collection
+    other_property = create(:habitation, tenant: broker.tenant, codigo: "SHARED-C")
+    other = broker.tenant.ai_property_share_collections.create!(admin_user: broker).tap do |share|
+      share.items.create!(habitation: other_property)
+    end
+
+    post_interest(collection, habitation_id: first_property.id, name: "Maria", phone: "(47) 99999-0001")
+    expect(response).to have_http_status(:ok)
+
+    post_interest(other, habitation_id: other_property.id)
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body["requires_identity"]).to be(true)
   end
 
   it "usa o lead vinculado ao link e notifica o corretor que gerou a selecao ao registrar interesse" do

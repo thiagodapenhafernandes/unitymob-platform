@@ -175,6 +175,7 @@ class AdminUser < ApplicationRecord
       trusted_devices.destroy_all
       active_check_in&.force_close!(reason: :closed_admin_force)
     end
+    ApplicationCable::Connection.disconnect_admin_user(self)
   end
 
   def notification_delivery_allowed?

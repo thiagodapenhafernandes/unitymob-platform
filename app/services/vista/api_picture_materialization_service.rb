@@ -6,6 +6,8 @@ require "uri"
 
 module Vista
   class ApiPictureMaterializationService
+    TenantMismatchError = Class.new(StandardError)
+
     DEFAULT_BATCH_SIZE = 50
     DEFAULT_WORKERS = 1
     API_FILE_ASSET_DUMP_DIR = "api:vista".freeze
@@ -271,10 +273,15 @@ module Vista
         ["api", "property_photo", habitation.codigo.presence || habitation.id, filename].join("/")
       asset = VistaFileAsset.find_or_initialize_by(
         vista_import_batch: api_file_asset_batch,
+        tenant_id: tenant.id,
         table_name: API_PHOTO_TABLE_NAME,
         source_path: source_path
       )
+      if asset.habitation.present? && asset.habitation.tenant_id != tenant.id
+        raise TenantMismatchError, "VistaFileAsset #{asset.id} pertence a outra conta"
+      end
       asset.assign_attributes(
+        tenant_id: tenant.id,
         habitation: habitation,
         kind: "property_photo",
         status: asset.status.presence || "pending",
@@ -357,13 +364,17 @@ module Vista
     def find_reusable_blob(filename)
       ActiveStorage::Blob
         .joins(:attachments)
-        .where(active_storage_attachments: { record_type: "Habitation", name: "photos" })
+        .where(active_storage_attachments: { record_type: "Habitation", name: "photos", record_id: tenant.habitations.select(:id) })
         .where(filename: filename)
         .order(:id)
         .detect { |blob| blob_available?(blob) }
     end
 
     def attach_blob_once!(habitation, blob)
+      unless same_tenant_blob?(blob)
+        raise TenantMismatchError, "Blob #{blob&.id} (#{blob&.key}) não pertence à conta #{tenant.id}"
+      end
+
       existing = ActiveStorage::Attachment.find_by(record: habitation, name: "photos", blob: blob)
       if existing && blob_available?(existing.blob)
         Storage::PublicPropertyPhoto.publish_attachment!(existing)
@@ -398,6 +409,9 @@ module Vista
       )
     rescue ActiveRecord::RecordNotUnique
       existing_blob = ActiveStorage::Blob.find_by!(key: storage_key_for(habitation, filename))
+      unless same_tenant_blob?(existing_blob)
+        raise TenantMismatchError, "Blob #{existing_blob.key} pertence a outra conta"
+      end
       reupload_blob!(existing_blob, io) unless blob_available?(existing_blob)
       existing_blob
     end
@@ -410,7 +424,14 @@ module Vista
     end
 
     def storage_key_for(habitation, filename)
-      ["vista", "property_photo", habitation.codigo.presence || habitation.id, filename].join("/")
+      ["vista", "property_photo", "tenant-#{tenant.id}", habitation.codigo.presence || habitation.id, filename].join("/")
+    end
+
+    def same_tenant_blob?(blob)
+      return false if blob.blank?
+      return blob.service_name.to_s == StorageIntegrationSetting.current(tenant: tenant).photo_service_name.to_s if blob.attachments.none?
+
+      blob.attachments.where(record_type: "Habitation", name: "photos", record_id: tenant.habitations.select(:id)).exists?
     end
 
     def blob_available?(blob)

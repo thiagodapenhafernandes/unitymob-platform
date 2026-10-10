@@ -76,6 +76,8 @@ module Vista
       keyword_init: true
     )
 
+    TenantMismatchError = Class.new(StandardError)
+
     def initialize(codigos:, dry_run: true, report_path: nil, host: nil, key: nil, replace_photos: false, replace_documents: true, download_files: true, workers: 1, progress_callback: nil, sync_documents: true, sync_prontuarios: true)
       @codigos = Array(codigos).map(&:to_s).map(&:strip).reject(&:blank?).uniq
       @dry_run = ActiveModel::Type::Boolean.new.cast(dry_run)
@@ -785,10 +787,15 @@ module Vista
       source_path = normalized_photo_source_path(habitation, url, source_path)
       asset = VistaFileAsset.find_or_initialize_by(
         vista_import_batch: api_file_asset_batch,
+        tenant_id: tenant.id,
         table_name: API_PHOTO_TABLE_NAME,
         source_path: source_path
       )
+      if asset.habitation.present? && asset.habitation.tenant_id != tenant.id
+        raise TenantMismatchError, "VistaFileAsset #{asset.id} pertence a outra conta"
+      end
       asset.assign_attributes(
+        tenant_id: tenant.id,
         habitation: habitation,
         kind: "property_photo",
         status: asset.status.presence || "pending",
@@ -851,6 +858,7 @@ module Vista
       documents.each_with_index { |document, index| upsert_document_asset!(habitation, document, index) }
 
       VistaFileAsset
+        .where(tenant_id: tenant.id)
         .where(kind: "property_document", codigo_imovel: document_codes_for(codigo, media_codes))
         .order(:codigo_imovel, :id)
         .find_each do |asset|
@@ -885,10 +893,15 @@ module Vista
 
       asset = VistaFileAsset.find_or_initialize_by(
         vista_import_batch: api_file_asset_batch,
+        tenant_id: tenant.id,
         table_name: API_DOCUMENT_TABLE_NAME,
         source_path: source_path
       )
+      if asset.habitation.present? && asset.habitation.tenant_id != tenant.id
+        raise TenantMismatchError, "VistaFileAsset #{asset.id} pertence a outra conta"
+      end
       asset.assign_attributes(
+        tenant_id: tenant.id,
         habitation: habitation,
         kind: "property_document",
         status: asset.status.presence || "pending",

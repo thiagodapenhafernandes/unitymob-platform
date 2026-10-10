@@ -53,6 +53,13 @@ module Gateway
         raise "Meta route does not match event" unless route.active? && route.page_id.to_s == event.page_id.to_s
         @raw_body = JSON.generate(matching.first[:payload])
       end
+      if event.provider == "whatsapp"
+        contexts = WhatsappPayload.extract_event_contexts(JSON.parse(raw_body))
+        matching = contexts.select { |context| context[:phone_number_id].to_s == event.phone_number_id.to_s && context[:external_id].to_s == event.external_id.to_s }
+        raise "WhatsApp event cannot be isolated" unless matching.one? && matching.first[:payload]
+        raise "WhatsApp route does not match event" unless whatsapp_route_matches?(event, route)
+        @raw_body = JSON.generate(matching.first[:payload])
+      end
       uri = URI(route.target_url)
       request = Net::HTTP::Post.new(uri)
       request["Content-Type"] = "application/json"
@@ -65,6 +72,14 @@ module Gateway
       Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https", open_timeout: TIMEOUT_SECONDS, read_timeout: TIMEOUT_SECONDS) do |http|
         http.request(request)
       end
+    end
+
+    def whatsapp_route_matches?(event, route)
+      return false unless route.active? && route.provider.to_s == "whatsapp"
+      return true if route.phone_number_id.to_s == event.phone_number_id.to_s
+
+      route.waba_id.to_s.present? && route.waba_id.to_s == event.waba_id.to_s &&
+        WebhookRoute.where(provider: "whatsapp", phone_number_id: event.phone_number_id.to_s, active: true).none?
     end
 
     def mark_failed!(message)

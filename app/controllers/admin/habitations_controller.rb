@@ -464,8 +464,9 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     # Materialized view de destaques depende de exibir_no_site_flag
-    if site_flag_touched && defined?(RefreshFeaturedPropertiesJob)
-      RefreshFeaturedPropertiesJob.perform_later
+    if site_flag_touched
+      PublicSite::PageVersion.bump(current_tenant.id)
+      RefreshFeaturedPropertiesJob.perform_later if defined?(RefreshFeaturedPropertiesJob)
     end
 
     # Bump last_feed_at nas integrations afetadas pra sinalizar no admin que houve mudança

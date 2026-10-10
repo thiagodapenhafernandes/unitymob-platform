@@ -162,5 +162,18 @@ RSpec.describe "Admin::AutomationRules", type: :request do
         payload_template: { lead: { name: "{{nome}}" } }.to_json
       )
     end
+
+    it "rejeita destino interno sem emitir requisicao HTTP" do
+      expect(HTTParty).not_to receive(:post)
+
+      expect {
+        post test_webhook_admin_automation_rules_path,
+             params: { url: "http://127.0.0.1:3000/", http_method: "post" },
+             headers: { "ACCEPT" => "application/json" }
+      }.not_to change(AutomationWebhookDelivery, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(JSON.parse(response.body)["ok"]).to be false
+    end
   end
 end

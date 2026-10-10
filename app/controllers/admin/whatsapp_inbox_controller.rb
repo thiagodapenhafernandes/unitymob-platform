@@ -108,7 +108,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
 
   def forward_message
     source = @conversation.messages.find(params[:message_id])
-    target = current_tenant.whatsapp_conversations.find(params[:target_conversation_id])
+    target = conversation_scope.find(params[:target_conversation_id])
 
     forwarded = target.messages.new(
       direction: "outbound",

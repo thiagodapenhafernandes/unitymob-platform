@@ -286,6 +286,42 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include(">WhatsApp<")
     end
 
+    it "não grava a página personalizada por cookie de compartilhamento no cache compartilhado" do
+      store = ActiveSupport::Cache::MemoryStore.new
+      allow(Rails).to receive(:cache).and_return(store)
+      tenant = Tenant.default
+      broker = create(:admin_user, tenant: tenant, name: "Corretor Compartilhado")
+      habitation = create(:habitation, tenant: tenant, codigo: "CACHE-SHARE", slug: "apartamento-cache-share")
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: broker)
+      Setting.set(PublicPageCache::MODE_SETTING_KEY, "on", tenant: tenant)
+      property_path = habitation_path(habitation)
+
+      recipient = open_session do |sess|
+        sess.host! "localhost"
+      end
+      recipient.cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "accepted"
+      recipient.get("#{property_path}?share_token=#{share_link.token}")
+      expect(recipient.response).to have_http_status(:ok)
+      expect(recipient.response.body).to include("Corretor Compartilhado")
+
+      recipient.get(property_path)
+      expect(recipient.response).to have_http_status(:ok)
+      expect(recipient.response.headers["X-Public-Page-Cache"]).to be_nil
+      expect(recipient.response.headers["Cache-Control"]).to include("no-store")
+      expect(recipient.response.body).to include("Corretor Compartilhado")
+      expect(recipient.response.body).to include(%(data-share-token="#{share_link.token}"))
+
+      generic = open_session do |sess|
+        sess.host! "localhost"
+      end
+      generic.cookies[ApplicationController::LGPD_CONSENT_COOKIE] = "accepted"
+      generic.get(property_path)
+      expect(generic.response).to have_http_status(:ok)
+      expect(generic.response.headers["X-Public-Page-Cache"]).to eq("miss")
+      expect(generic.response.body).not_to include("Corretor Compartilhado")
+      expect(generic.response.body).not_to include(share_link.token)
+    end
+
     it "creates a tracked share link for a public property in the authenticated tenant" do
       admin = create(:admin_user)
       habitation = create(:habitation, tenant: admin.tenant, codigo: "SHARE-OK", slug: "share-ok")

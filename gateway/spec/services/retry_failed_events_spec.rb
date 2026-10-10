@@ -10,12 +10,18 @@ RSpec.describe Gateway::RetryFailedEvents do
       target_url: "https://app.conexaobc.com/webhooks/whatsapp",
       forwarding_secret: "forward-secret"
     )
+    raw_body = {
+      "object" => "whatsapp_business_account",
+      "entry" => [{ "id" => "waba-1", "changes" => [{ "value" => { "metadata" => { "phone_number_id" => "phone-1" }, "messages" => [{ "id" => "wamid.1" }] } }] }]
+    }.to_json
     event = WebhookEvent.create!(
       webhook_route: route,
       provider: "whatsapp",
       event_type: "message",
-      payload: { "ok" => true },
-      raw_body: { ok: true }.to_json,
+      phone_number_id: "phone-1",
+      external_id: "wamid.1",
+      payload: JSON.parse(raw_body),
+      raw_body: raw_body,
       status: "failed",
       attempts: 1,
       received_at: Time.now - 60,

@@ -288,6 +288,7 @@ Rails.application.routes.draw do
       post :suggest_properties, on: :member
       post :archive, on: :member
       post :close_deal, on: :member
+      post :reconcile_inquiry, on: :member
       post :schedule_activity, on: :member
       post :reply_instagram, on: :member
       resources :proposals, only: [:new, :create]
@@ -626,6 +627,7 @@ Rails.application.routes.draw do
         # format: :json fixo — não depende do header Accept do cliente para
         # decidir entre redirect (navegacional) e 401 (API) em falha de auth.
         post "sessions", to: "sessions#create"
+        post "sessions/verify", to: "sessions#verify"
         delete "sessions", to: "sessions#destroy"
         get "me", to: "me#show"
       end

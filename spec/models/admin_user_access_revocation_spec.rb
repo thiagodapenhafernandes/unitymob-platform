@@ -29,6 +29,29 @@ RSpec.describe AdminUser, "#revoke_all_access!", type: :model do
     expect(check_in.reload).to be_closed_admin_force
   end
 
+  it "derruba as conexões ActionCable do usuário ao revogar tudo" do
+    user = create(:admin_user)
+    remote_connections = double("remote_connections")
+    scoped_connections = double("scoped_connections")
+    allow(ActionCable.server).to receive(:remote_connections).and_return(remote_connections)
+    allow(remote_connections).to receive(:where).and_return(scoped_connections)
+    allow(scoped_connections).to receive(:disconnect)
+
+    user.revoke_all_access!
+
+    expect(remote_connections).to have_received(:where).with(current_admin_user: user)
+    expect(scoped_connections).to have_received(:disconnect)
+  end
+
+  it "falha no cable não quebra a revogação" do
+    user = create(:admin_user)
+    remote_connections = double("remote_connections")
+    allow(ActionCable.server).to receive(:remote_connections).and_return(remote_connections)
+    allow(remote_connections).to receive(:where).and_raise(StandardError, "redis down")
+
+    expect { user.revoke_all_access! }.not_to raise_error
+  end
+
   it "marca usuario inativo como nao autenticavel" do
     user = create(:admin_user, active: false)
 

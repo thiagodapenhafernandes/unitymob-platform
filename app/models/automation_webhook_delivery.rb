@@ -12,8 +12,16 @@ class AutomationWebhookDelivery < ApplicationRecord
   validates :url, presence: true, format: { with: URI::DEFAULT_PARSER.make_regexp(%w[http https]) }
   validates :http_method, inclusion: { in: HTTP_METHODS }
   validates :status, inclusion: { in: STATUSES }
+  validate :url_must_be_public_destination
 
   private
+
+  def url_must_be_public_destination
+    return if url.blank?
+    return unless Automation::WebhookUrlPolicy.blocked?(url)
+
+    errors.add(:url, :invalid)
+  end
 
   def normalize_http_method
     self.http_method = http_method.to_s.downcase.presence || "post"

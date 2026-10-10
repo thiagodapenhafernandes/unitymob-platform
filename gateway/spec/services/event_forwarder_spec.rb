@@ -14,12 +14,14 @@ RSpec.describe Gateway::EventForwarder do
       webhook_route: route,
       provider: "whatsapp",
       event_type: "message",
+      phone_number_id: "phone-1",
+      external_id: "wamid.1",
       status: "received",
       received_at: Time.now
     )
     stub_request(:post, route.target_url).to_return(status: 500, body: "boom")
 
-    described_class.call(event:, raw_body: "{}")
+    described_class.call(event:, raw_body: single_message_body(phone_number_id: "phone-1", message_id: "wamid.1"))
 
     expect(event.reload).to have_attributes(status: "failed", attempts: 1)
     expect(event.last_error).to include("HTTP 500")
@@ -37,12 +39,21 @@ RSpec.describe Gateway::EventForwarder do
       webhook_route: route,
       provider: "whatsapp",
       event_type: "message",
+      phone_number_id: "phone-1",
+      external_id: "wamid.1",
       status: "received",
       received_at: Time.now
     )
     stub_request(:post, route.target_url).to_timeout
 
-    expect { described_class.call(event:, raw_body: "{}") }.not_to raise_error
+    expect { described_class.call(event:, raw_body: single_message_body(phone_number_id: "phone-1", message_id: "wamid.1")) }.not_to raise_error
     expect(event.reload).to have_attributes(status: "failed", attempts: 1)
+  end
+
+  def single_message_body(phone_number_id:, message_id:)
+    {
+      "object" => "whatsapp_business_account",
+      "entry" => [{ "id" => "waba-1", "changes" => [{ "value" => { "metadata" => { "phone_number_id" => phone_number_id }, "messages" => [{ "id" => message_id }] } }] }]
+    }.to_json
   end
 end
