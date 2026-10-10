@@ -65,12 +65,8 @@ class Admin::AccessSecurityController < Admin::BaseController
 
     # WebSockets já abertos não re-autenticam sozinhos — corta o cable dos
     # demais usuários (mesmo padrão do AccountSwitchesController).
-    begin
-      current_tenant.admin_users.where.not(id: current_admin_user.id).find_each do |user|
-        ActionCable.server.remote_connections.where(current_admin_user: user).disconnect
-      end
-    rescue => e
-      Rails.logger.warn "[AccessSecurity] cable disconnect: #{e.message}"
+    current_tenant.admin_users.where.not(id: current_admin_user.id).find_each do |user|
+      ApplicationCable::Connection.disconnect_admin_user(user)
     end
 
     redirect_to admin_access_security_path, notice: "Sessões encerradas: #{affected} usuário(s) da conta precisarão entrar novamente. A sua sessão atual foi preservada."

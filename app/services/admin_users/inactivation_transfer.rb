@@ -39,6 +39,9 @@ module AdminUsers
         @user.update!(active: false, display_on_site: false)
       end
 
+      # Inativado não pode seguir com streams abertos (conversas, inbox).
+      ApplicationCable::Connection.disconnect_admin_user(@user)
+
       result
     end
 
