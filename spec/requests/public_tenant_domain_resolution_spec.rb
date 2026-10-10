@@ -7,8 +7,11 @@ RSpec.describe "Public tenant domain resolution", type: :request do
     default_profile = default_tenant.profiles.find_by!(key: "agent")
     conexao_profile = conexao.profiles.find_by!(key: "agent")
 
-    create(:admin_user, tenant: default_tenant, profile: default_profile, name: "Corretor Salute", active: true, display_on_site: true)
-    create(:admin_user, tenant: conexao, profile: conexao_profile, name: "Corretor Conexão", active: true, display_on_site: true)
+    salute = create(:admin_user, tenant: default_tenant, profile: default_profile, name: "Corretor Salute", active: true, display_on_site: true)
+    conexao_broker = create(:admin_user, tenant: conexao, profile: conexao_profile, name: "Corretor Conexão", active: true, display_on_site: true)
+    [salute, conexao_broker].each do |broker|
+      broker.avatar.attach(io: StringIO.new("foto"), filename: "foto.png", content_type: "image/png")
+    end
     hostname = "www.unitymob.com.br"
     TenantDomain.where(hostname: hostname).delete_all
     conexao.tenant_domains.create!(hostname: hostname, primary_domain: true)

@@ -7,6 +7,8 @@ RSpec.describe "Brokers", type: :request do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent")
     visible = create(:admin_user, name: "Corretor Visível", profile: broker_profile, active: true, display_on_site: true)
     hidden = create(:admin_user, name: "Corretor Oculto", profile: broker_profile, active: true, display_on_site: false)
+    attach_avatar(visible)
+    attach_avatar(hidden)
 
     get brokers_path
 
@@ -27,6 +29,8 @@ RSpec.describe "Brokers", type: :request do
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
     visible_custom = create(:admin_user, tenant: tenant, name: "Consultor Público", profile: custom_profile, active: true, display_on_site: true)
     visible_owner = create(:admin_user, tenant: tenant, name: "Owner Não Público", profile: owner_profile, role: :admin, active: true, display_on_site: true)
+    attach_avatar(visible_custom)
+    attach_avatar(visible_owner)
 
     get brokers_path
 
@@ -43,6 +47,8 @@ RSpec.describe "Brokers", type: :request do
 
     visible = create(:admin_user, tenant: default_tenant, name: "Corretor Padrão", profile: broker_profile, active: true, display_on_site: true)
     other_visible = create(:admin_user, tenant: other_tenant, name: "Corretor Outro Tenant", profile: other_profile, active: true, display_on_site: true)
+    attach_avatar(visible)
+    attach_avatar(other_visible)
 
     get brokers_path
 
@@ -61,6 +67,7 @@ RSpec.describe "Brokers", type: :request do
       display_on_site: true,
       phone: "5547999729441"
     )
+    attach_avatar(broker)
 
     get brokers_path
 
@@ -77,6 +84,16 @@ RSpec.describe "Brokers", type: :request do
 
     expect(response.body).to include("Meu site")
     expect(response.body).to include('href="/abner-marcelo"')
+  end
+
+  it "não exibe corretor sem foto na vitrine" do
+    with_photo = create_broker("Com Foto")
+    without_photo = create_broker("Sem Foto", avatar: false)
+
+    get brokers_path
+
+    expect(response.body).to include(with_photo.name)
+    expect(response.body).not_to include(without_photo.name)
   end
 
   describe "página do corretor" do
@@ -126,6 +143,20 @@ RSpec.describe "Brokers", type: :request do
         "public-theme-search__panel"
       )
       expect(response.body.scan(/<h1[\s>]/).size).to eq(1)
+    end
+
+    it "renderiza a foto do corretor sem crossorigin (redirect Spaces quebra com o atributo)" do
+      broker = create_broker("Abner Marcelo")
+      broker.avatar.attach(fixture_file_upload("spec/fixtures/files/watermark.png", "image/png"))
+
+      get "/abner-marcelo"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("public-theme-broker-hero__portrait-img", "public-theme-broker-hero__bg-blur")
+      hero_imgs = response.body.scan(/<img[^>]*public-theme-broker-hero__[^>]*>/)
+      expect(hero_imgs.size).to eq(2)
+      expect(hero_imgs.join).not_to include("crossorigin")
+      expect(response.body).not_to include("public-theme-broker-hero__portrait-fallback")
     end
 
     it "usa o FAB + drawer global com submit no contexto do corretor, sem duplicar" do
@@ -201,6 +232,14 @@ RSpec.describe "Brokers", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
+    it "retorna 404 para corretor sem foto" do
+      create_broker("Sem Foto", avatar: false)
+
+      get "/sem-foto"
+
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "retorna 404 para slug desconhecido" do
       get "/corretor-que-nao-existe"
 
@@ -230,10 +269,16 @@ RSpec.describe "Brokers", type: :request do
     end
   end
 
-  def create_broker(name, **attrs)
+  def create_broker(name, avatar: true, **attrs)
     broker_profile = tenant.profiles.find_by!(key: "agent")
-    create(:admin_user, tenant: tenant, name: name, profile: broker_profile,
+    broker = create(:admin_user, tenant: tenant, name: name, profile: broker_profile,
       active: true, display_on_site: true, **attrs)
+    attach_avatar(broker) if avatar
+    broker
+  end
+
+  def attach_avatar(broker)
+    broker.avatar.attach(io: StringIO.new("foto"), filename: "foto.png", content_type: "image/png")
   end
 
   def tenant

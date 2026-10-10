@@ -3,16 +3,18 @@ require "rails_helper"
 RSpec.describe AdminUser, type: :model do
   let(:tenant) { Tenant.default }
 
-  def create_broker(name, broker_tenant: tenant, **attrs)
+  def create_broker(name, broker_tenant: tenant, avatar: true, **attrs)
     profile = Profile.create!(
       tenant: broker_tenant, name: "Corretor #{name} #{SecureRandom.hex(3)}",
       axis: Profile::AXES[:vertical], active: true, position: 1
     )
-    AdminUser.create!(
+    broker = AdminUser.create!(
       tenant: broker_tenant, profile: profile, name: name, email: "#{SecureRandom.hex(6)}@broker.test",
       password: "password123", password_confirmation: "password123",
       role: :editor, active: true, display_on_site: true, **attrs
     )
+    broker.avatar.attach(io: StringIO.new("foto"), filename: "foto.png", content_type: "image/png") if avatar
+    broker
   end
 
   describe "#site_slug" do
@@ -32,6 +34,13 @@ RSpec.describe AdminUser, type: :model do
       create_broker("Oculto Silva", display_on_site: false)
 
       expect(AdminUser.site_broker_for(tenant, "oculto-silva")).to be_nil
+    end
+
+    it "ignora corretor sem foto (vitrine e página exigem imagem)" do
+      broker = create_broker("Sem Foto", avatar: false)
+
+      expect(AdminUser.site_broker_for(tenant, "sem-foto")).to be_nil
+      expect(tenant.admin_users.site_brokers).not_to include(broker)
     end
 
     it "ignora corretor de outra conta" do

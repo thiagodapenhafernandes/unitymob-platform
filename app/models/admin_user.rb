@@ -61,6 +61,7 @@ class AdminUser < ApplicationRecord
   scope :site_brokers, -> {
     active
       .displayed_on_site
+      .where.associated(:avatar_attachment)
       .joins(:profile)
       .where(profiles: { axis: Profile::AXES[:vertical], active: true })
       .where("profiles.position > 0")

@@ -12,10 +12,12 @@
 <section class="public-theme-broker-hero public-theme-broker-hero--<%= variant %>" aria-label="Corretor <%= broker.name %>"
          <%= tag.attributes(data: { controller: "public-hero-tint", public_hero_tint_property_value: "--public-broker-hero-tint" }) if broker.avatar.attached? %>>
   <% if broker.avatar.attached? %>
+    <%# Sem crossorigin: o avatar resolve via redirect p/ o Spaces (cross-origin
+        sem CORS) e o atributo quebrava a imagem em todo corretor com foto.
+        O public-hero-tint cai no fallback (cor da conta) sozinho. %>
     <%= image_tag broker.avatar,
           alt: "",
           aria: { hidden: true },
-          crossorigin: "anonymous",
           class: "public-theme-broker-hero__bg-blur",
           loading: "lazy",
           decoding: "async" %>
@@ -27,7 +29,6 @@
       <% if broker.avatar.attached? %>
         <%= image_tag broker.avatar,
               alt: broker.name,
-              crossorigin: "anonymous",
               data: { public_hero_tint_target: "source" },
               class: "public-theme-broker-hero__portrait-img",
               fetchpriority: "high",
