@@ -28,6 +28,15 @@ module Api
             return render json: { error: "two_factor_required" }, status: :unprocessable_entity
           end
 
+          # Conta exige 2FA e o usuário nunca ativou o TOTP: sem token
+          # mobile até concluir a configuração no acesso web (mesma
+          # regra do Field/Admin web e do BrowserExtensionGrant).
+          if admin_user.two_factor_required? && !admin_user.otp_enabled?
+            return render json: { error: "enrollment_required",
+                                  message: "Sua conta exige verificação em duas etapas. Configure no acesso web antes de usar o aplicativo." },
+                                status: :forbidden
+          end
+
           access_result = AccessControl::Policy.call(admin_user: admin_user, request: request, controller: self)
           unless access_result.allowed?
             return render json: { error: "access_denied", reason: access_result.reason }, status: :forbidden

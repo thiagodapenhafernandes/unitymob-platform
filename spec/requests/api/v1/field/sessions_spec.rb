@@ -49,4 +49,39 @@ RSpec.describe "API mobile sessions (JWT)", type: :request do
 
     expect(response).to have_http_status(:unauthorized)
   end
+
+  context "when the tenant requires two-factor enrollment" do
+    before { tenant.update!(require_two_factor: true) }
+
+    it "rejects token issuance for a user who never enrolled in TOTP" do
+      post "/api/v1/field/sessions", params: { email: admin_user.email, password: "password123" }, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+      body = JSON.parse(response.body)
+      expect(body["error"]).to eq("enrollment_required")
+      expect(body["token"]).to be_nil
+    end
+
+    it "rejects authenticated calls with a token issued before enrollment was required" do
+      tenant.update!(require_two_factor: false)
+      post "/api/v1/field/sessions", params: { email: admin_user.email, password: "password123" }, as: :json
+      token = JSON.parse(response.body)["token"]
+      expect(token).to be_present
+
+      tenant.update!(require_two_factor: true)
+      get "/api/v1/field/me", headers: { "Authorization" => "Bearer #{token}" }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)["error"]).to eq("enrollment_required")
+    end
+
+    it "lets an enrolled user past the enrollment gate" do
+      admin_user.update!(otp_secret: ROTP::Base32.random, otp_enabled_at: Time.current)
+      token, = Warden::JWTAuth::UserEncoder.new.call(admin_user, :admin_user, nil)
+
+      get "/api/v1/field/me", headers: { "Authorization" => "Bearer #{token}" }
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end
