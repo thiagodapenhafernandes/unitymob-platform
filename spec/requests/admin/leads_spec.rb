@@ -2822,6 +2822,27 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(lead.activities.where(kind: "property_share")).to exist
     end
 
+    it "bloqueia compartilhamento sem permissao de edicao em leads" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil somente leitura #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_108,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "somente-leitura-#{SecureRandom.hex(6)}@salute.test")
+      property = create(:habitation, tenant: admin.tenant, codigo: "READONLY-001", status: "Venda")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      sign_in user
+
+      expect {
+        post share_properties_admin_lead_path(lead),
+             params: { habitation_ids: [property.id] },
+             headers: { "Accept" => "application/json" }
+      }.not_to change(LeadPropertyInterest, :count)
+      expect(response).to have_http_status(:forbidden)
+      expect(AiPropertyShareCollection.where(lead: lead)).not_to exist
+    end
   end
 
   describe "PATCH /admin/leads/:lead_id/property_interests/:id/primary" do
@@ -2932,6 +2953,25 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.parsed_body["chips_html"]).to include("MATCH-IA")
       expect(lead.property_interests.where(habitation: compatible)).to exist
       expect(lead.activities.where(kind: "property_suggestions")).to exist
+    end
+
+    it "bloqueia sugestao sem permissao de edicao em leads" do
+      profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Perfil somente leitura sugestao #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 9_109,
+        permissions: { "leads" => { "view" => true, "scope" => "all" } }
+      )
+      user = create(:admin_user, tenant: admin.tenant, profile:, email: "somente-leitura-sug-#{SecureRandom.hex(6)}@salute.test")
+      lead = create(:lead, tenant: admin.tenant, admin_user: admin)
+      sign_in user
+
+      expect {
+        post suggest_properties_admin_lead_path(lead),
+             headers: { "Accept" => "application/json" }
+      }.not_to change(LeadPropertyInterest, :count)
+      expect(response).to have_http_status(:forbidden)
     end
   end
 
