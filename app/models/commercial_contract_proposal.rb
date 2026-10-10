@@ -94,6 +94,7 @@ class CommercialContractProposal < ApplicationRecord
 
   def accept_with_otp!(otp_code:, request:)
     return false unless editable?
+    return false if expired?
     return false unless otp_valid?(otp_code)
 
     accepted = nil
