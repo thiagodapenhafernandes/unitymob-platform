@@ -76,8 +76,8 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
     public_pending_properties = source_scope.where(status: PUBLIC_STATUSES).where.missing(:photos_attachments).count
     public_vista_first_properties = public_vista_first_scope.count
     total_source_images = source_scope.pick(Arel.sql("COALESCE(SUM(#{Vista::ApiPictureMaterializationService.source_image_count_sql}), 0)::bigint")).to_i
-    migrated_images = ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos").count
-    latest_attachment_at = ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos").maximum(:created_at)
+    migrated_images = tenant_photo_attachments.count
+    latest_attachment_at = tenant_photo_attachments.maximum(:created_at)
     worker = worker_status
     file_asset_counts = api_photo_file_asset_counts
     failed_ids = api_photo_failed_habitation_ids
@@ -164,11 +164,20 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
 
   def api_photo_file_assets
     VistaFileAsset
-      .joins(:vista_import_batch)
+      .joins(:vista_import_batch, :habitation)
       .where(
         vista_import_batches: { dump_dir: API_FILE_ASSET_DUMP_DIR },
-        kind: "property_photo"
+        kind: "property_photo",
+        habitations: { tenant_id: current_tenant.id }
       )
+  end
+
+  def tenant_photo_attachments
+    ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos", record_id: tenant_habitation_ids)
+  end
+
+  def tenant_habitation_ids
+    current_tenant.habitations.select(:id)
   end
 
   def api_photo_file_asset_counts
@@ -261,7 +270,7 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
     {
       pending_properties: source_scope.where.missing(:photos_attachments).count,
       properties_with_photos: source_scope.joins(:photos_attachments).distinct.count,
-      migrated_images: ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos").count,
+      migrated_images: tenant_photo_attachments.count,
       downloaded_file_assets: api_photo_file_asset_counts.fetch("downloaded", 0)
     }
   end
@@ -307,7 +316,7 @@ class Admin::ImageMigrationStatusController < Admin::BaseController
   end
 
   def latest_attachment_timestamp
-    ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos").maximum(:created_at)
+    tenant_photo_attachments.maximum(:created_at)
   end
 
   def image_migration_configuration

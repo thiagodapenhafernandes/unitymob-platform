@@ -113,6 +113,7 @@ module PublicPageCache
 
   def store_public_page(key, previous, mode)
     return unless response.status == 200 && response.media_type == "text/html"
+    return if response.headers["Cache-Control"].to_s.include?("no-store")
 
     html = PublicPageCache.normalize(response.body)
     if mode == "shadow" && previous && previous[:html] != html

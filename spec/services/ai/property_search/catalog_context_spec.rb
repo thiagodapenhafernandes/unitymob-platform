@@ -119,4 +119,56 @@ RSpec.describe Ai::PropertySearch::CatalogContext do
     names = context.fetch(:catalog).fetch(:developments).map { |item| item.fetch(:name) }
     expect(names).to include("Acqualina Residence")
   end
+
+  it "exclui empreendimentos não publicados e seus aliases do catálogo" do
+    published = create(
+      :habitation,
+      tenant:,
+      tipo: "Empreendimento",
+      categoria: "Apartamento",
+      codigo: "DEV-PUBLICADO",
+      nome_empreendimento: "Residencial Public Catalogo"
+    )
+    DevelopmentAlias.create!(tenant:, development: published, name: "Alias Public Catalogo")
+    hidden = create(
+      :habitation,
+      tenant:,
+      tipo: "Empreendimento",
+      categoria: "Apartamento",
+      codigo: "DEV-OCULTO",
+      nome_empreendimento: "Residencial Oculto Catalogo",
+      exibir_no_site_flag: false
+    )
+    DevelopmentAlias.create!(tenant:, development: hidden, name: "Alias Oculto Catalogo")
+    suspended = create(
+      :habitation,
+      tenant:,
+      tipo: "Empreendimento",
+      categoria: "Apartamento",
+      codigo: "DEV-SUSPENSO",
+      nome_empreendimento: "Residencial Suspenso Catalogo",
+      status: "Suspenso",
+      motivo_suspensao: "Venda pausada"
+    )
+    DevelopmentAlias.create!(tenant:, development: suspended, name: "Alias Suspenso Catalogo")
+
+    matched = described_class.new(setting:, tenant:, text: "Residencial Catalogo", current_filters: {}).call
+    matched_names = matched.fetch(:catalog).fetch(:developments).flat_map do |item|
+      [item.fetch(:name), *item.fetch(:aliases, [])]
+    end
+    expect(matched_names).to include("Residencial Public Catalogo", "Alias Public Catalogo")
+    expect(matched_names).not_to include(
+      "Residencial Oculto Catalogo", "Alias Oculto Catalogo",
+      "Residencial Suspenso Catalogo", "Alias Suspenso Catalogo"
+    )
+
+    fallback = described_class.new(setting:, tenant:, text: "xyz sem termo correspondente", current_filters: {}).call
+    fallback_names = fallback.fetch(:catalog).fetch(:developments).flat_map do |item|
+      [item.fetch(:name), *item.fetch(:aliases, [])]
+    end
+    expect(fallback_names).not_to include(
+      "Residencial Oculto Catalogo", "Alias Oculto Catalogo",
+      "Residencial Suspenso Catalogo", "Alias Suspenso Catalogo"
+    )
+  end
 end

@@ -6,6 +6,17 @@ module ApplicationCable
       self.current_admin_user = find_verified_admin_user
     end
 
+    # Streams já abertos não re-autenticam sozinhos: derruba as conexões do
+    # usuário em transferência, inativação e revogação individual de acesso.
+    # Falha de infra do cable não quebra o chamador.
+    def self.disconnect_admin_user(user)
+      return if user.blank?
+
+      ActionCable.server.remote_connections.where(current_admin_user: user).disconnect
+    rescue => e
+      Rails.logger.warn("[ApplicationCable] disconnect_admin_user: #{e.message}")
+    end
+
     private
 
     def find_verified_admin_user

@@ -16,7 +16,8 @@ module Admin
         development_code: params[:development_code],
         comparison: params[:comparison],
         ignored_id: params[:ignored_id],
-        tenant: Current.tenant
+        tenant: Current.tenant,
+        owner_ids: duplicate_check_owner_ids
       ).call
 
       render json: {
@@ -33,6 +34,19 @@ module Admin
       return if can?(:view, :imoveis) || can?(:view, :captacoes)
 
       render json: { error: "forbidden" }, status: :forbidden
+    end
+
+    # A checagem mistura imóveis e captações, então só entram donos
+    # acessíveis nos dois recursos (interseção). nil = escopo total
+    # em ambos (sem filtro).
+    def duplicate_check_owner_ids
+      imoveis_ids = accessible_owner_ids(:imoveis)
+      captacoes_ids = accessible_owner_ids(:captacoes)
+      return nil if imoveis_ids.nil? && captacoes_ids.nil?
+      return captacoes_ids if imoveis_ids.nil?
+      return imoveis_ids if captacoes_ids.nil?
+
+      imoveis_ids & captacoes_ids
     end
 
     def match_payload(habitation)

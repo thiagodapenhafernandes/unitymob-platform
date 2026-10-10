@@ -716,7 +716,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(integration).to be_connected
     expect(integration.access_token).to eq("business-token")
     expect(integration.connected_by_admin_user).to eq(admin)
-    expect(Whatsapp::CloudClient).to have_received(:new).with(integration).twice
+    expect(Whatsapp::CloudClient).to have_received(:new).with(integration).thrice
     expect(stale_sender.reload).not_to be_active
     sender = admin.tenant.whatsapp_sender_numbers.find_by!(phone_number_id: "649374078254590")
     expect(sender).to be_active
@@ -928,5 +928,122 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
       "terminal" => true
     )
     expect(response.parsed_body["label"]).to include("Entregue")
+  end
+
+  it "registra a rota do gateway na conexao manual quando a Meta confirma a titularidade" do
+    current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: {
+        ok: true,
+        data: {
+          "display_phone_number" => "+55 47 9142-7176",
+          "verified_name" => "Conexão BC",
+          "quality_rating" => "GREEN"
+        }
+      },
+      subscribe_app: { ok: true, status: 200, data: { "success" => true } }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    gateway = instance_double(Whatsapp::WebhookGatewayClient, register_route: Whatsapp::WebhookGatewayClient::Result.new(ok?: true, skipped?: false))
+    allow(Whatsapp::WebhookGatewayClient).to receive(:new).and_return(gateway)
+
+    patch manual_connection_admin_whatsapp_integration_path, params: {
+      whatsapp_business_integration: {
+        access_token: "new-token",
+        phone_number_id: "649374078254590",
+        waba_id: "616242481017427"
+      }
+    }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    expect(gateway).to have_received(:register_route)
+    follow_redirect!
+    expect(response.body).to include("Conexão manual do WhatsApp salva.")
+  end
+
+  it "bloqueia o registro da rota na conexao manual quando a Meta nao confirma o numero" do
+    integration = current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: { ok: false, error: "(#190) Invalid OAuth access token" },
+      subscribe_app: { ok: true, status: 200, data: { "success" => true } }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    gateway = instance_double(Whatsapp::WebhookGatewayClient, register_route: Whatsapp::WebhookGatewayClient::Result.new(ok?: true, skipped?: false))
+    allow(Whatsapp::WebhookGatewayClient).to receive(:new).and_return(gateway)
+
+    patch manual_connection_admin_whatsapp_integration_path, params: {
+      whatsapp_business_integration: {
+        access_token: "attacker-token",
+        phone_number_id: "177755501234567",
+        waba_id: "177755501234500"
+      }
+    }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    expect(gateway).not_to have_received(:register_route)
+    follow_redirect!
+    expect(response.body).to include("titularidade do número não confirmada")
+    expect(integration.reload.phone_number_id).to eq("177755501234567")
+  end
+
+  it "bloqueia o registro da rota na conexao manual quando a assinatura da WABA falha" do
+    current_whatsapp_integration!
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: { ok: true, data: { "display_phone_number" => "+55 47 9142-7176" } },
+      subscribe_app: { ok: false, error: "Missing permission", meta_error: { code: 200 } }
+    )
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    gateway = instance_double(Whatsapp::WebhookGatewayClient, register_route: Whatsapp::WebhookGatewayClient::Result.new(ok?: true, skipped?: false))
+    allow(Whatsapp::WebhookGatewayClient).to receive(:new).and_return(gateway)
+
+    patch manual_connection_admin_whatsapp_integration_path, params: {
+      whatsapp_business_integration: {
+        access_token: "new-token",
+        phone_number_id: "649374078254590",
+        waba_id: "616242481017427"
+      }
+    }
+
+    expect(response).to redirect_to(admin_whatsapp_integration_path)
+    expect(gateway).not_to have_received(:register_route)
+    follow_redirect!
+    expect(response.body).to include("não foi possível assinar")
+    expect(response.body).to include("Não foi possível registrar a rota no gateway")
+  end
+
+  it "bloqueia o registro da rota no embedded signup quando a Meta nao confirma o numero" do
+    service = instance_double(Facebook::WhatsappEmbeddedSignupService, exchange_code!: {
+      "access_token" => "business-token",
+      "expires_in" => 3600
+    })
+    client = instance_double(
+      Whatsapp::CloudClient,
+      phone_info: { ok: false, error: "(#190) Invalid OAuth access token" },
+      subscribe_app: { ok: true, status: 200, data: { "success" => true } }
+    )
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("META_SYSTEM_USER_TOKEN").and_return(nil)
+    allow(Facebook::WhatsappEmbeddedSignupService).to receive(:new).with(code: "code-123").and_return(service)
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    gateway = instance_double(Whatsapp::WebhookGatewayClient, register_route: Whatsapp::WebhookGatewayClient::Result.new(ok?: true, skipped?: false))
+    allow(Whatsapp::WebhookGatewayClient).to receive(:new).and_return(gateway)
+
+    post embedded_signup_callback_admin_whatsapp_integration_path, params: {
+      code: "code-123",
+      event: "FINISH",
+      session_info: {
+        waba_id: "616242481017427",
+        phone_number_id: "649374078254590",
+        business_id: "business-1"
+      }
+    }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(gateway).not_to have_received(:register_route)
+    expect(response.parsed_body["message"]).to include("titularidade do número não confirmada")
+    expect(WhatsappBusinessIntegration.current(admin.tenant)).to be_connected
   end
 end

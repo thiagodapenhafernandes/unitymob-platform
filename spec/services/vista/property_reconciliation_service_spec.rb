@@ -293,6 +293,52 @@ RSpec.describe Vista::PropertyReconciliationService do
 
       expect(service.send(:unique_dwv_code, { "CodigoDWV" => "DWV-1" }, habitation)).to eq("DWV-1")
     end
+
+    it "não religa asset de foto de outro tenant ao reconciliar" do
+      current_tenant = Tenant.create!(name: "Tenant asset #{SecureRandom.hex(3)}", slug: "tenant-asset-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Outro asset #{SecureRandom.hex(3)}", slug: "outro-asset-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: current_tenant, codigo: "CUR-ASSET")
+      other_habitation = create(:habitation, tenant: other_tenant, codigo: "OUT-ASSET")
+      batch = VistaImportBatch.create!(dump_dir: "api:vista", status: "completed")
+      foreign = VistaFileAsset.create!(
+        vista_import_batch: batch, tenant_id: other_tenant.id, table_name: "API_FOTO",
+        source_path: "api/property_photo/shared/foto.jpg", kind: "property_photo", status: "pending",
+        filename: "foto.jpg", habitation: other_habitation, codigo_imovel: other_habitation.codigo
+      )
+
+      Current.tenant = current_tenant
+      service = described_class.new(codigos: ["CUR-ASSET"], dry_run: true)
+
+      expect {
+        service.send(:upsert_photo_asset!, habitation, { "Ordem" => "1" }, "https://cdn/foto.jpg", "api/property_photo/shared/foto.jpg", 0)
+      }.not_to raise_error
+      expect(foreign.reload.habitation_id).to eq(other_habitation.id)
+      own = VistaFileAsset.find_by(tenant_id: current_tenant.id, table_name: "API_FOTO", source_path: "api/property_photo/shared/foto.jpg")
+      expect(own.habitation_id).to eq(habitation.id)
+    end
+
+    it "não processa documentos de outro tenant no sync" do
+      current_tenant = Tenant.create!(name: "Tenant doc #{SecureRandom.hex(3)}", slug: "tenant-doc-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Outro doc #{SecureRandom.hex(3)}", slug: "outro-doc-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: current_tenant, codigo: "CUR-DOC")
+      other_habitation = create(:habitation, tenant: other_tenant, codigo: "CUR-DOC")
+      batch = VistaImportBatch.create!(dump_dir: "api:vista", status: "completed")
+      VistaFileAsset.create!(
+        vista_import_batch: batch, tenant_id: other_tenant.id, table_name: "API_ANEXO",
+        source_path: "api/documentos/shared/doc.pdf", kind: "property_document", status: "pending",
+        filename: "doc.pdf", habitation: other_habitation, codigo_imovel: "CUR-DOC"
+      )
+
+      Current.tenant = current_tenant
+      service = described_class.new(codigos: ["CUR-DOC"], dry_run: false, download_files: false)
+      allow(service).to receive(:attach_document_asset!).and_return([:reused, nil])
+
+      failures = []
+      service.send(:sync_documents!, habitation, "CUR-DOC", [], [], Hash.new(0), failures)
+
+      expect(service).not_to have_received(:attach_document_asset!)
+      expect(failures).to be_empty
+    end
   end
 
   describe "owner phone reconciliation" do

@@ -19,6 +19,7 @@ module Api
         before_action :set_current_context
         before_action :ensure_tenant_context!
         before_action :enforce_access_control_policy!
+        before_action :enforce_two_factor_setup!
 
         private
 
@@ -59,6 +60,18 @@ module Api
           )
 
           render json: { error: "access_denied", reason: access_result.reason }, status: :forbidden
+        end
+
+        # Conta exige 2FA e o usuário nunca ativou o TOTP: bloqueia o
+        # Bearer [REDACTED] até a configuração no acesso web (espelha
+        # Field::BaseController#enforce_two_factor_setup!, em JSON).
+        def enforce_two_factor_setup!
+          return unless current_admin_user
+          return unless current_admin_user.two_factor_required? && !current_admin_user.otp_enabled?
+
+          render json: { error: "enrollment_required",
+                         message: "Sua conta exige verificação em duas etapas. Conclua a configuração no aplicativo para continuar." },
+                       status: :forbidden
         end
       end
     end

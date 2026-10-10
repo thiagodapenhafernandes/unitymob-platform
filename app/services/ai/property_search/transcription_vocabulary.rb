@@ -62,12 +62,14 @@ module Ai
       end
 
       def developments
+        published_ids = @tenant.habitations.publicly_listable.where(tipo: "Empreendimento").select(:id)
         names = @tenant.habitations
+          .publicly_listable
           .where(tipo: "Empreendimento")
           .order(updated_at: :desc)
           .limit(DEVELOPMENTS_LIMIT)
           .pluck(:nome_empreendimento)
-        names += DevelopmentAlias.where(tenant: @tenant).order(updated_at: :desc).limit(DEVELOPMENTS_LIMIT).pluck(:name)
+        names += DevelopmentAlias.where(tenant: @tenant, development_id: published_ids).order(updated_at: :desc).limit(DEVELOPMENTS_LIMIT).pluck(:name)
         names
       rescue StandardError
         []

@@ -1,7 +1,7 @@
 class WhatsappConversationChannel < ApplicationCable::Channel
   def subscribed
     conversation = authorized_conversation
-    reject unless conversation
+    return reject unless conversation
 
     stream_from stream_name(conversation, focus_mode: focus_mode?)
   end
@@ -17,7 +17,7 @@ class WhatsappConversationChannel < ApplicationCable::Channel
     if current_admin_user.system_admin?
       scope.first
     else
-      scope.find_by(tenant_id: current_admin_user.tenant_id)
+      scope.where(tenant_id: current_admin_user.tenant_id).visible_to(current_admin_user).first
     end
   end
 

@@ -957,6 +957,9 @@ class HabitationsController < ApplicationController
   end
 
   def public_page_cache_key
+    # Visitas personalizadas por cookie de compartilhamento nunca usam a entrada compartilhada.
+    return if cookies.signed[HabitationShareLink::COOKIE_KEY].present?
+
     base = super
     return unless base
 

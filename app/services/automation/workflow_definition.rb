@@ -202,7 +202,7 @@ module Automation
           errors << "tem acao de atendente sem fila de atendimento" if config[:distribution_rule_id].blank?
         when "send_webhook"
           errors << "tem acao de webhook sem URL" if config[:url].blank?
-          if config[:url].present? && config[:url] !~ URI::DEFAULT_PARSER.make_regexp(%w[http https])
+          if config[:url].present? && Automation::WebhookUrlPolicy.blocked?(config[:url])
             errors << "tem acao de webhook com URL invalida"
           end
           if config[:http_method].present? && !AutomationWebhookDelivery::HTTP_METHODS.include?(config[:http_method].to_s)

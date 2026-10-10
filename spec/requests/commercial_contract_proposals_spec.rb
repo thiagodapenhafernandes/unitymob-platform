@@ -58,4 +58,34 @@ RSpec.describe "Commercial contract proposals", type: :request do
     expect(proposal.acceptance.certificate_pdf).to be_attached
     expect(proposal.acceptance.evidence).to include("terms_hash", "proposal_hash", "ip_address")
   end
+
+  it "rejeita OTP ainda válido após o vencimento da proposta" do
+    allow(SecureRandom).to receive(:random_number).and_call_original
+    allow(SecureRandom).to receive(:random_number).with(1_000_000).and_return(654_321)
+
+    post request_otp_commercial_contract_proposal_path(proposal.public_token), params: {
+      commercial_contract_proposal: {
+        representative_name: "Maria Contratante",
+        representative_cpf: "123.456.789-09",
+        representative_role: "Sócia administradora",
+        representative_email: "maria@cliente.test",
+        representative_phone: "(47) 99999-0000",
+        authority_confirmed: "1"
+      }
+    }
+
+    expect(response).to redirect_to(commercial_contract_proposal_path(proposal.public_token, step: "otp"))
+
+    # Atravessa o vencimento da proposta com o OTP ainda dentro da janela de 15 minutos.
+    proposal.reload
+    proposal.update!(expires_at: 1.minute.ago)
+    expect(proposal.otp_expires_at).to be > Time.current
+
+    post accept_commercial_contract_proposal_path(proposal.public_token), params: { otp_code: "654321" }
+
+    expect(response).to redirect_to(commercial_contract_proposal_path(proposal.public_token, step: "otp"))
+    proposal.reload
+    expect(proposal.status).to eq("otp_pending")
+    expect(proposal.acceptance).to be_nil
+  end
 end

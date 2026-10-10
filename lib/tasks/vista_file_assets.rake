@@ -136,4 +136,23 @@ namespace :vista_files do
     puts "  Dry run: #{result.dry_run}"
     puts "  Arquivos vinculados/previstos: #{result.linked}"
   end
+
+  desc "Preenche tenant_id em VistaFileAsset legados a partir do imóvel vinculado"
+  task backfill_tenant: :environment do
+    result = Vista::FileAssetTenantBackfill.new(
+      dry_run: ENV.fetch("DRY_RUN", "true"),
+      limit: ENV["LIMIT"],
+      batch_size: ENV.fetch("BATCH_SIZE", 1000)
+    ).call
+
+    puts "Vista file assets tenant backfill"
+    puts "  Ambiente: #{Rails.env}"
+    puts "  Dry run: #{result.dry_run}"
+    puts "  Lidos: #{result.scanned}"
+    puts "  Atualizados: #{result.updated}"
+    puts "  Pendentes (dry run): #{result.pending}"
+    puts "  Órfãos pulados: #{result.skipped_orphan}"
+    puts "  Conflitos de unicidade: #{result.conflicts}"
+    puts "  Rode com DRY_RUN=false para aplicar." if result.dry_run
+  end
 end

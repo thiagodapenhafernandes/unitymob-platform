@@ -13,6 +13,16 @@ module Automation
     end
 
     def call
+      if Automation::WebhookUrlPolicy.blocked?(delivery.url)
+        delivery.update_columns(
+          status: "failed",
+          error_message: Automation::WebhookUrlPolicy::BLOCKED_MESSAGE,
+          responded_at: Time.current,
+          updated_at: Time.current
+        )
+        raise ArgumentError, Automation::WebhookUrlPolicy::BLOCKED_MESSAGE
+      end
+
       delivery.update!(status: "pending", attempts: delivery.attempts.to_i + 1, sent_at: Time.current)
 
       response = HTTParty.public_send(
@@ -20,7 +30,8 @@ module Automation
         delivery.url,
         headers: default_headers.merge(delivery.request_headers.to_h),
         body: delivery.request_payload.to_json,
-        timeout: TIMEOUT
+        timeout: TIMEOUT,
+        follow_redirects: false
       )
 
       delivery.update!(
@@ -32,6 +43,9 @@ module Automation
       )
 
       raise TransientError, "HTTP #{response.code}" if retriable?(response)
+    rescue ArgumentError
+      # Destination guard already recorded the failure above; propagate untouched.
+      raise
     rescue => e
       delivery.update!(
         status: "failed",
