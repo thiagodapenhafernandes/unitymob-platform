@@ -53,12 +53,28 @@ RSpec.describe "API mobile sessions (JWT)", type: :request do
   context "when the tenant requires two-factor enrollment" do
     before { tenant.update!(require_two_factor: true) }
 
-    it "rejects token issuance for a user who never enrolled in TOTP" do
+    it "returns a guided enrollment (never a full token) for a user who never enrolled in TOTP" do
       post "/api/v1/field/sessions", params: { email: admin_user.email, password: "password123" }, as: :json
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:ok)
       body = JSON.parse(response.body)
-      expect(body["error"]).to eq("enrollment_required")
+      expect(body["status"]).to eq("enrollment_required")
+      expect(body["enrollment_token"]).to be_present
+      expect(body["provisioning_uri"]).to include("otpauth://")
+      expect(body["manual_key"]).to be_present
+      expect(body["token"]).to be_nil
+    end
+
+    it "returns a challenge (never a full token) for an enrolled user" do
+      admin_user.update!(otp_secret: ROTP::Base32.random, otp_enabled_at: Time.current)
+
+      post "/api/v1/field/sessions", params: { email: admin_user.email, password: "password123" }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["status"]).to eq("challenge_required")
+      expect(body["challenge_token"]).to be_present
+      expect(body["methods"]).to eq(%w[totp backup_code])
       expect(body["token"]).to be_nil
     end
 

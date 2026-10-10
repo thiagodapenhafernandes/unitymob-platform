@@ -70,7 +70,7 @@ module Api
           return unless current_admin_user.two_factor_required? && !current_admin_user.otp_enabled?
 
           render json: { error: "enrollment_required",
-                         message: "Sua conta exige verificação em duas etapas. Configure no acesso web antes de usar o aplicativo." },
+                         message: "Sua conta exige verificação em duas etapas. Conclua a configuração no aplicativo para continuar." },
                        status: :forbidden
         end
       end

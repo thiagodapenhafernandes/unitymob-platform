@@ -627,6 +627,7 @@ Rails.application.routes.draw do
         # format: :json fixo — não depende do header Accept do cliente para
         # decidir entre redirect (navegacional) e 401 (API) em falha de auth.
         post "sessions", to: "sessions#create"
+        post "sessions/verify", to: "sessions#verify"
         delete "sessions", to: "sessions#destroy"
         get "me", to: "me#show"
       end
