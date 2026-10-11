@@ -209,3 +209,14 @@
 .ax-icon-picker__dialog .ax-icon-picker__grid .ax-btn { min-height: 68px; border: 1px solid var(--admin-border, #dbe2ea); font-size: 13px; }
 .ax-icon-picker__dialog .ax-icon-picker__grid .bi { font-size: 22px; }
 .ax-icon-picker__dialog [aria-pressed="true"] { color: var(--admin-primary, #365f8f); background: #edf3fa; border-color: #365f8f !important; }
+
+.ax-quick-modal__header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.ax-quick-modal__back-icon { display: none; }
+@media (max-width: 767px) {
+  .ax-quick-modal--mobile-detail .ax-quick-modal__header { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; padding: max(8px, env(safe-area-inset-top)) 12px 8px; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__close { grid-column: 1; grid-row: 1; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__close .bi-x-lg { display: none; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__back-icon { display: inline-block; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__title { grid-column: 2; grid-row: 1; text-align: center; }
+  .ax-quick-modal--mobile-detail .ax-quick-modal__header-actions { grid-column: 3; grid-row: 1; }
+}

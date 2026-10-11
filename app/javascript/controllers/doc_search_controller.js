@@ -5,6 +5,16 @@ export default class extends Controller {
 
   connect() {
     this.search()
+    this.openAnchor()
+  }
+
+  openAnchor() {
+    const item = this.itemTargets.find((target) => `#${target.id}` === window.location.hash)
+    if (!item) return
+
+    item.hidden = false
+    if (item.tagName.toLowerCase() === "details") item.open = true
+    item.scrollIntoView({ block: "start" })
   }
 
   search() {

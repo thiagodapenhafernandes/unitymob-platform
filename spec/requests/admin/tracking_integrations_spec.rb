@@ -100,4 +100,29 @@ RSpec.describe "Admin::TrackingIntegrations", type: :request do
     expect(response.body).not_to include("GTM-CONTA1")
     expect(Setting.get(TrackingIntegrationSetting::GTM_CONTAINER_ID_KEY, "", tenant: other_tenant)).to eq("")
   end
+  it "salva Stape sem ID GTM, preserva ao trocar de aba e isola por conta" do
+    fields = { google_tag_manager_enabled: "true", stape_enabled: "true",
+      stape_domain: "https://gtm.saluteimoveis.com.br", stape_loader_domain: "https://load.gtm.saluteimoveis.com.br",
+      stape_identifier: "3ceniiuiwsxi", stape_configuration: "dxfrp44=ABC123" }
+    patch admin_tracking_integration_path, params: { tracking: fields }
+    expect(response).to have_http_status(:redirect)
+    patch admin_tracking_integration_path, params: { tab: "meta_pixel", tracking: { meta_pixel_enabled: "false" } }
+    expect(response).to have_http_status(:redirect)
+    setting = TrackingIntegrationSetting.build_current(tenant: admin.tenant)
+    expect(setting.stape_identifier).to eq("3ceniiuiwsxi")
+    expect(setting.stape_enabled?).to be(true)
+    expect(TrackingIntegrationSetting.google_tag_manager_enabled?(tenant: admin.tenant)).to be(true)
+    other = Tenant.create!(name: "Outra", slug: "stape-#{SecureRandom.hex(3)}")
+    expect(TrackingIntegrationSetting.build_current(tenant: other).stape_enabled?).to be(false)
+  end
+
+  it "rejeita caminhos, credenciais e JavaScript na configuração Stape" do
+    patch admin_tracking_integration_path, params: { tracking: {
+      stape_enabled: "true", stape_domain: "https://user:password@example.com",
+      stape_loader_domain: "https://example.com/script.js", stape_identifier: "<script>", stape_configuration: "x=1&evil=2"
+    } }
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(Setting.get("tracking.stape_enabled", "false", tenant: admin.tenant)).to eq("false")
+  end
+
 end

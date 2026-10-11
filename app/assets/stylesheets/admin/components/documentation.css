@@ -94,6 +94,7 @@
 }
 
 .ax-documentation__section {
+  scroll-margin-top: 110px;
   overflow: clip;
 }
 

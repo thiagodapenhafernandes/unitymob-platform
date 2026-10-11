@@ -51,4 +51,16 @@ RSpec.describe "Tracking tags", type: :request do
     expect(response.body).not_to include("google-site-verification")
     expect(response.body).not_to include("d335luupugsy2.cloudfront.net")
   end
+  it "substitui o GTM pelo loader Stape e inclui a modalidade no clique" do
+    Setting.set(TrackingIntegrationSetting::GTM_ENABLED_KEY, "true")
+    { stape_enabled: "true", stape_domain: "https://gtm.saluteimoveis.com.br",
+      stape_loader_domain: "https://load.gtm.saluteimoveis.com.br", stape_identifier: "3ceniiuiwsxi",
+      stape_configuration: "dxfrp44=ABC123" }.each { |field, value| Setting.set("tracking.#{field}", value) }
+    get root_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("https://load.gtm.saluteimoveis.com.br", 'cookie("si_uid")', 'safari = safari && !!uid')
+    expect(response.body).not_to include("https://www.googletagmanager.com/gtm.js", "https://www.googletagmanager.com/ns.html")
+    expect(response.body).to include('negotiation_type: target.dataset.negotiationType || "general"')
+  end
+
 end

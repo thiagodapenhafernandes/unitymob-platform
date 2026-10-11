@@ -1,6 +1,22 @@
 require "rails_helper"
 
 RSpec.describe Admin::UiHelper, type: :helper do
+  it "preserva os contratos de navegação compartilhada para links e abas" do
+    linked = Nokogiri::HTML.fragment(helper.ax_studio_nav(items: [{ label: "Etapas", icon: "list", url: "/etapas", active: true }]))
+    expect(linked.at_css('a.active[aria-current="page"]')["href"]).to eq("/etapas")
+
+    tabs = Nokogiri::HTML.fragment(helper.ax_studio_nav(items: [{ label: "Etapas", icon: "list", id: "etapas" }]))
+    expect(tabs.at_css('button.active[aria-selected="true"]')["data-ax-tabs-target-param"]).to eq("#etapas")
+  end
+
+  it "limita o cabeçalho mobile de detalhe aos modais que optarem por ele" do
+    normal = Nokogiri::HTML.fragment(helper.ax_quick_modal(id: "normal", title: "Normal", body: "Conteúdo"))
+    expect(normal.at_css(".ax-quick-modal--mobile-detail")).to be_nil
+    detail = Nokogiri::HTML.fragment(helper.ax_quick_modal(id: "detail", title: "Detalhe", mobile_detail: true, header_actions: "8 etapas", body: "Conteúdo"))
+    expect(detail.at_css('.ax-quick-modal--mobile-detail .ax-quick-modal__back-icon')).to be_present
+    expect(detail.at_css('.ax-quick-modal__header-actions').text).to eq("8 etapas")
+  end
+
   describe "#ax_icon" do
     it "oculta o glifo decorativo da árvore de acessibilidade por padrão" do
       document = Nokogiri::HTML.fragment(helper.ax_icon("calendar-event", class_name: "extra"))

@@ -10,20 +10,10 @@
       <li class="ax-studio-nav__caption" role="presentation"><%= item[:caption] %></li>
     <% end %>
     <li>
-      <% item_body = capture do %>
-        <span class="ax-studio-nav__icon"><%= ax_brand_icon(item[:icon]) %></span>
-        <span class="ax-studio-nav__text">
-          <strong><%= item[:label] %></strong>
-          <% if item[:hint].present? %><small><%= item[:hint] %></small><% end %>
-        </span>
-      <% end %>
-      <% if linked %>
-        <%= link_to item_body, item.fetch(:url), class: "ax-studio-nav__item#{' active' if item[:active]}", aria: {current: ("page" if item[:active])} %>
-      <% else %>
-        <%= button_tag item_body, type: "button", class: "ax-studio-nav__item#{' active' if index.zero?}",
-              data: {ax_tabs_target: "tab", ax_tabs_target_param: "##{item[:id]}", action: "click->ax-tabs#select"},
-              aria: {selected: index.zero?} %>
-      <% end %>
+      <%= ax_studio_nav_item(label: item[:label], icon: item[:icon], hint: item[:hint],
+            url: item[:url], active: linked ? item[:active] : index.zero?,
+            data: linked ? {} : { ax_tabs_target: "tab", ax_tabs_target_param: "##{item[:id]}", action: "click->ax-tabs#select" },
+            aria: linked ? { current: ("page" if item[:active]) } : { selected: index.zero? }) %>
     </li>
   <% end %>
 </ul>

@@ -31,7 +31,7 @@
       summary: "Como as configurações melhoram leitura gerencial e inteligência operacional.",
       body: capture do %>
         <p>Quando as etapas são configuradas com critérios claros, o sistema passa a registrar padrões mais úteis: tempo parado, motivo de perda, divergência de qualificação, tarefas criadas, redistribuições e ações automáticas.</p>
-        <p>Esses dados ajudam relatórios e modelos de IA a responder perguntas como:</p>
+        <p>Esses registros podem apoiar relatórios e futuras análises de IA, conforme os recursos disponíveis. Configurar as etapas não ativa essas análises automaticamente. Exemplos de perguntas que os dados permitem investigar:</p>
         <ul>
           <li>Em quais etapas os leads mais travam?</li>
           <li>Quais motivos de arquivamento aparecem com mais frequência?</li>
@@ -213,6 +213,35 @@
       <% end
     },
     {
+      id: "evento-meta",
+      title: "Integrações · Evento Meta",
+      summary: "O que os eventos fazem, quando são enviados e como escolher o evento da etapa.",
+      body: capture do %>
+        <p>O campo <strong>Evento Meta</strong> associa uma etapa a um evento enviado pela API de Conversões. Ele informa à Meta uma ação do lead para apoiar a medição de conversões e a otimização dos anúncios, sem garantir melhora de desempenho.</p>
+        <h3>Quando o sistema envia</h3>
+        <ul>
+          <li>Quando o lead entra na etapa com um evento configurado.</li>
+          <li>Somente para leads identificados pelo sistema como originados do Meta Ads, com a configuração de conversões da conta ativa.</li>
+          <li>A integração precisa de dataset selecionado, token válido e permissões de envio. Sem email ou telefone, o envio é ignorado.</li>
+          <li>Selecionar um evento não envia retroativamente os leads que já estão na etapa. Deixar o campo vazio desativa o envio por essa etapa.</li>
+        </ul>
+        <p>O envio acontece em segundo plano. O sistema reutiliza o identificador do evento para o mesmo lead, conta e nome de evento, permitindo deduplicação pela Meta. Voltar à etapa não representa necessariamente uma nova conversão.</p>
+        <h3>Como escolher</h3>
+        <p>Escolha um evento que represente o que realmente aconteceu: <strong>Contact</strong> para contato, <strong>Schedule</strong> para agendamento e <strong>Purchase</strong> para compra. Renomear uma etapa não muda automaticamente o evento associado. Os nomes das etapas e dos eventos têm funções diferentes.</p>
+        <div class="ax-documentation__callout">Esses envios não criam etapas nem movem cards na Central de Leads da Meta. O funil do sistema continua independente. A seleção no formulário também não comprova o recebimento: valide em Eventos de teste no Gerenciador de Eventos.</div>
+        <h3>Eventos disponíveis no sistema</h3>
+        <ul>
+          <% LeadPipelineStage::META_CONVERSION_EVENTS.each do |event, label| %>
+            <li><strong><%= event %>:</strong> <%= label %><%= " — evento legado de qualificação; não é apresentado aqui como evento padrão do Pixel." if event == "QualifiedLead" %></li>
+          <% end %>
+        </ul>
+        <h3>Documentação oficial</h3>
+        <p><%= ax_button("Significado dos eventos padrão", "https://www.facebook.com/business/help/402791146561655", variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener noreferrer") %></p>
+        <p><%= ax_button("Como funciona a API de Conversões", "https://developers.facebook.com/docs/marketing-api/conversions-api/", variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener noreferrer") %></p>
+        <p>Os links abrem em nova aba e podem exigir login na Meta.</p>
+      <% end
+    },
+    {
       id: "boas-praticas",
       title: "Boas práticas de configuração",
       summary: "Como configurar sem engessar a operação.",
@@ -239,7 +268,7 @@
       actions: ax_button("Voltar para Leads", admin_leads_path, variant: :ghost, size: :sm, icon: "arrow-left")
     ) %>
 
-<div class="ax-documentation" data-controller="doc-search">
+<div class="ax-documentation" data-controller="doc-search" data-action="hashchange@window->doc-search#openAnchor">
   <section class="ax-documentation__intro">
     <p>Este guia explica as configurações do modal <strong>Editar funil e etapas</strong>. O objetivo é ajudar a equipe a configurar o funil sem engessar a operação, melhorando produtividade dos corretores, qualidade dos dados, relatórios gerenciais e análises futuras de IA.</p>
     <p>As seções abaixo ficam fechadas por padrão. Use o índice para ir direto ao assunto ou pesquise por termos como automação, qualificação, arquivamento, divergência, corretor, gestor ou IA.</p>
