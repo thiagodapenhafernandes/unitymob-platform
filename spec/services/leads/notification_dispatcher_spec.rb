@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Leads::NotificationDispatcher do
+  include ActiveJob::TestHelper
+
   let(:corretor) { create(:admin_user, name: "Corretor Push", email: "lead-push-#{SecureRandom.hex(8)}@salute.test", phone: "21988887777") }
   let(:rule) { create(:distribution_rule, notify_push: true, notify_whatsapp: false, notify_email: false, notify_webhook: false) }
   let(:lead) do
@@ -439,11 +441,16 @@ RSpec.describe Leads::NotificationDispatcher do
     end
     expect(SecureLink.where(lead: pool_lead, issued_to_admin_user: corretor).pluck(:action_type)).to contain_exactly("phone", "email", "view")
   end
-  it "usa som de atribuição nos eventos diretos e aviso geral ao perder a vez" do
+  it "enfileira push de atribuição/reatribuição/perda e entrega com o mesmo payload" do
     LeadSetting.instance.update!(notify_on_direct_assignment: true, notify_on_reassignment: true, notify_on_lost_turn: true)
     described_class.notify_direct_assignment(lead)
     described_class.notify_reassignment(lead, corretor)
     described_class.notify_lost_turn(lead, corretor)
+
+    expect(Notifications::PushDispatcher).not_to have_received(:deliver)
+    expect(Notifications::PushDeliveryJob).to have_been_enqueued.exactly(3).times
+
+    perform_enqueued_jobs(only: Notifications::PushDeliveryJob)
 
     expect(Notifications::PushDispatcher).to have_received(:deliver).with(
       hash_including(admin_user_id: corretor.id, metadata: { notification_context: "distribution" })

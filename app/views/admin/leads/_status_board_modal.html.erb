@@ -1,6 +1,6 @@
 <%
   selected_pipeline = @selected_pipeline || LeadPipeline.ensure_default!(tenant: current_tenant)
-  selected_pipeline_stages = selected_pipeline.stages.ordered.to_a
+  selected_pipeline_stages = selected_pipeline.stages.includes(:policy).ordered.to_a
   automation_stage_options = current_tenant.lead_pipeline_stages.includes(:lead_pipeline).ordered.to_a
   archive_reason_options = current_tenant.attribute_options.for_context("lead").for_category("archive_reason").ordered.to_a
   distribution_rule_options = current_tenant.distribution_rules.active.includes(:distribution_rule_agents).order(:name).to_a

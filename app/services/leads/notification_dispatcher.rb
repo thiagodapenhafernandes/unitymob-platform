@@ -85,7 +85,10 @@ module Leads
 
       # high: com urgency normal o Android em Doze (aparelho parado) segura a
       # entrega — exatamente o "push parou de chegar" com o celular na mesa.
-      Notifications::PushDispatcher.deliver(admin_user_id: corretor.id, title: title, body: body, url: url, urgency: "high", ttl: 3600, metadata: { notification_context: notification_context })
+      # Async: o deliver faz HTTPS síncrono por subscription.
+      Notifications::PushDeliveryJob.perform_later(
+        admin_user_id: corretor.id, title: title, body: body, url: url, notification_context: notification_context
+      )
     rescue => e
       Rails.logger.warn("[LeadNotify] push de evento falhou pro corretor #{corretor&.id}: #{e.message}")
     end

@@ -50,11 +50,14 @@ RSpec.describe "Admin::Leads", type: :request do
           get admin_leads_path(view: "kanban", lead_pipeline_id: pipeline_id, status: statuses)
           expect(response).to have_http_status(:ok)
           document = Nokogiri::HTML(response.body)
-          ["[data-lead-kanban-status]", ".lead-pwa-kanban-column"].each do |selector|
-            attribute = selector == ".lead-pwa-kanban-column" ? "data-lead-status" : "data-lead-kanban-status"
-            names = document.css(selector).map { |column| column[attribute] }
-            expect(names & stages.map(&:name)).to eq(%w[Contato Triagem Negociação])
-          end
+          names = document.css("[data-lead-kanban-status]").map { |column| column["data-lead-kanban-status"] }
+          expect(names & stages.map(&:name)).to eq(%w[Contato Triagem Negociação])
+
+          get pwa_section_admin_leads_path(view: "kanban", lead_pipeline_id: pipeline_id, status: statuses)
+          expect(response).to have_http_status(:ok)
+          pwa_document = Nokogiri::HTML(response.body)
+          pwa_names = pwa_document.css(".lead-pwa-kanban-column").map { |column| column["data-lead-status"] }
+          expect(pwa_names & stages.map(&:name)).to eq(%w[Contato Triagem Negociação])
         end
       end
     end
@@ -367,7 +370,7 @@ RSpec.describe "Admin::Leads", type: :request do
       create(:lead_favorite, tenant: admin.tenant, admin_user: admin, lead: favorite)
       other = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Normal PWA", phone: "11888888888", status: "Novo")
 
-      get admin_leads_path(view: "list", mobile_tab: "favorites")
+      get pwa_section_admin_leads_path(view: "list", mobile_tab: "favorites")
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
@@ -418,10 +421,14 @@ RSpec.describe "Admin::Leads", type: :request do
       get admin_leads_path(view: "list", mobile_tab: "todo", lead_tab: "todo")
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
-      [document.at_css(".lead-list").text, document.css(".lead-pwa-card").map(&:text).join].each do |text|
-        expect(text).to include(untouched.name, undated.name)
-        expect(text).not_to include(*excluded)
-      end
+      expect(document.at_css(".lead-list").text).to include(untouched.name, undated.name)
+      expect(document.at_css(".lead-list").text).not_to include(*excluded)
+
+      get pwa_section_admin_leads_path(view: "list", mobile_tab: "todo", lead_tab: "todo")
+      expect(response).to have_http_status(:ok)
+      pwa_text = Nokogiri::HTML(response.body).css(".lead-pwa-card").map(&:text).join
+      expect(pwa_text).to include(untouched.name, undated.name)
+      expect(pwa_text).not_to include(*excluded)
       get pwa_leads_page_admin_leads_path(mobile_tab: "todo", offset: 0), headers: {"Accept" => "application/json"}
       expect(response.parsed_body["total"]).to eq(2)
       expect(response.parsed_body["html"]).to include(untouched.name, undated.name)
@@ -453,7 +460,7 @@ RSpec.describe "Admin::Leads", type: :request do
     it "renderiza cards do Kanban PWA com gestos e acoes rapidas" do
       lead = create(:lead, tenant: admin.tenant, admin_user: admin, name: "Lead Arrastavel PWA", phone: "11999999999", status: "Novo")
 
-      get admin_leads_path(view: "kanban")
+      get pwa_section_admin_leads_path(view: "kanban")
 
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
@@ -553,7 +560,7 @@ RSpec.describe "Admin::Leads", type: :request do
           starts_at: Time.zone.local(2026, 8, 18, 10, 0, 0)
         )
 
-        get admin_leads_path(view: "list", mobile_tab: "future")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "future")
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
@@ -565,13 +572,13 @@ RSpec.describe "Admin::Leads", type: :request do
         )
         expect(document.css(".lead-pwa-card").map(&:text).join).not_to include("Visita Importada")
 
-        get admin_leads_path(view: "list", mobile_tab: "visits")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "visits")
 
         document = Nokogiri::HTML(response.body)
         expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Visitas", "1")
         expect(document.css(".lead-pwa-card").map(&:text).join).to include("Visita Importada", "Visita marcada - 17/08/2026 15:30")
 
-        get admin_leads_path(view: "list", mobile_tab: "todo")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "todo")
 
         document = Nokogiri::HTML(response.body)
         card_text = document.css(".lead-pwa-card").map(&:text).join
@@ -595,7 +602,7 @@ RSpec.describe "Admin::Leads", type: :request do
           starts_at: Time.zone.local(2026, 8, 31, 15, 0, 0)
         )
 
-        get admin_leads_path(view: "list", mobile_tab: "visits")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "visits")
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
@@ -603,7 +610,7 @@ RSpec.describe "Admin::Leads", type: :request do
         expect(document.css(".lead-pwa-card").map(&:text).join).to include("Visita Vencida", "Visita marcada - 31/08/2026 15:00")
         expect(response.body).to include("Leads com visita marcada")
 
-        get admin_leads_path(view: "list", mobile_tab: "future")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "future")
 
         document = Nokogiri::HTML(response.body)
         expect(document.at_css(".lead-pwa-tab.is-active").text).to include("Futuras", "0")
@@ -784,8 +791,12 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(overlay).to be_present
       expect(overlay.attribute("hidden")).to be_present
       expect(document.at_css('.ax-leads-mobile-shell[data-controller="lead-pwa-filter"]')).to be_present
-      expect(document.at_css('.lead-pwa-filter[data-action="lead-pwa-filter#open"]')).to be_present
       expect(panel.at_css('.lead-pwa-filter-panel__close[data-action="lead-pwa-filter#close"]')).to be_present
+
+      get pwa_section_admin_leads_path(view: "list")
+      expect(response).to have_http_status(:ok)
+      pwa_document = Nokogiri::HTML(response.body)
+      expect(pwa_document.at_css('.lead-pwa-filter[data-action="lead-pwa-filter#open"]')).to be_present
       expect(response.body).not_to include("data-controller=\"ax-aside\"")
       expect(response.body).not_to include("data-ax-aside-target")
       expect(panel.text).to include("Minha visualização dos leads", "Natureza de negociação", "Status do lead", "Atividade atual do lead", "Faixa de preço")
@@ -816,7 +827,7 @@ RSpec.describe "Admin::Leads", type: :request do
           )
         end
 
-        get admin_leads_path(view: "list", mobile_tab: "future", q: "raquel")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "future", q: "raquel")
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
@@ -828,7 +839,7 @@ RSpec.describe "Admin::Leads", type: :request do
         expect(document.at_css(".lead-pwa-clear-filter")).to be_present
         expect(document.at_css(".lead-pwa-clear-filter")["href"]).to eq(admin_leads_path(view: "list", mobile_tab: "future"))
 
-        get admin_leads_path(view: "list", mobile_tab: "future", q: "Rraquel")
+        get pwa_section_admin_leads_path(view: "list", mobile_tab: "future", q: "Rraquel")
 
         expect(response).to have_http_status(:ok)
         document = Nokogiri::HTML(response.body)
@@ -871,10 +882,15 @@ RSpec.describe "Admin::Leads", type: :request do
       bottom_nav = document.at_css(".ax-pwa-bottom-nav")
       expect(bottom_nav).to be_present
       expect(bottom_nav.css(".ax-pwa-bottom-nav__item[data-admin-navigation-ignore]")).to be_empty
-      expect(document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
       expect(document.at_css(".lead-desktop-queue")["href"]).to eq(distribution_queue_admin_leads_path)
-      expect(document.at_css(".lead-pwa-queue").text).to include("na fila")
       expect(bottom_nav.text).to include("Bolsão")
+
+      get pwa_section_admin_leads_path(view: "list")
+
+      expect(response).to have_http_status(:ok)
+      pwa_document = Nokogiri::HTML(response.body)
+      expect(pwa_document.at_css(".lead-pwa-queue")["href"]).to eq(distribution_queue_admin_leads_path)
+      expect(pwa_document.at_css(".lead-pwa-queue").text).to include("na fila")
     end
 
     it "mostra no header a posicao real do usuario dentro da fila operacional" do
@@ -905,7 +921,12 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response).to have_http_status(:ok)
       document = Nokogiri::HTML(response.body)
       expect(document.at_css(".lead-desktop-queue").text).to include("4º", "na fila")
-      expect(document.at_css(".lead-pwa-queue").text).to include("4º", "na fila")
+
+      get pwa_section_admin_leads_path(view: "list")
+
+      expect(response).to have_http_status(:ok)
+      pwa_document = Nokogiri::HTML(response.body)
+      expect(pwa_document.at_css(".lead-pwa-queue").text).to include("4º", "na fila")
     end
 
     it "lista apenas filas de distribuicao em que o usuario logado participa" do

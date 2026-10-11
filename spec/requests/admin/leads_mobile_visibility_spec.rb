@@ -12,7 +12,7 @@ RSpec.describe "Lead mobile visibility", type: :request do
 
   it "exibe para administrador os leads da conta em cards, contadores e paginação" do
     sign_in admin
-    get admin_leads_path(view: "list", mobile_tab: "all")
+    get pwa_section_admin_leads_path(view: "list", mobile_tab: "all")
     cards = Nokogiri::HTML(response.body).css('.lead-pwa-list .lead-pwa-card').map(&:text).join
     expect(cards).to include(owned.name, unassigned.name)
     get pwa_leads_page_admin_leads_path(mobile_tab: "all"), headers: {"Accept" => "application/json"}
@@ -22,7 +22,7 @@ RSpec.describe "Lead mobile visibility", type: :request do
 
   it "mantém o corretor restrito à própria carteira" do
     sign_in broker
-    get admin_leads_path(view: "list", mobile_tab: "all")
+    get pwa_section_admin_leads_path(view: "list", mobile_tab: "all")
     cards = Nokogiri::HTML(response.body).css('.lead-pwa-list .lead-pwa-card').map(&:text).join
     expect(cards).to include(owned.name)
     expect(cards).not_to include(unassigned.name)

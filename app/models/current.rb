@@ -1,4 +1,4 @@
 class Current < ActiveSupport::CurrentAttributes
   attribute :admin_user, :tenant, :request_ip, :request_user_agent, :request_metadata, :setting_values_cache,
-    :storage_integration_settings_cache
+    :storage_integration_settings_cache, :lead_default_status_cache
 end

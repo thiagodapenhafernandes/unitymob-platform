@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — Unitymob para WhatsApp
 
-> Last Updated: 2026-09-23
+> Last Updated: 2026-10-09
 
 ## Store Listing
 
@@ -32,6 +32,7 @@ Português (Brasil)
 
 | Version | File | Status |
 |---|---|---|
+| 0.4.25 | `browser-extension/unitymob-whatsapp-0.4.25-manual.zip` | Packaged for manual validation |
 | 0.4.24 | `browser-extension/unitymob-whatsapp-0.4.24-webstore.zip` | Ready |
 | 0.4.23 | `browser-extension/unitymob-whatsapp-0.4.23-manual.zip` | Ready for manual validation |
 | 0.4.22 | `browser-extension/unitymob-whatsapp-0.4.22-manual.zip` | Ready for manual validation |
@@ -136,3 +137,7 @@ The failed upload happened because a release ZIP contained the manifest inside a
 Sincroniza a foto de perfil disponível do contato individual aberto com o atendimento permitido na conta conectada. A imagem é armazenada no CRM e exibida na lista e no cabeçalho, com iniciais quando indisponível. Não importa agenda nem mensagens. Requer aceite atualizado dos termos e permissão de gerenciar o inbox. Sem novas permissões de navegador.
 
 A declaração de privacidade deve incluir a foto de perfil do contato entre os dados pessoais transmitidos e armazenados pela imobiliária. Validar a captura no WhatsApp Web real antes da publicação na loja.
+
+### Pacote manual 0.4.25 — 2026-10-09
+
+Gerado ZIP para instalação descompactada no Chrome, mantendo a descoberta de imobiliária pelo Gateway e os estilos compactos do catálogo. Manifesto e assets locais conferidos; 114 testes passaram. Não publicado na Chrome Web Store. Conferir os screenshots do catálogo antes de uma nova publicação na loja.
